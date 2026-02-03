@@ -1,0 +1,155 @@
+{
+  "version": 3,
+  "cli": {
+    "default": "claude"
+  },
+  "agents": {
+    "setup-analyzer": {
+      "model": "sonnet",
+      "max_turns": 50,
+      "timeout": 15
+    },
+    "implementor": {
+      "model": "opus",
+      "max_turns": 80,
+      "timeout": 30
+    },
+    "test-writer": {
+      "model": "opus",
+      "max_turns": 50,
+      "timeout": 20
+    },
+    "qa-verifier": {
+      "model": "opus",
+      "max_turns": 50,
+      "timeout": 20
+    },
+    "doc-updater": {
+      "model": "sonnet",
+      "max_turns": 30,
+      "timeout": 10
+    }
+  },
+  "workflows": {
+    "feature": {
+      "description": "Full TDD feature development workflow",
+      "categories": ["docs", "simple", "full"],
+      "phases": [
+        {
+          "id": "investigation",
+          "agent": "setup-analyzer",
+          "parallel": {
+            "enabled": false,
+            "models": ["claude:sonnet"]
+          }
+        },
+        {
+          "id": "test-design",
+          "agent": "test-writer",
+          "skip_for": ["docs", "simple"],
+          "parallel": {
+            "enabled": false,
+            "models": ["claude:opus"]
+          }
+        },
+        {
+          "id": "implementation",
+          "agent": "implementor",
+          "parallel": {
+            "enabled": false,
+            "models": ["claude:opus"]
+          }
+        },
+        {
+          "id": "verification",
+          "agent": "qa-verifier",
+          "skip_for": ["docs"],
+          "parallel": {
+            "enabled": false,
+            "models": ["claude:opus"]
+          }
+        },
+        {
+          "id": "docs",
+          "agent": "doc-updater",
+          "parallel": {
+            "enabled": false,
+            "models": ["claude:sonnet"]
+          }
+        }
+      ]
+    },
+    "bugfix": {
+      "description": "Bug fix workflow - investigation, fix, verify",
+      "categories": ["simple", "full"],
+      "phases": [
+        {"id": "investigation", "agent": "setup-analyzer"},
+        {"id": "implementation", "agent": "implementor"},
+        {"id": "verification", "agent": "qa-verifier"}
+      ]
+    },
+    "hotfix": {
+      "description": "Emergency hotfix - implementation only",
+      "categories": ["simple"],
+      "phases": [
+        {"id": "implementation", "agent": "implementor"}
+      ]
+    },
+    "docs": {
+      "description": "Documentation-only changes",
+      "categories": ["docs"],
+      "phases": [
+        {"id": "investigation", "agent": "setup-analyzer"},
+        {"id": "docs", "agent": "doc-updater"}
+      ]
+    },
+    "refactor": {
+      "description": "Code refactoring with verification",
+      "categories": ["simple", "full"],
+      "phases": [
+        {"id": "investigation", "agent": "setup-analyzer"},
+        {"id": "implementation", "agent": "implementor"},
+        {"id": "verification", "agent": "qa-verifier"}
+      ]
+    },
+    "parallel-test": {
+      "description": "Test workflow with parallel agents enabled",
+      "categories": ["full"],
+      "phases": [
+        {
+          "id": "investigation",
+          "agent": "setup-analyzer",
+          "parallel": {
+            "enabled": true,
+            "models": ["claude:sonnet", "codex:gpt_high"]
+          }
+        },
+        {
+          "id": "implementation",
+          "agent": "implementor",
+          "parallel": {
+            "enabled": true,
+            "models": ["claude:opus", "codex:gpt_xhigh"]
+          }
+        }
+      ]
+    }
+  },
+  "findings_schema": {
+    "setup-analyzer": ["summary", "acceptance_criteria", "files_to_modify", "patterns", "existing_tests"],
+    "test-writer": ["test_files", "test_cases", "coverage_plan"],
+    "implementor": ["files_created", "files_modified", "build_result", "test_result", "summary"],
+    "qa-verifier": ["verdict", "criteria_status", "issues", "test_result"],
+    "doc-updater": ["docs_updated", "summary"]
+  },
+  "storage": {
+    "backend": "wfw",
+    "data_path": ".claude/nrworkflow/wfw.data"
+  },
+  "timeouts": {
+    "default_agent_minutes": 25
+  },
+  "retries": {
+    "max_agent_retries": 3
+  }
+}

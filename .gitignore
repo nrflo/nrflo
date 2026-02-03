@@ -1,0 +1,47 @@
+# Binaries
+nrworkflow/nrworkflow
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build artifacts
+*.test
+*.out
+go.work
+go.work.sum
+
+# SQLite database files
+*.data
+*.data-shm
+*.data-wal
+
+# Logs
+logs/
+*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+
+# nrworkflow local state (project-specific)
+.claude/nrworkflow/*.data
+.claude/nrworkflow/*.data-shm
+.claude/nrworkflow/*.data-wal

@@ -1,0 +1,74 @@
+import { Link } from 'react-router-dom'
+import { Bug, Lightbulb, CheckSquare, Layers, Lock } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { cn, statusColor, formatRelativeTime, priorityLabel } from '@/lib/utils'
+import type { Ticket, PendingTicket } from '@/types/ticket'
+
+interface TicketCardProps {
+  ticket: Ticket | PendingTicket
+}
+
+function IssueTypeIcon({ type }: { type: string }) {
+  switch (type) {
+    case 'bug':
+      return <Bug className="h-4 w-4 text-red-500" />
+    case 'feature':
+      return <Lightbulb className="h-4 w-4 text-purple-500" />
+    case 'task':
+      return <CheckSquare className="h-4 w-4 text-blue-500" />
+    case 'epic':
+      return <Layers className="h-4 w-4 text-green-500" />
+    default:
+      return <CheckSquare className="h-4 w-4 text-gray-500" />
+  }
+}
+
+function isPendingTicket(ticket: Ticket | PendingTicket): ticket is PendingTicket {
+  return 'is_blocked' in ticket
+}
+
+export function TicketCard({ ticket }: TicketCardProps) {
+  const isBlocked = isPendingTicket(ticket) && ticket.is_blocked
+
+  return (
+    <Link to={`/tickets/${encodeURIComponent(ticket.id)}`}>
+      <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <IssueTypeIcon type={ticket.issue_type} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-muted-foreground font-mono">
+                  {ticket.id}
+                </span>
+                {isBlocked && (
+                  <span title="Blocked">
+                    <Lock className="h-3 w-3 text-orange-500" />
+                  </span>
+                )}
+              </div>
+              <h3 className="font-medium text-sm truncate">{ticket.title}</h3>
+              {ticket.description && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {ticket.description}
+                </p>
+              )}
+              <div className="flex items-center gap-2 mt-2">
+                <Badge className={cn('text-xs', statusColor(ticket.status))}>
+                  {ticket.status.replace('_', ' ')}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {priorityLabel(ticket.priority)}
+                </span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {formatRelativeTime(ticket.updated_at)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}

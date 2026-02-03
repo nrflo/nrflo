@@ -1,0 +1,96 @@
+import { Link } from 'react-router-dom'
+import { FolderOpen, Search, Settings } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
+import { useProjectStore } from '@/stores/projectStore'
+
+export function Header() {
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+  const { currentProject, setCurrentProject, projects } = useProjectStore()
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/tickets?search=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+    }
+  }
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-14 items-center px-4 gap-4">
+        <Link to="/" className="flex items-center gap-2 font-semibold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            N
+          </div>
+          <span className="hidden sm:inline-block">nrworkflow</span>
+        </Link>
+
+        <nav className="flex items-center gap-4 ml-4">
+          <Link
+            to="/"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Dashboard
+          </Link>
+          <Link
+            to="/tickets"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Tickets
+          </Link>
+          <Link
+            to="/agents"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Agents
+          </Link>
+        </nav>
+
+        <div className="flex-1" />
+
+        <form onSubmit={handleSearch} className="hidden sm:block">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search tickets..."
+              className="pl-8 w-64"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </form>
+
+        <div className="flex items-center gap-2">
+          <FolderOpen className="h-4 w-4 text-muted-foreground" />
+          <Select
+            value={currentProject}
+            onChange={(e) => {
+              setCurrentProject(e.target.value)
+              navigate('/')
+            }}
+            className="w-36"
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <Link
+          to="/settings"
+          className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Settings"
+        >
+          <Settings className="h-5 w-5" />
+        </Link>
+      </div>
+    </header>
+  )
+}

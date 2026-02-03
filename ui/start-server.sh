@@ -1,0 +1,71 @@
+#!/bin/bash
+# Start the nrworkflow API server
+
+set -e
+
+PORT=${NRWORKFLOW_PORT:-6587}
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}Starting nrworkflow API Server${NC}"
+echo "================================"
+
+# Check if nrworkflow is installed
+if ! command -v nrworkflow &> /dev/null; then
+    echo -e "${RED}Error: nrworkflow command not found${NC}"
+    echo "Please install nrworkflow first:"
+    echo "  cd ~/.nrworkflow/nrworkflow && make build && sudo cp nrworkflow /usr/local/bin/"
+    exit 1
+fi
+
+echo -e "Using: ${YELLOW}$(which nrworkflow)${NC}"
+
+# Kill existing server if running on API port
+if lsof -i :$PORT > /dev/null 2>&1; then
+    echo -e "${YELLOW}Killing existing process on port $PORT...${NC}"
+    lsof -ti :$PORT | xargs kill -9 2>/dev/null || true
+    sleep 1
+fi
+
+# Kill existing server if running on UI port (5173)
+if lsof -i :5173 > /dev/null 2>&1; then
+    echo -e "${YELLOW}Killing existing process on port 5173...${NC}"
+    lsof -ti :5173 | xargs kill -9 2>/dev/null || true
+    sleep 1
+fi
+
+echo ""
+echo -e "API server will start on ${YELLOW}http://localhost:$PORT${NC}"
+echo -e "UI will start on ${YELLOW}http://localhost:5173${NC}"
+echo "Press Ctrl+C to stop"
+echo ""
+
+# Start the API server in background
+nrworkflow serve --port=$PORT &
+API_PID=$!
+
+# Give the API server a moment to start
+sleep 1
+
+# Start the UI dev server
+cd "$(dirname "$0")"
+npm run dev &
+UI_PID=$!
+
+# Handle cleanup on exit
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}Shutting down...${NC}"
+    kill $UI_PID 2>/dev/null
+    kill $API_PID 2>/dev/null
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+# Wait for both processes
+wait

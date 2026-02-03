@@ -1,0 +1,47 @@
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Layout } from '@/components/layout/Layout'
+import { Dashboard } from '@/pages/Dashboard'
+import { TicketListPage } from '@/pages/TicketListPage'
+import { TicketDetailPage } from '@/pages/TicketDetailPage'
+import { CreateTicketPage } from '@/pages/CreateTicketPage'
+import { SettingsPage } from '@/pages/SettingsPage'
+import { AgentsPage } from '@/pages/AgentsPage'
+import { useProjectStore } from '@/stores/projectStore'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds
+      refetchOnWindowFocus: true,
+    },
+  },
+})
+
+function App() {
+  const loadProjects = useProjectStore((s) => s.loadProjects)
+
+  useEffect(() => {
+    loadProjects()
+  }, [loadProjects])
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="tickets" element={<TicketListPage />} />
+            <Route path="tickets/new" element={<CreateTicketPage />} />
+            <Route path="tickets/:id" element={<TicketDetailPage />} />
+            <Route path="agents" element={<AgentsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
+  )
+}
+
+export default App

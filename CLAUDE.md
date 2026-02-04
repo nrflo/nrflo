@@ -12,15 +12,17 @@ This is the nrworkflow system - a multi-workflow state management tool for ticke
 
 When making changes, you MUST update all affected documentation:
 
-#### 1a. WORKFLOW.md (System Diagrams)
+#### 1a. README.md (System Documentation)
 
-Update [WORKFLOW.md](WORKFLOW.md) when modifying:
+Update [README.md](README.md) when modifying:
+- System architecture or flow
+- State machines or diagrams (in System Diagrams section)
+- Database schema
 - `nrworkflow/` - Go CLI commands, state structure
 - `nrworkflow/internal/spawner/` - Spawner flow, session handling
 - `config.json` - Workflows, phases, agents
 - `agents/*.base.md` - Agent templates
 - `guidelines/*.md` - Protocols, schemas
-- `EXAMPLE_*.md` - Skill examples
 
 **What to update:**
 - Add/remove boxes in diagrams if commands or phases change
@@ -28,11 +30,12 @@ Update [WORKFLOW.md](WORKFLOW.md) when modifying:
 - Update file structure section if files added/removed
 - Update data flow if new data is stored/read
 - Update session tracking if session handling changes
-- Add timestamp at bottom: `*Last updated: YYYY-MM-DD*`
+- Update Commands section for CLI changes
+- Update Configuration section for config changes
 
-#### 1b. README.md (User Documentation)
+#### 1b. README.md (Continued)
 
-Update [README.md](README.md) when:
+Also update [README.md](README.md) when:
 - Adding/removing/changing CLI commands → update Commands section
 - Changing command arguments or flags → update usage examples
 - Adding new features → add to relevant section
@@ -46,14 +49,7 @@ Update relevant guidelines when:
 - Changing findings format → `guidelines/findings-schema.md`
 - Adding new phase with findings → add schema to `findings-schema.md`
 
-#### 1d. Skill Examples
-
-Update skill examples when:
-- Changing spawn command syntax → `EXAMPLE_IMPL_SKILL.md`
-- Changing ticket creation → `EXAMPLE_PREP_SKILL.md`
-- Adding new workflow phases → both skill examples
-
-#### 1e. UI (Web Interface)
+#### 1d. UI (Web Interface)
 
 Update [ui/](ui/) when:
 - Changing API endpoints → `ui/src/api/`
@@ -106,8 +102,7 @@ When agents store findings, they must follow the schema in `guidelines/findings-
 | `nrworkflow/internal/db/` | SQLite database + connection pool |
 | `nrworkflow/internal/types/` | Shared request/response types |
 | `config.json` | Workflows, agents, timeouts |
-| `WORKFLOW.md` | **System diagrams - KEEP UPDATED** |
-| `README.md` | User documentation |
+| `README.md` | **User docs + System diagrams - KEEP UPDATED** |
 | `guidelines/agent-protocol.md` | Agent conventions |
 | `guidelines/findings-schema.md` | Findings format |
 | `ui/` | React web interface |
@@ -136,24 +131,21 @@ When agents store findings, they must follow the schema in `guidelines/findings-
 3. Add agent config (model, max_turns, timeout) to `config.json`
 4. **Documentation updates:**
    - `guidelines/findings-schema.md` - add findings schema for new phase
-   - `WORKFLOW.md` - add agent to diagrams, update file structure
-   - `README.md` - add to Base Agent Templates table
+   - `README.md` - add agent to diagrams in System Diagrams section, update file structure, add to Base Agent Templates table
 
 ### Adding a New Workflow
 
 1. Add workflow definition to `config.json`
 2. Ensure all referenced agents exist
 3. **Documentation updates:**
-   - `WORKFLOW.md` - add workflow to diagrams
-   - `README.md` - add to Workflows table
+   - `README.md` - add workflow to diagrams in System Diagrams section, add to Workflows table
 
 ### Modifying State Structure
 
 1. Update state initialization in `nrworkflow/internal/service/workflow.go`
 2. Update any code reading that state
 3. **Documentation updates:**
-   - `WORKFLOW.md` - update state diagrams and data flow
-   - `README.md` - update State Storage section if user-visible
+   - `README.md` - update state diagrams in System Diagrams section, update State Storage section if user-visible
 
 ### Changing CLI Commands
 
@@ -162,9 +154,7 @@ When agents store findings, they must follow the schema in `guidelines/findings-
 3. Update service in `nrworkflow/internal/service/`
 4. Rebuild: `cd nrworkflow && make build`
 5. **Documentation updates:**
-   - `WORKFLOW.md` - update diagrams if flow changes
-   - `README.md` - update Commands section, usage examples
-   - `EXAMPLE_IMPL_SKILL.md` / `EXAMPLE_PREP_SKILL.md` - if spawn/ticket commands change
+   - `README.md` - update diagrams in System Diagrams section if flow changes, update Commands section and usage examples
    - `guidelines/agent-protocol.md` - if agent-facing commands change
 
 ### Adding New Socket Methods
@@ -179,8 +169,7 @@ When agents store findings, they must follow the schema in `guidelines/findings-
 1. Add to `config.json` (global and/or project)
 2. Update code to read the new option in `nrworkflow/internal/service/workflow.go`
 3. **Documentation updates:**
-   - `README.md` - update Configuration section
-   - `WORKFLOW.md` - if it affects flow or data
+   - `README.md` - update Configuration section, update System Diagrams if it affects flow or data
 
 ### Modifying API Endpoints (HTTP)
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, FileText, Copy, Check, Cpu } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Copy, Check, Cpu, Workflow } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import type { WorkflowFindings as WorkflowFindingsType } from '@/types/workflow'
@@ -57,6 +57,87 @@ function SimpleFindingValue({ value }: { value: unknown }): React.ReactNode {
 interface AgentFindingsProps {
   agentType: string
   findings: Record<string, unknown>
+}
+
+// Workflow-level findings (saved under 'workflow' key)
+interface WorkflowLevelFindingsProps {
+  findings: Record<string, unknown>
+}
+
+function WorkflowLevelFindings({ findings }: WorkflowLevelFindingsProps) {
+  const [expanded, setExpanded] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const findingEntries = Object.entries(findings)
+
+  return (
+    <div className="border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden bg-blue-50/30 dark:bg-blue-950/20">
+      {/* Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-2 bg-blue-100/50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+      >
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        )}
+        <Workflow className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <span className="font-medium text-sm text-blue-700 dark:text-blue-300">Workflow</span>
+        <Badge variant="secondary" className="text-xs ml-auto bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+          {findingEntries.length} field{findingEntries.length !== 1 ? 's' : ''}
+        </Badge>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2"
+          onClick={(e) => {
+            e.stopPropagation()
+            navigator.clipboard.writeText(JSON.stringify(findings, null, 2))
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+          }}
+        >
+          {copied ? (
+            <Check className="h-3 w-3" />
+          ) : (
+            <Copy className="h-3 w-3" />
+          )}
+        </Button>
+      </button>
+
+      {/* Content */}
+      {expanded && (
+        <div className="p-3 space-y-3 text-sm">
+          {findingEntries.map(([key, value]) => (
+            <div key={key} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-mono shrink-0 border-blue-300 dark:border-blue-700">
+                  {key}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 ml-auto opacity-50 hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const text = typeof value === 'string'
+                      ? value
+                      : JSON.stringify(value, null, 2)
+                    navigator.clipboard.writeText(text)
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="pl-2 border-l-2 border-blue-300 dark:border-blue-700">
+                <SimpleFindingValue value={value} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function AgentFindings({ agentType, findings }: AgentFindingsProps) {
@@ -138,9 +219,15 @@ function AgentFindings({ agentType, findings }: AgentFindingsProps) {
 export function WorkflowFindings({ findings }: WorkflowFindingsProps) {
   const [expanded, setExpanded] = useState(true)
   const [copied, setCopied] = useState(false)
-  const agentEntries = Object.entries(findings)
 
-  if (agentEntries.length === 0) {
+  // Separate workflow-level findings from agent findings
+  const workflowFindings = findings['workflow'] as Record<string, unknown> | undefined
+  const agentEntries = Object.entries(findings).filter(([key]) => key !== 'workflow')
+
+  const hasWorkflowFindings = workflowFindings && Object.keys(workflowFindings).length > 0
+  const hasAgentFindings = agentEntries.length > 0
+
+  if (!hasWorkflowFindings && !hasAgentFindings) {
     return null
   }
 
@@ -149,6 +236,9 @@ export function WorkflowFindings({ findings }: WorkflowFindingsProps) {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  // Calculate total count for display
+  const totalSources = (hasWorkflowFindings ? 1 : 0) + agentEntries.length
 
   return (
     <div className="mt-6 pt-4 border-t border-border">
@@ -163,9 +253,9 @@ export function WorkflowFindings({ findings }: WorkflowFindingsProps) {
             <ChevronRight className="h-4 w-4" />
           )}
           <FileText className="h-4 w-4 text-blue-500" />
-          <h4 className="text-sm font-medium">Workflow Findings</h4>
+          <h4 className="text-sm font-medium">Findings</h4>
           <Badge variant="secondary" className="text-xs">
-            {agentEntries.length} agent{agentEntries.length !== 1 ? 's' : ''}
+            {totalSources} source{totalSources !== 1 ? 's' : ''}
           </Badge>
         </button>
         <Button variant="ghost" size="sm" onClick={copyAll}>
@@ -180,6 +270,12 @@ export function WorkflowFindings({ findings }: WorkflowFindingsProps) {
 
       {expanded && (
         <div className="space-y-3">
+          {/* Workflow-level findings first */}
+          {hasWorkflowFindings && (
+            <WorkflowLevelFindings findings={workflowFindings} />
+          )}
+
+          {/* Agent findings */}
           {agentEntries.map(([agentType, agentFindings]) => (
             <AgentFindings
               key={agentType}

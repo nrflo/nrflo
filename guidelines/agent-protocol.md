@@ -49,7 +49,15 @@ The spawned agent session:
 
 ## Completion Commands
 
-Every agent MUST call a completion command when done. The `--workflow` flag is **required**:
+**CRITICAL:** Every agent MUST call a completion command when done. The spawner enforces **hybrid completion semantics**:
+
+- Exit code 0 alone is **NOT sufficient** for passing
+- Within 60 seconds of exit, the spawner checks for explicit `nrworkflow agent complete`
+- If no explicit completion is found, the phase **fails** with reason `no_complete`
+- Non-zero exit codes fail immediately with reason `exit_code`
+- Timeout results in `SIGTERM` → 5s grace → `SIGKILL` with reason `timeout`
+
+The `--workflow` flag is **required**:
 
 ### Successful Completion
 ```bash
@@ -107,14 +115,16 @@ Tool list is configurable per project in config.json.
 Agents interact with nrworkflow state via CLI. All commands require `--workflow/-w`:
 
 ```bash
-# Store findings (by agent type)
-nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow>
+# Store findings (two syntax modes)
+nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow>                # single
+nrworkflow findings add <ticket> <agent-type> key:'value' [key2:'value2'] -w <workflow>  # multiple
 
 # For parallel agents, store findings under model key:
 nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> --model=${MODEL_ID}
 
 # Read findings from another agent
-nrworkflow findings get <ticket> <agent-type> -w <workflow>
+nrworkflow findings get <ticket> <agent-type> -w <workflow>                     # all findings
+nrworkflow findings get <ticket> <agent-type> -w <workflow> -k <key>            # specific key
 nrworkflow findings get <ticket> <agent-type> -w <workflow> --model=<model_id>  # specific model
 
 # Set ticket category (setup-analyzer only)
@@ -128,6 +138,24 @@ nrworkflow agent fail <ticket> <agent-type> -w <workflow> --model=${MODEL_ID} --
 ```
 
 The workflow name and model ID should be passed to the agent via the spawner context.
+
+### Workflow-Level Findings
+
+Use `workflow` as the agent_type to store data shared across all agents:
+
+```bash
+# Store workflow-wide data
+nrworkflow findings add <ticket> workflow <key> <value> -w <workflow>
+
+# Read workflow-wide data
+nrworkflow findings get <ticket> workflow -w <workflow> -k <key>
+```
+
+**When to use workflow vs agent findings:**
+- **Agent findings** (`setup-analyzer`, `implementor`, etc.): Phase-specific results that the agent produces
+- **Workflow findings** (`workflow`): Cross-cutting data needed by multiple agents (e.g., selected architecture, global constraints)
+
+See `guidelines/findings-schema.md` for the full workflow-level findings documentation.
 
 ## Error Handling
 

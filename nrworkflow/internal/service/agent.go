@@ -26,7 +26,7 @@ func NewAgentService(pool *db.Pool) *AgentService {
 
 // ListAgentTypes lists available agent types from workflow configs
 func (s *AgentService) ListAgentTypes(projectRoot string) ([]string, error) {
-	config, err := LoadMergedWorkflowConfig(projectRoot)
+	config, err := LoadWorkflowConfig(projectRoot)
 	if err != nil {
 		return nil, err
 	}

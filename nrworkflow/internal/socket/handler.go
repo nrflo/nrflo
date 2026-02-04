@@ -405,6 +405,25 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "added"})
 
+	case "add-bulk":
+		var params struct {
+			TicketID string `json:"ticket_id"`
+			types.FindingsAddBulkRequest
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if err := h.findingsSvc.AddBulk(projectID, params.TicketID, &params.FindingsAddBulkRequest); err != nil {
+			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
+				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
+			}
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		return MakeResponse(req.ID, map[string]interface{}{
+			"status": "added",
+			"count":  len(params.KeyValues),
+		})
+
 	case "get":
 		var params struct {
 			TicketID string `json:"ticket_id"`

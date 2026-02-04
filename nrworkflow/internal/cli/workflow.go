@@ -554,10 +554,10 @@ func init() {
 
 // Helper functions
 
-// loadMergedWorkflowConfig is provided for backward compatibility with spawner
-// It loads workflow config using the service layer
+// loadMergedWorkflowConfig loads workflow config using the service layer
+// (kept name for backward compatibility with agent.go calls)
 func loadMergedWorkflowConfig(projectRoot string) (*WorkflowConfig, error) {
-	svcConfig, err := service.LoadMergedWorkflowConfig(projectRoot)
+	svcConfig, err := service.LoadWorkflowConfig(projectRoot)
 	if err != nil {
 		return nil, err
 	}

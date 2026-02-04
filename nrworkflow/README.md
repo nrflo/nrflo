@@ -24,25 +24,25 @@ nrworkflow init-db
 # Create a project
 nrworkflow project create myproject --name "My Project"
 
-# Create a ticket
-nrworkflow ticket create -p myproject --title "Add user authentication" \
+# Create a ticket (project auto-discovered from .claude/nrworkflow/config.json)
+nrworkflow ticket create --title "Add user authentication" \
   -d "Implement OAuth2 login" --type=feature
 
 # List tickets
-nrworkflow ticket list -p myproject
-nrworkflow ticket list -p myproject --status=open --type=bug
+nrworkflow ticket list
+nrworkflow ticket list --status=open --type=bug
 
 # Show ticket details
-nrworkflow ticket show MYPROJECT-001 -p myproject
+nrworkflow ticket show MYPROJECT-001
 
 # Initialize workflow on ticket
-nrworkflow init MYPROJECT-001 -p myproject -w feature
+nrworkflow init MYPROJECT-001 -w feature
 
 # Check workflow status
-nrworkflow status MYPROJECT-001 -p myproject
+nrworkflow status MYPROJECT-001
 
 # Spawn an agent
-nrworkflow agent spawn setup-analyzer MYPROJECT-001 -p myproject \
+nrworkflow agent spawn setup-analyzer MYPROJECT-001 \
   --session=$SESSION_MARKER -w feature
 ```
 
@@ -89,14 +89,21 @@ nrworkflow/
 
 ## Commands
 
+### Project Discovery
+
+Project is automatically discovered by searching upward from the current directory for `.claude/nrworkflow/config.json`. You can override this with:
+
+```bash
+-p, --project    Explicit project ID (overrides auto-discovery)
+
+# Or use environment variable:
+NRWORKFLOW_PROJECT=myproject           # Override project
+```
+
 ### Global Flags
 
 ```bash
--p, --project    Project ID (required for most commands)
 -D, --data       Path to database file (default: ~/projects/2026/nrworkflow/nrworkflow.data)
-
-# Or use environment variables:
-NRWORKFLOW_PROJECT=myproject           # Override project
 NRWORKFLOW_HOME=/path/to/nrworkflow    # Override database location
 ```
 
@@ -112,55 +119,55 @@ nrworkflow project delete <id>
 ### Ticket Management
 
 ```bash
-nrworkflow ticket create -p <project> --title "..." --type feature -d "..."
-nrworkflow ticket list -p <project> [--status open] [--type bug] [--json]
-nrworkflow ticket show <id> -p <project> [--json]
-nrworkflow ticket update <id> -p <project> [--title ...] [--status ...]
-nrworkflow ticket close <id> -p <project> [--reason "..."]
-nrworkflow ticket delete <id> -p <project>
-nrworkflow ticket search <query> -p <project> [--json]
-nrworkflow ticket ready -p <project>
-nrworkflow ticket status -p <project> [--json]
-nrworkflow ticket dep add <child> <parent> -p <project>
+nrworkflow ticket create --title "..." --type feature -d "..."
+nrworkflow ticket list [--status open] [--type bug] [--json]
+nrworkflow ticket show <id> [--json]
+nrworkflow ticket update <id> [--title ...] [--status ...]
+nrworkflow ticket close <id> [--reason "..."]
+nrworkflow ticket delete <id>
+nrworkflow ticket search <query> [--json]
+nrworkflow ticket ready
+nrworkflow ticket status [--json]
+nrworkflow ticket dep add <child> <parent>
 ```
 
 ### Workflow Management
 
 ```bash
 nrworkflow workflows                              # List available workflows
-nrworkflow init <ticket> -p <project> -w <workflow>
-nrworkflow status <ticket> -p <project> [-w <name>]
-nrworkflow progress <ticket> -p <project> [-w <name>] [--json]
-nrworkflow get <ticket> -p <project> [-w <name>] [field]
-nrworkflow set <ticket> -p <project> -w <name> <key> <value>
+nrworkflow init <ticket> -w <workflow>
+nrworkflow status <ticket> [-w <name>]
+nrworkflow progress <ticket> [-w <name>] [--json]
+nrworkflow get <ticket> [-w <name>] [field]
+nrworkflow set <ticket> -w <name> <key> <value>
 ```
 
 ### Phase Management
 
 ```bash
-nrworkflow phase start <ticket> <phase> -p <project> -w <name>
-nrworkflow phase complete <ticket> <phase> pass|fail|skipped -p <project> -w <name>
-nrworkflow phase ready <ticket> <phase> -p <project> -w <name>
+nrworkflow phase start <ticket> <phase> -w <name>
+nrworkflow phase complete <ticket> <phase> pass|fail|skipped -w <name>
+nrworkflow phase ready <ticket> <phase> -w <name>
 ```
 
 ### Agent Management
 
 ```bash
 nrworkflow agent list
-nrworkflow agent spawn <type> <ticket> -p <project> --session=<uuid> -w <workflow>
-nrworkflow agent preview <type> <ticket> -p <project> [-w <name>]
-nrworkflow agent active <ticket> -p <project> -w <name>
-nrworkflow agent complete <ticket> <type> -p <project> -w <name>
-nrworkflow agent fail <ticket> <type> -p <project> -w <name>
-nrworkflow agent kill <ticket> -p <project> -w <name> [--model=...]
-nrworkflow agent retry <ticket> -p <project> -w <name>
+nrworkflow agent spawn <type> <ticket> --session=<uuid> -w <workflow>
+nrworkflow agent preview <type> <ticket> [-w <name>]
+nrworkflow agent active <ticket> -w <name>
+nrworkflow agent complete <ticket> <type> -w <name>
+nrworkflow agent fail <ticket> <type> -w <name>
+nrworkflow agent kill <ticket> -w <name> [--model=...]
+nrworkflow agent retry <ticket> -w <name>
 ```
 
 ### Findings Management
 
 ```bash
-nrworkflow findings add <ticket> <agent> <key> <value> -p <project> -w <name>
-nrworkflow findings get <ticket> <agent> -p <project> -w <name> [key]
+nrworkflow findings add <ticket> <agent> <key> <value> -w <name>
+nrworkflow findings get <ticket> <agent> -w <name> [key]
 ```
 
 ### HTTP API Server

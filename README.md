@@ -9,7 +9,6 @@ Multi-workflow state management for ticket implementation. Supports multiple wor
 | Document | Purpose |
 |----------|---------|
 | **README.md** | User documentation (this file) |
-| [WORKFLOW.md](WORKFLOW.md) | System diagrams and architecture |
 | [CLAUDE.md](CLAUDE.md) | AI assistant maintenance rules |
 | [guidelines/agent-protocol.md](guidelines/agent-protocol.md) | Agent conventions |
 | [guidelines/findings-schema.md](guidelines/findings-schema.md) | Findings format |
@@ -58,7 +57,7 @@ nrworkflow agent spawn implementor MYPROJECT-1 --session=$SESSION_MARKER -w feat
 ## Architecture
 
 ```
-~/projects/2026/nrworkflow/             # GLOBAL (NRWORKFLOW_HOME)
+~/projects/2026/nrworkflow/             # NRWORKFLOW_HOME (source code)
 ├── nrworkflow/                         # Go CLI source
 │   ├── cmd/nrworkflow/main.go          # Entry point
 │   ├── internal/                       # Core packages
@@ -74,21 +73,18 @@ nrworkflow agent spawn implementor MYPROJECT-1 --session=$SESSION_MARKER -w feat
 │   │   └── types/                      # Shared request/response types
 │   └── Makefile                        # Build commands
 ├── nrworkflow.data                     # Global ticket database (SQLite)
-├── config.json                         # Global defaults (workflows, agents)
-├── agents/                             # Base agent templates
-│   ├── setup-analyzer.base.md
-│   ├── implementor.base.md
-│   ├── test-writer.base.md
-│   ├── qa-verifier.base.md
-│   └── doc-updater.base.md
 └── guidelines/                         # Shared protocols
     ├── findings-schema.md
     └── agent-protocol.md
 
 <project>/.claude/nrworkflow/           # PROJECT (required for commands)
-├── config.json                         # Project config with "project" field
-└── overrides/                          # Agent overrides (optional)
-    └── implementor.md                  # Project-specific instructions
+├── config.json                         # Project config (workflows, agents)
+└── agents/                             # Agent templates
+    ├── setup-analyzer.md
+    ├── implementor.md
+    ├── test-writer.md
+    ├── qa-verifier.md
+    └── doc-updater.md
 ```
 
 ## Project-Based Architecture
@@ -118,6 +114,610 @@ Database location:
 - Default: `~/projects/2026/nrworkflow/nrworkflow.data` (single global database)
 - Override via env: `NRWORKFLOW_HOME=/path/to/nrworkflow`
 - Override via flag: `-D /path/to/db.data`
+
+## System Diagrams
+
+### High-Level Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              USER SESSION                                    │
+│                         (SESSION_MARKER=<uuid>)                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┴─────────────────┐
+                    ▼                                   ▼
+            ┌───────────────┐                   ┌───────────────┐
+            │    /prep      │                   │    /impl      │
+            │  (planning)   │                   │ (execution)   │
+            └───────┬───────┘                   └───────┬───────┘
+                    │                                   │
+                    ▼                                   ▼
+            ┌───────────────┐                   ┌───────────────────────┐
+            │ ticket create │                   │ agent spawn --session │
+            │ + init        │                   │ (requires parent UUID)│
+            └───────┬───────┘                   └───────────┬───────────┘
+                    │                                       │
+                    │  Unix Socket                          │
+                    │  /tmp/nrworkflow/nrworkflow.sock      │
+                    ▼                                       ▼
+            ┌───────────────────────────────────────────────────────────┐
+            │                  nrworkflow serve                         │
+            │  ┌─────────────────────────────────────────────────────┐  │
+            │  │              Service Layer                           │  │
+            │  │  (ticket, project, workflow, agent, findings)        │  │
+            │  └──────────────────────┬──────────────────────────────┘  │
+            │                         │                                 │
+            │  ┌──────────────────────▼──────────────────────────────┐  │
+            │  │           DB Connection Pool (10 max, 5 idle)        │  │
+            │  └──────────────────────┬──────────────────────────────┘  │
+            │                         │                                 │
+            │                         ▼                                 │
+            │  ┌─────────────────────────────────────────────────────┐  │
+            │  │                  nrworkflow.data                     │  │
+            │  │     (~/projects/2026/nrworkflow/nrworkflow.data)     │  │
+            │  │  - projects table                                    │  │
+            │  │  - tickets table (with project_id)                   │  │
+            │  │  - agents_state (nrworkflow state JSON)              │  │
+            │  │  - agent_sessions table                              │  │
+            │  └─────────────────────────────────────────────────────┘  │
+            │                                                           │
+            │  Also: HTTP API on :6587 (for web UI)                    │
+            └───────────────────────────────────────────────────────────┘
+```
+
+### Unix Socket IPC Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     UNIX SOCKET COMMUNICATION                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  CLI Commands (thin clients)                                                 │
+│    │                                                                         │
+│    ├── nrworkflow ticket list                                               │
+│    ├── nrworkflow project create                                            │
+│    ├── nrworkflow workflow init                                             │
+│    └── etc.                                                                  │
+│         │                                                                    │
+│         │  Connect to /tmp/nrworkflow/nrworkflow.sock                       │
+│         │  Send JSON-RPC request                                            │
+│         │                                                                    │
+│         ▼                                                                    │
+│    ┌───────────────────────────────────────────────────────────────────┐    │
+│    │                   JSON-RPC Protocol                                │    │
+│    │                                                                    │    │
+│    │  Request:                                                          │    │
+│    │  {"id":"uuid","method":"ticket.list","params":{},"project":"xyz"} │    │
+│    │                                                                    │    │
+│    │  Response:                                                         │    │
+│    │  {"id":"uuid","result":[{...}],"error":null}                      │    │
+│    │                                                                    │    │
+│    │  Error:                                                            │    │
+│    │  {"id":"uuid","result":null,"error":{"code":-32603,"message":""}} │    │
+│    └───────────────────────────────────────────────────────────────────┘    │
+│         │                                                                    │
+│         ▼                                                                    │
+│    ┌───────────────────────────────────────────────────────────────────┐    │
+│    │                   nrworkflow serve                                 │    │
+│    │                                                                    │    │
+│    │  Listens on:                                                       │    │
+│    │    - Unix socket: /tmp/nrworkflow/nrworkflow.sock (CLI)           │    │
+│    │    - HTTP port: :6587 (Web UI)                                     │    │
+│    │                                                                    │    │
+│    │  Socket Handler → Service Layer → DB Pool → SQLite                │    │
+│    │                                                                    │    │
+│    │  Method Routing:                                                   │    │
+│    │    ticket.* → TicketService                                        │    │
+│    │    project.* → ProjectService                                      │    │
+│    │    workflow.* → WorkflowService                                    │    │
+│    │    phase.* → WorkflowService                                       │    │
+│    │    findings.* → FindingsService                                    │    │
+│    │    agent.* → AgentService                                          │    │
+│    └───────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  Exception: agent spawn/preview run directly (no socket)                    │
+│    - These need foreground process management                               │
+│    - They read config and spawn processes directly                          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Skill Workflows
+
+#### /prep - Planning Skill
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           /prep WORKFLOW                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Phase 1: Understand ──► Phase 2: Explore ──► Phase 3: Plan         │
+│       │                       │                     │                │
+│       ▼                       ▼                     ▼                │
+│  Parse request          codebase-explorer     Create feature plan   │
+│  Identify scope         Find patterns         User stories          │
+│                         Find files            Technical approach    │
+│                                                                      │
+│                              │                                       │
+│                              ▼                                       │
+│  Phase 4: Clarify ◄──────────┘                                      │
+│       │                                                              │
+│       ▼                                                              │
+│  AskUserQuestion (resolve ALL questions)                            │
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 5: Iterate ──► "Create tickets?" ──► Phase 6: Epic?         │
+│       │                                          │                   │
+│       │                    ┌─────────────────────┴──────────────┐   │
+│       │                    ▼                                    ▼   │
+│       │              Single ticket                        Epic mode │
+│       │                    │                         ┌──────────────┤
+│       │                    │                         ▼              │
+│       │                    │                   single-shot │ separate│
+│       │                    │                         │              │
+│       ▼                    ▼                         ▼              │
+│  Phase 7: Create Tickets ◄───────────────────────────┘              │
+│       │                                                              │
+│       ▼                                                              │
+│  nrworkflow ticket create -p <project> --type=<type> --title="..."  │
+│  nrworkflow ticket dep add <child> <parent> -p <project>            │
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 8: Initialize                                                 │
+│       │                                                              │
+│       ▼                                                              │
+│  nrworkflow init <ticket> -p <project> -w <workflow>                │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+Output: Tickets ready for /impl
+```
+
+#### /impl - Implementation Skill
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           /impl WORKFLOW                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Phase 1: Selection & State Check                                   │
+│       │                                                              │
+│       ├── nrworkflow ticket status -p <project>  (dashboard)        │
+│       ├── nrworkflow ticket ready -p <project>   (unblocked tickets)│
+│       ├── nrworkflow status <ticket> -p <project> (check state)     │
+│       └── nrworkflow ticket update <ticket> -p <project> --status=in_progress
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 2: Investigation                                             │
+│       │                                                              │
+│       └── nrworkflow agent spawn setup-analyzer <ticket> -p <project> --session
+│           │                                                          │
+│           └── Sets category: docs | simple | full                   │
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 3: Test Design (skip if docs/simple)                         │
+│       │                                                              │
+│       └── nrworkflow agent spawn test-writer <ticket> -p <project> --session
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 4: Implementation                                            │
+│       │                                                              │
+│       └── nrworkflow agent spawn implementor <ticket> -p <project> --session
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 5: Verification (skip if docs)                               │
+│       │                                                              │
+│       └── nrworkflow agent spawn qa-verifier <ticket> -p <project> --session
+│           │                                                          │
+│           └── On FAIL: nrworkflow agent retry + re-spawn            │
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 6: Documentation                                             │
+│       │                                                              │
+│       └── nrworkflow agent spawn doc-updater <ticket> -p <project> --session
+│       │                                                              │
+│       ▼                                                              │
+│  Phase 7: Completion                                                │
+│       │                                                              │
+│       ├── nrworkflow ticket close <ticket> -p <project>             │
+│       └── git commit + push                                         │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Session Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       SESSION HIERARCHY                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  User Shell (wrapper: cld())                                        │
+│       │                                                              │
+│       └── Generates SESSION_MARKER=<uuid>                           │
+│           │                                                          │
+│           ▼                                                          │
+│  Main Claude Session (parent)                                       │
+│       │                                                              │
+│       ├── Runs /prep or /impl skill                                 │
+│       │                                                              │
+│       └── Passes -p, --session, -w, and --model to spawner          │
+│           │                                                          │
+│           ▼                                                          │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │ Spawned Agent (child)                                        │    │
+│  │     │                                                        │    │
+│  │     ├── parent_session = $SESSION_MARKER (from --session)   │    │
+│  │     ├── child_session = <new uuid> (generated by spawner)   │    │
+│  │     ├── workflow = <name> (from -w)                         │    │
+│  │     ├── model_id = cli:model (from config)                  │    │
+│  │     └── PID tracked for kill support                        │    │
+│  │                                                              │    │
+│  │ Prompt contains:                                             │    │
+│  │     ## Parent Session: <parent_uuid>                        │    │
+│  │     ## CHILD_SESSION_MARKER=<child_uuid>                    │    │
+│  │     ## Model ID: <cli:model>                                │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+State stored in ticket (v4 format - per workflow):
+{
+  "feature": {                               ← Workflow name as key
+    "version": 4,
+    "parent_session": "<parent_uuid>",       ← Saved on first spawn
+    "active_agents": {                       ← v4: dict of parallel agents
+      "setup-analyzer:claude:sonnet": {
+        "agent_id": "spawn-abc123",
+        "agent_type": "setup-analyzer",
+        "model_id": "claude:sonnet",
+        "session_id": "<child_uuid>",
+        "pid": 12345,
+        "result": null
+      },
+      "setup-analyzer:opencode:opus": {
+        "agent_id": "spawn-def456",
+        "model_id": "opencode:opus",
+        ...
+      }
+    }
+  },
+  "bugfix": {                                ← Another workflow (independent)
+    "version": 4,
+    ...
+  }
+}
+```
+
+### Parallel Agent Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PARALLEL AGENT SPAWNING                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Skill/Orchestrator (single spawn command)                          │
+│       │                                                              │
+│       └── nrworkflow agent spawn setup-analyzer TICKET -p proj --session=...
+│           │                                                          │
+│           ▼                                                          │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │              SPAWNER READS WORKFLOW CONFIG                    │    │
+│  │                                                              │    │
+│  │  parallel: {enabled: true, models: ["claude:sonnet",        │    │
+│  │                                      "opencode:opus"]}       │    │
+│  └──────────────────────────┬──────────────────────────────────┘    │
+│                             │                                        │
+│                             ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │              SPAWN ALL MODELS IN PARALLEL                     │    │
+│  │                                                              │    │
+│  │  ┌─────────────────────┐  ┌─────────────────────┐           │    │
+│  │  │ Claude CLI (sonnet) │  │ OpenCode CLI (opus) │           │    │
+│  │  │  PID: 12345         │  │  PID: 12346         │           │    │
+│  │  └──────────┬──────────┘  └──────────┬──────────┘           │    │
+│  │             │                        │                       │    │
+│  │             └────────────┬───────────┘                       │    │
+│  │                          │                                   │    │
+│  │                          ▼                                   │    │
+│  │              SINGLE MONITOR LOOP                             │    │
+│  │              ├── Print status every 30s                      │    │
+│  │              ├── Check process completion                    │    │
+│  │              ├── Handle timeout (kill + log)                 │    │
+│  │              └── Wait until ALL complete                     │    │
+│  │                          │                                   │    │
+│  └──────────────────────────┼──────────────────────────────────┘    │
+│                             │                                        │
+│                             ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                 active_agents                                │    │
+│  │  {                                                           │    │
+│  │    "setup-analyzer:claude:sonnet": {pid, result...},        │    │
+│  │    "setup-analyzer:opencode:opus": {pid, result...}         │    │
+│  │  }                                                           │    │
+│  └──────────────────────────┬──────────────────────────────────┘    │
+│                             │                                        │
+│                             ▼                                        │
+│  PHASE COMPLETION (automatic when all agents done):                 │
+│       ├── ALL agents pass → phase passes                            │
+│       └── ANY agent fails → phase fails                             │
+│                                                                      │
+│  Example output:                                                     │
+│  ┌────────────────────────────────────────────────────────────┐     │
+│  │ [investigation] 2 agent(s) running:                        │     │
+│  │   claude:sonnet: 30s | findings: 2                         │     │
+│  │   opencode:opus: 32s                                       │     │
+│  │                                                            │     │
+│  │ [investigation] All agents completed:                      │     │
+│  │   claude:sonnet: PASS (95s)                                │     │
+│  │   opencode:opus: PASS (120s)                               │     │
+│  │                                                            │     │
+│  │ Phase complete: investigation (PASS)                       │     │
+│  └────────────────────────────────────────────────────────────┘     │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### CLI Adapter Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      CLI ADAPTER PATTERN                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Interface: CLIAdapter                                               │
+│    ├── Name() string                                                │
+│    ├── BuildCommand(opts SpawnOptions) *exec.Cmd                    │
+│    ├── MapModel(model string) string                                │
+│    ├── SupportsSessionID() bool                                     │
+│    ├── SupportsMaxTurns() bool                                      │
+│    └── SupportsSystemPromptFile() bool                              │
+│                                                                      │
+│  Implementations:                                                    │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │ ClaudeAdapter                                                │    │
+│  │   ├── Name: "claude"                                        │    │
+│  │   ├── Model: short names (opus, sonnet, haiku)              │    │
+│  │   ├── SessionID: ✓ (--session-id)                           │    │
+│  │   ├── MaxTurns: ✓ (--max-turns)                             │    │
+│  │   └── SystemPromptFile: ✓ (--append-system-prompt-file)     │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │ OpencodeAdapter                                              │    │
+│  │   ├── Name: "opencode"                                      │    │
+│  │   ├── Model: provider/model (anthropic/claude-opus-4-5)     │    │
+│  │   │   ├── Auto-maps: opus → anthropic/claude-opus-4-5       │    │
+│  │   │   └── GPT aliases: gpt_high → openai/gpt-5.2-codex      │    │
+│  │   ├── Reasoning: --variant (max, high, medium, low)         │    │
+│  │   │   └── gpt_max → max, gpt_high → high, etc.              │    │
+│  │   ├── SessionID: ✗ (generates own)                          │    │
+│  │   ├── MaxTurns: ✗ (runs until done)                         │    │
+│  │   └── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │ CodexAdapter                                                 │    │
+│  │   ├── Name: "codex"                                         │    │
+│  │   ├── Model: gpt-5.2-codex with reasoning effort levels     │    │
+│  │   │   └── gpt_high → high, gpt_xhigh → xhigh, etc.          │    │
+│  │   ├── SessionID: ✗ (generates own)                          │    │
+│  │   ├── MaxTurns: ✗ (runs until done)                         │    │
+│  │   └── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                      │
+│  Usage in spawner:                                                   │
+│    adapter, _ := GetCLIAdapter(cliName)  // "claude", "opencode", or "codex"
+│    cmd := adapter.BuildCommand(SpawnOptions{...})                   │
+│    cmd.Start()                                                       │
+│                                                                      │
+│  Adding new CLI (e.g., cursor):                                      │
+│    1. Create CursorAdapter implementing CLIAdapter                  │
+│    2. Register in GetCLIAdapter(): case "cursor": return &Cursor... │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Message Output Format
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    TOOL OUTPUT FORMATTING                            │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  The spawner parses JSON stream output and formats tool details:    │
+│                                                                      │
+│  Claude CLI format (type: "assistant"):                             │
+│    {"type": "assistant", "message": {"content": [                   │
+│      {"type": "tool_use", "name": "Bash",                           │
+│       "input": {"command": "git status"}}                           │
+│    ]}}                                                               │
+│           ↓                                                          │
+│    [Bash] git status                                                │
+│                                                                      │
+│  Opencode format (type: "tool_use"):                                │
+│    {"type": "tool_use", "part": {"tool": "read",                    │
+│     "state": {"input": {"filePath": "/src/main.ts"}}}}              │
+│           ↓                                                          │
+│    [Read] /src/main.ts                                              │
+│                                                                      │
+│  CLI Differences (handled automatically):                            │
+│    ├── Tool names: Claude=Bash, Opencode=bash (normalized to Title) │
+│    ├── Input location: Claude=part.input, Opencode=part.state.input │
+│    ├── Field names: Claude=file_path, Opencode=filePath (both work) │
+│    └── Skill field: Claude=skill, Opencode=name (both work)         │
+│                                                                      │
+│  Tool detail extraction by type:                                     │
+│    ├── Bash: input.command                                          │
+│    ├── Read/Write/Edit: input.file_path OR input.filePath           │
+│    ├── Glob: input.pattern (+ input.path)                           │
+│    ├── Grep: input.pattern (+ "in" + input.path)                    │
+│    ├── Task: input.subagent_type + input.description                │
+│    ├── Skill: input.skill OR input.name + input.args                │
+│    ├── WebFetch: input.url                                          │
+│    ├── WebSearch: input.query                                       │
+│    └── Others: just [ToolName]                                      │
+│                                                                      │
+│  Text message handling:                                              │
+│    ├── Short (≤500 chars): Displayed in full                        │
+│    └── Long (>500 chars): Truncated as START...END                  │
+│        "First 300 chars..."                                          │
+│        "... [X chars truncated] ..."                                 │
+│        "...last 150 chars"                                           │
+│                                                                      │
+│  Stderr capture:                                                     │
+│    [stderr] Error message from CLI                                   │
+│                                                                      │
+│  Example output during agent run:                                    │
+│  ┌────────────────────────────────────────────────────────────┐     │
+│  │ [Bash] git diff origin/main...HEAD                         │     │
+│  │ [Read] /Users/dev/project/src/api/client.ts                │     │
+│  │ [Grep] handleError in src/services/                        │     │
+│  │ [Skill] skill:jira-ticket REF-12425                        │     │
+│  │ [Task] codebase-explorer: Find authentication handlers     │     │
+│  │ [Edit] /src/api/client.ts                                  │     │
+│  │ [stderr] API rate limit warning                            │     │
+│  └────────────────────────────────────────────────────────────┘     │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Ticket State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      TICKET LIFECYCLE                                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────┐    /prep      ┌─────────────┐                         │
+│  │  (none)  │ ───────────► │  CREATED    │                         │
+│  └──────────┘               │  (open)     │                         │
+│       │                     └──────┬──────┘                         │
+│       │                            │ nrworkflow init                │
+│       │                            ▼                                 │
+│       │                     ┌─────────────┐                         │
+│       └────────────────────►│ INITIALIZED │  (init auto-creates     │
+│         nrworkflow init     │  (open)     │   ticket if not found)  │
+│         (auto-creates)      └──────┬──────┘                         │
+│                                    │ /impl starts                   │
+│                                    ▼                                 │
+│                             ┌─────────────┐                         │
+│                             │ IN_PROGRESS │ ◄─────┐                 │
+│                             └──────┬──────┘       │                 │
+│                                    │              │ retry           │
+│       ┌────────────────────────────┼──────────────┤                 │
+│       ▼                            ▼              │                 │
+│  ┌─────────┐                 ┌─────────┐    ┌─────────┐             │
+│  │ BLOCKED │                 │ RUNNING │───►│ FAILED  │             │
+│  │(waiting)│                 │ (agent) │    └─────────┘             │
+│  └─────────┘                 └────┬────┘                            │
+│                                   │ all phases pass                 │
+│                                   ▼                                 │
+│                             ┌─────────────┐                         │
+│                             │  COMPLETED  │                         │
+│                             │  (closed)   │                         │
+│                             └─────────────┘                         │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Phase State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       PHASE LIFECYCLE                                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│                             ┌─────────┐                             │
+│                             │ pending │                             │
+│                             └────┬────┘                             │
+│                                  │                                   │
+│              ┌───────────────────┼───────────────────┐              │
+│              │                   │                   │              │
+│              ▼                   ▼                   ▼              │
+│        ┌─────────┐        ┌───────────┐       ┌─────────┐          │
+│        │ skipped │        │in_progress│       │  N/A    │          │
+│        │(skip_for│        └─────┬─────┘       │(previous│          │
+│        │ rules)  │              │             │ failed) │          │
+│        └─────────┘              │             └─────────┘          │
+│                                 │                                   │
+│                    ┌────────────┴────────────┐                     │
+│                    │                         │                     │
+│                    ▼                         ▼                     │
+│              ┌───────────┐            ┌───────────┐                │
+│              │ completed │            │ completed │                │
+│              │  (pass)   │            │  (fail)   │                │
+│              └───────────┘            └───────────┘                │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+Workflow phases (feature workflow):
+  investigation ──► test-design ──► implementation ──► verification ──► docs
+                    (skip: docs,     (always)         (skip: docs)
+                     simple)
+```
+
+### Database Schema
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     DATABASE TABLES                                  │
+│              (~/projects/2026/nrworkflow/nrworkflow.data)           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  PROJECTS                                                            │
+│    id            TEXT PRIMARY KEY                                    │
+│    name          TEXT NOT NULL                                       │
+│    root_path     TEXT                                                │
+│    default_workflow TEXT                                             │
+│    created_at    TEXT NOT NULL                                       │
+│    updated_at    TEXT NOT NULL                                       │
+│                                                                      │
+│  TICKETS                                                             │
+│    id            TEXT NOT NULL                                       │
+│    project_id    TEXT NOT NULL  (FK → projects.id)                  │
+│    title         TEXT NOT NULL                                       │
+│    description   TEXT                                                │
+│    status        TEXT NOT NULL DEFAULT 'open'                        │
+│    priority      INTEGER NOT NULL DEFAULT 2                          │
+│    issue_type    TEXT NOT NULL DEFAULT 'task'                        │
+│    created_at    TEXT NOT NULL                                       │
+│    updated_at    TEXT NOT NULL                                       │
+│    closed_at     TEXT                                                │
+│    created_by    TEXT NOT NULL                                       │
+│    close_reason  TEXT                                                │
+│    agents_state  TEXT           (JSON workflow state)                │
+│    PRIMARY KEY (project_id, id)                                      │
+│                                                                      │
+│  DEPENDENCIES                                                        │
+│    project_id     TEXT NOT NULL                                      │
+│    issue_id       TEXT NOT NULL                                      │
+│    depends_on_id  TEXT NOT NULL                                      │
+│    type           TEXT NOT NULL DEFAULT 'blocks'                     │
+│    created_at     TEXT NOT NULL                                      │
+│    created_by     TEXT NOT NULL                                      │
+│    PRIMARY KEY (project_id, issue_id, depends_on_id)                │
+│                                                                      │
+│  AGENT_SESSIONS                                                      │
+│    id            TEXT PRIMARY KEY    (session UUID)                  │
+│    project_id    TEXT NOT NULL                                       │
+│    ticket_id     TEXT NOT NULL                                       │
+│    phase         TEXT NOT NULL       (e.g., "investigation")         │
+│    workflow      TEXT NOT NULL       (e.g., "feature")               │
+│    agent_type    TEXT NOT NULL       (e.g., "setup-analyzer")        │
+│    model_id      TEXT                (e.g., "claude:sonnet")         │
+│    status        TEXT NOT NULL       (running|completed|failed|timeout)
+│    last_messages TEXT                (JSON array of last 50 messages, newest first)
+│    message_stats TEXT                (JSON: {"tool:Read": 5, "text": 3})
+│    spawn_command TEXT                (Full CLI command for debugging/replay)
+│    prompt_context TEXT               (System prompt file contents)   │
+│    created_at    TEXT NOT NULL                                       │
+│    updated_at    TEXT NOT NULL                                       │
+│                                                                      │
+│  TICKETS_FTS (Full-text search)                                      │
+│    project_id, id, title, description                                │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ## Agent Spawner
 
@@ -226,17 +826,19 @@ Phase complete: investigation (PASS)
    - nrworkflow phase complete <ticket> <phase> <result> -w <workflow>
 ```
 
-## Base Agent Templates
+## Agent Templates
 
-Located in `~/projects/2026/nrworkflow/agents/`:
+Located in `<project>/.claude/nrworkflow/agents/`:
 
 | Template | Purpose | Model |
 |----------|---------|-------|
-| `setup-analyzer.base.md` | Investigation and context gathering | sonnet |
-| `implementor.base.md` | Code implementation | opus |
-| `test-writer.base.md` | TDD test design | opus |
-| `qa-verifier.base.md` | Verification and quality checks | opus |
-| `doc-updater.base.md` | Documentation updates | sonnet |
+| `setup-analyzer.md` | Investigation and context gathering | sonnet |
+| `implementor.md` | Code implementation | opus |
+| `test-writer.md` | TDD test design | opus |
+| `qa-verifier.md` | Verification and quality checks | opus |
+| `doc-updater.md` | Documentation updates | sonnet |
+
+**Note:** Templates are required. If a template is missing, the spawner will error with the path where it should be created.
 
 ### Template Variables
 
@@ -245,57 +847,9 @@ Templates use placeholders injected by the spawner:
 - `${TICKET_ID}` - Current ticket ID
 - `${PARENT_SESSION}` - Parent session UUID
 - `${CHILD_SESSION}` - This agent's session UUID
-- `${PROJECT_SPECIFIC}` - Replaced with project override content (or empty)
 - `${WORKFLOW}` - Current workflow name (e.g., "feature", "bugfix")
 - `${MODEL_ID}` - Full model identifier in cli:model format (e.g., "claude:sonnet")
 - `${MODEL}` - Just the model name (e.g., "sonnet")
-
-### Project Overrides
-
-Create project-specific template overrides in `<projectRoot>/.claude/nrworkflow/overrides/<agent>.md`.
-These overrides are injected into the `${PROJECT_SPECIFIC}` placeholder in base templates.
-
-**Requirements:**
-1. Project must have `root_path` set (via `--root` flag on project create)
-2. Override files must be named `<agent-type>.md` (e.g., `implementor.md`, `setup-analyzer.md`)
-
-**Example Setup:**
-```bash
-# 1. Create project with root path
-nrworkflow project create swift-app --name "Swift App" --root /Users/dev/swift-app
-
-# 2. Create overrides directory
-mkdir -p /Users/dev/swift-app/.claude/nrworkflow/overrides
-
-# 3. Create agent override
-cat > /Users/dev/swift-app/.claude/nrworkflow/overrides/implementor.md << 'EOF'
-## Project Context
-- Language: Swift 5.9
-- Framework: SwiftUI + Combine
-
-## Build & Test Commands
-- Build: `swift build`
-- Test: `swift test`
-
-## Available Skills
-- `/build` - Build the project
-- `/test` - Run tests
-
-## Project Conventions
-- All new files must have copyright header
-- Tests go in Tests/ mirroring Sources/ structure
-EOF
-
-# 4. Preview to verify override is loaded (from project directory)
-cd /Users/dev/swift-app
-nrworkflow agent preview implementor TICKET-1 -w feature
-# Output should include "## Project Context" section
-```
-
-**Behavior:**
-- If override file exists: Its content replaces `${PROJECT_SPECIFIC}` in the template
-- If override file is missing: `${PROJECT_SPECIFIC}` is replaced with empty string (normal case)
-- Override content is injected as-is (no additional variable expansion)
 
 ## Workflows
 
@@ -392,19 +946,33 @@ nrworkflow phase ready <ticket> <phase> -w <name>  # Check if all parallel agent
 ### Findings
 
 ```bash
-nrworkflow findings add <ticket> <agent-type> <key> '<value>' -w <name> [--model=cli:model]
-nrworkflow findings get <ticket> <agent-type> -w <name> [--model=cli:model]
+# Add findings (two syntax modes)
+nrworkflow findings add <ticket> <agent-type> <key> '<value>' -w <name>           # legacy: single key-value
+nrworkflow findings add <ticket> <agent-type> key:'value' [key2:'value2'] -w <name>  # new: multiple key:value pairs
+
+# Get findings
+nrworkflow findings get <ticket> <agent-type> -w <name> [-k key] [--model=cli:model]
 
 # Examples (single agent)
 nrworkflow findings add PROJ-1 setup-analyzer files_to_modify '["src/main.py"]' -w feature
-nrworkflow findings add PROJ-1 implementor build_result '"pass"' -w feature
+nrworkflow findings add PROJ-1 setup-analyzer summary:'Done' status:'passed' -w feature  # multiple at once
+
+# Get specific key(s) - avoids fetching all data
+nrworkflow findings get PROJ-1 setup-analyzer -w feature -k summary
+nrworkflow findings get PROJ-1 setup-analyzer -w feature -k summary -k status  # multiple keys
 
 # Examples (parallel agents - findings keyed by model)
 nrworkflow findings add PROJ-1 setup-analyzer files_to_modify '["src/main.py"]' -w feature --model=claude:sonnet
 nrworkflow findings add PROJ-1 setup-analyzer files_to_modify '["src/api.py"]' -w feature --model=opencode:opus
 nrworkflow findings get PROJ-1 setup-analyzer -w feature --model=claude:sonnet  # specific model
 nrworkflow findings get PROJ-1 setup-analyzer -w feature  # all models grouped: {"claude:sonnet":{...},"opencode:opus":{...}}
-nrworkflow findings get PROJ-1 setup-analyzer files_to_modify -w feature  # specific key from all: {"claude:sonnet":[...],"opencode:opus":[...]}
+nrworkflow findings get PROJ-1 setup-analyzer -w feature -k files_to_modify  # specific key from all: {"claude:sonnet":[...],"opencode:opus":[...]}
+
+# Workflow-level findings (global data shared across agents)
+nrworkflow findings add PROJ-1 workflow selected_architecture 'microservices' -w feature
+nrworkflow findings add PROJ-1 workflow db_choice:'postgresql' cache:'redis' -w feature
+nrworkflow findings get PROJ-1 workflow -w feature                    # all workflow findings
+nrworkflow findings get PROJ-1 workflow -w feature -k db_choice       # specific key
 ```
 
 ### Ticket Management
@@ -434,13 +1002,22 @@ nrworkflow ticket search <query>
 
 ## Configuration
 
-### Global Config (`~/projects/2026/nrworkflow/config.json`)
+### Project Config (`.claude/nrworkflow/config.json`)
+
+All configuration is project-local. There is no global config - each project must have its own config file.
 
 ```json
 {
   "version": 3,
+  "project": "myproject",
   "cli": {
     "default": "claude"
+  },
+  "spawner": {
+    "completion_grace_sec": 60,
+    "stats_flush_interval_ms": 2000,
+    "stats_flush_max_events": 25,
+    "timeout_grace_sec": 5
   },
   "agents": {
     "setup-analyzer": {"model": "sonnet", "max_turns": 50, "timeout": 15},
@@ -453,11 +1030,11 @@ nrworkflow ticket search <query>
     "feature": {
       "description": "Full TDD workflow",
       "phases": [
-        {"id": "investigation", "agent": "setup-analyzer"},
-        {"id": "test-design", "agent": "test-writer", "skip_for": ["docs", "simple"]},
-        {"id": "implementation", "agent": "implementor"},
-        {"id": "verification", "agent": "qa-verifier", "skip_for": ["docs"]},
-        {"id": "docs", "agent": "doc-updater"}
+        "setup-analyzer",
+        {"agent": "test-writer", "skip_for": ["docs", "simple"]},
+        "implementor",
+        {"agent": "qa-verifier", "skip_for": ["docs"]},
+        "doc-updater"
       ]
     }
   },
@@ -467,6 +1044,36 @@ nrworkflow ticket search <query>
   }
 }
 ```
+
+### Simplified Phase Format
+
+Phases use the agent name as the identifier. Two formats are supported:
+- **Simple**: Just the agent name as a string (e.g., `"setup-analyzer"`)
+- **With options**: Object with `agent` required field (e.g., `{"agent": "test-writer", "skip_for": ["docs"]}`)
+
+```json
+"phases": [
+  "setup-analyzer",                                      // Simple: just agent name
+  {"agent": "test-writer", "skip_for": ["docs"]},       // With skip rules
+  {"agent": "implementor", "parallel": {...}},          // With parallel config
+  "doc-updater"                                          // Simple again
+]
+```
+
+### Spawner Configuration
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `completion_grace_sec` | 60 | Wait time for explicit `agent complete` after exit 0 |
+| `stats_flush_interval_ms` | 2000 | Interval between stats DB writes (rate limiting) |
+| `stats_flush_max_events` | 25 | Max events before forced stats flush |
+| `timeout_grace_sec` | 5 | Grace period between SIGTERM and SIGKILL on timeout |
+
+**Completion Semantics:**
+- Exit code 0 + explicit `agent complete` within grace period = PASS
+- Exit code 0 + no explicit completion = FAIL (reason: `no_complete`)
+- Non-zero exit code = FAIL (reason: `exit_code`)
+- Timeout = FAIL (reason: `timeout`)
 
 ### Parallel Agent Configuration
 
@@ -504,16 +1111,19 @@ The `cli:model` format tells the spawner which CLI adapter to use:
 - `codex:gpt_high` → Codex CLI with gpt-5.2-codex and reasoning effort "high"
 - `codex:gpt_xhigh` → Codex CLI with gpt-5.2-codex and reasoning effort "xhigh"
 
-### Project Config (`.claude/nrworkflow/config.json`)
+### Project Discovery
 
-Project-specific configuration is loaded from `<projectRoot>/.claude/nrworkflow/config.json`. This file is searched upward from the current directory:
+The config file is searched upward from the current directory:
 
 ```bash
 # Create the config in your project root
 mkdir -p /path/to/project/.claude/nrworkflow
 cat > /path/to/project/.claude/nrworkflow/config.json << 'EOF'
 {
-  "project": "myproject"
+  "project": "myproject",
+  "cli": {"default": "claude"},
+  "agents": {...},
+  "workflows": {...}
 }
 EOF
 
@@ -522,45 +1132,9 @@ cd /path/to/project/src/components
 nrworkflow ticket list  # Uses "myproject" from config.json
 ```
 
-Full config example:
-```json
-{
-  "project": "myproject",
-  "cli": {
-    "default": "opencode"
-  },
-  "agents": {
-    "implementor": {"model": "opus", "max_turns": 100},
-    "setup-analyzer": {"timeout": 20}
-  },
-  "workflows": {
-    "custom": {
-      "description": "Custom project workflow",
-      "phases": [
-        {"id": "implementation", "agent": "implementor"}
-      ]
-    }
-  }
-}
-```
-
-**Merge Behavior:**
-- `cli.default`: Project value overrides global if set
-- `agents`: Per-agent fields are merged (project values override individual fields like `model`, `max_turns`, `timeout`); new agents defined only in project config are added
-- `workflows`: Project workflows completely replace global workflows of the same name; new workflows defined only in project config are added
-
-**Commands Using Merged Config:**
-All workflow and agent commands use merged config:
-- `nrworkflow workflows` - Lists both global and project-specific workflows
-- `nrworkflow init` - Validates workflow exists in merged config
-- `nrworkflow agent list` - Lists agents from all workflows (global + project)
-- `nrworkflow agent spawn` - Uses merged config for workflow validation and agent settings
-- `nrworkflow agent preview` - Uses merged config for template and settings
-- `nrworkflow status` - Uses merged config to display workflow phases
-
 **Error Handling:**
-- If project config file is missing: Uses global config only (silent, normal case)
-- If project config is invalid JSON: Logs warning, uses global config only
+- If project config file is missing: Error with path where to create it
+- If project config is invalid JSON: Error with parse details
 
 ## State Storage
 
@@ -600,7 +1174,11 @@ Multiple workflows can exist per ticket, each with independent state:
       }
     },
     "findings": {
-      "setup-analyzer": {
+      "workflow": {                                  ← Workflow-level findings (global)
+        "selected_architecture": "microservices",
+        "db_choice": "postgresql"
+      },
+      "setup-analyzer": {                            ← Agent findings (keyed by agent type)
         "claude:sonnet": {"files_to_modify": [...], "patterns": [...]},
         "opencode:opus": {"files_to_modify": [...], "patterns": [...]}
       }
@@ -649,8 +1227,6 @@ nrworkflow agent spawn implementor $TICKET_ID --session=$SESSION_MARKER -w $WORK
 nrworkflow agent spawn qa-verifier $TICKET_ID --session=$SESSION_MARKER -w $WORKFLOW    # Auto-skipped if docs
 nrworkflow agent spawn doc-updater $TICKET_ID --session=$SESSION_MARKER -w $WORKFLOW
 ```
-
-See `EXAMPLE_IMPL_SKILL.md` and `EXAMPLE_PREP_SKILL.md` for complete examples.
 
 ## Debugging
 
@@ -756,6 +1332,7 @@ Features:
 - Ticket detail view with workflow timeline
 - Agents page showing recent agents across all projects with live polling
 - Live tracking with real-time agent stdout messages
+- Findings display with workflow-level and agent findings separated
 - Create/edit/close tickets
 - Multi-project support via project selector
 - Settings page for project management (create/update/delete)
@@ -870,14 +1447,16 @@ See [ui/README.md](ui/README.md) for full documentation.
 |------|---------|
 | `nrworkflow/` | Go CLI source code |
 | `nrworkflow.data` | SQLite database (tickets, projects, sessions) |
-| `config.json` | Global defaults (workflows, agents, server) |
-| `agents/*.base.md` | Base agent templates |
 | `guidelines/*.md` | Protocols (findings-schema, agent-protocol) |
-| `EXAMPLE_PREP_SKILL.md` | Planning skill example |
-| `EXAMPLE_IMPL_SKILL.md` | Implementation skill example |
 | `ui/` | React web UI for ticket management |
 | `restart.sh` | Rebuild and restart BE + UI servers (background) |
 | `stop.sh` | Stop running servers |
+
+**Project files (`.claude/nrworkflow/`):**
+| File | Purpose |
+|------|---------|
+| `config.json` | Project config (workflows, agents, settings) |
+| `agents/*.md` | Agent templates |
 
 ## Building from Source
 

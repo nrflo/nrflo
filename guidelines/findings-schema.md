@@ -15,8 +15,14 @@ Findings are structured data stored during each workflow phase. They enable:
 
 Findings are stored via the nrworkflow CLI by **agent type**. The `--workflow/-w` flag is **required**:
 ```bash
-nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow>
-nrworkflow findings get <ticket> <agent-type> -w <workflow>
+# Add findings (two syntax modes)
+nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow>              # legacy: single key-value
+nrworkflow findings add <ticket> <agent-type> key:'value' [key2:'value2'] -w <workflow>  # multiple key:value pairs
+
+# Get findings
+nrworkflow findings get <ticket> <agent-type> -w <workflow>              # all findings
+nrworkflow findings get <ticket> <agent-type> -w <workflow> -k <key>     # specific key
+nrworkflow findings get <ticket> <agent-type> -w <workflow> -k a -k b    # multiple keys
 ```
 
 Values can be strings or JSON (arrays, objects).
@@ -27,7 +33,7 @@ For parallel agents, findings can be stored under a model identifier using `--mo
 ```bash
 # Store findings for specific model
 nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> --model=claude:sonnet
-nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> --model=opencode:opus
+nrworkflow findings add <ticket> <agent-type> key:'value' -w <workflow> --model=opencode:opus
 
 # Get findings for specific model
 nrworkflow findings get <ticket> <agent-type> -w <workflow> --model=claude:sonnet
@@ -37,7 +43,7 @@ nrworkflow findings get <ticket> <agent-type> -w <workflow>
 # Returns: {"claude:sonnet": {...}, "opencode:opus": {...}}
 
 # Get specific key from ALL parallel agents
-nrworkflow findings get <ticket> <agent-type> <key> -w <workflow>
+nrworkflow findings get <ticket> <agent-type> -w <workflow> -k <key>
 # Returns: {"claude:sonnet": "value1", "opencode:opus": "value2"}
 ```
 
@@ -141,6 +147,62 @@ Returns JSON object with all keys stored by that agent for the specified workflo
 
 **Note:** Findings are isolated per workflow. If a ticket has both `feature` and `bugfix` workflows, each has its own findings.
 
+## Workflow-Level Findings
+
+Use `workflow` as the agent_type to store global findings that apply to the entire workflow rather than a specific agent phase.
+
+### When to Use
+
+- Data that needs to be shared across multiple agents
+- Workflow-wide configuration or state
+- Cross-phase metadata (e.g., selected architecture, global constraints)
+- Information that doesn't belong to any specific agent
+
+### Usage
+
+```bash
+# Store workflow-level finding
+nrworkflow findings add <ticket> workflow <key> '<value>' -w <workflow>
+nrworkflow findings add <ticket> workflow key:'value' [key2:'value2'] -w <workflow>
+
+# Retrieve workflow-level findings
+nrworkflow findings get <ticket> workflow -w <workflow>              # all
+nrworkflow findings get <ticket> workflow -w <workflow> -k <key>     # specific key
+```
+
+### Example
+
+```bash
+# Store global configuration during investigation
+nrworkflow findings add TICKET-123 workflow selected_architecture 'microservices' -w feature
+nrworkflow findings add TICKET-123 workflow db_choice 'postgresql' -w feature
+
+# Later agents can read these
+nrworkflow findings get TICKET-123 workflow -w feature -k selected_architecture
+# Returns: "microservices"
+```
+
+### Storage Structure
+
+Workflow-level findings are stored alongside agent findings:
+
+```json
+{
+  "findings": {
+    "workflow": {
+      "selected_architecture": "microservices",
+      "db_choice": "postgresql"
+    },
+    "setup-analyzer": {
+      "summary": "...",
+      "files_to_modify": [...]
+    }
+  }
+}
+```
+
+**Note:** `workflow` is a reserved agent_type. Do not create an actual agent named "workflow".
+
 ## Best Practices
 
 1. **Store findings immediately** - Don't wait until the end
@@ -148,3 +210,4 @@ Returns JSON object with all keys stored by that agent for the specified workflo
 3. **Be specific** - Include file paths, not just names
 4. **Keep summaries brief** - One or two sentences max
 5. **Validate before storing** - Ensure data is accurate
+6. **Use workflow-level for shared data** - Cross-agent state goes in `workflow` findings

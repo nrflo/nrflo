@@ -27,8 +27,8 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 	session.UpdatedAt = session.CreatedAt
 
 	_, err := r.db.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, spawn_command, prompt_context, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		strings.ToLower(session.ProjectID),
 		strings.ToLower(session.TicketID),
@@ -39,6 +39,8 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 		session.Status,
 		session.LastMessages,
 		session.MessageStats,
+		session.SpawnCommand,
+		session.PromptContext,
 		now,
 		now,
 	)
@@ -51,7 +53,7 @@ func (r *AgentSessionRepo) Get(id string) (*model.AgentSession, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, created_at, updated_at
+		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, spawn_command, prompt_context, created_at, updated_at
 		FROM agent_sessions WHERE id = ?`, id).Scan(
 		&session.ID,
 		&session.ProjectID,
@@ -63,6 +65,8 @@ func (r *AgentSessionRepo) Get(id string) (*model.AgentSession, error) {
 		&session.Status,
 		&session.LastMessages,
 		&session.MessageStats,
+		&session.SpawnCommand,
+		&session.PromptContext,
 		&createdAt,
 		&updatedAt,
 	)
@@ -82,7 +86,7 @@ func (r *AgentSessionRepo) Get(id string) (*model.AgentSession, error) {
 // GetByTicket retrieves agent sessions for a ticket, optionally filtered by phase
 func (r *AgentSessionRepo) GetByTicket(projectID, ticketID string, phase string) ([]*model.AgentSession, error) {
 	query := `
-		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, created_at, updated_at
+		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, spawn_command, prompt_context, created_at, updated_at
 		FROM agent_sessions WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?)`
 	args := []interface{}{projectID, ticketID}
 
@@ -115,6 +119,8 @@ func (r *AgentSessionRepo) GetByTicket(projectID, ticketID string, phase string)
 			&session.Status,
 			&session.LastMessages,
 			&session.MessageStats,
+			&session.SpawnCommand,
+			&session.PromptContext,
 			&createdAt,
 			&updatedAt,
 		)
@@ -211,7 +217,7 @@ func (r *AgentSessionRepo) DeleteByTicket(projectID, ticketID string) error {
 // GetRecent retrieves the most recent agent sessions across all projects
 func (r *AgentSessionRepo) GetRecent(limit int) ([]*model.AgentSession, error) {
 	query := `
-		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, created_at, updated_at
+		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, spawn_command, prompt_context, created_at, updated_at
 		FROM agent_sessions
 		ORDER BY updated_at DESC
 		LIMIT ?`
@@ -238,6 +244,8 @@ func (r *AgentSessionRepo) GetRecent(limit int) ([]*model.AgentSession, error) {
 			&session.Status,
 			&session.LastMessages,
 			&session.MessageStats,
+			&session.SpawnCommand,
+			&session.PromptContext,
 			&createdAt,
 			&updatedAt,
 		)

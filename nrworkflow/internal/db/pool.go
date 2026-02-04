@@ -265,6 +265,11 @@ func (p *Pool) runMigrations() error {
 	_, _ = p.Exec(`ALTER TABLE agent_sessions ADD COLUMN message_stats TEXT`)
 	// Ignore error if column already exists
 
+	// Migration: Add spawn_command and prompt_context columns if they don't exist
+	_, _ = p.Exec(`ALTER TABLE agent_sessions ADD COLUMN spawn_command TEXT`)
+	_, _ = p.Exec(`ALTER TABLE agent_sessions ADD COLUMN prompt_context TEXT`)
+	// Ignore errors if columns already exist
+
 	return nil
 }
 

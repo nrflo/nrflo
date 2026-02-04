@@ -96,10 +96,96 @@ func (s *FindingsService) Add(projectID, ticketID string, req *types.FindingsAdd
 	return nil
 }
 
+// AddBulk adds multiple findings for an agent in one operation
+func (s *FindingsService) AddBulk(projectID, ticketID string, req *types.FindingsAddBulkRequest) error {
+	if req.Workflow == "" {
+		return fmt.Errorf("workflow is required")
+	}
+	if len(req.KeyValues) == 0 {
+		return fmt.Errorf("at least one key-value pair is required")
+	}
+
+	// Get ticket
+	var agentsStateStr string
+	err := s.pool.QueryRow("SELECT COALESCE(agents_state, '') FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+		projectID, ticketID).Scan(&agentsStateStr)
+	if err != nil {
+		return fmt.Errorf("ticket not found: %s", ticketID)
+	}
+
+	if agentsStateStr == "" {
+		return fmt.Errorf("ticket %s not initialized", ticketID)
+	}
+
+	var allState map[string]interface{}
+	if err := json.Unmarshal([]byte(agentsStateStr), &allState); err != nil {
+		return fmt.Errorf("failed to parse state: %w", err)
+	}
+
+	stateRaw, ok := allState[req.Workflow]
+	if !ok {
+		return fmt.Errorf("workflow '%s' not found", req.Workflow)
+	}
+
+	state, _ := stateRaw.(map[string]interface{})
+
+	// Get or create findings map
+	findings, _ := state["findings"].(map[string]interface{})
+	if findings == nil {
+		findings = make(map[string]interface{})
+	}
+
+	// Get or create agent findings
+	var agentKey string
+	if req.Model != "" {
+		agentKey = req.AgentType + ":" + req.Model
+	} else {
+		agentKey = req.AgentType
+	}
+
+	agentFindings, _ := findings[agentKey].(map[string]interface{})
+	if agentFindings == nil {
+		agentFindings, _ = findings[req.AgentType].(map[string]interface{})
+		if agentFindings == nil {
+			agentFindings = make(map[string]interface{})
+		}
+	}
+
+	// Add all key-value pairs
+	for key, value := range req.KeyValues {
+		var parsedValue interface{}
+		if err := json.Unmarshal([]byte(value), &parsedValue); err != nil {
+			parsedValue = value
+		}
+		agentFindings[key] = parsedValue
+	}
+
+	findings[agentKey] = agentFindings
+	state["findings"] = findings
+	allState[req.Workflow] = state
+
+	stateJSON, _ := json.Marshal(allState)
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = s.pool.Exec(
+		"UPDATE tickets SET agents_state = ?, updated_at = ? WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+		string(stateJSON), now, projectID, ticketID)
+	if err != nil {
+		return fmt.Errorf("failed to update: %w", err)
+	}
+
+	return nil
+}
+
 // Get gets findings for an agent
 func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGetRequest) (interface{}, error) {
 	if req.Workflow == "" {
 		return nil, fmt.Errorf("workflow is required")
+	}
+
+	// Normalize: if single Key is set, add to Keys slice
+	keys := req.Keys
+	if req.Key != "" && len(keys) == 0 {
+		keys = []string{req.Key}
 	}
 
 	// Get ticket
@@ -137,14 +223,7 @@ func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGet
 		if agentFindings == nil {
 			return map[string]interface{}{}, nil
 		}
-		if req.Key != "" {
-			value, ok := agentFindings[req.Key]
-			if !ok {
-				return nil, fmt.Errorf("finding '%s' not found", req.Key)
-			}
-			return value, nil
-		}
-		return agentFindings, nil
+		return s.extractKeys(agentFindings, keys)
 	}
 
 	// No model specified - collect ALL agents' findings for this agent type
@@ -165,14 +244,7 @@ func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGet
 	if singleFindings, ok := findings[req.AgentType].(map[string]interface{}); ok {
 		if len(allAgentFindings) == 0 {
 			// Only single agent findings exist - return them directly
-			if req.Key != "" {
-				value, ok := singleFindings[req.Key]
-				if !ok {
-					return nil, fmt.Errorf("finding '%s' not found", req.Key)
-				}
-				return value, nil
-			}
-			return singleFindings, nil
+			return s.extractKeys(singleFindings, keys)
 		}
 		// Both single and model-keyed exist - include single under "default" key
 		allAgentFindings["default"] = singleFindings
@@ -186,34 +258,56 @@ func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGet
 	if len(allAgentFindings) == 1 {
 		for _, v := range allAgentFindings {
 			agentFindings, _ := v.(map[string]interface{})
-			if req.Key != "" {
-				value, ok := agentFindings[req.Key]
-				if !ok {
-					return nil, fmt.Errorf("finding '%s' not found", req.Key)
-				}
-				return value, nil
-			}
-			return agentFindings, nil
+			return s.extractKeys(agentFindings, keys)
 		}
 	}
 
 	// Multiple agents - return grouped by model
-	// If a specific key is requested, return that key from each agent
-	if req.Key != "" {
+	// If specific keys requested, return those keys from each agent
+	if len(keys) > 0 {
 		keyFindings := make(map[string]interface{})
 		for modelKey, v := range allAgentFindings {
 			agentFindings, _ := v.(map[string]interface{})
 			if agentFindings != nil {
-				if value, ok := agentFindings[req.Key]; ok {
-					keyFindings[modelKey] = value
+				extracted, err := s.extractKeys(agentFindings, keys)
+				if err == nil && extracted != nil {
+					keyFindings[modelKey] = extracted
 				}
 			}
 		}
 		if len(keyFindings) == 0 {
-			return nil, fmt.Errorf("finding '%s' not found", req.Key)
+			return nil, fmt.Errorf("finding key(s) not found")
 		}
 		return keyFindings, nil
 	}
 
 	return allAgentFindings, nil
+}
+
+// extractKeys extracts specific keys from findings. If keys is empty, returns all findings.
+// If single key, returns the value directly. If multiple keys, returns a map.
+func (s *FindingsService) extractKeys(findings map[string]interface{}, keys []string) (interface{}, error) {
+	if len(keys) == 0 {
+		return findings, nil
+	}
+
+	if len(keys) == 1 {
+		value, ok := findings[keys[0]]
+		if !ok {
+			return nil, fmt.Errorf("finding '%s' not found", keys[0])
+		}
+		return value, nil
+	}
+
+	// Multiple keys - return a map of key -> value
+	result := make(map[string]interface{})
+	for _, key := range keys {
+		if value, ok := findings[key]; ok {
+			result[key] = value
+		}
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("none of the requested keys found")
+	}
+	return result, nil
 }

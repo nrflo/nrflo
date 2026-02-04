@@ -3,6 +3,12 @@
   "cli": {
     "default": "claude"
   },
+  "spawner": {
+    "completion_grace_sec": 60,
+    "stats_flush_interval_ms": 2000,
+    "stats_flush_max_events": 25,
+    "timeout_grace_sec": 5
+  },
   "agents": {
     "setup-analyzer": {
       "model": "sonnet",
@@ -35,103 +41,52 @@
       "description": "Full TDD feature development workflow",
       "categories": ["docs", "simple", "full"],
       "phases": [
-        {
-          "id": "investigation",
-          "agent": "setup-analyzer",
-          "parallel": {
-            "enabled": false,
-            "models": ["claude:sonnet"]
-          }
-        },
-        {
-          "id": "test-design",
-          "agent": "test-writer",
-          "skip_for": ["docs", "simple"],
-          "parallel": {
-            "enabled": false,
-            "models": ["claude:opus"]
-          }
-        },
-        {
-          "id": "implementation",
-          "agent": "implementor",
-          "parallel": {
-            "enabled": false,
-            "models": ["claude:opus"]
-          }
-        },
-        {
-          "id": "verification",
-          "agent": "qa-verifier",
-          "skip_for": ["docs"],
-          "parallel": {
-            "enabled": false,
-            "models": ["claude:opus"]
-          }
-        },
-        {
-          "id": "docs",
-          "agent": "doc-updater",
-          "parallel": {
-            "enabled": false,
-            "models": ["claude:sonnet"]
-          }
-        }
+        {"agent": "setup-analyzer", "parallel": {"enabled": false, "models": ["claude:sonnet"]}},
+        {"agent": "test-writer", "skip_for": ["docs", "simple"], "parallel": {"enabled": false, "models": ["claude:opus"]}},
+        {"agent": "implementor", "parallel": {"enabled": false, "models": ["claude:opus"]}},
+        {"agent": "qa-verifier", "skip_for": ["docs"], "parallel": {"enabled": false, "models": ["claude:opus"]}},
+        {"agent": "doc-updater", "parallel": {"enabled": false, "models": ["claude:sonnet"]}}
       ]
     },
     "bugfix": {
       "description": "Bug fix workflow - investigation, fix, verify",
       "categories": ["simple", "full"],
       "phases": [
-        {"id": "investigation", "agent": "setup-analyzer"},
-        {"id": "implementation", "agent": "implementor"},
-        {"id": "verification", "agent": "qa-verifier"}
+        "setup-analyzer",
+        "implementor",
+        "qa-verifier"
       ]
     },
     "hotfix": {
       "description": "Emergency hotfix - implementation only",
       "categories": ["simple"],
       "phases": [
-        {"id": "implementation", "agent": "implementor"}
+        "implementor"
       ]
     },
     "docs": {
       "description": "Documentation-only changes",
       "categories": ["docs"],
       "phases": [
-        {"id": "investigation", "agent": "setup-analyzer"},
-        {"id": "docs", "agent": "doc-updater"}
+        "setup-analyzer",
+        "doc-updater"
       ]
     },
     "refactor": {
       "description": "Code refactoring with verification",
       "categories": ["simple", "full"],
       "phases": [
-        {"id": "investigation", "agent": "setup-analyzer"},
-        {"id": "implementation", "agent": "implementor"},
-        {"id": "verification", "agent": "qa-verifier"}
+        "setup-analyzer",
+        "implementor",
+        "qa-verifier"
       ]
     },
     "parallel-test": {
       "description": "Test workflow with parallel agents enabled",
       "categories": ["full"],
       "phases": [
-        {
-          "id": "investigation",
-          "agent": "setup-analyzer",
-          "parallel": {
-            "enabled": true,
-            "models": ["claude:sonnet", "codex:gpt_high"]
-          }
-        },
-        {
-          "id": "implementation",
-          "agent": "implementor",
-          "parallel": {
-            "enabled": true,
-            "models": ["claude:opus", "codex:gpt_xhigh"]
-          }
-        }
+        {"agent": "setup-analyzer", "parallel": {"enabled": true, "models": ["claude:sonnet", "codex:gpt_high"]}},
+        {"agent": "implementor", "parallel": {"enabled": true, "models": ["claude:opus", "codex:gpt_xhigh"]}}
       ]
     }
   },

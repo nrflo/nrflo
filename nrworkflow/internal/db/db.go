@@ -119,9 +119,13 @@ func (db *DB) runMigrations() error {
 	}
 
 	// Migration: Add message_stats column if it doesn't exist
-	_, err = db.Exec(`ALTER TABLE agent_sessions ADD COLUMN message_stats TEXT`)
+	_, _ = db.Exec(`ALTER TABLE agent_sessions ADD COLUMN message_stats TEXT`)
 	// Ignore error if column already exists
-	_ = err
+
+	// Migration: Add spawn_command and prompt_context columns if they don't exist
+	_, _ = db.Exec(`ALTER TABLE agent_sessions ADD COLUMN spawn_command TEXT`)
+	_, _ = db.Exec(`ALTER TABLE agent_sessions ADD COLUMN prompt_context TEXT`)
+	// Ignore errors if columns already exist
 
 	return nil
 }

@@ -85,6 +85,63 @@ func (r *TicketRepo) Get(projectID, ticketID string) (*model.Ticket, error) {
 	return ticket, nil
 }
 
+// GetWithUpdatedAt retrieves a ticket and its updated_at timestamp for CAS operations
+func (r *TicketRepo) GetWithUpdatedAt(projectID, ticketID string) (*model.Ticket, string, error) {
+	ticket := &model.Ticket{}
+	var createdAt, updatedAt string
+	var closedAt sql.NullString
+
+	err := r.db.QueryRow(`
+		SELECT id, project_id, title, description, status, priority, issue_type, created_at, updated_at, closed_at, created_by, close_reason, agents_state
+		FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`, projectID, ticketID).Scan(
+		&ticket.ID,
+		&ticket.ProjectID,
+		&ticket.Title,
+		&ticket.Description,
+		&ticket.Status,
+		&ticket.Priority,
+		&ticket.IssueType,
+		&createdAt,
+		&updatedAt,
+		&closedAt,
+		&ticket.CreatedBy,
+		&ticket.CloseReason,
+		&ticket.AgentsState,
+	)
+	if err == sql.ErrNoRows {
+		return nil, "", fmt.Errorf("ticket not found: %s", ticketID)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+
+	ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+	ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	if closedAt.Valid {
+		t, _ := time.Parse(time.RFC3339, closedAt.String)
+		ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
+	}
+
+	return ticket, updatedAt, nil
+}
+
+// CompareAndSwapAgentsState atomically updates agents_state if updated_at matches
+func (r *TicketRepo) CompareAndSwapAgentsState(projectID, ticketID, expectedUpdatedAt, newState string) (bool, error) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	result, err := r.db.Exec(`
+		UPDATE tickets
+		SET agents_state = ?, updated_at = ?
+		WHERE LOWER(project_id) = LOWER(?)
+		AND LOWER(id) = LOWER(?)
+		AND updated_at = ?`,
+		newState, now, projectID, ticketID, expectedUpdatedAt)
+	if err != nil {
+		return false, err
+	}
+	rows, _ := result.RowsAffected()
+	return rows > 0, nil
+}
+
 // ListFilter contains filter options for listing tickets
 type ListFilter struct {
 	ProjectID string

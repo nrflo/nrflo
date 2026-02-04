@@ -44,9 +44,10 @@ type AgentConfig struct {
 
 // WorkflowDef represents a workflow definition
 type WorkflowDef struct {
-	Description string     `json:"description"`
-	Categories  []string   `json:"categories"`
-	Phases      []PhaseDef `json:"phases"`
+	Description string            `json:"description"`
+	Categories  []string          `json:"categories"`
+	Phases      []PhaseDef        `json:"-"` // Parsed by parsePhaseDefs
+	RawPhases   []json.RawMessage `json:"phases"`
 }
 
 // PhaseDef represents a phase definition
@@ -87,7 +88,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	}
 
 	// Load config
-	config, err := LoadMergedWorkflowConfig(projectRoot)
+	config, err := LoadWorkflowConfig(projectRoot)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
@@ -390,25 +391,24 @@ func (s *WorkflowService) updatePhaseState(projectID, ticketID, workflowName, ph
 
 // ListWorkflows lists available workflows
 func (s *WorkflowService) ListWorkflows(projectRoot string) (map[string]WorkflowDef, error) {
-	config, err := LoadMergedWorkflowConfig(projectRoot)
+	config, err := LoadWorkflowConfig(projectRoot)
 	if err != nil {
 		return nil, err
 	}
 	return config.Workflows, nil
 }
 
-// LoadWorkflowConfig loads the global workflow config
-func LoadWorkflowConfig() (*WorkflowConfig, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
+// LoadWorkflowConfig loads workflow config from the project root (no global config)
+func LoadWorkflowConfig(projectRoot string) (*WorkflowConfig, error) {
+	if projectRoot == "" {
+		return nil, fmt.Errorf("project root required")
 	}
 
-	configPath := filepath.Join(home, ".nrworkflow", "config.json")
+	configPath := filepath.Join(projectRoot, ".claude", "nrworkflow", "config.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return defaultWorkflowConfig(), nil
+			return nil, fmt.Errorf("config not found: %s. Create a config.json at .claude/nrworkflow/config.json", configPath)
 		}
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
@@ -418,104 +418,57 @@ func LoadWorkflowConfig() (*WorkflowConfig, error) {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
+	// Parse phases for each workflow
+	for name, wf := range config.Workflows {
+		phases, err := parsePhaseDefs(wf.RawPhases)
+		if err != nil {
+			return nil, fmt.Errorf("workflow '%s': %w", name, err)
+		}
+		wf.Phases = phases
+		config.Workflows[name] = wf
+	}
+
 	return &config, nil
 }
 
-// LoadMergedWorkflowConfig loads global config and merges with project config
-func LoadMergedWorkflowConfig(projectRoot string) (*WorkflowConfig, error) {
-	globalConfig, err := LoadWorkflowConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	if projectRoot == "" || projectRoot == "." {
-		return globalConfig, nil
-	}
-
-	projectConfigPath := filepath.Join(projectRoot, ".claude", "nrworkflow", "config.json")
-	data, err := os.ReadFile(projectConfigPath)
-	if err != nil {
-		return globalConfig, nil
-	}
-
-	var projectConfig WorkflowConfig
-	if err := json.Unmarshal(data, &projectConfig); err != nil {
-		return globalConfig, nil
-	}
-
-	return mergeConfigs(globalConfig, &projectConfig), nil
-}
-
-func mergeConfigs(global, project *WorkflowConfig) *WorkflowConfig {
-	result := &WorkflowConfig{
-		CLI:       global.CLI,
-		Agents:    make(map[string]AgentConfig),
-		Workflows: make(map[string]WorkflowDef),
-	}
-
-	for name, agent := range global.Agents {
-		result.Agents[name] = agent
-	}
-
-	for name, projectAgent := range project.Agents {
-		if existingAgent, ok := result.Agents[name]; ok {
-			if projectAgent.Model != "" {
-				existingAgent.Model = projectAgent.Model
-			}
-			if projectAgent.MaxTurns > 0 {
-				existingAgent.MaxTurns = projectAgent.MaxTurns
-			}
-			if projectAgent.Timeout > 0 {
-				existingAgent.Timeout = projectAgent.Timeout
-			}
-			result.Agents[name] = existingAgent
-		} else {
-			result.Agents[name] = projectAgent
+// parsePhaseDefs parses mixed-format phase definitions (string or object)
+func parsePhaseDefs(rawPhases []json.RawMessage) ([]PhaseDef, error) {
+	var phases []PhaseDef
+	for _, raw := range rawPhases {
+		// Try string first (simple format: just agent name)
+		var agentName string
+		if err := json.Unmarshal(raw, &agentName); err == nil {
+			phases = append(phases, PhaseDef{ID: agentName, Agent: agentName})
+			continue
 		}
+		// Try object format
+		var phase struct {
+			Agent    string   `json:"agent"`
+			SkipFor  []string `json:"skip_for,omitempty"`
+			Parallel *struct {
+				Enabled bool     `json:"enabled"`
+				Models  []string `json:"models"`
+			} `json:"parallel,omitempty"`
+		}
+		if err := json.Unmarshal(raw, &phase); err == nil && phase.Agent != "" {
+			p := PhaseDef{
+				ID:      phase.Agent,
+				Agent:   phase.Agent,
+				SkipFor: phase.SkipFor,
+			}
+			if phase.Parallel != nil {
+				p.Parallel = &struct {
+					Enabled bool     `json:"enabled"`
+					Models  []string `json:"models"`
+				}{
+					Enabled: phase.Parallel.Enabled,
+					Models:  phase.Parallel.Models,
+				}
+			}
+			phases = append(phases, p)
+			continue
+		}
+		return nil, fmt.Errorf("invalid phase: %s", string(raw))
 	}
-
-	for name, workflow := range global.Workflows {
-		result.Workflows[name] = workflow
-	}
-
-	for name, workflow := range project.Workflows {
-		result.Workflows[name] = workflow
-	}
-
-	if project.CLI.Default != "" {
-		result.CLI.Default = project.CLI.Default
-	}
-
-	return result
-}
-
-func defaultWorkflowConfig() *WorkflowConfig {
-	return &WorkflowConfig{
-		Workflows: map[string]WorkflowDef{
-			"feature": {
-				Description: "Full TDD feature development workflow",
-				Phases: []PhaseDef{
-					{ID: "investigation", Agent: "setup-analyzer"},
-					{ID: "test-design", Agent: "test-writer", SkipFor: []string{"docs", "simple"}},
-					{ID: "implementation", Agent: "implementor"},
-					{ID: "verification", Agent: "qa-verifier", SkipFor: []string{"docs"}},
-					{ID: "docs", Agent: "doc-updater"},
-				},
-			},
-			"bugfix": {
-				Description: "Bug fix workflow",
-				Phases: []PhaseDef{
-					{ID: "investigation", Agent: "setup-analyzer"},
-					{ID: "implementation", Agent: "implementor"},
-					{ID: "verification", Agent: "qa-verifier"},
-				},
-			},
-			"hotfix": {
-				Description: "Emergency hotfix - implementation only",
-				Phases: []PhaseDef{
-					{ID: "implementation", Agent: "implementor"},
-				},
-			},
-		},
-	}
+	return phases, nil
 }

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/Badge'
 import { PhaseCard } from './PhaseCard'
 import { ActiveAgentsPanel } from './ActiveAgentsPanel'
 import { AgentMessagesPanel } from './AgentMessagesPanel'
+import { WorkflowFindings } from './WorkflowFindings'
 import { useAgentSessions } from '@/hooks/useTickets'
 import type { WorkflowState, PhaseStatus, AgentHistoryEntry } from '@/types/workflow'
 
@@ -243,6 +244,11 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, liveTracking }
             ))}
           </div>
         </div>
+      )}
+
+      {/* Workflow Findings (workflow-level + agent findings) */}
+      {workflow.findings && Object.keys(workflow.findings).length > 0 && (
+        <WorkflowFindings findings={workflow.findings} />
       )}
     </div>
   )

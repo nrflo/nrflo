@@ -91,7 +91,10 @@ PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
 │   ├── Phase header (name, status, result badges)
 │   ├── Active agents (if running)
 │   └── Agent history cards (expandable with findings)
-└── Legacy history section (if workflow.history exists)
+├── Legacy history section (if workflow.history exists)
+└── WorkflowFindings (all workflow findings at bottom)
+    ├── WorkflowLevelFindings (findings['workflow'] - blue styling)
+    └── AgentFindings (other keys - purple styling)
 ```
 
 ### Findings Display
@@ -101,6 +104,11 @@ Findings use a simple KEY: VALUE format with minimal parsing:
 - **No truncation**: Full content is always displayed
 - **JSON formatting**: Objects/arrays are pretty-printed with `JSON.stringify(value, null, 2)`
 - **String values**: If a string is valid JSON, it's parsed and pretty-printed; otherwise shown as-is
+
+**Workflow vs Agent Findings:**
+- Findings under the `'workflow'` key are displayed separately at the top with blue styling (Workflow icon)
+- Agent findings (all other keys) are displayed below with purple styling (Cpu icon)
+- `WorkflowFindings` component handles this separation automatically
 
 Components: `SimpleFindingValue` in PhaseCard.tsx, WorkflowFindings.tsx, FindingsViewer.tsx
 

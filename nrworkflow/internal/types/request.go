@@ -76,12 +76,21 @@ type FindingsAddRequest struct {
 	Model     string `json:"model,omitempty"`
 }
 
+// FindingsAddBulkRequest is the request for adding multiple findings at once
+type FindingsAddBulkRequest struct {
+	Workflow  string            `json:"workflow"`
+	AgentType string            `json:"agent_type"`
+	KeyValues map[string]string `json:"key_values"` // key -> value (string or JSON)
+	Model     string            `json:"model,omitempty"`
+}
+
 // FindingsGetRequest is the request for getting findings
 type FindingsGetRequest struct {
-	Workflow  string `json:"workflow"`
-	AgentType string `json:"agent_type"`
-	Key       string `json:"key,omitempty"`
-	Model     string `json:"model,omitempty"`
+	Workflow  string   `json:"workflow"`
+	AgentType string   `json:"agent_type"`
+	Key       string   `json:"key,omitempty"`
+	Keys      []string `json:"keys,omitempty"` // Multiple keys to fetch
+	Model     string   `json:"model,omitempty"`
 }
 
 // AgentSpawnRequest is the request for spawning an agent

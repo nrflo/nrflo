@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,6 +62,11 @@ type Config struct {
 	DefaultCLI  string
 	DataPath    string
 	ProjectRoot string
+	// Spawner behavior settings
+	TimeoutGraceSec      int // Grace period for SIGTERM before SIGKILL (default: 5)
+	CompletionGraceSec   int // Wait for explicit completion after exit 0 (default: 60)
+	StatsFlushIntervalMs int // Interval between stats flushes (default: 2000)
+	StatsFlushMaxEvents  int // Max events before forced flush (default: 25)
 }
 
 // processInfo tracks a single spawned agent process
@@ -78,6 +84,15 @@ type processInfo struct {
 	statsMutex    sync.Mutex
 	finalStatus   string
 	elapsed       time.Duration
+	// Process lifecycle tracking
+	doneCh  chan struct{} // closed when process exits
+	waitErr error         // stores Wait() error
+	// Stats buffering
+	statsDirty     bool
+	lastStatsFlush time.Time
+	// Spawn context (for debugging/replay)
+	spawnCommand  string
+	promptContext string
 }
 
 // Spawner manages agent lifecycle
@@ -128,6 +143,16 @@ func (s *Spawner) Spawn(req SpawnRequest) error {
 	// Validate workflow is initialized on ticket
 	if err := s.validateWorkflowInitialized(req.ProjectID, req.TicketID, req.WorkflowName); err != nil {
 		return err
+	}
+
+	// Validate phase order and auto-skip phases with matching skip_for category
+	validatedPhaseID, shouldSkip, err := s.validateAndAdvancePhase(req.ProjectID, req.TicketID, req.WorkflowName, req.AgentType)
+	if err != nil {
+		return err
+	}
+	if shouldSkip {
+		fmt.Printf("  Phase '%s' skipped due to category rules\n", validatedPhaseID)
+		return nil
 	}
 
 	// Determine models to spawn
@@ -275,6 +300,9 @@ If you fail to run this command, the workflow will be blocked. This is not optio
 	// Build command using adapter
 	cmd := adapter.BuildCommand(opts)
 
+	// Capture spawn command for debugging/replay
+	spawnCommand := strings.Join(cmd.Args, " ")
+
 	// Create pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -295,19 +323,23 @@ If you fail to run this command, the workflow will be blocked. This is not optio
 
 	// Create process info
 	proc := &processInfo{
-		cmd:       cmd,
-		agentID:   agentID,
-		agentType: req.AgentType,
-		modelID:   modelID,
-		sessionID: sessionID,
-		startTime: time.Now(),
-		timeout:   time.Duration(timeout) * time.Minute,
-		messages:  make([]string, 0),
-		stats:     make(map[string]int),
+		cmd:            cmd,
+		agentID:        agentID,
+		agentType:      req.AgentType,
+		modelID:        modelID,
+		sessionID:      sessionID,
+		startTime:      time.Now(),
+		timeout:        time.Duration(timeout) * time.Minute,
+		messages:       make([]string, 0),
+		stats:          make(map[string]int),
+		doneCh:         make(chan struct{}),
+		lastStatsFlush: time.Now(),
+		spawnCommand:   spawnCommand,
+		promptContext:  prompt,
 	}
 
-	// Register agent start
-	s.registerAgentStart(req.ProjectID, req.TicketID, req.WorkflowName, agentID, req.AgentType, cmd.Process.Pid, sessionID, modelID, phase)
+	// Register agent start (with spawn context)
+	s.registerAgentStart(req.ProjectID, req.TicketID, req.WorkflowName, agentID, req.AgentType, cmd.Process.Pid, sessionID, modelID, phase, spawnCommand, prompt)
 
 	// Start output monitoring goroutines
 	go s.monitorOutput(proc, stdout)
@@ -322,9 +354,10 @@ If you fail to run this command, the workflow will be blocked. This is not optio
 		}
 	}()
 
-	// Clean up prompt file when process exits
+	// Single wait goroutine - closes doneCh when process exits
 	go func() {
-		cmd.Wait()
+		proc.waitErr = cmd.Wait()
+		close(proc.doneCh)
 		os.Remove(promptFile.Name())
 	}()
 
@@ -365,34 +398,26 @@ func (s *Spawner) monitorAll(processes []*processInfo, req SpawnRequest, phase s
 			lastStatusTime = now
 		}
 
-		// Check each process
+		// Check each process using doneCh (no double-wait bug)
 		var stillRunning []*processInfo
 		for _, proc := range running {
 			elapsed := time.Since(proc.startTime)
 
-			if proc.cmd.ProcessState != nil && proc.cmd.ProcessState.Exited() {
-				// Process already exited (caught by Wait goroutine)
+			select {
+			case <-proc.doneCh:
+				// Process exited - doneCh was closed by the wait goroutine
 				proc.elapsed = elapsed
 				s.handleCompletion(proc, req)
 				completed = append(completed, proc)
-			} else if proc.cmd.Process != nil {
-				// Check if process exited
-				var waitStatus *os.ProcessState
-				waitStatus, _ = proc.cmd.Process.Wait()
-				if waitStatus != nil {
-					proc.elapsed = elapsed
-					proc.cmd.ProcessState = waitStatus
-					s.handleCompletion(proc, req)
-					completed = append(completed, proc)
-				} else if elapsed > proc.timeout {
-					// Timeout
-					proc.cmd.Process.Kill()
-					proc.elapsed = elapsed
-					proc.finalStatus = "TIMEOUT"
-					s.handleTimeout(proc, req)
+			default:
+				// Still running - check timeout
+				if elapsed > proc.timeout {
+					s.handleGracefulTimeout(proc, req)
 					completed = append(completed, proc)
 				} else {
 					stillRunning = append(stillRunning, proc)
+					// Maybe flush stats
+					s.maybeFlushStats(proc)
 				}
 			}
 		}
@@ -405,6 +430,66 @@ func (s *Spawner) monitorAll(processes []*processInfo, req SpawnRequest, phase s
 
 	// Finalize phase
 	return s.finalizePhase(completed, req, phase)
+}
+
+// handleGracefulTimeout sends SIGTERM, waits for grace period, then SIGKILL
+func (s *Spawner) handleGracefulTimeout(proc *processInfo, req SpawnRequest) {
+	proc.elapsed = time.Since(proc.startTime)
+
+	// Send SIGTERM first
+	if proc.cmd.Process != nil {
+		proc.cmd.Process.Signal(syscall.SIGTERM)
+	}
+
+	// Grace period for clean shutdown
+	gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second
+	if gracePeriod == 0 {
+		gracePeriod = 5 * time.Second
+	}
+
+	select {
+	case <-proc.doneCh:
+		// Exited gracefully after SIGTERM
+	case <-time.After(gracePeriod):
+		// Force kill
+		if proc.cmd.Process != nil {
+			proc.cmd.Process.Kill()
+		}
+		<-proc.doneCh // Wait for the wait goroutine to finish
+	}
+
+	proc.finalStatus = "TIMEOUT"
+	fmt.Fprintf(os.Stderr, "  %s timed out after %v\n", proc.modelID, proc.timeout)
+
+	// Final stats flush
+	s.saveStats(proc)
+
+	// Register agent stop with timeout reason
+	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName, proc.agentID, "fail", "timeout", proc.modelID)
+
+	// Update session status
+	database, err := db.Open(s.config.DataPath)
+	if err == nil {
+		sessionRepo := repo.NewAgentSessionRepo(database)
+		sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionTimeout)
+		database.Close()
+	}
+}
+
+// maybeFlushStats flushes stats to DB if interval elapsed
+func (s *Spawner) maybeFlushStats(proc *processInfo) {
+	interval := time.Duration(s.config.StatsFlushIntervalMs) * time.Millisecond
+	if interval == 0 {
+		interval = 2 * time.Second
+	}
+
+	shouldFlush := time.Since(proc.lastStatsFlush) >= interval
+
+	if shouldFlush && proc.statsDirty {
+		s.saveStats(proc)
+		proc.statsDirty = false
+		proc.lastStatsFlush = time.Now()
+	}
 }
 
 // printStatus prints status for all running/completed agents
@@ -436,48 +521,119 @@ func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
 	fmt.Println()
 }
 
-// handleCompletion handles a completed agent process
+// handleCompletion handles a completed agent process with hybrid completion semantics
 func (s *Spawner) handleCompletion(proc *processInfo, req SpawnRequest) {
 	exitCode := 0
 	if proc.cmd.ProcessState != nil {
 		exitCode = proc.cmd.ProcessState.ExitCode()
 	}
 
-	// Determine result
-	result := "pass"
-	proc.finalStatus = "PASS"
+	var result, resultReason string
+
 	if exitCode != 0 {
+		// Non-zero exit = immediate fail
 		result = "fail"
+		resultReason = "exit_code"
 		proc.finalStatus = "FAIL"
+	} else {
+		// Exit 0: check for explicit completion within grace period
+		gracePeriod := time.Duration(s.config.CompletionGraceSec) * time.Second
+		if gracePeriod == 0 {
+			gracePeriod = 60 * time.Second
+		}
+
+		deadline := time.Now().Add(gracePeriod)
+		for time.Now().Before(deadline) {
+			explicit := s.getAgentResult(req, proc)
+			if explicit == "pass" {
+				result = "pass"
+				resultReason = "explicit"
+				break
+			} else if explicit == "fail" {
+				result = "fail"
+				resultReason = "explicit"
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		if result == "" {
+			// No explicit completion within grace period
+			result = "fail"
+			resultReason = "no_complete"
+		}
+
+		if result == "pass" {
+			proc.finalStatus = "PASS"
+		} else {
+			proc.finalStatus = "FAIL"
+		}
 	}
 
 	// Save stats to database
 	s.saveStats(proc)
 
-	// Register agent stop
-	s.registerAgentStop(req.ProjectID, req.TicketID, req.WorkflowName, proc.agentID, result, proc.modelID)
+	// Register agent stop with reason
+	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName, proc.agentID, result, resultReason, proc.modelID)
 
-	fmt.Printf("  %s: %s (exit code: %d, duration: %v)\n",
-		proc.modelID, proc.finalStatus, exitCode, proc.elapsed.Round(time.Second))
+	fmt.Printf("  %s: %s (exit code: %d, reason: %s, duration: %v)\n",
+		proc.modelID, proc.finalStatus, exitCode, resultReason, proc.elapsed.Round(time.Second))
 }
 
-// handleTimeout handles a timed-out agent process
-func (s *Spawner) handleTimeout(proc *processInfo, req SpawnRequest) {
-	fmt.Fprintf(os.Stderr, "  %s timed out after %v\n", proc.modelID, proc.timeout)
-
-	// Save stats
-	s.saveStats(proc)
-
-	// Register agent stop
-	s.registerAgentStop(req.ProjectID, req.TicketID, req.WorkflowName, proc.agentID, "fail", proc.modelID)
-
-	// Update session status
+// getAgentResult reads the explicit result from active_agents in ticket state
+func (s *Spawner) getAgentResult(req SpawnRequest, proc *processInfo) string {
 	database, err := db.Open(s.config.DataPath)
-	if err == nil {
-		sessionRepo := repo.NewAgentSessionRepo(database)
-		sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionTimeout)
-		database.Close()
+	if err != nil {
+		return ""
 	}
+	defer database.Close()
+
+	ticketRepo := repo.NewTicketRepo(database)
+	ticket, err := ticketRepo.Get(req.ProjectID, req.TicketID)
+	if err != nil {
+		return ""
+	}
+
+	if !ticket.AgentsState.Valid {
+		return ""
+	}
+
+	var allState map[string]interface{}
+	if err := json.Unmarshal([]byte(ticket.AgentsState.String), &allState); err != nil {
+		return ""
+	}
+
+	stateRaw, ok := allState[req.WorkflowName]
+	if !ok {
+		return ""
+	}
+	state, _ := stateRaw.(map[string]interface{})
+
+	activeAgents, _ := state["active_agents"].(map[string]interface{})
+	if activeAgents == nil {
+		return ""
+	}
+
+	// Look for this agent by key or agent_id
+	key := proc.agentType + ":" + proc.modelID
+	if agentRaw, ok := activeAgents[key]; ok {
+		agent, _ := agentRaw.(map[string]interface{})
+		if result, ok := agent["result"].(string); ok {
+			return result
+		}
+	}
+
+	// Also check by agent_id
+	for _, agentRaw := range activeAgents {
+		agent, _ := agentRaw.(map[string]interface{})
+		if agent["agent_id"] == proc.agentID {
+			if result, ok := agent["result"].(string); ok {
+				return result
+			}
+		}
+	}
+
+	return ""
 }
 
 // finalizePhase completes the phase after all agents finish
@@ -539,56 +695,25 @@ func (s *Spawner) Preview(agentType, ticketID, workflowName string) (string, err
 	return s.loadTemplate(agentType, ticketID, "preview-parent", "preview-child", workflowName, modelID)
 }
 
-// loadProjectOverride loads a project-specific template override if it exists
-func (s *Spawner) loadProjectOverride(agentType string) string {
-	if s.config.ProjectRoot == "" || s.config.ProjectRoot == "." {
-		return ""
-	}
-	overridePath := filepath.Join(s.config.ProjectRoot, ".claude", "nrworkflow", "overrides", agentType+".md")
-	data, err := os.ReadFile(overridePath)
-	if err != nil {
-		return ""
-	}
-	return string(data)
-}
-
-// loadTemplate loads and expands an agent template
+// loadTemplate loads and expands an agent template from project-local path
 func (s *Spawner) loadTemplate(agentType, ticketID, parentSession, childSession, workflowName, modelID string) (string, error) {
-	// Try global template first
-	home, _ := os.UserHomeDir()
-	globalPath := filepath.Join(home, ".nrworkflow", "agents", agentType+".base.md")
-
-	var template string
-	if data, err := os.ReadFile(globalPath); err == nil {
-		template = string(data)
-	} else {
-		// Fallback to default template
-		template = fmt.Sprintf(`# %s Agent
-
-## Agent: ${AGENT}
-## Ticket: ${TICKET_ID}
-## Workflow: ${WORKFLOW}
-## Parent Session: ${PARENT_SESSION}
-## CHILD_SESSION_MARKER=${CHILD_SESSION}
-
----
-
-You are the %s agent working on ticket ${TICKET_ID}.
-
-Follow the workflow instructions and complete your assigned tasks.
-
-${PROJECT_SPECIFIC}
-`, strings.Title(strings.ReplaceAll(agentType, "-", " ")), agentType)
+	if s.config.ProjectRoot == "" {
+		return "", fmt.Errorf("project root required for template loading")
 	}
+
+	// Project template required (no fallback)
+	projectPath := filepath.Join(s.config.ProjectRoot, ".claude", "nrworkflow", "agents", agentType+".md")
+	data, err := os.ReadFile(projectPath)
+	if err != nil {
+		return "", fmt.Errorf("template not found: %s. Create it at %s", agentType, projectPath)
+	}
+	template := string(data)
 
 	// Parse model from modelID
 	_, model := parseModelID(modelID)
 	if model == "" {
 		model = "sonnet"
 	}
-
-	// Load project-specific override
-	projectSpecific := s.loadProjectOverride(agentType)
 
 	// Expand variables
 	template = strings.ReplaceAll(template, "${AGENT}", agentType)
@@ -598,7 +723,6 @@ ${PROJECT_SPECIFIC}
 	template = strings.ReplaceAll(template, "${CHILD_SESSION}", childSession)
 	template = strings.ReplaceAll(template, "${MODEL_ID}", modelID)
 	template = strings.ReplaceAll(template, "${MODEL}", model)
-	template = strings.ReplaceAll(template, "${PROJECT_SPECIFIC}", projectSpecific)
 
 	return template, nil
 }
@@ -730,8 +854,8 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 		s.trackStat(proc, "turn_completed")
 	}
 
-	// Save stats after processing (real-time updates)
-	s.saveStats(proc)
+	// Mark stats as dirty for rate-limited flush
+	proc.statsDirty = true
 }
 
 // handleTextMessage processes text output from either Claude or opencode
@@ -962,8 +1086,8 @@ func (s *Spawner) saveStats(proc *processInfo) {
 	}
 }
 
-// registerAgentStart registers the start of an agent
-func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, agentID, agentType string, pid int, sessionID, modelID, phase string) {
+// registerAgentStart registers the start of an agent with spawn context
+func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, promptContext string) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
 		return
@@ -1018,25 +1142,32 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, agentID,
 	fields := &repo.UpdateFields{AgentsState: &stateStr}
 	ticketRepo.Update(projectID, ticketID, fields)
 
-	// Create agent session record for API access
+	// Create agent session record for API access (with spawn context)
 	sessionRepo := repo.NewAgentSessionRepo(database)
 	session := &model.AgentSession{
-		ID:        sessionID,
-		ProjectID: projectID,
-		TicketID:  ticketID,
-		Phase:     phase,
-		Workflow:  workflowName,
-		AgentType: agentType,
-		ModelID:   sql.NullString{String: modelID, Valid: modelID != ""},
-		Status:    model.AgentSessionRunning,
-		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
+		ID:            sessionID,
+		ProjectID:     projectID,
+		TicketID:      ticketID,
+		Phase:         phase,
+		Workflow:      workflowName,
+		AgentType:     agentType,
+		ModelID:       sql.NullString{String: modelID, Valid: modelID != ""},
+		Status:        model.AgentSessionRunning,
+		SpawnCommand:  sql.NullString{String: spawnCommand, Valid: spawnCommand != ""},
+		PromptContext: sql.NullString{String: promptContext, Valid: promptContext != ""},
+		CreatedAt:     time.Now().UTC(),
+		UpdatedAt:     time.Now().UTC(),
 	}
 	sessionRepo.Create(session)
 }
 
-// registerAgentStop registers the stop of an agent
+// registerAgentStop registers the stop of an agent (backward-compatible wrapper)
 func (s *Spawner) registerAgentStop(projectID, ticketID, workflowName, agentID, result, modelID string) {
+	s.registerAgentStopWithReason(projectID, ticketID, workflowName, agentID, result, "", modelID)
+}
+
+// registerAgentStopWithReason registers the stop of an agent with result reason
+func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName, agentID, result, resultReason, modelID string) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
 		return
@@ -1081,13 +1212,14 @@ func (s *Spawner) registerAgentStop(projectID, ticketID, workflowName, agentID, 
 				sessionID = sid
 			}
 			historyEntry := map[string]interface{}{
-				"agent_id":   agent["agent_id"],
-				"agent_type": agent["agent_type"],
-				"model_id":   agent["model_id"],
-				"phase":      state["current_phase"],
-				"started_at": agent["started_at"],
-				"ended_at":   time.Now().UTC().Format(time.RFC3339),
-				"result":     result,
+				"agent_id":      agent["agent_id"],
+				"agent_type":    agent["agent_type"],
+				"model_id":      agent["model_id"],
+				"phase":         state["current_phase"],
+				"started_at":    agent["started_at"],
+				"ended_at":      time.Now().UTC().Format(time.RFC3339),
+				"result":        result,
+				"result_reason": resultReason,
 			}
 			history = append(history, historyEntry)
 			delete(activeAgents, key)
@@ -1144,6 +1276,112 @@ func (s *Spawner) validateWorkflowInitialized(projectID, ticketID, workflowName 
 	}
 
 	return nil
+}
+
+// validateAndAdvancePhase validates phase order and auto-skips phases with matching skip_for rules.
+// Returns (phaseID, shouldSkip, error).
+func (s *Spawner) validateAndAdvancePhase(projectID, ticketID, workflowName, requestedAgent string) (string, bool, error) {
+	workflow, ok := s.config.Workflows[workflowName]
+	if !ok {
+		return "", false, fmt.Errorf("unknown workflow: %s", workflowName)
+	}
+
+	// Find requested agent's phase
+	var requestedPhase *PhaseDef
+	var requestedIndex int = -1
+	for i := range workflow.Phases {
+		if workflow.Phases[i].Agent == requestedAgent {
+			requestedPhase = &workflow.Phases[i]
+			requestedIndex = i
+			break
+		}
+	}
+	if requestedPhase == nil {
+		return "", false, fmt.Errorf("agent '%s' not found in workflow '%s'", requestedAgent, workflowName)
+	}
+
+	// Get current state
+	database, err := db.Open(s.config.DataPath)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	ticketRepo := repo.NewTicketRepo(database)
+	ticket, err := ticketRepo.Get(projectID, ticketID)
+	if err != nil {
+		return "", false, err
+	}
+
+	if !ticket.AgentsState.Valid {
+		return "", false, fmt.Errorf("workflow not initialized")
+	}
+
+	var allState map[string]interface{}
+	if err := json.Unmarshal([]byte(ticket.AgentsState.String), &allState); err != nil {
+		return "", false, err
+	}
+
+	stateRaw, ok := allState[workflowName]
+	if !ok {
+		return "", false, fmt.Errorf("workflow '%s' not found in state", workflowName)
+	}
+	state, _ := stateRaw.(map[string]interface{})
+
+	phases, _ := state["phases"].(map[string]interface{})
+	if phases == nil {
+		phases = make(map[string]interface{})
+	}
+
+	category, _ := state["category"].(string)
+
+	// Check if requested phase should be skipped
+	if s.categoryMatchesSkipFor(category, requestedPhase.SkipFor) {
+		// Mark this phase as skipped
+		s.completePhase(projectID, ticketID, workflowName, requestedPhase.ID, "skipped")
+		return requestedPhase.ID, true, nil
+	}
+
+	// Validate that prior phases are completed or skipped
+	for i := 0; i < requestedIndex; i++ {
+		priorPhase := workflow.Phases[i]
+		phaseState, _ := phases[priorPhase.ID].(map[string]interface{})
+
+		status := ""
+		if phaseState != nil {
+			status, _ = phaseState["status"].(string)
+		}
+
+		// Check if phase is completed or skipped
+		if status == "completed" {
+			continue
+		}
+
+		// Check if phase can be auto-skipped due to category
+		if s.categoryMatchesSkipFor(category, priorPhase.SkipFor) {
+			// Auto-skip this phase
+			s.completePhase(projectID, ticketID, workflowName, priorPhase.ID, "skipped")
+			continue
+		}
+
+		// Phase must complete before we can proceed
+		return "", false, fmt.Errorf("phase '%s' must complete before '%s'", priorPhase.ID, requestedPhase.ID)
+	}
+
+	return requestedPhase.ID, false, nil
+}
+
+// categoryMatchesSkipFor checks if the category matches any of the skip_for rules
+func (s *Spawner) categoryMatchesSkipFor(category string, skipFor []string) bool {
+	if category == "" || len(skipFor) == 0 {
+		return false
+	}
+	for _, skip := range skipFor {
+		if skip == category {
+			return true
+		}
+	}
+	return false
 }
 
 // startPhase marks a phase as in_progress

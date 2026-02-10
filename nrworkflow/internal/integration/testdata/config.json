@@ -1,0 +1,98 @@
+{
+  "version": 3,
+  "cli": {
+    "default": "claude"
+  },
+  "spawner": {
+    "completion_grace_sec": 60,
+    "stats_flush_interval_ms": 2000,
+    "stats_flush_max_events": 25,
+    "timeout_grace_sec": 5
+  },
+  "agents": {
+    "setup-analyzer": {
+      "model": "sonnet",
+      "timeout": 15
+    },
+    "implementor": {
+      "model": "opus",
+      "timeout": 30
+    },
+    "test-writer": {
+      "model": "opus",
+      "timeout": 20
+    },
+    "qa-verifier": {
+      "model": "opus",
+      "timeout": 20
+    },
+    "doc-updater": {
+      "model": "sonnet",
+      "timeout": 10
+    }
+  },
+  "workflows": {
+    "feature": {
+      "description": "Full TDD feature development workflow",
+      "categories": ["docs", "simple", "full"],
+      "phases": [
+        {"agent": "setup-analyzer", "parallel": {"enabled": false, "models": ["claude:sonnet"]}},
+        {"agent": "test-writer", "skip_for": ["docs", "simple"], "parallel": {"enabled": false, "models": ["claude:opus"]}},
+        {"agent": "implementor", "parallel": {"enabled": false, "models": ["claude:opus"]}},
+        {"agent": "qa-verifier", "skip_for": ["docs"], "parallel": {"enabled": false, "models": ["claude:opus"]}},
+        {"agent": "doc-updater", "parallel": {"enabled": false, "models": ["claude:sonnet"]}}
+      ]
+    },
+    "bugfix": {
+      "description": "Bug fix workflow - investigation, fix, verify",
+      "categories": ["simple", "full"],
+      "phases": [
+        "setup-analyzer",
+        "implementor",
+        "qa-verifier"
+      ]
+    },
+    "hotfix": {
+      "description": "Emergency hotfix - implementation only",
+      "categories": ["simple"],
+      "phases": [
+        "implementor"
+      ]
+    },
+    "docs": {
+      "description": "Documentation-only changes",
+      "categories": ["docs"],
+      "phases": [
+        "setup-analyzer",
+        "doc-updater"
+      ]
+    },
+    "refactor": {
+      "description": "Code refactoring with verification",
+      "categories": ["simple", "full"],
+      "phases": [
+        "setup-analyzer",
+        "implementor",
+        "qa-verifier"
+      ]
+    },
+    "parallel-test": {
+      "description": "Test workflow with parallel agents enabled",
+      "categories": ["full"],
+      "phases": [
+        {"agent": "setup-analyzer", "parallel": {"enabled": true, "models": ["claude:sonnet", "codex:gpt_high"]}},
+        {"agent": "implementor", "parallel": {"enabled": true, "models": ["claude:opus", "codex:gpt_xhigh"]}}
+      ]
+    }
+  },
+  "storage": {
+    "backend": "wfw",
+    "data_path": ".claude/nrworkflow/wfw.data"
+  },
+  "timeouts": {
+    "default_agent_minutes": 25
+  },
+  "retries": {
+    "max_agent_retries": 3
+  }
+}

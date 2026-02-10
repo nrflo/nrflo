@@ -21,19 +21,17 @@ var ProjectID string
 // ProjectRoot holds the root directory of the project (where .claude/nrworkflow/config.json was found)
 var ProjectRoot string
 
-// UseSocket controls whether to use socket client (true) or direct DB access (false)
-// The serve command sets this to false since it IS the server
-var UseSocket = true
-
 var rootCmd = &cobra.Command{
 	Use:   "nrworkflow",
-	Short: "nrworkflow - Multi-workflow ticket and agent management CLI",
-	Long: `nrworkflow is a unified CLI tool for ticket management and AI agent orchestration.
+	Short: "nrworkflow - Multi-workflow agent orchestration server",
+	Long: `nrworkflow is a server for ticket management and AI agent orchestration.
 
-It manages projects, tickets, workflows, phases, and spawns AI agents to work on tasks.
+Start the server with: nrworkflow serve
+Manage workflows and tickets via the web UI at http://localhost:6587
 
-The CLI communicates with the nrworkflow server via Unix socket.
-Start the server with: nrworkflow serve`,
+Agent CLI subset (used by spawned agents):
+  nrworkflow agent complete/fail/continue <ticket> <agent-type> -w <workflow>
+  nrworkflow findings add/append/get/delete ...`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Priority 1: Environment variable (for CI/CD, scripting)
 		if envProject := os.Getenv("NRWORKFLOW_PROJECT"); envProject != "" {
@@ -59,14 +57,6 @@ Start the server with: nrworkflow serve`,
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&DataPath, "data", "D", "", "Path to database file")
 
-	// Project management
-	rootCmd.AddCommand(projectCmd)
-
-	// Ticket management (will be grouped under 'ticket' subcommand later)
-	rootCmd.AddCommand(ticketCmd)
-
-	// Legacy direct commands (for backwards compatibility during migration)
-	rootCmd.AddCommand(initDBCmd)
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(versionCmd)
 }
@@ -96,4 +86,20 @@ func CheckServer() error {
 		return client.ServerNotRunningError()
 	}
 	return nil
+}
+
+// RequireProject is a helper that ensures ProjectID is set
+func RequireProject() error {
+	if ProjectID == "" {
+		return fmt.Errorf("project not found. Create .claude/nrworkflow/config.json with 'project' field, or set NRWORKFLOW_PROJECT env")
+	}
+	return nil
+}
+
+// GetProjectRootPath returns the root path for the current project
+func GetProjectRootPath() string {
+	if ProjectRoot != "" {
+		return ProjectRoot
+	}
+	return "."
 }

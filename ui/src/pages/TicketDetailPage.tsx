@@ -9,25 +9,30 @@ import {
   CheckSquare,
   Layers,
   ExternalLink,
-  Radio,
   FileText,
   GitBranch,
   Info,
+  Play,
+  Square,
 } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
+import { useProjectStore } from '@/stores/projectStore'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { Toggle } from '@/components/ui/Toggle'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
+import { RunWorkflowDialog } from '@/components/workflow/RunWorkflowDialog'
 import {
   useTicket,
+  useWorkflow,
   useCloseTicket,
   useDeleteTicket,
+  useStopWorkflow,
 } from '@/hooks/useTickets'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import type { WorkflowState } from '@/types/workflow'
 import {
   cn,
@@ -51,76 +56,61 @@ function IssueTypeIcon({ type }: { type: string }) {
   }
 }
 
-const LIVE_TRACKING_INTERVAL = 5000 // 5 seconds
-
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [closeReason, setCloseReason] = useState('')
   const [showCloseForm, setShowCloseForm] = useState(false)
-  const [liveTracking, setLiveTracking] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'workflow' | 'description' | 'details'>('workflow')
+  const [showRunDialog, setShowRunDialog] = useState(false)
 
-  const { data: ticket, isLoading, isFetching, error } = useTicket(id!, {
-    refetchInterval: liveTracking ? LIVE_TRACKING_INTERVAL : false,
-  })
+  // WebSocket for real-time updates
+  const { subscribe, unsubscribe } = useWebSocket()
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  const currentProject = useProjectStore((s) => s.currentProject)
 
-  // Parse agents_state from ticket - single source of truth for all workflow data
-  // Format: { "workflow-name": { version, phases, findings, agent_history, ... }, ... }
-  const parsedState = useMemo((): {
-    state: WorkflowState | null
-    workflows: string[]
-    allWorkflows: Record<string, WorkflowState>
-    hasWorkflow: boolean
-  } => {
-    if (!ticket?.agents_state) {
-      return { state: null, workflows: [], allWorkflows: {}, hasWorkflow: false }
+  // Subscribe to this ticket's updates (wait for real project ID)
+  useEffect(() => {
+    if (id && projectsLoaded) {
+      subscribe(id)
+      return () => unsubscribe(id)
     }
-    try {
-      const parsed = JSON.parse(ticket.agents_state)
+  }, [id, projectsLoaded, currentProject, subscribe, unsubscribe])
 
-      // agents_state format: { "workflow-name": WorkflowState, ... }
-      // Each top-level key is a workflow name, value is the workflow state
-      const workflowNames = Object.keys(parsed).filter(key => {
-        const value = parsed[key]
-        // A workflow state has version and/or phases
-        return value && typeof value === 'object' && (value.version || value.phases)
-      })
+  const { data: ticket, isLoading, error } = useTicket(id!)
 
-      if (workflowNames.length > 0) {
-        const allWorkflows: Record<string, WorkflowState> = {}
-        for (const name of workflowNames) {
-          allWorkflows[name] = parsed[name]
-        }
-        const defaultWorkflow = workflowNames[0]
-        return {
-          state: allWorkflows[defaultWorkflow] || null,
-          workflows: workflowNames,
-          allWorkflows,
-          hasWorkflow: true,
-        }
-      }
+  // Fetch workflow state from workflow API (uses workflow_instances + agent_sessions tables)
+  const { data: workflowData } = useWorkflow(id!, { enabled: !!id })
 
-      return { state: null, workflows: [], allWorkflows: {}, hasWorkflow: false }
-    } catch {
-      return { state: null, workflows: [], allWorkflows: {}, hasWorkflow: false }
-    }
-  }, [ticket?.agents_state])
-
-  const { workflows, allWorkflows, hasWorkflow } = parsedState
+  const workflows = workflowData?.workflows ?? []
+  const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
+  const hasWorkflow = workflowData?.has_workflow ?? false
   const hasMultipleWorkflows = workflows.length > 1
 
   // Determine which workflow state to display
-  const displayedWorkflowName = selectedWorkflow || parsedState.state?.workflow || workflows[0] || ''
+  const defaultState = (workflowData?.state ?? null) as WorkflowState | null
+  const displayedWorkflowName = selectedWorkflow || defaultState?.workflow || workflows[0] || ''
   const displayedState = selectedWorkflow && allWorkflows[selectedWorkflow]
     ? allWorkflows[selectedWorkflow]
-    : parsedState.state
+    : defaultState
 
   // Get agent_history from displayed workflow state
   const agentHistory = displayedState?.agent_history
   const closeMutation = useCloseTicket()
   const deleteMutation = useDeleteTicket()
+  const stopMutation = useStopWorkflow()
+
+  // Detect if orchestration is running (via _orchestration findings key)
+  const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
+    | { status?: string }
+    | undefined
+  const isOrchestrated = orchestrationStatus?.status === 'running'
+
+  // Detect if any phase is in_progress
+  const hasActivePhase = displayedState?.phases
+    ? Object.values(displayedState.phases).some((p) => p.status === 'in_progress')
+    : false
 
   const handleClose = async () => {
     if (!id) return
@@ -304,29 +294,65 @@ export function TicketDetailPage() {
                     ) : displayedWorkflowName ? (
                       <Badge variant="secondary">{displayedWorkflowName}</Badge>
                     ) : null}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {liveTracking && isFetching && (
-                      <Radio className="h-3 w-3 text-green-500 animate-pulse" />
+                    {isOrchestrated && (
+                      <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
+                        Auto
+                      </Badge>
                     )}
-                    <Toggle
-                      checked={liveTracking}
-                      onChange={setLiveTracking}
-                      label="Live"
-                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {(isOrchestrated || hasActivePhase) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          id && stopMutation.mutate({
+                            ticketId: id,
+                            workflow: displayedWorkflowName || undefined,
+                          })
+                        }
+                        disabled={stopMutation.isPending}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        {stopMutation.isPending ? (
+                          <Spinner size="sm" className="mr-2" />
+                        ) : (
+                          <Square className="h-4 w-4 mr-2" />
+                        )}
+                        Stop
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowRunDialog(true)}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Run Workflow
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <PhaseTimeline
                   workflow={displayedState}
                   agentHistory={agentHistory}
                   ticketId={id}
-                  liveTracking={liveTracking}
                 />
               </>
             ) : (
-              <p className="text-muted-foreground text-sm py-8 text-center">
-                No workflow configured for this ticket
-              </p>
+              <div className="text-center py-8 space-y-3">
+                <p className="text-muted-foreground text-sm">
+                  No workflow configured for this ticket
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRunDialog(true)}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Run Workflow
+                </Button>
+              </div>
             )}
           </div>
         )}
@@ -441,6 +467,15 @@ export function TicketDetailPage() {
           </Card>
         )}
       </div>
+
+      {/* Run Workflow Dialog */}
+      {id && (
+        <RunWorkflowDialog
+          open={showRunDialog}
+          onClose={() => setShowRunDialog(false)}
+          ticketId={id}
+        />
+      )}
     </div>
   )
 }

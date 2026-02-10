@@ -1,8 +1,9 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight, Terminal, CheckCircle, XCircle, Clock, AlertTriangle, Timer } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ChevronDown, ChevronRight, Terminal, CheckCircle, XCircle, Clock, AlertTriangle, Timer, Loader2 } from 'lucide-react'
 import { cn, formatDateTime, formatElapsedTime } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
-import { StatsTooltip } from '@/components/workflow/StatsTooltip'
+import { getSessionMessages } from '@/api/tickets'
 import type { AgentSession, AgentSessionStatus } from '@/types/workflow'
 
 export function statusColor(status: AgentSessionStatus): string {
@@ -43,8 +44,20 @@ interface AgentSessionCardProps {
 
 export function AgentSessionCard({ session, defaultExpanded = false, children }: AgentSessionCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
-  const hasMessages = session.last_messages.length > 0
+  const msgCount = session.message_count || 0
+  const hasMessages = msgCount > 0
   const isRunning = session.status === 'running'
+
+  // Lazy-load messages from API when expanded
+  const { data: messagesData, isLoading: messagesLoading } = useQuery({
+    queryKey: ['session-messages', session.id],
+    queryFn: () => getSessionMessages(session.id),
+    enabled: expanded && hasMessages,
+    staleTime: isRunning ? 2000 : 30000,
+    refetchInterval: isRunning && expanded ? 3000 : false,
+  })
+
+  const messages = messagesData?.messages ?? []
 
   // Update elapsed time every second for running sessions
   const [, setTick] = useState(0)
@@ -99,12 +112,21 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
             <Timer className="h-3 w-3" />
             {elapsedTime}
           </span>
-          {hasMessages && (
-            <span className="text-xs text-muted-foreground">
-              {session.last_messages.length} msg{session.last_messages.length !== 1 ? 's' : ''}
+          {session.context_left != null && (
+            <span className={cn(
+              'text-xs font-mono px-1.5 py-0.5 rounded',
+              session.context_left > 60 && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+              session.context_left > 30 && session.context_left <= 60 && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+              session.context_left <= 30 && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+            )}>
+              {session.context_left}% ctx
             </span>
           )}
-          <StatsTooltip stats={session.message_stats} />
+          {hasMessages && (
+            <span className="text-xs text-muted-foreground">
+              {msgCount} msg{msgCount !== 1 ? 's' : ''}
+            </span>
+          )}
           <Badge className={cn('text-xs flex items-center gap-1', statusColor(session.status))}>
             <StatusIcon status={session.status} />
             {session.status}
@@ -115,19 +137,28 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
       {expanded && hasMessages && (
         <div className="p-3 border-t border-border bg-muted/20 space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Last {session.last_messages.length} messages</span>
+            <span>
+              {messagesData ? `${messagesData.total} total messages` : `${msgCount} messages`}
+            </span>
             <span>Updated: {formatDateTime(session.updated_at)}</span>
           </div>
-          <div className="space-y-1 font-mono text-xs">
-            {[...session.last_messages].reverse().map((msg, idx) => (
-              <div
-                key={idx}
-                className="p-2 bg-background rounded border border-border/50 whitespace-pre-wrap break-words"
-              >
-                {msg}
-              </div>
-            ))}
-          </div>
+          {messagesLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-xs text-muted-foreground">Loading messages...</span>
+            </div>
+          ) : (
+            <div className="space-y-1 font-mono text-xs">
+              {[...messages].reverse().map((msg, idx) => (
+                <div
+                  key={idx}
+                  className="p-2 bg-background rounded border border-border/50 whitespace-pre-wrap break-words"
+                >
+                  {msg}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

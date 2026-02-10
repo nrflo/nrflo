@@ -2,9 +2,9 @@
 
 ## Overview
 
-This is the nrworkflow system - a multi-workflow state management tool for ticket implementation with spawned AI agents.
+nrworkflow is a multi-workflow state management system for ticket implementation with spawned AI agents. Supports multiple workflows per ticket, parallel agents (Claude, OpenAI, Gemini), and real-time WebSocket updates.
 
-**Main documentation**: [README.md](README.md)
+The server runs as `nrworkflow serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use a minimal CLI subset (`agent complete/fail/continue`, `findings add/append/get/delete`) to report results.
 
 ## Mandatory Rules
 
@@ -12,192 +12,186 @@ This is the nrworkflow system - a multi-workflow state management tool for ticke
 
 When making changes, you MUST update all affected documentation:
 
-#### 1a. README.md (System Documentation)
+#### 1a. Root CLAUDE.md (This File)
 
-Update [README.md](README.md) when modifying:
-- System architecture or flow
-- State machines or diagrams (in System Diagrams section)
-- Database schema
-- `nrworkflow/` - Go CLI commands, state structure
-- `nrworkflow/internal/spawner/` - Spawner flow, session handling
-- `config.json` - Workflows, phases, agents
-- `agents/*.base.md` - Agent templates
-- `guidelines/*.md` - Protocols, schemas
+- Architecture, rules, workflows, state format → update this file
 
-**What to update:**
-- Add/remove boxes in diagrams if commands or phases change
-- Update state machine diagrams if statuses change
-- Update file structure section if files added/removed
-- Update data flow if new data is stored/read
-- Update session tracking if session handling changes
-- Update Commands section for CLI changes
-- Update Configuration section for config changes
+#### 1b. Backend CLAUDE.md
 
-#### 1b. README.md (Continued)
+Update [nrworkflow/CLAUDE.md](nrworkflow/CLAUDE.md) when modifying:
+- Go packages, DB schema, migrations, spawner, CLI adapters, HTTP API, socket methods, tests, build config
 
-Also update [README.md](README.md) when:
-- Adding/removing/changing CLI commands → update Commands section
-- Changing command arguments or flags → update usage examples
-- Adding new features → add to relevant section
-- Changing configuration options → update Configuration section
-- Adding new files → update Architecture section
+#### 1c. UI CLAUDE.md
 
-#### 1c. Guidelines (Protocols & Schemas)
+Update [ui/CLAUDE.md](ui/CLAUDE.md) when modifying:
+- Frontend components, pages, WebSocket protocol, API client code, TypeScript types
+
+#### 1d. Guidelines
 
 Update relevant guidelines when:
 - Changing agent behavior → `guidelines/agent-protocol.md`
-- Changing findings format → `guidelines/findings-schema.md`
-- Adding new phase with findings → add schema to `findings-schema.md`
 
-#### 1d. UI (Web Interface)
-
-Update [ui/](ui/) when:
-- Changing API endpoints → `ui/src/api/`
-- Changing data models → `ui/src/types/`
-- Adding new features → relevant components
-
-See [ui/CLAUDE.md](ui/CLAUDE.md) for UI-specific instructions.
-
-### 2. Session Parameter is Mandatory
-
-The `--session` parameter is **required** for `agent spawn`:
-
-```bash
-nrworkflow agent spawn <type> <ticket> --session=<parent_uuid> -w <workflow>
-```
-
-This links spawned agents to the orchestrating session. Never remove this requirement.
-
-**Note:** Project is auto-discovered from `.claude/nrworkflow/config.json` (searched upward from cwd) or `NRWORKFLOW_PROJECT` env var.
-
-### 3. Phase Sequence is Enforced
+### 2. Phase Sequence is Enforced
 
 Agents can only be spawned in workflow phase order. The spawner validates:
 - Current phase matches expected next phase
 - Prior phases are completed or skipped
 - Category-based skip rules are applied
 
-### 4. State is Stored in Ticket
+### 3. State is Stored in Database Tables
 
-All nrworkflow state is stored in the ticket's `agents_state` field as JSON. The state includes:
-- Workflow and phase information
-- Active agent tracking (pid, session_id)
-- Findings from each phase
-- Agent history
+Workflow runtime state is stored in normalized database tables:
+- **`workflow_instances`** — one row per ticket+workflow, stores current phase, phase statuses, category, workflow-level findings
+- **`agent_sessions`** — one row per agent execution, stores result, pid, findings, timestamps
+- Active agents = `agent_sessions WHERE status = 'running'`
+- Agent history = `agent_sessions WHERE status != 'running'`
 
-### 5. Findings Schema Must Be Followed
+### 4. Keep Source Files Under 300 Lines
 
-When agents store findings, they must follow the schema in `guidelines/findings-schema.md`. Required fields vary by phase.
+Source files should be kept under 300 lines when possible. When a file grows beyond this limit, split it into logical sub-files. This applies to both code and documentation files.
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `nrworkflow/` | Go CLI source code |
-| `nrworkflow/internal/cli/` | Command handlers (thin socket clients) |
-| `nrworkflow/internal/client/` | Unix socket client |
-| `nrworkflow/internal/socket/` | Unix socket server |
-| `nrworkflow/internal/service/` | Business logic layer |
-| `nrworkflow/internal/spawner/` | Agent spawner |
-| `nrworkflow/internal/db/` | SQLite database + connection pool |
-| `nrworkflow/internal/types/` | Shared request/response types |
-| `config.json` | Workflows, agents, timeouts |
-| `README.md` | **User docs + System diagrams - KEEP UPDATED** |
+| `nrworkflow/` | Go backend source code (see [nrworkflow/CLAUDE.md](nrworkflow/CLAUDE.md)) |
+| `ui/` | React web interface (see [ui/CLAUDE.md](ui/CLAUDE.md)) |
 | `guidelines/agent-protocol.md` | Agent conventions |
-| `guidelines/findings-schema.md` | Findings format |
-| `ui/` | React web interface |
-| `ui/CLAUDE.md` | UI maintenance instructions |
+| `nrworkflow.data` | SQLite database (tickets, projects, sessions) |
+| `restart.sh` | Rebuild and restart BE + UI servers (background) |
+| `stop.sh` | Stop running servers |
+
+**Project files (`.claude/`):**
+
+| File | Purpose |
+|------|---------|
+| `nrworkflow/config.json` | Project config (CLI default, spawner settings) |
 
 ## Architecture Principles
 
-1. **Client-Server**: CLI communicates with server via Unix socket
-2. **Server Required**: `nrworkflow serve` must be running for CLI to work
-3. **Go binary**: Single `nrworkflow` binary serves both client and server roles
-4. **Project-scoped**: Project discovered from `.claude/nrworkflow/config.json` or `NRWORKFLOW_PROJECT` env
-5. **Single database**: `~/projects/2026/nrworkflow/nrworkflow.data` (SQLite, global for all projects)
-6. **Connection Pool**: DB uses connection pooling (10 max, 5 idle)
-7. **Service Layer**: Business logic separated from CLI and socket handlers
-8. **Spawner-driven**: State management happens in the spawner (direct, not via socket)
-9. **Session linking**: Parent session passed explicitly via CLI
-10. **Phase validation**: Can't spawn out of order
-11. **Category-based skipping**: `skip_for` rules in workflow config
+1. **Server-only**: `nrworkflow serve` is the only user-facing command; all management via web UI
+2. **Agent CLI subset**: Spawned agents use `agent complete/fail/continue` and `findings add/append/get/delete` via Unix socket
+3. **Auto-migrate**: Database migrations run automatically on server startup
+4. **Go binary**: Single `nrworkflow` binary serves both server and agent-facing CLI roles
+5. **Project-scoped**: Project discovered from `.claude/nrworkflow/config.json` or `NRWORKFLOW_PROJECT` env
+6. **Single database**: `~/projects/2026/nrworkflow/nrworkflow.data` (SQLite, global for all projects)
+7. **Connection Pool**: DB uses connection pooling (10 max, 5 idle)
+8. **Versioned migrations**: Schema managed by golang-migrate with embedded SQL files in `db/migrations/`
+9. **Service Layer**: Business logic separated from HTTP handlers and socket handlers
+10. **Spawner in-process**: Spawner runs inside the server, broadcasts WebSocket events via direct hub (no socket fallback)
+11. **Phase validation**: Can't spawn out of order
+12. **Category-based skipping**: `skip_for` rules in workflow config
+13. **WebSocket real-time**: UI receives all real-time updates via WebSocket (`/api/v1/ws`), no REST polling
+14. **DB-stored workflow definitions**: Workflow definitions (phases, categories) stored in `workflows` table, managed via `/api/v1/workflows` API
+15. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB.
+16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator runs each phase sequentially in a goroutine, reusing `spawner.SpawnWithContext()`, with cancellation support via `/workflow/stop`.
 
-## Common Tasks
-
-### Adding a New Agent Type
-
-1. Create `agents/<type>.base.md` template
-2. Add to workflow phases in `config.json`
-3. Add agent config (model, max_turns, timeout) to `config.json`
-4. **Documentation updates:**
-   - `guidelines/findings-schema.md` - add findings schema for new phase
-   - `README.md` - add agent to diagrams in System Diagrams section, update file structure, add to Base Agent Templates table
-
-### Adding a New Workflow
-
-1. Add workflow definition to `config.json`
-2. Ensure all referenced agents exist
-3. **Documentation updates:**
-   - `README.md` - add workflow to diagrams in System Diagrams section, add to Workflows table
-
-### Modifying State Structure
-
-1. Update state initialization in `nrworkflow/internal/service/workflow.go`
-2. Update any code reading that state
-3. **Documentation updates:**
-   - `README.md` - update state diagrams in System Diagrams section, update State Storage section if user-visible
-
-### Changing CLI Commands
-
-1. Update CLI command (thin client) in `nrworkflow/internal/cli/`
-2. Update socket handler in `nrworkflow/internal/socket/handler.go`
-3. Update service in `nrworkflow/internal/service/`
-4. Rebuild: `cd nrworkflow && make build`
-5. **Documentation updates:**
-   - `README.md` - update diagrams in System Diagrams section if flow changes, update Commands section and usage examples
-   - `guidelines/agent-protocol.md` - if agent-facing commands change
-
-### Adding New Socket Methods
-
-1. Add request type in `nrworkflow/internal/types/request.go`
-2. Add service method in `nrworkflow/internal/service/`
-3. Add handler case in `nrworkflow/internal/socket/handler.go`
-4. Add CLI command in `nrworkflow/internal/cli/`
-
-### Adding New Configuration Options
-
-1. Add to `config.json` (global and/or project)
-2. Update code to read the new option in `nrworkflow/internal/service/workflow.go`
-3. **Documentation updates:**
-   - `README.md` - update Configuration section, update System Diagrams if it affects flow or data
-
-### Modifying API Endpoints (HTTP)
-
-1. Update handlers in `nrworkflow/internal/api/`
-2. Update routes in `nrworkflow/internal/api/server.go`
-3. Consider if the same logic should be in socket handler
-4. **Documentation updates:**
-   - `README.md` - update API Endpoints section
-   - `ui/src/api/` - update corresponding API client
-   - `ui/src/types/` - update TypeScript types if needed
-
-## Web UI
-
-The web interface is in `ui/`. See [ui/README.md](ui/README.md) for setup and [ui/CLAUDE.md](ui/CLAUDE.md) for development instructions.
+## Quick Start
 
 ```bash
-# Start API server
-nrworkflow serve
-
-# Start UI dev server (in another terminal)
-cd ui && npm run dev
-
-# Open http://localhost:5173
+cd ~/projects/2026/nrworkflow/nrworkflow && make build && sudo cp nrworkflow /usr/local/bin/
+nrworkflow serve    # Start server (auto-migrates DB)
 ```
 
-Key UI files:
-- `ui/src/api/client.ts` - API client with X-Project header
-- `ui/src/api/projects.ts` - Project API functions
-- `ui/src/api/tickets.ts` - Ticket and workflow API functions
-- `ui/src/stores/projectStore.ts` - Project selection state
-- `ui/src/types/` - TypeScript types matching Go models
+Web UI: `./restart.sh` then open `http://localhost:5173`
+
+## Agent CLI Commands
+
+Spawned agents use these commands to report results (via Unix socket to the server):
+
+```bash
+nrworkflow agent complete <ticket> <agent-type> -w <workflow>   # Mark as pass
+nrworkflow agent fail <ticket> <agent-type> -w <workflow>       # Mark as fail
+nrworkflow agent continue <ticket> <agent-type> -w <workflow>   # Request context continuation
+
+nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow>
+nrworkflow findings append <ticket> <agent-type> <key> <value> -w <workflow>
+nrworkflow findings get <ticket> <agent-type> -w <workflow>
+nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow>
+```
+
+## Workflows
+
+| Workflow | Phases | Use Case |
+|----------|--------|----------|
+| `feature` | investigation -> test-design -> implementation -> verification -> docs | New features (full TDD) |
+| `implement` | implementation -> test-writing -> verification | Direct implementation with post-hoc tests |
+| `bugfix` | investigation -> implementation -> verification | Bug fixes |
+| `hotfix` | implementation | Urgent fixes |
+| `docs` | investigation -> docs | Documentation only |
+| `refactor` | investigation -> implementation -> verification | Code refactoring |
+
+### Categories
+
+Categories control phase skipping:
+- `full` - All phases run
+- `simple` - Skip test-design (existing tests cover it)
+- `docs` - Skip test-design and verification
+
+## State Storage
+
+Workflow state is stored in normalized database tables. Multiple workflows can exist per ticket via separate `workflow_instances` rows.
+
+### `workflow_instances` table
+
+| Column | Description |
+|--------|-------------|
+| `id` | UUID primary key |
+| `project_id`, `ticket_id` | Links to ticket |
+| `workflow_id` | FK to workflow definition |
+| `status` | `active` / `completed` / `failed` |
+| `current_phase` | Currently active phase ID |
+| `category` | Category for skip rules |
+| `phase_order` | JSON array of phase IDs |
+| `phases` | JSON: `{phase_id: {status, result}}` |
+| `findings` | JSON: workflow-level findings |
+| `retry_count` | Number of retries |
+| `parent_session` | Orchestrating session UUID |
+
+### `agent_sessions` table (enhanced)
+
+| Column | Description |
+|--------|-------------|
+| `workflow_instance_id` | FK to workflow_instances |
+| `result` | `pass` / `fail` / `continue` / `timeout` |
+| `result_reason` | Explanation for result |
+| `pid` | OS process ID |
+| `findings` | JSON: per-agent findings |
+| `started_at`, `ended_at` | Execution timestamps |
+
+### API Response
+
+`GET /api/v1/tickets/:id/workflow` constructs a v4-compatible response from the normalized tables:
+
+```json
+{
+  "version": 4,
+  "current_phase": "implementation",
+  "category": "full",
+  "phase_order": ["investigation", "test-design", "implementation", "verification", "docs"],
+  "phases": {"investigation": {"status": "completed", "result": "pass"}},
+  "active_agents": {"implementor:claude:opus": {"pid": 12345, "session_id": "..."}},
+  "findings": {"setup-analyzer": {"claude:sonnet": {"files_to_modify": ["..."]}}}
+}
+```
+
+## Server Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `restart.sh` | Kill existing servers, rebuild BE + UI, start both in background |
+| `stop.sh` | Stop running BE + UI servers |
+| `ui/start-server.sh` | Start both servers in foreground (interactive mode) |
+
+Logs are written to `logs/backend.log` and `logs/ui.log` when using `restart.sh`.
+
+## Guidelines
+
+Located in `~/projects/2026/nrworkflow/guidelines/`:
+
+### agent-protocol.md
+Agent conventions:
+- Ticket header format (`## Agent: <type>`, `## Ticket: <id>`)
+- Session markers (`${PARENT_SESSION}`, `${CHILD_SESSION}`)
+- Completion commands (`nrworkflow agent complete/fail/continue <ticket> <agent-type>`)
+- Context continuation protocol (relaunch with fresh context when running low)

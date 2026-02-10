@@ -1,0 +1,11 @@
+DROP TRIGGER IF EXISTS tickets_au;
+DROP TRIGGER IF EXISTS tickets_ad;
+DROP TRIGGER IF EXISTS tickets_ai;
+DROP TABLE IF EXISTS tickets_fts;
+DROP TABLE IF EXISTS agent_messages;
+DROP TABLE IF EXISTS workflows;
+DROP TABLE IF EXISTS agent_sessions;
+DROP TABLE IF EXISTS dependencies;
+DROP TABLE IF EXISTS tickets;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS config;

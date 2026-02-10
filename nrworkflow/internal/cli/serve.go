@@ -22,15 +22,14 @@ var (
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start the nrworkflow server (HTTP + Unix socket)",
+	Short: "Start the nrworkflow server",
 	Long: `Start the nrworkflow server for the ticket management system.
 
 The server provides:
-  - HTTP API on port 6587 (for web UI)
-  - Unix socket at /tmp/nrworkflow/nrworkflow.sock (for CLI)
+  - HTTP API on port 6587 (for web UI and REST clients)
+  - Unix socket for agent communication (findings, completion)
 
-All CLI commands communicate with this server via the Unix socket.
-The server must be running for CLI commands to work.
+Database migrations are applied automatically on startup.
 
 Example usage:
   nrworkflow serve              # Start on default port (6587)
@@ -47,6 +46,17 @@ Example usage:
 			cfg.Server.Port = servePort
 		}
 
+		// Auto-migrate database
+		migrateDB, err := db.Open(DataPath)
+		if err != nil {
+			return fmt.Errorf("failed to open database for migration: %w", err)
+		}
+		if err := db.RunMigrations(migrateDB.DB); err != nil {
+			migrateDB.Close()
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
+		migrateDB.Close()
+
 		// Create database connection pool
 		pool, err := db.NewPool(DataPath, db.DefaultPoolConfig())
 		if err != nil {
@@ -54,14 +64,14 @@ Example usage:
 		}
 		defer pool.Close()
 
-		// Create and start Unix socket server
-		socketServer := socket.NewServer(pool)
+		// Create HTTP server (creates WebSocket hub)
+		httpServer := api.NewServer(cfg, DataPath)
+
+		// Create and start Unix socket server with shared WebSocket hub
+		socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub())
 		if err := socketServer.Start(); err != nil {
 			return fmt.Errorf("failed to start socket server: %w", err)
 		}
-
-		// Create HTTP server
-		httpServer := api.NewServer(cfg, DataPath)
 
 		// Handle graceful shutdown
 		shutdown := make(chan os.Signal, 1)
@@ -74,9 +84,8 @@ Example usage:
 		}()
 
 		fmt.Printf("nrworkflow server started\n")
-		fmt.Printf("  HTTP API:     http://localhost:%d\n", cfg.Server.Port)
-		fmt.Printf("  Unix socket:  %s\n", socketServer.SocketPath())
-		fmt.Printf("  Database:     %s\n", pool.Path)
+		fmt.Printf("  HTTP API:  http://localhost:%d\n", cfg.Server.Port)
+		fmt.Printf("  Database:  %s\n", pool.Path)
 		fmt.Println()
 
 		// Wait for shutdown signal or server error

@@ -13,7 +13,6 @@ export interface Ticket {
   closed_at: string | null
   created_by: string
   close_reason: string | null
-  agents_state: string | null
 }
 
 export interface PendingTicket extends Ticket {
@@ -41,7 +40,6 @@ export interface CreateTicketRequest {
   priority?: number
   issue_type?: IssueType
   created_by: string
-  agents_state?: string
 }
 
 export interface UpdateTicketRequest {
@@ -50,7 +48,6 @@ export interface UpdateTicketRequest {
   status?: Status
   priority?: number
   issue_type?: IssueType
-  agents_state?: string
 }
 
 export interface TicketListResponse {

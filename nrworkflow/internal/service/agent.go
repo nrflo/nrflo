@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -11,29 +10,54 @@ import (
 
 	"nrworkflow/internal/db"
 	"nrworkflow/internal/model"
+	"nrworkflow/internal/repo"
 	"nrworkflow/internal/types"
 )
 
 // AgentService handles agent business logic
 type AgentService struct {
-	pool *db.Pool
+	pool        *db.Pool
+	workflowSvc *WorkflowService
+	msgRepo     *repo.AgentMessagePoolRepo
 }
 
 // NewAgentService creates a new agent service
 func NewAgentService(pool *db.Pool) *AgentService {
-	return &AgentService{pool: pool}
+	return &AgentService{
+		pool:        pool,
+		workflowSvc: NewWorkflowService(pool),
+		msgRepo:     repo.NewAgentMessagePoolRepo(pool),
+	}
 }
 
-// ListAgentTypes lists available agent types from workflow configs
-func (s *AgentService) ListAgentTypes(projectRoot string) ([]string, error) {
-	config, err := LoadWorkflowConfig(projectRoot)
+// scanSessionJoined scans an agent session from a row that JOINs with workflow_instances
+func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
+	s := &model.AgentSession{}
+	var createdAt, updatedAt string
+	err := scanner.Scan(
+		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
+		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
+		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.PromptContext,
+		&s.StartedAt, &s.EndedAt, &createdAt, &updatedAt, &s.Workflow,
+	)
+	if err != nil {
+		return nil, err
+	}
+	s.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+	s.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	return s, nil
+}
+
+// ListAgentTypes lists available agent types from workflow definitions in DB
+func (s *AgentService) ListAgentTypes(projectID string) ([]string, error) {
+	workflows, err := s.workflowSvc.ListWorkflowDefs(projectID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Collect unique agents
 	agentMap := make(map[string]bool)
-	for _, wf := range config.Workflows {
+	for _, wf := range workflows {
 		for _, p := range wf.Phases {
 			agentMap[p.Agent] = true
 		}
@@ -68,62 +92,74 @@ func (s *AgentService) GetActive(projectID, ticketID string, req *types.AgentAct
 		return nil, fmt.Errorf("workflow is required")
 	}
 
-	// Get ticket
-	var agentsStateStr string
-	err := s.pool.QueryRow("SELECT COALESCE(agents_state, '') FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-		projectID, ticketID).Scan(&agentsStateStr)
+	// Find workflow instance
+	var wfiID string
+	err := s.pool.QueryRow(`
+		SELECT id FROM workflow_instances
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		projectID, ticketID, req.Workflow).Scan(&wfiID)
 	if err != nil {
-		return nil, fmt.Errorf("ticket not found: %s", ticketID)
-	}
-
-	if agentsStateStr == "" {
 		return []ActiveAgent{}, nil
 	}
 
-	var allState map[string]interface{}
-	if err := json.Unmarshal([]byte(agentsStateStr), &allState); err != nil {
+	rows, err := s.pool.Query(`
+		SELECT id, agent_type, model_id, pid, result, started_at
+		FROM agent_sessions
+		WHERE workflow_instance_id = ? AND status = 'running'`, wfiID)
+	if err != nil {
 		return []ActiveAgent{}, nil
 	}
-
-	stateRaw, ok := allState[req.Workflow]
-	if !ok {
-		return []ActiveAgent{}, nil
-	}
-
-	state, _ := stateRaw.(map[string]interface{})
-	activeAgents, _ := state["active_agents"].(map[string]interface{})
+	defer rows.Close()
 
 	var result []ActiveAgent
-	for key, agentRaw := range activeAgents {
-		agent, _ := agentRaw.(map[string]interface{})
+	for rows.Next() {
+		var id, agentType string
+		var modelID, agentResult, startedAt sql.NullString
+		var pid sql.NullInt64
+		rows.Scan(&id, &agentType, &modelID, &pid, &agentResult, &startedAt)
+
+		key := agentType
+		cli := ""
+		modelName := ""
+		modelIDStr := ""
+		if modelID.Valid && modelID.String != "" {
+			modelIDStr = modelID.String
+			key = agentType + ":" + modelIDStr
+			parts := strings.SplitN(modelIDStr, ":", 2)
+			if len(parts) == 2 {
+				cli = parts[0]
+				modelName = parts[1]
+			}
+		}
 
 		elapsed := 0
-		if startedAt, ok := agent["started_at"].(string); ok && startedAt != "" {
-			if t, err := time.Parse(time.RFC3339, startedAt); err == nil {
+		if startedAt.Valid && startedAt.String != "" {
+			if t, err := time.Parse(time.RFC3339, startedAt.String); err == nil {
 				elapsed = int(time.Since(t).Seconds())
 			}
 		}
 
-		sessionID, _ := agent["session_id"].(string)
-		startedAt, _ := agent["started_at"].(string)
-		agentID, _ := agent["agent_id"].(string)
-		agentType, _ := agent["agent_type"].(string)
-		modelID, _ := agent["model_id"].(string)
-		cli, _ := agent["cli"].(string)
-		modelName, _ := agent["model"].(string)
+		var pidVal interface{}
+		if pid.Valid {
+			pidVal = pid.Int64
+		}
+		var resultVal interface{}
+		if agentResult.Valid {
+			resultVal = agentResult.String
+		}
 
 		result = append(result, ActiveAgent{
 			Key:        key,
-			AgentID:    agentID,
+			AgentID:    id,
 			AgentType:  agentType,
-			ModelID:    modelID,
+			ModelID:    modelIDStr,
 			CLI:        cli,
 			Model:      modelName,
-			PID:        agent["pid"],
-			SessionID:  sessionID,
-			StartedAt:  startedAt,
+			PID:        pidVal,
+			SessionID:  id,
+			StartedAt:  startedAt.String,
 			ElapsedSec: elapsed,
-			Result:     agent["result"],
+			Result:     resultVal,
 		})
 	}
 
@@ -136,57 +172,50 @@ func (s *AgentService) Kill(projectID, ticketID string, req *types.AgentKillRequ
 		return 0, fmt.Errorf("workflow is required")
 	}
 
-	// Get ticket
-	var agentsStateStr string
-	err := s.pool.QueryRow("SELECT COALESCE(agents_state, '') FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-		projectID, ticketID).Scan(&agentsStateStr)
+	var wfiID string
+	err := s.pool.QueryRow(`
+		SELECT id FROM workflow_instances
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		projectID, ticketID, req.Workflow).Scan(&wfiID)
 	if err != nil {
-		return 0, fmt.Errorf("ticket not found: %s", ticketID)
-	}
-
-	if agentsStateStr == "" {
-		return 0, fmt.Errorf("no active agents")
-	}
-
-	var allState map[string]interface{}
-	if err := json.Unmarshal([]byte(agentsStateStr), &allState); err != nil {
-		return 0, err
-	}
-
-	stateRaw, ok := allState[req.Workflow]
-	if !ok {
 		return 0, fmt.Errorf("workflow '%s' not found", req.Workflow)
 	}
 
-	state, _ := stateRaw.(map[string]interface{})
-	activeAgents, _ := state["active_agents"].(map[string]interface{})
-
-	if len(activeAgents) == 0 {
-		return 0, fmt.Errorf("no active agents")
+	rows, err := s.pool.Query(`
+		SELECT id, agent_type, model_id, pid
+		FROM agent_sessions
+		WHERE workflow_instance_id = ? AND status = 'running'`, wfiID)
+	if err != nil {
+		return 0, err
 	}
+	defer rows.Close()
 
 	killed := 0
-	for key, agentRaw := range activeAgents {
-		agent, _ := agentRaw.(map[string]interface{})
+	for rows.Next() {
+		var id, agentType string
+		var modelID sql.NullString
+		var pid sql.NullInt64
+		rows.Scan(&id, &agentType, &modelID, &pid)
 
 		// Filter by model if specified
 		if req.Model != "" {
-			modelID, _ := agent["model_id"].(string)
-			if !strings.Contains(key, req.Model) && modelID != req.Model {
+			key := agentType + ":" + modelID.String
+			if !strings.Contains(key, req.Model) && (!modelID.Valid || modelID.String != req.Model) {
 				continue
 			}
 		}
 
-		// Try to kill by PID
-		if pidFloat, ok := agent["pid"].(float64); ok && pidFloat > 0 {
-			pid := int(pidFloat)
-			proc, err := os.FindProcess(pid)
+		if pid.Valid && pid.Int64 > 0 {
+			proc, err := os.FindProcess(int(pid.Int64))
 			if err == nil {
 				_ = proc.Signal(syscall.SIGTERM)
 			}
 		}
-
 		killed++
+	}
+
+	if killed == 0 {
+		return 0, fmt.Errorf("no active agents")
 	}
 
 	return killed, nil
@@ -202,69 +231,47 @@ func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentComplete
 	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "fail", req.Model)
 }
 
+// Continue marks an agent as needing context continuation
+func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentCompleteRequest) error {
+	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "continue", req.Model)
+}
+
 func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentType, result, modelID string) error {
 	if workflowName == "" {
 		return fmt.Errorf("workflow is required")
 	}
 
-	// Get ticket
-	var agentsStateStr string
-	err := s.pool.QueryRow("SELECT COALESCE(agents_state, '') FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-		projectID, ticketID).Scan(&agentsStateStr)
+	var wfiID string
+	err := s.pool.QueryRow(`
+		SELECT id FROM workflow_instances
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		projectID, ticketID, workflowName).Scan(&wfiID)
 	if err != nil {
-		return fmt.Errorf("ticket not found: %s", ticketID)
-	}
-
-	if agentsStateStr == "" {
-		return fmt.Errorf("ticket %s not initialized", ticketID)
-	}
-
-	var allState map[string]interface{}
-	if err := json.Unmarshal([]byte(agentsStateStr), &allState); err != nil {
-		return fmt.Errorf("failed to parse state: %w", err)
-	}
-
-	stateRaw, ok := allState[workflowName]
-	if !ok {
 		return fmt.Errorf("workflow '%s' not found", workflowName)
 	}
 
-	state, _ := stateRaw.(map[string]interface{})
-	activeAgents, _ := state["active_agents"].(map[string]interface{})
+	// Find matching active session
+	query := `SELECT id FROM agent_sessions
+		WHERE workflow_instance_id = ? AND agent_type = ? AND status = 'running'`
+	args := []interface{}{wfiID, agentType}
 
-	// Find agent by type and optionally model
-	for key, agentRaw := range activeAgents {
-		agent, _ := agentRaw.(map[string]interface{})
-		at, _ := agent["agent_type"].(string)
+	if modelID != "" {
+		query += ` AND model_id = ?`
+		args = append(args, modelID)
+	}
+	query += ` LIMIT 1`
 
-		if at != agentType {
-			continue
-		}
-
-		if modelID != "" {
-			mid, _ := agent["model_id"].(string)
-			if !strings.Contains(key, modelID) && mid != modelID {
-				continue
-			}
-		}
-
-		agent["result"] = result
-		activeAgents[key] = agent
-		state["active_agents"] = activeAgents
-		break
+	var sessionID string
+	err = s.pool.QueryRow(query, args...).Scan(&sessionID)
+	if err != nil {
+		return fmt.Errorf("no active agent found for %s", agentType)
 	}
 
-	allState[workflowName] = state
-	stateJSON, _ := json.Marshal(allState)
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err = s.pool.Exec(
-		"UPDATE tickets SET agents_state = ?, updated_at = ? WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-		string(stateJSON), now, projectID, ticketID)
-	if err != nil {
-		return err
-	}
-
-	return nil
+		`UPDATE agent_sessions SET result = ?, updated_at = ? WHERE id = ?`,
+		result, now, sessionID)
+	return err
 }
 
 // GetRecentSessions gets recent agent sessions
@@ -274,10 +281,14 @@ func (s *AgentService) GetRecentSessions(projectID string, limit int) ([]*model.
 	}
 
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, created_at, updated_at
-		FROM agent_sessions
-		WHERE LOWER(project_id) = LOWER(?)
-		ORDER BY created_at DESC
+		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
+			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt_context,
+			s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE LOWER(s.project_id) = LOWER(?)
+		ORDER BY s.created_at DESC
 		LIMIT ?`, projectID, limit)
 	if err != nil {
 		return nil, err
@@ -286,43 +297,36 @@ func (s *AgentService) GetRecentSessions(projectID string, limit int) ([]*model.
 
 	var sessions []*model.AgentSession
 	for rows.Next() {
-		session := &model.AgentSession{}
-		var createdAt, updatedAt string
-
-		err := rows.Scan(
-			&session.ID,
-			&session.ProjectID,
-			&session.TicketID,
-			&session.Phase,
-			&session.Workflow,
-			&session.AgentType,
-			&session.ModelID,
-			&session.Status,
-			&session.LastMessages,
-			&session.MessageStats,
-			&createdAt,
-			&updatedAt,
-		)
+		session, err := scanSessionJoined(rows)
 		if err != nil {
 			return nil, err
 		}
-
-		session.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		session.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-
 		sessions = append(sessions, session)
 	}
 
+	s.loadMessageCounts(sessions)
 	return sessions, nil
 }
 
-// GetTicketSessions gets agent sessions for a ticket
-func (s *AgentService) GetTicketSessions(projectID, ticketID string) ([]*model.AgentSession, error) {
-	rows, err := s.pool.Query(`
-		SELECT id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, created_at, updated_at
-		FROM agent_sessions
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?)
-		ORDER BY created_at DESC`, projectID, ticketID)
+// GetTicketSessions gets agent sessions for a ticket, optionally filtered by workflow
+func (s *AgentService) GetTicketSessions(projectID, ticketID, workflow string) ([]*model.AgentSession, error) {
+	query := `
+		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
+			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt_context,
+			s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE LOWER(s.project_id) = LOWER(?) AND LOWER(s.ticket_id) = LOWER(?)`
+	args := []interface{}{projectID, ticketID}
+
+	if workflow != "" {
+		query += ` AND LOWER(wi.workflow_id) = LOWER(?)`
+		args = append(args, workflow)
+	}
+	query += ` ORDER BY s.created_at DESC`
+
+	rows, err := s.pool.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -330,33 +334,14 @@ func (s *AgentService) GetTicketSessions(projectID, ticketID string) ([]*model.A
 
 	var sessions []*model.AgentSession
 	for rows.Next() {
-		session := &model.AgentSession{}
-		var createdAt, updatedAt string
-
-		err := rows.Scan(
-			&session.ID,
-			&session.ProjectID,
-			&session.TicketID,
-			&session.Phase,
-			&session.Workflow,
-			&session.AgentType,
-			&session.ModelID,
-			&session.Status,
-			&session.LastMessages,
-			&session.MessageStats,
-			&createdAt,
-			&updatedAt,
-		)
+		session, err := scanSessionJoined(rows)
 		if err != nil {
 			return nil, err
 		}
-
-		session.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		session.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-
 		sessions = append(sessions, session)
 	}
 
+	s.loadMessageCounts(sessions)
 	return sessions, nil
 }
 
@@ -367,18 +352,29 @@ func (s *AgentService) CreateSession(session *model.AgentSession) error {
 	session.UpdatedAt = session.CreatedAt
 
 	_, err := s.pool.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, phase, workflow, agent_type, model_id, status, last_messages, message_stats, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+			model_id, status, result, result_reason, pid, findings,
+			context_left, ancestor_session_id, spawn_command, prompt_context,
+			started_at, ended_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		session.ProjectID,
 		session.TicketID,
+		session.WorkflowInstanceID,
 		session.Phase,
-		session.Workflow,
 		session.AgentType,
 		session.ModelID,
 		session.Status,
-		session.LastMessages,
-		session.MessageStats,
+		session.Result,
+		session.ResultReason,
+		session.PID,
+		session.Findings,
+		session.ContextLeft,
+		session.AncestorSessionID,
+		session.SpawnCommand,
+		session.PromptContext,
+		session.StartedAt,
+		session.EndedAt,
 		now,
 		now,
 	)
@@ -394,20 +390,84 @@ func (s *AgentService) UpdateSessionStatus(sessionID string, status model.AgentS
 	return err
 }
 
-// UpdateSessionMessages updates an agent session's messages
-func (s *AgentService) UpdateSessionMessages(sessionID string, messages string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.pool.Exec(
-		"UPDATE agent_sessions SET last_messages = ?, updated_at = ? WHERE id = ?",
-		sql.NullString{String: messages, Valid: messages != ""}, now, sessionID)
-	return err
+// GetSessionByID gets a single agent session by its ID (globally unique PK)
+func (s *AgentService) GetSessionByID(sessionID string) (*model.AgentSession, error) {
+	row := s.pool.QueryRow(`
+		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
+			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt_context,
+			s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE s.id = ?`, sessionID)
+
+	session, err := scanSessionJoined(row)
+	if err != nil {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	// Load full messages from agent_messages table
+	messages, msgErr := s.msgRepo.GetBySession(sessionID)
+	if msgErr == nil && len(messages) > 0 {
+		session.Messages = messages
+		session.MessageCount = len(messages)
+	} else {
+		count, _ := s.msgRepo.CountBySession(sessionID)
+		session.MessageCount = count
+	}
+
+	return session, nil
 }
 
-// UpdateSessionStats updates an agent session's stats
-func (s *AgentService) UpdateSessionStats(sessionID string, stats string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.pool.Exec(
-		"UPDATE agent_sessions SET message_stats = ?, updated_at = ? WHERE id = ?",
-		sql.NullString{String: stats, Valid: stats != ""}, now, sessionID)
-	return err
+// GetSessionMessages returns paginated messages for a session
+func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) ([]string, int, error) {
+	// Validate session exists
+	var exists int
+	err := s.pool.QueryRow("SELECT 1 FROM agent_sessions WHERE id = ?", sessionID).Scan(&exists)
+	if err != nil {
+		return nil, 0, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	total, err := s.msgRepo.CountBySession(sessionID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if limit <= 0 {
+		limit = 100
+	}
+
+	messages, err := s.msgRepo.GetBySessionPaginated(sessionID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	if messages == nil {
+		messages = []string{}
+	}
+
+	return messages, total, nil
 }
+
+// loadMessageCounts batch-loads message counts for a slice of sessions
+func (s *AgentService) loadMessageCounts(sessions []*model.AgentSession) {
+	if len(sessions) == 0 {
+		return
+	}
+
+	ids := make([]string, len(sessions))
+	for i, sess := range sessions {
+		ids[i] = sess.ID
+	}
+
+	counts, err := s.msgRepo.GetCountsBySessionIDs(ids)
+	if err != nil {
+		return
+	}
+
+	for _, sess := range sessions {
+		if count, ok := counts[sess.ID]; ok {
+			sess.MessageCount = count
+		}
+	}
+}
+

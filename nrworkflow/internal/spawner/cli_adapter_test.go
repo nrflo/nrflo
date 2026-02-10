@@ -21,9 +21,6 @@ func TestCodexAdapter_Capabilities(t *testing.T) {
 	if adapter.SupportsSessionID() {
 		t.Error("SupportsSessionID() should be false")
 	}
-	if adapter.SupportsMaxTurns() {
-		t.Error("SupportsMaxTurns() should be false")
-	}
 	if adapter.SupportsSystemPromptFile() {
 		t.Error("SupportsSystemPromptFile() should be false")
 	}

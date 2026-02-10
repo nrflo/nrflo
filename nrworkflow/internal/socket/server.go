@@ -14,6 +14,7 @@ import (
 
 	"nrworkflow/internal/db"
 	"nrworkflow/internal/service"
+	"nrworkflow/internal/ws"
 )
 
 const (
@@ -37,6 +38,7 @@ type Server struct {
 	listener   net.Listener
 	handler    *Handler
 	socketPath string
+	wsHub      *ws.Hub
 
 	// Shutdown handling
 	shutdown chan struct{}
@@ -51,7 +53,18 @@ func NewServer(pool *db.Pool) *Server {
 		pool:       pool,
 		socketPath: GetSocketPath(),
 		shutdown:   make(chan struct{}),
-		handler:    NewHandler(pool),
+		handler:    NewHandler(pool, nil),
+	}
+}
+
+// NewServerWithHub creates a new socket server with WebSocket hub
+func NewServerWithHub(pool *db.Pool, hub *ws.Hub) *Server {
+	return &Server{
+		pool:       pool,
+		socketPath: GetSocketPath(),
+		shutdown:   make(chan struct{}),
+		handler:    NewHandler(pool, hub),
+		wsHub:      hub,
 	}
 }
 
@@ -218,33 +231,25 @@ func (s *Server) writeResponse(conn net.Conn, resp Response) error {
 
 // Handler dispatches requests to services
 type Handler struct {
-	ticketSvc   *service.TicketService
-	projectSvc  *service.ProjectService
-	workflowSvc *service.WorkflowService
 	findingsSvc *service.FindingsService
 	agentSvc    *service.AgentService
+	wsHub       *ws.Hub
 }
 
 // NewHandler creates a new request handler
-func NewHandler(pool *db.Pool) *Handler {
+func NewHandler(pool *db.Pool, hub *ws.Hub) *Handler {
 	return &Handler{
-		ticketSvc:   service.NewTicketService(pool),
-		projectSvc:  service.NewProjectService(pool),
-		workflowSvc: service.NewWorkflowService(pool),
 		findingsSvc: service.NewFindingsService(pool),
 		agentSvc:    service.NewAgentService(pool),
+		wsHub:       hub,
 	}
 }
 
-// SetProjectRoot sets the project root for workflow operations
-// This is typically called when processing a request with project context
-func (h *Handler) getProjectRoot(projectID string) string {
-	project, err := h.projectSvc.Get(projectID)
-	if err != nil {
-		return "."
+// broadcast sends a WebSocket event if hub is configured
+func (h *Handler) broadcast(eventType, projectID, ticketID, workflow string, data map[string]interface{}) {
+	if h.wsHub == nil {
+		return
 	}
-	if project.RootPath.Valid && project.RootPath.String != "" {
-		return project.RootPath.String
-	}
-	return "."
+	event := ws.NewEvent(eventType, projectID, ticketID, workflow, data)
+	h.wsHub.Broadcast(event)
 }

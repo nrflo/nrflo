@@ -1,5 +1,7 @@
 package types
 
+import "encoding/json"
+
 // TicketCreateRequest is the request for creating a ticket
 type TicketCreateRequest struct {
 	ID          string `json:"id,omitempty"`
@@ -16,7 +18,6 @@ type TicketUpdateRequest struct {
 	Status      *string `json:"status,omitempty"`
 	Priority    *int    `json:"priority,omitempty"`
 	Type        *string `json:"type,omitempty"`
-	AgentsState *string `json:"agents_state,omitempty"`
 }
 
 // TicketListRequest is the request for listing tickets
@@ -93,6 +94,31 @@ type FindingsGetRequest struct {
 	Model     string   `json:"model,omitempty"`
 }
 
+// FindingsAppendRequest is the request for appending to findings
+type FindingsAppendRequest struct {
+	Workflow  string `json:"workflow"`
+	AgentType string `json:"agent_type"`
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	Model     string `json:"model,omitempty"`
+}
+
+// FindingsAppendBulkRequest is the request for appending multiple values
+type FindingsAppendBulkRequest struct {
+	Workflow  string            `json:"workflow"`
+	AgentType string            `json:"agent_type"`
+	KeyValues map[string]string `json:"key_values"`
+	Model     string            `json:"model,omitempty"`
+}
+
+// FindingsDeleteRequest is the request for deleting finding keys
+type FindingsDeleteRequest struct {
+	Workflow  string   `json:"workflow"`
+	AgentType string   `json:"agent_type"`
+	Keys      []string `json:"keys"`
+	Model     string   `json:"model,omitempty"`
+}
+
 // AgentSpawnRequest is the request for spawning an agent
 type AgentSpawnRequest struct {
 	AgentType     string `json:"agent_type"`
@@ -123,6 +149,36 @@ type AgentCompleteRequest struct {
 	Workflow  string `json:"workflow"`
 	AgentType string `json:"agent_type"`
 	Model     string `json:"model,omitempty"`
+}
+
+// WorkflowDefCreateRequest is the request for creating a workflow definition
+type WorkflowDefCreateRequest struct {
+	ID          string          `json:"id"`
+	Description string          `json:"description,omitempty"`
+	Categories  []string        `json:"categories,omitempty"`
+	Phases      json.RawMessage `json:"phases"` // accepts both string and object entries
+}
+
+// WorkflowDefUpdateRequest is the request for updating a workflow definition
+type WorkflowDefUpdateRequest struct {
+	Description *string          `json:"description,omitempty"`
+	Categories  *[]string        `json:"categories,omitempty"`
+	Phases      *json.RawMessage `json:"phases,omitempty"`
+}
+
+// AgentDefCreateRequest is the request for creating an agent definition
+type AgentDefCreateRequest struct {
+	ID      string `json:"id"`
+	Model   string `json:"model,omitempty"`
+	Timeout int    `json:"timeout,omitempty"`
+	Prompt  string `json:"prompt"`
+}
+
+// AgentDefUpdateRequest is the request for updating an agent definition
+type AgentDefUpdateRequest struct {
+	Model   *string `json:"model,omitempty"`
+	Timeout *int    `json:"timeout,omitempty"`
+	Prompt  *string `json:"prompt,omitempty"`
 }
 
 // DependencyRequest is the request for adding/removing dependencies

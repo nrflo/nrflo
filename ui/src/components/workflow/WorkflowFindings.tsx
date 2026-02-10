@@ -65,33 +65,34 @@ interface WorkflowLevelFindingsProps {
 }
 
 function WorkflowLevelFindings({ findings }: WorkflowLevelFindingsProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const findingEntries = Object.entries(findings)
 
   return (
     <div className="border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden bg-blue-50/30 dark:bg-blue-950/20">
       {/* Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-blue-100/50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-      >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        )}
-        <Workflow className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <span className="font-medium text-sm text-blue-700 dark:text-blue-300">Workflow</span>
-        <Badge variant="secondary" className="text-xs ml-auto bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
-          {findingEntries.length} field{findingEntries.length !== 1 ? 's' : ''}
-        </Badge>
+      <div className="w-full flex items-center gap-2 px-3 py-2 bg-blue-100/50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          )}
+          <Workflow className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <span className="font-medium text-sm text-blue-700 dark:text-blue-300">Workflow</span>
+          <Badge variant="secondary" className="text-xs ml-auto bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+            {findingEntries.length} field{findingEntries.length !== 1 ? 's' : ''}
+          </Badge>
+        </button>
         <Button
           variant="ghost"
           size="sm"
           className="h-6 px-2"
-          onClick={(e) => {
-            e.stopPropagation()
+          onClick={() => {
             navigator.clipboard.writeText(JSON.stringify(findings, null, 2))
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
@@ -103,7 +104,7 @@ function WorkflowLevelFindings({ findings }: WorkflowLevelFindingsProps) {
             <Copy className="h-3 w-3" />
           )}
         </Button>
-      </button>
+      </div>
 
       {/* Content */}
       {expanded && (
@@ -141,33 +142,34 @@ function WorkflowLevelFindings({ findings }: WorkflowLevelFindingsProps) {
 }
 
 function AgentFindings({ agentType, findings }: AgentFindingsProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const findingEntries = Object.entries(findings)
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       {/* Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-muted/30 hover:bg-muted/50 transition-colors"
-      >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        )}
-        <Cpu className="h-4 w-4 text-purple-500" />
-        <span className="font-medium text-sm">{agentType}</span>
-        <Badge variant="secondary" className="text-xs ml-auto">
-          {findingEntries.length} field{findingEntries.length !== 1 ? 's' : ''}
-        </Badge>
+      <div className="w-full flex items-center gap-2 px-3 py-2 bg-muted/30 hover:bg-muted/50 transition-colors">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+          <Cpu className="h-4 w-4 text-purple-500" />
+          <span className="font-medium text-sm">{agentType}</span>
+          <Badge variant="secondary" className="text-xs ml-auto">
+            {findingEntries.length} field{findingEntries.length !== 1 ? 's' : ''}
+          </Badge>
+        </button>
         <Button
           variant="ghost"
           size="sm"
           className="h-6 px-2"
-          onClick={(e) => {
-            e.stopPropagation()
+          onClick={() => {
             navigator.clipboard.writeText(JSON.stringify(findings, null, 2))
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
@@ -179,7 +181,7 @@ function AgentFindings({ agentType, findings }: AgentFindingsProps) {
             <Copy className="h-3 w-3" />
           )}
         </Button>
-      </button>
+      </div>
 
       {/* Content */}
       {expanded && (
@@ -222,7 +224,13 @@ export function WorkflowFindings({ findings }: WorkflowFindingsProps) {
 
   // Separate workflow-level findings from agent findings
   const workflowFindings = findings['workflow'] as Record<string, unknown> | undefined
-  const agentEntries = Object.entries(findings).filter(([key]) => key !== 'workflow')
+  // Filter out 'workflow' key and empty findings objects
+  const agentEntries = Object.entries(findings).filter(([key, value]) => {
+    if (key === 'workflow') return false
+    // Filter out empty findings objects
+    if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) return false
+    return true
+  })
 
   const hasWorkflowFindings = workflowFindings && Object.keys(workflowFindings).length > 0
   const hasAgentFindings = agentEntries.length > 0

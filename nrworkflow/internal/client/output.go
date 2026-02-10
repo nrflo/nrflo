@@ -60,10 +60,6 @@ func FormatTicketShow(ticket *model.Ticket, jsonOutput bool) (string, error) {
 		sb.WriteString(fmt.Sprintf("\nDescription:\n%s\n", ticket.Description.String))
 	}
 
-	if ticket.AgentsState.Valid && ticket.AgentsState.String != "" {
-		sb.WriteString(fmt.Sprintf("\nAgents State:\n%s\n", ticket.AgentsState.String))
-	}
-
 	return sb.String(), nil
 }
 

@@ -59,6 +59,7 @@ export interface WorkflowState {
   current_phase?: string
   category?: string
   phases?: Record<string, PhaseState>
+  phase_order?: string[]
   active_agent?: ActiveAgent | null      // v3 compat
   active_agents?: Record<string, ActiveAgentV4>  // v4 format: key is "agent_type:cli:model"
   findings?: WorkflowFindings
@@ -103,15 +104,30 @@ export interface AgentSession {
   id: string
   project_id: string
   ticket_id: string
+  workflow_instance_id: string
   phase: string
   workflow: string
   agent_type: string
   model_id?: string
   status: AgentSessionStatus
-  last_messages: string[]
-  message_stats: Record<string, number>  // { "tool:Read": 15, "skill:commit -m \"msg\"": 1, "text": 8 }
+  result?: string
+  result_reason?: string
+  pid?: number
+  findings?: Record<string, unknown>
+  last_messages?: string[]
+  message_count: number
+  context_left?: number
+  ancestor_session_id?: string
+  started_at?: string
+  ended_at?: string
   created_at: string
   updated_at: string
+}
+
+export interface SessionMessagesResponse {
+  session_id: string
+  messages: string[]
+  total: number
 }
 
 export interface AgentSessionsResponse {
@@ -119,13 +135,89 @@ export interface AgentSessionsResponse {
   sessions: AgentSession[]
 }
 
-export interface RecentAgentsResponse {
-  sessions: AgentSession[]
-  projects: Record<string, string> // project_id -> project_name
+// Workflow definition types (DB-stored)
+
+export interface PhaseDef {
+  id: string
+  agent: string
+  order?: number
+  skip_for?: string[]
+  parallel?: {
+    enabled: boolean
+    models: string[]
+  }
 }
 
-export interface AgentsByProject {
+/** WorkflowDef as returned by the list endpoint (no id/project_id/timestamps) */
+export interface WorkflowDefSummary {
+  description: string
+  categories: string[]
+  phases: PhaseDef[]
+}
+
+/** Full WorkflowDef as returned by get/create endpoints */
+export interface WorkflowDef {
+  id: string
   project_id: string
-  project_name: string
-  agents: AgentSession[]
+  description: string
+  categories: string[]
+  phases: (string | Record<string, unknown>)[]
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowDefCreateRequest {
+  id: string
+  description?: string
+  categories?: string[]
+  phases: (string | Record<string, unknown>)[]
+}
+
+export interface WorkflowDefUpdateRequest {
+  description?: string
+  categories?: string[]
+  phases?: (string | Record<string, unknown>)[]
+}
+
+// Agent definition types (DB-stored)
+
+export interface AgentDef {
+  id: string
+  project_id: string
+  workflow_id: string
+  model: string
+  timeout: number
+  prompt: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AgentDefCreateRequest {
+  id: string
+  model?: string
+  timeout?: number
+  prompt: string
+}
+
+export interface AgentDefUpdateRequest {
+  model?: string
+  timeout?: number
+  prompt?: string
+}
+
+// Orchestration types
+
+export interface RunWorkflowRequest {
+  workflow: string
+  category?: string
+  instructions?: string
+}
+
+export interface RunWorkflowResponse {
+  instance_id: string
+  status: string
+}
+
+export interface StopWorkflowRequest {
+  workflow?: string
 }

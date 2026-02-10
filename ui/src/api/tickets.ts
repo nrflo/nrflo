@@ -14,7 +14,7 @@ import type {
   DependenciesResponse,
   DependencyRequest,
   AgentSessionsResponse,
-  RecentAgentsResponse,
+  SessionMessagesResponse,
 } from '@/types/workflow'
 
 export interface ListTicketsParams {
@@ -124,14 +124,11 @@ export async function getAgentSessions(
   )
 }
 
-// Recent agents (cross-project, no X-Project header needed)
-export async function getRecentAgents(
-  limit?: number
-): Promise<RecentAgentsResponse> {
-  const params = limit ? `?limit=${limit}` : ''
-  const response = await fetch(`/api/v1/agents/recent${params}`)
-  if (!response.ok) {
-    throw new Error('Failed to fetch recent agents')
-  }
-  return response.json()
+// Session messages (lazy-loaded)
+export async function getSessionMessages(
+  sessionId: string
+): Promise<SessionMessagesResponse> {
+  return apiGet<SessionMessagesResponse>(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/messages`
+  )
 }

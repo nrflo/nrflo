@@ -14,6 +14,42 @@ import (
 	"nrworkflow/internal/types"
 )
 
+const ticketCols = `id, project_id, title, description, status, priority, issue_type, created_at, updated_at, closed_at, created_by, close_reason`
+const ticketColsT = `t.id, t.project_id, t.title, t.description, t.status, t.priority, t.issue_type, t.created_at, t.updated_at, t.closed_at, t.created_by, t.close_reason`
+
+func scanTicketRow(scanner interface{ Scan(...interface{}) error }) (*model.Ticket, error) {
+	ticket := &model.Ticket{}
+	var createdAt, updatedAt string
+	var closedAt sql.NullString
+
+	err := scanner.Scan(
+		&ticket.ID,
+		&ticket.ProjectID,
+		&ticket.Title,
+		&ticket.Description,
+		&ticket.Status,
+		&ticket.Priority,
+		&ticket.IssueType,
+		&createdAt,
+		&updatedAt,
+		&closedAt,
+		&ticket.CreatedBy,
+		&ticket.CloseReason,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+	ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	if closedAt.Valid {
+		t, _ := time.Parse(time.RFC3339, closedAt.String)
+		ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
+	}
+
+	return ticket, nil
+}
+
 // TicketService handles ticket business logic
 type TicketService struct {
 	pool *db.Pool
@@ -91,8 +127,8 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 	}
 
 	_, err = s.pool.Exec(`
-		INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, created_at, updated_at, created_by, agents_state)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, created_at, updated_at, created_by)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(ticket.ID),
 		strings.ToLower(ticket.ProjectID),
 		ticket.Title,
@@ -103,7 +139,6 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 		now,
 		now,
 		ticket.CreatedBy,
-		ticket.AgentsState,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ticket: %w", err)
@@ -117,47 +152,19 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 
 // Get retrieves a ticket by ID
 func (s *TicketService) Get(projectID, ticketID string) (*model.Ticket, error) {
-	ticket := &model.Ticket{}
-	var createdAt, updatedAt string
-	var closedAt sql.NullString
-
-	err := s.pool.QueryRow(`
-		SELECT id, project_id, title, description, status, priority, issue_type, created_at, updated_at, closed_at, created_by, close_reason, agents_state
-		FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`, projectID, ticketID).Scan(
-		&ticket.ID,
-		&ticket.ProjectID,
-		&ticket.Title,
-		&ticket.Description,
-		&ticket.Status,
-		&ticket.Priority,
-		&ticket.IssueType,
-		&createdAt,
-		&updatedAt,
-		&closedAt,
-		&ticket.CreatedBy,
-		&ticket.CloseReason,
-		&ticket.AgentsState,
-	)
+	row := s.pool.QueryRow(`
+		SELECT `+ticketCols+`
+		FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`, projectID, ticketID)
+	ticket, err := scanTicketRow(row)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("ticket not found: %s", ticketID)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-	if closedAt.Valid {
-		t, _ := time.Parse(time.RFC3339, closedAt.String)
-		ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
-	}
-
-	return ticket, nil
+	return ticket, err
 }
 
 // List lists tickets with optional filters
 func (s *TicketService) List(projectID string, req *types.TicketListRequest) ([]*model.Ticket, error) {
-	query := "SELECT id, project_id, title, description, status, priority, issue_type, created_at, updated_at, closed_at, created_by, close_reason, agents_state FROM tickets WHERE LOWER(project_id) = LOWER(?)"
+	query := "SELECT " + ticketCols + " FROM tickets WHERE LOWER(project_id) = LOWER(?)"
 	args := []interface{}{projectID}
 
 	if req != nil {
@@ -181,36 +188,10 @@ func (s *TicketService) List(projectID string, req *types.TicketListRequest) ([]
 
 	var tickets []*model.Ticket
 	for rows.Next() {
-		ticket := &model.Ticket{}
-		var createdAt, updatedAt string
-		var closedAt sql.NullString
-
-		err := rows.Scan(
-			&ticket.ID,
-			&ticket.ProjectID,
-			&ticket.Title,
-			&ticket.Description,
-			&ticket.Status,
-			&ticket.Priority,
-			&ticket.IssueType,
-			&createdAt,
-			&updatedAt,
-			&closedAt,
-			&ticket.CreatedBy,
-			&ticket.CloseReason,
-			&ticket.AgentsState,
-		)
+		ticket, err := scanTicketRow(rows)
 		if err != nil {
 			return nil, err
 		}
-
-		ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		if closedAt.Valid {
-			t, _ := time.Parse(time.RFC3339, closedAt.String)
-			ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
-		}
-
 		tickets = append(tickets, ticket)
 	}
 
@@ -247,10 +228,6 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 	if req.Type != nil {
 		updates = append(updates, "issue_type = ?")
 		args = append(args, *req.Type)
-	}
-	if req.AgentsState != nil {
-		updates = append(updates, "agents_state = ?")
-		args = append(args, *req.AgentsState)
 	}
 
 	if len(updates) == 0 {
@@ -317,7 +294,7 @@ func (s *TicketService) Delete(projectID, ticketID string) error {
 // Search searches tickets
 func (s *TicketService) Search(projectID, query string) ([]*model.Ticket, error) {
 	rows, err := s.pool.Query(`
-		SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.issue_type, t.created_at, t.updated_at, t.closed_at, t.created_by, t.close_reason, t.agents_state
+		SELECT `+ticketColsT+`
 		FROM tickets t
 		INNER JOIN tickets_fts fts ON t.project_id = fts.project_id AND t.id = fts.id
 		WHERE fts.project_id = ? AND tickets_fts MATCH ?
@@ -329,36 +306,10 @@ func (s *TicketService) Search(projectID, query string) ([]*model.Ticket, error)
 
 	var tickets []*model.Ticket
 	for rows.Next() {
-		ticket := &model.Ticket{}
-		var createdAt, updatedAt string
-		var closedAt sql.NullString
-
-		err := rows.Scan(
-			&ticket.ID,
-			&ticket.ProjectID,
-			&ticket.Title,
-			&ticket.Description,
-			&ticket.Status,
-			&ticket.Priority,
-			&ticket.IssueType,
-			&createdAt,
-			&updatedAt,
-			&closedAt,
-			&ticket.CreatedBy,
-			&ticket.CloseReason,
-			&ticket.AgentsState,
-		)
+		ticket, err := scanTicketRow(rows)
 		if err != nil {
 			return nil, err
 		}
-
-		ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		if closedAt.Valid {
-			t, _ := time.Parse(time.RFC3339, closedAt.String)
-			ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
-		}
-
 		tickets = append(tickets, ticket)
 	}
 
@@ -395,7 +346,7 @@ func (pt PendingTicket) MarshalJSON() ([]byte, error) {
 // GetReady returns tickets that are not blocked
 func (s *TicketService) GetReady(projectID string) ([]*model.Ticket, error) {
 	rows, err := s.pool.Query(`
-		SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.issue_type, t.created_at, t.updated_at, t.closed_at, t.created_by, t.close_reason, t.agents_state
+		SELECT `+ticketColsT+`
 		FROM tickets t
 		WHERE LOWER(t.project_id) = LOWER(?) AND t.status != 'closed'
 		AND NOT EXISTS (
@@ -411,36 +362,10 @@ func (s *TicketService) GetReady(projectID string) ([]*model.Ticket, error) {
 
 	var tickets []*model.Ticket
 	for rows.Next() {
-		ticket := &model.Ticket{}
-		var createdAt, updatedAt string
-		var closedAt sql.NullString
-
-		err := rows.Scan(
-			&ticket.ID,
-			&ticket.ProjectID,
-			&ticket.Title,
-			&ticket.Description,
-			&ticket.Status,
-			&ticket.Priority,
-			&ticket.IssueType,
-			&createdAt,
-			&updatedAt,
-			&closedAt,
-			&ticket.CreatedBy,
-			&ticket.CloseReason,
-			&ticket.AgentsState,
-		)
+		ticket, err := scanTicketRow(rows)
 		if err != nil {
 			return nil, err
 		}
-
-		ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		if closedAt.Valid {
-			t, _ := time.Parse(time.RFC3339, closedAt.String)
-			ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
-		}
-
 		tickets = append(tickets, ticket)
 	}
 
@@ -451,8 +376,7 @@ func (s *TicketService) GetReady(projectID string) ([]*model.Ticket, error) {
 func (s *TicketService) GetStatus(projectID string, pendingLimit, completedLimit int) (map[string]interface{}, error) {
 	// Get pending tickets
 	rows, err := s.pool.Query(`
-		SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.issue_type,
-		       t.created_at, t.updated_at, t.closed_at, t.created_by, t.close_reason, t.agents_state
+		SELECT `+ticketColsT+`
 		FROM tickets t
 		WHERE LOWER(t.project_id) = LOWER(?) AND t.status != 'closed'
 		ORDER BY t.priority ASC, t.created_at ASC
@@ -463,37 +387,11 @@ func (s *TicketService) GetStatus(projectID string, pendingLimit, completedLimit
 
 	var pending []*PendingTicket
 	for rows.Next() {
-		ticket := &model.Ticket{}
-		var createdAt, updatedAt string
-		var closedAt sql.NullString
-
-		err := rows.Scan(
-			&ticket.ID,
-			&ticket.ProjectID,
-			&ticket.Title,
-			&ticket.Description,
-			&ticket.Status,
-			&ticket.Priority,
-			&ticket.IssueType,
-			&createdAt,
-			&updatedAt,
-			&closedAt,
-			&ticket.CreatedBy,
-			&ticket.CloseReason,
-			&ticket.AgentsState,
-		)
+		ticket, err := scanTicketRow(rows)
 		if err != nil {
 			rows.Close()
 			return nil, err
 		}
-
-		ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		if closedAt.Valid {
-			t, _ := time.Parse(time.RFC3339, closedAt.String)
-			ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
-		}
-
 		pending = append(pending, &PendingTicket{Ticket: ticket})
 	}
 	rows.Close()
@@ -510,8 +408,7 @@ func (s *TicketService) GetStatus(projectID string, pendingLimit, completedLimit
 
 	// Get completed tickets
 	rows, err = s.pool.Query(`
-		SELECT id, project_id, title, description, status, priority, issue_type,
-		       created_at, updated_at, closed_at, created_by, close_reason, agents_state
+		SELECT `+ticketCols+`
 		FROM tickets
 		WHERE LOWER(project_id) = LOWER(?) AND status = 'closed'
 		ORDER BY closed_at DESC
@@ -523,36 +420,10 @@ func (s *TicketService) GetStatus(projectID string, pendingLimit, completedLimit
 
 	var completed []*model.Ticket
 	for rows.Next() {
-		ticket := &model.Ticket{}
-		var createdAt, updatedAt string
-		var closedAt sql.NullString
-
-		err := rows.Scan(
-			&ticket.ID,
-			&ticket.ProjectID,
-			&ticket.Title,
-			&ticket.Description,
-			&ticket.Status,
-			&ticket.Priority,
-			&ticket.IssueType,
-			&createdAt,
-			&updatedAt,
-			&closedAt,
-			&ticket.CreatedBy,
-			&ticket.CloseReason,
-			&ticket.AgentsState,
-		)
+		ticket, err := scanTicketRow(rows)
 		if err != nil {
 			return nil, err
 		}
-
-		ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
-		if closedAt.Valid {
-			t, _ := time.Parse(time.RFC3339, closedAt.String)
-			ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
-		}
-
 		completed = append(completed, ticket)
 	}
 

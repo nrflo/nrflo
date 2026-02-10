@@ -20,9 +20,6 @@ type CLIAdapter interface {
 	// SupportsSessionID returns true if the CLI supports custom session IDs
 	SupportsSessionID() bool
 
-	// SupportsMaxTurns returns true if the CLI supports max turns limit
-	SupportsMaxTurns() bool
-
 	// SupportsSystemPromptFile returns true if the CLI supports --append-system-prompt-file
 	SupportsSystemPromptFile() bool
 }
@@ -30,7 +27,6 @@ type CLIAdapter interface {
 // SpawnOptions contains parameters for building a spawn command
 type SpawnOptions struct {
 	Model         string
-	MaxTurns      int
 	SessionID     string
 	PromptFile    string // Path to system prompt file
 	Prompt        string // Full prompt content (for CLIs without file support)
@@ -71,7 +67,6 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		"--dangerously-skip-permissions",
 		"--output-format", "stream-json",
 		"--model", opts.Model,
-		"--max-turns", fmt.Sprintf("%d", opts.MaxTurns),
 		"--session-id", opts.SessionID,
 		"--append-system-prompt-file", opts.PromptFile,
 		opts.InitialPrompt,
@@ -89,10 +84,6 @@ func (a *ClaudeAdapter) MapModel(model string) string {
 }
 
 func (a *ClaudeAdapter) SupportsSessionID() bool {
-	return true
-}
-
-func (a *ClaudeAdapter) SupportsMaxTurns() bool {
 	return true
 }
 
@@ -186,10 +177,6 @@ func (a *OpencodeAdapter) SupportsSessionID() bool {
 	return false // Opencode generates its own session IDs
 }
 
-func (a *OpencodeAdapter) SupportsMaxTurns() bool {
-	return false // Opencode runs until completion
-}
-
 func (a *OpencodeAdapter) SupportsSystemPromptFile() bool {
 	return false // Must pass prompt inline
 }
@@ -262,10 +249,6 @@ func (a *CodexAdapter) GetReasoningEffort(model string) string {
 
 func (a *CodexAdapter) SupportsSessionID() bool {
 	return false // Codex generates its own session IDs
-}
-
-func (a *CodexAdapter) SupportsMaxTurns() bool {
-	return false // Codex runs until completion
 }
 
 func (a *CodexAdapter) SupportsSystemPromptFile() bool {

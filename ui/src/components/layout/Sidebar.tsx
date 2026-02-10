@@ -69,7 +69,6 @@ export function Sidebar() {
           label="New Ticket"
           active={isActive('/tickets/new')}
         />
-
         <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           By Status
         </div>

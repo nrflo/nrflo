@@ -40,8 +40,3 @@ logs/
 .env
 .env.local
 .env.*.local
-
-# nrworkflow local state (project-specific)
-.claude/nrworkflow/*.data
-.claude/nrworkflow/*.data-shm
-.claude/nrworkflow/*.data-wal

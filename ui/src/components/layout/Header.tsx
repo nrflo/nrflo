@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { FolderOpen, Search, Settings } from 'lucide-react'
+import { Search, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
+import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { useProjectStore } from '@/stores/projectStore'
 
 export function Header() {
@@ -43,10 +43,10 @@ export function Header() {
             Tickets
           </Link>
           <Link
-            to="/agents"
+            to="/workflows"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Agents
+            Workflows
           </Link>
         </nav>
 
@@ -65,23 +65,14 @@ export function Header() {
           </div>
         </form>
 
-        <div className="flex items-center gap-2">
-          <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          <Select
-            value={currentProject}
-            onChange={(e) => {
-              setCurrentProject(e.target.value)
-              navigate('/')
-            }}
-            className="w-36"
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <ProjectSelect
+          value={currentProject}
+          onChange={(value) => {
+            setCurrentProject(value)
+            navigate('/')
+          }}
+          projects={projects}
+        />
 
         <Link
           to="/settings"

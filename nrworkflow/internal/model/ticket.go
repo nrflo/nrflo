@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+
 // Status represents the ticket status
 type Status string
 
@@ -39,7 +40,6 @@ type Ticket struct {
 	ClosedAt    sql.NullTime   `json:"-"`
 	CreatedBy   string         `json:"created_by"`
 	CloseReason sql.NullString `json:"-"`
-	AgentsState sql.NullString `json:"-"`
 }
 
 // MarshalJSON implements custom JSON marshaling for Ticket
@@ -60,11 +60,6 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 		closeReason = &t.CloseReason.String
 	}
 
-	var agentsState *string
-	if t.AgentsState.Valid {
-		agentsState = &t.AgentsState.String
-	}
-
 	return json.Marshal(&struct {
 		ID          string     `json:"id"`
 		ProjectID   string     `json:"project_id"`
@@ -78,7 +73,6 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 		ClosedAt    *time.Time `json:"closed_at"`
 		CreatedBy   string     `json:"created_by"`
 		CloseReason *string    `json:"close_reason"`
-		AgentsState *string    `json:"agents_state"`
 	}{
 		ID:          t.ID,
 		ProjectID:   t.ProjectID,
@@ -92,7 +86,6 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 		ClosedAt:    closedAt,
 		CreatedBy:   t.CreatedBy,
 		CloseReason: closeReason,
-		AgentsState: agentsState,
 	})
 }
 

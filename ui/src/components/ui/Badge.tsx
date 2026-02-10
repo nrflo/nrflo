@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 interface BadgeProps {
   children: ReactNode
-  variant?: 'default' | 'secondary' | 'destructive' | 'outline'
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success'
   className?: string
 }
 
@@ -17,6 +17,7 @@ export function Badge({ children, variant = 'default', className }: BadgeProps) 
           'bg-secondary text-secondary-foreground': variant === 'secondary',
           'bg-destructive text-destructive-foreground': variant === 'destructive',
           'border border-border text-foreground': variant === 'outline',
+          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': variant === 'success',
         },
         className
       )}

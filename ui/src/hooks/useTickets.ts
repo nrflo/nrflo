@@ -4,6 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query'
+import { runWorkflow, stopWorkflow } from '@/api/workflows'
 import {
   listTickets,
   getTicket,
@@ -16,7 +17,6 @@ import {
   getWorkflow,
   updateWorkflow,
   getAgentSessions,
-  getRecentAgents,
   type ListTicketsParams,
 } from '@/api/tickets'
 import type {
@@ -27,7 +27,7 @@ import type {
   TicketListResponse,
   StatusResponse,
 } from '@/types/ticket'
-import type { WorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RecentAgentsResponse } from '@/types/workflow'
+import type { WorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 
 // Query keys factory
@@ -43,7 +43,6 @@ export const ticketKeys = {
     [...ticketKeys.detail(id), 'agents', phase] as const,
   search: (query: string) => [...ticketKeys.all, 'search', query] as const,
   status: () => [...ticketKeys.all, 'status'] as const,
-  recentAgents: () => ['agents', 'recent'] as const,
 }
 
 export function useTicketList(
@@ -205,13 +204,25 @@ export function useAgentSessions(
   })
 }
 
-export function useRecentAgents(
-  limit?: number,
-  options?: { refetchInterval?: number | false }
-) {
-  return useQuery<RecentAgentsResponse>({
-    queryKey: ticketKeys.recentAgents(),
-    queryFn: () => getRecentAgents(limit),
-    refetchInterval: options?.refetchInterval,
+export function useRunWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, params }: { ticketId: string; params: RunWorkflowRequest }) =>
+      runWorkflow(ticketId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+    },
   })
 }
+
+export function useStopWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, workflow }: { ticketId: string; workflow?: string }) =>
+      stopWorkflow(ticketId, workflow ? { workflow } : undefined),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+    },
+  })
+}
+

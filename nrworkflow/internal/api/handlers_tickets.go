@@ -216,7 +216,6 @@ type CreateTicketRequest struct {
 	Priority    int    `json:"priority,omitempty"`
 	IssueType   string `json:"issue_type,omitempty"`
 	CreatedBy   string `json:"created_by"`
-	AgentsState string `json:"agents_state,omitempty"`
 }
 
 // handleCreateTicket creates a new ticket
@@ -274,10 +273,6 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 	if req.Description != "" {
 		ticket.Description = sql.NullString{String: req.Description, Valid: true}
 	}
-	if req.AgentsState != "" {
-		ticket.AgentsState = sql.NullString{String: req.AgentsState, Valid: true}
-	}
-
 	if err := ticketRepo.Create(ticket); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -356,7 +351,6 @@ type UpdateTicketRequest struct {
 	Status      *string `json:"status,omitempty"`
 	Priority    *int    `json:"priority,omitempty"`
 	IssueType   *string `json:"issue_type,omitempty"`
-	AgentsState *string `json:"agents_state,omitempty"`
 }
 
 // handleUpdateTicket updates a ticket
@@ -388,7 +382,6 @@ func (s *Server) handleUpdateTicket(w http.ResponseWriter, r *http.Request) {
 		Status:      req.Status,
 		Priority:    req.Priority,
 		IssueType:   req.IssueType,
-		AgentsState: req.AgentsState,
 	}
 
 	if err := ticketRepo.Update(projectID, id, fields); err != nil {

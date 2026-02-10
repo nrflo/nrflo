@@ -1,4 +1,4 @@
-.PHONY: build build-release clean test install
+.PHONY: build build-release clean test test-integration test-verbose install
 
 GO := /opt/homebrew/bin/go
 
@@ -18,6 +18,14 @@ clean:
 # Run tests
 test:
 	$(GO) test ./...
+
+# Run integration tests only
+test-integration:
+	$(GO) test -v ./internal/integration/...
+
+# Run all tests verbose
+test-verbose:
+	$(GO) test -v ./...
 
 # Install to /usr/local/bin
 install: build-release

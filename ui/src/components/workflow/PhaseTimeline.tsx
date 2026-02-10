@@ -1,49 +1,16 @@
-import { Check, Clock, AlertCircle, SkipForward, Circle, Cpu } from 'lucide-react'
+import { useMemo } from 'react'
+import { Clock, Cpu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
-import { PhaseCard } from './PhaseCard'
-import { ActiveAgentsPanel } from './ActiveAgentsPanel'
-import { AgentMessagesPanel } from './AgentMessagesPanel'
+import { PhaseGraph } from './PhaseGraph'
 import { WorkflowFindings } from './WorkflowFindings'
 import { useAgentSessions } from '@/hooks/useTickets'
-import type { WorkflowState, PhaseStatus, AgentHistoryEntry } from '@/types/workflow'
+import type { WorkflowState, AgentHistoryEntry } from '@/types/workflow'
 
 interface PhaseTimelineProps {
   workflow: WorkflowState
   agentHistory?: AgentHistoryEntry[]
   ticketId?: string
-  liveTracking?: boolean
-}
-
-function StatusIcon({ status }: { status: PhaseStatus }) {
-  switch (status) {
-    case 'completed':
-      return <Check className="h-4 w-4 text-green-500" />
-    case 'in_progress':
-      return <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />
-    case 'error':
-      return <AlertCircle className="h-4 w-4 text-red-500" />
-    case 'skipped':
-      return <SkipForward className="h-4 w-4 text-gray-400" />
-    case 'pending':
-    default:
-      return <Circle className="h-4 w-4 text-gray-300" />
-  }
-}
-
-function statusBorderColor(status: PhaseStatus): string {
-  switch (status) {
-    case 'completed':
-      return 'border-green-500'
-    case 'in_progress':
-      return 'border-yellow-500'
-    case 'error':
-      return 'border-red-500'
-    case 'skipped':
-      return 'border-gray-400'
-    default:
-      return 'border-gray-300'
-  }
 }
 
 function categoryColor(category: string): string {
@@ -59,49 +26,27 @@ function categoryColor(category: string): string {
   }
 }
 
-export function PhaseTimeline({ workflow, agentHistory, ticketId, liveTracking }: PhaseTimelineProps) {
+export function PhaseTimeline({ workflow, agentHistory, ticketId }: PhaseTimelineProps) {
   const phases = workflow.phases || {}
-  const activeAgents = workflow.active_agents || {}
-  // Only count running agents (those without a result)
-  const runningAgentCount = Object.values(activeAgents).filter(a => !a.result).length
-  // Total v4 agents count (for v3 fallback check)
+  const activeAgents = useMemo(() => workflow.active_agents || {}, [workflow.active_agents])
+
+  // Check if any agents are running (no result yet)
+  const hasRunningAgents = useMemo(() => {
+    return Object.values(activeAgents).some(a => !a.result)
+  }, [activeAgents])
+
+  // Legacy v3 format check
   const hasV4Agents = Object.keys(activeAgents).length > 0
   const hasV3ActiveAgent = workflow.active_agent !== null && workflow.active_agent !== undefined
 
-  // Fetch agent sessions when live tracking is enabled and we have a ticket
-  const { data: sessionsData, isLoading: sessionsLoading } = useAgentSessions(
+  // Fetch agent sessions (for history too) - real-time updates via WebSocket messages.updated events
+  const { data: sessionsData } = useAgentSessions(
     ticketId || '',
     undefined, // all phases
-    {
-      enabled: !!ticketId && liveTracking,
-      refetchInterval: liveTracking ? 5000 : false,
-    }
+    { enabled: !!ticketId }
   )
 
-  // Build a map of phase -> earliest start time from agent_history
-  const phaseStartTimes: Record<string, number> = {}
-  if (agentHistory) {
-    for (const entry of agentHistory) {
-      if (entry.started_at && entry.phase) {
-        const time = new Date(entry.started_at).getTime()
-        if (!phaseStartTimes[entry.phase] || time < phaseStartTimes[entry.phase]) {
-          phaseStartTimes[entry.phase] = time
-        }
-      }
-    }
-  }
-
-  // Sort phases by their earliest start time from agent_history (phases without history go to the end)
-  const sortedPhaseEntries = Object.entries(phases).sort(([nameA], [nameB]) => {
-    const timeA = phaseStartTimes[nameA]
-    const timeB = phaseStartTimes[nameB]
-    if (!timeA && !timeB) return 0
-    if (!timeA) return 1
-    if (!timeB) return -1
-    return timeA - timeB
-  })
-
-  if (sortedPhaseEntries.length === 0) {
+  if (Object.keys(phases).length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
         No workflow phases defined yet
@@ -111,7 +56,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, liveTracking }
 
   return (
     <div className="space-y-4">
-      {/* Workflow metadata */}
+      {/* Workflow metadata badges */}
       <div className="flex items-center gap-2 flex-wrap">
         {workflow.version && (
           <Badge variant="outline" className="text-xs">
@@ -129,20 +74,13 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, liveTracking }
             {workflow.current_phase.replace(/_/g, ' ')}
           </Badge>
         )}
+        {hasRunningAgents && (
+          <Badge className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 animate-pulse">
+            <Cpu className="h-3 w-3 mr-1" />
+            Agents running
+          </Badge>
+        )}
       </div>
-
-      {/* Active agents panel (v4 format - only show when agents are running) */}
-      {runningAgentCount > 0 && (
-        <ActiveAgentsPanel agents={activeAgents} />
-      )}
-
-      {/* Agent sessions panel with real-time messages (when live tracking) */}
-      {liveTracking && ticketId && (
-        <AgentMessagesPanel
-          sessions={sessionsData?.sessions || []}
-          isLoading={sessionsLoading}
-        />
-      )}
 
       {/* Legacy active agent info (v3 format) */}
       {hasV3ActiveAgent && !hasV4Agents && (
@@ -164,54 +102,17 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, liveTracking }
         </div>
       )}
 
-      {/* Timeline */}
-      <div className="relative">
-        {sortedPhaseEntries.map(([phaseName, phase], index) => {
-          const isLast = index === sortedPhaseEntries.length - 1
-          const isCurrent = workflow.current_phase === phaseName
+      {/* Phase Graph */}
+      <PhaseGraph
+        phases={phases}
+        currentPhase={workflow.current_phase}
+        activeAgents={activeAgents}
+        agentHistory={agentHistory}
+        phaseOrder={workflow.phase_order}
+        sessions={sessionsData?.sessions}
+      />
 
-          return (
-            <div key={phaseName} className="relative flex gap-4">
-              {/* Timeline line and dot */}
-              <div className="flex flex-col items-center">
-                <div
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full border-2 bg-background',
-                    statusBorderColor(phase.status),
-                    isCurrent && 'ring-2 ring-primary ring-offset-2'
-                  )}
-                >
-                  <StatusIcon status={phase.status} />
-                </div>
-                {!isLast && (
-                  <div
-                    className={cn(
-                      'w-0.5 flex-1 min-h-[24px]',
-                      phase.status === 'completed'
-                        ? 'bg-green-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
-                    )}
-                  />
-                )}
-              </div>
-
-              {/* Phase content */}
-              <div className={cn('flex-1 pb-6', isLast && 'pb-0')}>
-                <PhaseCard
-                  name={phaseName}
-                  phase={phase}
-                  isCurrent={isCurrent}
-                  findings={workflow.findings}
-                  activeAgents={workflow.active_agents}
-                  agentHistory={agentHistory}
-                />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* History */}
+      {/* History (legacy display for workflows with history array) */}
       {workflow.history && workflow.history.length > 0 && (
         <div className="mt-6 pt-4 border-t border-border">
           <h4 className="text-sm font-medium mb-3">Agent History</h4>
@@ -246,7 +147,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, liveTracking }
         </div>
       )}
 
-      {/* Workflow Findings (workflow-level + agent findings) */}
+      {/* Workflow Findings */}
       {workflow.findings && Object.keys(workflow.findings).length > 0 && (
         <WorkflowFindings findings={workflow.findings} />
       )}

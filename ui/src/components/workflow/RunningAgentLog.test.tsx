@@ -292,4 +292,76 @@ describe('RunningAgentLog', () => {
     expect(span.textContent).toContain('implementation')
     expect(span.textContent).toContain('test-agent')
   })
+
+  describe('layout changes', () => {
+    it('expanded state uses flex-1 min-w-[300px] instead of fixed width', () => {
+      const agent = makeAgent()
+      const { container } = renderLog({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        collapsed: false,
+      })
+      const panel = container.firstChild as HTMLElement
+      expect(panel.className).toContain('flex-1')
+      expect(panel.className).toContain('min-w-[300px]')
+      expect(panel.className).not.toContain('w-[380px]')
+    })
+
+    it('collapsed state uses w-10 (narrow strip)', () => {
+      const agent = makeAgent()
+      const { container } = renderLog({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        collapsed: true,
+      })
+      const panel = container.firstChild as HTMLElement
+      expect(panel.className).toContain('w-10')
+      expect(panel.className).not.toContain('flex-1')
+    })
+
+    it('collapsed state has pt-16 for spacing from toggle button', () => {
+      const agent = makeAgent()
+      renderLog({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        collapsed: true,
+      })
+      // The collapsed inner div with the count badge and "Agent Log" label
+      const agentLogLabel = screen.getByText('Agent Log')
+      const collapsedContainer = agentLogLabel.closest('div.flex.flex-col') as HTMLElement
+      expect(collapsedContainer.className).toContain('pt-16')
+    })
+
+    it('expanded messages area uses flex-1 overflow-y-auto (no max-h constraint)', () => {
+      const agent = makeAgent()
+      const session = makeSession()
+      const { container } = renderLog({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+        collapsed: false,
+      })
+      // The scrollable messages area has ref={scrollRef} and is the flex-1 overflow-y-auto div
+      const scrollArea = container.querySelector('.flex-1.overflow-y-auto')
+      expect(scrollArea).toBeInTheDocument()
+      // Ensure no max-h-48 constraint
+      expect(scrollArea?.className).not.toContain('max-h-48')
+    })
+
+    it('renders messages using LogMessage component with compact variant', () => {
+      const agent = makeAgent()
+      const session = makeSession({
+        last_messages: ['[Read] file.ts', '[Edit] other.ts'],
+      })
+      renderLog({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+        collapsed: false,
+      })
+      // LogMessage compact renders with truncate class and title attribute
+      const msg1 = screen.getByTitle('[Read] file.ts')
+      expect(msg1).toBeInTheDocument()
+      expect(msg1.className).toContain('truncate')
+      expect(msg1.className).toContain('font-mono')
+
+      const msg2 = screen.getByTitle('[Edit] other.ts')
+      expect(msg2).toBeInTheDocument()
+    })
+  })
 })

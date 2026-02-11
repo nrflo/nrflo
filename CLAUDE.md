@@ -2,7 +2,7 @@
 
 ## Overview
 
-nrworkflow is a multi-workflow state management system for ticket implementation with spawned AI agents. Supports multiple workflows per ticket, parallel agents (Claude, OpenAI, Gemini), and real-time WebSocket updates.
+nrworkflow is a multi-workflow state management system for ticket implementation with spawned AI agents. Supports multiple workflows per ticket, parallel agents (Claude, OpenAI), and real-time WebSocket updates.
 
 The server runs as `nrworkflow serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use a minimal CLI subset (`agent complete/fail/continue`, `findings add/append/get/delete`) to report results.
 
@@ -84,7 +84,7 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 13. **WebSocket real-time**: UI receives all real-time updates via WebSocket (`/api/v1/ws`), no REST polling
 14. **DB-stored workflow definitions**: Workflow definitions (phases, categories) stored in `workflows` table, managed via `/api/v1/workflows` API
 15. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB.
-16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator runs each phase sequentially in a goroutine, reusing `spawner.SpawnWithContext()`, with cancellation support via `/workflow/stop`.
+16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator runs each phase sequentially in a goroutine, reusing `spawner.Spawn()`, with cancellation support via `/workflow/stop`.
 
 ## Quick Start
 
@@ -100,14 +100,16 @@ Web UI: `./restart.sh` then open `http://localhost:5173`
 Spawned agents use these commands to report results (via Unix socket to the server):
 
 ```bash
-nrworkflow agent complete <ticket> <agent-type> -w <workflow>   # Mark as pass
-nrworkflow agent fail <ticket> <agent-type> -w <workflow>       # Mark as fail
-nrworkflow agent continue <ticket> <agent-type> -w <workflow>   # Request context continuation
+nrworkflow agent complete <ticket> <agent-type> -w <workflow> [--model <model>]
+nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--model <model>] [--reason <text>]
+nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
 
-nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow>
-nrworkflow findings append <ticket> <agent-type> <key> <value> -w <workflow>
-nrworkflow findings get <ticket> <agent-type> -w <workflow>
-nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow>
+nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
+nrworkflow findings add <ticket> <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
+nrworkflow findings append <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
+nrworkflow findings append <ticket> <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
+nrworkflow findings get <ticket> <agent-type> [key] -w <workflow> [--model <model>] [-k <key>...]
+nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow> [--model <model>]
 ```
 
 ## Workflows
@@ -121,9 +123,11 @@ nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow>
 | `docs` | investigation -> docs | Documentation only |
 | `refactor` | investigation -> implementation -> verification | Code refactoring |
 
+**Note:** These are example workflow configurations. Workflows are stored in the database and must be created via the `/api/v1/workflows` API or the Workflows page in the web UI.
+
 ### Categories
 
-Categories control phase skipping:
+Categories are defined per workflow in the `categories` field. Phase skipping is controlled by per-phase `skip_for` arrays. Common examples:
 - `full` - All phases run
 - `simple` - Skip test-design (existing tests cover it)
 - `docs` - Skip test-design and verification
@@ -147,31 +151,75 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | `findings` | JSON: workflow-level findings |
 | `retry_count` | Number of retries |
 | `parent_session` | Orchestrating session UUID |
+| `created_at`, `updated_at` | Timestamps |
 
-### `agent_sessions` table (enhanced)
+### `agent_sessions` table
 
 | Column | Description |
 |--------|-------------|
+| `id` | UUID primary key (session ID) |
+| `project_id`, `ticket_id` | Links to ticket |
 | `workflow_instance_id` | FK to workflow_instances |
+| `phase` | Phase name (e.g., "investigation") |
+| `agent_type` | Agent identifier (e.g., "setup-analyzer") |
+| `model_id` | Model used (e.g., "claude:sonnet") |
+| `status` | `running` / `completed` / `failed` / `timeout` / `continued` |
 | `result` | `pass` / `fail` / `continue` / `timeout` |
 | `result_reason` | Explanation for result |
 | `pid` | OS process ID |
 | `findings` | JSON: per-agent findings |
+| `context_left` | Remaining context window % |
+| `ancestor_session_id` | Links continuation chain |
+| `spawn_command` | Full CLI command for replay |
+| `prompt_context` | System prompt file contents |
 | `started_at`, `ended_at` | Execution timestamps |
+| `created_at`, `updated_at` | Record timestamps |
 
 ### API Response
 
-`GET /api/v1/tickets/:id/workflow` constructs a v4-compatible response from the normalized tables:
+`GET /api/v1/tickets/:id/workflow` returns a wrapper with all workflow states:
+
+```json
+{
+  "ticket_id": "TICKET-123",
+  "has_workflow": true,
+  "state": { /* selected workflow state (v4 format, see below) */ },
+  "workflows": ["feature"],
+  "all_workflows": {
+    "feature": { /* v4 state */ }
+  }
+}
+```
+
+Each v4 workflow state contains:
 
 ```json
 {
   "version": 4,
+  "initialized_at": "2025-01-01T00:00:00Z",
+  "workflow": "feature",
   "current_phase": "implementation",
   "category": "full",
+  "retry_count": 0,
   "phase_order": ["investigation", "test-design", "implementation", "verification", "docs"],
   "phases": {"investigation": {"status": "completed", "result": "pass"}},
-  "active_agents": {"implementor:claude:opus": {"pid": 12345, "session_id": "..."}},
-  "findings": {"setup-analyzer": {"claude:sonnet": {"files_to_modify": ["..."]}}}
+  "active_agents": {
+    "implementor:claude:opus": {
+      "agent_id": "uuid", "agent_type": "implementor", "session_id": "uuid",
+      "model_id": "claude:opus", "cli": "claude", "model": "opus",
+      "pid": 12345, "started_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  "agent_retries": {},
+  "agent_history": [
+    {
+      "agent_id": "uuid", "agent_type": "setup-analyzer", "session_id": "uuid",
+      "model_id": "claude:sonnet", "status": "completed", "result": "pass",
+      "started_at": "...", "ended_at": "..."
+    }
+  ],
+  "findings": {"setup-analyzer:claude:sonnet": {"files_to_modify": ["..."]}},
+  "parent_session": "uuid"
 }
 ```
 

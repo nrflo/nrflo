@@ -388,6 +388,13 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted)
 
+	// Close the ticket (best-effort)
+	ticketService := service.NewTicketService(pool)
+	reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
+	if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
+		log.Printf("[orchestrator] Failed to close ticket %s: %v", req.TicketID, err)
+	}
+
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"instance_id": wfiID,
 	}))

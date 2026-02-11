@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/Select'
 import { Spinner } from '@/components/ui/Spinner'
 
 const ticketSchema = z.object({
-  id: z.string().min(1, 'ID is required'),
+  id: z.string().optional().default(''),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   priority: z.coerce.number().min(1).max(4),

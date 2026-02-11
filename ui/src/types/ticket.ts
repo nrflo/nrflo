@@ -34,7 +34,7 @@ export interface TicketWithDeps extends Ticket {
 }
 
 export interface CreateTicketRequest {
-  id: string
+  id?: string
   title: string
   description?: string
   priority?: number

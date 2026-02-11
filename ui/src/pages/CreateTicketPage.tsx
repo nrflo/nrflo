@@ -11,15 +11,19 @@ export function CreateTicketPage() {
   const createMutation = useCreateTicket()
 
   const handleSubmit = async (data: TicketFormData) => {
-    await createMutation.mutateAsync({
-      id: data.id,
-      title: data.title,
-      description: data.description,
-      priority: data.priority,
-      issue_type: data.issue_type,
-      created_by: data.created_by,
-    })
-    navigate(`/tickets/${encodeURIComponent(data.id)}`)
+    try {
+      const ticket = await createMutation.mutateAsync({
+        id: data.id || undefined,
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
+        issue_type: data.issue_type,
+        created_by: data.created_by,
+      })
+      navigate(`/tickets/${encodeURIComponent(ticket.id)}`)
+    } catch {
+      // Error is displayed via createMutation.isError state
+    }
   }
 
   return (

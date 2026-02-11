@@ -158,9 +158,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Store user instructions as workflow-level findings
 	if req.Instructions != "" {
 		findings := wi.GetFindings()
-		findings["user_instructions"] = map[string]interface{}{
-			"instructions": req.Instructions,
-		}
+		findings["user_instructions"] = req.Instructions
 		findingsJSON, _ := json.Marshal(findings)
 		wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
 	}

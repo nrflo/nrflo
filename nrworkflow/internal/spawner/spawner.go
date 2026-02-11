@@ -891,6 +891,12 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string
 		if str, ok := instructions.(string); ok && str != "" {
 			return str
 		}
+		// Fallback: handle old nested map format {"instructions": "..."}
+		if m, ok := instructions.(map[string]interface{}); ok {
+			if str, ok := m["instructions"].(string); ok && str != "" {
+				return str
+			}
+		}
 	}
 	return "_No user instructions provided_"
 }

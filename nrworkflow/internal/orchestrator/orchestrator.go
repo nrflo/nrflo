@@ -347,7 +347,7 @@ func (o *Orchestrator) runLoop(
 			WSHub:            o.wsHub,
 		})
 
-		err := sp.SpawnWithContext(ctx, spawner.SpawnRequest{
+		err := sp.Spawn(ctx, spawner.SpawnRequest{
 			AgentType:     phase.Agent,
 			TicketID:      req.TicketID,
 			ProjectID:     req.ProjectID,

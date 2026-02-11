@@ -31,12 +31,21 @@ nrworkflow/
 │   │   ├── client.go            # Connection handling, subscriptions
 │   │   ├── handler.go           # HTTP upgrade handler
 │   │   └── testing.go           # Test helpers (NewTestClient)
+│   ├── config/                  # Configuration management
+│   │   └── config.go
 │   ├── client/                  # Unix socket client
+│   │   ├── client.go            # Socket client for agents
+│   │   └── output.go            # Output formatting
 │   ├── socket/                  # Unix socket server
 │   │   ├── server.go            # Socket listener
-│   │   └── handler.go           # Request routing
+│   │   ├── handler.go           # Request routing
+│   │   └── protocol.go          # JSON-RPC protocol types
 │   ├── service/                 # Business logic layer
+│   │   ├── project.go           # Project operations
+│   │   ├── ticket.go            # Ticket operations
 │   │   ├── workflow.go          # Workflow operations
+│   │   ├── workflow_defs.go     # Workflow definitions CRUD
+│   │   ├── workflow_config.go   # Workflow config loading
 │   │   ├── agent.go             # Agent operations
 │   │   ├── agent_definition.go  # Agent definition CRUD
 │   │   └── findings.go          # Findings operations
@@ -45,6 +54,7 @@ nrworkflow/
 │   │   ├── pool.go              # Connection pool (10 max, 5 idle)
 │   │   ├── migrate.go           # Migration runner
 │   │   └── migrations/          # SQL files (embedded via //go:embed)
+│   │       └── embed.go         # Go embed directive
 │   ├── model/                   # Data models
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -72,6 +82,7 @@ nrworkflow/
 ├── scripts/
 │   ├── test.sh                  # Test runner (flags: -i -v -c -r)
 │   └── context-check.sh         # Context usage hook
+├── install.sh                  # Installation script
 ├── go.mod
 ├── go.sum
 └── Makefile
@@ -79,11 +90,11 @@ nrworkflow/
 
 ## Source File Size Limit
 
-Keep source files under 500 lines. If a newly created or modified file exceeds 500 lines, refactor it by splitting into logical sub-files before committing. This applies to all Go source files (`.go`), test files, and migration scripts.
+Keep source files under 300 lines. If a newly created or modified file exceeds 300 lines, refactor it by splitting into logical sub-files before committing. This applies to all Go source files (`.go`), test files, and migration scripts.
 
 ## Dependencies
 
-- Go 1.21+
+- Go 1.25+
 - github.com/spf13/cobra - CLI framework
 - modernc.org/sqlite - Pure Go SQLite (no CGO)
 - github.com/google/uuid - UUID generation
@@ -109,7 +120,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 - **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **Auto-migration** — database schema is automatically migrated on startup
 
-The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*`, `agent.complete/fail/continue`, and `ws.broadcast` methods are supported.
+The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.complete/fail/continue`, and `ws.broadcast` methods are supported.
 
 ## System Diagrams
 
@@ -184,9 +195,9 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │                    PARALLEL AGENT SPAWNING                           │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  Skill/Orchestrator (single spawn command)                          │
+│  Orchestrator calls spawner.Spawn() directly (in-process)           │
 │       │                                                              │
-│       └── nrworkflow agent spawn setup-analyzer TICKET -p proj --session=...
+│       └── spawner.Spawn(ticket, phase, workflow)
 │           │                                                          │
 │           ▼                                                          │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -296,6 +307,10 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │              (~/projects/2026/nrworkflow/nrworkflow.data)           │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
+│  CONFIG                                                              │
+│    key           TEXT PRIMARY KEY                                    │
+│    value         TEXT NOT NULL                                       │
+│                                                                      │
 │  PROJECTS                                                            │
 │    id            TEXT PRIMARY KEY                                    │
 │    name          TEXT NOT NULL                                       │
@@ -317,6 +332,7 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    closed_at     TEXT                                                │
 │    created_by    TEXT NOT NULL                                       │
 │    close_reason  TEXT                                                │
+│    agents_state  TEXT                                                │
 │    PRIMARY KEY (project_id, id)                                      │
 │                                                                      │
 │  DEPENDENCIES                                                        │
@@ -382,7 +398,7 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │  WORKFLOWS                                                           │
 │    id            TEXT NOT NULL                                       │
 │    project_id    TEXT NOT NULL  (FK → projects.id)                  │
-│    description   TEXT NOT NULL DEFAULT ''                            │
+│    description   TEXT                                                │
 │    categories    TEXT           (JSON array string)                  │
 │    phases        TEXT NOT NULL  (JSON array string)                  │
 │    created_at    TEXT NOT NULL                                       │
@@ -446,25 +462,15 @@ The `spawn` command reads the phase's `parallel` configuration:
 - **parallel.enabled: true** - Spawns ALL models listed in `parallel.models`
 - **parallel.enabled: false** (or not set) - Spawns single agent with default model
 
-```bash
-# Spawn in background (detach and return immediately)
-nrworkflow agent spawn <agent_type> <ticket_id> --session=<parent_uuid> -w <workflow> --background
-
-# Preview assembled prompt (debugging)
-nrworkflow agent preview <agent_type> <ticket_id> [-w <name>]
-```
-
 Both `--session` and `-w` are **required** for `agent spawn`:
 - `--session` must be the parent session's UUID (from `SESSION_MARKER`)
 - `-w/--workflow` specifies which workflow to use on the ticket
-- `--background` (optional) detaches the spawn process and returns immediately
 
 ### Spawn Flow
 
 ```
 1. VALIDATION
    - Validate workflow is initialized on ticket
-     (Error if not: "workflow 'X' not initialized. Run: nrworkflow workflow init ...")
    - Check phase sequence (can't spawn out of order)
    - Check skip_for category rules
 
@@ -474,22 +480,22 @@ Both `--session` and `-w` are **required** for `agent spawn`:
    - Otherwise: use single default model
 
 3. START PHASE & SPAWN ALL
-   - nrworkflow phase start <ticket> <phase> -w <workflow>
+   - Call WorkflowService.StartPhase() directly (in-process)
    - For each model:
      - Assemble prompt with ${MODEL_ID}, ${MODEL} placeholders
      - Spawn CLI process
-     - nrworkflow agent start <ticket> <id> <type> -w <workflow> --pid=<pid> --model=<cli:model>
+     - Call AgentService to register session with pid and model
 
 4. MONITOR ALL (single poll loop)
    - Print status every 30 seconds
    - Check each process for completion or timeout
    - Handle completion/timeout for each agent individually
-   - Broadcast messages.updated every ~2s via persistent socket connection
+   - Broadcast messages.updated every ~2s via WebSocket hub
 
 5. FINALIZE PHASE
    - Phase passes only if ALL agents pass
    - If any fail, phase fails
-   - nrworkflow phase complete <ticket> <phase> <result> -w <workflow>
+   - Call WorkflowService.CompletePhase() directly (in-process)
 
 BROADCAST: The spawner broadcasts WebSocket events (agent.started,
 messages.updated, agent.completed, phase.started, phase.completed)
@@ -500,9 +506,7 @@ directly via the in-process WebSocket hub.
 
 Agent definitions store the model, timeout, and prompt template for each agent type per workflow. They are stored in the `agent_definitions` DB table and managed via:
 
-- **CLI**: `nrworkflow agent def create/get/list/update/delete`
 - **API**: `GET/POST/PATCH/DELETE /api/v1/workflows/{wid}/agents[/{id}]`
-- **Socket**: `agent_def.create/get/list/update/delete`
 - **UI**: Workflows page at `/workflows`
 
 The spawner loads templates exclusively from the DB. Agent definitions must exist in the database before spawning.
@@ -536,11 +540,16 @@ The spawner automatically prepends a base header to all agent templates with ses
 Templates use placeholders injected by the spawner:
 - `${AGENT}` - Agent type (e.g., "setup-analyzer", "implementor")
 - `${TICKET_ID}` - Current ticket ID
+- `${TICKET_TITLE}` - Ticket title from the tickets table
+- `${TICKET_DESCRIPTION}` - Ticket description from the tickets table
+- `${USER_INSTRUCTIONS}` - User instructions from workflow_instances.findings["user_instructions"]
 - `${PARENT_SESSION}` - Parent session UUID
 - `${CHILD_SESSION}` - This agent's session UUID
 - `${WORKFLOW}` - Current workflow name (e.g., "feature", "bugfix")
 - `${MODEL_ID}` - Full model identifier in cli:model format (e.g., "claude:sonnet")
 - `${MODEL}` - Just the model name (e.g., "sonnet")
+
+Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them, avoiding unnecessary queries.
 
 ### Findings Auto-Population
 
@@ -604,12 +613,13 @@ DELETE /api/v1/projects/:id
 GET /api/v1/tickets
 GET /api/v1/tickets/:id
 POST /api/v1/tickets
-PUT /api/v1/tickets/:id
+PATCH /api/v1/tickets/:id
 DELETE /api/v1/tickets/:id
+POST /api/v1/tickets/:id/close
 
 # Workflow state (ticket-scoped runtime state)
 GET /api/v1/tickets/:id/workflow
-PUT /api/v1/tickets/:id/workflow
+PATCH /api/v1/tickets/:id/workflow
 
 # Workflow orchestration (run/stop from UI)
 POST /api/v1/tickets/:id/workflow/run   # Start orchestrated run
@@ -641,10 +651,13 @@ GET /api/v1/agents/recent?limit=10
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
 
+# Dependencies
+GET /api/v1/tickets/:id/dependencies  # Get ticket dependencies
+POST /api/v1/dependencies             # Add dependency
+DELETE /api/v1/dependencies           # Remove dependency
+
 # Other
 GET /api/v1/search?q=              # Full-text search
-POST /api/v1/dependencies          # Add dependency
-DELETE /api/v1/dependencies        # Remove dependency
 GET /api/v1/status                 # Dashboard summary
 GET /api/v1/ws                     # WebSocket for real-time updates
 ```
@@ -655,16 +668,15 @@ Server runs on port 6587 with CORS enabled for `http://localhost:5173`.
 
 ### Adding a New Agent Type
 
-1. Create `<project>/.claude/nrworkflow/<workflow>/<type>.md` template (base header is auto-prepended by spawner)
-2. Add to workflow phases via `nrworkflow workflow def update` (or create a new workflow def)
-3. Add agent config (model, timeout) to `config.json`
-4. **Documentation updates:**
+1. Create agent definition via API: `POST /api/v1/workflows/:wid/agents` with model, timeout, and prompt template
+2. Add to workflow phases via API: `PATCH /api/v1/workflows/:id` (or create a new workflow)
+3. **Documentation updates:**
    - Root `CLAUDE.md` - add agent to diagrams in System Diagrams section, update file structure, add to Agent Templates table
 
 ### Adding a New Workflow
 
-1. Create workflow definition via CLI: `nrworkflow workflow def create <name> --phases='[...]' [--description=...] [--categories=...]`
-2. Ensure all referenced agents exist in `config.json` and have templates
+1. Create workflow definition via API: `POST /api/v1/workflows` with phases, description, and categories
+2. Ensure all referenced agents have definitions created via `POST /api/v1/workflows/:wid/agents`
 3. **Documentation updates:**
    - Root `CLAUDE.md` - add workflow to diagrams in System Diagrams section, add to Workflows table
 
@@ -682,7 +694,7 @@ Server runs on port 6587 with CORS enabled for `http://localhost:5173`.
 3. The down file reverses it (e.g. `ALTER TABLE ... DROP COLUMN`)
 4. Migrations are embedded automatically via `//go:embed *.sql` in `migrations/embed.go`
 5. Rebuild: `cd nrworkflow && make build`
-6. Verify: `nrworkflow migrate status` should show the new version after `migrate up`
+6. Migrations run automatically on server startup — no manual `migrate` command needed
 7. **Documentation updates:**
    - This file (`nrworkflow/CLAUDE.md`) - update Database Schema section if user-visible
 
@@ -752,6 +764,7 @@ func TestSomething(t *testing.T) {
 | `MustExecute(t, method, params, &result)` | Call socket method (agent/findings only) |
 | `ExpectError(t, method, params, code)` | Assert socket error response |
 | `NewWSClient(t, id, ticketID)` | Create subscribed WS test client |
+| `GetWorkflowInstanceID(t, ticketID, workflow)` | Get workflow instance UUID |
 | `InsertAgentSession(t, ...)` | Insert agent session row directly |
 
 Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.WorkflowSvc`, `env.AgentSvc`, `env.FindingsSvc`.

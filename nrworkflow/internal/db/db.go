@@ -81,8 +81,11 @@ func OpenOrCreate(customPath string) (*DB, error) {
 	return OpenPath(dbPath)
 }
 
-// setPragmas sets WAL mode and foreign keys on a database connection.
+// setPragmas sets busy timeout, WAL mode, and foreign keys on a database connection.
 func setPragmas(db *sql.DB) error {
+	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
+		return fmt.Errorf("failed to set busy timeout: %w", err)
+	}
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		return fmt.Errorf("failed to enable WAL mode: %w", err)
 	}

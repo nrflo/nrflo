@@ -11,14 +11,22 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/api/client.ts` | API client with X-Project header support |
 | `src/api/projects.ts` | Project API functions |
 | `src/api/tickets.ts` | Ticket and workflow API functions |
+| `src/api/workflows.ts` | Workflow definition and orchestration API functions |
+| `src/api/agentDefs.ts` | Agent definition API client |
 | `src/types/workflow.ts` | Workflow types (WorkflowState, AgentHistoryEntry, etc.) |
+| `src/types/ticket.ts` | Ticket types (Ticket, Dependency, Status, etc.) |
 | `src/types/` | TypeScript types matching Go models |
 | `src/hooks/useTickets.ts` | TanStack Query hooks for data fetching |
+| `src/hooks/useProjects.ts` | TanStack Query hook for projects |
 | `src/hooks/useWebSocket.ts` | WebSocket hook for real-time updates |
+| `src/hooks/useElapsedTime.ts` | Elapsed time hooks (useElapsedTime, useTickingClock) |
 | `src/stores/projectStore.ts` | Zustand store for project selection (loads from API) |
+| `src/lib/utils.ts` | Utility functions (cn, formatDate, statusColor, etc.) |
 | `src/components/ui/MarkdownEditor.tsx` | CodeMirror 6 markdown editor (used in AgentDefForm/Card) |
 | `src/components/ui/codemirror-theme.ts` | CodeMirror theme using CSS variables (auto dark/light) |
-| `src/components/ui/` | Reusable UI components |
+| `src/components/ui/Tooltip.tsx` | Reusable tooltip with hover delay |
+| `src/components/ui/Dialog.tsx` | Modal dialog with backdrop, ESC key, click-outside-to-close |
+| `src/components/ui/` | Reusable UI components (Badge, Button, Card, Input, ProjectSelect, Select, Spinner, Textarea, Toggle) |
 | `src/components/layout/` | Layout components (Header, Sidebar) |
 | `src/components/tickets/` | Ticket-specific components |
 | `src/components/workflow/PhaseTimeline.tsx` | Main workflow timeline wrapper (uses PhaseGraph) |
@@ -26,6 +34,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/PhaseCard.tsx` | Phase card with agent history and findings |
 | `src/components/workflow/FindingsViewer.tsx` | Simple KEY: VALUE findings display |
 | `src/components/workflow/WorkflowFindings.tsx` | Workflow-level findings grouped by agent |
+| `src/components/workflow/ActiveAgentsPanel.tsx` | Active agents display panel |
 | `src/components/workflow/AgentDefForm.tsx` | Agent definition create/edit form |
 | `src/components/workflow/AgentDefCard.tsx` | Agent definition card with edit/delete |
 | `src/components/workflow/AgentDefsSection.tsx` | Agent definitions list within a workflow |
@@ -34,19 +43,18 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated workflow runs |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
-| `src/components/ui/Tooltip.tsx` | Reusable tooltip with hover delay |
-| `src/components/ui/Dialog.tsx` | Modal dialog with backdrop, ESC key, click-outside-to-close |
 | `src/components/workflow/` | Workflow visualization components |
+| `src/pages/Dashboard.tsx` | Dashboard overview page |
+| `src/pages/TicketListPage.tsx` | Ticket list with filtering |
+| `src/pages/CreateTicketPage.tsx` | Create new ticket form page |
 | `src/pages/TicketDetailPage.tsx` | Ticket detail with tabbed interface |
-| `src/pages/AgentsPage.tsx` | Recent agents across all projects with live polling |
 | `src/pages/WorkflowsPage.tsx` | Workflow definitions CRUD and agent definition management |
-| `src/api/agentDefs.ts` | Agent definition API client |
 | `src/pages/SettingsPage.tsx` | Project management (create/update/delete) |
 | `src/pages/` | Route page components |
 
 ## Source File Size Limit
 
-Keep source files under 500 lines. If a newly created or modified file exceeds 500 lines, refactor it by splitting into logical sub-files before committing. This applies to all TypeScript/TSX source files.
+Keep source files under 300 lines. If a newly created or modified file exceeds 300 lines, refactor it by splitting into logical sub-files before committing. This applies to all TypeScript/TSX source files.
 
 ## Development Commands
 
@@ -115,7 +123,7 @@ Event types: `agent.started`, `agent.completed`, `phase.started`, `phase.complet
 
 ```
 Layout
-├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows/Agents, settings link)
+├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows, settings link)
 ├── Sidebar (navigation, status counts)
 └── Outlet (page content via React Router)
 ```
@@ -125,7 +133,6 @@ Layout
 - **Dashboard** (`/`): Overview with ticket counts and status
 - **Tickets** (`/tickets`): Ticket list with filtering
 - **Ticket Detail** (`/tickets/:id`): Workflow timeline, description, details tabs
-- **Agents** (`/agents`): Recent agents across all projects, grouped by project, real-time via WebSocket
 - **Workflows** (`/workflows`): Workflow definitions and agent definitions CRUD
 - **Settings** (`/settings`): Project management
 
@@ -148,6 +155,7 @@ PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
 │   ├── AgentFlowNode.tsx - Custom React Flow node for agents (clickable, opens modal)
 │   ├── AgentMessagesModal.tsx - Modal dialog showing agent messages with live updates
 │   ├── layout.ts - Auto-layout helper for vertical positioning
+│   ├── PhaseFlowNode.tsx - Custom React Flow node for phases
 │   ├── PhaseNode.tsx - Standalone phase node (legacy, still exported)
 │   ├── AgentCard.tsx - Running agent card with elapsed time
 │   ├── HistoryAgentCard.tsx - Completed agent card for phase history
@@ -270,7 +278,6 @@ Logs are written to `logs/backend.log` and `logs/ui.log` when using `restart.sh`
 - Dashboard with ticket counts and status overview
 - Ticket list with filtering and search
 - Ticket detail view with workflow timeline
-- Agents page showing recent agents across all projects with live polling
 - Live tracking with real-time agent stdout messages
 - Findings display with workflow-level and agent findings separated
 - Create/edit/close tickets
@@ -339,8 +346,8 @@ All events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`
 
 ### Event Sources
 
-- Events from **socket handler** (workflow.init, phase.start/complete, findings.*, agent.complete/fail/kill) are broadcast directly via the in-process WebSocket hub.
-- Events from **spawner** (agent.started, messages.updated, agent.completed, phase.started, phase.completed) are broadcast via persistent Unix socket connection using the `ws.broadcast` method. The connection is lazily initialized and reused across all broadcasts. On failure, it auto-reconnects.
+- Events from **agent CLI commands** (workflow.init, phase.start/complete, findings.*, agent.complete/fail/kill) are received via the socket handler and broadcast via the in-process WebSocket hub.
+- Events from **spawner/orchestrator** (agent.started, messages.updated, agent.completed, phase.started, phase.completed) are broadcast directly via the in-process WebSocket hub.
 
 ## REST API Endpoints
 
@@ -356,12 +363,16 @@ DELETE /api/v1/projects/:id
 GET /api/v1/tickets
 GET /api/v1/tickets/:id
 POST /api/v1/tickets
-PUT /api/v1/tickets/:id
+PATCH /api/v1/tickets/:id
 DELETE /api/v1/tickets/:id
+POST /api/v1/tickets/:id/close
+
+# Dependencies
+GET /api/v1/tickets/:id/dependencies
 
 # Workflow state
 GET /api/v1/tickets/:id/workflow
-PUT /api/v1/tickets/:id/workflow
+PATCH /api/v1/tickets/:id/workflow
 
 # Workflow orchestration
 POST /api/v1/tickets/:id/workflow/run   # Start orchestrated run
@@ -407,9 +418,7 @@ Project is specified via `X-Project` header or `?project=` query parameter.
 
 When agents are running, the UI shows real-time messages via WebSocket:
 
-- Agent sessions display: status (running/completed/failed/timeout/continued), model ID, last 50 messages (newest first)
-- Messages are truncated to 200 chars each in the session card
-- Message stats (tool/skill/text counts) shown via hover tooltip
+- Agent sessions display: status (running/completed/failed/timeout/continued), model ID, messages loaded from API (newest first)
 - Clicking any agent node in PhaseGraph opens a modal with full message history
 - The spawner broadcasts `messages.updated` every ~2s during agent execution
 

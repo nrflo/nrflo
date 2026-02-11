@@ -169,16 +169,11 @@ func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, dat
 	s.config.WSHub.Broadcast(event)
 }
 
-// Spawn spawns agents for a phase according to workflow config.
+// Spawn spawns agents for a phase with context cancellation support.
 // If parallel is enabled, spawns all configured models concurrently.
-func (s *Spawner) Spawn(req SpawnRequest) error {
-	return s.SpawnWithContext(context.Background(), req)
-}
-
-// SpawnWithContext spawns agents for a phase with context cancellation support.
 // The context is checked during the monitor loop; on cancellation, running
 // agent processes are killed and the phase is marked as failed.
-func (s *Spawner) SpawnWithContext(ctx context.Context, req SpawnRequest) error {
+func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	// Validate workflow
 	workflow, ok := s.config.Workflows[req.WorkflowName]
 	if !ok {
@@ -846,10 +841,6 @@ const baseHeader = `## Agent: ${AGENT}
 
 // loadPromptContent loads the prompt content for an agent from the DB.
 func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (string, error) {
-	if s.config.DataPath == "" {
-		return "", fmt.Errorf("data path required for loading agent definitions")
-	}
-
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open database: %w", err)
@@ -865,6 +856,56 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 		return "", fmt.Errorf("agent definition '%s' has empty prompt", agentType)
 	}
 	return def.Prompt, nil
+}
+
+// fetchTicketInfo returns the ticket title and description for template expansion.
+// Returns placeholder text on error rather than failing the spawn.
+func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, description string) {
+	database, err := db.Open(s.config.DataPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for ticket info: %v\n", err)
+		return ticketID, "_No description available_"
+	}
+	defer database.Close()
+
+	ticketRepo := repo.NewTicketRepo(database)
+	ticket, err := ticketRepo.Get(projectID, ticketID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to fetch ticket %s: %v\n", ticketID, err)
+		return ticketID, "_No description available_"
+	}
+	title = ticket.Title
+	if ticket.Description.Valid && ticket.Description.String != "" {
+		description = ticket.Description.String
+	} else {
+		description = "_No description available_"
+	}
+	return title, description
+}
+
+// fetchUserInstructions returns user_instructions from the workflow instance findings.
+// Returns placeholder text on error rather than failing the spawn.
+func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string) string {
+	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for user instructions: %v\n", err)
+		return "_No user instructions provided_"
+	}
+	defer pool.Close()
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to fetch workflow instance for %s/%s: %v\n", ticketID, workflowName, err)
+		return "_No user instructions provided_"
+	}
+	findings := wi.GetFindings()
+	if instructions, ok := findings["user_instructions"]; ok {
+		if str, ok := instructions.(string); ok && str != "" {
+			return str
+		}
+	}
+	return "_No user instructions provided_"
 }
 
 // loadTemplate loads and expands an agent template from DB.
@@ -891,6 +932,17 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	template = strings.ReplaceAll(template, "${CHILD_SESSION}", childSession)
 	template = strings.ReplaceAll(template, "${MODEL_ID}", modelID)
 	template = strings.ReplaceAll(template, "${MODEL}", model)
+
+	// Expand ticket context variables (title, description, user instructions)
+	if strings.Contains(template, "${TICKET_TITLE}") || strings.Contains(template, "${TICKET_DESCRIPTION}") {
+		title, desc := s.fetchTicketInfo(projectID, ticketID)
+		template = strings.ReplaceAll(template, "${TICKET_TITLE}", title)
+		template = strings.ReplaceAll(template, "${TICKET_DESCRIPTION}", desc)
+	}
+	if strings.Contains(template, "${USER_INSTRUCTIONS}") {
+		instructions := s.fetchUserInstructions(projectID, ticketID, workflowName)
+		template = strings.ReplaceAll(template, "${USER_INSTRUCTIONS}", instructions)
+	}
 
 	// Expand findings patterns (after variable substitution)
 	template, err = s.expandFindings(template, projectID, ticketID, workflowName)

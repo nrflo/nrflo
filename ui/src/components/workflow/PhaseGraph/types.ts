@@ -57,6 +57,8 @@ export interface AgentFlowNodeData {
   session?: AgentSession
   isPending?: boolean           // Phase hasn't started yet
   isSkipped?: boolean           // Phase was skipped
+  isCompleted?: boolean         // Phase completed but no history entries
+  isError?: boolean             // Phase errored but no history entries
   onToggleExpand: () => void
   [key: string]: unknown        // React Flow compatibility
 }

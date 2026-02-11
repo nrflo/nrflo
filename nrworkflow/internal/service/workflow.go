@@ -302,7 +302,7 @@ func (s *WorkflowService) GetStatus(projectID, ticketID string, req *types.Workf
 func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interface{} {
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
-		SELECT id, agent_type, model_id, pid, result, started_at
+		SELECT id, phase, agent_type, model_id, pid, result, started_at
 		FROM agent_sessions
 		WHERE workflow_instance_id = ? AND status = 'running'`, wfiID)
 	if err != nil {
@@ -312,9 +312,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 
 	for rows.Next() {
 		var id, agentType string
-		var modelID, agentResult, startedAt sql.NullString
+		var phase, modelID, agentResult, startedAt sql.NullString
 		var pid sql.NullInt64
-		rows.Scan(&id, &agentType, &modelID, &pid, &agentResult, &startedAt)
+		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt)
 
 		key := agentType
 		agent := map[string]interface{}{
@@ -322,6 +322,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 			"agent_type": agentType,
 			"session_id": id,
 			"result":     nil,
+		}
+		if phase.Valid {
+			agent["phase"] = phase.String
 		}
 		if modelID.Valid && modelID.String != "" {
 			key = agentType + ":" + modelID.String
@@ -349,7 +352,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 func (s *WorkflowService) buildAgentHistory(wfiID string) []interface{} {
 	history := []interface{}{}
 	rows, err := s.pool.Query(`
-		SELECT id, agent_type, model_id, status, result, result_reason, pid, started_at, ended_at
+		SELECT id, phase, agent_type, model_id, status, result, result_reason, pid, started_at, ended_at
 		FROM agent_sessions
 		WHERE workflow_instance_id = ? AND status != 'running'
 		ORDER BY created_at`, wfiID)
@@ -360,14 +363,17 @@ func (s *WorkflowService) buildAgentHistory(wfiID string) []interface{} {
 
 	for rows.Next() {
 		var id, agentType string
-		var modelID, status, agentResult, resultReason, startedAt, endedAt sql.NullString
+		var phase, modelID, status, agentResult, resultReason, startedAt, endedAt sql.NullString
 		var pid sql.NullInt64
-		rows.Scan(&id, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt)
+		rows.Scan(&id, &phase, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt)
 
 		entry := map[string]interface{}{
 			"agent_id":   id,
 			"agent_type": agentType,
 			"session_id": id,
+		}
+		if phase.Valid {
+			entry["phase"] = phase.String
 		}
 		if modelID.Valid {
 			entry["model_id"] = modelID.String

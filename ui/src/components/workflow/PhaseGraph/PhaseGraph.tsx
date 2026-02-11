@@ -69,12 +69,12 @@ export function PhaseGraph({
     })
   }, [phases, phaseOrder, phaseStartTimes])
 
-  // Group active agents by phase (agent_type matches phase name)
+  // Group active agents by phase (use phase field, fallback to agent_type)
   const agentsByPhase = useMemo(() => {
     const byPhase: Record<string, ActiveAgentV4[]> = {}
     if (activeAgents) {
       for (const [, agent] of Object.entries(activeAgents)) {
-        const phaseName = agent.agent_type
+        const phaseName = agent.phase || agent.agent_type
         if (!byPhase[phaseName]) {
           byPhase[phaseName] = []
         }
@@ -166,6 +166,24 @@ export function PhaseGraph({
               onToggleExpand: () => handleAgentClick({ phaseName, historyEntry: entry, session }),
             }
           })
+        })
+      }
+      // Completed/error phase with no history entries - show completed placeholder
+      else if ((phase.status === 'completed' || phase.status === 'error') && history.length === 0) {
+        const agentKey = `${phaseName}-completed`
+        nodes.push({
+          id: agentKey,
+          type: 'agent',
+          position: { x: 0, y: 0 },
+          data: {
+            agentKey,
+            phaseName,
+            phaseIndex,
+            isPending: false,
+            isCompleted: true,
+            isError: phase.status === 'error',
+            onToggleExpand: () => {},
+          }
         })
       }
       // Pending or skipped phases - show placeholder node

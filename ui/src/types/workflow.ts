@@ -21,6 +21,7 @@ export interface ActiveAgent {
 export interface ActiveAgentV4 {
   agent_id?: string
   agent_type: string
+  phase?: string
   model_id?: string
   cli?: string
   model?: string

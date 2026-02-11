@@ -38,7 +38,7 @@ interface AgentFlowNodeProps {
 }
 
 export function AgentFlowNode({ data }: AgentFlowNodeProps) {
-  const { phaseName, agent, historyEntry, session, isPending, isSkipped, onToggleExpand } = data
+  const { phaseName, agent, historyEntry, session, isPending, isSkipped, isCompleted, isError, onToggleExpand } = data
   const isRunning = agent && !agent.result
   const result = agent?.result || historyEntry?.result
   const hasMessages = session && session.message_count > 0
@@ -56,8 +56,10 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
       ? formatDuration(historyEntry.duration_sec)
       : '0s'
 
-  // Pending/skipped phases render differently
-  if (isPending || isSkipped) {
+  // Pending/skipped/completed-placeholder phases render differently
+  if (isPending || isSkipped || isCompleted || isError) {
+    const statusLabel = isSkipped ? 'skipped' : isCompleted ? 'completed' : isError ? 'error' : 'pending'
+    const statusResult = isCompleted ? 'pass' : isError ? 'fail' : undefined
     return (
       <div className="nopan nodrag flex flex-col items-center" style={{ pointerEvents: 'all' }}>
         <Handle
@@ -68,10 +70,11 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
 
         <div
           className={cn(
-            'min-w-[180px] rounded-xl border-2 border-dashed px-5 py-4',
-            isSkipped
-              ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 opacity-60'
-              : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50'
+            'min-w-[180px] rounded-xl border-2 px-5 py-4',
+            isCompleted && 'border-green-500 bg-green-50 dark:bg-green-950/30',
+            isError && 'border-red-500 bg-red-50 dark:bg-red-950/30',
+            isSkipped && 'border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 opacity-60',
+            isPending && 'border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50'
           )}
         >
           {/* Phase label */}
@@ -81,9 +84,9 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
 
           {/* Status */}
           <div className="flex items-center justify-center gap-2">
-            <StatusIcon isPending={isPending} isSkipped={isSkipped} result={undefined} isRunning={false} />
+            <StatusIcon isPending={isPending} isSkipped={isSkipped} result={statusResult} isRunning={false} />
             <span className="text-sm text-muted-foreground">
-              {isSkipped ? 'skipped' : 'pending'}
+              {statusLabel}
             </span>
           </div>
         </div>

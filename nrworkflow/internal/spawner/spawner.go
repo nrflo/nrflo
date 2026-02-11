@@ -826,19 +826,6 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID)
 }
 
-// baseHeader is prepended to all agent templates with session context
-const baseHeader = `## Agent: ${AGENT}
-## Ticket: ${TICKET_ID}
-## Workflow: ${WORKFLOW}
-## Model: ${MODEL}
-## Model ID: ${MODEL_ID}
-## Parent Session: ${PARENT_SESSION}
-## Child Session: ${CHILD_SESSION}
-
----
-
-`
-
 // loadPromptContent loads the prompt content for an agent from the DB.
 func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (string, error) {
 	database, err := db.Open(s.config.DataPath)
@@ -915,8 +902,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		return "", err
 	}
 
-	// Prepend base header to template
-	template := baseHeader + promptContent
+	template := promptContent
 
 	// Parse model from modelID
 	_, model := parseModelID(modelID)

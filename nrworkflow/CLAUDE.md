@@ -519,22 +519,6 @@ The spawner loads templates exclusively from the DB. Agent definitions must exis
 | `qa-verifier` | Verification and quality checks | opus |
 | `doc-updater` | Documentation updates | sonnet |
 
-### Base Header (Auto-Prepended)
-
-The spawner automatically prepends a base header to all agent templates with session context:
-
-```markdown
-## Agent: ${AGENT}
-## Ticket: ${TICKET_ID}
-## Workflow: ${WORKFLOW}
-## Model: ${MODEL}
-## Model ID: ${MODEL_ID}
-## Parent Session: ${PARENT_SESSION}
-## Child Session: ${CHILD_SESSION}
-
----
-```
-
 ### Template Variables
 
 Templates use placeholders injected by the spawner:

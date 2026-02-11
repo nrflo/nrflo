@@ -47,6 +47,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/pages/Dashboard.tsx` | Dashboard overview page |
 | `src/pages/TicketListPage.tsx` | Ticket list with filtering |
 | `src/pages/CreateTicketPage.tsx` | Create new ticket form page |
+| `src/pages/EditTicketPage.tsx` | Edit existing ticket form page |
 | `src/pages/TicketDetailPage.tsx` | Ticket detail with tabbed interface |
 | `src/pages/WorkflowsPage.tsx` | Workflow definitions CRUD and agent definition management |
 | `src/pages/SettingsPage.tsx` | Project management (create/update/delete) |
@@ -132,6 +133,8 @@ Layout
 
 - **Dashboard** (`/`): Overview with ticket counts and status
 - **Tickets** (`/tickets`): Ticket list with filtering
+- **Create Ticket** (`/tickets/new`): Create new ticket form
+- **Edit Ticket** (`/tickets/:id/edit`): Edit existing ticket form
 - **Ticket Detail** (`/tickets/:id`): Workflow timeline, description, details tabs
 - **Workflows** (`/workflows`): Workflow definitions and agent definitions CRUD
 - **Settings** (`/settings`): Project management

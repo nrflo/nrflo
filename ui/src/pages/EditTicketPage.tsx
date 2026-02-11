@@ -1,0 +1,94 @@
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Spinner } from '@/components/ui/Spinner'
+import { TicketForm, type TicketFormData } from '@/components/tickets/TicketForm'
+import { useTicket, useUpdateTicket } from '@/hooks/useTickets'
+
+export function EditTicketPage() {
+  const { id } = useParams<{ id: string }>()
+  const decodedId = decodeURIComponent(id!)
+  const navigate = useNavigate()
+  const { data: ticket, isLoading, error } = useTicket(decodedId)
+  const updateMutation = useUpdateTicket()
+
+  const handleSubmit = async (data: TicketFormData) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: decodedId,
+        data: {
+          title: data.title,
+          description: data.description,
+          priority: data.priority,
+          issue_type: data.issue_type,
+        },
+      })
+      navigate(`/tickets/${encodeURIComponent(decodedId)}`)
+    } catch {
+      // Error is displayed via updateMutation.isError state
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (error || !ticket) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-destructive">
+          {error ? `Error: ${error.message}` : 'Ticket not found'}
+        </p>
+        <Link to="/tickets">
+          <Button variant="link" className="mt-4">
+            Back to tickets
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center gap-4">
+        <Link to={`/tickets/${encodeURIComponent(decodedId)}`}>
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-bold tracking-tight">Edit Ticket</h1>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{ticket.id}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TicketForm
+            onSubmit={handleSubmit}
+            isSubmitting={updateMutation.isPending}
+            isEdit
+            defaultValues={{
+              id: ticket.id,
+              title: ticket.title,
+              description: ticket.description ?? undefined,
+              priority: ticket.priority,
+              issue_type: ticket.issue_type,
+              created_by: ticket.created_by,
+            }}
+          />
+          {updateMutation.isError && (
+            <p className="mt-4 text-sm text-destructive">
+              Error: {updateMutation.error.message}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

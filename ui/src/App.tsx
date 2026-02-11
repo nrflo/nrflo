@@ -6,6 +6,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { TicketListPage } from '@/pages/TicketListPage'
 import { TicketDetailPage } from '@/pages/TicketDetailPage'
 import { CreateTicketPage } from '@/pages/CreateTicketPage'
+import { EditTicketPage } from '@/pages/EditTicketPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import { useProjectStore } from '@/stores/projectStore'
@@ -35,6 +36,7 @@ function App() {
             <Route path="tickets" element={<TicketListPage />} />
             <Route path="tickets/new" element={<CreateTicketPage />} />
             <Route path="tickets/:id" element={<TicketDetailPage />} />
+            <Route path="tickets/:id/edit" element={<EditTicketPage />} />
             <Route path="workflows" element={<WorkflowsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

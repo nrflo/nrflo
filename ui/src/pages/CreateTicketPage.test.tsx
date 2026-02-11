@@ -115,6 +115,33 @@ describe('CreateTicketPage', () => {
     })
   })
 
+  it('encodes special characters in server-returned ID for navigation', async () => {
+    const user = userEvent.setup()
+    const serverTicket = {
+      id: 'PROJECT/TICKET 42',
+      title: 'Special chars',
+      description: null,
+      status: 'open' as const,
+      priority: 2,
+      issue_type: 'task' as const,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      closed_at: null,
+      created_by: 'ui',
+      close_reason: null,
+    }
+    vi.mocked(ticketsApi.createTicket).mockResolvedValue(serverTicket)
+
+    renderPage()
+
+    await user.type(screen.getByLabelText('Title'), 'Special chars')
+    await user.click(screen.getByRole('button', { name: /create ticket/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/tickets/PROJECT%2FTICKET%2042')
+    })
+  })
+
   it('shows error message when API call fails', async () => {
     const user = userEvent.setup()
     vi.mocked(ticketsApi.createTicket).mockRejectedValue(new Error('Server error'))

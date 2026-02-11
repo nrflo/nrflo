@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"nrworkflow/internal/id"
 	"nrworkflow/internal/model"
 	"nrworkflow/internal/repo"
 )
@@ -239,10 +241,6 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ID == "" {
-		writeError(w, http.StatusBadRequest, "id is required")
-		return
-	}
 	if req.Title == "" {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
@@ -250,6 +248,18 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 	if req.CreatedBy == "" {
 		writeError(w, http.StatusBadRequest, "created_by is required")
 		return
+	}
+
+	// Use provided ID or auto-generate one
+	ticketID := req.ID
+	if ticketID == "" {
+		gen := id.New(strings.ToUpper(projectID))
+		var err error
+		ticketID, err = gen.Generate()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to generate ticket ID")
+			return
+		}
 	}
 
 	// Set defaults
@@ -261,7 +271,7 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ticket := &model.Ticket{
-		ID:        req.ID,
+		ID:        ticketID,
 		ProjectID: projectID,
 		Title:     req.Title,
 		Status:    model.StatusOpen,
@@ -279,7 +289,7 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch the created ticket to return full data
-	created, err := ticketRepo.Get(projectID, req.ID)
+	created, err := ticketRepo.Get(projectID, ticketID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

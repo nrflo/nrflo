@@ -1465,8 +1465,7 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 
 // contextFileEntry represents one entry in /tmp/usable_context.json
 type contextFileEntry struct {
-	UsedPercentage      *int `json:"used_percentage"`
-	RemainingPercentage *int `json:"remaining_percentage"`
+	PctUsed *float64 `json:"pct_used"`
 }
 
 // readContextFile reads /tmp/usable_context.json and returns parsed data.
@@ -1489,17 +1488,10 @@ func updateContextLeft(proc *processInfo, contextData map[string]contextFileEntr
 		return
 	}
 	entry, ok := contextData[proc.sessionID]
-	if !ok {
+	if !ok || entry.PctUsed == nil {
 		return
 	}
-	var remaining int
-	if entry.RemainingPercentage != nil {
-		remaining = *entry.RemainingPercentage
-	} else if entry.UsedPercentage != nil {
-		remaining = 100 - *entry.UsedPercentage
-	} else {
-		return
-	}
+	remaining := 100 - int(*entry.PctUsed)
 	if remaining != proc.contextLeft {
 		proc.contextLeft = remaining
 		proc.contextLeftDirty = true

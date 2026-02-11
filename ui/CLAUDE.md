@@ -43,6 +43,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated workflow runs |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
+| `src/components/workflow/RunningAgentLog.tsx` | Collapsible right-side panel showing live agent messages for running agents |
 | `src/components/workflow/` | Workflow visualization components |
 | `src/pages/Dashboard.tsx` | Dashboard overview page |
 | `src/pages/TicketListPage.tsx` | Ticket list with filtering |
@@ -147,6 +148,8 @@ The ticket detail page (`src/pages/TicketDetailPage.tsx`) uses a tabbed interfac
 - **Details tab**: Metadata (priority, type, dates, etc.)
 
 **Real-time updates**: The page uses WebSocket exclusively for real-time updates. The page subscribes to the current ticket on mount via `useWebSocket()` hook. No REST polling is used.
+
+**Running Agent Log**: When agents are running, a collapsible right-side panel (`RunningAgentLog`) shows live messages for all active agents. The panel uses `useSessionMessages` hook for real-time message fetching. Clicking an agent in the log opens the `AgentMessagesModal` with full message history. The panel collapses to a thin bar with agent count badge.
 
 ### Workflow Components
 

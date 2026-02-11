@@ -25,15 +25,18 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { RunWorkflowDialog } from '@/components/workflow/RunWorkflowDialog'
+import { RunningAgentLog } from '@/components/workflow/RunningAgentLog'
+import { AgentMessagesModal } from '@/components/workflow/PhaseGraph/AgentMessagesModal'
 import {
   useTicket,
   useWorkflow,
+  useAgentSessions,
   useCloseTicket,
   useDeleteTicket,
   useStopWorkflow,
 } from '@/hooks/useTickets'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import type { WorkflowState } from '@/types/workflow'
+import type { WorkflowState, ActiveAgentV4, AgentSession } from '@/types/workflow'
 import {
   cn,
   statusColor,
@@ -64,6 +67,11 @@ export function TicketDetailPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'workflow' | 'description' | 'details'>('workflow')
   const [showRunDialog, setShowRunDialog] = useState(false)
+  const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
+  const [selectedLogAgent, setSelectedLogAgent] = useState<{
+    agent: ActiveAgentV4
+    session?: AgentSession
+  } | null>(null)
 
   // WebSocket for real-time updates
   const { subscribe, unsubscribe } = useWebSocket()
@@ -97,6 +105,12 @@ export function TicketDetailPage() {
 
   // Get agent_history from displayed workflow state
   const agentHistory = displayedState?.agent_history
+  const activeAgents = displayedState?.active_agents ?? {}
+
+  // Fetch agent sessions for the running agent log panel
+  const { data: sessionsData } = useAgentSessions(id!, undefined, { enabled: !!id })
+  const sessions = sessionsData?.sessions ?? []
+
   const closeMutation = useCloseTicket()
   const deleteMutation = useDeleteTicket()
   const stopMutation = useStopWorkflow()
@@ -274,85 +288,96 @@ export function TicketDetailPage() {
       <div className="flex-1">
         {/* Workflow Tab */}
         {activeTab === 'workflow' && (
-          <div className="space-y-4">
-            {hasWorkflow && displayedState ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {hasMultipleWorkflows ? (
-                      <Select
-                        value={selectedWorkflow || displayedWorkflowName}
-                        onChange={(e) => setSelectedWorkflow(e.target.value)}
-                        className="w-32 h-8 text-sm"
-                      >
-                        {workflows.map((wf) => (
-                          <option key={wf} value={wf}>
-                            {wf}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : displayedWorkflowName ? (
-                      <Badge variant="secondary">{displayedWorkflowName}</Badge>
-                    ) : null}
-                    {isOrchestrated && (
-                      <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
-                        Auto
-                      </Badge>
-                    )}
+          <div className="flex gap-0">
+            <div className="flex-1 min-w-0 space-y-4">
+              {hasWorkflow && displayedState ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {hasMultipleWorkflows ? (
+                        <Select
+                          value={selectedWorkflow || displayedWorkflowName}
+                          onChange={(e) => setSelectedWorkflow(e.target.value)}
+                          className="w-32 h-8 text-sm"
+                        >
+                          {workflows.map((wf) => (
+                            <option key={wf} value={wf}>
+                              {wf}
+                            </option>
+                          ))}
+                        </Select>
+                      ) : displayedWorkflowName ? (
+                        <Badge variant="secondary">{displayedWorkflowName}</Badge>
+                      ) : null}
+                      {isOrchestrated && (
+                        <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
+                          Auto
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {(isOrchestrated || hasActivePhase) ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            id && stopMutation.mutate({
+                              ticketId: id,
+                              workflow: displayedWorkflowName || undefined,
+                            })
+                          }
+                          disabled={stopMutation.isPending}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          {stopMutation.isPending ? (
+                            <Spinner size="sm" className="mr-2" />
+                          ) : (
+                            <Square className="h-4 w-4 mr-2" />
+                          )}
+                          Stop
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowRunDialog(true)}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Run Workflow
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {(isOrchestrated || hasActivePhase) ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          id && stopMutation.mutate({
-                            ticketId: id,
-                            workflow: displayedWorkflowName || undefined,
-                          })
-                        }
-                        disabled={stopMutation.isPending}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        {stopMutation.isPending ? (
-                          <Spinner size="sm" className="mr-2" />
-                        ) : (
-                          <Square className="h-4 w-4 mr-2" />
-                        )}
-                        Stop
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowRunDialog(true)}
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Run Workflow
-                      </Button>
-                    )}
-                  </div>
+                  <PhaseTimeline
+                    workflow={displayedState}
+                    agentHistory={agentHistory}
+                    ticketId={id}
+                  />
+                </>
+              ) : (
+                <div className="text-center py-8 space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    No workflow configured for this ticket
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowRunDialog(true)}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Run Workflow
+                  </Button>
                 </div>
-                <PhaseTimeline
-                  workflow={displayedState}
-                  agentHistory={agentHistory}
-                  ticketId={id}
-                />
-              </>
-            ) : (
-              <div className="text-center py-8 space-y-3">
-                <p className="text-muted-foreground text-sm">
-                  No workflow configured for this ticket
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowRunDialog(true)}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Run Workflow
-                </Button>
-              </div>
+              )}
+            </div>
+            {hasActivePhase && (
+              <RunningAgentLog
+                activeAgents={activeAgents}
+                sessions={sessions}
+                collapsed={logPanelCollapsed}
+                onToggleCollapse={() => setLogPanelCollapsed(p => !p)}
+                onAgentClick={(agent, session) => setSelectedLogAgent({ agent, session })}
+              />
             )}
           </div>
         )}
@@ -467,6 +492,17 @@ export function TicketDetailPage() {
           </Card>
         )}
       </div>
+
+      {/* Agent Messages Modal (from log panel click) */}
+      {selectedLogAgent && (
+        <AgentMessagesModal
+          open={true}
+          onClose={() => setSelectedLogAgent(null)}
+          phaseName={selectedLogAgent.agent.phase || selectedLogAgent.agent.agent_type || ''}
+          agent={selectedLogAgent.agent}
+          session={selectedLogAgent.session}
+        />
+      )}
 
       {/* Run Workflow Dialog */}
       {id && (

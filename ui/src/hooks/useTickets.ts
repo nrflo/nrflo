@@ -17,6 +17,7 @@ import {
   getWorkflow,
   updateWorkflow,
   getAgentSessions,
+  getSessionMessages,
   type ListTicketsParams,
 } from '@/api/tickets'
 import type {
@@ -27,7 +28,7 @@ import type {
   TicketListResponse,
   StatusResponse,
 } from '@/types/ticket'
-import type { WorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest } from '@/types/workflow'
+import type { WorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest, SessionMessagesResponse } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 
 // Query keys factory
@@ -223,6 +224,19 @@ export function useStopWorkflow() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
     },
+  })
+}
+
+export function useSessionMessages(
+  sessionId: string | undefined,
+  options?: { enabled?: boolean; isRunning?: boolean }
+) {
+  return useQuery<SessionMessagesResponse>({
+    queryKey: ['session-messages', sessionId],
+    queryFn: () => getSessionMessages(sessionId!),
+    enabled: !!sessionId && (options?.enabled ?? true),
+    staleTime: options?.isRunning ? 2000 : 30000,
+    refetchInterval: options?.isRunning ? 3000 : false,
   })
 }
 

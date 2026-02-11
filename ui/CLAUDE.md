@@ -212,8 +212,8 @@ Components: `SimpleFindingValue` in PhaseCard.tsx, WorkflowFindings.tsx, Finding
 Key workflow types (`src/types/workflow.ts`):
 - `WorkflowState`: Phase states, phase_order, findings, active agents (constructed server-side from `workflow_instances` + `agent_sessions` tables)
 - `WorkflowResponse`: API response with agent_history at top level
-- `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result)
-- `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`
+- `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left)
+- `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left`
 - `WorkflowFindings`: `Record<string, Record<string, unknown>>` (agent_type → field → value)
 
 ### Styling

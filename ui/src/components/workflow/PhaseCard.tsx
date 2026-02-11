@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, Copy, Check, Cpu, Clock } from 'lucide-react'
-import { cn, statusColor, formatDateTime } from '@/lib/utils'
+import { ChevronDown, ChevronRight, CheckCircle, XCircle, Copy, Check, Cpu, Clock, Timer } from 'lucide-react'
+import { cn, statusColor, formatDateTime, formatElapsedTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import type { PhaseState, WorkflowFindings, ActiveAgentV4, AgentHistoryEntry } from '@/types/workflow'
@@ -104,6 +104,13 @@ interface AgentBadgeProps {
 function AgentBadge({ agent, findings, expanded, onToggle }: AgentBadgeProps) {
   const hasFindings = findings && Object.keys(findings).length > 0
 
+  // Compute elapsed time from started_at/ended_at
+  const elapsed = agent.started_at && agent.ended_at
+    ? formatElapsedTime(agent.started_at, agent.ended_at)
+    : agent.duration_sec
+      ? formatDuration(agent.duration_sec)
+      : undefined
+
   // Color based on result
   const badgeClass = cn(
     'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono transition-colors',
@@ -136,6 +143,17 @@ function AgentBadge({ agent, findings, expanded, onToggle }: AgentBadgeProps) {
       )}
       <span>{agent.agent_type}</span>
       {agent.result && <ResultIcon result={agent.result} />}
+      {elapsed && (
+        <span className="text-[10px] opacity-70">{elapsed}</span>
+      )}
+      {agent.context_left != null && (
+        <span className={cn(
+          'text-[10px] px-1 rounded',
+          contextLeftColor(agent.context_left)
+        )}>
+          {agent.context_left}%
+        </span>
+      )}
     </span>
   )
 }
@@ -224,6 +242,13 @@ function AgentHistoryCard({ agent, findings }: AgentHistoryCardProps) {
   const [copied, setCopied] = useState(false)
   const hasFindings = findings && Object.keys(findings).length > 0
 
+  // Compute duration: prefer ended_at - started_at, fallback to duration_sec
+  const durationText = agent.started_at && agent.ended_at
+    ? formatElapsedTime(agent.started_at, agent.ended_at)
+    : agent.duration_sec
+      ? formatDuration(agent.duration_sec)
+      : undefined
+
   const copyFindings = () => {
     if (findings) {
       navigator.clipboard.writeText(JSON.stringify(findings, null, 2))
@@ -260,10 +285,18 @@ function AgentHistoryCard({ agent, findings }: AgentHistoryCardProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {agent.duration_sec !== undefined && (
+          {durationText && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatDuration(agent.duration_sec)}
+              <Timer className="h-3 w-3" />
+              {durationText}
+            </span>
+          )}
+          {agent.context_left != null && (
+            <span className={cn(
+              'text-xs font-mono px-1.5 py-0.5 rounded',
+              contextLeftColor(agent.context_left)
+            )}>
+              {agent.context_left}% ctx
             </span>
           )}
           {agent.result && (

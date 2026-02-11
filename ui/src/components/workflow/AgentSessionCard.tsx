@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Terminal, CheckCircle, XCircle, Clock, AlertTriangle, Timer, Loader2 } from 'lucide-react'
-import { cn, formatDateTime, formatElapsedTime } from '@/lib/utils'
+import { cn, formatDateTime, formatElapsedTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import { getSessionMessages } from '@/api/tickets'
 import type { AgentSession, AgentSessionStatus } from '@/types/workflow'
@@ -69,8 +69,8 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
 
   // Calculate elapsed time
   const elapsedTime = isRunning
-    ? formatElapsedTime(session.created_at)
-    : formatElapsedTime(session.created_at, session.updated_at)
+    ? formatElapsedTime(session.started_at || session.created_at)
+    : formatElapsedTime(session.started_at || session.created_at, session.ended_at || session.updated_at)
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
@@ -115,9 +115,7 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
           {session.context_left != null && (
             <span className={cn(
               'text-xs font-mono px-1.5 py-0.5 rounded',
-              session.context_left > 60 && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-              session.context_left > 30 && session.context_left <= 60 && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-              session.context_left <= 30 && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              contextLeftColor(session.context_left)
             )}>
               {session.context_left}% ctx
             </span>

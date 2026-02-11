@@ -302,7 +302,7 @@ func (s *WorkflowService) GetStatus(projectID, ticketID string, req *types.Workf
 func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interface{} {
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
-		SELECT id, phase, agent_type, model_id, pid, result, started_at
+		SELECT id, phase, agent_type, model_id, pid, result, started_at, context_left
 		FROM agent_sessions
 		WHERE workflow_instance_id = ? AND status = 'running'`, wfiID)
 	if err != nil {
@@ -313,8 +313,8 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 	for rows.Next() {
 		var id, agentType string
 		var phase, modelID, agentResult, startedAt sql.NullString
-		var pid sql.NullInt64
-		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt)
+		var pid, contextLeft sql.NullInt64
+		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft)
 
 		key := agentType
 		agent := map[string]interface{}{
@@ -344,6 +344,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 		if startedAt.Valid {
 			agent["started_at"] = startedAt.String
 		}
+		if contextLeft.Valid {
+			agent["context_left"] = contextLeft.Int64
+		}
 		agents[key] = agent
 	}
 	return agents
@@ -352,7 +355,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 func (s *WorkflowService) buildAgentHistory(wfiID string) []interface{} {
 	history := []interface{}{}
 	rows, err := s.pool.Query(`
-		SELECT id, phase, agent_type, model_id, status, result, result_reason, pid, started_at, ended_at
+		SELECT id, phase, agent_type, model_id, status, result, result_reason, pid, started_at, ended_at, context_left
 		FROM agent_sessions
 		WHERE workflow_instance_id = ? AND status != 'running'
 		ORDER BY created_at`, wfiID)
@@ -364,8 +367,8 @@ func (s *WorkflowService) buildAgentHistory(wfiID string) []interface{} {
 	for rows.Next() {
 		var id, agentType string
 		var phase, modelID, status, agentResult, resultReason, startedAt, endedAt sql.NullString
-		var pid sql.NullInt64
-		rows.Scan(&id, &phase, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt)
+		var pid, contextLeft sql.NullInt64
+		rows.Scan(&id, &phase, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft)
 
 		entry := map[string]interface{}{
 			"agent_id":   id,
@@ -392,6 +395,9 @@ func (s *WorkflowService) buildAgentHistory(wfiID string) []interface{} {
 		}
 		if endedAt.Valid {
 			entry["ended_at"] = endedAt.String
+		}
+		if contextLeft.Valid {
+			entry["context_left"] = contextLeft.Int64
 		}
 		history = append(history, entry)
 	}

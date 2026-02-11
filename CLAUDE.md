@@ -207,7 +207,7 @@ Each v4 workflow state contains:
     "implementor:claude:opus": {
       "agent_id": "uuid", "agent_type": "implementor", "session_id": "uuid",
       "model_id": "claude:opus", "cli": "claude", "model": "opus",
-      "pid": 12345, "started_at": "2025-01-01T00:00:00Z"
+      "pid": 12345, "started_at": "2025-01-01T00:00:00Z", "context_left": 75
     }
   },
   "agent_retries": {},
@@ -215,7 +215,7 @@ Each v4 workflow state contains:
     {
       "agent_id": "uuid", "agent_type": "setup-analyzer", "session_id": "uuid",
       "model_id": "claude:sonnet", "status": "completed", "result": "pass",
-      "started_at": "...", "ended_at": "..."
+      "started_at": "...", "ended_at": "...", "context_left": 60
     }
   ],
   "findings": {"setup-analyzer:claude:sonnet": {"files_to_modify": ["..."]}},

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Cpu, Terminal, Hash, Clock, CheckCircle, XCircle, Loader2, Timer } from 'lucide-react'
-import { cn, formatElapsedTime } from '@/lib/utils'
+import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import type { ActiveAgentV4 } from '@/types/workflow'
 
@@ -132,6 +132,14 @@ export function ActiveAgentsPanel({ agents }: ActiveAgentsPanelProps) {
                     {agent.result
                       ? formatElapsedTime(agent.started_at, agent.ended_at)
                       : formatElapsedTime(agent.started_at)}
+                  </span>
+                )}
+                {agent.context_left != null && (
+                  <span className={cn(
+                    'text-xs font-mono px-1.5 py-0.5 rounded',
+                    contextLeftColor(agent.context_left)
+                  )}>
+                    {agent.context_left}% ctx
                   </span>
                 )}
               </div>

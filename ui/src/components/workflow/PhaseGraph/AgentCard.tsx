@@ -1,6 +1,5 @@
 import { Loader2, CheckCircle, XCircle, Timer } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { formatElapsedTime } from '@/lib/utils'
+import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import type { AgentCardProps } from './types'
 
@@ -52,10 +51,18 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
         <span className="text-xs font-medium">{modelName}</span>
       </div>
 
-      {/* Elapsed time */}
+      {/* Elapsed time + context */}
       <div className="flex items-center gap-1 text-xs text-muted-foreground">
         <Timer className="h-3 w-3" />
         <span>{elapsedTime}</span>
+        {agent.context_left != null && (
+          <span className={cn(
+            'text-[10px] font-mono px-1 rounded',
+            contextLeftColor(agent.context_left)
+          )}>
+            {agent.context_left}%
+          </span>
+        )}
       </div>
 
       {/* Session stats if available */}

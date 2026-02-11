@@ -1,5 +1,5 @@
 import { CheckCircle, XCircle, Timer } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import type { AgentHistoryEntry, AgentSession } from '@/types/workflow'
 
@@ -53,10 +53,22 @@ export function HistoryAgentCard({ entry, session, isExpanded, onExpand }: Histo
         <span className="font-medium">{modelName}</span>
       </div>
 
-      {/* Duration */}
+      {/* Duration + context */}
       <div className="flex items-center gap-1 text-muted-foreground">
         <Timer className="h-2.5 w-2.5" />
-        <span>{formatDuration(entry.duration_sec)}</span>
+        <span>
+          {entry.started_at && entry.ended_at
+            ? formatElapsedTime(entry.started_at, entry.ended_at)
+            : formatDuration(entry.duration_sec)}
+        </span>
+        {entry.context_left != null && (
+          <span className={cn(
+            'text-[9px] font-mono px-0.5 rounded',
+            contextLeftColor(entry.context_left)
+          )}>
+            {entry.context_left}%
+          </span>
+        )}
       </div>
 
       {/* Message count badge if session available */}

@@ -30,6 +30,7 @@ export interface ActiveAgentV4 {
   started_at?: string
   ended_at?: string
   result?: string
+  context_left?: number
 }
 
 export interface HistoryEntry {
@@ -49,6 +50,7 @@ export interface AgentHistoryEntry {
   ended_at?: string
   result?: string
   duration_sec?: number
+  context_left?: number
 }
 
 // Findings structure: agent_type -> findings (field -> value)

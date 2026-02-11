@@ -1,6 +1,6 @@
 import { Handle, Position } from '@xyflow/react'
 import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward } from 'lucide-react'
-import { cn, formatElapsedTime } from '@/lib/utils'
+import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import type { AgentFlowNodeData } from './types'
 
@@ -49,12 +49,17 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
     ? modelId.split('-').pop() || modelId
     : agent?.cli || historyEntry?.agent_type || 'agent'
 
-  // Get duration
+  // Get duration: prefer started_at/ended_at, fallback to duration_sec
   const duration = agent?.started_at
     ? formatElapsedTime(agent.started_at, agent.ended_at)
-    : historyEntry?.duration_sec
-      ? formatDuration(historyEntry.duration_sec)
-      : '0s'
+    : historyEntry?.started_at && historyEntry?.ended_at
+      ? formatElapsedTime(historyEntry.started_at, historyEntry.ended_at)
+      : historyEntry?.duration_sec
+        ? formatDuration(historyEntry.duration_sec)
+        : '0s'
+
+  // Get context_left from active agent or history entry
+  const contextLeft = agent?.context_left ?? historyEntry?.context_left
 
   // Pending/skipped/completed-placeholder phases render differently
   if (isPending || isSkipped || isCompleted || isError) {
@@ -137,6 +142,14 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
             <Timer className="h-4 w-4" />
             <span>{duration}</span>
           </div>
+          {contextLeft != null && (
+            <span className={cn(
+              'text-xs font-mono px-1.5 py-0.5 rounded',
+              contextLeftColor(contextLeft)
+            )}>
+              {contextLeft}%
+            </span>
+          )}
         </div>
 
         {/* Message count badge */}

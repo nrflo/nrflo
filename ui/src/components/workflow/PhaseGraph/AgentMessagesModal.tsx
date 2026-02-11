@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CheckCircle, XCircle, Timer, Cpu, MessageSquare, Loader2 } from 'lucide-react'
 import { Dialog, DialogHeader, DialogBody } from '@/components/ui/Dialog'
 import { Badge } from '@/components/ui/Badge'
+import { LogMessage } from '@/components/workflow/LogMessage'
 import { cn } from '@/lib/utils'
 import { getSessionMessages } from '@/api/tickets'
 import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/workflow'
@@ -130,16 +131,7 @@ export function AgentMessagesModal({
             <div className="space-y-2">
               <div ref={messagesStartRef} />
               {[...messages].reverse().map((msg, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'p-3 rounded-lg border bg-muted/30',
-                    'font-mono text-sm whitespace-pre-wrap break-words',
-                    'text-foreground/90'
-                  )}
-                >
-                  {msg}
-                </div>
+                <LogMessage key={i} message={msg} variant="full" />
               ))}
             </div>
           </div>

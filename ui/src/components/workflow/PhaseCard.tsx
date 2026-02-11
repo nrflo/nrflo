@@ -609,9 +609,19 @@ export function PhaseCard({ name, phase, isCurrent, findings, activeAgents, agen
                       <div className="text-xs text-muted-foreground truncate">{agent.model}</div>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground text-right">
-                    {agent.pid && <div>PID: {agent.pid}</div>}
-                    {agent.started_at && <div>{formatDateTime(agent.started_at)}</div>}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground text-right">
+                    {agent.context_left != null && (
+                      <span className={cn(
+                        'font-mono px-1.5 py-0.5 rounded',
+                        contextLeftColor(agent.context_left)
+                      )}>
+                        {agent.context_left}%
+                      </span>
+                    )}
+                    <div>
+                      {agent.pid && <div>PID: {agent.pid}</div>}
+                      {agent.started_at && <div>{formatDateTime(agent.started_at)}</div>}
+                    </div>
                   </div>
                 </div>
               ))}

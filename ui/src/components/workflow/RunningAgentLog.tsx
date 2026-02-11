@@ -1,7 +1,8 @@
 import { useRef, useEffect, useMemo } from 'react'
 import { ChevronRight, ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, contextLeftColor } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
+import { LogMessage } from './LogMessage'
 import type { ActiveAgentV4, AgentSession } from '@/types/workflow'
 
 interface AgentMessagesBlockProps {
@@ -36,18 +37,20 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
         <span className="text-sm font-medium truncate">
           {agent.phase?.replace(/_/g, ' ')} — {modelName}
         </span>
+        {agent.context_left != null && (
+          <span className={cn(
+            'text-[10px] font-mono px-1 py-0.5 rounded shrink-0',
+            contextLeftColor(agent.context_left)
+          )}>
+            {agent.context_left}%
+          </span>
+        )}
         <MessageSquare className="h-3.5 w-3.5 text-muted-foreground ml-auto shrink-0" />
       </button>
       {displayMessages.length > 0 && (
-        <div className="px-3 pb-2 space-y-1 max-h-48 overflow-y-auto">
+        <div className="px-3 pb-2 space-y-1">
           {displayMessages.map((msg, i) => (
-            <div
-              key={i}
-              className="text-xs font-mono text-muted-foreground truncate"
-              title={msg}
-            >
-              {msg}
-            </div>
+            <LogMessage key={i} message={msg} variant="compact" />
           ))}
         </div>
       )}
@@ -100,7 +103,7 @@ export function RunningAgentLog({
     <div
       className={cn(
         'relative border-l border-border bg-background transition-all duration-300 ease-in-out shrink-0',
-        collapsed ? 'w-10' : 'w-[380px]'
+        collapsed ? 'w-10' : 'flex-1 min-w-[300px]'
       )}
     >
       {/* Collapse/Expand toggle */}
@@ -114,7 +117,7 @@ export function RunningAgentLog({
 
       {collapsed ? (
         /* Collapsed state: vertical label with count */
-        <div className="flex flex-col items-center pt-12 gap-2">
+        <div className="flex flex-col items-center pt-16 gap-2">
           <div className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-xs font-medium text-yellow-700 dark:text-yellow-400">
             {runningCount}
           </div>

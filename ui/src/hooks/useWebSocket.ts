@@ -119,6 +119,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       case 'messages.updated':
         // Invalidate agent sessions and recent agents for updated messages
         qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
+        // Invalidate workflow to refresh active_agents context_left
+        qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
         // Invalidate lazy-loaded session messages if session_id is provided
         if (event.data?.session_id) {
           qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })

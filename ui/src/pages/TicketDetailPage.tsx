@@ -163,7 +163,10 @@ export function TicketDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className={cn(
+      'mx-auto space-y-6',
+      activeTab === 'workflow' && hasActivePhase ? 'max-w-full px-4' : 'max-w-7xl'
+    )}>
       {/* Header */}
       <div className="flex items-start gap-4">
         <Link to="/tickets">
@@ -288,8 +291,11 @@ export function TicketDetailPage() {
       <div className="flex-1">
         {/* Workflow Tab */}
         {activeTab === 'workflow' && (
-          <div className="flex gap-0">
-            <div className="flex-1 min-w-0 space-y-4">
+          <div className={cn(
+            'flex gap-0',
+            hasActivePhase && 'min-h-[calc(100vh-280px)]'
+          )}>
+            <div className="flex-1 min-w-0 space-y-4 max-w-4xl">
               {hasWorkflow && displayedState ? (
                 <>
                   <div className="flex items-center justify-between">

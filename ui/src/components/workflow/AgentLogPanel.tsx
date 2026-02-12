@@ -2,8 +2,8 @@ import { useRef, useEffect, useMemo } from 'react'
 import { ChevronRight, ChevronLeft, Loader2, MessageSquare, RefreshCw } from 'lucide-react'
 import { cn, contextLeftColor } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
-import { LogMessage } from './LogMessage'
-import { AgentLogDetail } from './AgentLogDetail'
+import { parseToolName, ToolBadge } from './LogMessage'
+import { AgentLogDetail, formatTime } from './AgentLogDetail'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ActiveAgentV4, AgentSession, MessageWithTime } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
@@ -76,14 +76,34 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRestart, restartin
         <MessageSquare className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0", !onRestart && "ml-auto")} />
       </div>
       {displayMessages.length > 0 && (
-        <div className="px-3 pb-2 space-y-1">
-          {displayMessages.map((msg, i) => (
-            <LogMessage
-              key={i}
-              message={msg.content}
-              variant="compact"
-            />
-          ))}
+        <div className="px-3 pb-2">
+          <table className="w-full text-xs font-mono border-collapse">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border">
+                <th className="py-1 pr-2 font-medium w-[70px]">Time</th>
+                <th className="py-1 pr-2 font-medium w-[70px]">Tool</th>
+                <th className="py-1 font-medium">Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayMessages.map((msg, i) => {
+                const { toolName, rest } = parseToolName(msg.content)
+                return (
+                  <tr key={i} className="border-b border-border/50 align-top">
+                    <td className="py-1 pr-2 text-muted-foreground whitespace-nowrap">
+                      {formatTime(msg.created_at)}
+                    </td>
+                    <td className="py-1 pr-2">
+                      {toolName && <ToolBadge name={toolName} />}
+                    </td>
+                    <td className="py-1 whitespace-pre-wrap break-words text-foreground/90">
+                      {rest}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

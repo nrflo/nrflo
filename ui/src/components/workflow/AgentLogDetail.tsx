@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
@@ -15,7 +14,7 @@ function formatDuration(durationSec?: number): string {
   return `${secs}s`
 }
 
-function formatTime(dateStr: string): string {
+export function formatTime(dateStr: string): string {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -27,8 +26,6 @@ interface AgentLogDetailProps {
 }
 
 export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
-  const messagesStartRef = useRef<HTMLDivElement>(null)
-
   const { agent, historyEntry, session, phaseName } = selectedAgent
   const isRunning = agent && !agent.result
   const result = agent?.result || historyEntry?.result
@@ -47,13 +44,6 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
   })
 
   const messages = messagesData?.messages ?? []
-
-  // Auto-scroll to top when new messages arrive
-  useEffect(() => {
-    if (messagesStartRef.current) {
-      messagesStartRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [messages.length])
 
   return (
     <div className="flex flex-col h-full">
@@ -109,7 +99,6 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
           </div>
         ) : messages.length > 0 ? (
           <div>
-            <div ref={messagesStartRef} />
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
               <MessageSquare className="h-3 w-3" />
               <span>{messagesData ? `${messagesData.total} messages` : `${messages.length} messages`}</span>

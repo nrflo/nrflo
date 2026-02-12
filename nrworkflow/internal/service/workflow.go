@@ -253,11 +253,34 @@ func (s *WorkflowService) GetStatus(projectID, ticketID string, req *types.Workf
 		result["parent_session"] = wi.ParentSession.String
 	}
 
+	// Completion stats
+	result["status"] = string(wi.Status)
+	if wi.Status == model.WorkflowInstanceCompleted {
+		result["completed_at"] = wi.UpdatedAt.Format(time.RFC3339)
+		result["total_duration_sec"] = wi.UpdatedAt.Sub(wi.CreatedAt).Seconds()
+	}
+
 	// Active agents from agent_sessions
 	result["active_agents"] = s.buildActiveAgentsMap(wi.ID)
 
 	// Agent history from completed sessions
-	result["agent_history"] = s.buildAgentHistory(wi.ID)
+	agentHistory := s.buildAgentHistory(wi.ID)
+	result["agent_history"] = agentHistory
+
+	// Total tokens used (200K context window per agent)
+	if wi.Status == model.WorkflowInstanceCompleted {
+		var totalTokens int64
+		for _, entry := range agentHistory {
+			if m, ok := entry.(map[string]interface{}); ok {
+				if cl, exists := m["context_left"]; exists {
+					if contextLeft, ok := cl.(int64); ok {
+						totalTokens += 200000 * (100 - contextLeft) / 100
+					}
+				}
+			}
+		}
+		result["total_tokens_used"] = totalTokens
+	}
 
 	// Combined findings: workflow-level + per-session
 	result["findings"] = s.BuildCombinedFindings(wi)

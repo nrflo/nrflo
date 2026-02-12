@@ -70,6 +70,32 @@ export function formatElapsedTime(startDate: string | Date, endDate?: string | D
   return `${diffSecs}s`
 }
 
+export function formatTokenCount(n: number): string {
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000
+    return m % 1 === 0 ? `${m}M` : `${m.toFixed(1)}M`
+  }
+  if (n >= 1_000) {
+    const k = n / 1_000
+    return k % 1 === 0 ? `${k}K` : `${k.toFixed(1)}K`
+  }
+  return String(n)
+}
+
+export function formatDurationSec(totalSec: number): string {
+  const hours = Math.floor(totalSec / 3600)
+  const mins = Math.floor((totalSec % 3600) / 60)
+  const secs = Math.floor(totalSec % 60)
+
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+  }
+  if (mins > 0) {
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
+  }
+  return `${secs}s`
+}
+
 export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }

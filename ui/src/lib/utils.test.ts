@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { contextLeftColor, formatElapsedTime } from './utils'
+import { contextLeftColor, formatElapsedTime, formatTokenCount, formatDurationSec } from './utils'
 
 describe('contextLeftColor', () => {
   it('returns red classes for context_left <= 25', () => {
@@ -122,5 +122,74 @@ describe('formatElapsedTime', () => {
     const result = formatElapsedTime(start)
     // Should be approximately 1m
     expect(result).toMatch(/^1m/)
+  })
+})
+
+describe('formatTokenCount', () => {
+  it('returns plain number for values under 1000', () => {
+    expect(formatTokenCount(500)).toBe('500')
+  })
+
+  it('returns K suffix for values in thousands', () => {
+    expect(formatTokenCount(1000)).toBe('1K')
+  })
+
+  it('returns K with decimal for non-round thousands', () => {
+    expect(formatTokenCount(1500)).toBe('1.5K')
+  })
+
+  it('returns M suffix for values in millions', () => {
+    expect(formatTokenCount(1000000)).toBe('1M')
+  })
+
+  it('returns M with decimal for non-round millions', () => {
+    expect(formatTokenCount(1200000)).toBe('1.2M')
+  })
+
+  it('handles typical token counts from context calculation', () => {
+    // 200000 * (100-60)/100 = 80000
+    expect(formatTokenCount(80000)).toBe('80K')
+    // 200000 * (100-25)/100 = 150000
+    expect(formatTokenCount(150000)).toBe('150K')
+    // Total: 230000
+    expect(formatTokenCount(230000)).toBe('230K')
+  })
+
+  it('returns 0 for zero', () => {
+    expect(formatTokenCount(0)).toBe('0')
+  })
+
+  it('handles exact 200K (fully consumed context)', () => {
+    expect(formatTokenCount(200000)).toBe('200K')
+  })
+})
+
+describe('formatDurationSec', () => {
+  it('returns seconds only for values under 60', () => {
+    expect(formatDurationSec(45)).toBe('45s')
+  })
+
+  it('returns 0s for zero', () => {
+    expect(formatDurationSec(0)).toBe('0s')
+  })
+
+  it('returns minutes and seconds for values between 60 and 3600', () => {
+    expect(formatDurationSec(125)).toBe('2m 5s')
+  })
+
+  it('returns just minutes when seconds is 0', () => {
+    expect(formatDurationSec(180)).toBe('3m')
+  })
+
+  it('returns hours and minutes for values over 3600', () => {
+    expect(formatDurationSec(3700)).toBe('1h 1m')
+  })
+
+  it('returns just hours when minutes is 0', () => {
+    expect(formatDurationSec(7200)).toBe('2h')
+  })
+
+  it('handles large durations', () => {
+    expect(formatDurationSec(86400)).toBe('24h')
   })
 })

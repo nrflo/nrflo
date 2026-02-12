@@ -45,6 +45,10 @@ export interface WorkflowState {
   version?: number
   current_phase?: string
   category?: string
+  status?: string
+  completed_at?: string
+  total_duration_sec?: number
+  total_tokens_used?: number
   phases?: Record<string, PhaseState>
   phase_order?: string[]
   active_agents?: Record<string, ActiveAgentV4>  // key is "agent_type:cli:model"

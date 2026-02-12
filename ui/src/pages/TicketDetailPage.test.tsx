@@ -580,3 +580,127 @@ describe('TicketDetailPage - Stop button placement', () => {
       .toBe(stopButton.closest('.flex.items-center.gap-3'))
   })
 })
+
+// Completed workflow with all three stats
+const workflowCompleted: WorkflowResponse = {
+  ticket_id: 'TICKET-1',
+  has_workflow: true,
+  state: {
+    workflow: 'feature',
+    version: 4,
+    status: 'completed',
+    completed_at: '2026-01-01T01:30:00Z',
+    total_duration_sec: 5400,
+    total_tokens_used: 230000,
+    current_phase: 'verification',
+    phase_order: ['investigation', 'implementation', 'verification'],
+    phases: {
+      investigation: { status: 'completed', result: 'pass' },
+      implementation: { status: 'completed', result: 'pass' },
+      verification: { status: 'completed', result: 'pass' },
+    },
+    active_agents: {},
+  },
+  workflows: ['feature'],
+  all_workflows: {},
+}
+
+// Completed workflow with zero tokens (no agents had context_left)
+const workflowCompletedZeroTokens: WorkflowResponse = {
+  ticket_id: 'TICKET-1',
+  has_workflow: true,
+  state: {
+    workflow: 'feature',
+    version: 4,
+    status: 'completed',
+    completed_at: '2026-01-01T00:05:00Z',
+    total_duration_sec: 300,
+    total_tokens_used: 0,
+    current_phase: 'investigation',
+    phase_order: ['investigation'],
+    phases: {
+      investigation: { status: 'completed', result: 'pass' },
+    },
+    active_agents: {},
+  },
+  workflows: ['feature'],
+  all_workflows: {},
+}
+
+describe('TicketDetailPage - Completion stats banner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
+  })
+
+  it('shows completion banner with all three stats when workflow is completed', async () => {
+    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
+    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowCompleted)
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed')).toBeInTheDocument()
+    })
+
+    // 1. Completion date/time is displayed
+    // formatDateTime('2026-01-01T01:30:00Z') renders locale-dependent, just check it's present
+    const banner = screen.getByText('Completed').closest('div.flex')!
+    expect(banner).toBeInTheDocument()
+
+    // 2. Duration is displayed (5400s = 1h 30m)
+    expect(screen.getByText('1h 30m')).toBeInTheDocument()
+
+    // 3. Token count is displayed (230000 = 230K)
+    expect(screen.getByText('230K tokens')).toBeInTheDocument()
+  })
+
+  it('does not show completion banner when workflow is active', async () => {
+    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
+    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowNoActivePhase)
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Test ticket')).toBeInTheDocument()
+    })
+
+    // workflowNoActivePhase has no status='completed', so no banner
+    expect(screen.queryByText('230K tokens')).not.toBeInTheDocument()
+  })
+
+  it('hides token count when total_tokens_used is 0', async () => {
+    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
+    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowCompletedZeroTokens)
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed')).toBeInTheDocument()
+    })
+
+    // Duration should show (300s = 5m)
+    expect(screen.getByText('5m')).toBeInTheDocument()
+
+    // Token count should NOT show when 0
+    expect(screen.queryByText(/tokens/)).not.toBeInTheDocument()
+  })
+
+  it('does not show completion banner on description tab', async () => {
+    const user = userEvent.setup()
+    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
+    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowCompleted)
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed')).toBeInTheDocument()
+    })
+
+    // Switch to description tab
+    await user.click(screen.getByText('Description'))
+
+    // Banner should not be visible (it's only in workflow tab)
+    expect(screen.queryByText('230K tokens')).not.toBeInTheDocument()
+  })
+})

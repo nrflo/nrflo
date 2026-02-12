@@ -189,6 +189,10 @@ Each v4 workflow state contains:
   "workflow": "feature",
   "current_phase": "implementation",
   "category": "full",
+  "status": "completed",
+  "completed_at": "2025-01-01T05:23:45Z",
+  "total_duration_sec": 19425.5,
+  "total_tokens_used": 150000,
   "retry_count": 0,
   "phase_order": ["investigation", "test-design", "implementation", "verification", "docs"],
   "phases": {"investigation": {"status": "completed", "result": "pass"}},
@@ -211,6 +215,12 @@ Each v4 workflow state contains:
   "parent_session": "uuid"
 }
 ```
+
+**Completion Statistics** (present when `status` is `"completed"`):
+- `status`: Workflow instance status (`"active"`, `"completed"`, or `"failed"`)
+- `completed_at`: ISO 8601 timestamp when workflow completed
+- `total_duration_sec`: Total workflow duration in seconds (from creation to completion)
+- `total_tokens_used`: Total context/tokens consumed across all agents (calculated using 200K token window * (100 - context_left) / 100 for each completed agent)
 
 ## Server Scripts
 

@@ -15,6 +15,8 @@ import {
   Info,
   Play,
   Square,
+  Clock,
+  Zap,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useProjectStore } from '@/stores/projectStore'
@@ -43,6 +45,8 @@ import {
   cn,
   statusColor,
   formatDateTime,
+  formatDurationSec,
+  formatTokenCount,
   priorityLabel,
 } from '@/lib/utils'
 
@@ -366,6 +370,31 @@ export function TicketDetailPage() {
                       </Button>
                     )}
                   </div>
+                  {displayedState.status === 'completed' && (
+                    <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="font-medium">Completed</span>
+                        {displayedState.completed_at && (
+                          <span className="text-green-600 dark:text-green-500">
+                            {formatDateTime(displayedState.completed_at)}
+                          </span>
+                        )}
+                      </div>
+                      {displayedState.total_duration_sec != null && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{formatDurationSec(displayedState.total_duration_sec)}</span>
+                        </div>
+                      )}
+                      {displayedState.total_tokens_used != null && displayedState.total_tokens_used > 0 && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Zap className="h-3.5 w-3.5" />
+                          <span>{formatTokenCount(displayedState.total_tokens_used)} tokens</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <PhaseTimeline
                     workflow={displayedState}
                     agentHistory={agentHistory}

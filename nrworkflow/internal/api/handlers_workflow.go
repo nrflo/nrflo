@@ -249,6 +249,36 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// handleGetSessionRawOutput returns raw stdout/stderr output for an agent session
+func (s *Server) handleGetSessionRawOutput(w http.ResponseWriter, r *http.Request) {
+	database, err := s.getDatabase()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer database.Close()
+
+	sessionID := extractID(r)
+
+	pool := db.WrapAsPool(database)
+	agentSvc := service.NewAgentService(pool)
+
+	rawOutput, err := agentSvc.GetSessionRawOutput(sessionID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"session_id": sessionID,
+		"raw_output": rawOutput,
+	})
+}
+
 // handleGetRecentAgents returns recent agent sessions across all projects
 func (s *Server) handleGetRecentAgents(w http.ResponseWriter, r *http.Request) {
 	database, err := s.getDatabase()

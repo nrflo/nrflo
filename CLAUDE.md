@@ -160,6 +160,7 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | `ancestor_session_id` | Links continuation chain |
 | `spawn_command` | Full CLI command for replay |
 | `prompt_context` | System prompt file contents |
+| `raw_output` | Raw stdout/stderr output from agent |
 | `started_at`, `ended_at` | Execution timestamps |
 | `created_at`, `updated_at` | Record timestamps |
 

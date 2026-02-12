@@ -91,6 +91,9 @@ type processInfo struct {
 	// Message buffering
 	messagesDirty     bool
 	lastMessagesFlush time.Time
+	// Raw output buffering (stdout/stderr lines before any parsing)
+	pendingRawOutput []string
+	rawOutputDirty   bool
 	// Context tracking
 	contextLeft      int
 	contextLeftDirty bool
@@ -350,6 +353,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		startTime:      time.Now(),
 		timeout:        time.Duration(timeout) * time.Minute,
 		pendingMessages:   make([]string, 0),
+		pendingRawOutput:  make([]string, 0),
 		doneCh:            make(chan struct{}),
 		lastMessagesFlush: time.Now(),
 		spawnCommand:   spawnCommand,
@@ -372,6 +376,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 			line := scanner.Text()
 			// Display and track stderr for debugging
 			fmt.Printf("  %s [stderr] %s\n", prefix, line)
+			s.trackRawOutput(proc, "[stderr] "+line)
 			s.trackMessage(proc, "[stderr] "+line)
 		}
 	}()
@@ -395,6 +400,7 @@ func (s *Spawner) monitorOutput(proc *processInfo, stdout io.ReadCloser) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		s.trackRawOutput(proc, line)
 		s.processOutput(proc, line)
 	}
 	if err := scanner.Err(); err != nil {
@@ -568,7 +574,7 @@ func (s *Spawner) maybeFlushMessages(proc *processInfo) {
 	shouldFlush := time.Since(proc.lastMessagesFlush) >= interval
 
 	if shouldFlush {
-		if proc.messagesDirty {
+		if proc.messagesDirty || proc.rawOutputDirty {
 			s.saveMessages(proc)
 			proc.messagesDirty = false
 		}
@@ -1269,6 +1275,14 @@ func (s *Spawner) trackMessage(proc *processInfo, msg string) {
 	proc.messagesDirty = true
 }
 
+// trackRawOutput adds a raw output line to the pending queue for DB insertion
+func (s *Spawner) trackRawOutput(proc *processInfo, line string) {
+	proc.messagesMutex.Lock()
+	defer proc.messagesMutex.Unlock()
+	proc.pendingRawOutput = append(proc.pendingRawOutput, line+"\n")
+	proc.rawOutputDirty = true
+}
+
 // formatPrefix returns a prefix string with agent type and model for console output
 func (s *Spawner) formatPrefix(proc *processInfo) string {
 	// Parse model from modelID (cli:model format)
@@ -1402,17 +1416,21 @@ func (s *Spawner) formatToolDetail(toolName string, input map[string]interface{}
 	return "[" + toolName + "] " + detail
 }
 
-// saveMessages flushes pending messages to the agent_messages table
+// saveMessages flushes pending messages and raw output to the database
 func (s *Spawner) saveMessages(proc *processInfo) {
-	// Drain pending messages
+	// Drain pending messages and raw output
 	proc.messagesMutex.Lock()
 	pending := proc.pendingMessages
 	proc.pendingMessages = make([]string, 0)
 	seqStart := proc.nextSeq
 	proc.nextSeq += len(pending)
+	pendingRaw := proc.pendingRawOutput
+	proc.pendingRawOutput = make([]string, 0)
+	rawDirty := proc.rawOutputDirty
+	proc.rawOutputDirty = false
 	proc.messagesMutex.Unlock()
 
-	if len(pending) == 0 {
+	if len(pending) == 0 && !rawDirty {
 		return
 	}
 
@@ -1422,11 +1440,19 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 	}
 	defer database.Close()
 
-	msgRepo := repo.NewAgentMessageRepo(database)
-	msgRepo.InsertBatch(proc.sessionID, seqStart, pending)
+	if len(pending) > 0 {
+		msgRepo := repo.NewAgentMessageRepo(database)
+		msgRepo.InsertBatch(proc.sessionID, seqStart, pending)
+	}
+
+	// Flush raw output
+	if rawDirty && len(pendingRaw) > 0 {
+		sessionRepo := repo.NewAgentSessionRepo(database)
+		sessionRepo.AppendRawOutput(proc.sessionID, strings.Join(pendingRaw, ""))
+	}
 
 	// Broadcast messages update for real-time UI
-	if proc.projectID != "" {
+	if proc.projectID != "" && len(pending) > 0 {
 		s.broadcast(ws.EventMessagesUpdated, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
 			"session_id": proc.sessionID,
 			"agent_type": proc.agentType,

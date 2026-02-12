@@ -101,6 +101,7 @@ export interface AgentSession {
   findings?: Record<string, unknown>
   last_messages?: string[]
   message_count: number
+  raw_output_size: number
   context_left?: number
   ancestor_session_id?: string
   started_at?: string
@@ -113,6 +114,11 @@ export interface SessionMessagesResponse {
   session_id: string
   messages: string[]
   total: number
+}
+
+export interface SessionRawOutputResponse {
+  session_id: string
+  raw_output: string
 }
 
 export interface AgentSessionsResponse {

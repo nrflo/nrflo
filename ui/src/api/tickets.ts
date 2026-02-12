@@ -15,6 +15,7 @@ import type {
   DependencyRequest,
   AgentSessionsResponse,
   SessionMessagesResponse,
+  SessionRawOutputResponse,
 } from '@/types/workflow'
 
 export interface ListTicketsParams {
@@ -137,5 +138,14 @@ export async function getSessionMessages(
 ): Promise<SessionMessagesResponse> {
   return apiGet<SessionMessagesResponse>(
     `/api/v1/sessions/${encodeURIComponent(sessionId)}/messages`
+  )
+}
+
+// Session raw output (lazy-loaded)
+export async function getSessionRawOutput(
+  sessionId: string
+): Promise<SessionRawOutputResponse> {
+  return apiGet<SessionRawOutputResponse>(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/raw-output`
   )
 }

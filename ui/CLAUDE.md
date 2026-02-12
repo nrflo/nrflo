@@ -160,7 +160,7 @@ PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
 ├── PhaseGraph (src/components/workflow/PhaseGraph/)
 │   ├── PhaseGraph.tsx - Main container using React Flow (@xyflow/react)
 │   ├── AgentFlowNode.tsx - Custom React Flow node for agents (clickable, opens modal)
-│   ├── AgentMessagesModal.tsx - Modal dialog showing agent messages with live updates
+│   ├── AgentMessagesModal.tsx - Modal dialog showing agent messages and raw output with live updates
 │   ├── layout.ts - Auto-layout helper for vertical positioning
 │   ├── PhaseFlowNode.tsx - Custom React Flow node for phases
 │   ├── PhaseNode.tsx - Standalone phase node
@@ -213,7 +213,7 @@ Key workflow types (`src/types/workflow.ts`):
 - `WorkflowState`: Phase states, phase_order, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
 - `WorkflowResponse`: API response with agent_history at top level
 - `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left)
-- `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left`
+- `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `raw_output_size`, `context_left`
 - `WorkflowFindings`: `Record<string, Record<string, unknown>>` (agent_type → field → value)
 
 ### Styling
@@ -409,6 +409,9 @@ GET /api/v1/agents/recent?limit=10
 # Session messages (paginated)
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
+
+# Session raw output (raw stdout/stderr)
+GET /api/v1/sessions/:id/raw-output
 
 # Other
 GET /api/v1/search?q=              # Full-text search

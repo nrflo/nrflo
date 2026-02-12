@@ -24,7 +24,6 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/lib/utils.ts` | Utility functions (cn, formatDate, statusColor, etc.) |
 | `src/components/ui/MarkdownEditor.tsx` | CodeMirror 6 markdown editor (used in AgentDefForm/Card) |
 | `src/components/ui/codemirror-theme.ts` | CodeMirror theme using CSS variables (auto dark/light) |
-| `src/components/ui/Tooltip.tsx` | Reusable tooltip with hover delay |
 | `src/components/ui/Dialog.tsx` | Modal dialog with backdrop, ESC key, click-outside-to-close |
 | `src/components/ui/` | Reusable UI components (Badge, Button, Card, Input, ProjectSelect, Select, Spinner, Textarea, Toggle) |
 | `src/components/layout/` | Layout components (Header, Sidebar) |
@@ -43,9 +42,9 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated workflow runs |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
-| `src/components/workflow/AgentLogPanel.tsx` | Collapsible right-side panel: overview of running agents or single-agent detail view with Messages/Raw toggle |
-| `src/components/workflow/AgentLogDetail.tsx` | Single-agent detail view with Messages/Raw output toggle, used by AgentLogPanel |
-| `src/components/workflow/LogMessage.tsx` | Log message component with tool name color highlighting, timestamp tooltips, full message display (no truncation) |
+| `src/components/workflow/AgentLogPanel.tsx` | Collapsible right-side panel: overview of running agents or single-agent detail view |
+| `src/components/workflow/AgentLogDetail.tsx` | Single-agent detail view with message table (timestamp, tool, message columns), used by AgentLogPanel |
+| `src/components/workflow/LogMessage.tsx` | Log message component with tool name color highlighting. Exports parseToolName and ToolBadge for table rendering |
 | `src/components/workflow/` | Workflow visualization components |
 | `src/pages/Dashboard.tsx` | Dashboard overview page |
 | `src/pages/TicketListPage.tsx` | Ticket list with filtering |
@@ -153,7 +152,7 @@ The ticket detail page (`src/pages/TicketDetailPage.tsx`) uses a tabbed interfac
 
 **Agent Log Panel**: The right-side panel (`AgentLogPanel`) has two modes:
 - **Overview mode** (default): Shows running agents with compact messages. Visible when agents are running.
-- **Detail mode**: Shows a single agent's full message list or raw output. Activated when clicking an agent in the PhaseGraph or in the overview. Includes a back button to return to overview and a Messages/Raw toggle (defaults to Messages).
+- **Detail mode**: Shows a single agent's messages in a table (timestamp|tool|message columns). Activated when clicking an agent in the PhaseGraph or in the overview. Includes a back button to return to overview. Raw output is stored in DB for debug only, not displayed in UI.
 The panel also shows when a completed agent is selected from PhaseGraph (even after all agents finish). Uses `AgentLogDetail` for the detail view. The panel collapses to a thin bar (w-10) with vertical label.
 
 ### Workflow Components
@@ -188,7 +187,7 @@ PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
 - Animated edges for in_progress phases
 - Running agents display with model name and elapsed time
 - Completed agents show model, result badge, and duration
-- Clicking any agent node shows it in the right-side AgentLogPanel (detail view with Messages/Raw toggle)
+- Clicking any agent node shows it in the right-side AgentLogPanel (detail view with message table)
 - Agent detail messages sorted with latest first (newest at top)
 - Detail view shows live updates when agent is running (session lookup from props, not captured at click time)
 - Session lookup for history entries uses fallback matching (exact model_id match first, then agent_type+phase only)

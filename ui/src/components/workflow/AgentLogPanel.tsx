@@ -57,18 +57,13 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
       </button>
       {displayMessages.length > 0 && (
         <div className="px-3 pb-2 space-y-1">
-          {displayMessages.map((msg, i) => {
-            const nextMsg = displayMessages[i + 1]
-            return (
-              <LogMessage
-                key={i}
-                message={msg.content}
-                variant="compact"
-                timestamp={msg.created_at || undefined}
-                nextTimestamp={nextMsg?.created_at || undefined}
-              />
-            )
-          })}
+          {displayMessages.map((msg, i) => (
+            <LogMessage
+              key={i}
+              message={msg.content}
+              variant="compact"
+            />
+          ))}
         </div>
       )}
     </div>

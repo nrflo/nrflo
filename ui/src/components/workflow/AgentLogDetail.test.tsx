@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AgentLogDetail } from './AgentLogDetail'
@@ -15,7 +15,6 @@ vi.mock('@/api/tickets', async () => {
   return {
     ...actual,
     getSessionMessages: vi.fn(),
-    getSessionRawOutput: vi.fn(),
   }
 })
 
@@ -94,10 +93,6 @@ describe('AgentLogDetail', () => {
       ],
       total: 3,
     })
-    vi.mocked(ticketsApi.getSessionRawOutput).mockResolvedValue({
-      session_id: 'session-1',
-      raw_output: '$ npm install\n+ added 120 packages\n$ npm run build\nBuild complete.',
-    })
   })
 
   describe('header and status display', () => {
@@ -109,7 +104,6 @@ describe('AgentLogDetail', () => {
       })
 
       expect(screen.getByText('implementation')).toBeInTheDocument()
-      // Model name is derived from model_id: claude-sonnet-4-5 => split('-').slice(-2).join('-') => '4-5'
       expect(screen.getByText('4-5')).toBeInTheDocument()
     })
 
@@ -156,127 +150,14 @@ describe('AgentLogDetail', () => {
         onBack,
       )
 
-      // The back button is an ArrowLeft icon button
       const buttons = screen.getAllByRole('button')
-      // First button is the back button
       await user.click(buttons[0])
       expect(onBack).toHaveBeenCalledTimes(1)
     })
   })
 
-  describe('messages/raw toggle - acceptance criteria', () => {
-    it('defaults to Messages view (criterion #4)', async () => {
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession(),
-      })
-
-      // Messages button should be active (has 'bg-accent text-accent-foreground font-medium')
-      const messagesBtn = screen.getByRole('button', { name: /messages/i })
-      expect(messagesBtn.className).toContain('font-medium')
-
-      // Raw button should not be active (no font-medium class)
-      const rawBtn = screen.getByRole('button', { name: /raw/i })
-      expect(rawBtn.className).not.toContain('font-medium')
-
-      // Messages content should load
-      await waitFor(() => {
-        expect(screen.getByText('3 messages')).toBeInTheDocument()
-      })
-    })
-
-    it('shows messages/raw toggle at top of panel (criterion #1)', () => {
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession(),
-      })
-
-      expect(screen.getByRole('button', { name: /messages/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /raw/i })).toBeInTheDocument()
-    })
-
-    it('toggles to Raw view and shows raw output (criterion #2)', async () => {
-      const user = userEvent.setup()
-
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession(),
-      })
-
-      // Switch to Raw
-      await user.click(screen.getByRole('button', { name: /raw/i }))
-
-      // Raw button should now be active
-      const rawBtn = screen.getByRole('button', { name: /raw/i })
-      expect(rawBtn.className).toContain('font-medium')
-
-      // Raw output should load
-      await waitFor(() => {
-        expect(screen.getByText(/npm install/)).toBeInTheDocument()
-      })
-      expect(screen.getByText(/Build complete/)).toBeInTheDocument()
-    })
-
-    it('toggles back to Messages from Raw', async () => {
-      const user = userEvent.setup()
-
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession(),
-      })
-
-      // Switch to Raw
-      await user.click(screen.getByRole('button', { name: /raw/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText(/npm install/)).toBeInTheDocument()
-      })
-
-      // Switch back to Messages
-      await user.click(screen.getByRole('button', { name: /messages/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText('3 messages')).toBeInTheDocument()
-      })
-    })
-
-    it('shows raw output size in bytes on Raw button', () => {
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession({ raw_output_size: 2048 }),
-      })
-
-      expect(screen.getByText('(2.0 KB)')).toBeInTheDocument()
-    })
-
-    it('does not show toggle when no raw output and not running', () => {
-      renderDetail({
-        phaseName: 'investigation',
-        historyEntry: makeHistoryEntry(),
-        session: makeSession({ raw_output_size: 0, status: 'completed' }),
-      })
-
-      expect(screen.queryByRole('button', { name: /raw/i })).not.toBeInTheDocument()
-    })
-
-    it('shows toggle for running agent even with no raw output yet', () => {
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession({ raw_output_size: 0 }),
-      })
-
-      expect(screen.getByRole('button', { name: /raw/i })).toBeInTheDocument()
-    })
-  })
-
   describe('messages display', () => {
-    it('shows messages in reversed order (newest first)', async () => {
+    it('shows messages in a table with newest first', async () => {
       renderDetail({
         phaseName: 'implementation',
         agent: makeRunningAgent(),
@@ -287,7 +168,16 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('3 messages')).toBeInTheDocument()
       })
 
-      // Messages should be rendered (getSessionMessages mock returns 3 messages)
+      // Table should exist
+      const table = document.querySelector('table')
+      expect(table).toBeInTheDocument()
+
+      // Table headers
+      expect(screen.getByText('Time')).toBeInTheDocument()
+      expect(screen.getByText('Tool')).toBeInTheDocument()
+      expect(screen.getByText('Message')).toBeInTheDocument()
+
+      // Messages content
       expect(screen.getByText('Setting up project...')).toBeInTheDocument()
       expect(screen.getByText('Installing deps...')).toBeInTheDocument()
       expect(screen.getByText('Running build...')).toBeInTheDocument()
@@ -324,31 +214,17 @@ describe('AgentLogDetail', () => {
     })
   })
 
-  describe('raw output display', () => {
-    it('shows raw output in monospace pre block', async () => {
-      const user = userEvent.setup()
-
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession(),
-      })
-
-      await user.click(screen.getByRole('button', { name: /raw/i }))
-
-      await waitFor(() => {
-        const pre = screen.getByText(/npm install/).closest('pre')
-        expect(pre).toBeInTheDocument()
-        expect(pre?.className).toContain('font-mono')
-      })
-    })
-
-    it('shows empty state when raw output is empty', async () => {
-      const user = userEvent.setup()
-
-      vi.mocked(ticketsApi.getSessionRawOutput).mockResolvedValue({
+  describe('acceptance criteria: no tooltip, table layout, no toggle', () => {
+    it('renders message table with tool badges and timestamps, no tooltip, no raw/messages toggle', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
         session_id: 'session-1',
-        raw_output: '',
+        messages: [
+          { content: '[Bash] git status', created_at: '2026-01-01T00:01:00Z' },
+          { content: '[Read] src/main.ts', created_at: '2026-01-01T00:01:10Z' },
+          { content: '[Edit] src/utils.ts', created_at: '2026-01-01T00:01:20Z' },
+          { content: 'plain text message', created_at: '2026-01-01T00:01:30Z' },
+        ],
+        total: 4,
       })
 
       renderDetail({
@@ -356,79 +232,216 @@ describe('AgentLogDetail', () => {
         agent: makeRunningAgent(),
         session: makeSession(),
       })
-
-      await user.click(screen.getByRole('button', { name: /raw/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('No raw output available')).toBeInTheDocument()
-      })
-    })
-
-    it('shows loading state while raw output is being fetched', async () => {
-      const user = userEvent.setup()
-
-      vi.mocked(ticketsApi.getSessionRawOutput).mockReturnValue(new Promise(() => {}))
-
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession(),
+        expect(screen.getByText('4 messages')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: /raw/i }))
+      // --- Criterion 1: No tooltip ---
+      // Tooltip component was deleted. Verify no tooltip-related attributes exist.
+      const container = document.querySelector('.flex.flex-col.h-full')!
+      expect(container.querySelector('[role="tooltip"]')).toBeNull()
+      expect(container.querySelector('[data-tooltip]')).toBeNull()
 
-      expect(screen.getByText('Loading raw output...')).toBeInTheDocument()
+      // --- Criterion 2: Table with timestamp|tool|message structure ---
+      const table = document.querySelector('table')!
+      expect(table).toBeInTheDocument()
+
+      // Verify table header structure
+      const thead = table.querySelector('thead')!
+      const headerCells = thead.querySelectorAll('th')
+      expect(headerCells).toHaveLength(3)
+      expect(headerCells[0].textContent).toBe('Time')
+      expect(headerCells[1].textContent).toBe('Tool')
+      expect(headerCells[2].textContent).toBe('Message')
+
+      // Verify table body has correct number of rows
+      const tbody = table.querySelector('tbody')!
+      const rows = tbody.querySelectorAll('tr')
+      expect(rows).toHaveLength(4)
+
+      // Messages are reversed (newest first), so last message in data is first row
+      const firstRow = rows[0]
+      const firstRowCells = firstRow.querySelectorAll('td')
+      expect(firstRowCells).toHaveLength(3)
+      // Timestamp column (td[0]) has time text
+      expect(firstRowCells[0].textContent).toBeTruthy()
+      // No tool for plain text message
+      expect(firstRowCells[1].querySelector('span')).toBeNull()
+      // Message column
+      expect(firstRowCells[2].textContent).toBe('plain text message')
+
+      // Second row (third message in reversed order) should have [Edit] tool badge
+      const secondRow = rows[1]
+      const secondRowCells = secondRow.querySelectorAll('td')
+      expect(within(secondRowCells[1]).getByText('Edit')).toBeInTheDocument()
+      expect(secondRowCells[2].textContent).toBe('src/utils.ts')
+
+      // Third row should have [Read] tool badge
+      const thirdRow = rows[2]
+      const thirdRowCells = thirdRow.querySelectorAll('td')
+      expect(within(thirdRowCells[1]).getByText('Read')).toBeInTheDocument()
+      expect(thirdRowCells[2].textContent).toBe('src/main.ts')
+
+      // Fourth row (first message) should have [Bash] tool badge
+      const fourthRow = rows[3]
+      const fourthRowCells = fourthRow.querySelectorAll('td')
+      expect(within(fourthRowCells[1]).getByText('Bash')).toBeInTheDocument()
+      expect(fourthRowCells[2].textContent).toBe('git status')
+
+      // --- Criterion 3: No messages/raw toggle ---
+      // There should be no toggle, tab, or button for switching between messages and raw
+      expect(screen.queryByText('Messages')).not.toBeInTheDocument()
+      expect(screen.queryByText('Raw')).not.toBeInTheDocument()
+      expect(screen.queryByText('Raw Output')).not.toBeInTheDocument()
+      expect(screen.queryByRole('tab')).toBeNull()
+
+      // Messages are always displayed directly (the table IS the default and only view)
+      expect(table).toBeVisible()
     })
   })
 
-  describe('agent change behavior', () => {
-    it('resets to Messages view when agent changes', async () => {
-      const user = userEvent.setup()
-      const session1 = makeSession({ id: 'session-1' })
-      const session2 = makeSession({ id: 'session-2', phase: 'verification', agent_type: 'tester' })
-
+  describe('table tool badge rendering', () => {
+    it('renders colored tool badges in the tool column for known tools', async () => {
       vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
         session_id: 'session-1',
-        messages: [{ content: 'msg1', created_at: '' }],
+        messages: [
+          { content: '[Grep] pattern in files', created_at: '2026-01-01T00:00:01Z' },
+          { content: '[WebFetch] https://example.com', created_at: '2026-01-01T00:00:02Z' },
+          { content: '[Task] codebase-explorer: search', created_at: '2026-01-01T00:00:03Z' },
+        ],
+        total: 3,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Grep')).toBeInTheDocument()
+      })
+
+      expect(screen.getByText('WebFetch')).toBeInTheDocument()
+      expect(screen.getByText('Task')).toBeInTheDocument()
+
+      // Verify the tool badges are in td elements (table cells)
+      const grepBadge = screen.getByText('Grep')
+      expect(grepBadge.closest('td')).toBeInTheDocument()
+    })
+
+    it('leaves tool column empty for messages without tool prefix', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'no tool prefix here', created_at: '2026-01-01T00:00:01Z' },
+        ],
         total: 1,
       })
 
-      const queryClient = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
       })
 
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>
-          <AgentLogDetail
-            selectedAgent={{ phaseName: 'implementation', agent: makeRunningAgent(), session: session1 }}
-            onBack={vi.fn()}
-          />
-        </QueryClientProvider>
-      )
-
-      // Toggle to Raw
-      await user.click(screen.getByRole('button', { name: /raw/i }))
-      expect(screen.getByRole('button', { name: /raw/i }).className).toContain('font-medium')
-
-      // Change agent
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <AgentLogDetail
-            selectedAgent={{
-              phaseName: 'verification',
-              agent: makeRunningAgent({ agent_type: 'tester', phase: 'verification' }),
-              session: session2,
-            }}
-            onBack={vi.fn()}
-          />
-        </QueryClientProvider>
-      )
-
-      // Should reset to Messages
       await waitFor(() => {
-        const messagesBtn = screen.getByRole('button', { name: /messages/i })
-        expect(messagesBtn.className).toContain('font-medium')
+        expect(screen.getByText('no tool prefix here')).toBeInTheDocument()
       })
+
+      const tbody = document.querySelector('tbody')!
+      const toolCell = tbody.querySelector('tr td:nth-child(2)')!
+      // Tool cell should have no badge child
+      expect(toolCell.children).toHaveLength(0)
+    })
+  })
+
+  describe('table timestamp rendering', () => {
+    it('renders formatted timestamps in the time column', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'msg1', created_at: '2026-01-15T14:30:45Z' },
+        ],
+        total: 1,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('1 messages')).toBeInTheDocument()
+      })
+
+      // The time cell should contain a formatted HH:MM:SS timestamp
+      const tbody = document.querySelector('tbody')!
+      const timeCell = tbody.querySelector('tr td:first-child')!
+      // formatTime produces locale-dependent output, but it should be non-empty
+      expect(timeCell.textContent).toBeTruthy()
+      // Should contain at least digits and colons (HH:MM:SS pattern)
+      expect(timeCell.textContent).toMatch(/\d/)
+    })
+
+    it('handles empty created_at gracefully', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'msg without time', created_at: '' },
+        ],
+        total: 1,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('msg without time')).toBeInTheDocument()
+      })
+
+      // Should not crash, time cell should be empty
+      const tbody = document.querySelector('tbody')!
+      const timeCell = tbody.querySelector('tr td:first-child')!
+      expect(timeCell.textContent).toBe('')
+    })
+  })
+
+  describe('message order', () => {
+    it('reverses messages so newest appears first in the table', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'first message', created_at: '2026-01-01T00:00:01Z' },
+          { content: 'second message', created_at: '2026-01-01T00:00:02Z' },
+          { content: 'third message', created_at: '2026-01-01T00:00:03Z' },
+        ],
+        total: 3,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('3 messages')).toBeInTheDocument()
+      })
+
+      const tbody = document.querySelector('tbody')!
+      const rows = tbody.querySelectorAll('tr')
+      const msgCells = Array.from(rows).map(r => r.querySelector('td:nth-child(3)')!.textContent)
+
+      // Reversed: newest first
+      expect(msgCells[0]).toBe('third message')
+      expect(msgCells[1]).toBe('second message')
+      expect(msgCells[2]).toBe('first message')
     })
   })
 })

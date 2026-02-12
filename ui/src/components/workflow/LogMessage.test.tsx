@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { LogMessage } from './LogMessage'
+import { LogMessage, parseToolName, ToolBadge } from './LogMessage'
 
 describe('LogMessage', () => {
   describe('compact variant (default)', () => {
@@ -101,5 +101,60 @@ describe('LogMessage', () => {
       expect(full.className).toContain('border')
       expect(full.className).toContain('bg-muted/30')
     })
+  })
+
+  describe('no tooltip rendering', () => {
+    it('does not render any tooltip elements on hover', () => {
+      render(<LogMessage message="[Bash] git status" />)
+      // No tooltip-related attributes or elements
+      const el = screen.getByText('git status').closest('div')!
+      expect(el.querySelector('[role="tooltip"]')).toBeNull()
+      expect(el.getAttribute('title')).toBeNull()
+      expect(el.getAttribute('data-tooltip')).toBeNull()
+    })
+  })
+})
+
+describe('parseToolName', () => {
+  it('extracts tool name and rest from bracketed prefix', () => {
+    expect(parseToolName('[Bash] git status')).toEqual({ toolName: 'Bash', rest: 'git status' })
+  })
+
+  it('extracts tool name for Read', () => {
+    expect(parseToolName('[Read] /path/to/file.ts')).toEqual({ toolName: 'Read', rest: '/path/to/file.ts' })
+  })
+
+  it('extracts tool name for multiline rest', () => {
+    const result = parseToolName('[Edit] first line\nsecond line')
+    expect(result.toolName).toBe('Edit')
+    expect(result.rest).toBe('first line\nsecond line')
+  })
+
+  it('returns null toolName for plain messages', () => {
+    expect(parseToolName('plain message')).toEqual({ toolName: null, rest: 'plain message' })
+  })
+
+  it('returns null toolName and empty rest for empty string', () => {
+    expect(parseToolName('')).toEqual({ toolName: null, rest: '' })
+  })
+
+  it('does not match brackets in the middle of the string', () => {
+    expect(parseToolName('some [Bash] in middle')).toEqual({ toolName: null, rest: 'some [Bash] in middle' })
+  })
+})
+
+describe('ToolBadge', () => {
+  it('renders badge with known tool color', () => {
+    render(<ToolBadge name="Bash" />)
+    const badge = screen.getByText('Bash')
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('bg-blue-100')
+  })
+
+  it('renders badge with default color for unknown tool', () => {
+    render(<ToolBadge name="UnknownTool" />)
+    const badge = screen.getByText('UnknownTool')
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('bg-gray-100')
   })
 })

@@ -1,5 +1,4 @@
-import { cn, formatElapsedTime } from '@/lib/utils'
-import { Tooltip } from '@/components/ui/Tooltip'
+import { cn } from '@/lib/utils'
 
 const TOOL_COLORS: Record<string, string> = {
   Bash: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
@@ -17,14 +16,14 @@ const TOOL_COLORS: Record<string, string> = {
 
 const DEFAULT_TOOL_COLOR = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
 
-function parseToolName(message: string): { toolName: string | null; rest: string } {
+export function parseToolName(message: string): { toolName: string | null; rest: string } {
   if (!message) return { toolName: null, rest: '' }
   const match = message.match(/^\[(\w+)\]\s*(.*)$/s)
   if (!match) return { toolName: null, rest: message }
   return { toolName: match[1], rest: match[2] }
 }
 
-function ToolBadge({ name }: { name: string }) {
+export function ToolBadge({ name }: { name: string }) {
   const colorClass = TOOL_COLORS[name] ?? DEFAULT_TOOL_COLOR
   return (
     <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0', colorClass)}>
@@ -33,35 +32,16 @@ function ToolBadge({ name }: { name: string }) {
   )
 }
 
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-
 interface LogMessageProps {
   message: string
   variant?: 'compact' | 'full'
   className?: string
-  timestamp?: string
-  nextTimestamp?: string
 }
 
-export function LogMessage({ message, variant = 'compact', className, timestamp, nextTimestamp }: LogMessageProps) {
+export function LogMessage({ message, variant = 'compact', className }: LogMessageProps) {
   const { toolName, rest } = parseToolName(message)
 
-  const tooltipContent = timestamp ? (
-    <div className="text-xs space-y-1">
-      <div className="font-medium">{formatTime(timestamp)}</div>
-      <div className="text-muted-foreground">
-        {nextTimestamp
-          ? `+${formatElapsedTime(timestamp, nextTimestamp)} until next`
-          : `${formatElapsedTime(timestamp)} ago`
-        }
-      </div>
-    </div>
-  ) : null
-
-  const content = (
+  return (
     <div
       className={cn(
         variant === 'compact'
@@ -75,14 +55,4 @@ export function LogMessage({ message, variant = 'compact', className, timestamp,
       {rest}
     </div>
   )
-
-  if (tooltipContent) {
-    return (
-      <Tooltip content={tooltipContent} position="left" delay={200}>
-        {content}
-      </Tooltip>
-    )
-  }
-
-  return content
 }

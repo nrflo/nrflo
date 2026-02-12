@@ -1,13 +1,12 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ExternalLink, Layers, Plus, X } from 'lucide-react'
+import { ExternalLink, Layers, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { TicketSearchDropdown } from '@/components/ui/TicketSearchDropdown'
 import { addDependency, removeDependency } from '@/api/tickets'
 import { ticketKeys } from '@/hooks/useTickets'
 import type { TicketWithDeps } from '@/types/ticket'
+import type { PendingTicket } from '@/types/ticket'
 
 interface DescriptionTabContentProps {
   ticket: TicketWithDeps
@@ -15,22 +14,14 @@ interface DescriptionTabContentProps {
 
 export function DescriptionTabContent({ ticket }: DescriptionTabContentProps) {
   const queryClient = useQueryClient()
-  const [blockerInput, setBlockerInput] = useState('')
-  const [adding, setAdding] = useState(false)
 
-  const handleAddBlocker = async () => {
-    const id = blockerInput.trim()
-    if (!id) return
-    setAdding(true)
+  const handleAddBlocker = async (selected: PendingTicket) => {
     try {
-      await addDependency({ issue_id: ticket.id, depends_on_id: id })
-      setBlockerInput('')
+      await addDependency({ issue_id: ticket.id, depends_on_id: selected.id })
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticket.id) })
       queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
     } catch {
       // ignore
-    } finally {
-      setAdding(false)
     }
   }
 
@@ -96,24 +87,11 @@ export function DescriptionTabContent({ ticket }: DescriptionTabContentProps) {
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Ticket ID"
-                value={blockerInput}
-                onChange={(e) => setBlockerInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddBlocker()}
-                className="w-40 h-8 text-sm"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAddBlocker}
-                disabled={adding || !blockerInput.trim()}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add
-              </Button>
-            </div>
+            <TicketSearchDropdown
+              onSelect={handleAddBlocker}
+              excludeIds={[ticket.id, ...(ticket.blockers?.map((b) => b.depends_on_id) ?? [])]}
+              placeholder="Search tickets to add..."
+            />
           </div>
 
           {(ticket.blocks?.length ?? 0) > 0 && (

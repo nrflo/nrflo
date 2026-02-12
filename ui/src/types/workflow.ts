@@ -81,8 +81,8 @@ export interface DependenciesResponse {
 }
 
 export interface DependencyRequest {
-  child_id: string
-  parent_id: string
+  issue_id: string
+  depends_on_id: string
   created_by?: string
 }
 

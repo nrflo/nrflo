@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -30,55 +29,9 @@ func LoadProjectConfig(projectRoot string) (*ProjectConfig, error) {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	// Check for deprecated workflows key
-	var rawConfig map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawConfig); err == nil {
-		if _, hasWorkflows := rawConfig["workflows"]; hasWorkflows {
-			log.Printf("[DEPRECATED] config.json contains 'workflows' key. Workflow definitions are now stored in the database. Use 'nrworkflow workflow def create' to manage workflows.")
-		}
-	}
-
 	var config ProjectConfig
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	return &config, nil
-}
-
-// LoadWorkflowConfig loads full workflow config from config.json (legacy, for backward compat).
-// New code should use LoadProjectConfig + ListWorkflowDefs instead.
-func LoadWorkflowConfig(projectRoot string) (*WorkflowConfig, error) {
-	if projectRoot == "" {
-		return nil, fmt.Errorf("project root required")
-	}
-
-	configPath := filepath.Join(projectRoot, ".claude", "nrworkflow", "config.json")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("config not found: %s. Create a config.json at .claude/nrworkflow/config.json", configPath)
-		}
-		return nil, fmt.Errorf("failed to read config: %w", err)
-	}
-
-	var config WorkflowConfig
-	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	// Parse phases for each workflow
-	for name, wf := range config.Workflows {
-		phases, err := parsePhaseDefs(wf.RawPhases)
-		if err != nil {
-			return nil, fmt.Errorf("workflow '%s': %w", name, err)
-		}
-		// Sort phases by Order field
-		sort.Slice(phases, func(i, j int) bool {
-			return phases[i].Order < phases[j].Order
-		})
-		wf.Phases = phases
-		config.Workflows[name] = wf
 	}
 
 	return &config, nil

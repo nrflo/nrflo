@@ -22,10 +22,9 @@ type Config struct {
 
 // ProjectConfig represents project-specific configuration from .claude/nrworkflow/config.json
 type ProjectConfig struct {
-	Project   string                 `json:"project"`
-	CLI       map[string]interface{} `json:"cli,omitempty"`
-	Agents    map[string]interface{} `json:"agents,omitempty"`
-	Workflows map[string]interface{} `json:"workflows,omitempty"`
+	Project string                 `json:"project"`
+	CLI     map[string]interface{} `json:"cli,omitempty"`
+	Agents  map[string]interface{} `json:"agents,omitempty"`
 }
 
 // ProjectConfigResult contains the result of finding a project config

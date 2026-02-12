@@ -117,17 +117,7 @@ type SpawnerConfig struct {
 	ContextThreshold int `json:"context_threshold,omitempty"`
 }
 
-// WorkflowConfig represents the full workflow configuration (legacy, includes workflows from config.json)
-type WorkflowConfig struct {
-	CLI struct {
-		Default string `json:"default"`
-	} `json:"cli"`
-	Agents    map[string]AgentConfig `json:"agents"`
-	Workflows map[string]WorkflowDef `json:"workflows"`
-	Spawner   SpawnerConfig          `json:"spawner,omitempty"`
-}
-
-// ProjectConfig represents the project configuration from config.json (without workflows)
+// ProjectConfig represents the project configuration from config.json
 type ProjectConfig struct {
 	CLI struct {
 		Default string `json:"default"`

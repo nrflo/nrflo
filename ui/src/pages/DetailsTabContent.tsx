@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import type { TicketWithDeps } from '@/types/ticket'
@@ -44,6 +45,19 @@ export function DetailsTabContent({ ticket }: DetailsTabContentProps) {
             <div>
               <dt className="text-sm text-muted-foreground">Closed</dt>
               <dd className="font-medium">{formatDateTime(ticket.closed_at)}</dd>
+            </div>
+          )}
+          {ticket.parent_ticket_id && (
+            <div>
+              <dt className="text-sm text-muted-foreground">Parent Epic</dt>
+              <dd className="font-medium">
+                <Link
+                  to={`/tickets/${encodeURIComponent(ticket.parent_ticket_id)}`}
+                  className="text-primary hover:underline"
+                >
+                  {ticket.parent_ticket_id}
+                </Link>
+              </dd>
             </div>
           )}
           {ticket.close_reason && (

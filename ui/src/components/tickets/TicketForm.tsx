@@ -14,15 +14,22 @@ const ticketSchema = z.object({
   priority: z.coerce.number().min(1).max(4),
   issue_type: z.enum(['bug', 'feature', 'task', 'epic']),
   created_by: z.string().min(1, 'Created by is required'),
+  parent_ticket_id: z.string().optional().default(''),
 })
 
 export type TicketFormData = z.infer<typeof ticketSchema>
+
+export interface ParentOption {
+  id: string
+  title: string
+}
 
 interface TicketFormProps {
   onSubmit: (data: TicketFormData) => Promise<void>
   isSubmitting?: boolean
   defaultValues?: Partial<TicketFormData>
   isEdit?: boolean
+  parentOptions?: ParentOption[]
 }
 
 export function TicketForm({
@@ -30,6 +37,7 @@ export function TicketForm({
   isSubmitting,
   defaultValues,
   isEdit,
+  parentOptions,
 }: TicketFormProps) {
   const {
     register,
@@ -41,6 +49,7 @@ export function TicketForm({
       priority: 2,
       issue_type: 'task',
       created_by: 'ui',
+      parent_ticket_id: '',
       ...defaultValues,
     },
   })
@@ -131,6 +140,22 @@ export function TicketForm({
           </Select>
         </div>
       </div>
+
+      {parentOptions && parentOptions.length > 0 && (
+        <div className="space-y-2">
+          <label htmlFor="parent_ticket_id" className="text-sm font-medium">
+            Parent Epic
+          </label>
+          <Select id="parent_ticket_id" {...register('parent_ticket_id')}>
+            <option value="">None</option>
+            {parentOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.id} - {opt.title}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 pt-4">
         <Button type="submit" disabled={isSubmitting}>

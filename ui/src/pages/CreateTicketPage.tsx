@@ -1,14 +1,23 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { TicketForm, type TicketFormData } from '@/components/tickets/TicketForm'
-import { useCreateTicket } from '@/hooks/useTickets'
+import { useCreateTicket, useTicketList } from '@/hooks/useTickets'
 
 export function CreateTicketPage() {
   const navigate = useNavigate()
   const createMutation = useCreateTicket()
+  const { data: ticketData } = useTicketList()
+
+  const parentOptions = useMemo(() => {
+    if (!ticketData?.tickets) return []
+    return ticketData.tickets
+      .filter((t) => t.issue_type === 'epic')
+      .map((t) => ({ id: t.id, title: t.title }))
+  }, [ticketData])
 
   const handleSubmit = async (data: TicketFormData) => {
     try {
@@ -19,6 +28,7 @@ export function CreateTicketPage() {
         priority: data.priority,
         issue_type: data.issue_type,
         created_by: data.created_by,
+        parent_ticket_id: data.parent_ticket_id || undefined,
       })
       navigate(`/tickets/${encodeURIComponent(ticket.id)}`)
     } catch {
@@ -45,6 +55,7 @@ export function CreateTicketPage() {
           <TicketForm
             onSubmit={handleSubmit}
             isSubmitting={createMutation.isPending}
+            parentOptions={parentOptions}
           />
           {createMutation.isError && (
             <p className="mt-4 text-sm text-destructive">

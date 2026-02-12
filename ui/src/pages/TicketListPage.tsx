@@ -74,6 +74,7 @@ export function TicketListPage() {
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
             <option value="closed">Closed</option>
+            <option value="blocked">Blocked</option>
           </Select>
 
           <Select

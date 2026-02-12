@@ -100,6 +100,26 @@ nrworkflow findings get <ticket> <agent-type> [key] -w <workflow> [--model <mode
 nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow> [--model <model>]
 ```
 
+## Ticket CLI Commands
+
+Manage tickets and dependencies via the HTTP API (requires server running):
+
+```bash
+nrworkflow tickets list [--status <status>] [--type <type>] [--parent <id>] [--json]
+nrworkflow tickets get <id> [--json]
+nrworkflow tickets create --title <title> [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>] [--created-by <name>] [--json]
+nrworkflow tickets update <id> [--title <title>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>]
+nrworkflow tickets close <id> [--reason <text>]
+nrworkflow tickets reopen <id>
+nrworkflow tickets delete <id>
+
+nrworkflow deps list <ticket-id> [--json]
+nrworkflow deps add <ticket-id> <blocker-id>
+nrworkflow deps remove <ticket-id> <blocker-id>
+```
+
+All ticket/deps commands use `--server` (default `NRWORKFLOW_API_URL` or `http://localhost:6587`) and require `NRWORKFLOW_PROJECT` env variable.
+
 ## Workflows
 
 | Workflow | Phases | Use Case |

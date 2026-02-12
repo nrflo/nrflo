@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"be/internal/model"
+	"be/internal/repo"
 )
 
 // handleSearch performs FTS5 search
@@ -27,14 +27,14 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tickets, err := ticketRepo.Search(projectID, query)
+	tickets, err := ticketRepo.SearchWithBlockedInfo(projectID, query)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if tickets == nil {
-		tickets = []*model.Ticket{}
+		tickets = []*repo.PendingTicket{}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

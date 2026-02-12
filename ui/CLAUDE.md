@@ -210,6 +210,13 @@ Findings use a simple KEY: VALUE format with minimal parsing:
 
 Components: `SimpleFindingValue` in PhaseCard.tsx, WorkflowFindings.tsx, FindingsViewer.tsx
 
+Key ticket types (`src/types/ticket.ts`):
+- `Ticket`: Base ticket with `parent_ticket_id?: string | null`
+- `PendingTicket`: Extends `Ticket` with `is_blocked` and `blocked_by` fields
+- `TicketListResponse`: `{ tickets: PendingTicket[] }` — list endpoint returns PendingTicket
+- `SearchResponse`: `{ tickets: PendingTicket[], query: string }` — search also returns PendingTicket
+- `StatusResponse`: Includes `counts.blocked` for sidebar badge
+
 Key workflow types (`src/types/workflow.ts`):
 - `WorkflowState`: Phase states, phase_order, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
 - `WorkflowResponse`: API response with agent_history at top level

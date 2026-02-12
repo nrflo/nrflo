@@ -8,6 +8,7 @@ export interface Ticket {
   status: Status
   priority: number
   issue_type: IssueType
+  parent_ticket_id?: string | null
   created_at: string
   updated_at: string
   closed_at: string | null
@@ -40,6 +41,7 @@ export interface CreateTicketRequest {
   priority?: number
   issue_type?: IssueType
   created_by: string
+  parent_ticket_id?: string
 }
 
 export interface UpdateTicketRequest {
@@ -48,14 +50,15 @@ export interface UpdateTicketRequest {
   status?: Status
   priority?: number
   issue_type?: IssueType
+  parent_ticket_id?: string
 }
 
 export interface TicketListResponse {
-  tickets: Ticket[]
+  tickets: PendingTicket[]
 }
 
 export interface SearchResponse {
-  tickets: Ticket[]
+  tickets: PendingTicket[]
   query: string
 }
 
@@ -64,6 +67,7 @@ export interface StatusResponse {
     open: number
     in_progress: number
     closed: number
+    blocked: number
     total: number
   }
   ready_count: number

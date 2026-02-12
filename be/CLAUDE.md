@@ -12,7 +12,10 @@ be/
 │   │   ├── root.go              # Root command, global flags, project discovery
 │   │   ├── serve.go             # HTTP API server (auto-migrates DB)
 │   │   ├── agent.go             # agent complete/fail/continue (agent-only)
-│   │   └── findings.go          # findings add/append/get/delete (agent-only)
+│   │   ├── findings.go          # findings add/append/get/delete (agent-only)
+│   │   ├── tickets.go           # tickets list/get/create (HTTP)
+│   │   ├── tickets_update.go    # tickets update/close/reopen/delete (HTTP)
+│   │   └── deps.go              # deps list/add/remove (HTTP)
 │   ├── spawner/                 # Agent spawner
 │   │   ├── spawner.go           # Spawn and monitor agents
 │   │   ├── cli_adapter.go       # CLI adapter pattern (Claude, Opencode, Codex)
@@ -21,7 +24,8 @@ be/
 │   │   └── orchestrator.go      # Run workflows from UI (sequential phases)
 │   ├── api/                     # HTTP API
 │   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator
-│   │   ├── handlers_tickets.go  # Ticket endpoints
+│   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints
+│   │   ├── handlers_tickets_update.go # Ticket update/delete/close/reopen endpoints
 │   │   ├── handlers_workflow.go # Workflow state endpoints
 │   │   ├── handlers_orchestrate.go # Orchestration run/stop endpoints
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
@@ -33,8 +37,9 @@ be/
 │   │   └── testing.go           # Test helpers (NewTestClient)
 │   ├── config/                  # Configuration management
 │   │   └── config.go
-│   ├── client/                  # Unix socket client
-│   │   ├── client.go            # Socket client for agents
+│   ├── client/                  # Socket + HTTP clients
+│   │   ├── client.go            # Unix socket client for agents
+│   │   ├── http.go              # HTTP client for ticket/deps CLI commands
 │   │   └── output.go            # Output formatting
 │   ├── socket/                  # Unix socket server
 │   │   ├── server.go            # Socket listener
@@ -327,12 +332,14 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    status        TEXT NOT NULL DEFAULT 'open'                        │
 │    priority      INTEGER NOT NULL DEFAULT 2                          │
 │    issue_type    TEXT NOT NULL DEFAULT 'task'                        │
+│    parent_ticket_id TEXT        (optional parent epic reference)     │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    closed_at     TEXT                                                │
 │    created_by    TEXT NOT NULL                                       │
 │    close_reason  TEXT                                                │
 │    PRIMARY KEY (project_id, id)                                      │
+│    INDEX idx_tickets_parent (project_id, parent_ticket_id)           │
 │                                                                      │
 │  DEPENDENCIES                                                        │
 │    project_id     TEXT NOT NULL                                      │

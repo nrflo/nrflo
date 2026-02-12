@@ -6,6 +6,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/useTickets'
@@ -92,6 +93,13 @@ export function Sidebar() {
           label="Closed"
           count={status?.counts.closed}
           active={location.search.includes('status=closed')}
+        />
+        <NavItem
+          to="/tickets?status=blocked"
+          icon={<Lock className="h-4 w-4 text-orange-500" />}
+          label="Blocked"
+          count={status?.counts.blocked}
+          active={location.search.includes('status=blocked')}
         />
       </nav>
     </aside>

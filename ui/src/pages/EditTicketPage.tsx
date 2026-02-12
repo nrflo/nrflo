@@ -1,10 +1,11 @@
+import { useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { TicketForm, type TicketFormData } from '@/components/tickets/TicketForm'
-import { useTicket, useUpdateTicket } from '@/hooks/useTickets'
+import { useTicket, useUpdateTicket, useTicketList } from '@/hooks/useTickets'
 
 export function EditTicketPage() {
   const { id } = useParams<{ id: string }>()
@@ -12,6 +13,14 @@ export function EditTicketPage() {
   const navigate = useNavigate()
   const { data: ticket, isLoading, error } = useTicket(decodedId)
   const updateMutation = useUpdateTicket()
+  const { data: ticketData } = useTicketList()
+
+  const parentOptions = useMemo(() => {
+    if (!ticketData?.tickets) return []
+    return ticketData.tickets
+      .filter((t) => t.issue_type === 'epic' && t.id !== decodedId)
+      .map((t) => ({ id: t.id, title: t.title }))
+  }, [ticketData, decodedId])
 
   const handleSubmit = async (data: TicketFormData) => {
     try {
@@ -22,6 +31,7 @@ export function EditTicketPage() {
           description: data.description,
           priority: data.priority,
           issue_type: data.issue_type,
+          parent_ticket_id: data.parent_ticket_id || undefined,
         },
       })
       navigate(`/tickets/${encodeURIComponent(decodedId)}`)
@@ -73,6 +83,7 @@ export function EditTicketPage() {
             onSubmit={handleSubmit}
             isSubmitting={updateMutation.isPending}
             isEdit
+            parentOptions={parentOptions}
             defaultValues={{
               id: ticket.id,
               title: ticket.title,
@@ -80,6 +91,7 @@ export function EditTicketPage() {
               priority: ticket.priority,
               issue_type: ticket.issue_type,
               created_by: ticket.created_by,
+              parent_ticket_id: ticket.parent_ticket_id ?? '',
             }}
           />
           {updateMutation.isError && (

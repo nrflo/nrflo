@@ -56,7 +56,7 @@ func (r *TicketRepo) ListWithBlockedInfo(filter *ListFilter) ([]*PendingTicket, 
 		args = append(args, filter.IssueType)
 	}
 
-	query += " ORDER BY t.created_at DESC"
+	query += " ORDER BY t.updated_at DESC, t.created_at DESC"
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {

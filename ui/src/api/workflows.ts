@@ -7,6 +7,7 @@ import type {
   RunWorkflowRequest,
   RunWorkflowResponse,
   StopWorkflowRequest,
+  RestartAgentRequest,
 } from '@/types/workflow'
 
 /** List all workflow definitions for current project */
@@ -65,5 +66,16 @@ export async function stopWorkflow(
   return apiPost<{ status: string }>(
     `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/stop`,
     params ?? {}
+  )
+}
+
+/** Restart a running agent (save context, relaunch) */
+export async function restartAgent(
+  ticketId: string,
+  params: RestartAgentRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/restart`,
+    params
   )
 }

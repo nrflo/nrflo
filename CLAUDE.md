@@ -79,6 +79,7 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 15. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB.
 16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator runs each phase sequentially in a goroutine, reusing `spawner.Spawn()`, with cancellation support via `/workflow/stop`.
 17. **Low-context relaunch**: When an agent's context drops below threshold (~30% remaining), the spawner kills the agent, resumes with `claude --resume` to save findings, then spawns a fresh agent with `${PREVIOUS_DATA}` injected. Old sessions get `status='continued'` and are excluded from agent history.
+18. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.
 
 ## Quick Start
 

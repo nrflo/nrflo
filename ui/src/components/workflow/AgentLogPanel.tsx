@@ -1,9 +1,10 @@
 import { useRef, useEffect, useMemo } from 'react'
-import { ChevronRight, ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Loader2, MessageSquare, RefreshCw } from 'lucide-react'
 import { cn, contextLeftColor } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
 import { LogMessage } from './LogMessage'
 import { AgentLogDetail } from './AgentLogDetail'
+import { Spinner } from '@/components/ui/Spinner'
 import type { ActiveAgentV4, AgentSession, MessageWithTime } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
@@ -11,9 +12,11 @@ interface AgentMessagesBlockProps {
   agent: ActiveAgentV4
   session?: AgentSession
   onAgentClick: (agent: ActiveAgentV4, session?: AgentSession) => void
+  onRestart?: (sessionId: string) => void
+  restartingSessionId?: string | null
 }
 
-function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlockProps) {
+function AgentMessagesBlock({ agent, session, onAgentClick, onRestart, restartingSessionId }: AgentMessagesBlockProps) {
   const isRunning = !agent.result
   const { data: messagesData } = useSessionMessages(session?.id, {
     enabled: !!session?.id,
@@ -37,9 +40,12 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
 
   return (
     <div className="border-b border-border last:border-b-0">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onAgentClick(agent, session)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAgentClick(agent, session) }}}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors cursor-pointer"
       >
         {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin shrink-0" />}
         <span className="text-sm font-medium truncate">
@@ -53,8 +59,22 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
             {agent.context_left}%
           </span>
         )}
-        <MessageSquare className="h-3.5 w-3.5 text-muted-foreground ml-auto shrink-0" />
-      </button>
+        {onRestart && agent.session_id && !agent.result && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRestart(agent.session_id!) }}
+            disabled={restartingSessionId === agent.session_id}
+            title="Restart agent (save context, relaunch)"
+            className="ml-auto p-1 rounded hover:bg-muted transition-colors shrink-0 disabled:opacity-50"
+          >
+            {restartingSessionId === agent.session_id ? (
+              <Spinner size="sm" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+          </button>
+        )}
+        <MessageSquare className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0", !onRestart && "ml-auto")} />
+      </div>
       {displayMessages.length > 0 && (
         <div className="px-3 pb-2 space-y-1">
           {displayMessages.map((msg, i) => (
@@ -77,6 +97,8 @@ interface AgentLogPanelProps {
   onToggleCollapse: () => void
   selectedAgent: SelectedAgentData | null
   onAgentSelect: (data: SelectedAgentData | null) => void
+  onRestart?: (sessionId: string) => void
+  restartingSessionId?: string | null
 }
 
 export function AgentLogPanel({
@@ -86,6 +108,8 @@ export function AgentLogPanel({
   onToggleCollapse,
   selectedAgent,
   onAgentSelect,
+  onRestart,
+  restartingSessionId,
 }: AgentLogPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -201,6 +225,8 @@ export function AgentLogPanel({
                   agent={agent}
                   session={session}
                   onAgentClick={handleRunningAgentClick}
+                  onRestart={onRestart}
+                  restartingSessionId={restartingSessionId}
                 />
               )
             })}

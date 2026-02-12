@@ -35,6 +35,8 @@ interface WorkflowTabContentProps {
   onStop: () => void
   stopPending: boolean
   onShowRunDialog: () => void
+  onRestart?: (sessionId: string) => void
+  restartingSessionId?: string | null
 }
 
 export function WorkflowTabContent({
@@ -57,6 +59,8 @@ export function WorkflowTabContent({
   onStop,
   stopPending,
   onShowRunDialog,
+  onRestart,
+  restartingSessionId,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
 
@@ -174,6 +178,8 @@ export function WorkflowTabContent({
           onToggleCollapse={onToggleLogPanel}
           selectedAgent={selectedPanelAgent}
           onAgentSelect={onAgentSelect}
+          onRestart={onRestart}
+          restartingSessionId={restartingSessionId}
         />
       )}
     </div>

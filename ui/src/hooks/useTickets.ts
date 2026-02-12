@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query'
-import { runWorkflow, stopWorkflow } from '@/api/workflows'
+import { runWorkflow, stopWorkflow, restartAgent } from '@/api/workflows'
 import {
   listTickets,
   getTicket,
@@ -29,7 +29,7 @@ import type {
   TicketListResponse,
   StatusResponse,
 } from '@/types/ticket'
-import type { WorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest, SessionMessagesResponse } from '@/types/workflow'
+import type { WorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest, RestartAgentRequest, SessionMessagesResponse } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 
 // Query keys factory
@@ -236,6 +236,18 @@ export function useStopWorkflow() {
       stopWorkflow(ticketId, workflow ? { workflow } : undefined),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+    },
+  })
+}
+
+export function useRestartAgent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, params }: { ticketId: string; params: RestartAgentRequest }) =>
+      restartAgent(ticketId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(variables.ticketId) })
     },
   })
 }

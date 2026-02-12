@@ -36,10 +36,16 @@ type RunResult struct {
 	Status     string `json:"status"`
 }
 
+// runState tracks a running orchestration's cancel func and active spawner.
+type runState struct {
+	cancel  context.CancelFunc
+	spawner *spawner.Spawner // nil between phases
+}
+
 // Orchestrator manages server-side workflow runs.
 type Orchestrator struct {
 	mu       sync.Mutex
-	runs     map[string]context.CancelFunc // wfi_id → cancel
+	runs     map[string]*runState // wfi_id → state
 	dataPath string
 	wsHub    *ws.Hub
 }
@@ -47,7 +53,7 @@ type Orchestrator struct {
 // New creates a new Orchestrator.
 func New(dataPath string, wsHub *ws.Hub) *Orchestrator {
 	return &Orchestrator{
-		runs:     make(map[string]context.CancelFunc),
+		runs:     make(map[string]*runState),
 		dataPath: dataPath,
 		wsHub:    wsHub,
 	}
@@ -180,8 +186,9 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Create orchestration context with cancel
 	orchCtx, cancel := context.WithCancel(ctx)
 
+	rs := &runState{cancel: cancel}
 	o.mu.Lock()
-	o.runs[wi.ID] = cancel
+	o.runs[wi.ID] = rs
 	o.mu.Unlock()
 
 	// Broadcast orchestration started
@@ -202,14 +209,14 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 // Stop cancels a running orchestration.
 func (o *Orchestrator) Stop(instanceID string) error {
 	o.mu.Lock()
-	cancel, ok := o.runs[instanceID]
+	rs, ok := o.runs[instanceID]
 	o.mu.Unlock()
 
 	if !ok {
 		return fmt.Errorf("no running orchestration for instance %s", instanceID)
 	}
 
-	cancel()
+	rs.cancel()
 	return nil
 }
 
@@ -250,6 +257,39 @@ func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName string) er
 	return fmt.Errorf("no running orchestration found for %s", ticketID)
 }
 
+// RestartAgent sends a manual restart signal to the active spawner for a workflow.
+func (o *Orchestrator) RestartAgent(projectID, ticketID, workflowName, sessionID string) error {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	if err != nil {
+		return fmt.Errorf("workflow not found: %w", err)
+	}
+
+	o.mu.Lock()
+	rs, ok := o.runs[wi.ID]
+	o.mu.Unlock()
+	if !ok {
+		return fmt.Errorf("no running orchestration for workflow '%s' on %s", workflowName, ticketID)
+	}
+
+	o.mu.Lock()
+	sp := rs.spawner
+	o.mu.Unlock()
+	if sp == nil {
+		return fmt.Errorf("no active spawner (agent may be between phases)")
+	}
+
+	sp.RequestRestart(sessionID)
+	return nil
+}
+
 // IsRunning checks if an orchestration is running for a ticket+workflow.
 func (o *Orchestrator) IsRunning(projectID, ticketID, workflowName string) bool {
 	database, err := db.Open(o.dataPath)
@@ -282,8 +322,8 @@ func (o *Orchestrator) IsInstanceRunning(instanceID string) bool {
 // StopAll cancels all running orchestrations (for server shutdown).
 func (o *Orchestrator) StopAll() {
 	o.mu.Lock()
-	for id, cancel := range o.runs {
-		cancel()
+	for id, rs := range o.runs {
+		rs.cancel()
 		delete(o.runs, id)
 	}
 	o.mu.Unlock()
@@ -340,6 +380,13 @@ func (o *Orchestrator) runLoop(
 			WSHub:       o.wsHub,
 		})
 
+		// Store spawner ref so RestartAgent can reach it
+		o.mu.Lock()
+		if rs, ok := o.runs[wfiID]; ok {
+			rs.spawner = sp
+		}
+		o.mu.Unlock()
+
 		err := sp.Spawn(ctx, spawner.SpawnRequest{
 			AgentType:     phase.Agent,
 			TicketID:      req.TicketID,
@@ -347,6 +394,14 @@ func (o *Orchestrator) runLoop(
 			WorkflowName:  req.WorkflowName,
 			ParentSession: parentSession,
 		})
+
+		// Clear spawner ref (phase done)
+		o.mu.Lock()
+		if rs, ok := o.runs[wfiID]; ok {
+			rs.spawner = nil
+		}
+		o.mu.Unlock()
+
 		sp.Close()
 
 		if err != nil {

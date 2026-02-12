@@ -29,6 +29,7 @@ import {
   useReopenTicket,
   useDeleteTicket,
   useStopWorkflow,
+  useRestartAgent,
 } from '@/hooks/useTickets'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import type { WorkflowState } from '@/types/workflow'
@@ -105,6 +106,7 @@ export function TicketDetailPage() {
   const reopenMutation = useReopenTicket()
   const deleteMutation = useDeleteTicket()
   const stopMutation = useStopWorkflow()
+  const restartMutation = useRestartAgent()
 
   // Detect if orchestration is running (via _orchestration findings key)
   const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
@@ -316,6 +318,13 @@ export function TicketDetailPage() {
             }
             stopPending={stopMutation.isPending}
             onShowRunDialog={() => setShowRunDialog(true)}
+            onRestart={(sessionId) =>
+              id && restartMutation.mutate({
+                ticketId: id,
+                params: { workflow: displayedWorkflowName, session_id: sessionId },
+              })
+            }
+            restartingSessionId={restartMutation.isPending ? (restartMutation.variables?.params.session_id ?? null) : null}
           />
         )}
 

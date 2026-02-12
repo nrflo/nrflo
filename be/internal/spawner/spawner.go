@@ -104,7 +104,8 @@ type processInfo struct {
 
 // Spawner manages agent lifecycle
 type Spawner struct {
-	config Config
+	config    Config
+	restartCh chan string // carries sessionID of agent to restart
 }
 
 // SpawnRequest contains parameters for spawning an agent
@@ -120,7 +121,17 @@ type SpawnRequest struct {
 // New creates a new spawner
 func New(config Config) *Spawner {
 	return &Spawner{
-		config: config,
+		config:    config,
+		restartCh: make(chan string, 1),
+	}
+}
+
+// RequestRestart sends a restart signal for the given session ID.
+// Non-blocking: if a restart is already pending, this is a no-op.
+func (s *Spawner) RequestRestart(sessionID string) {
+	select {
+	case s.restartCh <- sessionID:
+	default:
 	}
 }
 
@@ -389,7 +400,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 	var completed []*processInfo
 
 	for len(running) > 0 {
-		// Check for context cancellation
+		// Check for context cancellation or manual restart signal
 		select {
 		case <-ctx.Done():
 			// Kill all running processes
@@ -421,6 +432,20 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			}
 			s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
 			return ctx.Err()
+		case restartSessionID := <-s.restartCh:
+			// Manual restart requested — find matching proc and initiate context save
+			for _, proc := range running {
+				if proc.sessionID == restartSessionID && !proc.lowContextSaving {
+					fmt.Printf("  %s [manual-restart] Restart requested for session %s\n",
+						s.formatPrefix(proc), restartSessionID)
+					proc.lowContextSaving = true
+					oldDoneCh := proc.doneCh
+					newDoneCh := make(chan struct{})
+					proc.doneCh = newDoneCh
+					go s.initiateContextSave(proc, req, oldDoneCh, newDoneCh)
+					break
+				}
+			}
 		default:
 		}
 

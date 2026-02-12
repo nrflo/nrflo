@@ -34,7 +34,7 @@ be/
 │   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints
 │   │   ├── handlers_tickets_update.go # Ticket update/delete/close/reopen endpoints
 │   │   ├── handlers_workflow.go # Workflow state endpoints
-│   │   ├── handlers_orchestrate.go # Orchestration run/stop endpoints
+│   │   ├── handlers_orchestrate.go # Orchestration run/stop/restart endpoints
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   └── handlers_agent_def.go # Agent definition endpoints
 │   ├── ws/                      # WebSocket support
@@ -626,9 +626,10 @@ POST /api/v1/tickets/:id/close
 GET /api/v1/tickets/:id/workflow
 PATCH /api/v1/tickets/:id/workflow
 
-# Workflow orchestration (run/stop from UI)
-POST /api/v1/tickets/:id/workflow/run   # Start orchestrated run
-POST /api/v1/tickets/:id/workflow/stop  # Stop running orchestration
+# Workflow orchestration (run/stop/restart from UI)
+POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
+POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
+POST /api/v1/tickets/:id/workflow/restart  # Restart agent (context save + relaunch)
 
 # Workflow definitions (project-scoped, require X-Project header)
 GET    /api/v1/workflows              # List all

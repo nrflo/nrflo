@@ -389,8 +389,9 @@ GET /api/v1/tickets/:id/workflow
 PATCH /api/v1/tickets/:id/workflow
 
 # Workflow orchestration
-POST /api/v1/tickets/:id/workflow/run   # Start orchestrated run
-POST /api/v1/tickets/:id/workflow/stop  # Stop running orchestration
+POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
+POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
+POST /api/v1/tickets/:id/workflow/restart  # Restart a running agent (save context, relaunch)
 
 # Workflow definitions (require X-Project header)
 GET    /api/v1/workflows

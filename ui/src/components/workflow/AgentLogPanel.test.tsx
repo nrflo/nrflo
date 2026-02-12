@@ -64,6 +64,7 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
     status: 'running',
     message_count: 5,
     raw_output_size: 1024,
+    restart_count: 0,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,

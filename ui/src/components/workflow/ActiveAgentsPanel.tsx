@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Cpu, Terminal, Hash, Clock, CheckCircle, XCircle, Loader2, Timer } from 'lucide-react'
+import { Cpu, Terminal, Hash, Clock, CheckCircle, XCircle, Loader2, Timer, RefreshCw } from 'lucide-react'
 import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Spinner } from '@/components/ui/Spinner'
 import type { ActiveAgentV4 } from '@/types/workflow'
 
 interface ActiveAgentsPanelProps {
   agents: Record<string, ActiveAgentV4>
+  onRestart?: (sessionId: string) => void
+  restartingSessionId?: string | null
 }
 
 function AgentStatusIcon({ result }: { result?: string }) {
@@ -28,7 +32,7 @@ function resultColor(result?: string): string {
   return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
 }
 
-export function ActiveAgentsPanel({ agents }: ActiveAgentsPanelProps) {
+export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId }: ActiveAgentsPanelProps) {
   const agentEntries = Object.entries(agents)
   const runningAgents = agentEntries.filter(([, a]) => !a.result)
   const runningCount = runningAgents.length
@@ -144,6 +148,24 @@ export function ActiveAgentsPanel({ agents }: ActiveAgentsPanelProps) {
                 )}
               </div>
             </div>
+
+            {/* Restart button for running agents */}
+            {onRestart && agent.session_id && !agent.result && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onRestart(agent.session_id!)}
+                disabled={restartingSessionId === agent.session_id}
+                title="Restart agent (save context, relaunch)"
+                className="ml-auto shrink-0"
+              >
+                {restartingSessionId === agent.session_id ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            )}
           </div>
         ))}
       </div>

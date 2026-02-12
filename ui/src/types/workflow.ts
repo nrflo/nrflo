@@ -224,3 +224,8 @@ export interface RunWorkflowResponse {
 export interface StopWorkflowRequest {
   workflow?: string
 }
+
+export interface RestartAgentRequest {
+  workflow: string
+  session_id: string
+}

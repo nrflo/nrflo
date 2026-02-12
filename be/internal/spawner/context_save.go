@@ -19,8 +19,9 @@ const (
 // 3. Wait for the resumed agent to call `agent continue`
 // 4. Register stop and set finalStatus = "CONTINUE" to trigger relaunch
 //
-// completeCh is closed when the full flow finishes, allowing monitorAll to proceed.
-func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, completeCh chan struct{}) {
+// processDoneCh is the original process's done channel (closed by the wait goroutine).
+// completeCh is the replacement channel; closed when the full flow finishes, signaling monitorAll.
+func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, processDoneCh, completeCh chan struct{}) {
 	defer close(completeCh)
 
 	prefix := s.formatPrefix(proc)
@@ -32,13 +33,13 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, compl
 		proc.cmd.Process.Signal(syscall.SIGTERM)
 	}
 	select {
-	case <-proc.doneCh:
+	case <-processDoneCh:
 		// Original process exited
 	case <-time.After(killGracePeriod):
 		if proc.cmd.Process != nil {
 			proc.cmd.Process.Kill()
 		}
-		<-proc.doneCh
+		<-processDoneCh
 	}
 
 	// 2. Flush messages and context from the killed process

@@ -42,7 +42,7 @@ type AgentConfig struct {
 
 const (
 	defaultMaxContinuations = 3
-	defaultContextThreshold = 85
+	defaultContextThreshold = 30
 )
 
 // Config holds the spawner configuration
@@ -367,10 +367,12 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		}
 	}()
 
-	// Single wait goroutine - closes doneCh when process exits
+	// Single wait goroutine - closes doneCh when process exits.
+	// Capture doneCh locally: proc.doneCh may be replaced during low-context save.
+	origDoneCh := proc.doneCh
 	go func() {
 		proc.waitErr = cmd.Wait()
-		close(proc.doneCh)
+		close(origDoneCh)
 		os.Remove(promptFile.Name())
 	}()
 
@@ -448,9 +450,10 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if adapter != nil && adapter.SupportsResume() {
 					proc.lowContextSaving = true
 					// Replace doneCh — initiateContextSave will close the new one when the full flow completes
+					oldDoneCh := proc.doneCh
 					newDoneCh := make(chan struct{})
-					go s.initiateContextSave(proc, req, newDoneCh)
 					proc.doneCh = newDoneCh
+					go s.initiateContextSave(proc, req, oldDoneCh, newDoneCh)
 				}
 			}
 

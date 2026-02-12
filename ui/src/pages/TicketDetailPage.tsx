@@ -320,9 +320,7 @@ export function TicketDetailPage() {
                           Auto
                         </Badge>
                       )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {(isOrchestrated || hasActivePhase) ? (
+                      {(isOrchestrated || hasActivePhase) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -342,17 +340,18 @@ export function TicketDetailPage() {
                           )}
                           Stop
                         </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowRunDialog(true)}
-                        >
-                          <Play className="h-4 w-4 mr-2" />
-                          Run Workflow
-                        </Button>
                       )}
                     </div>
+                    {!(isOrchestrated || hasActivePhase) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowRunDialog(true)}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Run Workflow
+                      </Button>
+                    )}
                   </div>
                   <PhaseTimeline
                     workflow={displayedState}

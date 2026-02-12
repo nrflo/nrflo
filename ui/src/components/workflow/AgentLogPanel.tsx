@@ -36,7 +36,7 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRestart, restartin
     ? modelId.split('-').slice(-2).join('-') || modelId
     : agent.cli || agent.agent_type || 'agent'
 
-  const displayMessages = useMemo(() => [...messages].reverse().slice(0, 20), [messages])
+  const displayMessages = useMemo(() => messages.slice(-20).reverse(), [messages])
 
   return (
     <div className="border-b border-border last:border-b-0">

@@ -219,7 +219,7 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 	agentSvc := service.NewAgentService(pool)
 
 	// Parse pagination params
-	limit := 100
+	limit := 0
 	offset := 0
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {

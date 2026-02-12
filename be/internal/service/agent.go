@@ -436,7 +436,7 @@ func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) (
 	}
 
 	if limit <= 0 {
-		limit = 100
+		limit = -1 // SQLite: LIMIT -1 returns all rows
 	}
 
 	messages, err := s.msgRepo.GetBySessionPaginated(sessionID, limit, offset)

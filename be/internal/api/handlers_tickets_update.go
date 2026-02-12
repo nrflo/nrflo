@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"be/internal/repo"
+	"be/internal/ws"
 )
 
 // UpdateTicketRequest represents the request body for updating a ticket
@@ -61,6 +62,13 @@ func (s *Server) handleUpdateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, updated)
+
+	if s.wsHub != nil {
+		event := ws.NewEvent(ws.EventTicketUpdated, projectID, id, "", map[string]interface{}{
+			"status": string(updated.Status),
+		})
+		s.wsHub.Broadcast(event)
+	}
 }
 
 // handleDeleteTicket deletes a ticket
@@ -85,6 +93,13 @@ func (s *Server) handleDeleteTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "ticket deleted"})
+
+	if s.wsHub != nil {
+		event := ws.NewEvent(ws.EventTicketUpdated, projectID, id, "", map[string]interface{}{
+			"action": "deleted",
+		})
+		s.wsHub.Broadcast(event)
+	}
 }
 
 // CloseTicketRequest represents the request body for closing a ticket
@@ -130,6 +145,13 @@ func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, closed)
+
+	if s.wsHub != nil {
+		event := ws.NewEvent(ws.EventTicketUpdated, projectID, id, "", map[string]interface{}{
+			"status": string(closed.Status),
+		})
+		s.wsHub.Broadcast(event)
+	}
 }
 
 // handleReopenTicket reopens a closed ticket
@@ -162,4 +184,11 @@ func (s *Server) handleReopenTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, reopened)
+
+	if s.wsHub != nil {
+		event := ws.NewEvent(ws.EventTicketUpdated, projectID, id, "", map[string]interface{}{
+			"status": string(reopened.Status),
+		})
+		s.wsHub.Broadcast(event)
+	}
 }

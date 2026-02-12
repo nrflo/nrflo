@@ -21,6 +21,7 @@ export type WSEventType =
   | 'orchestration.started'
   | 'orchestration.completed'
   | 'orchestration.failed'
+  | 'ticket.updated'
   | 'test.echo'
 
 export interface WSEvent {
@@ -155,6 +156,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       case 'orchestration.failed':
         qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
         qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        break
+
+      case 'ticket.updated':
+        // Invalidate status counts (sidebar), ticket lists, and the specific ticket detail
+        qc.invalidateQueries({ queryKey: ticketKeys.status() })
+        qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+        qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
         break
 
       case 'test.echo':

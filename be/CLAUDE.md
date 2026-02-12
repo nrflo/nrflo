@@ -520,6 +520,10 @@ Both `--session` and `-w` are **required** for `agent spawn`:
 BROADCAST: The spawner broadcasts WebSocket events (agent.started,
 messages.updated, agent.completed, phase.started, phase.completed)
 directly via the in-process WebSocket hub.
+
+TICKET EVENTS: HTTP handlers broadcast ticket.updated events on
+create, update, close, reopen, and delete. Data includes "status"
+(current ticket status) and optionally "action" ("created"/"deleted").
 ```
 
 ## Agent Definitions

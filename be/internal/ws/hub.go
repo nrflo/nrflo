@@ -25,6 +25,7 @@ const (
 	EventAgentDefCreated    = "agent_def.created"
 	EventAgentDefUpdated    = "agent_def.updated"
 	EventAgentDefDeleted    = "agent_def.deleted"
+	EventTicketUpdated          = "ticket.updated"
 	EventOrchestrationStarted   = "orchestration.started"
 	EventOrchestrationCompleted = "orchestration.completed"
 	EventOrchestrationFailed    = "orchestration.failed"

@@ -8,6 +8,7 @@ import (
 	"be/internal/id"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/ws"
 )
 
 // handleListTickets returns tickets with optional filters
@@ -141,6 +142,14 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, created)
+
+	if s.wsHub != nil {
+		event := ws.NewEvent(ws.EventTicketUpdated, projectID, ticketID, "", map[string]interface{}{
+			"status": string(model.StatusOpen),
+			"action": "created",
+		})
+		s.wsHub.Broadcast(event)
+	}
 }
 
 // handleGetTicket returns a single ticket by ID

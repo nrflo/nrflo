@@ -16,9 +16,18 @@ export interface Ticket {
   close_reason: string | null
 }
 
+export interface WorkflowProgress {
+  workflow_name: string
+  current_phase: string
+  completed_phases: number
+  total_phases: number
+  status: string
+}
+
 export interface PendingTicket extends Ticket {
   is_blocked: boolean
   blocked_by?: string[]
+  workflow_progress?: WorkflowProgress
 }
 
 export interface Dependency {

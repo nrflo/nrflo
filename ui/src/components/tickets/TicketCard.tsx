@@ -65,6 +65,21 @@ export function TicketCard({ ticket }: TicketCardProps) {
                   {formatRelativeTime(ticket.updated_at)}
                 </span>
               </div>
+              {isPendingTicket(ticket) && ticket.workflow_progress && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{
+                        width: `${ticket.workflow_progress.total_phases > 0 ? Math.round((ticket.workflow_progress.completed_phases / ticket.workflow_progress.total_phases) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {ticket.workflow_progress.completed_phases}/{ticket.workflow_progress.total_phases} phases
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

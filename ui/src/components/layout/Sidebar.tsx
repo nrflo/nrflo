@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/useTickets'
+import { Spinner } from '@/components/ui/Spinner'
 
 interface NavItemProps {
   to: string
@@ -17,9 +18,10 @@ interface NavItemProps {
   label: string
   count?: number
   active?: boolean
+  indicator?: React.ReactNode
 }
 
-function NavItem({ to, icon, label, count, active }: NavItemProps) {
+function NavItem({ to, icon, label, count, active, indicator }: NavItemProps) {
   return (
     <Link
       to={to}
@@ -32,6 +34,7 @@ function NavItem({ to, icon, label, count, active }: NavItemProps) {
     >
       {icon}
       <span className="flex-1">{label}</span>
+      {indicator}
       {count !== undefined && (
         <span className="text-xs text-muted-foreground">{count}</span>
       )}
@@ -86,6 +89,7 @@ export function Sidebar() {
           label="In Progress"
           count={status?.counts.in_progress}
           active={location.search.includes('status=in_progress')}
+          indicator={status?.counts.in_progress ? <Spinner size="sm" /> : undefined}
         />
         <NavItem
           to="/tickets?status=closed"

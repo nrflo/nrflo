@@ -2,15 +2,26 @@ package repo
 
 import (
 	"encoding/json"
+	"strings"
 
 	"be/internal/model"
 )
 
+// WorkflowProgress holds completion data for a ticket's active workflow
+type WorkflowProgress struct {
+	WorkflowName    string `json:"workflow_name"`
+	CurrentPhase    string `json:"current_phase"`
+	CompletedPhases int    `json:"completed_phases"`
+	TotalPhases     int    `json:"total_phases"`
+	Status          string `json:"status"`
+}
+
 // PendingTicket is a ticket with blocked status info
 type PendingTicket struct {
 	*model.Ticket
-	IsBlocked bool     `json:"is_blocked"`
-	BlockedBy []string `json:"blocked_by,omitempty"`
+	IsBlocked        bool              `json:"is_blocked"`
+	BlockedBy        []string          `json:"blocked_by,omitempty"`
+	WorkflowProgress *WorkflowProgress `json:"workflow_progress,omitempty"`
 }
 
 // MarshalJSON implements custom JSON marshaling for PendingTicket
@@ -31,6 +42,9 @@ func (pt PendingTicket) MarshalJSON() ([]byte, error) {
 	result["is_blocked"] = pt.IsBlocked
 	if len(pt.BlockedBy) > 0 {
 		result["blocked_by"] = pt.BlockedBy
+	}
+	if pt.WorkflowProgress != nil {
+		result["workflow_progress"] = pt.WorkflowProgress
 	}
 
 	return json.Marshal(result)
@@ -164,6 +178,35 @@ func (r *TicketRepo) GetRecentlyClosed(projectID string, limit int) ([]*model.Ti
 	}
 
 	return tickets, nil
+}
+
+// AttachWorkflowProgress enriches tickets with workflow completion data
+func AttachWorkflowProgress(tickets []*PendingTicket, instances map[string]*model.WorkflowInstance) {
+	for _, pt := range tickets {
+		wi, ok := instances[strings.ToLower(pt.Ticket.ID)]
+		if !ok {
+			continue
+		}
+		phases := wi.GetPhases()
+		phaseOrder := wi.GetPhaseOrder()
+		completed := 0
+		for _, ps := range phases {
+			if ps.Status == "completed" || ps.Status == "skipped" {
+				completed++
+			}
+		}
+		currentPhase := ""
+		if wi.CurrentPhase.Valid {
+			currentPhase = wi.CurrentPhase.String
+		}
+		pt.WorkflowProgress = &WorkflowProgress{
+			WorkflowName:    wi.WorkflowID,
+			CurrentPhase:    currentPhase,
+			CompletedPhases: completed,
+			TotalPhases:     len(phaseOrder),
+			Status:          string(wi.Status),
+		}
+	}
 }
 
 // GetReady returns tickets that are not blocked by any open dependencies

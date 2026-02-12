@@ -2,9 +2,11 @@ package api
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strings"
 
+	"be/internal/db"
 	"be/internal/id"
 	"be/internal/model"
 	"be/internal/repo"
@@ -45,6 +47,15 @@ func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 
 	if tickets == nil {
 		tickets = []*repo.PendingTicket{}
+	}
+
+	// Enrich with workflow progress
+	wfiRepo := repo.NewWorkflowInstanceRepo(db.WrapAsPool(database))
+	instances, err := wfiRepo.ListActiveByProject(projectID)
+	if err != nil {
+		log.Printf("warning: failed to load workflow progress: %v", err)
+	} else {
+		repo.AttachWorkflowProgress(tickets, instances)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

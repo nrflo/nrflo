@@ -109,6 +109,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         // Invalidate workflow query to get latest phase state
         qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
         qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        // Invalidate ticket lists so workflow_progress updates in list view
+        qc.invalidateQueries({ queryKey: ticketKeys.lists() })
         break
 
       case 'findings.updated':
@@ -134,6 +136,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
         qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
         qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
+        // Invalidate ticket lists so workflow_progress updates in list view
+        qc.invalidateQueries({ queryKey: ticketKeys.lists() })
         break
 
       case 'workflow_def.created':

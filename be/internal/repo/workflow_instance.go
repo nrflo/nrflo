@@ -86,6 +86,32 @@ func (r *WorkflowInstanceRepo) GetByTicketAndWorkflow(projectID, ticketID, workf
 	return wi, err
 }
 
+// ListActiveByProject returns active workflow instances grouped by ticket ID
+func (r *WorkflowInstanceRepo) ListActiveByProject(projectID string) (map[string]*model.WorkflowInstance, error) {
+	rows, err := r.pool.Query(`
+		SELECT `+wfiCols+` FROM workflow_instances
+		WHERE LOWER(project_id) = LOWER(?) AND status = ?
+		ORDER BY updated_at DESC`, projectID, model.WorkflowInstanceActive)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Keep only the most recently updated instance per ticket
+	result := make(map[string]*model.WorkflowInstance)
+	for rows.Next() {
+		wi, err := scanWFI(rows)
+		if err != nil {
+			return nil, err
+		}
+		ticketKey := strings.ToLower(wi.TicketID)
+		if _, exists := result[ticketKey]; !exists {
+			result[ticketKey] = wi
+		}
+	}
+	return result, nil
+}
+
 // ListByTicket retrieves all workflow instances for a ticket
 func (r *WorkflowInstanceRepo) ListByTicket(projectID, ticketID string) ([]*model.WorkflowInstance, error) {
 	rows, err := r.pool.Query(`

@@ -190,6 +190,247 @@ describe('useWebSocket - ticket.updated event handling logic', () => {
   })
 })
 
+describe('useWebSocket - phase.started and phase.completed event handling', () => {
+  let queryClient: QueryClient
+  let invalidateQueriesSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+  })
+
+  it('phase.started event should invalidate detail, workflow, and lists queries', () => {
+    const event: WSEvent = {
+      type: 'phase.started',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-789',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate phase.started handler
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+
+    // Verify invalidations
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.detail('TICKET-789') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.workflow('TICKET-789') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.lists() })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('phase.completed event should invalidate detail, workflow, and lists queries', () => {
+    const event: WSEvent = {
+      type: 'phase.completed',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-999',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate phase.completed handler
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+
+    // Verify invalidations
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.detail('TICKET-999') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.workflow('TICKET-999') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.lists() })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('phase events invalidate lists to update workflow_progress in list view', () => {
+    const event: WSEvent = {
+      type: 'phase.completed',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-555',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate handler
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+
+    // Verify lists() was invalidated (critical for progress bar updates)
+    const listsInvalidations = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey) === JSON.stringify(ticketKeys.lists())
+    )
+    expect(listsInvalidations.length).toBe(1)
+  })
+
+  it('phase.started should not invalidate status queries', () => {
+    const event: WSEvent = {
+      type: 'phase.started',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-111',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate handler (does NOT invalidate status)
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+
+    // Verify status was NOT invalidated
+    const statusInvalidations = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey) === JSON.stringify(ticketKeys.status())
+    )
+    expect(statusInvalidations.length).toBe(0)
+  })
+
+  it('phase.completed should not invalidate agent session queries', () => {
+    const event: WSEvent = {
+      type: 'phase.completed',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-222',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate handler (does NOT invalidate agentSessions)
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+
+    // Verify agent sessions were NOT invalidated
+    const agentInvalidations = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey).includes('agents')
+    )
+    expect(agentInvalidations.length).toBe(0)
+  })
+
+  it('multiple phase events invalidate lists each time', () => {
+    const events: WSEvent[] = [
+      {
+        type: 'phase.started',
+        project_id: 'test-project',
+        ticket_id: 'TICKET-AAA',
+        workflow: 'feature',
+        timestamp: '2026-01-01T00:00:00Z',
+      },
+      {
+        type: 'phase.completed',
+        project_id: 'test-project',
+        ticket_id: 'TICKET-AAA',
+        workflow: 'feature',
+        timestamp: '2026-01-01T00:00:01Z',
+      },
+    ]
+
+    events.forEach(event => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+    })
+
+    // Lists should be invalidated twice (once per event)
+    const listsCalls = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey) === JSON.stringify(ticketKeys.lists())
+    )
+    expect(listsCalls.length).toBe(2)
+  })
+
+  it('phase events from different tickets all invalidate the same lists query', () => {
+    const events: WSEvent[] = [
+      {
+        type: 'phase.completed',
+        project_id: 'test-project',
+        ticket_id: 'TICKET-X',
+        workflow: 'feature',
+        timestamp: '2026-01-01T00:00:00Z',
+      },
+      {
+        type: 'phase.completed',
+        project_id: 'test-project',
+        ticket_id: 'TICKET-Y',
+        workflow: 'bugfix',
+        timestamp: '2026-01-01T00:00:01Z',
+      },
+    ]
+
+    events.forEach(event => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+    })
+
+    // Lists invalidated twice with same key
+    const listsCalls = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey) === JSON.stringify(ticketKeys.lists())
+    )
+    expect(listsCalls.length).toBe(2)
+
+    // Each call has identical queryKey
+    listsCalls.forEach((call: any) => {
+      expect(call[0].queryKey).toEqual(['tickets', 'list'])
+    })
+  })
+})
+
+describe('useWebSocket - workflow.updated event handling', () => {
+  let queryClient: QueryClient
+  let invalidateQueriesSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+  })
+
+  it('workflow.updated event should invalidate detail, workflow, agentSessions, and lists queries', () => {
+    const event: WSEvent = {
+      type: 'workflow.updated',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-500',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate workflow.updated handler
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+
+    // Verify all four invalidations
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.detail('TICKET-500') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.workflow('TICKET-500') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.agentSessions('TICKET-500') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.lists() })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(4)
+  })
+
+  it('workflow.updated invalidates lists to update workflow_progress in list view', () => {
+    const event: WSEvent = {
+      type: 'workflow.updated',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-600',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate handler
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+
+    // Verify lists() was invalidated
+    const listsInvalidations = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey) === JSON.stringify(ticketKeys.lists())
+    )
+    expect(listsInvalidations.length).toBe(1)
+  })
+})
+
 describe('Query key structure verification', () => {
   it('ticketKeys.status() returns correct key for sidebar counts', () => {
     expect(ticketKeys.status()).toEqual(['tickets', 'status'])

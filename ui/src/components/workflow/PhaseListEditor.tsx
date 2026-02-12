@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { ChevronUp, ChevronDown, Plus, Trash2, X } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, Trash2, X, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 
 export interface PhaseFormEntry {
   agent: string
+  layer: number
   skip_for: string[]
 }
 
@@ -14,20 +15,34 @@ interface PhaseListEditorProps {
   categories: string[]
 }
 
+/** Check fan-in: if layer N has >1 agent, next non-empty layer must have exactly 1 agent */
+function getFanInErrors(entries: PhaseFormEntry[]): Record<number, string> {
+  const errors: Record<number, string> = {}
+  const byLayer: Record<number, PhaseFormEntry[]> = {}
+  for (const e of entries) {
+    if (!byLayer[e.layer]) byLayer[e.layer] = []
+    byLayer[e.layer].push(e)
+  }
+  const layers = Object.keys(byLayer).map(Number).sort((a, b) => a - b)
+  for (let i = 0; i < layers.length - 1; i++) {
+    if (byLayer[layers[i]].length > 1) {
+      const nextLayer = layers[i + 1]
+      if (byLayer[nextLayer].length !== 1) {
+        errors[nextLayer] = `Fan-in violation: layer ${nextLayer} must have exactly 1 agent because layer ${layers[i]} has ${byLayer[layers[i]].length} agents`
+      }
+    }
+  }
+  return errors
+}
+
 export function PhaseListEditor({ value, onChange, categories }: PhaseListEditorProps) {
   const [skipInput, setSkipInput] = useState<Record<number, string>>({})
+
+  const fanInErrors = useMemo(() => getFanInErrors(value), [value])
 
   const update = (index: number, entry: PhaseFormEntry) => {
     const next = [...value]
     next[index] = entry
-    onChange(next)
-  }
-
-  const move = (index: number, dir: -1 | 1) => {
-    const target = index + dir
-    if (target < 0 || target >= value.length) return
-    const next = [...value]
-    ;[next[index], next[target]] = [next[target], next[index]]
     onChange(next)
   }
 
@@ -36,7 +51,8 @@ export function PhaseListEditor({ value, onChange, categories }: PhaseListEditor
   }
 
   const add = () => {
-    onChange([...value, { agent: '', skip_for: [] }])
+    const maxLayer = value.length > 0 ? Math.max(...value.map((e) => e.layer)) : -1
+    onChange([...value, { agent: '', layer: maxLayer + 1, skip_for: [] }])
   }
 
   const addSkipFor = (index: number, cat: string) => {
@@ -50,109 +66,122 @@ export function PhaseListEditor({ value, onChange, categories }: PhaseListEditor
     update(index, { ...entry, skip_for: entry.skip_for.filter((c) => c !== cat) })
   }
 
+  // Group entries by layer for display
+  const sorted = useMemo(() => {
+    const indexed = value.map((entry, i) => ({ entry, i }))
+    indexed.sort((a, b) => a.entry.layer - b.entry.layer || a.i - b.i)
+    return indexed
+  }, [value])
+
+  // Track layer boundaries for group headers
+  let lastLayer = -1
+
   return (
     <div className="space-y-2">
-      {value.map((entry, i) => (
-        <div key={i} className="flex items-start gap-2 p-2 border border-border rounded-lg bg-muted/20">
-          <span className="text-xs text-muted-foreground mt-2 w-5 text-right shrink-0">
-            {i + 1}.
-          </span>
+      {sorted.map(({ entry, i }) => {
+        const showHeader = entry.layer !== lastLayer
+        lastLayer = entry.layer
+        const layerError = showHeader ? fanInErrors[entry.layer] : undefined
 
-          <div className="flex-1 space-y-1.5">
-            <input
-              type="text"
-              value={entry.agent}
-              onChange={(e) => update(i, { ...entry, agent: e.target.value })}
-              placeholder="Agent type (e.g., setup-analyzer)"
-              required
-              className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
-            />
+        return (
+          <div key={i}>
+            {showHeader && (
+              <div className="flex items-center gap-2 mt-3 first:mt-0 mb-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Layer {entry.layer}
+                </span>
+                <div className="flex-1 h-px bg-border" />
+                {layerError && (
+                  <span className="flex items-center gap-1 text-xs text-destructive">
+                    <AlertTriangle className="h-3 w-3" />
+                    {layerError}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="flex items-start gap-2 p-2 border border-border rounded-lg bg-muted/20">
+              <div className="shrink-0 w-16">
+                <label className="block text-[10px] text-muted-foreground mb-0.5">Layer</label>
+                <input
+                  type="number"
+                  value={entry.layer}
+                  onChange={(e) => update(i, { ...entry, layer: Number(e.target.value) })}
+                  min={0}
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-center"
+                />
+              </div>
 
-            <div className="flex flex-wrap items-center gap-1">
-              {entry.skip_for.map((cat) => (
-                <Badge key={cat} variant="secondary" className="text-xs gap-1 pr-1">
-                  {cat}
-                  <button
-                    type="button"
-                    onClick={() => removeSkipFor(i, cat)}
-                    className="hover:text-destructive"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+              <div className="flex-1 space-y-1.5">
+                <input
+                  type="text"
+                  value={entry.agent}
+                  onChange={(e) => update(i, { ...entry, agent: e.target.value })}
+                  placeholder="Agent type (e.g., setup-analyzer)"
+                  required
+                  className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
+                />
 
-              {/* Quick-add from available categories */}
-              {categories
-                .filter((c) => !entry.skip_for.includes(c))
-                .map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => addSkipFor(i, cat)}
-                    className="text-xs px-1.5 py-0.5 rounded border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
-                  >
-                    +{cat}
-                  </button>
-                ))}
+                <div className="flex flex-wrap items-center gap-1">
+                  {entry.skip_for.map((cat) => (
+                    <Badge key={cat} variant="secondary" className="text-xs gap-1 pr-1">
+                      {cat}
+                      <button
+                        type="button"
+                        onClick={() => removeSkipFor(i, cat)}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
 
-              {/* Manual skip_for input */}
-              <input
-                type="text"
-                value={skipInput[i] || ''}
-                onChange={(e) => setSkipInput({ ...skipInput, [i]: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    const val = (skipInput[i] || '').trim()
-                    if (val) {
-                      addSkipFor(i, val)
-                      setSkipInput({ ...skipInput, [i]: '' })
-                    }
-                  }
-                }}
-                placeholder="skip_for..."
-                className="w-24 rounded border border-border bg-background px-1.5 py-0.5 text-xs"
-              />
+                  {categories
+                    .filter((c) => !entry.skip_for.includes(c))
+                    .map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => addSkipFor(i, cat)}
+                        className="text-xs px-1.5 py-0.5 rounded border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+                      >
+                        +{cat}
+                      </button>
+                    ))}
+
+                  <input
+                    type="text"
+                    value={skipInput[i] || ''}
+                    onChange={(e) => setSkipInput({ ...skipInput, [i]: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const val = (skipInput[i] || '').trim()
+                        if (val) {
+                          addSkipFor(i, val)
+                          setSkipInput({ ...skipInput, [i]: '' })
+                        }
+                      }
+                    }}
+                    placeholder="skip_for..."
+                    className="w-24 rounded border border-border bg-background px-1.5 py-0.5 text-xs"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0 mt-5"
+                onClick={() => remove(i)}
+                title="Remove agent"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
-
-          <div className="flex flex-col gap-0.5 shrink-0">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={() => move(i, -1)}
-              disabled={i === 0}
-              title="Move up"
-            >
-              <ChevronUp className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={() => move(i, 1)}
-              disabled={i === value.length - 1}
-              title="Move down"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-              onClick={() => remove(i)}
-              title="Remove phase"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      ))}
+        )
+      })}
 
       <Button type="button" variant="outline" size="sm" onClick={add} className="w-full">
         <Plus className="h-3.5 w-3.5 mr-1" />

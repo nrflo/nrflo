@@ -144,12 +144,8 @@ export interface AgentSessionsResponse {
 export interface PhaseDef {
   id: string
   agent: string
-  order?: number
+  layer: number
   skip_for?: string[]
-  parallel?: {
-    enabled: boolean
-    models: string[]
-  }
 }
 
 /** WorkflowDef as returned by the list endpoint (no id/project_id/timestamps) */
@@ -165,7 +161,7 @@ export interface WorkflowDef {
   project_id: string
   description: string
   categories: string[]
-  phases: (string | Record<string, unknown>)[]
+  phases: PhaseDef[]
   created_at: string
   updated_at: string
 }
@@ -174,13 +170,13 @@ export interface WorkflowDefCreateRequest {
   id: string
   description?: string
   categories?: string[]
-  phases: (string | Record<string, unknown>)[]
+  phases: PhaseDef[]
 }
 
 export interface WorkflowDefUpdateRequest {
   description?: string
   categories?: string[]
-  phases?: (string | Record<string, unknown>)[]
+  phases?: PhaseDef[]
 }
 
 // Agent definition types (DB-stored)

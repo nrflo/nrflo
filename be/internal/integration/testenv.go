@@ -91,7 +91,10 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	}
 
 	// 10. Seed test workflow definition via service
-	phasesJSON, _ := json.Marshal([]string{"analyzer", "builder"})
+	phasesJSON, _ := json.Marshal([]map[string]interface{}{
+		{"agent": "analyzer", "layer": 0},
+		{"agent": "builder", "layer": 1},
+	})
 	_, err = workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",

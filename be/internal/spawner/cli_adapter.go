@@ -173,6 +173,7 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 		"opus":       "anthropic/claude-opus-4-5",
 		"sonnet":     "anthropic/claude-sonnet-4-5",
 		"haiku":      "anthropic/claude-haiku-4-5",
+		"gpt_5.3":    "openai/gpt-5.3",
 		"gpt_max":    "openai/gpt-5.2-codex",
 		"gpt_high":   "openai/gpt-5.2-codex",
 		"gpt_medium": "openai/gpt-5.2-codex",
@@ -263,6 +264,7 @@ func (a *CodexAdapter) MapModel(model string) string {
 		"opus":       "gpt-5.2-codex",
 		"sonnet":     "gpt-5.2-codex",
 		"haiku":      "gpt-5.2-codex",
+		"gpt_5.3":    "gpt-5.3",
 		"gpt_xhigh":  "gpt-5.2-codex",
 		"gpt_high":   "gpt-5.2-codex",
 		"gpt_medium": "gpt-5.2-codex",
@@ -276,6 +278,8 @@ func (a *CodexAdapter) MapModel(model string) string {
 // GetReasoningEffort returns the reasoning effort level for a model alias
 func (a *CodexAdapter) GetReasoningEffort(model string) string {
 	switch model {
+	case "gpt_5.3":
+		return "high"
 	case "gpt_xhigh":
 		return "xhigh"
 	case "gpt_high", "opus":

@@ -207,7 +207,7 @@ export function PhaseGraph({
     return nodes
   }, [sortedPhaseEntries, agentsByPhase, agentHistory, handleAgentClick, findSessionForAgent, findSessionForHistory])
 
-  // Build React Flow edges with parallel branching pattern
+  // Build React Flow edges with layer-based branching pattern
   const initialEdges: Edge[] = useMemo(() => {
     const edges: Edge[] = []
 

@@ -37,7 +37,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/AgentDefForm.tsx` | Agent definition create/edit form |
 | `src/components/workflow/AgentDefCard.tsx` | Agent definition card with edit/delete |
 | `src/components/workflow/AgentDefsSection.tsx` | Agent definitions list within a workflow |
-| `src/components/workflow/PhaseListEditor.tsx` | Ordered phase list editor with skip_for tags |
+| `src/components/workflow/PhaseListEditor.tsx` | Layer-aware phase list editor with skip_for tags and fan-in validation |
 | `src/components/workflow/WorkflowDefForm.tsx` | Workflow definition create/edit form |
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated workflow runs |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |

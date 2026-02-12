@@ -46,7 +46,9 @@ func newSpawnerTestEnv(t *testing.T) *spawnerTestEnv {
 
 	// Seed test workflow definition
 	workflowSvc := service.NewWorkflowService(pool)
-	phasesJSON, _ := json.Marshal([]string{"analyzer"})
+	phasesJSON, _ := json.Marshal([]map[string]interface{}{
+		{"agent": "analyzer", "layer": 0},
+	})
 	_, err = workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",

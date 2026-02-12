@@ -78,29 +78,33 @@ vi.mock('@/components/workflow/RunWorkflowDialog', () => ({
 }))
 
 // Use the real AgentLogPanel but mock its internal detail component dependency
-vi.mock('@/components/workflow/AgentLogDetail', () => ({
-  AgentLogDetail: ({
-    selectedAgent,
-    onBack,
-  }: {
-    selectedAgent: {
-      phaseName: string
-      agent?: { agent_type: string }
-      historyEntry?: { agent_type: string }
-    }
-    onBack: () => void
-  }) => (
-    <div data-testid="agent-log-detail">
-      <button data-testid="detail-back" onClick={onBack}>Back</button>
-      <div data-testid="detail-phase">{selectedAgent.phaseName}</div>
-      <div data-testid="detail-agent-type">
-        {selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type}
+vi.mock('@/components/workflow/AgentLogDetail', async () => {
+  const actual = await vi.importActual<typeof import('@/components/workflow/AgentLogDetail')>('@/components/workflow/AgentLogDetail')
+  return {
+    ...actual,
+    AgentLogDetail: ({
+      selectedAgent,
+      onBack,
+    }: {
+      selectedAgent: {
+        phaseName: string
+        agent?: { agent_type: string }
+        historyEntry?: { agent_type: string }
+      }
+      onBack: () => void
+    }) => (
+      <div data-testid="agent-log-detail">
+        <button data-testid="detail-back" onClick={onBack}>Back</button>
+        <div data-testid="detail-phase">{selectedAgent.phaseName}</div>
+        <div data-testid="detail-agent-type">
+          {selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type}
+        </div>
+        {/* Simulate messages/raw toggle (criterion #1 and #4) */}
+        <div data-testid="messages-content">Messages view (default)</div>
       </div>
-      {/* Simulate messages/raw toggle (criterion #1 and #4) */}
-      <div data-testid="messages-content">Messages view (default)</div>
-    </div>
-  ),
-}))
+    ),
+  }
+})
 
 vi.mock('@/hooks/useTickets', async () => {
   const actual = await vi.importActual('@/hooks/useTickets')

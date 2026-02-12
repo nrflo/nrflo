@@ -36,52 +36,44 @@
       "description": "Full TDD feature development workflow",
       "categories": ["docs", "simple", "full"],
       "phases": [
-        {"agent": "setup-analyzer", "parallel": {"enabled": false, "models": ["claude:sonnet"]}},
-        {"agent": "test-writer", "skip_for": ["docs", "simple"], "parallel": {"enabled": false, "models": ["claude:opus"]}},
-        {"agent": "implementor", "parallel": {"enabled": false, "models": ["claude:opus"]}},
-        {"agent": "qa-verifier", "skip_for": ["docs"], "parallel": {"enabled": false, "models": ["claude:opus"]}},
-        {"agent": "doc-updater", "parallel": {"enabled": false, "models": ["claude:sonnet"]}}
+        {"agent": "setup-analyzer", "layer": 0},
+        {"agent": "test-writer", "layer": 1, "skip_for": ["docs", "simple"]},
+        {"agent": "implementor", "layer": 2},
+        {"agent": "qa-verifier", "layer": 3, "skip_for": ["docs"]},
+        {"agent": "doc-updater", "layer": 4}
       ]
     },
     "bugfix": {
       "description": "Bug fix workflow - investigation, fix, verify",
       "categories": ["simple", "full"],
       "phases": [
-        "setup-analyzer",
-        "implementor",
-        "qa-verifier"
+        {"agent": "setup-analyzer", "layer": 0},
+        {"agent": "implementor", "layer": 1},
+        {"agent": "qa-verifier", "layer": 2}
       ]
     },
     "hotfix": {
       "description": "Emergency hotfix - implementation only",
       "categories": ["simple"],
       "phases": [
-        "implementor"
+        {"agent": "implementor", "layer": 0}
       ]
     },
     "docs": {
       "description": "Documentation-only changes",
       "categories": ["docs"],
       "phases": [
-        "setup-analyzer",
-        "doc-updater"
+        {"agent": "setup-analyzer", "layer": 0},
+        {"agent": "doc-updater", "layer": 1}
       ]
     },
     "refactor": {
       "description": "Code refactoring with verification",
       "categories": ["simple", "full"],
       "phases": [
-        "setup-analyzer",
-        "implementor",
-        "qa-verifier"
-      ]
-    },
-    "parallel-test": {
-      "description": "Test workflow with parallel agents enabled",
-      "categories": ["full"],
-      "phases": [
-        {"agent": "setup-analyzer", "parallel": {"enabled": true, "models": ["claude:sonnet", "codex:gpt_high"]}},
-        {"agent": "implementor", "parallel": {"enabled": true, "models": ["claude:opus", "codex:gpt_xhigh"]}}
+        {"agent": "setup-analyzer", "layer": 0},
+        {"agent": "implementor", "layer": 1},
+        {"agent": "qa-verifier", "layer": 2}
       ]
     }
   },

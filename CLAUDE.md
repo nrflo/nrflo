@@ -30,12 +30,13 @@ Update [be/CLAUDE.md](be/CLAUDE.md) when modifying:
 Update [ui/CLAUDE.md](ui/CLAUDE.md) when modifying:
 - Frontend components, pages, WebSocket protocol, API client code, TypeScript types
 
-### 2. Phase Sequence is Enforced
+### 2. Layer-Based Phase Execution
 
-Agents can only be spawned in workflow phase order. The spawner validates:
-- Current phase matches expected next phase
-- Prior phases are completed or skipped
-- Category-based skip rules are applied
+Agents are grouped by `layer` number. All agents in the same layer run concurrently; layers execute in ascending order. The spawner validates:
+- All agents in prior layers are completed or skipped before the current layer starts
+- Category-based skip rules are applied per agent via `skip_for`
+- Fan-in: if a layer has multiple agents, the next layer must have exactly 1 agent
+- At least one agent in a layer must pass for the workflow to proceed (all-skipped continues)
 
 ### 3. State is Stored in Database Tables
 
@@ -72,12 +73,12 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 8. **Versioned migrations**: Schema managed by golang-migrate with embedded SQL files in `db/migrations/`
 9. **Service Layer**: Business logic separated from HTTP handlers and socket handlers
 10. **Spawner in-process**: Spawner runs inside the server, broadcasts WebSocket events via direct hub (no socket fallback)
-11. **Phase validation**: Can't spawn out of order
+11. **Layer-based execution**: Phases grouped by layer; same-layer agents run concurrently, layers execute sequentially with fan-in (pass_count >= 1)
 12. **Category-based skipping**: `skip_for` rules in workflow config
 13. **WebSocket real-time**: UI receives all real-time updates via WebSocket (`/api/v1/ws`), no REST polling
 14. **DB-stored workflow definitions**: Workflow definitions (phases, categories) stored in `workflows` table, managed via `/api/v1/workflows` API
 15. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB.
-16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator runs each phase sequentially in a goroutine, reusing `spawner.Spawn()`, with cancellation support via `/workflow/stop`.
+16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator groups phases by layer and runs all agents in each layer concurrently (one goroutine per agent calling `spawner.Spawn()`), with cancellation support via `/workflow/stop`.
 17. **Low-context relaunch**: When an agent's context drops below threshold (default ~25% remaining, configurable per agent via `restart_threshold` in agent_definitions), the spawner kills the agent, resumes with `claude --resume` to save findings, then spawns a fresh agent with `${PREVIOUS_DATA}` injected. Old sessions get `status='continued'` and are excluded from agent history.
 18. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.
 
@@ -124,16 +125,28 @@ All ticket/deps commands use `--server` (default `NRWORKFLOW_API_URL` or `http:/
 
 ## Workflows
 
-| Workflow | Phases | Use Case |
-|----------|--------|----------|
-| `feature` | investigation -> test-design -> implementation -> verification -> docs | New features (full TDD) |
-| `implement` | implementation -> test-writing -> verification | Direct implementation with post-hoc tests |
-| `bugfix` | investigation -> implementation -> verification | Bug fixes |
-| `hotfix` | implementation | Urgent fixes |
-| `docs` | investigation -> docs | Documentation only |
-| `refactor` | investigation -> implementation -> verification | Code refactoring |
+| Workflow | Phases (by layer) | Use Case |
+|----------|-------------------|----------|
+| `feature` | L0: setup-analyzer -> L1: test-writer -> L2: implementor -> L3: qa-verifier -> L4: doc-updater | New features (full TDD) |
+| `bugfix` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Bug fixes |
+| `hotfix` | L0: implementor | Urgent fixes |
+| `docs` | L0: setup-analyzer -> L1: doc-updater | Documentation only |
+| `refactor` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Code refactoring |
 
 **Note:** These are example workflow configurations. Workflows are stored in the database and must be created via the `/api/v1/workflows` API or the Workflows page in the web UI.
+
+### Phase Definition Format
+
+Each phase entry must be an object with a required `layer` field:
+```json
+{"agent": "setup-analyzer", "layer": 0, "skip_for": ["docs"]}
+```
+
+- `layer` (required): Integer >= 0. Same-layer agents run concurrently.
+- `agent` (required): Agent definition ID.
+- `skip_for` (optional): Categories for which this agent is skipped.
+- String-only entries and `parallel` field are rejected.
+- Supported models: `opus`, `sonnet`, `haiku`, `gpt_5.3`.
 
 ### Categories
 

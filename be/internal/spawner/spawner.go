@@ -25,13 +25,10 @@ type WorkflowDef struct {
 
 // PhaseDef represents a phase definition
 type PhaseDef struct {
-	ID       string   `json:"id"`
-	Agent    string   `json:"agent"`
-	SkipFor  []string `json:"skip_for,omitempty"`
-	Parallel *struct {
-		Enabled bool     `json:"enabled"`
-		Models  []string `json:"models"`
-	} `json:"parallel,omitempty"`
+	ID      string   `json:"id"`
+	Agent   string   `json:"agent"`
+	Layer   int      `json:"layer"`
+	SkipFor []string `json:"skip_for,omitempty"`
 }
 
 // AgentConfig holds agent-specific configuration
@@ -185,58 +182,38 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 		return nil
 	}
 
-	// Determine models to spawn
-	var models []string
-	if phase.Parallel != nil && phase.Parallel.Enabled && len(phase.Parallel.Models) > 0 {
-		models = phase.Parallel.Models
-	} else {
-		model := "opus"
-		cliName := req.CLIName
-		if cliName == "" {
-			if s.config.DefaultCLI != "" {
-				cliName = s.config.DefaultCLI
-			} else {
-				cliName = "claude"
-			}
+	// Determine model to spawn (single agent per Spawn call)
+	model := "opus"
+	cliName := req.CLIName
+	if cliName == "" {
+		if s.config.DefaultCLI != "" {
+			cliName = s.config.DefaultCLI
+		} else {
+			cliName = "claude"
 		}
-		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.Model != "" {
-			model = agentCfg.Model
-		}
-		models = []string{fmt.Sprintf("%s:%s", cliName, model)}
 	}
+	if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.Model != "" {
+		model = agentCfg.Model
+	}
+	modelID := fmt.Sprintf("%s:%s", cliName, model)
 
 	// Print spawn info
 	fmt.Printf("Spawning %s for %s...\n", req.AgentType, req.TicketID)
-	if len(models) > 1 {
-		fmt.Printf("  Parallel mode: %d models configured\n", len(models))
-		for _, m := range models {
-			fmt.Printf("    - %s\n", m)
-		}
-	} else {
-		fmt.Printf("  Model: %s\n", models[0])
-	}
-	fmt.Printf("  Workflow: %s\n", req.WorkflowName)
+	fmt.Printf("  Model: %s\n", modelID)
+	fmt.Printf("  Workflow: %s (layer %d)\n", req.WorkflowName, phase.Layer)
 	fmt.Println()
 
 	// Start phase
 	s.startPhase(wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID)
 
-	// Spawn all models
-	var processes []*processInfo
-	for _, modelID := range models {
-		proc, err := s.spawnSingle(req, modelID, phase.ID, wi.ID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "  Warning: Failed to spawn %s: %v\n", modelID, err)
-			continue
-		}
-		processes = append(processes, proc)
-		fmt.Printf("  Started %s (PID: %d, Session: %s)\n", modelID, proc.cmd.Process.Pid, proc.sessionID)
-	}
-
-	if len(processes) == 0 {
+	// Spawn agent
+	proc, err := s.spawnSingle(req, modelID, phase.ID, wi.ID)
+	if err != nil {
 		s.completePhase(wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID, "fail")
-		return fmt.Errorf("no agents were spawned")
+		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
+	fmt.Printf("  Started %s (PID: %d, Session: %s)\n", modelID, proc.cmd.Process.Pid, proc.sessionID)
+	processes := []*processInfo{proc}
 
 	fmt.Println()
 
@@ -576,7 +553,9 @@ func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
 	fmt.Println()
 }
 
-// finalizePhase completes the phase after all agents finish
+// finalizePhase completes the phase after all agents finish.
+// Uses pass_count >= 1 semantics: at least one PASS is required for layer success.
+// All-skipped counts as success (continue to next layer).
 func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phase string) error {
 	fmt.Printf("\n[%s] All agents completed:\n", phase)
 	for _, proc := range completed {
@@ -584,33 +563,49 @@ func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phas
 	}
 	fmt.Println()
 
-	allPassed := true
+	passCount := 0
+	skippedCount := 0
 	for _, proc := range completed {
-		if proc.finalStatus != "PASS" {
-			allPassed = false
-			break
+		switch proc.finalStatus {
+		case "PASS":
+			passCount++
+		case "SKIPPED":
+			skippedCount++
 		}
 	}
 
-	result := "pass"
-	if !allPassed {
-		result = "fail"
+	// All skipped = success (continue to next layer)
+	if skippedCount == len(completed) {
+		wfiID := ""
+		if len(completed) > 0 {
+			wfiID = completed[0].workflowInstanceID
+		}
+		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "skipped")
+		fmt.Printf("Phase complete: %s (SKIPPED)\n", phase)
+		return nil
 	}
 
+	// At least one pass = success
+	if passCount >= 1 {
+		wfiID := ""
+		if len(completed) > 0 {
+			wfiID = completed[0].workflowInstanceID
+		}
+		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "pass")
+		fmt.Printf("Phase complete: %s (PASS — %d/%d passed)\n", phase, passCount, len(completed))
+		return nil
+	}
+
+	// No passes = fail
 	wfiID := ""
 	if len(completed) > 0 {
 		wfiID = completed[0].workflowInstanceID
 	}
-	s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, result)
-
-	if allPassed {
-		fmt.Printf("Phase complete: %s (PASS)\n", phase)
-		return nil
-	}
+	s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
 
 	var failedModels []string
 	for _, proc := range completed {
-		if proc.finalStatus != "PASS" {
+		if proc.finalStatus != "PASS" && proc.finalStatus != "SKIPPED" {
 			failedModels = append(failedModels, proc.modelID)
 		}
 	}

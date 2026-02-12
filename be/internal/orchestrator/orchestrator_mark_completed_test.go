@@ -195,7 +195,9 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 
 	// Create a second workflow definition for this test
 	workflowSvc := service.NewWorkflowService(env.pool)
-	phasesJSON, _ := json.Marshal([]string{"analyzer"})
+	phasesJSON, _ := json.Marshal([]map[string]interface{}{
+		{"agent": "analyzer", "layer": 0},
+	})
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:          "feature",
 		Description: "Feature workflow",

@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"encoding/json"
 	"testing"
 
 	"be/internal/service"
@@ -229,12 +228,11 @@ func TestStopByTicket_StillWorksWithRunState(t *testing.T) {
 }
 
 func TestSeedWorkflowWithAgentDefs(t *testing.T) {
-	// Verify that the test workflow "test" has phases ["analyzer", "builder"]
+	// Verify that the test workflow "test" has phases with layer-based format
 	// to make sure our test assumptions are correct
 	env := newTestEnv(t)
 
 	workflowSvc := service.NewWorkflowService(env.pool)
-	phasesJSON, _ := json.Marshal([]string{"analyzer", "builder"})
 
 	// Workflow "test" is already seeded by newTestEnv — verify it
 	raw, err := workflowSvc.GetStatus(env.project, "RST-SEED", &types.WorkflowGetRequest{})
@@ -246,12 +244,15 @@ func TestSeedWorkflowWithAgentDefs(t *testing.T) {
 	env.createTicket(t, "RST-SEED", "Seed test")
 	_ = env.initWorkflow(t, "RST-SEED")
 
-	// Verify phases JSON format matches expectation
-	var phases []string
-	if err := json.Unmarshal(phasesJSON, &phases); err != nil {
-		t.Fatalf("bad phases JSON: %v", err)
+	// Verify workflow definition can be retrieved
+	wfDef, err := workflowSvc.GetWorkflowDef(env.project, "test")
+	if err != nil {
+		t.Fatalf("failed to get workflow def: %v", err)
 	}
-	if len(phases) != 2 || phases[0] != "analyzer" || phases[1] != "builder" {
-		t.Fatalf("expected [analyzer, builder], got %v", phases)
+	if len(wfDef.Phases) != 2 {
+		t.Fatalf("expected 2 phases, got %d", len(wfDef.Phases))
+	}
+	if wfDef.Phases[0].Agent != "analyzer" || wfDef.Phases[1].Agent != "builder" {
+		t.Fatalf("expected [analyzer, builder], got [%s, %s]", wfDef.Phases[0].Agent, wfDef.Phases[1].Agent)
 	}
 }

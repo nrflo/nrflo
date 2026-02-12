@@ -445,4 +445,95 @@ describe('AgentLogDetail', () => {
       expect(msgCells[2]).toBe('first message')
     })
   })
+
+  describe('ticket nrworkflow-720aec: no auto-scroll on message updates', () => {
+    it('does NOT call scrollIntoView when component renders with messages', async () => {
+      const scrollIntoViewMock = Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>
+      scrollIntoViewMock.mockClear()
+
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'msg1', created_at: '2026-01-01T00:00:01Z' },
+          { content: 'msg2', created_at: '2026-01-01T00:00:02Z' },
+          { content: 'msg3', created_at: '2026-01-01T00:00:03Z' },
+        ],
+        total: 3,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('3 messages')).toBeInTheDocument()
+      })
+
+      // Verify scrollIntoView was NOT called at all during render
+      expect(scrollIntoViewMock).not.toHaveBeenCalled()
+    })
+
+    it('does NOT auto-scroll even for running agents', async () => {
+      const scrollIntoViewMock = Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>
+      scrollIntoViewMock.mockClear()
+
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'Building...', created_at: '2026-01-01T00:00:01Z' },
+          { content: 'Testing...', created_at: '2026-01-01T00:00:05Z' },
+        ],
+        total: 2,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('2 messages')).toBeInTheDocument()
+      })
+
+      // Verify scrollIntoView was NOT called for running agent
+      expect(scrollIntoViewMock).not.toHaveBeenCalled()
+    })
+
+    it('no ref attribute exists on messages container after auto-scroll removal', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'message', created_at: '2026-01-01T00:00:01Z' },
+        ],
+        total: 1,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('1 messages')).toBeInTheDocument()
+      })
+
+      // The old code had <div ref={messagesStartRef} /> before the message count
+      // Verify this ref div no longer exists
+      const contentArea = document.querySelector('.flex-1.overflow-y-auto')
+      expect(contentArea).toBeInTheDocument()
+
+      // There should be no empty div with a ref right before the message count
+      const messageCountContainer = screen.getByText('1 messages').closest('div')
+      const previousSibling = messageCountContainer?.previousElementSibling
+      // The previous sibling should NOT be an empty div (it should be the table or nothing)
+      if (previousSibling) {
+        // If there is a previous sibling, it should have content (be the table)
+        expect(previousSibling.tagName.toLowerCase()).toBe('table')
+      }
+    })
+  })
 })

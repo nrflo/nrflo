@@ -8,7 +8,7 @@ export interface PhaseNodeData {
   endedAt?: string
   error?: string
   isCurrent: boolean
-  // Active agents for this phase (can be multiple for parallel execution)
+  // Active agents for this phase (can be multiple for same-layer execution)
   activeAgents: ActiveAgentV4[]
   // Agent history entries for this phase
   historyEntries: AgentHistoryEntry[]

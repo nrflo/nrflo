@@ -49,13 +49,16 @@ export function AgentDefForm({
       <div className="flex gap-3">
         <div className="flex-1">
           <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>
-          <input
-            type="text"
+          <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            placeholder="sonnet"
             className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-          />
+          >
+            <option value="opus">opus</option>
+            <option value="sonnet">sonnet</option>
+            <option value="haiku">haiku</option>
+            <option value="gpt_5.3">gpt_5.3</option>
+          </select>
         </div>
         <div className="w-32">
           <label className="block text-xs font-medium text-muted-foreground mb-1">Timeout (min)</label>

@@ -21,20 +21,24 @@ vi.mock('@/hooks/useTickets', () => ({
 }))
 
 // Mock AgentLogDetail to isolate restart button tests
-vi.mock('./AgentLogDetail', () => ({
-  AgentLogDetail: ({
-    selectedAgent,
-    onBack,
-  }: {
-    selectedAgent: SelectedAgentData
-    onBack: () => void
-  }) => (
-    <div data-testid="agent-log-detail">
-      <span data-testid="detail-agent-type">{selectedAgent.agent?.agent_type}</span>
-      <button data-testid="back-button" onClick={onBack}>Back</button>
-    </div>
-  ),
-}))
+vi.mock('./AgentLogDetail', async () => {
+  const actual = await vi.importActual<typeof import('./AgentLogDetail')>('./AgentLogDetail')
+  return {
+    ...actual,
+    AgentLogDetail: ({
+      selectedAgent,
+      onBack,
+    }: {
+      selectedAgent: SelectedAgentData
+      onBack: () => void
+    }) => (
+      <div data-testid="agent-log-detail">
+        <span data-testid="detail-agent-type">{selectedAgent.agent?.agent_type}</span>
+        <button data-testid="back-button" onClick={onBack}>Back</button>
+      </div>
+    ),
+  }
+})
 
 function makeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {

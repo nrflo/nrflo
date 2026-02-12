@@ -346,7 +346,11 @@ func seedWorkflow(t *testing.T, dbPath, projectID, workflowID, description strin
 	defer database.Close()
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	phasesJSON, _ := json.Marshal([]string{"phase1", "phase2", "phase3"})
+	phasesJSON, _ := json.Marshal([]map[string]interface{}{
+		{"agent": "phase1", "layer": 0},
+		{"agent": "phase2", "layer": 1},
+		{"agent": "phase3", "layer": 2},
+	})
 	_, err = database.Exec(`
 		INSERT INTO workflows (project_id, id, description, categories, phases, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,

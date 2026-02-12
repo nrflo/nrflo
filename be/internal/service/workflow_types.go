@@ -88,12 +88,9 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 
 // PhaseDef represents a phase definition
 type PhaseDef struct {
-	ID       string   `json:"id"`
-	Agent    string   `json:"agent"`
-	Order    int      `json:"order,omitempty"`
-	SkipFor  []string `json:"skip_for,omitempty"`
-	Parallel *struct {
-		Enabled bool     `json:"enabled"`
-		Models  []string `json:"models"`
-	} `json:"parallel,omitempty"`
+	ID      string   `json:"id"`
+	Agent   string   `json:"agent"`
+	Layer   int      `json:"layer"`
+	Order   int      `json:"order,omitempty"`
+	SkipFor []string `json:"skip_for,omitempty"`
 }

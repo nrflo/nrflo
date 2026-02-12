@@ -28,7 +28,7 @@ be/
 │   │   ├── template.go          # Template loading, variable expansion
 │   │   └── template_findings.go # Findings expansion, ${PREVIOUS_DATA}, formatting
 │   ├── orchestrator/            # Server-side workflow orchestration
-│   │   └── orchestrator.go      # Run workflows from UI (sequential phases)
+│   │   └── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)
 │   ├── api/                     # HTTP API
 │   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator
 │   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints
@@ -205,58 +205,45 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Parallel Agent Flow
+### Layer-Based Parallel Execution
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    PARALLEL AGENT SPAWNING                           │
+│                    LAYER-BASED AGENT EXECUTION                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  Orchestrator calls spawner.Spawn() directly (in-process)           │
+│  Orchestrator groups phases by layer, executes layers sequentially   │
 │       │                                                              │
-│       └── spawner.Spawn(ticket, phase, workflow)
-│           │                                                          │
-│           ▼                                                          │
+│       ▼                                                              │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │              SPAWNER READS WORKFLOW CONFIG                    │    │
-│  │                                                              │    │
-│  │  parallel: {enabled: true, models: ["claude:sonnet",        │    │
-│  │                                      "opencode:opus"]}       │    │
-│  └──────────────────────────┬──────────────────────────────────┘    │
-│                             │                                        │
-│                             ▼                                        │
+│  │  LAYER 0: [agent-a, agent-b]  (concurrent)                   │    │
+│  │    ┌────────────────┐  ┌────────────────┐                    │    │
+│  │    │ spawner.Spawn  │  │ spawner.Spawn  │  (one goroutine    │    │
+│  │    │ (agent-a)      │  │ (agent-b)      │   per agent)       │    │
+│  │    └───────┬────────┘  └───────┬────────┘                    │    │
+│  │            └───────────┬───────┘                              │    │
+│  │                        ▼                                      │    │
+│  │  Fan-in: wait for ALL agents in layer to finish               │    │
+│  │    ├── pass_count >= 1 → proceed to next layer               │    │
+│  │    ├── all skipped → proceed to next layer                   │    │
+│  │    └── pass_count == 0 → fail workflow, stop                 │    │
+│  └────────────────────────┬────────────────────────────────────┘    │
+│                           ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │              SPAWN ALL MODELS IN PARALLEL                     │    │
-│  │                                                              │    │
-│  │  ┌─────────────────────┐  ┌─────────────────────┐           │    │
-│  │  │ Claude CLI (sonnet) │  │ OpenCode CLI (opus) │           │    │
-│  │  │  PID: 12345         │  │  PID: 12346         │           │    │
-│  │  └──────────┬──────────┘  └──────────┬──────────┘           │    │
-│  │             │                        │                       │    │
-│  │             └────────────┬───────────┘                       │    │
-│  │                          │                                   │    │
-│  │                          ▼                                   │    │
-│  │              SINGLE MONITOR LOOP                             │    │
-│  │              ├── Print status every 30s                      │    │
-│  │              ├── Check process completion                    │    │
-│  │              ├── Handle timeout (kill + log)                 │    │
-│  │              └── Wait until ALL complete                     │    │
-│  │                          │                                   │    │
-│  └──────────────────────────┼──────────────────────────────────┘    │
-│                             │                                        │
-│                             ▼                                        │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │                 active_agents                                │    │
-│  │  {                                                           │    │
-│  │    "setup-analyzer:claude:sonnet": {pid, result...},        │    │
-│  │    "setup-analyzer:opencode:opus": {pid, result...}         │    │
-│  │  }                                                           │    │
-│  └──────────────────────────┬──────────────────────────────────┘    │
-│                             │                                        │
-│                             ▼                                        │
-│  PHASE COMPLETION (automatic when all agents done):                 │
-│       ├── ALL agents pass → phase passes                            │
-│       └── ANY agent fails → phase fails                             │
+│  │  LAYER 1: [agent-c]  (single, fan-in convergence)            │    │
+│  │    ┌────────────────┐                                        │    │
+│  │    │ spawner.Spawn  │                                        │    │
+│  │    │ (agent-c)      │                                        │    │
+│  │    └───────┬────────┘                                        │    │
+│  └────────────┼────────────────────────────────────────────────┘    │
+│               ▼                                                      │
+│  All layers done → workflow completed                                │
+│                                                                      │
+│  VALIDATION RULES:                                                   │
+│    - layer field required (integer >= 0)                             │
+│    - parallel field rejected (breaking change)                       │
+│    - fan-in: multi-agent layer → next layer must have 1 agent       │
+│    - string-only phase entries rejected                              │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -492,39 +479,40 @@ Both `--session` and `-w` are **required** for `agent spawn`:
 ```
 1. VALIDATION
    - Validate workflow is initialized on ticket
-   - Check phase sequence (can't spawn out of order)
+   - Check layer ordering (all prior layers must be completed)
    - Check skip_for category rules
 
-2. DETERMINE MODELS
-   - Read parallel config from workflow phase
-   - If parallel.enabled: use all parallel.models
-   - Otherwise: use single default model
+2. DETERMINE MODEL
+   - Read model from agent definition (DB)
+   - Format as cli:model (e.g. claude:opus)
+   - Each Spawn() call handles exactly one agent
 
-3. START PHASE & SPAWN ALL
+3. START PHASE & SPAWN
    - Call WorkflowService.StartPhase() directly (in-process)
-   - For each model:
-     - Assemble prompt with ${MODEL_ID}, ${MODEL} placeholders
-     - Spawn CLI process
-     - Call AgentService to register session with pid and model
+   - Assemble prompt with ${MODEL_ID}, ${MODEL} placeholders
+   - Spawn CLI process
+   - Register session with pid and model
 
-4. MONITOR ALL (single poll loop)
+4. MONITOR (single poll loop per agent)
    - Print status every 30 seconds
-   - Check each process for completion or timeout
-   - Handle completion/timeout for each agent individually
+   - Check process for completion or timeout
+   - Handle completion/timeout
    - Broadcast messages.updated every ~2s via WebSocket hub
 
 5. FINALIZE PHASE
-   - Phase passes only if ALL agents pass
-   - If any fail, phase fails
+   - pass_count >= 1 → layer passes (fan-in)
+   - all skipped → layer passes
+   - pass_count == 0 → layer fails
    - Call WorkflowService.CompletePhase() directly (in-process)
+
+ORCHESTRATOR LAYER EXECUTION:
+   - Groups phases by layer number
+   - Spawns all agents in a layer concurrently (goroutine per agent)
+   - Waits for all agents in layer to finish before next layer
 
 BROADCAST: The spawner broadcasts WebSocket events (agent.started,
 messages.updated, agent.completed, phase.started, phase.completed)
 directly via the in-process WebSocket hub.
-
-TICKET EVENTS: HTTP handlers broadcast ticket.updated events on
-create, update, close, reopen, and delete. Data includes "status"
-(current ticket status) and optionally "action" ("created"/"deleted").
 ```
 
 ## Agent Definitions

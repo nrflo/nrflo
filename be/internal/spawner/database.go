@@ -104,6 +104,7 @@ func (s *Spawner) getWorkflowInstance(projectID, ticketID, workflowName string) 
 
 // validateAndAdvancePhase validates phase order and auto-skips phases with matching skip_for rules.
 // Returns (phaseID, shouldSkip, error). Uses workflow_instances table for state.
+// With layer-based execution, validates that all agents in prior layers are completed.
 func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowName, requestedAgent string) (string, bool, error) {
 	workflow, ok := s.config.Workflows[workflowName]
 	if !ok {
@@ -112,11 +113,9 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 
 	// Find requested agent's phase
 	var requestedPhase *PhaseDef
-	var requestedIndex int = -1
 	for i := range workflow.Phases {
 		if workflow.Phases[i].Agent == requestedAgent {
 			requestedPhase = &workflow.Phases[i]
-			requestedIndex = i
 			break
 		}
 	}
@@ -136,22 +135,22 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 		return requestedPhase.ID, true, nil
 	}
 
-	// Validate that prior phases are completed or skipped
-	for i := 0; i < requestedIndex; i++ {
-		priorPhase := workflow.Phases[i]
+	// Validate that all agents in prior layers are completed or skipped
+	for _, priorPhase := range workflow.Phases {
+		if priorPhase.Layer >= requestedPhase.Layer {
+			continue // same or later layer, skip validation
+		}
 		phaseStatus, exists := phases[priorPhase.ID]
-
 		if exists && phaseStatus.Status == "completed" {
 			continue
 		}
-
 		// Check if phase can be auto-skipped due to category
 		if s.categoryMatchesSkipFor(category, priorPhase.SkipFor) {
 			s.completePhase(wi.ID, wi.ProjectID, wi.TicketID, workflowName, priorPhase.ID, "skipped")
 			continue
 		}
-
-		return "", false, fmt.Errorf("phase '%s' must complete before '%s'", priorPhase.ID, requestedPhase.ID)
+		return "", false, fmt.Errorf("layer %d agent '%s' must complete before layer %d agent '%s'",
+			priorPhase.Layer, priorPhase.ID, requestedPhase.Layer, requestedPhase.ID)
 	}
 
 	return requestedPhase.ID, false, nil

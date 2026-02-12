@@ -115,6 +115,9 @@ if ! kill -0 $UI_PID 2>/dev/null; then
     exit 1
 fi
 
+sudo ln -sf "$SCRIPT_DIR/be/nrworkflow" /usr/local/bin/nrworkflow
+echo "  Symlinked to /usr/local/bin/nrworkflow"
+
 echo -e "${GREEN}  Done${NC}"
 echo ""
 

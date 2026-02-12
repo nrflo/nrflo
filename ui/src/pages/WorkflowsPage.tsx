@@ -24,7 +24,21 @@ function WorkflowCard({
 }) {
   const [expanded, setExpanded] = useState(false)
 
-  const phases = def.phases?.map((p) => p.agent || p.id).join(' -> ') || ''
+  // Group agents by layer for display
+  const phases = (() => {
+    if (!def.phases?.length) return ''
+    const byLayer: Record<number, string[]> = {}
+    for (const p of def.phases) {
+      const layer = p.layer ?? 0
+      if (!byLayer[layer]) byLayer[layer] = []
+      byLayer[layer].push(p.agent || p.id)
+    }
+    return Object.keys(byLayer)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((l) => byLayer[l].length > 1 ? `[${byLayer[l].join(' | ')}]` : byLayer[l][0])
+      .join(' -> ')
+  })()
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">

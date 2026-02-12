@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -329,7 +330,10 @@ func (o *Orchestrator) StopAll() {
 	o.mu.Unlock()
 }
 
-// runLoop executes workflow phases sequentially.
+// runLoop executes workflow phases grouped by layer.
+// All agents in the same layer run concurrently. Layers execute in ascending order.
+// Fan-in: proceed to next layer if pass_count >= 1. All-skipped continues.
+// All-fail stops the workflow.
 func (o *Orchestrator) runLoop(
 	ctx context.Context,
 	wfiID string,
@@ -351,76 +355,141 @@ func (o *Orchestrator) runLoop(
 
 	category := req.Category
 
-	for i, phase := range svcWf.Phases {
+	// Group phases by layer
+	layerGroups := groupPhasesByLayer(svcWf.Phases)
+
+	for li, lg := range layerGroups {
 		// Check cancellation
 		select {
 		case <-ctx.Done():
-			log.Printf("[orchestrator] Cancelled during phase %s", phase.ID)
+			log.Printf("[orchestrator] Cancelled at layer %d", lg.layer)
 			o.markFailed(wfiID, req, "cancelled")
 			return
 		default:
 		}
 
-		// Check skip rules
-		if shouldSkipPhase(category, phase.SkipFor) {
-			log.Printf("[orchestrator] Skipping phase %s (category=%s)", phase.ID, category)
+		// Filter out skipped agents
+		var runnableAgents []service.SpawnerPhaseDef
+		for _, phase := range lg.phases {
+			if shouldSkipPhase(category, phase.SkipFor) {
+				log.Printf("[orchestrator] Skipping agent %s in layer %d (category=%s)", phase.Agent, lg.layer, category)
+				continue
+			}
+			runnableAgents = append(runnableAgents, phase)
+		}
+
+		// If all agents in layer are skipped, continue to next layer
+		if len(runnableAgents) == 0 {
+			log.Printf("[orchestrator] Layer %d: all agents skipped, continuing", lg.layer)
 			continue
 		}
 
-		log.Printf("[orchestrator] Running phase %d/%d: %s (agent=%s)",
-			i+1, len(svcWf.Phases), phase.ID, phase.Agent)
+		log.Printf("[orchestrator] Running layer %d/%d: %d agent(s)", li+1, len(layerGroups), len(runnableAgents))
 
-		// Create spawner for this phase
-		sp := spawner.New(spawner.Config{
-			Workflows:   workflows,
-			Agents:      agents,
-			DefaultCLI:  "claude",
-			DataPath:    o.dataPath,
-			ProjectRoot: projectRoot,
-			WSHub:       o.wsHub,
-		})
-
-		// Store spawner ref so RestartAgent can reach it
-		o.mu.Lock()
-		if rs, ok := o.runs[wfiID]; ok {
-			rs.spawner = sp
+		// Spawn all agents in this layer concurrently
+		type spawnResult struct {
+			agent string
+			err   error
 		}
-		o.mu.Unlock()
+		results := make(chan spawnResult, len(runnableAgents))
 
-		err := sp.Spawn(ctx, spawner.SpawnRequest{
-			AgentType:     phase.Agent,
-			TicketID:      req.TicketID,
-			ProjectID:     req.ProjectID,
-			WorkflowName:  req.WorkflowName,
-			ParentSession: parentSession,
-		})
+		for _, phase := range runnableAgents {
+			phase := phase // capture for goroutine
+			go func() {
+				sp := spawner.New(spawner.Config{
+					Workflows:   workflows,
+					Agents:      agents,
+					DefaultCLI:  "claude",
+					DataPath:    o.dataPath,
+					ProjectRoot: projectRoot,
+					WSHub:       o.wsHub,
+				})
 
-		// Clear spawner ref (phase done)
+				// Store spawner ref so RestartAgent can reach it
+				o.mu.Lock()
+				if rs, ok := o.runs[wfiID]; ok {
+					rs.spawner = sp
+				}
+				o.mu.Unlock()
+
+				err := sp.Spawn(ctx, spawner.SpawnRequest{
+					AgentType:     phase.Agent,
+					TicketID:      req.TicketID,
+					ProjectID:     req.ProjectID,
+					WorkflowName:  req.WorkflowName,
+					ParentSession: parentSession,
+				})
+
+				sp.Close()
+				results <- spawnResult{agent: phase.Agent, err: err}
+			}()
+		}
+
+		// Wait for all agents in this layer to finish
+		passCount := 0
+		failCount := 0
+		for range runnableAgents {
+			result := <-results
+			if result.err != nil {
+				if ctx.Err() != nil {
+					log.Printf("[orchestrator] Cancelled during layer %d", lg.layer)
+					o.markFailed(wfiID, req, "cancelled")
+					return
+				}
+				log.Printf("[orchestrator] Layer %d agent %s failed: %v", lg.layer, result.agent, result.err)
+				failCount++
+			} else {
+				log.Printf("[orchestrator] Layer %d agent %s completed successfully", lg.layer, result.agent)
+				passCount++
+			}
+		}
+
+		// Clear spawner ref (layer done)
 		o.mu.Lock()
 		if rs, ok := o.runs[wfiID]; ok {
 			rs.spawner = nil
 		}
 		o.mu.Unlock()
 
-		sp.Close()
-
-		if err != nil {
-			if ctx.Err() != nil {
-				log.Printf("[orchestrator] Cancelled during phase %s", phase.ID)
-				o.markFailed(wfiID, req, "cancelled")
-				return
-			}
-			log.Printf("[orchestrator] Phase %s failed: %v", phase.ID, err)
-			o.markFailed(wfiID, req, fmt.Sprintf("phase %s failed: %v", phase.ID, err))
+		// Fan-in: at least one pass required to proceed
+		if passCount == 0 {
+			log.Printf("[orchestrator] Layer %d: all agents failed (%d), stopping workflow", lg.layer, failCount)
+			o.markFailed(wfiID, req, fmt.Sprintf("layer %d: all agents failed", lg.layer))
 			return
 		}
 
-		log.Printf("[orchestrator] Phase %s completed successfully", phase.ID)
+		log.Printf("[orchestrator] Layer %d completed: %d passed, %d failed", lg.layer, passCount, failCount)
 	}
 
-	// All phases completed
+	// All layers completed
 	log.Printf("[orchestrator] Workflow '%s' completed on %s", req.WorkflowName, req.TicketID)
 	o.markCompleted(wfiID, req)
+}
+
+// layerGroup holds phases that share the same layer number.
+type layerGroup struct {
+	layer  int
+	phases []service.SpawnerPhaseDef
+}
+
+// groupPhasesByLayer groups phases by layer number, sorted ascending.
+func groupPhasesByLayer(phases []service.SpawnerPhaseDef) []layerGroup {
+	groups := make(map[int][]service.SpawnerPhaseDef)
+	for _, p := range phases {
+		groups[p.Layer] = append(groups[p.Layer], p)
+	}
+
+	var layers []int
+	for l := range groups {
+		layers = append(layers, l)
+	}
+	sort.Ints(layers)
+
+	result := make([]layerGroup, len(layers))
+	for i, l := range layers {
+		result[i] = layerGroup{layer: l, phases: groups[l]}
+	}
+	return result
 }
 
 // markCompleted marks the workflow instance as completed and broadcasts.
@@ -509,18 +578,12 @@ func convertToSpawnerWorkflows(svc map[string]service.SpawnerWorkflowDef) map[st
 	for name, swf := range svc {
 		var phases []spawner.PhaseDef
 		for _, sp := range swf.Phases {
-			pd := spawner.PhaseDef{
+			phases = append(phases, spawner.PhaseDef{
 				ID:      sp.ID,
 				Agent:   sp.Agent,
+				Layer:   sp.Layer,
 				SkipFor: sp.SkipFor,
-			}
-			if sp.Parallel != nil {
-				pd.Parallel = &struct {
-					Enabled bool     `json:"enabled"`
-					Models  []string `json:"models"`
-				}{Enabled: sp.Parallel.Enabled, Models: sp.Parallel.Models}
-			}
-			phases = append(phases, pd)
+			})
 		}
 		result[name] = spawner.WorkflowDef{
 			Description: swf.Description,

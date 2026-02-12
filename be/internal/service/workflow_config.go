@@ -11,52 +11,42 @@ import (
 
 // --- Phase Parsing Helpers ---
 
-// parsePhaseDefs parses mixed-format phase definitions (string or object)
+// parsePhaseDefs parses object-format phase definitions with required layer field.
+// String-only entries and parallel field are rejected.
 func parsePhaseDefs(rawPhases []json.RawMessage) ([]PhaseDef, error) {
 	var phases []PhaseDef
 	for _, raw := range rawPhases {
-		// Try string first (simple format: just agent name)
-		var agentName string
-		if err := json.Unmarshal(raw, &agentName); err == nil {
-			phases = append(phases, PhaseDef{ID: agentName, Agent: agentName})
-			continue
+		// Reject string-only entries
+		if err := rejectStringPhaseEntry(raw); err != nil {
+			return nil, err
 		}
-		// Try object format
+		// Parse object format
 		var phase struct {
-			Agent    string   `json:"agent"`
-			Order    int      `json:"order,omitempty"`
-			SkipFor  []string `json:"skip_for,omitempty"`
-			Parallel *struct {
-				Enabled bool     `json:"enabled"`
-				Models  []string `json:"models"`
-			} `json:"parallel,omitempty"`
+			Agent   string   `json:"agent"`
+			Layer   int      `json:"layer"`
+			Order   int      `json:"order,omitempty"`
+			SkipFor []string `json:"skip_for,omitempty"`
 		}
-		if err := json.Unmarshal(raw, &phase); err == nil && phase.Agent != "" {
-			p := PhaseDef{
-				ID:      phase.Agent,
-				Agent:   phase.Agent,
-				Order:   phase.Order,
-				SkipFor: phase.SkipFor,
-			}
-			if phase.Parallel != nil {
-				p.Parallel = &struct {
-					Enabled bool     `json:"enabled"`
-					Models  []string `json:"models"`
-				}{
-					Enabled: phase.Parallel.Enabled,
-					Models:  phase.Parallel.Models,
-				}
-			}
-			phases = append(phases, p)
-			continue
+		if err := json.Unmarshal(raw, &phase); err != nil || phase.Agent == "" {
+			return nil, fmt.Errorf("invalid phase: %s (must be object with 'agent' and 'layer' fields)", string(raw))
 		}
-		return nil, fmt.Errorf("invalid phase: %s", string(raw))
+		phases = append(phases, PhaseDef{
+			ID:      phase.Agent,
+			Agent:   phase.Agent,
+			Layer:   phase.Layer,
+			Order:   phase.Order,
+			SkipFor: phase.SkipFor,
+		})
+	}
+	// Validate layer config and reject parallel field
+	if err := validateLayerConfig(phases, rawPhases); err != nil {
+		return nil, err
 	}
 	return phases, nil
 }
 
 // normalizePhasesJSON validates and normalizes phases JSON input.
-// Accepts mixed string/object format and normalizes strings to {"agent":"name"}.
+// Requires object format with layer field. Rejects string entries and parallel field.
 func normalizePhasesJSON(raw json.RawMessage) (json.RawMessage, error) {
 	var items []json.RawMessage
 	if err := json.Unmarshal(raw, &items); err != nil {
@@ -65,25 +55,22 @@ func normalizePhasesJSON(raw json.RawMessage) (json.RawMessage, error) {
 
 	var normalized []interface{}
 	for _, item := range items {
-		// Try string
-		var agentName string
-		if err := json.Unmarshal(item, &agentName); err == nil {
-			normalized = append(normalized, map[string]interface{}{"agent": agentName})
-			continue
+		// Reject string entries
+		if err := rejectStringPhaseEntry(item); err != nil {
+			return nil, err
 		}
-		// Try object
+		// Validate object
 		var obj map[string]interface{}
-		if err := json.Unmarshal(item, &obj); err == nil {
-			if _, ok := obj["agent"]; !ok {
-				return nil, fmt.Errorf("phase object must have 'agent' field")
-			}
-			normalized = append(normalized, obj)
-			continue
+		if err := json.Unmarshal(item, &obj); err != nil {
+			return nil, fmt.Errorf("invalid phase entry: %s", string(item))
 		}
-		return nil, fmt.Errorf("invalid phase entry: %s", string(item))
+		if _, ok := obj["agent"]; !ok {
+			return nil, fmt.Errorf("phase object must have 'agent' field")
+		}
+		normalized = append(normalized, obj)
 	}
 
-	// Also validate via parsePhaseDefs
+	// Full validation via parsePhaseDefs (layer, fan-in, parallel rejection)
 	rawMessages := make([]json.RawMessage, len(items))
 	copy(rawMessages, items)
 	if _, err := parsePhaseDefs(rawMessages); err != nil {
@@ -105,11 +92,6 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 
 		var phases []SpawnerPhaseDef
 		for _, raw := range rawPhases {
-			var agentName string
-			if err := json.Unmarshal(raw, &agentName); err == nil {
-				phases = append(phases, SpawnerPhaseDef{ID: agentName, Agent: agentName})
-				continue
-			}
 			var pd SpawnerPhaseDef
 			if err := json.Unmarshal(raw, &pd); err == nil && pd.Agent != "" {
 				if pd.ID == "" {
@@ -151,13 +133,10 @@ type SpawnerWorkflowDef struct {
 
 // SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building
 type SpawnerPhaseDef struct {
-	ID       string   `json:"id"`
-	Agent    string   `json:"agent"`
-	SkipFor  []string `json:"skip_for,omitempty"`
-	Parallel *struct {
-		Enabled bool     `json:"enabled"`
-		Models  []string `json:"models"`
-	} `json:"parallel,omitempty"`
+	ID      string   `json:"id"`
+	Agent   string   `json:"agent"`
+	Layer   int      `json:"layer"`
+	SkipFor []string `json:"skip_for,omitempty"`
 }
 
 // SpawnerAgentConfig mirrors spawner.AgentConfig for shared config building

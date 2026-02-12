@@ -22,21 +22,25 @@ vi.mock('@/hooks/useTickets', () => ({
 }))
 
 // Mock AgentLogDetail to test routing without deep dependencies
-vi.mock('./AgentLogDetail', () => ({
-  AgentLogDetail: ({
-    selectedAgent,
-    onBack,
-  }: {
-    selectedAgent: SelectedAgentData
-    onBack: () => void
-  }) => (
-    <div data-testid="agent-log-detail">
-      <span data-testid="detail-phase">{selectedAgent.phaseName}</span>
-      <span data-testid="detail-agent-type">{selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type}</span>
-      <button data-testid="back-button" onClick={onBack}>Back</button>
-    </div>
-  ),
-}))
+vi.mock('./AgentLogDetail', async () => {
+  const actual = await vi.importActual<typeof import('./AgentLogDetail')>('./AgentLogDetail')
+  return {
+    ...actual,
+    AgentLogDetail: ({
+      selectedAgent,
+      onBack,
+    }: {
+      selectedAgent: SelectedAgentData
+      onBack: () => void
+    }) => (
+      <div data-testid="agent-log-detail">
+        <span data-testid="detail-phase">{selectedAgent.phaseName}</span>
+        <span data-testid="detail-agent-type">{selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type}</span>
+        <button data-testid="back-button" onClick={onBack}>Back</button>
+      </div>
+    ),
+  }
+})
 
 function makeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {
@@ -273,6 +277,161 @@ describe('AgentLogPanel', () => {
       expect(onAgentSelect).toHaveBeenCalledWith(
         expect.objectContaining({ session: correctSession })
       )
+    })
+  })
+
+  describe('ticket nrworkflow-720aec: table view in overview mode', () => {
+    it('renders messages in table format (Time|Tool|Message) instead of compact cards in overview', () => {
+      const agent = makeAgent()
+      const session = makeSession()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+      })
+
+      // Verify table structure exists
+      const table = document.querySelector('table')
+      expect(table).toBeInTheDocument()
+
+      // Verify table has three columns
+      const thead = table!.querySelector('thead')
+      expect(thead).toBeInTheDocument()
+      const headerCells = thead!.querySelectorAll('th')
+      expect(headerCells).toHaveLength(3)
+      expect(headerCells[0].textContent).toBe('Time')
+      expect(headerCells[1].textContent).toBe('Tool')
+      expect(headerCells[2].textContent).toBe('Message')
+
+      // Verify messages are rendered in tbody
+      const tbody = table!.querySelector('tbody')
+      expect(tbody).toBeInTheDocument()
+      const rows = tbody!.querySelectorAll('tr')
+      expect(rows.length).toBeGreaterThan(0)
+
+      // Each row should have 3 cells
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('td')
+        expect(cells).toHaveLength(3)
+      })
+    })
+
+    it('overview table shows messages in newest-first order (reversed)', () => {
+      const agent = makeAgent()
+      const session = makeSession()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+      })
+
+      // With default mock: 'Building project...' at 00:01:00Z, 'Running tests...' at 00:02:00Z
+      // After reversal, 'Running tests...' should be first
+      const table = document.querySelector('table')!
+      const tbody = table.querySelector('tbody')!
+      const rows = tbody.querySelectorAll('tr')
+      const msgCells = Array.from(rows).map(r => r.querySelector('td:nth-child(3)')!.textContent)
+
+      // Messages should be reversed: newest first
+      expect(msgCells[0]).toBe('Running tests...')
+      expect(msgCells[1]).toBe('Building project...')
+    })
+
+    it('overview table displays timestamps in Time column', () => {
+      const agent = makeAgent()
+      const session = makeSession()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+      })
+
+      const table = document.querySelector('table')!
+      const tbody = table.querySelector('tbody')!
+      const rows = tbody.querySelectorAll('tr')
+
+      // Check first row has a timestamp
+      const timeCell = rows[0].querySelector('td:first-child')!
+      expect(timeCell.textContent).toBeTruthy()
+      // Should contain digits (HH:MM:SS pattern)
+      expect(timeCell.textContent).toMatch(/\d/)
+    })
+
+    it('overview table renders message content in Message column', () => {
+      const agent = makeAgent()
+      const session = makeSession()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+      })
+
+      const table = document.querySelector('table')!
+      const tbody = table.querySelector('tbody')!
+      const rows = tbody.querySelectorAll('tr')
+
+      // Verify message content is rendered
+      const firstRowMsgCell = rows[0].querySelector('td:nth-child(3)')!
+      expect(firstRowMsgCell.textContent).toBe('Running tests...')
+
+      const secondRowMsgCell = rows[1].querySelector('td:nth-child(3)')!
+      expect(secondRowMsgCell.textContent).toBe('Building project...')
+    })
+
+    it('no LogMessage cards rendered in overview mode', () => {
+      const agent = makeAgent()
+      const session = makeSession()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+      })
+
+      // The old implementation rendered LogMessage components which have
+      // 'px-2 py-1 rounded-md border bg-muted/30' classes (from LogMessage.tsx variant="compact")
+      // Verify these compact card elements are not present in overview
+      // Instead, we should have a table
+      const table = document.querySelector('table')
+      expect(table).toBeInTheDocument()
+
+      // Verify no compact LogMessage cards exist
+      // LogMessage component has specific styling: "px-2 py-1 rounded-md border bg-muted/30"
+      // These should NOT exist in the agent messages block
+      const compactCards = document.querySelectorAll('.rounded-md.border')
+      const cardsInMessagesArea = Array.from(compactCards).filter(el => {
+        const parentText = el.closest('div')?.textContent
+        return parentText?.includes('Building') || parentText?.includes('Running')
+      })
+
+      // All messages should be in table rows, not in card divs
+      expect(cardsInMessagesArea).toHaveLength(0)
+    })
+
+    it('overview table has same structure as detail table', () => {
+      // This test verifies criterion #2: both overview and detail use table view
+      const agent = makeAgent()
+      const session = makeSession()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:sonnet': agent },
+        sessions: [session],
+      })
+
+      const overviewTable = document.querySelector('table')!
+      const overviewHeaders = overviewTable.querySelectorAll('thead th')
+
+      // Table format should match detail view structure:
+      // Time (70px) | Tool (70px) | Message
+      expect(overviewHeaders[0].textContent).toBe('Time')
+      expect(overviewHeaders[0].classList.contains('w-[70px]')).toBe(true)
+      expect(overviewHeaders[1].textContent).toBe('Tool')
+      expect(overviewHeaders[1].classList.contains('w-[70px]')).toBe(true)
+      expect(overviewHeaders[2].textContent).toBe('Message')
+
+      // Table uses font-mono, text-xs, border-collapse
+      expect(overviewTable.classList.contains('font-mono')).toBe(true)
+      expect(overviewTable.classList.contains('text-xs')).toBe(true)
+      expect(overviewTable.classList.contains('border-collapse')).toBe(true)
     })
   })
 })

@@ -9,22 +9,24 @@ const PRESET_CATEGORIES = ['full', 'simple', 'docs']
 
 /** Convert API phase format to form entries */
 function phasesToForm(phases?: PhaseDef[]): PhaseFormEntry[] {
-  if (!phases?.length) return [{ agent: '', skip_for: [] }]
+  if (!phases?.length) return [{ agent: '', layer: 0, skip_for: [] }]
   return phases.map((p) => ({
     agent: p.agent || p.id,
+    layer: p.layer ?? 0,
     skip_for: p.skip_for || [],
   }))
 }
 
-/** Convert form entries to API format */
-function formToPhases(entries: PhaseFormEntry[]): (string | Record<string, unknown>)[] {
+/** Convert form entries to API format (always object with layer) */
+function formToPhases(entries: PhaseFormEntry[]): PhaseDef[] {
   return entries
     .filter((e) => e.agent.trim())
-    .map((e) =>
-      e.skip_for.length > 0
-        ? { agent: e.agent.trim(), skip_for: e.skip_for }
-        : e.agent.trim()
-    )
+    .map((e) => ({
+      id: e.agent.trim(),
+      agent: e.agent.trim(),
+      layer: e.layer,
+      ...(e.skip_for.length > 0 ? { skip_for: e.skip_for } : {}),
+    }))
 }
 
 interface WorkflowDefFormProps {

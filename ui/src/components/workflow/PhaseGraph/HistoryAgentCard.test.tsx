@@ -28,6 +28,7 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
     model_id: 'claude-sonnet-4-5',
     status: 'completed',
     message_count: 5,
+    raw_output_size: 0,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:03:00Z',
     ...overrides,

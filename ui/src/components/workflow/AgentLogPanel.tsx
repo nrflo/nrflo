@@ -3,7 +3,9 @@ import { ChevronRight, ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
 import { cn, contextLeftColor } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
 import { LogMessage } from './LogMessage'
+import { AgentLogDetail } from './AgentLogDetail'
 import type { ActiveAgentV4, AgentSession, MessageWithTime } from '@/types/workflow'
+import type { SelectedAgentData } from './PhaseGraph/types'
 
 interface AgentMessagesBlockProps {
   agent: ActiveAgentV4
@@ -18,7 +20,6 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
     isRunning,
   })
 
-  // Convert last_messages (string[]) to MessageWithTime[] as fallback
   const messages: MessageWithTime[] = useMemo(() => {
     if (messagesData?.messages) return messagesData.messages
     if (session?.last_messages) {
@@ -32,7 +33,6 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
     ? modelId.split('-').slice(-2).join('-') || modelId
     : agent.cli || agent.agent_type || 'agent'
 
-  // Show latest messages (reversed for newest first)
   const displayMessages = useMemo(() => [...messages].reverse().slice(0, 20), [messages])
 
   return (
@@ -75,21 +75,23 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
   )
 }
 
-interface RunningAgentLogProps {
+interface AgentLogPanelProps {
   activeAgents: Record<string, ActiveAgentV4>
   sessions: AgentSession[]
   collapsed: boolean
   onToggleCollapse: () => void
-  onAgentClick: (agent: ActiveAgentV4, session?: AgentSession) => void
+  selectedAgent: SelectedAgentData | null
+  onAgentSelect: (data: SelectedAgentData | null) => void
 }
 
-export function RunningAgentLog({
+export function AgentLogPanel({
   activeAgents,
   sessions,
   collapsed,
   onToggleCollapse,
-  onAgentClick,
-}: RunningAgentLogProps) {
+  selectedAgent,
+  onAgentSelect,
+}: AgentLogPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const runningAgents = useMemo(() => {
@@ -98,7 +100,6 @@ export function RunningAgentLog({
 
   const runningCount = runningAgents.length
 
-  // Find session for a running agent
   const findSession = (agent: ActiveAgentV4): AgentSession | undefined => {
     return sessions.find(s =>
       s.agent_type === agent.agent_type &&
@@ -107,13 +108,60 @@ export function RunningAgentLog({
     )
   }
 
-  // Auto-scroll to top when new agents appear
+  // Auto-scroll to top when new agents appear (overview mode only)
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!selectedAgent && scrollRef.current) {
       scrollRef.current.scrollTop = 0
     }
-  }, [runningCount])
+  }, [runningCount, selectedAgent])
 
+  // When clicking a running agent in overview, open it in detail view
+  const handleRunningAgentClick = (agent: ActiveAgentV4, session?: AgentSession) => {
+    onAgentSelect({
+      phaseName: agent.phase || agent.agent_type || '',
+      agent,
+      session,
+    })
+  }
+
+  // Detail mode: show selected agent
+  if (selectedAgent) {
+    // Look up the latest session for live updates
+    const liveSession = selectedAgent.agent
+      ? findSession(selectedAgent.agent) || selectedAgent.session
+      : selectedAgent.session
+    const agentWithSession = { ...selectedAgent, session: liveSession }
+
+    return (
+      <div
+        className={cn(
+          'relative border-l border-border bg-background transition-all duration-300 ease-in-out shrink-0',
+          collapsed ? 'w-10' : 'flex-1 min-w-[300px]'
+        )}
+      >
+        <button
+          onClick={onToggleCollapse}
+          className="absolute -left-5 top-3 z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
+          title={collapsed ? 'Expand agent log' : 'Collapse agent log'}
+        >
+          {collapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </button>
+
+        {collapsed ? (
+          <div className="flex flex-col items-center pt-16 gap-2">
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground [writing-mode:vertical-lr] rotate-180">
+              Agent Log
+            </span>
+          </div>
+        ) : (
+          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} />
+        )}
+      </div>
+    )
+  }
+
+  // Overview mode: show running agents
   if (runningCount === 0) return null
 
   return (
@@ -123,7 +171,6 @@ export function RunningAgentLog({
         collapsed ? 'w-10' : 'flex-1 min-w-[300px]'
       )}
     >
-      {/* Collapse/Expand toggle */}
       <button
         onClick={onToggleCollapse}
         className="absolute -left-5 top-3 z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
@@ -133,7 +180,6 @@ export function RunningAgentLog({
       </button>
 
       {collapsed ? (
-        /* Collapsed state: vertical label with count */
         <div className="flex flex-col items-center pt-16 gap-2">
           <div className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-xs font-medium text-yellow-700 dark:text-yellow-400">
             {runningCount}
@@ -143,7 +189,6 @@ export function RunningAgentLog({
           </span>
         </div>
       ) : (
-        /* Expanded state: messages panel */
         <div className="flex flex-col h-full">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
             <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin" />
@@ -160,7 +205,7 @@ export function RunningAgentLog({
                   key={key}
                   agent={agent}
                   session={session}
-                  onAgentClick={onAgentClick}
+                  onAgentClick={handleRunningAgentClick}
                 />
               )
             })}

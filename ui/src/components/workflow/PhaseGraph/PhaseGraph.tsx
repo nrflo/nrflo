@@ -1,11 +1,10 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useMemo, useCallback } from 'react'
 import { ReactFlow, Background, Controls, type Node, type Edge, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
-import { AgentMessagesModal } from './AgentMessagesModal'
 import { getLayoutedElements } from './layout'
 import { useTickingClock } from '@/hooks/useElapsedTime'
-import type { PhaseGraphProps, AgentFlowNodeData, SelectedAgentData } from './types'
+import type { PhaseGraphProps, AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/workflow'
 
 const nodeTypes: NodeTypes = {
@@ -18,8 +17,8 @@ export function PhaseGraph({
   agentHistory,
   phaseOrder,
   sessions,
+  onAgentSelect,
 }: PhaseGraphProps) {
-  const [selectedAgent, setSelectedAgent] = useState<SelectedAgentData | null>(null)
 
   // Check if any agents are running
   const hasRunningAgents = useMemo(() => {
@@ -84,10 +83,10 @@ export function PhaseGraph({
     return byPhase
   }, [activeAgents])
 
-  // Memoized callback for agent click - opens modal with agent data
-  const handleAgentClick = useCallback((data: SelectedAgentData) => {
-    setSelectedAgent(data)
-  }, [])
+  // Memoized callback for agent click - notifies parent via onAgentSelect
+  const handleAgentClick = useCallback((data: { phaseName: string; agent?: ActiveAgentV4; historyEntry?: AgentHistoryEntry; session?: AgentSession }) => {
+    onAgentSelect?.(data)
+  }, [onAgentSelect])
 
   // Find session for running agent
   const findSessionForAgent = useCallback((agent: ActiveAgentV4, phaseName: string): AgentSession | undefined => {
@@ -279,49 +278,28 @@ export function PhaseGraph({
   const containerHeight = numRows * 150 + 100
 
   return (
-    <>
-      <div style={{ height: containerHeight }} className="w-full">
-        <ReactFlow
-          nodes={layoutedNodes}
-          edges={layoutedEdges}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.3 }}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          elementsSelectable={false}
-          panOnDrag={false}
-          zoomOnScroll={false}
-          zoomOnPinch={false}
-          zoomOnDoubleClick={false}
-          minZoom={0.5}
-          maxZoom={2}
-          preventScrolling={false}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background color="transparent" />
-          <Controls showInteractive={false} position="top-left" />
-        </ReactFlow>
-      </div>
-
-      {/* Agent Messages Modal - look up current session for live updates */}
-      {selectedAgent && (
-        <AgentMessagesModal
-          open={true}
-          onClose={() => setSelectedAgent(null)}
-          phaseName={selectedAgent.phaseName}
-          agent={selectedAgent.agent}
-          historyEntry={selectedAgent.historyEntry}
-          session={
-            // Look up current session from props for live updates
-            selectedAgent.agent
-              ? findSessionForAgent(selectedAgent.agent, selectedAgent.phaseName)
-              : selectedAgent.historyEntry
-                ? findSessionForHistory(selectedAgent.historyEntry, selectedAgent.phaseName)
-                : undefined
-          }
-        />
-      )}
-    </>
+    <div style={{ height: containerHeight }} className="w-full">
+      <ReactFlow
+        nodes={layoutedNodes}
+        edges={layoutedEdges}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.3 }}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
+        panOnDrag={false}
+        zoomOnScroll={false}
+        zoomOnPinch={false}
+        zoomOnDoubleClick={false}
+        minZoom={0.5}
+        maxZoom={2}
+        preventScrolling={false}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background color="transparent" />
+        <Controls showInteractive={false} position="top-left" />
+      </ReactFlow>
+    </div>
   )
 }

@@ -28,8 +28,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { RunWorkflowDialog } from '@/components/workflow/RunWorkflowDialog'
-import { RunningAgentLog } from '@/components/workflow/RunningAgentLog'
-import { AgentMessagesModal } from '@/components/workflow/PhaseGraph/AgentMessagesModal'
+import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import {
   useTicket,
   useWorkflow,
@@ -40,7 +39,8 @@ import {
   useStopWorkflow,
 } from '@/hooks/useTickets'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import type { WorkflowState, ActiveAgentV4, AgentSession } from '@/types/workflow'
+import type { WorkflowState } from '@/types/workflow'
+import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import {
   cn,
   statusColor,
@@ -74,10 +74,7 @@ export function TicketDetailPage() {
   const [activeTab, setActiveTab] = useState<'workflow' | 'description' | 'details'>('workflow')
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
-  const [selectedLogAgent, setSelectedLogAgent] = useState<{
-    agent: ActiveAgentV4
-    session?: AgentSession
-  } | null>(null)
+  const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
 
   // WebSocket for real-time updates
   const { subscribe, unsubscribe } = useWebSocket()
@@ -172,7 +169,7 @@ export function TicketDetailPage() {
   return (
     <div className={cn(
       'mx-auto space-y-6',
-      activeTab === 'workflow' && hasActivePhase ? 'max-w-full px-4' : 'max-w-7xl'
+      activeTab === 'workflow' && (hasActivePhase || selectedPanelAgent) ? 'max-w-full px-4' : 'max-w-7xl'
     )}>
       {/* Header */}
       <div className="flex items-start gap-4">
@@ -310,7 +307,7 @@ export function TicketDetailPage() {
         {activeTab === 'workflow' && (
           <div className={cn(
             'flex gap-0',
-            hasActivePhase && 'min-h-[calc(100vh-280px)]'
+            (hasActivePhase || selectedPanelAgent) && 'min-h-[calc(100vh-280px)]'
           )}>
             <div className="flex-1 min-w-0 space-y-4 max-w-4xl">
               {hasWorkflow && displayedState ? (
@@ -399,6 +396,7 @@ export function TicketDetailPage() {
                     workflow={displayedState}
                     agentHistory={agentHistory}
                     ticketId={id}
+                    onAgentSelect={setSelectedPanelAgent}
                   />
                 </>
               ) : (
@@ -417,13 +415,14 @@ export function TicketDetailPage() {
                 </div>
               )}
             </div>
-            {hasActivePhase && (
-              <RunningAgentLog
+            {(hasActivePhase || selectedPanelAgent) && (
+              <AgentLogPanel
                 activeAgents={activeAgents}
                 sessions={sessions}
                 collapsed={logPanelCollapsed}
                 onToggleCollapse={() => setLogPanelCollapsed(p => !p)}
-                onAgentClick={(agent, session) => setSelectedLogAgent({ agent, session })}
+                selectedAgent={selectedPanelAgent}
+                onAgentSelect={setSelectedPanelAgent}
               />
             )}
           </div>
@@ -539,17 +538,6 @@ export function TicketDetailPage() {
           </Card>
         )}
       </div>
-
-      {/* Agent Messages Modal (from log panel click) */}
-      {selectedLogAgent && (
-        <AgentMessagesModal
-          open={true}
-          onClose={() => setSelectedLogAgent(null)}
-          phaseName={selectedLogAgent.agent.phase || selectedLogAgent.agent.agent_type || ''}
-          agent={selectedLogAgent.agent}
-          session={selectedLogAgent.session}
-        />
-      )}
 
       {/* Run Workflow Dialog */}
       {id && (

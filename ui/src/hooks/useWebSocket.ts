@@ -121,9 +121,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
         // Invalidate workflow to refresh active_agents context_left
         qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
-        // Invalidate lazy-loaded session messages if session_id is provided
+        // Invalidate lazy-loaded session messages and raw output if session_id is provided
         if (event.data?.session_id) {
           qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })
+          qc.invalidateQueries({ queryKey: ['session-raw-output', event.data.session_id] })
         }
         break
 

@@ -33,27 +33,23 @@ vi.mock('@/components/workflow/RunWorkflowDialog', () => ({
     open ? <div data-testid="run-dialog">RunWorkflowDialog</div> : null,
 }))
 
-// Mock AgentMessagesModal
-vi.mock('@/components/workflow/PhaseGraph/AgentMessagesModal', () => ({
-  AgentMessagesModal: ({ open, phaseName }: { open: boolean; phaseName: string }) =>
-    open ? <div data-testid="agent-messages-modal">Modal: {phaseName}</div> : null,
-}))
-
-// Mock RunningAgentLog to test integration without inner hook dependencies
-vi.mock('@/components/workflow/RunningAgentLog', () => ({
-  RunningAgentLog: ({
+// Mock AgentLogPanel to test integration without inner hook dependencies
+vi.mock('@/components/workflow/AgentLogPanel', () => ({
+  AgentLogPanel: ({
     activeAgents,
     collapsed,
     onToggleCollapse,
-    onAgentClick,
+    selectedAgent,
+    onAgentSelect,
   }: {
     activeAgents: Record<string, { agent_type: string; phase?: string; result?: string }>
     collapsed: boolean
     onToggleCollapse: () => void
-    onAgentClick: (agent: { agent_type: string; phase?: string }, session?: unknown) => void
+    selectedAgent: { phaseName: string } | null
+    onAgentSelect: (data: { phaseName: string; agent?: { agent_type: string; phase?: string } } | null) => void
   }) => {
     const running = Object.values(activeAgents).filter(a => !a.result)
-    if (running.length === 0) return null
+    if (running.length === 0 && !selectedAgent) return null
     return (
       <div data-testid="running-agent-log">
         <span>{collapsed ? 'collapsed' : 'expanded'}</span>
@@ -62,11 +58,14 @@ vi.mock('@/components/workflow/RunningAgentLog', () => ({
           <button
             key={i}
             data-testid={`agent-row-${agent.agent_type}`}
-            onClick={() => onAgentClick(agent)}
+            onClick={() => onAgentSelect({ phaseName: agent.phase || agent.agent_type, agent })}
           >
             {agent.agent_type}
           </button>
         ))}
+        {selectedAgent && (
+          <div data-testid="agent-detail">Detail: {selectedAgent.phaseName}</div>
+        )}
       </div>
     )
   },
@@ -341,7 +340,7 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
     expect(screen.queryByTestId('running-agent-log')).not.toBeInTheDocument()
   })
 
-  it('opens AgentMessagesModal when agent in log is clicked', async () => {
+  it('shows agent detail in panel when agent in log is clicked', async () => {
     const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
@@ -355,9 +354,9 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
     await user.click(screen.getByTestId('agent-row-implementor'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('agent-messages-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('agent-detail')).toBeInTheDocument()
     })
-    expect(screen.getByText(/Modal: implementation/)).toBeInTheDocument()
+    expect(screen.getByText(/Detail: implementation/)).toBeInTheDocument()
   })
 
   it('toggles log panel collapse state', async () => {

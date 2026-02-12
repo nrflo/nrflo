@@ -34,7 +34,11 @@ function createWrapper() {
 
 const sampleResponse: SessionMessagesResponse = {
   session_id: 'session-1',
-  messages: ['[Read] src/main.ts', '[Edit] src/utils.ts', '[Bash] npm test'],
+  messages: [
+    { content: '[Read] src/main.ts', created_at: '2026-01-01T00:00:00Z' },
+    { content: '[Edit] src/utils.ts', created_at: '2026-01-01T00:00:01Z' },
+    { content: '[Bash] npm test', created_at: '2026-01-01T00:00:02Z' },
+  ],
   total: 3,
 }
 

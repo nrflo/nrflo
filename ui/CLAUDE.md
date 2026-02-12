@@ -43,7 +43,8 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated workflow runs |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
-| `src/components/workflow/RunningAgentLog.tsx` | Collapsible right-side panel showing live agent messages for running agents |
+| `src/components/workflow/AgentLogPanel.tsx` | Collapsible right-side panel: overview of running agents or single-agent detail view with Messages/Raw toggle |
+| `src/components/workflow/AgentLogDetail.tsx` | Single-agent detail view with Messages/Raw output toggle, used by AgentLogPanel |
 | `src/components/workflow/LogMessage.tsx` | Log message component with tool name color highlighting, timestamp tooltips, full message display (no truncation) |
 | `src/components/workflow/` | Workflow visualization components |
 | `src/pages/Dashboard.tsx` | Dashboard overview page |
@@ -150,7 +151,10 @@ The ticket detail page (`src/pages/TicketDetailPage.tsx`) uses a tabbed interfac
 
 **Real-time updates**: The page uses WebSocket exclusively for real-time updates. The page subscribes to the current ticket on mount via `useWebSocket()` hook. No REST polling is used.
 
-**Running Agent Log**: When agents are running, a collapsible right-side panel (`RunningAgentLog`) shows live messages for all active agents. The panel expands to fill available horizontal and vertical space (flex-1 layout). Messages use the shared `LogMessage` component (compact variant) for consistent styling. The panel uses `useSessionMessages` hook for real-time message fetching. Clicking an agent in the log opens the `AgentMessagesModal` with full message history. The panel collapses to a thin bar (w-10) with agent count badge and vertical label, positioned with pt-16 spacing to avoid overlap with the collapse toggle button.
+**Agent Log Panel**: The right-side panel (`AgentLogPanel`) has two modes:
+- **Overview mode** (default): Shows running agents with compact messages. Visible when agents are running.
+- **Detail mode**: Shows a single agent's full message list or raw output. Activated when clicking an agent in the PhaseGraph or in the overview. Includes a back button to return to overview and a Messages/Raw toggle (defaults to Messages).
+The panel also shows when a completed agent is selected from PhaseGraph (even after all agents finish). Uses `AgentLogDetail` for the detail view. The panel collapses to a thin bar (w-10) with vertical label.
 
 ### Workflow Components
 
@@ -160,7 +164,6 @@ PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
 ├── PhaseGraph (src/components/workflow/PhaseGraph/)
 │   ├── PhaseGraph.tsx - Main container using React Flow (@xyflow/react)
 │   ├── AgentFlowNode.tsx - Custom React Flow node for agents (clickable, opens modal)
-│   ├── AgentMessagesModal.tsx - Modal dialog showing agent messages and raw output with live updates
 │   ├── layout.ts - Auto-layout helper for vertical positioning
 │   ├── PhaseFlowNode.tsx - Custom React Flow node for phases
 │   ├── PhaseNode.tsx - Standalone phase node
@@ -185,10 +188,9 @@ PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
 - Animated edges for in_progress phases
 - Running agents display with model name and elapsed time
 - Completed agents show model, result badge, and duration
-- Clicking any agent node opens a modal dialog with session messages
-- Modal features: backdrop blur, ESC key close, click-outside-to-close, auto-scroll to top on new messages
-- **Modal messages sorted with latest first** (newest at top)
-- Modal shows live updates when agent is running (session lookup from props, not captured at click time)
+- Clicking any agent node shows it in the right-side AgentLogPanel (detail view with Messages/Raw toggle)
+- Agent detail messages sorted with latest first (newest at top)
+- Detail view shows live updates when agent is running (session lookup from props, not captured at click time)
 - Session lookup for history entries uses fallback matching (exact model_id match first, then agent_type+phase only)
 - Agent sessions always fetched for ticket (enables history messages), refreshed via WebSocket messages.updated events
 - Custom node uses `nopan nodrag` classes and `pointerEvents: 'all'` for click handling in ReactFlow

@@ -6,11 +6,13 @@ import { PhaseGraph } from './PhaseGraph'
 import { WorkflowFindings } from './WorkflowFindings'
 import { useAgentSessions } from '@/hooks/useTickets'
 import type { WorkflowState, AgentHistoryEntry } from '@/types/workflow'
+import type { SelectedAgentData } from './PhaseGraph/types'
 
 interface PhaseTimelineProps {
   workflow: WorkflowState
   agentHistory?: AgentHistoryEntry[]
   ticketId?: string
+  onAgentSelect?: (data: SelectedAgentData) => void
 }
 
 function categoryColor(category: string): string {
@@ -26,7 +28,7 @@ function categoryColor(category: string): string {
   }
 }
 
-export function PhaseTimeline({ workflow, agentHistory, ticketId }: PhaseTimelineProps) {
+export function PhaseTimeline({ workflow, agentHistory, ticketId, onAgentSelect }: PhaseTimelineProps) {
   const phases = workflow.phases || {}
   const activeAgents = useMemo(() => workflow.active_agents || {}, [workflow.active_agents])
 
@@ -86,6 +88,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId }: PhaseTimelin
         agentHistory={agentHistory}
         phaseOrder={workflow.phase_order}
         sessions={sessionsData?.sessions}
+        onAgentSelect={onAgentSelect}
       />
 
       {/* Workflow Findings */}

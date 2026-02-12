@@ -29,6 +29,8 @@ export interface PhaseGraphProps {
   phaseOrder?: string[]
   // Agent sessions for displaying messages
   sessions?: AgentSession[]
+  // Callback when an agent is clicked (replaces internal modal)
+  onAgentSelect?: (data: SelectedAgentData) => void
 }
 
 export interface AgentCardProps {

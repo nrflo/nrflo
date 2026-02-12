@@ -152,7 +152,7 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
                   key={idx}
                   className="p-2 bg-background rounded border border-border/50 whitespace-pre-wrap break-words"
                 >
-                  {msg}
+                  {msg.content}
                 </div>
               ))}
             </div>

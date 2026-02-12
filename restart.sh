@@ -55,7 +55,7 @@ echo ""
 # ─────────────────────────────────────────
 echo -e "${YELLOW}[2/4] Building backend...${NC}"
 
-cd "$SCRIPT_DIR/nrworkflow"
+cd "$SCRIPT_DIR/be"
 if make build; then
     echo -e "${GREEN}  Backend built successfully${NC}"
 else
@@ -86,7 +86,7 @@ echo -e "${YELLOW}[4/4] Starting servers...${NC}"
 # Start backend
 cd "$SCRIPT_DIR"
 echo "  Starting backend on port $PORT..."
-nohup "$SCRIPT_DIR/nrworkflow/nrworkflow" serve --port=$PORT > "$BE_LOG" 2>&1 &
+nohup "$SCRIPT_DIR/be/nrworkflow" serve --port=$PORT > "$BE_LOG" 2>&1 &
 BE_PID=$!
 echo "  Backend PID: $BE_PID"
 

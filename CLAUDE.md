@@ -22,7 +22,7 @@ When making changes, you MUST update all affected documentation:
 
 #### 1b. Backend CLAUDE.md
 
-Update [nrworkflow/CLAUDE.md](nrworkflow/CLAUDE.md) when modifying:
+Update [be/CLAUDE.md](be/CLAUDE.md) when modifying:
 - Go packages, DB schema, migrations, spawner, CLI adapters, HTTP API, socket methods, tests, build config
 
 #### 1c. UI CLAUDE.md
@@ -53,7 +53,7 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 
 | File | Purpose |
 |------|---------|
-| `nrworkflow/` | Go backend source code (see [nrworkflow/CLAUDE.md](nrworkflow/CLAUDE.md)) |
+| `be/` | Go backend source code (see [be/CLAUDE.md](be/CLAUDE.md)) |
 | `ui/` | React web interface (see [ui/CLAUDE.md](ui/CLAUDE.md)) |
 | `guidelines/agent-protocol.md` | Agent conventions |
 | `nrworkflow.data` | SQLite database (tickets, projects, sessions) |

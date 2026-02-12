@@ -18,7 +18,7 @@ echo "================================"
 if ! command -v nrworkflow &> /dev/null; then
     echo -e "${RED}Error: nrworkflow command not found${NC}"
     echo "Please install nrworkflow first:"
-    echo "  cd ~/.nrworkflow/nrworkflow && make build && sudo cp nrworkflow /usr/local/bin/"
+    echo "  cd ~/.nrworkflow/be && make build && sudo cp nrworkflow /usr/local/bin/"
     exit 1
 fi
 

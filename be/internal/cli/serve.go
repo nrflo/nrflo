@@ -1,0 +1,121 @@
+package cli
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"be/internal/api"
+	"be/internal/config"
+	"be/internal/db"
+	"be/internal/socket"
+
+	"github.com/spf13/cobra"
+)
+
+var (
+	servePort int
+)
+
+var serveCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "Start the nrworkflow server",
+	Long: `Start the nrworkflow server for the ticket management system.
+
+The server provides:
+  - HTTP API on port 6587 (for web UI and REST clients)
+  - Unix socket for agent communication (findings, completion)
+
+Database migrations are applied automatically on startup.
+
+Example usage:
+  nrworkflow serve              # Start on default port (6587)
+  nrworkflow serve --port=8080  # Start HTTP on custom port`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Load configuration
+		cfg, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		// Override port if specified via flag
+		if servePort != 0 {
+			cfg.Server.Port = servePort
+		}
+
+		// Auto-migrate database
+		migrateDB, err := db.Open(DataPath)
+		if err != nil {
+			return fmt.Errorf("failed to open database for migration: %w", err)
+		}
+		if err := db.RunMigrations(migrateDB.DB); err != nil {
+			migrateDB.Close()
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
+		migrateDB.Close()
+
+		// Create database connection pool
+		pool, err := db.NewPool(DataPath, db.DefaultPoolConfig())
+		if err != nil {
+			return fmt.Errorf("failed to create database pool: %w", err)
+		}
+		defer pool.Close()
+
+		// Create HTTP server (creates WebSocket hub)
+		httpServer := api.NewServer(cfg, DataPath)
+
+		// Create and start Unix socket server with shared WebSocket hub
+		socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub())
+		if err := socketServer.Start(); err != nil {
+			return fmt.Errorf("failed to start socket server: %w", err)
+		}
+
+		// Handle graceful shutdown
+		shutdown := make(chan os.Signal, 1)
+		signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+		// Start HTTP server in a goroutine
+		serverError := make(chan error, 1)
+		go func() {
+			serverError <- httpServer.Start(cfg.Server.Port)
+		}()
+
+		fmt.Printf("nrworkflow server started\n")
+		fmt.Printf("  HTTP API:  http://localhost:%d\n", cfg.Server.Port)
+		fmt.Printf("  Database:  %s\n", pool.Path)
+		fmt.Println()
+
+		// Wait for shutdown signal or server error
+		select {
+		case err := <-serverError:
+			if err != nil {
+				return fmt.Errorf("HTTP server error: %w", err)
+			}
+		case sig := <-shutdown:
+			fmt.Printf("\nReceived %v, shutting down...\n", sig)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Stop socket server
+		if err := socketServer.Stop(ctx); err != nil {
+			fmt.Printf("Socket server shutdown error: %v\n", err)
+		}
+
+		// Stop HTTP server
+		if err := httpServer.Stop(ctx); err != nil {
+			return fmt.Errorf("HTTP server shutdown error: %w", err)
+		}
+
+		fmt.Println("Server stopped gracefully")
+		return nil
+	},
+}
+
+func init() {
+	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP port to listen on (default: 6587 or from config)")
+}

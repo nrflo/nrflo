@@ -5,20 +5,14 @@ import { LogMessage } from './LogMessage'
 describe('LogMessage', () => {
   describe('compact variant (default)', () => {
     it('renders message text', () => {
-      render(<LogMessage message="[Read] src/main.ts" />)
-      expect(screen.getByText('[Read] src/main.ts')).toBeInTheDocument()
+      render(<LogMessage message="some message text" />)
+      expect(screen.getByText('some message text')).toBeInTheDocument()
     })
 
-    it('renders with truncate class for text overflow', () => {
+    it('renders with whitespace-pre-wrap for text wrapping', () => {
       render(<LogMessage message="A long message" />)
       const el = screen.getByText('A long message')
-      expect(el.className).toContain('truncate')
-    })
-
-    it('sets title attribute for hover tooltip', () => {
-      render(<LogMessage message="[Edit] src/utils.ts" />)
-      const el = screen.getByText('[Edit] src/utils.ts')
-      expect(el).toHaveAttribute('title', '[Edit] src/utils.ts')
+      expect(el.className).toContain('whitespace-pre-wrap')
     })
 
     it('applies font-mono and text-xs styling', () => {
@@ -55,12 +49,6 @@ describe('LogMessage', () => {
       expect(el.className).not.toContain('truncate')
     })
 
-    it('does not set title attribute', () => {
-      render(<LogMessage message="Full message" variant="full" />)
-      const el = screen.getByText('Full message')
-      expect(el).not.toHaveAttribute('title')
-    })
-
     it('applies font-mono and text-sm styling', () => {
       render(<LogMessage message="test" variant="full" />)
       const el = screen.getByText('test')
@@ -72,6 +60,32 @@ describe('LogMessage', () => {
       render(<LogMessage message="test" variant="full" className="extra-class" />)
       const el = screen.getByText('test')
       expect(el.className).toContain('extra-class')
+    })
+  })
+
+  describe('tool name highlighting', () => {
+    it('renders tool badge for [Read] prefix', () => {
+      render(<LogMessage message="[Read] src/main.ts" />)
+      expect(screen.getByText('Read')).toBeInTheDocument()
+      expect(screen.getByText('src/main.ts')).toBeInTheDocument()
+    })
+
+    it('renders tool badge for [Edit] prefix', () => {
+      render(<LogMessage message="[Edit] src/utils.ts" />)
+      expect(screen.getByText('Edit')).toBeInTheDocument()
+      expect(screen.getByText('src/utils.ts')).toBeInTheDocument()
+    })
+
+    it('renders tool badge for [Bash] prefix', () => {
+      render(<LogMessage message="[Bash] npm install" />)
+      expect(screen.getByText('Bash')).toBeInTheDocument()
+      expect(screen.getByText('npm install')).toBeInTheDocument()
+    })
+
+    it('does not render badge for messages without tool prefix', () => {
+      render(<LogMessage message="plain message" />)
+      expect(screen.getByText('plain message')).toBeInTheDocument()
+      expect(screen.queryByText('Read')).not.toBeInTheDocument()
     })
   })
 

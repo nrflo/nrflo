@@ -420,8 +420,8 @@ func (s *AgentService) GetSessionByID(sessionID string) (*model.AgentSession, er
 	return session, nil
 }
 
-// GetSessionMessages returns paginated messages for a session
-func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) ([]string, int, error) {
+// GetSessionMessages returns paginated messages with timestamps for a session
+func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) ([]repo.MessageWithTime, int, error) {
 	// Validate session exists
 	var exists int
 	err := s.pool.QueryRow("SELECT 1 FROM agent_sessions WHERE id = ?", sessionID).Scan(&exists)
@@ -443,7 +443,7 @@ func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) (
 		return nil, 0, err
 	}
 	if messages == nil {
-		messages = []string{}
+		messages = []repo.MessageWithTime{}
 	}
 
 	return messages, total, nil

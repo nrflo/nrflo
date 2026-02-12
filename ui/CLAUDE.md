@@ -44,7 +44,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
 | `src/components/workflow/RunningAgentLog.tsx` | Collapsible right-side panel showing live agent messages for running agents |
-| `src/components/workflow/LogMessage.tsx` | Shared log message component with compact/full variants for consistent styling |
+| `src/components/workflow/LogMessage.tsx` | Log message component with tool name color highlighting, timestamp tooltips, full message display (no truncation) |
 | `src/components/workflow/` | Workflow visualization components |
 | `src/pages/Dashboard.tsx` | Dashboard overview page |
 | `src/pages/TicketListPage.tsx` | Ticket list with filtering |

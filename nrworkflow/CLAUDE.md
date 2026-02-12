@@ -634,6 +634,7 @@ GET /api/v1/agents/recent?limit=10
 # Session messages (paginated, lazy-loaded)
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
+# Returns: {session_id: string, messages: [{content: string, created_at: string}], total: int}
 
 # Session raw output (raw stdout/stderr)
 GET /api/v1/sessions/:id/raw-output

@@ -8,6 +8,12 @@ import (
 	"nrworkflow/internal/db"
 )
 
+// MessageWithTime represents a message with its creation timestamp
+type MessageWithTime struct {
+	Content   string `json:"content"`
+	CreatedAt string `json:"created_at"`
+}
+
 // AgentMessageRepo handles agent message CRUD operations
 type AgentMessageRepo struct {
 	db *db.DB
@@ -69,10 +75,10 @@ func (r *AgentMessageRepo) GetBySession(sessionID string) ([]string, error) {
 	return messages, nil
 }
 
-// GetBySessionPaginated returns messages with limit and offset
-func (r *AgentMessageRepo) GetBySessionPaginated(sessionID string, limit, offset int) ([]string, error) {
+// GetBySessionPaginated returns messages with timestamps, with limit and offset
+func (r *AgentMessageRepo) GetBySessionPaginated(sessionID string, limit, offset int) ([]MessageWithTime, error) {
 	rows, err := r.db.Query(
-		`SELECT content FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
+		`SELECT content, created_at FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
 		sessionID, limit, offset,
 	)
 	if err != nil {
@@ -80,13 +86,13 @@ func (r *AgentMessageRepo) GetBySessionPaginated(sessionID string, limit, offset
 	}
 	defer rows.Close()
 
-	var messages []string
+	var messages []MessageWithTime
 	for rows.Next() {
-		var content string
-		if err := rows.Scan(&content); err != nil {
+		var msg MessageWithTime
+		if err := rows.Scan(&msg.Content, &msg.CreatedAt); err != nil {
 			return nil, err
 		}
-		messages = append(messages, content)
+		messages = append(messages, msg)
 	}
 	return messages, nil
 }
@@ -198,10 +204,10 @@ func (r *AgentMessagePoolRepo) GetBySession(sessionID string) ([]string, error) 
 	return messages, nil
 }
 
-// GetBySessionPaginated returns messages with limit and offset
-func (r *AgentMessagePoolRepo) GetBySessionPaginated(sessionID string, limit, offset int) ([]string, error) {
+// GetBySessionPaginated returns messages with timestamps, with limit and offset
+func (r *AgentMessagePoolRepo) GetBySessionPaginated(sessionID string, limit, offset int) ([]MessageWithTime, error) {
 	rows, err := r.pool.Query(
-		`SELECT content FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
+		`SELECT content, created_at FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
 		sessionID, limit, offset,
 	)
 	if err != nil {
@@ -209,13 +215,13 @@ func (r *AgentMessagePoolRepo) GetBySessionPaginated(sessionID string, limit, of
 	}
 	defer rows.Close()
 
-	var messages []string
+	var messages []MessageWithTime
 	for rows.Next() {
-		var content string
-		if err := rows.Scan(&content); err != nil {
+		var msg MessageWithTime
+		if err := rows.Scan(&msg.Content, &msg.CreatedAt); err != nil {
 			return nil, err
 		}
-		messages = append(messages, content)
+		messages = append(messages, msg)
 	}
 	return messages, nil
 }

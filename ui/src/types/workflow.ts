@@ -114,9 +114,14 @@ export interface AgentSession {
   updated_at: string
 }
 
+export interface MessageWithTime {
+  content: string
+  created_at: string
+}
+
 export interface SessionMessagesResponse {
   session_id: string
-  messages: string[]
+  messages: MessageWithTime[]
   total: number
 }
 

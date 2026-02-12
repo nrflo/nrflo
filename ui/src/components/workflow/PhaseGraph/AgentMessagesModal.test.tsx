@@ -147,7 +147,10 @@ describe('AgentMessagesModal', () => {
     const { getSessionMessages } = await import('@/api/tickets')
     vi.mocked(getSessionMessages).mockResolvedValue({
       session_id: 's1',
-      messages: ['[Read] file.ts', '[Edit] other.ts'],
+      messages: [
+        { content: '[Read] file.ts', created_at: '2026-01-01T00:00:00Z' },
+        { content: '[Edit] other.ts', created_at: '2026-01-01T00:00:01Z' },
+      ],
       total: 2,
     })
 
@@ -156,23 +159,20 @@ describe('AgentMessagesModal', () => {
       session: makeSession(),
     })
 
-    // Wait for messages to load
-    const msg1 = await screen.findByText('[Read] file.ts')
-    expect(msg1).toBeInTheDocument()
-    // Full variant uses whitespace-pre-wrap, not truncate
-    expect(msg1.className).toContain('whitespace-pre-wrap')
-    expect(msg1.className).not.toContain('truncate')
+    // Wait for messages to load - tool names are rendered as separate badges
+    const readBadge = await screen.findByText('Read')
+    expect(readBadge).toBeInTheDocument()
+    expect(screen.getByText('file.ts')).toBeInTheDocument()
 
-    const msg2 = screen.getByText('[Edit] other.ts')
-    expect(msg2).toBeInTheDocument()
-    expect(msg2.className).toContain('whitespace-pre-wrap')
+    expect(screen.getByText('Edit')).toBeInTheDocument()
+    expect(screen.getByText('other.ts')).toBeInTheDocument()
   })
 
   it('shows total message count from API response', async () => {
     const { getSessionMessages } = await import('@/api/tickets')
     vi.mocked(getSessionMessages).mockResolvedValue({
       session_id: 's1',
-      messages: ['msg1'],
+      messages: [{ content: 'msg1', created_at: '2026-01-01T00:00:00Z' }],
       total: 42,
     })
 

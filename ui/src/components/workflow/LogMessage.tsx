@@ -1,37 +1,88 @@
-import { cn } from '@/lib/utils'
+import { cn, formatElapsedTime } from '@/lib/utils'
+import { Tooltip } from '@/components/ui/Tooltip'
+
+const TOOL_COLORS: Record<string, string> = {
+  Bash: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  Read: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  Edit: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  Write: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+  Grep: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300',
+  Glob: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
+  Task: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300',
+  WebFetch: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+  WebSearch: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+  TodoWrite: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
+  Skill: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
+}
+
+const DEFAULT_TOOL_COLOR = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+
+function parseToolName(message: string): { toolName: string | null; rest: string } {
+  if (!message) return { toolName: null, rest: '' }
+  const match = message.match(/^\[(\w+)\]\s*(.*)$/s)
+  if (!match) return { toolName: null, rest: message }
+  return { toolName: match[1], rest: match[2] }
+}
+
+function ToolBadge({ name }: { name: string }) {
+  const colorClass = TOOL_COLORS[name] ?? DEFAULT_TOOL_COLOR
+  return (
+    <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0', colorClass)}>
+      {name}
+    </span>
+  )
+}
+
+function formatTime(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
 
 interface LogMessageProps {
   message: string
   variant?: 'compact' | 'full'
   className?: string
+  timestamp?: string
+  nextTimestamp?: string
 }
 
-export function LogMessage({ message, variant = 'compact', className }: LogMessageProps) {
-  if (variant === 'compact') {
-    return (
-      <div
-        className={cn(
-          'px-2 py-1 rounded-md border bg-muted/30',
-          'font-mono text-xs text-foreground/90 truncate',
-          className,
-        )}
-        title={message}
-      >
-        {message}
-      </div>
-    )
-  }
+export function LogMessage({ message, variant = 'compact', className, timestamp, nextTimestamp }: LogMessageProps) {
+  const { toolName, rest } = parseToolName(message)
 
-  return (
+  const tooltipContent = timestamp ? (
+    <div className="text-xs space-y-1">
+      <div className="font-medium">{formatTime(timestamp)}</div>
+      <div className="text-muted-foreground">
+        {nextTimestamp
+          ? `+${formatElapsedTime(timestamp, nextTimestamp)} until next`
+          : `${formatElapsedTime(timestamp)} ago`
+        }
+      </div>
+    </div>
+  ) : null
+
+  const content = (
     <div
       className={cn(
-        'p-3 rounded-lg border bg-muted/30',
-        'font-mono text-sm whitespace-pre-wrap break-words',
-        'text-foreground/90',
+        variant === 'compact'
+          ? 'px-2 py-1 rounded-md border bg-muted/30 font-mono text-xs text-foreground/90'
+          : 'p-3 rounded-lg border bg-muted/30 font-mono text-sm text-foreground/90',
+        'whitespace-pre-wrap break-words',
         className,
       )}
     >
-      {message}
+      {toolName && <ToolBadge name={toolName} />}
+      {rest}
     </div>
   )
+
+  if (tooltipContent) {
+    return (
+      <Tooltip content={tooltipContent} position="left" delay={200}>
+        {content}
+      </Tooltip>
+    )
+  }
+
+  return content
 }

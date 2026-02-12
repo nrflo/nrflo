@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, Loader2, MessageSquare } from 'lucide-react'
 import { cn, contextLeftColor } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
 import { LogMessage } from './LogMessage'
-import type { ActiveAgentV4, AgentSession } from '@/types/workflow'
+import type { ActiveAgentV4, AgentSession, MessageWithTime } from '@/types/workflow'
 
 interface AgentMessagesBlockProps {
   agent: ActiveAgentV4
@@ -18,7 +18,15 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
     isRunning,
   })
 
-  const messages = messagesData?.messages ?? session?.last_messages ?? []
+  // Convert last_messages (string[]) to MessageWithTime[] as fallback
+  const messages: MessageWithTime[] = useMemo(() => {
+    if (messagesData?.messages) return messagesData.messages
+    if (session?.last_messages) {
+      return session.last_messages.map(content => ({ content, created_at: '' }))
+    }
+    return []
+  }, [messagesData, session?.last_messages])
+
   const modelId = agent.model_id
   const modelName = modelId
     ? modelId.split('-').slice(-2).join('-') || modelId
@@ -49,9 +57,18 @@ function AgentMessagesBlock({ agent, session, onAgentClick }: AgentMessagesBlock
       </button>
       {displayMessages.length > 0 && (
         <div className="px-3 pb-2 space-y-1">
-          {displayMessages.map((msg, i) => (
-            <LogMessage key={i} message={msg} variant="compact" />
-          ))}
+          {displayMessages.map((msg, i) => {
+            const nextMsg = displayMessages[i + 1]
+            return (
+              <LogMessage
+                key={i}
+                message={msg.content}
+                variant="compact"
+                timestamp={msg.created_at || undefined}
+                nextTimestamp={nextMsg?.created_at || undefined}
+              />
+            )
+          })}
         </div>
       )}
     </div>
@@ -109,7 +126,7 @@ export function RunningAgentLog({
       {/* Collapse/Expand toggle */}
       <button
         onClick={onToggleCollapse}
-        className="absolute -left-3 top-3 z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
+        className="absolute -left-5 top-3 z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
         title={collapsed ? 'Expand agent log' : 'Collapse agent log'}
       >
         {collapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}

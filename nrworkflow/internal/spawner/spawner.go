@@ -1234,12 +1234,8 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 
 // handleTextMessage processes text output from either Claude or opencode
 func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
-	// Track message content (truncate for storage)
-	msgPreview := text
-	if len(msgPreview) > 150 {
-		msgPreview = msgPreview[:150] + "..."
-	}
-	s.trackMessage(proc, msgPreview)
+	// Track full message content
+	s.trackMessage(proc, text)
 
 	// Print to console with truncation for long messages
 	prefix := s.formatPrefix(proc)

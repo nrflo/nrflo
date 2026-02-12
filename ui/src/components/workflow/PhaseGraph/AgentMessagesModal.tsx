@@ -70,6 +70,7 @@ export function AgentMessagesModal({
   })
 
   const messages = messagesData?.messages ?? []
+  const messageContents = messages.map(m => m.content)
 
   // Reset raw output view when modal closes
   useEffect(() => {
@@ -81,7 +82,7 @@ export function AgentMessagesModal({
     if (open && messagesStartRef.current) {
       messagesStartRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [open, messages.length])
+  }, [open, messageContents.length])
 
   const hasRawOutput = (session?.raw_output_size ?? 0) > 0 || isRunning
 
@@ -205,9 +206,18 @@ export function AgentMessagesModal({
 
               <div className="space-y-2">
                 <div ref={messagesStartRef} />
-                {[...messages].reverse().map((msg, i) => (
-                  <LogMessage key={i} message={msg} variant="full" />
-                ))}
+                {[...messages].reverse().map((msg, i, arr) => {
+                  const nextMsg = arr[i + 1]
+                  return (
+                    <LogMessage
+                      key={i}
+                      message={msg.content}
+                      variant="full"
+                      timestamp={msg.created_at || undefined}
+                      nextTimestamp={nextMsg?.created_at || undefined}
+                    />
+                  )
+                })}
               </div>
             </div>
           ) : (

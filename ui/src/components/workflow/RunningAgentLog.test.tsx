@@ -354,14 +354,12 @@ describe('RunningAgentLog', () => {
         sessions: [session],
         collapsed: false,
       })
-      // LogMessage compact renders with truncate class and title attribute
-      const msg1 = screen.getByTitle('[Read] file.ts')
-      expect(msg1).toBeInTheDocument()
-      expect(msg1.className).toContain('truncate')
-      expect(msg1.className).toContain('font-mono')
-
-      const msg2 = screen.getByTitle('[Edit] other.ts')
-      expect(msg2).toBeInTheDocument()
+      // LogMessage compact renders tool badges and message text
+      expect(screen.getByText('file.ts')).toBeInTheDocument()
+      expect(screen.getByText('other.ts')).toBeInTheDocument()
+      // Tool badges rendered separately
+      expect(screen.getByText('Read')).toBeInTheDocument()
+      expect(screen.getByText('Edit')).toBeInTheDocument()
     })
   })
 })

@@ -39,7 +39,7 @@ func TestSessionMessages_InsertAndRetrieve(t *testing.T) {
 	if len(msgs) != 3 {
 		t.Fatalf("expected 3 messages, got %d", len(msgs))
 	}
-	if msgs[0] != "hello" || msgs[1] != "world" || msgs[2] != "done" {
+	if msgs[0].Content != "hello" || msgs[1].Content != "world" || msgs[2].Content != "done" {
 		t.Fatalf("unexpected messages: %v", msgs)
 	}
 	if total != 3 {
@@ -141,7 +141,7 @@ func TestSessionMessages_Pagination(t *testing.T) {
 	}
 
 	// Verify pages have different content
-	if msgs1[0] == msgs2[0] {
+	if msgs1[0].Content == msgs2[0].Content {
 		t.Fatal("page 1 and page 2 have the same first message")
 	}
 }

@@ -36,6 +36,7 @@ type AgentSession struct {
 	SpawnCommand       sql.NullString     `json:"-"` // Full CLI command used to spawn
 	PromptContext      sql.NullString     `json:"-"` // System prompt file contents
 	RawOutput          sql.NullString     `json:"-"` // Raw stdout/stderr output
+	RestartCount       int                `json:"-"` // Number of low-context restarts
 	StartedAt          sql.NullString     `json:"-"`
 	EndedAt            sql.NullString     `json:"-"`
 	CreatedAt          time.Time          `json:"created_at"`
@@ -144,6 +145,7 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		MessageCount       int                `json:"message_count"`
 		RawOutputSize      int                `json:"raw_output_size"`
 		ContextLeft        *int               `json:"context_left,omitempty"`
+		RestartCount       int                `json:"restart_count"`
 		AncestorSessionID  *string            `json:"ancestor_session_id,omitempty"`
 		SpawnCommand       *string            `json:"spawn_command,omitempty"`
 		PromptContext      *string            `json:"prompt_context,omitempty"`
@@ -169,6 +171,7 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		MessageCount:       as.MessageCount,
 		RawOutputSize:      rawOutputSize,
 		ContextLeft:        contextLeft,
+		RestartCount:       as.RestartCount,
 		AncestorSessionID:  ancestorSessionID,
 		SpawnCommand:       spawnCommand,
 		PromptContext:      promptContext,

@@ -1,0 +1,1 @@
+ALTER TABLE agent_sessions ADD COLUMN restart_count INTEGER NOT NULL DEFAULT 0;

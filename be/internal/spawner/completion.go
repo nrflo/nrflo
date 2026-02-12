@@ -131,13 +131,14 @@ func (s *Spawner) relaunchForContinuation(oldProc *processInfo, req SpawnRequest
 
 	// Carry over continuation tracking
 	newProc.ancestorSessionID = ancestorID
-	newProc.continuationCount = oldProc.continuationCount + 1
+	newProc.restartCount = oldProc.restartCount + 1
 
-	// Update the ancestor_session_id on the new DB session record
+	// Update the ancestor_session_id and restart_count on the new DB session record
 	database, dbErr := db.Open(s.config.DataPath)
 	if dbErr == nil {
 		sessionRepo := repo.NewAgentSessionRepo(database)
 		sessionRepo.UpdateAncestorSession(newProc.sessionID, ancestorID)
+		sessionRepo.UpdateRestartCount(newProc.sessionID, newProc.restartCount)
 		database.Close()
 	}
 
@@ -146,7 +147,7 @@ func (s *Spawner) relaunchForContinuation(oldProc *processInfo, req SpawnRequest
 		"old_session_id":     oldProc.sessionID,
 		"new_session_id":     newProc.sessionID,
 		"ancestor_session":   ancestorID,
-		"continuation_count": newProc.continuationCount,
+		"restart_count":      newProc.restartCount,
 		"agent_type":         req.AgentType,
 		"model_id":           oldProc.modelID,
 	})

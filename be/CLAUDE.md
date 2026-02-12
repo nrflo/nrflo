@@ -19,7 +19,14 @@ be/
 │   ├── spawner/                 # Agent spawner
 │   │   ├── spawner.go           # Spawn and monitor agents
 │   │   ├── cli_adapter.go       # CLI adapter pattern (Claude, Opencode, Codex)
-│   │   └── cli_adapter_test.go  # Adapter tests
+│   │   ├── cli_adapter_test.go  # Adapter tests
+│   │   ├── completion.go        # Completion handling, continuation relaunch
+│   │   ├── context_save.go      # Low-context save: kill, resume, save findings, relaunch
+│   │   ├── context.go           # Context tracking from /tmp/usable_context.json
+│   │   ├── database.go          # DB operations: register start/stop, phase management
+│   │   ├── output.go            # Output monitoring, message formatting
+│   │   ├── template.go          # Template loading, variable expansion
+│   │   └── template_findings.go # Findings expansion, ${PREVIOUS_DATA}, formatting
 │   ├── orchestrator/            # Server-side workflow orchestration
 │   │   └── orchestrator.go      # Run workflows from UI (sequential phases)
 │   ├── api/                     # HTTP API
@@ -151,7 +158,9 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    ├── BuildCommand(opts SpawnOptions) *exec.Cmd                    │
 │    ├── MapModel(model string) string                                │
 │    ├── SupportsSessionID() bool                                     │
-│    └── SupportsSystemPromptFile() bool                              │
+│    ├── SupportsSystemPromptFile() bool                              │
+│    ├── SupportsResume() bool                                        │
+│    └── BuildResumeCommand(opts ResumeOptions) *exec.Cmd             │
 │                                                                      │
 │  Implementations:                                                    │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -159,7 +168,8 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │  │   ├── Name: "claude"                                        │    │
 │  │   ├── Model: short names (opus, sonnet, haiku)              │    │
 │  │   ├── SessionID: ✓ (--session-id)                           │    │
-│  │   └── SystemPromptFile: ✓ (--append-system-prompt-file)     │    │
+│  │   ├── SystemPromptFile: ✓ (--append-system-prompt-file)     │    │
+│  │   └── Resume: ✓ (--resume <session-id>)                     │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │ OpencodeAdapter                                              │    │
@@ -170,7 +180,8 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │  │   ├── Reasoning: --variant (max, high, medium, low)         │    │
 │  │   │   └── gpt_max → max, gpt_high → high, etc.              │    │
 │  │   ├── SessionID: ✗ (generates own)                          │    │
-│  │   └── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  │   ├── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  │   └── Resume: ✗                                             │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │ CodexAdapter                                                 │    │
@@ -178,7 +189,8 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │  │   ├── Model: gpt-5.2-codex with reasoning effort levels     │    │
 │  │   │   └── gpt_high → high, gpt_xhigh → xhigh, etc.          │    │
 │  │   ├── SessionID: ✗ (generates own)                          │    │
-│  │   └── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  │   ├── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  │   └── Resume: ✗                                             │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                      │
 │  Usage in spawner:                                                   │
@@ -387,6 +399,7 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    spawn_command TEXT                (Full CLI command for replay)   │
 │    prompt_context TEXT               (System prompt file contents)   │
 │    raw_output    TEXT                (Raw stdout/stderr output)      │
+│    restart_count INTEGER NOT NULL DEFAULT 0  (low-context restarts) │
 │    started_at    TEXT                (when agent started running)    │
 │    ended_at      TEXT                (when agent finished)           │
 │    created_at    TEXT NOT NULL                                       │
@@ -539,6 +552,7 @@ Templates use placeholders injected by the spawner:
 - `${WORKFLOW}` - Current workflow name (e.g., "feature", "bugfix")
 - `${MODEL_ID}` - Full model identifier in cli:model format (e.g., "claude:sonnet")
 - `${MODEL}` - Just the model name (e.g., "sonnet")
+- `${PREVIOUS_DATA}` - Findings from the most recent continued session (same agent, model, phase). Populated on low-context restarts. Empty string if no prior continued session exists.
 
 Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them, avoiding unnecessary queries.
 

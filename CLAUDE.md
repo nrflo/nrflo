@@ -78,6 +78,7 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 14. **DB-stored workflow definitions**: Workflow definitions (phases, categories) stored in `workflows` table, managed via `/api/v1/workflows` API
 15. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB.
 16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator runs each phase sequentially in a goroutine, reusing `spawner.Spawn()`, with cancellation support via `/workflow/stop`.
+17. **Low-context relaunch**: When an agent's context drops below threshold (~15% remaining), the spawner kills the agent, resumes with `claude --resume` to save findings, then spawns a fresh agent with `${PREVIOUS_DATA}` injected. Old sessions get `status='continued'` and are excluded from agent history.
 
 ## Quick Start
 
@@ -181,6 +182,7 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | `spawn_command` | Full CLI command for replay |
 | `prompt_context` | System prompt file contents |
 | `raw_output` | Raw stdout/stderr output from agent |
+| `restart_count` | Number of low-context restarts (default 0) |
 | `started_at`, `ended_at` | Execution timestamps |
 | `created_at`, `updated_at` | Record timestamps |
 
@@ -220,7 +222,7 @@ Each v4 workflow state contains:
     "implementor:claude:opus": {
       "agent_id": "uuid", "agent_type": "implementor", "session_id": "uuid",
       "model_id": "claude:opus", "cli": "claude", "model": "opus",
-      "pid": 12345, "started_at": "2025-01-01T00:00:00Z", "context_left": 75
+      "pid": 12345, "started_at": "2025-01-01T00:00:00Z", "context_left": 75, "restart_count": 0
     }
   },
   "agent_retries": {},
@@ -228,7 +230,7 @@ Each v4 workflow state contains:
     {
       "agent_id": "uuid", "agent_type": "setup-analyzer", "session_id": "uuid",
       "model_id": "claude:sonnet", "status": "completed", "result": "pass",
-      "started_at": "...", "ended_at": "...", "context_left": 60
+      "started_at": "...", "ended_at": "...", "context_left": 60, "restart_count": 0
     }
   ],
   "findings": {"setup-analyzer:claude:sonnet": {"files_to_modify": ["..."]}},

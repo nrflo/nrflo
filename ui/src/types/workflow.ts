@@ -23,6 +23,7 @@ export interface ActiveAgentV4 {
   ended_at?: string
   result?: string
   context_left?: number
+  restart_count?: number
 }
 
 export interface AgentHistoryEntry {
@@ -35,6 +36,7 @@ export interface AgentHistoryEntry {
   result?: string
   duration_sec?: number
   context_left?: number
+  restart_count?: number
 }
 
 // Findings structure: agent_type -> findings (field -> value)
@@ -87,7 +89,7 @@ export interface DependencyRequest {
 }
 
 // Agent session types for real-time monitoring
-export type AgentSessionStatus = 'running' | 'completed' | 'failed' | 'timeout'
+export type AgentSessionStatus = 'running' | 'completed' | 'failed' | 'timeout' | 'continued'
 
 export interface AgentSession {
   id: string
@@ -107,6 +109,7 @@ export interface AgentSession {
   message_count: number
   raw_output_size: number
   context_left?: number
+  restart_count: number
   ancestor_session_id?: string
   started_at?: string
   ended_at?: string

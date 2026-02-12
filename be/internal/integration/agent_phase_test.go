@@ -295,8 +295,8 @@ func TestActiveAgentPhaseWithNoModel(t *testing.T) {
 	}
 }
 
-// TestAgentHistoryMixedStatuses verifies that failed and continued agents also
-// include the phase field in agent_history.
+// TestAgentHistoryMixedStatuses verifies that failed agents include the phase field
+// in agent_history, and that continued sessions are excluded from history.
 func TestAgentHistoryMixedStatuses(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -322,8 +322,9 @@ func TestAgentHistoryMixedStatuses(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected agent_history array, got %T", status["agent_history"])
 	}
-	if len(history) != 3 {
-		t.Fatalf("expected 3 history entries, got %d", len(history))
+	// Continued sessions are filtered from history — only completed and failed remain
+	if len(history) != 2 {
+		t.Fatalf("expected 2 history entries (continued excluded), got %d", len(history))
 	}
 
 	// Verify each entry has phase field
@@ -338,10 +339,6 @@ func TestAgentHistoryMixedStatuses(t *testing.T) {
 		case "setup-analyzer", "code-reviewer":
 			if phase != "analyzer" {
 				t.Fatalf("entry %d (%s): expected phase 'analyzer', got %q", i, agentType, phase)
-			}
-		case "implementor":
-			if phase != "builder" {
-				t.Fatalf("entry %d (%s): expected phase 'builder', got %q", i, agentType, phase)
 			}
 		}
 	}

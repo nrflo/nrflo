@@ -244,8 +244,8 @@ func (e *TestEnv) InsertAgentSession(t *testing.T, id, ticketID, wfiID, phase, a
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
 			context_left, ancestor_session_id, spawn_command, prompt_context,
-			started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, NULL, ?, ?)`,
+			restart_count, started_at, ended_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		id, e.ProjectID, ticketID, wfiID, phase, agentType,
 		nullStr(modelID),
 		now, now, now,

@@ -13,7 +13,7 @@ import (
 )
 
 // registerAgentStart creates an agent_sessions row for a newly spawned agent
-func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, promptContext, ancestorSessionID string) {
+func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, promptContext, ancestorSessionID string, restartCount int) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
 		return
@@ -35,6 +35,7 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		SpawnCommand:       sql.NullString{String: spawnCommand, Valid: spawnCommand != ""},
 		PromptContext:      sql.NullString{String: promptContext, Valid: promptContext != ""},
 		AncestorSessionID:  sql.NullString{String: ancestorSessionID, Valid: ancestorSessionID != ""},
+		RestartCount:       restartCount,
 		StartedAt:          sql.NullString{String: now, Valid: true},
 	}
 	sessionRepo.Create(session)

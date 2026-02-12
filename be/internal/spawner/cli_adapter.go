@@ -22,6 +22,20 @@ type CLIAdapter interface {
 
 	// SupportsSystemPromptFile returns true if the CLI supports --append-system-prompt-file
 	SupportsSystemPromptFile() bool
+
+	// SupportsResume returns true if the CLI supports resuming a session
+	SupportsResume() bool
+
+	// BuildResumeCommand creates the exec.Cmd for resuming a session with a prompt
+	BuildResumeCommand(opts ResumeOptions) *exec.Cmd
+}
+
+// ResumeOptions contains parameters for resuming a CLI session
+type ResumeOptions struct {
+	SessionID string
+	Prompt    string
+	WorkDir   string
+	Env       []string
 }
 
 // SpawnOptions contains parameters for building a spawn command
@@ -89,6 +103,24 @@ func (a *ClaudeAdapter) SupportsSessionID() bool {
 
 func (a *ClaudeAdapter) SupportsSystemPromptFile() bool {
 	return true
+}
+
+func (a *ClaudeAdapter) SupportsResume() bool {
+	return true
+}
+
+func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
+	args := []string{
+		"--resume", opts.SessionID,
+		"--print",
+		"--dangerously-skip-permissions",
+		"--output-format", "stream-json",
+		opts.Prompt,
+	}
+	cmd := exec.Command("claude", args...)
+	cmd.Dir = opts.WorkDir
+	cmd.Env = opts.Env
+	return cmd
 }
 
 // =============================================================================
@@ -181,6 +213,14 @@ func (a *OpencodeAdapter) SupportsSystemPromptFile() bool {
 	return false // Must pass prompt inline
 }
 
+func (a *OpencodeAdapter) SupportsResume() bool {
+	return false
+}
+
+func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
+	return nil
+}
+
 // =============================================================================
 // Codex CLI Adapter
 // =============================================================================
@@ -253,4 +293,12 @@ func (a *CodexAdapter) SupportsSessionID() bool {
 
 func (a *CodexAdapter) SupportsSystemPromptFile() bool {
 	return false // Must pass prompt inline
+}
+
+func (a *CodexAdapter) SupportsResume() bool {
+	return false
+}
+
+func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
+	return nil
 }

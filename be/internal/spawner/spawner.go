@@ -97,7 +97,9 @@ type processInfo struct {
 	workflowInstanceID string
 	// Continuation tracking
 	ancestorSessionID string // Root session in a continuation chain
-	continuationCount int    // How many times this agent has been continued
+	restartCount      int    // How many times this agent has been restarted for low context
+	// Low-context save state
+	lowContextSaving bool // True while initiateContextSave is running
 }
 
 // Spawner manages agent lifecycle
@@ -261,7 +263,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 
 	// Load agent template
-	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID)
+	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load template: %w", err)
 	}
@@ -349,7 +351,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 
 	// Register agent start (create agent_sessions row)
-	s.registerAgentStart(req.ProjectID, req.TicketID, req.WorkflowName, wfiID, agentID, req.AgentType, cmd.Process.Pid, sessionID, modelID, phase, spawnCommand, prompt, "")
+	s.registerAgentStart(req.ProjectID, req.TicketID, req.WorkflowName, wfiID, agentID, req.AgentType, cmd.Process.Pid, sessionID, modelID, phase, spawnCommand, prompt, "", 0)
 
 	// Start output monitoring goroutines
 	go s.monitorOutput(proc, stdout)
@@ -439,18 +441,36 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			// Update context tracking
 			updateContextLeft(proc, contextData)
 
+			// Detect low context and initiate save (only for CLIs that support resume)
+			if !proc.lowContextSaving && proc.contextLeft > 0 && proc.contextLeft <= defaultContextThreshold {
+				cliName, _ := parseModelID(proc.modelID)
+				adapter, _ := GetCLIAdapter(cliName)
+				if adapter != nil && adapter.SupportsResume() {
+					proc.lowContextSaving = true
+					// Replace doneCh — initiateContextSave will close the new one when the full flow completes
+					newDoneCh := make(chan struct{})
+					go s.initiateContextSave(proc, req, newDoneCh)
+					proc.doneCh = newDoneCh
+				}
+			}
+
 			select {
 			case <-proc.doneCh:
 				// Process exited
 				proc.elapsed = elapsed
 				s.saveContextLeft(proc)
-				s.handleCompletion(proc, req)
+				proc.lowContextSaving = false
+
+				// If context save already set finalStatus, skip handleCompletion
+				if proc.finalStatus == "" {
+					s.handleCompletion(proc, req)
+				}
 
 				// Check for continuation
 				if proc.finalStatus == "CONTINUE" {
-					if proc.continuationCount < defaultMaxContinuations {
+					if proc.restartCount < defaultMaxContinuations {
 						fmt.Printf("  %s: Continuation %d/%d — relaunching with fresh context...\n",
-							proc.modelID, proc.continuationCount+1, defaultMaxContinuations)
+							proc.modelID, proc.restartCount+1, defaultMaxContinuations)
 						newProc, err := s.relaunchForContinuation(proc, req, phase)
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "  Warning: Failed to relaunch %s: %v\n", proc.modelID, err)

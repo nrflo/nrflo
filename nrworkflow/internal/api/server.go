@@ -174,6 +174,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/tickets/{id}", s.handleUpdateTicket)
 	mux.HandleFunc("DELETE /api/v1/tickets/{id}", s.handleDeleteTicket)
 	mux.HandleFunc("POST /api/v1/tickets/{id}/close", s.handleCloseTicket)
+	mux.HandleFunc("POST /api/v1/tickets/{id}/reopen", s.handleReopenTicket)
 
 	// Workflow (ticket-scoped runtime state)
 	mux.HandleFunc("GET /api/v1/tickets/{id}/workflow", s.handleGetWorkflow)

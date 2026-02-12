@@ -11,6 +11,7 @@ import {
   createTicket,
   updateTicket,
   closeTicket,
+  reopenTicket,
   deleteTicket,
   searchTickets,
   getStatus,
@@ -147,6 +148,18 @@ export function useCloseTicket() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       closeTicket(id, reason),
+    onSuccess: (ticket: Ticket) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticket.id) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.status() })
+    },
+  })
+}
+
+export function useReopenTicket() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => reopenTicket(id),
     onSuccess: (ticket: Ticket) => {
       queryClient.invalidateQueries({ queryKey: ticketKeys.lists() })
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticket.id) })

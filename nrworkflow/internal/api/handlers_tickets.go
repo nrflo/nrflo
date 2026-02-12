@@ -478,6 +478,38 @@ func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, closed)
 }
 
+// handleReopenTicket reopens a closed ticket
+func (s *Server) handleReopenTicket(w http.ResponseWriter, r *http.Request) {
+	ticketRepo, _, database, err := s.getRepos(r)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer database.Close()
+
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project is required")
+		return
+	}
+
+	id := extractID(r)
+
+	if err := ticketRepo.Reopen(projectID, id); err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	// Fetch updated ticket
+	reopened, err := ticketRepo.Get(projectID, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, reopened)
+}
+
 // handleSearch performs FTS5 search
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	ticketRepo, _, database, err := s.getRepos(r)

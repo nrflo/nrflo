@@ -56,6 +56,13 @@ export async function closeTicket(
   })
 }
 
+export async function reopenTicket(id: string): Promise<Ticket> {
+  return apiPost<Ticket>(
+    `/api/v1/tickets/${encodeURIComponent(id)}/reopen`,
+    {}
+  )
+}
+
 export async function deleteTicket(
   id: string
 ): Promise<{ message: string }> {

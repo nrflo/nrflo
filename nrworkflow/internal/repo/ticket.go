@@ -222,6 +222,25 @@ func (r *TicketRepo) Close(projectID, ticketID string, reason string) error {
 	return nil
 }
 
+// Reopen reopens a closed ticket by setting status back to open
+func (r *TicketRepo) Reopen(projectID, ticketID string) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	result, err := r.db.Exec(`
+		UPDATE tickets SET status = 'open', closed_at = NULL, close_reason = NULL, updated_at = ?
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
+		now, projectID, ticketID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("ticket not found: %s", ticketID)
+	}
+	return nil
+}
+
 // Delete deletes a ticket
 func (r *TicketRepo) Delete(projectID, ticketID string) error {
 	result, err := r.db.Exec("DELETE FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)", projectID, ticketID)

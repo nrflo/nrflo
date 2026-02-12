@@ -4,6 +4,7 @@ import {
   Edit,
   Trash2,
   CheckCircle,
+  RotateCcw,
   Bug,
   Lightbulb,
   CheckSquare,
@@ -32,6 +33,7 @@ import {
   useWorkflow,
   useAgentSessions,
   useCloseTicket,
+  useReopenTicket,
   useDeleteTicket,
   useStopWorkflow,
 } from '@/hooks/useTickets'
@@ -112,6 +114,7 @@ export function TicketDetailPage() {
   const sessions = sessionsData?.sessions ?? []
 
   const closeMutation = useCloseTicket()
+  const reopenMutation = useReopenTicket()
   const deleteMutation = useDeleteTicket()
   const stopMutation = useStopWorkflow()
 
@@ -187,7 +190,17 @@ export function TicketDetailPage() {
           <h1 className="text-2xl font-bold tracking-tight">{ticket.title}</h1>
         </div>
         <div className="flex items-center gap-2">
-          {ticket.status !== 'closed' && (
+          {ticket.status === 'closed' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => id && reopenMutation.mutateAsync({ id })}
+              disabled={reopenMutation.isPending}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reopen
+            </Button>
+          ) : (
             <>
               <Button
                 variant="outline"

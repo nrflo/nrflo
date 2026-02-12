@@ -69,7 +69,7 @@ export function WorkflowTabContent({
       'flex gap-0',
       (hasActivePhase || selectedPanelAgent) && 'min-h-[calc(100vh-280px)]'
     )}>
-      <div className="flex-1 min-w-0 space-y-4 max-w-4xl">
+      <div className="flex-1 min-w-0 space-y-4 max-w-6xl">
         {hasWorkflow && displayedState ? (
           <>
             <div className="flex items-center justify-between">

@@ -37,7 +37,7 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
     <button
       onClick={handleClick}
       className={cn(
-        'flex flex-col items-center gap-1 px-3 py-2 rounded-lg border transition-all',
+        'relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg border transition-all',
         'hover:bg-muted/50 cursor-pointer w-full',
         isRunning && 'border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/20 animate-pulse-glow',
         !isRunning && agent.result === 'pass' && 'border-green-400 bg-green-50/50 dark:bg-green-900/20',
@@ -55,15 +55,17 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
       <div className="flex items-center gap-1 text-xs text-muted-foreground">
         <Timer className="h-3 w-3" />
         <span>{elapsedTime}</span>
-        {agent.context_left != null && (
-          <span className={cn(
-            'text-[10px] font-mono px-1 rounded',
-            contextLeftColor(agent.context_left)
-          )}>
-            {agent.context_left}%
-          </span>
-        )}
       </div>
+
+      {/* Context left badge - top right corner */}
+      {agent.context_left != null && (
+        <span className={cn(
+          'absolute top-1 right-1 text-lg font-mono px-1 rounded',
+          contextLeftColor(agent.context_left)
+        )}>
+          {agent.context_left}%
+        </span>
+      )}
 
       {/* Session stats if available */}
       {session && session.message_count > 0 && (

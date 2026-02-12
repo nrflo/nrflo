@@ -120,7 +120,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
         }}
         style={{ pointerEvents: 'all' }}
         className={cn(
-          'nopan nodrag',
+          'nopan nodrag relative',
           'min-w-[220px] rounded-xl border-2 px-5 py-4 transition-all',
           'hover:bg-muted/50 hover:scale-[1.02] cursor-pointer',
           isRunning && 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 animate-pulse-glow',
@@ -142,15 +142,17 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
             <Timer className="h-4 w-4" />
             <span>{duration}</span>
           </div>
-          {contextLeft != null && (
-            <span className={cn(
-              'text-xs font-mono px-1.5 py-0.5 rounded',
-              contextLeftColor(contextLeft)
-            )}>
-              {contextLeft}%
-            </span>
-          )}
         </div>
+
+        {/* Context left badge - top right corner */}
+        {contextLeft != null && (
+          <span className={cn(
+            'absolute top-1 right-1 text-base font-mono px-1.5 py-0.5 rounded',
+            contextLeftColor(contextLeft)
+          )}>
+            {contextLeft}%
+          </span>
+        )}
 
         {/* Message count badge */}
         {hasMessages && (

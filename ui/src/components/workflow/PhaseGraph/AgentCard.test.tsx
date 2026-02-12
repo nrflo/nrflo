@@ -112,4 +112,35 @@ describe('AgentCard', () => {
     button.click()
     expect(onExpand).toHaveBeenCalledTimes(1)
   })
+
+  // Context-left badge positioning and sizing (ticket nrworkflow-30efa6)
+  it('positions context_left badge at top-right corner', () => {
+    const agent = makeAgent({ context_left: 60 })
+    render(<AgentCard agent={agent} />)
+    const badge = screen.getByText('60%')
+    expect(badge.className).toContain('absolute')
+    expect(badge.className).toContain('top-1')
+    expect(badge.className).toContain('right-1')
+  })
+
+  it('renders context_left badge with doubled text size (text-lg)', () => {
+    const agent = makeAgent({ context_left: 50 })
+    render(<AgentCard agent={agent} />)
+    const badge = screen.getByText('50%')
+    expect(badge.className).toContain('text-lg')
+  })
+
+  it('renders context_left badge with monospace font', () => {
+    const agent = makeAgent({ context_left: 80 })
+    render(<AgentCard agent={agent} />)
+    const badge = screen.getByText('80%')
+    expect(badge.className).toContain('font-mono')
+  })
+
+  it('parent button has relative positioning for absolute badge', () => {
+    const agent = makeAgent({ context_left: 55 })
+    render(<AgentCard agent={agent} />)
+    const button = screen.getByRole('button')
+    expect(button.className).toContain('relative')
+  })
 })

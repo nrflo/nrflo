@@ -139,26 +139,6 @@ func TestFetchUserInstructions_DirectString(t *testing.T) {
 	}
 }
 
-func TestFetchUserInstructions_NestedMap(t *testing.T) {
-	env := newSpawnerTestEnv(t)
-	ticketID := "UI-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-
-	// Store instructions as nested map (old format for backwards compatibility)
-	wfiID := env.getWfiID(t, ticketID)
-	env.setFindings(t, wfiID, map[string]interface{}{
-		"user_instructions": map[string]interface{}{
-			"instructions": "Refactor the auth module",
-		},
-	})
-
-	sp := env.newSpawner()
-	got := sp.fetchUserInstructions(env.project, ticketID, "test")
-	if got != "Refactor the auth module" {
-		t.Fatalf("expected 'Refactor the auth module', got %q", got)
-	}
-}
-
 func TestFetchUserInstructions_MissingReturnsPlaceholder(t *testing.T) {
 	env := newSpawnerTestEnv(t)
 	ticketID := "UI-" + uuid.New().String()[:6]
@@ -182,27 +162,6 @@ func TestFetchUserInstructions_EmptyStringReturnsPlaceholder(t *testing.T) {
 	wfiID := env.getWfiID(t, ticketID)
 	env.setFindings(t, wfiID, map[string]interface{}{
 		"user_instructions": "",
-	})
-
-	sp := env.newSpawner()
-	got := sp.fetchUserInstructions(env.project, ticketID, "test")
-	expected := "_No user instructions provided_"
-	if got != expected {
-		t.Fatalf("expected %q, got %q", expected, got)
-	}
-}
-
-func TestFetchUserInstructions_NestedMapEmptyReturnsPlaceholder(t *testing.T) {
-	env := newSpawnerTestEnv(t)
-	ticketID := "UI-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-
-	// Store nested map with empty instructions value
-	wfiID := env.getWfiID(t, ticketID)
-	env.setFindings(t, wfiID, map[string]interface{}{
-		"user_instructions": map[string]interface{}{
-			"instructions": "",
-		},
 	})
 
 	sp := env.newSpawner()

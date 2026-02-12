@@ -83,7 +83,6 @@ func emptyWorkflowState() map[string]interface{} {
 	return map[string]interface{}{
 		"phases":        map[string]interface{}{},
 		"active_agents": map[string]interface{}{},
-		"history":       []interface{}{},
 	}
 }
 

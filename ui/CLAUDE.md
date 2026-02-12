@@ -163,11 +163,10 @@ PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
 │   ├── AgentMessagesModal.tsx - Modal dialog showing agent messages with live updates
 │   ├── layout.ts - Auto-layout helper for vertical positioning
 │   ├── PhaseFlowNode.tsx - Custom React Flow node for phases
-│   ├── PhaseNode.tsx - Standalone phase node (legacy, still exported)
+│   ├── PhaseNode.tsx - Standalone phase node
 │   ├── AgentCard.tsx - Running agent card with elapsed time
 │   ├── HistoryAgentCard.tsx - Completed agent card for phase history
 │   └── types.ts - TypeScript types for graph components
-├── Legacy history section (if workflow.history exists)
 └── WorkflowFindings (all workflow findings at bottom)
     ├── WorkflowLevelFindings (findings['workflow'] - blue styling)
     └── AgentFindings (other keys, empty findings filtered out - purple styling)
@@ -211,7 +210,7 @@ Findings use a simple KEY: VALUE format with minimal parsing:
 Components: `SimpleFindingValue` in PhaseCard.tsx, WorkflowFindings.tsx, FindingsViewer.tsx
 
 Key workflow types (`src/types/workflow.ts`):
-- `WorkflowState`: Phase states, phase_order, findings, active agents (constructed server-side from `workflow_instances` + `agent_sessions` tables)
+- `WorkflowState`: Phase states, phase_order, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
 - `WorkflowResponse`: API response with agent_history at top level
 - `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left)
 - `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left`

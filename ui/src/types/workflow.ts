@@ -9,15 +9,7 @@ export interface PhaseState {
   error?: string
 }
 
-// v3 format - single active agent
-export interface ActiveAgent {
-  type: string
-  pid?: number
-  session_id?: string
-  started_at?: string
-}
-
-// v4 format - parallel agents
+// Parallel agents (v4 format)
 export interface ActiveAgentV4 {
   agent_id?: string
   agent_type: string
@@ -31,14 +23,6 @@ export interface ActiveAgentV4 {
   ended_at?: string
   result?: string
   context_left?: number
-}
-
-export interface HistoryEntry {
-  type: string
-  phase: string
-  status: string
-  started_at?: string
-  ended_at?: string
 }
 
 export interface AgentHistoryEntry {
@@ -63,10 +47,8 @@ export interface WorkflowState {
   category?: string
   phases?: Record<string, PhaseState>
   phase_order?: string[]
-  active_agent?: ActiveAgent | null      // v3 compat
-  active_agents?: Record<string, ActiveAgentV4>  // v4 format: key is "agent_type:cli:model"
+  active_agents?: Record<string, ActiveAgentV4>  // key is "agent_type:cli:model"
   findings?: WorkflowFindings
-  history?: HistoryEntry[]
   agent_history?: AgentHistoryEntry[]
 }
 

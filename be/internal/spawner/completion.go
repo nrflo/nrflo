@@ -132,6 +132,7 @@ func (s *Spawner) relaunchForContinuation(oldProc *processInfo, req SpawnRequest
 	// Carry over continuation tracking
 	newProc.ancestorSessionID = ancestorID
 	newProc.restartCount = oldProc.restartCount + 1
+	newProc.restartThreshold = oldProc.restartThreshold
 
 	// Update the ancestor_session_id and restart_count on the new DB session record
 	database, dbErr := db.Open(s.config.DataPath)

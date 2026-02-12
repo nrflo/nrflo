@@ -168,17 +168,19 @@ type WorkflowDefUpdateRequest struct {
 
 // AgentDefCreateRequest is the request for creating an agent definition
 type AgentDefCreateRequest struct {
-	ID      string `json:"id"`
-	Model   string `json:"model,omitempty"`
-	Timeout int    `json:"timeout,omitempty"`
-	Prompt  string `json:"prompt"`
+	ID               string `json:"id"`
+	Model            string `json:"model,omitempty"`
+	Timeout          int    `json:"timeout,omitempty"`
+	Prompt           string `json:"prompt"`
+	RestartThreshold *int   `json:"restart_threshold,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
 type AgentDefUpdateRequest struct {
-	Model   *string `json:"model,omitempty"`
-	Timeout *int    `json:"timeout,omitempty"`
-	Prompt  *string `json:"prompt,omitempty"`
+	Model            *string `json:"model,omitempty"`
+	Timeout          *int    `json:"timeout,omitempty"`
+	Prompt           *string `json:"prompt,omitempty"`
+	RestartThreshold *int    `json:"restart_threshold,omitempty"`
 }
 
 // DependencyRequest is the request for adding/removing dependencies

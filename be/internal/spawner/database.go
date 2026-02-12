@@ -13,7 +13,7 @@ import (
 )
 
 // registerAgentStart creates an agent_sessions row for a newly spawned agent
-func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, promptContext, ancestorSessionID string, restartCount int) {
+func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, promptContext, ancestorSessionID string, restartCount, restartThreshold int) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
 		return
@@ -41,11 +41,12 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 	sessionRepo.Create(session)
 
 	s.broadcast(ws.EventAgentStarted, projectID, ticketID, workflowName, map[string]interface{}{
-		"agent_id":   agentID,
-		"agent_type": agentType,
-		"model_id":   modelID,
-		"session_id": sessionID,
-		"phase":      phase,
+		"agent_id":          agentID,
+		"agent_type":        agentType,
+		"model_id":          modelID,
+		"session_id":        sessionID,
+		"phase":             phase,
+		"restart_threshold": restartThreshold,
 	})
 }
 

@@ -11,9 +11,14 @@ import (
 func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interface{} {
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
-		SELECT id, phase, agent_type, model_id, pid, result, started_at, context_left, restart_count
-		FROM agent_sessions
-		WHERE workflow_instance_id = ? AND status = 'running'`, wfiID)
+		SELECT s.id, s.phase, s.agent_type, s.model_id, s.pid, s.result, s.started_at, s.context_left, s.restart_count,
+		       ad.restart_threshold
+		FROM agent_sessions s
+		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
+		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
+			AND LOWER(ad.workflow_id) = LOWER(wi.workflow_id)
+			AND LOWER(ad.id) = LOWER(s.agent_type)
+		WHERE s.workflow_instance_id = ? AND s.status = 'running'`, wfiID)
 	if err != nil {
 		return agents
 	}
@@ -22,9 +27,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 	for rows.Next() {
 		var id, agentType string
 		var phase, modelID, agentResult, startedAt sql.NullString
-		var pid, contextLeft sql.NullInt64
+		var pid, contextLeft, restartThreshold sql.NullInt64
 		var restartCount int
-		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount)
+		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold)
 
 		key := agentType
 		agent := map[string]interface{}{
@@ -58,6 +63,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interfac
 			agent["context_left"] = contextLeft.Int64
 		}
 		agent["restart_count"] = restartCount
+		if restartThreshold.Valid {
+			agent["restart_threshold"] = restartThreshold.Int64
+		}
 		agents[key] = agent
 	}
 	return agents

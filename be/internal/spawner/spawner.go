@@ -42,7 +42,7 @@ type AgentConfig struct {
 
 const (
 	defaultMaxContinuations = 3
-	defaultContextThreshold = 30
+	defaultContextThreshold = 25
 )
 
 // Config holds the spawner configuration
@@ -98,6 +98,7 @@ type processInfo struct {
 	// Continuation tracking
 	ancestorSessionID string // Root session in a continuation chain
 	restartCount      int    // How many times this agent has been restarted for low context
+	restartThreshold  int    // Effective context threshold for this agent (percentage remaining)
 	// Low-context save state
 	lowContextSaving bool // True while initiateContextSave is running
 }
@@ -273,6 +274,13 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		}
 	}
 
+	// Load agent definition to get per-agent restart threshold
+	effectiveThreshold := defaultContextThreshold
+	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
+	if agentDef != nil && agentDef.RestartThreshold != nil {
+		effectiveThreshold = *agentDef.RestartThreshold
+	}
+
 	// Load agent template
 	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase)
 	if err != nil {
@@ -312,7 +320,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		Env: append(os.Environ(),
 			fmt.Sprintf("NRWORKFLOW_PROJECT=%s", req.ProjectID),
 			"NRWF_SPAWNED=1",
-			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-defaultContextThreshold),
+			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
 		),
 	}
 
@@ -359,10 +367,11 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		ticketID:      req.TicketID,
 		workflowName:       req.WorkflowName,
 		workflowInstanceID: wfiID,
+		restartThreshold:   effectiveThreshold,
 	}
 
 	// Register agent start (create agent_sessions row)
-	s.registerAgentStart(req.ProjectID, req.TicketID, req.WorkflowName, wfiID, agentID, req.AgentType, cmd.Process.Pid, sessionID, modelID, phase, spawnCommand, prompt, "", 0)
+	s.registerAgentStart(req.ProjectID, req.TicketID, req.WorkflowName, wfiID, agentID, req.AgentType, cmd.Process.Pid, sessionID, modelID, phase, spawnCommand, prompt, "", 0, effectiveThreshold)
 
 	// Start output monitoring goroutines
 	go s.monitorOutput(proc, stdout)
@@ -469,7 +478,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			updateContextLeft(proc, contextData)
 
 			// Detect low context and initiate save (only for CLIs that support resume)
-			if !proc.lowContextSaving && proc.contextLeft > 0 && proc.contextLeft <= defaultContextThreshold {
+			if !proc.lowContextSaving && proc.contextLeft > 0 && proc.contextLeft <= proc.restartThreshold {
 				cliName, _ := parseModelID(proc.modelID)
 				adapter, _ := GetCLIAdapter(cliName)
 				if adapter != nil && adapter.SupportsResume() {

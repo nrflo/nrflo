@@ -1,5 +1,5 @@
-import { Loader2, CheckCircle, XCircle, Timer } from 'lucide-react'
-import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
+import { Loader2, CheckCircle, XCircle, Timer, AlertTriangle } from 'lucide-react'
+import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import type { AgentCardProps } from './types'
 
@@ -60,9 +60,12 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
       {/* Context left badge - top right corner */}
       {agent.context_left != null && (
         <span className={cn(
-          'absolute top-1 right-1 text-lg font-mono px-1 rounded',
+          'absolute top-1 right-1 text-lg font-mono px-1 rounded flex items-center gap-0.5',
           contextLeftColor(agent.context_left)
         )}>
+          {isRunning && isNearRestartThreshold(agent.context_left, agent.restart_threshold ?? 25) && (
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          )}
           {agent.context_left}%
         </span>
       )}

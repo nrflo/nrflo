@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Cpu, Terminal, Hash, Clock, CheckCircle, XCircle, Loader2, Timer, RefreshCw } from 'lucide-react'
-import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
+import { Cpu, Terminal, Hash, Clock, CheckCircle, XCircle, Loader2, Timer, RefreshCw, AlertTriangle } from 'lucide-react'
+import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -140,9 +140,12 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId }: Ac
                 )}
                 {agent.context_left != null && (
                   <span className={cn(
-                    'text-xs font-mono px-1.5 py-0.5 rounded',
+                    'text-xs font-mono px-1.5 py-0.5 rounded flex items-center gap-1',
                     contextLeftColor(agent.context_left)
                   )}>
+                    {!agent.result && isNearRestartThreshold(agent.context_left, agent.restart_threshold ?? 25) && (
+                      <AlertTriangle className="h-3 w-3 text-amber-500" />
+                    )}
                     {agent.context_left}% ctx
                   </span>
                 )}

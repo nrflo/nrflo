@@ -27,14 +27,15 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 	def.UpdatedAt = def.CreatedAt
 
 	_, err := r.db.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
 		def.Model,
 		def.Timeout,
 		def.Prompt,
+		def.RestartThreshold,
 		now,
 		now,
 	)
@@ -46,8 +47,9 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 	def := &model.AgentDefinition{}
 	var createdAt, updatedAt string
 
+	var restartThreshold sql.NullInt64
 	err := r.db.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -57,6 +59,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		&def.Model,
 		&def.Timeout,
 		&def.Prompt,
+		&restartThreshold,
 		&createdAt,
 		&updatedAt,
 	)
@@ -69,6 +72,10 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 
 	def.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 	def.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	if restartThreshold.Valid {
+		v := int(restartThreshold.Int64)
+		def.RestartThreshold = &v
+	}
 
 	return def, nil
 }
@@ -76,7 +83,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 // List retrieves all agent definitions for a workflow
 func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY id`, projectID, workflowID)
@@ -89,6 +96,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 	for rows.Next() {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
+		var restartThreshold sql.NullInt64
 
 		err := rows.Scan(
 			&def.ID,
@@ -97,6 +105,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			&def.Model,
 			&def.Timeout,
 			&def.Prompt,
+			&restartThreshold,
 			&createdAt,
 			&updatedAt,
 		)
@@ -106,6 +115,10 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 
 		def.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		def.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		if restartThreshold.Valid {
+			v := int(restartThreshold.Int64)
+			def.RestartThreshold = &v
+		}
 
 		defs = append(defs, def)
 	}
@@ -115,9 +128,10 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 
 // AgentDefUpdateFields contains fields that can be updated
 type AgentDefUpdateFields struct {
-	Model   *string
-	Timeout *int
-	Prompt  *string
+	Model            *string
+	Timeout          *int
+	Prompt           *string
+	RestartThreshold *int
 }
 
 // Update updates an agent definition
@@ -136,6 +150,10 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.Prompt != nil {
 		updates = append(updates, "prompt = ?")
 		args = append(args, *fields.Prompt)
+	}
+	if fields.RestartThreshold != nil {
+		updates = append(updates, "restart_threshold = ?")
+		args = append(args, *fields.RestartThreshold)
 	}
 
 	if len(updates) == 0 {

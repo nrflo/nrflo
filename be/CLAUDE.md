@@ -432,6 +432,7 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    model         TEXT NOT NULL DEFAULT 'sonnet'                      │
 │    timeout       INTEGER NOT NULL DEFAULT 20                         │
 │    prompt        TEXT NOT NULL DEFAULT ''                            │
+│    restart_threshold INTEGER       (NULL = use global default 25%)   │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, workflow_id, id)                         │

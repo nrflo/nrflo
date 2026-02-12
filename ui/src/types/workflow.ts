@@ -24,6 +24,7 @@ export interface ActiveAgentV4 {
   result?: string
   context_left?: number
   restart_count?: number
+  restart_threshold?: number
 }
 
 export interface AgentHistoryEntry {
@@ -191,6 +192,7 @@ export interface AgentDef {
   model: string
   timeout: number
   prompt: string
+  restart_threshold?: number
   created_at: string
   updated_at: string
 }
@@ -200,12 +202,14 @@ export interface AgentDefCreateRequest {
   model?: string
   timeout?: number
   prompt: string
+  restart_threshold?: number
 }
 
 export interface AgentDefUpdateRequest {
   model?: string
   timeout?: number
   prompt?: string
+  restart_threshold?: number
 }
 
 // Orchestration types

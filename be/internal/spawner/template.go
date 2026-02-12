@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/repo"
 )
 
@@ -27,6 +28,23 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	}
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "")
+}
+
+// loadAgentDefinition loads the full agent definition from the DB.
+// Returns nil if not found (caller should fall back to defaults).
+func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string) *model.AgentDefinition {
+	database, err := db.Open(s.config.DataPath)
+	if err != nil {
+		return nil
+	}
+	defer database.Close()
+
+	adRepo := repo.NewAgentDefinitionRepo(database)
+	def, err := adRepo.Get(projectID, workflowName, agentType)
+	if err != nil {
+		return nil
+	}
+	return def
 }
 
 // loadPromptContent loads the prompt content for an agent from the DB.

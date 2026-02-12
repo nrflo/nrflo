@@ -17,15 +17,17 @@ export function AgentDefForm({
   const [id, setId] = useState(initial?.id || '')
   const [model, setModel] = useState(initial?.model || 'sonnet')
   const [timeout, setTimeout] = useState(initial?.timeout || 20)
+  const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (isCreate && !prompt.trim()) return
+    const threshold = restartThreshold !== '' ? restartThreshold : undefined
     if (isCreate) {
-      onSubmit({ id, model, timeout, prompt } as AgentDefCreateRequest)
+      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold } as AgentDefCreateRequest)
     } else {
-      onSubmit({ model, timeout, prompt } as AgentDefUpdateRequest)
+      onSubmit({ model, timeout, prompt, restart_threshold: threshold } as AgentDefUpdateRequest)
     }
   }
 
@@ -62,6 +64,18 @@ export function AgentDefForm({
             value={timeout}
             onChange={(e) => setTimeout(Number(e.target.value))}
             min={1}
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          />
+        </div>
+        <div className="w-32">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Restart % (ctx)</label>
+          <input
+            type="number"
+            value={restartThreshold}
+            onChange={(e) => setRestartThreshold(e.target.value === '' ? '' : Number(e.target.value))}
+            placeholder="25"
+            min={1}
+            max={99}
             className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
           />
         </div>

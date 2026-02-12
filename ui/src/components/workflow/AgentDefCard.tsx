@@ -60,6 +60,9 @@ export function AgentDefCard({
             {def.model}
           </Badge>
           <span className="text-xs text-muted-foreground">{def.timeout}m timeout</span>
+          {def.restart_threshold != null && (
+            <span className="text-xs text-muted-foreground">{def.restart_threshold}% restart</span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Button

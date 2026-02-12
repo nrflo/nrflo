@@ -261,3 +261,8 @@ func nullStr(s string) interface{} {
 	}
 	return s
 }
+
+// getAgentDefServiceInternal returns the AgentDefinitionService for testing.
+func (e *TestEnv) getAgentDefServiceInternal(t *testing.T) *service.AgentDefinitionService {
+	return service.NewAgentDefinitionService(e.Pool)
+}

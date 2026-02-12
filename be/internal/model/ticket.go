@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-
 // Status represents the ticket status
 type Status string
 
@@ -28,18 +27,19 @@ const (
 
 // Ticket represents a ticket in the system
 type Ticket struct {
-	ID          string         `json:"id"`
-	ProjectID   string         `json:"project_id"`
-	Title       string         `json:"title"`
-	Description sql.NullString `json:"-"`
-	Status      Status         `json:"status"`
-	Priority    int            `json:"priority"`
-	IssueType   IssueType      `json:"issue_type"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	ClosedAt    sql.NullTime   `json:"-"`
-	CreatedBy   string         `json:"created_by"`
-	CloseReason sql.NullString `json:"-"`
+	ID             string         `json:"id"`
+	ProjectID      string         `json:"project_id"`
+	Title          string         `json:"title"`
+	Description    sql.NullString `json:"-"`
+	Status         Status         `json:"status"`
+	Priority       int            `json:"priority"`
+	IssueType      IssueType      `json:"issue_type"`
+	ParentTicketID sql.NullString `json:"-"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	ClosedAt       sql.NullTime   `json:"-"`
+	CreatedBy      string         `json:"created_by"`
+	CloseReason    sql.NullString `json:"-"`
 }
 
 // MarshalJSON implements custom JSON marshaling for Ticket
@@ -60,32 +60,39 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 		closeReason = &t.CloseReason.String
 	}
 
+	var parentTicketID *string
+	if t.ParentTicketID.Valid {
+		parentTicketID = &t.ParentTicketID.String
+	}
+
 	return json.Marshal(&struct {
-		ID          string     `json:"id"`
-		ProjectID   string     `json:"project_id"`
-		Title       string     `json:"title"`
-		Description *string    `json:"description"`
-		Status      Status     `json:"status"`
-		Priority    int        `json:"priority"`
-		IssueType   IssueType  `json:"issue_type"`
-		CreatedAt   time.Time  `json:"created_at"`
-		UpdatedAt   time.Time  `json:"updated_at"`
-		ClosedAt    *time.Time `json:"closed_at"`
-		CreatedBy   string     `json:"created_by"`
-		CloseReason *string    `json:"close_reason"`
+		ID             string     `json:"id"`
+		ProjectID      string     `json:"project_id"`
+		Title          string     `json:"title"`
+		Description    *string    `json:"description"`
+		Status         Status     `json:"status"`
+		Priority       int        `json:"priority"`
+		IssueType      IssueType  `json:"issue_type"`
+		ParentTicketID *string    `json:"parent_ticket_id"`
+		CreatedAt      time.Time  `json:"created_at"`
+		UpdatedAt      time.Time  `json:"updated_at"`
+		ClosedAt       *time.Time `json:"closed_at"`
+		CreatedBy      string     `json:"created_by"`
+		CloseReason    *string    `json:"close_reason"`
 	}{
-		ID:          t.ID,
-		ProjectID:   t.ProjectID,
-		Title:       t.Title,
-		Description: description,
-		Status:      t.Status,
-		Priority:    t.Priority,
-		IssueType:   t.IssueType,
-		CreatedAt:   t.CreatedAt,
-		UpdatedAt:   t.UpdatedAt,
-		ClosedAt:    closedAt,
-		CreatedBy:   t.CreatedBy,
-		CloseReason: closeReason,
+		ID:             t.ID,
+		ProjectID:      t.ProjectID,
+		Title:          t.Title,
+		Description:    description,
+		Status:         t.Status,
+		Priority:       t.Priority,
+		IssueType:      t.IssueType,
+		ParentTicketID: parentTicketID,
+		CreatedAt:      t.CreatedAt,
+		UpdatedAt:      t.UpdatedAt,
+		ClosedAt:       closedAt,
+		CreatedBy:      t.CreatedBy,
+		CloseReason:    closeReason,
 	})
 }
 

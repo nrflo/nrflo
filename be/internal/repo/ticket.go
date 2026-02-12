@@ -2,7 +2,6 @@ package repo
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -28,8 +27,8 @@ func (r *TicketRepo) Create(ticket *model.Ticket) error {
 	ticket.UpdatedAt = ticket.CreatedAt
 
 	_, err := r.db.Exec(`
-		INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, created_at, updated_at, created_by)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, parent_ticket_id, created_at, updated_at, created_by)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(ticket.ID),
 		strings.ToLower(ticket.ProjectID),
 		ticket.Title,
@@ -37,6 +36,7 @@ func (r *TicketRepo) Create(ticket *model.Ticket) error {
 		ticket.Status,
 		ticket.Priority,
 		ticket.IssueType,
+		ticket.ParentTicketID,
 		now,
 		now,
 		ticket.CreatedBy,
@@ -44,9 +44,9 @@ func (r *TicketRepo) Create(ticket *model.Ticket) error {
 	return err
 }
 
-const ticketSelectCols = `id, project_id, title, description, status, priority, issue_type, created_at, updated_at, closed_at, created_by, close_reason`
+const ticketSelectCols = `id, project_id, title, description, status, priority, issue_type, parent_ticket_id, created_at, updated_at, closed_at, created_by, close_reason`
 
-const ticketSelectColsPrefixed = `t.id, t.project_id, t.title, t.description, t.status, t.priority, t.issue_type, t.created_at, t.updated_at, t.closed_at, t.created_by, t.close_reason`
+const ticketSelectColsPrefixed = `t.id, t.project_id, t.title, t.description, t.status, t.priority, t.issue_type, t.parent_ticket_id, t.created_at, t.updated_at, t.closed_at, t.created_by, t.close_reason`
 
 func scanTicket(scanner interface{ Scan(...interface{}) error }) (*model.Ticket, error) {
 	ticket := &model.Ticket{}
@@ -61,6 +61,7 @@ func scanTicket(scanner interface{ Scan(...interface{}) error }) (*model.Ticket,
 		&ticket.Status,
 		&ticket.Priority,
 		&ticket.IssueType,
+		&ticket.ParentTicketID,
 		&createdAt,
 		&updatedAt,
 		&closedAt,
@@ -95,9 +96,10 @@ func (r *TicketRepo) Get(projectID, ticketID string) (*model.Ticket, error) {
 
 // ListFilter contains filter options for listing tickets
 type ListFilter struct {
-	ProjectID string
-	Status    string
-	IssueType string
+	ProjectID   string
+	Status      string
+	IssueType   string
+	BlockedOnly bool
 }
 
 // List retrieves tickets with optional filters
@@ -136,11 +138,12 @@ func (r *TicketRepo) List(filter *ListFilter) ([]*model.Ticket, error) {
 
 // UpdateFields contains fields that can be updated
 type UpdateFields struct {
-	Title       *string
-	Description *string
-	Status      *string
-	Priority    *int
-	IssueType   *string
+	Title          *string
+	Description    *string
+	Status         *string
+	Priority       *int
+	IssueType      *string
+	ParentTicketID *string
 }
 
 // Update updates a ticket
@@ -173,6 +176,15 @@ func (r *TicketRepo) Update(projectID, ticketID string, fields *UpdateFields) er
 	if fields.IssueType != nil {
 		updates = append(updates, "issue_type = ?")
 		args = append(args, *fields.IssueType)
+	}
+	if fields.ParentTicketID != nil {
+		updates = append(updates, "parent_ticket_id = ?")
+		parentID := strings.TrimSpace(*fields.ParentTicketID)
+		if parentID == "" {
+			args = append(args, nil)
+		} else {
+			args = append(args, strings.ToLower(parentID))
+		}
 	}
 
 	if len(updates) == 0 {
@@ -253,171 +265,4 @@ func (r *TicketRepo) Delete(projectID, ticketID string) error {
 		return fmt.Errorf("ticket not found: %s", ticketID)
 	}
 	return nil
-}
-
-// Search performs FTS5 search on tickets within a project
-func (r *TicketRepo) Search(projectID, query string) ([]*model.Ticket, error) {
-	rows, err := r.db.Query(`
-		SELECT `+ticketSelectColsPrefixed+`
-		FROM tickets t
-		INNER JOIN tickets_fts fts ON t.project_id = fts.project_id AND t.id = fts.id
-		WHERE fts.project_id = ? AND tickets_fts MATCH ?
-		ORDER BY rank`, strings.ToLower(projectID), query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tickets []*model.Ticket
-	for rows.Next() {
-		ticket, err := scanTicket(rows)
-		if err != nil {
-			return nil, err
-		}
-		tickets = append(tickets, ticket)
-	}
-
-	return tickets, nil
-}
-
-// PendingTicket is a ticket with blocked status info
-type PendingTicket struct {
-	*model.Ticket
-	IsBlocked bool     `json:"is_blocked"`
-	BlockedBy []string `json:"blocked_by,omitempty"`
-}
-
-// MarshalJSON implements custom JSON marshaling for PendingTicket
-func (pt PendingTicket) MarshalJSON() ([]byte, error) {
-	// Get the ticket's marshaled form first
-	ticketJSON, err := pt.Ticket.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-
-	// Unmarshal into a map so we can add our fields
-	var result map[string]interface{}
-	if err := json.Unmarshal(ticketJSON, &result); err != nil {
-		return nil, err
-	}
-
-	// Add the blocked info
-	result["is_blocked"] = pt.IsBlocked
-	if len(pt.BlockedBy) > 0 {
-		result["blocked_by"] = pt.BlockedBy
-	}
-
-	return json.Marshal(result)
-}
-
-// GetPendingWithBlockedInfo returns non-closed tickets with their blocked status
-func (r *TicketRepo) GetPendingWithBlockedInfo(projectID string, limit int) ([]*PendingTicket, error) {
-	rows, err := r.db.Query(`
-		SELECT `+ticketSelectColsPrefixed+`
-		FROM tickets t
-		WHERE LOWER(t.project_id) = LOWER(?) AND t.status != 'closed'
-		ORDER BY t.priority ASC, t.created_at ASC
-		LIMIT ?`, projectID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tickets []*PendingTicket
-	for rows.Next() {
-		ticket, err := scanTicket(rows)
-		if err != nil {
-			return nil, err
-		}
-		tickets = append(tickets, &PendingTicket{Ticket: ticket})
-	}
-
-	// Now get blocker info for each ticket
-	for _, pt := range tickets {
-		blockers, err := r.getOpenBlockers(pt.ProjectID, pt.ID)
-		if err != nil {
-			return nil, err
-		}
-		pt.BlockedBy = blockers
-		pt.IsBlocked = len(blockers) > 0
-	}
-
-	return tickets, nil
-}
-
-// getOpenBlockers returns IDs of open tickets that block the given ticket
-func (r *TicketRepo) getOpenBlockers(projectID, ticketID string) ([]string, error) {
-	rows, err := r.db.Query(`
-		SELECT blocker.id
-		FROM dependencies d
-		INNER JOIN tickets blocker ON d.project_id = blocker.project_id AND d.depends_on_id = blocker.id
-		WHERE LOWER(d.project_id) = LOWER(?) AND LOWER(d.issue_id) = LOWER(?) AND blocker.status != 'closed'`, projectID, ticketID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var blockers []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		blockers = append(blockers, id)
-	}
-	return blockers, nil
-}
-
-// GetRecentlyClosed returns recently closed tickets
-func (r *TicketRepo) GetRecentlyClosed(projectID string, limit int) ([]*model.Ticket, error) {
-	rows, err := r.db.Query(`
-		SELECT `+ticketSelectCols+`
-		FROM tickets
-		WHERE LOWER(project_id) = LOWER(?) AND status = 'closed'
-		ORDER BY closed_at DESC
-		LIMIT ?`, projectID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tickets []*model.Ticket
-	for rows.Next() {
-		ticket, err := scanTicket(rows)
-		if err != nil {
-			return nil, err
-		}
-		tickets = append(tickets, ticket)
-	}
-
-	return tickets, nil
-}
-
-// GetReady returns tickets that are not blocked by any open dependencies
-func (r *TicketRepo) GetReady(projectID string) ([]*model.Ticket, error) {
-	rows, err := r.db.Query(`
-		SELECT `+ticketSelectColsPrefixed+`
-		FROM tickets t
-		WHERE LOWER(t.project_id) = LOWER(?) AND t.status != 'closed'
-		AND NOT EXISTS (
-			SELECT 1 FROM dependencies d
-			INNER JOIN tickets blocker ON d.project_id = blocker.project_id AND d.depends_on_id = blocker.id
-			WHERE d.project_id = t.project_id AND d.issue_id = t.id AND blocker.status != 'closed'
-		)
-		ORDER BY t.priority ASC, t.created_at ASC`, projectID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tickets []*model.Ticket
-	for rows.Next() {
-		ticket, err := scanTicket(rows)
-		if err != nil {
-			return nil, err
-		}
-		tickets = append(tickets, ticket)
-	}
-
-	return tickets, nil
 }

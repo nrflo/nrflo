@@ -9,26 +9,18 @@ import {
   Lightbulb,
   CheckSquare,
   Layers,
-  ExternalLink,
   FileText,
   GitBranch,
   Info,
-  Play,
-  Square,
-  Clock,
-  Zap,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useProjectStore } from '@/stores/projectStore'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
-import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { RunWorkflowDialog } from '@/components/workflow/RunWorkflowDialog'
-import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import {
   useTicket,
   useWorkflow,
@@ -41,14 +33,10 @@ import {
 import { useWebSocket } from '@/hooks/useWebSocket'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
-import {
-  cn,
-  statusColor,
-  formatDateTime,
-  formatDurationSec,
-  formatTokenCount,
-  priorityLabel,
-} from '@/lib/utils'
+import { cn, statusColor } from '@/lib/utils'
+import { WorkflowTabContent } from './WorkflowTabContent'
+import { DescriptionTabContent } from './DescriptionTabContent'
+import { DetailsTabContent } from './DetailsTabContent'
 
 function IssueTypeIcon({ type }: { type: string }) {
   switch (type) {
@@ -106,8 +94,7 @@ export function TicketDetailPage() {
     ? allWorkflows[selectedWorkflow]
     : defaultState
 
-  // Get agent_history from displayed workflow state
-  const agentHistory = displayedState?.agent_history
+  // Get active agents from displayed workflow state
   const activeAgents = displayedState?.active_agents ?? {}
 
   // Fetch agent sessions for the running agent log panel
@@ -303,239 +290,41 @@ export function TicketDetailPage() {
 
       {/* Tab Content */}
       <div className="flex-1">
-        {/* Workflow Tab */}
         {activeTab === 'workflow' && (
-          <div className={cn(
-            'flex gap-0',
-            (hasActivePhase || selectedPanelAgent) && 'min-h-[calc(100vh-280px)]'
-          )}>
-            <div className="flex-1 min-w-0 space-y-4 max-w-4xl">
-              {hasWorkflow && displayedState ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {hasMultipleWorkflows ? (
-                        <Select
-                          value={selectedWorkflow || displayedWorkflowName}
-                          onChange={(e) => setSelectedWorkflow(e.target.value)}
-                          className="w-32 h-8 text-sm"
-                        >
-                          {workflows.map((wf) => (
-                            <option key={wf} value={wf}>
-                              {wf}
-                            </option>
-                          ))}
-                        </Select>
-                      ) : displayedWorkflowName ? (
-                        <Badge variant="secondary">{displayedWorkflowName}</Badge>
-                      ) : null}
-                      {isOrchestrated && (
-                        <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
-                          Auto
-                        </Badge>
-                      )}
-                      {(isOrchestrated || hasActivePhase) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            id && stopMutation.mutate({
-                              ticketId: id,
-                              workflow: displayedWorkflowName || undefined,
-                            })
-                          }
-                          disabled={stopMutation.isPending}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          {stopMutation.isPending ? (
-                            <Spinner size="sm" className="mr-2" />
-                          ) : (
-                            <Square className="h-4 w-4 mr-2" />
-                          )}
-                          Stop
-                        </Button>
-                      )}
-                    </div>
-                    {!(isOrchestrated || hasActivePhase) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowRunDialog(true)}
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Run Workflow
-                      </Button>
-                    )}
-                  </div>
-                  {displayedState.status === 'completed' && (
-                    <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">
-                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="font-medium">Completed</span>
-                        {displayedState.completed_at && (
-                          <span className="text-green-600 dark:text-green-500">
-                            {formatDateTime(displayedState.completed_at)}
-                          </span>
-                        )}
-                      </div>
-                      {displayedState.total_duration_sec != null && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>{formatDurationSec(displayedState.total_duration_sec)}</span>
-                        </div>
-                      )}
-                      {displayedState.total_tokens_used != null && displayedState.total_tokens_used > 0 && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Zap className="h-3.5 w-3.5" />
-                          <span>{formatTokenCount(displayedState.total_tokens_used)} tokens</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <PhaseTimeline
-                    workflow={displayedState}
-                    agentHistory={agentHistory}
-                    ticketId={id}
-                    onAgentSelect={setSelectedPanelAgent}
-                  />
-                </>
-              ) : (
-                <div className="text-center py-8 space-y-3">
-                  <p className="text-muted-foreground text-sm">
-                    No workflow configured for this ticket
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowRunDialog(true)}
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Run Workflow
-                  </Button>
-                </div>
-              )}
-            </div>
-            {(hasActivePhase || selectedPanelAgent) && (
-              <AgentLogPanel
-                activeAgents={activeAgents}
-                sessions={sessions}
-                collapsed={logPanelCollapsed}
-                onToggleCollapse={() => setLogPanelCollapsed(p => !p)}
-                selectedAgent={selectedPanelAgent}
-                onAgentSelect={setSelectedPanelAgent}
-              />
-            )}
-          </div>
+          <WorkflowTabContent
+            ticketId={id}
+            hasWorkflow={hasWorkflow}
+            displayedState={displayedState}
+            displayedWorkflowName={displayedWorkflowName}
+            hasMultipleWorkflows={hasMultipleWorkflows}
+            workflows={workflows}
+            selectedWorkflow={selectedWorkflow}
+            onSelectWorkflow={setSelectedWorkflow}
+            isOrchestrated={isOrchestrated}
+            hasActivePhase={hasActivePhase}
+            activeAgents={activeAgents}
+            sessions={sessions}
+            logPanelCollapsed={logPanelCollapsed}
+            onToggleLogPanel={() => setLogPanelCollapsed(p => !p)}
+            selectedPanelAgent={selectedPanelAgent}
+            onAgentSelect={setSelectedPanelAgent}
+            onStop={() =>
+              id && stopMutation.mutate({
+                ticketId: id,
+                workflow: displayedWorkflowName || undefined,
+              })
+            }
+            stopPending={stopMutation.isPending}
+            onShowRunDialog={() => setShowRunDialog(true)}
+          />
         )}
 
-        {/* Description Tab */}
         {activeTab === 'description' && (
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="pt-6">
-                {ticket.description ? (
-                  <p className="whitespace-pre-wrap">{ticket.description}</p>
-                ) : (
-                  <p className="text-muted-foreground italic">No description</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Dependencies */}
-            {((ticket.blockers?.length ?? 0) > 0 || (ticket.blocks?.length ?? 0) > 0) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Dependencies</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {(ticket.blockers?.length ?? 0) > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Blocked by</h4>
-                      <div className="space-y-1">
-                        {ticket.blockers?.map((dep) => (
-                          <Link
-                            key={dep.depends_on_id}
-                            to={`/tickets/${encodeURIComponent(dep.depends_on_id)}`}
-                            className="flex items-center gap-2 text-sm text-primary hover:underline"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            {dep.depends_on_id}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {(ticket.blocks?.length ?? 0) > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Blocks</h4>
-                      <div className="space-y-1">
-                        {ticket.blocks?.map((dep) => (
-                          <Link
-                            key={dep.issue_id}
-                            to={`/tickets/${encodeURIComponent(dep.issue_id)}`}
-                            className="flex items-center gap-2 text-sm text-primary hover:underline"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            {dep.issue_id}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          <DescriptionTabContent ticket={ticket} />
         )}
 
-        {/* Details Tab */}
         {activeTab === 'details' && (
-          <Card>
-            <CardContent className="pt-6">
-              <dl className="grid grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-sm text-muted-foreground">Priority</dt>
-                  <dd className="font-medium">{priorityLabel(ticket.priority)}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Type</dt>
-                  <dd className="font-medium capitalize">{ticket.issue_type}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Created by</dt>
-                  <dd className="font-medium">{ticket.created_by}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Status</dt>
-                  <dd>
-                    <Badge className={cn(statusColor(ticket.status))}>
-                      {ticket.status.replace('_', ' ')}
-                    </Badge>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Created</dt>
-                  <dd className="font-medium">{formatDateTime(ticket.created_at)}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Updated</dt>
-                  <dd className="font-medium">{formatDateTime(ticket.updated_at)}</dd>
-                </div>
-                {ticket.closed_at && (
-                  <div>
-                    <dt className="text-sm text-muted-foreground">Closed</dt>
-                    <dd className="font-medium">{formatDateTime(ticket.closed_at)}</dd>
-                  </div>
-                )}
-                {ticket.close_reason && (
-                  <div className="col-span-2">
-                    <dt className="text-sm text-muted-foreground">Close reason</dt>
-                    <dd className="font-medium">{ticket.close_reason}</dd>
-                  </div>
-                )}
-              </dl>
-            </CardContent>
-          </Card>
+          <DetailsTabContent ticket={ticket} />
         )}
       </div>
 

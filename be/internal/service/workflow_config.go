@@ -106,8 +106,13 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 			_ = json.Unmarshal([]byte(wf.Categories.String), &categories)
 		}
 
+		scopeType := wf.ScopeType
+		if scopeType == "" {
+			scopeType = "ticket"
+		}
 		workflows[wf.ID] = SpawnerWorkflowDef{
 			Description: wf.Description,
+			ScopeType:   scopeType,
 			Categories:  categories,
 			Phases:      phases,
 		}
@@ -126,8 +131,9 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 
 // SpawnerWorkflowDef mirrors spawner.WorkflowDef for shared config building
 type SpawnerWorkflowDef struct {
-	Description string           `json:"description"`
-	Categories  []string         `json:"categories"`
+	Description string            `json:"description"`
+	ScopeType   string            `json:"scope_type"`
+	Categories  []string          `json:"categories"`
 	Phases      []SpawnerPhaseDef `json:"phases"`
 }
 

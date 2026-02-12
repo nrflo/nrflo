@@ -2,7 +2,7 @@
 
 ## Overview
 
-nrworkflow is a multi-workflow state management system for ticket implementation with spawned AI agents. Supports multiple workflows per ticket, parallel agents (Claude, OpenAI), and real-time WebSocket updates.
+nrworkflow is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents. Supports multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), and real-time WebSocket updates.
 
 The server runs as `nrworkflow serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use a minimal CLI subset (`agent complete/fail/continue`, `findings add/append/get/delete`) to report results.
 
@@ -81,6 +81,7 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator groups phases by layer and runs all agents in each layer concurrently (one goroutine per agent calling `spawner.Spawn()`), with cancellation support via `/workflow/stop`.
 17. **Low-context relaunch**: When an agent's context drops below threshold (default ~25% remaining, configurable per agent via `restart_threshold` in agent_definitions), the spawner kills the agent, resumes with `claude --resume` to save findings, then spawns a fresh agent with `${PREVIOUS_DATA}` injected. Old sessions get `status='continued'` and are excluded from agent history.
 18. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.
+19. **Project-scoped workflows**: Workflows can have `scope_type` of `ticket` (default) or `project`. Project-scoped workflows run at project level without requiring a ticket. API: `POST /api/v1/projects/:id/workflow/run`, `GET /api/v1/projects/:id/workflow`. Project agents cannot use `${TICKET_ID}`, `${TICKET_TITLE}`, or `${TICKET_DESCRIPTION}` template variables.
 
 ## Quick Start
 
@@ -164,8 +165,9 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | Column | Description |
 |--------|-------------|
 | `id` | UUID primary key |
-| `project_id`, `ticket_id` | Links to ticket |
+| `project_id`, `ticket_id` | Links to ticket (ticket_id empty for project scope) |
 | `workflow_id` | FK to workflow definition |
+| `scope_type` | `ticket` (default) or `project` |
 | `status` | `active` / `completed` / `failed` |
 | `current_phase` | Currently active phase ID |
 | `category` | Category for skip rules |
@@ -223,6 +225,7 @@ Each v4 workflow state contains:
   "version": 4,
   "initialized_at": "2025-01-01T00:00:00Z",
   "workflow": "feature",
+  "scope_type": "ticket",
   "current_phase": "implementation",
   "category": "full",
   "status": "completed",

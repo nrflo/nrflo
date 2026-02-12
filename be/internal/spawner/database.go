@@ -102,6 +102,24 @@ func (s *Spawner) getWorkflowInstance(projectID, ticketID, workflowName string) 
 	return wi, nil
 }
 
+// getProjectWorkflowInstance retrieves a project-scoped workflow instance
+func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*model.WorkflowInstance, error) {
+	database, err := db.Open(s.config.DataPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wi, err := wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
+	if err != nil {
+		return nil, fmt.Errorf("project workflow '%s' not initialized. Use the web UI or API to initialize it",
+			workflowName)
+	}
+	return wi, nil
+}
+
 // validateAndAdvancePhase validates phase order and auto-skips phases with matching skip_for rules.
 // Returns (phaseID, shouldSkip, error). Uses workflow_instances table for state.
 // With layer-based execution, validates that all agents in prior layers are completed.

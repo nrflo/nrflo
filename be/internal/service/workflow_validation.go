@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // validateLayerConfig validates layer-based phase configuration rules:
@@ -61,6 +62,38 @@ func rejectStringPhaseEntry(raw json.RawMessage) error {
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
 		return fmt.Errorf("string phase entry '%s' is no longer supported. Migrate to object format: {\"agent\": \"%s\", \"layer\": 0}", s, s)
+	}
+	return nil
+}
+
+// ticketTemplateVars are template variables that require ticket context
+var ticketTemplateVars = []string{"${TICKET_ID}", "${TICKET_TITLE}", "${TICKET_DESCRIPTION}"}
+
+// ValidateProjectScope checks that agent prompts don't use ticket-specific template variables
+// when scope_type is "project". Loads agent definitions from DB to check their prompts.
+func ValidateProjectScope(pool interface{ QueryRow(string, ...interface{}) interface{ Scan(...interface{}) error } }, projectID, workflowID string, phases []PhaseDef) error {
+	for _, phase := range phases {
+		var prompt string
+		err := pool.QueryRow(`
+			SELECT prompt FROM agent_definitions
+			WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
+			projectID, workflowID, phase.Agent).Scan(&prompt)
+		if err != nil {
+			continue // Agent definition may not exist yet
+		}
+		for _, v := range ticketTemplateVars {
+			if strings.Contains(prompt, v) {
+				return fmt.Errorf("agent '%s' uses %s in its prompt, which is not available for project-scoped workflows", phase.Agent, v)
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateScopeType validates that scope_type is a valid value
+func ValidateScopeType(scopeType string) error {
+	if scopeType != "" && scopeType != "ticket" && scopeType != "project" {
+		return fmt.Errorf("scope_type must be 'ticket' or 'project', got '%s'", scopeType)
 	}
 	return nil
 }

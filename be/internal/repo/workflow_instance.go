@@ -20,20 +20,23 @@ func NewWorkflowInstanceRepo(pool *db.Pool) *WorkflowInstanceRepo {
 	return &WorkflowInstanceRepo{pool: pool}
 }
 
-const wfiCols = `id, project_id, ticket_id, workflow_id, status, category, current_phase,
+const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status, category, current_phase,
 	phase_order, phases, findings, retry_count, parent_session, created_at, updated_at`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
 	wi := &model.WorkflowInstance{}
 	var createdAt, updatedAt string
 	err := scanner.Scan(
-		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID,
+		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
 		&wi.Status, &wi.Category, &wi.CurrentPhase,
 		&wi.PhaseOrder, &wi.Phases, &wi.Findings,
 		&wi.RetryCount, &wi.ParentSession, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if wi.ScopeType == "" {
+		wi.ScopeType = "ticket"
 	}
 	wi.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 	wi.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
@@ -45,17 +48,23 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	wi.CreatedAt, _ = time.Parse(time.RFC3339, now)
 	wi.UpdatedAt = wi.CreatedAt
+	if wi.ScopeType == "" {
+		wi.ScopeType = "ticket"
+	}
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
-		strings.ToLower(wi.WorkflowID), wi.Status, wi.Category, wi.CurrentPhase,
+		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status, wi.Category, wi.CurrentPhase,
 		wi.PhaseOrder, wi.Phases, wi.Findings,
 		wi.RetryCount, wi.ParentSession, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") {
+			if wi.ScopeType == "project" {
+				return fmt.Errorf("workflow '%s' already initialized on project %s", wi.WorkflowID, wi.ProjectID)
+			}
 			return fmt.Errorf("workflow '%s' already initialized on %s", wi.WorkflowID, wi.TicketID)
 		}
 		return err
@@ -84,6 +93,41 @@ func (r *WorkflowInstanceRepo) GetByTicketAndWorkflow(projectID, ticketID, workf
 		return nil, fmt.Errorf("workflow '%s' not found on %s", workflowID, ticketID)
 	}
 	return wi, err
+}
+
+// GetByProjectAndWorkflow retrieves a project-scoped workflow instance
+func (r *WorkflowInstanceRepo) GetByProjectAndWorkflow(projectID, workflowID string) (*model.WorkflowInstance, error) {
+	row := r.pool.QueryRow(`
+		SELECT `+wfiCols+` FROM workflow_instances
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project'`,
+		projectID, workflowID)
+	wi, err := scanWFI(row)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("project workflow '%s' not found on %s", workflowID, projectID)
+	}
+	return wi, err
+}
+
+// ListByProjectScope lists all project-scoped workflow instances for a project
+func (r *WorkflowInstanceRepo) ListByProjectScope(projectID string) ([]*model.WorkflowInstance, error) {
+	rows, err := r.pool.Query(`
+		SELECT `+wfiCols+` FROM workflow_instances
+		WHERE LOWER(project_id) = LOWER(?) AND scope_type = 'project'
+		ORDER BY created_at`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var instances []*model.WorkflowInstance
+	for rows.Next() {
+		wi, err := scanWFI(rows)
+		if err != nil {
+			return nil, err
+		}
+		instances = append(instances, wi)
+	}
+	return instances, nil
 }
 
 // ListActiveByProject returns active workflow instances grouped by ticket ID

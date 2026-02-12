@@ -25,15 +25,19 @@ func (r *WorkflowRepo) Create(wf *model.Workflow) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	wf.CreatedAt, _ = time.Parse(time.RFC3339, now)
 	wf.UpdatedAt = wf.CreatedAt
+	if wf.ScopeType == "" {
+		wf.ScopeType = "ticket"
+	}
 
 	_, err := r.db.Exec(`
-		INSERT INTO workflows (id, project_id, description, categories, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, categories, phases, scope_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(wf.ID),
 		strings.ToLower(wf.ProjectID),
 		wf.Description,
 		wf.Categories,
 		wf.Phases,
+		wf.ScopeType,
 		now,
 		now,
 	)
@@ -46,7 +50,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, project_id, description, categories, phases, created_at, updated_at
+		SELECT id, project_id, description, categories, phases, scope_type, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, id).Scan(
 		&wf.ID,
@@ -54,6 +58,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 		&wf.Description,
 		&wf.Categories,
 		&wf.Phases,
+		&wf.ScopeType,
 		&createdAt,
 		&updatedAt,
 	)
@@ -73,7 +78,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 // List retrieves all workflow definitions for a project
 func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, description, categories, phases, created_at, updated_at
+		SELECT id, project_id, description, categories, phases, scope_type, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -92,6 +97,7 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 			&wf.Description,
 			&wf.Categories,
 			&wf.Phases,
+			&wf.ScopeType,
 			&createdAt,
 			&updatedAt,
 		)

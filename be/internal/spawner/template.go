@@ -91,6 +91,7 @@ func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, descriptio
 }
 
 // fetchUserInstructions returns user_instructions from the workflow instance findings.
+// ticketID can be empty for project-scoped workflows.
 func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string) string {
 	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
 	if err != nil {
@@ -100,9 +101,13 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string
 	defer pool.Close()
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	var wi *model.WorkflowInstance
+	if ticketID == "" {
+		wi, err = wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
+	} else {
+		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to fetch workflow instance for %s/%s: %v\n", ticketID, workflowName, err)
 		return "_No user instructions provided_"
 	}
 	findings := wi.GetFindings()
@@ -131,17 +136,23 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	// Expand variables
 	template = strings.ReplaceAll(template, "${AGENT}", agentType)
 	template = strings.ReplaceAll(template, "${TICKET_ID}", ticketID)
+	template = strings.ReplaceAll(template, "${PROJECT_ID}", projectID)
 	template = strings.ReplaceAll(template, "${WORKFLOW}", workflowName)
 	template = strings.ReplaceAll(template, "${PARENT_SESSION}", parentSession)
 	template = strings.ReplaceAll(template, "${CHILD_SESSION}", childSession)
 	template = strings.ReplaceAll(template, "${MODEL_ID}", modelID)
 	template = strings.ReplaceAll(template, "${MODEL}", model)
 
-	// Expand ticket context variables
+	// Expand ticket context variables (skip DB fetch for project scope)
 	if strings.Contains(template, "${TICKET_TITLE}") || strings.Contains(template, "${TICKET_DESCRIPTION}") {
-		title, desc := s.fetchTicketInfo(projectID, ticketID)
-		template = strings.ReplaceAll(template, "${TICKET_TITLE}", title)
-		template = strings.ReplaceAll(template, "${TICKET_DESCRIPTION}", desc)
+		if ticketID != "" {
+			title, desc := s.fetchTicketInfo(projectID, ticketID)
+			template = strings.ReplaceAll(template, "${TICKET_TITLE}", title)
+			template = strings.ReplaceAll(template, "${TICKET_DESCRIPTION}", desc)
+		} else {
+			template = strings.ReplaceAll(template, "${TICKET_TITLE}", "")
+			template = strings.ReplaceAll(template, "${TICKET_DESCRIPTION}", "")
+		}
 	}
 	if strings.Contains(template, "${USER_INSTRUCTIONS}") {
 		instructions := s.fetchUserInstructions(projectID, ticketID, workflowName)

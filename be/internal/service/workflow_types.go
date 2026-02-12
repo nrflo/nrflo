@@ -8,6 +8,7 @@ import (
 type WorkflowState struct {
 	Version       int                    `json:"version"`
 	InitializedAt string                 `json:"initialized_at"`
+	ScopeType     string                 `json:"scope_type"`
 	CurrentPhase  string                 `json:"current_phase"`
 	Category      string                 `json:"category,omitempty"`
 	RetryCount    int                    `json:"retry_count"`
@@ -35,6 +36,7 @@ type AgentConfig struct {
 // WorkflowDef represents a workflow definition (parsed from DB)
 type WorkflowDef struct {
 	Description string            `json:"description"`
+	ScopeType   string            `json:"scope_type"` // "ticket" or "project"
 	Categories  []string          `json:"categories"`
 	Phases      []PhaseDef        `json:"-"`
 	RawPhases   []json.RawMessage `json:"-"` // Internal, used during parsing
@@ -44,6 +46,7 @@ type WorkflowDef struct {
 func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 	type Alias struct {
 		Description string     `json:"description"`
+		ScopeType   string     `json:"scope_type"`
 		Categories  []string   `json:"categories"`
 		Phases      []PhaseDef `json:"phases"`
 	}
@@ -55,8 +58,13 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 	if phases == nil {
 		phases = []PhaseDef{}
 	}
+	scopeType := wf.ScopeType
+	if scopeType == "" {
+		scopeType = "ticket"
+	}
 	return json.Marshal(Alias{
 		Description: wf.Description,
+		ScopeType:   scopeType,
 		Categories:  cats,
 		Phases:      phases,
 	})
@@ -66,6 +74,7 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Description string            `json:"description"`
+		ScopeType   string            `json:"scope_type"`
 		Categories  []string          `json:"categories"`
 		Phases      []json.RawMessage `json:"phases"`
 	}
@@ -73,6 +82,7 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	wf.Description = raw.Description
+	wf.ScopeType = raw.ScopeType
 	wf.Categories = raw.Categories
 	wf.RawPhases = raw.Phases
 

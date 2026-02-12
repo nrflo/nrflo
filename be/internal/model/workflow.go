@@ -11,8 +11,9 @@ type Workflow struct {
 	ID          string         `json:"id"`
 	ProjectID   string         `json:"project_id"`
 	Description string         `json:"description"`
-	Categories  sql.NullString `json:"-"` // JSON array string
-	Phases      string         `json:"-"` // JSON array string
+	ScopeType   string         `json:"scope_type"` // "ticket" or "project"
+	Categories  sql.NullString `json:"-"`           // JSON array string
+	Phases      string         `json:"-"`           // JSON array string
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
@@ -37,10 +38,16 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		phases = []interface{}{}
 	}
 
+	scopeType := w.ScopeType
+	if scopeType == "" {
+		scopeType = "ticket"
+	}
+
 	return json.Marshal(&struct {
 		ID          string        `json:"id"`
 		ProjectID   string        `json:"project_id"`
 		Description string        `json:"description"`
+		ScopeType   string        `json:"scope_type"`
 		Categories  []string      `json:"categories"`
 		Phases      []interface{} `json:"phases"`
 		CreatedAt   time.Time     `json:"created_at"`
@@ -49,6 +56,7 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		ID:          w.ID,
 		ProjectID:   w.ProjectID,
 		Description: w.Description,
+		ScopeType:   scopeType,
 		Categories:  categories,
 		Phases:      phases,
 		CreatedAt:   w.CreatedAt,

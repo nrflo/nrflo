@@ -114,6 +114,7 @@ func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 		"--resume", opts.SessionID,
 		"--print",
 		"--dangerously-skip-permissions",
+		"--verbose",
 		"--output-format", "stream-json",
 		opts.Prompt,
 	}

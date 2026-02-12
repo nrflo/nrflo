@@ -155,6 +155,7 @@ type AgentCompleteRequest struct {
 type WorkflowDefCreateRequest struct {
 	ID          string          `json:"id"`
 	Description string          `json:"description,omitempty"`
+	ScopeType   string          `json:"scope_type,omitempty"` // "ticket" (default) or "project"
 	Categories  []string        `json:"categories,omitempty"`
 	Phases      json.RawMessage `json:"phases"` // accepts both string and object entries
 }
@@ -162,8 +163,16 @@ type WorkflowDefCreateRequest struct {
 // WorkflowDefUpdateRequest is the request for updating a workflow definition
 type WorkflowDefUpdateRequest struct {
 	Description *string          `json:"description,omitempty"`
+	ScopeType   *string          `json:"scope_type,omitempty"`
 	Categories  *[]string        `json:"categories,omitempty"`
 	Phases      *json.RawMessage `json:"phases,omitempty"`
+}
+
+// ProjectWorkflowRunRequest is the request for running a project-scoped workflow
+type ProjectWorkflowRunRequest struct {
+	Workflow     string `json:"workflow"`
+	Category     string `json:"category,omitempty"`
+	Instructions string `json:"instructions,omitempty"`
 }
 
 // AgentDefCreateRequest is the request for creating an agent definition

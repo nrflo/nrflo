@@ -7,7 +7,7 @@ import { Dialog, DialogHeader, DialogBody } from '@/components/ui/Dialog'
 import { AgentDefsSection } from '@/components/workflow/AgentDefsSection'
 import { WorkflowDefForm } from '@/components/workflow/WorkflowDefForm'
 import { listWorkflowDefs, createWorkflowDef, updateWorkflowDef, deleteWorkflowDef } from '@/api/workflows'
-import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateRequest, PhaseDef } from '@/types/workflow'
+import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateRequest, PhaseDef, ScopeType } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 import { cn } from '@/lib/utils'
 
@@ -65,6 +65,11 @@ function WorkflowCard({
           </div>
         </button>
         <div className="flex items-center gap-2">
+          {def.scope_type === 'project' && (
+            <Badge variant="outline" className="text-xs border-blue-300 text-blue-600">
+              project
+            </Badge>
+          )}
           {def.categories?.map((cat) => (
             <Badge key={cat} variant="secondary" className="text-xs">
               {cat}
@@ -115,6 +120,7 @@ function WorkflowCard({
 interface EditingWorkflow {
   id: string
   description?: string
+  scope_type?: ScopeType
   categories?: string[]
   phases?: PhaseDef[]
 }

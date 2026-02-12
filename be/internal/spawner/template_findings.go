@@ -208,10 +208,18 @@ func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType
 	defer database.Close()
 
 	var wfiID string
-	err = database.QueryRow(`
-		SELECT id FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-		projectID, ticketID, workflowName).Scan(&wfiID)
+	if ticketID == "" {
+		// Project-scoped workflow
+		err = database.QueryRow(`
+			SELECT id FROM workflow_instances
+			WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project'`,
+			projectID, workflowName).Scan(&wfiID)
+	} else {
+		err = database.QueryRow(`
+			SELECT id FROM workflow_instances
+			WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+			projectID, ticketID, workflowName).Scan(&wfiID)
+	}
 	if err != nil {
 		return ""
 	}

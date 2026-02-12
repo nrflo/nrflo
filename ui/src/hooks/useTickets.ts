@@ -6,6 +6,12 @@ import {
 } from '@tanstack/react-query'
 import { runWorkflow, stopWorkflow, restartAgent } from '@/api/workflows'
 import {
+  getProjectWorkflow,
+  runProjectWorkflow,
+  stopProjectWorkflow,
+  restartProjectAgent,
+} from '@/api/projectWorkflows'
+import {
   listTickets,
   getTicket,
   createTicket,
@@ -29,7 +35,7 @@ import type {
   TicketListResponse,
   StatusResponse,
 } from '@/types/ticket'
-import type { WorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest, RestartAgentRequest, SessionMessagesResponse } from '@/types/workflow'
+import type { WorkflowResponse, ProjectWorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest, ProjectWorkflowRunRequest, RestartAgentRequest, SessionMessagesResponse } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 
 // Query keys factory
@@ -262,6 +268,59 @@ export function useSessionMessages(
     enabled: !!sessionId && (options?.enabled ?? true),
     staleTime: options?.isRunning ? 2000 : 30000,
     refetchInterval: options?.isRunning ? 3000 : false,
+  })
+}
+
+// --- Project workflow hooks ---
+
+export const projectWorkflowKeys = {
+  all: ['project-workflows'] as const,
+  workflow: (projectId: string) => [...projectWorkflowKeys.all, projectId] as const,
+}
+
+export function useProjectWorkflow(
+  projectId: string,
+  options?: Omit<UseQueryOptions<ProjectWorkflowResponse>, 'queryKey' | 'queryFn'>
+) {
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: projectWorkflowKeys.workflow(projectId),
+    queryFn: () => getProjectWorkflow(projectId),
+    enabled: projectsLoaded && !!projectId && (options?.enabled ?? true),
+    ...options,
+  })
+}
+
+export function useRunProjectWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, params }: { projectId: string; params: ProjectWorkflowRunRequest }) =>
+      runProjectWorkflow(projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+    },
+  })
+}
+
+export function useStopProjectWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, workflow }: { projectId: string; workflow?: string }) =>
+      stopProjectWorkflow(projectId, workflow),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+    },
+  })
+}
+
+export function useRestartProjectAgent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, params }: { projectId: string; params: RestartAgentRequest }) =>
+      restartProjectAgent(projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+    },
   })
 }
 

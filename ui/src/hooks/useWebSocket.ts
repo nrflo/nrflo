@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { getProject } from '../api/client'
-import { ticketKeys } from './useTickets'
+import { ticketKeys, projectWorkflowKeys } from './useTickets'
 
 // Event types from backend
 export type WSEventType =
@@ -93,38 +93,56 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
     // Invalidate relevant queries based on event type
     const qc = queryClientRef.current
-    const { ticket_id } = event
+    const { ticket_id, project_id } = event
+    const isProjectScope = !ticket_id && !!project_id
+
+    // Helper: invalidate project workflow queries for project-scope events
+    const invalidateProjectWorkflow = () => {
+      if (isProjectScope) {
+        qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(project_id) })
+      }
+    }
 
     switch (event.type) {
       case 'agent.started':
       case 'agent.completed':
-        // Invalidate workflow and agent session queries
-        qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
-        qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
-        qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
+        if (isProjectScope) {
+          invalidateProjectWorkflow()
+        } else {
+          qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
+        }
         break
 
       case 'phase.started':
       case 'phase.completed':
-        // Invalidate workflow query to get latest phase state
-        qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
-        qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
-        // Invalidate ticket lists so workflow_progress updates in list view
-        qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+        if (isProjectScope) {
+          invalidateProjectWorkflow()
+        } else {
+          qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+        }
         break
 
       case 'findings.updated':
-        // Invalidate workflow query to get latest findings
-        qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
-        qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        if (isProjectScope) {
+          invalidateProjectWorkflow()
+        } else {
+          qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        }
         break
 
       case 'messages.updated':
-        // Invalidate agent sessions and recent agents for updated messages
-        qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
-        // Invalidate workflow to refresh active_agents context_left
-        qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
-        // Invalidate lazy-loaded session messages and raw output if session_id is provided
+        if (isProjectScope) {
+          invalidateProjectWorkflow()
+        } else {
+          qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        }
+        // Session-specific invalidation applies to both scopes
         if (event.data?.session_id) {
           qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })
           qc.invalidateQueries({ queryKey: ['session-raw-output', event.data.session_id] })
@@ -132,12 +150,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         break
 
       case 'workflow.updated':
-        // Invalidate workflow, ticket and agent sessions
-        qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
-        qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
-        qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
-        // Invalidate ticket lists so workflow_progress updates in list view
-        qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+        if (isProjectScope) {
+          invalidateProjectWorkflow()
+        } else {
+          qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+        }
         break
 
       case 'workflow_def.created':
@@ -158,12 +178,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       case 'orchestration.started':
       case 'orchestration.completed':
       case 'orchestration.failed':
-        qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
-        qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        if (isProjectScope) {
+          invalidateProjectWorkflow()
+        } else {
+          qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
+          qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        }
         break
 
       case 'ticket.updated':
-        // Invalidate status counts (sidebar), ticket lists, and the specific ticket detail
         qc.invalidateQueries({ queryKey: ticketKeys.status() })
         qc.invalidateQueries({ queryKey: ticketKeys.lists() })
         qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })

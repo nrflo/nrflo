@@ -12,6 +12,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/api/projects.ts` | Project API functions |
 | `src/api/tickets.ts` | Ticket and workflow API functions |
 | `src/api/workflows.ts` | Workflow definition and orchestration API functions |
+| `src/api/projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart) |
 | `src/api/agentDefs.ts` | Agent definition API client |
 | `src/types/workflow.ts` | Workflow types (WorkflowState, AgentHistoryEntry, etc.) |
 | `src/types/ticket.ts` | Ticket types (Ticket, Dependency, Status, etc.) |
@@ -39,7 +40,8 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/AgentDefsSection.tsx` | Agent definitions list within a workflow |
 | `src/components/workflow/PhaseListEditor.tsx` | Layer-aware phase list editor with skip_for tags and fan-in validation |
 | `src/components/workflow/WorkflowDefForm.tsx` | Workflow definition create/edit form |
-| `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated workflow runs |
+| `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs |
+| `src/components/workflow/RunProjectWorkflowDialog.tsx` | Dialog for starting project-scoped workflow runs (filters to scope_type=project) |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
 | `src/components/workflow/AgentLogPanel.tsx` | Collapsible right-side panel: overview of running agents or single-agent detail view |
@@ -52,6 +54,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/pages/EditTicketPage.tsx` | Edit existing ticket form page |
 | `src/pages/TicketDetailPage.tsx` | Ticket detail with tabbed interface |
 | `src/pages/WorkflowsPage.tsx` | Workflow definitions CRUD and agent definition management |
+| `src/pages/ProjectWorkflowsPage.tsx` | Project-scoped workflow execution page (run/stop/view state) |
 | `src/pages/SettingsPage.tsx` | Project management (create/update/delete) |
 | `src/pages/` | Route page components |
 
@@ -124,6 +127,8 @@ Event types: `agent.started`, `agent.completed`, `phase.started`, `phase.complet
 
 **Project-wide subscription:** Layout.tsx subscribes to all project events (empty ticketId) so that Sidebar status counts, ticket lists, and Dashboard receive real-time updates (e.g., `ticket.updated` events).
 
+**Project-scoped workflow events:** Events from project-scoped workflows have empty `ticket_id` and non-empty `project_id`. The WebSocket hook detects this and invalidates `projectWorkflowKeys` instead of `ticketKeys`. ProjectWorkflowsPage subscribes with empty ticketId to receive these events.
+
 ### Component Structure
 
 ```
@@ -141,6 +146,7 @@ Layout
 - **Edit Ticket** (`/tickets/:id/edit`): Edit existing ticket form
 - **Ticket Detail** (`/tickets/:id`): Workflow timeline, description, details tabs
 - **Workflows** (`/workflows`): Workflow definitions and agent definitions CRUD
+- **Project Workflows** (`/project-workflows`): Run and monitor project-scoped workflows
 - **Settings** (`/settings`): Project management
 
 ### Ticket Detail Page
@@ -220,8 +226,10 @@ Key ticket types (`src/types/ticket.ts`):
 - `StatusResponse`: Includes `counts.blocked` for sidebar badge
 
 Key workflow types (`src/types/workflow.ts`):
-- `WorkflowState`: Phase states, phase_order, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
-- `WorkflowResponse`: API response with agent_history at top level
+- `ScopeType`: `'ticket' | 'project'` — workflow scope type
+- `WorkflowState`: Phase states, phase_order, scope_type, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
+- `WorkflowResponse`: API response with agent_history at top level (ticket-scoped)
+- `ProjectWorkflowResponse`: API response for project-scoped workflows (project_id instead of ticket_id)
 - `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left)
 - `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `raw_output_size`, `context_left`
 - `WorkflowFindings`: `Record<string, Record<string, unknown>>` (agent_type → field → value)
@@ -395,6 +403,12 @@ PATCH /api/v1/tickets/:id/workflow
 POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
 POST /api/v1/tickets/:id/workflow/restart  # Restart a running agent (save context, relaunch)
+
+# Project-scoped workflows
+GET  /api/v1/projects/:id/workflow         # Get project workflow state
+POST /api/v1/projects/:id/workflow/run     # Start project-scoped workflow run
+POST /api/v1/projects/:id/workflow/stop    # Stop running project workflow
+POST /api/v1/projects/:id/workflow/restart # Restart agent in project workflow
 
 # Workflow definitions (require X-Project header)
 GET    /api/v1/workflows

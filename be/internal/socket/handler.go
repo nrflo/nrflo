@@ -264,10 +264,7 @@ func (h *Handler) handleWS(req Request, action string) Response {
 		if params.ProjectID == "" {
 			return MakeErrorResponse(req.ID, NewValidationError("project_id is required"))
 		}
-		if params.TicketID == "" {
-			return MakeErrorResponse(req.ID, NewValidationError("ticket_id is required"))
-		}
-
+		// ticket_id is optional for project-scoped workflows
 		log.Printf("[socket] ws.broadcast received: type=%s project=%s ticket=%s (hub=%v)",
 			params.Type, params.ProjectID, params.TicketID, h.wsHub != nil)
 		h.broadcast(params.Type, params.ProjectID, params.TicketID, params.Workflow, params.Data)

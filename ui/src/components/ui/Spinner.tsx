@@ -8,6 +8,8 @@ interface SpinnerProps {
 export function Spinner({ className, size = 'md' }: SpinnerProps) {
   return (
     <div
+      role="status"
+      aria-label="Loading"
       className={cn(
         'animate-spin rounded-full border-2 border-muted border-t-primary',
         {

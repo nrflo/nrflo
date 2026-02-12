@@ -13,12 +13,14 @@ import (
 
 	"github.com/google/uuid"
 
+	"be/internal/model"
 	"be/internal/ws"
 )
 
 // WorkflowDef represents a workflow definition (copied from cli for decoupling)
 type WorkflowDef struct {
 	Description string     `json:"description"`
+	ScopeType   string     `json:"scope_type"` // "ticket" or "project"
 	Categories  []string   `json:"categories"`
 	Phases      []PhaseDef `json:"phases"`
 }
@@ -114,6 +116,12 @@ type SpawnRequest struct {
 	WorkflowName  string
 	ParentSession string
 	CLIName       string
+	ScopeType     string // "ticket" (default) or "project"
+}
+
+// IsProjectScope returns true if this is a project-scoped spawn request
+func (r SpawnRequest) IsProjectScope() bool {
+	return r.ScopeType == "project"
 }
 
 // New creates a new spawner
@@ -166,8 +174,14 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 		return fmt.Errorf("agent type '%s' not found in workflow '%s'", req.AgentType, req.WorkflowName)
 	}
 
-	// Validate workflow is initialized on ticket
-	wi, err := s.getWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
+	// Validate workflow is initialized
+	var wi *model.WorkflowInstance
+	var err error
+	if req.IsProjectScope() {
+		wi, err = s.getProjectWorkflowInstance(req.ProjectID, req.WorkflowName)
+	} else {
+		wi, err = s.getWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
+	}
 	if err != nil {
 		return err
 	}
@@ -198,7 +212,11 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 
 	// Print spawn info
-	fmt.Printf("Spawning %s for %s...\n", req.AgentType, req.TicketID)
+	spawnTarget := req.TicketID
+	if req.IsProjectScope() {
+		spawnTarget = "project:" + req.ProjectID
+	}
+	fmt.Printf("Spawning %s for %s...\n", req.AgentType, spawnTarget)
 	fmt.Printf("  Model: %s\n", modelID)
 	fmt.Printf("  Workflow: %s (layer %d)\n", req.WorkflowName, phase.Layer)
 	fmt.Println()
@@ -265,9 +283,13 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 
 	// Write prompt to temp file
-	safeTicketID := strings.ReplaceAll(req.TicketID, "/", "_")
-	safeTicketID = strings.ReplaceAll(safeTicketID, "\\", "_")
-	promptFile, err := os.CreateTemp("", fmt.Sprintf("%s-%s-*.md", safeTicketID, req.AgentType))
+	filePrefix := req.TicketID
+	if req.IsProjectScope() {
+		filePrefix = "project-" + req.ProjectID
+	}
+	safePrefix := strings.ReplaceAll(filePrefix, "/", "_")
+	safePrefix = strings.ReplaceAll(safePrefix, "\\", "_")
+	promptFile, err := os.CreateTemp("", fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -279,7 +301,12 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	promptFile.Close()
 
 	// Initial prompt
-	initialPrompt := fmt.Sprintf(`Begin working on ticket %s. Follow the workflow steps in your system prompt.`, req.TicketID)
+	var initialPrompt string
+	if req.IsProjectScope() {
+		initialPrompt = fmt.Sprintf(`Begin working on project %s. Follow the workflow steps in your system prompt.`, req.ProjectID)
+	} else {
+		initialPrompt = fmt.Sprintf(`Begin working on ticket %s. Follow the workflow steps in your system prompt.`, req.TicketID)
+	}
 
 	// Prepare spawn options
 	workDir := s.config.ProjectRoot

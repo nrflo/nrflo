@@ -21,12 +21,13 @@ type PhaseStatus struct {
 	Result string `json:"result,omitempty"`
 }
 
-// WorkflowInstance represents a running workflow on a ticket
+// WorkflowInstance represents a running workflow on a ticket or project
 type WorkflowInstance struct {
 	ID            string                 `json:"id"`
 	ProjectID     string                 `json:"project_id"`
 	TicketID      string                 `json:"ticket_id"`
 	WorkflowID    string                 `json:"workflow_id"`
+	ScopeType     string                 `json:"scope_type"` // "ticket" or "project"
 	Status        WorkflowInstanceStatus `json:"status"`
 	Category      sql.NullString         `json:"-"`
 	CurrentPhase  sql.NullString         `json:"-"`
@@ -37,6 +38,11 @@ type WorkflowInstance struct {
 	ParentSession sql.NullString         `json:"-"`
 	CreatedAt     time.Time              `json:"created_at"`
 	UpdatedAt     time.Time              `json:"updated_at"`
+}
+
+// IsProjectScope returns true if this is a project-scoped workflow instance
+func (wi *WorkflowInstance) IsProjectScope() bool {
+	return wi.ScopeType == "project"
 }
 
 // GetPhaseOrder returns the phase order as a string slice
@@ -106,11 +112,17 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		findings = make(map[string]interface{})
 	}
 
+	scopeType := wi.ScopeType
+	if scopeType == "" {
+		scopeType = "ticket"
+	}
+
 	return json.Marshal(&struct {
 		ID            string                 `json:"id"`
 		ProjectID     string                 `json:"project_id"`
-		TicketID      string                 `json:"ticket_id"`
+		TicketID      string                 `json:"ticket_id,omitempty"`
 		WorkflowID    string                 `json:"workflow_id"`
+		ScopeType     string                 `json:"scope_type"`
 		Status        WorkflowInstanceStatus `json:"status"`
 		Category      *string                `json:"category,omitempty"`
 		CurrentPhase  *string                `json:"current_phase,omitempty"`
@@ -126,6 +138,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		ProjectID:     wi.ProjectID,
 		TicketID:      wi.TicketID,
 		WorkflowID:    wi.WorkflowID,
+		ScopeType:     scopeType,
 		Status:        wi.Status,
 		Category:      category,
 		CurrentPhase:  currentPhase,

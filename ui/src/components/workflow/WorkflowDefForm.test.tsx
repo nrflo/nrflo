@@ -241,6 +241,7 @@ describe('WorkflowDefForm', () => {
       expect(onSubmit).toHaveBeenCalledWith({
         id: 'feature',
         description: 'Full TDD workflow',
+        scope_type: 'ticket',
         categories: ['full'],
         phases: [
           {
@@ -274,6 +275,7 @@ describe('WorkflowDefForm', () => {
 
       expect(onSubmit).toHaveBeenCalledWith({
         description: 'New description',
+        scope_type: 'ticket',
         categories: ['full'],
         phases: [
           {
@@ -377,6 +379,103 @@ describe('WorkflowDefForm', () => {
       await user.click(cancelButton)
 
       expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('scope_type toggle', () => {
+    it('defaults to ticket scope', () => {
+      renderForm({ isCreate: true })
+
+      const ticketButton = screen.getByRole('button', { name: /^ticket$/i })
+      expect(ticketButton).toHaveClass('border-primary')
+    })
+
+    it('toggles to project scope', async () => {
+      const user = userEvent.setup()
+      renderForm({ isCreate: true })
+
+      const projectButton = screen.getByRole('button', { name: /^project$/i })
+      await user.click(projectButton)
+
+      expect(projectButton).toHaveClass('border-primary')
+      expect(screen.getByText(/project workflows run without a ticket/i)).toBeInTheDocument()
+    })
+
+    it('includes scope_type in create request', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderForm({ isCreate: true, onSubmit })
+
+      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'project-workflow')
+
+      const projectButton = screen.getByRole('button', { name: /^project$/i })
+      await user.click(projectButton)
+
+      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
+      await user.type(agentInputs[0], 'analyzer')
+
+      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      await user.click(submitButton)
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'project-workflow',
+          scope_type: 'project',
+        })
+      )
+    })
+
+    it('includes scope_type in update request', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      const phases: PhaseDef[] = [
+        { id: 'analyzer', agent: 'analyzer', layer: 0 },
+      ]
+      renderForm({
+        isCreate: false,
+        initial: { id: 'test', scope_type: 'ticket', phases },
+        onSubmit,
+      })
+
+      const projectButton = screen.getByRole('button', { name: /^project$/i })
+      await user.click(projectButton)
+
+      const submitButton = screen.getByRole('button', { name: /save changes/i })
+      await user.click(submitButton)
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scope_type: 'project',
+        })
+      )
+    })
+
+    it('shows info text only when project scope is selected', async () => {
+      const user = userEvent.setup()
+      renderForm({ isCreate: true })
+
+      expect(screen.queryByText(/project workflows run without a ticket/i)).not.toBeInTheDocument()
+
+      const projectButton = screen.getByRole('button', { name: /^project$/i })
+      await user.click(projectButton)
+
+      expect(screen.getByText(/project workflows run without a ticket/i)).toBeInTheDocument()
+
+      const ticketButton = screen.getByRole('button', { name: /^ticket$/i })
+      await user.click(ticketButton)
+
+      expect(screen.queryByText(/project workflows run without a ticket/i)).not.toBeInTheDocument()
+    })
+
+    it('respects initial scope_type from props', () => {
+      renderForm({
+        isCreate: false,
+        initial: { id: 'test', scope_type: 'project' },
+      })
+
+      const projectButton = screen.getByRole('button', { name: /^project$/i })
+      expect(projectButton).toHaveClass('border-primary')
+      expect(screen.getByText(/project workflows run without a ticket/i)).toBeInTheDocument()
     })
   })
 

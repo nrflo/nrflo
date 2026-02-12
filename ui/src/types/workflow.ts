@@ -43,9 +43,12 @@ export interface AgentHistoryEntry {
 // Findings structure: agent_type -> findings (field -> value)
 export type WorkflowFindings = Record<string, Record<string, unknown>>
 
+export type ScopeType = 'ticket' | 'project'
+
 export interface WorkflowState {
   workflow?: string
   version?: number
+  scope_type?: ScopeType
   current_phase?: string
   category?: string
   status?: string
@@ -68,6 +71,14 @@ export interface WorkflowResponse {
   agent_history?: AgentHistoryEntry[]  // agent execution history
   raw?: string                      // raw JSON string for debugging
   parse_error?: string
+}
+
+export interface ProjectWorkflowResponse {
+  project_id: string
+  has_workflow: boolean
+  state: WorkflowState
+  workflows?: string[]
+  all_workflows?: Record<string, WorkflowState>
 }
 
 export interface UpdateWorkflowRequest {
@@ -151,6 +162,7 @@ export interface PhaseDef {
 /** WorkflowDef as returned by the list endpoint (no id/project_id/timestamps) */
 export interface WorkflowDefSummary {
   description: string
+  scope_type?: ScopeType
   categories: string[]
   phases: PhaseDef[]
 }
@@ -160,6 +172,7 @@ export interface WorkflowDef {
   id: string
   project_id: string
   description: string
+  scope_type?: ScopeType
   categories: string[]
   phases: PhaseDef[]
   created_at: string
@@ -169,12 +182,14 @@ export interface WorkflowDef {
 export interface WorkflowDefCreateRequest {
   id: string
   description?: string
+  scope_type?: ScopeType
   categories?: string[]
   phases: PhaseDef[]
 }
 
 export interface WorkflowDefUpdateRequest {
   description?: string
+  scope_type?: ScopeType
   categories?: string[]
   phases?: PhaseDef[]
 }
@@ -228,4 +243,10 @@ export interface StopWorkflowRequest {
 export interface RestartAgentRequest {
   workflow: string
   session_id: string
+}
+
+export interface ProjectWorkflowRunRequest {
+  workflow: string
+  category?: string
+  instructions?: string
 }

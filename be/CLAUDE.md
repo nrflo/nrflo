@@ -34,7 +34,8 @@ be/
 │   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints
 │   │   ├── handlers_tickets_update.go # Ticket update/delete/close/reopen endpoints
 │   │   ├── handlers_workflow.go # Workflow state endpoints
-│   │   ├── handlers_orchestrate.go # Orchestration run/stop/restart endpoints
+│   │   ├── handlers_orchestrate.go # Ticket-scoped orchestration run/stop/restart endpoints
+│   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   └── handlers_agent_def.go # Agent definition endpoints
 │   ├── ws/                      # WebSocket support
@@ -55,9 +56,12 @@ be/
 │   ├── service/                 # Business logic layer
 │   │   ├── project.go           # Project operations
 │   │   ├── ticket.go            # Ticket operations
-│   │   ├── workflow.go          # Workflow operations
+│   │   ├── workflow.go          # Workflow operations (ticket + project scope)
 │   │   ├── workflow_defs.go     # Workflow definitions CRUD
 │   │   ├── workflow_config.go   # Workflow config loading
+│   │   ├── workflow_types.go    # Workflow type definitions (WorkflowDef, PhaseDef)
+│   │   ├── workflow_validation.go # Validation (layer, fan-in, project scope)
+│   │   ├── workflow_response.go # V4 response building (active agents, history)
 │   │   ├── agent.go             # Agent operations
 │   │   ├── agent_definition.go  # Agent definition CRUD
 │   │   └── findings.go          # Findings operations
@@ -354,6 +358,8 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    project_id      TEXT NOT NULL                                     │
 │    ticket_id       TEXT NOT NULL                                     │
 │    workflow_id     TEXT NOT NULL      (FK → workflows)               │
+│    scope_type      TEXT NOT NULL DEFAULT 'ticket'                    │
+│                    CHECK (scope_type IN ('ticket', 'project'))       │
 │    status          TEXT NOT NULL      (active|completed|failed)      │
 │    category        TEXT               (full|simple|docs)             │
 │    current_phase   TEXT               (currently active phase)       │
@@ -364,7 +370,7 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    parent_session  TEXT               (orchestrating session UUID)   │
 │    created_at      TEXT NOT NULL                                     │
 │    updated_at      TEXT NOT NULL                                     │
-│    UNIQUE (project_id, ticket_id, workflow_id)                       │
+│    UNIQUE (project_id, ticket_id, workflow_id, scope_type)           │
 │    FK (project_id, workflow_id) → workflows(project_id, id)         │
 │    FK (project_id, ticket_id) → tickets(project_id, id) CASCADE     │
 │                                                                      │
@@ -406,6 +412,8 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    id            TEXT NOT NULL                                       │
 │    project_id    TEXT NOT NULL  (FK → projects.id)                  │
 │    description   TEXT                                                │
+│    scope_type    TEXT NOT NULL DEFAULT 'ticket'                      │
+│                  CHECK (scope_type IN ('ticket', 'project'))         │
 │    categories    TEXT           (JSON array string)                  │
 │    phases        TEXT NOT NULL  (JSON array string)                  │
 │    created_at    TEXT NOT NULL                                       │
@@ -549,6 +557,8 @@ Templates use placeholders injected by the spawner:
 
 Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them, avoiding unnecessary queries.
 
+For project-scoped workflows, `${TICKET_ID}` is empty, and `${TICKET_TITLE}`/`${TICKET_DESCRIPTION}` are replaced with empty strings. `${PROJECT_ID}` is always available. Validation at workflow creation rejects project-scoped workflows whose agent prompts use `${TICKET_ID}`, `${TICKET_TITLE}`, or `${TICKET_DESCRIPTION}`.
+
 ### Findings Auto-Population
 
 Templates can include findings from previous phases using the `#{FINDINGS:...}` pattern. This eliminates the need for agents to call `nrworkflow findings get` at runtime.
@@ -630,6 +640,12 @@ POST   /api/v1/workflows              # Create
 GET    /api/v1/workflows/:id          # Get one
 PATCH  /api/v1/workflows/:id          # Update
 DELETE /api/v1/workflows/:id          # Delete
+
+# Project-scoped workflow operations
+POST /api/v1/projects/:id/workflow/run      # Start project workflow
+POST /api/v1/projects/:id/workflow/stop     # Stop project workflow
+POST /api/v1/projects/:id/workflow/restart  # Restart project agent
+GET  /api/v1/projects/:id/workflow          # Get project workflow state
 
 # Agent definitions (nested under workflows)
 GET    /api/v1/workflows/:wid/agents           # List agents for workflow

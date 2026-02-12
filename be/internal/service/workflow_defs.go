@@ -22,6 +22,15 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		return nil, fmt.Errorf("phases are required")
 	}
 
+	// Validate scope_type
+	scopeType := req.ScopeType
+	if scopeType == "" {
+		scopeType = "ticket"
+	}
+	if err := ValidateScopeType(scopeType); err != nil {
+		return nil, err
+	}
+
 	// Validate and normalize phases
 	normalizedPhases, err := normalizePhasesJSON(req.Phases)
 	if err != nil {
@@ -40,6 +49,7 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		ID:          strings.ToLower(req.ID),
 		ProjectID:   strings.ToLower(projectID),
 		Description: req.Description,
+		ScopeType:   scopeType,
 		Categories:  categoriesStr,
 		Phases:      string(normalizedPhases),
 		CreatedAt:   time.Now().UTC(),
@@ -47,9 +57,9 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 	}
 
 	_, err = s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, categories, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.ProjectID, wf.Description, wf.Categories, wf.Phases, now, now)
+		INSERT INTO workflows (id, project_id, description, scope_type, categories, phases, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Categories, wf.Phases, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "PRIMARY KEY") {
 			return nil, fmt.Errorf("workflow '%s' already exists", req.ID)
@@ -62,14 +72,14 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 
 // GetWorkflowDef gets a single workflow definition from the database
 func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*WorkflowDef, error) {
-	var description string
+	var description, scopeType string
 	var categoriesStr sql.NullString
 	var phasesStr string
 
 	err := s.pool.QueryRow(`
-		SELECT description, categories, phases
+		SELECT description, scope_type, categories, phases
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&description, &categoriesStr, &phasesStr)
+		projectID, workflowID).Scan(&description, &scopeType, &categoriesStr, &phasesStr)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -77,13 +87,18 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 		return nil, err
 	}
 
-	return parseWorkflowDefFromDB(description, categoriesStr, phasesStr)
+	wf, err := parseWorkflowDefFromDB(description, categoriesStr, phasesStr)
+	if err != nil {
+		return nil, err
+	}
+	wf.ScopeType = scopeType
+	return wf, nil
 }
 
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, categories, phases
+		SELECT id, description, scope_type, categories, phases
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -93,10 +108,10 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 
 	result := make(map[string]WorkflowDef)
 	for rows.Next() {
-		var id, description, phasesStr string
+		var id, description, scopeType, phasesStr string
 		var categoriesStr sql.NullString
 
-		if err := rows.Scan(&id, &description, &categoriesStr, &phasesStr); err != nil {
+		if err := rows.Scan(&id, &description, &scopeType, &categoriesStr, &phasesStr); err != nil {
 			return nil, err
 		}
 
@@ -104,6 +119,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		if err != nil {
 			return nil, fmt.Errorf("workflow '%s': %w", id, err)
 		}
+		wf.ScopeType = scopeType
 		result[id] = *wf
 	}
 
@@ -118,6 +134,13 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 	if req.Description != nil {
 		updates = append(updates, "description = ?")
 		args = append(args, *req.Description)
+	}
+	if req.ScopeType != nil {
+		if err := ValidateScopeType(*req.ScopeType); err != nil {
+			return err
+		}
+		updates = append(updates, "scope_type = ?")
+		args = append(args, *req.ScopeType)
 	}
 	if req.Categories != nil {
 		catJSON, _ := json.Marshal(*req.Categories)

@@ -9,6 +9,7 @@ import { CreateTicketPage } from '@/pages/CreateTicketPage'
 import { EditTicketPage } from '@/pages/EditTicketPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
+import { ProjectWorkflowsPage } from '@/pages/ProjectWorkflowsPage'
 import { useProjectStore } from '@/stores/projectStore'
 
 const queryClient = new QueryClient({
@@ -38,6 +39,7 @@ function App() {
             <Route path="tickets/:id" element={<TicketDetailPage />} />
             <Route path="tickets/:id/edit" element={<EditTicketPage />} />
             <Route path="workflows" element={<WorkflowsPage />} />
+            <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>

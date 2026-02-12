@@ -46,6 +46,10 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 		return err
 	}
 
+	if wf.ScopeType == "project" {
+		return fmt.Errorf("workflow '%s' is project-scoped; use project workflow API instead", workflowName)
+	}
+
 	// Ensure ticket exists (auto-create if not found)
 	var exists int
 	err = s.pool.QueryRow("SELECT 1 FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
@@ -76,7 +80,36 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 		return fmt.Errorf("failed to query ticket: %w", err)
 	}
 
-	// Build phase data
+	wi := s.buildWorkflowInstance(projectID, workflowName, wf)
+	wi.TicketID = ticketID
+	wi.ScopeType = "ticket"
+
+	return s.wfiRepo.Create(wi)
+}
+
+// InitProjectWorkflow initializes a project-scoped workflow (no ticket required)
+func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.ProjectWorkflowRunRequest) error {
+	if req.Workflow == "" {
+		return fmt.Errorf("workflow name is required")
+	}
+
+	wf, err := s.GetWorkflowDef(projectID, req.Workflow)
+	if err != nil {
+		return err
+	}
+
+	if wf.ScopeType != "project" {
+		return fmt.Errorf("workflow '%s' is not a project-scoped workflow", req.Workflow)
+	}
+
+	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf)
+	wi.ScopeType = "project"
+
+	return s.wfiRepo.Create(wi)
+}
+
+// buildWorkflowInstance creates a WorkflowInstance from a workflow definition
+func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef) *model.WorkflowInstance {
 	phaseOrder := make([]string, len(wf.Phases))
 	phases := make(map[string]model.PhaseStatus)
 	var firstPhase string
@@ -92,10 +125,9 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	phaseOrderJSON, _ := json.Marshal(phaseOrder)
 	phasesJSON, _ := json.Marshal(phases)
 
-	wi := &model.WorkflowInstance{
+	return &model.WorkflowInstance{
 		ID:           uuid.New().String(),
 		ProjectID:    projectID,
-		TicketID:     ticketID,
 		WorkflowID:   workflowName,
 		Status:       model.WorkflowInstanceActive,
 		CurrentPhase: sql.NullString{String: firstPhase, Valid: firstPhase != ""},
@@ -104,8 +136,13 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 		Findings:     "{}",
 		RetryCount:   0,
 	}
+}
 
-	return s.wfiRepo.Create(wi)
+// GetStatusByInstance builds v4-compatible status from a workflow instance directly
+func (s *WorkflowService) GetStatusByInstance(wi *model.WorkflowInstance) (map[string]interface{}, error) {
+	result := s.buildV4State(wi)
+
+	return result, nil
 }
 
 // GetStatus gets workflow status for a ticket
@@ -137,16 +174,37 @@ func (s *WorkflowService) GetStatus(projectID, ticketID string, req *types.Workf
 		return nil, err
 	}
 
-	// Build v4-compatible response
+	result := s.buildV4State(wi)
+
+	// Handle field extraction
+	if req.Field != "" {
+		value, ok := result[req.Field]
+		if !ok {
+			return nil, fmt.Errorf("field '%s' not found", req.Field)
+		}
+		return map[string]interface{}{"value": value}, nil
+	}
+
+	return result, nil
+}
+
+// buildV4State builds the v4-compatible response from a workflow instance
+func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]interface{} {
+	scopeType := wi.ScopeType
+	if scopeType == "" {
+		scopeType = "ticket"
+	}
+
 	result := map[string]interface{}{
 		"version":        4,
 		"initialized_at": wi.CreatedAt.Format(time.RFC3339),
+		"scope_type":     scopeType,
 		"current_phase":  "",
 		"category":       "",
 		"retry_count":    wi.RetryCount,
 		"phases":         wi.GetPhases(),
 		"phase_order":    wi.GetPhaseOrder(),
-		"workflow":       workflowName,
+		"workflow":       wi.WorkflowID,
 		"agent_retries":  map[string]int{},
 	}
 	if wi.CurrentPhase.Valid {
@@ -191,16 +249,7 @@ func (s *WorkflowService) GetStatus(projectID, ticketID string, req *types.Workf
 	// Combined findings: workflow-level + per-session
 	result["findings"] = s.BuildCombinedFindings(wi)
 
-	// Handle field extraction
-	if req.Field != "" {
-		value, ok := result[req.Field]
-		if !ok {
-			return nil, fmt.Errorf("field '%s' not found", req.Field)
-		}
-		return map[string]interface{}{"value": value}, nil
-	}
-
-	return result, nil
+	return result
 }
 
 // Set sets a workflow field (restricted to category, current_phase, retry_count)
@@ -268,9 +317,19 @@ func (s *WorkflowService) GetWorkflowInstance(projectID, ticketID, workflowName 
 	return s.wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 }
 
+// GetProjectWorkflowInstance returns the workflow instance for a project-scoped workflow
+func (s *WorkflowService) GetProjectWorkflowInstance(projectID, workflowName string) (*model.WorkflowInstance, error) {
+	return s.wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
+}
+
 // ListWorkflowInstances returns all workflow instances for a ticket
 func (s *WorkflowService) ListWorkflowInstances(projectID, ticketID string) ([]*model.WorkflowInstance, error) {
 	return s.wfiRepo.ListByTicket(projectID, ticketID)
+}
+
+// ListProjectWorkflowInstances returns all project-scoped workflow instances
+func (s *WorkflowService) ListProjectWorkflowInstances(projectID string) ([]*model.WorkflowInstance, error) {
+	return s.wfiRepo.ListByProjectScope(projectID)
 }
 
 // ListWorkflows lists available workflows (loads from DB)

@@ -67,23 +67,8 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("failed to start server: %v", err)
 	}
 
-	// 6. Project dir with config.json
+	// 6. Project dir
 	projectDir := t.TempDir()
-	configDir := filepath.Join(projectDir, ".claude", "nrworkflow")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("failed to create config dir: %v", err)
-	}
-
-	configJSON := `{
-  "cli": {"default": "claude"},
-  "agents": {
-    "analyzer": {"model": "sonnet", "timeout": 10},
-    "builder": {"model": "opus", "timeout": 20}
-  }
-}`
-	if err := os.WriteFile(filepath.Join(configDir, "config.json"), []byte(configJSON), 0644); err != nil {
-		t.Fatalf("failed to write config: %v", err)
-	}
 
 	// 7. Services
 	projectSvc := service.NewProjectService(pool)

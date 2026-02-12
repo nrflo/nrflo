@@ -332,7 +332,6 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    closed_at     TEXT                                                │
 │    created_by    TEXT NOT NULL                                       │
 │    close_reason  TEXT                                                │
-│    agents_state  TEXT                                                │
 │    PRIMARY KEY (project_id, id)                                      │
 │                                                                      │
 │  DEPENDENCIES                                                        │
@@ -693,13 +692,6 @@ The socket only handles agent-facing methods (findings.*, agent.complete/fail/co
 5. **Documentation updates:**
    - `guidelines/agent-protocol.md` - if agent-facing commands change
 
-### Adding New Configuration Options
-
-1. Add to project's `.claude/nrworkflow/config.json`
-2. Update code to read the new option in `nrworkflow/internal/service/workflow.go`
-3. **Documentation updates:**
-   - Root `CLAUDE.md` - update Configuration section
-
 ### Modifying API Endpoints (HTTP)
 
 1. Update handlers in `nrworkflow/internal/api/`
@@ -757,7 +749,7 @@ Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.Wo
 
 - **Socket path limit**: macOS has 104-char limit. `NewTestEnv` uses `/tmp/nrwf-it-*.sock`
 - **Server stop hangs**: Cleanup uses 2-sec timeout context to avoid blocking
-- **Config file required**: `NewTestEnv` creates `.claude/nrworkflow/config.json` automatically
+- **No config file needed**: Agent config comes from DB agent_definitions, not file-based config
 
 ### Running Tests
 

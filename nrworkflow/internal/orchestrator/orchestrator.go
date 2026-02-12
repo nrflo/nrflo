@@ -82,12 +82,6 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	}
 	projectRoot := project.RootPath.String
 
-	// Load project config
-	projConfig, err := service.LoadProjectConfig(projectRoot)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load project config: %w", err)
-	}
-
 	// Load DB workflow definitions and agent definitions
 	database, err = db.Open(o.dataPath)
 	if err != nil {
@@ -110,7 +104,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	database.Close()
 
 	// Convert to spawner types
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig(projConfig, dbWorkflows, dbAgentDefs)
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig(dbWorkflows, dbAgentDefs)
 
 	// Find the requested workflow
 	svcWf, ok := svcWorkflows[req.WorkflowName]
@@ -202,7 +196,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	}))
 
 	// Run orchestration loop in goroutine
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, projConfig, spawnWorkflows, spawnAgents, svcWf)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf)
 
 	return &RunResult{
 		InstanceID: wi.ID,
@@ -307,7 +301,6 @@ func (o *Orchestrator) runLoop(
 	req RunRequest,
 	parentSession string,
 	projectRoot string,
-	projConfig *service.ProjectConfig,
 	workflows map[string]spawner.WorkflowDef,
 	agents map[string]spawner.AgentConfig,
 	svcWf service.SpawnerWorkflowDef,
@@ -344,14 +337,12 @@ func (o *Orchestrator) runLoop(
 
 		// Create spawner for this phase
 		sp := spawner.New(spawner.Config{
-			Workflows:        workflows,
-			Agents:           agents,
-			DefaultCLI:       projConfig.CLI.Default,
-			DataPath:         o.dataPath,
-			ProjectRoot:      projectRoot,
-			MaxContinuations: projConfig.Spawner.MaxContinuations,
-			ContextThreshold: projConfig.Spawner.ContextThreshold,
-			WSHub:            o.wsHub,
+			Workflows:   workflows,
+			Agents:      agents,
+			DefaultCLI:  "claude",
+			DataPath:    o.dataPath,
+			ProjectRoot: projectRoot,
+			WSHub:       o.wsHub,
 		})
 
 		err := sp.Spawn(ctx, spawner.SpawnRequest{

@@ -50,18 +50,10 @@ type AgentConfig struct {
 	Timeout int    `json:"timeout"`
 }
 
-// FullConfig represents the complete config.json structure
-type FullConfig struct {
-	CLI struct {
-		Default string `json:"default"`
-	} `json:"cli"`
-	Agents    map[string]AgentConfig `json:"agents"`
-	Workflows map[string]WorkflowDef `json:"workflows"`
-	Spawner   struct {
-		MaxContinuations int `json:"max_continuations,omitempty"`
-		ContextThreshold int `json:"context_threshold,omitempty"`
-	} `json:"spawner,omitempty"`
-}
+const (
+	defaultMaxContinuations = 3
+	defaultContextThreshold = 85
+)
 
 // Config holds the spawner configuration
 type Config struct {
@@ -74,27 +66,8 @@ type Config struct {
 	TimeoutGraceSec        int // Grace period for SIGTERM before SIGKILL (default: 5)
 	CompletionGraceSec     int // Wait for explicit completion after exit 0 (default: 60)
 	MessageFlushIntervalMs int // Interval between message flushes (default: 2000)
-	// Context continuation settings
-	MaxContinuations int // Max times an agent can be continued (default: 3)
-	ContextThreshold int // Context usage % at which to suggest continuation (default: 85)
 	// WebSocket hub for real-time updates (optional)
 	WSHub *ws.Hub
-}
-
-// getMaxContinuations returns the configured max continuations or default
-func (c *Config) getMaxContinuations() int {
-	if c.MaxContinuations > 0 {
-		return c.MaxContinuations
-	}
-	return 3
-}
-
-// getContextThreshold returns the configured context threshold or default
-func (c *Config) getContextThreshold() int {
-	if c.ContextThreshold > 0 {
-		return c.ContextThreshold
-	}
-	return 85
 }
 
 // processInfo tracks a single spawned agent process
@@ -339,7 +312,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		Env: append(os.Environ(),
 			fmt.Sprintf("NRWORKFLOW_PROJECT=%s", req.ProjectID),
 			"NRWF_SPAWNED=1",
-			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-s.config.getContextThreshold()),
+			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-defaultContextThreshold),
 		),
 	}
 
@@ -503,10 +476,9 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 
 				// Check for continuation
 				if proc.finalStatus == "CONTINUE" {
-					maxCont := s.config.getMaxContinuations()
-					if proc.continuationCount < maxCont {
+					if proc.continuationCount < defaultMaxContinuations {
 						fmt.Printf("  %s: Continuation %d/%d — relaunching with fresh context...\n",
-							proc.modelID, proc.continuationCount+1, maxCont)
+							proc.modelID, proc.continuationCount+1, defaultMaxContinuations)
 						newProc, err := s.relaunchForContinuation(proc, req, phase)
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "  Warning: Failed to relaunch %s: %v\n", proc.modelID, err)
@@ -517,7 +489,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						}
 					} else {
 						fmt.Fprintf(os.Stderr, "  %s: Max continuations (%d) reached, marking as fail\n",
-							proc.modelID, maxCont)
+							proc.modelID, defaultMaxContinuations)
 						proc.finalStatus = "FAIL"
 						s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 							proc.sessionID, proc.agentID, "fail", "max_continuations", proc.modelID)
@@ -890,12 +862,6 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string
 	if instructions, ok := findings["user_instructions"]; ok {
 		if str, ok := instructions.(string); ok && str != "" {
 			return str
-		}
-		// Fallback: handle old nested map format {"instructions": "..."}
-		if m, ok := instructions.(map[string]interface{}); ok {
-			if str, ok := m["instructions"].(string); ok && str != "" {
-				return str
-			}
 		}
 	}
 	return "_No user instructions provided_"

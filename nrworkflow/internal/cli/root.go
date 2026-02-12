@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"nrworkflow/internal/client"
-	"nrworkflow/internal/config"
 )
 
 var version = "1.0.0"
@@ -33,23 +32,9 @@ Agent CLI subset (used by spawned agents):
   nrworkflow agent complete/fail/continue <ticket> <agent-type> -w <workflow>
   nrworkflow findings add/append/get/delete ...`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Priority 1: Environment variable (for CI/CD, scripting)
 		if envProject := os.Getenv("NRWORKFLOW_PROJECT"); envProject != "" {
 			ProjectID = envProject
 		}
-
-		// Priority 2: Search for .claude/nrworkflow/config.json upward
-		if ProjectID == "" {
-			result, err := config.FindProjectConfig("")
-			if err != nil {
-				// Only warn, don't fail - some commands don't need a project
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
-			} else if result != nil && result.Config != nil && result.Config.Project != "" {
-				ProjectID = result.Config.Project
-				ProjectRoot = result.ConfigDir
-			}
-		}
-
 		return nil
 	},
 }
@@ -91,7 +76,7 @@ func CheckServer() error {
 // RequireProject is a helper that ensures ProjectID is set
 func RequireProject() error {
 	if ProjectID == "" {
-		return fmt.Errorf("project not found. Create .claude/nrworkflow/config.json with 'project' field, or set NRWORKFLOW_PROJECT env")
+		return fmt.Errorf("project not found. Set NRWORKFLOW_PROJECT env variable")
 	}
 	return nil
 }

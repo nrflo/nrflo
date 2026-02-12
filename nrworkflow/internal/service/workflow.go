@@ -111,21 +111,6 @@ type PhaseDef struct {
 	} `json:"parallel,omitempty"`
 }
 
-// SpawnerConfig holds spawner-specific configuration
-type SpawnerConfig struct {
-	MaxContinuations int `json:"max_continuations,omitempty"`
-	ContextThreshold int `json:"context_threshold,omitempty"`
-}
-
-// ProjectConfig represents the project configuration from config.json
-type ProjectConfig struct {
-	CLI struct {
-		Default string `json:"default"`
-	} `json:"cli"`
-	Agents  map[string]AgentConfig `json:"agents"`
-	Spawner SpawnerConfig          `json:"spawner,omitempty"`
-}
-
 // WorkflowService handles workflow business logic
 type WorkflowService struct {
 	pool    *db.Pool

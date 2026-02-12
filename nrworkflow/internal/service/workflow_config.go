@@ -4,38 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 
 	"nrworkflow/internal/model"
 )
-
-// --- Config Loading ---
-
-// LoadProjectConfig loads project config from config.json (agents, CLI, spawner settings only).
-// Logs a deprecation warning if the config contains a "workflows" key.
-func LoadProjectConfig(projectRoot string) (*ProjectConfig, error) {
-	if projectRoot == "" {
-		return nil, fmt.Errorf("project root required")
-	}
-
-	configPath := filepath.Join(projectRoot, ".claude", "nrworkflow", "config.json")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("config not found: %s. Create a config.json at .claude/nrworkflow/config.json", configPath)
-		}
-		return nil, fmt.Errorf("failed to read config: %w", err)
-	}
-
-	var config ProjectConfig
-	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	return &config, nil
-}
 
 // --- Phase Parsing Helpers ---
 
@@ -121,9 +93,9 @@ func normalizePhasesJSON(raw json.RawMessage) (json.RawMessage, error) {
 	return json.Marshal(normalized)
 }
 
-// BuildSpawnerConfig converts project config and DB models into spawner-compatible types.
+// BuildSpawnerConfig converts DB models into spawner-compatible types.
 // Shared by CLI agent spawn and server-side orchestrator.
-func BuildSpawnerConfig(projConfig *ProjectConfig, dbWorkflows []*model.Workflow, dbAgentDefs []*model.AgentDefinition) (map[string]SpawnerWorkflowDef, map[string]SpawnerAgentConfig) {
+func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.AgentDefinition) (map[string]SpawnerWorkflowDef, map[string]SpawnerAgentConfig) {
 	workflows := make(map[string]SpawnerWorkflowDef)
 	for _, wf := range dbWorkflows {
 		var rawPhases []json.RawMessage
@@ -160,15 +132,6 @@ func BuildSpawnerConfig(projConfig *ProjectConfig, dbWorkflows []*model.Workflow
 	}
 
 	agents := make(map[string]SpawnerAgentConfig)
-	if projConfig != nil {
-		for name, ac := range projConfig.Agents {
-			agents[name] = SpawnerAgentConfig{
-				Model:   ac.Model,
-				Timeout: ac.Timeout,
-			}
-		}
-	}
-
 	for _, def := range dbAgentDefs {
 		agents[def.ID] = SpawnerAgentConfig{
 			Model:   def.Model,

@@ -6,6 +6,10 @@ nrworkflow is a multi-workflow state management system for ticket implementation
 
 The server runs as `nrworkflow serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use a minimal CLI subset (`agent complete/fail/continue`, `findings add/append/get/delete`) to report results.
 
+## New features
+Do not keep old / deprecated / backward compat / legacy code
+Remove it right away.
+
 ## Mandatory Rules
 
 ### 1. Update Documentation on Any Change
@@ -25,11 +29,6 @@ Update [nrworkflow/CLAUDE.md](nrworkflow/CLAUDE.md) when modifying:
 
 Update [ui/CLAUDE.md](ui/CLAUDE.md) when modifying:
 - Frontend components, pages, WebSocket protocol, API client code, TypeScript types
-
-#### 1d. Guidelines
-
-Update relevant guidelines when:
-- Changing agent behavior → `guidelines/agent-protocol.md`
 
 ### 2. Phase Sequence is Enforced
 
@@ -61,19 +60,13 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 | `restart.sh` | Rebuild and restart BE + UI servers (background) |
 | `stop.sh` | Stop running servers |
 
-**Project files (`.claude/`):**
-
-| File | Purpose |
-|------|---------|
-| `nrworkflow/config.json` | Project config (CLI default, spawner settings) |
-
 ## Architecture Principles
 
 1. **Server-only**: `nrworkflow serve` is the only user-facing command; all management via web UI
 2. **Agent CLI subset**: Spawned agents use `agent complete/fail/continue` and `findings add/append/get/delete` via Unix socket
 3. **Auto-migrate**: Database migrations run automatically on server startup
 4. **Go binary**: Single `nrworkflow` binary serves both server and agent-facing CLI roles
-5. **Project-scoped**: Project discovered from `.claude/nrworkflow/config.json` or `NRWORKFLOW_PROJECT` env
+5. **Project-scoped**: Project discovered from `NRWORKFLOW_PROJECT` env variable
 6. **Single database**: `~/projects/2026/nrworkflow/nrworkflow.data` (SQLite, global for all projects)
 7. **Connection Pool**: DB uses connection pooling (10 max, 5 idle)
 8. **Versioned migrations**: Schema managed by golang-migrate with embedded SQL files in `db/migrations/`
@@ -87,11 +80,6 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator runs each phase sequentially in a goroutine, reusing `spawner.Spawn()`, with cancellation support via `/workflow/stop`.
 
 ## Quick Start
-
-```bash
-cd ~/projects/2026/nrworkflow/nrworkflow && make build && sudo cp nrworkflow /usr/local/bin/
-nrworkflow serve    # Start server (auto-migrates DB)
-```
 
 Web UI: `./restart.sh` then open `http://localhost:5173`
 
@@ -232,14 +220,3 @@ Each v4 workflow state contains:
 | `ui/start-server.sh` | Start both servers in foreground (interactive mode) |
 
 Logs are written to `logs/backend.log` and `logs/ui.log` when using `restart.sh`.
-
-## Guidelines
-
-Located in `~/projects/2026/nrworkflow/guidelines/`:
-
-### agent-protocol.md
-Agent conventions:
-- Ticket header format (`## Agent: <type>`, `## Ticket: <id>`)
-- Session markers (`${PARENT_SESSION}`, `${CHILD_SESSION}`)
-- Completion commands (`nrworkflow agent complete/fail/continue <ticket> <agent-type>`)
-- Context continuation protocol (relaunch with fresh context when running low)

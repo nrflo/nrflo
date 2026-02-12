@@ -149,16 +149,11 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		wfiRepo.UpdateCategory(wi.ID, req.Category)
 	}
 
-	// Store user instructions as workflow-level findings
-	if req.Instructions != "" {
-		findings := wi.GetFindings()
-		findings["user_instructions"] = req.Instructions
-		findingsJSON, _ := json.Marshal(findings)
-		wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
-	}
-
-	// Store orchestration status in findings
+	// Store user instructions and orchestration status in findings (single write)
 	findings := wi.GetFindings()
+	if req.Instructions != "" {
+		findings["user_instructions"] = req.Instructions
+	}
 	findings["_orchestration"] = map[string]interface{}{
 		"status": "running",
 	}

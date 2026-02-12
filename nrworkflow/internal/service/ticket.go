@@ -253,6 +253,17 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 	return err
 }
 
+// SetInProgress sets a ticket's status to in_progress, but only if currently open.
+// Returns nil if the ticket is not open (no-op).
+func (s *TicketService) SetInProgress(projectID, ticketID string) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := s.pool.Exec(`
+		UPDATE tickets SET status = ?, updated_at = ?
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?) AND status = ?`,
+		model.StatusInProgress, now, projectID, ticketID, model.StatusOpen)
+	return err
+}
+
 // Close closes a ticket
 func (s *TicketService) Close(projectID, ticketID string, reason string) error {
 	now := time.Now().UTC().Format(time.RFC3339)

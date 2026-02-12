@@ -507,3 +507,188 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 		t.Fatalf("expected close_reason %q, got %v", expectedReason, ticket.CloseReason)
 	}
 }
+
+// --- SetInProgress tests ---
+
+func TestSetInProgressOnOpenTicket(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "SIP-1", "Open ticket")
+
+	// Verify ticket starts open
+	ticket := env.getTicket(t, "SIP-1")
+	if ticket.Status != model.StatusOpen {
+		t.Fatalf("expected status 'open', got %v", ticket.Status)
+	}
+
+	// Call SetInProgress
+	ticketSvc := service.NewTicketService(env.pool)
+	err := ticketSvc.SetInProgress(env.project, "SIP-1")
+	if err != nil {
+		t.Fatalf("SetInProgress failed: %v", err)
+	}
+
+	// Verify status changed
+	ticket = env.getTicket(t, "SIP-1")
+	if ticket.Status != model.StatusInProgress {
+		t.Fatalf("expected status 'in_progress', got %v", ticket.Status)
+	}
+}
+
+func TestSetInProgressOnClosedTicket(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "SIP-2", "Closed ticket")
+
+	// Close the ticket
+	ticketSvc := service.NewTicketService(env.pool)
+	err := ticketSvc.Close(env.project, "SIP-2", "done")
+	if err != nil {
+		t.Fatalf("failed to close ticket: %v", err)
+	}
+
+	// Call SetInProgress — should be a no-op
+	err = ticketSvc.SetInProgress(env.project, "SIP-2")
+	if err != nil {
+		t.Fatalf("SetInProgress returned error: %v", err)
+	}
+
+	// Verify status stays closed
+	ticket := env.getTicket(t, "SIP-2")
+	if ticket.Status != model.StatusClosed {
+		t.Fatalf("expected status 'closed', got %v", ticket.Status)
+	}
+}
+
+func TestSetInProgressOnAlreadyInProgressTicket(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "SIP-3", "Already in progress")
+
+	// Set to in_progress first time
+	ticketSvc := service.NewTicketService(env.pool)
+	err := ticketSvc.SetInProgress(env.project, "SIP-3")
+	if err != nil {
+		t.Fatalf("first SetInProgress failed: %v", err)
+	}
+
+	// Call again — should be a no-op (status is in_progress, not open)
+	err = ticketSvc.SetInProgress(env.project, "SIP-3")
+	if err != nil {
+		t.Fatalf("second SetInProgress returned error: %v", err)
+	}
+
+	// Verify status stays in_progress
+	ticket := env.getTicket(t, "SIP-3")
+	if ticket.Status != model.StatusInProgress {
+		t.Fatalf("expected status 'in_progress', got %v", ticket.Status)
+	}
+}
+
+func TestSetInProgressUpdatesTimestamp(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "SIP-4", "Timestamp check")
+
+	// Record original updated_at
+	before := env.getTicket(t, "SIP-4")
+	// RFC3339 has second precision, so we need to wait > 1s
+	time.Sleep(1100 * time.Millisecond)
+
+	ticketSvc := service.NewTicketService(env.pool)
+	err := ticketSvc.SetInProgress(env.project, "SIP-4")
+	if err != nil {
+		t.Fatalf("SetInProgress failed: %v", err)
+	}
+
+	after := env.getTicket(t, "SIP-4")
+	if !after.UpdatedAt.After(before.UpdatedAt) {
+		t.Fatalf("expected updated_at to advance, before=%v after=%v", before.UpdatedAt, after.UpdatedAt)
+	}
+}
+
+// --- Orchestrator Start sets ticket to in_progress ---
+
+func TestStartSetsTicketToInProgress(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "START-1", "Start workflow test")
+
+	// Verify ticket starts open
+	ticket := env.getTicket(t, "START-1")
+	if ticket.Status != model.StatusOpen {
+		t.Fatalf("expected status 'open', got %v", ticket.Status)
+	}
+
+	// We can't call Start() fully (it needs spawner infra), but we can
+	// simulate the SetInProgress call that Start() makes. The orchestrator
+	// opens a new pool and calls SetInProgress. Replicate that path.
+	pool, err := db.NewPool(env.dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	ticketSvc := service.NewTicketService(pool)
+	err = ticketSvc.SetInProgress(env.project, "START-1")
+	pool.Close()
+	if err != nil {
+		t.Fatalf("SetInProgress failed: %v", err)
+	}
+
+	// Verify ticket is now in_progress
+	ticket = env.getTicket(t, "START-1")
+	if ticket.Status != model.StatusInProgress {
+		t.Fatalf("expected status 'in_progress', got %v", ticket.Status)
+	}
+}
+
+func TestStartDoesNotChangeClosedTicketStatus(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "START-2", "Closed before start")
+
+	// Close the ticket
+	ticketSvc := service.NewTicketService(env.pool)
+	err := ticketSvc.Close(env.project, "START-2", "pre-closed")
+	if err != nil {
+		t.Fatalf("failed to close ticket: %v", err)
+	}
+
+	// Simulate the SetInProgress call from Start()
+	err = ticketSvc.SetInProgress(env.project, "START-2")
+	if err != nil {
+		t.Fatalf("SetInProgress returned error: %v", err)
+	}
+
+	// Status should remain closed
+	ticket := env.getTicket(t, "START-2")
+	if ticket.Status != model.StatusClosed {
+		t.Fatalf("expected status 'closed', got %v", ticket.Status)
+	}
+}
+
+func TestMarkFailedKeepsInProgressStatus(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "MF-2", "In progress before fail")
+	wfiID := env.initWorkflow(t, "MF-2")
+
+	// Set ticket to in_progress (simulating what Start does)
+	ticketSvc := service.NewTicketService(env.pool)
+	err := ticketSvc.SetInProgress(env.project, "MF-2")
+	if err != nil {
+		t.Fatalf("SetInProgress failed: %v", err)
+	}
+
+	// markFailed should NOT change ticket status
+	env.orch.markFailed(wfiID, RunRequest{
+		ProjectID:    env.project,
+		TicketID:     "MF-2",
+		WorkflowName: "test",
+	}, "phase failed")
+
+	// Ticket should remain in_progress (not closed, not reverted to open)
+	ticket := env.getTicket(t, "MF-2")
+	if ticket.Status != model.StatusInProgress {
+		t.Fatalf("expected status 'in_progress' after failure, got %v", ticket.Status)
+	}
+}

@@ -175,6 +175,15 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	parentSession := uuid.New().String()
 	database.Close()
 
+	// Set ticket to in_progress if currently open (best-effort)
+	if statusPool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig()); err == nil {
+		ticketService := service.NewTicketService(statusPool)
+		if err := ticketService.SetInProgress(req.ProjectID, req.TicketID); err != nil {
+			log.Printf("[orchestrator] Failed to set ticket %s to in_progress: %v", req.TicketID, err)
+		}
+		statusPool.Close()
+	}
+
 	// Build spawner config maps
 	spawnWorkflows := convertToSpawnerWorkflows(svcWorkflows)
 	spawnAgents := convertToSpawnerAgents(svcAgents)

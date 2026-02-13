@@ -1,7 +1,7 @@
 import type { Node, Edge } from '@xyflow/react'
 import type { AgentFlowNodeData } from './types'
 
-const AGENT_NODE_WIDTH = 240
+const AGENT_NODE_WIDTH = 320
 const HORIZONTAL_GAP = 60
 const VERTICAL_GAP = 120
 const BASE_HEIGHT = 110

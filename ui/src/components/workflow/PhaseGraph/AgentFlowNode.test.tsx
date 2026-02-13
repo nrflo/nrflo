@@ -289,63 +289,63 @@ describe('AgentFlowNode', () => {
 
   // Unified card sizing (ticket nrworkflow-40b179)
   describe('unified card sizing', () => {
-    it('running card has w-[220px] fixed width', () => {
+    it('running card has w-[300px] fixed width', () => {
       const data = makeData({ agent: makeAgent({ result: undefined }) })
       render(<AgentFlowNode data={data} />)
       const button = screen.getByRole('button')
-      expect(button.className).toContain('w-[220px]')
+      expect(button.className).toContain('w-[300px]')
     })
 
-    it('completed card has w-[220px] fixed width', () => {
+    it('completed card has w-[300px] fixed width', () => {
       const data = makeData({
         agent: undefined,
         historyEntry: makeHistory({ result: 'pass' }),
       })
       render(<AgentFlowNode data={data} />)
       const button = screen.getByRole('button')
-      expect(button.className).toContain('w-[220px]')
+      expect(button.className).toContain('w-[300px]')
     })
 
-    it('failed card has w-[220px] fixed width', () => {
+    it('failed card has w-[300px] fixed width', () => {
       const data = makeData({
         agent: undefined,
         historyEntry: makeHistory({ result: 'fail' }),
       })
       render(<AgentFlowNode data={data} />)
       const button = screen.getByRole('button')
-      expect(button.className).toContain('w-[220px]')
+      expect(button.className).toContain('w-[300px]')
     })
 
-    it('pending placeholder has w-[220px] fixed width', () => {
+    it('pending placeholder has w-[300px] fixed width', () => {
       const data = makeData({ agent: undefined, isPending: true })
       const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[220px\\]')
+      const card = container.querySelector('.w-\\[300px\\]')
       expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[220px]')
+      expect(card?.className).toContain('w-[300px]')
     })
 
-    it('skipped placeholder has w-[220px] fixed width', () => {
+    it('skipped placeholder has w-[300px] fixed width', () => {
       const data = makeData({ agent: undefined, isSkipped: true })
       const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[220px\\]')
+      const card = container.querySelector('.w-\\[300px\\]')
       expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[220px]')
+      expect(card?.className).toContain('w-[300px]')
     })
 
-    it('completed placeholder has w-[220px] fixed width', () => {
+    it('completed placeholder has w-[300px] fixed width', () => {
       const data = makeData({ agent: undefined, isCompleted: true })
       const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[220px\\]')
+      const card = container.querySelector('.w-\\[300px\\]')
       expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[220px]')
+      expect(card?.className).toContain('w-[300px]')
     })
 
-    it('error placeholder has w-[220px] fixed width', () => {
+    it('error placeholder has w-[300px] fixed width', () => {
       const data = makeData({ agent: undefined, isError: true })
       const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[220px\\]')
+      const card = container.querySelector('.w-\\[300px\\]')
       expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[220px]')
+      expect(card?.className).toContain('w-[300px]')
     })
 
     it('running card has min-h-[90px] minimum height', () => {
@@ -394,15 +394,15 @@ describe('AgentFlowNode', () => {
 
       variants.forEach(({ label }) => {
         const { unmount, container } = render(<AgentFlowNode data={variants.find(v => v.label === label)!.data} />)
-        const card = container.querySelector('.w-\\[220px\\]')
+        const card = container.querySelector('.w-\\[300px\\]')
         expect(card).toBeInTheDocument()
-        expect(card?.className).toContain('w-[220px]')
+        expect(card?.className).toContain('w-[300px]')
         unmount()
       })
     })
 
     it('does not use min-w class on any card variant', () => {
-      // Ensure old min-w-[180px] and min-w-[220px] are removed
+      // Ensure old min-w-[180px] and min-w-[300px] are removed
       const variants = [
         { label: 'running', data: makeData({ agent: makeAgent({ result: undefined }) }) },
         { label: 'pending', data: makeData({ agent: undefined, isPending: true }) },

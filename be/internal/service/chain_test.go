@@ -371,6 +371,13 @@ func TestCreateChain_HappyPath(t *testing.T) {
 	if chain.Items[0].Position != 0 || chain.Items[1].Position != 1 {
 		t.Errorf("expected positions 0, 1, got %d, %d", chain.Items[0].Position, chain.Items[1].Position)
 	}
+	// Verify ticket titles are populated
+	if chain.Items[0].TicketTitle != "A" {
+		t.Errorf("expected ticket title 'A', got %s", chain.Items[0].TicketTitle)
+	}
+	if chain.Items[1].TicketTitle != "B" {
+		t.Errorf("expected ticket title 'B', got %s", chain.Items[1].TicketTitle)
+	}
 }
 
 // TestCreateChain_CycleDetection verifies cycle detection during creation
@@ -520,22 +527,23 @@ func TestUpdateChain_TicketReexpansion(t *testing.T) {
 	}
 
 	// Update to include C (also depends on A)
-	_, err = svc.UpdateChain(chain.ID, &types.ChainUpdateRequest{
+	updated, err := svc.UpdateChain(chain.ID, &types.ChainUpdateRequest{
 		TicketIDs: []string{"B", "C"},
 	})
 	if err != nil {
 		t.Fatalf("UpdateChain failed: %v", err)
 	}
 
-	// Get with items to verify
-	updated, err := svc.GetChainWithItems(chain.ID)
-	if err != nil {
-		t.Fatalf("GetChainWithItems failed: %v", err)
-	}
-
 	// Should now have A, B, C (A still first as shared blocker)
 	if len(updated.Items) != 3 {
 		t.Fatalf("expected 3 items after update, got %d", len(updated.Items))
+	}
+
+	// Verify ticket titles are populated in UpdateChain response
+	for _, item := range updated.Items {
+		if item.TicketTitle == "" {
+			t.Errorf("expected ticket title for %s to be non-empty", item.TicketID)
+		}
 	}
 }
 
@@ -582,5 +590,112 @@ func TestCreateChain_SingleTicketNoDeps(t *testing.T) {
 	}
 	if chain.Items[0].TicketID != "a" {
 		t.Errorf("expected ticket A, got %s", chain.Items[0].TicketID)
+	}
+}
+
+// TestChainItemTicketTitle_DeletedTicket verifies ticket title is empty string when ticket is deleted
+func TestChainItemTicketTitle_DeletedTicket(t *testing.T) {
+	pool, projectID := setupChainTestDB(t)
+	defer pool.Close()
+
+	base := time.Now()
+	createTestTickets(t, pool, projectID, map[string]time.Time{
+		"A": base,
+		"B": base.Add(time.Second),
+	})
+
+	svc := NewChainService(pool)
+	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
+		Name:         "Test",
+		WorkflowName: "test",
+		TicketIDs:    []string{"A", "B"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	// Verify initial titles are populated
+	if chain.Items[0].TicketTitle != "A" {
+		t.Errorf("expected title 'A', got %s", chain.Items[0].TicketTitle)
+	}
+	if chain.Items[1].TicketTitle != "B" {
+		t.Errorf("expected title 'B', got %s", chain.Items[1].TicketTitle)
+	}
+
+	// Delete ticket A
+	_, err = pool.Exec(`DELETE FROM tickets WHERE LOWER(id) = LOWER(?) AND LOWER(project_id) = LOWER(?)`, "A", projectID)
+	if err != nil {
+		t.Fatalf("failed to delete ticket: %v", err)
+	}
+
+	// Retrieve chain again
+	retrieved, err := svc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	// Verify ticket A has empty title (LEFT JOIN returns NULL, COALESCE makes it empty string)
+	if retrieved.Items[0].TicketTitle != "" {
+		t.Errorf("expected empty title for deleted ticket, got %s", retrieved.Items[0].TicketTitle)
+	}
+
+	// Ticket B should still have its title
+	if retrieved.Items[1].TicketTitle != "B" {
+		t.Errorf("expected title 'B', got %s", retrieved.Items[1].TicketTitle)
+	}
+}
+
+// TestGetChainWithItems_TicketTitlesPopulated verifies GetChainWithItems includes ticket titles
+func TestGetChainWithItems_TicketTitlesPopulated(t *testing.T) {
+	pool, projectID := setupChainTestDB(t)
+	defer pool.Close()
+
+	base := time.Now()
+	createTestTickets(t, pool, projectID, map[string]time.Time{
+		"TICKET-1": base,
+		"TICKET-2": base.Add(time.Second),
+		"TICKET-3": base.Add(2 * time.Second),
+	})
+	createTestDependencies(t, pool, projectID, map[string][]string{
+		"TICKET-2": {"TICKET-1"},
+		"TICKET-3": {"TICKET-2"},
+	})
+
+	svc := NewChainService(pool)
+	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
+		Name:         "Multi-ticket",
+		WorkflowName: "test",
+		TicketIDs:    []string{"TICKET-3"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	// Get with items
+	retrieved, err := svc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	if len(retrieved.Items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(retrieved.Items))
+	}
+
+	// Verify all items have populated ticket titles
+	expectedTitles := map[string]string{
+		"ticket-1": "TICKET-1",
+		"ticket-2": "TICKET-2",
+		"ticket-3": "TICKET-3",
+	}
+
+	for _, item := range retrieved.Items {
+		expectedTitle, ok := expectedTitles[item.TicketID]
+		if !ok {
+			t.Errorf("unexpected ticket ID: %s", item.TicketID)
+			continue
+		}
+		if item.TicketTitle != expectedTitle {
+			t.Errorf("expected title %s for ticket %s, got %s", expectedTitle, item.TicketID, item.TicketTitle)
+		}
 	}
 }

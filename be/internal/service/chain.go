@@ -104,7 +104,11 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 		return nil, fmt.Errorf("failed to acquire locks: %w", err)
 	}
 
-	chain.Items = items
+	// Reload items with ticket titles from JOIN
+	chain.Items, err = itemRepo.ListByChain(chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chain items: %w", err)
+	}
 	return chain, nil
 }
 
@@ -175,7 +179,16 @@ func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest
 		}
 	}
 
-	return chainRepo.Get(chainID)
+	chain, err = chainRepo.Get(chainID)
+	if err != nil {
+		return nil, err
+	}
+	itemRepo := repo.NewChainItemRepo(s.pool)
+	chain.Items, err = itemRepo.ListByChain(chainID)
+	if err != nil {
+		return nil, err
+	}
+	return chain, nil
 }
 
 // GetChainWithItems returns a chain with its items loaded

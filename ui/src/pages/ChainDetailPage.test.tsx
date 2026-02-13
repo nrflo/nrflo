@@ -755,3 +755,165 @@ describe('ChainDetailPage - Navigation', () => {
     expect(screen.getByRole('button', { name: /chains/i })).toBeInTheDocument()
   })
 })
+
+describe('ChainDetailPage - Ticket Title Display', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStartChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+  })
+
+  it('displays ticket title when ticket_title is provided', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-123',
+          ticket_title: 'Add user authentication',
+          position: 0,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('Add user authentication')).toBeInTheDocument()
+    expect(screen.getByText('TICKET-123')).toBeInTheDocument()
+  })
+
+  it('does not display ticket title span when ticket_title is undefined', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-456',
+          ticket_title: undefined,
+          position: 0,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Should only show the ticket ID link
+    expect(screen.getByText('TICKET-456')).toBeInTheDocument()
+    // The title span should not exist in the DOM
+    const titleSpans = container.querySelectorAll('span.truncate')
+    expect(titleSpans.length).toBe(0)
+  })
+
+  it('applies truncate class to long ticket titles', () => {
+    const longTitle = 'This is a very long ticket title that should be truncated to prevent layout issues in the chain detail view'
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-789',
+          ticket_title: longTitle,
+          position: 0,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    const titleElement = screen.getByText(longTitle)
+    expect(titleElement).toBeInTheDocument()
+    expect(titleElement).toHaveClass('truncate')
+    expect(titleElement).toHaveClass('text-muted-foreground')
+    expect(titleElement).toHaveClass('text-sm')
+  })
+
+  it('displays ticket title between ticket ID and status badge', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-100',
+          ticket_title: 'Fix navigation bug',
+          position: 0,
+          status: 'completed',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Get the item row
+    const itemRow = container.querySelector('.flex.items-center.gap-4.px-4.py-3')
+    expect(itemRow).toBeInTheDocument()
+
+    // Verify the order: position, ticket ID link, title, spacer, status badge
+    const link = screen.getByRole('link', { name: 'TICKET-100' })
+    const title = screen.getByText('Fix navigation bug')
+    expect(link).toBeInTheDocument()
+    expect(title).toBeInTheDocument()
+  })
+
+  it('handles multiple items with mixed ticket_title presence', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          id: 'item-1',
+          ticket_id: 'TICKET-1',
+          ticket_title: 'First ticket with title',
+          position: 0,
+        }),
+        createMockItem({
+          id: 'item-2',
+          ticket_id: 'TICKET-2',
+          ticket_title: undefined,
+          position: 1,
+        }),
+        createMockItem({
+          id: 'item-3',
+          ticket_id: 'TICKET-3',
+          ticket_title: 'Third ticket with title',
+          position: 2,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Items with titles should display them
+    expect(screen.getByText('First ticket with title')).toBeInTheDocument()
+    expect(screen.getByText('Third ticket with title')).toBeInTheDocument()
+
+    // All ticket IDs should be present
+    expect(screen.getByText('TICKET-1')).toBeInTheDocument()
+    expect(screen.getByText('TICKET-2')).toBeInTheDocument()
+    expect(screen.getByText('TICKET-3')).toBeInTheDocument()
+  })
+})

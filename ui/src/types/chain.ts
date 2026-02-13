@@ -23,6 +23,7 @@ export interface ChainExecutionItem {
   id: string
   chain_id: string
   ticket_id: string
+  ticket_title?: string
   position: number
   status: ChainItemStatus
   workflow_instance_id?: string

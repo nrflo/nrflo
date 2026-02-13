@@ -51,12 +51,18 @@ func (r *ChainItemRepo) BatchInsert(items []*model.ChainExecutionItem) error {
 	return nil
 }
 
-// ListByChain returns all items for a chain, ordered by position
+// ListByChain returns all items for a chain, ordered by position.
+// Joins tickets table to include ticket title.
 func (r *ChainItemRepo) ListByChain(chainID string) ([]*model.ChainExecutionItem, error) {
 	rows, err := r.pool.Query(`
-		SELECT `+chainItemCols+` FROM chain_execution_items
-		WHERE chain_id = ?
-		ORDER BY position ASC`, chainID)
+		SELECT ci.id, ci.chain_id, ci.ticket_id, ci.position, ci.status,
+			ci.workflow_instance_id, ci.started_at, ci.ended_at,
+			COALESCE(t.title, '') AS ticket_title
+		FROM chain_execution_items ci
+		LEFT JOIN chain_executions ce ON ce.id = ci.chain_id
+		LEFT JOIN tickets t ON LOWER(t.id) = LOWER(ci.ticket_id) AND LOWER(t.project_id) = LOWER(ce.project_id)
+		WHERE ci.chain_id = ?
+		ORDER BY ci.position ASC`, chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +70,13 @@ func (r *ChainItemRepo) ListByChain(chainID string) ([]*model.ChainExecutionItem
 
 	var items []*model.ChainExecutionItem
 	for rows.Next() {
-		item, err := scanChainItem(rows)
+		item := &model.ChainExecutionItem{}
+		err := rows.Scan(
+			&item.ID, &item.ChainID, &item.TicketID, &item.Position,
+			&item.Status, &item.WorkflowInstanceID,
+			&item.StartedAt, &item.EndedAt,
+			&item.TicketTitle,
+		)
 		if err != nil {
 			return nil, err
 		}

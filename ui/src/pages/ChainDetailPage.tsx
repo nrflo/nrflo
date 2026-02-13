@@ -38,6 +38,11 @@ function ItemRow({ item }: { item: ChainExecutionItem }) {
       >
         {item.ticket_id}
       </Link>
+      {item.ticket_title && (
+        <span className="text-sm text-muted-foreground truncate min-w-0">
+          {item.ticket_title}
+        </span>
+      )}
       <div className="flex-1" />
       <ItemStatusBadge status={item.status} />
       {item.started_at && (

@@ -54,6 +54,7 @@ type ChainExecutionItem struct {
 	ID                 string          `json:"id"`
 	ChainID            string          `json:"chain_id"`
 	TicketID           string          `json:"ticket_id"`
+	TicketTitle        string          `json:"ticket_title"`
 	Position           int             `json:"position"`
 	Status             ChainItemStatus `json:"status"`
 	WorkflowInstanceID sql.NullString  `json:"-"`
@@ -80,6 +81,7 @@ func (i ChainExecutionItem) MarshalJSON() ([]byte, error) {
 		ID                 string          `json:"id"`
 		ChainID            string          `json:"chain_id"`
 		TicketID           string          `json:"ticket_id"`
+		TicketTitle        string          `json:"ticket_title"`
 		Position           int             `json:"position"`
 		Status             ChainItemStatus `json:"status"`
 		WorkflowInstanceID *string         `json:"workflow_instance_id,omitempty"`
@@ -89,6 +91,7 @@ func (i ChainExecutionItem) MarshalJSON() ([]byte, error) {
 		ID:                 i.ID,
 		ChainID:            i.ChainID,
 		TicketID:           i.TicketID,
+		TicketTitle:        i.TicketTitle,
 		Position:           i.Position,
 		Status:             i.Status,
 		WorkflowInstanceID: wfiID,

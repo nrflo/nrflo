@@ -677,3 +677,112 @@ func TestChainRunner_IsRunning(t *testing.T) {
 	// Note: We can't easily test Start here without a full orchestrator,
 	// so we just verify the IsRunning method works with no registered chains
 }
+
+// TestChainCreate_TicketTitlesInResponse verifies ticket titles are included in create response
+func TestChainCreate_TicketTitlesInResponse(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"TICKET-A": base,
+		"TICKET-B": base.Add(time.Second),
+		"TICKET-C": base.Add(2 * time.Second),
+	})
+	createChainDependencies(t, env, map[string][]string{
+		"TICKET-B": {"TICKET-A"},
+		"TICKET-C": {"TICKET-A", "TICKET-B"},
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Title Test Chain",
+		WorkflowName: "test",
+		Category:     "full",
+		TicketIDs:    []string{"TICKET-C"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	// Should have 3 items: A, B, C (topologically sorted)
+	if len(chain.Items) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(chain.Items))
+	}
+
+	// Verify all items have ticket titles populated
+	for _, item := range chain.Items {
+		if item.TicketTitle == "" {
+			t.Errorf("expected non-empty ticket title for %s", item.TicketID)
+		}
+	}
+
+	// Verify specific titles match ticket IDs
+	expectedTitles := map[string]string{
+		"ticket-a": "TICKET-A",
+		"ticket-b": "TICKET-B",
+		"ticket-c": "TICKET-C",
+	}
+
+	for _, item := range chain.Items {
+		expectedTitle, ok := expectedTitles[item.TicketID]
+		if !ok {
+			t.Errorf("unexpected ticket ID: %s", item.TicketID)
+			continue
+		}
+		if item.TicketTitle != expectedTitle {
+			t.Errorf("ticket %s: expected title %s, got %s", item.TicketID, expectedTitle, item.TicketTitle)
+		}
+	}
+}
+
+// TestChainUpdate_TicketTitlesInResponse verifies ticket titles are included in update response
+func TestChainUpdate_TicketTitlesInResponse(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"T1": base,
+		"T2": base.Add(time.Second),
+		"T3": base.Add(2 * time.Second),
+	})
+	createChainDependencies(t, env, map[string][]string{
+		"T2": {"T1"},
+		"T3": {"T1"},
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Update Test",
+		WorkflowName: "test",
+		TicketIDs:    []string{"T2"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	// Initial chain should have titles
+	for _, item := range chain.Items {
+		if item.TicketTitle == "" {
+			t.Errorf("expected non-empty title in create response for %s", item.TicketID)
+		}
+	}
+
+	// Update chain to include T3
+	updated, err := chainSvc.UpdateChain(chain.ID, &types.ChainUpdateRequest{
+		TicketIDs: []string{"T2", "T3"},
+	})
+	if err != nil {
+		t.Fatalf("UpdateChain failed: %v", err)
+	}
+
+	// Updated chain should have 3 items with titles
+	if len(updated.Items) != 3 {
+		t.Fatalf("expected 3 items after update, got %d", len(updated.Items))
+	}
+
+	for _, item := range updated.Items {
+		if item.TicketTitle == "" {
+			t.Errorf("expected non-empty title in update response for %s", item.TicketID)
+		}
+	}
+}

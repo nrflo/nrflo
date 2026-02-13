@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { CheckCircle } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import {
@@ -9,6 +10,7 @@ import {
 } from '@/hooks/useTickets'
 import { RunProjectWorkflowDialog } from '@/components/workflow/RunProjectWorkflowDialog'
 import { WorkflowTabContent } from './WorkflowTabContent'
+import { cn } from '@/lib/utils'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 
@@ -16,6 +18,7 @@ export function ProjectWorkflowsPage() {
   const currentProject = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
 
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active')
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
@@ -41,15 +44,32 @@ export function ProjectWorkflowsPage() {
   const stopMutation = useStopProjectWorkflow()
   const restartMutation = useRestartProjectAgent()
 
-  const workflows = workflowData?.workflows ?? []
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
-  const hasWorkflow = workflowData?.has_workflow ?? false
+
+  const { activeWorkflows, completedWorkflows } = useMemo(() => {
+    const active: Record<string, WorkflowState> = {}
+    const completed: Record<string, WorkflowState> = {}
+    for (const [name, state] of Object.entries(allWorkflows)) {
+      if (state.status === 'completed') {
+        completed[name] = state
+      } else {
+        active[name] = state
+      }
+    }
+    return { activeWorkflows: active, completedWorkflows: completed }
+  }, [allWorkflows])
+
+  const tabWorkflows = activeTab === 'active' ? activeWorkflows : completedWorkflows
+  const workflows = Object.keys(tabWorkflows)
+  const hasWorkflow = workflows.length > 0
   const hasMultipleWorkflows = workflows.length > 1
 
-  const defaultState = (workflowData?.state ?? null) as WorkflowState | null
-  const displayedWorkflowName = selectedWorkflow || defaultState?.workflow || workflows[0] || ''
-  const displayedState = selectedWorkflow && allWorkflows[selectedWorkflow]
-    ? allWorkflows[selectedWorkflow]
+  const defaultState = workflows.length > 0 ? tabWorkflows[workflows[0]] : null
+  const displayedWorkflowName = (selectedWorkflow && tabWorkflows[selectedWorkflow])
+    ? selectedWorkflow
+    : workflows[0] || ''
+  const displayedState = (selectedWorkflow && tabWorkflows[selectedWorkflow])
+    ? tabWorkflows[selectedWorkflow]
     : defaultState
 
   const activeAgents = displayedState?.active_agents ?? {}
@@ -63,6 +83,15 @@ export function ProjectWorkflowsPage() {
     ? Object.values(displayedState.phases).some((p) => p.status === 'in_progress')
     : false
 
+  const activeCount = Object.keys(activeWorkflows).length
+  const completedCount = Object.keys(completedWorkflows).length
+
+  const handleTabSwitch = (tab: 'active' | 'completed') => {
+    setActiveTab(tab)
+    setSelectedWorkflow('')
+    setSelectedPanelAgent(null)
+  }
+
   return (
     <div className={
       hasActivePhase || selectedPanelAgent ? 'max-w-full px-4 space-y-6' : 'max-w-7xl mx-auto p-6 space-y-6'
@@ -72,6 +101,34 @@ export function ProjectWorkflowsPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Workflows that run at project level without a ticket.
         </p>
+      </div>
+
+      <div className="border-b border-border">
+        <div className="flex gap-1">
+          <button
+            onClick={() => handleTabSwitch('active')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'active'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            onClick={() => handleTabSwitch('completed')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'completed'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <CheckCircle className="h-4 w-4" />
+            Completed ({completedCount})
+          </button>
+        </div>
       </div>
 
       <WorkflowTabContent
@@ -99,7 +156,7 @@ export function ProjectWorkflowsPage() {
           })
         }
         stopPending={stopMutation.isPending}
-        onShowRunDialog={() => setShowRunDialog(true)}
+        onShowRunDialog={activeTab === 'active' ? () => setShowRunDialog(true) : undefined}
         onRestart={(sessionId) =>
           currentProject &&
           restartMutation.mutate({

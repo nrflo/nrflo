@@ -68,14 +68,43 @@ describe('WorkflowTabContent', () => {
   })
 
   // No workflow state
-  it('shows "No workflow configured" when hasWorkflow is false', () => {
+  it('shows "No workflow configured for this ticket" when hasWorkflow is false and onShowRunDialog provided', () => {
     render(<WorkflowTabContent {...defaultProps} hasWorkflow={false} displayedState={null} />)
     expect(screen.getByText('No workflow configured for this ticket')).toBeInTheDocument()
   })
 
-  it('shows "Run Workflow" button when no active phase or orchestration', () => {
+  it('shows "No workflows in this tab" when hasWorkflow is false and onShowRunDialog is undefined', () => {
+    render(
+      <WorkflowTabContent
+        {...defaultProps}
+        hasWorkflow={false}
+        displayedState={null}
+        onShowRunDialog={undefined}
+      />
+    )
+    expect(screen.getByText('No workflows in this tab')).toBeInTheDocument()
+  })
+
+  it('shows "Run Workflow" button when no active phase or orchestration and onShowRunDialog provided', () => {
     render(<WorkflowTabContent {...defaultProps} />)
     expect(screen.getByText('Run Workflow')).toBeInTheDocument()
+  })
+
+  it('hides "Run Workflow" button when onShowRunDialog is undefined', () => {
+    render(<WorkflowTabContent {...defaultProps} onShowRunDialog={undefined} />)
+    expect(screen.queryByText('Run Workflow')).not.toBeInTheDocument()
+  })
+
+  it('does not show "Run Workflow" button in empty state when onShowRunDialog is undefined', () => {
+    render(
+      <WorkflowTabContent
+        {...defaultProps}
+        hasWorkflow={false}
+        displayedState={null}
+        onShowRunDialog={undefined}
+      />
+    )
+    expect(screen.queryByText('Run Workflow')).not.toBeInTheDocument()
   })
 
   it('shows workflow name badge for single workflow', () => {
@@ -140,5 +169,39 @@ describe('WorkflowTabContent', () => {
     expect(mainContent.className).toContain('max-w-6xl')
     // AgentLogPanel visible alongside
     expect(screen.getByTestId('agent-log-panel')).toBeInTheDocument()
+  })
+
+  // Tab context - Completed tab usage (onShowRunDialog=undefined)
+  it('full flow: Completed tab shows workflow without Run Workflow button', () => {
+    const completedState = makeState({
+      status: 'completed',
+      completed_at: '2026-01-01T05:00:00Z',
+      total_duration_sec: 3600,
+      total_tokens_used: 150000,
+    })
+    render(
+      <WorkflowTabContent
+        {...defaultProps}
+        displayedState={completedState}
+        onShowRunDialog={undefined}
+      />
+    )
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+    expect(screen.queryByText('Run Workflow')).not.toBeInTheDocument()
+    expect(screen.queryByText('Stop')).not.toBeInTheDocument()
+  })
+
+  it('full flow: Active tab can run workflows via Run Workflow button', () => {
+    const onShowRunDialog = vi.fn()
+    render(
+      <WorkflowTabContent
+        {...defaultProps}
+        hasWorkflow={true}
+        onShowRunDialog={onShowRunDialog}
+      />
+    )
+    const runButton = screen.getByText('Run Workflow')
+    runButton.click()
+    expect(onShowRunDialog).toHaveBeenCalledTimes(1)
   })
 })

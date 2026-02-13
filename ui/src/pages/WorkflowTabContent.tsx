@@ -34,7 +34,7 @@ interface WorkflowTabContentProps {
   onAgentSelect: (data: SelectedAgentData | null) => void
   onStop: () => void
   stopPending: boolean
-  onShowRunDialog: () => void
+  onShowRunDialog?: () => void
   onRestart?: (sessionId: string) => void
   restartingSessionId?: string | null
 }
@@ -111,7 +111,7 @@ export function WorkflowTabContent({
                   </Button>
                 )}
               </div>
-              {!(isOrchestrated || hasActivePhase) && (
+              {!(isOrchestrated || hasActivePhase) && onShowRunDialog && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -158,16 +158,18 @@ export function WorkflowTabContent({
         ) : (
           <div className="text-center py-8 space-y-3">
             <p className="text-muted-foreground text-sm">
-              No workflow configured for this ticket
+              {onShowRunDialog ? 'No workflow configured for this ticket' : 'No workflows in this tab'}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onShowRunDialog}
-            >
-              <Play className="h-4 w-4 mr-2" />
-              Run Workflow
-            </Button>
+            {onShowRunDialog && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onShowRunDialog}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Run Workflow
+              </Button>
+            )}
           </div>
         )}
       </div>

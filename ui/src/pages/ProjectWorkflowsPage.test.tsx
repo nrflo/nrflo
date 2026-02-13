@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ProjectWorkflowsPage } from './ProjectWorkflowsPage'
 import type { ProjectWorkflowResponse, ProjectAgentSessionsResponse, WorkflowState } from '@/types/workflow'
@@ -39,6 +40,14 @@ vi.mock('./WorkflowTabContent', () => ({
       <div data-testid="sessions-count">{props.sessions?.length ?? 0}</div>
       <div data-testid="has-workflow">{String(props.hasWorkflow)}</div>
       <div data-testid="workflow-name">{props.displayedWorkflowName}</div>
+      <div data-testid="has-run-dialog">{String(!!props.onShowRunDialog)}</div>
+      <div data-testid="workflows-count">{props.workflows?.length ?? 0}</div>
+      {props.displayedState && (
+        <>
+          <div data-testid="displayed-status">{props.displayedState.status}</div>
+          <div data-testid="displayed-workflow">{props.displayedState.workflow}</div>
+        </>
+      )}
     </div>
   ),
 }))
@@ -67,6 +76,38 @@ const sampleWorkflowState: WorkflowState = {
       started_at: '2026-01-01T00:00:00Z',
     },
   },
+  findings: {},
+}
+
+const sampleCompletedWorkflowState: WorkflowState = {
+  workflow: 'bugfix',
+  version: 4,
+  scope_type: 'project',
+  current_phase: 'verification',
+  category: 'simple',
+  status: 'completed',
+  completed_at: '2026-01-01T05:23:45Z',
+  total_duration_sec: 19425.5,
+  total_tokens_used: 150000,
+  phases: {
+    investigation: { status: 'completed', result: 'pass' },
+    implementation: { status: 'completed', result: 'pass' },
+    verification: { status: 'completed', result: 'pass' },
+  },
+  phase_order: ['investigation', 'implementation', 'verification'],
+  active_agents: {},
+  agent_history: [
+    {
+      agent_id: 'a-hist-1',
+      agent_type: 'setup-analyzer',
+      session_id: 'hist-session-1',
+      model_id: 'claude-sonnet-4-5',
+      status: 'completed',
+      result: 'pass',
+      started_at: '2026-01-01T00:00:00Z',
+      ended_at: '2026-01-01T01:00:00Z',
+    },
+  ],
   findings: {},
 }
 
@@ -365,5 +406,490 @@ describe('ProjectWorkflowsPage', () => {
     // Should pass empty sessions array
     const sessionsCount = screen.getByTestId('sessions-count')
     expect(sessionsCount.textContent).toBe('0')
+  })
+
+  describe('Tab Bar Functionality', () => {
+    it('renders Active and Completed tab buttons', () => {
+      renderPage()
+
+      expect(screen.getByRole('button', { name: /Active/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Completed/ })).toBeInTheDocument()
+    })
+
+    it('shows Active tab as selected by default', () => {
+      renderPage()
+
+      const activeButton = screen.getByRole('button', { name: /Active/ })
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+
+      expect(activeButton).toHaveClass('border-primary', 'text-primary')
+      expect(completedButton).toHaveClass('border-transparent', 'text-muted-foreground')
+    })
+
+    it('displays count badges on both tabs', () => {
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      expect(screen.getByRole('button', { name: /Active \(1\)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Completed \(1\)/ })).toBeInTheDocument()
+    })
+
+    it('shows zero count when no workflows exist', () => {
+      useProjectWorkflow.mockReturnValue({
+        data: {
+          project_id: 'test-project',
+          has_workflow: false,
+          state: null,
+          workflows: [],
+          all_workflows: {},
+        },
+        isLoading: false,
+      })
+
+      renderPage()
+
+      expect(screen.getByRole('button', { name: /Active \(0\)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Completed \(0\)/ })).toBeInTheDocument()
+    })
+
+    it('switches to Completed tab when clicked', async () => {
+      const user = userEvent.setup()
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      expect(completedButton).toHaveClass('border-primary', 'text-primary')
+      const activeButton = screen.getByRole('button', { name: /Active/ })
+      expect(activeButton).toHaveClass('border-transparent', 'text-muted-foreground')
+    })
+
+    it('switches back to Active tab when clicked', async () => {
+      const user = userEvent.setup()
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      const activeButton = screen.getByRole('button', { name: /Active/ })
+      await user.click(activeButton)
+
+      expect(activeButton).toHaveClass('border-primary', 'text-primary')
+      expect(completedButton).toHaveClass('border-transparent', 'text-muted-foreground')
+    })
+
+    it('renders CheckCircle icon on Completed tab', () => {
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      const svg = completedButton.querySelector('svg')
+      expect(svg).toBeInTheDocument()
+    })
+  })
+
+  describe('Tab Filtering', () => {
+    it('shows only active workflows on Active tab', () => {
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix', 'hotfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+          hotfix: { ...sampleWorkflowState, workflow: 'hotfix', status: 'failed' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Active tab should show 2 workflows (feature=active, hotfix=failed)
+      expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+      expect(screen.getByTestId('displayed-status').textContent).toBe('active')
+    })
+
+    it('shows only completed workflows on Completed tab', async () => {
+      const user = userEvent.setup()
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix', 'docs'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+          docs: { ...sampleCompletedWorkflowState, workflow: 'docs' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+        expect(screen.getByTestId('displayed-status').textContent).toBe('completed')
+      })
+    })
+
+    it('includes failed workflows in Active tab', () => {
+      const workflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: { ...sampleWorkflowState, status: 'failed' },
+        workflows: ['feature'],
+        all_workflows: {
+          feature: { ...sampleWorkflowState, status: 'failed' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: workflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      expect(screen.getByTestId('workflows-count').textContent).toBe('1')
+      expect(screen.getByTestId('displayed-status').textContent).toBe('failed')
+    })
+
+    it('filters workflows correctly when all are completed', async () => {
+      const user = userEvent.setup()
+      const allCompletedResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleCompletedWorkflowState,
+        workflows: ['bugfix', 'docs'],
+        all_workflows: {
+          bugfix: sampleCompletedWorkflowState,
+          docs: { ...sampleCompletedWorkflowState, workflow: 'docs' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: allCompletedResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Active tab should show 0
+      expect(screen.getByTestId('workflows-count').textContent).toBe('0')
+
+      // Switch to completed
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+      })
+    })
+
+    it('filters workflows correctly when all are active', async () => {
+      const user = userEvent.setup()
+      const allActiveResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'hotfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          hotfix: { ...sampleWorkflowState, workflow: 'hotfix' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: allActiveResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Active tab should show 2
+      expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+
+      // Switch to completed
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workflows-count').textContent).toBe('0')
+      })
+    })
+  })
+
+  describe('Tab Switching Behavior', () => {
+    it('resets selectedWorkflow when switching tabs', async () => {
+      const user = userEvent.setup()
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Initial state shows 'feature' workflow
+      expect(screen.getByTestId('displayed-workflow').textContent).toBe('feature')
+
+      // Switch to Completed tab
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        // Should now show 'bugfix' (first completed workflow)
+        expect(screen.getByTestId('displayed-workflow').textContent).toBe('bugfix')
+      })
+
+      // Switch back to Active tab
+      const activeButton = screen.getByRole('button', { name: /Active/ })
+      await user.click(activeButton)
+
+      await waitFor(() => {
+        // Should reset to 'feature' (first active workflow)
+        expect(screen.getByTestId('displayed-workflow').textContent).toBe('feature')
+      })
+    })
+
+    it('passes correct workflows list to WorkflowTabContent based on active tab', async () => {
+      const user = userEvent.setup()
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix', 'hotfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+          hotfix: { ...sampleWorkflowState, workflow: 'hotfix' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Active tab: 2 workflows (feature, hotfix)
+      expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        // Completed tab: 1 workflow (bugfix)
+        expect(screen.getByTestId('workflows-count').textContent).toBe('1')
+      })
+    })
+  })
+
+  describe('Run Workflow Button Visibility', () => {
+    it('passes onShowRunDialog to WorkflowTabContent on Active tab', () => {
+      renderPage()
+
+      expect(screen.getByTestId('has-run-dialog').textContent).toBe('true')
+    })
+
+    it('does not pass onShowRunDialog to WorkflowTabContent on Completed tab', async () => {
+      const user = userEvent.setup()
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('has-run-dialog').textContent).toBe('false')
+      })
+    })
+
+    it('restores onShowRunDialog when switching back to Active tab', async () => {
+      const user = userEvent.setup()
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+          bugfix: sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('has-run-dialog').textContent).toBe('false')
+      })
+
+      const activeButton = screen.getByRole('button', { name: /Active/ })
+      await user.click(activeButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('has-run-dialog').textContent).toBe('true')
+      })
+    })
+  })
+
+  describe('Empty States', () => {
+    it('shows empty state on Active tab when no active workflows', async () => {
+      const user = userEvent.setup()
+      const onlyCompletedResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleCompletedWorkflowState,
+        workflows: ['bugfix'],
+        all_workflows: {
+          bugfix: sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: onlyCompletedResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      expect(screen.getByTestId('has-workflow').textContent).toBe('false')
+      expect(screen.getByTestId('workflows-count').textContent).toBe('0')
+    })
+
+    it('shows empty state on Completed tab when no completed workflows', async () => {
+      const user = userEvent.setup()
+      const onlyActiveResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature'],
+        all_workflows: {
+          feature: sampleWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: onlyActiveResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('has-workflow').textContent).toBe('false')
+        expect(screen.getByTestId('workflows-count').textContent).toBe('0')
+      })
+    })
+  })
+
+  describe('Completion Statistics', () => {
+    it('passes completed workflow with statistics to WorkflowTabContent', async () => {
+      const user = userEvent.setup()
+      const completedResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleCompletedWorkflowState,
+        workflows: ['bugfix'],
+        all_workflows: {
+          bugfix: sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: completedResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('displayed-status').textContent).toBe('completed')
+        // The displayedState should include completed_at, total_duration_sec, total_tokens_used
+        // These are rendered by WorkflowTabContent's completion banner
+      })
+    })
   })
 })

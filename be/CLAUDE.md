@@ -39,7 +39,8 @@ be/
 │   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
-│   │   └── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
+│   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
+│   │   └── handlers_daily_stats.go # Daily stats endpoint
 │   ├── ws/                      # WebSocket support
 │   │   ├── hub.go               # Client management, broadcasting
 │   │   ├── client.go            # Connection handling, subscriptions
@@ -67,7 +68,8 @@ be/
 │   │   ├── agent.go             # Agent operations
 │   │   ├── agent_definition.go  # Agent definition CRUD
 │   │   ├── findings.go          # Findings operations
-│   │   └── chain.go             # Chain build, dependency expansion, topo sort
+│   │   ├── chain.go             # Chain build, dependency expansion, topo sort
+│   │   └── daily_stats.go       # Daily stats computation from source tables
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection
 │   │   ├── pool.go              # Connection pool (10 max, 5 idle)
@@ -741,6 +743,7 @@ POST   /api/v1/chains/:id/cancel   # Cancel chain and release locks
 # Other
 GET /api/v1/search?q=              # Full-text search
 GET /api/v1/status                 # Dashboard summary
+GET /api/v1/daily-stats            # Daily stats (tickets, tokens, agent time) per project
 GET /api/v1/ws                     # WebSocket for real-time updates
 ```
 

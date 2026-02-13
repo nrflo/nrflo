@@ -240,6 +240,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Status/Dashboard
 	mux.HandleFunc("GET /api/v1/status", s.handleStatus)
+	mux.HandleFunc("GET /api/v1/daily-stats", s.handleGetDailyStats)
 }
 
 // Helper functions for JSON responses

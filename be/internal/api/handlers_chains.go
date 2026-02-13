@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
@@ -175,4 +177,104 @@ func (s *Server) handleCancelChain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "canceled", "chain_id": chainID})
+}
+
+// handleRunEpicWorkflow creates a chain from an epic's child tickets and optionally starts it.
+// POST /api/v1/tickets/{id}/workflow/run-epic
+func (s *Server) handleRunEpicWorkflow(w http.ResponseWriter, r *http.Request) {
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	ticketID := extractID(r)
+	if ticketID == "" {
+		writeError(w, http.StatusBadRequest, "ticket ID required")
+		return
+	}
+
+	var body struct {
+		WorkflowName string `json:"workflow_name"`
+		Category     string `json:"category"`
+		Start        bool   `json:"start"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.WorkflowName == "" {
+		writeError(w, http.StatusBadRequest, "workflow_name is required")
+		return
+	}
+
+	// Look up the ticket and validate it's an epic
+	database, err := db.Open(s.dataPath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	defer database.Close()
+
+	ticketRepo := repo.NewTicketRepo(database)
+	ticket, err := ticketRepo.Get(projectID, ticketID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("ticket not found: %s", ticketID))
+		return
+	}
+	if ticket.IssueType != model.IssueTypeEpic {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("ticket %s is not an epic (type: %s)", ticketID, ticket.IssueType))
+		return
+	}
+
+	// Get non-closed children
+	children, err := ticketRepo.ListByParent(projectID, ticketID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list child tickets")
+		return
+	}
+	if len(children) == 0 {
+		writeError(w, http.StatusBadRequest, "epic has no child tickets")
+		return
+	}
+
+	childIDs := make([]string, len(children))
+	for i, c := range children {
+		childIDs[i] = c.ID
+	}
+
+	// Create chain via ChainService
+	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	defer pool.Close()
+
+	chainSvc := service.NewChainService(pool)
+	chain, err := chainSvc.CreateChain(projectID, &types.ChainCreateRequest{
+		Name:         fmt.Sprintf("Epic: %s", ticket.Title),
+		WorkflowName: body.WorkflowName,
+		Category:     body.Category,
+		EpicTicketID: ticketID,
+		TicketIDs:    childIDs,
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Optionally start the chain
+	if body.Start {
+		if s.chainRunner == nil {
+			writeError(w, http.StatusServiceUnavailable, "chain runner not available")
+			return
+		}
+		if err := s.chainRunner.Start(context.Background(), chain.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("chain created but failed to start: %s", err.Error()))
+			return
+		}
+	}
+
+	writeJSON(w, http.StatusCreated, chain)
 }

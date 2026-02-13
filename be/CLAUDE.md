@@ -39,7 +39,7 @@ be/
 │   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
-│   │   └── handlers_chains.go   # Chain execution list/get/create/update/start/cancel
+│   │   └── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
 │   ├── ws/                      # WebSocket support
 │   │   ├── hub.go               # Client management, broadcasting
 │   │   ├── client.go            # Connection handling, subscriptions
@@ -675,6 +675,7 @@ POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
 POST /api/v1/tickets/:id/workflow/restart       # Restart agent (context save + relaunch)
 POST /api/v1/tickets/:id/workflow/retry-failed  # Retry failed workflow from failed layer
+POST /api/v1/tickets/:id/workflow/run-epic    # Create chain from epic children, optionally start
 
 # Workflow definitions (project-scoped, require X-Project header)
 GET    /api/v1/workflows              # List all
@@ -858,6 +859,7 @@ make test-integration        # integration only (verbose)
 | `internal/integration/websocket_test.go` | WS broadcast, subscription filtering |
 | `internal/integration/messages_test.go` | Agent message storage, pagination (via service) |
 | `internal/integration/chain_epic_test.go` | Chain epic auto-close on completion |
+| `internal/integration/run_epic_workflow_test.go` | Run-epic endpoint: happy path, errors, closed children |
 | `internal/integration/error_test.go` | Error codes, validation |
 | `internal/ws/hub_test.go` | WS hub unit tests |
 | `internal/spawner/cli_adapter_test.go` | CLI adapter tests |

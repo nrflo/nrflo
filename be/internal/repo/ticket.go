@@ -141,8 +141,8 @@ func (r *TicketRepo) ListByParent(projectID, parentID string) ([]*model.Ticket, 
 	rows, err := r.db.Query(`
 		SELECT `+ticketSelectCols+`
 		FROM tickets
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(parent_ticket_id) = LOWER(?)
-		ORDER BY priority ASC, created_at ASC`, projectID, parentID)
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(parent_ticket_id) = LOWER(?) AND status != ?
+		ORDER BY priority ASC, created_at ASC`, projectID, parentID, string(model.StatusClosed))
 	if err != nil {
 		return nil, err
 	}

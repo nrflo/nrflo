@@ -285,6 +285,9 @@ GET    /api/v1/chains/:id          # Get with ordered items
 PATCH  /api/v1/chains/:id          # Edit (pending only)
 POST   /api/v1/chains/:id/start    # Start sequential execution
 POST   /api/v1/chains/:id/cancel   # Cancel + release locks
+
+# Epic workflow (auto-create chain from epic children)
+POST   /api/v1/tickets/:id/workflow/run-epic  # Create chain from epic's children + optional start
 ```
 
 ### Key Behaviors

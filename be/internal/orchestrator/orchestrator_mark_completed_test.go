@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/db"
 	"be/internal/model"
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
@@ -237,5 +239,176 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	expectedReason := "Workflow 'feature' completed successfully"
 	if !ticket.CloseReason.Valid || ticket.CloseReason.String != expectedReason {
 		t.Fatalf("expected close_reason %q, got %v", expectedReason, ticket.CloseReason)
+	}
+}
+
+func TestMarkCompletedProjectScopeUsesProjectCompleted(t *testing.T) {
+	env := newTestEnv(t)
+
+	wfiID := env.initProjectWorkflow(t, "test")
+
+	// Verify starts active
+	wi := env.getWorkflowInstance(t, wfiID)
+	if wi.Status != model.WorkflowInstanceActive {
+		t.Fatalf("expected workflow status 'active', got %v", wi.Status)
+	}
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		WorkflowName: "test",
+		ScopeType:    "project",
+	})
+
+	// Verify workflow instance status is project_completed
+	wi = env.getWorkflowInstance(t, wfiID)
+	if wi.Status != model.WorkflowInstanceProjectCompleted {
+		t.Fatalf("expected workflow status 'project_completed', got %v", wi.Status)
+	}
+}
+
+func TestMarkCompletedProjectScopeUpdatesAgentSessions(t *testing.T) {
+	env := newTestEnv(t)
+
+	wfiID := env.initProjectWorkflow(t, "test")
+
+	// Insert agent sessions with various statuses
+	database, err := db.Open(env.dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer database.Close()
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	sessions := []struct {
+		id     string
+		status model.AgentSessionStatus
+	}{
+		{"session-completed", model.AgentSessionCompleted},
+		{"session-failed", model.AgentSessionFailed},
+		{"session-timeout", model.AgentSessionTimeout},
+	}
+
+	for _, s := range sessions {
+		_, err = database.Exec(`
+			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, created_at, updated_at)
+			VALUES (?, ?, '', ?, 'test-phase', 'test-agent', ?, ?, ?)`,
+			s.id, env.project, wfiID, s.status, now, now)
+		if err != nil {
+			t.Fatalf("failed to insert session %s: %v", s.id, err)
+		}
+	}
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		WorkflowName: "test",
+		ScopeType:    "project",
+	})
+
+	// Verify all sessions are now project_completed
+	asRepo := repo.NewAgentSessionRepo(database)
+	for _, s := range sessions {
+		session, err := asRepo.Get(s.id)
+		if err != nil {
+			t.Fatalf("failed to get session %s: %v", s.id, err)
+		}
+		if session.Status != model.AgentSessionProjectCompleted {
+			t.Fatalf("expected session %s status 'project_completed', got %v", s.id, session.Status)
+		}
+	}
+}
+
+func TestMarkCompletedProjectScopeDoesNotUpdateRunningOrContinued(t *testing.T) {
+	env := newTestEnv(t)
+
+	wfiID := env.initProjectWorkflow(t, "test")
+
+	// Insert agent sessions with running and continued statuses
+	database, err := db.Open(env.dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer database.Close()
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	sessions := []struct {
+		id     string
+		status model.AgentSessionStatus
+	}{
+		{"session-running", model.AgentSessionRunning},
+		{"session-continued", model.AgentSessionContinued},
+	}
+
+	for _, s := range sessions {
+		_, err = database.Exec(`
+			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, created_at, updated_at)
+			VALUES (?, ?, '', ?, 'test-phase', 'test-agent', ?, ?, ?)`,
+			s.id, env.project, wfiID, s.status, now, now)
+		if err != nil {
+			t.Fatalf("failed to insert session %s: %v", s.id, err)
+		}
+	}
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		WorkflowName: "test",
+		ScopeType:    "project",
+	})
+
+	// Verify sessions are NOT changed
+	asRepo := repo.NewAgentSessionRepo(database)
+	for _, s := range sessions {
+		session, err := asRepo.Get(s.id)
+		if err != nil {
+			t.Fatalf("failed to get session %s: %v", s.id, err)
+		}
+		if session.Status != s.status {
+			t.Fatalf("expected session %s status %v, got %v", s.id, s.status, session.Status)
+		}
+	}
+}
+
+func TestMarkCompletedTicketScopeStillUsesCompleted(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "MC-TICKET", "Ticket scope test")
+	wfiID := env.initWorkflow(t, "MC-TICKET")
+
+	// Insert agent session with completed status
+	database, err := db.Open(env.dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+	defer database.Close()
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = database.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'test-phase', 'test-agent', ?, ?, ?)`,
+		"session-ticket", env.project, "MC-TICKET", wfiID, model.AgentSessionCompleted, now, now)
+	if err != nil {
+		t.Fatalf("failed to insert session: %v", err)
+	}
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		TicketID:     "MC-TICKET",
+		WorkflowName: "test",
+		ScopeType:    "ticket",
+	})
+
+	// Verify workflow instance status is completed (not project_completed)
+	wi := env.getWorkflowInstance(t, wfiID)
+	if wi.Status != model.WorkflowInstanceCompleted {
+		t.Fatalf("expected workflow status 'completed', got %v", wi.Status)
+	}
+
+	// Verify agent session status is still completed (not project_completed)
+	asRepo := repo.NewAgentSessionRepo(database)
+	session, err := asRepo.Get("session-ticket")
+	if err != nil {
+		t.Fatalf("failed to get session: %v", err)
+	}
+	if session.Status != model.AgentSessionCompleted {
+		t.Fatalf("expected session status 'completed', got %v", session.Status)
 	}
 }

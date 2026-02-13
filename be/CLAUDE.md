@@ -368,7 +368,7 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    workflow_id     TEXT NOT NULL      (FK → workflows)               │
 │    scope_type      TEXT NOT NULL DEFAULT 'ticket'                    │
 │                    CHECK (scope_type IN ('ticket', 'project'))       │
-│    status          TEXT NOT NULL      (active|completed|failed)      │
+│    status          TEXT NOT NULL      (active|completed|failed|project_completed) │
 │    category        TEXT               (full|simple|docs)             │
 │    current_phase   TEXT               (currently active phase)       │
 │    phase_order     TEXT NOT NULL      (JSON array of phase IDs)      │
@@ -390,7 +390,7 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    phase         TEXT NOT NULL       (e.g., "investigation")         │
 │    agent_type    TEXT NOT NULL       (e.g., "setup-analyzer")        │
 │    model_id      TEXT                (e.g., "claude:sonnet")         │
-│    status        TEXT NOT NULL       (running|completed|failed|timeout|continued)
+│    status        TEXT NOT NULL       (running|completed|failed|timeout|continued|project_completed)
 │    result        TEXT                (pass|fail|continue|timeout)    │
 │    result_reason TEXT                (explanation for result)        │
 │    pid           INTEGER             (OS process ID)                 │

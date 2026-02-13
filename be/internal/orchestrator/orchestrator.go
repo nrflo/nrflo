@@ -619,10 +619,13 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 	defer database.Close()
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted)
 
-	// Close the ticket (best-effort, ticket scope only)
-	if !req.IsProjectScope() {
+	if req.IsProjectScope() {
+		wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceProjectCompleted)
+		asRepo := repo.NewAgentSessionRepo(database)
+		asRepo.UpdateStatusByWorkflowInstance(wfiID, model.AgentSessionProjectCompleted)
+	} else {
+		wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted)
 		ticketService := service.NewTicketService(pool)
 		reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
 		if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {

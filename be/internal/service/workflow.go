@@ -219,7 +219,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 
 	// Completion stats
 	result["status"] = string(wi.Status)
-	if wi.Status == model.WorkflowInstanceCompleted {
+	if wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceProjectCompleted {
 		result["completed_at"] = wi.UpdatedAt.Format(time.RFC3339)
 		result["total_duration_sec"] = wi.UpdatedAt.Sub(wi.CreatedAt).Seconds()
 	}
@@ -232,7 +232,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	result["agent_history"] = agentHistory
 
 	// Total tokens used (200K context window per agent)
-	if wi.Status == model.WorkflowInstanceCompleted {
+	if wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceProjectCompleted {
 		var totalTokens int64
 		for _, entry := range agentHistory {
 			if m, ok := entry.(map[string]interface{}); ok {

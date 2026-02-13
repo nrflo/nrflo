@@ -168,7 +168,7 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | `project_id`, `ticket_id` | Links to ticket (ticket_id empty for project scope) |
 | `workflow_id` | FK to workflow definition |
 | `scope_type` | `ticket` (default) or `project` |
-| `status` | `active` / `completed` / `failed` |
+| `status` | `active` / `completed` / `failed` / `project_completed` |
 | `current_phase` | Currently active phase ID |
 | `category` | Category for skip rules |
 | `phase_order` | JSON array of phase IDs |
@@ -188,7 +188,7 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | `phase` | Phase name (e.g., "investigation") |
 | `agent_type` | Agent identifier (e.g., "setup-analyzer") |
 | `model_id` | Model used (e.g., "claude:sonnet") |
-| `status` | `running` / `completed` / `failed` / `timeout` / `continued` |
+| `status` | `running` / `completed` / `failed` / `timeout` / `continued` / `project_completed` |
 | `result` | `pass` / `fail` / `continue` / `timeout` |
 | `result_reason` | Explanation for result |
 | `pid` | OS process ID |
@@ -255,7 +255,7 @@ Each v4 workflow state contains:
 ```
 
 **Completion Statistics** (present when `status` is `"completed"`):
-- `status`: Workflow instance status (`"active"`, `"completed"`, or `"failed"`)
+- `status`: Workflow instance status (`"active"`, `"completed"`, `"failed"`, or `"project_completed"`)
 - `completed_at`: ISO 8601 timestamp when workflow completed
 - `total_duration_sec`: Total workflow duration in seconds (from creation to completion)
 - `total_tokens_used`: Total context/tokens consumed across all agents (calculated using 200K token window * (100 - context_left) / 100 for each completed agent)

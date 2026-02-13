@@ -10,11 +10,12 @@ import (
 type AgentSessionStatus string
 
 const (
-	AgentSessionRunning   AgentSessionStatus = "running"
-	AgentSessionCompleted AgentSessionStatus = "completed"
-	AgentSessionFailed    AgentSessionStatus = "failed"
-	AgentSessionTimeout   AgentSessionStatus = "timeout"
-	AgentSessionContinued AgentSessionStatus = "continued"
+	AgentSessionRunning          AgentSessionStatus = "running"
+	AgentSessionCompleted        AgentSessionStatus = "completed"
+	AgentSessionFailed           AgentSessionStatus = "failed"
+	AgentSessionTimeout          AgentSessionStatus = "timeout"
+	AgentSessionContinued        AgentSessionStatus = "continued"
+	AgentSessionProjectCompleted AgentSessionStatus = "project_completed"
 )
 
 // AgentSession represents a spawned agent session

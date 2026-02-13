@@ -10,9 +10,10 @@ import (
 type WorkflowInstanceStatus string
 
 const (
-	WorkflowInstanceActive    WorkflowInstanceStatus = "active"
-	WorkflowInstanceCompleted WorkflowInstanceStatus = "completed"
-	WorkflowInstanceFailed    WorkflowInstanceStatus = "failed"
+	WorkflowInstanceActive           WorkflowInstanceStatus = "active"
+	WorkflowInstanceCompleted        WorkflowInstanceStatus = "completed"
+	WorkflowInstanceFailed           WorkflowInstanceStatus = "failed"
+	WorkflowInstanceProjectCompleted WorkflowInstanceStatus = "project_completed"
 )
 
 // PhaseStatus represents the status of a phase within a workflow instance

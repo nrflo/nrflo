@@ -183,6 +183,20 @@ func (r *AgentSessionRepo) UpdateStatus(id string, status model.AgentSessionStat
 	return nil
 }
 
+// UpdateStatusByWorkflowInstance bulk-updates agent session statuses for a workflow instance,
+// excluding running and continued sessions.
+func (r *AgentSessionRepo) UpdateStatusByWorkflowInstance(wfiID string, toStatus model.AgentSessionStatus) (int64, error) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	result, err := r.db.Exec(
+		`UPDATE agent_sessions SET status = ?, updated_at = ?
+		WHERE workflow_instance_id = ? AND status NOT IN ('running', 'continued')`,
+		toStatus, now, wfiID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // UpdateResult updates the result and result_reason fields
 func (r *AgentSessionRepo) UpdateResult(id, resultVal, reason string) error {
 	now := time.Now().UTC().Format(time.RFC3339)

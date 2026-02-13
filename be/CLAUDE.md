@@ -20,7 +20,7 @@ be/
 │   │   ├── spawner.go           # Spawn and monitor agents
 │   │   ├── cli_adapter.go       # CLI adapter pattern (Claude, Opencode, Codex)
 │   │   ├── cli_adapter_test.go  # Adapter tests
-│   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution)
+│   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution, detected by orchestrator)
 │   │   ├── completion.go        # Completion handling, continuation relaunch
 │   │   ├── context_save.go      # Low-context save: kill, resume, save findings, relaunch
 │   │   ├── context.go           # Context tracking from /tmp/usable_context.json
@@ -611,6 +611,7 @@ Templates use placeholders injected by the spawner:
 - `${MODEL_ID}` - Full model identifier in cli:model format (e.g., "claude:sonnet")
 - `${MODEL}` - Just the model name (e.g., "sonnet")
 - `${PREVIOUS_DATA}` - The `to_resume` key from findings of the most recent continued session (same agent, model, phase). Populated on low-context restarts when the resumed agent saves progress via `nrworkflow findings add ... to_resume:<summary>`. Empty string if no prior continued session or no `to_resume` key exists.
+- `${CALLBACK_INSTRUCTIONS}` - Callback instructions from `workflow_instances.findings["_callback"]`. When a later-layer agent triggers a callback, the orchestrator saves `_callback` metadata (instructions, from_agent, level) to WFI findings. `fetchCallbackInstructions()` reads this and returns formatted markdown with the instructions and source agent. Returns `"_No callback instructions_"` when no callback is active. Cleared after the callback target layer completes successfully.
 
 Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them, avoiding unnecessary queries.
 

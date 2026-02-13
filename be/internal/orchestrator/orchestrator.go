@@ -666,6 +666,7 @@ func (o *Orchestrator) runLoop(
 
 	const maxCallbacks = 3
 	callbackCount := 0
+	wasCallback := false // tracks if current layer is a callback re-run
 
 	// Use index-based loop to support backward jumps on callback
 	layerIdx := startLayerIdx
@@ -805,6 +806,7 @@ func (o *Orchestrator) runLoop(
 				o.markFailed(wfiID, req, fmt.Sprintf("callback target layer %d not found", callbackLevel))
 				return
 			}
+			wasCallback = true
 			layerIdx = targetIdx
 			continue
 		}
@@ -814,6 +816,12 @@ func (o *Orchestrator) runLoop(
 			log.Printf("[orchestrator] Layer %d: all agents failed (%d), stopping workflow", lg.layer, failCount)
 			o.markFailed(wfiID, req, fmt.Sprintf("layer %d: all agents failed", lg.layer))
 			return
+		}
+
+		// Clear callback metadata after the callback target layer completes successfully
+		if wasCallback {
+			o.clearCallbackMetadata(wfiID)
+			wasCallback = false
 		}
 
 		log.Printf("[orchestrator] Layer %d completed: %d passed, %d failed", lg.layer, passCount, failCount)
@@ -899,6 +907,30 @@ func (o *Orchestrator) handleCallback(
 	}))
 
 	return targetIdx
+}
+
+// clearCallbackMetadata removes the _callback key from workflow instance findings
+// after the callback target layer completes successfully.
+func (o *Orchestrator) clearCallbackMetadata(wfiID string) {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		log.Printf("[orchestrator] Failed to open DB to clear callback metadata: %v", err)
+		return
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wi, err := wfiRepo.Get(wfiID)
+	if err != nil {
+		log.Printf("[orchestrator] Failed to load WFI to clear callback metadata: %v", err)
+		return
+	}
+
+	findings := wi.GetFindings()
+	delete(findings, "_callback")
+	findingsJSON, _ := json.Marshal(findings)
+	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
 }
 
 // layerGroup holds phases that share the same layer number.

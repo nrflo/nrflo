@@ -83,6 +83,7 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 18. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.
 19. **Retry failed agent**: Users can retry a failed workflow from the failed layer via `POST /api/v1/tickets/:id/workflow/retry-failed` (or `/api/v1/projects/:id/workflow/retry-failed`) with `{workflow, session_id}`. This resets the workflow instance to active, resets phases in the failed layer to pending, increments retry_count, and re-runs the orchestration starting from the failed layer.
 20. **Project-scoped workflows**: Workflows can have `scope_type` of `ticket` (default) or `project`. Project-scoped workflows run at project level without requiring a ticket. API: `POST /api/v1/projects/:id/workflow/run`, `GET /api/v1/projects/:id/workflow`, `GET /api/v1/projects/:id/agents`. Project agents cannot use `${TICKET_ID}`, `${TICKET_TITLE}`, or `${TICKET_DESCRIPTION}` template variables.
+21. **Agent callbacks**: A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer (e.g., implementor). The orchestrator saves `_callback` metadata (instructions, from_agent, level) to workflow instance findings, resets phases/sessions from the target layer forward, and jumps the execution loop back. The target agent's prompt can include `${CALLBACK_INSTRUCTIONS}` to receive the callback instructions. After the callback target layer completes successfully, `_callback` is cleared from findings. Max 3 callbacks per workflow run.
 
 ## Quick Start
 
@@ -251,7 +252,10 @@ Each v4 workflow state contains:
       "started_at": "...", "ended_at": "...", "context_left": 60, "restart_count": 0
     }
   ],
-  "findings": {"setup-analyzer:claude:sonnet": {"files_to_modify": ["..."]}},
+  "findings": {
+    "setup-analyzer:claude:sonnet": {"files_to_modify": ["..."]},
+    "_callback": {"level": 2, "instructions": "Fix auth token expiry check", "from_layer": 3, "from_agent": "qa-verifier"}
+  },
   "parent_session": "uuid"
 }
 ```

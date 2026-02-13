@@ -119,6 +119,47 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string
 	return "_No user instructions provided_"
 }
 
+// fetchCallbackInstructions returns callback instructions from the workflow instance findings.
+// ticketID can be empty for project-scoped workflows.
+func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName string) string {
+	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for callback instructions: %v\n", err)
+		return "_No callback instructions_"
+	}
+	defer pool.Close()
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	var wi *model.WorkflowInstance
+	if ticketID == "" {
+		wi, err = wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
+	} else {
+		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	}
+	if err != nil {
+		return "_No callback instructions_"
+	}
+	findings := wi.GetFindings()
+	callbackRaw, ok := findings["_callback"]
+	if !ok {
+		return "_No callback instructions_"
+	}
+	callbackMap, ok := callbackRaw.(map[string]interface{})
+	if !ok {
+		return "_No callback instructions_"
+	}
+	instructions, _ := callbackMap["instructions"].(string)
+	if instructions == "" {
+		return "_No callback instructions_"
+	}
+	result := "## Callback Instructions\n\nThis agent is being re-run due to a callback from a later stage.\n\n"
+	if fromAgent, ok := callbackMap["from_agent"].(string); ok && fromAgent != "" {
+		result += "Callback triggered by: " + fromAgent + "\n\n"
+	}
+	result += instructions
+	return result
+}
+
 // loadTemplate loads and expands an agent template from DB.
 func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase string) (string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
@@ -157,6 +198,10 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	if strings.Contains(template, "${USER_INSTRUCTIONS}") {
 		instructions := s.fetchUserInstructions(projectID, ticketID, workflowName)
 		template = strings.ReplaceAll(template, "${USER_INSTRUCTIONS}", instructions)
+	}
+	if strings.Contains(template, "${CALLBACK_INSTRUCTIONS}") {
+		cbInstructions := s.fetchCallbackInstructions(projectID, ticketID, workflowName)
+		template = strings.ReplaceAll(template, "${CALLBACK_INSTRUCTIONS}", cbInstructions)
 	}
 
 	// Expand ${PREVIOUS_DATA} — injects previous run's findings for continuation

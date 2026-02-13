@@ -88,9 +88,9 @@ func (s *Spawner) handleCompletion(proc *processInfo, req SpawnRequest) {
 		}
 
 		if result == "" {
-			// No explicit completion within grace period
-			result = "fail"
-			resultReason = "no_complete"
+			// No explicit completion within grace period — treat clean exit as success
+			result = "pass"
+			resultReason = "implicit"
 		}
 
 		switch result {

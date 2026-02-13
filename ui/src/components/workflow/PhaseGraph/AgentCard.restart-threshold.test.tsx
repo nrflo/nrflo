@@ -38,16 +38,16 @@ function hasWarningIcon(container: HTMLElement): boolean {
 
 describe('AgentCard - restart threshold warning', () => {
   describe('warning icon display for running agents', () => {
-    it('shows AlertTriangle warning when running and context_left <= threshold+10', () => {
-      const agent = makeAgent({ context_left: 35, restart_threshold: 25, result: undefined })
+    it('shows AlertTriangle warning when running and context_left <= threshold+15', () => {
+      const agent = makeAgent({ context_left: 40, restart_threshold: 25, result: undefined })
       const { container } = renderCard(agent)
 
-      // context_left (35) <= threshold+10 (35) => warning shown
+      // context_left (40) <= threshold+15 (40) => warning shown
       expect(hasWarningIcon(container)).toBe(true)
     })
 
-    it('shows warning when context_left exactly equals threshold+10', () => {
-      const agent = makeAgent({ context_left: 35, restart_threshold: 25, result: undefined })
+    it('shows warning when context_left exactly equals threshold+15', () => {
+      const agent = makeAgent({ context_left: 40, restart_threshold: 25, result: undefined })
       const { container } = renderCard(agent)
 
       expect(hasWarningIcon(container)).toBe(true)
@@ -74,11 +74,11 @@ describe('AgentCard - restart threshold warning', () => {
       expect(hasWarningIcon(container)).toBe(true)
     })
 
-    it('does NOT show warning when context_left > threshold+10', () => {
-      const agent = makeAgent({ context_left: 36, restart_threshold: 25, result: undefined })
+    it('does NOT show warning when context_left > threshold+15', () => {
+      const agent = makeAgent({ context_left: 41, restart_threshold: 25, result: undefined })
       const { container } = renderCard(agent)
 
-      // context_left (36) > threshold+10 (35) => no warning
+      // context_left (41) > threshold+15 (40) => no warning
       expect(hasWarningIcon(container)).toBe(false)
     })
 
@@ -115,23 +115,23 @@ describe('AgentCard - restart threshold warning', () => {
 
   describe('custom restart_threshold values', () => {
     it('uses custom restart_threshold when provided', () => {
-      const agent = makeAgent({ context_left: 55, restart_threshold: 50, result: undefined })
+      const agent = makeAgent({ context_left: 60, restart_threshold: 50, result: undefined })
       const { container } = renderCard(agent)
 
-      // context_left (55) <= threshold+10 (60) => warning shown
+      // context_left (60) <= threshold+15 (65) => warning shown
       expect(hasWarningIcon(container)).toBe(true)
     })
 
-    it('does NOT show warning when context > custom_threshold+10', () => {
-      const agent = makeAgent({ context_left: 61, restart_threshold: 50, result: undefined })
+    it('does NOT show warning when context > custom_threshold+15', () => {
+      const agent = makeAgent({ context_left: 66, restart_threshold: 50, result: undefined })
       const { container } = renderCard(agent)
 
-      // context_left (61) > threshold+10 (60) => no warning
+      // context_left (66) > threshold+15 (65) => no warning
       expect(hasWarningIcon(container)).toBe(false)
     })
 
-    it('handles restart_threshold=1 (shows warning when context_left <= 11)', () => {
-      const agent = makeAgent({ context_left: 11, restart_threshold: 1, result: undefined })
+    it('handles restart_threshold=1 (shows warning when context_left <= 16)', () => {
+      const agent = makeAgent({ context_left: 16, restart_threshold: 1, result: undefined })
       const { container } = renderCard(agent)
 
       expect(hasWarningIcon(container)).toBe(true)
@@ -141,25 +141,25 @@ describe('AgentCard - restart threshold warning', () => {
       const agent = makeAgent({ context_left: 100, restart_threshold: 99, result: undefined })
       const { container } = renderCard(agent)
 
-      // 100 <= 109 => warning shown
+      // 100 <= 114 => warning shown
       expect(hasWarningIcon(container)).toBe(true)
     })
   })
 
   describe('fallback to default threshold', () => {
     it('uses default threshold of 25 when restart_threshold is undefined', () => {
-      const agent = makeAgent({ context_left: 35, restart_threshold: undefined, result: undefined })
+      const agent = makeAgent({ context_left: 40, restart_threshold: undefined, result: undefined })
       const { container } = renderCard(agent)
 
-      // Falls back to 25, so 35 <= 35 => warning shown
+      // Falls back to 25, so 40 <= 40 => warning shown
       expect(hasWarningIcon(container)).toBe(true)
     })
 
-    it('does NOT show warning when restart_threshold is undefined and context > 35', () => {
-      const agent = makeAgent({ context_left: 36, restart_threshold: undefined, result: undefined })
+    it('does NOT show warning when restart_threshold is undefined and context > 40', () => {
+      const agent = makeAgent({ context_left: 41, restart_threshold: undefined, result: undefined })
       const { container } = renderCard(agent)
 
-      // Falls back to 25, so 36 > 35 => no warning
+      // Falls back to 25, so 41 > 40 => no warning
       expect(hasWarningIcon(container)).toBe(false)
     })
 
@@ -234,10 +234,10 @@ describe('AgentCard - restart threshold warning', () => {
         makeAgent({ context_left: 30, restart_threshold: 50, result: undefined })
       )
 
-      // Agent 1: 30 <= 35 => warning shown
+      // Agent 1: 30 <= 40 => warning shown
       expect(hasWarningIcon(container1)).toBe(true)
 
-      // Agent 2: 30 <= 60 => warning shown
+      // Agent 2: 30 <= 65 => warning shown
       expect(hasWarningIcon(container2)).toBe(true)
     })
 
@@ -249,10 +249,10 @@ describe('AgentCard - restart threshold warning', () => {
         makeAgent({ context_left: 70, restart_threshold: 25, result: undefined })
       )
 
-      // Agent 1: 30 <= 35 => warning
+      // Agent 1: 30 <= 40 => warning
       expect(hasWarningIcon(container1)).toBe(true)
 
-      // Agent 2: 70 > 35 => no warning
+      // Agent 2: 70 > 40 => no warning
       expect(hasWarningIcon(container2)).toBe(false)
     })
   })

@@ -38,6 +38,7 @@ export interface AgentHistoryEntry {
   duration_sec?: number
   context_left?: number
   restart_count?: number
+  restart_threshold?: number
 }
 
 // Findings structure: agent_type -> findings (field -> value)

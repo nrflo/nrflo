@@ -101,6 +101,11 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId }: Ac
                 <span className="font-medium text-sm">
                   {agent.agent_type}
                 </span>
+                {(agent.restart_count ?? 0) > 0 && (
+                  <span className="text-xs font-mono px-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    ↻{agent.restart_count}
+                  </span>
+                )}
                 {agent.model_id && (
                   <Badge variant="outline" className="text-xs font-mono">
                     {agent.model_id}
@@ -147,6 +152,9 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId }: Ac
                       <AlertTriangle className="h-3 w-3 text-amber-500" />
                     )}
                     {agent.context_left}% ctx
+                    {!agent.result && isNearRestartThreshold(agent.context_left, agent.restart_threshold ?? 25) && (
+                      <span className="text-amber-600 dark:text-amber-400">(restart ≤{agent.restart_threshold ?? 25}%)</span>
+                    )}
                   </span>
                 )}
               </div>

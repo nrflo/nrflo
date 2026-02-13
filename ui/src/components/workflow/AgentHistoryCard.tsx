@@ -130,6 +130,11 @@ export function AgentHistoryCard({ agent, findings }: AgentHistoryCardProps) {
                 {agent.model_id}
               </Badge>
             )}
+            {(agent.restart_count ?? 0) > 0 && (
+              <span className="text-xs font-mono px-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                ↻{agent.restart_count}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

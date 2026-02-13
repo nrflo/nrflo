@@ -34,9 +34,9 @@ describe('ActiveAgentsPanel - restart threshold warning', () => {
   })
 
   describe('warning icon in context badge', () => {
-    it('shows AlertTriangle warning for running agent when context_left <= threshold+10', () => {
+    it('shows AlertTriangle warning for running agent when context_left <= threshold+15', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 35, restart_threshold: 25, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 40, restart_threshold: 25, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
@@ -44,9 +44,9 @@ describe('ActiveAgentsPanel - restart threshold warning', () => {
       expect(hasWarningIcon()).toBe(true)
     })
 
-    it('shows warning when context_left exactly equals threshold+10', () => {
+    it('shows warning when context_left exactly equals threshold+15', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 35, restart_threshold: 25, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 40, restart_threshold: 25, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
@@ -74,9 +74,9 @@ describe('ActiveAgentsPanel - restart threshold warning', () => {
       expect(hasWarningIcon()).toBe(true)
     })
 
-    it('does NOT show warning when context_left > threshold+10', () => {
+    it('does NOT show warning when context_left > threshold+15', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 36, restart_threshold: 25, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 41, restart_threshold: 25, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
@@ -122,45 +122,45 @@ describe('ActiveAgentsPanel - restart threshold warning', () => {
   describe('custom restart_threshold values', () => {
     it('uses custom restart_threshold when provided', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 55, restart_threshold: 50, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 60, restart_threshold: 50, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
 
-      // 55 <= 60 => warning shown
+      // 60 <= 65 => warning shown
       expect(hasWarningIcon()).toBe(true)
     })
 
-    it('does NOT show warning when context > custom_threshold+10', () => {
+    it('does NOT show warning when context > custom_threshold+15', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 61, restart_threshold: 50, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 66, restart_threshold: 50, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
 
-      // 61 > 60 => no warning
+      // 66 > 65 => no warning
       expect(hasWarningIcon()).toBe(false)
     })
 
     it('handles low restart_threshold values', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 11, restart_threshold: 5, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 16, restart_threshold: 5, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
 
-      // 11 <= 15 => warning
+      // 16 <= 20 => warning
       expect(hasWarningIcon()).toBe(true)
     })
 
     it('handles high restart_threshold values', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 85, restart_threshold: 80, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 90, restart_threshold: 80, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
 
-      // 85 <= 90 => warning
+      // 90 <= 95 => warning
       expect(hasWarningIcon()).toBe(true)
     })
   })
@@ -168,23 +168,23 @@ describe('ActiveAgentsPanel - restart threshold warning', () => {
   describe('fallback to default threshold', () => {
     it('uses default threshold of 25 when restart_threshold is undefined', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 35, restart_threshold: undefined, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 40, restart_threshold: undefined, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
 
-      // Falls back to 25, so 35 <= 35 => warning
+      // Falls back to 25, so 40 <= 40 => warning
       expect(hasWarningIcon()).toBe(true)
     })
 
-    it('does NOT show warning when restart_threshold is undefined and context > 35', () => {
+    it('does NOT show warning when restart_threshold is undefined and context > 40', () => {
       const agents = {
-        'impl:claude:sonnet': makeAgent({ context_left: 36, restart_threshold: undefined, result: undefined }),
+        'impl:claude:sonnet': makeAgent({ context_left: 41, restart_threshold: undefined, result: undefined }),
       }
 
       render(<ActiveAgentsPanel agents={agents} />)
 
-      // Falls back to 25, so 36 > 35 => no warning
+      // Falls back to 25, so 41 > 40 => no warning
       expect(hasWarningIcon()).toBe(false)
     })
 
@@ -306,14 +306,14 @@ describe('ActiveAgentsPanel - restart threshold warning', () => {
         'impl:claude:sonnet': makeAgent({
           agent_id: 'a1',
           agent_type: 'implementor',
-          context_left: 40,
+          context_left: 45,
           restart_threshold: 35,
           result: undefined,
         }),
         'tester:claude:opus': makeAgent({
           agent_id: 'a2',
           agent_type: 'tester',
-          context_left: 40,
+          context_left: 45,
           restart_threshold: 20,
           result: undefined,
         }),
@@ -321,8 +321,8 @@ describe('ActiveAgentsPanel - restart threshold warning', () => {
 
       render(<ActiveAgentsPanel agents={agents} />)
 
-      // Agent 1: 40 <= 45 => warning
-      // Agent 2: 40 > 30 => no warning
+      // Agent 1: 45 <= 50 => warning
+      // Agent 2: 45 > 35 => no warning
       const count = countWarningIcons()
       expect(count).toBe(1)
     })

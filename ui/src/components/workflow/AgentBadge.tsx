@@ -49,6 +49,9 @@ export function AgentBadge({ agent, findings, expanded, onToggle }: AgentBadgePr
         expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />
       )}
       <span>{agent.agent_type}</span>
+      {(agent.restart_count ?? 0) > 0 && (
+        <span className="text-red-600 dark:text-red-400">↻{agent.restart_count}</span>
+      )}
       {agent.result && <ResultIcon result={agent.result} />}
       {elapsed && (
         <span className="text-[10px] opacity-70">{elapsed}</span>

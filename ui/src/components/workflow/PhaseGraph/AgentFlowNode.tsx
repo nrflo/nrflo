@@ -1,6 +1,6 @@
 import { Handle, Position } from '@xyflow/react'
-import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward } from 'lucide-react'
-import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
+import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward, AlertTriangle } from 'lucide-react'
+import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import type { AgentFlowNodeData } from './types'
 
@@ -60,6 +60,8 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
 
   // Get context_left from active agent or history entry
   const contextLeft = agent?.context_left ?? historyEntry?.context_left
+  const restartCount = agent?.restart_count ?? historyEntry?.restart_count ?? 0
+  const restartThreshold = agent?.restart_threshold ?? 25
 
   // Pending/skipped/completed-placeholder phases render differently
   if (isPending || isSkipped || isCompleted || isError) {
@@ -144,6 +146,13 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           </div>
         </div>
 
+        {/* Restart count badge - top left corner */}
+        {restartCount > 0 && (
+          <span className="absolute top-1 left-1 text-base font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            ↻{restartCount}
+          </span>
+        )}
+
         {/* Context left badge - top right corner */}
         {contextLeft != null && (
           <span className={cn(
@@ -152,6 +161,14 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           )}>
             {contextLeft}%
           </span>
+        )}
+
+        {/* Threshold proximity warning */}
+        {isRunning && contextLeft != null && isNearRestartThreshold(contextLeft, restartThreshold) && (
+          <div className="flex items-center gap-1 mt-2 text-xs text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span>Restart at ≤{restartThreshold}%</span>
+          </div>
         )}
 
         {/* Message count badge */}

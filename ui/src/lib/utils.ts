@@ -136,9 +136,9 @@ export function priorityLabel(priority: number): string {
   }
 }
 
-/** Returns true when context_left is within 10 percentage points of the restart threshold */
+/** Returns true when context_left is within 15 percentage points of the restart threshold */
 export function isNearRestartThreshold(contextLeft: number, threshold: number): boolean {
-  return contextLeft <= threshold + 10
+  return contextLeft <= threshold + 15
 }
 
 export function contextLeftColor(contextLeft: number): string {

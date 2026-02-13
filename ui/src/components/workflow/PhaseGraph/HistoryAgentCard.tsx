@@ -51,6 +51,11 @@ export function HistoryAgentCard({ entry, session, isExpanded, onExpand }: Histo
         {isPassed && <CheckCircle className="h-3 w-3 text-green-500" />}
         {isFailed && <XCircle className="h-3 w-3 text-red-500" />}
         <span className="font-medium">{modelName}</span>
+        {(entry.restart_count ?? 0) > 0 && (
+          <span className="text-[9px] font-mono px-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            ↻{entry.restart_count}
+          </span>
+        )}
       </div>
 
       {/* Duration + context */}

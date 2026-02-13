@@ -286,4 +286,134 @@ describe('AgentFlowNode', () => {
     const button = screen.getByRole('button')
     expect(button.className).toContain('border-red-500')
   })
+
+  // Unified card sizing (ticket nrworkflow-40b179)
+  describe('unified card sizing', () => {
+    it('running card has w-[220px] fixed width', () => {
+      const data = makeData({ agent: makeAgent({ result: undefined }) })
+      render(<AgentFlowNode data={data} />)
+      const button = screen.getByRole('button')
+      expect(button.className).toContain('w-[220px]')
+    })
+
+    it('completed card has w-[220px] fixed width', () => {
+      const data = makeData({
+        agent: undefined,
+        historyEntry: makeHistory({ result: 'pass' }),
+      })
+      render(<AgentFlowNode data={data} />)
+      const button = screen.getByRole('button')
+      expect(button.className).toContain('w-[220px]')
+    })
+
+    it('failed card has w-[220px] fixed width', () => {
+      const data = makeData({
+        agent: undefined,
+        historyEntry: makeHistory({ result: 'fail' }),
+      })
+      render(<AgentFlowNode data={data} />)
+      const button = screen.getByRole('button')
+      expect(button.className).toContain('w-[220px]')
+    })
+
+    it('pending placeholder has w-[220px] fixed width', () => {
+      const data = makeData({ agent: undefined, isPending: true })
+      const { container } = render(<AgentFlowNode data={data} />)
+      const card = container.querySelector('.w-\\[220px\\]')
+      expect(card).toBeInTheDocument()
+      expect(card?.className).toContain('w-[220px]')
+    })
+
+    it('skipped placeholder has w-[220px] fixed width', () => {
+      const data = makeData({ agent: undefined, isSkipped: true })
+      const { container } = render(<AgentFlowNode data={data} />)
+      const card = container.querySelector('.w-\\[220px\\]')
+      expect(card).toBeInTheDocument()
+      expect(card?.className).toContain('w-[220px]')
+    })
+
+    it('completed placeholder has w-[220px] fixed width', () => {
+      const data = makeData({ agent: undefined, isCompleted: true })
+      const { container } = render(<AgentFlowNode data={data} />)
+      const card = container.querySelector('.w-\\[220px\\]')
+      expect(card).toBeInTheDocument()
+      expect(card?.className).toContain('w-[220px]')
+    })
+
+    it('error placeholder has w-[220px] fixed width', () => {
+      const data = makeData({ agent: undefined, isError: true })
+      const { container } = render(<AgentFlowNode data={data} />)
+      const card = container.querySelector('.w-\\[220px\\]')
+      expect(card).toBeInTheDocument()
+      expect(card?.className).toContain('w-[220px]')
+    })
+
+    it('running card has min-h-[90px] minimum height', () => {
+      const data = makeData({ agent: makeAgent({ result: undefined }) })
+      render(<AgentFlowNode data={data} />)
+      const button = screen.getByRole('button')
+      expect(button.className).toContain('min-h-[90px]')
+    })
+
+    it('completed card has min-h-[90px] minimum height', () => {
+      const data = makeData({
+        agent: undefined,
+        historyEntry: makeHistory({ result: 'pass' }),
+      })
+      render(<AgentFlowNode data={data} />)
+      const button = screen.getByRole('button')
+      expect(button.className).toContain('min-h-[90px]')
+    })
+
+    it('pending placeholder has min-h-[90px] minimum height', () => {
+      const data = makeData({ agent: undefined, isPending: true })
+      const { container } = render(<AgentFlowNode data={data} />)
+      const card = container.querySelector('.min-h-\\[90px\\]')
+      expect(card).toBeInTheDocument()
+      expect(card?.className).toContain('min-h-[90px]')
+    })
+
+    it('skipped placeholder has min-h-[90px] minimum height', () => {
+      const data = makeData({ agent: undefined, isSkipped: true })
+      const { container } = render(<AgentFlowNode data={data} />)
+      const card = container.querySelector('.min-h-\\[90px\\]')
+      expect(card).toBeInTheDocument()
+      expect(card?.className).toContain('min-h-[90px]')
+    })
+
+    it('all card variants use same fixed width for alignment', () => {
+      // Test that all card states render with the same width class
+      const variants = [
+        { label: 'running', data: makeData({ agent: makeAgent({ result: undefined }) }) },
+        { label: 'completed', data: makeData({ agent: undefined, historyEntry: makeHistory({ result: 'pass' }) }) },
+        { label: 'failed', data: makeData({ agent: undefined, historyEntry: makeHistory({ result: 'fail' }) }) },
+        { label: 'pending', data: makeData({ agent: undefined, isPending: true }) },
+        { label: 'skipped', data: makeData({ agent: undefined, isSkipped: true }) },
+        { label: 'error', data: makeData({ agent: undefined, isError: true }) },
+      ]
+
+      variants.forEach(({ label }) => {
+        const { unmount, container } = render(<AgentFlowNode data={variants.find(v => v.label === label)!.data} />)
+        const card = container.querySelector('.w-\\[220px\\]')
+        expect(card).toBeInTheDocument()
+        expect(card?.className).toContain('w-[220px]')
+        unmount()
+      })
+    })
+
+    it('does not use min-w class on any card variant', () => {
+      // Ensure old min-w-[180px] and min-w-[220px] are removed
+      const variants = [
+        { label: 'running', data: makeData({ agent: makeAgent({ result: undefined }) }) },
+        { label: 'pending', data: makeData({ agent: undefined, isPending: true }) },
+      ]
+
+      variants.forEach(({ data }) => {
+        const { unmount, container } = render(<AgentFlowNode data={data} />)
+        const card = container.querySelector('[class*="min-w"]')
+        expect(card).not.toBeInTheDocument()
+        unmount()
+      })
+    })
+  })
 })

@@ -75,7 +75,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
 
         <div
           className={cn(
-            'min-w-[180px] rounded-xl border-2 px-5 py-4',
+            'w-[220px] min-h-[90px] rounded-xl border-2 px-5 py-4',
             isCompleted && 'border-green-500 bg-green-50 dark:bg-green-950/30',
             isError && 'border-red-500 bg-red-50 dark:bg-red-950/30',
             isSkipped && 'border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 opacity-60',
@@ -121,7 +121,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
         style={{ pointerEvents: 'all' }}
         className={cn(
           'nopan nodrag relative',
-          'min-w-[220px] rounded-xl border-2 px-5 py-4 transition-all',
+          'w-[220px] min-h-[90px] rounded-xl border-2 px-5 py-4 transition-all',
           'hover:bg-muted/50 hover:scale-[1.02] cursor-pointer',
           isRunning && 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 animate-pulse-glow',
           !isRunning && result === 'pass' && 'border-green-500 bg-green-50 dark:bg-green-950/30',

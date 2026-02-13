@@ -718,7 +718,7 @@ POST /api/v1/dependencies             # Add dependency
 DELETE /api/v1/dependencies           # Remove dependency
 
 # Chain executions (require X-Project header)
-GET    /api/v1/chains              # List chains (?status= filter)
+GET    /api/v1/chains              # List chains (?status=&epic_ticket_id= filters)
 POST   /api/v1/chains              # Create chain (pending)
 GET    /api/v1/chains/:id          # Get chain with items
 PATCH  /api/v1/chains/:id          # Update pending chain

@@ -29,8 +29,9 @@ func (s *Server) handleListChains(w http.ResponseWriter, r *http.Request) {
 	defer pool.Close()
 
 	status := r.URL.Query().Get("status")
+	epicTicketID := r.URL.Query().Get("epic_ticket_id")
 	chainRepo := repo.NewChainRepo(pool)
-	chains, err := chainRepo.List(projectID, status)
+	chains, err := chainRepo.List(projectID, status, epicTicketID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

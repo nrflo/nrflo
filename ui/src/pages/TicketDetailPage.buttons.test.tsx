@@ -36,6 +36,14 @@ vi.mock('@/components/workflow/RunWorkflowDialog', () => ({
     open ? <div data-testid="run-dialog">RunWorkflowDialog</div> : null,
 }))
 
+vi.mock('@/components/workflow/RunEpicWorkflowDialog', () => ({
+  RunEpicWorkflowDialog: () => null,
+}))
+
+vi.mock('@/hooks/useChains', () => ({
+  useChainList: () => ({ data: [] }),
+}))
+
 vi.mock('@/components/workflow/AgentLogPanel', () => ({
   AgentLogPanel: ({
     activeAgents,

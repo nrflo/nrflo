@@ -77,6 +77,14 @@ vi.mock('@/components/workflow/RunWorkflowDialog', () => ({
     open ? <div data-testid="run-dialog">RunWorkflowDialog</div> : null,
 }))
 
+vi.mock('@/components/workflow/RunEpicWorkflowDialog', () => ({
+  RunEpicWorkflowDialog: () => null,
+}))
+
+vi.mock('@/hooks/useChains', () => ({
+  useChainList: () => ({ data: [] }),
+}))
+
 // Use the real AgentLogPanel but mock its internal detail component dependency
 vi.mock('@/components/workflow/AgentLogDetail', async () => {
   const actual = await vi.importActual<typeof import('@/components/workflow/AgentLogDetail')>('@/components/workflow/AgentLogDetail')

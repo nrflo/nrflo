@@ -14,7 +14,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/api/workflows.ts` | Workflow definition and orchestration API functions |
 | `src/api/projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart/agent sessions) |
 | `src/api/agentDefs.ts` | Agent definition API client |
-| `src/api/chains.ts` | Chain execution API functions (list/get/create/update/start/cancel) |
+| `src/api/chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/runEpicWorkflow) |
 | `src/types/workflow.ts` | Workflow types (WorkflowState, AgentHistoryEntry, etc.) |
 | `src/types/ticket.ts` | Ticket types (Ticket, Dependency, Status, etc.) |
 | `src/types/chain.ts` | Chain execution types (ChainExecution, ChainExecutionItem, ChainStatus, etc.) |
@@ -45,6 +45,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/WorkflowDefForm.tsx` | Workflow definition create/edit form |
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs |
 | `src/components/workflow/RunProjectWorkflowDialog.tsx` | Dialog for starting project-scoped workflow runs (filters to scope_type=project) |
+| `src/components/workflow/RunEpicWorkflowDialog.tsx` | Dialog for epic workflow execution: two-step flow (create chain preview, then start) |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
 | `src/components/workflow/AgentLogPanel.tsx` | Collapsible right-side panel: overview of running agents or single-agent detail view |
@@ -439,12 +440,13 @@ PATCH  /api/v1/workflows/:wid/agents/:id
 DELETE /api/v1/workflows/:wid/agents/:id
 
 # Chain executions (require X-Project header)
-GET    /api/v1/chains                  # List chains (?status= filter)
+GET    /api/v1/chains                  # List chains (?status=&epic_ticket_id= filters)
 GET    /api/v1/chains/:id              # Get chain with items
 POST   /api/v1/chains                  # Create chain (pending)
 PATCH  /api/v1/chains/:id              # Update pending chain
 POST   /api/v1/chains/:id/start        # Start sequential execution
 POST   /api/v1/chains/:id/cancel       # Cancel chain + release locks
+POST   /api/v1/tickets/:id/workflow/run-epic  # Create chain from epic children + optional start
 
 # Agent sessions
 GET /api/v1/tickets/:id/agents

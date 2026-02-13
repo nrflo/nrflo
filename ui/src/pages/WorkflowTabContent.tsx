@@ -1,6 +1,9 @@
+import { Link } from 'react-router-dom'
 import {
   CheckCircle,
   Clock,
+  ExternalLink,
+  Layers,
   Play,
   Square,
   Zap,
@@ -36,7 +39,10 @@ interface WorkflowTabContentProps {
   onAgentSelect: (data: SelectedAgentData | null) => void
   onStop: () => void
   stopPending: boolean
+  issueType?: string
   onShowRunDialog?: () => void
+  onShowEpicRunDialog?: () => void
+  activeChainId?: string | null
   onRestart?: (sessionId: string) => void
   restartingSessionId?: string | null
   onRetryFailed?: (sessionId: string) => void
@@ -62,7 +68,10 @@ export function WorkflowTabContent({
   onAgentSelect,
   onStop,
   stopPending,
+  issueType,
   onShowRunDialog,
+  onShowEpicRunDialog,
+  activeChainId,
   onRestart,
   restartingSessionId,
   onRetryFailed,
@@ -117,15 +126,35 @@ export function WorkflowTabContent({
                   </Button>
                 )}
               </div>
-              {!(isOrchestrated || hasActivePhase) && onShowRunDialog && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onShowRunDialog}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Run Workflow
-                </Button>
+              {!(isOrchestrated || hasActivePhase) && (
+                <>
+                  {activeChainId ? (
+                    <Link to={`/chains/${encodeURIComponent(activeChainId)}`}>
+                      <Button variant="outline" size="sm">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Chain
+                      </Button>
+                    </Link>
+                  ) : issueType === 'epic' && onShowEpicRunDialog ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onShowEpicRunDialog}
+                    >
+                      <Layers className="h-4 w-4 mr-2" />
+                      Run Epic Workflow
+                    </Button>
+                  ) : onShowRunDialog ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onShowRunDialog}
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Run Workflow
+                    </Button>
+                  ) : null}
+                </>
               )}
             </div>
             {displayedState.status === 'failed' && onRetryFailed && (() => {
@@ -189,9 +218,25 @@ export function WorkflowTabContent({
         ) : (
           <div className="text-center py-8 space-y-3">
             <p className="text-muted-foreground text-sm">
-              {onShowRunDialog ? 'No workflow configured for this ticket' : 'No workflows in this tab'}
+              {(onShowRunDialog || onShowEpicRunDialog) ? 'No workflow configured for this ticket' : 'No workflows in this tab'}
             </p>
-            {onShowRunDialog && (
+            {activeChainId ? (
+              <Link to={`/chains/${encodeURIComponent(activeChainId)}`}>
+                <Button variant="outline" size="sm">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Chain
+                </Button>
+              </Link>
+            ) : issueType === 'epic' && onShowEpicRunDialog ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onShowEpicRunDialog}
+              >
+                <Layers className="h-4 w-4 mr-2" />
+                Run Epic Workflow
+              </Button>
+            ) : onShowRunDialog ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -200,7 +245,7 @@ export function WorkflowTabContent({
                 <Play className="h-4 w-4 mr-2" />
                 Run Workflow
               </Button>
-            )}
+            ) : null}
           </div>
         )}
       </div>

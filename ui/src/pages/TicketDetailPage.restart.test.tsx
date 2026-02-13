@@ -33,6 +33,14 @@ vi.mock('@/components/workflow/RunWorkflowDialog', () => ({
     open ? <div data-testid="run-dialog">RunWorkflowDialog</div> : null,
 }))
 
+vi.mock('@/components/workflow/RunEpicWorkflowDialog', () => ({
+  RunEpicWorkflowDialog: () => null,
+}))
+
+vi.mock('@/hooks/useChains', () => ({
+  useChainList: () => ({ data: [] }),
+}))
+
 // Mock AgentLogPanel to expose restart controls for testing
 let capturedOnRestart: ((sessionId: string) => void) | undefined
 let capturedRestartingSessionId: string | null | undefined

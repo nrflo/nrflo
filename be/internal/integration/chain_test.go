@@ -387,7 +387,7 @@ func TestChainList_StatusFilter(t *testing.T) {
 	chainRepo.UpdateStatus(chain2.ID, model.ChainStatusCompleted)
 
 	// List pending chains
-	pendingChains, err := chainRepo.List(env.ProjectID, string(model.ChainStatusPending))
+	pendingChains, err := chainRepo.List(env.ProjectID, string(model.ChainStatusPending), "")
 	if err != nil {
 		t.Fatalf("List pending failed: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestChainList_StatusFilter(t *testing.T) {
 	}
 
 	// List all chains
-	allChains, err := chainRepo.List(env.ProjectID, "")
+	allChains, err := chainRepo.List(env.ProjectID, "", "")
 	if err != nil {
 		t.Fatalf("List all failed: %v", err)
 	}

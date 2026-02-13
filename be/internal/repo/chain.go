@@ -97,21 +97,23 @@ func scanChainWithCounts(scanner interface{ Scan(...interface{}) error }) (*mode
 	return c, nil
 }
 
-// List lists chain executions for a project, optionally filtered by status
-func (r *ChainRepo) List(projectID, status string) ([]*model.ChainExecution, error) {
-	var rows *sql.Rows
-	var err error
+// List lists chain executions for a project, optionally filtered by status and epic_ticket_id
+func (r *ChainRepo) List(projectID, status, epicTicketID string) ([]*model.ChainExecution, error) {
+	query := `SELECT ` + chainListCols + ` FROM chain_executions WHERE LOWER(project_id) = LOWER(?)`
+	args := []interface{}{projectID}
+
 	if status != "" {
-		rows, err = r.pool.Query(`
-			SELECT `+chainListCols+` FROM chain_executions
-			WHERE LOWER(project_id) = LOWER(?) AND status = ?
-			ORDER BY created_at DESC`, projectID, status)
-	} else {
-		rows, err = r.pool.Query(`
-			SELECT `+chainListCols+` FROM chain_executions
-			WHERE LOWER(project_id) = LOWER(?)
-			ORDER BY created_at DESC`, projectID)
+		query += ` AND status = ?`
+		args = append(args, status)
 	}
+	if epicTicketID != "" {
+		query += ` AND epic_ticket_id = ?`
+		args = append(args, epicTicketID)
+	}
+
+	query += ` ORDER BY created_at DESC`
+
+	rows, err := r.pool.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

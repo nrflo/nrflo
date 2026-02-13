@@ -21,6 +21,8 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
 import { RunWorkflowDialog } from '@/components/workflow/RunWorkflowDialog'
+import { RunEpicWorkflowDialog } from '@/components/workflow/RunEpicWorkflowDialog'
+import { useChainList } from '@/hooks/useChains'
 import {
   useTicket,
   useWorkflow,
@@ -63,6 +65,7 @@ export function TicketDetailPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'workflow' | 'description' | 'details'>('workflow')
   const [showRunDialog, setShowRunDialog] = useState(false)
+  const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
 
@@ -102,6 +105,16 @@ export function TicketDetailPage() {
   // Fetch agent sessions for the running agent log panel
   const { data: sessionsData } = useAgentSessions(id!, undefined, { enabled: !!id })
   const sessions = sessionsData?.sessions ?? []
+
+  // Query active chains for epic tickets
+  const isEpic = ticket?.issue_type === 'epic'
+  const { data: epicChains } = useChainList(
+    { epic_ticket_id: id },
+    { enabled: !!id && isEpic }
+  )
+  const activeEpicChain = epicChains?.find(
+    (c) => c.status === 'pending' || c.status === 'running'
+  )
 
   const closeMutation = useCloseTicket()
   const reopenMutation = useReopenTicket()
@@ -319,7 +332,10 @@ export function TicketDetailPage() {
               })
             }
             stopPending={stopMutation.isPending}
+            issueType={ticket?.issue_type}
             onShowRunDialog={() => setShowRunDialog(true)}
+            onShowEpicRunDialog={() => setShowEpicRunDialog(true)}
+            activeChainId={activeEpicChain?.id ?? null}
             onRestart={(sessionId) =>
               id && restartMutation.mutate({
                 ticketId: id,
@@ -352,6 +368,16 @@ export function TicketDetailPage() {
           open={showRunDialog}
           onClose={() => setShowRunDialog(false)}
           ticketId={id}
+        />
+      )}
+
+      {/* Run Epic Workflow Dialog */}
+      {id && ticket && (
+        <RunEpicWorkflowDialog
+          open={showEpicRunDialog}
+          onClose={() => setShowEpicRunDialog(false)}
+          ticketId={id}
+          ticketTitle={ticket.title}
         />
       )}
     </div>

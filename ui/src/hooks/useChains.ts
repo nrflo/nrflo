@@ -11,7 +11,9 @@ import {
   updateChain,
   startChain,
   cancelChain,
+  runEpicWorkflow,
   type ListChainsParams,
+  type RunEpicWorkflowParams,
 } from '@/api/chains'
 import type {
   ChainExecution,
@@ -102,6 +104,17 @@ export function useCancelChain() {
     mutationFn: (id: string) => cancelChain(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: chainKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: chainKeys.lists() })
+    },
+  })
+}
+
+export function useRunEpicWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, params }: { ticketId: string; params: RunEpicWorkflowParams }) =>
+      runEpicWorkflow(ticketId, params),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chainKeys.lists() })
     },
   })

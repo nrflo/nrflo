@@ -50,7 +50,7 @@ func TestChainCreate_WithEpicTicketID(t *testing.T) {
 	}
 
 	// Verify epic_ticket_id round-trips through List
-	chains, err := chainRepo.List(env.ProjectID, "")
+	chains, err := chainRepo.List(env.ProjectID, "", "")
 	if err != nil {
 		t.Fatalf("List failed: %v", err)
 	}
@@ -518,7 +518,7 @@ func TestChainEpic_MultipleChainsSameEpic(t *testing.T) {
 
 	// Verify both chains exist with same epic_ticket_id
 	chainRepo := repo.NewChainRepo(env.Pool)
-	chains, err := chainRepo.List(env.ProjectID, "")
+	chains, err := chainRepo.List(env.ProjectID, "", "")
 	if err != nil {
 		t.Fatalf("List failed: %v", err)
 	}
@@ -531,5 +531,324 @@ func TestChainEpic_MultipleChainsSameEpic(t *testing.T) {
 	}
 	if epicChainCount != 2 {
 		t.Errorf("expected 2 chains with epic_ticket_id 'EPIC-1', got %d", epicChainCount)
+	}
+}
+
+// TestChainList_EpicTicketIDFilter verifies filtering chains by epic_ticket_id
+func TestChainList_EpicTicketIDFilter(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"EPIC-1": base,
+		"EPIC-2": base.Add(time.Second),
+		"A":      base.Add(2 * time.Second),
+		"B":      base.Add(3 * time.Second),
+		"C":      base.Add(4 * time.Second),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+
+	// Create chain with EPIC-1
+	chain1, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Epic 1 Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"A"},
+		EpicTicketID: "EPIC-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain 1 failed: %v", err)
+	}
+
+	// Create another chain with EPIC-1
+	chain2, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Epic 1 Chain 2",
+		WorkflowName: "test",
+		TicketIDs:    []string{"B"},
+		EpicTicketID: "EPIC-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain 2 failed: %v", err)
+	}
+
+	// Create chain with EPIC-2
+	chain3, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Epic 2 Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"C"},
+		EpicTicketID: "EPIC-2",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain 3 failed: %v", err)
+	}
+
+	chainRepo := repo.NewChainRepo(env.Pool)
+
+	// Filter by EPIC-1
+	epic1Chains, err := chainRepo.List(env.ProjectID, "", "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with epic_ticket_id=EPIC-1 failed: %v", err)
+	}
+	if len(epic1Chains) != 2 {
+		t.Fatalf("expected 2 chains for EPIC-1, got %d", len(epic1Chains))
+	}
+
+	// Verify both chains belong to EPIC-1
+	epic1IDs := map[string]bool{chain1.ID: true, chain2.ID: true}
+	for _, c := range epic1Chains {
+		if !epic1IDs[c.ID] {
+			t.Errorf("unexpected chain ID %s in EPIC-1 results", c.ID)
+		}
+		if c.EpicTicketID != "EPIC-1" {
+			t.Errorf("chain %s: expected epic_ticket_id 'EPIC-1', got %s", c.ID, c.EpicTicketID)
+		}
+	}
+
+	// Filter by EPIC-2
+	epic2Chains, err := chainRepo.List(env.ProjectID, "", "EPIC-2")
+	if err != nil {
+		t.Fatalf("List with epic_ticket_id=EPIC-2 failed: %v", err)
+	}
+	if len(epic2Chains) != 1 {
+		t.Fatalf("expected 1 chain for EPIC-2, got %d", len(epic2Chains))
+	}
+	if epic2Chains[0].ID != chain3.ID {
+		t.Errorf("expected chain3 for EPIC-2, got %s", epic2Chains[0].ID)
+	}
+
+	// Filter by nonexistent epic
+	noChains, err := chainRepo.List(env.ProjectID, "", "EPIC-NONEXISTENT")
+	if err != nil {
+		t.Fatalf("List with nonexistent epic failed: %v", err)
+	}
+	if len(noChains) != 0 {
+		t.Errorf("expected 0 chains for nonexistent epic, got %d", len(noChains))
+	}
+
+	// No filter - should return all 3 chains
+	allChains, err := chainRepo.List(env.ProjectID, "", "")
+	if err != nil {
+		t.Fatalf("List with no epic filter failed: %v", err)
+	}
+	if len(allChains) != 3 {
+		t.Errorf("expected 3 chains with no epic filter, got %d", len(allChains))
+	}
+}
+
+// TestChainList_CombinedFilters verifies combining status and epic_ticket_id filters
+func TestChainList_CombinedFilters(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"EPIC-1": base,
+		"A":      base.Add(time.Second),
+		"B":      base.Add(2 * time.Second),
+		"C":      base.Add(3 * time.Second),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+
+	// Create three chains with EPIC-1
+	chain1, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Chain 1 (pending)",
+		WorkflowName: "test",
+		TicketIDs:    []string{"A"},
+		EpicTicketID: "EPIC-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain 1 failed: %v", err)
+	}
+
+	chain2, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Chain 2 (running)",
+		WorkflowName: "test",
+		TicketIDs:    []string{"B"},
+		EpicTicketID: "EPIC-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain 2 failed: %v", err)
+	}
+
+	chain3, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Chain 3 (completed)",
+		WorkflowName: "test",
+		TicketIDs:    []string{"C"},
+		EpicTicketID: "EPIC-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain 3 failed: %v", err)
+	}
+
+	// Update statuses
+	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo.UpdateStatus(chain2.ID, model.ChainStatusRunning)
+	chainRepo.UpdateStatus(chain3.ID, model.ChainStatusCompleted)
+
+	// Filter by EPIC-1 + pending
+	pendingChains, err := chainRepo.List(env.ProjectID, string(model.ChainStatusPending), "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with status=pending and epic_ticket_id=EPIC-1 failed: %v", err)
+	}
+	if len(pendingChains) != 1 {
+		t.Fatalf("expected 1 pending chain for EPIC-1, got %d", len(pendingChains))
+	}
+	if pendingChains[0].ID != chain1.ID {
+		t.Errorf("expected chain1, got %s", pendingChains[0].ID)
+	}
+	if pendingChains[0].Status != model.ChainStatusPending {
+		t.Errorf("expected status pending, got %s", pendingChains[0].Status)
+	}
+
+	// Filter by EPIC-1 + running
+	runningChains, err := chainRepo.List(env.ProjectID, string(model.ChainStatusRunning), "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with status=running and epic_ticket_id=EPIC-1 failed: %v", err)
+	}
+	if len(runningChains) != 1 {
+		t.Fatalf("expected 1 running chain for EPIC-1, got %d", len(runningChains))
+	}
+	if runningChains[0].ID != chain2.ID {
+		t.Errorf("expected chain2, got %s", runningChains[0].ID)
+	}
+
+	// Filter by EPIC-1 + completed
+	completedChains, err := chainRepo.List(env.ProjectID, string(model.ChainStatusCompleted), "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with status=completed and epic_ticket_id=EPIC-1 failed: %v", err)
+	}
+	if len(completedChains) != 1 {
+		t.Fatalf("expected 1 completed chain for EPIC-1, got %d", len(completedChains))
+	}
+	if completedChains[0].ID != chain3.ID {
+		t.Errorf("expected chain3, got %s", completedChains[0].ID)
+	}
+
+	// Filter by EPIC-1 only - should return all 3
+	allEpicChains, err := chainRepo.List(env.ProjectID, "", "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with epic_ticket_id=EPIC-1 only failed: %v", err)
+	}
+	if len(allEpicChains) != 3 {
+		t.Errorf("expected 3 chains for EPIC-1 (all statuses), got %d", len(allEpicChains))
+	}
+
+	// Filter by EPIC-1 + nonexistent status
+	noChains, err := chainRepo.List(env.ProjectID, "nonexistent", "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with invalid status failed: %v", err)
+	}
+	if len(noChains) != 0 {
+		t.Errorf("expected 0 chains for invalid status, got %d", len(noChains))
+	}
+}
+
+// TestChainList_EpicTicketIDCaseInsensitive verifies epic_ticket_id filter is case-sensitive
+func TestChainList_EpicTicketIDCaseInsensitive(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"EPIC-1": base,
+		"A":      base.Add(time.Second),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	_, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Test Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"A"},
+		EpicTicketID: "EPIC-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	chainRepo := repo.NewChainRepo(env.Pool)
+
+	// Filter by exact case
+	chains, err := chainRepo.List(env.ProjectID, "", "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with EPIC-1 failed: %v", err)
+	}
+	if len(chains) != 1 {
+		t.Fatalf("expected 1 chain for EPIC-1, got %d", len(chains))
+	}
+
+	// Filter by different case - should return 0 chains (epic_ticket_id is case-sensitive in SQL)
+	chainsLower, err := chainRepo.List(env.ProjectID, "", "epic-1")
+	if err != nil {
+		t.Fatalf("List with epic-1 failed: %v", err)
+	}
+	if len(chainsLower) != 0 {
+		t.Errorf("expected 0 chains for lowercase epic-1 (case-sensitive), got %d", len(chainsLower))
+	}
+}
+
+// TestChainList_EmptyEpicTicketID verifies chains without epic_ticket_id are not included in epic filter
+func TestChainList_EmptyEpicTicketID(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"EPIC-1": base,
+		"A":      base.Add(time.Second),
+		"B":      base.Add(2 * time.Second),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+
+	// Create chain with epic
+	chainWithEpic, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Epic Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"A"},
+		EpicTicketID: "EPIC-1",
+	})
+	if err != nil {
+		t.Fatalf("CreateChain with epic failed: %v", err)
+	}
+
+	// Create chain without epic
+	chainWithoutEpic, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "No Epic Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"B"},
+		// EpicTicketID intentionally omitted
+	})
+	if err != nil {
+		t.Fatalf("CreateChain without epic failed: %v", err)
+	}
+
+	chainRepo := repo.NewChainRepo(env.Pool)
+
+	// Filter by EPIC-1 - should only return chain with epic
+	epicChains, err := chainRepo.List(env.ProjectID, "", "EPIC-1")
+	if err != nil {
+		t.Fatalf("List with epic_ticket_id=EPIC-1 failed: %v", err)
+	}
+	if len(epicChains) != 1 {
+		t.Fatalf("expected 1 chain for EPIC-1, got %d", len(epicChains))
+	}
+	if epicChains[0].ID != chainWithEpic.ID {
+		t.Errorf("expected chainWithEpic, got %s", epicChains[0].ID)
+	}
+
+	// No filter - should return both chains
+	allChains, err := chainRepo.List(env.ProjectID, "", "")
+	if err != nil {
+		t.Fatalf("List with no epic filter failed: %v", err)
+	}
+	if len(allChains) != 2 {
+		t.Fatalf("expected 2 chains total, got %d", len(allChains))
+	}
+
+	// Verify both chains are present
+	foundIDs := map[string]bool{}
+	for _, c := range allChains {
+		foundIDs[c.ID] = true
+	}
+	if !foundIDs[chainWithEpic.ID] || !foundIDs[chainWithoutEpic.ID] {
+		t.Errorf("expected both chains in unfiltered list")
 	}
 }

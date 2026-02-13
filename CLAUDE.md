@@ -279,7 +279,7 @@ Running → Failed (item fails)
 ### Chain API
 
 ```bash
-GET    /api/v1/chains              # List chains (?status= filter)
+GET    /api/v1/chains              # List chains (?status=&epic_ticket_id= filters)
 POST   /api/v1/chains              # Create (pending), expands deps + topo sort
 GET    /api/v1/chains/:id          # Get with ordered items
 PATCH  /api/v1/chains/:id          # Edit (pending only)

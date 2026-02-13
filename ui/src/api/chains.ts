@@ -7,6 +7,13 @@ import type {
 
 export interface ListChainsParams {
   status?: string
+  epic_ticket_id?: string
+}
+
+export interface RunEpicWorkflowParams {
+  workflow_name: string
+  category?: string
+  start: boolean
 }
 
 export async function listChains(
@@ -14,6 +21,7 @@ export async function listChains(
 ): Promise<ChainExecution[]> {
   const searchParams = new URLSearchParams()
   if (params?.status) searchParams.set('status', params.status)
+  if (params?.epic_ticket_id) searchParams.set('epic_ticket_id', params.epic_ticket_id)
   const query = searchParams.toString()
   return apiGet<ChainExecution[]>(`/api/v1/chains${query ? `?${query}` : ''}`)
 }
@@ -53,5 +61,15 @@ export async function cancelChain(
   return apiPost<{ status: string; chain_id: string }>(
     `/api/v1/chains/${encodeURIComponent(id)}/cancel`,
     {}
+  )
+}
+
+export async function runEpicWorkflow(
+  ticketId: string,
+  params: RunEpicWorkflowParams
+): Promise<ChainExecution> {
+  return apiPost<ChainExecution>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/run-epic`,
+    params
   )
 }

@@ -14,9 +14,12 @@ interface AgentMessagesBlockProps {
   onAgentClick: (agent: ActiveAgentV4, session?: AgentSession) => void
   onRestart?: (sessionId: string) => void
   restartingSessionId?: string | null
+  onRetryFailed?: (sessionId: string) => void
+  retryingSessionId?: string | null
+  workflowStatus?: string
 }
 
-function AgentMessagesBlock({ agent, session, onAgentClick, onRestart, restartingSessionId }: AgentMessagesBlockProps) {
+function AgentMessagesBlock({ agent, session, onAgentClick, onRestart, restartingSessionId, onRetryFailed, retryingSessionId, workflowStatus }: AgentMessagesBlockProps) {
   const isRunning = !agent.result
   const sessionId = session?.id || agent.session_id
   const { data: messagesData } = useSessionMessages(sessionId, {
@@ -73,6 +76,20 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRestart, restartin
             )}
           </button>
         )}
+        {onRetryFailed && agent.session_id && agent.result === 'fail' && workflowStatus === 'failed' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRetryFailed(agent.session_id!) }}
+            disabled={!!retryingSessionId}
+            title="Retry failed agent"
+            className="ml-auto p-1 rounded hover:bg-muted transition-colors shrink-0 disabled:opacity-50"
+          >
+            {retryingSessionId === agent.session_id ? (
+              <Spinner size="sm" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5 text-red-500" />
+            )}
+          </button>
+        )}
         <MessageSquare className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0", !onRestart && "ml-auto")} />
       </div>
       {displayMessages.length > 0 && (
@@ -119,6 +136,9 @@ interface AgentLogPanelProps {
   onAgentSelect: (data: SelectedAgentData | null) => void
   onRestart?: (sessionId: string) => void
   restartingSessionId?: string | null
+  onRetryFailed?: (sessionId: string) => void
+  retryingSessionId?: string | null
+  workflowStatus?: string
 }
 
 export function AgentLogPanel({
@@ -130,6 +150,9 @@ export function AgentLogPanel({
   onAgentSelect,
   onRestart,
   restartingSessionId,
+  onRetryFailed,
+  retryingSessionId,
+  workflowStatus,
 }: AgentLogPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -247,6 +270,9 @@ export function AgentLogPanel({
                   onAgentClick={handleRunningAgentClick}
                   onRestart={onRestart}
                   restartingSessionId={restartingSessionId}
+                  onRetryFailed={onRetryFailed}
+                  retryingSessionId={retryingSessionId}
+                  workflowStatus={workflowStatus}
                 />
               )
             })}

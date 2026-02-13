@@ -125,6 +125,47 @@ func (s *Server) handleRestartProjectAgent(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]string{"status": "restarting"})
 }
 
+// handleRetryFailedProjectAgent retries a failed project-scoped workflow from the failed layer.
+// POST /api/v1/projects/{id}/workflow/retry-failed
+func (s *Server) handleRetryFailedProjectAgent(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	if s.orchestrator == nil {
+		writeError(w, http.StatusServiceUnavailable, "orchestrator not available")
+		return
+	}
+
+	var body struct {
+		Workflow  string `json:"workflow"`
+		SessionID string `json:"session_id"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.Workflow == "" {
+		writeError(w, http.StatusBadRequest, "workflow name is required")
+		return
+	}
+	if body.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+
+	err := s.orchestrator.RetryFailedProjectAgent(context.Background(), projectID, body.Workflow, body.SessionID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "retrying"})
+}
+
 // handleGetProjectWorkflow returns the workflow state for a project-scoped workflow.
 // GET /api/v1/projects/{id}/workflow
 func (s *Server) handleGetProjectWorkflow(w http.ResponseWriter, r *http.Request) {

@@ -30,6 +30,7 @@ import {
   useDeleteTicket,
   useStopWorkflow,
   useRestartAgent,
+  useRetryFailedAgent,
 } from '@/hooks/useTickets'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import type { WorkflowState } from '@/types/workflow'
@@ -107,6 +108,7 @@ export function TicketDetailPage() {
   const deleteMutation = useDeleteTicket()
   const stopMutation = useStopWorkflow()
   const restartMutation = useRestartAgent()
+  const retryFailedMutation = useRetryFailedAgent()
 
   // Detect if orchestration is running (via _orchestration findings key)
   const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
@@ -325,6 +327,13 @@ export function TicketDetailPage() {
               })
             }
             restartingSessionId={restartMutation.isPending ? (restartMutation.variables?.params.session_id ?? null) : null}
+            onRetryFailed={(sessionId) =>
+              id && retryFailedMutation.mutate({
+                ticketId: id,
+                params: { workflow: displayedWorkflowName, session_id: sessionId },
+              })
+            }
+            retryingSessionId={retryFailedMutation.isPending ? (retryFailedMutation.variables?.params.session_id ?? null) : null}
           />
         )}
 

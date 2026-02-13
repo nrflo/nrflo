@@ -286,6 +286,24 @@ func (r *WorkflowInstanceRepo) CompletePhase(id, phase, result string) error {
 	return err
 }
 
+// ResetPhaseStatus resets a specific phase back to pending.
+func (r *WorkflowInstanceRepo) ResetPhaseStatus(id, phase string) error {
+	wi, err := r.Get(id)
+	if err != nil {
+		return err
+	}
+
+	phases := wi.GetPhases()
+	phases[phase] = model.PhaseStatus{Status: "pending"}
+	wi.SetPhases(phases)
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = r.pool.Exec(
+		`UPDATE workflow_instances SET phases = ?, updated_at = ? WHERE id = ?`,
+		wi.Phases, now, id)
+	return err
+}
+
 // Delete deletes a workflow instance
 func (r *WorkflowInstanceRepo) Delete(id string) error {
 	result, err := r.pool.Exec(`DELETE FROM workflow_instances WHERE id = ?`, id)

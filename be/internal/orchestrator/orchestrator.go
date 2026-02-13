@@ -231,7 +231,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	}))
 
 	// Run orchestration loop in goroutine
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0)
 
 	return &RunResult{
 		InstanceID: wi.ID,
@@ -324,6 +324,164 @@ func (o *Orchestrator) StopByProject(projectID, workflowName string) error {
 	}
 
 	return fmt.Errorf("no running project orchestration found")
+}
+
+// RetryFailedAgent resets a failed workflow instance and re-runs from the failed layer.
+func (o *Orchestrator) RetryFailedAgent(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error {
+	return o.retryFailed(ctx, projectID, ticketID, workflowName, sessionID, "ticket")
+}
+
+// RetryFailedProjectAgent resets a failed project-scoped workflow and re-runs from the failed layer.
+func (o *Orchestrator) RetryFailedProjectAgent(ctx context.Context, projectID, workflowName, sessionID string) error {
+	return o.retryFailed(ctx, projectID, "", workflowName, sessionID, "project")
+}
+
+func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID, scopeType string) error {
+	// Look up the workflow instance
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+
+	var wi *model.WorkflowInstance
+	if scopeType == "project" {
+		wi, err = wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
+	} else {
+		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	}
+	if err != nil {
+		return fmt.Errorf("workflow not found: %w", err)
+	}
+
+	if wi.Status != model.WorkflowInstanceFailed {
+		return fmt.Errorf("workflow is not in failed status (current: %s)", wi.Status)
+	}
+
+	// Check not already running
+	o.mu.Lock()
+	if _, ok := o.runs[wi.ID]; ok {
+		o.mu.Unlock()
+		return fmt.Errorf("workflow is already running")
+	}
+	o.mu.Unlock()
+
+	// Look up the failed session to get its phase
+	asRepo := repo.NewAgentSessionRepo(database)
+	session, err := asRepo.Get(sessionID)
+	if err != nil {
+		return fmt.Errorf("agent session not found: %w", err)
+	}
+	if session.WorkflowInstanceID != wi.ID {
+		return fmt.Errorf("session does not belong to this workflow instance")
+	}
+	failedPhase := session.Phase
+
+	// Load project root
+	projectRepo := repo.NewProjectRepo(database)
+	project, err := projectRepo.Get(projectID)
+	if err != nil {
+		return fmt.Errorf("project not found: %w", err)
+	}
+	if !project.RootPath.Valid || project.RootPath.String == "" {
+		return fmt.Errorf("project '%s' has no root_path configured", projectID)
+	}
+	projectRoot := project.RootPath.String
+
+	// Load workflow/agent definitions
+	wfRepo := repo.NewWorkflowRepo(database)
+	dbWorkflows, err := wfRepo.List(projectID)
+	if err != nil {
+		return fmt.Errorf("failed to load workflows: %w", err)
+	}
+	var dbAgentDefs []*model.AgentDefinition
+	adRepo := repo.NewAgentDefinitionRepo(database)
+	for _, wf := range dbWorkflows {
+		defs, loadErr := adRepo.List(projectID, wf.ID)
+		if loadErr == nil {
+			dbAgentDefs = append(dbAgentDefs, defs...)
+		}
+	}
+
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig(dbWorkflows, dbAgentDefs)
+	svcWf, ok := svcWorkflows[workflowName]
+	if !ok {
+		return fmt.Errorf("workflow definition '%s' not found", workflowName)
+	}
+
+	// Determine which layer the failed phase belongs to
+	layerGroups := groupPhasesByLayer(svcWf.Phases)
+	startLayerIdx := -1
+	for i, lg := range layerGroups {
+		for _, p := range lg.phases {
+			if p.Agent == failedPhase {
+				startLayerIdx = i
+				break
+			}
+		}
+		if startLayerIdx >= 0 {
+			break
+		}
+	}
+	if startLayerIdx < 0 {
+		return fmt.Errorf("failed phase '%s' not found in workflow definition", failedPhase)
+	}
+
+	// Reset workflow instance status to active
+	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
+
+	// Reset phases in the failed layer back to pending
+	for _, p := range layerGroups[startLayerIdx].phases {
+		wfiRepo.ResetPhaseStatus(wi.ID, p.Agent)
+	}
+
+	// Increment retry count
+	wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
+
+	// Update orchestration status in findings
+	findings := wi.GetFindings()
+	findings["_orchestration"] = map[string]interface{}{
+		"status": "running",
+	}
+	findingsJSON, _ := json.Marshal(findings)
+	wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
+
+	// Build spawner config
+	spawnWorkflows := convertToSpawnerWorkflows(svcWorkflows)
+	spawnAgents := convertToSpawnerAgents(svcAgents)
+
+	parentSession := uuid.New().String()
+
+	// Build run request
+	req := RunRequest{
+		ProjectID:    projectID,
+		TicketID:     ticketID,
+		WorkflowName: workflowName,
+		Category:     wi.Category.String,
+		ScopeType:    scopeType,
+	}
+
+	// Create orchestration context
+	orchCtx, cancel := context.WithCancel(ctx)
+	rs := &runState{cancel: cancel}
+	o.mu.Lock()
+	o.runs[wi.ID] = rs
+	o.mu.Unlock()
+
+	// Broadcast retry event
+	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationRetried, projectID, ticketID, workflowName, map[string]interface{}{
+		"instance_id":      wi.ID,
+		"start_layer":      startLayerIdx,
+		"failed_phase":     failedPhase,
+		"failed_session_id": sessionID,
+	}))
+
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx)
+
+	return nil
 }
 
 // RestartAgent sends a manual restart signal to the active spawner for a workflow.
@@ -444,7 +602,7 @@ func (o *Orchestrator) StopAll() {
 // runLoop executes workflow phases grouped by layer.
 // All agents in the same layer run concurrently. Layers execute in ascending order.
 // Fan-in: proceed to next layer if pass_count >= 1. All-skipped continues.
-// All-fail stops the workflow.
+// All-fail stops the workflow. startLayerIdx skips layers before that index (for retry).
 func (o *Orchestrator) runLoop(
 	ctx context.Context,
 	wfiID string,
@@ -454,6 +612,7 @@ func (o *Orchestrator) runLoop(
 	workflows map[string]spawner.WorkflowDef,
 	agents map[string]spawner.AgentConfig,
 	svcWf service.SpawnerWorkflowDef,
+	startLayerIdx int,
 ) {
 	defer func() {
 		o.mu.Lock()
@@ -474,6 +633,12 @@ func (o *Orchestrator) runLoop(
 	layerGroups := groupPhasesByLayer(svcWf.Phases)
 
 	for li, lg := range layerGroups {
+		// Skip completed layers (for retry-from-failed-layer)
+		if li < startLayerIdx {
+			log.Printf("[orchestrator] Skipping completed layer %d (retry from layer %d)", lg.layer, layerGroups[startLayerIdx].layer)
+			continue
+		}
+
 		// Check cancellation
 		select {
 		case <-ctx.Done():

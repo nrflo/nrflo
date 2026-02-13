@@ -673,7 +673,8 @@ PATCH /api/v1/tickets/:id/workflow
 # Workflow orchestration (run/stop/restart from UI)
 POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
-POST /api/v1/tickets/:id/workflow/restart  # Restart agent (context save + relaunch)
+POST /api/v1/tickets/:id/workflow/restart       # Restart agent (context save + relaunch)
+POST /api/v1/tickets/:id/workflow/retry-failed  # Retry failed workflow from failed layer
 
 # Workflow definitions (project-scoped, require X-Project header)
 GET    /api/v1/workflows              # List all
@@ -685,7 +686,8 @@ DELETE /api/v1/workflows/:id          # Delete
 # Project-scoped workflow operations
 POST /api/v1/projects/:id/workflow/run      # Start project workflow
 POST /api/v1/projects/:id/workflow/stop     # Stop project workflow
-POST /api/v1/projects/:id/workflow/restart  # Restart project agent
+POST /api/v1/projects/:id/workflow/restart       # Restart project agent
+POST /api/v1/projects/:id/workflow/retry-failed  # Retry failed project workflow
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
 GET  /api/v1/projects/:id/agents           # Get project agent sessions
 

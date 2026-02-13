@@ -7,6 +7,7 @@ import {
   useProjectAgentSessions,
   useStopProjectWorkflow,
   useRestartProjectAgent,
+  useRetryFailedProjectAgent,
 } from '@/hooks/useTickets'
 import { RunProjectWorkflowDialog } from '@/components/workflow/RunProjectWorkflowDialog'
 import { WorkflowTabContent } from './WorkflowTabContent'
@@ -43,6 +44,7 @@ export function ProjectWorkflowsPage() {
 
   const stopMutation = useStopProjectWorkflow()
   const restartMutation = useRestartProjectAgent()
+  const retryFailedMutation = useRetryFailedProjectAgent()
 
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
 
@@ -167,6 +169,18 @@ export function ProjectWorkflowsPage() {
         restartingSessionId={
           restartMutation.isPending
             ? (restartMutation.variables?.params.session_id ?? null)
+            : null
+        }
+        onRetryFailed={(sessionId) =>
+          currentProject &&
+          retryFailedMutation.mutate({
+            projectId: currentProject,
+            params: { workflow: displayedWorkflowName, session_id: sessionId },
+          })
+        }
+        retryingSessionId={
+          retryFailedMutation.isPending
+            ? (retryFailedMutation.variables?.params.session_id ?? null)
             : null
         }
       />

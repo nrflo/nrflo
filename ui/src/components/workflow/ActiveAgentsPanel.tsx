@@ -4,12 +4,16 @@ import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from 
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import type { ActiveAgentV4 } from '@/types/workflow'
+import type { ActiveAgentV4, AgentHistoryEntry } from '@/types/workflow'
 
 interface ActiveAgentsPanelProps {
   agents: Record<string, ActiveAgentV4>
   onRestart?: (sessionId: string) => void
   restartingSessionId?: string | null
+  onRetryFailed?: (sessionId: string) => void
+  retryingSessionId?: string | null
+  workflowStatus?: string
+  agentHistory?: AgentHistoryEntry[]
 }
 
 function AgentStatusIcon({ result }: { result?: string }) {
@@ -32,7 +36,7 @@ function resultColor(result?: string): string {
   return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
 }
 
-export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId }: ActiveAgentsPanelProps) {
+export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRetryFailed, retryingSessionId, workflowStatus, agentHistory }: ActiveAgentsPanelProps) {
   const agentEntries = Object.entries(agents)
   const runningAgents = agentEntries.filter(([, a]) => !a.result)
   const runningCount = runningAgents.length
@@ -180,6 +184,56 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId }: Ac
           </div>
         ))}
       </div>
+
+      {/* Failed agents with retry button */}
+      {onRetryFailed && workflowStatus === 'failed' && agentHistory && agentHistory.filter(a => a.result === 'fail').length > 0 && (
+        <div className="border-t border-red-200 dark:border-red-800">
+          <div className="px-4 py-2 bg-red-50/50 dark:bg-red-900/10 border-b border-red-200 dark:border-red-800">
+            <span className="text-sm font-medium text-red-700 dark:text-red-300">Failed Agents</span>
+          </div>
+          <div className="divide-y divide-red-200 dark:divide-red-800">
+            {agentHistory.filter(a => a.result === 'fail').map((entry) => (
+              <div key={entry.session_id ?? entry.agent_id} className="px-4 py-3 flex items-center gap-4">
+                <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm">{entry.agent_type}</span>
+                    {entry.model_id && (
+                      <Badge variant="outline" className="text-xs font-mono">{entry.model_id}</Badge>
+                    )}
+                    <Badge className={cn('text-xs', resultColor('fail'))}>fail</Badge>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    <span>{entry.phase?.replace(/_/g, ' ')}</span>
+                    {entry.started_at && (
+                      <span className="flex items-center gap-1">
+                        <Timer className="h-3 w-3" />
+                        {formatElapsedTime(entry.started_at, entry.ended_at)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {entry.session_id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onRetryFailed(entry.session_id!)}
+                    disabled={!!retryingSessionId}
+                    title="Retry failed agent"
+                    className="ml-auto shrink-0 text-red-600 hover:text-red-700 border-red-300 dark:border-red-700"
+                  >
+                    {retryingSessionId === entry.session_id ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

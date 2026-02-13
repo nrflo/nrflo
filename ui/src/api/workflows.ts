@@ -79,3 +79,14 @@ export async function restartAgent(
     params
   )
 }
+
+/** Retry a failed workflow from the failed layer */
+export async function retryFailedAgent(
+  ticketId: string,
+  params: RestartAgentRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/retry-failed`,
+    params
+  )
+}

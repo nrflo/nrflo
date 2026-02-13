@@ -4,13 +4,14 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query'
-import { runWorkflow, stopWorkflow, restartAgent } from '@/api/workflows'
+import { runWorkflow, stopWorkflow, restartAgent, retryFailedAgent } from '@/api/workflows'
 import {
   getProjectWorkflow,
   getProjectAgentSessions,
   runProjectWorkflow,
   stopProjectWorkflow,
   restartProjectAgent,
+  retryFailedProjectAgent,
 } from '@/api/projectWorkflows'
 import {
   listTickets,
@@ -259,6 +260,18 @@ export function useRestartAgent() {
   })
 }
 
+export function useRetryFailedAgent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, params }: { ticketId: string; params: RestartAgentRequest }) =>
+      retryFailedAgent(ticketId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(variables.ticketId) })
+    },
+  })
+}
+
 export function useSessionMessages(
   sessionId: string | undefined,
   options?: { enabled?: boolean; isRunning?: boolean }
@@ -333,6 +346,17 @@ export function useRestartProjectAgent() {
   return useMutation({
     mutationFn: ({ projectId, params }: { projectId: string; params: RestartAgentRequest }) =>
       restartProjectAgent(projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+    },
+  })
+}
+
+export function useRetryFailedProjectAgent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, params }: { projectId: string; params: RestartAgentRequest }) =>
+      retryFailedProjectAgent(projectId, params),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
     },

@@ -59,3 +59,14 @@ export async function restartProjectAgent(
     params
   )
 }
+
+/** Retry a failed workflow from the failed layer (project-scoped) */
+export async function retryFailedProjectAgent(
+  projectId: string,
+  params: RestartAgentRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/retry-failed`,
+    params
+  )
+}

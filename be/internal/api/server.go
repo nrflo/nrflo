@@ -192,6 +192,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/run", s.handleRunWorkflow)
 	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/stop", s.handleStopWorkflow)
 	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/restart", s.handleRestartAgent)
+	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/retry-failed", s.handleRetryFailedAgent)
 
 	// Workflow definitions (project-scoped)
 	mux.HandleFunc("GET /api/v1/workflows", s.handleListWorkflowDefs)
@@ -204,6 +205,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/run", s.handleRunProjectWorkflow)
 	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/stop", s.handleStopProjectWorkflow)
 	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/restart", s.handleRestartProjectAgent)
+	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/retry-failed", s.handleRetryFailedProjectAgent)
 	mux.HandleFunc("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)
 	mux.HandleFunc("GET /api/v1/projects/{id}/agents", s.handleGetProjectAgentSessions)
 

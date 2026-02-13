@@ -375,6 +375,7 @@ const ws = new WebSocket('ws://localhost:6587/api/v1/ws')
 | `orchestration.started` | instance_id, category | Orchestrated workflow run started |
 | `orchestration.completed` | instance_id | Orchestrated workflow run completed |
 | `orchestration.failed` | instance_id, reason | Orchestrated workflow run failed |
+| `orchestration.retried` | instance_id | Failed workflow retry started |
 | `ticket.updated` | | Ticket state changed (status, priority, etc.) |
 
 All events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`
@@ -412,14 +413,16 @@ PATCH /api/v1/tickets/:id/workflow
 # Workflow orchestration
 POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
-POST /api/v1/tickets/:id/workflow/restart  # Restart a running agent (save context, relaunch)
+POST /api/v1/tickets/:id/workflow/restart      # Restart a running agent (save context, relaunch)
+POST /api/v1/tickets/:id/workflow/retry-failed # Retry workflow from failed layer
 
 # Project-scoped workflows
-GET  /api/v1/projects/:id/workflow         # Get project workflow state
-POST /api/v1/projects/:id/workflow/run     # Start project-scoped workflow run
-POST /api/v1/projects/:id/workflow/stop    # Stop running project workflow
-POST /api/v1/projects/:id/workflow/restart # Restart agent in project workflow
-GET  /api/v1/projects/:id/agents           # Get project agent sessions
+GET  /api/v1/projects/:id/workflow              # Get project workflow state
+POST /api/v1/projects/:id/workflow/run          # Start project-scoped workflow run
+POST /api/v1/projects/:id/workflow/stop         # Stop running project workflow
+POST /api/v1/projects/:id/workflow/restart      # Restart agent in project workflow
+POST /api/v1/projects/:id/workflow/retry-failed # Retry project workflow from failed layer
+GET  /api/v1/projects/:id/agents                # Get project agent sessions
 
 # Workflow definitions (require X-Project header)
 GET    /api/v1/workflows

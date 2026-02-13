@@ -4,6 +4,8 @@ import {
   Play,
   Square,
   Zap,
+  XCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -37,6 +39,8 @@ interface WorkflowTabContentProps {
   onShowRunDialog?: () => void
   onRestart?: (sessionId: string) => void
   restartingSessionId?: string | null
+  onRetryFailed?: (sessionId: string) => void
+  retryingSessionId?: string | null
 }
 
 export function WorkflowTabContent({
@@ -61,6 +65,8 @@ export function WorkflowTabContent({
   onShowRunDialog,
   onRestart,
   restartingSessionId,
+  onRetryFailed,
+  retryingSessionId,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
 
@@ -122,6 +128,31 @@ export function WorkflowTabContent({
                 </Button>
               )}
             </div>
+            {displayedState.status === 'failed' && onRetryFailed && (() => {
+              const failedAgent = agentHistory?.find(a => a.result === 'fail')
+              return failedAgent?.session_id ? (
+                <div className="flex items-center gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm dark:border-red-800 dark:bg-red-950/30">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                    <XCircle className="h-4 w-4" />
+                    <span className="font-medium">Workflow Failed</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onRetryFailed(failedAgent.session_id!)}
+                    disabled={!!retryingSessionId}
+                    className="ml-auto text-red-600 hover:text-red-700 border-red-300 dark:border-red-700"
+                  >
+                    {retryingSessionId ? (
+                      <Spinner size="sm" className="mr-2" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Retry Failed
+                  </Button>
+                </div>
+              ) : null
+            })()}
             {displayedState.status === 'completed' && (
               <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -183,6 +214,9 @@ export function WorkflowTabContent({
           onAgentSelect={onAgentSelect}
           onRestart={onRestart}
           restartingSessionId={restartingSessionId}
+          onRetryFailed={onRetryFailed}
+          retryingSessionId={retryingSessionId}
+          workflowStatus={displayedState?.status}
         />
       )}
     </div>

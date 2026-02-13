@@ -30,6 +30,7 @@ export interface ActiveAgentV4 {
 export interface AgentHistoryEntry {
   agent_id: string
   agent_type: string
+  session_id?: string
   model_id?: string
   phase: string
   started_at?: string

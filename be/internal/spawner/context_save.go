@@ -62,8 +62,10 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 	}
 
 	savePrompt := fmt.Sprintf(
-		"Save all your current work progress to findings using nrworkflow findings commands, "+
-			"then call: nrworkflow agent continue %s %s -w %s --model %s",
+		"Save a summary of all your current work progress by running: "+
+			"nrworkflow findings add %s %s to_resume:<your summary of all progress, findings, and context> -w %s --model %s"+
+			" — then call: nrworkflow agent continue %s %s -w %s --model %s",
+		req.TicketID, proc.agentType, req.WorkflowName, proc.modelID,
 		req.TicketID, proc.agentType, req.WorkflowName, proc.modelID)
 
 	fmt.Printf("  %s [context-save] Resume prompt: %s\n", prefix, savePrompt)

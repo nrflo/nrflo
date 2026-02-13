@@ -553,7 +553,7 @@ Templates use placeholders injected by the spawner:
 - `${WORKFLOW}` - Current workflow name (e.g., "feature", "bugfix")
 - `${MODEL_ID}` - Full model identifier in cli:model format (e.g., "claude:sonnet")
 - `${MODEL}` - Just the model name (e.g., "sonnet")
-- `${PREVIOUS_DATA}` - Findings from the most recent continued session (same agent, model, phase). Populated on low-context restarts. Empty string if no prior continued session exists.
+- `${PREVIOUS_DATA}` - The `to_resume` key from findings of the most recent continued session (same agent, model, phase). Populated on low-context restarts when the resumed agent saves progress via `nrworkflow findings add ... to_resume:<summary>`. Empty string if no prior continued session or no `to_resume` key exists.
 
 Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them, avoiding unnecessary queries.
 

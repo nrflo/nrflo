@@ -240,5 +240,13 @@ func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType
 		return ""
 	}
 
-	return s.formatSingleAgentFindings(findings)
+	toResume, ok := findings["to_resume"]
+	if !ok {
+		return ""
+	}
+	str, ok := toResume.(string)
+	if !ok || str == "" {
+		return ""
+	}
+	return str
 }

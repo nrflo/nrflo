@@ -448,10 +448,12 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │                  CHECK (pending|running|completed|failed|canceled)    │
 │    workflow_name TEXT NOT NULL                                        │
 │    category      TEXT NOT NULL DEFAULT ''                             │
+│    epic_ticket_id TEXT          (nullable, auto-closed on completion) │
 │    created_by    TEXT NOT NULL DEFAULT ''                             │
 │    created_at    TEXT NOT NULL                                        │
 │    updated_at    TEXT NOT NULL                                        │
 │    INDEX (project_id, status)                                        │
+│    INDEX (project_id, epic_ticket_id)                                │
 │                                                                      │
 │  CHAIN_EXECUTION_ITEMS                                               │
 │    id                    TEXT PRIMARY KEY (UUID)                      │
@@ -853,6 +855,7 @@ make test-integration        # integration only (verbose)
 | `internal/integration/agent_test.go` | Agent complete/fail/continue (via socket) |
 | `internal/integration/websocket_test.go` | WS broadcast, subscription filtering |
 | `internal/integration/messages_test.go` | Agent message storage, pagination (via service) |
+| `internal/integration/chain_epic_test.go` | Chain epic auto-close on completion |
 | `internal/integration/error_test.go` | Error codes, validation |
 | `internal/ws/hub_test.go` | WS hub unit tests |
 | `internal/spawner/cli_adapter_test.go` | CLI adapter tests |

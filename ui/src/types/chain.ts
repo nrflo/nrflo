@@ -10,6 +10,7 @@ export interface ChainExecution {
   status: ChainStatus
   workflow_name: string
   category?: string
+  epic_ticket_id?: string
   created_by: string
   total_items: number
   completed_items: number
@@ -36,6 +37,7 @@ export interface ChainCreateRequest {
   name: string
   workflow_name: string
   category?: string
+  epic_ticket_id?: string
   ticket_ids: string[]
 }
 

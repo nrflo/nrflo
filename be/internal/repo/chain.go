@@ -20,16 +20,20 @@ func NewChainRepo(pool *db.Pool) *ChainRepo {
 	return &ChainRepo{pool: pool}
 }
 
-const chainCols = `id, project_id, name, status, workflow_name, category, created_by, created_at, updated_at`
+const chainCols = `id, project_id, name, status, workflow_name, category, epic_ticket_id, created_by, created_at, updated_at`
 
 func scanChain(scanner interface{ Scan(...interface{}) error }) (*model.ChainExecution, error) {
 	c := &model.ChainExecution{}
 	var createdAt, updatedAt string
+	var epicTicketID sql.NullString
 	err := scanner.Scan(
 		&c.ID, &c.ProjectID, &c.Name, &c.Status,
-		&c.WorkflowName, &c.Category, &c.CreatedBy,
+		&c.WorkflowName, &c.Category, &epicTicketID, &c.CreatedBy,
 		&createdAt, &updatedAt,
 	)
+	if epicTicketID.Valid {
+		c.EpicTicketID = epicTicketID.String
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +48,15 @@ func (r *ChainRepo) Create(c *model.ChainExecution) error {
 	c.CreatedAt, _ = time.Parse(time.RFC3339, now)
 	c.UpdatedAt = c.CreatedAt
 
+	var epicTicketID interface{}
+	if c.EpicTicketID != "" {
+		epicTicketID = c.EpicTicketID
+	}
 	_, err := r.pool.Exec(`
 		INSERT INTO chain_executions (`+chainCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.ID, strings.ToLower(c.ProjectID), c.Name, c.Status,
-		c.WorkflowName, c.Category, c.CreatedBy,
+		c.WorkflowName, c.Category, epicTicketID, c.CreatedBy,
 		now, now,
 	)
 	return err
@@ -71,12 +79,16 @@ const chainListCols = chainCols + `,
 func scanChainWithCounts(scanner interface{ Scan(...interface{}) error }) (*model.ChainExecution, error) {
 	c := &model.ChainExecution{}
 	var createdAt, updatedAt string
+	var epicTicketID sql.NullString
 	err := scanner.Scan(
 		&c.ID, &c.ProjectID, &c.Name, &c.Status,
-		&c.WorkflowName, &c.Category, &c.CreatedBy,
+		&c.WorkflowName, &c.Category, &epicTicketID, &c.CreatedBy,
 		&createdAt, &updatedAt,
 		&c.TotalItems, &c.CompletedItems,
 	)
+	if epicTicketID.Valid {
+		c.EpicTicketID = epicTicketID.String
+	}
 	if err != nil {
 		return nil, err
 	}

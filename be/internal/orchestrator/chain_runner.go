@@ -10,6 +10,7 @@ import (
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -295,6 +296,24 @@ func (cr *ChainRunner) markChainCompleted(pool *db.Pool, chainID, projectID stri
 	chainRepo.UpdateStatus(chainID, model.ChainStatusCompleted)
 	lockRepo.DeleteLocksByChain(chainID)
 	cr.broadcastChainUpdate(projectID, chainID, "completed")
+
+	// Auto-close epic ticket if set (best-effort)
+	chain, err := chainRepo.Get(chainID)
+	if err != nil {
+		log.Printf("[chain-runner] Failed to load chain %s for epic close: %v", chainID, err)
+		return
+	}
+	if chain.EpicTicketID != "" {
+		ticketService := service.NewTicketService(pool)
+		reason := fmt.Sprintf("All epic tickets completed via chain '%s'", chain.Name)
+		if err := ticketService.Close(projectID, chain.EpicTicketID, reason); err != nil {
+			log.Printf("[chain-runner] Failed to close epic %s: %v", chain.EpicTicketID, err)
+		} else if cr.wsHub != nil {
+			cr.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, projectID, chain.EpicTicketID, "", map[string]interface{}{
+				"status": "closed",
+			}))
+		}
+	}
 }
 
 func (cr *ChainRunner) markChainFailed(chainID, projectID string) {

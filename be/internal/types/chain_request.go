@@ -5,6 +5,7 @@ type ChainCreateRequest struct {
 	Name         string   `json:"name"`
 	WorkflowName string   `json:"workflow_name"`
 	Category     string   `json:"category,omitempty"`
+	EpicTicketID string   `json:"epic_ticket_id,omitempty"`
 	TicketIDs    []string `json:"ticket_ids"`
 }
 

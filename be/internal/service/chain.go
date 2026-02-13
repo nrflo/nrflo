@@ -74,6 +74,7 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 		Status:       model.ChainStatusPending,
 		WorkflowName: req.WorkflowName,
 		Category:     req.Category,
+		EpicTicketID: req.EpicTicketID,
 	}
 
 	chainRepo := repo.NewChainRepo(s.pool)

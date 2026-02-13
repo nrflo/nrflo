@@ -23,7 +23,7 @@ func NewAgentSessionRepo(database *db.DB) *AgentSessionRepo {
 const sessionCols = `id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 	model_id, status, result, result_reason, pid, findings,
 	context_left, ancestor_session_id, spawn_command, prompt_context,
-	raw_output, restart_count, started_at, ended_at, created_at, updated_at`
+	restart_count, started_at, ended_at, created_at, updated_at`
 
 func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
 	s := &model.AgentSession{}
@@ -32,7 +32,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.PromptContext,
-		&s.RawOutput, &s.RestartCount, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt,
+		&s.RestartCount, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 const sessionColsJoined = `s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
 	s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
 	s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt_context,
-	s.raw_output, s.restart_count, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id`
+	s.restart_count, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id`
 
 func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
 	s := &model.AgentSession{}
@@ -55,7 +55,7 @@ func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.PromptContext,
-		&s.RawOutput, &s.RestartCount, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt, &s.Workflow,
+		&s.RestartCount, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt, &s.Workflow,
 	)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 
 	_, err := r.db.Exec(`
 		INSERT INTO agent_sessions (`+sessionCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		strings.ToLower(session.ProjectID),
 		strings.ToLower(session.TicketID),
@@ -90,7 +90,6 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 		session.AncestorSessionID,
 		session.SpawnCommand,
 		session.PromptContext,
-		session.RawOutput,
 		session.RestartCount,
 		session.StartedAt,
 		session.EndedAt,
@@ -279,28 +278,6 @@ func (r *AgentSessionRepo) UpdateAncestorSession(id string, ancestorSessionID st
 func (r *AgentSessionRepo) DeleteByTicket(projectID, ticketID string) error {
 	_, err := r.db.Exec("DELETE FROM agent_sessions WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?)", projectID, ticketID)
 	return err
-}
-
-// AppendRawOutput appends a chunk of raw output to the session's raw_output column
-func (r *AgentSessionRepo) AppendRawOutput(id string, chunk string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := r.db.Exec(
-		`UPDATE agent_sessions SET raw_output = COALESCE(raw_output, '') || ?, updated_at = ? WHERE id = ?`,
-		chunk, now, id)
-	return err
-}
-
-// GetRawOutput retrieves the raw_output for a session
-func (r *AgentSessionRepo) GetRawOutput(id string) (string, error) {
-	var rawOutput sql.NullString
-	err := r.db.QueryRow(`SELECT raw_output FROM agent_sessions WHERE id = ?`, id).Scan(&rawOutput)
-	if err != nil {
-		return "", fmt.Errorf("agent session not found: %s", id)
-	}
-	if !rawOutput.Valid {
-		return "", nil
-	}
-	return rawOutput.String, nil
 }
 
 // GetRecent retrieves the most recent agent sessions

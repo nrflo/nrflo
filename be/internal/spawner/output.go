@@ -21,7 +21,6 @@ func (s *Spawner) monitorOutput(proc *processInfo, stdout io.ReadCloser) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		s.trackRawOutput(proc, line)
 		s.processOutput(proc, line)
 	}
 	if err := scanner.Err(); err != nil {
@@ -181,14 +180,6 @@ func (s *Spawner) trackMessage(proc *processInfo, msg string) {
 	proc.messagesDirty = true
 }
 
-// trackRawOutput adds a raw output line to the pending queue for DB insertion
-func (s *Spawner) trackRawOutput(proc *processInfo, line string) {
-	proc.messagesMutex.Lock()
-	defer proc.messagesMutex.Unlock()
-	proc.pendingRawOutput = append(proc.pendingRawOutput, line+"\n")
-	proc.rawOutputDirty = true
-}
-
 // formatPrefix returns a prefix string with agent type and model for console output
 func (s *Spawner) formatPrefix(proc *processInfo) string {
 	// Parse model from modelID (cli:model format)
@@ -324,19 +315,15 @@ func (s *Spawner) formatToolDetail(toolName string, input map[string]interface{}
 
 // saveMessages flushes pending messages and raw output to the database
 func (s *Spawner) saveMessages(proc *processInfo) {
-	// Drain pending messages and raw output
+	// Drain pending messages
 	proc.messagesMutex.Lock()
 	pending := proc.pendingMessages
 	proc.pendingMessages = make([]string, 0)
 	seqStart := proc.nextSeq
 	proc.nextSeq += len(pending)
-	pendingRaw := proc.pendingRawOutput
-	proc.pendingRawOutput = make([]string, 0)
-	rawDirty := proc.rawOutputDirty
-	proc.rawOutputDirty = false
 	proc.messagesMutex.Unlock()
 
-	if len(pending) == 0 && !rawDirty {
+	if len(pending) == 0 {
 		return
 	}
 
@@ -349,12 +336,6 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 	if len(pending) > 0 {
 		msgRepo := repo.NewAgentMessageRepo(database)
 		msgRepo.InsertBatch(proc.sessionID, seqStart, pending)
-	}
-
-	// Flush raw output
-	if rawDirty && len(pendingRaw) > 0 {
-		sessionRepo := repo.NewAgentSessionRepo(database)
-		sessionRepo.AppendRawOutput(proc.sessionID, strings.Join(pendingRaw, ""))
 	}
 
 	// Broadcast messages update for real-time UI

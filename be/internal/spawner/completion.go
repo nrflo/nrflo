@@ -189,7 +189,7 @@ func (s *Spawner) maybeFlushMessages(proc *processInfo) {
 	shouldFlush := time.Since(proc.lastMessagesFlush) >= interval
 
 	if shouldFlush {
-		if proc.messagesDirty || proc.rawOutputDirty {
+		if proc.messagesDirty {
 			s.saveMessages(proc)
 			proc.messagesDirty = false
 		}

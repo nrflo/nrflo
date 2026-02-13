@@ -98,14 +98,12 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 	}
 	fmt.Printf("  %s [context-save] Resume process started (PID: %d)\n", prefix, resumeCmd.Process.Pid)
 
-	// Monitor resume output (just drain it)
+	// Drain resume stdout to prevent blocking
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		buf := make([]byte, 0, 1024*1024)
 		scanner.Buffer(buf, 10*1024*1024)
 		for scanner.Scan() {
-			line := scanner.Text()
-			s.trackRawOutput(proc, "[resume-save] "+line)
 		}
 	}()
 

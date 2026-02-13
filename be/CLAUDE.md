@@ -399,7 +399,6 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    ancestor_session_id TEXT          (links continuation chain)      │
 │    spawn_command TEXT                (Full CLI command for replay)   │
 │    prompt_context TEXT               (System prompt file contents)   │
-│    raw_output    TEXT                (Raw stdout/stderr output)      │
 │    restart_count INTEGER NOT NULL DEFAULT 0  (low-context restarts) │
 │    started_at    TEXT                (when agent started running)    │
 │    ended_at      TEXT                (when agent finished)           │
@@ -707,9 +706,6 @@ GET /api/v1/agents/recent?limit=10
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
 # Returns: {session_id: string, messages: [{content: string, created_at: string}], total: int}
-
-# Session raw output (raw stdout/stderr)
-GET /api/v1/sessions/:id/raw-output
 
 # Dependencies
 GET /api/v1/tickets/:id/dependencies  # Get ticket dependencies

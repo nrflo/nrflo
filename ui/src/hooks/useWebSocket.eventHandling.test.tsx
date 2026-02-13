@@ -538,12 +538,10 @@ describe('useWebSocket - ticket nrworkflow-d3a7c4: project-level agent events', 
     queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
     // Session-specific invalidation (applies to both scopes)
     queryClient.invalidateQueries({ queryKey: ['session-messages', event.data?.session_id] })
-    queryClient.invalidateQueries({ queryKey: ['session-raw-output', event.data?.session_id] })
 
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.workflow('test-project') })
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.agentSessions('test-project') })
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['session-messages', 'session-123'] })
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['session-raw-output', 'session-123'] })
   })
 
   it('phase.started event for project scope invalidates project workflow only', () => {

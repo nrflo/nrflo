@@ -136,7 +136,6 @@ const sessionsData: AgentSessionsResponse = {
     model_id: 'claude-sonnet-4-5',
     status: 'running',
     message_count: 10,
-    raw_output_size: 2048,
     restart_count: 0,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',

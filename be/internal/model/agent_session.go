@@ -35,7 +35,6 @@ type AgentSession struct {
 	AncestorSessionID  sql.NullString     `json:"-"` // Ancestor session for continuation
 	SpawnCommand       sql.NullString     `json:"-"` // Full CLI command used to spawn
 	PromptContext      sql.NullString     `json:"-"` // System prompt file contents
-	RawOutput          sql.NullString     `json:"-"` // Raw stdout/stderr output
 	RestartCount       int                `json:"-"` // Number of low-context restarts
 	StartedAt          sql.NullString     `json:"-"`
 	EndedAt            sql.NullString     `json:"-"`
@@ -111,10 +110,6 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 	if as.Findings.Valid && as.Findings.String != "" {
 		json.Unmarshal([]byte(as.Findings.String), &findings)
 	}
-	var rawOutputSize int
-	if as.RawOutput.Valid {
-		rawOutputSize = len(as.RawOutput.String)
-	}
 	var startedAt *string
 	if as.StartedAt.Valid {
 		startedAt = &as.StartedAt.String
@@ -143,7 +138,6 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		Findings           interface{}        `json:"findings,omitempty"`
 		LastMessages       []string           `json:"last_messages"`
 		MessageCount       int                `json:"message_count"`
-		RawOutputSize      int                `json:"raw_output_size"`
 		ContextLeft        *int               `json:"context_left,omitempty"`
 		RestartCount       int                `json:"restart_count"`
 		AncestorSessionID  *string            `json:"ancestor_session_id,omitempty"`
@@ -169,7 +163,6 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		Findings:           findings,
 		LastMessages:       messages,
 		MessageCount:       as.MessageCount,
-		RawOutputSize:      rawOutputSize,
 		ContextLeft:        contextLeft,
 		RestartCount:       as.RestartCount,
 		AncestorSessionID:  ancestorSessionID,

@@ -40,7 +40,7 @@ type AgentConfig struct {
 }
 
 const (
-	defaultMaxContinuations = 3
+	defaultMaxContinuations = 10
 	defaultContextThreshold = 25
 )
 
@@ -80,9 +80,6 @@ type processInfo struct {
 	// Message buffering
 	messagesDirty     bool
 	lastMessagesFlush time.Time
-	// Raw output buffering (stdout/stderr lines before any parsing)
-	pendingRawOutput []string
-	rawOutputDirty   bool
 	// Context tracking
 	contextLeft      int
 	contextLeftDirty bool
@@ -362,7 +359,6 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		startTime:      time.Now(),
 		timeout:        time.Duration(timeout) * time.Minute,
 		pendingMessages:   make([]string, 0),
-		pendingRawOutput:  make([]string, 0),
 		doneCh:            make(chan struct{}),
 		lastMessagesFlush: time.Now(),
 		spawnCommand:   spawnCommand,
@@ -386,7 +382,6 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 			line := scanner.Text()
 			// Display and track stderr for debugging
 			fmt.Printf("  %s [stderr] %s\n", prefix, line)
-			s.trackRawOutput(proc, "[stderr] "+line)
 			s.trackMessage(proc, "[stderr] "+line)
 		}
 	}()

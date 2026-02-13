@@ -218,7 +218,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/tickets/{id}/agents", s.handleGetAgentSessions)
 	mux.HandleFunc("GET /api/v1/agents/recent", s.handleGetRecentAgents)
 	mux.HandleFunc("GET /api/v1/sessions/{id}/messages", s.handleGetSessionMessages)
-	mux.HandleFunc("GET /api/v1/sessions/{id}/raw-output", s.handleGetSessionRawOutput)
 
 	// Dependencies
 	mux.HandleFunc("GET /api/v1/tickets/{id}/dependencies", s.handleGetDependencies)

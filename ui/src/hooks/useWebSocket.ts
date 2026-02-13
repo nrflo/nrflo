@@ -147,7 +147,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         // Session-specific invalidation applies to both scopes
         if (event.data?.session_id) {
           qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })
-          qc.invalidateQueries({ queryKey: ['session-raw-output', event.data.session_id] })
         }
         break
 

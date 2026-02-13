@@ -169,7 +169,7 @@ The ticket detail page (`src/pages/TicketDetailPage.tsx`) uses a tabbed interfac
 
 **Agent Log Panel**: The right-side panel (`AgentLogPanel`) has two modes:
 - **Overview mode** (default): Shows running agents with compact messages. Visible when agents are running.
-- **Detail mode**: Shows a single agent's messages in a table (timestamp|tool|message columns). Activated when clicking an agent in the PhaseGraph or in the overview. Includes a back button to return to overview. Raw output is stored in DB for debug only, not displayed in UI.
+- **Detail mode**: Shows a single agent's messages in a table (timestamp|tool|message columns). Activated when clicking an agent in the PhaseGraph or in the overview. Includes a back button to return to overview.
 The panel also shows when a completed agent is selected from PhaseGraph (even after all agents finish). Uses `AgentLogDetail` for the detail view. The panel collapses to a thin bar (w-10) with vertical label.
 
 ### Workflow Components
@@ -241,7 +241,7 @@ Key workflow types (`src/types/workflow.ts`):
 - `ProjectWorkflowResponse`: API response for project-scoped workflows (project_id instead of ticket_id)
 - `ProjectAgentSessionsResponse`: API response for project-scoped agent sessions (project_id + sessions array)
 - `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left)
-- `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `raw_output_size`, `context_left`
+- `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left`
 - `WorkflowFindings`: `Record<string, Record<string, unknown>>` (agent_type → field → value)
 
 ### Styling
@@ -454,9 +454,6 @@ GET /api/v1/agents/recent?limit=10
 # Session messages (paginated)
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
-
-# Session raw output (raw stdout/stderr)
-GET /api/v1/sessions/:id/raw-output
 
 # Other
 GET /api/v1/search?q=              # Full-text search

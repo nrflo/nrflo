@@ -686,6 +686,7 @@ POST /api/v1/projects/:id/workflow/run      # Start project workflow
 POST /api/v1/projects/:id/workflow/stop     # Stop project workflow
 POST /api/v1/projects/:id/workflow/restart  # Restart project agent
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
+GET  /api/v1/projects/:id/agents           # Get project agent sessions
 
 # Agent definitions (nested under workflows)
 GET    /api/v1/workflows/:wid/agents           # List agents for workflow

@@ -18,8 +18,8 @@ interface AgentMessagesBlockProps {
 
 function AgentMessagesBlock({ agent, session, onAgentClick, onRestart, restartingSessionId }: AgentMessagesBlockProps) {
   const isRunning = !agent.result
-  const { data: messagesData } = useSessionMessages(session?.id, {
-    enabled: !!session?.id,
+  const sessionId = session?.id || agent.session_id
+  const { data: messagesData } = useSessionMessages(sessionId, {
     isRunning,
   })
 

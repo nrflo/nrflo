@@ -12,7 +12,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/api/projects.ts` | Project API functions |
 | `src/api/tickets.ts` | Ticket and workflow API functions |
 | `src/api/workflows.ts` | Workflow definition and orchestration API functions |
-| `src/api/projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart) |
+| `src/api/projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart/agent sessions) |
 | `src/api/agentDefs.ts` | Agent definition API client |
 | `src/api/chains.ts` | Chain execution API functions (list/get/create/update/start/cancel) |
 | `src/types/workflow.ts` | Workflow types (WorkflowState, AgentHistoryEntry, etc.) |
@@ -239,6 +239,7 @@ Key workflow types (`src/types/workflow.ts`):
 - `WorkflowState`: Phase states, phase_order, scope_type, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
 - `WorkflowResponse`: API response with agent_history at top level (ticket-scoped)
 - `ProjectWorkflowResponse`: API response for project-scoped workflows (project_id instead of ticket_id)
+- `ProjectAgentSessionsResponse`: API response for project-scoped agent sessions (project_id + sessions array)
 - `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left)
 - `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `raw_output_size`, `context_left`
 - `WorkflowFindings`: `Record<string, Record<string, unknown>>` (agent_type → field → value)
@@ -418,6 +419,7 @@ GET  /api/v1/projects/:id/workflow         # Get project workflow state
 POST /api/v1/projects/:id/workflow/run     # Start project-scoped workflow run
 POST /api/v1/projects/:id/workflow/stop    # Stop running project workflow
 POST /api/v1/projects/:id/workflow/restart # Restart agent in project workflow
+GET  /api/v1/projects/:id/agents           # Get project agent sessions
 
 # Workflow definitions (require X-Project header)
 GET    /api/v1/workflows

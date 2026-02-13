@@ -3,6 +3,7 @@ import { useProjectStore } from '@/stores/projectStore'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import {
   useProjectWorkflow,
+  useProjectAgentSessions,
   useStopProjectWorkflow,
   useRestartProjectAgent,
 } from '@/hooks/useTickets'
@@ -30,6 +31,10 @@ export function ProjectWorkflowsPage() {
   }, [projectsLoaded, currentProject, subscribe, unsubscribe])
 
   const { data: workflowData } = useProjectWorkflow(currentProject, {
+    enabled: !!currentProject,
+  })
+
+  const { data: sessionsData } = useProjectAgentSessions(currentProject, {
     enabled: !!currentProject,
   })
 
@@ -81,7 +86,7 @@ export function ProjectWorkflowsPage() {
         isOrchestrated={isOrchestrated}
         hasActivePhase={hasActivePhase}
         activeAgents={activeAgents}
-        sessions={[]}
+        sessions={sessionsData?.sessions ?? []}
         logPanelCollapsed={logPanelCollapsed}
         onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
         selectedPanelAgent={selectedPanelAgent}

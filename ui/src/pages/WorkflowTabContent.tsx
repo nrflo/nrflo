@@ -151,6 +151,7 @@ export function WorkflowTabContent({
               workflow={displayedState}
               agentHistory={agentHistory}
               ticketId={ticketId}
+              sessions={!ticketId ? sessions : undefined}
               onAgentSelect={onAgentSelect}
             />
           </>

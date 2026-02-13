@@ -345,6 +345,43 @@ func (s *AgentService) GetTicketSessions(projectID, ticketID, workflow string) (
 	return sessions, nil
 }
 
+// GetProjectSessions gets agent sessions for project-scoped workflows (empty ticket_id)
+func (s *AgentService) GetProjectSessions(projectID, phase string) ([]*model.AgentSession, error) {
+	query := `
+		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
+			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt_context,
+			s.raw_output, s.restart_count, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE LOWER(s.project_id) = LOWER(?) AND (s.ticket_id = '' OR s.ticket_id IS NULL)`
+	args := []interface{}{projectID}
+
+	if phase != "" {
+		query += ` AND s.phase = ?`
+		args = append(args, phase)
+	}
+	query += ` ORDER BY s.created_at DESC`
+
+	rows, err := s.pool.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	sessions := []*model.AgentSession{}
+	for rows.Next() {
+		session, err := scanSessionJoined(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, session)
+	}
+
+	s.loadMessageCounts(sessions)
+	return sessions, nil
+}
+
 // CreateSession creates an agent session
 func (s *AgentService) CreateSession(session *model.AgentSession) error {
 	now := time.Now().UTC().Format(time.RFC3339)

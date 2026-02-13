@@ -35,10 +35,11 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
     : agent?.cli || historyEntry?.agent_type || 'agent'
   const duration = historyEntry?.duration_sec ? formatDuration(historyEntry.duration_sec) : null
 
+  const sessionId = session?.id || agent?.session_id || historyEntry?.session_id
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ['session-messages', session?.id],
-    queryFn: () => getSessionMessages(session!.id),
-    enabled: !!session?.id,
+    queryKey: ['session-messages', sessionId],
+    queryFn: () => getSessionMessages(sessionId!),
+    enabled: !!sessionId,
     staleTime: isRunning ? 2000 : 30000,
     refetchInterval: isRunning ? 3000 : false,
   })

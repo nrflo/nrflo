@@ -7,6 +7,7 @@ import {
 import { runWorkflow, stopWorkflow, restartAgent } from '@/api/workflows'
 import {
   getProjectWorkflow,
+  getProjectAgentSessions,
   runProjectWorkflow,
   stopProjectWorkflow,
   restartProjectAgent,
@@ -35,7 +36,7 @@ import type {
   TicketListResponse,
   StatusResponse,
 } from '@/types/ticket'
-import type { WorkflowResponse, ProjectWorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, RunWorkflowRequest, ProjectWorkflowRunRequest, RestartAgentRequest, SessionMessagesResponse } from '@/types/workflow'
+import type { WorkflowResponse, ProjectWorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, ProjectAgentSessionsResponse, RunWorkflowRequest, ProjectWorkflowRunRequest, RestartAgentRequest, SessionMessagesResponse } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 
 // Query keys factory
@@ -276,6 +277,7 @@ export function useSessionMessages(
 export const projectWorkflowKeys = {
   all: ['project-workflows'] as const,
   workflow: (projectId: string) => [...projectWorkflowKeys.all, projectId] as const,
+  agentSessions: (projectId: string) => [...projectWorkflowKeys.all, 'agents', projectId] as const,
 }
 
 export function useProjectWorkflow(
@@ -286,6 +288,19 @@ export function useProjectWorkflow(
   return useQuery({
     queryKey: projectWorkflowKeys.workflow(projectId),
     queryFn: () => getProjectWorkflow(projectId),
+    enabled: projectsLoaded && !!projectId && (options?.enabled ?? true),
+    ...options,
+  })
+}
+
+export function useProjectAgentSessions(
+  projectId: string,
+  options?: Omit<UseQueryOptions<ProjectAgentSessionsResponse>, 'queryKey' | 'queryFn'>
+) {
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: projectWorkflowKeys.agentSessions(projectId),
+    queryFn: () => getProjectAgentSessions(projectId),
     enabled: projectsLoaded && !!projectId && (options?.enabled ?? true),
     ...options,
   })

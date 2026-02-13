@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/orchestrator"
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 )
@@ -182,5 +184,54 @@ func (s *Server) handleGetProjectWorkflow(w http.ResponseWriter, r *http.Request
 		"state":         selectedState,
 		"workflows":     workflowNames,
 		"all_workflows": allWorkflows,
+	})
+}
+
+// handleGetProjectAgentSessions returns agent sessions for project-scoped workflows.
+// GET /api/v1/projects/{id}/agents
+func (s *Server) handleGetProjectAgentSessions(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	database, err := s.getDatabase()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer database.Close()
+
+	phase := r.URL.Query().Get("phase")
+
+	agentSessionRepo := repo.NewAgentSessionRepo(database)
+	sessions, err := agentSessionRepo.GetByProjectScope(projectID, phase)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if sessions == nil {
+		sessions = []*model.AgentSession{}
+	}
+
+	// Build findings from project-scoped workflow instances
+	pool := db.WrapAsPool(database)
+	workflowSvc := service.NewWorkflowService(pool)
+	findings := make(map[string]interface{})
+
+	instances, _ := workflowSvc.ListProjectWorkflowInstances(projectID)
+	for _, wi := range instances {
+		combined := workflowSvc.BuildCombinedFindings(wi)
+		for k, v := range combined {
+			findings[k] = v
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"project_id": projectID,
+		"sessions":   sessions,
+		"findings":   findings,
 	})
 }

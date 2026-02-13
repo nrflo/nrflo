@@ -536,4 +536,101 @@ describe('AgentLogDetail', () => {
       }
     })
   })
+
+  describe('ticket nrworkflow-d3a7c4: project-level agent messages with session_id fallback', () => {
+    it('fetches messages using agent.session_id when session object is undefined', async () => {
+      const sessionId = 'fallback-session-id'
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: sessionId,
+        messages: [
+          { content: 'Message from fallback', created_at: '2026-01-01T00:00:01Z' },
+        ],
+        total: 1,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: sessionId }),
+        session: undefined, // No session object provided
+      })
+
+      await waitFor(() => {
+        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith(sessionId)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Message from fallback')).toBeInTheDocument()
+      })
+    })
+
+
+    it('prefers session.id over agent.session_id when both are available', async () => {
+      const sessionObjectId = 'session-object-id'
+      const agentSessionId = 'agent-field-id'
+
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: sessionObjectId,
+        messages: [
+          { content: 'Message from session object', created_at: '2026-01-01T00:00:01Z' },
+        ],
+        total: 1,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: agentSessionId }),
+        session: makeSession({ id: sessionObjectId }),
+      })
+
+      await waitFor(() => {
+        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith(sessionObjectId)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Message from session object')).toBeInTheDocument()
+      })
+    })
+
+    it('handles project-scoped agents with empty ticket_id in session', async () => {
+      const projectSession = makeSession({
+        id: 'project-session',
+        ticket_id: '', // Empty for project scope
+        project_id: 'test-project',
+      })
+
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'project-session',
+        messages: [
+          { content: 'Project-level message', created_at: '2026-01-01T00:00:01Z' },
+        ],
+        total: 1,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: 'project-session' }),
+        session: projectSession,
+      })
+
+      await waitFor(() => {
+        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('project-session')
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Project-level message')).toBeInTheDocument()
+      })
+    })
+
+    it('does not fetch messages when no sessionId is available', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: undefined }),
+        session: undefined,
+      })
+
+      // No messages fetch should happen
+      expect(ticketsApi.getSessionMessages).not.toHaveBeenCalled()
+    })
+
+  })
 })

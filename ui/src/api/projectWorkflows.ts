@@ -4,6 +4,7 @@ import type {
   ProjectWorkflowRunRequest,
   RunWorkflowResponse,
   RestartAgentRequest,
+  ProjectAgentSessionsResponse,
 } from '@/types/workflow'
 
 /** Get workflow state for a project (all project-scoped instances) */
@@ -36,6 +37,15 @@ export async function stopProjectWorkflow(
   return apiPost<{ status: string }>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/stop`,
     { workflow: workflow ?? '' }
+  )
+}
+
+/** Get agent sessions for a project (all project-scoped instances) */
+export async function getProjectAgentSessions(
+  projectId: string
+): Promise<ProjectAgentSessionsResponse> {
+  return apiGet<ProjectAgentSessionsResponse>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/agents`
   )
 }
 

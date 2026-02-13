@@ -139,6 +139,35 @@ func (r *AgentSessionRepo) GetByTicket(projectID, ticketID string, phase string)
 	return sessions, nil
 }
 
+// GetByProjectScope retrieves agent sessions for project-scoped workflows (empty ticket_id)
+func (r *AgentSessionRepo) GetByProjectScope(projectID, phase string) ([]*model.AgentSession, error) {
+	query := `SELECT ` + sessionCols + ` FROM agent_sessions
+		WHERE LOWER(project_id) = LOWER(?) AND (ticket_id = '' OR ticket_id IS NULL)`
+	args := []interface{}{projectID}
+
+	if phase != "" {
+		query += " AND phase = ?"
+		args = append(args, phase)
+	}
+	query += " ORDER BY created_at DESC"
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []*model.AgentSession
+	for rows.Next() {
+		s, err := scanSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, nil
+}
+
 // UpdateStatus updates the status of a session
 func (r *AgentSessionRepo) UpdateStatus(id string, status model.AgentSessionStatus) error {
 	now := time.Now().UTC().Format(time.RFC3339)

@@ -151,6 +151,11 @@ export interface AgentSessionsResponse {
   sessions: AgentSession[]
 }
 
+export interface ProjectAgentSessionsResponse {
+  project_id: string
+  sessions: AgentSession[]
+}
+
 // Workflow definition types (DB-stored)
 
 export interface PhaseDef {

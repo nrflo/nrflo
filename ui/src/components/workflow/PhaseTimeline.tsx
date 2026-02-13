@@ -5,13 +5,14 @@ import { Badge } from '@/components/ui/Badge'
 import { PhaseGraph } from './PhaseGraph'
 import { WorkflowFindings } from './WorkflowFindings'
 import { useAgentSessions } from '@/hooks/useTickets'
-import type { WorkflowState, AgentHistoryEntry } from '@/types/workflow'
+import type { WorkflowState, AgentHistoryEntry, AgentSession } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
 interface PhaseTimelineProps {
   workflow: WorkflowState
   agentHistory?: AgentHistoryEntry[]
   ticketId?: string
+  sessions?: AgentSession[]
   onAgentSelect?: (data: SelectedAgentData) => void
 }
 
@@ -28,7 +29,7 @@ function categoryColor(category: string): string {
   }
 }
 
-export function PhaseTimeline({ workflow, agentHistory, ticketId, onAgentSelect }: PhaseTimelineProps) {
+export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect }: PhaseTimelineProps) {
   const phases = workflow.phases || {}
   const activeAgents = useMemo(() => workflow.active_agents || {}, [workflow.active_agents])
 
@@ -38,11 +39,13 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, onAgentSelect 
   }, [activeAgents])
 
   // Fetch agent sessions (for history too) - real-time updates via WebSocket messages.updated events
+  // Skip fetch when sessions are provided via prop (project scope)
   const { data: sessionsData } = useAgentSessions(
     ticketId || '',
     undefined, // all phases
-    { enabled: !!ticketId }
+    { enabled: !!ticketId && !sessionsProp }
   )
+  const sessions = sessionsProp ?? sessionsData?.sessions
 
   if (Object.keys(phases).length === 0) {
     return (
@@ -87,7 +90,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, onAgentSelect 
         activeAgents={activeAgents}
         agentHistory={agentHistory}
         phaseOrder={workflow.phase_order}
-        sessions={sessionsData?.sessions}
+        sessions={sessions}
         onAgentSelect={onAgentSelect}
       />
 

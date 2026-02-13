@@ -108,6 +108,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       case 'agent.completed':
         if (isProjectScope) {
           invalidateProjectWorkflow()
+          qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(project_id) })
         } else {
           qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
           qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
@@ -138,6 +139,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       case 'messages.updated':
         if (isProjectScope) {
           invalidateProjectWorkflow()
+          qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(project_id) })
         } else {
           qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
           qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })

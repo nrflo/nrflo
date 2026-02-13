@@ -82,7 +82,8 @@ be/
 │   │   ├── agent_definition.go
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
-│   │   └── chain.go             # Chain execution, item, lock models
+│   │   ├── chain.go             # Chain execution, item, lock models
+│   │   └── daily_stats.go
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -94,7 +95,8 @@ be/
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution CRUD
 │   │   ├── chain_items.go       # Chain item operations
-│   │   └── chain_locks.go       # Chain lock operations
+│   │   ├── chain_locks.go       # Chain lock operations
+│   │   └── daily_stats.go
 │   ├── types/                   # Shared request/response types
 │   │   ├── request.go
 │   │   └── chain_request.go     # Chain create/update request types
@@ -473,6 +475,17 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    chain_id    TEXT NOT NULL (FK → chain_executions.id)              │
 │    UNIQUE (project_id, ticket_id)                                    │
 │    Prevents overlapping ticket runs across pending/running chains    │
+│                                                                      │
+│  DAILY_STATS                                                         │
+│    id             INTEGER PRIMARY KEY AUTOINCREMENT                  │
+│    project_id     TEXT NOT NULL (FK → projects.id)                   │
+│    date           TEXT NOT NULL (ISO date YYYY-MM-DD)                │
+│    tickets_created INTEGER NOT NULL DEFAULT 0                        │
+│    tickets_closed  INTEGER NOT NULL DEFAULT 0                        │
+│    tokens_spent    INTEGER NOT NULL DEFAULT 0                        │
+│    agent_time_sec  REAL NOT NULL DEFAULT 0                           │
+│    updated_at      TEXT NOT NULL                                     │
+│    UNIQUE(project_id, date)                                          │
 │                                                                      │
 │  TICKETS_FTS (Full-text search)                                      │
 │    project_id, id, title, description                                │
@@ -863,6 +876,7 @@ make test-integration        # integration only (verbose)
 | `internal/integration/error_test.go` | Error codes, validation |
 | `internal/ws/hub_test.go` | WS hub unit tests |
 | `internal/spawner/cli_adapter_test.go` | CLI adapter tests |
+| `internal/repo/daily_stats_test.go` | DailyStats repo upsert, get, FK, defaults |
 
 ### When to Add Tests
 

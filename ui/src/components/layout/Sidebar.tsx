@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Lock,
   FolderGit2,
+  Link2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/useTickets'
@@ -79,6 +80,12 @@ export function Sidebar() {
           icon={<FolderGit2 className="h-4 w-4" />}
           label="Project Workflows"
           active={isActive('/project-workflows')}
+        />
+        <NavItem
+          to="/chains"
+          icon={<Link2 className="h-4 w-4" />}
+          label="Chain Executions"
+          active={isActive('/chains')}
         />
         <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           By Status

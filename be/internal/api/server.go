@@ -22,16 +22,19 @@ type Server struct {
 	httpServer   *http.Server
 	wsHub        *ws.Hub
 	orchestrator *orchestrator.Orchestrator
+	chainRunner  *orchestrator.ChainRunner
 }
 
 // NewServer creates a new API server
 func NewServer(cfg *config.Config, dataPath string) *Server {
 	hub := ws.NewHub()
+	orch := orchestrator.New(dataPath, hub)
 	return &Server{
 		config:       cfg,
 		dataPath:     dataPath,
 		wsHub:        hub,
-		orchestrator: orchestrator.New(dataPath, hub),
+		orchestrator: orch,
+		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub),
 	}
 }
 
@@ -42,6 +45,11 @@ func (s *Server) GetWSHub() *ws.Hub {
 
 // Start starts the HTTP server
 func (s *Server) Start(port int) error {
+	// Recover zombie chains from previous crash
+	if s.chainRunner != nil {
+		s.chainRunner.RecoverZombieChains()
+	}
+
 	// Start WebSocket hub
 	go s.wsHub.Run()
 
@@ -215,6 +223,14 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/tickets/{id}/dependencies", s.handleGetDependencies)
 	mux.HandleFunc("POST /api/v1/dependencies", s.handleAddDependency)
 	mux.HandleFunc("DELETE /api/v1/dependencies", s.handleRemoveDependency)
+
+	// Chain executions
+	mux.HandleFunc("GET /api/v1/chains", s.handleListChains)
+	mux.HandleFunc("POST /api/v1/chains", s.handleCreateChain)
+	mux.HandleFunc("GET /api/v1/chains/{id}", s.handleGetChain)
+	mux.HandleFunc("PATCH /api/v1/chains/{id}", s.handleUpdateChain)
+	mux.HandleFunc("POST /api/v1/chains/{id}/start", s.handleStartChain)
+	mux.HandleFunc("POST /api/v1/chains/{id}/cancel", s.handleCancelChain)
 
 	// Search
 	mux.HandleFunc("GET /api/v1/search", s.handleSearch)

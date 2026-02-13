@@ -261,6 +261,41 @@ Each v4 workflow state contains:
 - `total_duration_sec`: Total workflow duration in seconds (from creation to completion)
 - `total_tokens_used`: Total context/tokens consumed across all agents (calculated using 200K token window * (100 - context_left) / 100 for each completed agent)
 
+## Chain Execution
+
+Chains allow sequential execution of multiple tickets with a single workflow. A chain reserves tickets via locks to prevent overlapping runs across chains.
+
+### Chain Lifecycle
+
+```
+[*] → Pending → Running → Completed
+                   ↓          ↑
+                 Failed    (last item)
+Pending → Canceled
+Running → Canceled
+Running → Failed (item fails)
+```
+
+### Chain API
+
+```bash
+GET    /api/v1/chains              # List chains (?status= filter)
+POST   /api/v1/chains              # Create (pending), expands deps + topo sort
+GET    /api/v1/chains/:id          # Get with ordered items
+PATCH  /api/v1/chains/:id          # Edit (pending only)
+POST   /api/v1/chains/:id/start    # Start sequential execution
+POST   /api/v1/chains/:id/cancel   # Cancel + release locks
+```
+
+### Key Behaviors
+
+- **Dependency expansion**: Selected tickets are expanded with transitive blockers
+- **Topological sort**: Items ordered by dependency graph (tie-break: created_at, then ID)
+- **Cycle detection**: DFS-based detection after expansion
+- **Lock exclusivity**: UNIQUE(project_id, ticket_id) prevents overlapping chains
+- **Sequential execution**: Items run one at a time via orchestrator
+- **Crash recovery**: Zombie running chains are marked failed on server startup
+
 ## Server Scripts
 
 | Script | Purpose |

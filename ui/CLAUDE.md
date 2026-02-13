@@ -14,13 +14,16 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/api/workflows.ts` | Workflow definition and orchestration API functions |
 | `src/api/projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart) |
 | `src/api/agentDefs.ts` | Agent definition API client |
+| `src/api/chains.ts` | Chain execution API functions (list/get/create/update/start/cancel) |
 | `src/types/workflow.ts` | Workflow types (WorkflowState, AgentHistoryEntry, etc.) |
 | `src/types/ticket.ts` | Ticket types (Ticket, Dependency, Status, etc.) |
+| `src/types/chain.ts` | Chain execution types (ChainExecution, ChainExecutionItem, ChainStatus, etc.) |
 | `src/types/` | TypeScript types matching Go models |
 | `src/hooks/useTickets.ts` | TanStack Query hooks for data fetching |
 | `src/hooks/useProjects.ts` | TanStack Query hook for projects |
 | `src/hooks/useWebSocket.ts` | WebSocket hook for real-time updates |
 | `src/hooks/useElapsedTime.ts` | Elapsed time hooks (useElapsedTime, useTickingClock) |
+| `src/hooks/useChains.ts` | TanStack Query hooks for chain executions (chainKeys factory, polling) |
 | `src/stores/projectStore.ts` | Zustand store for project selection (loads from API) |
 | `src/lib/utils.ts` | Utility functions (cn, formatDate, statusColor, etc.) |
 | `src/components/ui/MarkdownEditor.tsx` | CodeMirror 6 markdown editor (used in AgentDefForm/Card) |
@@ -48,6 +51,8 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/AgentLogDetail.tsx` | Single-agent detail view with message table (timestamp, tool, message columns), used by AgentLogPanel |
 | `src/components/workflow/LogMessage.tsx` | Log message component with tool name color highlighting. Exports parseToolName and ToolBadge for table rendering |
 | `src/components/workflow/` | Workflow visualization components |
+| `src/components/chains/CreateChainDialog.tsx` | Dialog for creating/editing chain executions |
+| `src/components/chains/ChainTicketSelector.tsx` | Multi-select ticket picker for chain creation |
 | `src/pages/Dashboard.tsx` | Dashboard overview page |
 | `src/pages/TicketListPage.tsx` | Ticket list with filtering |
 | `src/pages/CreateTicketPage.tsx` | Create new ticket form page |
@@ -56,6 +61,8 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/pages/WorkflowsPage.tsx` | Workflow definitions CRUD and agent definition management |
 | `src/pages/ProjectWorkflowsPage.tsx` | Project-scoped workflow execution page (run/stop/view state) |
 | `src/pages/SettingsPage.tsx` | Project management (create/update/delete) |
+| `src/pages/ChainListPage.tsx` | Chain execution list with status filtering and create dialog |
+| `src/pages/ChainDetailPage.tsx` | Chain detail with ordered items, start/cancel/edit actions |
 | `src/pages/` | Route page components |
 
 ## Source File Size Limit
@@ -147,6 +154,8 @@ Layout
 - **Ticket Detail** (`/tickets/:id`): Workflow timeline, description, details tabs
 - **Workflows** (`/workflows`): Workflow definitions and agent definitions CRUD
 - **Project Workflows** (`/project-workflows`): Run and monitor project-scoped workflows
+- **Chain Executions** (`/chains`): Chain list with status filtering, create/edit dialog
+- **Chain Detail** (`/chains/:id`): Chain items table, start/cancel/edit, 5s polling when running
 - **Settings** (`/settings`): Project management
 
 ### Ticket Detail Page
@@ -423,6 +432,14 @@ POST   /api/v1/workflows/:wid/agents
 GET    /api/v1/workflows/:wid/agents/:id
 PATCH  /api/v1/workflows/:wid/agents/:id
 DELETE /api/v1/workflows/:wid/agents/:id
+
+# Chain executions (require X-Project header)
+GET    /api/v1/chains                  # List chains (?status= filter)
+GET    /api/v1/chains/:id              # Get chain with items
+POST   /api/v1/chains                  # Create chain (pending)
+PATCH  /api/v1/chains/:id              # Update pending chain
+POST   /api/v1/chains/:id/start        # Start sequential execution
+POST   /api/v1/chains/:id/cancel       # Cancel chain + release locks
 
 # Agent sessions
 GET /api/v1/tickets/:id/agents

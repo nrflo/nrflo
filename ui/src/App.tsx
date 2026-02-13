@@ -10,6 +10,8 @@ import { EditTicketPage } from '@/pages/EditTicketPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import { ProjectWorkflowsPage } from '@/pages/ProjectWorkflowsPage'
+import { ChainListPage } from '@/pages/ChainListPage'
+import { ChainDetailPage } from '@/pages/ChainDetailPage'
 import { useProjectStore } from '@/stores/projectStore'
 
 const queryClient = new QueryClient({
@@ -40,6 +42,8 @@ function App() {
             <Route path="tickets/:id/edit" element={<EditTicketPage />} />
             <Route path="workflows" element={<WorkflowsPage />} />
             <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
+            <Route path="chains" element={<ChainListPage />} />
+            <Route path="chains/:id" element={<ChainDetailPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>

@@ -28,7 +28,8 @@ be/
 │   │   ├── template.go          # Template loading, variable expansion
 │   │   └── template_findings.go # Findings expansion, ${PREVIOUS_DATA}, formatting
 │   ├── orchestrator/            # Server-side workflow orchestration
-│   │   └── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)
+│   │   ├── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)
+│   │   └── chain_runner.go      # Sequential chain execution runner
 │   ├── api/                     # HTTP API
 │   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator
 │   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints
@@ -37,7 +38,8 @@ be/
 │   │   ├── handlers_orchestrate.go # Ticket-scoped orchestration run/stop/restart endpoints
 │   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
-│   │   └── handlers_agent_def.go # Agent definition endpoints
+│   │   ├── handlers_agent_def.go # Agent definition endpoints
+│   │   └── handlers_chains.go   # Chain execution list/get/create/update/start/cancel
 │   ├── ws/                      # WebSocket support
 │   │   ├── hub.go               # Client management, broadcasting
 │   │   ├── client.go            # Connection handling, subscriptions
@@ -64,7 +66,8 @@ be/
 │   │   ├── workflow_response.go # V4 response building (active agents, history)
 │   │   ├── agent.go             # Agent operations
 │   │   ├── agent_definition.go  # Agent definition CRUD
-│   │   └── findings.go          # Findings operations
+│   │   ├── findings.go          # Findings operations
+│   │   └── chain.go             # Chain build, dependency expansion, topo sort
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection
 │   │   ├── pool.go              # Connection pool (10 max, 5 idle)
@@ -78,7 +81,8 @@ be/
 │   │   ├── agent_message.go
 │   │   ├── agent_definition.go
 │   │   ├── workflow.go
-│   │   └── workflow_instance.go
+│   │   ├── workflow_instance.go
+│   │   └── chain.go             # Chain execution, item, lock models
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -87,9 +91,13 @@ be/
 │   │   ├── agent_message.go
 │   │   ├── agent_definition.go
 │   │   ├── workflow.go
-│   │   └── workflow_instance.go
+│   │   ├── workflow_instance.go
+│   │   ├── chain.go             # Chain execution CRUD
+│   │   ├── chain_items.go       # Chain item operations
+│   │   └── chain_locks.go       # Chain lock operations
 │   ├── types/                   # Shared request/response types
-│   │   └── request.go
+│   │   ├── request.go
+│   │   └── chain_request.go     # Chain create/update request types
 │   ├── integration/             # Integration tests
 │   │   ├── testenv.go           # NewTestEnv shared harness
 │   │   └── testdata/            # Test config, agent templates
@@ -433,6 +441,38 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    PRIMARY KEY (project_id, workflow_id, id)                         │
 │    FK (project_id, workflow_id) → workflows(project_id, id) CASCADE │
 │                                                                      │
+│  CHAIN_EXECUTIONS                                                    │
+│    id            TEXT PRIMARY KEY   (UUID)                            │
+│    project_id    TEXT NOT NULL                                        │
+│    name          TEXT NOT NULL                                        │
+│    status        TEXT NOT NULL DEFAULT 'pending'                      │
+│                  CHECK (pending|running|completed|failed|canceled)    │
+│    workflow_name TEXT NOT NULL                                        │
+│    category      TEXT NOT NULL DEFAULT ''                             │
+│    created_by    TEXT NOT NULL DEFAULT ''                             │
+│    created_at    TEXT NOT NULL                                        │
+│    updated_at    TEXT NOT NULL                                        │
+│    INDEX (project_id, status)                                        │
+│                                                                      │
+│  CHAIN_EXECUTION_ITEMS                                               │
+│    id                    TEXT PRIMARY KEY (UUID)                      │
+│    chain_id              TEXT NOT NULL (FK → chain_executions.id)     │
+│    ticket_id             TEXT NOT NULL                                │
+│    position              INTEGER NOT NULL                             │
+│    status                TEXT NOT NULL DEFAULT 'pending'              │
+│                  CHECK (pending|running|completed|failed|skipped|canceled)
+│    workflow_instance_id  TEXT           (set when item starts)        │
+│    started_at            TEXT                                         │
+│    ended_at              TEXT                                         │
+│    INDEX (chain_id, position)                                        │
+│                                                                      │
+│  CHAIN_EXECUTION_LOCKS                                               │
+│    project_id  TEXT NOT NULL                                         │
+│    ticket_id   TEXT NOT NULL                                         │
+│    chain_id    TEXT NOT NULL (FK → chain_executions.id)              │
+│    UNIQUE (project_id, ticket_id)                                    │
+│    Prevents overlapping ticket runs across pending/running chains    │
+│                                                                      │
 │  TICKETS_FTS (Full-text search)                                      │
 │    project_id, id, title, description                                │
 │                                                                      │
@@ -674,6 +714,14 @@ GET /api/v1/sessions/:id/raw-output
 GET /api/v1/tickets/:id/dependencies  # Get ticket dependencies
 POST /api/v1/dependencies             # Add dependency
 DELETE /api/v1/dependencies           # Remove dependency
+
+# Chain executions (require X-Project header)
+GET    /api/v1/chains              # List chains (?status= filter)
+POST   /api/v1/chains              # Create chain (pending)
+GET    /api/v1/chains/:id          # Get chain with items
+PATCH  /api/v1/chains/:id          # Update pending chain
+POST   /api/v1/chains/:id/start    # Start sequential execution
+POST   /api/v1/chains/:id/cancel   # Cancel chain and release locks
 
 # Other
 GET /api/v1/search?q=              # Full-text search

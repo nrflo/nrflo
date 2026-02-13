@@ -83,6 +83,10 @@ func (s *Spawner) handleCompletion(proc *processInfo, req SpawnRequest) {
 				result = "continue"
 				resultReason = "explicit"
 				break
+			} else if explicit == "callback" {
+				result = "callback"
+				resultReason = "explicit"
+				break
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -98,6 +102,8 @@ func (s *Spawner) handleCompletion(proc *processInfo, req SpawnRequest) {
 			proc.finalStatus = "PASS"
 		case "continue":
 			proc.finalStatus = "CONTINUE"
+		case "callback":
+			proc.finalStatus = "CALLBACK"
 		default:
 			proc.finalStatus = "FAIL"
 		}

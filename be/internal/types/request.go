@@ -151,6 +151,12 @@ type AgentCompleteRequest struct {
 	Model     string `json:"model,omitempty"`
 }
 
+// AgentCallbackRequest is the request for marking an agent as callback
+type AgentCallbackRequest struct {
+	AgentCompleteRequest
+	Level int `json:"level"`
+}
+
 // WorkflowDefCreateRequest is the request for creating a workflow definition
 type WorkflowDefCreateRequest struct {
 	ID          string          `json:"id"`

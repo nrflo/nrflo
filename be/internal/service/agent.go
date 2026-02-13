@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -223,22 +224,53 @@ func (s *AgentService) Kill(projectID, ticketID string, req *types.AgentKillRequ
 
 // Complete marks an agent as completed
 func (s *AgentService) Complete(projectID, ticketID string, req *types.AgentCompleteRequest) error {
-	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "pass", req.Model)
+	_, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "pass", req.Model)
+	return err
 }
 
 // Fail marks an agent as failed
 func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentCompleteRequest) error {
-	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "fail", req.Model)
+	_, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "fail", req.Model)
+	return err
 }
 
 // Continue marks an agent as needing context continuation
 func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentCompleteRequest) error {
-	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "continue", req.Model)
+	_, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "continue", req.Model)
+	return err
 }
 
-func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentType, result, modelID string) error {
+// Callback marks an agent as requesting a callback to a previous layer
+func (s *AgentService) Callback(projectID, ticketID string, req *types.AgentCallbackRequest) error {
+	sessionID, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "callback", req.Model)
+	if err != nil {
+		return err
+	}
+
+	// Save callback_level as a finding on the session
+	var findingsStr sql.NullString
+	err = s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, sessionID).Scan(&findingsStr)
+	if err != nil {
+		return fmt.Errorf("failed to read session findings: %w", err)
+	}
+
+	findings := make(map[string]interface{})
+	if findingsStr.Valid && findingsStr.String != "" {
+		json.Unmarshal([]byte(findingsStr.String), &findings)
+	}
+	findings["callback_level"] = req.Level
+
+	data, _ := json.Marshal(findings)
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = s.pool.Exec(
+		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
+		string(data), now, sessionID)
+	return err
+}
+
+func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentType, result, modelID string) (string, error) {
 	if workflowName == "" {
-		return fmt.Errorf("workflow is required")
+		return "", fmt.Errorf("workflow is required")
 	}
 
 	var wfiID string
@@ -247,7 +279,7 @@ func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentTy
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
 		projectID, ticketID, workflowName).Scan(&wfiID)
 	if err != nil {
-		return fmt.Errorf("workflow '%s' not found", workflowName)
+		return "", fmt.Errorf("workflow '%s' not found", workflowName)
 	}
 
 	// Find matching active session
@@ -264,14 +296,14 @@ func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentTy
 	var sessionID string
 	err = s.pool.QueryRow(query, args...).Scan(&sessionID)
 	if err != nil {
-		return fmt.Errorf("no active agent found for %s", agentType)
+		return "", fmt.Errorf("no active agent found for %s", agentType)
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err = s.pool.Exec(
 		`UPDATE agent_sessions SET result = ?, updated_at = ? WHERE id = ?`,
 		result, now, sessionID)
-	return err
+	return sessionID, err
 }
 
 // GetRecentSessions gets recent agent sessions

@@ -239,6 +239,24 @@ func (h *Handler) handleAgent(req Request, action string) Response {
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "continued"})
 
+	case "callback":
+		var params struct {
+			TicketID string `json:"ticket_id"`
+			types.AgentCallbackRequest
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if err := h.agentSvc.Callback(projectID, params.TicketID, &params.AgentCallbackRequest); err != nil {
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
+			"action":     "callback",
+			"agent_type": params.AgentType,
+			"level":      params.Level,
+		})
+		return MakeResponse(req.ID, map[string]string{"status": "callback"})
+
 	default:
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("agent."+action))
 	}

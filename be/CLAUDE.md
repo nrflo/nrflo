@@ -148,7 +148,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 - **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **Auto-migration** — database schema is automatically migrated on startup
 
-The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.complete/fail/continue`, and `ws.broadcast` methods are supported.
+The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.complete/fail/continue/callback`, and `ws.broadcast` methods are supported.
 
 ## System Diagrams
 
@@ -157,7 +157,7 @@ The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.
 The Unix socket at `/tmp/nrworkflow/nrworkflow.sock` handles agent-facing methods only:
 
 - `findings.*` — add, add-bulk, get, append, append-bulk, delete
-- `agent.complete/fail/continue` — mark agent result
+- `agent.complete/fail/continue/callback` — mark agent result
 - `ws.broadcast` — broadcast events to WebSocket hub
 
 All other operations (tickets, projects, workflows, agents) are managed via the HTTP API.
@@ -394,8 +394,8 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    phase         TEXT NOT NULL       (e.g., "investigation")         │
 │    agent_type    TEXT NOT NULL       (e.g., "setup-analyzer")        │
 │    model_id      TEXT                (e.g., "claude:sonnet")         │
-│    status        TEXT NOT NULL       (running|completed|failed|timeout|continued|project_completed)
-│    result        TEXT                (pass|fail|continue|timeout)    │
+│    status        TEXT NOT NULL       (running|completed|failed|timeout|continued|project_completed|callback)
+│    result        TEXT                (pass|fail|continue|timeout|callback) │
 │    result_reason TEXT                (explanation for result)        │
 │    pid           INTEGER             (OS process ID)                 │
 │    findings      TEXT                (JSON: per-agent findings)      │
@@ -785,7 +785,7 @@ Server runs on port 6587 with CORS enabled for `http://localhost:5173`.
 
 ### Changing Agent CLI Commands
 
-The socket only handles agent-facing methods (findings.*, agent.complete/fail/continue, ws.broadcast):
+The socket only handles agent-facing methods (findings.*, agent.complete/fail/continue/callback, ws.broadcast):
 
 1. Update CLI command in `be/internal/cli/agent.go` or `findings.go`
 2. Update socket handler in `be/internal/socket/handler.go`

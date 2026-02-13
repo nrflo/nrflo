@@ -18,7 +18,7 @@ var agentCmd = &cobra.Command{
 	Short: "Agent lifecycle commands (used by spawned agents)",
 }
 
-// Agent complete/fail/continue flags
+// Agent complete/fail/continue/callback flags
 var (
 	agentCompleteWorkflow string
 	agentCompleteModel    string
@@ -27,6 +27,9 @@ var (
 	agentFailReason       string
 	agentContinueWorkflow string
 	agentContinueModel    string
+	agentCallbackWorkflow string
+	agentCallbackModel    string
+	agentCallbackLevel    int
 )
 
 var agentCompleteCmd = &cobra.Command{
@@ -156,6 +159,55 @@ automatically relaunch the agent if max_continuations has not been reached.`,
 	},
 }
 
+var agentCallbackCmd = &cobra.Command{
+	Use:   "callback <ticket> <agent-type>",
+	Short: "Signal a callback to a previous execution layer",
+	Long: `Signal that the agent needs to callback to a previous layer for fixes.
+The --level flag specifies the target layer index (0-based) to callback to.
+The agent should save callback_instructions as a finding before calling this.`,
+	Args: cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := RequireProject(); err != nil {
+			return err
+		}
+		if err := CheckServer(); err != nil {
+			return err
+		}
+
+		ticketID := args[0]
+		agentType := args[1]
+
+		if agentCallbackWorkflow == "" {
+			return fmt.Errorf("-w/--workflow is required")
+		}
+
+		if !cmd.Flags().Changed("level") {
+			return fmt.Errorf("--level is required")
+		}
+		if agentCallbackLevel < 0 {
+			return fmt.Errorf("--level must be >= 0")
+		}
+
+		c := GetClient()
+		reqParams := map[string]interface{}{
+			"ticket_id":  ticketID,
+			"workflow":   agentCallbackWorkflow,
+			"agent_type": agentType,
+			"level":      agentCallbackLevel,
+		}
+		if agentCallbackModel != "" {
+			reqParams["model"] = agentCallbackModel
+		}
+
+		if err := c.ExecuteAndUnmarshal("agent.callback", reqParams, nil); err != nil {
+			return err
+		}
+
+		fmt.Printf("Agent %s marked as callback (target layer: %d)\n", agentType, agentCallbackLevel)
+		return nil
+	},
+}
+
 func init() {
 	// agent complete
 	agentCompleteCmd.Flags().StringVarP(&agentCompleteWorkflow, "workflow", "w", "", "Workflow name (required)")
@@ -172,4 +224,10 @@ func init() {
 	agentContinueCmd.Flags().StringVarP(&agentContinueWorkflow, "workflow", "w", "", "Workflow name (required)")
 	agentContinueCmd.Flags().StringVar(&agentContinueModel, "model", "", "Model ID")
 	agentCmd.AddCommand(agentContinueCmd)
+
+	// agent callback
+	agentCallbackCmd.Flags().StringVarP(&agentCallbackWorkflow, "workflow", "w", "", "Workflow name (required)")
+	agentCallbackCmd.Flags().StringVar(&agentCallbackModel, "model", "", "Model ID")
+	agentCallbackCmd.Flags().IntVar(&agentCallbackLevel, "level", 0, "Target layer index to callback to (required)")
+	agentCmd.AddCommand(agentCallbackCmd)
 }

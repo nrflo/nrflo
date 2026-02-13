@@ -30,6 +30,7 @@ const (
 	EventOrchestrationCompleted = "orchestration.completed"
 	EventOrchestrationFailed    = "orchestration.failed"
 	EventOrchestrationRetried   = "orchestration.retried"
+	EventOrchestrationCallback  = "orchestration.callback"
 	EventTestEcho           = "test.echo"
 )
 

@@ -73,6 +73,8 @@ func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName,
 		status = model.AgentSessionFailed
 	case "continue":
 		status = model.AgentSessionContinued
+	case "callback":
+		status = model.AgentSessionCallback
 	}
 	sessionRepo.UpdateStatus(sessionID, status)
 

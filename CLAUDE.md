@@ -96,6 +96,7 @@ Spawned agents use these commands to report results (via Unix socket to the serv
 nrworkflow agent complete <ticket> <agent-type> -w <workflow> [--model <model>]
 nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--model <model>] [--reason <text>]
 nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
+nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--model <model>]
 
 nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
 nrworkflow findings add <ticket> <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
@@ -189,8 +190,8 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | `phase` | Phase name (e.g., "investigation") |
 | `agent_type` | Agent identifier (e.g., "setup-analyzer") |
 | `model_id` | Model used (e.g., "claude:sonnet") |
-| `status` | `running` / `completed` / `failed` / `timeout` / `continued` / `project_completed` |
-| `result` | `pass` / `fail` / `continue` / `timeout` |
+| `status` | `running` / `completed` / `failed` / `timeout` / `continued` / `project_completed` / `callback` |
+| `result` | `pass` / `fail` / `continue` / `timeout` / `callback` |
 | `result_reason` | Explanation for result |
 | `pid` | OS process ID |
 | `findings` | JSON: per-agent findings |

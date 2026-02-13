@@ -16,6 +16,7 @@ const (
 	AgentSessionTimeout          AgentSessionStatus = "timeout"
 	AgentSessionContinued        AgentSessionStatus = "continued"
 	AgentSessionProjectCompleted AgentSessionStatus = "project_completed"
+	AgentSessionCallback         AgentSessionStatus = "callback"
 )
 
 // AgentSession represents a spawned agent session
@@ -28,7 +29,7 @@ type AgentSession struct {
 	AgentType          string             `json:"agent_type"`
 	ModelID            sql.NullString     `json:"-"`
 	Status             AgentSessionStatus `json:"status"`
-	Result             sql.NullString     `json:"-"` // pass | fail | continue | timeout
+	Result             sql.NullString     `json:"-"` // pass | fail | continue | timeout | callback
 	ResultReason       sql.NullString     `json:"-"`
 	PID                sql.NullInt64      `json:"-"`
 	Findings           sql.NullString     `json:"-"` // JSON findings

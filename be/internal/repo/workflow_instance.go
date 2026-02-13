@@ -112,7 +112,7 @@ func (r *WorkflowInstanceRepo) GetByProjectAndWorkflow(projectID, workflowID str
 func (r *WorkflowInstanceRepo) ListByProjectScope(projectID string) ([]*model.WorkflowInstance, error) {
 	rows, err := r.pool.Query(`
 		SELECT `+wfiCols+` FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND scope_type = 'project' AND status != 'project_completed'
+		WHERE LOWER(project_id) = LOWER(?) AND scope_type = 'project'
 		ORDER BY created_at`, projectID)
 	if err != nil {
 		return nil, err

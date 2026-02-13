@@ -5,6 +5,7 @@ package orchestrator
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -179,6 +180,36 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			return nil, fmt.Errorf("failed to init workflow: %w", initErr)
 		}
 		return nil, fmt.Errorf("failed to get workflow instance: %w", err)
+	}
+
+	// If re-running a completed project workflow, reset it to active with fresh phases
+	if wi.Status == model.WorkflowInstanceProjectCompleted {
+		wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
+
+		// Rebuild fresh phases from workflow definition
+		phaseOrder := make([]string, len(svcWf.Phases))
+		phases := make(map[string]model.PhaseStatus)
+		var firstPhase string
+		for i, p := range svcWf.Phases {
+			phaseOrder[i] = p.ID
+			phases[p.ID] = model.PhaseStatus{Status: "pending"}
+			if i == 0 {
+				firstPhase = p.ID
+			}
+		}
+		phaseOrderJSON, _ := json.Marshal(phaseOrder)
+		phasesJSON, _ := json.Marshal(phases)
+		wfiRepo.UpdatePhases(wi.ID, string(phasesJSON))
+		wfiRepo.UpdateCurrentPhase(wi.ID, firstPhase)
+		wfiRepo.UpdateFindings(wi.ID, "{}")
+		wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
+
+		// Update in-memory copy for downstream use
+		wi.Status = model.WorkflowInstanceActive
+		wi.PhaseOrder = string(phaseOrderJSON)
+		wi.Phases = string(phasesJSON)
+		wi.CurrentPhase = sql.NullString{String: firstPhase, Valid: firstPhase != ""}
+		wi.Findings = "{}"
 	}
 
 	// Set category if specified

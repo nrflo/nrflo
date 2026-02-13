@@ -124,6 +124,35 @@ describe('WorkflowTabContent', () => {
     expect(screen.getByText('Completed')).toBeInTheDocument()
   })
 
+  it('shows completed banner with stats for project_completed status', () => {
+    const state = makeState({
+      status: 'project_completed',
+      completed_at: '2026-01-01T05:00:00Z',
+      total_duration_sec: 3600,
+      total_tokens_used: 150000,
+    })
+    render(<WorkflowTabContent {...defaultProps} displayedState={state} />)
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+  })
+
+  it('shows completion stats (duration and tokens) for project_completed status', () => {
+    const state = makeState({
+      status: 'project_completed',
+      completed_at: '2026-01-01T05:00:00Z',
+      total_duration_sec: 7200, // 2 hours
+      total_tokens_used: 250000,
+    })
+    render(<WorkflowTabContent {...defaultProps} displayedState={state} />)
+
+    // Completion banner should be visible
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+
+    // Banner container should have green styling
+    const bannerContainer = screen.getByText('Completed').closest('.bg-green-50')
+    expect(bannerContainer).toBeInTheDocument()
+    expect(bannerContainer).toHaveClass('border-green-200')
+  })
+
   // AgentLogPanel visibility
   it('shows AgentLogPanel when there is a selected panel agent', () => {
     render(

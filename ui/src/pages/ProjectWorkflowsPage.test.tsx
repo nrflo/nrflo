@@ -659,6 +659,146 @@ describe('ProjectWorkflowsPage', () => {
         expect(screen.getByTestId('workflows-count').textContent).toBe('0')
       })
     })
+
+    it('routes workflows with project_completed status to Completed tab', () => {
+      const projectCompletedState: WorkflowState = {
+        ...sampleCompletedWorkflowState,
+        status: 'project_completed',
+        workflow: 'feature',
+      }
+
+      const workflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: projectCompletedState,
+        workflows: ['feature'],
+        all_workflows: {
+          feature: projectCompletedState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: workflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Active tab should show 0 workflows (project_completed goes to Completed tab)
+      expect(screen.getByTestId('workflows-count').textContent).toBe('0')
+      expect(screen.getByRole('button', { name: /Active \(0\)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Completed \(1\)/ })).toBeInTheDocument()
+    })
+
+    it('shows project_completed workflow in Completed tab', async () => {
+      const user = userEvent.setup()
+      const projectCompletedState: WorkflowState = {
+        ...sampleCompletedWorkflowState,
+        status: 'project_completed',
+        workflow: 'feature',
+      }
+
+      const workflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: projectCompletedState,
+        workflows: ['feature'],
+        all_workflows: {
+          feature: projectCompletedState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: workflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Switch to Completed tab
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workflows-count').textContent).toBe('1')
+        expect(screen.getByTestId('displayed-status').textContent).toBe('project_completed')
+        expect(screen.getByTestId('displayed-workflow').textContent).toBe('feature')
+      })
+    })
+
+    it('correctly separates project_completed from active workflows', () => {
+      const projectCompletedState: WorkflowState = {
+        ...sampleCompletedWorkflowState,
+        status: 'project_completed',
+        workflow: 'feature',
+      }
+
+      const mixedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix', 'hotfix'],
+        all_workflows: {
+          feature: projectCompletedState,
+          bugfix: sampleWorkflowState,
+          hotfix: { ...sampleWorkflowState, workflow: 'hotfix', status: 'failed' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Active tab should show 2 workflows (bugfix=active, hotfix=failed)
+      // feature with project_completed should be in Completed tab
+      expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+      expect(screen.getByRole('button', { name: /Active \(2\)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Completed \(1\)/ })).toBeInTheDocument()
+    })
+
+    it('correctly counts both completed and project_completed workflows in Completed tab', async () => {
+      const user = userEvent.setup()
+      const projectCompletedState: WorkflowState = {
+        ...sampleCompletedWorkflowState,
+        status: 'project_completed',
+        workflow: 'feature',
+      }
+
+      const mixedCompletedResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleWorkflowState,
+        workflows: ['feature', 'bugfix', 'docs'],
+        all_workflows: {
+          feature: projectCompletedState,
+          bugfix: sampleCompletedWorkflowState,
+          docs: { ...sampleWorkflowState, workflow: 'docs', status: 'active' },
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: mixedCompletedResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Active tab: 1 workflow (docs)
+      expect(screen.getByRole('button', { name: /Active \(1\)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Completed \(2\)/ })).toBeInTheDocument()
+
+      // Switch to Completed tab
+      const completedButton = screen.getByRole('button', { name: /Completed/ })
+      await user.click(completedButton)
+
+      await waitFor(() => {
+        // Should show both completed and project_completed workflows
+        expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+      })
+    })
   })
 
   describe('Tab Switching Behavior', () => {

@@ -182,7 +182,7 @@ export function WorkflowTabContent({
                 </div>
               ) : null
             })()}
-            {displayedState.status === 'completed' && (
+            {(displayedState.status === 'completed' || displayedState.status === 'project_completed') && (
               <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                   <CheckCircle className="h-4 w-4" />

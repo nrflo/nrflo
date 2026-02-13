@@ -79,7 +79,7 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 	}
 }
 
-func TestListByProjectScopeExcludesProjectCompleted(t *testing.T) {
+func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -143,15 +143,15 @@ func TestListByProjectScopeExcludesProjectCompleted(t *testing.T) {
 		}
 	}
 
-	// Call ListByProjectScope
+	// Call ListByProjectScope - should return ALL project-scoped instances including project_completed
 	results, err := repo.ListByProjectScope(projectID)
 	if err != nil {
 		t.Fatalf("ListByProjectScope failed: %v", err)
 	}
 
-	// Verify project_completed is excluded (3 of 4 returned)
-	if len(results) != 3 {
-		t.Fatalf("expected 3 instances, got %d", len(results))
+	// All project-scoped instances are returned including project_completed
+	if len(results) != 4 {
+		t.Fatalf("expected 4 instances, got %d", len(results))
 	}
 
 	foundIDs := make(map[string]bool)
@@ -159,13 +159,9 @@ func TestListByProjectScopeExcludesProjectCompleted(t *testing.T) {
 		foundIDs[wi.ID] = true
 	}
 
-	for _, id := range []string{"wfi-active", "wfi-completed", "wfi-failed"} {
+	for _, id := range []string{"wfi-active", "wfi-completed", "wfi-failed", "wfi-proj-completed"} {
 		if !foundIDs[id] {
 			t.Fatalf("expected instance %s to be in results", id)
 		}
-	}
-
-	if foundIDs["wfi-proj-completed"] {
-		t.Fatal("project_completed instance should be excluded from ListByProjectScope")
 	}
 }

@@ -52,7 +52,7 @@ export function ProjectWorkflowsPage() {
     const active: Record<string, WorkflowState> = {}
     const completed: Record<string, WorkflowState> = {}
     for (const [name, state] of Object.entries(allWorkflows)) {
-      if (state.status === 'completed') {
+      if (state.status === 'completed' || state.status === 'project_completed') {
         completed[name] = state
       } else {
         active[name] = state

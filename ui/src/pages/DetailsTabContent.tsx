@@ -67,6 +67,28 @@ export function DetailsTabContent({ ticket }: DetailsTabContentProps) {
             </div>
           )}
         </dl>
+        {ticket.issue_type === 'epic' && ticket.children && ticket.children.length > 0 && (
+          <div className="mt-6">
+            <dt className="text-sm font-medium text-muted-foreground mb-2">Children</dt>
+            <div className="space-y-2">
+              {ticket.children.map((child) => (
+                <div key={child.id} className="flex items-center gap-2">
+                  <Badge className={cn(statusColor(child.status))}>
+                    {child.status.replace('_', ' ')}
+                  </Badge>
+                  <Link
+                    to={`/tickets/${encodeURIComponent(child.id)}`}
+                    className="text-primary hover:underline"
+                  >
+                    {child.id}
+                  </Link>
+                  <span className="text-sm">{child.title}</span>
+                  <span className="text-sm text-muted-foreground ml-auto">{priorityLabel(child.priority)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -198,23 +199,40 @@ func (s *Server) handleGetTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return ticket with dependencies
-	response := struct {
-		*model.Ticket
-		Blockers []*model.Dependency `json:"blockers"`
-		Blocks   []*model.Dependency `json:"blocks"`
-	}{
-		Ticket:   ticket,
-		Blockers: blockers,
-		Blocks:   blocked,
+	// Fetch children for epic tickets
+	var children []*model.Ticket
+	if ticket.IssueType == model.IssueTypeEpic {
+		children, err = ticketRepo.ListByParent(projectID, id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
-	if response.Blockers == nil {
-		response.Blockers = []*model.Dependency{}
+	// Build response by merging ticket JSON with dependency/children fields.
+	// Cannot use struct embedding because model.Ticket has a custom MarshalJSON
+	// that would shadow the outer struct's fields.
+	ticketJSON, err := json.Marshal(ticket)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	if response.Blocks == nil {
-		response.Blocks = []*model.Dependency{}
+	var response map[string]interface{}
+	json.Unmarshal(ticketJSON, &response)
+
+	if blockers == nil {
+		blockers = []*model.Dependency{}
 	}
+	if blocked == nil {
+		blocked = []*model.Dependency{}
+	}
+	if children == nil {
+		children = []*model.Ticket{}
+	}
+
+	response["blockers"] = blockers
+	response["blocks"] = blocked
+	response["children"] = children
 
 	writeJSON(w, http.StatusOK, response)
 }

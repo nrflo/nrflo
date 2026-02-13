@@ -136,6 +136,29 @@ func (r *TicketRepo) List(filter *ListFilter) ([]*model.Ticket, error) {
 	return tickets, nil
 }
 
+// ListByParent retrieves child tickets for a given parent ticket ID
+func (r *TicketRepo) ListByParent(projectID, parentID string) ([]*model.Ticket, error) {
+	rows, err := r.db.Query(`
+		SELECT `+ticketSelectCols+`
+		FROM tickets
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(parent_ticket_id) = LOWER(?)
+		ORDER BY priority ASC, created_at ASC`, projectID, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tickets []*model.Ticket
+	for rows.Next() {
+		ticket, err := scanTicket(rows)
+		if err != nil {
+			return nil, err
+		}
+		tickets = append(tickets, ticket)
+	}
+	return tickets, nil
+}
+
 // UpdateFields contains fields that can be updated
 type UpdateFields struct {
 	Title          *string

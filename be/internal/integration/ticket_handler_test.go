@@ -407,3 +407,456 @@ func TestCreateTicketDefaultsApplied(t *testing.T) {
 		t.Fatalf("expected status 'open', got %q", ticket.Status)
 	}
 }
+
+func TestGetEpicTicketWithChildren(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	database, err := db.OpenPath(dbPath)
+	if err != nil {
+		t.Fatalf("failed to init DB: %v", err)
+	}
+	database.Close()
+
+	seedProject(t, dbPath, "epic-proj")
+	baseURL := startAPIServer(t, dbPath)
+
+	// Create an epic ticket
+	epicBody := `{"id":"EPIC-001","title":"Epic Ticket","issue_type":"epic","priority":1,"created_by":"tester"}`
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(epicBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "epic-proj")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create epic: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201 for epic, got %d", resp.StatusCode)
+	}
+
+	// Create child ticket with higher priority (should come second)
+	child1Body := `{"id":"CHILD-001","title":"Child 1","parent_ticket_id":"EPIC-001","priority":3,"created_by":"tester"}`
+	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child1Body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "epic-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create child 1: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201 for child 1, got %d", resp.StatusCode)
+	}
+
+	// Sleep briefly to ensure different created_at timestamp
+	time.Sleep(10 * time.Millisecond)
+
+	// Create child ticket with lower priority (should come first)
+	child2Body := `{"id":"CHILD-002","title":"Child 2","parent_ticket_id":"EPIC-001","priority":1,"created_by":"tester"}`
+	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child2Body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "epic-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create child 2: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201 for child 2, got %d", resp.StatusCode)
+	}
+
+	// GET the epic and verify children are returned
+	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/EPIC-001", nil)
+	req.Header.Set("X-Project", "epic-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to get epic: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		ID       string          `json:"id"`
+		Title    string          `json:"title"`
+		Children []*model.Ticket `json:"children"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// Verify children array is populated
+	if len(result.Children) != 2 {
+		t.Fatalf("expected 2 children, got %d", len(result.Children))
+	}
+
+	// Verify ordering: priority ASC, then created_at ASC
+	// Child 2 has priority 1 (lower), Child 1 has priority 3 (higher)
+	if result.Children[0].ID != "child-002" {
+		t.Fatalf("expected first child to be child-002 (priority 1), got %q", result.Children[0].ID)
+	}
+	if result.Children[1].ID != "child-001" {
+		t.Fatalf("expected second child to be child-001 (priority 3), got %q", result.Children[1].ID)
+	}
+
+	// Verify child details
+	if result.Children[0].Title != "Child 2" {
+		t.Fatalf("expected child title 'Child 2', got %q", result.Children[0].Title)
+	}
+	if result.Children[0].Priority != 1 {
+		t.Fatalf("expected child priority 1, got %d", result.Children[0].Priority)
+	}
+}
+
+func TestGetEpicTicketWithNoChildren(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	database, err := db.OpenPath(dbPath)
+	if err != nil {
+		t.Fatalf("failed to init DB: %v", err)
+	}
+	database.Close()
+
+	seedProject(t, dbPath, "empty-epic")
+	baseURL := startAPIServer(t, dbPath)
+
+	// Create an epic with no children
+	epicBody := `{"id":"LONELY-EPIC","title":"Epic Without Children","issue_type":"epic","created_by":"tester"}`
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(epicBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "empty-epic")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create epic: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resp.StatusCode)
+	}
+
+	// GET the epic
+	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/LONELY-EPIC", nil)
+	req.Header.Set("X-Project", "empty-epic")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to get epic: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		ID       string          `json:"id"`
+		Children []*model.Ticket `json:"children"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// Verify children is empty array, not null
+	if result.Children == nil {
+		t.Fatalf("expected children to be empty array [], got nil")
+	}
+	if len(result.Children) != 0 {
+		t.Fatalf("expected 0 children, got %d", len(result.Children))
+	}
+}
+
+func TestGetNonEpicTicketHasEmptyChildrenArray(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	database, err := db.OpenPath(dbPath)
+	if err != nil {
+		t.Fatalf("failed to init DB: %v", err)
+	}
+	database.Close()
+
+	seedProject(t, dbPath, "task-proj")
+	baseURL := startAPIServer(t, dbPath)
+
+	// Create a non-epic ticket (task)
+	taskBody := `{"id":"TASK-001","title":"Regular Task","issue_type":"task","created_by":"tester"}`
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(taskBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "task-proj")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create task: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resp.StatusCode)
+	}
+
+	// GET the task
+	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/TASK-001", nil)
+	req.Header.Set("X-Project", "task-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to get task: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		ID        string          `json:"id"`
+		IssueType string          `json:"issue_type"`
+		Children  []*model.Ticket `json:"children"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// Verify children is empty array for non-epic
+	if result.Children == nil {
+		t.Fatalf("expected children to be empty array [], got nil")
+	}
+	if len(result.Children) != 0 {
+		t.Fatalf("expected 0 children for non-epic, got %d", len(result.Children))
+	}
+	if result.IssueType != "task" {
+		t.Fatalf("expected issue_type 'task', got %q", result.IssueType)
+	}
+}
+
+func TestGetBugTicketHasEmptyChildrenArray(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	database, err := db.OpenPath(dbPath)
+	if err != nil {
+		t.Fatalf("failed to init DB: %v", err)
+	}
+	database.Close()
+
+	seedProject(t, dbPath, "bug-proj")
+	baseURL := startAPIServer(t, dbPath)
+
+	// Create a bug ticket
+	bugBody := `{"id":"BUG-001","title":"Bug Ticket","issue_type":"bug","created_by":"tester"}`
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(bugBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "bug-proj")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create bug: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resp.StatusCode)
+	}
+
+	// GET the bug
+	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/BUG-001", nil)
+	req.Header.Set("X-Project", "bug-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to get bug: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		ID        string          `json:"id"`
+		IssueType string          `json:"issue_type"`
+		Children  []*model.Ticket `json:"children"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// Verify children is empty array for bug
+	if result.Children == nil {
+		t.Fatalf("expected children to be empty array [], got nil")
+	}
+	if len(result.Children) != 0 {
+		t.Fatalf("expected 0 children for bug, got %d", len(result.Children))
+	}
+	if result.IssueType != "bug" {
+		t.Fatalf("expected issue_type 'bug', got %q", result.IssueType)
+	}
+}
+
+func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	database, err := db.OpenPath(dbPath)
+	if err != nil {
+		t.Fatalf("failed to init DB: %v", err)
+	}
+	database.Close()
+
+	seedProject(t, dbPath, "order-proj")
+	baseURL := startAPIServer(t, dbPath)
+
+	// Create epic
+	epicBody := `{"id":"ORDER-EPIC","title":"Test Ordering","issue_type":"epic","created_by":"tester"}`
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(epicBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "order-proj")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create epic: %v", err)
+	}
+	resp.Body.Close()
+
+	// Create child with priority 2, created first
+	child1Body := `{"id":"C1","title":"Priority 2 First","parent_ticket_id":"ORDER-EPIC","priority":2,"created_by":"tester"}`
+	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child1Body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "order-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create C1: %v", err)
+	}
+	resp.Body.Close()
+
+	time.Sleep(10 * time.Millisecond)
+
+	// Create child with priority 2, created second (same priority, later timestamp)
+	child2Body := `{"id":"C2","title":"Priority 2 Second","parent_ticket_id":"ORDER-EPIC","priority":2,"created_by":"tester"}`
+	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child2Body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "order-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create C2: %v", err)
+	}
+	resp.Body.Close()
+
+	time.Sleep(10 * time.Millisecond)
+
+	// Create child with priority 1 (should come first despite later creation)
+	child3Body := `{"id":"C3","title":"Priority 1","parent_ticket_id":"ORDER-EPIC","priority":1,"created_by":"tester"}`
+	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child3Body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "order-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create C3: %v", err)
+	}
+	resp.Body.Close()
+
+	time.Sleep(10 * time.Millisecond)
+
+	// Create child with priority 3 (should come last)
+	child4Body := `{"id":"C4","title":"Priority 3","parent_ticket_id":"ORDER-EPIC","priority":3,"created_by":"tester"}`
+	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child4Body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "order-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create C4: %v", err)
+	}
+	resp.Body.Close()
+
+	// GET epic and verify order
+	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/ORDER-EPIC", nil)
+	req.Header.Set("X-Project", "order-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to get epic: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Children []*model.Ticket `json:"children"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(result.Children) != 4 {
+		t.Fatalf("expected 4 children, got %d", len(result.Children))
+	}
+
+	// Expected order: C3 (pri 1), C1 (pri 2, earlier), C2 (pri 2, later), C4 (pri 3)
+	expectedOrder := []string{"c3", "c1", "c2", "c4"}
+	for i, expected := range expectedOrder {
+		if result.Children[i].ID != expected {
+			t.Errorf("position %d: expected %s, got %s", i, expected, result.Children[i].ID)
+		}
+	}
+}
+
+func TestGetEpicCaseInsensitiveParentLookup(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	database, err := db.OpenPath(dbPath)
+	if err != nil {
+		t.Fatalf("failed to init DB: %v", err)
+	}
+	database.Close()
+
+	seedProject(t, dbPath, "case-proj")
+	baseURL := startAPIServer(t, dbPath)
+
+	// Create epic with mixed case
+	epicBody := `{"id":"MixedCase-Epic","title":"Case Test","issue_type":"epic","created_by":"tester"}`
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(epicBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "case-proj")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create epic: %v", err)
+	}
+	resp.Body.Close()
+
+	// Create child with different case in parent_ticket_id
+	childBody := `{"id":"CHILD","title":"Child","parent_ticket_id":"MIXEDCASE-EPIC","created_by":"tester"}`
+	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(childBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Project", "case-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create child: %v", err)
+	}
+	resp.Body.Close()
+
+	// GET epic using different case
+	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/mixedcase-epic", nil)
+	req.Header.Set("X-Project", "case-proj")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to get epic: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Children []*model.Ticket `json:"children"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// Should find the child despite case differences
+	if len(result.Children) != 1 {
+		t.Fatalf("expected 1 child (case-insensitive), got %d", len(result.Children))
+	}
+	if result.Children[0].ID != "child" {
+		t.Fatalf("expected child ID 'child', got %q", result.Children[0].ID)
+	}
+}

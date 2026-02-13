@@ -41,6 +41,7 @@ export interface Dependency {
 export interface TicketWithDeps extends Ticket {
   blockers: Dependency[]
   blocks: Dependency[]
+  children?: Ticket[]
 }
 
 export interface CreateTicketRequest {

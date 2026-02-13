@@ -72,6 +72,14 @@ export interface SearchResponse {
   query: string
 }
 
+export interface DailyStats {
+  date: string
+  tickets_created: number
+  tickets_closed: number
+  tokens_spent: number
+  agent_time_sec: number
+}
+
 export interface StatusResponse {
   counts: {
     open: number

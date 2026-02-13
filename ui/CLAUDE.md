@@ -30,7 +30,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/ui/codemirror-theme.ts` | CodeMirror theme using CSS variables (auto dark/light) |
 | `src/components/ui/Dialog.tsx` | Modal dialog with backdrop, ESC key, click-outside-to-close |
 | `src/components/ui/` | Reusable UI components (Badge, Button, Card, Input, ProjectSelect, Select, Spinner, Textarea, Toggle) |
-| `src/components/layout/` | Layout components (Header, Sidebar) |
+| `src/components/layout/` | Layout components (Header, Sidebar, DailyStats) |
 | `src/components/tickets/` | Ticket-specific components |
 | `src/components/workflow/PhaseTimeline.tsx` | Main workflow timeline wrapper (uses PhaseGraph) |
 | `src/components/workflow/PhaseGraph/` | Vertical graph visualization of workflow phases |
@@ -141,7 +141,7 @@ Event types: `agent.started`, `agent.completed`, `phase.started`, `phase.complet
 
 ```
 Layout
-├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows, settings link)
+├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows, daily stats, settings link)
 ├── Sidebar (navigation, status counts)
 └── Outlet (page content via React Router)
 ```
@@ -465,6 +465,7 @@ GET /api/v1/search?q=              # Full-text search
 POST /api/v1/dependencies          # Add dependency
 DELETE /api/v1/dependencies        # Remove dependency
 GET /api/v1/status                 # Dashboard summary
+GET /api/v1/daily-stats            # Daily stats (created, closed, tokens, agent time)
 GET /api/v1/ws                     # WebSocket
 ```
 

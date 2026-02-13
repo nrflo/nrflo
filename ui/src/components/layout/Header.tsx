@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
+import { DailyStats } from '@/components/layout/DailyStats'
 import { useProjectStore } from '@/stores/projectStore'
 
 export function Header() {
@@ -49,6 +50,10 @@ export function Header() {
             Workflows
           </Link>
         </nav>
+
+        <div className="flex-1" />
+
+        <DailyStats />
 
         <div className="flex-1" />
 

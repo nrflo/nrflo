@@ -23,6 +23,7 @@ import {
   deleteTicket,
   searchTickets,
   getStatus,
+  getDailyStats,
   getWorkflow,
   updateWorkflow,
   getAgentSessions,
@@ -36,6 +37,7 @@ import type {
   UpdateTicketRequest,
   TicketListResponse,
   StatusResponse,
+  DailyStats,
 } from '@/types/ticket'
 import type { WorkflowResponse, ProjectWorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, ProjectAgentSessionsResponse, RunWorkflowRequest, ProjectWorkflowRunRequest, RestartAgentRequest, SessionMessagesResponse } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
@@ -53,6 +55,22 @@ export const ticketKeys = {
     [...ticketKeys.detail(id), 'agents', phase] as const,
   search: (query: string) => [...ticketKeys.all, 'search', query] as const,
   status: () => [...ticketKeys.all, 'status'] as const,
+}
+
+export const dailyStatsKeys = {
+  all: ['daily-stats'] as const,
+  current: (project: string) => [...dailyStatsKeys.all, project] as const,
+}
+
+export function useDailyStats() {
+  const project = useProjectStore((s) => s.currentProject)
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery<DailyStats>({
+    queryKey: dailyStatsKeys.current(project),
+    queryFn: () => getDailyStats(),
+    enabled: projectsLoaded,
+    refetchInterval: 30000,
+  })
 }
 
 export function useTicketList(

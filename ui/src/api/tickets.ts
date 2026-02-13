@@ -7,6 +7,7 @@ import type {
   TicketListResponse,
   SearchResponse,
   StatusResponse,
+  DailyStats,
 } from '@/types/ticket'
 import type {
   WorkflowResponse,
@@ -80,6 +81,10 @@ export async function searchTickets(query: string): Promise<SearchResponse> {
 export async function getStatus(limit?: number): Promise<StatusResponse> {
   const query = limit ? `?limit=${limit}` : ''
   return apiGet<StatusResponse>(`/api/v1/status${query}`)
+}
+
+export async function getDailyStats(): Promise<DailyStats> {
+  return apiGet<DailyStats>('/api/v1/daily-stats')
 }
 
 // Workflow endpoints

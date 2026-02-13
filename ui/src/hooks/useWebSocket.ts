@@ -22,6 +22,7 @@ export type WSEventType =
   | 'orchestration.completed'
   | 'orchestration.failed'
   | 'orchestration.retried'
+  | 'orchestration.callback'
   | 'ticket.updated'
   | 'test.echo'
 
@@ -181,6 +182,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       case 'orchestration.completed':
       case 'orchestration.failed':
       case 'orchestration.retried':
+      case 'orchestration.callback':
         if (isProjectScope) {
           invalidateProjectWorkflow()
         } else {

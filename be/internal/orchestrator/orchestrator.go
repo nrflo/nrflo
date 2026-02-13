@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -663,12 +664,13 @@ func (o *Orchestrator) runLoop(
 	// Group phases by layer
 	layerGroups := groupPhasesByLayer(svcWf.Phases)
 
-	for li, lg := range layerGroups {
-		// Skip completed layers (for retry-from-failed-layer)
-		if li < startLayerIdx {
-			log.Printf("[orchestrator] Skipping completed layer %d (retry from layer %d)", lg.layer, layerGroups[startLayerIdx].layer)
-			continue
-		}
+	const maxCallbacks = 3
+	callbackCount := 0
+
+	// Use index-based loop to support backward jumps on callback
+	layerIdx := startLayerIdx
+	for layerIdx < len(layerGroups) {
+		lg := layerGroups[layerIdx]
 
 		// Check cancellation
 		select {
@@ -692,15 +694,19 @@ func (o *Orchestrator) runLoop(
 		// If all agents in layer are skipped, continue to next layer
 		if len(runnableAgents) == 0 {
 			log.Printf("[orchestrator] Layer %d: all agents skipped, continuing", lg.layer)
+			layerIdx++
 			continue
 		}
 
-		log.Printf("[orchestrator] Running layer %d/%d: %d agent(s)", li+1, len(layerGroups), len(runnableAgents))
+		log.Printf("[orchestrator] Running layer %d/%d: %d agent(s)", layerIdx+1, len(layerGroups), len(runnableAgents))
 
 		// Spawn all agents in this layer concurrently
 		type spawnResult struct {
-			agent string
-			err   error
+			agent           string
+			err             error
+			isCallback      bool
+			cbLevel         int
+			cbInstructions  string
 		}
 		results := make(chan spawnResult, len(runnableAgents))
 
@@ -733,16 +739,38 @@ func (o *Orchestrator) runLoop(
 				})
 
 				sp.Close()
-				results <- spawnResult{agent: phase.Agent, err: err}
+
+				sr := spawnResult{agent: phase.Agent, err: err}
+				var cbErr *spawner.CallbackError
+				if errors.As(err, &cbErr) {
+					sr.isCallback = true
+					sr.cbLevel = cbErr.Level
+					sr.cbInstructions = cbErr.Instructions
+					sr.err = nil // callback is not a failure
+				}
+				results <- sr
 			}()
 		}
 
 		// Wait for all agents in this layer to finish
 		passCount := 0
 		failCount := 0
+		callbackDetected := false
+		callbackLevel := -1
+		callbackAgent := ""
+		callbackInstructions := ""
 		for range runnableAgents {
 			result := <-results
-			if result.err != nil {
+			if result.isCallback {
+				passCount++ // callback counts as pass for fan-in
+				callbackDetected = true
+				// Use lowest callback level if multiple agents request callback
+				if callbackLevel < 0 || result.cbLevel < callbackLevel {
+					callbackLevel = result.cbLevel
+					callbackAgent = result.agent
+					callbackInstructions = result.cbInstructions
+				}
+			} else if result.err != nil {
 				if ctx.Err() != nil {
 					log.Printf("[orchestrator] Cancelled during layer %d", lg.layer)
 					o.markFailed(wfiID, req, "cancelled")
@@ -763,6 +791,24 @@ func (o *Orchestrator) runLoop(
 		}
 		o.mu.Unlock()
 
+		// Handle callback before fan-in failure check
+		if callbackDetected {
+			callbackCount++
+			if callbackCount > maxCallbacks {
+				log.Printf("[orchestrator] Max callbacks (%d) exceeded, failing workflow", maxCallbacks)
+				o.markFailed(wfiID, req, fmt.Sprintf("max callbacks (%d) exceeded", maxCallbacks))
+				return
+			}
+
+			targetIdx := o.handleCallback(wfiID, req, layerGroups, layerIdx, callbackLevel, callbackAgent, callbackInstructions)
+			if targetIdx < 0 {
+				o.markFailed(wfiID, req, fmt.Sprintf("callback target layer %d not found", callbackLevel))
+				return
+			}
+			layerIdx = targetIdx
+			continue
+		}
+
 		// Fan-in: at least one pass required to proceed
 		if passCount == 0 {
 			log.Printf("[orchestrator] Layer %d: all agents failed (%d), stopping workflow", lg.layer, failCount)
@@ -771,11 +817,88 @@ func (o *Orchestrator) runLoop(
 		}
 
 		log.Printf("[orchestrator] Layer %d completed: %d passed, %d failed", lg.layer, passCount, failCount)
+		layerIdx++
 	}
 
 	// All layers completed
 	log.Printf("[orchestrator] Workflow '%s' completed on %s", req.WorkflowName, target)
 	o.markCompleted(wfiID, req)
+}
+
+// handleCallback processes a callback: resets phases and sessions for layers between
+// target and current (inclusive), saves callback metadata to WFI findings, and broadcasts.
+// Returns the target layer index, or -1 if the target layer number is not found.
+func (o *Orchestrator) handleCallback(
+	wfiID string,
+	req RunRequest,
+	layerGroups []layerGroup,
+	currentIdx int,
+	callbackLevel int,
+	callbackAgent string,
+	callbackInstructions string,
+) int {
+	// Map callback_level (layer field value) to layerGroups index
+	targetIdx := -1
+	for i, lg := range layerGroups {
+		if lg.layer == callbackLevel {
+			targetIdx = i
+			break
+		}
+	}
+	if targetIdx < 0 {
+		log.Printf("[orchestrator] Callback target layer %d not found in layer groups", callbackLevel)
+		return -1
+	}
+
+	log.Printf("[orchestrator] Callback detected: returning to layer %d (idx %d) from layer %d (idx %d), agent=%s",
+		callbackLevel, targetIdx, layerGroups[currentIdx].layer, currentIdx, callbackAgent)
+
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		log.Printf("[orchestrator] Failed to open DB for callback: %v", err)
+		return -1
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	asRepo := repo.NewAgentSessionRepo(database)
+
+	// Save _callback metadata to workflow instance findings
+	wi, err := wfiRepo.Get(wfiID)
+	if err == nil {
+		findings := wi.GetFindings()
+		findings["_callback"] = map[string]interface{}{
+			"level":        callbackLevel,
+			"instructions": callbackInstructions,
+			"from_layer":   layerGroups[currentIdx].layer,
+			"from_agent":   callbackAgent,
+		}
+		findingsJSON, _ := json.Marshal(findings)
+		wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
+	}
+
+	// Reset phases for all layers from targetIdx to currentIdx (inclusive)
+	var resetPhases []string
+	for i := targetIdx; i <= currentIdx; i++ {
+		for _, p := range layerGroups[i].phases {
+			wfiRepo.ResetPhaseStatus(wfiID, p.Agent)
+			resetPhases = append(resetPhases, p.Agent)
+		}
+	}
+
+	// Reset agent sessions for those phases
+	asRepo.ResetSessionsForCallback(wfiID, resetPhases)
+
+	// Broadcast callback event
+	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCallback, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+		"instance_id":  wfiID,
+		"from_layer":   layerGroups[currentIdx].layer,
+		"to_layer":     callbackLevel,
+		"instructions": callbackInstructions,
+	}))
+
+	return targetIdx
 }
 
 // layerGroup holds phases that share the same layer number.

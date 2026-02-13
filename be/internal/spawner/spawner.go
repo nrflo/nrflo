@@ -13,7 +13,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"be/internal/db"
 	"be/internal/model"
+	"be/internal/repo"
 	"be/internal/ws"
 )
 
@@ -578,6 +580,7 @@ func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
 // finalizePhase completes the phase after all agents finish.
 // Uses pass_count >= 1 semantics: at least one PASS is required for layer success.
 // All-skipped counts as success (continue to next layer).
+// Returns CallbackError if any agent completed with CALLBACK status.
 func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phase string) error {
 	fmt.Printf("\n[%s] All agents completed:\n", phase)
 	for _, proc := range completed {
@@ -587,21 +590,36 @@ func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phas
 
 	passCount := 0
 	skippedCount := 0
+	callbackCount := 0
+	var callbackProc *processInfo
 	for _, proc := range completed {
 		switch proc.finalStatus {
 		case "PASS":
 			passCount++
 		case "SKIPPED":
 			skippedCount++
+		case "CALLBACK":
+			callbackCount++
+			// Track the callback proc (if multiple, we'll pick lowest level in orchestrator)
+			callbackProc = proc
 		}
+	}
+
+	wfiID := ""
+	if len(completed) > 0 {
+		wfiID = completed[0].workflowInstanceID
+	}
+
+	// Callback detected — read callback_level from session findings and signal orchestrator
+	if callbackCount > 0 {
+		level, instructions := s.readCallbackFindings(callbackProc)
+		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "callback")
+		fmt.Printf("Phase complete: %s (CALLBACK → layer %d)\n", phase, level)
+		return &CallbackError{Level: level, Instructions: instructions, AgentType: req.AgentType}
 	}
 
 	// All skipped = success (continue to next layer)
 	if skippedCount == len(completed) {
-		wfiID := ""
-		if len(completed) > 0 {
-			wfiID = completed[0].workflowInstanceID
-		}
 		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "skipped")
 		fmt.Printf("Phase complete: %s (SKIPPED)\n", phase)
 		return nil
@@ -609,20 +627,12 @@ func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phas
 
 	// At least one pass = success
 	if passCount >= 1 {
-		wfiID := ""
-		if len(completed) > 0 {
-			wfiID = completed[0].workflowInstanceID
-		}
 		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "pass")
 		fmt.Printf("Phase complete: %s (PASS — %d/%d passed)\n", phase, passCount, len(completed))
 		return nil
 	}
 
 	// No passes = fail
-	wfiID := ""
-	if len(completed) > 0 {
-		wfiID = completed[0].workflowInstanceID
-	}
 	s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
 
 	var failedModels []string
@@ -634,6 +644,41 @@ func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phas
 	fmt.Printf("Phase complete: %s (FAIL)\n", phase)
 	fmt.Printf("  Failed: %s\n", strings.Join(failedModels, ", "))
 	return fmt.Errorf("phase %s failed", phase)
+}
+
+// readCallbackFindings reads callback_level and callback_instructions from agent session findings.
+func (s *Spawner) readCallbackFindings(proc *processInfo) (int, string) {
+	database, err := db.Open(s.config.DataPath)
+	if err != nil {
+		return 0, ""
+	}
+	defer database.Close()
+
+	sessionRepo := repo.NewAgentSessionRepo(database)
+	session, err := sessionRepo.Get(proc.sessionID)
+	if err != nil {
+		return 0, ""
+	}
+
+	findings := session.GetFindings()
+	level := 0
+	if lvl, ok := findings["callback_level"]; ok {
+		switch v := lvl.(type) {
+		case float64:
+			level = int(v)
+		case int:
+			level = v
+		}
+	}
+
+	instructions := ""
+	if instr, ok := findings["callback_instructions"]; ok {
+		if str, ok := instr.(string); ok {
+			instructions = str
+		}
+	}
+
+	return level, instructions
 }
 
 func parseModelID(modelID string) (cli, model string) {

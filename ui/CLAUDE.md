@@ -131,7 +131,7 @@ useTicket(id)
 useAgentSessions(ticketId, undefined, { enabled: !!ticketId })
 ```
 
-Event types: `agent.started`, `agent.completed`, `phase.started`, `phase.completed`, `findings.updated`, `messages.updated`, `workflow.updated`, `ticket.updated`
+Event types: `agent.started`, `agent.completed`, `phase.started`, `phase.completed`, `findings.updated`, `messages.updated`, `workflow.updated`, `ticket.updated`, `orchestration.callback`
 
 **Project-wide subscription:** Layout.tsx subscribes to all project events (empty ticketId) so that Sidebar status counts, ticket lists, and Dashboard receive real-time updates (e.g., `ticket.updated` events).
 
@@ -377,6 +377,7 @@ const ws = new WebSocket('ws://localhost:6587/api/v1/ws')
 | `orchestration.completed` | instance_id | Orchestrated workflow run completed |
 | `orchestration.failed` | instance_id, reason | Orchestrated workflow run failed |
 | `orchestration.retried` | instance_id | Failed workflow retry started |
+| `orchestration.callback` | instance_id, from_layer, to_layer, instructions | Callback detected, re-executing from target layer |
 | `ticket.updated` | | Ticket state changed (status, priority, etc.) |
 
 All events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`

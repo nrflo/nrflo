@@ -20,6 +20,7 @@ be/
 │   │   ├── spawner.go           # Spawn and monitor agents
 │   │   ├── cli_adapter.go       # CLI adapter pattern (Claude, Opencode, Codex)
 │   │   ├── cli_adapter_test.go  # Adapter tests
+│   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution)
 │   │   ├── completion.go        # Completion handling, continuation relaunch
 │   │   ├── context_save.go      # Low-context save: kill, resume, save findings, relaunch
 │   │   ├── context.go           # Context tracking from /tmp/usable_context.json

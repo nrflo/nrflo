@@ -40,26 +40,8 @@ vi.mock('@/hooks/useChains', () => ({
   useChainList: () => ({ data: [] }),
 }))
 
-// Mock AgentLogPanel to expose retry controls
-let capturedOnRetryFailed: ((sessionId: string) => void) | undefined
-let capturedRetryingSessionId: string | null | undefined
-let capturedWorkflowStatus: string | undefined
-
 vi.mock('@/components/workflow/AgentLogPanel', () => ({
-  AgentLogPanel: ({
-    onRetryFailed,
-    retryingSessionId,
-    workflowStatus,
-  }: {
-    onRetryFailed?: (sessionId: string) => void
-    retryingSessionId?: string | null
-    workflowStatus?: string
-  }) => {
-    capturedOnRetryFailed = onRetryFailed
-    capturedRetryingSessionId = retryingSessionId
-    capturedWorkflowStatus = workflowStatus
-    return <div data-testid="agent-log-panel">AgentLogPanel</div>
-  },
+  AgentLogPanel: () => <div data-testid="agent-log-panel">AgentLogPanel</div>,
 }))
 
 vi.mock('@/api/tickets', async () => {
@@ -89,12 +71,11 @@ const workflowWithFailedAgent: WorkflowResponse = {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     status: 'failed',
     phase_order: ['investigation', 'implementation', 'verification'],
     phases: {
       investigation: { status: 'completed', result: 'pass' },
-      implementation: { status: 'failed', result: 'fail' },
+      implementation: { status: 'error', result: 'fail' },
     },
     active_agents: {},
     agent_history: [
@@ -103,7 +84,6 @@ const workflowWithFailedAgent: WorkflowResponse = {
         agent_type: 'implementor',
         phase: 'implementation',
         model_id: 'claude-sonnet-4-5',
-        status: 'failed',
         result: 'fail',
         started_at: '2026-01-01T00:00:00Z',
         ended_at: '2026-01-01T00:05:00Z',
@@ -123,9 +103,6 @@ const sessionsData: AgentSessionsResponse = {
 describe('TicketDetailPage - Retry failed agent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedOnRetryFailed = undefined
-    capturedRetryingSessionId = undefined
-    capturedWorkflowStatus = undefined
   })
 
   it('passes onRetryFailed callback to WorkflowTabContent', async () => {
@@ -305,7 +282,6 @@ describe('TicketDetailPage - Retry failed agent', () => {
             agent_type: 'implementor',
             phase: 'implementation',
             model_id: 'claude-sonnet-4-5',
-            status: 'failed',
             result: 'fail',
             started_at: '2026-01-01T00:00:00Z',
             ended_at: '2026-01-01T00:05:00Z',
@@ -316,7 +292,6 @@ describe('TicketDetailPage - Retry failed agent', () => {
             agent_type: 'tester',
             phase: 'verification',
             model_id: 'claude-opus-4-6',
-            status: 'failed',
             result: 'fail',
             started_at: '2026-01-01T00:06:00Z',
             ended_at: '2026-01-01T00:10:00Z',

@@ -12,7 +12,6 @@ export interface ListChainsParams {
 
 export interface RunEpicWorkflowParams {
   workflow_name: string
-  category?: string
   start: boolean
 }
 

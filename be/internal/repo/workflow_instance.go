@@ -20,7 +20,7 @@ func NewWorkflowInstanceRepo(pool *db.Pool) *WorkflowInstanceRepo {
 	return &WorkflowInstanceRepo{pool: pool}
 }
 
-const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status, category, current_phase,
+const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status, current_phase,
 	phase_order, phases, findings, retry_count, parent_session, created_at, updated_at`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
@@ -28,7 +28,7 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 	var createdAt, updatedAt string
 	err := scanner.Scan(
 		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
-		&wi.Status, &wi.Category, &wi.CurrentPhase,
+		&wi.Status, &wi.CurrentPhase,
 		&wi.PhaseOrder, &wi.Phases, &wi.Findings,
 		&wi.RetryCount, &wi.ParentSession, &createdAt, &updatedAt,
 	)
@@ -54,9 +54,9 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
-		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status, wi.Category, wi.CurrentPhase,
+		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status, wi.CurrentPhase,
 		wi.PhaseOrder, wi.Phases, wi.Findings,
 		wi.RetryCount, wi.ParentSession, now, now,
 	)
@@ -208,18 +208,6 @@ func (r *WorkflowInstanceRepo) UpdateStatus(id string, status model.WorkflowInst
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET status = ?, updated_at = ? WHERE id = ?`,
 		status, now, id)
-	if err != nil {
-		return err
-	}
-	return checkAffected(result, id)
-}
-
-// UpdateCategory updates the category field
-func (r *WorkflowInstanceRepo) UpdateCategory(id, category string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	result, err := r.pool.Exec(
-		`UPDATE workflow_instances SET category = ?, updated_at = ? WHERE id = ?`,
-		category, now, id)
 	if err != nil {
 		return err
 	}

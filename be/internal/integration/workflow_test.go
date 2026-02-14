@@ -147,18 +147,8 @@ func TestWorkflowSet(t *testing.T) {
 	env.CreateTicket(t, "WF-3", "Set test")
 	env.InitWorkflow(t, "WF-3")
 
-	// Set category
-	err := env.WorkflowSvc.Set(env.ProjectID, "WF-3", &types.WorkflowSetRequest{
-		Workflow: "test",
-		Key:     "category",
-		Value:   "simple",
-	})
-	if err != nil {
-		t.Fatalf("failed to set category: %v", err)
-	}
-
 	// Set retry_count
-	err = env.WorkflowSvc.Set(env.ProjectID, "WF-3", &types.WorkflowSetRequest{
+	err := env.WorkflowSvc.Set(env.ProjectID, "WF-3", &types.WorkflowSetRequest{
 		Workflow: "test",
 		Key:     "retry_count",
 		Value:   "3",
@@ -173,9 +163,6 @@ func TestWorkflowSet(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("failed to get status: %v", err)
-	}
-	if status["category"] != "simple" {
-		t.Fatalf("expected category 'simple', got %v", status["category"])
 	}
 	if rc, ok := status["retry_count"].(float64); !ok || int(rc) != 3 {
 		t.Fatalf("expected retry_count 3, got %v", status["retry_count"])

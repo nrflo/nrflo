@@ -542,7 +542,7 @@ describe('ChainTicketSelector - Issue Type Icons', () => {
   })
 
   it('renders default icon for unknown issue types', () => {
-    const tickets = [createMockTicket({ id: 'UNK-1', issue_type: 'unknown', title: 'Mystery' })]
+    const tickets = [createMockTicket({ id: 'UNK-1', issue_type: 'unknown' as any, title: 'Mystery' })]
     mockUseTicketList.mockReturnValue({
       data: { tickets },
       isLoading: false,

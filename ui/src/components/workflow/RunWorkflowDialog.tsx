@@ -17,7 +17,6 @@ interface RunWorkflowDialogProps {
 
 export function RunWorkflowDialog({ open, onClose, ticketId }: RunWorkflowDialogProps) {
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
-  const [category, setCategory] = useState('full')
   const [instructions, setInstructions] = useState('')
 
   const project = useProjectStore((s) => s.currentProject)
@@ -40,17 +39,6 @@ export function RunWorkflowDialog({ open, onClose, ticketId }: RunWorkflowDialog
     }
   }, [workflowIds, selectedWorkflow])
 
-  // Get categories for selected workflow
-  const selectedDef = selectedWorkflow && workflowDefs ? workflowDefs[selectedWorkflow] : null
-  const categories = selectedDef?.categories ?? ['full']
-
-  // Reset category when workflow changes
-  useEffect(() => {
-    if (categories.length > 0) {
-      setCategory(categories[0] || 'full')
-    }
-  }, [selectedWorkflow])
-
   const handleRun = async () => {
     if (!selectedWorkflow) return
     try {
@@ -58,7 +46,6 @@ export function RunWorkflowDialog({ open, onClose, ticketId }: RunWorkflowDialog
         ticketId,
         params: {
           workflow: selectedWorkflow,
-          category: category || undefined,
           instructions: instructions || undefined,
         },
       })
@@ -73,7 +60,6 @@ export function RunWorkflowDialog({ open, onClose, ticketId }: RunWorkflowDialog
   useEffect(() => {
     if (!open) {
       setSelectedWorkflow('')
-      setCategory('full')
       setInstructions('')
     }
   }, [open])
@@ -112,25 +98,6 @@ export function RunWorkflowDialog({ open, onClose, ticketId }: RunWorkflowDialog
                 ))}
               </Select>
             </div>
-
-            {categories.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Category</label>
-                <Select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Controls which phases are skipped based on skip rules.
-                </p>
-              </div>
-            )}
 
             <div>
               <label className="block text-sm font-medium mb-1.5">

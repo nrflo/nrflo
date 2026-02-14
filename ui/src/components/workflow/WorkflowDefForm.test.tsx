@@ -84,39 +84,7 @@ describe('WorkflowDefForm', () => {
       })
     })
 
-    it('includes skip_for when categories are added', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'feature')
-
-      // Fill the default agent
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'test-writer')
-
-      // First add 'docs' as a workflow category so it appears in the agent's skip_for buttons
-      const catDocsButton = screen.getByRole('button', { name: '+docs' })
-      await user.click(catDocsButton)
-
-      // Now the agent row has a +docs button for skip_for (since 'docs' is now a category)
-      // The category section no longer has +docs (it was added). Only agent row has it.
-      const skipDocsButton = screen.getByRole('button', { name: '+docs' })
-      await user.click(skipDocsButton)
-
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
-      await user.click(submitButton)
-
-      const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      expect(call.phases[0]).toMatchObject({
-        id: 'test-writer',
-        agent: 'test-writer',
-        layer: 0,
-        skip_for: ['docs'],
-      })
-    })
-
-    it('omits skip_for when empty', async () => {
+    it('phases do not include skip_for field (category removal)', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
       renderForm({ isCreate: true, onSubmit })
@@ -188,8 +156,8 @@ describe('WorkflowDefForm', () => {
 
     it('populates form with existing phase data', () => {
       const phases: PhaseDef[] = [
-        { id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0, skip_for: ['docs'] },
-        { id: 'implementor', agent: 'implementor', layer: 1, skip_for: [] },
+        { id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 },
+        { id: 'implementor', agent: 'implementor', layer: 1 },
       ]
 
       renderForm({
@@ -204,8 +172,6 @@ describe('WorkflowDefForm', () => {
       const layerInputs = screen.getAllByRole('spinbutton')
       expect(layerInputs[0]).toHaveValue(0)
       expect(layerInputs[1]).toHaveValue(1)
-
-      expect(screen.getByText('docs')).toBeInTheDocument()
     })
 
     it('defaults to single empty agent when no phases provided', () => {
@@ -242,7 +208,6 @@ describe('WorkflowDefForm', () => {
         id: 'feature',
         description: 'Full TDD workflow',
         scope_type: 'ticket',
-        categories: ['full'],
         phases: [
           {
             id: 'setup-analyzer',
@@ -276,7 +241,6 @@ describe('WorkflowDefForm', () => {
       expect(onSubmit).toHaveBeenCalledWith({
         description: 'New description',
         scope_type: 'ticket',
-        categories: ['full'],
         phases: [
           {
             id: 'setup-analyzer',
@@ -299,51 +263,6 @@ describe('WorkflowDefForm', () => {
     })
   })
 
-  describe('categories management', () => {
-    it('starts with default category "full"', () => {
-      renderForm({ isCreate: true })
-
-      expect(screen.getByText('full')).toBeInTheDocument()
-    })
-
-    it('adds preset categories', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      // The form-level preset buttons have the format "+simple"
-      // but the PhaseListEditor agent row also has "+simple" for skip_for
-      // The form-level ones are in the categories section
-      const simpleButtons = screen.getAllByRole('button', { name: /\+simple/i })
-      // First match is the form-level category button
-      await user.click(simpleButtons[0])
-
-      expect(screen.getByText('simple')).toBeInTheDocument()
-    })
-
-    it('removes categories', async () => {
-      const user = userEvent.setup()
-      renderForm({
-        isCreate: false,
-        initial: { id: 'test', categories: ['full', 'simple'] },
-      })
-
-      const simpleBadge = screen.getByText('simple').closest('.gap-1')
-      const removeButton = simpleBadge?.querySelector('button')
-      await user.click(removeButton!)
-
-      expect(screen.queryByText('simple')).not.toBeInTheDocument()
-    })
-
-    it('adds custom category via input', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      const catInput = screen.getByPlaceholderText(/^custom/i)
-      await user.type(catInput, 'experimental{Enter}')
-
-      expect(screen.getByText('experimental')).toBeInTheDocument()
-    })
-  })
 
   describe('form validation and UI', () => {
     it('requires workflow ID in create mode', () => {
@@ -496,33 +415,6 @@ describe('WorkflowDefForm', () => {
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
       expect(call.phases).toHaveLength(0)
-    })
-
-    it('handles phase with multiple skip_for categories', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test')
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'test-writer')
-
-      // First add 'docs' and 'simple' as workflow categories
-      await user.click(screen.getByRole('button', { name: '+docs' }))
-      await user.click(screen.getByRole('button', { name: '+simple' }))
-
-      // Now add both as skip_for on the agent row
-      // After adding to categories, the category preset buttons are gone,
-      // only agent row skip_for buttons remain
-      await user.click(screen.getByRole('button', { name: '+docs' }))
-      await user.click(screen.getByRole('button', { name: '+simple' }))
-
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
-      await user.click(submitButton)
-
-      const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      expect(call.phases[0].skip_for).toEqual(['docs', 'simple'])
     })
 
     it('trims whitespace from agent names', async () => {

@@ -20,7 +20,6 @@ func TestProjectWorkflowDefCreate(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "project-workflow",
 		Description: "Project-scoped workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -51,7 +50,6 @@ func TestProjectWorkflowDefDefaultScopeType(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "default-scope",
 		Description: "Default scope workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		// ScopeType omitted - should default to "ticket"
 	})
@@ -82,7 +80,6 @@ func TestProjectWorkflowDefInvalidScopeType(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "invalid-scope",
 		Description: "Invalid scope workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "invalid",
 	})
@@ -109,7 +106,6 @@ func TestProjectWorkflowInit(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-init-test",
 		Description: "Test project workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -126,7 +122,6 @@ func TestProjectWorkflowInit(t *testing.T) {
 	// Initialize project workflow
 	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-init-test",
-		Category: "full",
 	})
 	if err != nil {
 		t.Fatalf("failed to init project workflow: %v", err)
@@ -163,7 +158,6 @@ func TestProjectWorkflowInitDuplicate(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-dup-test",
 		Description: "Test duplicate",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -200,7 +194,6 @@ func TestProjectWorkflowInitWrongScope(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "ticket-scope-def",
 		Description: "Ticket-scoped workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "ticket",
 	})
@@ -233,7 +226,6 @@ func TestTicketWorkflowInitWrongScope(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-scope-def",
 		Description: "Project-scoped workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -267,7 +259,6 @@ func TestProjectWorkflowStateRetrieval(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-state-test",
 		Description: "Test state retrieval",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -343,7 +334,6 @@ func TestProjectWorkflowUniqueConstraint(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "unique-test",
 		Description: "Test unique constraint",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -430,7 +420,6 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "mixed-project",
 		Description: "Project workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -442,7 +431,6 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 	_, err = env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "mixed-ticket",
 		Description: "Ticket workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "ticket",
 	})

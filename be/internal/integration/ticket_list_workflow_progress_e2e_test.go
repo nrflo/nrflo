@@ -70,9 +70,9 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, category, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"wf-1", "testproj", "testproj-001", "feature", "active", "simple", "implementation",
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"wf-1", "testproj", "testproj-001", "feature", "active", "implementation",
 		string(phaseOrderJSON1), string(phasesJSON1), "{}", 0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
@@ -89,9 +89,9 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	phaseOrderJSON3, _ := json.Marshal(phaseOrder3)
 
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, category, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"wf-3", "testproj", "testproj-003", "bugfix", "completed", "full", "implementation",
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"wf-3", "testproj", "testproj-003", "bugfix", "completed", "implementation",
 		string(phaseOrderJSON3), string(phasesJSON3), "{}", 0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
@@ -223,9 +223,9 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, category, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"wf-prog", "testproj2", "proj2-001", "feature", "active", "full", "phase3",
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"wf-prog", "testproj2", "proj2-001", "feature", "active", "phase3",
 		string(phaseOrderJSON), string(phasesJSON), "{}", 0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
@@ -352,9 +352,9 @@ func seedWorkflow(t *testing.T, dbPath, projectID, workflowID, description strin
 		{"agent": "phase3", "layer": 2},
 	})
 	_, err = database.Exec(`
-		INSERT INTO workflows (project_id, id, description, categories, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		projectID, workflowID, description, `["full"]`, string(phasesJSON), now, now)
+		INSERT INTO workflows (project_id, id, description, phases, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		projectID, workflowID, description, string(phasesJSON), now, now)
 	if err != nil {
 		t.Fatalf("failed to seed workflow: %v", err)
 	}

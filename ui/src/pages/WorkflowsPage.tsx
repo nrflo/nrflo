@@ -70,11 +70,6 @@ function WorkflowCard({
               project
             </Badge>
           )}
-          {def.categories?.map((cat) => (
-            <Badge key={cat} variant="secondary" className="text-xs">
-              {cat}
-            </Badge>
-          ))}
           <span className="text-xs text-muted-foreground">
             {def.phases?.length || 0} agents
           </span>
@@ -121,7 +116,6 @@ interface EditingWorkflow {
   id: string
   description?: string
   scope_type?: ScopeType
-  categories?: string[]
   phases?: PhaseDef[]
 }
 

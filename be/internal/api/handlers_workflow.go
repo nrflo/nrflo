@@ -88,9 +88,8 @@ func emptyWorkflowState() map[string]interface{} {
 
 // UpdateWorkflowRequest represents the request to update workflow state
 type UpdateWorkflowRequest struct {
-	Workflow      string `json:"workflow"`
-	CurrentPhase  *string `json:"current_phase,omitempty"`
-	Category      *string `json:"category,omitempty"`
+	Workflow     string  `json:"workflow"`
+	CurrentPhase *string `json:"current_phase,omitempty"`
 }
 
 // handleUpdateWorkflow updates the workflow instance for a ticket
@@ -139,9 +138,6 @@ func (s *Server) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 	// Apply updates
 	if req.CurrentPhase != nil {
 		wfiRepo.UpdateCurrentPhase(wi.ID, *req.CurrentPhase)
-	}
-	if req.Category != nil {
-		wfiRepo.UpdateCategory(wi.ID, *req.Category)
 	}
 
 	// Broadcast workflow update

@@ -98,7 +98,6 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	_, err = workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {

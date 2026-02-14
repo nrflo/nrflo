@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -22,20 +21,18 @@ func parsePhaseDefs(rawPhases []json.RawMessage) ([]PhaseDef, error) {
 		}
 		// Parse object format
 		var phase struct {
-			Agent   string   `json:"agent"`
-			Layer   int      `json:"layer"`
-			Order   int      `json:"order,omitempty"`
-			SkipFor []string `json:"skip_for,omitempty"`
+			Agent string `json:"agent"`
+			Layer int    `json:"layer"`
+			Order int    `json:"order,omitempty"`
 		}
 		if err := json.Unmarshal(raw, &phase); err != nil || phase.Agent == "" {
 			return nil, fmt.Errorf("invalid phase: %s (must be object with 'agent' and 'layer' fields)", string(raw))
 		}
 		phases = append(phases, PhaseDef{
-			ID:      phase.Agent,
-			Agent:   phase.Agent,
-			Layer:   phase.Layer,
-			Order:   phase.Order,
-			SkipFor: phase.SkipFor,
+			ID:    phase.Agent,
+			Agent: phase.Agent,
+			Layer: phase.Layer,
+			Order: phase.Order,
 		})
 	}
 	// Validate layer config and reject parallel field
@@ -101,11 +98,6 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 			}
 		}
 
-		var categories []string
-		if wf.Categories.Valid && wf.Categories.String != "" {
-			_ = json.Unmarshal([]byte(wf.Categories.String), &categories)
-		}
-
 		scopeType := wf.ScopeType
 		if scopeType == "" {
 			scopeType = "ticket"
@@ -113,7 +105,6 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 		workflows[wf.ID] = SpawnerWorkflowDef{
 			Description: wf.Description,
 			ScopeType:   scopeType,
-			Categories:  categories,
 			Phases:      phases,
 		}
 	}
@@ -133,16 +124,14 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 type SpawnerWorkflowDef struct {
 	Description string            `json:"description"`
 	ScopeType   string            `json:"scope_type"`
-	Categories  []string          `json:"categories"`
 	Phases      []SpawnerPhaseDef `json:"phases"`
 }
 
 // SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building
 type SpawnerPhaseDef struct {
-	ID      string   `json:"id"`
-	Agent   string   `json:"agent"`
-	Layer   int      `json:"layer"`
-	SkipFor []string `json:"skip_for,omitempty"`
+	ID    string `json:"id"`
+	Agent string `json:"agent"`
+	Layer int    `json:"layer"`
 }
 
 // SpawnerAgentConfig mirrors spawner.AgentConfig for shared config building
@@ -152,12 +141,7 @@ type SpawnerAgentConfig struct {
 }
 
 // parseWorkflowDefFromDB parses a WorkflowDef from database fields
-func parseWorkflowDefFromDB(description string, categoriesStr sql.NullString, phasesStr string) (*WorkflowDef, error) {
-	var categories []string
-	if categoriesStr.Valid && categoriesStr.String != "" {
-		_ = json.Unmarshal([]byte(categoriesStr.String), &categories)
-	}
-
+func parseWorkflowDefFromDB(description, phasesStr string) (*WorkflowDef, error) {
 	var rawPhases []json.RawMessage
 	if err := json.Unmarshal([]byte(phasesStr), &rawPhases); err != nil {
 		return nil, fmt.Errorf("invalid phases JSON: %w", err)
@@ -175,7 +159,6 @@ func parseWorkflowDefFromDB(description string, categoriesStr sql.NullString, ph
 
 	return &WorkflowDef{
 		Description: description,
-		Categories:  categories,
 		Phases:      phases,
 		RawPhases:   rawPhases,
 	}, nil

@@ -203,7 +203,6 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:          "feature",
 		Description: "Feature workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {

@@ -20,7 +20,7 @@ func NewChainRepo(pool *db.Pool) *ChainRepo {
 	return &ChainRepo{pool: pool}
 }
 
-const chainCols = `id, project_id, name, status, workflow_name, category, epic_ticket_id, created_by, created_at, updated_at`
+const chainCols = `id, project_id, name, status, workflow_name, epic_ticket_id, created_by, created_at, updated_at`
 
 func scanChain(scanner interface{ Scan(...interface{}) error }) (*model.ChainExecution, error) {
 	c := &model.ChainExecution{}
@@ -28,7 +28,7 @@ func scanChain(scanner interface{ Scan(...interface{}) error }) (*model.ChainExe
 	var epicTicketID sql.NullString
 	err := scanner.Scan(
 		&c.ID, &c.ProjectID, &c.Name, &c.Status,
-		&c.WorkflowName, &c.Category, &epicTicketID, &c.CreatedBy,
+		&c.WorkflowName, &epicTicketID, &c.CreatedBy,
 		&createdAt, &updatedAt,
 	)
 	if epicTicketID.Valid {
@@ -54,9 +54,9 @@ func (r *ChainRepo) Create(c *model.ChainExecution) error {
 	}
 	_, err := r.pool.Exec(`
 		INSERT INTO chain_executions (`+chainCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.ID, strings.ToLower(c.ProjectID), c.Name, c.Status,
-		c.WorkflowName, c.Category, epicTicketID, c.CreatedBy,
+		c.WorkflowName, epicTicketID, c.CreatedBy,
 		now, now,
 	)
 	return err
@@ -82,7 +82,7 @@ func scanChainWithCounts(scanner interface{ Scan(...interface{}) error }) (*mode
 	var epicTicketID sql.NullString
 	err := scanner.Scan(
 		&c.ID, &c.ProjectID, &c.Name, &c.Status,
-		&c.WorkflowName, &c.Category, &epicTicketID, &c.CreatedBy,
+		&c.WorkflowName, &epicTicketID, &c.CreatedBy,
 		&createdAt, &updatedAt,
 		&c.TotalItems, &c.CompletedItems,
 	)

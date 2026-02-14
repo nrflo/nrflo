@@ -34,18 +34,16 @@
   "workflows": {
     "feature": {
       "description": "Full TDD feature development workflow",
-      "categories": ["docs", "simple", "full"],
       "phases": [
         {"agent": "setup-analyzer", "layer": 0},
-        {"agent": "test-writer", "layer": 1, "skip_for": ["docs", "simple"]},
+        {"agent": "test-writer", "layer": 1},
         {"agent": "implementor", "layer": 2},
-        {"agent": "qa-verifier", "layer": 3, "skip_for": ["docs"]},
+        {"agent": "qa-verifier", "layer": 3},
         {"agent": "doc-updater", "layer": 4}
       ]
     },
     "bugfix": {
       "description": "Bug fix workflow - investigation, fix, verify",
-      "categories": ["simple", "full"],
       "phases": [
         {"agent": "setup-analyzer", "layer": 0},
         {"agent": "implementor", "layer": 1},
@@ -54,14 +52,12 @@
     },
     "hotfix": {
       "description": "Emergency hotfix - implementation only",
-      "categories": ["simple"],
       "phases": [
         {"agent": "implementor", "layer": 0}
       ]
     },
     "docs": {
       "description": "Documentation-only changes",
-      "categories": ["docs"],
       "phases": [
         {"agent": "setup-analyzer", "layer": 0},
         {"agent": "doc-updater", "layer": 1}
@@ -69,7 +65,6 @@
     },
     "refactor": {
       "description": "Code refactoring with verification",
-      "categories": ["simple", "full"],
       "phases": [
         {"agent": "setup-analyzer", "layer": 0},
         {"agent": "implementor", "layer": 1},

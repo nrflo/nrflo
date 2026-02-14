@@ -48,7 +48,6 @@ function createMockChain(overrides: Partial<ChainExecution> = {}): ChainExecutio
     name: 'Test Chain',
     status: 'pending',
     workflow_name: 'feature',
-    category: 'full',
     created_by: 'test-user',
     total_items: 0,
     completed_items: 0,
@@ -435,31 +434,6 @@ describe('ChainListPage - Chain Information Display', () => {
     expect(screen.getByText(/workflow: feature/i)).toBeInTheDocument()
   })
 
-  it('displays chain category when present', () => {
-    const chain = createMockChain({ category: 'full' })
-    mockUseChainList.mockReturnValue({
-      data: [chain],
-      isLoading: false,
-      error: null,
-    })
-
-    renderChainListPage()
-
-    expect(screen.getByText(/category: full/i)).toBeInTheDocument()
-  })
-
-  it('does not display category label when category is undefined', () => {
-    const chain = createMockChain({ category: undefined })
-    mockUseChainList.mockReturnValue({
-      data: [chain],
-      isLoading: false,
-      error: null,
-    })
-
-    renderChainListPage()
-
-    expect(screen.queryByText(/category:/i)).not.toBeInTheDocument()
-  })
 
   it('displays relative creation time', () => {
     const chain = createMockChain({ created_at: '2026-01-01T00:00:00Z' })

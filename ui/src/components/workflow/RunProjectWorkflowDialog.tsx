@@ -17,7 +17,6 @@ interface RunProjectWorkflowDialogProps {
 
 export function RunProjectWorkflowDialog({ open, onClose, projectId }: RunProjectWorkflowDialogProps) {
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
-  const [category, setCategory] = useState('full')
   const [instructions, setInstructions] = useState('')
 
   const project = useProjectStore((s) => s.currentProject)
@@ -44,19 +43,6 @@ export function RunProjectWorkflowDialog({ open, onClose, projectId }: RunProjec
     }
   }, [workflowIds, selectedWorkflow])
 
-  // Get categories for selected workflow
-  const selectedDef = selectedWorkflow
-    ? projectWorkflows.find(([id]) => id === selectedWorkflow)?.[1]
-    : null
-  const categories = selectedDef?.categories ?? ['full']
-
-  // Reset category when workflow changes
-  useEffect(() => {
-    if (categories.length > 0) {
-      setCategory(categories[0] || 'full')
-    }
-  }, [selectedWorkflow])
-
   const handleRun = async () => {
     if (!selectedWorkflow) return
     try {
@@ -64,7 +50,6 @@ export function RunProjectWorkflowDialog({ open, onClose, projectId }: RunProjec
         projectId,
         params: {
           workflow: selectedWorkflow,
-          category: category || undefined,
           instructions: instructions || undefined,
         },
       })
@@ -79,7 +64,6 @@ export function RunProjectWorkflowDialog({ open, onClose, projectId }: RunProjec
   useEffect(() => {
     if (!open) {
       setSelectedWorkflow('')
-      setCategory('full')
       setInstructions('')
     }
   }, [open])
@@ -119,26 +103,6 @@ export function RunProjectWorkflowDialog({ open, onClose, projectId }: RunProjec
                 ))}
               </Select>
             </div>
-
-            {categories.length > 0 && (
-              <div>
-                <label htmlFor="project-workflow-category" className="block text-sm font-medium mb-1.5">Category</label>
-                <Select
-                  id="project-workflow-category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Controls which phases are skipped based on skip rules.
-                </p>
-              </div>
-            )}
 
             <div>
               <label className="block text-sm font-medium mb-1.5">

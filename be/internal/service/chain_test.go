@@ -344,7 +344,6 @@ func TestCreateChain_HappyPath(t *testing.T) {
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test Chain",
 		WorkflowName: "test",
-		Category:     "full",
 		TicketIDs:    []string{"B"},
 	})
 	if err != nil {

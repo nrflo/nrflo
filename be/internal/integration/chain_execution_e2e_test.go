@@ -37,7 +37,6 @@ func TestChainExecution_E2E_Sequential(t *testing.T) {
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Sequential E2E",
 		WorkflowName: "test",
-		Category:     "full",
 		TicketIDs:    []string{"B"},
 	})
 	if err != nil {

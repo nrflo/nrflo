@@ -258,10 +258,10 @@ func setupE2ETestEnv(t *testing.T) *e2eTestEnv {
 
 	// Create workflow
 	_, err = database.Exec(`
-		INSERT INTO workflows (project_id, id, description, scope_type, categories, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		projectID, workflowID, "Test workflow", "ticket",
-		"[]", "[]", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
+		"[]", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
 	}

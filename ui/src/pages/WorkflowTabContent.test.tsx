@@ -16,7 +16,6 @@ function makeState(overrides: Partial<WorkflowState> = {}): WorkflowState {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     status: 'active',
     phases: { implementation: { status: 'in_progress' } },
     phase_order: ['implementation'],

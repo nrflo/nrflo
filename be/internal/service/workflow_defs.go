@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -37,29 +36,21 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		return nil, fmt.Errorf("invalid phases: %w", err)
 	}
 
-	// Serialize categories
-	var categoriesStr sql.NullString
-	if len(req.Categories) > 0 {
-		catJSON, _ := json.Marshal(req.Categories)
-		categoriesStr = sql.NullString{String: string(catJSON), Valid: true}
-	}
-
 	now := time.Now().UTC().Format(time.RFC3339)
 	wf := &model.Workflow{
 		ID:          strings.ToLower(req.ID),
 		ProjectID:   strings.ToLower(projectID),
 		Description: req.Description,
 		ScopeType:   scopeType,
-		Categories:  categoriesStr,
 		Phases:      string(normalizedPhases),
 		CreatedAt:   time.Now().UTC(),
 		UpdatedAt:   time.Now().UTC(),
 	}
 
 	_, err = s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, categories, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Categories, wf.Phases, now, now)
+		INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Phases, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "PRIMARY KEY") {
 			return nil, fmt.Errorf("workflow '%s' already exists", req.ID)
@@ -73,13 +64,12 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 // GetWorkflowDef gets a single workflow definition from the database
 func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*WorkflowDef, error) {
 	var description, scopeType string
-	var categoriesStr sql.NullString
 	var phasesStr string
 
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, categories, phases
+		SELECT description, scope_type, phases
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&description, &scopeType, &categoriesStr, &phasesStr)
+		projectID, workflowID).Scan(&description, &scopeType, &phasesStr)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -87,7 +77,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 		return nil, err
 	}
 
-	wf, err := parseWorkflowDefFromDB(description, categoriesStr, phasesStr)
+	wf, err := parseWorkflowDefFromDB(description, phasesStr)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +88,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, scope_type, categories, phases
+		SELECT id, description, scope_type, phases
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -109,13 +99,12 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 	result := make(map[string]WorkflowDef)
 	for rows.Next() {
 		var id, description, scopeType, phasesStr string
-		var categoriesStr sql.NullString
 
-		if err := rows.Scan(&id, &description, &scopeType, &categoriesStr, &phasesStr); err != nil {
+		if err := rows.Scan(&id, &description, &scopeType, &phasesStr); err != nil {
 			return nil, err
 		}
 
-		wf, err := parseWorkflowDefFromDB(description, categoriesStr, phasesStr)
+		wf, err := parseWorkflowDefFromDB(description, phasesStr)
 		if err != nil {
 			return nil, fmt.Errorf("workflow '%s': %w", id, err)
 		}
@@ -141,11 +130,6 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 		}
 		updates = append(updates, "scope_type = ?")
 		args = append(args, *req.ScopeType)
-	}
-	if req.Categories != nil {
-		catJSON, _ := json.Marshal(*req.Categories)
-		updates = append(updates, "categories = ?")
-		args = append(args, string(catJSON))
 	}
 	if req.Phases != nil {
 		normalizedPhases, err := normalizePhasesJSON(*req.Phases)

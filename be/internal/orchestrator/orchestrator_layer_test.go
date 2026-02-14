@@ -29,7 +29,6 @@ func TestLayerGroupingAndSequencing(t *testing.T) {
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:          "layered",
 		Description: "Layered workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {
@@ -99,7 +98,6 @@ func TestNonContiguousLayers(t *testing.T) {
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:          "sparse",
 		Description: "Sparse layer workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {
@@ -170,37 +168,6 @@ func TestParallelAgentsConcurrentExecution(t *testing.T) {
 	}
 }
 
-// TestAllSkippedLayerContinues tests the shouldSkipPhase logic for category-based skipping.
-func TestAllSkippedLayerContinues(t *testing.T) {
-	// Verify shouldSkipPhase logic
-	phase0 := service.SpawnerPhaseDef{Agent: "test-writer", SkipFor: []string{"hotfix"}}
-	phase1 := service.SpawnerPhaseDef{Agent: "implementor", SkipFor: nil}
-
-	if !shouldSkipPhase("hotfix", phase0.SkipFor) {
-		t.Error("expected test-writer to be skipped for hotfix category")
-	}
-
-	if shouldSkipPhase("hotfix", phase1.SkipFor) {
-		t.Error("expected implementor NOT to be skipped for hotfix category")
-	}
-
-	// Test all-skipped scenario
-	allSkipped := []service.SpawnerPhaseDef{
-		{Agent: "a1", SkipFor: []string{"docs"}},
-		{Agent: "a2", SkipFor: []string{"docs"}},
-	}
-
-	var runnableCount int
-	for _, p := range allSkipped {
-		if !shouldSkipPhase("docs", p.SkipFor) {
-			runnableCount++
-		}
-	}
-
-	if runnableCount != 0 {
-		t.Errorf("expected 0 runnable agents for 'docs' category, got %d", runnableCount)
-	}
-}
 
 // TestMixedOutcomesLayerPassCount tests that a layer with mixed outcomes
 // (some pass, some fail) still allows the workflow to proceed if pass_count >= 1.
@@ -296,7 +263,6 @@ func TestSingleAgentLayer(t *testing.T) {
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:          "single",
 		Description: "Single agent workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {
@@ -338,7 +304,6 @@ func TestLayerOrderPreserved(t *testing.T) {
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:          "unordered",
 		Description: "Unordered phases",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {
@@ -371,86 +336,3 @@ func TestLayerOrderPreserved(t *testing.T) {
 	}
 }
 
-// TestSkipForCategoryFiltering tests that skip_for filtering works correctly
-// at the layer level.
-func TestSkipForCategoryFiltering(t *testing.T) {
-	env := newTestEnv(t)
-
-	workflowSvc := service.NewWorkflowService(env.pool)
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-writer", "layer": 0, "skip_for": []interface{}{"docs", "hotfix"}},
-		{"agent": "implementor", "layer": 1},
-		{"agent": "qa-verifier", "layer": 2, "skip_for": []interface{}{"docs"}},
-	})
-	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
-		ID:          "filtered",
-		Description: "Filtered workflow",
-		Categories:  []string{"full", "docs", "hotfix"},
-		Phases:      phasesJSON,
-	})
-	if err != nil {
-		t.Fatalf("failed to create filtered workflow: %v", err)
-	}
-
-	workflow, _ := workflowSvc.GetWorkflowDef(env.project, "filtered")
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{{
-		ID:          "filtered",
-		ProjectID:   env.project,
-		Description: workflow.Description,
-		Phases:      string(phasesJSON),
-	}}, nil)
-
-	phases := workflows["filtered"].Phases
-
-	// Test category="docs"
-	var docsRunnable []string
-	for _, p := range phases {
-		if !shouldSkipPhase("docs", p.SkipFor) {
-			docsRunnable = append(docsRunnable, p.Agent)
-		}
-	}
-
-	// For "docs" category: test-writer and qa-verifier are skipped, only implementor runs
-	if len(docsRunnable) != 1 || docsRunnable[0] != "implementor" {
-		t.Errorf("category 'docs' expected only [implementor], got %v", docsRunnable)
-	}
-
-	// Test category="hotfix"
-	var hotfixRunnable []string
-	for _, p := range phases {
-		if !shouldSkipPhase("hotfix", p.SkipFor) {
-			hotfixRunnable = append(hotfixRunnable, p.Agent)
-		}
-	}
-
-	// For "hotfix" category: test-writer is skipped, implementor and qa-verifier run
-	expectedHotfix := []string{"implementor", "qa-verifier"}
-	if len(hotfixRunnable) != 2 {
-		t.Errorf("category 'hotfix' expected 2 agents, got %d: %v", len(hotfixRunnable), hotfixRunnable)
-	}
-	for _, exp := range expectedHotfix {
-		found := false
-		for _, act := range hotfixRunnable {
-			if act == exp {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("category 'hotfix' expected agent '%s', not found in %v", exp, hotfixRunnable)
-		}
-	}
-
-	// Test category="full"
-	var fullRunnable []string
-	for _, p := range phases {
-		if !shouldSkipPhase("full", p.SkipFor) {
-			fullRunnable = append(fullRunnable, p.Agent)
-		}
-	}
-
-	// For "full" category: all agents run
-	if len(fullRunnable) != 3 {
-		t.Errorf("category 'full' expected all 3 agents, got %d: %v", len(fullRunnable), fullRunnable)
-	}
-}

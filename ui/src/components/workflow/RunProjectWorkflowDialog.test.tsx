@@ -30,19 +30,16 @@ const mockWorkflowDefs = {
   'ticket-workflow': {
     description: 'Ticket-scoped workflow',
     scope_type: 'ticket' as const,
-    categories: ['full'],
     phases: [{ id: 'setup', agent: 'setup', layer: 0 }],
   } as WorkflowDefSummary,
   'project-workflow-1': {
     description: 'First project workflow',
     scope_type: 'project' as const,
-    categories: ['full', 'simple'],
     phases: [{ id: 'analyzer', agent: 'analyzer', layer: 0 }],
   } as WorkflowDefSummary,
   'project-workflow-2': {
     description: 'Second project workflow',
     scope_type: 'project' as const,
-    categories: ['full'],
     phases: [{ id: 'docs', agent: 'docs', layer: 0 }],
   } as WorkflowDefSummary,
 }
@@ -80,8 +77,7 @@ describe('RunProjectWorkflowDialog', () => {
         'ticket-only': {
           description: 'Ticket only',
           scope_type: 'ticket' as const,
-          categories: ['full'],
-          phases: [],
+                phases: [],
         },
       })
       renderDialog()
@@ -148,57 +144,6 @@ describe('RunProjectWorkflowDialog', () => {
     })
   })
 
-  describe('category selection', () => {
-    it('displays categories from selected workflow', async () => {
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: /category/i })).toBeInTheDocument()
-      })
-
-      const categorySelect = screen.getByRole('combobox', { name: /category/i })
-      expect(categorySelect).toHaveTextContent('full')
-      expect(categorySelect).toHaveTextContent('simple')
-    })
-
-    it('resets category when workflow changes', async () => {
-      const user = userEvent.setup()
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: /workflow/i })).toBeInTheDocument()
-      })
-
-      // Initial workflow has categories: ['full', 'simple']
-      const categorySelect = screen.getByRole('combobox', { name: /category/i }) as HTMLSelectElement
-      expect(categorySelect.value).toBe('full')
-
-      // Select a different category
-      await user.selectOptions(categorySelect, 'simple')
-      expect(categorySelect.value).toBe('simple')
-
-      // Change workflow (project-workflow-2 only has 'full')
-      const workflowSelect = screen.getByRole('combobox', { name: /workflow/i })
-      await user.selectOptions(workflowSelect, 'project-workflow-2')
-
-      // Category should reset to first available
-      await waitFor(() => {
-        expect(categorySelect.value).toBe('full')
-      })
-    })
-
-    it('shows category help text', async () => {
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByText(/controls which phases are skipped/i)).toBeInTheDocument()
-      })
-    })
-  })
-
   describe('instructions input', () => {
     it('accepts optional instructions', async () => {
       const user = userEvent.setup()
@@ -249,7 +194,6 @@ describe('RunProjectWorkflowDialog', () => {
       await waitFor(() => {
         expect(projectWorkflowApi.runProjectWorkflow).toHaveBeenCalledWith('test-project', {
           workflow: 'project-workflow-1',
-          category: 'full',
           instructions: undefined,
         })
       })
@@ -278,7 +222,6 @@ describe('RunProjectWorkflowDialog', () => {
       await waitFor(() => {
         expect(projectWorkflowApi.runProjectWorkflow).toHaveBeenCalledWith('test-project', {
           workflow: 'project-workflow-1',
-          category: 'full',
           instructions: 'Custom instructions',
         })
       })
@@ -416,32 +359,12 @@ describe('RunProjectWorkflowDialog', () => {
   })
 
   describe('edge cases', () => {
-    it('handles workflow with no categories', async () => {
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue({
-        'no-categories': {
-          description: 'No categories',
-          scope_type: 'project' as const,
-          categories: [],
-          phases: [],
-        },
-      })
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByText(/no-categories/i)).toBeInTheDocument()
-      })
-
-      // Category select should NOT render when categories array is empty
-      expect(screen.queryByRole('combobox', { name: /category/i })).not.toBeInTheDocument()
-    })
-
     it('handles workflow with only project scope type (no ticket workflows)', async () => {
       vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue({
         'project-only': {
           description: 'Project only',
           scope_type: 'project' as const,
-          categories: ['full'],
-          phases: [],
+                phases: [],
         },
       })
       renderDialog()

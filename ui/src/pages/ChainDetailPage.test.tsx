@@ -39,7 +39,6 @@ function createMockChain(overrides: Partial<ChainExecution> = {}): ChainExecutio
     name: 'Test Chain',
     status: 'pending',
     workflow_name: 'feature',
-    category: 'full',
     created_by: 'test-user',
     total_items: 0,
     completed_items: 0,
@@ -189,31 +188,6 @@ describe('ChainDetailPage - Chain Header', () => {
     expect(screen.getByText(/workflow: bugfix/i)).toBeInTheDocument()
   })
 
-  it('displays category when present', () => {
-    const chain = createMockChain({ category: 'simple' })
-    mockUseChain.mockReturnValue({
-      data: chain,
-      isLoading: false,
-      error: null,
-    })
-
-    renderChainDetailPage()
-
-    expect(screen.getByText(/category: simple/i)).toBeInTheDocument()
-  })
-
-  it('does not display category when undefined', () => {
-    const chain = createMockChain({ category: undefined })
-    mockUseChain.mockReturnValue({
-      data: chain,
-      isLoading: false,
-      error: null,
-    })
-
-    renderChainDetailPage()
-
-    expect(screen.queryByText(/category:/i)).not.toBeInTheDocument()
-  })
 
   it('displays items completed count', () => {
     const chain = createMockChain({
@@ -837,7 +811,7 @@ describe('ChainDetailPage - Ticket Title Display', () => {
       error: null,
     })
 
-    const { container } = renderChainDetailPage()
+    renderChainDetailPage()
 
     const titleElement = screen.getByText(longTitle)
     expect(titleElement).toBeInTheDocument()

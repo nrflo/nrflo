@@ -114,7 +114,6 @@ export function ChainListPage() {
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>Workflow: {chain.workflow_name}</span>
-                    {chain.category && <span>Category: {chain.category}</span>}
                     <span>{formatRelativeTime(chain.created_at)}</span>
                   </div>
                 </div>

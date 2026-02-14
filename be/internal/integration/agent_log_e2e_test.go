@@ -33,14 +33,14 @@ func seedSessionAndMessages(t *testing.T, dbPath string) {
 	}
 
 	// Workflow definition (FK: projects)
-	if _, err := database.Exec(`INSERT OR IGNORE INTO workflows (id, project_id, description, categories, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		"feature", "e2eproj", "Feature workflow", `["full"]`, `["implementation","verification"]`, now, now); err != nil {
+	if _, err := database.Exec(`INSERT OR IGNORE INTO workflows (id, project_id, description, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		"feature", "e2eproj", "Feature workflow", `["implementation","verification"]`, now, now); err != nil {
 		t.Fatalf("failed to seed workflow def: %v", err)
 	}
 
 	// Workflow instance (FK: workflow defs? none in schema — just project+ticket)
-	if _, err := database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, category, phase_order, phases, findings, retry_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"wi-e2e-1", "e2eproj", "E2E-1", "feature", "active", "implementation", "full",
+	if _, err := database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"wi-e2e-1", "e2eproj", "E2E-1", "feature", "active", "implementation",
 		`["implementation","verification"]`, `{}`, `{}`, 0, now, now); err != nil {
 		t.Fatalf("failed to seed workflow instance: %v", err)
 	}

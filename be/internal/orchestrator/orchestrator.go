@@ -29,7 +29,6 @@ type RunRequest struct {
 	ProjectID    string `json:"project_id"`
 	TicketID     string `json:"ticket_id"`
 	WorkflowName string `json:"workflow"`
-	Category     string `json:"category"`     // "full", "simple", "docs"
 	Instructions string `json:"instructions"` // User-provided instructions
 	ScopeType    string `json:"scope_type"`   // "ticket" (default) or "project"
 }
@@ -151,7 +150,6 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	if req.IsProjectScope() {
 		initErr = wfService.InitProjectWorkflow(req.ProjectID, &types.ProjectWorkflowRunRequest{
 			Workflow:     req.WorkflowName,
-			Category:     req.Category,
 			Instructions: req.Instructions,
 		})
 	} else {
@@ -213,11 +211,6 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		wi.Findings = "{}"
 	}
 
-	// Set category if specified
-	if req.Category != "" {
-		wfiRepo.UpdateCategory(wi.ID, req.Category)
-	}
-
 	// Store user instructions and orchestration status in findings (single write)
 	findings := wi.GetFindings()
 	if req.Instructions != "" {
@@ -259,7 +252,6 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Broadcast orchestration started
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationStarted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"instance_id": wi.ID,
-		"category":    req.Category,
 	}))
 
 	// Run orchestration loop in goroutine
@@ -492,7 +484,6 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		ProjectID:    projectID,
 		TicketID:     ticketID,
 		WorkflowName: workflowName,
-		Category:     wi.Category.String,
 		ScopeType:    scopeType,
 	}
 
@@ -659,8 +650,6 @@ func (o *Orchestrator) runLoop(
 	log.Printf("[orchestrator] Starting workflow '%s' on %s (%d phases)",
 		req.WorkflowName, target, len(svcWf.Phases))
 
-	category := req.Category
-
 	// Group phases by layer
 	layerGroups := groupPhasesByLayer(svcWf.Phases)
 
@@ -682,22 +671,7 @@ func (o *Orchestrator) runLoop(
 		default:
 		}
 
-		// Filter out skipped agents
-		var runnableAgents []service.SpawnerPhaseDef
-		for _, phase := range lg.phases {
-			if shouldSkipPhase(category, phase.SkipFor) {
-				log.Printf("[orchestrator] Skipping agent %s in layer %d (category=%s)", phase.Agent, lg.layer, category)
-				continue
-			}
-			runnableAgents = append(runnableAgents, phase)
-		}
-
-		// If all agents in layer are skipped, continue to next layer
-		if len(runnableAgents) == 0 {
-			log.Printf("[orchestrator] Layer %d: all agents skipped, continuing", lg.layer)
-			layerIdx++
-			continue
-		}
+		runnableAgents := lg.phases
 
 		log.Printf("[orchestrator] Running layer %d/%d: %d agent(s)", layerIdx+1, len(layerGroups), len(runnableAgents))
 
@@ -1031,19 +1005,6 @@ func (o *Orchestrator) updateOrchestrationStatus(wfiID, status string) {
 	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
 }
 
-// shouldSkipPhase checks if a phase should be skipped for the given category.
-func shouldSkipPhase(category string, skipFor []string) bool {
-	if category == "" || len(skipFor) == 0 {
-		return false
-	}
-	for _, skip := range skipFor {
-		if skip == category {
-			return true
-		}
-	}
-	return false
-}
-
 // convertToSpawnerWorkflows converts service types to spawner types.
 func convertToSpawnerWorkflows(svc map[string]service.SpawnerWorkflowDef) map[string]spawner.WorkflowDef {
 	result := make(map[string]spawner.WorkflowDef, len(svc))
@@ -1051,16 +1012,14 @@ func convertToSpawnerWorkflows(svc map[string]service.SpawnerWorkflowDef) map[st
 		var phases []spawner.PhaseDef
 		for _, sp := range swf.Phases {
 			phases = append(phases, spawner.PhaseDef{
-				ID:      sp.ID,
-				Agent:   sp.Agent,
-				Layer:   sp.Layer,
-				SkipFor: sp.SkipFor,
+				ID:    sp.ID,
+				Agent: sp.Agent,
+				Layer: sp.Layer,
 			})
 		}
 		result[name] = spawner.WorkflowDef{
 			Description: swf.Description,
 			ScopeType:   swf.ScopeType,
-			Categories:  swf.Categories,
 			Phases:      phases,
 		}
 	}

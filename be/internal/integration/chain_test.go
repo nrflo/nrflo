@@ -75,7 +75,6 @@ func TestChainCreate_WithDependencies(t *testing.T) {
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Transitive Chain",
 		WorkflowName: "test",
-		Category:     "full",
 		TicketIDs:    []string{"C"},
 	})
 	if err != nil {
@@ -697,7 +696,6 @@ func TestChainCreate_TicketTitlesInResponse(t *testing.T) {
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Title Test Chain",
 		WorkflowName: "test",
-		Category:     "full",
 		TicketIDs:    []string{"TICKET-C"},
 	})
 	if err != nil {

@@ -17,7 +17,6 @@ function makeState(overrides: Partial<WorkflowState> = {}): WorkflowState {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     status: 'active',
     phases: { implementation: { status: 'in_progress' } },
     phase_order: ['implementation'],
@@ -31,7 +30,6 @@ function makeFailedAgent(overrides: Partial<AgentHistoryEntry> = {}): AgentHisto
     agent_type: 'implementor',
     phase: 'implementation',
     model_id: 'claude-sonnet-4-5',
-    status: 'failed',
     result: 'fail',
     started_at: '2026-01-01T00:00:00Z',
     ended_at: '2026-01-01T00:05:00Z',
@@ -105,7 +103,7 @@ describe('WorkflowTabContent - Retry Failed Agent', () => {
     it('does not show failed banner when status is completed', () => {
       const completedState = makeState({
         status: 'completed',
-        agent_history: [{ ...makeFailedAgent(), result: 'pass', status: 'completed' }],
+        agent_history: [{ ...makeFailedAgent(), result: 'pass' }],
       })
 
       render(
@@ -318,7 +316,7 @@ describe('WorkflowTabContent - Retry Failed Agent', () => {
         agent_history: [makeFailedAgent()],
       })
 
-      const { container } = render(
+      render(
         <WorkflowTabContent
           {...defaultProps}
           displayedState={failedState}
@@ -354,7 +352,7 @@ describe('WorkflowTabContent - Retry Failed Agent', () => {
       const failedState = makeState({
         status: 'failed',
         agent_history: [
-          { ...makeFailedAgent(), result: 'pass', status: 'completed' },
+          { ...makeFailedAgent(), result: 'pass' },
           makeFailedAgent({ session_id: 'sess-actually-failed' }),
         ],
       })
@@ -375,9 +373,6 @@ describe('WorkflowTabContent - Retry Failed Agent', () => {
     it('passes onRetryFailed to AgentLogPanel when hasActivePhase', () => {
       const onRetryFailed = vi.fn()
       const state = makeState({ status: 'active' })
-
-      const AgentLogPanelMock = vi.fn(() => <div data-testid="agent-log-panel" />)
-      vi.mocked(vi.importActual('@/components/workflow/AgentLogPanel')).AgentLogPanel = AgentLogPanelMock
 
       render(
         <WorkflowTabContent

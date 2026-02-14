@@ -35,7 +35,6 @@ function createMockChain(overrides: Partial<ChainExecution> = {}): ChainExecutio
     name: 'Test Chain',
     status: 'pending',
     workflow_name: 'feature',
-    category: 'full',
     created_by: 'test-user',
     total_items: 0,
     completed_items: 0,
@@ -225,8 +224,7 @@ describe('useCreateChain', () => {
     const createData: ChainCreateRequest = {
       name: 'New Chain',
       workflow_name: 'feature',
-      category: 'full',
-      ticket_ids: ['TICKET-1', 'TICKET-2'],
+        ticket_ids: ['TICKET-1', 'TICKET-2'],
     }
 
     vi.mocked(chainsApi.createChain).mockResolvedValue(newChain)

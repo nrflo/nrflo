@@ -52,7 +52,6 @@ export interface WorkflowState {
   version?: number
   scope_type?: ScopeType
   current_phase?: string
-  category?: string
   status?: string
   completed_at?: string
   total_duration_sec?: number
@@ -157,14 +156,12 @@ export interface PhaseDef {
   id: string
   agent: string
   layer: number
-  skip_for?: string[]
 }
 
 /** WorkflowDef as returned by the list endpoint (no id/project_id/timestamps) */
 export interface WorkflowDefSummary {
   description: string
   scope_type?: ScopeType
-  categories: string[]
   phases: PhaseDef[]
 }
 
@@ -174,7 +171,6 @@ export interface WorkflowDef {
   project_id: string
   description: string
   scope_type?: ScopeType
-  categories: string[]
   phases: PhaseDef[]
   created_at: string
   updated_at: string
@@ -184,14 +180,12 @@ export interface WorkflowDefCreateRequest {
   id: string
   description?: string
   scope_type?: ScopeType
-  categories?: string[]
   phases: PhaseDef[]
 }
 
 export interface WorkflowDefUpdateRequest {
   description?: string
   scope_type?: ScopeType
-  categories?: string[]
   phases?: PhaseDef[]
 }
 
@@ -228,7 +222,6 @@ export interface AgentDefUpdateRequest {
 
 export interface RunWorkflowRequest {
   workflow: string
-  category?: string
   instructions?: string
 }
 
@@ -248,6 +241,5 @@ export interface RestartAgentRequest {
 
 export interface ProjectWorkflowRunRequest {
   workflow: string
-  category?: string
   instructions?: string
 }

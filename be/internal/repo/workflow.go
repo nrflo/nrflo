@@ -30,12 +30,11 @@ func (r *WorkflowRepo) Create(wf *model.Workflow) error {
 	}
 
 	_, err := r.db.Exec(`
-		INSERT INTO workflows (id, project_id, description, categories, phases, scope_type, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(wf.ID),
 		strings.ToLower(wf.ProjectID),
 		wf.Description,
-		wf.Categories,
 		wf.Phases,
 		wf.ScopeType,
 		now,
@@ -50,13 +49,12 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, project_id, description, categories, phases, scope_type, created_at, updated_at
+		SELECT id, project_id, description, phases, scope_type, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, id).Scan(
 		&wf.ID,
 		&wf.ProjectID,
 		&wf.Description,
-		&wf.Categories,
 		&wf.Phases,
 		&wf.ScopeType,
 		&createdAt,
@@ -78,7 +76,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 // List retrieves all workflow definitions for a project
 func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, description, categories, phases, scope_type, created_at, updated_at
+		SELECT id, project_id, description, phases, scope_type, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -95,7 +93,6 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 			&wf.ID,
 			&wf.ProjectID,
 			&wf.Description,
-			&wf.Categories,
 			&wf.Phases,
 			&wf.ScopeType,
 			&createdAt,
@@ -117,7 +114,6 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 // WorkflowUpdateFields contains fields that can be updated
 type WorkflowUpdateFields struct {
 	Description *string
-	Categories  *sql.NullString
 	Phases      *string
 }
 
@@ -129,10 +125,6 @@ func (r *WorkflowRepo) Update(projectID, id string, fields *WorkflowUpdateFields
 	if fields.Description != nil {
 		updates = append(updates, "description = ?")
 		args = append(args, *fields.Description)
-	}
-	if fields.Categories != nil {
-		updates = append(updates, "categories = ?")
-		args = append(args, *fields.Categories)
 	}
 	if fields.Phases != nil {
 		updates = append(updates, "phases = ?")

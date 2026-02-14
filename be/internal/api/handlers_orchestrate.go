@@ -29,7 +29,6 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		Workflow     string `json:"workflow"`
-		Category     string `json:"category"`
 		Instructions string `json:"instructions"`
 	}
 	if err := readJSON(r, &body); err != nil {
@@ -46,7 +45,6 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 		ProjectID:    projectID,
 		TicketID:     ticketID,
 		WorkflowName: body.Workflow,
-		Category:     body.Category,
 		Instructions: body.Instructions,
 	})
 	if err != nil {

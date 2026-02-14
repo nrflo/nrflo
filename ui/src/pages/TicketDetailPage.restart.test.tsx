@@ -108,7 +108,6 @@ const workflowWithSessionId: WorkflowResponse = {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     phase_order: ['investigation', 'implementation', 'verification'],
     phases: {
       investigation: { status: 'completed', result: 'pass' },

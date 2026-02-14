@@ -617,26 +617,6 @@ describe('useWebSocket - ticket nrworkflow-d3a7c4: project-level agent events', 
   it('messages.updated session invalidation works for both ticket and project scopes', () => {
     const sessionId = 'shared-session-id'
 
-    // Ticket-scope event
-    const ticketEvent: WSEvent = {
-      type: 'messages.updated',
-      project_id: 'test-project',
-      ticket_id: 'TICKET-123',
-      workflow: 'feature',
-      timestamp: '2026-01-01T00:00:00Z',
-      data: { session_id: sessionId },
-    }
-
-    // Project-scope event
-    const projectEvent: WSEvent = {
-      type: 'messages.updated',
-      project_id: 'test-project',
-      ticket_id: '',
-      workflow: 'feature',
-      timestamp: '2026-01-01T00:00:01Z',
-      data: { session_id: sessionId },
-    }
-
     // Both should invalidate session-messages with same session_id
     queryClient.invalidateQueries({ queryKey: ['session-messages', sessionId] })
     queryClient.invalidateQueries({ queryKey: ['session-messages', sessionId] })

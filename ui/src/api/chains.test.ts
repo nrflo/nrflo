@@ -20,7 +20,6 @@ function createMockChain(overrides: Partial<ChainExecution> = {}): ChainExecutio
     name: 'Test Chain',
     status: 'pending',
     workflow_name: 'feature',
-    category: 'full',
     created_by: 'test-user',
     total_items: 0,
     completed_items: 0,
@@ -142,7 +141,6 @@ describe('createChain', () => {
     const createData: ChainCreateRequest = {
       name: 'New Chain',
       workflow_name: 'feature',
-      category: 'full',
       ticket_ids: ['TICKET-1', 'TICKET-2'],
     }
     const createdChain = createMockChain(createData)
@@ -152,21 +150,6 @@ describe('createChain', () => {
 
     expect(client.apiPost).toHaveBeenCalledWith('/api/v1/chains', createData)
     expect(result).toEqual(createdChain)
-  })
-
-  it('creates chain without category', async () => {
-    const createData: ChainCreateRequest = {
-      name: 'Simple Chain',
-      workflow_name: 'hotfix',
-      ticket_ids: ['TICKET-1'],
-    }
-    const createdChain = createMockChain({ ...createData, category: undefined })
-    vi.mocked(client.apiPost).mockResolvedValue(createdChain)
-
-    const result = await createChain(createData)
-
-    expect(client.apiPost).toHaveBeenCalledWith('/api/v1/chains', createData)
-    expect(result.category).toBeUndefined()
   })
 
   it('creates chain with multiple tickets', async () => {

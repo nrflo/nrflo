@@ -30,7 +30,6 @@ type WorkflowInstance struct {
 	WorkflowID    string                 `json:"workflow_id"`
 	ScopeType     string                 `json:"scope_type"` // "ticket" or "project"
 	Status        WorkflowInstanceStatus `json:"status"`
-	Category      sql.NullString         `json:"-"`
 	CurrentPhase  sql.NullString         `json:"-"`
 	PhaseOrder    string                 `json:"-"` // JSON array string
 	Phases        string                 `json:"-"` // JSON object string
@@ -81,10 +80,6 @@ func (wi *WorkflowInstance) SetFindings(findings map[string]interface{}) {
 
 // MarshalJSON implements custom JSON marshaling for WorkflowInstance
 func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
-	var category *string
-	if wi.Category.Valid {
-		category = &wi.Category.String
-	}
 	var currentPhase *string
 	if wi.CurrentPhase.Valid {
 		currentPhase = &wi.CurrentPhase.String
@@ -125,7 +120,6 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		WorkflowID    string                 `json:"workflow_id"`
 		ScopeType     string                 `json:"scope_type"`
 		Status        WorkflowInstanceStatus `json:"status"`
-		Category      *string                `json:"category,omitempty"`
 		CurrentPhase  *string                `json:"current_phase,omitempty"`
 		PhaseOrder    []string               `json:"phase_order"`
 		Phases        map[string]PhaseStatus `json:"phases"`
@@ -141,7 +135,6 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		WorkflowID:    wi.WorkflowID,
 		ScopeType:     scopeType,
 		Status:        wi.Status,
-		Category:      category,
 		CurrentPhase:  currentPhase,
 		PhaseOrder:    phaseOrder,
 		Phases:        phases,

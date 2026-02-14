@@ -21,7 +21,6 @@ interface CreateChainDialogProps {
 export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialogProps) {
   const [name, setName] = useState('')
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
-  const [category, setCategory] = useState('')
   const [ticketIds, setTicketIds] = useState<string[]>([])
   const [epicIds, setEpicIds] = useState<string[]>([])
 
@@ -50,22 +49,11 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
     }
   }, [workflowIds, selectedWorkflow])
 
-  // Categories for selected workflow
-  const selectedDef = selectedWorkflow && workflowDefs ? workflowDefs[selectedWorkflow] : null
-  const categories = selectedDef?.categories ?? []
-
-  useEffect(() => {
-    if (categories.length > 0 && !category) {
-      setCategory(categories[0])
-    }
-  }, [selectedWorkflow, categories, category])
-
   // Populate from editChain
   useEffect(() => {
     if (editChain) {
       setName(editChain.name)
       setSelectedWorkflow(editChain.workflow_name)
-      setCategory(editChain.category ?? '')
       setTicketIds(editChain.items?.map((i) => i.ticket_id) ?? [])
     }
   }, [editChain])
@@ -75,7 +63,6 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
     if (!open) {
       setName('')
       setSelectedWorkflow('')
-      setCategory('')
       setTicketIds([])
       setEpicIds([])
     }
@@ -96,7 +83,6 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
         await createMutation.mutateAsync({
           name: name.trim(),
           workflow_name: selectedWorkflow,
-          category: category || undefined,
           ticket_ids: childOnlyIds.length > 0 ? childOnlyIds : ticketIds,
           epic_ticket_id: epicIds.length === 1 ? epicIds[0] : undefined,
         })
@@ -157,22 +143,6 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
                 ))}
               </Select>
             </div>
-
-            {categories.length > 0 && (
-              <div>
-                <label htmlFor="chain-category" className="block text-sm font-medium mb-1.5">Category</label>
-                <Select
-                  id="chain-category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  disabled={isEditing}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </Select>
-              </div>
-            )}
 
             <div>
               <label className="block text-sm font-medium mb-1.5">Tickets</label>

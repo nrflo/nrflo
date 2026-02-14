@@ -30,7 +30,6 @@ export const workflowWithActivePhase: WorkflowResponse = {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     phase_order: ['investigation', 'implementation', 'verification'],
     phases: {
       investigation: { status: 'completed', result: 'pass' },
@@ -79,7 +78,6 @@ export const workflowOrchestrated: WorkflowResponse = {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     phase_order: ['investigation', 'implementation', 'verification'],
     phases: {
       investigation: { status: 'completed', result: 'pass' },
@@ -112,7 +110,6 @@ export const workflowOrchestratedNoAgents: WorkflowResponse = {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     phase_order: ['investigation', 'implementation', 'verification'],
     phases: {
       investigation: { status: 'completed', result: 'pass' },
@@ -134,7 +131,6 @@ export const workflowMultiple: WorkflowResponse = {
     workflow: 'feature',
     version: 4,
     current_phase: 'implementation',
-    category: 'full',
     phase_order: ['investigation', 'implementation', 'verification'],
     phases: {
       investigation: { status: 'completed', result: 'pass' },
@@ -158,8 +154,7 @@ export const workflowMultiple: WorkflowResponse = {
       workflow: 'feature',
       version: 4,
       current_phase: 'implementation',
-      category: 'full',
-      phase_order: ['investigation', 'implementation', 'verification'],
+        phase_order: ['investigation', 'implementation', 'verification'],
       phases: {
         investigation: { status: 'completed', result: 'pass' },
         implementation: { status: 'in_progress' },

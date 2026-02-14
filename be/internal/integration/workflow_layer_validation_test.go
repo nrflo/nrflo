@@ -40,7 +40,6 @@ func TestWorkflowRejectParallelField(t *testing.T) {
 			_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 				ID:          "test-parallel-" + strings.ReplaceAll(tt.name, " ", "-"),
 				Description: "Test workflow",
-				Categories:  []string{"full"},
 				Phases:      phasesJSON,
 			})
 
@@ -84,7 +83,6 @@ func TestWorkflowRejectStringPhaseEntry(t *testing.T) {
 			_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 				ID:          "test-string-" + strings.ReplaceAll(tt.name, " ", "-"),
 				Description: "Test workflow",
-				Categories:  []string{"full"},
 				Phases:      json.RawMessage(tt.phasesJSON),
 			})
 
@@ -127,7 +125,6 @@ func TestWorkflowRequireLayerField(t *testing.T) {
 			_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 				ID:          "test-layer-" + strings.ReplaceAll(tt.name, " ", "-"),
 				Description: "Test workflow",
-				Categories:  []string{"full"},
 				Phases:      phasesJSON,
 			})
 
@@ -188,7 +185,6 @@ func TestWorkflowFanInValidation(t *testing.T) {
 			_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 				ID:          "test-fanin-" + strings.ReplaceAll(tt.name, " ", "-"),
 				Description: "Test workflow",
-				Categories:  []string{"full"},
 				Phases:      phasesJSON,
 			})
 
@@ -220,7 +216,6 @@ func TestWorkflowUpdateValidation(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "update-test",
 		Description: "Test workflow",
-		Categories:  []string{"full"},
 		Phases:      validPhasesJSON,
 	})
 	if err != nil {
@@ -233,12 +228,10 @@ func TestWorkflowUpdateValidation(t *testing.T) {
 	})
 
 	desc := "Updated workflow"
-	cats := []string{"full"}
 	phases := json.RawMessage(invalidPhasesJSON)
 
 	err = env.WorkflowSvc.UpdateWorkflowDef(env.ProjectID, "update-test", &types.WorkflowDefUpdateRequest{
 		Description: &desc,
-		Categories:  &cats,
 		Phases:      &phases,
 	})
 
@@ -287,13 +280,6 @@ func TestWorkflowValidLayerConfig(t *testing.T) {
 				{"agent": "hotfix", "layer": 0},
 			},
 		},
-		{
-			name: "skip_for field preserved",
-			phasesData: []map[string]interface{}{
-				{"agent": "test-writer", "layer": 0, "skip_for": []interface{}{"docs", "hotfix"}},
-				{"agent": "implementor", "layer": 1},
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -303,7 +289,6 @@ func TestWorkflowValidLayerConfig(t *testing.T) {
 			wf, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 				ID:          "valid-" + strings.ReplaceAll(tt.name, " ", "-"),
 				Description: "Test workflow",
-				Categories:  []string{"full"},
 				Phases:      phasesJSON,
 			})
 

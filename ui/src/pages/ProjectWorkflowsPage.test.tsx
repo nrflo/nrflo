@@ -57,7 +57,6 @@ const sampleWorkflowState: WorkflowState = {
   version: 4,
   scope_type: 'project',
   current_phase: 'implementation',
-  category: 'full',
   status: 'active',
   phases: {
     investigation: { status: 'completed', result: 'pass' },
@@ -84,7 +83,6 @@ const sampleCompletedWorkflowState: WorkflowState = {
   version: 4,
   scope_type: 'project',
   current_phase: 'verification',
-  category: 'simple',
   status: 'completed',
   completed_at: '2026-01-01T05:23:45Z',
   total_duration_sec: 19425.5,
@@ -100,9 +98,9 @@ const sampleCompletedWorkflowState: WorkflowState = {
     {
       agent_id: 'a-hist-1',
       agent_type: 'setup-analyzer',
+      phase: 'investigation',
       session_id: 'hist-session-1',
       model_id: 'claude-sonnet-4-5',
-      status: 'completed',
       result: 'pass',
       started_at: '2026-01-01T00:00:00Z',
       ended_at: '2026-01-01T01:00:00Z',
@@ -279,7 +277,7 @@ describe('ProjectWorkflowsPage', () => {
   })
 
   it('passes undefined ticketId to WorkflowTabContent for project scope', () => {
-    const { container } = renderPage()
+    renderPage()
 
     // WorkflowTabContent should receive ticketId=undefined for project scope
     const tabContent = screen.getByTestId('workflow-tab-content')
@@ -951,7 +949,6 @@ describe('ProjectWorkflowsPage', () => {
 
   describe('Empty States', () => {
     it('shows empty state on Active tab when no active workflows', async () => {
-      const user = userEvent.setup()
       const onlyCompletedResponse: ProjectWorkflowResponse = {
         project_id: 'test-project',
         has_workflow: true,

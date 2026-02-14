@@ -40,7 +40,6 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 	result, err := s.orchestrator.Start(context.Background(), orchestrator.RunRequest{
 		ProjectID:    projectID,
 		WorkflowName: body.Workflow,
-		Category:     body.Category,
 		Instructions: body.Instructions,
 		ScopeType:    "project",
 	})

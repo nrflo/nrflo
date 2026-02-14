@@ -52,7 +52,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         bugfix: {
           description: 'Bug fix workflow',
-          categories: ['full'],
           phases: [
             { id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 },
             { id: 'implementor', agent: 'implementor', layer: 1 },
@@ -81,7 +80,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: ['full'],
           phases: [
             { id: 'analyzer-a', agent: 'analyzer-a', layer: 0 },
             { id: 'analyzer-b', agent: 'analyzer-b', layer: 0 },
@@ -109,7 +107,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         complex: {
           description: 'Complex workflow',
-          categories: ['full'],
           phases: [
             { id: 'a1', agent: 'a1', layer: 0 },
             { id: 'a2', agent: 'a2', layer: 0 },
@@ -141,7 +138,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         parallel: {
           description: 'All parallel',
-          categories: ['full'],
           phases: [
             { id: 'agent-a', agent: 'agent-a', layer: 0 },
             { id: 'agent-b', agent: 'agent-b', layer: 0 },
@@ -168,7 +164,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         empty: {
           description: 'Empty workflow',
-          categories: [],
           phases: [],
         },
       }
@@ -192,7 +187,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: ['full'],
           phases: [
             { id: 'a', agent: 'a', layer: 0 },
             { id: 'b', agent: 'b', layer: 0 },
@@ -212,7 +206,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         legacy: {
           description: 'Legacy workflow',
-          categories: ['full'],
           phases: [
             { id: 'a', agent: 'a' } as PhaseDef, // Missing layer
             { id: 'b', agent: 'b', layer: 1 },
@@ -239,7 +232,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         ordered: {
           description: 'Ordered workflow',
-          categories: [],
           phases: [
             { id: 'z-agent', agent: 'z-agent', layer: 0 },
             { id: 'a-agent', agent: 'a-agent', layer: 0 },
@@ -285,12 +277,10 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: ['full'],
           phases: [{ id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 }],
         },
         bugfix: {
           description: 'Bug fix workflow',
-          categories: ['simple'],
           phases: [{ id: 'implementor', agent: 'implementor', layer: 0 }],
         },
       }
@@ -303,29 +293,10 @@ describe('WorkflowsPage', () => {
       })
     })
 
-    it('displays categories as badges', async () => {
-      const defs: Record<string, WorkflowDefSummary> = {
-        feature: {
-          description: 'Feature workflow',
-          categories: ['full', 'simple', 'docs'],
-          phases: [],
-        },
-      }
-      mockWorkflowDefs(defs)
-      renderPage()
-
-      await waitFor(() => {
-        expect(screen.getByText('full')).toBeInTheDocument()
-        expect(screen.getByText('simple')).toBeInTheDocument()
-        expect(screen.getByText('docs')).toBeInTheDocument()
-      })
-    })
-
     it('shows description when provided', async () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Full TDD workflow with all phases',
-          categories: [],
           phases: [],
         },
       }
@@ -344,7 +315,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: ['full'],
           phases: [{ id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 }],
         },
       }
@@ -369,7 +339,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: [],
           phases: [{ id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 }],
         },
       }
@@ -415,7 +384,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: ['full'],
           phases: [],
         },
       }
@@ -439,7 +407,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: [],
           phases: [],
         },
       }
@@ -473,7 +440,6 @@ describe('WorkflowsPage', () => {
       const defs: Record<string, WorkflowDefSummary> = {
         feature: {
           description: 'Feature workflow',
-          categories: [],
           phases: [],
         },
       }
@@ -518,7 +484,6 @@ describe('WorkflowsPage', () => {
         id: 'test-workflow',
         project_id: 'test-project',
         description: 'Test workflow',
-        categories: ['full'],
         phases: [
           { id: 'analyzer-a', agent: 'analyzer-a', layer: 0 },
           { id: 'analyzer-b', agent: 'analyzer-b', layer: 0 },

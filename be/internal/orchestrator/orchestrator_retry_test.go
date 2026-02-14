@@ -326,8 +326,8 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 		{"agent": "phase3", "layer": 2},
 	})
 	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, categories, scope_type, created_at, updated_at)
-		VALUES ('test-3layer', ?, 'Three layer test', ?, '["full"]', 'ticket', datetime('now'), datetime('now'))`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES ('test-3layer', ?, 'Three layer test', ?, 'ticket', datetime('now'), datetime('now'))`,
 		env.project, string(phasesJSON))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)

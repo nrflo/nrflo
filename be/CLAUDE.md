@@ -374,7 +374,6 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    scope_type      TEXT NOT NULL DEFAULT 'ticket'                    │
 │                    CHECK (scope_type IN ('ticket', 'project'))       │
 │    status          TEXT NOT NULL      (active|completed|failed|project_completed) │
-│    category        TEXT               (full|simple|docs)             │
 │    current_phase   TEXT               (currently active phase)       │
 │    phase_order     TEXT NOT NULL      (JSON array of phase IDs)      │
 │    phases          TEXT NOT NULL      (JSON: {phase: {status,result}})│
@@ -426,7 +425,6 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    description   TEXT                                                │
 │    scope_type    TEXT NOT NULL DEFAULT 'ticket'                      │
 │                  CHECK (scope_type IN ('ticket', 'project'))         │
-│    categories    TEXT           (JSON array string)                  │
 │    phases        TEXT NOT NULL  (JSON array string)                  │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
@@ -452,7 +450,6 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    status        TEXT NOT NULL DEFAULT 'pending'                      │
 │                  CHECK (pending|running|completed|failed|canceled)    │
 │    workflow_name TEXT NOT NULL                                        │
-│    category      TEXT NOT NULL DEFAULT ''                             │
 │    epic_ticket_id TEXT          (nullable, auto-closed on completion) │
 │    created_by    TEXT NOT NULL DEFAULT ''                             │
 │    created_at    TEXT NOT NULL                                        │
@@ -545,7 +542,6 @@ Both `--session` and `-w` are **required** for `agent spawn`:
 1. VALIDATION
    - Validate workflow is initialized on ticket
    - Check layer ordering (all prior layers must be completed)
-   - Check skip_for category rules
 
 2. DETERMINE MODEL
    - Read model from agent definition (DB)
@@ -762,7 +758,7 @@ Server runs on port 6587 with CORS enabled for `http://localhost:5173`.
 
 ### Adding a New Workflow
 
-1. Create workflow definition via API: `POST /api/v1/workflows` with phases, description, and categories
+1. Create workflow definition via API: `POST /api/v1/workflows` with phases and description
 2. Ensure all referenced agents have definitions created via `POST /api/v1/workflows/:wid/agents`
 3. **Documentation updates:**
    - Root `CLAUDE.md` - add workflow to diagrams in System Diagrams section, add to Workflows table

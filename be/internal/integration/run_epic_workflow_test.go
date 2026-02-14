@@ -70,7 +70,6 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	// POST request
 	body := map[string]interface{}{
 		"workflow_name": "test",
-		"category":      "full",
 		"start":         false,
 	}
 	bodyBytes, _ := json.Marshal(body)
@@ -170,7 +169,6 @@ func TestRunEpicWorkflow_NoChildren(t *testing.T) {
 
 	body := map[string]interface{}{
 		"workflow_name": "test",
-		"category":      "full",
 		"start":         false,
 	}
 	bodyBytes, _ := json.Marshal(body)
@@ -230,7 +228,6 @@ func TestRunEpicWorkflow_NonEpicTicket(t *testing.T) {
 
 	body := map[string]interface{}{
 		"workflow_name": "test",
-		"category":      "full",
 		"start":         false,
 	}
 	bodyBytes, _ := json.Marshal(body)
@@ -303,7 +300,6 @@ func TestRunEpicWorkflow_ExcludesClosedChildren(t *testing.T) {
 
 	body := map[string]interface{}{
 		"workflow_name": "test",
-		"category":      "full",
 		"start":         false,
 	}
 	bodyBytes, _ := json.Marshal(body)
@@ -360,7 +356,6 @@ func TestRunEpicWorkflow_TicketNotFound(t *testing.T) {
 
 	body := map[string]interface{}{
 		"workflow_name": "test",
-		"category":      "full",
 		"start":         false,
 	}
 	bodyBytes, _ := json.Marshal(body)
@@ -419,8 +414,7 @@ func TestRunEpicWorkflow_MissingWorkflowName(t *testing.T) {
 	}
 
 	body := map[string]interface{}{
-		"category": "full",
-		"start":    false,
+		"start": false,
 	}
 	bodyBytes, _ := json.Marshal(body)
 

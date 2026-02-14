@@ -27,7 +27,6 @@ export function RunEpicWorkflowDialog({
 }: RunEpicWorkflowDialogProps) {
   const navigate = useNavigate()
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
-  const [category, setCategory] = useState('full')
   const [pendingChain, setPendingChain] = useState<ChainExecution | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
 
@@ -59,17 +58,6 @@ export function RunEpicWorkflowDialog({
     }
   }, [workflowIds, selectedWorkflow])
 
-  // Categories for selected workflow
-  const selectedDef = selectedWorkflow && workflowDefs ? workflowDefs[selectedWorkflow] : null
-  const categories = selectedDef?.categories ?? ['full']
-
-  // Reset category when workflow changes
-  useEffect(() => {
-    if (categories.length > 0) {
-      setCategory(categories[0] || 'full')
-    }
-  }, [selectedWorkflow])
-
   const handlePreview = async () => {
     if (!selectedWorkflow) return
     setPreviewError(null)
@@ -78,7 +66,6 @@ export function RunEpicWorkflowDialog({
         ticketId,
         params: {
           workflow_name: selectedWorkflow,
-          category: category || undefined,
           start: false,
         },
       })
@@ -114,7 +101,6 @@ export function RunEpicWorkflowDialog({
   useEffect(() => {
     if (!open) {
       setSelectedWorkflow('')
-      setCategory('full')
       setPendingChain(null)
       setPreviewError(null)
     }
@@ -143,45 +129,25 @@ export function RunEpicWorkflowDialog({
             No ticket-scoped workflow definitions found. Create one on the Workflows page.
           </p>
         ) : !pendingChain ? (
-          <>
-            <div>
-              <label htmlFor="epic-workflow-select" className="block text-sm font-medium mb-1.5">Workflow</label>
-              <Select
-                id="epic-workflow-select"
-                value={selectedWorkflow}
-                onChange={(e) => setSelectedWorkflow(e.target.value)}
-              >
-                {workflowIds.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
-                    {workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            {categories.length > 0 && (
-              <div>
-                <label htmlFor="epic-category-select" className="block text-sm font-medium mb-1.5">Category</label>
-                <Select
-                  id="epic-category-select"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </Select>
-              </div>
-            )}
-          </>
+          <div>
+            <label htmlFor="epic-workflow-select" className="block text-sm font-medium mb-1.5">Workflow</label>
+            <Select
+              id="epic-workflow-select"
+              value={selectedWorkflow}
+              onChange={(e) => setSelectedWorkflow(e.target.value)}
+            >
+              {workflowIds.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                  {workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''}
+                </option>
+              ))}
+            </Select>
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-3 text-sm">
               <Badge variant="secondary">{pendingChain.workflow_name}</Badge>
-              {pendingChain.category && (
-                <Badge variant="outline">{pendingChain.category}</Badge>
-              )}
               <span className="text-muted-foreground">
                 {items.length} ticket{items.length !== 1 ? 's' : ''} in chain
               </span>

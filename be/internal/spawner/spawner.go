@@ -23,16 +23,14 @@ import (
 type WorkflowDef struct {
 	Description string     `json:"description"`
 	ScopeType   string     `json:"scope_type"` // "ticket" or "project"
-	Categories  []string   `json:"categories"`
 	Phases      []PhaseDef `json:"phases"`
 }
 
 // PhaseDef represents a phase definition
 type PhaseDef struct {
-	ID      string   `json:"id"`
-	Agent   string   `json:"agent"`
-	Layer   int      `json:"layer"`
-	SkipFor []string `json:"skip_for,omitempty"`
+	ID    string `json:"id"`
+	Agent string `json:"agent"`
+	Layer int    `json:"layer"`
 }
 
 // AgentConfig holds agent-specific configuration
@@ -185,14 +183,9 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 		return err
 	}
 
-	// Validate phase order and auto-skip phases with matching skip_for category
-	validatedPhaseID, shouldSkip, err := s.validateAndAdvancePhase(wi, req.WorkflowName, req.AgentType)
-	if err != nil {
+	// Validate phase order
+	if _, _, err := s.validateAndAdvancePhase(wi, req.WorkflowName, req.AgentType); err != nil {
 		return err
-	}
-	if shouldSkip {
-		fmt.Printf("  Phase '%s' skipped due to category rules\n", validatedPhaseID)
-		return nil
 	}
 
 	// Determine model to spawn (single agent per Spawn call)

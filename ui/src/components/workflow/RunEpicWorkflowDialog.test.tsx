@@ -39,19 +39,16 @@ const mockWorkflowDefs = {
   'ticket-workflow-1': {
     description: 'First ticket workflow',
     scope_type: 'ticket' as const,
-    categories: ['full', 'simple'],
     phases: [{ id: 'setup', agent: 'setup', layer: 0 }],
   } as WorkflowDefSummary,
   'ticket-workflow-2': {
     description: 'Second ticket workflow',
     scope_type: 'ticket' as const,
-    categories: ['full'],
     phases: [{ id: 'impl', agent: 'impl', layer: 0 }],
   } as WorkflowDefSummary,
   'project-workflow': {
     description: 'Project-scoped workflow',
     scope_type: 'project' as const,
-    categories: ['full'],
     phases: [{ id: 'analyzer', agent: 'analyzer', layer: 0 }],
   } as WorkflowDefSummary,
 }
@@ -62,7 +59,6 @@ const mockChain: ChainExecution = {
   name: 'Epic TICKET-EPIC workflow chain',
   status: 'pending',
   workflow_name: 'ticket-workflow-1',
-  category: 'full',
   epic_ticket_id: 'TICKET-EPIC',
   created_by: 'test-user',
   total_items: 3,
@@ -132,8 +128,7 @@ describe('RunEpicWorkflowDialog', () => {
         'project-only': {
           description: 'Project only',
           scope_type: 'project' as const,
-          categories: ['full'],
-          phases: [],
+                phases: [],
         },
       })
       renderDialog()
@@ -200,67 +195,6 @@ describe('RunEpicWorkflowDialog', () => {
     })
   })
 
-  describe('category selection', () => {
-    it('displays categories from selected workflow', async () => {
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/category/i)).toBeInTheDocument()
-      })
-
-      const categorySelect = screen.getByLabelText(/category/i)
-      expect(categorySelect).toHaveTextContent('full')
-      expect(categorySelect).toHaveTextContent('simple')
-    })
-
-    it('resets category when workflow changes', async () => {
-      const user = userEvent.setup()
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/workflow/i)).toBeInTheDocument()
-      })
-
-      // Initial workflow has categories: ['full', 'simple']
-      const categorySelect = screen.getByLabelText(/category/i) as HTMLSelectElement
-      expect(categorySelect.value).toBe('full')
-
-      // Select a different category
-      await user.selectOptions(categorySelect, 'simple')
-      expect(categorySelect.value).toBe('simple')
-
-      // Change workflow (ticket-workflow-2 only has 'full')
-      const workflowSelect = screen.getByLabelText(/workflow/i)
-      await user.selectOptions(workflowSelect, 'ticket-workflow-2')
-
-      // Category should reset to first available
-      await waitFor(() => {
-        expect(categorySelect.value).toBe('full')
-      })
-    })
-
-    it('hides category selector when workflow has no categories', async () => {
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue({
-        'no-categories': {
-          description: 'No categories',
-          scope_type: 'ticket' as const,
-          categories: [],
-          phases: [],
-        },
-      })
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByText(/no-categories/i)).toBeInTheDocument()
-      })
-
-      // Category select should NOT render when categories array is empty
-      expect(screen.queryByLabelText(/category/i)).not.toBeInTheDocument()
-    })
-  })
-
   describe('chain preview', () => {
     it('creates chain preview when Preview Chain button clicked', async () => {
       const user = userEvent.setup()
@@ -278,8 +212,7 @@ describe('RunEpicWorkflowDialog', () => {
       await waitFor(() => {
         expect(chainsApi.runEpicWorkflow).toHaveBeenCalledWith('TICKET-EPIC', {
           workflow_name: 'ticket-workflow-1',
-          category: 'full',
-          start: false,
+                  start: false,
         })
       })
     })
@@ -321,7 +254,6 @@ describe('RunEpicWorkflowDialog', () => {
 
       await waitFor(() => {
         expect(screen.getByText('ticket-workflow-1')).toBeInTheDocument()
-        expect(screen.getByText('full')).toBeInTheDocument()
       })
     })
 
@@ -739,27 +671,5 @@ describe('RunEpicWorkflowDialog', () => {
       })
     })
 
-    it('handles chain without category', async () => {
-      const user = userEvent.setup()
-      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
-      vi.mocked(chainsApi.runEpicWorkflow).mockResolvedValue({
-        ...mockChain,
-        category: undefined,
-      })
-      renderDialog()
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /preview chain/i })).toBeInTheDocument()
-      })
-
-      await user.click(screen.getByRole('button', { name: /preview chain/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText('ticket-workflow-1')).toBeInTheDocument()
-      })
-
-      // Should not show category badge
-      expect(screen.queryByText('full')).not.toBeInTheDocument()
-    })
   })
 })

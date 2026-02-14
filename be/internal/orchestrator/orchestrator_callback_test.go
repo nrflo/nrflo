@@ -25,8 +25,8 @@ func TestHandleCallback_SingleAgentCallback(t *testing.T) {
 		{"agent": "verifier", "layer": 2},
 	})
 	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, categories, scope_type, created_at, updated_at)
-		VALUES ('callback-test', ?, 'Callback test workflow', ?, '["full"]', 'ticket', datetime('now'), datetime('now'))`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES ('callback-test', ?, 'Callback test workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
 		env.project, string(phasesJSON))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -176,8 +176,8 @@ func TestHandleCallback_MultiAgentLayerUsesLowestLevel(t *testing.T) {
 		{"agent": "verifier", "layer": 2},
 	})
 	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, categories, scope_type, created_at, updated_at)
-		VALUES ('multi-callback', ?, 'Multi callback workflow', ?, '["full"]', 'ticket', datetime('now'), datetime('now'))`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES ('multi-callback', ?, 'Multi callback workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
 		env.project, string(phasesJSON))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)

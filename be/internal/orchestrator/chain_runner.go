@@ -71,7 +71,7 @@ func (cr *ChainRunner) Start(ctx context.Context, chainID string) error {
 
 	cr.broadcastChainUpdate(chain.ProjectID, chainID, "running")
 
-	go cr.runLoop(runCtx, chainID, chain.ProjectID, chain.WorkflowName, chain.Category)
+	go cr.runLoop(runCtx, chainID, chain.ProjectID, chain.WorkflowName)
 
 	return nil
 }
@@ -157,7 +157,7 @@ func (cr *ChainRunner) RecoverZombieChains() {
 	}
 }
 
-func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflowName, category string) {
+func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflowName string) {
 	defer func() {
 		cr.mu.Lock()
 		delete(cr.runs, chainID)
@@ -209,7 +209,6 @@ func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflow
 			ProjectID:    projectID,
 			TicketID:     item.TicketID,
 			WorkflowName: workflowName,
-			Category:     category,
 		})
 		if err != nil {
 			log.Printf("[chain-runner] Failed to start workflow for %s: %v", item.TicketID, err)

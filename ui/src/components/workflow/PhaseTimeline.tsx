@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { Clock, Cpu } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import { PhaseGraph } from './PhaseGraph'
 import { WorkflowFindings } from './WorkflowFindings'
@@ -14,19 +13,6 @@ interface PhaseTimelineProps {
   ticketId?: string
   sessions?: AgentSession[]
   onAgentSelect?: (data: SelectedAgentData) => void
-}
-
-function categoryColor(category: string): string {
-  switch (category) {
-    case 'full':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-    case 'simple':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-    case 'docs':
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-  }
 }
 
 export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect }: PhaseTimelineProps) {
@@ -62,11 +48,6 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
         {workflow.version && (
           <Badge variant="outline" className="text-xs">
             v{workflow.version}
-          </Badge>
-        )}
-        {workflow.category && (
-          <Badge className={cn('text-xs', categoryColor(workflow.category))}>
-            {workflow.category}
           </Badge>
         )}
         {workflow.current_phase && (

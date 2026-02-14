@@ -61,7 +61,6 @@ func newTestEnv(t *testing.T) *testEnv {
 	_, err = workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {
@@ -196,31 +195,5 @@ func expectEvent(t *testing.T, ch chan []byte, eventType string, timeout time.Du
 		case <-time.After(timeout):
 			t.Fatalf("timeout waiting for event type '%s'", eventType)
 		}
-	}
-}
-
-func TestShouldSkipPhase(t *testing.T) {
-	tests := []struct {
-		name     string
-		category string
-		skipFor  []string
-		want     bool
-	}{
-		{"empty category", "", []string{"simple"}, false},
-		{"empty skipFor", "simple", nil, false},
-		{"both empty", "", nil, false},
-		{"matching category", "simple", []string{"simple", "docs"}, true},
-		{"non-matching category", "full", []string{"simple", "docs"}, false},
-		{"single match", "docs", []string{"docs"}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := shouldSkipPhase(tt.category, tt.skipFor)
-			if got != tt.want {
-				t.Errorf("shouldSkipPhase(%q, %v) = %v, want %v",
-					tt.category, tt.skipFor, got, tt.want)
-			}
-		})
 	}
 }

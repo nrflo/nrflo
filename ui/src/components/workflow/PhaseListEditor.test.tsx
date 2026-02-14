@@ -9,7 +9,6 @@ function renderEditor(
   const defaultProps = {
     value: [] as PhaseFormEntry[],
     onChange: vi.fn(),
-    categories: ['full', 'simple', 'docs'],
     ...props,
   }
   return {
@@ -22,8 +21,8 @@ describe('PhaseListEditor', () => {
   describe('layer input rendering', () => {
     it('renders layer input field for each agent', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 1, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'implementor', layer: 1 },
       ]
       renderEditor({ value: entries })
 
@@ -36,7 +35,7 @@ describe('PhaseListEditor', () => {
     it('updates layer value when changed', async () => {
       const user = userEvent.setup()
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
       ]
       const onChange = vi.fn()
       renderEditor({ value: entries, onChange })
@@ -46,15 +45,15 @@ describe('PhaseListEditor', () => {
       await user.type(layerInput, '2')
 
       expect(onChange).toHaveBeenCalledWith([
-        { agent: 'setup-analyzer', layer: 2, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 2 },
       ])
     })
 
     it('adds new agent with max_layer+1 as default', async () => {
       const user = userEvent.setup()
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 2, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'implementor', layer: 2 },
       ]
       const onChange = vi.fn()
       renderEditor({ value: entries, onChange })
@@ -63,9 +62,9 @@ describe('PhaseListEditor', () => {
       await user.click(addButton)
 
       expect(onChange).toHaveBeenCalledWith([
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 2, skip_for: [] },
-        { agent: '', layer: 3, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'implementor', layer: 2 },
+        { agent: '', layer: 3 },
       ])
     })
 
@@ -77,16 +76,16 @@ describe('PhaseListEditor', () => {
       const addButton = screen.getByRole('button', { name: /add agent/i })
       await user.click(addButton)
 
-      expect(onChange).toHaveBeenCalledWith([{ agent: '', layer: 0, skip_for: [] }])
+      expect(onChange).toHaveBeenCalledWith([{ agent: '', layer: 0 }])
     })
   })
 
   describe('layer grouping and sorting', () => {
     it('displays layer headers for each distinct layer', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 1, skip_for: [] },
-        { agent: 'qa-verifier', layer: 2, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'implementor', layer: 1 },
+        { agent: 'qa-verifier', layer: 2 },
       ]
       renderEditor({ value: entries })
 
@@ -97,9 +96,9 @@ describe('PhaseListEditor', () => {
 
     it('sorts entries by layer visually (ascending order)', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'implementor', layer: 2, skip_for: [] },
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'qa-verifier', layer: 1, skip_for: [] },
+        { agent: 'implementor', layer: 2 },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'qa-verifier', layer: 1 },
       ]
       renderEditor({ value: entries })
 
@@ -112,9 +111,9 @@ describe('PhaseListEditor', () => {
 
     it('groups multiple agents in the same layer under one header', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'analyzer-a', layer: 0, skip_for: [] },
-        { agent: 'analyzer-b', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 1, skip_for: [] },
+        { agent: 'analyzer-a', layer: 0 },
+        { agent: 'analyzer-b', layer: 0 },
+        { agent: 'implementor', layer: 1 },
       ]
       renderEditor({ value: entries })
 
@@ -130,9 +129,9 @@ describe('PhaseListEditor', () => {
   describe('fan-in validation', () => {
     it('shows no error when fan-in rule is satisfied', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'analyzer-a', layer: 0, skip_for: [] },
-        { agent: 'analyzer-b', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 1, skip_for: [] }, // Single agent after multi-agent layer
+        { agent: 'analyzer-a', layer: 0 },
+        { agent: 'analyzer-b', layer: 0 },
+        { agent: 'implementor', layer: 1 }, // Single agent after multi-agent layer
       ]
       renderEditor({ value: entries })
 
@@ -141,10 +140,10 @@ describe('PhaseListEditor', () => {
 
     it('shows error when multi-agent layer is followed by multi-agent layer', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'analyzer-a', layer: 0, skip_for: [] },
-        { agent: 'analyzer-b', layer: 0, skip_for: [] },
-        { agent: 'implementor-a', layer: 1, skip_for: [] },
-        { agent: 'implementor-b', layer: 1, skip_for: [] },
+        { agent: 'analyzer-a', layer: 0 },
+        { agent: 'analyzer-b', layer: 0 },
+        { agent: 'implementor-a', layer: 1 },
+        { agent: 'implementor-b', layer: 1 },
       ]
       renderEditor({ value: entries })
 
@@ -154,10 +153,10 @@ describe('PhaseListEditor', () => {
 
     it('shows error message inline near the offending layer', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'analyzer-a', layer: 0, skip_for: [] },
-        { agent: 'analyzer-b', layer: 0, skip_for: [] },
-        { agent: 'impl-a', layer: 1, skip_for: [] },
-        { agent: 'impl-b', layer: 1, skip_for: [] },
+        { agent: 'analyzer-a', layer: 0 },
+        { agent: 'analyzer-b', layer: 0 },
+        { agent: 'impl-a', layer: 1 },
+        { agent: 'impl-b', layer: 1 },
       ]
       renderEditor({ value: entries })
 
@@ -171,9 +170,9 @@ describe('PhaseListEditor', () => {
 
     it('no error when single agent layer follows single agent layer', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 1, skip_for: [] },
-        { agent: 'qa-verifier', layer: 2, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'implementor', layer: 1 },
+        { agent: 'qa-verifier', layer: 2 },
       ]
       renderEditor({ value: entries })
 
@@ -182,9 +181,9 @@ describe('PhaseListEditor', () => {
 
     it('no error when multi-agent layer is the last layer', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'impl-a', layer: 1, skip_for: [] },
-        { agent: 'impl-b', layer: 1, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'impl-a', layer: 1 },
+        { agent: 'impl-b', layer: 1 },
       ]
       renderEditor({ value: entries })
 
@@ -193,10 +192,10 @@ describe('PhaseListEditor', () => {
 
     it('shows error with specific layer numbers in message', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'a1', layer: 3, skip_for: [] },
-        { agent: 'a2', layer: 3, skip_for: [] },
-        { agent: 'b1', layer: 5, skip_for: [] },
-        { agent: 'b2', layer: 5, skip_for: [] },
+        { agent: 'a1', layer: 3 },
+        { agent: 'a2', layer: 3 },
+        { agent: 'b1', layer: 5 },
+        { agent: 'b2', layer: 5 },
       ]
       renderEditor({ value: entries })
 
@@ -210,7 +209,7 @@ describe('PhaseListEditor', () => {
   describe('agent input and removal', () => {
     it('updates agent name when typed', async () => {
       const user = userEvent.setup()
-      const entries: PhaseFormEntry[] = [{ agent: '', layer: 0, skip_for: [] }]
+      const entries: PhaseFormEntry[] = [{ agent: '', layer: 0 }]
       const onChange = vi.fn()
       renderEditor({ value: entries, onChange })
 
@@ -227,8 +226,8 @@ describe('PhaseListEditor', () => {
     it('removes agent when trash button clicked', async () => {
       const user = userEvent.setup()
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 1, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'implementor', layer: 1 },
       ]
       const onChange = vi.fn()
       renderEditor({ value: entries, onChange })
@@ -237,79 +236,14 @@ describe('PhaseListEditor', () => {
       await user.click(removeButtons[0])
 
       expect(onChange).toHaveBeenCalledWith([
-        { agent: 'implementor', layer: 1, skip_for: [] },
+        { agent: 'implementor', layer: 1 },
       ])
-    })
-  })
-
-  describe('skip_for management', () => {
-    it('adds skip_for category when preset button clicked', async () => {
-      const user = userEvent.setup()
-      const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-      ]
-      const onChange = vi.fn()
-      renderEditor({ value: entries, onChange, categories: ['full', 'simple', 'docs'] })
-
-      const skipButton = screen.getByRole('button', { name: '+docs' })
-      await user.click(skipButton)
-
-      expect(onChange).toHaveBeenCalledWith([
-        { agent: 'setup-analyzer', layer: 0, skip_for: ['docs'] },
-      ])
-    })
-
-    it('removes skip_for category when X clicked', async () => {
-      const user = userEvent.setup()
-      const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: ['docs', 'simple'] },
-      ]
-      const onChange = vi.fn()
-      renderEditor({ value: entries, onChange })
-
-      // Find the badge with 'docs' and click its X button
-      const docsBadge = screen.getByText('docs').closest('.gap-1')
-      const removeButton = docsBadge?.querySelector('button')
-      expect(removeButton).toBeInTheDocument()
-      await user.click(removeButton!)
-
-      expect(onChange).toHaveBeenCalledWith([
-        { agent: 'setup-analyzer', layer: 0, skip_for: ['simple'] },
-      ])
-    })
-
-    it('adds custom skip_for category via text input on Enter', async () => {
-      const user = userEvent.setup()
-      const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-      ]
-      const onChange = vi.fn()
-      renderEditor({ value: entries, onChange })
-
-      const skipInput = screen.getByPlaceholderText(/skip_for/i)
-      await user.type(skipInput, 'experimental{Enter}')
-
-      expect(onChange).toHaveBeenCalledWith([
-        { agent: 'setup-analyzer', layer: 0, skip_for: ['experimental'] },
-      ])
-    })
-
-    it('does not add duplicate skip_for categories', async () => {
-      const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: ['docs'] },
-      ]
-      const onChange = vi.fn()
-      renderEditor({ value: entries, onChange, categories: ['full', 'docs'] })
-
-      // 'docs' is already in skip_for, so the +docs button should not appear
-      const skipButton = screen.queryByRole('button', { name: '+docs' })
-      expect(skipButton).not.toBeInTheDocument()
     })
   })
 
   describe('edge cases', () => {
     it('handles empty phases array', () => {
-      renderEditor({ value: [], categories: [] })
+      renderEditor({ value: [] })
 
       const addButton = screen.getByRole('button', { name: /add agent/i })
       expect(addButton).toBeInTheDocument()
@@ -317,9 +251,9 @@ describe('PhaseListEditor', () => {
 
     it('handles single agent per layer', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'setup-analyzer', layer: 0, skip_for: [] },
-        { agent: 'implementor', layer: 1, skip_for: [] },
-        { agent: 'qa-verifier', layer: 2, skip_for: [] },
+        { agent: 'setup-analyzer', layer: 0 },
+        { agent: 'implementor', layer: 1 },
+        { agent: 'qa-verifier', layer: 2 },
       ]
       renderEditor({ value: entries })
 
@@ -331,9 +265,9 @@ describe('PhaseListEditor', () => {
 
     it('handles all agents in layer 0', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'analyzer-a', layer: 0, skip_for: [] },
-        { agent: 'analyzer-b', layer: 0, skip_for: [] },
-        { agent: 'analyzer-c', layer: 0, skip_for: [] },
+        { agent: 'analyzer-a', layer: 0 },
+        { agent: 'analyzer-b', layer: 0 },
+        { agent: 'analyzer-c', layer: 0 },
       ]
       renderEditor({ value: entries })
 
@@ -345,10 +279,10 @@ describe('PhaseListEditor', () => {
 
     it('displays AlertTriangle icon with fan-in error', () => {
       const entries: PhaseFormEntry[] = [
-        { agent: 'a1', layer: 0, skip_for: [] },
-        { agent: 'a2', layer: 0, skip_for: [] },
-        { agent: 'b1', layer: 1, skip_for: [] },
-        { agent: 'b2', layer: 1, skip_for: [] },
+        { agent: 'a1', layer: 0 },
+        { agent: 'a2', layer: 0 },
+        { agent: 'b1', layer: 1 },
+        { agent: 'b2', layer: 1 },
       ]
       const { container } = renderEditor({ value: entries })
 

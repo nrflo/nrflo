@@ -73,7 +73,6 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 		Name:         req.Name,
 		Status:       model.ChainStatusPending,
 		WorkflowName: req.WorkflowName,
-		Category:     req.Category,
 		EpicTicketID: req.EpicTicketID,
 	}
 

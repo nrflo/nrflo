@@ -1,18 +1,15 @@
-import { useState, useMemo } from 'react'
-import { Plus, Trash2, X, AlertTriangle } from 'lucide-react'
+import { useMemo } from 'react'
+import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 
 export interface PhaseFormEntry {
   agent: string
   layer: number
-  skip_for: string[]
 }
 
 interface PhaseListEditorProps {
   value: PhaseFormEntry[]
   onChange: (phases: PhaseFormEntry[]) => void
-  categories: string[]
 }
 
 /** Check fan-in: if layer N has >1 agent, next non-empty layer must have exactly 1 agent */
@@ -35,9 +32,7 @@ function getFanInErrors(entries: PhaseFormEntry[]): Record<number, string> {
   return errors
 }
 
-export function PhaseListEditor({ value, onChange, categories }: PhaseListEditorProps) {
-  const [skipInput, setSkipInput] = useState<Record<number, string>>({})
-
+export function PhaseListEditor({ value, onChange }: PhaseListEditorProps) {
   const fanInErrors = useMemo(() => getFanInErrors(value), [value])
 
   const update = (index: number, entry: PhaseFormEntry) => {
@@ -52,18 +47,7 @@ export function PhaseListEditor({ value, onChange, categories }: PhaseListEditor
 
   const add = () => {
     const maxLayer = value.length > 0 ? Math.max(...value.map((e) => e.layer)) : -1
-    onChange([...value, { agent: '', layer: maxLayer + 1, skip_for: [] }])
-  }
-
-  const addSkipFor = (index: number, cat: string) => {
-    const entry = value[index]
-    if (!cat || entry.skip_for.includes(cat)) return
-    update(index, { ...entry, skip_for: [...entry.skip_for, cat] })
-  }
-
-  const removeSkipFor = (index: number, cat: string) => {
-    const entry = value[index]
-    update(index, { ...entry, skip_for: entry.skip_for.filter((c) => c !== cat) })
+    onChange([...value, { agent: '', layer: maxLayer + 1 }])
   }
 
   // Group entries by layer for display
@@ -99,7 +83,7 @@ export function PhaseListEditor({ value, onChange, categories }: PhaseListEditor
                 )}
               </div>
             )}
-            <div className="flex items-start gap-2 p-2 border border-border rounded-lg bg-muted/20">
+            <div className="flex items-center gap-2 p-2 border border-border rounded-lg bg-muted/20">
               <div className="shrink-0 w-16">
                 <label className="block text-[10px] text-muted-foreground mb-0.5">Layer</label>
                 <input
@@ -111,7 +95,7 @@ export function PhaseListEditor({ value, onChange, categories }: PhaseListEditor
                 />
               </div>
 
-              <div className="flex-1 space-y-1.5">
+              <div className="flex-1">
                 <input
                   type="text"
                   value={entry.agent}
@@ -120,59 +104,13 @@ export function PhaseListEditor({ value, onChange, categories }: PhaseListEditor
                   required
                   className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm"
                 />
-
-                <div className="flex flex-wrap items-center gap-1">
-                  {entry.skip_for.map((cat) => (
-                    <Badge key={cat} variant="secondary" className="text-xs gap-1 pr-1">
-                      {cat}
-                      <button
-                        type="button"
-                        onClick={() => removeSkipFor(i, cat)}
-                        className="hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-
-                  {categories
-                    .filter((c) => !entry.skip_for.includes(c))
-                    .map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => addSkipFor(i, cat)}
-                        className="text-xs px-1.5 py-0.5 rounded border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
-                      >
-                        +{cat}
-                      </button>
-                    ))}
-
-                  <input
-                    type="text"
-                    value={skipInput[i] || ''}
-                    onChange={(e) => setSkipInput({ ...skipInput, [i]: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        const val = (skipInput[i] || '').trim()
-                        if (val) {
-                          addSkipFor(i, val)
-                          setSkipInput({ ...skipInput, [i]: '' })
-                        }
-                      }
-                    }}
-                    placeholder="skip_for..."
-                    className="w-24 rounded border border-border bg-background px-1.5 py-0.5 text-xs"
-                  />
-                </div>
               </div>
 
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0 mt-5"
+                className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
                 onClick={() => remove(i)}
                 title="Remove agent"
               >

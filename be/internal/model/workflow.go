@@ -1,34 +1,23 @@
 package model
 
 import (
-	"database/sql"
 	"encoding/json"
 	"time"
 )
 
 // Workflow represents a workflow definition stored in the database
 type Workflow struct {
-	ID          string         `json:"id"`
-	ProjectID   string         `json:"project_id"`
-	Description string         `json:"description"`
-	ScopeType   string         `json:"scope_type"` // "ticket" or "project"
-	Categories  sql.NullString `json:"-"`           // JSON array string
-	Phases      string         `json:"-"`           // JSON array string
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	ID          string    `json:"id"`
+	ProjectID   string    `json:"project_id"`
+	Description string    `json:"description"`
+	ScopeType   string    `json:"scope_type"` // "ticket" or "project"
+	Phases      string    `json:"-"`           // JSON array string
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // MarshalJSON implements custom JSON marshaling for Workflow
 func (w Workflow) MarshalJSON() ([]byte, error) {
-	// Parse categories from JSON string to []string
-	var categories []string
-	if w.Categories.Valid && w.Categories.String != "" {
-		_ = json.Unmarshal([]byte(w.Categories.String), &categories)
-	}
-	if categories == nil {
-		categories = []string{}
-	}
-
 	// Parse phases from JSON string to []interface{}
 	var phases []interface{}
 	if w.Phases != "" {
@@ -48,7 +37,6 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		ProjectID   string        `json:"project_id"`
 		Description string        `json:"description"`
 		ScopeType   string        `json:"scope_type"`
-		Categories  []string      `json:"categories"`
 		Phases      []interface{} `json:"phases"`
 		CreatedAt   time.Time     `json:"created_at"`
 		UpdatedAt   time.Time     `json:"updated_at"`
@@ -57,7 +45,6 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		ProjectID:   w.ProjectID,
 		Description: w.Description,
 		ScopeType:   scopeType,
-		Categories:  categories,
 		Phases:      phases,
 		CreatedAt:   w.CreatedAt,
 		UpdatedAt:   w.UpdatedAt,

@@ -197,7 +197,6 @@ func (s *Server) handleRunEpicWorkflow(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		WorkflowName string `json:"workflow_name"`
-		Category     string `json:"category"`
 		Start        bool   `json:"start"`
 	}
 	if err := readJSON(r, &body); err != nil {
@@ -256,7 +255,6 @@ func (s *Server) handleRunEpicWorkflow(w http.ResponseWriter, r *http.Request) {
 	chain, err := chainSvc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         fmt.Sprintf("Epic: %s", ticket.Title),
 		WorkflowName: body.WorkflowName,
-		Category:     body.Category,
 		EpicTicketID: ticketID,
 		TicketIDs:    childIDs,
 	})

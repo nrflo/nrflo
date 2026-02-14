@@ -49,7 +49,6 @@ func TestAgentSessionNullTicketID(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "session-null-test",
 		Description: "Test null ticket_id",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -115,7 +114,6 @@ func TestWorkflowInstanceScopeTypeColumn(t *testing.T) {
 	_, err = env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "scope-col-test",
 		Description: "Test scope column",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -168,7 +166,6 @@ func TestWorkflowScopeTypeColumn(t *testing.T) {
 	_, err = env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-wf-scope",
 		Description: "Project workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -228,7 +225,6 @@ func TestProjectWorkflowUpdateScopeType(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "update-scope",
 		Description: "Test scope update",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "ticket",
 	})
@@ -286,7 +282,6 @@ func TestProjectWorkflowInvalidScopeTypeUpdate(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "invalid-update",
 		Description: "Test invalid update",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "ticket",
 	})

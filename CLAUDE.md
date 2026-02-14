@@ -34,14 +34,13 @@ Update [ui/CLAUDE.md](ui/CLAUDE.md) when modifying:
 
 Agents are grouped by `layer` number. All agents in the same layer run concurrently; layers execute in ascending order. The spawner validates:
 - All agents in prior layers are completed or skipped before the current layer starts
-- Category-based skip rules are applied per agent via `skip_for`
 - Fan-in: if a layer has multiple agents, the next layer must have exactly 1 agent
 - At least one agent in a layer must pass for the workflow to proceed (all-skipped continues)
 
 ### 3. State is Stored in Database Tables
 
 Workflow runtime state is stored in normalized database tables:
-- **`workflow_instances`** — one row per ticket+workflow, stores current phase, phase statuses, category, workflow-level findings
+- **`workflow_instances`** — one row per ticket+workflow, stores current phase, phase statuses, workflow-level findings
 - **`agent_sessions`** — one row per agent execution, stores result, pid, findings, timestamps
 - Active agents = `agent_sessions WHERE status = 'running'`
 - Agent history = `agent_sessions WHERE status != 'running'`
@@ -74,16 +73,15 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 9. **Service Layer**: Business logic separated from HTTP handlers and socket handlers
 10. **Spawner in-process**: Spawner runs inside the server, broadcasts WebSocket events via direct hub (no socket fallback)
 11. **Layer-based execution**: Phases grouped by layer; same-layer agents run concurrently, layers execute sequentially with fan-in (pass_count >= 1)
-12. **Category-based skipping**: `skip_for` rules in workflow config
-13. **WebSocket real-time**: UI receives all real-time updates via WebSocket (`/api/v1/ws`), no REST polling
-14. **DB-stored workflow definitions**: Workflow definitions (phases, categories) stored in `workflows` table, managed via `/api/v1/workflows` API
-15. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB.
-16. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator groups phases by layer and runs all agents in each layer concurrently (one goroutine per agent calling `spawner.Spawn()`), with cancellation support via `/workflow/stop`.
-17. **Low-context relaunch**: When an agent's context drops below threshold (default ~25% remaining, configurable per agent via `restart_threshold` in agent_definitions), the spawner kills the agent, resumes with `claude --resume` instructing it to save progress under the `to_resume` findings key, then spawns a fresh agent with `${PREVIOUS_DATA}` populated from that `to_resume` key. Old sessions get `status='continued'` and are excluded from agent history.
-18. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.
-19. **Retry failed agent**: Users can retry a failed workflow from the failed layer via `POST /api/v1/tickets/:id/workflow/retry-failed` (or `/api/v1/projects/:id/workflow/retry-failed`) with `{workflow, session_id}`. This resets the workflow instance to active, resets phases in the failed layer to pending, increments retry_count, and re-runs the orchestration starting from the failed layer.
-20. **Project-scoped workflows**: Workflows can have `scope_type` of `ticket` (default) or `project`. Project-scoped workflows run at project level without requiring a ticket. API: `POST /api/v1/projects/:id/workflow/run`, `GET /api/v1/projects/:id/workflow`, `GET /api/v1/projects/:id/agents`. Project agents cannot use `${TICKET_ID}`, `${TICKET_TITLE}`, or `${TICKET_DESCRIPTION}` template variables.
-21. **Agent callbacks**: A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer (e.g., implementor). The orchestrator saves `_callback` metadata (instructions, from_agent, level) to workflow instance findings, resets phases/sessions from the target layer forward, and jumps the execution loop back. The target agent's prompt can include `${CALLBACK_INSTRUCTIONS}` to receive the callback instructions. After the callback target layer completes successfully, `_callback` is cleared from findings. Max 3 callbacks per workflow run.
+12. **WebSocket real-time**: UI receives all real-time updates via WebSocket (`/api/v1/ws`), no REST polling
+13. **DB-stored workflow definitions**: Workflow definitions (phases) stored in `workflows` table, managed via `/api/v1/workflows` API
+14. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB.
+15. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator groups phases by layer and runs all agents in each layer concurrently (one goroutine per agent calling `spawner.Spawn()`), with cancellation support via `/workflow/stop`.
+16. **Low-context relaunch**: When an agent's context drops below threshold (default ~25% remaining, configurable per agent via `restart_threshold` in agent_definitions), the spawner kills the agent, resumes with `claude --resume` instructing it to save progress under the `to_resume` findings key, then spawns a fresh agent with `${PREVIOUS_DATA}` populated from that `to_resume` key. Old sessions get `status='continued'` and are excluded from agent history.
+17. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.
+18. **Retry failed agent**: Users can retry a failed workflow from the failed layer via `POST /api/v1/tickets/:id/workflow/retry-failed` (or `/api/v1/projects/:id/workflow/retry-failed`) with `{workflow, session_id}`. This resets the workflow instance to active, resets phases in the failed layer to pending, increments retry_count, and re-runs the orchestration starting from the failed layer.
+19. **Project-scoped workflows**: Workflows can have `scope_type` of `ticket` (default) or `project`. Project-scoped workflows run at project level without requiring a ticket. API: `POST /api/v1/projects/:id/workflow/run`, `GET /api/v1/projects/:id/workflow`, `GET /api/v1/projects/:id/agents`. Project agents cannot use `${TICKET_ID}`, `${TICKET_TITLE}`, or `${TICKET_DESCRIPTION}` template variables.
+20. **Agent callbacks**: A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer (e.g., implementor). The orchestrator saves `_callback` metadata (instructions, from_agent, level) to workflow instance findings, resets phases/sessions from the target layer forward, and jumps the execution loop back. The target agent's prompt can include `${CALLBACK_INSTRUCTIONS}` to receive the callback instructions. After the callback target layer completes successfully, `_callback` is cleared from findings. Max 3 callbacks per workflow run.
 
 ## Quick Start
 
@@ -143,21 +141,13 @@ All ticket/deps commands use `--server` (default `NRWORKFLOW_API_URL` or `http:/
 
 Each phase entry must be an object with a required `layer` field:
 ```json
-{"agent": "setup-analyzer", "layer": 0, "skip_for": ["docs"]}
+{"agent": "setup-analyzer", "layer": 0}
 ```
 
 - `layer` (required): Integer >= 0. Same-layer agents run concurrently.
 - `agent` (required): Agent definition ID.
-- `skip_for` (optional): Categories for which this agent is skipped.
 - String-only entries and `parallel` field are rejected.
 - Supported models: `opus`, `sonnet`, `haiku`, `gpt_5.3`.
-
-### Categories
-
-Categories are defined per workflow in the `categories` field. Phase skipping is controlled by per-phase `skip_for` arrays. Common examples:
-- `full` - All phases run
-- `simple` - Skip test-design (existing tests cover it)
-- `docs` - Skip test-design and verification
 
 ## State Storage
 
@@ -173,7 +163,6 @@ Workflow state is stored in normalized database tables. Multiple workflows can e
 | `scope_type` | `ticket` (default) or `project` |
 | `status` | `active` / `completed` / `failed` / `project_completed` |
 | `current_phase` | Currently active phase ID |
-| `category` | Category for skip rules |
 | `phase_order` | JSON array of phase IDs |
 | `phases` | JSON: `{phase_id: {status, result}}` |
 | `findings` | JSON: workflow-level findings |
@@ -229,7 +218,6 @@ Each v4 workflow state contains:
   "workflow": "feature",
   "scope_type": "ticket",
   "current_phase": "implementation",
-  "category": "full",
   "status": "completed",
   "completed_at": "2025-01-01T05:23:45Z",
   "total_duration_sec": 19425.5,

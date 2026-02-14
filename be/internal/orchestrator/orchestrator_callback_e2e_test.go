@@ -24,8 +24,8 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 		{"agent": "verifier", "layer": 2},
 	})
 	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, categories, scope_type, created_at, updated_at)
-		VALUES ('callback-e2e', ?, 'Callback E2E workflow', ?, '["full"]', 'ticket', datetime('now'), datetime('now'))`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES ('callback-e2e', ?, 'Callback E2E workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
 		env.project, string(phasesJSON))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -138,8 +138,8 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 		{"agent": "verifier", "layer": 3},
 	})
 	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, categories, scope_type, created_at, updated_at)
-		VALUES ('multi-cb', ?, 'Multiple callback workflow', ?, '["full"]', 'ticket', datetime('now'), datetime('now'))`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES ('multi-cb', ?, 'Multiple callback workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
 		env.project, string(phasesJSON))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -230,8 +230,8 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 		{"agent": "deployer", "layer": 3},
 	})
 	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, categories, scope_type, created_at, updated_at)
-		VALUES ('leak-test', ?, 'Leak test workflow', ?, '["full"]', 'ticket', datetime('now'), datetime('now'))`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES ('leak-test', ?, 'Leak test workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
 		env.project, string(phasesJSON))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -302,8 +302,8 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 		{"agent": "builder", "layer": 1},
 	})
 	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, categories, scope_type, created_at, updated_at)
-		VALUES ('proj-cb', ?, 'Project callback workflow', ?, '["full"]', 'project', datetime('now'), datetime('now'))`,
+		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
+		VALUES ('proj-cb', ?, 'Project callback workflow', ?, 'project', datetime('now'), datetime('now'))`,
 		env.project, string(phasesJSON))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)

@@ -24,7 +24,6 @@ function makeFailedHistoryEntry(overrides: Partial<AgentHistoryEntry> = {}): Age
     agent_type: 'implementor',
     phase: 'implementation',
     model_id: 'claude-sonnet-4-5',
-    status: 'failed',
     result: 'fail',
     started_at: '2026-01-01T00:00:00Z',
     ended_at: '2026-01-01T00:05:00Z',
@@ -353,7 +352,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
     it('retry button has red styling', () => {
       const agentHistory = [makeFailedHistoryEntry()]
 
-      const { container } = render(
+      render(
         <ActiveAgentsPanel
           agents={{}}
           onRetryFailed={vi.fn()}

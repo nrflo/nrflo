@@ -245,7 +245,6 @@ func seedWorkflowDef(t *testing.T, dbPath, projectID string) {
 	_, err = wfSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 	})
 	if err != nil {

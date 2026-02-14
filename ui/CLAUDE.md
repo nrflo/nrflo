@@ -42,7 +42,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/AgentDefForm.tsx` | Agent definition create/edit form |
 | `src/components/workflow/AgentDefCard.tsx` | Agent definition card with edit/delete |
 | `src/components/workflow/AgentDefsSection.tsx` | Agent definitions list within a workflow |
-| `src/components/workflow/PhaseListEditor.tsx` | Layer-aware phase list editor with skip_for tags and fan-in validation |
+| `src/components/workflow/PhaseListEditor.tsx` | Layer-aware phase list editor with fan-in validation |
 | `src/components/workflow/WorkflowDefForm.tsx` | Workflow definition create/edit form |
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs |
 | `src/components/workflow/RunProjectWorkflowDialog.tsx` | Dialog for starting project-scoped workflow runs (filters to scope_type=project) |
@@ -178,7 +178,7 @@ The panel also shows when a completed agent is selected from PhaseGraph (even af
 
 ```
 PhaseTimeline (src/components/workflow/PhaseTimeline.tsx)
-├── Workflow metadata badges (version, category, current phase)
+├── Workflow metadata badges (version, current phase)
 ├── PhaseGraph (src/components/workflow/PhaseGraph/)
 │   ├── PhaseGraph.tsx - Main container using React Flow (@xyflow/react)
 │   ├── AgentFlowNode.tsx - Custom React Flow node for agents (clickable, opens modal)
@@ -374,7 +374,7 @@ const ws = new WebSocket('ws://localhost:6587/api/v1/ws')
 | `agent_def.created` | workflow_id, agent_id | Agent definition created |
 | `agent_def.updated` | workflow_id, agent_id | Agent definition updated |
 | `agent_def.deleted` | workflow_id, agent_id | Agent definition deleted |
-| `orchestration.started` | instance_id, category | Orchestrated workflow run started |
+| `orchestration.started` | instance_id | Orchestrated workflow run started |
 | `orchestration.completed` | instance_id | Orchestrated workflow run completed |
 | `orchestration.failed` | instance_id, reason | Orchestrated workflow run failed |
 | `orchestration.retried` | instance_id | Failed workflow retry started |

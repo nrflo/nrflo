@@ -20,7 +20,6 @@ func TestGetProjectAgentSessions_HappyPath(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-agents-test",
 		Description: "Project workflow for agent sessions",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -31,7 +30,6 @@ func TestGetProjectAgentSessions_HappyPath(t *testing.T) {
 	// Init project workflow
 	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-agents-test",
-		Category: "full",
 	})
 	if err != nil {
 		t.Fatalf("failed to init project workflow: %v", err)
@@ -106,7 +104,6 @@ func TestGetProjectAgentSessions_PhaseFilter(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-phase-filter",
 		Description: "Test phase filtering",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -173,7 +170,6 @@ func TestGetProjectAgentSessions_ExcludesTicketScoped(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-exclude-test",
 		Description: "Test exclusion",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -239,7 +235,6 @@ func TestGetProjectAgentSessions_FindingsAggregation(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-findings",
 		Description: "Test findings",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -300,7 +295,6 @@ func TestGetProjectAgentSessions_MultipleWorkflows(t *testing.T) {
 		_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 			ID:          wf,
 			Description: "Test workflow " + wf,
-			Categories:  []string{"full"},
 			Phases:      phasesJSON,
 			ScopeType:   "project",
 		})
@@ -357,7 +351,6 @@ func TestGetProjectAgentSessions_CaseInsensitiveProjectID(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "case-test",
 		Description: "Case test",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -404,7 +397,6 @@ func TestGetProjectAgentSessions_EmptyStringTicketID(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "empty-test",
 		Description: "Empty string test",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})

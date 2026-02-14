@@ -186,7 +186,6 @@ export function ChainDetailPage() {
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span>Workflow: {displayChain.workflow_name}</span>
-            {displayChain.category && <span>Category: {displayChain.category}</span>}
             <span>Created {formatRelativeTime(displayChain.created_at)}</span>
             <span>
               {completedCount}/{items.length} items completed

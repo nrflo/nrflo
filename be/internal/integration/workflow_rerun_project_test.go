@@ -26,7 +26,6 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "rerun-test",
 		Description: "Test rerun workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -37,7 +36,6 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	// Initialize project workflow
 	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "rerun-test",
-		Category: "full",
 	})
 	if err != nil {
 		t.Fatalf("failed to init project workflow: %v", err)
@@ -86,7 +84,6 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	result, err := orch.Start(ctx, orchestrator.RunRequest{
 		ProjectID:    env.ProjectID,
 		WorkflowName: "rerun-test",
-		Category:     "full",
 		ScopeType:    "project",
 	})
 
@@ -153,7 +150,6 @@ func TestRerunActiveProjectWorkflowIsBlocked(t *testing.T) {
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "active-block-test",
 		Description: "Test blocking active workflow",
-		Categories:  []string{"full"},
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -164,7 +160,6 @@ func TestRerunActiveProjectWorkflowIsBlocked(t *testing.T) {
 	// Initialize project workflow
 	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "active-block-test",
-		Category: "full",
 	})
 	if err != nil {
 		t.Fatalf("failed to init project workflow: %v", err)
@@ -177,7 +172,6 @@ func TestRerunActiveProjectWorkflowIsBlocked(t *testing.T) {
 	result1, err := orch.Start(ctx, orchestrator.RunRequest{
 		ProjectID:    env.ProjectID,
 		WorkflowName: "active-block-test",
-		Category:     "full",
 		ScopeType:    "project",
 	})
 	if err != nil {
@@ -196,7 +190,6 @@ func TestRerunActiveProjectWorkflowIsBlocked(t *testing.T) {
 		_, err = orch.Start(ctx, orchestrator.RunRequest{
 			ProjectID:    env.ProjectID,
 			WorkflowName: "active-block-test",
-			Category:     "full",
 			ScopeType:    "project",
 		})
 		if err == nil {
@@ -259,7 +252,6 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 		ProjectID:    env.ProjectID,
 		TicketID:     "TICKET-1",
 		WorkflowName: "test",
-		Category:     "full",
 		ScopeType:    "ticket",
 	})
 
@@ -316,7 +308,6 @@ func TestMultipleProjectWorkflowsListed(t *testing.T) {
 		_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 			ID:          wf.id,
 			Description: "Test workflow",
-			Categories:  []string{"full"},
 			Phases:      phasesJSON,
 			ScopeType:   "project",
 		})
@@ -327,7 +318,6 @@ func TestMultipleProjectWorkflowsListed(t *testing.T) {
 		// Initialize workflow
 		err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 			Workflow: wf.id,
-			Category: "full",
 		})
 		if err != nil {
 			t.Fatalf("failed to init project workflow %s: %v", wf.id, err)

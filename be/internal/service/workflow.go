@@ -200,7 +200,6 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 		"initialized_at": wi.CreatedAt.Format(time.RFC3339),
 		"scope_type":     scopeType,
 		"current_phase":  "",
-		"category":       "",
 		"retry_count":    wi.RetryCount,
 		"phases":         wi.GetPhases(),
 		"phase_order":    wi.GetPhaseOrder(),
@@ -209,9 +208,6 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	}
 	if wi.CurrentPhase.Valid {
 		result["current_phase"] = wi.CurrentPhase.String
-	}
-	if wi.Category.Valid {
-		result["category"] = wi.Category.String
 	}
 	if wi.ParentSession.Valid {
 		result["parent_session"] = wi.ParentSession.String
@@ -252,7 +248,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	return result
 }
 
-// Set sets a workflow field (restricted to category, current_phase, retry_count)
+// Set sets a workflow field (restricted to current_phase, retry_count, parent_session)
 func (s *WorkflowService) Set(projectID, ticketID string, req *types.WorkflowSetRequest) error {
 	if req.Workflow == "" {
 		return fmt.Errorf("workflow is required")
@@ -264,8 +260,6 @@ func (s *WorkflowService) Set(projectID, ticketID string, req *types.WorkflowSet
 	}
 
 	switch req.Key {
-	case "category":
-		return s.wfiRepo.UpdateCategory(wi.ID, req.Value)
 	case "current_phase":
 		return s.wfiRepo.UpdateCurrentPhase(wi.ID, req.Value)
 	case "retry_count":
@@ -281,7 +275,7 @@ func (s *WorkflowService) Set(projectID, ticketID string, req *types.WorkflowSet
 			sql.NullString{String: req.Value, Valid: req.Value != ""}, now, wi.ID)
 		return err
 	default:
-		return fmt.Errorf("unknown key '%s'. Allowed: category, current_phase, retry_count, parent_session", req.Key)
+		return fmt.Errorf("unknown key '%s'. Allowed: current_phase, retry_count, parent_session", req.Key)
 	}
 }
 

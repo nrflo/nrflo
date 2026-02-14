@@ -50,7 +50,6 @@ function createMockWorkflowDef(id: string, overrides: Partial<WorkflowDef> = {})
     project_id: 'test-project',
     description: `${id} workflow`,
     scope_type: 'ticket',
-    categories: ['full', 'simple'],
     phases: [],
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -65,7 +64,6 @@ function createMockChain(overrides: Partial<ChainExecution> = {}): ChainExecutio
     name: 'Test Chain',
     status: 'pending',
     workflow_name: 'feature',
-    category: 'full',
     created_by: 'test-user',
     total_items: 2,
     completed_items: 0,
@@ -220,8 +218,8 @@ describe('CreateChainDialog - Create Mode', () => {
     })
     mockUseQuery.mockReturnValue({
       data: {
-        feature: createMockWorkflowDef('feature', { categories: ['full', 'simple'] }),
-        bugfix: createMockWorkflowDef('bugfix', { categories: ['quick'] }),
+        feature: createMockWorkflowDef('feature'),
+        bugfix: createMockWorkflowDef('bugfix'),
       },
       isLoading: false,
     })
@@ -285,33 +283,6 @@ describe('CreateChainDialog - Create Mode', () => {
     expect(workflowSelect.value).toBe('feature')
   })
 
-  it('displays category selector when workflow has categories', () => {
-    mockUseCreateChain.mockReturnValue({
-      mutateAsync: vi.fn(),
-      isPending: false,
-      error: null,
-    })
-
-    renderDialog()
-
-    expect(screen.getByLabelText(/category/i)).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'full' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'simple' })).toBeInTheDocument()
-  })
-
-  it('auto-selects first category when workflow is selected', () => {
-    mockUseCreateChain.mockReturnValue({
-      mutateAsync: vi.fn(),
-      isPending: false,
-      error: null,
-    })
-
-    renderDialog()
-
-    const categorySelect = screen.getByLabelText(/category/i) as HTMLSelectElement
-    expect(categorySelect.value).toBe('full')
-  })
-
   it('calls createChain mutation with correct data on submit', async () => {
     const user = userEvent.setup()
     const mutateAsync = vi.fn().mockResolvedValue({})
@@ -346,7 +317,7 @@ describe('CreateChainDialog - Edit Mode', () => {
     })
     mockUseQuery.mockReturnValue({
       data: {
-        feature: createMockWorkflowDef('feature', { categories: ['full', 'simple'] }),
+        feature: createMockWorkflowDef('feature'),
       },
       isLoading: false,
     })
@@ -397,22 +368,6 @@ describe('CreateChainDialog - Edit Mode', () => {
     })
   })
 
-  it('pre-selects category from existing chain', async () => {
-    const chain = createMockChain({ category: 'simple' })
-    mockUseUpdateChain.mockReturnValue({
-      mutateAsync: vi.fn(),
-      isPending: false,
-      error: null,
-    })
-
-    renderDialog(true, chain)
-
-    await waitFor(() => {
-      const categorySelect = screen.getByLabelText(/category/i) as HTMLSelectElement
-      expect(categorySelect.value).toBe('simple')
-    })
-  })
-
   it('disables workflow selector in edit mode', async () => {
     const chain = createMockChain()
     mockUseUpdateChain.mockReturnValue({
@@ -426,22 +381,6 @@ describe('CreateChainDialog - Edit Mode', () => {
     await waitFor(() => {
       const workflowSelect = screen.getByLabelText(/workflow/i)
       expect(workflowSelect).toBeDisabled()
-    })
-  })
-
-  it('disables category selector in edit mode', async () => {
-    const chain = createMockChain()
-    mockUseUpdateChain.mockReturnValue({
-      mutateAsync: vi.fn(),
-      isPending: false,
-      error: null,
-    })
-
-    renderDialog(true, chain)
-
-    await waitFor(() => {
-      const categorySelect = screen.getByLabelText(/category/i)
-      expect(categorySelect).toBeDisabled()
     })
   })
 

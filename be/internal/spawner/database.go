@@ -122,7 +122,7 @@ func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*m
 	return wi, nil
 }
 
-// validateAndAdvancePhase validates phase order and auto-skips phases with matching skip_for rules.
+// validateAndAdvancePhase validates phase order.
 // Returns (phaseID, shouldSkip, error). Uses workflow_instances table for state.
 // With layer-based execution, validates that all agents in prior layers are completed.
 func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowName, requestedAgent string) (string, bool, error) {
@@ -144,18 +144,8 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 	}
 
 	phases := wi.GetPhases()
-	category := ""
-	if wi.Category.Valid {
-		category = wi.Category.String
-	}
 
-	// Check if requested phase should be skipped
-	if s.categoryMatchesSkipFor(category, requestedPhase.SkipFor) {
-		s.completePhase(wi.ID, wi.ProjectID, wi.TicketID, workflowName, requestedPhase.ID, "skipped")
-		return requestedPhase.ID, true, nil
-	}
-
-	// Validate that all agents in prior layers are completed or skipped
+	// Validate that all agents in prior layers are completed
 	for _, priorPhase := range workflow.Phases {
 		if priorPhase.Layer >= requestedPhase.Layer {
 			continue // same or later layer, skip validation
@@ -164,29 +154,11 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 		if exists && phaseStatus.Status == "completed" {
 			continue
 		}
-		// Check if phase can be auto-skipped due to category
-		if s.categoryMatchesSkipFor(category, priorPhase.SkipFor) {
-			s.completePhase(wi.ID, wi.ProjectID, wi.TicketID, workflowName, priorPhase.ID, "skipped")
-			continue
-		}
 		return "", false, fmt.Errorf("layer %d agent '%s' must complete before layer %d agent '%s'",
 			priorPhase.Layer, priorPhase.ID, requestedPhase.Layer, requestedPhase.ID)
 	}
 
 	return requestedPhase.ID, false, nil
-}
-
-// categoryMatchesSkipFor checks if the category matches any of the skip_for rules
-func (s *Spawner) categoryMatchesSkipFor(category string, skipFor []string) bool {
-	if category == "" || len(skipFor) == 0 {
-		return false
-	}
-	for _, skip := range skipFor {
-		if skip == category {
-			return true
-		}
-	}
-	return false
 }
 
 // startPhase marks a phase as in_progress using workflow_instances table

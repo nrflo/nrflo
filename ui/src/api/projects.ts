@@ -5,6 +5,7 @@ export interface Project {
   name: string
   root_path: string | null
   default_workflow: string | null
+  default_branch: string | null
   created_at: string
   updated_at: string
 }
@@ -18,12 +19,14 @@ export interface CreateProjectRequest {
   name: string
   root_path?: string
   default_workflow?: string
+  default_branch?: string
 }
 
 export interface UpdateProjectRequest {
   name?: string
   root_path?: string
   default_workflow?: string
+  default_branch?: string
 }
 
 export async function listProjects(): Promise<ProjectsResponse> {

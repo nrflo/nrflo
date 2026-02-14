@@ -41,6 +41,7 @@ type ProjectCreateRequest struct {
 	Name            string `json:"name,omitempty"`
 	RootPath        string `json:"root_path,omitempty"`
 	DefaultWorkflow string `json:"default_workflow,omitempty"`
+	DefaultBranch   string `json:"default_branch,omitempty"`
 }
 
 // WorkflowInitRequest is the request for initializing a workflow

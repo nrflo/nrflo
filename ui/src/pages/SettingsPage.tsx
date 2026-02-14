@@ -26,6 +26,7 @@ interface ProjectFormData {
   name: string
   root_path: string
   default_workflow: string
+  default_branch: string
 }
 
 const emptyForm: ProjectFormData = {
@@ -33,6 +34,7 @@ const emptyForm: ProjectFormData = {
   name: '',
   root_path: '',
   default_workflow: '',
+  default_branch: '',
 }
 
 export function SettingsPage() {
@@ -106,6 +108,7 @@ export function SettingsPage() {
       name: project.name,
       root_path: project.root_path || '',
       default_workflow: project.default_workflow || '',
+      default_branch: project.default_branch || '',
     })
   }
 
@@ -122,6 +125,7 @@ export function SettingsPage() {
       name: formData.name.trim() || formData.id.trim(),
       root_path: formData.root_path.trim() || undefined,
       default_workflow: formData.default_workflow.trim() || undefined,
+      default_branch: formData.default_branch.trim() || undefined,
     })
   }
 
@@ -133,6 +137,7 @@ export function SettingsPage() {
         name: formData.name.trim() || undefined,
         root_path: formData.root_path.trim() || undefined,
         default_workflow: formData.default_workflow.trim() || undefined,
+        default_branch: formData.default_branch.trim() || undefined,
       },
     })
   }
@@ -226,6 +231,20 @@ export function SettingsPage() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Default Branch
+                    </label>
+                    <Input
+                      value={formData.default_branch}
+                      onChange={(e) =>
+                        setFormData({ ...formData, default_branch: e.target.value })
+                      }
+                      placeholder="main"
+                    />
+                  </div>
+                </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" onClick={handleCancel}>
                     Cancel
@@ -301,6 +320,20 @@ export function SettingsPage() {
                           />
                         </div>
                       </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">
+                            Default Branch
+                          </label>
+                          <Input
+                            value={formData.default_branch}
+                            onChange={(e) =>
+                              setFormData({ ...formData, default_branch: e.target.value })
+                            }
+                            placeholder="main"
+                          />
+                        </div>
+                      </div>
                       <div className="flex gap-2 justify-end">
                         <Button variant="ghost" onClick={handleCancel}>
                           <X className="h-4 w-4 mr-1" />
@@ -353,13 +386,18 @@ export function SettingsPage() {
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {project.root_path && <span>Path: {project.root_path}</span>}
-                            {project.root_path && project.default_workflow && (
-                              <span className="mx-2">|</span>
-                            )}
-                            {project.default_workflow && (
-                              <span>Workflow: {project.default_workflow}</span>
-                            )}
+                            {[
+                              project.root_path && `Path: ${project.root_path}`,
+                              project.default_workflow && `Workflow: ${project.default_workflow}`,
+                              project.default_branch && `Branch: ${project.default_branch}`,
+                            ]
+                              .filter(Boolean)
+                              .map((text, i, arr) => (
+                                <span key={i}>
+                                  {text}
+                                  {i < arr.length - 1 && <span className="mx-2">|</span>}
+                                </span>
+                              ))}
                           </div>
                         </div>
                       </div>

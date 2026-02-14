@@ -38,6 +38,7 @@ type CreateProjectRequest struct {
 	Name            string `json:"name"`
 	RootPath        string `json:"root_path,omitempty"`
 	DefaultWorkflow string `json:"default_workflow,omitempty"`
+	DefaultBranch   string `json:"default_branch,omitempty"`
 }
 
 // handleCreateProject creates a new project
@@ -73,6 +74,9 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.DefaultWorkflow != "" {
 		project.DefaultWorkflow = sql.NullString{String: req.DefaultWorkflow, Valid: true}
+	}
+	if req.DefaultBranch != "" {
+		project.DefaultBranch = sql.NullString{String: req.DefaultBranch, Valid: true}
 	}
 
 	if err := projectRepo.Create(project); err != nil {
@@ -131,6 +135,7 @@ type UpdateProjectRequest struct {
 	Name            *string `json:"name,omitempty"`
 	RootPath        *string `json:"root_path,omitempty"`
 	DefaultWorkflow *string `json:"default_workflow,omitempty"`
+	DefaultBranch   *string `json:"default_branch,omitempty"`
 }
 
 // handleUpdateProject updates a project
@@ -154,6 +159,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		Name:            req.Name,
 		RootPath:        req.RootPath,
 		DefaultWorkflow: req.DefaultWorkflow,
+		DefaultBranch:   req.DefaultBranch,
 	}
 
 	if err := projectRepo.Update(id, fields); err != nil {

@@ -53,14 +53,18 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 	if req.DefaultWorkflow != "" {
 		project.DefaultWorkflow = sql.NullString{String: req.DefaultWorkflow, Valid: true}
 	}
+	if req.DefaultBranch != "" {
+		project.DefaultBranch = sql.NullString{String: req.DefaultBranch, Valid: true}
+	}
 
 	_, err = s.pool.Exec(`
-		INSERT INTO projects (id, name, root_path, default_workflow, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
+		INSERT INTO projects (id, name, root_path, default_workflow, default_branch, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		projectID,
 		project.Name,
 		project.RootPath,
 		project.DefaultWorkflow,
+		project.DefaultBranch,
 		now,
 		now,
 	)
@@ -80,12 +84,13 @@ func (s *ProjectService) Get(projectID string) (*model.Project, error) {
 	var createdAt, updatedAt string
 
 	err := s.pool.QueryRow(`
-		SELECT id, name, root_path, default_workflow, created_at, updated_at
+		SELECT id, name, root_path, default_workflow, default_branch, created_at, updated_at
 		FROM projects WHERE LOWER(id) = LOWER(?)`, projectID).Scan(
 		&project.ID,
 		&project.Name,
 		&project.RootPath,
 		&project.DefaultWorkflow,
+		&project.DefaultBranch,
 		&createdAt,
 		&updatedAt,
 	)
@@ -105,7 +110,7 @@ func (s *ProjectService) Get(projectID string) (*model.Project, error) {
 // List lists all projects
 func (s *ProjectService) List() ([]*model.Project, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, name, root_path, default_workflow, created_at, updated_at
+		SELECT id, name, root_path, default_workflow, default_branch, created_at, updated_at
 		FROM projects
 		ORDER BY created_at DESC`)
 	if err != nil {
@@ -123,6 +128,7 @@ func (s *ProjectService) List() ([]*model.Project, error) {
 			&project.Name,
 			&project.RootPath,
 			&project.DefaultWorkflow,
+			&project.DefaultBranch,
 			&createdAt,
 			&updatedAt,
 		)

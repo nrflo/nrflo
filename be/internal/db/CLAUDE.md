@@ -33,6 +33,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    name          TEXT NOT NULL                                       │
 │    root_path     TEXT                                                │
 │    default_workflow TEXT                                             │
+│    default_branch TEXT                                               │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │                                                                      │

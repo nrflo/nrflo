@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -33,13 +32,12 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 // loadAgentDefinition loads the full agent definition from the DB.
 // Returns nil if not found (caller should fall back to defaults).
 func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string) *model.AgentDefinition {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return nil
 	}
-	defer database.Close()
 
-	adRepo := repo.NewAgentDefinitionRepo(database)
+	adRepo := repo.NewAgentDefinitionRepo(pool)
 	def, err := adRepo.Get(projectID, workflowName, agentType)
 	if err != nil {
 		return nil
@@ -49,13 +47,12 @@ func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string)
 
 // loadPromptContent loads the prompt content for an agent from the DB.
 func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (string, error) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open database: %w", err)
+	pool := s.pool()
+	if pool == nil {
+		return "", fmt.Errorf("failed to get database pool")
 	}
-	defer database.Close()
 
-	adRepo := repo.NewAgentDefinitionRepo(database)
+	adRepo := repo.NewAgentDefinitionRepo(pool)
 	def, err := adRepo.Get(projectID, workflowName, agentType)
 	if err != nil {
 		return "", fmt.Errorf("agent definition not found: %s (workflow=%s). Create via 'nrworkflow agent def create %s -w %s --prompt-file=<path>'", agentType, workflowName, agentType, workflowName)
@@ -68,14 +65,13 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 
 // fetchTicketInfo returns the ticket title and description for template expansion.
 func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, description string) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for ticket info: %v\n", err)
+	pool := s.pool()
+	if pool == nil {
+		fmt.Fprintf(os.Stderr, "Warning: no database pool for ticket info\n")
 		return ticketID, "_No description available_"
 	}
-	defer database.Close()
 
-	ticketRepo := repo.NewTicketRepo(database)
+	ticketRepo := repo.NewTicketRepo(pool)
 	ticket, err := ticketRepo.Get(projectID, ticketID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to fetch ticket %s: %v\n", ticketID, err)
@@ -93,15 +89,15 @@ func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, descriptio
 // fetchUserInstructions returns user_instructions from the workflow instance findings.
 // Uses wfiID directly when available; falls back to ticket-based lookup.
 func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID string) string {
-	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for user instructions: %v\n", err)
+	pool := s.pool()
+	if pool == nil {
+		fmt.Fprintf(os.Stderr, "Warning: no database pool for user instructions\n")
 		return "_No user instructions provided_"
 	}
-	defer pool.Close()
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	var wi *model.WorkflowInstance
+	var err error
 	if wfiID != "" {
 		wi, err = wfiRepo.Get(wfiID)
 	} else if ticketID != "" {
@@ -129,15 +125,15 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID
 // fetchCallbackInstructions returns callback instructions from the workflow instance findings.
 // Uses wfiID directly when available; falls back to ticket-based lookup.
 func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, wfiID string) string {
-	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for callback instructions: %v\n", err)
+	pool := s.pool()
+	if pool == nil {
+		fmt.Fprintf(os.Stderr, "Warning: no database pool for callback instructions\n")
 		return "_No callback instructions_"
 	}
-	defer pool.Close()
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	var wi *model.WorkflowInstance
+	var err error
 	if wfiID != "" {
 		wi, err = wfiRepo.Get(wfiID)
 	} else if ticketID != "" {

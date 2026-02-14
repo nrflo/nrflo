@@ -53,6 +53,10 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 - All agents skipped → layer passes
 - `pass_count == 0` → workflow fails
 
+## Connection Pool
+
+The orchestrator's `runLoop` creates a shared `*db.Pool` for the entire workflow run and passes it to all spawners via `spawner.Config.Pool`. This avoids per-call `db.Open()`/`Close()` overhead in the spawner.
+
 ## Callback Flow
 
 A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer:
@@ -74,6 +78,7 @@ A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earl
 - On item completion: marks item done, starts next
 - On item failure: marks chain failed, releases locks
 - Crash recovery: zombie running chains marked failed on server startup
+- Uses `ws.EventChainUpdated` constant for WebSocket broadcasts
 
 ## Files
 

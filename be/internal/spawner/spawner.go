@@ -58,6 +58,8 @@ type Config struct {
 	MessageFlushIntervalMs int // Interval between message flushes (default: 2000)
 	// WebSocket hub for real-time updates (optional)
 	WSHub *ws.Hub
+	// Shared database connection pool (optional, falls back to DataPath per-call opens)
+	Pool *db.Pool
 }
 
 // processInfo tracks a single spawned agent process
@@ -142,6 +144,14 @@ func (s *Spawner) RequestRestart(sessionID string) {
 
 // Close is a no-op retained for API compatibility (e.g. orchestrator defer).
 func (s *Spawner) Close() {}
+
+// pool returns the shared connection pool, or nil if not configured.
+func (s *Spawner) pool() *db.Pool {
+	if s.config.Pool != nil {
+		return s.config.Pool
+	}
+	return nil
+}
 
 // broadcast sends a WebSocket event via the in-process hub
 func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, data map[string]interface{}) {
@@ -572,6 +582,9 @@ func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
 // All-skipped counts as success (continue to next layer).
 // Returns CallbackError if any agent completed with CALLBACK status.
 func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, req SpawnRequest, phase string) error {
+	// Clean up coalescing map entries for completed sessions
+	cleanupBroadcastCoalescing(completed)
+
 	for _, proc := range completed {
 		logger.Info(ctx, "agent result", "phase", phase, "model", proc.modelID, "status", proc.finalStatus, "duration", proc.elapsed.Round(time.Second))
 	}
@@ -635,13 +648,12 @@ func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, r
 
 // readCallbackFindings reads callback_level and callback_instructions from agent session findings.
 func (s *Spawner) readCallbackFindings(proc *processInfo) (int, string) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return 0, ""
 	}
-	defer database.Close()
 
-	sessionRepo := repo.NewAgentSessionRepo(database)
+	sessionRepo := repo.NewAgentSessionRepo(pool)
 	session, err := sessionRepo.Get(proc.sessionID)
 	if err != nil {
 		return 0, ""

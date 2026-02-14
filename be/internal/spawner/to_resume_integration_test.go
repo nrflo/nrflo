@@ -279,6 +279,7 @@ func setupE2ETestEnv(t *testing.T) *e2eTestEnv {
 
 	spawner := New(Config{
 		DataPath: dbPath,
+		Pool:     db.WrapAsPool(database),
 	})
 
 	return &e2eTestEnv{

@@ -35,9 +35,7 @@ export const chainKeys = {
 
 export function useChainList(
   params?: ListChainsParams,
-  options?: Omit<UseQueryOptions<ChainExecution[]>, 'queryKey' | 'queryFn'> & {
-    refetchInterval?: number | false
-  }
+  options?: Omit<UseQueryOptions<ChainExecution[]>, 'queryKey' | 'queryFn'>
 ) {
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
@@ -45,16 +43,13 @@ export function useChainList(
     queryKey: [...chainKeys.list(params), project],
     queryFn: () => listChains(params),
     enabled: projectsLoaded && (options?.enabled ?? true),
-    refetchInterval: options?.refetchInterval,
     ...options,
   })
 }
 
 export function useChain(
   id: string,
-  options?: Omit<UseQueryOptions<ChainExecution>, 'queryKey' | 'queryFn'> & {
-    refetchInterval?: number | false
-  }
+  options?: Omit<UseQueryOptions<ChainExecution>, 'queryKey' | 'queryFn'>
 ) {
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
@@ -62,7 +57,6 @@ export function useChain(
     queryKey: [...chainKeys.detail(id), project],
     queryFn: () => getChain(id),
     enabled: projectsLoaded && !!id && (options?.enabled ?? true),
-    refetchInterval: options?.refetchInterval,
     ...options,
   })
 }

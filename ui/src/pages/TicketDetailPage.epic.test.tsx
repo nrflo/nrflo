@@ -16,12 +16,8 @@ vi.mock('@/stores/projectStore', () => ({
     selector({ currentProject: 'test-project', projectsLoaded: true }),
 }))
 
-vi.mock('@/hooks/useWebSocket', () => ({
-  useWebSocket: () => ({
-    isConnected: true,
-    subscribe: vi.fn(),
-    unsubscribe: vi.fn(),
-  }),
+vi.mock('@/hooks/useWebSocketSubscription', () => ({
+  useWebSocketSubscription: () => ({ isConnected: true }),
 }))
 
 vi.mock('@/hooks/useChains', () => ({

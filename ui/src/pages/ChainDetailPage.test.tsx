@@ -717,7 +717,7 @@ describe('ChainDetailPage - Polling Behavior', () => {
     })
   })
 
-  it('enables polling when chain status is running', () => {
+  it('uses WS-only updates without polling', () => {
     const chain = createMockChain({ status: 'running' })
     mockUseChain.mockReturnValue({
       data: chain,
@@ -727,27 +727,7 @@ describe('ChainDetailPage - Polling Behavior', () => {
 
     renderChainDetailPage()
 
-    // After useEffect runs, polling should be enabled
-    // We check that useChain was called with refetchInterval
-    expect(mockUseChain).toHaveBeenCalledWith(
-      'chain-123',
-      expect.objectContaining({
-        enabled: true,
-      })
-    )
-  })
-
-  it('disables polling when chain status is not running', () => {
-    const chain = createMockChain({ status: 'completed' })
-    mockUseChain.mockReturnValue({
-      data: chain,
-      isLoading: false,
-      error: null,
-    })
-
-    renderChainDetailPage()
-
-    // Polling should be disabled for non-running chains
+    // Chain query should be enabled but without refetchInterval
     expect(mockUseChain).toHaveBeenCalledWith(
       'chain-123',
       expect.objectContaining({

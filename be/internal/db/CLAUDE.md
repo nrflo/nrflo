@@ -2,6 +2,13 @@
 
 SQLite database layer with connection pooling, auto-migration, and embedded SQL migration files.
 
+## Querier Interface
+
+`db.go` exports a `Querier` interface satisfied by both `*DB` and `*Pool`:
+- Methods: `Exec`, `Query`, `QueryRow`, `Begin`
+- Repos that don't need pool/DB-specific features accept `db.Querier`
+- Enables passing either `*DB` or `*Pool` to the same repo constructor
+
 ## Connection Pool
 
 `pool.go` manages the connection pool:
@@ -202,7 +209,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 | File | Purpose |
 |------|---------|
-| `db.go` | SQLite connection setup |
+| `db.go` | SQLite connection setup, `Querier` interface |
 | `pool.go` | Connection pool (10 max, 5 idle) |
 | `migrate.go` | Migration runner |
 | `migrations/` | SQL files (embedded via `//go:embed`) |

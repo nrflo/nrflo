@@ -69,7 +69,6 @@ export function useDailyStats() {
     queryKey: dailyStatsKeys.current(project),
     queryFn: () => getDailyStats(),
     enabled: projectsLoaded,
-    refetchInterval: 30000,
   })
 }
 
@@ -229,9 +228,7 @@ export function useUpdateWorkflow() {
 export function useAgentSessions(
   ticketId: string,
   phase?: string,
-  options?: Omit<UseQueryOptions<AgentSessionsResponse>, 'queryKey' | 'queryFn'> & {
-    refetchInterval?: number | false
-  }
+  options?: Omit<UseQueryOptions<AgentSessionsResponse>, 'queryKey' | 'queryFn'>
 ) {
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
@@ -239,7 +236,6 @@ export function useAgentSessions(
     queryKey: [...ticketKeys.agentSessions(ticketId, phase), project],
     queryFn: () => getAgentSessions(ticketId, phase),
     enabled: projectsLoaded && !!ticketId && (options?.enabled ?? true),
-    refetchInterval: options?.refetchInterval,
     ...options,
   })
 }
@@ -299,7 +295,6 @@ export function useSessionMessages(
     queryFn: () => getSessionMessages(sessionId!),
     enabled: !!sessionId && (options?.enabled ?? true),
     staleTime: options?.isRunning ? 2000 : 30000,
-    refetchInterval: options?.isRunning ? 3000 : false,
   })
 }
 

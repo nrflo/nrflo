@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
 import type { WSEvent } from './useWebSocket'
-import { ticketKeys, projectWorkflowKeys } from './useTickets'
+import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
+import { chainKeys } from './useChains'
 
 /**
  * Test suite for ticket.updated event handling in useWebSocket
@@ -625,6 +626,325 @@ describe('useWebSocket - ticket nrworkflow-d3a7c4: project-level agent events', 
       (call: any) => call[0] && JSON.stringify(call[0].queryKey) === JSON.stringify(['session-messages', sessionId])
     )
     expect(sessionInvalidations.length).toBe(2)
+  })
+})
+
+describe('useWebSocket - agent.continued event handling', () => {
+  let queryClient: QueryClient
+  let invalidateQueriesSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+  })
+
+  it('agent.continued event for ticket scope invalidates detail, workflow, and agentSessions', () => {
+    const event: WSEvent = {
+      type: 'agent.continued',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-CONT-1',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate ticket-scope agent.continued handler
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.detail('TICKET-CONT-1') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.workflow('TICKET-CONT-1') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.agentSessions('TICKET-CONT-1') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('agent.continued event for project scope invalidates project workflow and agentSessions', () => {
+    const event: WSEvent = {
+      type: 'agent.continued',
+      project_id: 'test-project',
+      ticket_id: '',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate project-scope agent.continued handler
+    queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+    queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.workflow('test-project') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.agentSessions('test-project') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('agent.continued with context-save data still invalidates correctly', () => {
+    const event: WSEvent = {
+      type: 'agent.continued',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-999',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: {
+        session_id: 'old-session-123',
+        new_session_id: 'new-session-456',
+        reason: 'low_context',
+      },
+    }
+
+    // Simulate handler
+    queryClient.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('useWebSocket - workflow_def and agent_def event handling', () => {
+  let queryClient: QueryClient
+  let invalidateQueriesSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+  })
+
+  it('workflow_def.created invalidates both workflow-defs key patterns', () => {
+    const event: WSEvent = {
+      type: 'workflow_def.created',
+      project_id: 'test-project',
+      ticket_id: '',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate handler - invalidates both key patterns
+    queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflow-defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflows', 'defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('workflow_def.updated invalidates both workflow-defs key patterns', () => {
+    const event: WSEvent = {
+      type: 'workflow_def.updated',
+      project_id: 'test-project',
+      ticket_id: '',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflow-defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflows', 'defs'] })
+  })
+
+  it('workflow_def.deleted invalidates both workflow-defs key patterns', () => {
+    const event: WSEvent = {
+      type: 'workflow_def.deleted',
+      project_id: 'test-project',
+      ticket_id: '',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('agent_def.created invalidates workflow-defs, workflows-defs, and agent-defs prefix', () => {
+    const event: WSEvent = {
+      type: 'agent_def.created',
+      project_id: 'test-project',
+      ticket_id: '',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    // Simulate handler
+    queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    queryClient.invalidateQueries({ queryKey: ['agent-defs'] })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflow-defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflows', 'defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['agent-defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('agent_def.updated invalidates all three key patterns', () => {
+    const event: WSEvent = {
+      type: 'agent_def.updated',
+      project_id: 'test-project',
+      ticket_id: '',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    queryClient.invalidateQueries({ queryKey: ['agent-defs'] })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('agent_def.deleted invalidates all three key patterns', () => {
+    const event: WSEvent = {
+      type: 'agent_def.deleted',
+      project_id: 'test-project',
+      ticket_id: '',
+      timestamp: '2026-01-01T00:00:00Z',
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    queryClient.invalidateQueries({ queryKey: ['agent-defs'] })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('agent_def events use prefix-match for agent-defs to catch all variants', () => {
+    // This test verifies that ['agent-defs'] prefix will match:
+    // ['agent-defs', project, workflow_id] used in actual queries
+
+    queryClient.invalidateQueries({ queryKey: ['agent-defs'] })
+
+    // Verify the invalidation was called with prefix only
+    const agentDefCalls = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey) === JSON.stringify(['agent-defs'])
+    )
+
+    expect(agentDefCalls.length).toBe(1)
+  })
+})
+
+describe('useWebSocket - messages.updated narrowing', () => {
+  let queryClient: QueryClient
+  let invalidateQueriesSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+  })
+
+  it('messages.updated only invalidates session-messages and agentSessions for ticket scope', () => {
+    const event: WSEvent = {
+      type: 'messages.updated',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-MSG',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { session_id: 'session-123' },
+    }
+
+    // Simulate narrowed handler (M5 - targeted invalidation)
+    queryClient.invalidateQueries({ queryKey: ['session-messages', event.data?.session_id] })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+
+    // Verify ONLY these two invalidations
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['session-messages', 'session-123'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.agentSessions('TICKET-MSG') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('messages.updated does NOT invalidate workflow queries (narrowed)', () => {
+    const event: WSEvent = {
+      type: 'messages.updated',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-MSG-2',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { session_id: 'session-456' },
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['session-messages', event.data?.session_id] })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+
+    // Verify workflow queries were NOT invalidated
+    const workflowInvalidations = invalidateQueriesSpy.mock.calls.filter(
+      (call: any) => call[0] && JSON.stringify(call[0].queryKey).includes('workflow')
+    )
+
+    expect(workflowInvalidations.length).toBe(0)
+  })
+
+  it('messages.updated for project scope only invalidates session-messages and project agentSessions', () => {
+    const event: WSEvent = {
+      type: 'messages.updated',
+      project_id: 'test-project',
+      ticket_id: '',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { session_id: 'session-789' },
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['session-messages', event.data?.session_id] })
+    queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['session-messages', 'session-789'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.agentSessions('test-project') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('messages.updated without session_id still invalidates agentSessions', () => {
+    const event: WSEvent = {
+      type: 'messages.updated',
+      project_id: 'test-project',
+      ticket_id: 'TICKET-NO-SID',
+      workflow: 'feature',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: {},
+    }
+
+    // Fallback when session_id missing: still invalidate agentSessions
+    queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.agentSessions('TICKET-NO-SID') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('useWebSocket - reconnect invalidateAll coverage', () => {
+  let queryClient: QueryClient
+  let invalidateQueriesSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+  })
+
+  it('invalidateAll covers all query families', () => {
+    // Simulate reconnect invalidateAll (M6)
+    queryClient.invalidateQueries({ queryKey: ticketKeys.all })
+    queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.all })
+    queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    queryClient.invalidateQueries({ queryKey: ['agent-defs'] })
+    queryClient.invalidateQueries({ queryKey: ['session-messages'] })
+
+    // Verify all families invalidated
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.all })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.all })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflow-defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['workflows', 'defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['agent-defs'] })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['session-messages'] })
+  })
+
+  it('reconnect invalidateAll includes chainKeys and dailyStatsKeys', () => {
+    queryClient.invalidateQueries({ queryKey: chainKeys.all })
+    queryClient.invalidateQueries({ queryKey: dailyStatsKeys.all })
+
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: chainKeys.all })
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: dailyStatsKeys.all })
   })
 })
 

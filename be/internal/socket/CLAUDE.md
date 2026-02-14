@@ -29,10 +29,10 @@ The socket uses a **JSON-RPC style protocol** (line-delimited JSON) at `/tmp/nrw
 | `findings.append` | Append to an existing finding value |
 | `findings.append-bulk` | Append multiple findings at once |
 | `findings.delete` | Delete specific finding keys |
-| `agent.complete` | Mark agent as completed (pass) |
-| `agent.fail` | Mark agent as failed |
-| `agent.continue` | Mark agent for continuation |
-| `agent.callback` | Trigger callback to re-run earlier layer |
+| `agent.complete` | Mark agent as completed (pass); broadcasts with `session_id`, `model_id`, `result` |
+| `agent.fail` | Mark agent as failed; broadcasts with `session_id`, `model_id`, `result` |
+| `agent.continue` | Mark agent for continuation; broadcasts with `session_id`, `model_id` |
+| `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 
 ## Common Tasks

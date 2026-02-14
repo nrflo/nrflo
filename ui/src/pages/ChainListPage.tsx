@@ -36,7 +36,6 @@ export function ChainListPage() {
 
   const { data: chains, isLoading, error } = useChainList(
     statusFilter ? { status: statusFilter } : undefined,
-    { refetchInterval: 5000 }
   )
 
   const handleStatusChange = (value: string) => {

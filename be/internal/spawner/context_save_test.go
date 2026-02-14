@@ -364,6 +364,7 @@ func setupContextSaveTestEnv(t *testing.T) *contextSaveTestEnv {
 
 	spawner := New(Config{
 		DataPath: dbPath,
+		Pool:     db.WrapAsPool(database),
 	})
 
 	return &contextSaveTestEnv{

@@ -68,8 +68,11 @@ npx tsc --noEmit   # TypeScript check only
 
 WebSocket-based, no REST polling. See [hooks/CLAUDE.md](src/hooks/CLAUDE.md) for full protocol, event types, and subscription patterns.
 
-- Events: `agent.started`, `agent.completed`, `phase.started`, `phase.completed`, `findings.updated`, `messages.updated`, `workflow.updated`, `chain.updated`, `ticket.updated`, `orchestration.callback`
-- Subscriptions must be gated on `projectsLoaded`
+- **Single socket per tab**: `WebSocketProvider` in `src/providers/WebSocketProvider.tsx` owns the sole WebSocket connection. Wrapped at `App.tsx` level.
+- **Consumer hook**: Components use `useWebSocketSubscription(ticketId)` to subscribe/unsubscribe. Project-wide subscription is automatic.
+- **No polling**: All `refetchInterval` has been removed. Updates arrive exclusively via WebSocket events.
+- Events: `agent.started`, `agent.completed`, `agent.continued`, `phase.started`, `phase.completed`, `findings.updated`, `messages.updated`, `workflow.updated`, `chain.updated`, `ticket.updated`, `orchestration.callback`
+- On reconnect, all query families are invalidated (tickets, project-workflows, chains, daily-stats, workflow-defs, agent-defs, session-messages).
 
 ### Component Structure
 

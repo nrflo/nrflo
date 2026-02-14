@@ -115,10 +115,11 @@ func (e *spawnerTestEnv) setFindings(t *testing.T, wfiID string, findings map[st
 	}
 }
 
-// newSpawner creates a Spawner with the test DB path.
+// newSpawner creates a Spawner with the test DB pool.
 func (e *spawnerTestEnv) newSpawner() *Spawner {
 	return New(Config{
 		DataPath: e.dbPath,
+		Pool:     e.pool,
 	})
 }
 

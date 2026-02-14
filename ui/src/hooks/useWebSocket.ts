@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { getProject } from '../api/client'
-import { ticketKeys, projectWorkflowKeys } from './useTickets'
+import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
 
 // Event types from backend
 export type WSEventType =
   | 'agent.started'
   | 'agent.completed'
+  | 'agent.continued'
   | 'phase.started'
   | 'phase.completed'
   | 'findings.updated'
@@ -110,6 +111,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     switch (event.type) {
       case 'agent.started':
       case 'agent.completed':
+      case 'agent.continued':
         if (isProjectScope) {
           invalidateProjectWorkflow()
           qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(project_id) })
@@ -141,16 +143,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         break
 
       case 'messages.updated':
+        // Targeted: only invalidate the specific session's messages
+        if (event.data?.session_id) {
+          qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })
+        }
+        // Narrow invalidation: agent sessions (for message_count updates)
         if (isProjectScope) {
-          invalidateProjectWorkflow()
           qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(project_id) })
         } else {
           qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(ticket_id) })
-          qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
-        }
-        // Session-specific invalidation applies to both scopes
-        if (event.data?.session_id) {
-          qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })
         }
         break
 
@@ -168,16 +169,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       case 'workflow_def.created':
       case 'workflow_def.updated':
       case 'workflow_def.deleted':
+        // Invalidate both key patterns used across the app
         qc.invalidateQueries({ queryKey: ['workflow-defs'] })
+        qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
         break
 
       case 'agent_def.created':
       case 'agent_def.updated':
       case 'agent_def.deleted':
         qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-        if (event.data?.workflow_id) {
-          qc.invalidateQueries({ queryKey: ['agent-defs', event.data.workflow_id] })
-        }
+        qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+        // Prefix-match all agent-defs (keys include project and workflow_id)
+        qc.invalidateQueries({ queryKey: ['agent-defs'] })
         break
 
       case 'orchestration.started':
@@ -212,10 +215,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }
   }, []) // stable - uses refs internally
 
-  // Invalidate all ticket queries (used on connect/reconnect to catch up)
+  // Invalidate all queries on connect/reconnect to catch up on missed events
   const invalidateAll = useCallback(() => {
     const qc = queryClientRef.current
     qc.invalidateQueries({ queryKey: ticketKeys.all })
+    qc.invalidateQueries({ queryKey: projectWorkflowKeys.all })
+    qc.invalidateQueries({ queryKey: chainKeys.all })
+    qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
+    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
+    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    qc.invalidateQueries({ queryKey: ['agent-defs'] })
+    qc.invalidateQueries({ queryKey: ['session-messages'] })
   }, [])
 
   // Connect to WebSocket

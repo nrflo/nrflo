@@ -31,6 +31,7 @@ const (
 	EventOrchestrationFailed    = "orchestration.failed"
 	EventOrchestrationRetried   = "orchestration.retried"
 	EventOrchestrationCallback  = "orchestration.callback"
+	EventChainUpdated           = "chain.updated"
 	EventTestEcho           = "test.echo"
 )
 
@@ -41,6 +42,7 @@ type Event struct {
 	TicketID  string                 `json:"ticket_id"`
 	Workflow  string                 `json:"workflow,omitempty"`
 	Timestamp string                 `json:"timestamp"`
+	Sequence  int64                  `json:"sequence,omitempty"`
 	Data      map[string]interface{} `json:"data,omitempty"`
 }
 

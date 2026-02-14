@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WebSocketProvider } from '@/providers/WebSocketProvider'
 import { Layout } from '@/components/layout/Layout'
 import { Dashboard } from '@/pages/Dashboard'
 import { TicketListPage } from '@/pages/TicketListPage'
@@ -32,22 +33,24 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="tickets" element={<TicketListPage />} />
-            <Route path="tickets/new" element={<CreateTicketPage />} />
-            <Route path="tickets/:id" element={<TicketDetailPage />} />
-            <Route path="tickets/:id/edit" element={<EditTicketPage />} />
-            <Route path="workflows" element={<WorkflowsPage />} />
-            <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
-            <Route path="chains" element={<ChainListPage />} />
-            <Route path="chains/:id" element={<ChainDetailPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <WebSocketProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="tickets" element={<TicketListPage />} />
+              <Route path="tickets/new" element={<CreateTicketPage />} />
+              <Route path="tickets/:id" element={<TicketDetailPage />} />
+              <Route path="tickets/:id/edit" element={<EditTicketPage />} />
+              <Route path="workflows" element={<WorkflowsPage />} />
+              <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
+              <Route path="chains" element={<ChainListPage />} />
+              <Route path="chains/:id" element={<ChainDetailPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </WebSocketProvider>
     </QueryClientProvider>
   )
 }

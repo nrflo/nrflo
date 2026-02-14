@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"be/internal/db"
 	"be/internal/logger"
 )
 
@@ -146,15 +145,14 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 // checkToResumeFindings checks whether the session has to_resume findings after resume-save.
 // Returns true if the to_resume key was found in the session's findings.
 func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) bool {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
-		logger.Error(ctx, "failed to open DB for findings check", "err", err, "session_id", proc.sessionID)
+	pool := s.pool()
+	if pool == nil {
+		logger.Error(ctx, "no database pool for findings check", "session_id", proc.sessionID)
 		return false
 	}
-	defer database.Close()
 
 	var findingsRaw sql.NullString
-	err = database.QueryRow("SELECT findings FROM agent_sessions WHERE id = ?", proc.sessionID).Scan(&findingsRaw)
+	err := pool.QueryRow("SELECT findings FROM agent_sessions WHERE id = ?", proc.sessionID).Scan(&findingsRaw)
 	if err != nil {
 		logger.Error(ctx, "failed to query findings", "err", err, "session_id", proc.sessionID)
 		return false

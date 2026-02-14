@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
+	"time"
 
-	"be/internal/db"
 	"be/internal/repo"
 	"be/internal/ws"
 )
@@ -313,6 +314,24 @@ func (s *Spawner) formatToolDetail(toolName string, input map[string]interface{}
 	return "[" + toolName + "] " + detail
 }
 
+// broadcastCoalesceWindow is the minimum interval between messages.updated broadcasts per session.
+const broadcastCoalesceWindow = 2 * time.Second
+
+// lastBroadcastMu protects lastBroadcastPerSession.
+var lastBroadcastMu sync.Mutex
+
+// lastBroadcastPerSession tracks the last broadcast time per session for coalescing.
+var lastBroadcastPerSession = make(map[string]time.Time)
+
+// cleanupBroadcastCoalescing removes entries for completed sessions.
+func cleanupBroadcastCoalescing(completed []*processInfo) {
+	lastBroadcastMu.Lock()
+	for _, proc := range completed {
+		delete(lastBroadcastPerSession, proc.sessionID)
+	}
+	lastBroadcastMu.Unlock()
+}
+
 // saveMessages flushes pending messages and raw output to the database
 func (s *Spawner) saveMessages(proc *processInfo) {
 	// Drain pending messages
@@ -327,23 +346,31 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 		return
 	}
 
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return
 	}
-	defer database.Close()
 
-	if len(pending) > 0 {
-		msgRepo := repo.NewAgentMessageRepo(database)
-		msgRepo.InsertBatch(proc.sessionID, seqStart, pending)
-	}
+	msgRepo := repo.NewAgentMessageRepo(pool)
+	msgRepo.InsertBatch(proc.sessionID, seqStart, pending)
 
-	// Broadcast messages update for real-time UI
-	if proc.projectID != "" && len(pending) > 0 {
-		s.broadcast(ws.EventMessagesUpdated, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
-			"session_id": proc.sessionID,
-			"agent_type": proc.agentType,
-			"model_id":   proc.modelID,
-		})
+	// Broadcast messages update for real-time UI (coalesced per session)
+	if proc.projectID != "" {
+		now := time.Now()
+		lastBroadcastMu.Lock()
+		last := lastBroadcastPerSession[proc.sessionID]
+		shouldBroadcast := now.Sub(last) >= broadcastCoalesceWindow
+		if shouldBroadcast {
+			lastBroadcastPerSession[proc.sessionID] = now
+		}
+		lastBroadcastMu.Unlock()
+
+		if shouldBroadcast {
+			s.broadcast(ws.EventMessagesUpdated, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
+				"session_id": proc.sessionID,
+				"agent_type": proc.agentType,
+				"model_id":   proc.modelID,
+			})
+		}
 	}
 }

@@ -620,6 +620,15 @@ func (o *Orchestrator) runLoop(
 		o.mu.Unlock()
 	}()
 
+	// Create shared pool for spawners in this orchestration run
+	pool, poolErr := db.NewPool(o.dataPath, db.DefaultPoolConfig())
+	if poolErr != nil {
+		logger.Error(ctx, "failed to create spawner pool", "err", poolErr)
+		o.markFailed(wfiID, req, "pool_init_failed")
+		return
+	}
+	defer pool.Close()
+
 	target := req.TicketID
 	if req.IsProjectScope() {
 		target = "project:" + req.ProjectID
@@ -671,6 +680,7 @@ func (o *Orchestrator) runLoop(
 					DataPath:    o.dataPath,
 					ProjectRoot: projectRoot,
 					WSHub:       o.wsHub,
+					Pool:        pool,
 				})
 
 				// Store spawner ref so RestartAgent can reach it

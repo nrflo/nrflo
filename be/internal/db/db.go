@@ -28,6 +28,15 @@ func DefaultDBPath() string {
 	return filepath.Join(home, "projects", "2026", "nrworkflow", DBFileName)
 }
 
+// Querier is the common interface satisfied by both *DB and *Pool.
+// Repos that don't need pool-specific features should accept this.
+type Querier interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+	Begin() (*sql.Tx, error)
+}
+
 // DB wraps the database connection
 type DB struct {
 	*sql.DB

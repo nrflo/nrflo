@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"be/internal/db"
 	"be/internal/service"
 	"be/internal/types"
 )
@@ -50,11 +49,10 @@ func (s *Spawner) expandFindings(template, projectID, ticketID, workflowName str
 
 // fetchFindings retrieves findings from the database using the FindingsService
 func (s *Spawner) fetchFindings(projectID, ticketID, workflowName, agentType string, keys []string) (interface{}, error) {
-	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+	pool := s.pool()
+	if pool == nil {
+		return nil, fmt.Errorf("failed to get database pool")
 	}
-	defer pool.Close()
 
 	findingsService := service.NewFindingsService(pool)
 
@@ -202,23 +200,23 @@ func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType
 		return ""
 	}
 
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return ""
 	}
-	defer database.Close()
 
 	wfiID := instanceID
+	var err error
 	if wfiID == "" {
 		if ticketID == "" {
 			// Project-scoped workflow — get most recent active instance
-			err = database.QueryRow(`
+			err = pool.QueryRow(`
 				SELECT id FROM workflow_instances
 				WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project' AND status = 'active'
 				ORDER BY created_at DESC LIMIT 1`,
 				projectID, workflowName).Scan(&wfiID)
 		} else {
-			err = database.QueryRow(`
+			err = pool.QueryRow(`
 				SELECT id FROM workflow_instances
 				WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
 				projectID, ticketID, workflowName).Scan(&wfiID)
@@ -229,7 +227,7 @@ func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType
 	}
 
 	var findingsStr string
-	err = database.QueryRow(`
+	err = pool.QueryRow(`
 		SELECT findings FROM agent_sessions
 		WHERE workflow_instance_id = ? AND agent_type = ? AND model_id = ? AND phase = ? AND status = 'continued'
 		  AND findings IS NOT NULL AND findings != ''

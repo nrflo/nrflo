@@ -16,11 +16,11 @@ type MessageWithTime struct {
 
 // AgentMessageRepo handles agent message CRUD operations
 type AgentMessageRepo struct {
-	db *db.DB
+	db db.Querier
 }
 
 // NewAgentMessageRepo creates a new agent message repository
-func NewAgentMessageRepo(database *db.DB) *AgentMessageRepo {
+func NewAgentMessageRepo(database db.Querier) *AgentMessageRepo {
 	return &AgentMessageRepo{db: database}
 }
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
@@ -15,14 +14,13 @@ import (
 
 // registerAgentStart creates an agent_sessions row for a newly spawned agent
 func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, promptContext, ancestorSessionID string, restartCount, restartThreshold int) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return
 	}
-	defer database.Close()
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	sessionRepo := repo.NewAgentSessionRepo(database)
+	sessionRepo := repo.NewAgentSessionRepo(pool)
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          projectID,
@@ -53,13 +51,12 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 
 // registerAgentStopWithReason updates the agent_sessions row when an agent stops
 func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName, sessionID, agentID, result, resultReason, modelID string) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return
 	}
-	defer database.Close()
 
-	sessionRepo := repo.NewAgentSessionRepo(database)
+	sessionRepo := repo.NewAgentSessionRepo(pool)
 
 	// Update result and reason
 	sessionRepo.UpdateResult(sessionID, result, resultReason)
@@ -81,6 +78,7 @@ func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName,
 
 	s.broadcast(ws.EventAgentCompleted, projectID, ticketID, workflowName, map[string]interface{}{
 		"agent_id":      agentID,
+		"session_id":    sessionID,
 		"result":        result,
 		"result_reason": resultReason,
 		"model_id":      modelID,
@@ -89,13 +87,11 @@ func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName,
 
 // getWorkflowInstance retrieves the workflow instance for a ticket, returning an error if not initialized
 func (s *Spawner) getWorkflowInstance(projectID, ticketID, workflowName string) (*model.WorkflowInstance, error) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+	pool := s.pool()
+	if pool == nil {
+		return nil, fmt.Errorf("failed to get database pool")
 	}
-	defer database.Close()
 
-	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 	if err != nil {
@@ -107,13 +103,11 @@ func (s *Spawner) getWorkflowInstance(projectID, ticketID, workflowName string) 
 
 // getProjectWorkflowInstance retrieves the most recent active project-scoped workflow instance.
 func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*model.WorkflowInstance, error) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+	pool := s.pool()
+	if pool == nil {
+		return nil, fmt.Errorf("failed to get database pool")
 	}
-	defer database.Close()
 
-	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	instances, err := wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
 	if err != nil || len(instances) == 0 {
@@ -126,13 +120,11 @@ func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*m
 
 // getWorkflowInstanceByID retrieves a workflow instance by its ID.
 func (s *Spawner) getWorkflowInstanceByID(instanceID string) (*model.WorkflowInstance, error) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+	pool := s.pool()
+	if pool == nil {
+		return nil, fmt.Errorf("failed to get database pool")
 	}
-	defer database.Close()
 
-	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	return wfiRepo.Get(instanceID)
 }
@@ -178,13 +170,11 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 
 // startPhase marks a phase as in_progress using workflow_instances table
 func (s *Spawner) startPhase(ctx context.Context, wfiID, projectID, ticketID, workflowName, phase string) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return
 	}
-	defer database.Close()
 
-	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	if err := wfiRepo.StartPhase(wfiID, phase); err != nil {
 		logger.Warn(ctx, "failed to start phase", "phase", phase, "err", err)
@@ -198,13 +188,11 @@ func (s *Spawner) startPhase(ctx context.Context, wfiID, projectID, ticketID, wo
 
 // completePhase marks a phase as completed using workflow_instances table
 func (s *Spawner) completePhase(ctx context.Context, wfiID, projectID, ticketID, workflowName, phase, result string) {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return
 	}
-	defer database.Close()
 
-	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	if err := wfiRepo.CompletePhase(wfiID, phase, result); err != nil {
 		logger.Warn(ctx, "failed to complete phase", "phase", phase, "result", result, "err", err)

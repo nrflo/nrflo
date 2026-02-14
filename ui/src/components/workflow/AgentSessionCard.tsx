@@ -48,13 +48,12 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
   const hasMessages = msgCount > 0
   const isRunning = session.status === 'running'
 
-  // Lazy-load messages from API when expanded
+  // Lazy-load messages from API when expanded (updates via WS messages.updated events)
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
     queryKey: ['session-messages', session.id],
     queryFn: () => getSessionMessages(session.id),
     enabled: expanded && hasMessages,
     staleTime: isRunning ? 2000 : 30000,
-    refetchInterval: isRunning && expanded ? 3000 : false,
   })
 
   const messages = messagesData?.messages ?? []

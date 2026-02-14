@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 
-	"be/internal/db"
 	"be/internal/repo"
 )
 
@@ -48,13 +47,12 @@ func (s *Spawner) saveContextLeft(proc *processInfo) {
 	if !proc.contextLeftDirty {
 		return
 	}
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return
 	}
-	defer database.Close()
 
-	sessionRepo := repo.NewAgentSessionRepo(database)
+	sessionRepo := repo.NewAgentSessionRepo(pool)
 	sessionRepo.UpdateContextLeft(proc.sessionID, proc.contextLeft)
 	proc.contextLeftDirty = false
 }

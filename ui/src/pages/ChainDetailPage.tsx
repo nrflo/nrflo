@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Play, XCircle, Edit, ListPlus } from 'lucide-react'
 import { useGoBack } from '@/hooks/useGoBack'
@@ -146,16 +146,10 @@ export function ChainDetailPage() {
   const goBack = useGoBack('/chains')
   const [showEdit, setShowEdit] = useState(false)
   const [showAppend, setShowAppend] = useState(false)
-  const [polling, setPolling] = useState(false)
 
   const { data: displayChain, isLoading, error } = useChain(id!, {
     enabled: !!id,
-    refetchInterval: polling ? 5000 : false,
   })
-
-  useEffect(() => {
-    setPolling(displayChain?.status === 'running')
-  }, [displayChain?.status])
 
   if (isLoading) {
     return (

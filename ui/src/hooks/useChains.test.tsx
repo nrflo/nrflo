@@ -130,19 +130,6 @@ describe('useChainList', () => {
     expect(result.current.data).toBeDefined()
   })
 
-  it('supports custom refetchInterval option', async () => {
-    vi.mocked(chainsApi.listChains).mockResolvedValue([])
-
-    const { result } = renderHook(
-      () => useChainList(undefined, { refetchInterval: 5000 }),
-      { wrapper: createWrapper() }
-    )
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(result.current.data).toBeDefined()
-  })
-
   it('disables query when projectsLoaded is false', () => {
     vi.mocked(chainsApi.listChains).mockResolvedValue([])
 
@@ -186,20 +173,6 @@ describe('useChain', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     expect(result.current.data).toBeDefined()
-  })
-
-  it('supports custom refetchInterval option', async () => {
-    const chain = createMockChain()
-    vi.mocked(chainsApi.getChain).mockResolvedValue(chain)
-
-    const { result } = renderHook(
-      () => useChain('chain-123', { refetchInterval: 3000 }),
-      { wrapper: createWrapper() }
-    )
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(result.current.data).toEqual(chain)
   })
 
   it('disables query when ID is empty', () => {

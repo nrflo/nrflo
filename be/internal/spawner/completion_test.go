@@ -79,6 +79,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		DataPath:           dbPath,
 		CompletionGraceSec: 1, // Short grace period for tests
 		WSHub:              hub,
+		Pool:               db.WrapAsPool(database),
 	})
 
 	return &testEnv{

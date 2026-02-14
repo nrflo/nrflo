@@ -349,7 +349,7 @@ describe('ChainListPage - Status Filter', () => {
     // Check that useChainList was called with status filter
     expect(mockUseChainList).toHaveBeenCalledWith(
       { status: 'running' },
-      expect.objectContaining({ refetchInterval: 5000 })
+      undefined,
     )
   })
 
@@ -457,7 +457,7 @@ describe('ChainListPage - Polling Behavior', () => {
     vi.clearAllMocks()
   })
 
-  it('enables polling with 5 second interval', () => {
+  it('does not use polling (WS-only updates)', () => {
     mockUseChainList.mockReturnValue({
       data: [],
       isLoading: false,
@@ -466,10 +466,10 @@ describe('ChainListPage - Polling Behavior', () => {
 
     renderChainListPage()
 
-    // Verify useChainList was called with refetchInterval: 5000
+    // Verify useChainList was called without refetchInterval
     expect(mockUseChainList).toHaveBeenCalledWith(
       undefined,
-      expect.objectContaining({ refetchInterval: 5000 })
+      undefined,
     )
   })
 })

@@ -11,13 +11,7 @@ vi.mock('@/stores/projectStore', () => ({
     selector({ currentProject: 'test-project', projectsLoaded: true }),
 }))
 
-vi.mock('@/hooks/useWebSocket', () => ({
-  useWebSocket: () => ({
-    isConnected: true,
-    subscribe: vi.fn(),
-    unsubscribe: vi.fn(),
-  }),
-}))
+// WebSocket subscription is now handled by WebSocketProvider (no direct hook usage)
 
 vi.mock('@/hooks/useTickets', async () => {
   const actual = await vi.importActual<typeof import('@/hooks/useTickets')>('@/hooks/useTickets')

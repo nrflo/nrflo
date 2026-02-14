@@ -10,13 +10,13 @@ import (
 	"be/internal/model"
 )
 
-// AgentSessionRepo handles agent session CRUD operations using DB (single connection)
+// AgentSessionRepo handles agent session CRUD operations
 type AgentSessionRepo struct {
-	db *db.DB
+	db db.Querier
 }
 
 // NewAgentSessionRepo creates a new agent session repository
-func NewAgentSessionRepo(database *db.DB) *AgentSessionRepo {
+func NewAgentSessionRepo(database db.Querier) *AgentSessionRepo {
 	return &AgentSessionRepo{db: database}
 }
 

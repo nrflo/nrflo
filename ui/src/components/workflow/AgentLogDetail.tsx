@@ -41,7 +41,6 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
     queryFn: () => getSessionMessages(sessionId!),
     enabled: !!sessionId,
     staleTime: isRunning ? 2000 : 30000,
-    refetchInterval: isRunning ? 3000 : false,
   })
 
   const messages = messagesData?.messages ?? []

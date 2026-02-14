@@ -222,22 +222,19 @@ func (s *AgentService) Kill(projectID, ticketID string, req *types.AgentKillRequ
 	return killed, nil
 }
 
-// Complete marks an agent as completed
-func (s *AgentService) Complete(projectID, ticketID string, req *types.AgentCompleteRequest) error {
-	_, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "pass", req.Model)
-	return err
+// Complete marks an agent as completed. Returns the session ID.
+func (s *AgentService) Complete(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
+	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "pass", req.Model)
 }
 
-// Fail marks an agent as failed
-func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentCompleteRequest) error {
-	_, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "fail", req.Model)
-	return err
+// Fail marks an agent as failed. Returns the session ID.
+func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
+	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "fail", req.Model)
 }
 
-// Continue marks an agent as needing context continuation
-func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentCompleteRequest) error {
-	_, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "continue", req.Model)
-	return err
+// Continue marks an agent as needing context continuation. Returns the session ID.
+func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
+	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "continue", req.Model)
 }
 
 // Callback marks an agent as requesting a callback to a previous layer

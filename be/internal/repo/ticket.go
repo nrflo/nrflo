@@ -12,11 +12,11 @@ import (
 
 // TicketRepo handles ticket CRUD operations
 type TicketRepo struct {
-	db *db.DB
+	db db.Querier
 }
 
 // NewTicketRepo creates a new ticket repository
-func NewTicketRepo(database *db.DB) *TicketRepo {
+func NewTicketRepo(database db.Querier) *TicketRepo {
 	return &TicketRepo{db: database}
 }
 

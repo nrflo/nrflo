@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle, Play } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
-import { useWebSocket } from '@/hooks/useWebSocket'
 import {
   useProjectWorkflow,
   useProjectAgentSessions,
@@ -32,14 +31,7 @@ export function ProjectWorkflowsPage() {
   const [selectedWorkflowDef, setSelectedWorkflowDef] = useState('')
   const [instructions, setInstructions] = useState('')
 
-  // WebSocket: subscribe to project-level events (empty ticket_id)
-  const { subscribe, unsubscribe } = useWebSocket()
-  useEffect(() => {
-    if (projectsLoaded) {
-      subscribe('')
-      return () => unsubscribe('')
-    }
-  }, [projectsLoaded, currentProject, subscribe, unsubscribe])
+  // WebSocket subscription is handled by WebSocketProvider (project-wide)
 
   const { data: workflowData } = useProjectWorkflow(currentProject, {
     enabled: !!currentProject,

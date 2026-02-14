@@ -412,6 +412,7 @@ func setupToResumeTestEnvInternal(t *testing.T, scopeType string) *toResumeTestE
 
 	spawner := New(Config{
 		DataPath: dbPath,
+		Pool:     db.WrapAsPool(database),
 	})
 
 	return &toResumeTestEnv{

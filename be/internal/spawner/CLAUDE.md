@@ -88,6 +88,12 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 - `haiku` → `gpt-5.2-codex` with reasoning effort "medium"
 - Custom model names → passed as-is with reasoning effort "medium"
 
+## Database Access
+
+The spawner uses a shared `*db.Pool` from `Config.Pool` for all database operations. The orchestrator creates one pool per workflow run and passes it to all spawners in that run. The `pool()` helper method provides access.
+
+Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
+
 ## Spawn Flow
 
 ```
@@ -110,7 +116,7 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
    - Print status every 30 seconds
    - Check process for completion or timeout
    - Handle completion/timeout
-   - Broadcast messages.updated every ~2s via WebSocket hub
+   - Broadcast messages.updated (coalesced to one per session per 2s window)
 
 5. FINALIZE PHASE
    - pass_count >= 1 → layer passes (fan-in)
@@ -120,7 +126,8 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 
 BROADCAST: The spawner broadcasts WebSocket events (agent.started,
 messages.updated, agent.completed, phase.started, phase.completed)
-directly via the in-process WebSocket hub.
+directly via the in-process WebSocket hub. messages.updated events
+are coalesced to one broadcast per session per 2-second window.
 ```
 
 ## Agent Definitions

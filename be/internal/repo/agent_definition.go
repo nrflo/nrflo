@@ -12,11 +12,11 @@ import (
 
 // AgentDefinitionRepo handles agent definition CRUD operations
 type AgentDefinitionRepo struct {
-	db *db.DB
+	db db.Querier
 }
 
 // NewAgentDefinitionRepo creates a new agent definition repository
-func NewAgentDefinitionRepo(database *db.DB) *AgentDefinitionRepo {
+func NewAgentDefinitionRepo(database db.Querier) *AgentDefinitionRepo {
 	return &AgentDefinitionRepo{db: database}
 }
 

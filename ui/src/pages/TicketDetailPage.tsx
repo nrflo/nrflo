@@ -10,8 +10,7 @@ import {
   Info,
   Network,
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { useProjectStore } from '@/stores/projectStore'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -31,7 +30,7 @@ import {
   useStopWorkflow,
   useRetryFailedAgent,
 } from '@/hooks/useTickets'
-import { useWebSocket } from '@/hooks/useWebSocket'
+import { useWebSocketSubscription } from '@/hooks/useWebSocketSubscription'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
@@ -54,18 +53,8 @@ export function TicketDetailPage() {
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
 
-  // WebSocket for real-time updates
-  const { subscribe, unsubscribe } = useWebSocket()
-  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
-  const currentProject = useProjectStore((s) => s.currentProject)
-
-  // Subscribe to this ticket's updates (wait for real project ID)
-  useEffect(() => {
-    if (id && projectsLoaded) {
-      subscribe(id)
-      return () => unsubscribe(id)
-    }
-  }, [id, projectsLoaded, currentProject, subscribe, unsubscribe])
+  // WebSocket subscription for this ticket's real-time updates
+  useWebSocketSubscription(id)
 
   const { data: ticket, isLoading, error } = useTicket(id!)
 

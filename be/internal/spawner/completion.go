@@ -5,7 +5,6 @@ import (
 	"syscall"
 	"time"
 
-	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/ws"
@@ -140,12 +139,10 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.restartThreshold = oldProc.restartThreshold
 
 	// Update the ancestor_session_id and restart_count on the new DB session record
-	database, dbErr := db.Open(s.config.DataPath)
-	if dbErr == nil {
-		sessionRepo := repo.NewAgentSessionRepo(database)
+	if pool := s.pool(); pool != nil {
+		sessionRepo := repo.NewAgentSessionRepo(pool)
 		sessionRepo.UpdateAncestorSession(newProc.sessionID, ancestorID)
 		sessionRepo.UpdateRestartCount(newProc.sessionID, newProc.restartCount)
-		database.Close()
 	}
 
 	// Broadcast continuation event
@@ -165,13 +162,12 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 
 // getAgentResult reads the explicit result from agent_sessions table
 func (s *Spawner) getAgentResult(proc *processInfo) string {
-	database, err := db.Open(s.config.DataPath)
-	if err != nil {
+	pool := s.pool()
+	if pool == nil {
 		return ""
 	}
-	defer database.Close()
 
-	sessionRepo := repo.NewAgentSessionRepo(database)
+	sessionRepo := repo.NewAgentSessionRepo(pool)
 	session, err := sessionRepo.Get(proc.sessionID)
 	if err != nil {
 		return ""

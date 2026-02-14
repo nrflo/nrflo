@@ -65,9 +65,10 @@ func (cr *ChainRunner) Start(ctx context.Context, chainID string) error {
 		return err
 	}
 
-	// Generate trx for this chain run
+	// Generate trx for this chain run — detach from HTTP request context
+	// so the background goroutine isn't cancelled when the response is sent.
 	trx := logger.NewTrx()
-	chainCtx := logger.WithTrx(ctx, trx)
+	chainCtx := logger.WithTrx(context.Background(), trx)
 
 	runCtx, cancel := context.WithCancel(chainCtx)
 	cr.runs[chainID] = cancel
@@ -347,7 +348,7 @@ func (cr *ChainRunner) markChainFailed(chainID, projectID string) {
 
 func (cr *ChainRunner) broadcastChainUpdate(projectID, chainID, status string) {
 	if cr.wsHub != nil {
-		cr.wsHub.Broadcast(ws.NewEvent("chain.updated", projectID, "", "", map[string]interface{}{
+		cr.wsHub.Broadcast(ws.NewEvent(ws.EventChainUpdated, projectID, "", "", map[string]interface{}{
 			"chain_id": chainID,
 			"status":   status,
 		}))

@@ -203,13 +203,17 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
 		logger.Info(ctx, "agent complete received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		if err := h.agentSvc.Complete(projectID, params.TicketID, &params.AgentCompleteRequest); err != nil {
+		sessionID, err := h.agentSvc.Complete(projectID, params.TicketID, &params.AgentCompleteRequest)
+		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
 			"action":     "complete",
 			"agent_type": params.AgentType,
+			"session_id": sessionID,
+			"model_id":   params.Model,
+			"result":     "pass",
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "completed"})
 
@@ -222,13 +226,17 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
 		logger.Warn(ctx, "agent fail received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		if err := h.agentSvc.Fail(projectID, params.TicketID, &params.AgentCompleteRequest); err != nil {
+		sessionID, err := h.agentSvc.Fail(projectID, params.TicketID, &params.AgentCompleteRequest)
+		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
 			"action":     "fail",
 			"agent_type": params.AgentType,
+			"session_id": sessionID,
+			"model_id":   params.Model,
+			"result":     "fail",
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "failed"})
 
@@ -241,13 +249,16 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
 		logger.Info(ctx, "agent continue received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		if err := h.agentSvc.Continue(projectID, params.TicketID, &params.AgentCompleteRequest); err != nil {
+		sessionID, err := h.agentSvc.Continue(projectID, params.TicketID, &params.AgentCompleteRequest)
+		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		h.broadcast(ws.EventAgentContinued, projectID, params.TicketID, params.Workflow, map[string]interface{}{
 			"action":     "continue",
 			"agent_type": params.AgentType,
+			"session_id": sessionID,
+			"model_id":   params.Model,
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "continued"})
 
@@ -268,6 +279,8 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			"action":     "callback",
 			"agent_type": params.AgentType,
 			"level":      params.Level,
+			"model_id":   params.Model,
+			"result":     "callback",
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "callback"})
 

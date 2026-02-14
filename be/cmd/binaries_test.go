@@ -350,8 +350,8 @@ func TestBinaryIndependence(t *testing.T) {
 	}
 }
 
-// TestMakefileTargets_BuildAll verifies make build-all builds both binaries
-func TestMakefileTargets_BuildAll(t *testing.T) {
+// TestMakefileTargets_Build verifies make build builds both binaries
+func TestMakefileTargets_Build(t *testing.T) {
 	beDir := getBeDir(t)
 
 	// Clean first
@@ -361,12 +361,12 @@ func TestMakefileTargets_BuildAll(t *testing.T) {
 		t.Logf("make clean output: %s", output)
 	}
 
-	// Build all
-	buildCmd := exec.Command("make", "build-all")
+	// Build both
+	buildCmd := exec.Command("make", "build")
 	buildCmd.Dir = beDir
 	output, err := buildCmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("make build-all failed: %v\nOutput: %s", err, output)
+		t.Fatalf("make build failed: %v\nOutput: %s", err, output)
 	}
 
 	// Verify both binaries exist
@@ -374,10 +374,10 @@ func TestMakefileTargets_BuildAll(t *testing.T) {
 	serverBinary := filepath.Join(beDir, "nrworkflow_server")
 
 	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
-		t.Errorf("make build-all did not create nrworkflow binary")
+		t.Errorf("make build did not create nrworkflow binary")
 	}
 	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
-		t.Errorf("make build-all did not create nrworkflow_server binary")
+		t.Errorf("make build did not create nrworkflow_server binary")
 	}
 
 	// Clean up
@@ -401,6 +401,263 @@ func TestBinaryNaming(t *testing.T) {
 	serverBinary := buildServerBinary(t, tmpDir)
 	if !strings.HasSuffix(serverBinary, "nrworkflow_server") {
 		t.Errorf("Server binary name should be 'nrworkflow_server', got %s", filepath.Base(serverBinary))
+	}
+}
+
+// TestMakefileTargets_BuildCLI verifies make build-cli builds only the CLI binary
+func TestMakefileTargets_BuildCLI(t *testing.T) {
+	beDir := getBeDir(t)
+
+	// Clean first
+	cleanCmd := exec.Command("make", "clean")
+	cleanCmd.Dir = beDir
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		t.Logf("make clean output: %s", output)
+	}
+
+	// Build CLI only
+	buildCmd := exec.Command("make", "build-cli")
+	buildCmd.Dir = beDir
+	output, err := buildCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("make build-cli failed: %v\nOutput: %s", err, output)
+	}
+
+	// Verify CLI binary exists
+	cliBinary := filepath.Join(beDir, "nrworkflow")
+	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
+		t.Errorf("make build-cli did not create nrworkflow binary")
+	}
+
+	// Clean up
+	defer func() {
+		cleanCmd := exec.Command("make", "clean")
+		cleanCmd.Dir = beDir
+		cleanCmd.Run()
+	}()
+}
+
+// TestMakefileTargets_BuildServer verifies make build-server builds only the server binary
+func TestMakefileTargets_BuildServer(t *testing.T) {
+	beDir := getBeDir(t)
+
+	// Clean first
+	cleanCmd := exec.Command("make", "clean")
+	cleanCmd.Dir = beDir
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		t.Logf("make clean output: %s", output)
+	}
+
+	// Build server only
+	buildCmd := exec.Command("make", "build-server")
+	buildCmd.Dir = beDir
+	output, err := buildCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("make build-server failed: %v\nOutput: %s", err, output)
+	}
+
+	// Verify server binary exists
+	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
+		t.Errorf("make build-server did not create nrworkflow_server binary")
+	}
+
+	// Clean up
+	defer func() {
+		cleanCmd := exec.Command("make", "clean")
+		cleanCmd.Dir = beDir
+		cleanCmd.Run()
+	}()
+}
+
+// TestMakefileTargets_BuildRelease verifies make build-release builds both release binaries
+func TestMakefileTargets_BuildRelease(t *testing.T) {
+	beDir := getBeDir(t)
+
+	// Clean first
+	cleanCmd := exec.Command("make", "clean")
+	cleanCmd.Dir = beDir
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		t.Logf("make clean output: %s", output)
+	}
+
+	// Build release
+	buildCmd := exec.Command("make", "build-release")
+	buildCmd.Dir = beDir
+	output, err := buildCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("make build-release failed: %v\nOutput: %s", err, output)
+	}
+
+	// Verify both binaries exist
+	cliBinary := filepath.Join(beDir, "nrworkflow")
+	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+
+	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
+		t.Errorf("make build-release did not create nrworkflow binary")
+	}
+	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
+		t.Errorf("make build-release did not create nrworkflow_server binary")
+	}
+
+	// Verify binaries are executable
+	if info, err := os.Stat(cliBinary); err == nil {
+		if info.Mode()&0111 == 0 {
+			t.Errorf("nrworkflow binary is not executable")
+		}
+	}
+	if info, err := os.Stat(serverBinary); err == nil {
+		if info.Mode()&0111 == 0 {
+			t.Errorf("nrworkflow_server binary is not executable")
+		}
+	}
+
+	// Clean up
+	defer func() {
+		cleanCmd := exec.Command("make", "clean")
+		cleanCmd.Dir = beDir
+		cleanCmd.Run()
+	}()
+}
+
+// TestMakefileTargets_BuildCLIRelease verifies make build-cli-release builds stripped CLI binary
+func TestMakefileTargets_BuildCLIRelease(t *testing.T) {
+	beDir := getBeDir(t)
+
+	// Clean first
+	cleanCmd := exec.Command("make", "clean")
+	cleanCmd.Dir = beDir
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		t.Logf("make clean output: %s", output)
+	}
+
+	// Build CLI release
+	buildCmd := exec.Command("make", "build-cli-release")
+	buildCmd.Dir = beDir
+	output, err := buildCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("make build-cli-release failed: %v\nOutput: %s", err, output)
+	}
+
+	// Verify CLI binary exists
+	cliBinary := filepath.Join(beDir, "nrworkflow")
+	cliInfo, err := os.Stat(cliBinary)
+	if os.IsNotExist(err) {
+		t.Fatalf("make build-cli-release did not create nrworkflow binary")
+	}
+
+	// Build a debug version for size comparison
+	tmpDir := t.TempDir()
+	debugBinary := filepath.Join(tmpDir, "nrworkflow_debug")
+	debugCmd := exec.Command("go", "build", "-o", debugBinary, "./cmd/nrworkflow")
+	debugCmd.Dir = beDir
+	if debugOutput, debugErr := debugCmd.CombinedOutput(); debugErr != nil {
+		t.Logf("Debug build warning: %v\nOutput: %s", debugErr, debugOutput)
+	}
+
+	debugInfo, err := os.Stat(debugBinary)
+	if err == nil {
+		// Release binary should be smaller than debug binary (due to -ldflags="-s -w")
+		if cliInfo.Size() >= debugInfo.Size() {
+			t.Errorf("Release binary size (%d) should be smaller than debug binary (%d)", cliInfo.Size(), debugInfo.Size())
+		}
+	}
+
+	// Clean up
+	defer func() {
+		cleanCmd := exec.Command("make", "clean")
+		cleanCmd.Dir = beDir
+		cleanCmd.Run()
+	}()
+}
+
+// TestMakefileTargets_BuildServerRelease verifies make build-server-release builds stripped server binary
+func TestMakefileTargets_BuildServerRelease(t *testing.T) {
+	beDir := getBeDir(t)
+
+	// Clean first
+	cleanCmd := exec.Command("make", "clean")
+	cleanCmd.Dir = beDir
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		t.Logf("make clean output: %s", output)
+	}
+
+	// Build server release
+	buildCmd := exec.Command("make", "build-server-release")
+	buildCmd.Dir = beDir
+	output, err := buildCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("make build-server-release failed: %v\nOutput: %s", err, output)
+	}
+
+	// Verify server binary exists
+	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+	serverInfo, err := os.Stat(serverBinary)
+	if os.IsNotExist(err) {
+		t.Fatalf("make build-server-release did not create nrworkflow_server binary")
+	}
+
+	// Build a debug version for size comparison
+	tmpDir := t.TempDir()
+	debugBinary := filepath.Join(tmpDir, "nrworkflow_server_debug")
+	debugCmd := exec.Command("go", "build", "-o", debugBinary, "./cmd/server")
+	debugCmd.Dir = beDir
+	if debugOutput, debugErr := debugCmd.CombinedOutput(); debugErr != nil {
+		t.Logf("Debug build warning: %v\nOutput: %s", debugErr, debugOutput)
+	}
+
+	debugInfo, err := os.Stat(debugBinary)
+	if err == nil {
+		// Release binary should be smaller than debug binary (due to -ldflags="-s -w")
+		if serverInfo.Size() >= debugInfo.Size() {
+			t.Errorf("Release binary size (%d) should be smaller than debug binary (%d)", serverInfo.Size(), debugInfo.Size())
+		}
+	}
+
+	// Clean up
+	defer func() {
+		cleanCmd := exec.Command("make", "clean")
+		cleanCmd.Dir = beDir
+		cleanCmd.Run()
+	}()
+}
+
+// TestMakefileTargets_Clean verifies make clean removes both binaries
+func TestMakefileTargets_Clean(t *testing.T) {
+	beDir := getBeDir(t)
+
+	// Build both binaries first
+	buildCmd := exec.Command("make", "build")
+	buildCmd.Dir = beDir
+	if output, err := buildCmd.CombinedOutput(); err != nil {
+		t.Fatalf("make build failed: %v\nOutput: %s", err, output)
+	}
+
+	cliBinary := filepath.Join(beDir, "nrworkflow")
+	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+
+	// Verify binaries exist before clean
+	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
+		t.Fatalf("nrworkflow binary should exist before clean")
+	}
+	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
+		t.Fatalf("nrworkflow_server binary should exist before clean")
+	}
+
+	// Run clean
+	cleanCmd := exec.Command("make", "clean")
+	cleanCmd.Dir = beDir
+	output, err := cleanCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("make clean failed: %v\nOutput: %s", err, output)
+	}
+
+	// Verify both binaries are removed
+	if _, err := os.Stat(cliBinary); err == nil {
+		t.Errorf("nrworkflow binary should be removed by make clean")
+	}
+	if _, err := os.Stat(serverBinary); err == nil {
+		t.Errorf("nrworkflow_server binary should be removed by make clean")
 	}
 }
 

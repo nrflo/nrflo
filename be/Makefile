@@ -1,27 +1,32 @@
-.PHONY: build build-server build-all build-release clean test test-integration test-verbose install tidy
+.PHONY: build build-cli build-server build-release build-cli-release build-server-release clean test test-integration test-verbose install tidy
 
 GO := /opt/homebrew/bin/go
 
+# Build both binaries (development)
+build: build-cli build-server
+
 # Development build (CLI binary)
-build:
+build-cli:
 	$(GO) build -o nrworkflow ./cmd/nrworkflow
 
 # Development build (server binary)
 build-server:
 	$(GO) build -o nrworkflow_server ./cmd/server
 
-# Build both binaries
-build-all: build build-server
+# Release builds (both binaries)
+build-release: build-cli-release build-server-release
 
-# Release build for Apple Silicon (no CGO, stripped)
-build-release:
+# Release build for CLI (Apple Silicon, no CGO, stripped)
+build-cli-release:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="-s -w" -o nrworkflow ./cmd/nrworkflow
+
+# Release build for server (Apple Silicon, no CGO, stripped)
+build-server-release:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="-s -w" -o nrworkflow_server ./cmd/server
 
 # Clean build artifacts
 clean:
-	rm -f nrworkflow
-	rm -f nrworkflow_server
+	rm -f nrworkflow nrworkflow_server
 	rm -f nrworkflow.data
 
 # Run tests
@@ -36,7 +41,7 @@ test-integration:
 test-verbose:
 	$(GO) test -v ./...
 
-# Install to /usr/local/bin
+# Install both to /usr/local/bin
 install: build-release
 	sudo cp nrworkflow /usr/local/bin/
 	sudo cp nrworkflow_server /usr/local/bin/

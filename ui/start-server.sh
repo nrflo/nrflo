@@ -18,7 +18,7 @@ echo "================================"
 if ! command -v nrworkflow_server &> /dev/null; then
     echo -e "${RED}Error: nrworkflow_server command not found${NC}"
     echo "Please install nrworkflow_server first:"
-    echo "  cd ~/.nrworkflow/be && make build-all && sudo make install"
+    echo "  cd ~/.nrworkflow/be && make build && sudo make install"
     exit 1
 fi
 

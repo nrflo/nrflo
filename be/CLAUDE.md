@@ -146,12 +146,14 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 
 ```bash
 cd ~/projects/2026/nrworkflow/be
-make build            # Build CLI binary (nrworkflow)
-make build-server     # Build server binary (nrworkflow_server)
-make build-all        # Build both binaries
-make build-release    # Optimized build (both binaries)
-sudo make install     # Install both to /usr/local/bin
-make clean            # Clean build artifacts
+make build                # Build both binaries (CLI + server)
+make build-cli            # Build CLI binary (nrworkflow)
+make build-server         # Build server binary (nrworkflow_server)
+make build-release        # Optimized release build (both binaries)
+make build-cli-release    # Optimized release build (CLI only)
+make build-server-release # Optimized release build (server only)
+sudo make install         # Install both to /usr/local/bin
+make clean                # Clean build artifacts
 ```
 
 No CGO required (pure Go SQLite via modernc.org/sqlite).

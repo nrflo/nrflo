@@ -164,7 +164,7 @@ Chains allow sequential execution of multiple tickets with a single workflow. Ti
 
 | Script | Purpose |
 |--------|---------|
-| `restart.sh` | Kill existing servers, rebuild both binaries (`make build-all`), start `nrworkflow_server` + UI in background |
+| `restart.sh` | Kill existing servers, rebuild both binaries (`make build`), start `nrworkflow_server` + UI in background |
 | `stop.sh` | Stop running BE + UI servers |
 | `ui/start-server.sh` | Start both servers in foreground (uses `nrworkflow_server serve`) |
 

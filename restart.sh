@@ -56,7 +56,7 @@ echo ""
 echo -e "${YELLOW}[2/4] Building backend...${NC}"
 
 cd "$SCRIPT_DIR/be"
-if make build-all; then
+if make build; then
     echo -e "${GREEN}  Backend built successfully${NC}"
 else
     echo -e "${RED}  Backend build failed!${NC}"

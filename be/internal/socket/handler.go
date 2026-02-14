@@ -1,10 +1,11 @@
 package socket
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"strings"
 
+	"be/internal/logger"
 	"be/internal/types"
 	"be/internal/ws"
 )
@@ -16,9 +17,13 @@ func (h *Handler) Handle(req Request) Response {
 		return MakeErrorResponse(req.ID, NewInvalidRequestError("method is required"))
 	}
 
+	trx := logger.NewTrx()
+	ctx := logger.WithTrx(context.Background(), trx)
+
 	// Route based on method prefix
 	parts := strings.SplitN(req.Method, ".", 2)
 	if len(parts) != 2 {
+		logger.Warn(ctx, "unknown socket method", "method", req.Method)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError(req.Method))
 	}
 
@@ -29,10 +34,11 @@ func (h *Handler) Handle(req Request) Response {
 	case "findings":
 		return h.handleFindings(req, action)
 	case "agent":
-		return h.handleAgent(req, action)
+		return h.handleAgent(ctx, req, action)
 	case "ws":
-		return h.handleWS(req, action)
+		return h.handleWS(ctx, req, action)
 	default:
+		logger.Warn(ctx, "unknown socket method", "method", req.Method)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError(req.Method))
 	}
 }
@@ -181,7 +187,7 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 	}
 }
 
-func (h *Handler) handleAgent(req Request, action string) Response {
+func (h *Handler) handleAgent(ctx context.Context, req Request, action string) Response {
 	projectID := req.Project
 	if projectID == "" {
 		return MakeErrorResponse(req.ID, NewValidationError("project is required"))
@@ -196,7 +202,9 @@ func (h *Handler) handleAgent(req Request, action string) Response {
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
+		logger.Info(ctx, "agent complete received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
 		if err := h.agentSvc.Complete(projectID, params.TicketID, &params.AgentCompleteRequest); err != nil {
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
@@ -213,7 +221,9 @@ func (h *Handler) handleAgent(req Request, action string) Response {
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
+		logger.Warn(ctx, "agent fail received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
 		if err := h.agentSvc.Fail(projectID, params.TicketID, &params.AgentCompleteRequest); err != nil {
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
@@ -230,7 +240,9 @@ func (h *Handler) handleAgent(req Request, action string) Response {
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
+		logger.Info(ctx, "agent continue received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
 		if err := h.agentSvc.Continue(projectID, params.TicketID, &params.AgentCompleteRequest); err != nil {
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		h.broadcast(ws.EventAgentContinued, projectID, params.TicketID, params.Workflow, map[string]interface{}{
@@ -247,7 +259,9 @@ func (h *Handler) handleAgent(req Request, action string) Response {
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
+		logger.Info(ctx, "agent callback received", "agent_type", params.AgentType, "ticket", params.TicketID, "level", params.Level)
 		if err := h.agentSvc.Callback(projectID, params.TicketID, &params.AgentCallbackRequest); err != nil {
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
@@ -258,12 +272,13 @@ func (h *Handler) handleAgent(req Request, action string) Response {
 		return MakeResponse(req.ID, map[string]string{"status": "callback"})
 
 	default:
+		logger.Warn(ctx, "unknown socket method", "method", "agent."+action)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("agent."+action))
 	}
 }
 
 // handleWS handles WebSocket broadcast requests from spawner
-func (h *Handler) handleWS(req Request, action string) Response {
+func (h *Handler) handleWS(ctx context.Context, req Request, action string) Response {
 	switch action {
 	case "broadcast":
 		var params struct {
@@ -283,8 +298,7 @@ func (h *Handler) handleWS(req Request, action string) Response {
 			return MakeErrorResponse(req.ID, NewValidationError("project_id is required"))
 		}
 		// ticket_id is optional for project-scoped workflows
-		log.Printf("[socket] ws.broadcast received: type=%s project=%s ticket=%s (hub=%v)",
-			params.Type, params.ProjectID, params.TicketID, h.wsHub != nil)
+		logger.Info(ctx, "ws broadcast", "type", params.Type, "project", params.ProjectID)
 		h.broadcast(params.Type, params.ProjectID, params.TicketID, params.Workflow, params.Data)
 		return MakeResponse(req.ID, map[string]string{"status": "broadcast"})
 

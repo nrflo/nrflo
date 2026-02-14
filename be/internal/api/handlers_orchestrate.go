@@ -1,9 +1,9 @@
 package api
 
 import (
-	"context"
 	"net/http"
 
+	"be/internal/logger"
 	"be/internal/orchestrator"
 )
 
@@ -41,7 +41,9 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.orchestrator.Start(context.Background(), orchestrator.RunRequest{
+	logger.Info(r.Context(), "run workflow requested", "ticket", ticketID, "workflow", body.Workflow)
+
+	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
 		ProjectID:    projectID,
 		TicketID:     ticketID,
 		WorkflowName: body.Workflow,
@@ -98,6 +100,8 @@ func (s *Server) handleRestartAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Info(r.Context(), "restart agent requested", "ticket", ticketID, "session_id", body.SessionID)
+
 	err := s.orchestrator.RestartAgent(projectID, ticketID, body.Workflow, body.SessionID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
@@ -145,7 +149,9 @@ func (s *Server) handleRetryFailedAgent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err := s.orchestrator.RetryFailedAgent(context.Background(), projectID, ticketID, body.Workflow, body.SessionID)
+	logger.Info(r.Context(), "retry failed requested", "ticket", ticketID, "session_id", body.SessionID)
+
+	err := s.orchestrator.RetryFailedAgent(r.Context(), projectID, ticketID, body.Workflow, body.SessionID)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -179,6 +185,8 @@ func (s *Server) handleStopWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 	// Body is optional
 	readJSON(r, &body)
+
+	logger.Info(r.Context(), "stop workflow requested", "ticket", ticketID)
 
 	err := s.orchestrator.StopByTicket(projectID, ticketID, body.Workflow)
 	if err != nil {

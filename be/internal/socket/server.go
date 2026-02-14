@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/service"
 	"be/internal/ws"
 )
@@ -102,7 +102,7 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
-	log.Printf("Socket server listening on %s", s.socketPath)
+	logger.Info(context.Background(), "socket server listening", "path", s.socketPath)
 
 	// Accept connections
 	go s.acceptLoop()
@@ -135,11 +135,12 @@ func (s *Server) Stop(ctx context.Context) error {
 		close(done)
 	}()
 
+	bgCtx := context.Background()
 	select {
 	case <-done:
-		log.Println("Socket server stopped gracefully")
+		logger.Info(bgCtx, "socket server stopped gracefully")
 	case <-ctx.Done():
-		log.Println("Socket server shutdown timed out")
+		logger.Warn(bgCtx, "socket server shutdown timed out")
 	}
 
 	// Clean up socket file
@@ -161,7 +162,7 @@ func (s *Server) acceptLoop() {
 			case <-s.shutdown:
 				return
 			default:
-				log.Printf("Accept error: %v", err)
+				logger.Error(context.Background(), "socket accept error", "error", err)
 				continue
 			}
 		}
@@ -208,7 +209,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 
 		// Write response
 		if err := s.writeResponse(conn, resp); err != nil {
-			log.Printf("Write error: %v", err)
+			logger.Error(context.Background(), "socket write error", "error", err)
 			return
 		}
 

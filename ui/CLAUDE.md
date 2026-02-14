@@ -24,6 +24,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/hooks/useWebSocket.ts` | WebSocket hook for real-time updates |
 | `src/hooks/useElapsedTime.ts` | Elapsed time hooks (useElapsedTime, useTickingClock) |
 | `src/hooks/useChains.ts` | TanStack Query hooks for chain executions (chainKeys factory, polling, append mutation) |
+| `src/hooks/useGoBack.ts` | History-aware back navigation hook (navigate(-1) with fallback path) |
 | `src/stores/projectStore.ts` | Zustand store for project selection (loads from API) |
 | `src/lib/utils.ts` | Utility functions (cn, formatDate, statusColor, etc.) |
 | `src/components/ui/MarkdownEditor.tsx` | CodeMirror 6 markdown editor (used in AgentDefForm/Card) |

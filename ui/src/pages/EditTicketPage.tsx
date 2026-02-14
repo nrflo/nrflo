@@ -1,16 +1,18 @@
 import { useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { TicketForm, type TicketFormData } from '@/components/tickets/TicketForm'
+import { useGoBack } from '@/hooks/useGoBack'
 import { useTicket, useUpdateTicket, useTicketList } from '@/hooks/useTickets'
 
 export function EditTicketPage() {
   const { id } = useParams<{ id: string }>()
   const decodedId = decodeURIComponent(id!)
   const navigate = useNavigate()
+  const goBack = useGoBack(`/tickets/${encodeURIComponent(decodedId)}`)
   const { data: ticket, isLoading, error } = useTicket(decodedId)
   const updateMutation = useUpdateTicket()
   const { data: ticketData } = useTicketList()
@@ -54,11 +56,9 @@ export function EditTicketPage() {
         <p className="text-destructive">
           {error ? `Error: ${error.message}` : 'Ticket not found'}
         </p>
-        <Link to="/tickets">
-          <Button variant="link" className="mt-4">
-            Back to tickets
-          </Button>
-        </Link>
+        <Button variant="link" className="mt-4" onClick={goBack}>
+          Back to tickets
+        </Button>
       </div>
     )
   }
@@ -66,11 +66,9 @@ export function EditTicketPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Link to={`/tickets/${encodeURIComponent(decodedId)}`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button variant="ghost" size="icon" onClick={goBack}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <h1 className="text-2xl font-bold tracking-tight">Edit Ticket</h1>
       </div>
 

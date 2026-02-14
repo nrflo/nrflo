@@ -1,14 +1,15 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { TicketForm, type TicketFormData } from '@/components/tickets/TicketForm'
+import { useGoBack } from '@/hooks/useGoBack'
 import { useCreateTicket, useTicketList } from '@/hooks/useTickets'
 
 export function CreateTicketPage() {
   const navigate = useNavigate()
+  const goBack = useGoBack('/tickets')
   const createMutation = useCreateTicket()
   const { data: ticketData } = useTicketList()
 
@@ -39,11 +40,9 @@ export function CreateTicketPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Link to="/tickets">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button variant="ghost" size="icon" onClick={goBack}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <h1 className="text-2xl font-bold tracking-tight">Create Ticket</h1>
       </div>
 

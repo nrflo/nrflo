@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Play, XCircle, Edit, ListPlus } from 'lucide-react'
+import { useGoBack } from '@/hooks/useGoBack'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
@@ -138,7 +139,7 @@ function ChainActions({
 
 export function ChainDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const goBack = useGoBack('/chains')
   const [showEdit, setShowEdit] = useState(false)
   const [showAppend, setShowAppend] = useState(false)
   const [polling, setPolling] = useState(false)
@@ -163,7 +164,7 @@ export function ChainDetailPage() {
   if (error || !displayChain) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => navigate('/chains')}>
+        <Button variant="ghost" onClick={goBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Chains
         </Button>
@@ -180,7 +181,7 @@ export function ChainDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/chains')}>
+        <Button variant="ghost" size="sm" onClick={goBack}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Chains
         </Button>

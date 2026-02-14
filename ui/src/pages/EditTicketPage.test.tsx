@@ -83,7 +83,8 @@ describe('EditTicketPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Error: Not found/)).toBeInTheDocument()
     })
-    expect(screen.getByRole('link', { name: /back to tickets/i })).toBeInTheDocument()
+    // Back button is now a button using goBack, not a link
+    expect(screen.getByRole('button', { name: /back to tickets/i })).toBeInTheDocument()
   })
 
   it('renders form with ticket data pre-filled', async () => {
@@ -167,7 +168,7 @@ describe('EditTicketPage', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('back button links to ticket detail page, not ticket list', async () => {
+  it('back button renders and uses goBack hook', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     renderPage()
 
@@ -175,8 +176,11 @@ describe('EditTicketPage', () => {
       expect(screen.getByDisplayValue('Test ticket title')).toBeInTheDocument()
     })
 
-    const backLink = screen.getByRole('link', { name: '' })
-    expect(backLink).toHaveAttribute('href', '/tickets/TICKET-1')
+    // Back button is now a button using useGoBack hook, not a link
+    // The hook will call navigate(-1) if history exists, or navigate to fallback if not
+    const backButton = screen.getAllByRole('button')[0] // First button is back button (ArrowLeft icon)
+    expect(backButton).toBeInTheDocument()
+    expect(backButton).not.toBeDisabled()
   })
 
   it('properly decodes URL-encoded ticket IDs', async () => {

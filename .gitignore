@@ -1,5 +1,6 @@
 # Binaries
-nrworkflow/nrworkflow
+nrworkflow
+be/nrworkflow
 *.exe
 *.exe~
 *.dll
@@ -35,6 +36,9 @@ logs/
 *.swo
 *~
 *.sublime-workspace
+
+# Dependencies
+node_modules/
 
 # Local configuration
 .env

@@ -19,6 +19,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
 import { RunWorkflowDialog } from '@/components/workflow/RunWorkflowDialog'
 import { RunEpicWorkflowDialog } from '@/components/workflow/RunEpicWorkflowDialog'
+import { useGoBack } from '@/hooks/useGoBack'
 import { useChainList } from '@/hooks/useChains'
 import {
   useTicket,
@@ -44,6 +45,7 @@ import { DetailsTabContent } from './DetailsTabContent'
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const goBack = useGoBack('/tickets')
   const [closeReason, setCloseReason] = useState('')
   const [showCloseForm, setShowCloseForm] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
@@ -145,11 +147,9 @@ export function TicketDetailPage() {
         <p className="text-destructive">
           {error ? `Error: ${error.message}` : 'Ticket not found'}
         </p>
-        <Link to="/tickets">
-          <Button variant="link" className="mt-4">
-            Back to tickets
-          </Button>
-        </Link>
+        <Button variant="link" className="mt-4" onClick={goBack}>
+          Back to tickets
+        </Button>
       </div>
     )
   }
@@ -161,11 +161,9 @@ export function TicketDetailPage() {
     )}>
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Link to="/tickets">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button variant="ghost" size="icon" onClick={goBack}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <IssueTypeIcon type={ticket.issue_type} size="md" />

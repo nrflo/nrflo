@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"context"
 	"os/exec"
 	"testing"
 	"time"
@@ -40,7 +41,7 @@ func TestHandleCompletion_ExitZeroWithExplicitCallback(t *testing.T) {
 		startTime:          time.Now().Add(-5 * time.Second),
 	}
 
-	env.spawner.handleCompletion(proc, SpawnRequest{
+	env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -165,7 +166,7 @@ func TestHandleCompletion_CallbackWithOtherResults(t *testing.T) {
 				startTime:          time.Now().Add(-5 * time.Second),
 			}
 
-			env.spawner.handleCompletion(proc, SpawnRequest{
+			env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 				ProjectID:    env.projectID,
 				TicketID:     env.ticketID,
 				WorkflowName: env.workflowID,

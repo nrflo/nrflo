@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"testing"
@@ -93,7 +94,7 @@ func TestHandleCallback_SingleAgentCallback(t *testing.T) {
 	ch := env.subscribeWSClient(t, "ws-cb-1", "CB-1")
 
 	// Simulate callback from layer 2 (verifier) to layer 1 (builder)
-	targetIdx := env.orch.handleCallback(wfiID, req, layerGroups, 2, 1, "verifier", "Fix the builder phase")
+	targetIdx := env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 1, "verifier", "Fix the builder phase")
 
 	// Verify target index returned correctly
 	if targetIdx != 1 {
@@ -212,7 +213,7 @@ func TestHandleCallback_MultiAgentLayerUsesLowestLevel(t *testing.T) {
 	// In the orchestrator's runLoop, when multiple agents callback, the lowest level is used.
 	// Here we simulate that by calling handleCallback with the lowest level.
 	// In reality, runLoop detects both callbacks and picks level 0 (lowest).
-	targetIdx := env.orch.handleCallback(wfiID, req, layerGroups, 2, 0, "verifier", "Callback to layer 0")
+	targetIdx := env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 0, "verifier", "Callback to layer 0")
 
 	if targetIdx != 0 {
 		t.Errorf("expected targetIdx=0 (lowest level), got %d", targetIdx)
@@ -266,7 +267,7 @@ func TestHandleCallback_InvalidLayerNumber(t *testing.T) {
 	}
 
 	// Request callback to layer 99 (doesn't exist)
-	targetIdx := env.orch.handleCallback(wfiID, req, layerGroups, 1, 99, "builder", "Invalid callback")
+	targetIdx := env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 1, 99, "builder", "Invalid callback")
 
 	// Should return -1 for invalid layer
 	if targetIdx != -1 {
@@ -304,7 +305,7 @@ func TestHandleCallback_CallbackMetadataPreserved(t *testing.T) {
 		ScopeType:    "ticket",
 	}
 
-	env.orch.handleCallback(wfiID, req, layerGroups, 1, 0, "builder", "Detailed callback instructions here")
+	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 1, 0, "builder", "Detailed callback instructions here")
 
 	// Verify both existing and callback findings are preserved
 	wi := env.getWorkflowInstance(t, wfiID)
@@ -403,7 +404,7 @@ func TestHandleCallback_SessionsExcludeRunningAndContinued(t *testing.T) {
 		ScopeType:    "ticket",
 	}
 
-	env.orch.handleCallback(wfiID, req, layerGroups, 1, 0, "builder", "Test")
+	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 1, 0, "builder", "Test")
 
 	// Verify completed session was reset
 	completedSess, _ := asRepo.Get("sess-completed")
@@ -463,7 +464,7 @@ func TestHandleCallback_CallbackToLayerZero(t *testing.T) {
 	}
 
 	// Callback from layer 1 to layer 0
-	targetIdx := env.orch.handleCallback(wfiID, req, layerGroups, 1, 0, "builder", "Restart from beginning")
+	targetIdx := env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 1, 0, "builder", "Restart from beginning")
 
 	if targetIdx != 0 {
 		t.Errorf("expected targetIdx=0, got %d", targetIdx)
@@ -546,7 +547,7 @@ func TestHandleCallback_ProjectScope(t *testing.T) {
 	// Subscribe to WS events (project scope uses empty ticket ID)
 	ch := env.subscribeWSClient(t, "ws-proj-cb", "")
 
-	targetIdx := env.orch.handleCallback(wfiID, req, layerGroups, 1, 0, "builder", "Project callback")
+	targetIdx := env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 1, 0, "builder", "Project callback")
 
 	if targetIdx != 0 {
 		t.Errorf("expected targetIdx=0, got %d", targetIdx)

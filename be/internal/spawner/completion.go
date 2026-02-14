@@ -1,18 +1,18 @@
 package spawner
 
 import (
-	"fmt"
-	"os"
+	"context"
 	"syscall"
 	"time"
 
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/ws"
 )
 
 // handleGracefulTimeout sends SIGTERM, waits for grace period, then SIGKILL
-func (s *Spawner) handleGracefulTimeout(proc *processInfo, req SpawnRequest) {
+func (s *Spawner) handleGracefulTimeout(ctx context.Context, proc *processInfo, req SpawnRequest) {
 	proc.elapsed = time.Since(proc.startTime)
 
 	// Send SIGTERM first
@@ -38,7 +38,7 @@ func (s *Spawner) handleGracefulTimeout(proc *processInfo, req SpawnRequest) {
 	}
 
 	proc.finalStatus = "TIMEOUT"
-	fmt.Fprintf(os.Stderr, "  %s timed out after %v\n", proc.modelID, proc.timeout)
+	logger.Warn(ctx, "agent timed out", "model", proc.modelID, "timeout", proc.timeout)
 
 	// Final messages flush
 	s.saveMessages(proc)
@@ -48,7 +48,7 @@ func (s *Spawner) handleGracefulTimeout(proc *processInfo, req SpawnRequest) {
 }
 
 // handleCompletion handles a completed agent process with hybrid completion semantics
-func (s *Spawner) handleCompletion(proc *processInfo, req SpawnRequest) {
+func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req SpawnRequest) {
 	exitCode := 0
 	if proc.cmd.ProcessState != nil {
 		exitCode = proc.cmd.ProcessState.ExitCode()
@@ -115,13 +115,12 @@ func (s *Spawner) handleCompletion(proc *processInfo, req SpawnRequest) {
 	// Register agent stop with reason
 	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName, proc.sessionID, proc.agentID, result, resultReason, proc.modelID)
 
-	fmt.Printf("  %s: %s (exit code: %d, reason: %s, duration: %v)\n",
-		proc.modelID, proc.finalStatus, exitCode, resultReason, proc.elapsed.Round(time.Second))
+	logger.Info(ctx, "agent completed", "model", proc.modelID, "status", proc.finalStatus, "exit_code", exitCode, "reason", resultReason, "duration", proc.elapsed.Round(time.Second))
 }
 
 // relaunchForContinuation spawns a new agent process to continue where the previous one left off.
 // It preserves the ancestor session chain and increments the continuation count.
-func (s *Spawner) relaunchForContinuation(oldProc *processInfo, req SpawnRequest, phase string) (*processInfo, error) {
+func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processInfo, req SpawnRequest, phase string) (*processInfo, error) {
 	// Determine ancestor session ID (root of the continuation chain)
 	ancestorID := oldProc.ancestorSessionID
 	if ancestorID == "" {
@@ -159,8 +158,7 @@ func (s *Spawner) relaunchForContinuation(oldProc *processInfo, req SpawnRequest
 		"model_id":           oldProc.modelID,
 	})
 
-	fmt.Printf("  Started continuation %s (PID: %d, Session: %s, Ancestor: %s)\n",
-		oldProc.modelID, newProc.cmd.Process.Pid, newProc.sessionID, ancestorID)
+	logger.Info(ctx, "agent continuation started", "model", oldProc.modelID, "new_session", newProc.sessionID, "ancestor", ancestorID, "restart_count", newProc.restartCount)
 
 	return newProc, nil
 }

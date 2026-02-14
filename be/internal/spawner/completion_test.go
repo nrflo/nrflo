@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"os/exec"
@@ -144,7 +145,7 @@ func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
 		startTime:          time.Now().Add(-10 * time.Second),
 	}
 
-	env.spawner.handleCompletion(proc, SpawnRequest{
+	env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -206,7 +207,7 @@ func TestHandleCompletion_ExitZeroWithExplicitPass(t *testing.T) {
 		startTime:          time.Now().Add(-5 * time.Second),
 	}
 
-	env.spawner.handleCompletion(proc, SpawnRequest{
+	env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -261,7 +262,7 @@ func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
 		startTime:          time.Now().Add(-3 * time.Second),
 	}
 
-	env.spawner.handleCompletion(proc, SpawnRequest{
+	env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -320,7 +321,7 @@ func TestHandleCompletion_ExitZeroWithExplicitContinue(t *testing.T) {
 		startTime:          time.Now().Add(-7 * time.Second),
 	}
 
-	env.spawner.handleCompletion(proc, SpawnRequest{
+	env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -373,7 +374,7 @@ func TestHandleCompletion_NonZeroExitCode(t *testing.T) {
 		startTime:          time.Now().Add(-2 * time.Second),
 	}
 
-	env.spawner.handleCompletion(proc, SpawnRequest{
+	env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -428,7 +429,7 @@ func TestHandleCompletion_EndedAtTimestamp(t *testing.T) {
 		startTime:          time.Now().Add(-10 * time.Second),
 	}
 
-	env.spawner.handleCompletion(proc, SpawnRequest{
+	env.spawner.handleCompletion(context.Background(), proc, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,

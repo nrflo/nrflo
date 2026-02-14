@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/ws"
@@ -206,29 +207,24 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 
-	// Print spawn info
+	// Log spawn info
 	spawnTarget := req.TicketID
 	if req.IsProjectScope() {
 		spawnTarget = "project:" + req.ProjectID
 	}
-	fmt.Printf("Spawning %s for %s...\n", req.AgentType, spawnTarget)
-	fmt.Printf("  Model: %s\n", modelID)
-	fmt.Printf("  Workflow: %s (layer %d)\n", req.WorkflowName, phase.Layer)
-	fmt.Println()
+	logger.Info(ctx, "spawning agent", "agent_type", req.AgentType, "target", spawnTarget, "model", modelID, "workflow", req.WorkflowName, "layer", phase.Layer)
 
 	// Start phase
-	s.startPhase(wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID)
+	s.startPhase(ctx, wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID)
 
 	// Spawn agent
 	proc, err := s.spawnSingle(req, modelID, phase.ID, wi.ID)
 	if err != nil {
-		s.completePhase(wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID, "fail")
+		s.completePhase(ctx, wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID, "fail")
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
-	fmt.Printf("  Started %s (PID: %d, Session: %s)\n", modelID, proc.cmd.Process.Pid, proc.sessionID)
+	logger.Info(ctx, "agent process started", "model", modelID, "pid", proc.cmd.Process.Pid, "session_id", proc.sessionID)
 	processes := []*processInfo{proc}
-
-	fmt.Println()
 
 	// Monitor all processes
 	return s.monitorAll(ctx, processes, req, phase.ID)
@@ -410,6 +406,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		select {
 		case <-ctx.Done():
 			// Kill all running processes
+			logger.Warn(ctx, "agents cancelled", "count", len(running))
 			for _, proc := range running {
 				if proc.cmd.Process != nil {
 					proc.cmd.Process.Signal(syscall.SIGTERM)
@@ -436,19 +433,18 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			if len(completed) > 0 {
 				wfiID = completed[0].workflowInstanceID
 			}
-			s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
+			s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
 			return ctx.Err()
 		case restartSessionID := <-s.restartCh:
 			// Manual restart requested — find matching proc and initiate context save
 			for _, proc := range running {
 				if proc.sessionID == restartSessionID && !proc.lowContextSaving {
-					fmt.Printf("  %s [manual-restart] Restart requested for session %s\n",
-						s.formatPrefix(proc), restartSessionID)
+					logger.Info(ctx, "manual restart requested", "session_id", restartSessionID)
 					proc.lowContextSaving = true
 					oldDoneCh := proc.doneCh
 					newDoneCh := make(chan struct{})
 					proc.doneCh = newDoneCh
-					go s.initiateContextSave(proc, req, oldDoneCh, newDoneCh)
+					go s.initiateContextSave(ctx, proc, req, oldDoneCh, newDoneCh)
 					break
 				}
 			}
@@ -484,7 +480,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					oldDoneCh := proc.doneCh
 					newDoneCh := make(chan struct{})
 					proc.doneCh = newDoneCh
-					go s.initiateContextSave(proc, req, oldDoneCh, newDoneCh)
+					go s.initiateContextSave(ctx, proc, req, oldDoneCh, newDoneCh)
 				}
 			}
 
@@ -497,24 +493,22 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 
 				// If context save already set finalStatus, skip handleCompletion
 				if proc.finalStatus == "" {
-					s.handleCompletion(proc, req)
+					s.handleCompletion(ctx, proc, req)
 				}
 
 				// Check for continuation
 				if proc.finalStatus == "CONTINUE" {
 					if proc.restartCount < defaultMaxContinuations {
-						fmt.Printf("  %s: Continuation %d/%d — relaunching with fresh context...\n",
-							proc.modelID, proc.restartCount+1, defaultMaxContinuations)
-						newProc, err := s.relaunchForContinuation(proc, req, phase)
+						logger.Info(ctx, "continuation relaunching", "model", proc.modelID, "count", proc.restartCount+1, "max", defaultMaxContinuations)
+						newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
 						if err != nil {
-							fmt.Fprintf(os.Stderr, "  Warning: Failed to relaunch %s: %v\n", proc.modelID, err)
+							logger.Error(ctx, "failed to relaunch", "model", proc.modelID, "err", err)
 							completed = append(completed, proc)
 						} else {
 							stillRunning = append(stillRunning, newProc)
 						}
 					} else {
-						fmt.Fprintf(os.Stderr, "  %s: Max continuations (%d) reached, marking as fail\n",
-							proc.modelID, defaultMaxContinuations)
+						logger.Error(ctx, "max continuations reached", "model", proc.modelID, "max", defaultMaxContinuations)
 						proc.finalStatus = "FAIL"
 						s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 							proc.sessionID, proc.agentID, "fail", "max_continuations", proc.modelID)
@@ -527,7 +521,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				// Still running - check timeout
 				if elapsed > proc.timeout {
 					s.saveContextLeft(proc)
-					s.handleGracefulTimeout(proc, req)
+					s.handleGracefulTimeout(ctx, proc, req)
 					completed = append(completed, proc)
 				} else {
 					stillRunning = append(stillRunning, proc)
@@ -543,7 +537,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 	}
 
 	// Finalize phase
-	return s.finalizePhase(completed, req, phase)
+	return s.finalizePhase(ctx, completed, req, phase)
 }
 
 // printStatus prints status for all running/completed agents
@@ -577,12 +571,10 @@ func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
 // Uses pass_count >= 1 semantics: at least one PASS is required for layer success.
 // All-skipped counts as success (continue to next layer).
 // Returns CallbackError if any agent completed with CALLBACK status.
-func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phase string) error {
-	fmt.Printf("\n[%s] All agents completed:\n", phase)
+func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, req SpawnRequest, phase string) error {
 	for _, proc := range completed {
-		fmt.Printf("  %s: %s (%v)\n", proc.modelID, proc.finalStatus, proc.elapsed.Round(time.Second))
+		logger.Info(ctx, "agent result", "phase", phase, "model", proc.modelID, "status", proc.finalStatus, "duration", proc.elapsed.Round(time.Second))
 	}
-	fmt.Println()
 
 	passCount := 0
 	skippedCount := 0
@@ -609,27 +601,27 @@ func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phas
 	// Callback detected — read callback_level from session findings and signal orchestrator
 	if callbackCount > 0 {
 		level, instructions := s.readCallbackFindings(callbackProc)
-		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "callback")
-		fmt.Printf("Phase complete: %s (CALLBACK → layer %d)\n", phase, level)
+		s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "callback")
+		logger.Info(ctx, "phase finalized", "phase", phase, "result", "CALLBACK", "callback_level", level)
 		return &CallbackError{Level: level, Instructions: instructions, AgentType: req.AgentType}
 	}
 
 	// All skipped = success (continue to next layer)
 	if skippedCount == len(completed) {
-		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "skipped")
-		fmt.Printf("Phase complete: %s (SKIPPED)\n", phase)
+		s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "skipped")
+		logger.Info(ctx, "phase finalized", "phase", phase, "result", "SKIPPED")
 		return nil
 	}
 
 	// At least one pass = success
 	if passCount >= 1 {
-		s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "pass")
-		fmt.Printf("Phase complete: %s (PASS — %d/%d passed)\n", phase, passCount, len(completed))
+		s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "pass")
+		logger.Info(ctx, "phase finalized", "phase", phase, "result", "PASS", "pass_count", passCount, "total", len(completed))
 		return nil
 	}
 
 	// No passes = fail
-	s.completePhase(wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
+	s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
 
 	var failedModels []string
 	for _, proc := range completed {
@@ -637,8 +629,7 @@ func (s *Spawner) finalizePhase(completed []*processInfo, req SpawnRequest, phas
 			failedModels = append(failedModels, proc.modelID)
 		}
 	}
-	fmt.Printf("Phase complete: %s (FAIL)\n", phase)
-	fmt.Printf("  Failed: %s\n", strings.Join(failedModels, ", "))
+	logger.Error(ctx, "phase finalized", "phase", phase, "result", "FAIL", "failed", strings.Join(failedModels, ", "))
 	return fmt.Errorf("phase %s failed", phase)
 }
 

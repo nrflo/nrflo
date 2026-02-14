@@ -76,6 +76,20 @@ func Error(ctx context.Context, msg string, args ...any) {
 	log("ERROR", ctx, msg, args...)
 }
 
+// GetWriter returns the current writer (for testing)
+func GetWriter() io.Writer {
+	mu.Lock()
+	defer mu.Unlock()
+	return writer
+}
+
+// SetWriter sets the writer (for testing)
+func SetWriter(w io.Writer) {
+	mu.Lock()
+	writer = w
+	mu.Unlock()
+}
+
 func log(level string, ctx context.Context, msg string, args ...any) {
 	trx := TrxFromContext(ctx)
 	ts := time.Now().Format("2006-01-02 15:04:05")

@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -59,7 +60,7 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	}
 
 	// === Step 1: Trigger callback from layer 2 to layer 1 ===
-	targetIdx := env.orch.handleCallback(wfiID, req, layerGroups, 2, 1, "verifier", "Builder needs to fix the implementation")
+	targetIdx := env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 1, "verifier", "Builder needs to fix the implementation")
 
 	if targetIdx != 1 {
 		t.Fatalf("expected targetIdx=1, got %d", targetIdx)
@@ -93,7 +94,7 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	}
 
 	// === Step 3: Clear callback metadata (as runLoop does after callback layer completes) ===
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Verify _callback is cleared
 	wi = env.getWorkflowInstance(t, wfiID)
@@ -173,7 +174,7 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	}
 
 	// === First callback: verifier -> builder (layer 3 -> 1) ===
-	env.orch.handleCallback(wfiID, req, layerGroups, 3, 1, "verifier", "First callback: fix builder")
+	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 3, 1, "verifier", "First callback: fix builder")
 
 	wi := env.getWorkflowInstance(t, wfiID)
 	findings := wi.GetFindings()
@@ -183,7 +184,7 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	}
 
 	// Clear after layer 1 completes
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	wi = env.getWorkflowInstance(t, wfiID)
 	if _, ok := wi.GetFindings()["_callback"]; ok {
@@ -192,7 +193,7 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 
 	// === Second callback: tester -> analyzer (layer 2 -> 0) ===
 	// This simulates a second callback happening later in the workflow
-	env.orch.handleCallback(wfiID, req, layerGroups, 2, 0, "tester", "Second callback: restart from analyzer")
+	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 0, "tester", "Second callback: restart from analyzer")
 
 	wi = env.getWorkflowInstance(t, wfiID)
 	findings = wi.GetFindings()
@@ -208,7 +209,7 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	}
 
 	// Clear after layer 0 completes
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	wi = env.getWorkflowInstance(t, wfiID)
 	if _, ok := wi.GetFindings()["_callback"]; ok {
@@ -265,7 +266,7 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 	}
 
 	// Callback from layer 2 (tester) to layer 1 (builder)
-	env.orch.handleCallback(wfiID, req, layerGroups, 2, 1, "tester", "Builder callback instructions")
+	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 1, "tester", "Builder callback instructions")
 
 	// Verify callback metadata is set
 	wi := env.getWorkflowInstance(t, wfiID)
@@ -274,7 +275,7 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 	}
 
 	// Simulate layer 1 completing and callback metadata being cleared
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Now simulate layer 2 (tester) running again - should NOT see callback metadata
 	wi = env.getWorkflowInstance(t, wfiID)
@@ -333,7 +334,7 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 	}
 
 	// Trigger callback
-	env.orch.handleCallback(wfiID, req, layerGroups, 1, 0, "builder", "Project callback instructions")
+	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 1, 0, "builder", "Project callback instructions")
 
 	// Verify callback metadata
 	wi := env.getWorkflowInstance(t, wfiID)
@@ -343,7 +344,7 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 	}
 
 	// Clear callback metadata
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Verify cleared
 	wi = env.getWorkflowInstance(t, wfiID)

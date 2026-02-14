@@ -2,13 +2,14 @@ package spawner
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"syscall"
 	"time"
 
 	"be/internal/db"
+	"be/internal/logger"
 )
 
 const (
@@ -24,12 +25,10 @@ const (
 //
 // processDoneCh is the original process's done channel (closed by the wait goroutine).
 // completeCh is the replacement channel; closed when the full flow finishes, signaling monitorAll.
-func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, processDoneCh, completeCh chan struct{}) {
+func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, req SpawnRequest, processDoneCh, completeCh chan struct{}) {
 	defer close(completeCh)
 
-	prefix := s.formatPrefix(proc)
-	fmt.Printf("  %s [context-save] Low context detected (%d%% remaining), initiating save...\n",
-		prefix, proc.contextLeft)
+	logger.Warn(ctx, "low context detected", "context_left", proc.contextLeft, "session_id", proc.sessionID)
 
 	// 1. Kill the running agent: SIGTERM → wait → SIGKILL
 	if proc.cmd.Process != nil {
@@ -53,8 +52,7 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 	cliName, _ := parseModelID(proc.modelID)
 	adapter, err := GetCLIAdapter(cliName)
 	if err != nil || !adapter.SupportsResume() {
-		// CLI doesn't support resume — just mark as continue with whatever findings exist
-		fmt.Printf("  %s [context-save] CLI '%s' does not support resume, relaunching without save\n", prefix, cliName)
+		logger.Warn(ctx, "CLI does not support resume, relaunching without save", "cli", cliName, "session_id", proc.sessionID)
 		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
 		proc.finalStatus = "CONTINUE"
@@ -68,8 +66,6 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 		req.TicketID, proc.agentType, req.WorkflowName, proc.modelID,
 		req.TicketID, proc.agentType, req.WorkflowName, proc.modelID)
 
-	fmt.Printf("  %s [context-save] Resume prompt: %s\n", prefix, savePrompt)
-
 	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
 		SessionID: proc.sessionID,
 		Prompt:    savePrompt,
@@ -77,12 +73,10 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 		Env:       proc.cmd.Env,
 	})
 
-	fmt.Printf("  %s [context-save] Resuming session %s (PID will follow)...\n", prefix, proc.sessionID)
-
 	// Capture stdout/stderr for monitoring
 	stdout, err := resumeCmd.StdoutPipe()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "  %s [context-save] Failed to create stdout pipe: %v\n", prefix, err)
+		logger.Error(ctx, "context save failed to create stdout pipe", "err", err, "session_id", proc.sessionID)
 		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
 		proc.finalStatus = "CONTINUE"
@@ -90,13 +84,13 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 	}
 
 	if err := resumeCmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "  %s [context-save] Failed to start resume: %v\n", prefix, err)
+		logger.Error(ctx, "context save failed to start resume", "err", err, "session_id", proc.sessionID)
 		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
 		proc.finalStatus = "CONTINUE"
 		return
 	}
-	fmt.Printf("  %s [context-save] Resume process started (PID: %d)\n", prefix, resumeCmd.Process.Pid)
+	logger.Info(ctx, "context save resume started", "pid", resumeCmd.Process.Pid, "session_id", proc.sessionID)
 
 	// Drain resume stdout to prevent blocking
 	go func() {
@@ -121,11 +115,9 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 		if resumeCmd.ProcessState != nil {
 			exitCode = resumeCmd.ProcessState.ExitCode()
 		}
-		fmt.Printf("  %s [context-save] Resume save completed (exit: %d, duration: %v)\n",
-			prefix, exitCode, time.Since(startTime).Round(time.Millisecond))
+		logger.Info(ctx, "context save completed", "exit_code", exitCode, "duration", time.Since(startTime).Round(time.Millisecond), "session_id", proc.sessionID)
 	case <-time.After(resumeSaveTimeout):
-		fmt.Fprintf(os.Stderr, "  %s [context-save] Resume save timed out after %v, killing\n",
-			prefix, resumeSaveTimeout)
+		logger.Error(ctx, "context save timed out", "timeout", resumeSaveTimeout, "session_id", proc.sessionID)
 		if resumeCmd.Process != nil {
 			resumeCmd.Process.Kill()
 		}
@@ -136,21 +128,21 @@ func (s *Spawner) initiateContextSave(proc *processInfo, req SpawnRequest, proce
 	time.Sleep(2 * time.Second)
 
 	// 6. Check if findings were saved
-	s.logFindingsStatus(proc, prefix)
+	s.logFindingsStatus(ctx, proc)
 
 	// 7. Register stop
 	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 		proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
 
 	proc.finalStatus = "CONTINUE"
-	fmt.Printf("  %s [context-save] Save flow complete, will relaunch with fresh context\n", prefix)
+	logger.Info(ctx, "context save flow complete, relaunching", "session_id", proc.sessionID)
 }
 
 // logFindingsStatus checks and logs whether the session has findings after resume-save
-func (s *Spawner) logFindingsStatus(proc *processInfo, prefix string) {
+func (s *Spawner) logFindingsStatus(ctx context.Context, proc *processInfo) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "  %s [context-save] Failed to open DB for findings check: %v\n", prefix, err)
+		logger.Error(ctx, "failed to open DB for findings check", "err", err, "session_id", proc.sessionID)
 		return
 	}
 	defer database.Close()
@@ -158,13 +150,13 @@ func (s *Spawner) logFindingsStatus(proc *processInfo, prefix string) {
 	var findings sql.NullString
 	err = database.QueryRow("SELECT findings FROM agent_sessions WHERE id = ?", proc.sessionID).Scan(&findings)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "  %s [context-save] Failed to query findings: %v\n", prefix, err)
+		logger.Error(ctx, "failed to query findings", "err", err, "session_id", proc.sessionID)
 		return
 	}
 
 	if !findings.Valid || findings.String == "" || findings.String == "{}" {
-		fmt.Fprintf(os.Stderr, "  %s [context-save] WARNING: No findings saved by resume agent — new agent will start without previous data\n", prefix)
+		logger.Warn(ctx, "no findings saved by resume agent", "session_id", proc.sessionID)
 	} else {
-		fmt.Printf("  %s [context-save] Findings saved (%d bytes)\n", prefix, len(findings.String))
+		logger.Info(ctx, "findings saved", "bytes", len(findings.String), "session_id", proc.sessionID)
 	}
 }

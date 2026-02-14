@@ -3,11 +3,11 @@ package orchestrator
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -65,9 +65,15 @@ func (cr *ChainRunner) Start(ctx context.Context, chainID string) error {
 		return err
 	}
 
-	runCtx, cancel := context.WithCancel(ctx)
+	// Generate trx for this chain run
+	trx := logger.NewTrx()
+	chainCtx := logger.WithTrx(ctx, trx)
+
+	runCtx, cancel := context.WithCancel(chainCtx)
 	cr.runs[chainID] = cancel
 	cr.mu.Unlock()
+
+	logger.Info(runCtx, "chain started", "chain_id", chainID, "workflow", chain.WorkflowName)
 
 	cr.broadcastChainUpdate(chain.ProjectID, chainID, "running")
 
@@ -121,9 +127,10 @@ func (cr *ChainRunner) IsRunning(chainID string) bool {
 
 // RecoverZombieChains marks running chains as failed on startup (crash recovery)
 func (cr *ChainRunner) RecoverZombieChains() {
+	ctx := context.Background()
 	pool, err := db.NewPool(cr.dataPath, db.DefaultPoolConfig())
 	if err != nil {
-		log.Printf("[chain-runner] Failed to open DB for recovery: %v", err)
+		logger.Error(ctx, "failed to open DB for chain recovery", "err", err)
 		return
 	}
 	defer pool.Close()
@@ -133,7 +140,7 @@ func (cr *ChainRunner) RecoverZombieChains() {
 
 	rows, err := pool.Query(`SELECT id, project_id FROM chain_executions WHERE status = 'running'`)
 	if err != nil {
-		log.Printf("[chain-runner] Failed to query zombie chains: %v", err)
+		logger.Error(ctx, "failed to query zombie chains", "err", err)
 		return
 	}
 	defer rows.Close()
@@ -143,7 +150,7 @@ func (cr *ChainRunner) RecoverZombieChains() {
 		if err := rows.Scan(&id, &projectID); err != nil {
 			continue
 		}
-		log.Printf("[chain-runner] Recovering zombie chain %s (marking as failed)", id)
+		logger.Warn(ctx, "recovering zombie chain", "chain_id", id)
 		chainRepo.UpdateStatus(id, model.ChainStatusFailed)
 		lockRepo.DeleteLocksByChain(id)
 
@@ -164,11 +171,9 @@ func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflow
 		cr.mu.Unlock()
 	}()
 
-	log.Printf("[chain-runner] Starting chain %s", chainID)
-
 	pool, err := db.NewPool(cr.dataPath, db.DefaultPoolConfig())
 	if err != nil {
-		log.Printf("[chain-runner] Failed to open database: %v", err)
+		logger.Error(ctx, "failed to open database", "chain_id", chainID, "err", err)
 		cr.markChainFailed(chainID, projectID)
 		return
 	}
@@ -179,7 +184,7 @@ func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflow
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("[chain-runner] Chain %s canceled", chainID)
+			logger.Warn(ctx, "chain cancelled", "chain_id", chainID)
 			cr.handleCancel(pool, chainID, projectID, workflowName)
 			return
 		default:
@@ -187,22 +192,23 @@ func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflow
 
 		item, err := itemRepo.GetNextPending(chainID)
 		if err != nil {
-			log.Printf("[chain-runner] Error getting next item: %v", err)
+			logger.Error(ctx, "error getting next chain item", "chain_id", chainID, "err", err)
 			cr.markChainFailed(chainID, projectID)
 			return
 		}
 		if item == nil {
-			log.Printf("[chain-runner] Chain %s completed", chainID)
+			logger.Info(ctx, "chain completed", "chain_id", chainID)
 			cr.markChainCompleted(pool, chainID, projectID)
 			return
 		}
 
 		if err := itemRepo.UpdateItemStatus(item.ID, model.ChainItemRunning); err != nil {
-			log.Printf("[chain-runner] Failed to update item status: %v", err)
+			logger.Error(ctx, "failed to update chain item status", "item", item.ID, "err", err)
 			cr.markChainFailed(chainID, projectID)
 			return
 		}
 
+		logger.Info(ctx, "chain item started", "chain_id", chainID, "ticket", item.TicketID, "position", item.Position)
 		cr.broadcastChainUpdate(projectID, chainID, "item_started")
 
 		result, err := cr.orchestrator.Start(ctx, RunRequest{
@@ -211,27 +217,28 @@ func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflow
 			WorkflowName: workflowName,
 		})
 		if err != nil {
-			log.Printf("[chain-runner] Failed to start workflow for %s: %v", item.TicketID, err)
+			logger.Error(ctx, "chain item workflow failed to start", "ticket", item.TicketID, "err", err)
 			itemRepo.UpdateItemStatus(item.ID, model.ChainItemFailed)
 			cr.markChainFailed(chainID, projectID)
 			return
 		}
 
 		if err := itemRepo.SetWorkflowInstanceID(item.ID, result.InstanceID); err != nil {
-			log.Printf("[chain-runner] Failed to set workflow instance ID for item %s: %v", item.ID, err)
+			logger.Error(ctx, "failed to set workflow instance ID for chain item", "item", item.ID, "err", err)
 		}
 
 		completed, success := cr.pollWorkflowInstance(ctx, result.InstanceID)
 		if !completed {
-			log.Printf("[chain-runner] Chain %s canceled during item %s", chainID, item.TicketID)
+			logger.Warn(ctx, "chain cancelled during item", "chain_id", chainID, "ticket", item.TicketID)
 			cr.handleCancel(pool, chainID, projectID, workflowName)
 			return
 		}
 
 		if success {
 			if err := itemRepo.UpdateItemStatus(item.ID, model.ChainItemCompleted); err != nil {
-				log.Printf("[chain-runner] Failed to update item status to completed: %v", err)
+				logger.Error(ctx, "failed to update chain item status to completed", "item", item.ID, "err", err)
 			}
+			logger.Info(ctx, "chain item completed", "chain_id", chainID, "ticket", item.TicketID)
 			cr.broadcastChainUpdate(projectID, chainID, "item_completed")
 		} else {
 			itemRepo.UpdateItemStatus(item.ID, model.ChainItemFailed)
@@ -299,14 +306,14 @@ func (cr *ChainRunner) markChainCompleted(pool *db.Pool, chainID, projectID stri
 	// Auto-close epic ticket if set (best-effort)
 	chain, err := chainRepo.Get(chainID)
 	if err != nil {
-		log.Printf("[chain-runner] Failed to load chain %s for epic close: %v", chainID, err)
+		logger.Error(context.Background(), "failed to load chain for epic close", "chain_id", chainID, "err", err)
 		return
 	}
 	if chain.EpicTicketID != "" {
 		ticketService := service.NewTicketService(pool)
 		reason := fmt.Sprintf("All epic tickets completed via chain '%s'", chain.Name)
 		if err := ticketService.Close(projectID, chain.EpicTicketID, reason); err != nil {
-			log.Printf("[chain-runner] Failed to close epic %s: %v", chain.EpicTicketID, err)
+			logger.Error(context.Background(), "failed to close epic", "epic", chain.EpicTicketID, "err", err)
 		} else if cr.wsHub != nil {
 			cr.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, projectID, chain.EpicTicketID, "", map[string]interface{}{
 				"status": "closed",

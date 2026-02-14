@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os/exec"
@@ -78,7 +79,7 @@ func TestFinalizePhase_CallbackDetection(t *testing.T) {
 	}
 
 	// Call finalizePhase
-	err := env.spawner.finalizePhase([]*processInfo{proc}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -134,7 +135,7 @@ func TestFinalizePhase_CallbackLevelZero(t *testing.T) {
 		elapsed:            3 * time.Second,
 	}
 
-	err := env.spawner.finalizePhase([]*processInfo{proc}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -183,7 +184,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 		elapsed:            2 * time.Second,
 	}
 
-	err := env.spawner.finalizePhase([]*processInfo{proc}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -257,7 +258,7 @@ func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
 	}
 
 	// Call finalizePhase with both procs
-	err := env.spawner.finalizePhase([]*processInfo{proc1, proc2}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc1, proc2}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -301,7 +302,7 @@ func TestFinalizePhase_NoCallback_Pass(t *testing.T) {
 		elapsed:            5 * time.Second,
 	}
 
-	err := env.spawner.finalizePhase([]*processInfo{proc}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -340,7 +341,7 @@ func TestFinalizePhase_NoCallback_Fail(t *testing.T) {
 		elapsed:            2 * time.Second,
 	}
 
-	err := env.spawner.finalizePhase([]*processInfo{proc}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -385,7 +386,7 @@ func TestFinalizePhase_AllSkipped(t *testing.T) {
 		elapsed:            1 * time.Second,
 	}
 
-	err := env.spawner.finalizePhase([]*processInfo{proc}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,
@@ -431,7 +432,7 @@ func TestFinalizePhase_CallbackLevelFloat(t *testing.T) {
 		elapsed:            2 * time.Second,
 	}
 
-	err := env.spawner.finalizePhase([]*processInfo{proc}, SpawnRequest{
+	err := env.spawner.finalizePhase(context.Background(), []*processInfo{proc}, SpawnRequest{
 		ProjectID:    env.projectID,
 		TicketID:     env.ticketID,
 		WorkflowName: env.workflowID,

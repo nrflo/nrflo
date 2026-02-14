@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestClearCallbackMetadata(t *testing.T) {
 	}
 
 	// Clear callback metadata
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Verify _callback was removed
 	wi = env.getWorkflowInstance(t, wfiID)
@@ -73,7 +74,7 @@ func TestClearCallbackMetadata_NoCallback(t *testing.T) {
 	}
 
 	// Clear callback metadata (should be a no-op)
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Verify findings are unchanged
 	wi := env.getWorkflowInstance(t, wfiID)
@@ -104,7 +105,7 @@ func TestClearCallbackMetadata_EmptyFindings(t *testing.T) {
 	}
 
 	// Clear callback metadata (should be a no-op)
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Verify findings are still empty
 	wi := env.getWorkflowInstance(t, wfiID)
@@ -121,7 +122,7 @@ func TestClearCallbackMetadata_InvalidWorkflowID(t *testing.T) {
 
 	// Try to clear callback metadata for non-existent workflow instance
 	// Should not panic, just log error
-	env.orch.clearCallbackMetadata("nonexistent-wfi-id")
+	env.orch.clearCallbackMetadata(context.Background(),"nonexistent-wfi-id")
 
 	// No assertion needed - we're just verifying it doesn't panic
 }
@@ -151,7 +152,7 @@ func TestClearCallbackMetadata_ProjectScope(t *testing.T) {
 	}
 
 	// Clear callback metadata
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Verify _callback was removed but other findings preserved
 	wi := env.getWorkflowInstance(t, wfiID)
@@ -217,7 +218,7 @@ func TestClearCallbackMetadata_MultipleCallbackFields(t *testing.T) {
 	}
 
 	// Clear callback metadata
-	env.orch.clearCallbackMetadata(wfiID)
+	env.orch.clearCallbackMetadata(context.Background(),wfiID)
 
 	// Verify entire _callback key is removed (not just individual fields)
 	wi = env.getWorkflowInstance(t, wfiID)

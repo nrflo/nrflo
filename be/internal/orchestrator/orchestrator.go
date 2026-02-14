@@ -9,13 +9,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"sync"
 
 	"github.com/google/uuid"
 
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -213,12 +213,18 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	parentSession := uuid.New().String()
 	pool.Close()
 
+	// Generate trx for this orchestration run
+	trx := logger.NewTrx()
+	ctx = logger.WithTrx(ctx, trx)
+
+	logger.Info(ctx, "workflow instance created", "instance_id", wi.ID, "workflow", req.WorkflowName, "scope", req.ScopeType)
+
 	// Set ticket to in_progress if currently open (best-effort, ticket scope only)
 	if !req.IsProjectScope() {
 		if statusPool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig()); err == nil {
 			ticketService := service.NewTicketService(statusPool)
 			if err := ticketService.SetInProgress(req.ProjectID, req.TicketID); err != nil {
-				log.Printf("[orchestrator] Failed to set ticket %s to in_progress: %v", req.TicketID, err)
+				logger.Warn(ctx, "failed to set ticket in_progress", "ticket", req.TicketID, "err", err)
 			}
 			statusPool.Close()
 		}
@@ -356,6 +362,7 @@ func (o *Orchestrator) RetryFailedProjectAgent(ctx context.Context, projectID, w
 }
 
 func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID, scopeType, instanceID string) error {
+	logger.Info(ctx, "retrying failed workflow", "workflow", workflowName, "session_id", sessionID, "scope", scopeType)
 	// Look up the workflow instance
 	database, err := db.Open(o.dataPath)
 	if err != nil {
@@ -533,6 +540,7 @@ func (o *Orchestrator) RestartProjectAgent(projectID, workflowName, sessionID, i
 }
 
 func (o *Orchestrator) restartAgentByInstance(wfiID, workflowName, target, sessionID string) error {
+	logger.Info(context.Background(), "agent restart requested", "session_id", sessionID, "workflow", workflowName)
 	o.mu.Lock()
 	rs, ok := o.runs[wfiID]
 	o.mu.Unlock()
@@ -583,6 +591,7 @@ func (o *Orchestrator) IsInstanceRunning(instanceID string) bool {
 // StopAll cancels all running orchestrations (for server shutdown).
 func (o *Orchestrator) StopAll() {
 	o.mu.Lock()
+	logger.Warn(context.Background(), "stopping all orchestrations", "count", len(o.runs))
 	for id, rs := range o.runs {
 		rs.cancel()
 		delete(o.runs, id)
@@ -615,8 +624,7 @@ func (o *Orchestrator) runLoop(
 	if req.IsProjectScope() {
 		target = "project:" + req.ProjectID
 	}
-	log.Printf("[orchestrator] Starting workflow '%s' on %s (%d phases)",
-		req.WorkflowName, target, len(svcWf.Phases))
+	logger.Info(ctx, "workflow started", "workflow", req.WorkflowName, "target", target, "phases", len(svcWf.Phases))
 
 	// Group phases by layer
 	layerGroups := groupPhasesByLayer(svcWf.Phases)
@@ -633,7 +641,7 @@ func (o *Orchestrator) runLoop(
 		// Check cancellation
 		select {
 		case <-ctx.Done():
-			log.Printf("[orchestrator] Cancelled at layer %d", lg.layer)
+			logger.Warn(ctx, "workflow cancelled", "layer", lg.layer)
 			o.markFailed(wfiID, req, "cancelled")
 			return
 		default:
@@ -641,7 +649,7 @@ func (o *Orchestrator) runLoop(
 
 		runnableAgents := lg.phases
 
-		log.Printf("[orchestrator] Running layer %d/%d: %d agent(s)", layerIdx+1, len(layerGroups), len(runnableAgents))
+		logger.Info(ctx, "running layer", "layer_idx", layerIdx+1, "total", len(layerGroups), "agents", len(runnableAgents))
 
 		// Spawn all agents in this layer concurrently
 		type spawnResult struct {
@@ -716,14 +724,14 @@ func (o *Orchestrator) runLoop(
 				}
 			} else if result.err != nil {
 				if ctx.Err() != nil {
-					log.Printf("[orchestrator] Cancelled during layer %d", lg.layer)
+					logger.Warn(ctx, "cancelled during layer", "layer", lg.layer)
 					o.markFailed(wfiID, req, "cancelled")
 					return
 				}
-				log.Printf("[orchestrator] Layer %d agent %s failed: %v", lg.layer, result.agent, result.err)
+				logger.Error(ctx, "layer agent failed", "layer", lg.layer, "agent", result.agent, "err", result.err)
 				failCount++
 			} else {
-				log.Printf("[orchestrator] Layer %d agent %s completed successfully", lg.layer, result.agent)
+				logger.Info(ctx, "layer agent completed", "layer", lg.layer, "agent", result.agent)
 				passCount++
 			}
 		}
@@ -739,12 +747,12 @@ func (o *Orchestrator) runLoop(
 		if callbackDetected {
 			callbackCount++
 			if callbackCount > maxCallbacks {
-				log.Printf("[orchestrator] Max callbacks (%d) exceeded, failing workflow", maxCallbacks)
+				logger.Error(ctx, "max callbacks exceeded", "max", maxCallbacks)
 				o.markFailed(wfiID, req, fmt.Sprintf("max callbacks (%d) exceeded", maxCallbacks))
 				return
 			}
 
-			targetIdx := o.handleCallback(wfiID, req, layerGroups, layerIdx, callbackLevel, callbackAgent, callbackInstructions)
+			targetIdx := o.handleCallback(ctx, wfiID, req, layerGroups, layerIdx, callbackLevel, callbackAgent, callbackInstructions)
 			if targetIdx < 0 {
 				o.markFailed(wfiID, req, fmt.Sprintf("callback target layer %d not found", callbackLevel))
 				return
@@ -756,23 +764,23 @@ func (o *Orchestrator) runLoop(
 
 		// Fan-in: at least one pass required to proceed
 		if passCount == 0 {
-			log.Printf("[orchestrator] Layer %d: all agents failed (%d), stopping workflow", lg.layer, failCount)
+			logger.Error(ctx, "all agents failed in layer", "layer", lg.layer, "fail_count", failCount)
 			o.markFailed(wfiID, req, fmt.Sprintf("layer %d: all agents failed", lg.layer))
 			return
 		}
 
 		// Clear callback metadata after the callback target layer completes successfully
 		if wasCallback {
-			o.clearCallbackMetadata(wfiID)
+			o.clearCallbackMetadata(ctx, wfiID)
 			wasCallback = false
 		}
 
-		log.Printf("[orchestrator] Layer %d completed: %d passed, %d failed", lg.layer, passCount, failCount)
+		logger.Info(ctx, "layer completed", "layer", lg.layer, "passed", passCount, "failed", failCount)
 		layerIdx++
 	}
 
 	// All layers completed
-	log.Printf("[orchestrator] Workflow '%s' completed on %s", req.WorkflowName, target)
+	logger.Info(ctx, "workflow completed", "workflow", req.WorkflowName, "target", target)
 	o.markCompleted(wfiID, req)
 }
 
@@ -780,6 +788,7 @@ func (o *Orchestrator) runLoop(
 // target and current (inclusive), saves callback metadata to WFI findings, and broadcasts.
 // Returns the target layer index, or -1 if the target layer number is not found.
 func (o *Orchestrator) handleCallback(
+	ctx context.Context,
 	wfiID string,
 	req RunRequest,
 	layerGroups []layerGroup,
@@ -797,16 +806,15 @@ func (o *Orchestrator) handleCallback(
 		}
 	}
 	if targetIdx < 0 {
-		log.Printf("[orchestrator] Callback target layer %d not found in layer groups", callbackLevel)
+		logger.Error(ctx, "callback target layer not found", "target_layer", callbackLevel)
 		return -1
 	}
 
-	log.Printf("[orchestrator] Callback detected: returning to layer %d (idx %d) from layer %d (idx %d), agent=%s",
-		callbackLevel, targetIdx, layerGroups[currentIdx].layer, currentIdx, callbackAgent)
+	logger.Info(ctx, "callback detected", "from_layer", layerGroups[currentIdx].layer, "to_layer", callbackLevel, "agent", callbackAgent)
 
 	database, err := db.Open(o.dataPath)
 	if err != nil {
-		log.Printf("[orchestrator] Failed to open DB for callback: %v", err)
+		logger.Error(ctx, "failed to open DB for callback", "err", err)
 		return -1
 	}
 	defer database.Close()
@@ -854,10 +862,10 @@ func (o *Orchestrator) handleCallback(
 
 // clearCallbackMetadata removes the _callback key from workflow instance findings
 // after the callback target layer completes successfully.
-func (o *Orchestrator) clearCallbackMetadata(wfiID string) {
+func (o *Orchestrator) clearCallbackMetadata(ctx context.Context, wfiID string) {
 	database, err := db.Open(o.dataPath)
 	if err != nil {
-		log.Printf("[orchestrator] Failed to open DB to clear callback metadata: %v", err)
+		logger.Error(ctx, "failed to open DB to clear callback metadata", "err", err)
 		return
 	}
 	defer database.Close()
@@ -866,7 +874,7 @@ func (o *Orchestrator) clearCallbackMetadata(wfiID string) {
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	wi, err := wfiRepo.Get(wfiID)
 	if err != nil {
-		log.Printf("[orchestrator] Failed to load WFI to clear callback metadata: %v", err)
+		logger.Error(ctx, "failed to load WFI to clear callback metadata", "err", err)
 		return
 	}
 
@@ -923,7 +931,7 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 		ticketService := service.NewTicketService(pool)
 		reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
 		if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
-			log.Printf("[orchestrator] Failed to close ticket %s: %v", req.TicketID, err)
+			logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
 		}
 	}
 

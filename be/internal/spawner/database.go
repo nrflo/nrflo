@@ -1,12 +1,13 @@
 package spawner
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"time"
 
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/ws"
@@ -176,7 +177,7 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 }
 
 // startPhase marks a phase as in_progress using workflow_instances table
-func (s *Spawner) startPhase(wfiID, projectID, ticketID, workflowName, phase string) {
+func (s *Spawner) startPhase(ctx context.Context, wfiID, projectID, ticketID, workflowName, phase string) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
 		return
@@ -186,7 +187,7 @@ func (s *Spawner) startPhase(wfiID, projectID, ticketID, workflowName, phase str
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	if err := wfiRepo.StartPhase(wfiID, phase); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to start phase %s: %v\n", phase, err)
+		logger.Warn(ctx, "failed to start phase", "phase", phase, "err", err)
 		return
 	}
 
@@ -196,7 +197,7 @@ func (s *Spawner) startPhase(wfiID, projectID, ticketID, workflowName, phase str
 }
 
 // completePhase marks a phase as completed using workflow_instances table
-func (s *Spawner) completePhase(wfiID, projectID, ticketID, workflowName, phase, result string) {
+func (s *Spawner) completePhase(ctx context.Context, wfiID, projectID, ticketID, workflowName, phase, result string) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
 		return
@@ -206,7 +207,7 @@ func (s *Spawner) completePhase(wfiID, projectID, ticketID, workflowName, phase,
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	if err := wfiRepo.CompletePhase(wfiID, phase, result); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to complete phase %s: %v\n", phase, err)
+		logger.Warn(ctx, "failed to complete phase", "phase", phase, "result", result, "err", err)
 		return
 	}
 

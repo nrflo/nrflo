@@ -23,6 +23,7 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
   const [category, setCategory] = useState('')
   const [ticketIds, setTicketIds] = useState<string[]>([])
+  const [epicIds, setEpicIds] = useState<string[]>([])
 
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
@@ -76,23 +77,28 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
       setSelectedWorkflow('')
       setCategory('')
       setTicketIds([])
+      setEpicIds([])
     }
   }, [open])
 
   const handleSubmit = async () => {
     if (!name.trim() || !selectedWorkflow || ticketIds.length === 0) return
+    // Exclude epic IDs from ticket_ids — epics aren't chain items
+    const epicSet = new Set(epicIds)
+    const childOnlyIds = ticketIds.filter((id) => !epicSet.has(id))
     try {
       if (isEditing && editChain) {
         await updateMutation.mutateAsync({
           id: editChain.id,
-          data: { name: name.trim(), ticket_ids: ticketIds },
+          data: { name: name.trim(), ticket_ids: childOnlyIds.length > 0 ? childOnlyIds : ticketIds },
         })
       } else {
         await createMutation.mutateAsync({
           name: name.trim(),
           workflow_name: selectedWorkflow,
           category: category || undefined,
-          ticket_ids: ticketIds,
+          ticket_ids: childOnlyIds.length > 0 ? childOnlyIds : ticketIds,
+          epic_ticket_id: epicIds.length === 1 ? epicIds[0] : undefined,
         })
       }
       onClose()
@@ -173,6 +179,7 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
               <ChainTicketSelector
                 selectedIds={ticketIds}
                 onChange={setTicketIds}
+                onEpicIdsChange={setEpicIds}
               />
             </div>
           </>

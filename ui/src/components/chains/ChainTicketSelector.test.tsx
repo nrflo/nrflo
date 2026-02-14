@@ -478,3 +478,846 @@ describe('ChainTicketSelector - Scrollable Container', () => {
     expect(scrollContainer).toBeInTheDocument()
   })
 })
+
+describe('ChainTicketSelector - Issue Type Icons', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders bug icon for bug tickets', () => {
+    const tickets = [createMockTicket({ id: 'BUG-1', issue_type: 'bug', title: 'Fix crash' })]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { container } = renderSelector()
+
+    // IssueTypeIcon renders an SVG icon
+    const svg = container.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    expect(svg).toHaveClass('text-red-500')
+  })
+
+  it('renders feature icon for feature tickets', () => {
+    const tickets = [createMockTicket({ id: 'FEAT-1', issue_type: 'feature', title: 'Add login' })]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { container } = renderSelector()
+
+    const svg = container.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    expect(svg).toHaveClass('text-purple-500')
+  })
+
+  it('renders task icon for task tickets', () => {
+    const tickets = [createMockTicket({ id: 'TASK-1', issue_type: 'task', title: 'Update docs' })]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { container } = renderSelector()
+
+    const svg = container.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    expect(svg).toHaveClass('text-blue-500')
+  })
+
+  it('renders epic icon for epic tickets', () => {
+    const tickets = [createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1 Goals' })]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { container } = renderSelector()
+
+    const svg = container.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    expect(svg).toHaveClass('text-green-500')
+  })
+
+  it('renders default icon for unknown issue types', () => {
+    const tickets = [createMockTicket({ id: 'UNK-1', issue_type: 'unknown', title: 'Mystery' })]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { container } = renderSelector()
+
+    const svg = container.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    expect(svg).toHaveClass('text-gray-500')
+  })
+
+  it('renders icon for each ticket in list', () => {
+    const tickets = [
+      createMockTicket({ id: 'BUG-1', issue_type: 'bug' }),
+      createMockTicket({ id: 'FEAT-1', issue_type: 'feature' }),
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { container } = renderSelector()
+
+    const svgs = container.querySelectorAll('svg')
+    expect(svgs.length).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('ChainTicketSelector - Epic Auto-Selection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('auto-selects all epic children when epic is selected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1 Goals' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-1', title: 'Task 2' }),
+      createMockTicket({ id: 'OTHER-1', title: 'Unrelated' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { onChange } = renderSelector([])
+
+    // Click epic checkbox
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // EPIC-1
+
+    // Should select epic + both children
+    expect(onChange).toHaveBeenCalledWith(['EPIC-1', 'CHILD-1', 'CHILD-2'])
+  })
+
+  it('auto-selects only direct children, not nested descendants', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Top Epic' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Direct child' }),
+      createMockTicket({ id: 'GRANDCHILD-1', parent_ticket_id: 'CHILD-1', title: 'Grandchild' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { onChange } = renderSelector([])
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // EPIC-1
+
+    // Should only select epic + direct child, not grandchild
+    expect(onChange).toHaveBeenCalledWith(['EPIC-1', 'CHILD-1'])
+  })
+
+  it('handles epic with no children', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Empty Epic' }),
+      createMockTicket({ id: 'OTHER-1', title: 'Unrelated' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { onChange } = renderSelector([])
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // EPIC-1
+
+    // Should only select the epic itself
+    expect(onChange).toHaveBeenCalledWith(['EPIC-1'])
+  })
+
+  it('does not duplicate children if some are already selected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-1', title: 'Task 2' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    // CHILD-1 already selected
+    const { onChange } = renderSelector(['CHILD-1'])
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // EPIC-1
+
+    // Should add epic + CHILD-2 (CHILD-1 already in list)
+    expect(onChange).toHaveBeenCalledWith(['CHILD-1', 'EPIC-1', 'CHILD-2'])
+  })
+})
+
+describe('ChainTicketSelector - Epic Deselection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('removes epic and all children when epic is deselected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-1', title: 'Task 2' }),
+      createMockTicket({ id: 'OTHER-1', title: 'Unrelated' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    // Epic + children already selected
+    const { onChange } = renderSelector(['EPIC-1', 'CHILD-1', 'CHILD-2', 'OTHER-1'])
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Deselect EPIC-1
+
+    // Should remove epic + both children, keep OTHER-1
+    expect(onChange).toHaveBeenCalledWith(['OTHER-1'])
+  })
+
+  it('removes empty epic when deselected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Empty Epic' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { onChange } = renderSelector(['EPIC-1'])
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Deselect EPIC-1
+
+    expect(onChange).toHaveBeenCalledWith([])
+  })
+})
+
+describe('ChainTicketSelector - Epic Children Visibility', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('hides children from list when epic is selected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Child Task 1' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-1', title: 'Child Task 2' }),
+      createMockTicket({ id: 'OTHER-1', title: 'Unrelated Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { onChange } = renderSelector([])
+
+    // All tickets visible initially
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.getByText('CHILD-1')).toBeInTheDocument()
+    expect(screen.getByText('CHILD-2')).toBeInTheDocument()
+    expect(screen.getByText('OTHER-1')).toBeInTheDocument()
+
+    // Click epic to select it
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Select EPIC-1
+
+    // Verify onChange was called with epic + children
+    expect(onChange).toHaveBeenCalledWith(['EPIC-1', 'CHILD-1', 'CHILD-2'])
+
+    // After clicking, children should be hidden from view
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.queryByText('CHILD-1')).not.toBeInTheDocument()
+    expect(screen.queryByText('CHILD-2')).not.toBeInTheDocument()
+    expect(screen.getByText('OTHER-1')).toBeInTheDocument()
+  })
+
+  it('children cannot be individually toggled when epic is selected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector([])
+
+    // Initially both visible
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.getByText('CHILD-1')).toBeInTheDocument()
+
+    // Select epic
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Select EPIC-1
+
+    // Child should no longer be in the list
+    expect(screen.queryByText('CHILD-1')).not.toBeInTheDocument()
+
+    // Only epic checkbox visible now
+    const checkboxesAfter = screen.getAllByRole('checkbox')
+    expect(checkboxesAfter).toHaveLength(1) // Only EPIC-1 checkbox
+  })
+
+  it('shows children again after epic is deselected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const onChange = vi.fn()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector selectedIds={[]} onChange={onChange} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Both visible initially
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.getByText('CHILD-1')).toBeInTheDocument()
+
+    // Select epic
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Select EPIC-1
+    expect(onChange).toHaveBeenLastCalledWith(['EPIC-1', 'CHILD-1'])
+
+    // Simulate parent updating selectedIds
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector selectedIds={['EPIC-1', 'CHILD-1']} onChange={onChange} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Child hidden after selection
+    expect(screen.queryByText('CHILD-1')).not.toBeInTheDocument()
+
+    // Deselect epic
+    const checkboxesAfter = screen.getAllByRole('checkbox')
+    await user.click(checkboxesAfter[0]) // Deselect EPIC-1
+    expect(onChange).toHaveBeenLastCalledWith([])
+
+    // Simulate parent updating selectedIds
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector selectedIds={[]} onChange={onChange} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Both visible again
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.getByText('CHILD-1')).toBeInTheDocument()
+  })
+})
+
+describe('ChainTicketSelector - Epic Badge Display', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows child count badge on selected epic with children', () => {
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-1', title: 'Task 2' }),
+      createMockTicket({ id: 'CHILD-3', parent_ticket_id: 'EPIC-1', title: 'Task 3' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector(['EPIC-1', 'CHILD-1', 'CHILD-2', 'CHILD-3'])
+
+    expect(screen.getByText(/3 children included/i)).toBeInTheDocument()
+  })
+
+  it('uses singular form for epic with one child', () => {
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector(['EPIC-1', 'CHILD-1'])
+
+    expect(screen.getByText(/1 child included/i)).toBeInTheDocument()
+  })
+
+  it('does not show badge on unselected epic', () => {
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector([])
+
+    // Should not show "included" badge for unselected epic
+    expect(screen.queryByText(/included/i)).not.toBeInTheDocument()
+  })
+
+  it('does not show badge on empty epic', () => {
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Empty Epic' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector(['EPIC-1'])
+
+    expect(screen.queryByText(/child/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('ChainTicketSelector - Multiple Epics', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('allows selecting multiple epics simultaneously', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1A', parent_ticket_id: 'EPIC-1', title: 'E1 Task 1' }),
+      createMockTicket({ id: 'CHILD-1B', parent_ticket_id: 'EPIC-1', title: 'E1 Task 2' }),
+      createMockTicket({ id: 'EPIC-2', issue_type: 'epic', title: 'Q2' }),
+      createMockTicket({ id: 'CHILD-2A', parent_ticket_id: 'EPIC-2', title: 'E2 Task 1' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const onChange = vi.fn()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector selectedIds={[]} onChange={onChange} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Select first epic
+    const checkboxes1 = screen.getAllByRole('checkbox')
+    await user.click(checkboxes1[0]) // EPIC-1
+    expect(onChange).toHaveBeenLastCalledWith(['EPIC-1', 'CHILD-1A', 'CHILD-1B'])
+
+    // Simulate parent updating selectedIds
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector selectedIds={['EPIC-1', 'CHILD-1A', 'CHILD-1B']} onChange={onChange} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Now select second epic - children of EPIC-1 should be hidden
+    const checkboxes2 = screen.getAllByRole('checkbox')
+    await user.click(checkboxes2[1]) // EPIC-2
+    expect(onChange).toHaveBeenLastCalledWith(['EPIC-1', 'CHILD-1A', 'CHILD-1B', 'EPIC-2', 'CHILD-2A'])
+  })
+
+  it('hides children of all selected epics', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'E1 Task' }),
+      createMockTicket({ id: 'EPIC-2', issue_type: 'epic', title: 'Q2' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-2', title: 'E2 Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const onChange = vi.fn()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector selectedIds={[]} onChange={onChange} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Select first epic
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // EPIC-1
+
+    // Simulate parent updating selectedIds
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector selectedIds={['EPIC-1', 'CHILD-1']} onChange={onChange} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Select second epic
+    const checkboxes2 = screen.getAllByRole('checkbox')
+    await user.click(checkboxes2[1]) // EPIC-2
+
+    // Both epics visible, both children hidden
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.getByText('EPIC-2')).toBeInTheDocument()
+    expect(screen.queryByText('CHILD-1')).not.toBeInTheDocument()
+    expect(screen.queryByText('CHILD-2')).not.toBeInTheDocument()
+  })
+
+  it('shows badges for all selected epics with children', () => {
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1A', parent_ticket_id: 'EPIC-1', title: 'E1 Task 1' }),
+      createMockTicket({ id: 'CHILD-1B', parent_ticket_id: 'EPIC-1', title: 'E1 Task 2' }),
+      createMockTicket({ id: 'EPIC-2', issue_type: 'epic', title: 'Q2' }),
+      createMockTicket({ id: 'CHILD-2A', parent_ticket_id: 'EPIC-2', title: 'E2 Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector(['EPIC-1', 'CHILD-1A', 'CHILD-1B', 'EPIC-2', 'CHILD-2A'])
+
+    expect(screen.getByText(/2 children included/i)).toBeInTheDocument()
+    expect(screen.getByText(/1 child included/i)).toBeInTheDocument()
+  })
+
+  it('deselects one epic without affecting the other', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'E1 Task' }),
+      createMockTicket({ id: 'EPIC-2', issue_type: 'epic', title: 'Q2' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-2', title: 'E2 Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const { onChange } = renderSelector(['EPIC-1', 'CHILD-1', 'EPIC-2', 'CHILD-2'])
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Deselect EPIC-1
+
+    // Should remove EPIC-1 + CHILD-1, keep EPIC-2 + CHILD-2
+    expect(onChange).toHaveBeenCalledWith(['EPIC-2', 'CHILD-2'])
+  })
+})
+
+describe('ChainTicketSelector - Search with Epic Grouping', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('search matches epic but not hidden children', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1 Goals' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Backend Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector(['EPIC-1', 'CHILD-1'])
+
+    const searchInput = screen.getByPlaceholderText(/search tickets/i)
+    await user.type(searchInput, 'Q1')
+
+    // Epic visible, child still hidden
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.queryByText('CHILD-1')).not.toBeInTheDocument()
+  })
+
+  it('search for child name shows child when epic not selected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Unique Backend Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector([])
+
+    const searchInput = screen.getByPlaceholderText(/search tickets/i)
+    await user.type(searchInput, 'Backend')
+
+    expect(screen.queryByText('EPIC-1')).not.toBeInTheDocument()
+    expect(screen.getByText('CHILD-1')).toBeInTheDocument()
+  })
+
+  it('search for child name shows nothing when epic is selected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Unique Backend Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector([])
+
+    // Select epic first
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // EPIC-1
+
+    // Now search for child name
+    const searchInput = screen.getByPlaceholderText(/search tickets/i)
+    await user.type(searchInput, 'Backend')
+
+    // Neither epic nor child match "Backend" (child is hidden, epic doesn't match)
+    expect(screen.queryByText('EPIC-1')).not.toBeInTheDocument()
+    expect(screen.queryByText('CHILD-1')).not.toBeInTheDocument()
+    expect(screen.getByText(/no open tickets found/i)).toBeInTheDocument()
+  })
+
+  it('search still works with multiple epics selected', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Backend Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+      createMockTicket({ id: 'EPIC-2', issue_type: 'epic', title: 'Frontend Q1' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-2', title: 'Task 2' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    renderSelector(['EPIC-1', 'CHILD-1', 'EPIC-2', 'CHILD-2'])
+
+    const searchInput = screen.getByPlaceholderText(/search tickets/i)
+    await user.type(searchInput, 'Backend')
+
+    // Only EPIC-1 matches
+    expect(screen.getByText('EPIC-1')).toBeInTheDocument()
+    expect(screen.queryByText('EPIC-2')).not.toBeInTheDocument()
+    expect(screen.queryByText('CHILD-1')).not.toBeInTheDocument()
+    expect(screen.queryByText('CHILD-2')).not.toBeInTheDocument()
+  })
+})
+
+describe('ChainTicketSelector - onEpicIdsChange Callback', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls onEpicIdsChange when epic is selected', async () => {
+    const user = userEvent.setup()
+    const onEpicIdsChange = vi.fn()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector
+            selectedIds={[]}
+            onChange={vi.fn()}
+            onEpicIdsChange={onEpicIdsChange}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Select EPIC-1
+
+    expect(onEpicIdsChange).toHaveBeenCalledWith(['EPIC-1'])
+  })
+
+  it('calls onEpicIdsChange when epic is deselected', async () => {
+    const user = userEvent.setup()
+    const onEpicIdsChange = vi.fn()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector
+            selectedIds={['EPIC-1', 'CHILD-1']}
+            onChange={vi.fn()}
+            onEpicIdsChange={onEpicIdsChange}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0]) // Deselect EPIC-1
+
+    expect(onEpicIdsChange).toHaveBeenCalledWith([])
+  })
+
+  it('calls onEpicIdsChange with multiple epic IDs', async () => {
+    const user = userEvent.setup()
+    const onEpicIdsChange = vi.fn()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+      createMockTicket({ id: 'CHILD-1', parent_ticket_id: 'EPIC-1', title: 'Task 1' }),
+      createMockTicket({ id: 'EPIC-2', issue_type: 'epic', title: 'Q2' }),
+      createMockTicket({ id: 'CHILD-2', parent_ticket_id: 'EPIC-2', title: 'Task 2' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector
+            selectedIds={[]}
+            onChange={vi.fn()}
+            onEpicIdsChange={onEpicIdsChange}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Select first epic
+    const checkboxes1 = screen.getAllByRole('checkbox')
+    await user.click(checkboxes1[0]) // Select EPIC-1
+    expect(onEpicIdsChange).toHaveBeenLastCalledWith(['EPIC-1'])
+
+    // Select second epic (children of EPIC-1 now hidden, so EPIC-2 is at index 1)
+    const checkboxes2 = screen.getAllByRole('checkbox')
+    await user.click(checkboxes2[1]) // Select EPIC-2
+    expect(onEpicIdsChange).toHaveBeenLastCalledWith(['EPIC-1', 'EPIC-2'])
+  })
+
+  it('does not call onEpicIdsChange when regular ticket is toggled', async () => {
+    const user = userEvent.setup()
+    const onEpicIdsChange = vi.fn()
+    const tickets = [
+      createMockTicket({ id: 'TICKET-1', issue_type: 'task', title: 'Regular Task' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ChainTicketSelector
+            selectedIds={[]}
+            onChange={vi.fn()}
+            onEpicIdsChange={onEpicIdsChange}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const checkbox = screen.getByRole('checkbox')
+    await user.click(checkbox)
+
+    expect(onEpicIdsChange).not.toHaveBeenCalled()
+  })
+
+  it('works when onEpicIdsChange is not provided', async () => {
+    const user = userEvent.setup()
+    const tickets = [
+      createMockTicket({ id: 'EPIC-1', issue_type: 'epic', title: 'Q1' }),
+    ]
+    mockUseTicketList.mockReturnValue({
+      data: { tickets },
+      isLoading: false,
+    })
+
+    // No onEpicIdsChange callback provided
+    const { onChange } = renderSelector([])
+
+    const checkbox = screen.getByRole('checkbox')
+    await user.click(checkbox)
+
+    // Should still work without error
+    expect(onChange).toHaveBeenCalledWith(['EPIC-1'])
+  })
+})

@@ -31,6 +31,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/ui/Dialog.tsx` | Modal dialog with backdrop, ESC key, click-outside-to-close |
 | `src/components/ui/` | Reusable UI components (Badge, Button, Card, Input, ProjectSelect, Select, Spinner, Textarea, Toggle) |
 | `src/components/layout/` | Layout components (Header, Sidebar, DailyStats) |
+| `src/components/tickets/IssueTypeIcon.tsx` | Shared issue type icon (Bug/Lightbulb/CheckSquare/Layers) with size prop (sm/md) |
 | `src/components/tickets/` | Ticket-specific components |
 | `src/components/workflow/PhaseTimeline.tsx` | Main workflow timeline wrapper (uses PhaseGraph) |
 | `src/components/workflow/PhaseGraph/` | Vertical graph visualization of workflow phases |

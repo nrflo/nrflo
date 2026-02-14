@@ -5,10 +5,6 @@ import {
   Trash2,
   CheckCircle,
   RotateCcw,
-  Bug,
-  Lightbulb,
-  CheckSquare,
-  Layers,
   FileText,
   GitBranch,
   Info,
@@ -37,25 +33,11 @@ import {
 import { useWebSocket } from '@/hooks/useWebSocket'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
+import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
 import { cn, statusColor } from '@/lib/utils'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import { DescriptionTabContent } from './DescriptionTabContent'
 import { DetailsTabContent } from './DetailsTabContent'
-
-function IssueTypeIcon({ type }: { type: string }) {
-  switch (type) {
-    case 'bug':
-      return <Bug className="h-5 w-5 text-red-500" />
-    case 'feature':
-      return <Lightbulb className="h-5 w-5 text-purple-500" />
-    case 'task':
-      return <CheckSquare className="h-5 w-5 text-blue-500" />
-    case 'epic':
-      return <Layers className="h-5 w-5 text-green-500" />
-    default:
-      return <CheckSquare className="h-5 w-5 text-gray-500" />
-  }
-}
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -184,7 +166,7 @@ export function TicketDetailPage() {
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <IssueTypeIcon type={ticket.issue_type} />
+            <IssueTypeIcon type={ticket.issue_type} size="md" />
             <span className="text-sm text-muted-foreground font-mono">
               {ticket.id}
             </span>

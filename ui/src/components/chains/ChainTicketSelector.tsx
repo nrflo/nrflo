@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
+import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
 import { useTicketList } from '@/hooks/useTickets'
 import { cn, statusColor } from '@/lib/utils'
 import type { PendingTicket } from '@/types/ticket'
@@ -9,30 +10,87 @@ import type { PendingTicket } from '@/types/ticket'
 interface ChainTicketSelectorProps {
   selectedIds: string[]
   onChange: (ids: string[]) => void
+  onEpicIdsChange?: (epicIds: string[]) => void
 }
 
-export function ChainTicketSelector({ selectedIds, onChange }: ChainTicketSelectorProps) {
+export function ChainTicketSelector({ selectedIds, onChange, onEpicIdsChange }: ChainTicketSelectorProps) {
   const [search, setSearch] = useState('')
+  const [activeEpicIds, setActiveEpicIds] = useState<string[]>([])
   const { data, isLoading } = useTicketList({ status: 'open' })
 
   const tickets = data?.tickets ?? []
 
-  const filtered = useMemo(() => {
-    if (!search) return tickets
-    const q = search.toLowerCase()
-    return tickets.filter(
-      (t: PendingTicket) =>
-        t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q)
-    )
-  }, [tickets, search])
+  // Map epic ID -> child IDs (direct children only)
+  const epicChildMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    const epicIds = new Set(tickets.filter((t) => t.issue_type === 'epic').map((t) => t.id))
+    for (const t of tickets) {
+      if (t.parent_ticket_id && epicIds.has(t.parent_ticket_id)) {
+        const children = map.get(t.parent_ticket_id) ?? []
+        children.push(t.id)
+        map.set(t.parent_ticket_id, children)
+      }
+    }
+    return map
+  }, [tickets])
 
-  const toggle = (id: string) => {
+  // Set of child IDs belonging to any active (selected) epic
+  const activeEpicChildIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const epicId of activeEpicIds) {
+      for (const childId of epicChildMap.get(epicId) ?? []) {
+        set.add(childId)
+      }
+    }
+    return set
+  }, [activeEpicIds, epicChildMap])
+
+  const updateEpicIds = useCallback((newEpicIds: string[]) => {
+    setActiveEpicIds(newEpicIds)
+    onEpicIdsChange?.(newEpicIds)
+  }, [onEpicIdsChange])
+
+  const toggle = useCallback((id: string) => {
+    const ticket = tickets.find((t) => t.id === id)
+
+    if (ticket?.issue_type === 'epic') {
+      const children = epicChildMap.get(id) ?? []
+      if (selectedIds.includes(id)) {
+        // Deselect epic + all its children
+        const toRemove = new Set([id, ...children])
+        onChange(selectedIds.filter((s) => !toRemove.has(s)))
+        updateEpicIds(activeEpicIds.filter((e) => e !== id))
+      } else {
+        // Select epic + all its children
+        const toAdd = [id, ...children].filter((x) => !selectedIds.includes(x))
+        onChange([...selectedIds, ...toAdd])
+        updateEpicIds([...activeEpicIds, id])
+      }
+      return
+    }
+
+    // Regular ticket toggle (but not if it's a child of an active epic)
+    if (activeEpicChildIds.has(id)) return
+
     if (selectedIds.includes(id)) {
       onChange(selectedIds.filter((s) => s !== id))
     } else {
       onChange([...selectedIds, id])
     }
-  }
+  }, [tickets, selectedIds, onChange, epicChildMap, activeEpicIds, activeEpicChildIds, updateEpicIds])
+
+  const filtered = useMemo(() => {
+    // Hide children of selected epics from the list
+    let visible = tickets.filter((t) => !activeEpicChildIds.has(t.id))
+    if (search) {
+      const q = search.toLowerCase()
+      visible = visible.filter(
+        (t: PendingTicket) =>
+          t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q)
+      )
+    }
+    return visible
+  }, [tickets, search, activeEpicChildIds])
 
   if (isLoading) {
     return (
@@ -62,6 +120,8 @@ export function ChainTicketSelector({ selectedIds, onChange }: ChainTicketSelect
         ) : (
           filtered.map((ticket: PendingTicket) => {
             const selected = selectedIds.includes(ticket.id)
+            const isEpic = ticket.issue_type === 'epic'
+            const childCount = epicChildMap.get(ticket.id)?.length ?? 0
             return (
               <label
                 key={ticket.id}
@@ -76,10 +136,16 @@ export function ChainTicketSelector({ selectedIds, onChange }: ChainTicketSelect
                   onChange={() => toggle(ticket.id)}
                   className="rounded border-border"
                 />
+                <IssueTypeIcon type={ticket.issue_type} />
                 <span className="text-xs font-mono text-muted-foreground shrink-0">
                   {ticket.id}
                 </span>
                 <span className="text-sm truncate flex-1">{ticket.title}</span>
+                {isEpic && selected && childCount > 0 && (
+                  <Badge variant="secondary" className="shrink-0">
+                    {childCount} child{childCount !== 1 ? 'ren' : ''} included
+                  </Badge>
+                )}
                 <Badge className={statusColor(ticket.status)}>
                   {ticket.status}
                 </Badge>

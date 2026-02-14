@@ -1,27 +1,13 @@
 import { Link } from 'react-router-dom'
-import { Bug, Lightbulb, CheckSquare, Layers, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
 import { cn, statusColor, formatRelativeTime, priorityLabel } from '@/lib/utils'
 import type { Ticket, PendingTicket } from '@/types/ticket'
 
 interface TicketCardProps {
   ticket: Ticket | PendingTicket
-}
-
-function IssueTypeIcon({ type }: { type: string }) {
-  switch (type) {
-    case 'bug':
-      return <Bug className="h-4 w-4 text-red-500" />
-    case 'feature':
-      return <Lightbulb className="h-4 w-4 text-purple-500" />
-    case 'task':
-      return <CheckSquare className="h-4 w-4 text-blue-500" />
-    case 'epic':
-      return <Layers className="h-4 w-4 text-green-500" />
-    default:
-      return <CheckSquare className="h-4 w-4 text-gray-500" />
-  }
 }
 
 function isPendingTicket(ticket: Ticket | PendingTicket): ticket is PendingTicket {

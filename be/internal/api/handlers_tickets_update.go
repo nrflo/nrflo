@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
+	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/ws"
 )
@@ -109,7 +111,7 @@ type CloseTicketRequest struct {
 
 // handleCloseTicket closes a ticket
 func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, _, database, err := s.getRepos(r)
+	ticketRepo, depRepo, database, err := s.getRepos(r)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -151,6 +153,19 @@ func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
 			"status": string(closed.Status),
 		})
 		s.wsHub.Broadcast(event)
+
+		// Broadcast updates for tickets that were blocked by this ticket
+		blocked, err := depRepo.GetBlocked(projectID, id)
+		if err != nil {
+			logger.Error(context.Background(), "failed to get blocked tickets after close", "ticket_id", id, "error", err)
+		} else {
+			for _, dep := range blocked {
+				evt := ws.NewEvent(ws.EventTicketUpdated, projectID, dep.IssueID, "", map[string]interface{}{
+					"unblocked_by": id,
+				})
+				s.wsHub.Broadcast(evt)
+			}
+		}
 	}
 }
 

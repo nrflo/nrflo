@@ -7,6 +7,7 @@ import {
   RotateCcw,
   FileText,
   GitBranch,
+  GitCommitHorizontal,
   Info,
   Network,
 } from 'lucide-react'
@@ -39,6 +40,8 @@ import { WorkflowTabContent } from './WorkflowTabContent'
 import { HierarchyTabContent } from './HierarchyTabContent'
 import { DescriptionTabContent } from './DescriptionTabContent'
 import { DetailsTabContent } from './DetailsTabContent'
+import { GitStatusTabContent } from './GitStatusTabContent'
+import { useProjectStore } from '@/stores/projectStore'
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -47,11 +50,13 @@ export function TicketDetailPage() {
   const [closeReason, setCloseReason] = useState('')
   const [showCloseForm, setShowCloseForm] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>('hierarchy')
+  const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details' | 'git'>('hierarchy')
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
+
+  const currentProject = useProjectStore((s) => s.currentProject)
 
   // WebSocket subscription for this ticket's real-time updates
   useWebSocketSubscription(id)
@@ -283,6 +288,18 @@ export function TicketDetailPage() {
             <GitBranch className="h-4 w-4" />
             Workflow
           </button>
+          <button
+            onClick={() => setActiveTab('git')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'git'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <GitCommitHorizontal className="h-4 w-4" />
+            Git Status
+          </button>
         </div>
       </div>
 
@@ -337,6 +354,10 @@ export function TicketDetailPage() {
 
         {activeTab === 'details' && (
           <DetailsTabContent ticket={ticket} />
+        )}
+
+        {activeTab === 'git' && (
+          <GitStatusTabContent projectId={currentProject} />
         )}
       </div>
 

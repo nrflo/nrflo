@@ -18,6 +18,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/layout/` | Layout components (Header, Sidebar, DailyStats) |
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
 | `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, AppendToChainDialog) |
+| `src/components/git/` | Git commit detail dialog and diff viewer components |
 | `src/pages/` | Route page components (see [pages/CLAUDE.md](src/pages/CLAUDE.md)) |
 | `src/assets/` | Static assets |
 | `src/test/` | Test infrastructure (`setup.ts`, `utils.tsx`) |

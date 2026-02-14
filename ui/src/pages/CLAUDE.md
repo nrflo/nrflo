@@ -27,6 +27,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 - **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
 - **Details tab**: Read-only dependency lists, description text, metadata
 - **Workflow tab**: Shows phase timeline with agent history
+- **Git Status tab**: Paginated git commit list from project repo, click-to-open commit detail dialog with diff viewer
 
 ### Tab Content Components
 
@@ -35,6 +36,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 | `HierarchyTabContent.tsx` | Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics) |
 | `DescriptionTabContent.tsx` | Ticket title as h2, metadata grid, description text |
 | `DetailsTabContent.tsx` | Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid |
+| `GitStatusTabContent.tsx` | Paginated git commits list with refresh, opens CommitDetailDialog on click |
 
 **Real-time updates**: The page uses WebSocket exclusively for real-time updates. Subscribes to the current ticket on mount via `useWebSocket()` hook. No REST polling.
 

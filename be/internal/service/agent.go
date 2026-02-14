@@ -537,4 +537,3 @@ func (s *AgentService) loadMessageCounts(sessions []*model.AgentSession) {
 		}
 	}
 }
-

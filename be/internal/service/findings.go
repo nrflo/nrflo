@@ -383,4 +383,3 @@ func appendValue(existing, newValue interface{}) interface{} {
 
 	return []interface{}{existing, newValue}
 }
-

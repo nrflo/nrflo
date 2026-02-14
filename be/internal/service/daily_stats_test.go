@@ -263,10 +263,10 @@ func TestComputeAndStore_ExcludesNullTimestamps(t *testing.T) {
 		endedAt     interface{}
 		contextLeft int
 	}{
-		{"session-valid", startedAt, endedAt, 50},   // Should be counted for time
-		{"session-no-start", nil, endedAt, 60},      // Should NOT be counted for time (but tokens yes)
-		{"session-no-end", startedAt, nil, 70},      // Should NOT be counted for time (but tokens yes)
-		{"session-no-times", nil, nil, 80},          // Should NOT be counted for time (but tokens yes)
+		{"session-valid", startedAt, endedAt, 50}, // Should be counted for time
+		{"session-no-start", nil, endedAt, 60},    // Should NOT be counted for time (but tokens yes)
+		{"session-no-end", startedAt, nil, 70},    // Should NOT be counted for time (but tokens yes)
+		{"session-no-times", nil, nil, 80},        // Should NOT be counted for time (but tokens yes)
 	}
 
 	for _, s := range sessions {

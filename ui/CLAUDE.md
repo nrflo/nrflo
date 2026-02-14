@@ -64,15 +64,19 @@ npx tsc --noEmit   # TypeScript check only
 - Query keys are in `src/hooks/useTickets.ts` — invalidate appropriately on mutations
 - Projects are loaded from API on startup (see `projectStore.ts`)
 
-### Real-Time Updates
+### Real-Time Updates (Protocol v2)
 
 WebSocket-based, no REST polling. See [hooks/CLAUDE.md](src/hooks/CLAUDE.md) for full protocol, event types, and subscription patterns.
 
 - **Single socket per tab**: `WebSocketProvider` in `src/providers/WebSocketProvider.tsx` owns the sole WebSocket connection. Wrapped at `App.tsx` level.
 - **Consumer hook**: Components use `useWebSocketSubscription(ticketId)` to subscribe/unsubscribe. Project-wide subscription is automatic.
 - **No polling**: All `refetchInterval` has been removed. Updates arrive exclusively via WebSocket events.
-- Events: `agent.started`, `agent.completed`, `agent.continued`, `phase.started`, `phase.completed`, `findings.updated`, `messages.updated`, `workflow.updated`, `chain.updated`, `ticket.updated`, `orchestration.callback`
-- On reconnect, all query families are invalidated (tickets, project-workflows, chains, daily-stats, workflow-defs, agent-defs, session-messages).
+- **Protocol v2**: Events include `sequence` and `protocol_version` fields. Subscribe messages include optional `since_seq` for cursor-based replay on reconnect.
+- **Reducer dispatch**: Events are routed through `useWSReducer.ts` which tracks per-subscription seq for idempotency and cursor resume.
+- **Snapshot support**: Server can send `snapshot.begin/chunk/end` control events for full state hydration. Live events arriving during snapshot are buffered and replayed after.
+- **Heartbeat liveness**: If no message received in 60s, triggers reconnect.
+- **Cursor resume**: On reconnect, subscribe includes `since_seq` from last applied seq. Server replays missed events or sends snapshot if cursor is too old.
+- **sessionStorage persistence**: Last applied seq per subscription persisted across tab refresh.
 
 ### Component Structure
 

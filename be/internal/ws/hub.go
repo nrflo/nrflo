@@ -7,24 +7,26 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"be/internal/repo"
 )
 
 // Event types for WebSocket messages
 const (
-	EventAgentStarted    = "agent.started"
-	EventAgentCompleted  = "agent.completed"
-	EventAgentContinued  = "agent.continued"
-	EventPhaseStarted    = "phase.started"
-	EventPhaseCompleted  = "phase.completed"
-	EventFindingsUpdated = "findings.updated"
-	EventMessagesUpdated = "messages.updated"
-	EventWorkflowUpdated    = "workflow.updated"
-	EventWorkflowDefCreated = "workflow_def.created"
-	EventWorkflowDefUpdated = "workflow_def.updated"
-	EventWorkflowDefDeleted = "workflow_def.deleted"
-	EventAgentDefCreated    = "agent_def.created"
-	EventAgentDefUpdated    = "agent_def.updated"
-	EventAgentDefDeleted    = "agent_def.deleted"
+	EventAgentStarted           = "agent.started"
+	EventAgentCompleted         = "agent.completed"
+	EventAgentContinued         = "agent.continued"
+	EventPhaseStarted           = "phase.started"
+	EventPhaseCompleted         = "phase.completed"
+	EventFindingsUpdated        = "findings.updated"
+	EventMessagesUpdated        = "messages.updated"
+	EventWorkflowUpdated        = "workflow.updated"
+	EventWorkflowDefCreated     = "workflow_def.created"
+	EventWorkflowDefUpdated     = "workflow_def.updated"
+	EventWorkflowDefDeleted     = "workflow_def.deleted"
+	EventAgentDefCreated        = "agent_def.created"
+	EventAgentDefUpdated        = "agent_def.updated"
+	EventAgentDefDeleted        = "agent_def.deleted"
 	EventTicketUpdated          = "ticket.updated"
 	EventOrchestrationStarted   = "orchestration.started"
 	EventOrchestrationCompleted = "orchestration.completed"
@@ -32,18 +34,20 @@ const (
 	EventOrchestrationRetried   = "orchestration.retried"
 	EventOrchestrationCallback  = "orchestration.callback"
 	EventChainUpdated           = "chain.updated"
-	EventTestEcho           = "test.echo"
+	EventTestEcho               = "test.echo"
 )
 
 // Event represents a WebSocket event to broadcast
 type Event struct {
-	Type      string                 `json:"type"`
-	ProjectID string                 `json:"project_id"`
-	TicketID  string                 `json:"ticket_id"`
-	Workflow  string                 `json:"workflow,omitempty"`
-	Timestamp string                 `json:"timestamp"`
-	Sequence  int64                  `json:"sequence,omitempty"`
-	Data      map[string]interface{} `json:"data,omitempty"`
+	ProtocolVersion int                    `json:"protocol_version,omitempty"`
+	Type            string                 `json:"type"`
+	ProjectID       string                 `json:"project_id"`
+	TicketID        string                 `json:"ticket_id"`
+	Workflow        string                 `json:"workflow,omitempty"`
+	Timestamp       string                 `json:"timestamp"`
+	Sequence        int64                  `json:"sequence,omitempty"`
+	Entity          string                 `json:"entity,omitempty"`
+	Data            map[string]interface{} `json:"data,omitempty"`
 }
 
 // NewEvent creates a new event with current timestamp
@@ -81,6 +85,23 @@ type Hub struct {
 
 	// Shutdown channel
 	shutdown chan struct{}
+
+	// EventLog for durable event persistence (nil = logging disabled)
+	eventLog *repo.EventLogRepo
+
+	// SnapshotProvider builds snapshot data for v2 subscribe-with-cursor
+	snapshotProvider SnapshotProvider
+}
+
+// SnapshotProvider builds snapshot data for a given subscription scope.
+type SnapshotProvider interface {
+	BuildSnapshot(projectID, ticketID string) ([]SnapshotChunk, error)
+}
+
+// SnapshotChunk represents a typed section of snapshot data.
+type SnapshotChunk struct {
+	Entity string                 `json:"entity"`
+	Data   map[string]interface{} `json:"data"`
 }
 
 // NewHub creates a new Hub instance
@@ -93,6 +114,21 @@ func NewHub() *Hub {
 		unregister:    make(chan *Client),
 		shutdown:      make(chan struct{}),
 	}
+}
+
+// SetEventLog sets the event log repo for durable event persistence.
+func (h *Hub) SetEventLog(el *repo.EventLogRepo) {
+	h.eventLog = el
+}
+
+// SetSnapshotProvider sets the provider used for v2 snapshot streaming.
+func (h *Hub) SetSnapshotProvider(sp SnapshotProvider) {
+	h.snapshotProvider = sp
+}
+
+// GetEventLog returns the event log repo (may be nil).
+func (h *Hub) GetEventLog() *repo.EventLogRepo {
+	return h.eventLog
 }
 
 // Run starts the hub's main loop
@@ -234,8 +270,26 @@ func (h *Hub) removeClientSubscriptions(client *Client) {
 	}
 }
 
-// broadcastEvent sends an event to all subscribed clients
+// broadcastEvent logs the event to the durable log (if configured), assigns seq, then sends to clients.
 func (h *Hub) broadcastEvent(event *Event) {
+	// Persist to event log before dispatching
+	if h.eventLog != nil {
+		payload, _ := json.Marshal(event.Data)
+		seq, err := h.eventLog.Append(
+			strings.ToLower(event.ProjectID),
+			strings.ToLower(event.TicketID),
+			event.Type,
+			event.Workflow,
+			payload,
+		)
+		if err != nil {
+			log.Printf("[ws] event log append failed: %v", err)
+		} else {
+			event.Sequence = seq
+			event.ProtocolVersion = ProtocolVersion
+		}
+	}
+
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -289,11 +343,12 @@ func (h *Hub) broadcastEvent(event *Event) {
 
 // sendToClient sends data to a client (non-blocking)
 func (h *Hub) sendToClient(client *Client, data []byte) {
+	checkBackpressure(client)
 	select {
 	case client.send <- data:
 	default:
 		// Client buffer full, will be disconnected by write pump
-		log.Printf("[ws] client %s buffer full", client.id)
+		log.Printf("[ws] client %s buffer full, dropping message", client.id)
 	}
 }
 

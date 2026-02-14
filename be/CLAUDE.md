@@ -42,10 +42,14 @@ be/
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
 │   │   └── handlers_daily_stats.go # Daily stats endpoint
-│   ├── ws/                      # WebSocket support
-│   │   ├── hub.go               # Client management, broadcasting
-│   │   ├── client.go            # Connection handling, subscriptions
+│   ├── ws/                      # WebSocket support (protocol v2)
+│   │   ├── hub.go               # Client management, event log integration, broadcasting
+│   │   ├── client.go            # Connection handling, subscriptions, cursor support
 │   │   ├── handler.go           # HTTP upgrade handler
+│   │   ├── protocol.go          # Protocol v2 constants and entity types
+│   │   ├── replay.go            # Cursor-based replay from event log
+│   │   ├── snapshot.go          # Snapshot streaming (begin/chunk/end)
+│   │   ├── backpressure.go      # Client queue depth monitoring
 │   │   └── testing.go           # Test helpers (NewTestClient)
 │   ├── config/                  # Configuration management
 │   │   └── config.go
@@ -71,7 +75,8 @@ be/
 │   │   ├── findings.go          # Findings operations
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
 │   │   ├── chain_append.go      # AppendToChain for running chains
-│   │   └── daily_stats.go       # Daily stats computation from source tables
+│   │   ├── daily_stats.go       # Daily stats computation from source tables
+│   │   └── snapshot.go          # WS snapshot provider (builds chunks from workflow state)
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection
 │   │   ├── pool.go              # Connection pool (10 max, 5 idle)
@@ -100,7 +105,8 @@ be/
 │   │   ├── chain.go             # Chain execution CRUD
 │   │   ├── chain_items.go       # Chain item operations (GetMaxPosition, GetTicketIDsByChain)
 │   │   ├── chain_locks.go       # Chain lock operations
-│   │   └── daily_stats.go
+│   │   ├── daily_stats.go
+│   │   └── event_log.go         # WS event log persistence (append, query, cleanup)
 │   ├── types/                   # Shared request/response types
 │   │   ├── request.go
 │   │   └── chain_request.go     # Chain create/update request types

@@ -13,6 +13,7 @@ import (
 	"be/internal/logger"
 	"be/internal/orchestrator"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -51,6 +52,9 @@ func (s *Server) Start(port int) error {
 		s.chainRunner.RecoverZombieChains()
 	}
 
+	// Initialize event log for durable WS event persistence
+	s.initEventLog()
+
 	// Start WebSocket hub
 	go s.wsHub.Run()
 
@@ -88,6 +92,37 @@ func (s *Server) Stop(ctx context.Context) error {
 		return s.httpServer.Shutdown(ctx)
 	}
 	return nil
+}
+
+// initEventLog sets up the event log repo on the hub, configures the snapshot provider,
+// and starts the retention cleanup goroutine.
+func (s *Server) initEventLog() {
+	database, err := s.getDatabase()
+	if err != nil {
+		logger.Info(context.Background(), "event log init failed, continuing without persistence", "error", err)
+		return
+	}
+	elRepo := repo.NewEventLogRepo(database)
+	s.wsHub.SetEventLog(elRepo)
+
+	// Set up snapshot provider backed by WorkflowService
+	pool := db.WrapAsPool(database)
+	wfSvc := service.NewWorkflowService(pool)
+	s.wsHub.SetSnapshotProvider(service.NewWorkflowSnapshotProvider(wfSvc))
+
+	// Start retention cleanup: delete events older than 24h, every hour
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			deleted, err := elRepo.Cleanup(24 * time.Hour)
+			if err != nil {
+				logger.Info(context.Background(), "event log cleanup error", "error", err)
+			} else if deleted > 0 {
+				logger.Info(context.Background(), "event log cleanup", "deleted", deleted)
+			}
+		}
+	}()
 }
 
 // getDatabase returns a fresh database connection

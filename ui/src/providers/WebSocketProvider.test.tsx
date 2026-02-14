@@ -125,7 +125,6 @@ describe('WebSocketProvider', () => {
   })
 
   it('calls custom onEvent handler when provided', async () => {
-    const onEvent = vi.fn()
     renderProvider(<div>Child</div>)
 
     // onEvent is passed to useWebSocket, but we can't trigger WS events in this test

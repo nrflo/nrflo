@@ -189,6 +189,18 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    updated_at      TEXT NOT NULL                                     │
 │    UNIQUE(project_id, date)                                          │
 │                                                                      │
+│  WS_EVENT_LOG                                                        │
+│    seq            INTEGER PRIMARY KEY AUTOINCREMENT                  │
+│    project_id     TEXT NOT NULL                                      │
+│    ticket_id      TEXT NOT NULL DEFAULT ''                            │
+│    event_type     TEXT NOT NULL                                      │
+│    workflow       TEXT NOT NULL DEFAULT ''                            │
+│    payload        TEXT NOT NULL DEFAULT '{}'  (JSON event data)      │
+│    created_at     TEXT NOT NULL                                      │
+│    INDEX idx_ws_event_log_scope_seq (project_id, ticket_id, seq)    │
+│    INDEX idx_ws_event_log_created_at (created_at)                   │
+│    Retention: events older than 24h cleaned up hourly                │
+│                                                                      │
 │  TICKETS_FTS (Full-text search)                                      │
 │    project_id, id, title, description                                │
 │                                                                      │

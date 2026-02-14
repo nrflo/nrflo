@@ -38,9 +38,10 @@ type Client struct {
 
 // ClientMessage represents a message from the client
 type ClientMessage struct {
-	Action    string `json:"action"`    // subscribe, unsubscribe
+	Action    string `json:"action"` // subscribe, unsubscribe
 	ProjectID string `json:"project_id"`
 	TicketID  string `json:"ticket_id"` // optional, empty = all tickets in project
+	SinceSeq  *int64 `json:"since_seq"` // v2: optional cursor for replay on subscribe
 }
 
 // NewClient creates a new client
@@ -89,7 +90,10 @@ func (c *Client) ReadPump() {
 		case "subscribe":
 			if msg.ProjectID != "" {
 				c.hub.Subscribe(c, msg.ProjectID, msg.TicketID)
-				// Send acknowledgement
+				// v2: if client sends since_seq, run replay or snapshot
+				if msg.SinceSeq != nil {
+					go handleReplay(c, msg.ProjectID, msg.TicketID, *msg.SinceSeq, c.hub)
+				}
 				c.sendAck("subscribed", msg.ProjectID, msg.TicketID)
 			}
 		case "unsubscribe":

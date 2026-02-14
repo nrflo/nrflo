@@ -71,7 +71,9 @@ var ticketTemplateVars = []string{"${TICKET_ID}", "${TICKET_TITLE}", "${TICKET_D
 
 // ValidateProjectScope checks that agent prompts don't use ticket-specific template variables
 // when scope_type is "project". Loads agent definitions from DB to check their prompts.
-func ValidateProjectScope(pool interface{ QueryRow(string, ...interface{}) interface{ Scan(...interface{}) error } }, projectID, workflowID string, phases []PhaseDef) error {
+func ValidateProjectScope(pool interface {
+	QueryRow(string, ...interface{}) interface{ Scan(...interface{}) error }
+}, projectID, workflowID string, phases []PhaseDef) error {
 	for _, phase := range phases {
 		var prompt string
 		err := pool.QueryRow(`

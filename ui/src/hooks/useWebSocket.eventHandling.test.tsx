@@ -713,13 +713,6 @@ describe('useWebSocket - workflow_def and agent_def event handling', () => {
   })
 
   it('workflow_def.created invalidates both workflow-defs key patterns', () => {
-    const event: WSEvent = {
-      type: 'workflow_def.created',
-      project_id: 'test-project',
-      ticket_id: '',
-      timestamp: '2026-01-01T00:00:00Z',
-    }
-
     // Simulate handler - invalidates both key patterns
     queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
     queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
@@ -730,13 +723,6 @@ describe('useWebSocket - workflow_def and agent_def event handling', () => {
   })
 
   it('workflow_def.updated invalidates both workflow-defs key patterns', () => {
-    const event: WSEvent = {
-      type: 'workflow_def.updated',
-      project_id: 'test-project',
-      ticket_id: '',
-      timestamp: '2026-01-01T00:00:00Z',
-    }
-
     queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
     queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
 
@@ -745,13 +731,6 @@ describe('useWebSocket - workflow_def and agent_def event handling', () => {
   })
 
   it('workflow_def.deleted invalidates both workflow-defs key patterns', () => {
-    const event: WSEvent = {
-      type: 'workflow_def.deleted',
-      project_id: 'test-project',
-      ticket_id: '',
-      timestamp: '2026-01-01T00:00:00Z',
-    }
-
     queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
     queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
 
@@ -759,13 +738,6 @@ describe('useWebSocket - workflow_def and agent_def event handling', () => {
   })
 
   it('agent_def.created invalidates workflow-defs, workflows-defs, and agent-defs prefix', () => {
-    const event: WSEvent = {
-      type: 'agent_def.created',
-      project_id: 'test-project',
-      ticket_id: '',
-      timestamp: '2026-01-01T00:00:00Z',
-    }
-
     // Simulate handler
     queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
     queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
@@ -778,13 +750,6 @@ describe('useWebSocket - workflow_def and agent_def event handling', () => {
   })
 
   it('agent_def.updated invalidates all three key patterns', () => {
-    const event: WSEvent = {
-      type: 'agent_def.updated',
-      project_id: 'test-project',
-      ticket_id: '',
-      timestamp: '2026-01-01T00:00:00Z',
-    }
-
     queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
     queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
     queryClient.invalidateQueries({ queryKey: ['agent-defs'] })
@@ -793,13 +758,6 @@ describe('useWebSocket - workflow_def and agent_def event handling', () => {
   })
 
   it('agent_def.deleted invalidates all three key patterns', () => {
-    const event: WSEvent = {
-      type: 'agent_def.deleted',
-      project_id: 'test-project',
-      ticket_id: '',
-      timestamp: '2026-01-01T00:00:00Z',
-    }
-
     queryClient.invalidateQueries({ queryKey: ['workflow-defs'] })
     queryClient.invalidateQueries({ queryKey: ['workflows', 'defs'] })
     queryClient.invalidateQueries({ queryKey: ['agent-defs'] })

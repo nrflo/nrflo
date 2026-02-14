@@ -45,7 +45,6 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/PhaseListEditor.tsx` | Layer-aware phase list editor with fan-in validation |
 | `src/components/workflow/WorkflowDefForm.tsx` | Workflow definition create/edit form |
 | `src/components/workflow/RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs |
-| `src/components/workflow/RunProjectWorkflowDialog.tsx` | Dialog for starting project-scoped workflow runs (filters to scope_type=project) |
 | `src/components/workflow/RunEpicWorkflowDialog.tsx` | Dialog for epic workflow execution: two-step flow (create chain preview, then start) |
 | `src/components/workflow/AgentSessionCard.tsx` | Reusable agent session card component |
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
@@ -63,7 +62,8 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/pages/TicketDetailPage.tsx` | Ticket detail with tabbed interface (hierarchy/description/details/workflow) |
 | `src/pages/HierarchyTabContent.tsx` | Hierarchy tab: blockers, blocks, epic hierarchy (parent + siblings/children) |
 | `src/pages/WorkflowsPage.tsx` | Workflow definitions CRUD and agent definition management |
-| `src/pages/ProjectWorkflowsPage.tsx` | Project-scoped workflow execution page (run/stop/view state) |
+| `src/pages/ProjectWorkflowsPage.tsx` | Project-scoped workflow page with 3-tab layout: Run Workflow (inline form), Running (instance list), Completed (instance list). Supports multiple concurrent instances keyed by instance_id. |
+| `src/pages/ProjectWorkflowComponents.tsx` | Sub-components for ProjectWorkflowsPage: RunWorkflowForm (inline workflow selector + instructions) and InstanceList (instance selector chips) |
 | `src/pages/SettingsPage.tsx` | Project management (create/update/delete) |
 | `src/pages/ChainListPage.tsx` | Chain execution list with status filtering and create dialog |
 | `src/pages/ChainDetailPage.tsx` | Chain detail with ordered items, start/cancel/edit/append actions |
@@ -157,7 +157,7 @@ Layout
 - **Edit Ticket** (`/tickets/:id/edit`): Edit existing ticket form
 - **Ticket Detail** (`/tickets/:id`): Workflow timeline, description, details tabs
 - **Workflows** (`/workflows`): Workflow definitions and agent definitions CRUD
-- **Project Workflows** (`/project-workflows`): Run and monitor project-scoped workflows
+- **Project Workflows** (`/project-workflows`): 3-tab layout (Run Workflow/Running/Completed) for project-scoped workflows with multi-instance support
 - **Chain Executions** (`/chains`): Chain list with status filtering, create/edit dialog
 - **Chain Detail** (`/chains/:id`): Chain items table, start/cancel/edit, 5s polling when running
 - **Settings** (`/settings`): Project management

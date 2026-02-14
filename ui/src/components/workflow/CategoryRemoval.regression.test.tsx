@@ -15,7 +15,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowDefForm } from './WorkflowDefForm'
 import { RunWorkflowDialog } from './RunWorkflowDialog'
-import { RunProjectWorkflowDialog } from './RunProjectWorkflowDialog'
 import { RunEpicWorkflowDialog } from './RunEpicWorkflowDialog'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
 import type { WorkflowDefCreateRequest, PhaseDef } from '@/types/workflow'
@@ -36,10 +35,6 @@ vi.mock('@/api/workflows', () => ({
 
 vi.mock('@/api/tickets', () => ({
   runWorkflow: vi.fn(),
-}))
-
-vi.mock('@/api/projectWorkflows', () => ({
-  runProjectWorkflow: vi.fn(),
 }))
 
 vi.mock('@/hooks/useChains', () => ({
@@ -72,11 +67,6 @@ vi.mock('@/hooks/useChains', () => ({
 
 vi.mock('@/hooks/useTickets', () => ({
   useRunWorkflow: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-    error: null,
-  }),
-  useRunProjectWorkflow: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
     error: null,
@@ -241,25 +231,6 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
       expect(screen.queryByText(/full/i)).not.toBeInTheDocument()
       expect(screen.queryByText(/simple/i)).not.toBeInTheDocument()
       expect(screen.queryByText(/docs/i)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('RunProjectWorkflowDialog - no category in request', () => {
-    it('does not render category dropdown', async () => {
-      const queryClient = new QueryClient()
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <RunProjectWorkflowDialog
-            open={true}
-            onClose={vi.fn()}
-            projectId="test-project"
-          />
-        </QueryClientProvider>
-      )
-
-      // Should not have any category-related UI
-      expect(screen.queryByText(/category/i)).not.toBeInTheDocument()
     })
   })
 

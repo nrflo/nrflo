@@ -188,9 +188,11 @@ export function AgentLogPanel({
 
   // Detail mode: show selected agent
   if (selectedAgent) {
-    // Look up the latest session for live updates
-    const liveSession = selectedAgent.agent
-      ? findSession(selectedAgent.agent) || selectedAgent.session
+    // For running agents (agent present, no result), look up latest session for live updates.
+    // For completed agents (historyEntry or agent with result), use the captured session directly.
+    const isRunningAgent = selectedAgent.agent && !selectedAgent.agent.result
+    const liveSession = isRunningAgent
+      ? findSession(selectedAgent.agent!) || selectedAgent.session
       : selectedAgent.session
     const agentWithSession = { ...selectedAgent, session: liveSession }
 

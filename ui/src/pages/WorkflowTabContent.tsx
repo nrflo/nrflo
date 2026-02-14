@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Select'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
+import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import type { WorkflowState, AgentSession, ActiveAgentV4 } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
@@ -48,6 +49,7 @@ interface WorkflowTabContentProps {
   restartingSessionId?: string | null
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
+  isCompletedProjectWorkflow?: boolean
 }
 
 export function WorkflowTabContent({
@@ -78,6 +80,7 @@ export function WorkflowTabContent({
   restartingSessionId,
   onRetryFailed,
   retryingSessionId,
+  isCompletedProjectWorkflow,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
 
@@ -209,14 +212,23 @@ export function WorkflowTabContent({
                 )}
               </div>
             )}
-            <PhaseTimeline
-              workflow={displayedState}
-              agentHistory={agentHistory}
-              ticketId={ticketId}
-              sessions={!ticketId ? sessions : undefined}
-              onAgentSelect={onAgentSelect}
-              logPanelCollapsed={logPanelCollapsed}
-            />
+            {isCompletedProjectWorkflow ? (
+              <CompletedAgentsTable
+                agentHistory={agentHistory ?? []}
+                sessions={sessions}
+                onAgentSelect={onAgentSelect}
+              />
+            ) : (
+              <PhaseTimeline
+                workflow={displayedState}
+                agentHistory={agentHistory}
+                ticketId={ticketId}
+                sessions={!ticketId ? sessions : undefined}
+                onAgentSelect={onAgentSelect}
+                logPanelCollapsed={logPanelCollapsed}
+                showFindings={!isCompletedProjectWorkflow}
+              />
+            )}
           </>
         ) : (
           <div className="text-center py-8 space-y-3">

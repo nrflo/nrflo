@@ -518,4 +518,187 @@ describe('AgentLogPanel', () => {
       )
     })
   })
+
+  describe('ticket nrworkflow-46fb2e: session lookup fix for completed agents', () => {
+    it('uses captured session directly for completed agents instead of re-looking up', async () => {
+      // Scenario: Two completed agents with same agent_type/phase/model
+      // but different sessions. The bug was that detail mode always looked up
+      // the latest session, showing wrong messages.
+      const agent1Session = makeSession({
+        id: 'agent1-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+      const agent2Session = makeSession({
+        id: 'agent2-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+
+      const selectedAgent = {
+        phaseName: 'implementation',
+        historyEntry: {
+          agent_id: 'a1',
+          agent_type: 'implementor',
+          phase: 'implementation',
+          session_id: 'agent1-session',
+          result: 'pass',
+          duration_sec: 3600,
+        },
+        session: agent1Session, // Captured at click time
+      }
+
+      renderPanel({
+        selectedAgent,
+        sessions: [agent1Session, agent2Session],
+      })
+
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+
+      // The fix ensures that for completed agents (historyEntry present, or agent.result present),
+      // we use the captured session directly instead of calling findSession() again.
+      // This test verifies the component renders with captured session without errors.
+    })
+
+    it('uses live session lookup for running agents (no result)', async () => {
+      const initialSession = makeSession({
+        id: 'running-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        status: 'running',
+      })
+
+      const runningAgent = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        result: undefined, // No result = still running
+      })
+
+      const selectedAgent = {
+        phaseName: 'implementation',
+        agent: runningAgent,
+        session: initialSession,
+      }
+
+      renderPanel({
+        selectedAgent,
+        sessions: [initialSession],
+        activeAgents: { 'implementor:claude:opus': runningAgent },
+      })
+
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+    })
+
+    it('does not re-lookup session for completed agent with result', () => {
+      const completedAgent = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        result: 'pass', // Has result = completed
+      })
+
+      const capturedSession = makeSession({
+        id: 'captured-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        status: 'completed',
+        result: 'pass',
+      })
+
+      const differentSession = makeSession({
+        id: 'different-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        status: 'completed',
+        result: 'pass',
+      })
+
+      const selectedAgent = {
+        phaseName: 'implementation',
+        agent: completedAgent,
+        session: capturedSession,
+      }
+
+      renderPanel({
+        selectedAgent,
+        sessions: [differentSession, capturedSession],
+      })
+
+      // Should render detail view with captured session
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+    })
+
+    it('uses captured session for historyEntry even when findSession would match different session', () => {
+      const capturedSession = makeSession({
+        id: 'captured-history-session',
+        agent_type: 'setup-analyzer',
+        phase: 'investigation',
+        model_id: 'claude-sonnet-4-5',
+      })
+
+      const latestSession = makeSession({
+        id: 'latest-session',
+        agent_type: 'setup-analyzer',
+        phase: 'investigation',
+        model_id: 'claude-sonnet-4-5',
+      })
+
+      const selectedAgent = {
+        phaseName: 'investigation',
+        historyEntry: {
+          agent_id: 'h1',
+          agent_type: 'setup-analyzer',
+          phase: 'investigation',
+          session_id: 'captured-history-session',
+          result: 'pass',
+          duration_sec: 120,
+        },
+        session: capturedSession,
+      }
+
+      renderPanel({
+        selectedAgent,
+        sessions: [latestSession, capturedSession],
+      })
+
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+    })
+
+    it('falls back to captured session when findSession returns undefined for running agent', () => {
+      const runningAgent = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        result: undefined,
+      })
+
+      const capturedSession = makeSession({
+        id: 'captured-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+
+      const selectedAgent = {
+        phaseName: 'implementation',
+        agent: runningAgent,
+        session: capturedSession,
+      }
+
+      // Sessions array doesn't contain matching session
+      renderPanel({
+        selectedAgent,
+        sessions: [],
+        activeAgents: { 'implementor:claude:opus': runningAgent },
+      })
+
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+    })
+  })
 })

@@ -50,6 +50,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/workflow/AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
 | `src/components/workflow/AgentLogPanel.tsx` | Collapsible right-side panel: overview of running agents or single-agent detail view |
 | `src/components/workflow/AgentLogDetail.tsx` | Single-agent detail view with message table (timestamp, tool, message columns), used by AgentLogPanel |
+| `src/components/workflow/CompletedAgentsTable.tsx` | Table of completed agents sorted by ended_at DESC, used in project completed workflows tab instead of PhaseGraph |
 | `src/components/workflow/LogMessage.tsx` | Log message component with tool name color highlighting. Exports parseToolName and ToolBadge for table rendering |
 | `src/components/workflow/` | Workflow visualization components |
 | `src/components/chains/CreateChainDialog.tsx` | Dialog for creating/editing chain executions |

@@ -1,0 +1,817 @@
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { CompletedAgentsTable } from './CompletedAgentsTable'
+import type { AgentHistoryEntry, AgentSession } from '@/types/workflow'
+
+function makeHistoryEntry(overrides: Partial<AgentHistoryEntry> = {}): AgentHistoryEntry {
+  return {
+    agent_id: 'a1',
+    agent_type: 'implementor',
+    phase: 'implementation',
+    session_id: 'session-1',
+    model_id: 'claude-sonnet-4-5',
+    result: 'pass',
+    started_at: '2026-01-01T00:00:00Z',
+    ended_at: '2026-01-01T01:00:00Z',
+    duration_sec: 3600,
+    ...overrides,
+  }
+}
+
+function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
+  return {
+    id: 'session-1',
+    project_id: 'test-project',
+    ticket_id: '',
+    workflow_instance_id: 'wi-1',
+    phase: 'implementation',
+    workflow: 'feature',
+    agent_type: 'implementor',
+    model_id: 'claude-sonnet-4-5',
+    status: 'completed',
+    result: 'pass',
+    message_count: 10,
+    restart_count: 0,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T01:00:00Z',
+    started_at: '2026-01-01T00:00:00Z',
+    ended_at: '2026-01-01T01:00:00Z',
+    ...overrides,
+  }
+}
+
+describe('CompletedAgentsTable', () => {
+  describe('rendering', () => {
+    it('renders table with correct headers', () => {
+      const history = [makeHistoryEntry()]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const table = document.querySelector('table')
+      expect(table).toBeInTheDocument()
+
+      const headers = table!.querySelectorAll('thead th')
+      expect(headers).toHaveLength(6)
+      expect(headers[0].textContent).toBe('Agent')
+      expect(headers[1].textContent).toBe('Phase')
+      expect(headers[2].textContent).toBe('Model')
+      expect(headers[3].textContent).toBe('Result')
+      expect(headers[4].textContent).toBe('Duration')
+      expect(headers[5].textContent).toBe('Completed At')
+    })
+
+    it('renders agent data in table rows', () => {
+      const history = [
+        makeHistoryEntry({
+          agent_type: 'setup-analyzer',
+          phase: 'investigation',
+          model_id: 'claude-opus-4-6',
+          result: 'pass',
+          duration_sec: 120,
+        }),
+      ]
+      const sessions = [makeSession({ id: 'session-1' })]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('setup-analyzer')).toBeInTheDocument()
+      expect(screen.getByText('investigation')).toBeInTheDocument()
+      expect(screen.getByText('claude-opus-4-6')).toBeInTheDocument()
+      expect(screen.getByText('pass')).toBeInTheDocument()
+      expect(screen.getByText('2m')).toBeInTheDocument()
+    })
+
+    it('shows empty state when no agent history', () => {
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={[]}
+          sessions={[]}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('No completed agents')).toBeInTheDocument()
+      expect(document.querySelector('table')).not.toBeInTheDocument()
+    })
+
+    it('replaces underscores with spaces in phase names', () => {
+      const history = [
+        makeHistoryEntry({
+          phase: 'test_design',
+        }),
+      ]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('test design')).toBeInTheDocument()
+    })
+
+    it('displays "-" for missing model_id', () => {
+      const history = [
+        makeHistoryEntry({
+          model_id: undefined,
+        }),
+      ]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const cells = document.querySelectorAll('td')
+      const modelCell = cells[2]
+      expect(modelCell.textContent).toBe('-')
+    })
+
+    it('displays "-" for missing ended_at', () => {
+      const history = [
+        makeHistoryEntry({
+          ended_at: undefined,
+        }),
+      ]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const cells = document.querySelectorAll('td')
+      const completedAtCell = cells[5]
+      expect(completedAtCell.textContent).toBe('-')
+    })
+  })
+
+  describe('sorting', () => {
+    it('sorts agents by ended_at DESC (latest first)', () => {
+      const history = [
+        makeHistoryEntry({
+          agent_id: 'a1',
+          agent_type: 'setup-analyzer',
+          ended_at: '2026-01-01T00:00:00Z',
+        }),
+        makeHistoryEntry({
+          agent_id: 'a2',
+          agent_type: 'implementor',
+          ended_at: '2026-01-01T05:00:00Z',
+        }),
+        makeHistoryEntry({
+          agent_id: 'a3',
+          agent_type: 'qa-verifier',
+          ended_at: '2026-01-01T03:00:00Z',
+        }),
+      ]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const rows = document.querySelectorAll('tbody tr')
+      const firstRowAgentCell = rows[0].querySelector('td:first-child')
+      const secondRowAgentCell = rows[1].querySelector('td:first-child')
+      const thirdRowAgentCell = rows[2].querySelector('td:first-child')
+
+      // Latest first (DESC order)
+      expect(firstRowAgentCell?.textContent).toBe('implementor')
+      expect(secondRowAgentCell?.textContent).toBe('qa-verifier')
+      expect(thirdRowAgentCell?.textContent).toBe('setup-analyzer')
+    })
+
+    it('sorts entries with null ended_at last', () => {
+      const history = [
+        makeHistoryEntry({
+          agent_id: 'a1',
+          agent_type: 'setup-analyzer',
+          ended_at: '2026-01-01T02:00:00Z',
+        }),
+        makeHistoryEntry({
+          agent_id: 'a2',
+          agent_type: 'timeout-agent',
+          ended_at: undefined,
+        }),
+        makeHistoryEntry({
+          agent_id: 'a3',
+          agent_type: 'implementor',
+          ended_at: '2026-01-01T05:00:00Z',
+        }),
+      ]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const rows = document.querySelectorAll('tbody tr')
+      const lastRowAgentCell = rows[2].querySelector('td:first-child')
+
+      expect(lastRowAgentCell?.textContent).toBe('timeout-agent')
+    })
+
+    it('handles multiple entries with null ended_at', () => {
+      const history = [
+        makeHistoryEntry({
+          agent_id: 'a1',
+          agent_type: 'timeout-1',
+          ended_at: undefined,
+        }),
+        makeHistoryEntry({
+          agent_id: 'a2',
+          agent_type: 'completed',
+          ended_at: '2026-01-01T05:00:00Z',
+        }),
+        makeHistoryEntry({
+          agent_id: 'a3',
+          agent_type: 'timeout-2',
+          ended_at: undefined,
+        }),
+      ]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const rows = document.querySelectorAll('tbody tr')
+
+      // First row should be the completed one
+      expect(rows[0].querySelector('td:first-child')?.textContent).toBe('completed')
+
+      // Last two rows should be the timeout ones (order between them doesn't matter)
+      const lastTwoAgents = [
+        rows[1].querySelector('td:first-child')?.textContent,
+        rows[2].querySelector('td:first-child')?.textContent,
+      ]
+      expect(lastTwoAgents).toContain('timeout-1')
+      expect(lastTwoAgents).toContain('timeout-2')
+    })
+  })
+
+  describe('result badges', () => {
+    it('displays success badge for pass result', () => {
+      const history = [makeHistoryEntry({ result: 'pass' })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const badge = screen.getByText('pass')
+      expect(badge).toBeInTheDocument()
+      // Badge with variant="success" uses bg-green-100
+      expect(badge.className).toContain('bg-green-100')
+    })
+
+    it('displays destructive badge for fail result', () => {
+      const history = [makeHistoryEntry({ result: 'fail' })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const badge = screen.getByText('fail')
+      expect(badge).toBeInTheDocument()
+      // Badge with variant="destructive" uses bg-destructive CSS variable
+      expect(badge.className).toContain('bg-destructive')
+    })
+
+    it('displays badge for continue result', () => {
+      const history = [makeHistoryEntry({ result: 'continue' })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const badge = screen.getByText('continue')
+      expect(badge).toBeInTheDocument()
+    })
+
+    it('does not display badge when result is undefined', () => {
+      const history = [makeHistoryEntry({ result: undefined })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const resultCell = document.querySelectorAll('td')[3]
+      expect(resultCell.textContent).toBe('')
+    })
+  })
+
+  describe('duration formatting', () => {
+    it('formats duration in minutes and seconds', () => {
+      const history = [makeHistoryEntry({ duration_sec: 125 })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('2m 5s')).toBeInTheDocument()
+    })
+
+    it('formats duration with only minutes when no remainder', () => {
+      const history = [makeHistoryEntry({ duration_sec: 120 })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('2m')).toBeInTheDocument()
+    })
+
+    it('formats duration with only seconds when less than a minute', () => {
+      const history = [makeHistoryEntry({ duration_sec: 45 })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('45s')).toBeInTheDocument()
+    })
+
+    it('displays 0s for undefined duration', () => {
+      const history = [makeHistoryEntry({ duration_sec: undefined })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('0s')).toBeInTheDocument()
+    })
+
+    it('displays 0s for zero duration', () => {
+      const history = [makeHistoryEntry({ duration_sec: 0 })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('0s')).toBeInTheDocument()
+    })
+  })
+
+  describe('agent selection', () => {
+    it('calls onAgentSelect when clicking a row', async () => {
+      const user = userEvent.setup()
+      const history = [makeHistoryEntry()]
+      const session = makeSession()
+      const sessions = [session]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const row = screen.getByText('implementor').closest('tr')!
+      await user.click(row)
+
+      expect(onAgentSelect).toHaveBeenCalledWith({
+        phaseName: 'implementation',
+        historyEntry: history[0],
+        session,
+      })
+    })
+
+    it('finds session by session_id when available', async () => {
+      const user = userEvent.setup()
+      const history = [
+        makeHistoryEntry({
+          session_id: 'specific-session',
+          agent_type: 'implementor',
+          phase: 'implementation',
+          model_id: 'claude-opus-4-6',
+        }),
+      ]
+      const correctSession = makeSession({
+        id: 'specific-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+      const wrongSession = makeSession({
+        id: 'wrong-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-sonnet-4-5',
+      })
+      const sessions = [wrongSession, correctSession]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const row = screen.getByText('implementor').closest('tr')!
+      await user.click(row)
+
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ session: correctSession })
+      )
+    })
+
+    it('falls back to fuzzy matching when session_id is not found', async () => {
+      const user = userEvent.setup()
+      const history = [
+        makeHistoryEntry({
+          session_id: 'nonexistent-session',
+          agent_type: 'implementor',
+          phase: 'implementation',
+          model_id: 'claude-opus-4-6',
+        }),
+      ]
+      const fallbackSession = makeSession({
+        id: 'fallback-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+      const sessions = [fallbackSession]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const row = screen.getByText('implementor').closest('tr')!
+      await user.click(row)
+
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ session: fallbackSession })
+      )
+    })
+
+    it('falls back to fuzzy matching when session_id is undefined', async () => {
+      const user = userEvent.setup()
+      const history = [
+        makeHistoryEntry({
+          session_id: undefined,
+          agent_type: 'setup-analyzer',
+          phase: 'investigation',
+          model_id: 'claude-sonnet-4-5',
+        }),
+      ]
+      const fuzzyMatchSession = makeSession({
+        id: 'fuzzy-session',
+        agent_type: 'setup-analyzer',
+        phase: 'investigation',
+        model_id: 'claude-sonnet-4-5',
+      })
+      const sessions = [fuzzyMatchSession]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const row = screen.getByText('setup-analyzer').closest('tr')!
+      await user.click(row)
+
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ session: fuzzyMatchSession })
+      )
+    })
+
+    it('passes undefined session when no match found', async () => {
+      const user = userEvent.setup()
+      const history = [
+        makeHistoryEntry({
+          session_id: 'nonexistent',
+          agent_type: 'implementor',
+        }),
+      ]
+      const sessions = [
+        makeSession({
+          id: 'different',
+          agent_type: 'tester',
+        }),
+      ]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const row = screen.getByText('implementor').closest('tr')!
+      await user.click(row)
+
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ session: undefined })
+      )
+    })
+
+    it('fuzzy matching ignores model_id when entry.model_id is undefined', async () => {
+      const user = userEvent.setup()
+      const history = [
+        makeHistoryEntry({
+          session_id: undefined,
+          agent_type: 'implementor',
+          phase: 'implementation',
+          model_id: undefined,
+        }),
+      ]
+      const session = makeSession({
+        id: 'match-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+      const sessions = [session]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const row = screen.getByText('implementor').closest('tr')!
+      await user.click(row)
+
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ session })
+      )
+    })
+  })
+
+  describe('table styling', () => {
+    it('applies correct table classes matching message table pattern', () => {
+      const history = [makeHistoryEntry()]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const table = document.querySelector('table')!
+      expect(table.className).toContain('w-full')
+      expect(table.className).toContain('text-xs')
+      expect(table.className).toContain('font-mono')
+      expect(table.className).toContain('border-collapse')
+    })
+
+    it('applies hover effect to table rows', () => {
+      const history = [makeHistoryEntry()]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const row = document.querySelector('tbody tr')!
+      expect(row.className).toContain('hover:bg-muted/50')
+      expect(row.className).toContain('cursor-pointer')
+      expect(row.className).toContain('transition-colors')
+    })
+
+    it('uses correct header styling', () => {
+      const history = [makeHistoryEntry()]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const headerRow = document.querySelector('thead tr')!
+      expect(headerRow.className).toContain('text-left')
+      expect(headerRow.className).toContain('text-muted-foreground')
+      expect(headerRow.className).toContain('border-b')
+      expect(headerRow.className).toContain('border-border')
+    })
+  })
+
+  describe('multiple agents', () => {
+    it('renders multiple agents in sorted order', () => {
+      const history = [
+        makeHistoryEntry({
+          agent_id: 'a1',
+          agent_type: 'setup-analyzer',
+          phase: 'investigation',
+          ended_at: '2026-01-01T00:00:00Z',
+          duration_sec: 60,
+        }),
+        makeHistoryEntry({
+          agent_id: 'a2',
+          agent_type: 'implementor',
+          phase: 'implementation',
+          ended_at: '2026-01-01T03:00:00Z',
+          duration_sec: 7200,
+        }),
+        makeHistoryEntry({
+          agent_id: 'a3',
+          agent_type: 'qa-verifier',
+          phase: 'verification',
+          ended_at: '2026-01-01T05:00:00Z',
+          duration_sec: 1800,
+        }),
+      ]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const rows = document.querySelectorAll('tbody tr')
+      expect(rows).toHaveLength(3)
+
+      // Latest first
+      expect(rows[0].querySelector('td:first-child')?.textContent).toBe('qa-verifier')
+      expect(rows[1].querySelector('td:first-child')?.textContent).toBe('implementor')
+      expect(rows[2].querySelector('td:first-child')?.textContent).toBe('setup-analyzer')
+    })
+
+    it('each row is clickable and selects correct agent', async () => {
+      const user = userEvent.setup()
+      const history = [
+        makeHistoryEntry({
+          agent_id: 'a1',
+          agent_type: 'setup-analyzer',
+          session_id: 'session-1',
+        }),
+        makeHistoryEntry({
+          agent_id: 'a2',
+          agent_type: 'implementor',
+          session_id: 'session-2',
+        }),
+      ]
+      const sessions = [
+        makeSession({ id: 'session-1', agent_type: 'setup-analyzer' }),
+        makeSession({ id: 'session-2', agent_type: 'implementor' }),
+      ]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      // Click second row (setup-analyzer, because sorted DESC by ended_at which are equal)
+      const rows = document.querySelectorAll('tbody tr')
+      await user.click(rows[0])
+
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          historyEntry: expect.objectContaining({ agent_type: expect.any(String) }),
+        })
+      )
+
+      onAgentSelect.mockClear()
+
+      // Click first row
+      await user.click(rows[1])
+
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          historyEntry: expect.objectContaining({ agent_type: expect.any(String) }),
+        })
+      )
+    })
+  })
+})

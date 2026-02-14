@@ -251,6 +251,7 @@ export function ProjectWorkflowsPage() {
             onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
             selectedPanelAgent={selectedPanelAgent}
             onAgentSelect={setSelectedPanelAgent}
+            isCompletedProjectWorkflow={activeTab === 'completed'}
             onStop={() =>
               currentProject &&
               stopMutation.mutate({

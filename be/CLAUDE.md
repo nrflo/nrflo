@@ -41,6 +41,7 @@ be/
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
+│   │   ├── handlers_git.go        # Git commit history endpoints
 │   │   └── handlers_daily_stats.go # Daily stats endpoint
 │   ├── ws/                      # WebSocket support (protocol v2)
 │   │   ├── hub.go               # Client management, event log integration, broadcasting
@@ -76,6 +77,7 @@ be/
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
 │   │   ├── chain_append.go      # AppendToChain for running chains
 │   │   ├── daily_stats.go       # Daily stats computation from source tables
+│   │   ├── git.go               # Git operations (commit listing, detail via os/exec)
 │   │   └── snapshot.go          # WS snapshot provider (builds chunks from workflow state)
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection

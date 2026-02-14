@@ -22,6 +22,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_workflow_def.go` | Workflow definition CRUD |
 | `handlers_agent_def.go` | Agent definition CRUD |
 | `handlers_chains.go` | Chain list/get/create/update/start/cancel/append |
+| `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 
 ## HTTP API Endpoints
@@ -67,6 +68,10 @@ POST /api/v1/projects/:id/workflow/restart       # Restart project agent
 POST /api/v1/projects/:id/workflow/retry-failed  # Retry failed project workflow
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
 GET  /api/v1/projects/:id/agents           # Get project agent sessions
+
+# Git (project-scoped, reads from project root_path)
+GET  /api/v1/projects/:id/git/commits           # Paginated commit list (?page=&per_page=)
+GET  /api/v1/projects/:id/git/commits/:hash     # Single commit detail with diff
 
 # Agent definitions (nested under workflows)
 GET    /api/v1/workflows/:wid/agents           # List agents for workflow

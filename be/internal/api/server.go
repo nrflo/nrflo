@@ -325,6 +325,10 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)
 	mux.HandleFunc("GET /api/v1/projects/{id}/agents", s.handleGetProjectAgentSessions)
 
+	// Git
+	mux.HandleFunc("GET /api/v1/projects/{id}/git/commits", s.handleListGitCommits)
+	mux.HandleFunc("GET /api/v1/projects/{id}/git/commits/{hash}", s.handleGetGitCommitDetail)
+
 	// Agent definitions (nested under workflows)
 	mux.HandleFunc("GET /api/v1/workflows/{wid}/agents", s.handleListAgentDefs)
 	mux.HandleFunc("POST /api/v1/workflows/{wid}/agents", s.handleCreateAgentDef)

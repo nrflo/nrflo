@@ -246,9 +246,9 @@ Key ticket types (`src/types/ticket.ts`):
 
 Key workflow types (`src/types/workflow.ts`):
 - `ScopeType`: `'ticket' | 'project'` — workflow scope type
-- `WorkflowState`: Phase states, phase_order, scope_type, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
+- `WorkflowState`: Phase states, phase_order, scope_type, instance_id, findings, active_agents map (constructed server-side from `workflow_instances` + `agent_sessions` tables)
 - `WorkflowResponse`: API response with agent_history at top level (ticket-scoped)
-- `ProjectWorkflowResponse`: API response for project-scoped workflows (project_id instead of ticket_id)
+- `ProjectWorkflowResponse`: API response for project-scoped workflows. `all_workflows` is keyed by instance_id (not workflow name). Multiple instances of the same workflow can exist concurrently. Each state includes `instance_id` and `workflow` fields. Stop/restart/retry API calls include `instance_id` to target a specific instance.
 - `ProjectAgentSessionsResponse`: API response for project-scoped agent sessions (project_id + sessions array)
 - `AgentHistoryEntry`: Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left)
 - `AgentSession`: Session record with fields from `agent_sessions` table: `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left`

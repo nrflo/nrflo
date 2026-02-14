@@ -80,7 +80,7 @@ Source files should be kept under 300 lines when possible. When a file grows bey
 16. **Low-context relaunch**: When an agent's context drops below threshold (default ~25% remaining, configurable per agent via `restart_threshold` in agent_definitions), the spawner kills the agent, resumes with `claude --resume` instructing it to save progress under the `to_resume` findings key, then spawns a fresh agent with `${PREVIOUS_DATA}` populated from that `to_resume` key. Old sessions get `status='continued'` and are excluded from agent history.
 17. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.
 18. **Retry failed agent**: Users can retry a failed workflow from the failed layer via `POST /api/v1/tickets/:id/workflow/retry-failed` (or `/api/v1/projects/:id/workflow/retry-failed`) with `{workflow, session_id}`. This resets the workflow instance to active, resets phases in the failed layer to pending, increments retry_count, and re-runs the orchestration starting from the failed layer.
-19. **Project-scoped workflows**: Workflows can have `scope_type` of `ticket` (default) or `project`. Project-scoped workflows run at project level without requiring a ticket. API: `POST /api/v1/projects/:id/workflow/run`, `GET /api/v1/projects/:id/workflow`, `GET /api/v1/projects/:id/agents`. Project agents cannot use `${TICKET_ID}`, `${TICKET_TITLE}`, or `${TICKET_DESCRIPTION}` template variables.
+19. **Project-scoped workflows**: Workflows can have `scope_type` of `ticket` (default) or `project`. Project-scoped workflows run at project level without requiring a ticket. Multiple concurrent instances of the same project workflow are allowed (each gets a unique instance_id). API: `POST /api/v1/projects/:id/workflow/run`, `GET /api/v1/projects/:id/workflow` (returns `all_workflows` keyed by instance_id), `GET /api/v1/projects/:id/agents`. Stop/restart/retry-failed accept optional `instance_id` to target a specific instance. Project agents cannot use `${TICKET_ID}`, `${TICKET_TITLE}`, or `${TICKET_DESCRIPTION}` template variables.
 20. **Agent callbacks**: A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer (e.g., implementor). The orchestrator saves `_callback` metadata (instructions, from_agent, level) to workflow instance findings, resets phases/sessions from the target layer forward, and jumps the execution loop back. The target agent's prompt can include `${CALLBACK_INSTRUCTIONS}` to receive the callback instructions. After the callback target layer completes successfully, `_callback` is cleared from findings. Max 3 callbacks per workflow run.
 
 ## Quick Start
@@ -151,7 +151,7 @@ Each phase entry must be an object with a required `layer` field:
 
 ## State Storage
 
-Workflow state is stored in normalized database tables. Multiple workflows can exist per ticket via separate `workflow_instances` rows.
+Workflow state is stored in normalized database tables. Multiple workflows can exist per ticket via separate `workflow_instances` rows. For project-scoped workflows, multiple concurrent instances of the same workflow are allowed (no unique constraint). Ticket-scoped workflows enforce one instance per ticket+workflow via a partial unique index.
 
 ### `workflow_instances` table
 

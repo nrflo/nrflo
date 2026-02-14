@@ -56,7 +56,7 @@ func TestAgentSessionNullTicketID(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "session-null-test",
 	})
 	if err != nil {
@@ -121,7 +121,7 @@ func TestWorkflowInstanceScopeTypeColumn(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "scope-col-test",
 	})
 	if err != nil {

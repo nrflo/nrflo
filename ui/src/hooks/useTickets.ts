@@ -351,8 +351,8 @@ export function useRunProjectWorkflow() {
 export function useStopProjectWorkflow() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ projectId, workflow }: { projectId: string; workflow?: string }) =>
-      stopProjectWorkflow(projectId, workflow),
+    mutationFn: ({ projectId, params }: { projectId: string; params: { workflow?: string; instance_id?: string } }) =>
+      stopProjectWorkflow(projectId, params),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
     },

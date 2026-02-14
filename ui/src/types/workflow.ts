@@ -49,6 +49,7 @@ export type ScopeType = 'ticket' | 'project'
 
 export interface WorkflowState {
   workflow?: string
+  instance_id?: string
   version?: number
   scope_type?: ScopeType
   current_phase?: string
@@ -78,8 +79,8 @@ export interface ProjectWorkflowResponse {
   project_id: string
   has_workflow: boolean
   state: WorkflowState
-  workflows?: string[]
-  all_workflows?: Record<string, WorkflowState>
+  workflows?: string[]                           // deduplicated workflow names
+  all_workflows?: Record<string, WorkflowState>  // keyed by instance_id
 }
 
 export interface UpdateWorkflowRequest {
@@ -232,11 +233,13 @@ export interface RunWorkflowResponse {
 
 export interface StopWorkflowRequest {
   workflow?: string
+  instance_id?: string
 }
 
 export interface RestartAgentRequest {
   workflow: string
   session_id: string
+  instance_id?: string
 }
 
 export interface ProjectWorkflowRunRequest {

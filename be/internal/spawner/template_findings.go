@@ -196,7 +196,8 @@ func (s *Spawner) formatFindingsError(agentType string) string {
 
 // fetchPreviousData retrieves findings from the most recent continued session
 // for the same agent type, model, and phase. Returns empty string if none found.
-func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType, modelID, phase string) string {
+// instanceID is optional — when set, used directly instead of DB lookup.
+func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType, modelID, phase, instanceID string) string {
 	if phase == "" {
 		return ""
 	}
@@ -207,21 +208,24 @@ func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType
 	}
 	defer database.Close()
 
-	var wfiID string
-	if ticketID == "" {
-		// Project-scoped workflow
-		err = database.QueryRow(`
-			SELECT id FROM workflow_instances
-			WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project'`,
-			projectID, workflowName).Scan(&wfiID)
-	} else {
-		err = database.QueryRow(`
-			SELECT id FROM workflow_instances
-			WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-			projectID, ticketID, workflowName).Scan(&wfiID)
-	}
-	if err != nil {
-		return ""
+	wfiID := instanceID
+	if wfiID == "" {
+		if ticketID == "" {
+			// Project-scoped workflow — get most recent active instance
+			err = database.QueryRow(`
+				SELECT id FROM workflow_instances
+				WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project' AND status = 'active'
+				ORDER BY created_at DESC LIMIT 1`,
+				projectID, workflowName).Scan(&wfiID)
+		} else {
+			err = database.QueryRow(`
+				SELECT id FROM workflow_instances
+				WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+				projectID, ticketID, workflowName).Scan(&wfiID)
+		}
+		if err != nil {
+			return ""
+		}
 	}
 
 	var findingsStr string

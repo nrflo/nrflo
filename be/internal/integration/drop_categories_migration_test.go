@@ -287,14 +287,15 @@ func TestChainExecutionCRUDWithoutCategory(t *testing.T) {
 }
 
 // TestWorkflowInstanceIndexesAfterMigration018 verifies that workflow_instances indexes
-// are correctly recreated after migration 000018.
+// are correctly present after all migrations.
 func TestWorkflowInstanceIndexesAfterMigration018(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Check for expected indexes
+	// Check for expected indexes (idx_wfi_unique dropped by migration 000019, replaced by idx_wfi_lookup + idx_wfi_ticket_unique)
 	expectedIndexes := []string{
-		"idx_wfi_unique",
+		"idx_wfi_lookup",
 		"idx_wfi_ticket",
+		"idx_wfi_ticket_unique",
 	}
 
 	for _, idxName := range expectedIndexes {
@@ -550,7 +551,7 @@ func TestProjectWorkflowWithoutCategory(t *testing.T) {
 	}
 
 	// Initialize project workflow
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-nocats",
 	})
 	if err != nil {

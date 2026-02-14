@@ -27,7 +27,7 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 		}
 	}
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
-	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "")
+	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "")
 }
 
 // loadAgentDefinition loads the full agent definition from the DB.
@@ -91,8 +91,8 @@ func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, descriptio
 }
 
 // fetchUserInstructions returns user_instructions from the workflow instance findings.
-// ticketID can be empty for project-scoped workflows.
-func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string) string {
+// Uses wfiID directly when available; falls back to ticket-based lookup.
+func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID string) string {
 	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for user instructions: %v\n", err)
@@ -102,12 +102,19 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	var wi *model.WorkflowInstance
-	if ticketID == "" {
-		wi, err = wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
-	} else {
+	if wfiID != "" {
+		wi, err = wfiRepo.Get(wfiID)
+	} else if ticketID != "" {
 		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	} else {
+		// Fallback: get most recent active project instance
+		var instances []*model.WorkflowInstance
+		instances, err = wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
+		if err == nil && len(instances) > 0 {
+			wi = instances[len(instances)-1]
+		}
 	}
-	if err != nil {
+	if err != nil || wi == nil {
 		return "_No user instructions provided_"
 	}
 	findings := wi.GetFindings()
@@ -120,8 +127,8 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName string
 }
 
 // fetchCallbackInstructions returns callback instructions from the workflow instance findings.
-// ticketID can be empty for project-scoped workflows.
-func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName string) string {
+// Uses wfiID directly when available; falls back to ticket-based lookup.
+func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, wfiID string) string {
 	pool, err := db.NewPool(s.config.DataPath, db.DefaultPoolConfig())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to open DB for callback instructions: %v\n", err)
@@ -131,12 +138,18 @@ func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName st
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	var wi *model.WorkflowInstance
-	if ticketID == "" {
-		wi, err = wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
-	} else {
+	if wfiID != "" {
+		wi, err = wfiRepo.Get(wfiID)
+	} else if ticketID != "" {
 		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	} else {
+		var instances []*model.WorkflowInstance
+		instances, err = wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
+		if err == nil && len(instances) > 0 {
+			wi = instances[len(instances)-1]
+		}
 	}
-	if err != nil {
+	if err != nil || wi == nil {
 		return "_No callback instructions_"
 	}
 	findings := wi.GetFindings()
@@ -161,7 +174,8 @@ func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName st
 }
 
 // loadTemplate loads and expands an agent template from DB.
-func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase string) (string, error) {
+// wfiID is optional — when set, used for instance-specific lookups (user instructions, callbacks).
+func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string) (string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {
 		return "", err
@@ -196,17 +210,17 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		}
 	}
 	if strings.Contains(template, "${USER_INSTRUCTIONS}") {
-		instructions := s.fetchUserInstructions(projectID, ticketID, workflowName)
+		instructions := s.fetchUserInstructions(projectID, ticketID, workflowName, wfiID)
 		template = strings.ReplaceAll(template, "${USER_INSTRUCTIONS}", instructions)
 	}
 	if strings.Contains(template, "${CALLBACK_INSTRUCTIONS}") {
-		cbInstructions := s.fetchCallbackInstructions(projectID, ticketID, workflowName)
+		cbInstructions := s.fetchCallbackInstructions(projectID, ticketID, workflowName, wfiID)
 		template = strings.ReplaceAll(template, "${CALLBACK_INSTRUCTIONS}", cbInstructions)
 	}
 
 	// Expand ${PREVIOUS_DATA} — injects previous run's findings for continuation
 	if strings.Contains(template, "${PREVIOUS_DATA}") {
-		prevData := s.fetchPreviousData(projectID, ticketID, workflowName, agentType, modelID, phase)
+		prevData := s.fetchPreviousData(projectID, ticketID, workflowName, agentType, modelID, phase, wfiID)
 		if prevData != "" {
 			prevData = "This is a continuation of a previous run. Here is what was completed:\n" + prevData
 		}

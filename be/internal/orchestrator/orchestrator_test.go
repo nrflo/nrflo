@@ -128,22 +128,13 @@ func (e *testEnv) initProjectWorkflow(t *testing.T, workflowID string) string {
 	}
 
 	workflowSvc := service.NewWorkflowService(e.pool)
-	err = workflowSvc.InitProjectWorkflow(e.project, &types.ProjectWorkflowRunRequest{
+	wi, err := workflowSvc.InitProjectWorkflow(e.project, &types.ProjectWorkflowRunRequest{
 		Workflow: workflowID,
 	})
 	if err != nil {
 		t.Fatalf("failed to init project workflow: %v", err)
 	}
-
-	var id string
-	err = e.pool.QueryRow(`
-		SELECT id FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project'`,
-		e.project, workflowID).Scan(&id)
-	if err != nil {
-		t.Fatalf("failed to get project workflow instance ID: %v", err)
-	}
-	return id
+	return wi.ID
 }
 
 // getTicket retrieves a ticket from the DB.

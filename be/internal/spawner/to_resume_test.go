@@ -36,6 +36,7 @@ func TestFetchPreviousData_WithToResumeKey(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	expected := "This is the summary of all my progress and findings so far"
@@ -65,6 +66,7 @@ func TestFetchPreviousData_WithoutToResumeKey(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "" {
@@ -92,6 +94,7 @@ func TestFetchPreviousData_EmptyToResumeValue(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "" {
@@ -119,6 +122,7 @@ func TestFetchPreviousData_NonStringToResume(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "" {
@@ -142,6 +146,7 @@ func TestFetchPreviousData_NoFindings(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "" {
@@ -163,6 +168,7 @@ func TestFetchPreviousData_NoContinuedSession(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "" {
@@ -197,6 +203,7 @@ func TestFetchPreviousData_LatestContinuedSession(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "newer summary" {
@@ -225,6 +232,7 @@ func TestFetchPreviousData_DifferentAgentType(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "" {
@@ -253,6 +261,7 @@ func TestFetchPreviousData_DifferentModelID(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	if result != "" {
@@ -278,6 +287,7 @@ func TestFetchPreviousData_ProjectScope(t *testing.T) {
 		"test-agent",
 		"claude:sonnet",
 		"test-phase",
+		"",
 	)
 
 	expected := "project scope summary"

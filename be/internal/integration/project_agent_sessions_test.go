@@ -28,7 +28,7 @@ func TestGetProjectAgentSessions_HappyPath(t *testing.T) {
 	}
 
 	// Init project workflow
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-agents-test",
 	})
 	if err != nil {
@@ -111,7 +111,7 @@ func TestGetProjectAgentSessions_PhaseFilter(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-phase-filter",
 	})
 	if err != nil {
@@ -177,7 +177,7 @@ func TestGetProjectAgentSessions_ExcludesTicketScoped(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-exclude-test",
 	})
 	if err != nil {
@@ -242,7 +242,7 @@ func TestGetProjectAgentSessions_FindingsAggregation(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-findings",
 	})
 	if err != nil {
@@ -302,7 +302,7 @@ func TestGetProjectAgentSessions_MultipleWorkflows(t *testing.T) {
 			t.Fatalf("failed to create workflow %s: %v", wf, err)
 		}
 
-		err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+		_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 			Workflow: wf,
 		})
 		if err != nil {
@@ -358,7 +358,7 @@ func TestGetProjectAgentSessions_CaseInsensitiveProjectID(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "case-test",
 	})
 	if err != nil {
@@ -404,7 +404,7 @@ func TestGetProjectAgentSessions_EmptyStringTicketID(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "empty-test",
 	})
 	if err != nil {

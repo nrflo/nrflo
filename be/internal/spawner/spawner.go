@@ -107,13 +107,14 @@ type Spawner struct {
 
 // SpawnRequest contains parameters for spawning an agent
 type SpawnRequest struct {
-	AgentType     string
-	TicketID      string
-	ProjectID     string
-	WorkflowName  string
-	ParentSession string
-	CLIName       string
-	ScopeType     string // "ticket" (default) or "project"
+	AgentType          string
+	TicketID           string
+	ProjectID          string
+	WorkflowName       string
+	ParentSession      string
+	CLIName            string
+	ScopeType          string // "ticket" (default) or "project"
+	WorkflowInstanceID string // when set, used directly instead of DB lookup
 }
 
 // IsProjectScope returns true if this is a project-scoped spawn request
@@ -174,7 +175,9 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	// Validate workflow is initialized
 	var wi *model.WorkflowInstance
 	var err error
-	if req.IsProjectScope() {
+	if req.WorkflowInstanceID != "" {
+		wi, err = s.getWorkflowInstanceByID(req.WorkflowInstanceID)
+	} else if req.IsProjectScope() {
 		wi, err = s.getProjectWorkflowInstance(req.ProjectID, req.WorkflowName)
 	} else {
 		wi, err = s.getWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
@@ -269,7 +272,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 
 	// Load agent template
-	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase)
+	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load template: %w", err)
 	}

@@ -506,7 +506,7 @@ func TestRetryFailedProjectAgent_HappyPath(t *testing.T) {
 	ch := env.subscribeWSClient(t, "ws-proj-1", "")
 
 	// Retry project-scoped workflow
-	err = env.orch.RetryFailedProjectAgent(context.Background(), env.project, "test", "sess-p1")
+	err = env.orch.RetryFailedProjectAgent(context.Background(), env.project, "test", "sess-p1", wfiID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -32,11 +32,11 @@ export async function runProjectWorkflow(
 /** Stop a running project-scoped workflow */
 export async function stopProjectWorkflow(
   projectId: string,
-  workflow?: string
+  params: { workflow?: string; instance_id?: string }
 ): Promise<{ status: string }> {
   return apiPost<{ status: string }>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/stop`,
-    { workflow: workflow ?? '' }
+    params
   )
 }
 

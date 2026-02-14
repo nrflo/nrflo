@@ -12,8 +12,8 @@ import (
 	"be/internal/types"
 )
 
-// TestRerunCompletedProjectWorkflow tests that a project_completed workflow can be re-run,
-// resetting status to active, phases to pending, clearing findings, and incrementing retry_count.
+// TestRerunCompletedProjectWorkflow tests that re-running a project_completed workflow
+// creates a NEW instance (not reset the old one), since multiple concurrent instances are allowed.
 func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -34,37 +34,31 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	}
 
 	// Initialize project workflow
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	firstInstance, err := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "rerun-test",
 	})
 	if err != nil {
 		t.Fatalf("failed to init project workflow: %v", err)
 	}
 
-	// Get the workflow instance
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
-	wi, err := wfiRepo.GetByProjectAndWorkflow(env.ProjectID, "rerun-test")
-	if err != nil {
-		t.Fatalf("failed to get workflow instance: %v", err)
-	}
-
 	// Simulate completion: set status to project_completed and phases to completed
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
 	completedPhases := map[string]model.PhaseStatus{
 		"setup": {Status: "completed", Result: "pass"},
 		"impl":  {Status: "completed", Result: "pass"},
 	}
 	completedPhasesJSON, _ := json.Marshal(completedPhases)
-	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceProjectCompleted)
-	wfiRepo.UpdatePhases(wi.ID, string(completedPhasesJSON))
-	wfiRepo.UpdateFindings(wi.ID, `{"some_key": "some_value"}`)
+	wfiRepo.UpdateStatus(firstInstance.ID, model.WorkflowInstanceProjectCompleted)
+	wfiRepo.UpdatePhases(firstInstance.ID, string(completedPhasesJSON))
+	wfiRepo.UpdateFindings(firstInstance.ID, `{"some_key": "some_value"}`)
 
 	// Verify it's completed
-	wi, _ = wfiRepo.Get(wi.ID)
-	if wi.Status != model.WorkflowInstanceProjectCompleted {
-		t.Fatalf("expected status project_completed, got %v", wi.Status)
+	firstInstance, _ = wfiRepo.Get(firstInstance.ID)
+	if firstInstance.Status != model.WorkflowInstanceProjectCompleted {
+		t.Fatalf("expected status project_completed, got %v", firstInstance.Status)
 	}
 
-	// Verify ListByProjectScope returns it (this is the bug fix)
+	// Verify ListByProjectScope returns it
 	instances, err := wfiRepo.ListByProjectScope(env.ProjectID)
 	if err != nil {
 		t.Fatalf("ListByProjectScope failed: %v", err)
@@ -72,14 +66,11 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	if len(instances) != 1 {
 		t.Fatalf("expected 1 instance from ListByProjectScope, got %d", len(instances))
 	}
-	if instances[0].Status != model.WorkflowInstanceProjectCompleted {
-		t.Fatalf("expected project_completed in list, got %v", instances[0].Status)
-	}
 
 	// Create orchestrator to re-run the workflow
 	orch := orchestrator.New(env.Pool.Path, env.Hub)
 
-	// Attempt to start the workflow again - this should trigger the reset logic
+	// Start the workflow again — should create a NEW instance
 	ctx := context.Background()
 	result, err := orch.Start(ctx, orchestrator.RunRequest{
 		ProjectID:    env.ProjectID,
@@ -87,7 +78,6 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 		ScopeType:    "project",
 	})
 
-	// Should succeed (doesn't actually run agents in this test, but start should work)
 	if err != nil {
 		t.Fatalf("failed to start orchestrator: %v", err)
 	}
@@ -95,51 +85,48 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 		t.Fatalf("expected status 'started', got %v", result.Status)
 	}
 
-	// The orchestrator Start() method resets the workflow BEFORE starting the goroutine.
-	// So we can check the state immediately after Start() returns.
-	// We'll stop it right away to avoid spawning actual agents.
-	orch.Stop(wi.ID)
+	// New instance should have a different ID
+	if result.InstanceID == firstInstance.ID {
+		t.Fatalf("expected new instance ID, got same as first: %s", result.InstanceID)
+	}
 
-	// Give it a moment to process the stop
+	// Stop right away to avoid spawning actual agents
+	orch.Stop(result.InstanceID)
 	time.Sleep(50 * time.Millisecond)
 
-	// Verify the workflow instance was reset properly (before it got cancelled)
-	// The reset happens in orchestrator.go:186-213, before the runLoop goroutine starts.
-	wi, err = wfiRepo.Get(wi.ID)
+	// Verify the NEW instance was created with fresh state
+	newInstance, err := wfiRepo.Get(result.InstanceID)
 	if err != nil {
-		t.Fatalf("failed to get workflow instance after rerun: %v", err)
+		t.Fatalf("failed to get new workflow instance: %v", err)
 	}
 
-	// Note: Status might be failed due to immediate cancellation, but the reset should have happened.
-	// Let's verify the phases and retry_count were reset, which proves the reset logic ran.
-	if wi.RetryCount != 1 {
-		t.Fatalf("expected retry_count to be 1, got %d (reset logic didn't run)", wi.RetryCount)
+	// New instance should have retry_count = 0 (fresh instance)
+	if newInstance.RetryCount != 0 {
+		t.Fatalf("expected retry_count 0 for new instance, got %d", newInstance.RetryCount)
 	}
 
-	// Verify phases were reset to pending (the reset happens before orchestration starts)
-	phases := wi.GetPhases()
+	// Verify phases are pending (fresh)
+	phases := newInstance.GetPhases()
 	if phases["setup"].Status != "pending" {
 		t.Fatalf("expected setup phase to be pending, got %v", phases["setup"].Status)
 	}
-	if phases["impl"].Status != "pending" {
-		t.Fatalf("expected impl phase to be pending, got %v", phases["impl"].Status)
+
+	// Old instance should still be project_completed
+	oldInstance, _ := wfiRepo.Get(firstInstance.ID)
+	if oldInstance.Status != model.WorkflowInstanceProjectCompleted {
+		t.Fatalf("expected old instance to remain project_completed, got %v", oldInstance.Status)
 	}
 
-	// Verify findings were cleared (except orchestration status which is set after reset)
-	findings := wi.GetFindings()
-	if _, exists := findings["some_key"]; exists {
-		t.Fatalf("expected old findings to be cleared, but found 'some_key'")
-	}
-
-	// Verify current phase was reset to first phase
-	if !wi.CurrentPhase.Valid || wi.CurrentPhase.String != "setup" {
-		t.Fatalf("expected current_phase to be 'setup', got %v", wi.CurrentPhase)
+	// Verify both instances exist
+	instances, _ = wfiRepo.ListByProjectScope(env.ProjectID)
+	if len(instances) != 2 {
+		t.Fatalf("expected 2 instances after rerun, got %d", len(instances))
 	}
 }
 
-// TestRerunActiveProjectWorkflowIsBlocked tests that the orchestrator's IsProjectRunning
-// check works correctly when a run is registered.
-func TestRerunActiveProjectWorkflowIsBlocked(t *testing.T) {
+// TestConcurrentProjectWorkflowsAllowed tests that multiple concurrent instances of
+// the same project workflow can be started.
+func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
@@ -148,8 +135,8 @@ func TestRerunActiveProjectWorkflowIsBlocked(t *testing.T) {
 	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-		ID:          "active-block-test",
-		Description: "Test blocking active workflow",
+		ID:          "concurrent-test",
+		Description: "Test concurrent workflows",
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -157,55 +144,44 @@ func TestRerunActiveProjectWorkflowIsBlocked(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	// Initialize project workflow
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
-		Workflow: "active-block-test",
-	})
-	if err != nil {
-		t.Fatalf("failed to init project workflow: %v", err)
-	}
-
-	// Create orchestrator and start workflow
+	// Create orchestrator and start first workflow
 	orch := orchestrator.New(env.Pool.Path, env.Hub)
 	ctx := context.Background()
 
 	result1, err := orch.Start(ctx, orchestrator.RunRequest{
 		ProjectID:    env.ProjectID,
-		WorkflowName: "active-block-test",
+		WorkflowName: "concurrent-test",
 		ScopeType:    "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to start first orchestration: %v", err)
 	}
 
-	// The runLoop goroutine may finish quickly (no real agents to spawn),
-	// removing itself from o.runs before we can test the block.
-	// Verify IsProjectRunning returns correct value immediately after Start.
-	// Note: Start() registers the run synchronously before returning,
-	// so IsProjectRunning should be true at this exact moment (before goroutine cleanup).
-	running := orch.IsProjectRunning(env.ProjectID, "active-block-test")
+	// Start second instance — should succeed (no longer blocked)
+	result2, err := orch.Start(ctx, orchestrator.RunRequest{
+		ProjectID:    env.ProjectID,
+		WorkflowName: "concurrent-test",
+		ScopeType:    "project",
+	})
+	if err != nil {
+		t.Fatalf("expected second start to succeed, got error: %v", err)
+	}
 
-	// If still running (goroutine hasn't cleaned up yet), verify second start is blocked.
-	if running {
-		_, err = orch.Start(ctx, orchestrator.RunRequest{
-			ProjectID:    env.ProjectID,
-			WorkflowName: "active-block-test",
-			ScopeType:    "project",
-		})
-		if err == nil {
-			t.Fatal("expected error when starting already-running workflow, got nil")
-		}
-		if !contains(err.Error(), "already running") {
-			t.Fatalf("expected error to contain 'already running', got: %v", err)
-		}
-		orch.Stop(result1.InstanceID)
-	} else {
-		// Goroutine already finished — verify that the instance was tracked at all
-		// by checking it was returned successfully from Start.
-		if result1.InstanceID == "" {
-			t.Fatal("expected non-empty instance ID from Start")
-		}
-		t.Log("runLoop finished before second Start could be attempted; verified Start returned valid instance")
+	// Different instance IDs
+	if result1.InstanceID == result2.InstanceID {
+		t.Fatalf("expected different instance IDs, got same: %s", result1.InstanceID)
+	}
+
+	// Stop both
+	orch.Stop(result1.InstanceID)
+	orch.Stop(result2.InstanceID)
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify both instances exist
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	instances, _ := wfiRepo.ListByProjectScope(env.ProjectID)
+	if len(instances) != 2 {
+		t.Fatalf("expected 2 instances, got %d", len(instances))
 	}
 }
 
@@ -270,16 +246,11 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 		t.Fatalf("failed to get workflow instance: %v", err)
 	}
 
-	// For ticket workflows, the reset logic is different - it should NOT trigger the
-	// project_completed-specific reset. The status might be updated by orchestrator,
-	// but the key point is it doesn't go through the project_completed branch.
-	// The orchestrator sets status to active when it starts running.
+	// For ticket workflows, the status might change since a new Start creates a new Init.
+	// The key test is that the workflow can be started again.
 	if wi.Status != model.WorkflowInstanceActive && wi.Status != model.WorkflowInstanceCompleted {
 		t.Logf("Note: ticket workflow status after rerun is %v", wi.Status)
 	}
-
-	// The main thing we're testing is that ticket workflows don't hit the
-	// project_completed-specific logic in orchestrator.go:186-213
 }
 
 // TestMultipleProjectWorkflowsListed tests that when multiple project workflows exist
@@ -315,19 +286,15 @@ func TestMultipleProjectWorkflowsListed(t *testing.T) {
 			t.Fatalf("failed to create workflow def %s: %v", wf.id, err)
 		}
 
-		// Initialize workflow
-		err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+		// Initialize workflow — capture returned instance directly
+		wi, err := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 			Workflow: wf.id,
 		})
 		if err != nil {
 			t.Fatalf("failed to init project workflow %s: %v", wf.id, err)
 		}
 
-		// Get instance and update status
-		wi, err := wfiRepo.GetByProjectAndWorkflow(env.ProjectID, wf.id)
-		if err != nil {
-			t.Fatalf("failed to get workflow instance for %s: %v", wf.id, err)
-		}
+		// Update status
 		wfiRepo.UpdateStatus(wi.ID, wf.status)
 	}
 

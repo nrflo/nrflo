@@ -44,10 +44,6 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 		ScopeType:    "project",
 	})
 	if err != nil {
-		if s.orchestrator.IsProjectRunning(projectID, body.Workflow) {
-			writeError(w, http.StatusConflict, err.Error())
-			return
-		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -70,11 +66,12 @@ func (s *Server) handleStopProjectWorkflow(w http.ResponseWriter, r *http.Reques
 	}
 
 	var body struct {
-		Workflow string `json:"workflow"`
+		Workflow   string `json:"workflow"`
+		InstanceID string `json:"instance_id"`
 	}
 	readJSON(r, &body)
 
-	err := s.orchestrator.StopByProject(projectID, body.Workflow)
+	err := s.orchestrator.StopByProject(projectID, body.Workflow, body.InstanceID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -98,8 +95,9 @@ func (s *Server) handleRestartProjectAgent(w http.ResponseWriter, r *http.Reques
 	}
 
 	var body struct {
-		Workflow  string `json:"workflow"`
-		SessionID string `json:"session_id"`
+		Workflow   string `json:"workflow"`
+		SessionID  string `json:"session_id"`
+		InstanceID string `json:"instance_id"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -115,7 +113,7 @@ func (s *Server) handleRestartProjectAgent(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err := s.orchestrator.RestartProjectAgent(projectID, body.Workflow, body.SessionID)
+	err := s.orchestrator.RestartProjectAgent(projectID, body.Workflow, body.SessionID, body.InstanceID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -139,8 +137,9 @@ func (s *Server) handleRetryFailedProjectAgent(w http.ResponseWriter, r *http.Re
 	}
 
 	var body struct {
-		Workflow  string `json:"workflow"`
-		SessionID string `json:"session_id"`
+		Workflow   string `json:"workflow"`
+		SessionID  string `json:"session_id"`
+		InstanceID string `json:"instance_id"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -156,7 +155,7 @@ func (s *Server) handleRetryFailedProjectAgent(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err := s.orchestrator.RetryFailedProjectAgent(context.Background(), projectID, body.Workflow, body.SessionID)
+	err := s.orchestrator.RetryFailedProjectAgent(context.Background(), projectID, body.Workflow, body.SessionID, body.InstanceID)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -195,24 +194,46 @@ func (s *Server) handleGetProjectWorkflow(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	workflowNames := make([]string, 0, len(instances))
+	// Key all_workflows by instance_id instead of workflow name.
+	// Build deduplicated workflow names list.
 	allWorkflows := make(map[string]interface{})
+	workflowNamesSet := make(map[string]bool)
+	var firstInstanceID string
 	for _, wi := range instances {
-		workflowNames = append(workflowNames, wi.WorkflowID)
+		workflowNamesSet[wi.WorkflowID] = true
 		state, err := workflowSvc.GetStatusByInstance(wi)
 		if err != nil {
 			continue
 		}
-		allWorkflows[wi.WorkflowID] = state
+		allWorkflows[wi.ID] = state
+		if firstInstanceID == "" {
+			firstInstanceID = wi.ID
+		}
 	}
 
-	requestedWorkflow := r.URL.Query().Get("workflow")
-	var selectedState interface{}
-	if requestedWorkflow != "" {
-		selectedState = allWorkflows[requestedWorkflow]
+	workflowNames := make([]string, 0, len(workflowNamesSet))
+	for name := range workflowNamesSet {
+		workflowNames = append(workflowNames, name)
 	}
-	if selectedState == nil && len(workflowNames) > 0 {
-		selectedState = allWorkflows[workflowNames[0]]
+
+	// Select state for display
+	requestedWorkflow := r.URL.Query().Get("workflow")
+	requestedInstance := r.URL.Query().Get("instance_id")
+	var selectedState interface{}
+	if requestedInstance != "" {
+		selectedState = allWorkflows[requestedInstance]
+	}
+	if selectedState == nil && requestedWorkflow != "" {
+		// Find first instance matching the requested workflow
+		for _, wi := range instances {
+			if wi.WorkflowID == requestedWorkflow {
+				selectedState = allWorkflows[wi.ID]
+				break
+			}
+		}
+	}
+	if selectedState == nil && firstInstanceID != "" {
+		selectedState = allWorkflows[firstInstanceID]
 	}
 	if selectedState == nil {
 		selectedState = emptyWorkflowState()

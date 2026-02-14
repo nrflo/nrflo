@@ -30,7 +30,7 @@ func TestFetchCallbackInstructions_Present(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test")
+	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
 
 	// Verify formatted output
 	if !strings.Contains(got, "## Callback Instructions") {
@@ -61,7 +61,7 @@ func TestFetchCallbackInstructions_Missing(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test")
+	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
 
 	expected := "_No callback instructions_"
 	if got != expected {
@@ -88,7 +88,7 @@ func TestFetchCallbackInstructions_EmptyInstructions(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test")
+	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
 
 	expected := "_No callback instructions_"
 	if got != expected {
@@ -103,7 +103,7 @@ func TestFetchCallbackInstructions_NoWorkflow(t *testing.T) {
 
 	// Don't create any ticket or workflow - should return placeholder
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, "NONEXISTENT", "test")
+	got := sp.fetchCallbackInstructions(env.project, "NONEXISTENT", "test", "")
 
 	expected := "_No callback instructions_"
 	if got != expected {
@@ -143,7 +143,7 @@ func TestFetchCallbackInstructions_ProjectScope(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, "", "test") // empty ticketID for project scope
+	got := sp.fetchCallbackInstructions(env.project, "", "test", "") // empty ticketID for project scope
 
 	// Verify formatted output
 	if !strings.Contains(got, "## Callback Instructions") {
@@ -175,7 +175,7 @@ func TestFetchCallbackInstructions_NoFromAgent(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test")
+	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
 
 	// Should still format correctly without from_agent line
 	if !strings.Contains(got, "## Callback Instructions") {
@@ -203,7 +203,7 @@ func TestFetchCallbackInstructions_InvalidCallbackType(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test")
+	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
 
 	expected := "_No callback instructions_"
 	if got != expected {
@@ -252,7 +252,7 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -318,7 +318,7 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -363,7 +363,7 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 
 	// No callback metadata - should get default placeholder
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

@@ -46,33 +46,58 @@ export function ProjectWorkflowsPage() {
   const restartMutation = useRestartProjectAgent()
   const retryFailedMutation = useRetryFailedProjectAgent()
 
+  // all_workflows is keyed by instance_id; each state has .workflow for the workflow name
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
 
   const { activeWorkflows, completedWorkflows } = useMemo(() => {
     const active: Record<string, WorkflowState> = {}
     const completed: Record<string, WorkflowState> = {}
-    for (const [name, state] of Object.entries(allWorkflows)) {
+    for (const [instanceId, state] of Object.entries(allWorkflows)) {
       if (state.status === 'completed' || state.status === 'project_completed') {
-        completed[name] = state
+        completed[instanceId] = state
       } else {
-        active[name] = state
+        active[instanceId] = state
       }
     }
     return { activeWorkflows: active, completedWorkflows: completed }
   }, [allWorkflows])
 
   const tabWorkflows = activeTab === 'active' ? activeWorkflows : completedWorkflows
-  const workflows = Object.keys(tabWorkflows)
-  const hasWorkflow = workflows.length > 0
-  const hasMultipleWorkflows = workflows.length > 1
+  const instanceIds = Object.keys(tabWorkflows)
+  const hasWorkflow = instanceIds.length > 0
+  const hasMultipleWorkflows = instanceIds.length > 1
 
-  const defaultState = workflows.length > 0 ? tabWorkflows[workflows[0]] : null
-  const displayedWorkflowName = (selectedWorkflow && tabWorkflows[selectedWorkflow])
+  const defaultState = instanceIds.length > 0 ? tabWorkflows[instanceIds[0]] : null
+  const selectedInstanceId = (selectedWorkflow && tabWorkflows[selectedWorkflow])
     ? selectedWorkflow
-    : workflows[0] || ''
+    : instanceIds[0] || ''
   const displayedState = (selectedWorkflow && tabWorkflows[selectedWorkflow])
     ? tabWorkflows[selectedWorkflow]
     : defaultState
+
+  // Build display labels for the selector: "workflow-name" or "workflow-name (#short-id)" when duplicates
+  const { selectorLabels, displayedWorkflowName } = useMemo(() => {
+    const nameCount: Record<string, number> = {}
+    for (const id of instanceIds) {
+      const name = tabWorkflows[id]?.workflow ?? id
+      nameCount[name] = (nameCount[name] ?? 0) + 1
+    }
+    const labels: Record<string, string> = {}
+    const nameIndex: Record<string, number> = {}
+    for (const id of instanceIds) {
+      const name = tabWorkflows[id]?.workflow ?? id
+      if (nameCount[name] > 1) {
+        nameIndex[name] = (nameIndex[name] ?? 0) + 1
+        labels[id] = `${name} (${nameIndex[name]})`
+      } else {
+        labels[id] = name
+      }
+    }
+    return {
+      selectorLabels: labels,
+      displayedWorkflowName: labels[selectedInstanceId] ?? '',
+    }
+  }, [instanceIds, tabWorkflows, selectedInstanceId])
 
   const activeAgents = displayedState?.active_agents ?? {}
 
@@ -139,7 +164,8 @@ export function ProjectWorkflowsPage() {
         displayedState={displayedState}
         displayedWorkflowName={displayedWorkflowName}
         hasMultipleWorkflows={hasMultipleWorkflows}
-        workflows={workflows}
+        workflows={instanceIds}
+        workflowLabels={selectorLabels}
         selectedWorkflow={selectedWorkflow}
         onSelectWorkflow={setSelectedWorkflow}
         isOrchestrated={isOrchestrated}
@@ -154,7 +180,10 @@ export function ProjectWorkflowsPage() {
           currentProject &&
           stopMutation.mutate({
             projectId: currentProject,
-            workflow: displayedWorkflowName || undefined,
+            params: {
+              workflow: displayedState?.workflow || undefined,
+              instance_id: selectedInstanceId || undefined,
+            },
           })
         }
         stopPending={stopMutation.isPending}
@@ -163,7 +192,11 @@ export function ProjectWorkflowsPage() {
           currentProject &&
           restartMutation.mutate({
             projectId: currentProject,
-            params: { workflow: displayedWorkflowName, session_id: sessionId },
+            params: {
+              workflow: displayedState?.workflow ?? '',
+              session_id: sessionId,
+              instance_id: selectedInstanceId || undefined,
+            },
           })
         }
         restartingSessionId={
@@ -175,7 +208,11 @@ export function ProjectWorkflowsPage() {
           currentProject &&
           retryFailedMutation.mutate({
             projectId: currentProject,
-            params: { workflow: displayedWorkflowName, session_id: sessionId },
+            params: {
+              workflow: displayedState?.workflow ?? '',
+              session_id: sessionId,
+              instance_id: selectedInstanceId || undefined,
+            },
           })
         }
         retryingSessionId={

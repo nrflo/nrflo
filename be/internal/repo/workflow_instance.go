@@ -61,10 +61,7 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 		wi.RetryCount, wi.ParentSession, now, now,
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint") {
-			if wi.ScopeType == "project" {
-				return fmt.Errorf("workflow '%s' already initialized on project %s", wi.WorkflowID, wi.ProjectID)
-			}
+		if wi.ScopeType == "ticket" && strings.Contains(err.Error(), "UNIQUE constraint") {
 			return fmt.Errorf("workflow '%s' already initialized on %s", wi.WorkflowID, wi.TicketID)
 		}
 		return err
@@ -95,17 +92,26 @@ func (r *WorkflowInstanceRepo) GetByTicketAndWorkflow(projectID, ticketID, workf
 	return wi, err
 }
 
-// GetByProjectAndWorkflow retrieves a project-scoped workflow instance
-func (r *WorkflowInstanceRepo) GetByProjectAndWorkflow(projectID, workflowID string) (*model.WorkflowInstance, error) {
-	row := r.pool.QueryRow(`
+// ListActiveByProjectAndWorkflow returns all active project-scoped instances for a given workflow.
+func (r *WorkflowInstanceRepo) ListActiveByProjectAndWorkflow(projectID, workflowID string) ([]*model.WorkflowInstance, error) {
+	rows, err := r.pool.Query(`
 		SELECT `+wfiCols+` FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project'`,
-		projectID, workflowID)
-	wi, err := scanWFI(row)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("project workflow '%s' not found on %s", workflowID, projectID)
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project' AND status = ?
+		ORDER BY created_at`, projectID, workflowID, model.WorkflowInstanceActive)
+	if err != nil {
+		return nil, err
 	}
-	return wi, err
+	defer rows.Close()
+
+	var instances []*model.WorkflowInstance
+	for rows.Next() {
+		wi, err := scanWFI(rows)
+		if err != nil {
+			return nil, err
+		}
+		instances = append(instances, wi)
+	}
+	return instances, nil
 }
 
 // ListByProjectScope lists all project-scoped workflow instances for a project

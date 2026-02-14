@@ -120,7 +120,7 @@ func TestProjectWorkflowInit(t *testing.T) {
 	}
 
 	// Initialize project workflow
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-init-test",
 	})
 	if err != nil {
@@ -146,8 +146,8 @@ func TestProjectWorkflowInit(t *testing.T) {
 	}
 }
 
-// TestProjectWorkflowInitDuplicate tests that duplicate project workflow init is rejected
-func TestProjectWorkflowInitDuplicate(t *testing.T) {
+// TestProjectWorkflowInitMultipleAllowed tests that multiple project workflow inits succeed
+func TestProjectWorkflowInitMultipleAllowed(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
@@ -157,7 +157,7 @@ func TestProjectWorkflowInitDuplicate(t *testing.T) {
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-dup-test",
-		Description: "Test duplicate",
+		Description: "Test multi-instance",
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -166,19 +166,23 @@ func TestProjectWorkflowInitDuplicate(t *testing.T) {
 	}
 
 	// First init
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	wi1, err := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-dup-test",
 	})
 	if err != nil {
 		t.Fatalf("failed to init project workflow: %v", err)
 	}
 
-	// Second init should fail
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	// Second init should succeed (multi-instance allowed for project scope)
+	wi2, err := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-dup-test",
 	})
-	if err == nil {
-		t.Fatal("expected error for duplicate project workflow init, got nil")
+	if err != nil {
+		t.Fatalf("second init should succeed for project workflow, got: %v", err)
+	}
+
+	if wi1.ID == wi2.ID {
+		t.Fatal("two instances should have different IDs")
 	}
 }
 
@@ -202,7 +206,7 @@ func TestProjectWorkflowInitWrongScope(t *testing.T) {
 	}
 
 	// Try to init as project workflow
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "ticket-scope-def",
 	})
 	if err == nil {
@@ -266,7 +270,7 @@ func TestProjectWorkflowStateRetrieval(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "proj-state-test",
 	})
 	if err != nil {
@@ -322,8 +326,8 @@ func TestProjectWorkflowListEmpty(t *testing.T) {
 	}
 }
 
-// TestProjectWorkflowUniqueConstraint tests the unique index on (project_id, ticket_id, workflow_id, scope_type)
-func TestProjectWorkflowUniqueConstraint(t *testing.T) {
+// TestProjectWorkflowMultiInstance tests that multiple instances of the same project workflow can be created
+func TestProjectWorkflowMultiInstance(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create workflow definition
@@ -332,8 +336,8 @@ func TestProjectWorkflowUniqueConstraint(t *testing.T) {
 	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-		ID:          "unique-test",
-		Description: "Test unique constraint",
+		ID:          "multi-test",
+		Description: "Test multi-instance",
 		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
@@ -342,19 +346,23 @@ func TestProjectWorkflowUniqueConstraint(t *testing.T) {
 	}
 
 	// First init
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
-		Workflow: "unique-test",
+	wi1, err := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+		Workflow: "multi-test",
 	})
 	if err != nil {
 		t.Fatalf("first init failed: %v", err)
 	}
 
-	// Second init with same project + workflow should fail
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
-		Workflow: "unique-test",
+	// Second init with same project + workflow should succeed (multi-instance)
+	wi2, err := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+		Workflow: "multi-test",
 	})
-	if err == nil {
-		t.Fatal("expected error for duplicate project workflow, got nil")
+	if err != nil {
+		t.Fatalf("second init should succeed for project workflow, got: %v", err)
+	}
+
+	if wi1.ID == wi2.ID {
+		t.Fatal("two instances should have different IDs")
 	}
 }
 
@@ -439,7 +447,7 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 	}
 
 	// Init project workflow
-	err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
+	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "mixed-project",
 	})
 	if err != nil {

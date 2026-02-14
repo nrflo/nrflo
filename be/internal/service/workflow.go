@@ -87,25 +87,29 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	return s.wfiRepo.Create(wi)
 }
 
-// InitProjectWorkflow initializes a project-scoped workflow (no ticket required)
-func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.ProjectWorkflowRunRequest) error {
+// InitProjectWorkflow initializes a project-scoped workflow (no ticket required).
+// Returns the created workflow instance.
+func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.ProjectWorkflowRunRequest) (*model.WorkflowInstance, error) {
 	if req.Workflow == "" {
-		return fmt.Errorf("workflow name is required")
+		return nil, fmt.Errorf("workflow name is required")
 	}
 
 	wf, err := s.GetWorkflowDef(projectID, req.Workflow)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if wf.ScopeType != "project" {
-		return fmt.Errorf("workflow '%s' is not a project-scoped workflow", req.Workflow)
+		return nil, fmt.Errorf("workflow '%s' is not a project-scoped workflow", req.Workflow)
 	}
 
 	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf)
 	wi.ScopeType = "project"
 
-	return s.wfiRepo.Create(wi)
+	if err := s.wfiRepo.Create(wi); err != nil {
+		return nil, err
+	}
+	return wi, nil
 }
 
 // buildWorkflowInstance creates a WorkflowInstance from a workflow definition
@@ -198,6 +202,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	result := map[string]interface{}{
 		"version":        4,
 		"initialized_at": wi.CreatedAt.Format(time.RFC3339),
+		"instance_id":    wi.ID,
 		"scope_type":     scopeType,
 		"current_phase":  "",
 		"retry_count":    wi.RetryCount,
@@ -311,9 +316,24 @@ func (s *WorkflowService) GetWorkflowInstance(projectID, ticketID, workflowName 
 	return s.wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 }
 
-// GetProjectWorkflowInstance returns the workflow instance for a project-scoped workflow
+// GetProjectWorkflowInstance returns the most recent project-scoped workflow instance
+// matching the given workflow name. Returns error if none found.
 func (s *WorkflowService) GetProjectWorkflowInstance(projectID, workflowName string) (*model.WorkflowInstance, error) {
-	return s.wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
+	instances, err := s.wfiRepo.ListByProjectScope(projectID)
+	if err != nil {
+		return nil, err
+	}
+	// Return the most recently created matching instance
+	var latest *model.WorkflowInstance
+	for _, wi := range instances {
+		if wi.WorkflowID == workflowName {
+			latest = wi
+		}
+	}
+	if latest == nil {
+		return nil, fmt.Errorf("project workflow '%s' not found on %s", workflowName, projectID)
+	}
+	return latest, nil
 }
 
 // ListWorkflowInstances returns all workflow instances for a ticket

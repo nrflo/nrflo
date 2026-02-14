@@ -104,7 +104,7 @@ func (s *Spawner) getWorkflowInstance(projectID, ticketID, workflowName string) 
 	return wi, nil
 }
 
-// getProjectWorkflowInstance retrieves a project-scoped workflow instance
+// getProjectWorkflowInstance retrieves the most recent active project-scoped workflow instance.
 func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*model.WorkflowInstance, error) {
 	database, err := db.Open(s.config.DataPath)
 	if err != nil {
@@ -114,12 +114,26 @@ func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*m
 
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-	wi, err := wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
-	if err != nil {
+	instances, err := wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
+	if err != nil || len(instances) == 0 {
 		return nil, fmt.Errorf("project workflow '%s' not initialized. Use the web UI or API to initialize it",
 			workflowName)
 	}
-	return wi, nil
+	// Return the most recently created active instance
+	return instances[len(instances)-1], nil
+}
+
+// getWorkflowInstanceByID retrieves a workflow instance by its ID.
+func (s *Spawner) getWorkflowInstanceByID(instanceID string) (*model.WorkflowInstance, error) {
+	database, err := db.Open(s.config.DataPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	return wfiRepo.Get(instanceID)
 }
 
 // validateAndAdvancePhase validates phase order.

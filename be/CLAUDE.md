@@ -383,7 +383,12 @@ All other operations (tickets, projects, workflows, agents) are managed via the 
 │    parent_session  TEXT               (orchestrating session UUID)   │
 │    created_at      TEXT NOT NULL                                     │
 │    updated_at      TEXT NOT NULL                                     │
-│    UNIQUE (project_id, ticket_id, workflow_id, scope_type)           │
+│    INDEX idx_wfi_lookup (project_id, ticket_id, workflow_id,         │
+│          scope_type) — non-unique, for query performance             │
+│    UNIQUE INDEX idx_wfi_ticket_unique (project_id, ticket_id,        │
+│          workflow_id) WHERE scope_type = 'ticket'                    │
+│    Note: Multiple concurrent instances allowed for project scope.    │
+│    Ticket scope enforced unique by DB partial index.                 │
 │    FK (project_id, workflow_id) → workflows(project_id, id)         │
 │    FK (project_id, ticket_id) → tickets(project_id, id) CASCADE     │
 │                                                                      │

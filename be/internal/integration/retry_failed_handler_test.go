@@ -357,7 +357,7 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	}
 
 	wfSvc := service.NewWorkflowService(pool)
-	err = wfSvc.InitProjectWorkflow("proj", &types.ProjectWorkflowRunRequest{
+	wi, err := wfSvc.InitProjectWorkflow("proj", &types.ProjectWorkflowRunRequest{
 		Workflow: "test",
 	})
 	if err != nil {
@@ -365,7 +365,6 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-	wi, _ := wfiRepo.GetByProjectAndWorkflow("proj", "test")
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceFailed)
 
 	asRepo := repo.NewAgentSessionRepo(database)
@@ -385,8 +384,9 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	baseURL := startAPIServer(t, dbPath)
 
 	resp, body := doRetryFailedProject(t, baseURL, "proj", map[string]string{
-		"workflow":   "test",
-		"session_id": "sess-proj-retry-1",
+		"workflow":    "test",
+		"session_id":  "sess-proj-retry-1",
+		"instance_id": wi.ID,
 	})
 
 	if resp.StatusCode != http.StatusOK {

@@ -78,12 +78,8 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, fmt.Errorf("ticket_id is required for ticket-scoped workflows")
 	}
 
-	// Check if already running
-	if req.IsProjectScope() {
-		if o.IsProjectRunning(req.ProjectID, req.WorkflowName) {
-			return nil, fmt.Errorf("project workflow '%s' is already running", req.WorkflowName)
-		}
-	} else {
+	// Check if already running (ticket scope only — project scope allows multiple instances)
+	if !req.IsProjectScope() {
 		if o.IsRunning(req.ProjectID, req.TicketID, req.WorkflowName) {
 			return nil, fmt.Errorf("workflow '%s' is already running on %s", req.WorkflowName, req.TicketID)
 		}
@@ -138,80 +134,71 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, fmt.Errorf("workflow '%s' has no phases", req.WorkflowName)
 	}
 
-	// Init workflow instance (or get existing)
+	// Init workflow instance — always creates a fresh instance
 	pool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db pool: %w", err)
 	}
 	wfService := service.NewWorkflowService(pool)
 
-	// Try to init; if already exists, get the existing instance
-	var initErr error
+	var wi *model.WorkflowInstance
 	if req.IsProjectScope() {
-		initErr = wfService.InitProjectWorkflow(req.ProjectID, &types.ProjectWorkflowRunRequest{
+		wi, err = wfService.InitProjectWorkflow(req.ProjectID, &types.ProjectWorkflowRunRequest{
 			Workflow:     req.WorkflowName,
 			Instructions: req.Instructions,
 		})
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("failed to init workflow: %w", err)
+		}
 	} else {
-		initErr = wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{
+		// Ticket scope: try to create, if already exists get existing and reset
+		initErr := wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{
 			Workflow: req.WorkflowName,
 		})
-	}
-	pool.Close()
+		if initErr == nil {
+			wi, err = wfService.GetWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
+		} else {
+			// Already exists — get existing instance and reset if completed/failed
+			wi, err = wfService.GetWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
+			if err == nil && (wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceFailed) {
+				wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+				wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
 
-	// Get the instance (whether just created or already existed)
-	database, err = db.Open(o.dataPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	dbPool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(dbPool)
+				// Rebuild fresh phases from workflow definition
+				phaseOrder := make([]string, len(svcWf.Phases))
+				phases := make(map[string]model.PhaseStatus)
+				var firstPhase string
+				for i, p := range svcWf.Phases {
+					phaseOrder[i] = p.ID
+					phases[p.ID] = model.PhaseStatus{Status: "pending"}
+					if i == 0 {
+						firstPhase = p.ID
+					}
+				}
+				phaseOrderJSON, _ := json.Marshal(phaseOrder)
+				phasesJSON, _ := json.Marshal(phases)
+				wfiRepo.UpdatePhases(wi.ID, string(phasesJSON))
+				wfiRepo.UpdateCurrentPhase(wi.ID, firstPhase)
+				wfiRepo.UpdateFindings(wi.ID, "{}")
+				wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
 
-	var wi *model.WorkflowInstance
-	if req.IsProjectScope() {
-		wi, err = wfiRepo.GetByProjectAndWorkflow(req.ProjectID, req.WorkflowName)
-	} else {
-		wi, err = wfiRepo.GetByTicketAndWorkflow(req.ProjectID, req.TicketID, req.WorkflowName)
-	}
-	if err != nil {
-		database.Close()
-		if initErr != nil {
-			return nil, fmt.Errorf("failed to init workflow: %w", initErr)
-		}
-		return nil, fmt.Errorf("failed to get workflow instance: %w", err)
-	}
-
-	// If re-running a completed project workflow, reset it to active with fresh phases
-	if wi.Status == model.WorkflowInstanceProjectCompleted {
-		wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
-
-		// Rebuild fresh phases from workflow definition
-		phaseOrder := make([]string, len(svcWf.Phases))
-		phases := make(map[string]model.PhaseStatus)
-		var firstPhase string
-		for i, p := range svcWf.Phases {
-			phaseOrder[i] = p.ID
-			phases[p.ID] = model.PhaseStatus{Status: "pending"}
-			if i == 0 {
-				firstPhase = p.ID
+				// Update in-memory copy
+				wi.Status = model.WorkflowInstanceActive
+				wi.PhaseOrder = string(phaseOrderJSON)
+				wi.Phases = string(phasesJSON)
+				wi.CurrentPhase = sql.NullString{String: firstPhase, Valid: firstPhase != ""}
+				wi.Findings = "{}"
 			}
 		}
-		phaseOrderJSON, _ := json.Marshal(phaseOrder)
-		phasesJSON, _ := json.Marshal(phases)
-		wfiRepo.UpdatePhases(wi.ID, string(phasesJSON))
-		wfiRepo.UpdateCurrentPhase(wi.ID, firstPhase)
-		wfiRepo.UpdateFindings(wi.ID, "{}")
-		wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
-
-		// Update in-memory copy for downstream use
-		wi.Status = model.WorkflowInstanceActive
-		wi.PhaseOrder = string(phaseOrderJSON)
-		wi.Phases = string(phasesJSON)
-		wi.CurrentPhase = sql.NullString{String: firstPhase, Valid: firstPhase != ""}
-		wi.Findings = "{}"
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("failed to init workflow: %w", err)
+		}
 	}
 
-	// Store user instructions and orchestration status in findings (single write)
+	// Store user instructions and orchestration status in findings
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	findings := wi.GetFindings()
 	if req.Instructions != "" {
 		findings["user_instructions"] = req.Instructions
@@ -224,7 +211,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Set parent session
 	parentSession := uuid.New().String()
-	database.Close()
+	pool.Close()
 
 	// Set ticket to in_progress if currently open (best-effort, ticket scope only)
 	if !req.IsProjectScope() {
@@ -314,8 +301,15 @@ func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName string) er
 	return fmt.Errorf("no running orchestration found for %s", ticketID)
 }
 
-// StopByProject stops any running orchestration for a project-scoped workflow.
-func (o *Orchestrator) StopByProject(projectID, workflowName string) error {
+// StopByProject stops a running project-scoped orchestration.
+// If instanceID is provided, stops that specific instance.
+// Otherwise, stops all running instances for the given workflow (or all project workflows if workflowName is empty).
+func (o *Orchestrator) StopByProject(projectID, workflowName, instanceID string) error {
+	// If instance ID provided, stop directly
+	if instanceID != "" {
+		return o.Stop(instanceID)
+	}
+
 	database, err := db.Open(o.dataPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
@@ -325,42 +319,43 @@ func (o *Orchestrator) StopByProject(projectID, workflowName string) error {
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 
-	if workflowName != "" {
-		wi, err := wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
-		if err != nil {
-			return fmt.Errorf("project workflow not found: %w", err)
-		}
-		return o.Stop(wi.ID)
-	}
-
 	instances, err := wfiRepo.ListByProjectScope(projectID)
 	if err != nil {
 		return err
 	}
 
+	stopped := 0
 	for _, wi := range instances {
+		if workflowName != "" && wi.WorkflowID != workflowName {
+			continue
+		}
 		o.mu.Lock()
 		_, running := o.runs[wi.ID]
 		o.mu.Unlock()
 		if running {
-			return o.Stop(wi.ID)
+			if err := o.Stop(wi.ID); err == nil {
+				stopped++
+			}
 		}
 	}
 
-	return fmt.Errorf("no running project orchestration found")
+	if stopped == 0 {
+		return fmt.Errorf("no running project orchestration found")
+	}
+	return nil
 }
 
 // RetryFailedAgent resets a failed workflow instance and re-runs from the failed layer.
 func (o *Orchestrator) RetryFailedAgent(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error {
-	return o.retryFailed(ctx, projectID, ticketID, workflowName, sessionID, "ticket")
+	return o.retryFailed(ctx, projectID, ticketID, workflowName, sessionID, "ticket", "")
 }
 
 // RetryFailedProjectAgent resets a failed project-scoped workflow and re-runs from the failed layer.
-func (o *Orchestrator) RetryFailedProjectAgent(ctx context.Context, projectID, workflowName, sessionID string) error {
-	return o.retryFailed(ctx, projectID, "", workflowName, sessionID, "project")
+func (o *Orchestrator) RetryFailedProjectAgent(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error {
+	return o.retryFailed(ctx, projectID, "", workflowName, sessionID, "project", instanceID)
 }
 
-func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID, scopeType string) error {
+func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID, scopeType, instanceID string) error {
 	// Look up the workflow instance
 	database, err := db.Open(o.dataPath)
 	if err != nil {
@@ -372,8 +367,11 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 
 	var wi *model.WorkflowInstance
-	if scopeType == "project" {
-		wi, err = wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
+	if instanceID != "" {
+		wi, err = wfiRepo.Get(instanceID)
+	} else if scopeType == "project" {
+		// Fallback: session lookup will validate the instance
+		return fmt.Errorf("instance_id is required for project-scoped workflow retry")
 	} else {
 		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 	}
@@ -526,21 +524,12 @@ func (o *Orchestrator) RestartAgent(projectID, ticketID, workflowName, sessionID
 }
 
 // RestartProjectAgent sends a restart signal for a project-scoped workflow agent.
-func (o *Orchestrator) RestartProjectAgent(projectID, workflowName, sessionID string) error {
-	database, err := db.Open(o.dataPath)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+// instanceID is required to identify which instance to restart.
+func (o *Orchestrator) RestartProjectAgent(projectID, workflowName, sessionID, instanceID string) error {
+	if instanceID == "" {
+		return fmt.Errorf("instance_id is required for project-scoped workflow restart")
 	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-	wi, err := wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
-	if err != nil {
-		return fmt.Errorf("project workflow not found: %w", err)
-	}
-
-	return o.restartAgentByInstance(wi.ID, workflowName, projectID, sessionID)
+	return o.restartAgentByInstance(instanceID, workflowName, projectID, sessionID)
 }
 
 func (o *Orchestrator) restartAgentByInstance(wfiID, workflowName, target, sessionID string) error {
@@ -573,27 +562,6 @@ func (o *Orchestrator) IsRunning(projectID, ticketID, workflowName string) bool 
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
-	if err != nil {
-		return false
-	}
-
-	o.mu.Lock()
-	_, running := o.runs[wi.ID]
-	o.mu.Unlock()
-	return running
-}
-
-// IsProjectRunning checks if an orchestration is running for a project-scoped workflow.
-func (o *Orchestrator) IsProjectRunning(projectID, workflowName string) bool {
-	database, err := db.Open(o.dataPath)
-	if err != nil {
-		return false
-	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-	wi, err := wfiRepo.GetByProjectAndWorkflow(projectID, workflowName)
 	if err != nil {
 		return false
 	}
@@ -705,12 +673,13 @@ func (o *Orchestrator) runLoop(
 				o.mu.Unlock()
 
 				err := sp.Spawn(ctx, spawner.SpawnRequest{
-					AgentType:     phase.Agent,
-					TicketID:      req.TicketID,
-					ProjectID:     req.ProjectID,
-					WorkflowName:  req.WorkflowName,
-					ParentSession: parentSession,
-					ScopeType:     req.ScopeType,
+					AgentType:          phase.Agent,
+					TicketID:           req.TicketID,
+					ProjectID:          req.ProjectID,
+					WorkflowName:       req.WorkflowName,
+					ParentSession:      parentSession,
+					ScopeType:          req.ScopeType,
+					WorkflowInstanceID: wfiID,
 				})
 
 				sp.Close()

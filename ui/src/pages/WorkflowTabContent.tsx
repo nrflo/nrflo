@@ -27,6 +27,7 @@ interface WorkflowTabContentProps {
   displayedWorkflowName: string
   hasMultipleWorkflows: boolean
   workflows: string[]
+  workflowLabels?: Record<string, string>  // optional display labels for workflow selector options
   selectedWorkflow: string
   onSelectWorkflow: (wf: string) => void
   isOrchestrated: boolean
@@ -56,6 +57,7 @@ export function WorkflowTabContent({
   displayedWorkflowName,
   hasMultipleWorkflows,
   workflows,
+  workflowLabels,
   selectedWorkflow,
   onSelectWorkflow,
   isOrchestrated,
@@ -91,13 +93,13 @@ export function WorkflowTabContent({
               <div className="flex items-center gap-3">
                 {hasMultipleWorkflows ? (
                   <Select
-                    value={selectedWorkflow || displayedWorkflowName}
+                    value={selectedWorkflow || workflows[0] || ''}
                     onChange={(e) => onSelectWorkflow(e.target.value)}
-                    className="w-32 h-8 text-sm"
+                    className="w-48 h-8 text-sm"
                   >
                     {workflows.map((wf) => (
                       <option key={wf} value={wf}>
-                        {wf}
+                        {workflowLabels?.[wf] ?? wf}
                       </option>
                     ))}
                   </Select>

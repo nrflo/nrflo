@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is the web UI for the nrworkflow ticket management system. It's a React + TypeScript application that communicates with the `nrworkflow serve` API.
+This is the web UI for the nrworkflow ticket management system. It's a React + TypeScript application that communicates with the `nrworkflow_server serve` API.
 
 ## Key Directories
 
@@ -131,7 +131,7 @@ Tests are co-located with source files using `.test.tsx` / `.test.ts` suffix. So
 
 ## Important Notes
 
-- The backend (`nrworkflow serve`) must be running for the UI to work
+- The backend (`nrworkflow_server serve`) must be running for the UI to work
 - Default port is 6587 for API, 5173 for UI
 - Projects are loaded from `/api/v1/projects` endpoint
 - Multi-project support uses `X-Project` header
@@ -144,7 +144,7 @@ Tests are co-located with source files using `.test.tsx` / `.test.ts` suffix. So
 ./restart.sh
 
 # Or start manually:
-nrworkflow serve              # Start API server (port 6587)
+nrworkflow_server serve       # Start API server (port 6587)
 cd ui && npm run dev          # Start UI dev server (port 5173)
 
 # Stop servers
@@ -153,11 +153,12 @@ cd ui && npm run dev          # Start UI dev server (port 5173)
 
 | Script | Purpose |
 |--------|---------|
-| `restart.sh` | Kill existing servers, rebuild BE + UI, start both in background |
+| `restart.sh` | Kill existing servers, rebuild both binaries, start both in background |
 | `stop.sh` | Stop running BE + UI servers |
-| `ui/start-server.sh` | Start both servers in foreground (interactive mode) |
+| `rebuild-cli.sh` | Rebuild and re-symlink CLI binary without restarting server |
+| `ui/start-server.sh` | Start both servers in foreground (uses `nrworkflow_server serve`) |
 
-Logs are written to `logs/backend.log` and `logs/ui.log` when using `restart.sh`.
+Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.log` when using `restart.sh`.
 
 ## Web UI Features
 

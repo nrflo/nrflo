@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
 	Short: "nrworkflow - Multi-workflow agent orchestration",
 	Long: `nrworkflow is a server for ticket management and AI agent orchestration.
 
-Start the server with: nrworkflow serve
+Start the server with: nrworkflow_server serve
 Manage workflows and tickets via the web UI at http://localhost:6587
 
 Agent CLI subset (used by spawned agents):

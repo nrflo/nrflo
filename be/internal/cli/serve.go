@@ -33,8 +33,8 @@ The server provides:
 Database migrations are applied automatically on startup.
 
 Example usage:
-  nrworkflow serve              # Start on default port (6587)
-  nrworkflow serve --port=8080  # Start HTTP on custom port`,
+  nrworkflow_server serve              # Start on default port (6587)
+  nrworkflow_server serve --port=8080  # Start HTTP on custom port`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load configuration
 		cfg, err := config.Load()

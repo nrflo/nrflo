@@ -160,7 +160,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 ## Server Architecture
 
-`nrworkflow serve` provides:
+`nrworkflow_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
 - **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **Auto-migration** — database schema is automatically migrated on startup

@@ -566,8 +566,9 @@ describe('CreateChainDialog - Form Reset on Close', () => {
     // First render with dialog open
     const { onClose, rerender } = renderDialog(true)
 
-    // Type in name field
+    // Clear the auto-generated name and type in a custom name
     const nameInput = screen.getByLabelText(/name/i)
+    await user.clear(nameInput)
     await user.type(nameInput, 'Test Chain Name')
     expect(nameInput).toHaveValue('Test Chain Name')
 
@@ -596,10 +597,192 @@ describe('CreateChainDialog - Form Reset on Close', () => {
       </QueryClientProvider>
     )
 
-    // Form should be reset
+    // Form should be reset with a new generated name
     await waitFor(() => {
-      const resetNameInput = screen.getByLabelText(/name/i)
-      expect(resetNameInput).toHaveValue('')
+      const resetNameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+      // Should have a new generated chain name, not the old custom name
+      expect(resetNameInput.value).toMatch(/^chain-[A-Za-z0-9]{8}$/)
+      expect(resetNameInput.value).not.toBe('Test Chain Name')
     })
+  })
+})
+
+describe('CreateChainDialog - Random Name Generation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseCreateChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+    })
+    mockUseUpdateChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+    })
+    mockUseQuery.mockReturnValue({
+      data: {
+        feature: createMockWorkflowDef('feature'),
+      },
+      isLoading: false,
+    })
+  })
+
+  it('pre-fills name input with random chain name on create', () => {
+    renderDialog()
+
+    const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+    expect(nameInput.value).toMatch(/^chain-[A-Za-z0-9]{8}$/)
+    expect(nameInput.value).toHaveLength(14)
+  })
+
+  it('generates a new random name when dialog reopens after close', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const onClose = vi.fn()
+
+    // First render
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CreateChainDialog open={true} onClose={onClose} editChain={null} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const firstNameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+    const firstName = firstNameInput.value
+
+    // Close dialog
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CreateChainDialog open={false} onClose={onClose} editChain={null} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Reopen dialog
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CreateChainDialog open={true} onClose={onClose} editChain={null} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    await waitFor(() => {
+      const secondNameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+      const secondName = secondNameInput.value
+
+      // Both should be valid chain names
+      expect(firstName).toMatch(/^chain-[A-Za-z0-9]{8}$/)
+      expect(secondName).toMatch(/^chain-[A-Za-z0-9]{8}$/)
+
+      // But they should be different (regenerated)
+      expect(firstName).not.toBe(secondName)
+    })
+  })
+
+  it('uses existing chain name in edit mode, not generated name', async () => {
+    const chain = createMockChain({ name: 'My Custom Chain Name' })
+
+    renderDialog(true, chain)
+
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+      expect(nameInput.value).toBe('My Custom Chain Name')
+      expect(nameInput.value).not.toMatch(/^chain-[A-Za-z0-9]{8}$/)
+    })
+  })
+
+  it('does not regenerate name when switching from edit to create without closing', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const onClose = vi.fn()
+    const chain = createMockChain({ name: 'Existing Chain' })
+
+    // Start in edit mode
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CreateChainDialog open={true} onClose={onClose} editChain={chain} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+      expect(nameInput.value).toBe('Existing Chain')
+    })
+
+    // Switch to create mode (editChain=null) without closing
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CreateChainDialog open={true} onClose={onClose} editChain={null} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Name should remain from edit mode (only reset on close)
+    const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+    expect(nameInput.value).toBe('Existing Chain')
+  })
+
+  it('allows user to edit the generated name before submit', async () => {
+    const user = userEvent.setup()
+
+    renderDialog()
+
+    const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+    const generatedName = nameInput.value
+
+    // Verify it starts with a generated name
+    expect(generatedName).toMatch(/^chain-[A-Za-z0-9]{8}$/)
+
+    // User edits the name
+    await user.clear(nameInput)
+    await user.type(nameInput, 'My Custom Chain')
+
+    expect(nameInput.value).toBe('My Custom Chain')
+    expect(nameInput.value).not.toBe(generatedName)
+  })
+
+  it('generates different names for multiple create dialog instances', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const onClose = vi.fn()
+
+    // Render first instance
+    const { unmount: unmount1 } = render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CreateChainDialog open={true} onClose={onClose} editChain={null} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const firstName = (screen.getByLabelText(/name/i) as HTMLInputElement).value
+    unmount1()
+
+    // Render second instance
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <CreateChainDialog open={true} onClose={onClose} editChain={null} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const secondName = (screen.getByLabelText(/name/i) as HTMLInputElement).value
+
+    // Both should be valid but different
+    expect(firstName).toMatch(/^chain-[A-Za-z0-9]{8}$/)
+    expect(secondName).toMatch(/^chain-[A-Za-z0-9]{8}$/)
+    expect(firstName).not.toBe(secondName)
   })
 })

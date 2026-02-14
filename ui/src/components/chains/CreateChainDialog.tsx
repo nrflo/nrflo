@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link2 } from 'lucide-react'
+import { generateChainName } from '@/lib/generateChainName'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -19,7 +20,7 @@ interface CreateChainDialogProps {
 }
 
 export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialogProps) {
-  const [name, setName] = useState('')
+  const [name, setName] = useState(() => generateChainName())
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
   const [ticketIds, setTicketIds] = useState<string[]>([])
   const [epicIds, setEpicIds] = useState<string[]>([])
@@ -61,7 +62,7 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
   // Reset on close
   useEffect(() => {
     if (!open) {
-      setName('')
+      setName(generateChainName())
       setSelectedWorkflow('')
       setTicketIds([])
       setEpicIds([])

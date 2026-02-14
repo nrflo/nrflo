@@ -33,6 +33,10 @@ export interface PhaseGraphProps {
   onAgentSelect?: (data: SelectedAgentData) => void
   // Whether the agent log panel is collapsed — triggers fitView on change
   logPanelCollapsed?: boolean
+  // Retry failed agent handler
+  onRetryFailed?: (sessionId: string) => void
+  retryingSessionId?: string | null
+  workflowStatus?: string
 }
 
 export interface AgentCardProps {
@@ -64,6 +68,9 @@ export interface AgentFlowNodeData {
   isCompleted?: boolean         // Phase completed but no history entries
   isError?: boolean             // Phase errored but no history entries
   onToggleExpand: () => void
+  onRetryFailed?: (sessionId: string) => void
+  retryingSessionId?: string | null
+  workflowStatus?: string
   [key: string]: unknown        // React Flow compatibility
 }
 

@@ -4,6 +4,8 @@ import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from 
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { ActiveAgentV4, AgentHistoryEntry } from '@/types/workflow'
 
 interface ActiveAgentsPanelProps {
@@ -37,6 +39,8 @@ function resultColor(result?: string): string {
 }
 
 export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRetryFailed, retryingSessionId, workflowStatus, agentHistory }: ActiveAgentsPanelProps) {
+  const [restartConfirmId, setRestartConfirmId] = useState<string | null>(null)
+  const [retryConfirmId, setRetryConfirmId] = useState<string | null>(null)
   const agentEntries = Object.entries(agents)
   const runningAgents = agentEntries.filter(([, a]) => !a.result)
   const runningCount = runningAgents.length
@@ -166,20 +170,32 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
 
             {/* Restart button for running agents */}
             {onRestart && agent.session_id && !agent.result && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onRestart(agent.session_id!)}
-                disabled={restartingSessionId === agent.session_id}
-                title="Restart agent (save context, relaunch)"
-                className="ml-auto shrink-0"
-              >
-                {restartingSessionId === agent.session_id ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-              </Button>
+              <>
+                <Tooltip text="Restart agent (save context, relaunch)" placement="left">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRestartConfirmId(agent.session_id!)}
+                    disabled={restartingSessionId === agent.session_id}
+                    aria-label="Restart agent (save context, relaunch)"
+                    className="ml-auto shrink-0"
+                  >
+                    {restartingSessionId === agent.session_id ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </Tooltip>
+                <ConfirmDialog
+                  open={restartConfirmId === agent.session_id}
+                  onClose={() => setRestartConfirmId(null)}
+                  onConfirm={() => onRestart(agent.session_id!)}
+                  title="Restart Agent"
+                  message={`This will restart the "${agent.agent_type}" agent. Current progress will be saved and a new agent will be launched.`}
+                  confirmLabel="Restart"
+                />
+              </>
             )}
           </div>
         ))}
@@ -214,20 +230,33 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
                   </div>
                 </div>
                 {entry.session_id && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onRetryFailed(entry.session_id!)}
-                    disabled={!!retryingSessionId}
-                    title="Retry failed agent"
-                    className="ml-auto shrink-0 text-red-600 hover:text-red-700 border-red-300 dark:border-red-700"
-                  >
-                    {retryingSessionId === entry.session_id ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
+                  <>
+                    <Tooltip text="Retry failed agent — re-run the entire failed layer" placement="left">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRetryConfirmId(entry.session_id!)}
+                        disabled={!!retryingSessionId}
+                        aria-label="Retry failed agent"
+                        className="ml-auto shrink-0 text-red-600 hover:text-red-700 border-red-300 dark:border-red-700"
+                      >
+                        {retryingSessionId === entry.session_id ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </Tooltip>
+                    <ConfirmDialog
+                      open={retryConfirmId === entry.session_id}
+                      onClose={() => setRetryConfirmId(null)}
+                      onConfirm={() => onRetryFailed(entry.session_id!)}
+                      title="Retry Failed Agent"
+                      message={`This will retry the failed "${entry.agent_type}" agent from the failed layer. All agents in this layer will be re-run.`}
+                      confirmLabel="Retry"
+                      variant="destructive"
+                    />
+                  </>
                 )}
               </div>
             ))}

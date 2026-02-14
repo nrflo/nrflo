@@ -30,7 +30,9 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/ui/MarkdownEditor.tsx` | CodeMirror 6 markdown editor (used in AgentDefForm/Card) |
 | `src/components/ui/codemirror-theme.ts` | CodeMirror theme using CSS variables (auto dark/light) |
 | `src/components/ui/Dialog.tsx` | Modal dialog with backdrop, ESC key, click-outside-to-close |
-| `src/components/ui/` | Reusable UI components (Badge, Button, Card, Input, ProjectSelect, Select, Spinner, Textarea, Toggle) |
+| `src/components/ui/ConfirmDialog.tsx` | Reusable confirmation dialog built on Dialog (title, message, confirm/cancel buttons, variant) |
+| `src/components/ui/Tooltip.tsx` | Hover tooltip with CSS positioning and portal rendering (top/bottom/left/right placement) |
+| `src/components/ui/` | Reusable UI components (Badge, Button, Card, ConfirmDialog, Input, ProjectSelect, Select, Spinner, Textarea, Toggle, Tooltip) |
 | `src/components/layout/` | Layout components (Header, Sidebar, DailyStats) |
 | `src/components/tickets/IssueTypeIcon.tsx` | Shared issue type icon (Bug/Lightbulb/CheckSquare/Layers) with size prop (sm/md) |
 | `src/components/tickets/` | Ticket-specific components |

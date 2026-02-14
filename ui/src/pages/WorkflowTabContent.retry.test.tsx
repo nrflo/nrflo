@@ -203,6 +203,8 @@ describe('WorkflowTabContent - Retry Failed Agent', () => {
       )
 
       await user.click(screen.getByText('Retry Failed'))
+      // Confirm dialog opens, click "Retry" to confirm
+      await user.click(screen.getByRole('button', { name: 'Retry' }))
       expect(onRetryFailed).toHaveBeenCalledWith('sess-failed-1')
       expect(onRetryFailed).toHaveBeenCalledTimes(1)
     })
@@ -227,6 +229,8 @@ describe('WorkflowTabContent - Retry Failed Agent', () => {
       )
 
       await user.click(screen.getByText('Retry Failed'))
+      // Confirm dialog opens, click "Retry" to confirm
+      await user.click(screen.getByRole('button', { name: 'Retry' }))
       expect(onRetryFailed).toHaveBeenCalledWith('sess-first')
     })
 

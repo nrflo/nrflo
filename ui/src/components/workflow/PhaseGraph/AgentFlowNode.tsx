@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
-import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward, AlertTriangle } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward, AlertTriangle, RefreshCw } from 'lucide-react'
 import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
+import { Spinner } from '@/components/ui/Spinner'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { AgentFlowNodeData } from './types'
 
 function StatusIcon({ result, isRunning, isPending, isSkipped }: { result?: string; isRunning: boolean; isPending?: boolean; isSkipped?: boolean }) {
@@ -38,7 +42,8 @@ interface AgentFlowNodeProps {
 }
 
 export function AgentFlowNode({ data }: AgentFlowNodeProps) {
-  const { phaseName, agent, historyEntry, session, isPending, isSkipped, isCompleted, isError, onToggleExpand } = data
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const { phaseName, agent, historyEntry, session, isPending, isSkipped, isCompleted, isError, onToggleExpand, onRetryFailed, retryingSessionId, workflowStatus } = data
   const isRunning = agent && !agent.result
   const result = agent?.result || historyEntry?.result
   const hasMessages = session && session.message_count > 0
@@ -177,7 +182,37 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
             {session.message_count} msg{session.message_count !== 1 ? 's' : ''}
           </Badge>
         )}
+
+        {/* Retry button for failed agents - bottom right */}
+        {result === 'fail' && workflowStatus === 'failed' && onRetryFailed && historyEntry?.session_id && (
+          <Tooltip text="Retry failed agent" placement="left">
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}
+              disabled={!!retryingSessionId}
+              className="absolute bottom-2 right-2 p-1 rounded-md bg-red-100 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-800/50 transition-colors disabled:opacity-50 border border-red-300 dark:border-red-700"
+            >
+              {retryingSessionId === historyEntry.session_id ? (
+                <Spinner size="sm" />
+              ) : (
+                <RefreshCw className="h-4 w-4 text-red-600 dark:text-red-400" />
+              )}
+            </button>
+          </Tooltip>
+        )}
       </button>
+
+      {/* Confirm dialog for retry (rendered outside button to avoid nesting) */}
+      {result === 'fail' && workflowStatus === 'failed' && onRetryFailed && historyEntry?.session_id && (
+        <ConfirmDialog
+          open={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={() => onRetryFailed!(historyEntry.session_id!)}
+          title="Retry Failed Agent"
+          message={`This will retry the failed "${historyEntry.agent_type}" agent from the failed layer. All agents in this layer will be re-run.`}
+          confirmLabel="Retry"
+          variant="destructive"
+        />
+      )}
 
       <Handle
         type="source"

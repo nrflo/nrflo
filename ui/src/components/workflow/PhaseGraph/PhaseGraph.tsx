@@ -37,6 +37,9 @@ export function PhaseGraph({
   sessions,
   onAgentSelect,
   logPanelCollapsed,
+  onRetryFailed,
+  retryingSessionId,
+  workflowStatus,
 }: PhaseGraphProps) {
 
   // Check if any agents are running
@@ -182,6 +185,9 @@ export function PhaseGraph({
               historyEntry: entry,
               session,
               onToggleExpand: () => handleAgentClick({ phaseName, historyEntry: entry, session }),
+              onRetryFailed,
+              retryingSessionId,
+              workflowStatus,
             }
           })
         })
@@ -224,7 +230,7 @@ export function PhaseGraph({
     })
 
     return nodes
-  }, [sortedPhaseEntries, agentsByPhase, agentHistory, handleAgentClick, findSessionForAgent, findSessionForHistory])
+  }, [sortedPhaseEntries, agentsByPhase, agentHistory, handleAgentClick, findSessionForAgent, findSessionForHistory, onRetryFailed, retryingSessionId, workflowStatus])
 
   // Build React Flow edges with layer-based branching pattern
   const initialEdges: Edge[] = useMemo(() => {

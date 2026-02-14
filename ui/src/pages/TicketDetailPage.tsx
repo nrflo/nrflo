@@ -334,13 +334,6 @@ export function TicketDetailPage() {
             onShowRunDialog={() => setShowRunDialog(true)}
             onShowEpicRunDialog={() => setShowEpicRunDialog(true)}
             activeChainId={activeEpicChain?.id ?? null}
-            onRestart={(sessionId) =>
-              id && restartMutation.mutate({
-                ticketId: id,
-                params: { workflow: displayedWorkflowName, session_id: sessionId },
-              })
-            }
-            restartingSessionId={restartMutation.isPending ? (restartMutation.variables?.params.session_id ?? null) : null}
             onRetryFailed={(sessionId) =>
               id && retryFailedMutation.mutate({
                 ticketId: id,

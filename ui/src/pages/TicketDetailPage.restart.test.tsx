@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as ticketsApi from '@/api/tickets'
-import * as workflowsApi from '@/api/workflows'
 import {
   sampleTicket,
   workflowWithActivePhase,
@@ -41,24 +40,16 @@ vi.mock('@/hooks/useChains', () => ({
   useChainList: () => ({ data: [] }),
 }))
 
-// Mock AgentLogPanel to expose restart controls for testing
-let capturedOnRestart: ((sessionId: string) => void) | undefined
-let capturedRestartingSessionId: string | null | undefined
-
+// AgentLogPanel no longer accepts onRestart/restartingSessionId (ticket nrworkflow-9ada6f).
+// Restart for running agents is handled by ActiveAgentsPanel.
 vi.mock('@/components/workflow/AgentLogPanel', () => ({
   AgentLogPanel: ({
     activeAgents,
     selectedAgent,
-    onRestart,
-    restartingSessionId,
   }: {
     activeAgents: Record<string, { agent_type: string; phase?: string; result?: string; session_id?: string }>
     selectedAgent: { phaseName: string } | null
-    onRestart?: (sessionId: string) => void
-    restartingSessionId?: string | null
   }) => {
-    capturedOnRestart = onRestart
-    capturedRestartingSessionId = restartingSessionId
     const running = Object.values(activeAgents).filter(a => !a.result)
     if (running.length === 0 && !selectedAgent) return null
     return (
@@ -66,15 +57,6 @@ vi.mock('@/components/workflow/AgentLogPanel', () => ({
         {running.map((agent, i) => (
           <div key={i} data-testid={`agent-row-${agent.agent_type}`}>
             <span>{agent.agent_type}</span>
-            {onRestart && agent.session_id && !agent.result && (
-              <button
-                data-testid={`restart-btn-${agent.agent_type}`}
-                onClick={() => onRestart(agent.session_id!)}
-                disabled={restartingSessionId === agent.session_id}
-              >
-                Restart
-              </button>
-            )}
           </div>
         ))}
       </div>
@@ -162,11 +144,9 @@ async function goToWorkflowTab() {
 describe('TicketDetailPage - Restart agent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedOnRestart = undefined
-    capturedRestartingSessionId = undefined
   })
 
-  it('passes onRestart callback to AgentLogPanel', async () => {
+  it('shows running agent in AgentLogPanel', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithSessionId)
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
@@ -177,63 +157,10 @@ describe('TicketDetailPage - Restart agent', () => {
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
     })
-
-    expect(capturedOnRestart).toBeDefined()
-    expect(typeof capturedOnRestart).toBe('function')
+    expect(screen.getByTestId('agent-row-implementor')).toBeInTheDocument()
   })
 
-  it('shows restart button for running agent with session_id', async () => {
-    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
-    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithSessionId)
-    vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
-
-    renderPage()
-    await goToWorkflowTab()
-
-    await waitFor(() => {
-      expect(screen.getByTestId('restart-btn-implementor')).toBeInTheDocument()
-    })
-  })
-
-  it('calls restartAgent API with correct parameters when restart clicked', async () => {
-    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
-    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithSessionId)
-    vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
-    vi.mocked(workflowsApi.restartAgent).mockResolvedValue({ status: 'restarting' })
-
-    renderPage()
-    const user = await goToWorkflowTab()
-
-    await waitFor(() => {
-      expect(screen.getByTestId('restart-btn-implementor')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByTestId('restart-btn-implementor'))
-
-    await waitFor(() => {
-      expect(workflowsApi.restartAgent).toHaveBeenCalledWith(
-        'TICKET-1',
-        { workflow: 'feature', session_id: 'sess-uuid-123' }
-      )
-    })
-  })
-
-  it('restartingSessionId is null when no restart is pending', async () => {
-    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
-    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithSessionId)
-    vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
-
-    renderPage()
-    await goToWorkflowTab()
-
-    await waitFor(() => {
-      expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
-    })
-
-    expect(capturedRestartingSessionId).toBeNull()
-  })
-
-  it('does not show restart button when no active agents', async () => {
+  it('does not show AgentLogPanel when no active agents', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue({
       ...workflowWithActivePhase,
@@ -244,10 +171,10 @@ describe('TicketDetailPage - Restart agent', () => {
     renderPage()
     await goToWorkflowTab()
 
-    expect(screen.queryByTestId('restart-btn-implementor')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('running-agent-log')).not.toBeInTheDocument()
   })
 
-  it('does not show restart button for agent without session_id', async () => {
+  it('shows running agent without session_id in AgentLogPanel', async () => {
     const workflowNoSession: WorkflowResponse = {
       ...workflowWithSessionId,
       state: {
@@ -276,7 +203,6 @@ describe('TicketDetailPage - Restart agent', () => {
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
     })
-
-    expect(screen.queryByTestId('restart-btn-implementor')).not.toBeInTheDocument()
+    expect(screen.getByTestId('agent-row-implementor')).toBeInTheDocument()
   })
 })

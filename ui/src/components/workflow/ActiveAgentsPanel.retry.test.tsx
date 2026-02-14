@@ -233,7 +233,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      const buttons = screen.getAllByTitle('Retry failed agent')
+      const buttons = screen.getAllByLabelText('Retry failed agent')
       expect(buttons).toHaveLength(2)
     })
 
@@ -251,7 +251,9 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      await user.click(screen.getByTitle('Retry failed agent'))
+      await user.click(screen.getByLabelText('Retry failed agent'))
+      // Confirm dialog opens, click "Retry"
+      await user.click(screen.getByText('Retry'))
       expect(onRetryFailed).toHaveBeenCalledWith('sess-failed-1')
       expect(onRetryFailed).toHaveBeenCalledTimes(1)
     })
@@ -269,7 +271,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      expect(screen.getByTitle('Retry failed agent')).toBeDisabled()
+      expect(screen.getByLabelText('Retry failed agent')).toBeDisabled()
     })
 
     it('disables all retry buttons when any retryingSessionId is set', () => {
@@ -288,7 +290,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      const buttons = screen.getAllByTitle('Retry failed agent')
+      const buttons = screen.getAllByLabelText('Retry failed agent')
       buttons.forEach(button => {
         expect(button).toBeDisabled()
       })
@@ -307,7 +309,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      expect(screen.getByTitle('Retry failed agent')).not.toBeDisabled()
+      expect(screen.getByLabelText('Retry failed agent')).not.toBeDisabled()
     })
 
     it('does not call onRetryFailed when button is disabled', async () => {
@@ -325,7 +327,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      await user.click(screen.getByTitle('Retry failed agent'))
+      await user.click(screen.getByLabelText('Retry failed agent'))
       expect(onRetryFailed).not.toHaveBeenCalled()
     })
 
@@ -344,7 +346,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
       // Section still shows
       expect(screen.getByText('Failed Agents')).toBeInTheDocument()
       // But no retry button
-      expect(screen.queryByTitle('Retry failed agent')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Retry failed agent')).not.toBeInTheDocument()
     })
   })
 
@@ -361,7 +363,7 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      const button = screen.getByTitle('Retry failed agent')
+      const button = screen.getByLabelText('Retry failed agent')
       expect(button.className).toContain('text-red')
       expect(button.className).toContain('border-red')
     })
@@ -406,8 +408,8 @@ describe('ActiveAgentsPanel - retry failed agents', () => {
         />
       )
 
-      expect(screen.getByTitle('Restart agent (save context, relaunch)')).toBeInTheDocument()
-      expect(screen.getByTitle('Retry failed agent')).toBeInTheDocument()
+      expect(screen.getByLabelText('Restart agent (save context, relaunch)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Retry failed agent')).toBeInTheDocument()
     })
   })
 })

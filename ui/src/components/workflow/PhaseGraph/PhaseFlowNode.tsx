@@ -77,6 +77,9 @@ export interface PhaseFlowNodeData extends PhaseNodeData {
   sessions?: AgentSession[]
   expandedAgentKey?: string | null
   onAgentClick?: (agentKey: string | null) => void
+  onRetryFailed?: (sessionId: string) => void
+  retryingSessionId?: string | null
+  workflowStatus?: string
   [key: string]: unknown // Index signature for React Flow compatibility
 }
 
@@ -85,7 +88,7 @@ interface PhaseFlowNodeProps {
 }
 
 export function PhaseFlowNode({ data }: PhaseFlowNodeProps) {
-  const { name, status, result, isCurrent, activeAgents, historyEntries, sessions, expandedAgentKey, onAgentClick } = data
+  const { name, status, result, isCurrent, activeAgents, historyEntries, sessions, expandedAgentKey, onAgentClick, onRetryFailed, retryingSessionId, workflowStatus } = data
   const hasActiveAgents = activeAgents.length > 0 && status === 'in_progress'
 
   // Find sessions for active (running) agents in this phase
@@ -187,6 +190,9 @@ export function PhaseFlowNode({ data }: PhaseFlowNodeProps) {
                   session={session}
                   isExpanded={expandedAgentKey === agentKey}
                   onExpand={() => onAgentClick?.(expandedAgentKey === agentKey ? null : agentKey)}
+                  onRetryFailed={onRetryFailed}
+                  retryingSessionId={retryingSessionId}
+                  workflowStatus={workflowStatus}
                 />
               )
             })}

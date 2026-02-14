@@ -158,6 +158,8 @@ describe('TicketDetailPage - Retry failed agent', () => {
     })
 
     await user.click(screen.getByText('Retry Failed'))
+    // Confirm dialog opens, click "Retry" to confirm
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     await waitFor(() => {
       expect(workflowsApi.retryFailedAgent).toHaveBeenCalledWith(
@@ -198,6 +200,8 @@ describe('TicketDetailPage - Retry failed agent', () => {
     })
 
     await user.click(screen.getByText('Retry Failed'))
+    // Confirm dialog opens, click "Retry" to confirm
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     // Wait for mutation to complete and queries to be invalidated
     await waitFor(() => {
@@ -305,6 +309,8 @@ describe('TicketDetailPage - Retry failed agent', () => {
     })
 
     await user.click(screen.getByText('Retry Failed'))
+    // Confirm dialog opens, click "Retry" to confirm
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     await waitFor(() => {
       expect(workflowsApi.retryFailedAgent).toHaveBeenCalledWith(

@@ -33,7 +33,7 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      expect(screen.getByTitle('Restart agent (save context, relaunch)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Restart agent (save context, relaunch)')).toBeInTheDocument()
     })
 
     it('does not show restart button when onRestart is not provided', () => {
@@ -41,7 +41,7 @@ describe('ActiveAgentsPanel', () => {
         <ActiveAgentsPanel agents={{ 'impl:claude:sonnet': makeAgent() }} />
       )
 
-      expect(screen.queryByTitle('Restart agent (save context, relaunch)')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Restart agent (save context, relaunch)')).not.toBeInTheDocument()
     })
 
     it('does not show restart button for completed agent (has result)', () => {
@@ -54,7 +54,7 @@ describe('ActiveAgentsPanel', () => {
       )
 
       // Completed agents are not in the running list at all
-      expect(screen.queryByTitle('Restart agent (save context, relaunch)')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Restart agent (save context, relaunch)')).not.toBeInTheDocument()
     })
 
     it('does not show restart button for agent without session_id', () => {
@@ -66,7 +66,7 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      expect(screen.queryByTitle('Restart agent (save context, relaunch)')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Restart agent (save context, relaunch)')).not.toBeInTheDocument()
     })
   })
 
@@ -82,7 +82,9 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      await user.click(screen.getByTitle('Restart agent (save context, relaunch)'))
+      await user.click(screen.getByLabelText('Restart agent (save context, relaunch)'))
+      // Confirm dialog opens, click "Restart"
+      await user.click(screen.getByText('Restart'))
       expect(onRestart).toHaveBeenCalledWith('my-session-id')
       expect(onRestart).toHaveBeenCalledTimes(1)
     })
@@ -98,7 +100,7 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      const button = screen.getByTitle('Restart agent (save context, relaunch)')
+      const button = screen.getByLabelText('Restart agent (save context, relaunch)')
       expect(button).toBeDisabled()
     })
 
@@ -113,7 +115,7 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      const button = screen.getByTitle('Restart agent (save context, relaunch)')
+      const button = screen.getByLabelText('Restart agent (save context, relaunch)')
       expect(button).not.toBeDisabled()
     })
 
@@ -129,7 +131,7 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      const button = screen.getByTitle('Restart agent (save context, relaunch)')
+      const button = screen.getByLabelText('Restart agent (save context, relaunch)')
       await user.click(button)
       expect(onRestart).not.toHaveBeenCalled()
     })
@@ -152,7 +154,7 @@ describe('ActiveAgentsPanel', () => {
         <ActiveAgentsPanel agents={agents} onRestart={onRestart} />
       )
 
-      const buttons = screen.getAllByTitle('Restart agent (save context, relaunch)')
+      const buttons = screen.getAllByLabelText('Restart agent (save context, relaunch)')
       expect(buttons).toHaveLength(2)
     })
 
@@ -176,7 +178,7 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      const buttons = screen.getAllByTitle('Restart agent (save context, relaunch)')
+      const buttons = screen.getAllByLabelText('Restart agent (save context, relaunch)')
       // First agent (sess-1) should be disabled
       expect(buttons[0]).toBeDisabled()
       // Second agent (sess-2) should not be disabled
@@ -200,8 +202,10 @@ describe('ActiveAgentsPanel', () => {
         <ActiveAgentsPanel agents={agents} onRestart={onRestart} />
       )
 
-      const buttons = screen.getAllByTitle('Restart agent (save context, relaunch)')
+      const buttons = screen.getAllByLabelText('Restart agent (save context, relaunch)')
       await user.click(buttons[1])
+      // Confirm dialog opens, click "Restart"
+      await user.click(screen.getByText('Restart'))
       expect(onRestart).toHaveBeenCalledWith('sess-2')
     })
   })
@@ -218,7 +222,7 @@ describe('ActiveAgentsPanel', () => {
         />
       )
 
-      const button = screen.getByTitle('Restart agent (save context, relaunch)')
+      const button = screen.getByLabelText('Restart agent (save context, relaunch)')
       expect(button).not.toBeDisabled()
     })
   })

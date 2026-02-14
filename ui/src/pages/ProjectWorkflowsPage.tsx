@@ -263,22 +263,6 @@ export function ProjectWorkflowsPage() {
               })
             }
             stopPending={stopMutation.isPending}
-            onRestart={(sessionId) =>
-              currentProject &&
-              restartMutation.mutate({
-                projectId: currentProject,
-                params: {
-                  workflow: displayedState?.workflow ?? '',
-                  session_id: sessionId,
-                  instance_id: resolvedInstanceId || undefined,
-                },
-              })
-            }
-            restartingSessionId={
-              restartMutation.isPending
-                ? (restartMutation.variables?.params.session_id ?? null)
-                : null
-            }
             onRetryFailed={(sessionId) =>
               currentProject &&
               retryFailedMutation.mutate({

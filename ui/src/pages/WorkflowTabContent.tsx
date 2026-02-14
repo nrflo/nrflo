@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle,
@@ -14,6 +15,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Select'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
@@ -45,8 +48,6 @@ interface WorkflowTabContentProps {
   onShowRunDialog?: () => void
   onShowEpicRunDialog?: () => void
   activeChainId?: string | null
-  onRestart?: (sessionId: string) => void
-  restartingSessionId?: string | null
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
   isCompletedProjectWorkflow?: boolean
@@ -76,13 +77,13 @@ export function WorkflowTabContent({
   onShowRunDialog,
   onShowEpicRunDialog,
   activeChainId,
-  onRestart,
-  restartingSessionId,
   onRetryFailed,
   retryingSessionId,
   isCompletedProjectWorkflow,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
+  const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
+  const failedAgent = agentHistory?.find(a => a.result === 'fail')
 
   return (
     <div className={cn(
@@ -162,18 +163,17 @@ export function WorkflowTabContent({
                 </>
               )}
             </div>
-            {displayedState.status === 'failed' && onRetryFailed && (() => {
-              const failedAgent = agentHistory?.find(a => a.result === 'fail')
-              return failedAgent?.session_id ? (
-                <div className="flex items-center gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm dark:border-red-800 dark:bg-red-950/30">
-                  <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                    <XCircle className="h-4 w-4" />
-                    <span className="font-medium">Workflow Failed</span>
-                  </div>
+            {displayedState.status === 'failed' && onRetryFailed && failedAgent?.session_id && (
+              <div className="flex items-center gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm dark:border-red-800 dark:bg-red-950/30">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                  <XCircle className="h-4 w-4" />
+                  <span className="font-medium">Workflow Failed</span>
+                </div>
+                <Tooltip text="Retry the failed layer — all agents in that layer will be re-run" placement="top">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onRetryFailed(failedAgent.session_id!)}
+                    onClick={() => setBannerConfirmOpen(true)}
                     disabled={!!retryingSessionId}
                     className="ml-auto text-red-600 hover:text-red-700 border-red-300 dark:border-red-700"
                   >
@@ -184,9 +184,18 @@ export function WorkflowTabContent({
                     )}
                     Retry Failed
                   </Button>
-                </div>
-              ) : null
-            })()}
+                </Tooltip>
+                <ConfirmDialog
+                  open={bannerConfirmOpen}
+                  onClose={() => setBannerConfirmOpen(false)}
+                  onConfirm={() => onRetryFailed(failedAgent.session_id!)}
+                  title="Retry Failed Workflow"
+                  message={`This will retry the failed "${failedAgent.agent_type}" agent from the failed layer. All agents in this layer will be re-run.`}
+                  confirmLabel="Retry"
+                  variant="destructive"
+                />
+              </div>
+            )}
             {(displayedState.status === 'completed' || displayedState.status === 'project_completed') && (
               <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -227,6 +236,8 @@ export function WorkflowTabContent({
                 onAgentSelect={onAgentSelect}
                 logPanelCollapsed={logPanelCollapsed}
                 showFindings={!isCompletedProjectWorkflow}
+                onRetryFailed={onRetryFailed}
+                retryingSessionId={retryingSessionId}
               />
             )}
           </>
@@ -272,8 +283,6 @@ export function WorkflowTabContent({
           onToggleCollapse={onToggleLogPanel}
           selectedAgent={selectedPanelAgent}
           onAgentSelect={onAgentSelect}
-          onRestart={onRestart}
-          restartingSessionId={restartingSessionId}
           onRetryFailed={onRetryFailed}
           retryingSessionId={retryingSessionId}
           workflowStatus={displayedState?.status}

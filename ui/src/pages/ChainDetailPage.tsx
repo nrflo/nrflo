@@ -32,8 +32,8 @@ function ItemRow({ item }: { item: ChainExecutionItem }) {
 
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0">
-      <span className="text-xs font-mono text-muted-foreground w-6 text-right shrink-0">
-        {item.position + 1}
+      <span className="flex items-center justify-end text-xs font-mono text-muted-foreground w-6 shrink-0">
+        {item.status === 'running' ? <Spinner size="sm" /> : item.position + 1}
       </span>
       <Link
         to={`/tickets/${item.ticket_id}`}

@@ -950,6 +950,348 @@ describe('ChainDetailPage - Ticket Title Display', () => {
   })
 })
 
+describe('ChainDetailPage - Spinner on Running Items', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStartChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+  })
+
+  it('displays spinner instead of ordinal number when item status is running', () => {
+    const chain = createMockChain({
+      status: 'running',
+      items: [
+        createMockItem({
+          id: 'item-1',
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'running',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Should find a spinner with role="status"
+    const spinner = container.querySelector('[role="status"]')
+    expect(spinner).toBeInTheDocument()
+    expect(spinner).toHaveClass('animate-spin')
+
+    // Should NOT display the ordinal number "1"
+    const itemRow = container.querySelector('.flex.items-center.gap-4.px-4.py-3')
+    const ordinalColumn = itemRow?.querySelector('.w-6.shrink-0')
+    expect(ordinalColumn?.textContent).not.toContain('1')
+  })
+
+  it('displays spinner with size="sm" for running items', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          position: 0,
+          status: 'running',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Spinner with sm size should have h-4 w-4 classes
+    const spinner = container.querySelector('[role="status"]')
+    expect(spinner).toHaveClass('h-4')
+    expect(spinner).toHaveClass('w-4')
+  })
+
+  it('displays ordinal number for pending items', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          position: 0,
+          status: 'pending',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Should display ordinal number "1" (position + 1)
+    expect(screen.getByText('1')).toBeInTheDocument()
+
+    // Should NOT have a spinner
+    const spinner = container.querySelector('[role="status"]')
+    expect(spinner).not.toBeInTheDocument()
+  })
+
+  it('displays ordinal number for completed items', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          position: 2,
+          status: 'completed',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Should display ordinal number "3" (position + 1)
+    expect(screen.getByText('3')).toBeInTheDocument()
+  })
+
+  it('displays ordinal number for failed items', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          position: 1,
+          status: 'failed',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Should display ordinal number "2" (position + 1)
+    expect(screen.getByText('2')).toBeInTheDocument()
+  })
+
+  it('displays ordinal number for canceled items', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          position: 0,
+          status: 'canceled',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Should display ordinal number "1" (position + 1)
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('displays ordinal number for skipped items', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          position: 0,
+          status: 'skipped',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Should display ordinal number "1" (position + 1)
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('handles mixed item statuses - spinner only on running items', () => {
+    const chain = createMockChain({
+      status: 'running',
+      items: [
+        createMockItem({
+          id: 'item-1',
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'completed',
+        }),
+        createMockItem({
+          id: 'item-2',
+          ticket_id: 'TICKET-2',
+          position: 1,
+          status: 'running',
+        }),
+        createMockItem({
+          id: 'item-3',
+          ticket_id: 'TICKET-3',
+          position: 2,
+          status: 'pending',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Should have exactly one spinner (for the running item)
+    const spinners = container.querySelectorAll('[role="status"]')
+    expect(spinners.length).toBe(1)
+
+    // Should display ordinal numbers for completed and pending items
+    expect(screen.getByText('1')).toBeInTheDocument() // position 0
+    expect(screen.getByText('3')).toBeInTheDocument() // position 2
+  })
+
+  it('maintains layout alignment with spinner in w-6 column', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          position: 0,
+          status: 'running',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // The column should still have w-6 class
+    const ordinalColumn = container.querySelector('.w-6.shrink-0')
+    expect(ordinalColumn).toBeInTheDocument()
+    expect(ordinalColumn).toHaveClass('flex')
+    expect(ordinalColumn).toHaveClass('items-center')
+    expect(ordinalColumn).toHaveClass('justify-end')
+
+    // Spinner should be inside this column
+    const spinner = ordinalColumn?.querySelector('[role="status"]')
+    expect(spinner).toBeInTheDocument()
+  })
+
+  it('spinner does not cause layout shift compared to ordinal numbers', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          id: 'item-1',
+          position: 0,
+          status: 'completed',
+        }),
+        createMockItem({
+          id: 'item-2',
+          ticket_id: 'TICKET-2',
+          position: 1,
+          status: 'running',
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Both rows should have the same width for the first column
+    const columns = container.querySelectorAll('.w-6.shrink-0')
+    expect(columns.length).toBe(2)
+    // Both should have w-6 class ensuring same width
+    columns.forEach((col) => {
+      expect(col).toHaveClass('w-6')
+    })
+  })
+
+  it('updates from ordinal to spinner when item transitions to running status', () => {
+    const pendingChain = createMockChain({
+      items: [
+        createMockItem({
+          position: 0,
+          status: 'pending',
+        }),
+      ],
+    })
+
+    mockUseChain.mockReturnValue({
+      data: pendingChain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Initially should show ordinal number
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(container.querySelector('[role="status"]')).not.toBeInTheDocument()
+
+    // Update to running status
+    const runningChain = createMockChain({
+      items: [
+        createMockItem({
+          position: 0,
+          status: 'running',
+        }),
+      ],
+    })
+
+    mockUseChain.mockReturnValue({
+      data: runningChain,
+      isLoading: false,
+      error: null,
+    })
+
+    // Re-render would happen via React Query refetch
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/chains/chain-123']}>
+          <Routes>
+            <Route path="/chains/:id" element={<ChainDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Should now show spinner instead
+    const spinner = screen.getAllByRole('status')[0]
+    expect(spinner).toBeInTheDocument()
+    expect(spinner).toHaveClass('animate-spin')
+  })
+})
+
 describe('ChainDetailPage - Tokens Used Column', () => {
   beforeEach(() => {
     vi.clearAllMocks()

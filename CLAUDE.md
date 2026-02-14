@@ -4,7 +4,7 @@
 
 nrworkflow is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents. Supports multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), and real-time WebSocket updates.
 
-The server runs as `nrworkflow serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use a minimal CLI subset (`agent complete/fail/continue`, `findings add/append/get/delete`) to report results.
+The server runs as `nrworkflow_server serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use the `nrworkflow` CLI binary (`agent complete/fail/continue`, `findings add/append/get/delete`) to report results.
 
 ## New features
 Do not keep old / deprecated / backward compat / legacy code
@@ -69,10 +69,10 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 ## Architecture Principles
 
-1. **Server-only**: `nrworkflow serve` is the only user-facing command; all management via web UI
+1. **Server-only**: `nrworkflow_server serve` is the only user-facing command; all management via web UI
 2. **Agent CLI subset**: Spawned agents use `agent complete/fail/continue` and `findings add/append/get/delete` via Unix socket
 3. **Auto-migrate**: Database migrations run automatically on server startup
-4. **Go binary**: Single `nrworkflow` binary serves both server and agent-facing CLI roles
+4. **Two Go binaries**: `nrworkflow_server` (serve command only) and `nrworkflow` (agent/findings/tickets/deps CLI)
 5. **Project-scoped**: Project discovered from `NRWORKFLOW_PROJECT` env variable
 6. **Single database**: `~/projects/2026/nrworkflow/nrworkflow.data` (SQLite, global for all projects)
 7. **Connection Pool**: DB uses connection pooling (10 max, 5 idle)
@@ -164,8 +164,8 @@ Chains allow sequential execution of multiple tickets with a single workflow. Ti
 
 | Script | Purpose |
 |--------|---------|
-| `restart.sh` | Kill existing servers, rebuild BE + UI, start both in background |
+| `restart.sh` | Kill existing servers, rebuild both binaries (`make build-all`), start `nrworkflow_server` + UI in background |
 | `stop.sh` | Stop running BE + UI servers |
-| `ui/start-server.sh` | Start both servers in foreground (interactive mode) |
+| `ui/start-server.sh` | Start both servers in foreground (uses `nrworkflow_server serve`) |
 
 Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.log` when using `restart.sh`.

@@ -1,12 +1,13 @@
 # Claude Code Instructions for nrworkflow Backend
 
-Go backend for nrworkflow. Single binary runs as server (`nrworkflow serve`) providing HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. A minimal CLI subset (`agent complete/fail/continue`, `findings add/append/get/delete`) is available for spawned agents.
+Go backend for nrworkflow. Two binaries: `nrworkflow_server` (server) and `nrworkflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. The CLI binary exposes agent commands (`agent complete/fail/continue`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
 
 ## Project Structure
 
 ```
 be/
-├── cmd/nrworkflow/main.go       # Entry point
+├── cmd/nrworkflow/main.go       # CLI binary entry point (agent, findings, tickets, deps)
+├── cmd/server/main.go           # Server binary entry point (serve)
 ├── internal/
 │   ├── cli/                     # Cobra commands
 │   │   ├── root.go              # Root command, global flags, project discovery
@@ -145,9 +146,11 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 
 ```bash
 cd ~/projects/2026/nrworkflow/be
-make build            # Build binary
-make build-release    # Optimized build
-sudo make install     # Install to /usr/local/bin
+make build            # Build CLI binary (nrworkflow)
+make build-server     # Build server binary (nrworkflow_server)
+make build-all        # Build both binaries
+make build-release    # Optimized build (both binaries)
+sudo make install     # Install both to /usr/local/bin
 make clean            # Clean build artifacts
 ```
 

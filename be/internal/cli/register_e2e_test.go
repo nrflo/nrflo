@@ -8,7 +8,7 @@ import (
 
 // TestE2E_ServerRegistration tests the complete server command registration flow
 func TestE2E_ServerRegistration(t *testing.T) {
-	// Simulate what happens in a server binary (cmd/nrworkflow_server/main.go)
+	// Simulate what happens in the server binary (cmd/server/main.go)
 	testRootCmd := &cobra.Command{Use: "nrworkflow"}
 	testRootCmd.AddCommand(versionCmd)
 
@@ -68,53 +68,6 @@ func TestE2E_CLIRegistration(t *testing.T) {
 
 	expectedCommands := []string{"agent", "findings", "tickets", "deps", "version"}
 	t.Logf("CLI binary would have commands: %v", expectedCommands)
-}
-
-// TestE2E_CombinedRegistration tests the current main.go behavior (both registered)
-func TestE2E_CombinedRegistration(t *testing.T) {
-	// This simulates the current be/cmd/nrworkflow/main.go which calls both registration functions
-
-	testRootCmd := &cobra.Command{Use: "nrworkflow"}
-	testRootCmd.AddCommand(versionCmd)
-
-	originalRootCmd := rootCmd
-	rootCmd = testRootCmd
-	defer func() { rootCmd = originalRootCmd }()
-
-	// Call both registration functions (as main.go does)
-	RegisterServerCommands()
-	// Note: Can't call RegisterCLICommands again due to flag re-registration issue
-	// But we can manually add the commands to verify the combined behavior
-	rootCmd.AddCommand(agentCmd)
-	rootCmd.AddCommand(findingsCmd)
-	rootCmd.AddCommand(ticketsCmd)
-	rootCmd.AddCommand(depsCmd)
-
-	// Verify all commands are registered
-	commands := getCommandNames(rootCmd)
-
-	allExpectedCommands := []string{"serve", "agent", "findings", "tickets", "deps", "version"}
-	for _, expected := range allExpectedCommands {
-		if !contains(commands, expected) {
-			t.Errorf("combined binary: missing expected command %q", expected)
-		}
-	}
-
-	// Verify command count: serve + agent + findings + tickets + deps + version = 6
-	if len(commands) != 6 {
-		t.Errorf("combined binary: got %d commands, want 6. Commands: %v", len(commands), commands)
-	}
-
-	// Verify versionCmd appears exactly once
-	versionCount := 0
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "version" {
-			versionCount++
-		}
-	}
-	if versionCount != 1 {
-		t.Errorf("combined binary: versionCmd appears %d times, want 1", versionCount)
-	}
 }
 
 // TestE2E_SubcommandIntegrity verifies that subcommands remain attached after registration

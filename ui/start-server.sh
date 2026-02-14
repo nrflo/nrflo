@@ -14,15 +14,15 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}Starting nrworkflow API Server${NC}"
 echo "================================"
 
-# Check if nrworkflow is installed
-if ! command -v nrworkflow &> /dev/null; then
-    echo -e "${RED}Error: nrworkflow command not found${NC}"
-    echo "Please install nrworkflow first:"
-    echo "  cd ~/.nrworkflow/be && make build && sudo cp nrworkflow /usr/local/bin/"
+# Check if nrworkflow_server is installed
+if ! command -v nrworkflow_server &> /dev/null; then
+    echo -e "${RED}Error: nrworkflow_server command not found${NC}"
+    echo "Please install nrworkflow_server first:"
+    echo "  cd ~/.nrworkflow/be && make build-all && sudo make install"
     exit 1
 fi
 
-echo -e "Using: ${YELLOW}$(which nrworkflow)${NC}"
+echo -e "Using: ${YELLOW}$(which nrworkflow_server)${NC}"
 
 # Kill existing server if running on API port
 if lsof -i :$PORT > /dev/null 2>&1; then
@@ -45,7 +45,7 @@ echo "Press Ctrl+C to stop"
 echo ""
 
 # Start the API server in background
-nrworkflow serve --port=$PORT &
+nrworkflow_server serve --port=$PORT &
 API_PID=$!
 
 # Give the API server a moment to start

@@ -56,7 +56,7 @@ echo ""
 echo -e "${YELLOW}[2/4] Building backend...${NC}"
 
 cd "$SCRIPT_DIR/be"
-if make build; then
+if make build-all; then
     echo -e "${GREEN}  Backend built successfully${NC}"
 else
     echo -e "${RED}  Backend build failed!${NC}"
@@ -86,7 +86,7 @@ echo -e "${YELLOW}[4/4] Starting servers...${NC}"
 # Start backend
 cd "$SCRIPT_DIR"
 echo "  Starting backend on port $PORT..."
-nohup "$SCRIPT_DIR/be/nrworkflow" serve --port=$PORT > "$BE_LOG" 2>&1 &
+nohup "$SCRIPT_DIR/be/nrworkflow_server" serve --port=$PORT > "$BE_LOG" 2>&1 &
 BE_PID=$!
 echo "  Backend PID: $BE_PID"
 
@@ -116,7 +116,8 @@ if ! kill -0 $UI_PID 2>/dev/null; then
 fi
 
 sudo ln -sf "$SCRIPT_DIR/be/nrworkflow" /usr/local/bin/nrworkflow
-echo "  Symlinked to /usr/local/bin/nrworkflow"
+sudo ln -sf "$SCRIPT_DIR/be/nrworkflow_server" /usr/local/bin/nrworkflow_server
+echo "  Symlinked to /usr/local/bin/nrworkflow and /usr/local/bin/nrworkflow_server"
 
 echo -e "${GREEN}  Done${NC}"
 echo ""

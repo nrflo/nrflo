@@ -9,11 +9,6 @@ import (
 	"be/internal/client"
 )
 
-// Add findings command to root
-func init() {
-	rootCmd.AddCommand(findingsCmd)
-}
-
 var findingsCmd = &cobra.Command{
 	Use:   "findings",
 	Short: "Manage workflow findings",

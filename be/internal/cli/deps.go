@@ -10,10 +10,6 @@ import (
 	"be/internal/model"
 )
 
-func init() {
-	rootCmd.AddCommand(depsCmd)
-}
-
 var depsCmd = &cobra.Command{
 	Use:   "deps",
 	Short: "Dependency management commands",

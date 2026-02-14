@@ -17,13 +17,6 @@ var (
 	ticketsJSON   bool
 )
 
-func init() {
-	rootCmd.AddCommand(ticketsCmd)
-
-	// Common flags
-	ticketsCmd.PersistentFlags().StringVar(&ticketsServer, "server", "", "API server URL (default: NRWORKFLOW_API_URL or http://localhost:6587)")
-	ticketsCmd.PersistentFlags().BoolVar(&ticketsJSON, "json", false, "Output as JSON")
-}
 
 func getHTTPClient() *client.HTTPClient {
 	baseURL := ticketsServer

@@ -22,7 +22,7 @@ var ProjectRoot string
 
 var rootCmd = &cobra.Command{
 	Use:   "nrworkflow",
-	Short: "nrworkflow - Multi-workflow agent orchestration server",
+	Short: "nrworkflow - Multi-workflow agent orchestration",
 	Long: `nrworkflow is a server for ticket management and AI agent orchestration.
 
 Start the server with: nrworkflow serve
@@ -41,8 +41,6 @@ Agent CLI subset (used by spawned agents):
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&DataPath, "data", "D", "", "Path to database file")
-
-	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

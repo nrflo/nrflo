@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+	cli.RegisterServerCommands()
+	cli.RegisterCLICommands()
 	if err := cli.Execute(); err != nil {
 		os.Exit(1)
 	}

@@ -8,11 +8,6 @@ import (
 	"be/internal/types"
 )
 
-// Add agent command to root
-func init() {
-	rootCmd.AddCommand(agentCmd)
-}
-
 var agentCmd = &cobra.Command{
 	Use:   "agent",
 	Short: "Agent lifecycle commands (used by spawned agents)",

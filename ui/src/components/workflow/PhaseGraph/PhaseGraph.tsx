@@ -1,5 +1,5 @@
-import { useMemo, useCallback } from 'react'
-import { ReactFlow, Background, Controls, type Node, type Edge, type NodeTypes } from '@xyflow/react'
+import { useMemo, useCallback, useEffect } from 'react'
+import { ReactFlow, Background, Controls, useReactFlow, type Node, type Edge, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
 import { getLayoutedElements } from './layout'
@@ -9,6 +9,17 @@ import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/wor
 
 const nodeTypes: NodeTypes = {
   agent: AgentFlowNode,
+}
+
+/** Calls fitView() whenever the node set changes (e.g. workflow start, phase transitions). */
+function FitViewOnChange({ nodeKey }: { nodeKey: string }) {
+  const { fitView } = useReactFlow()
+  useEffect(() => {
+    // Small delay to let React Flow finish internal layout before fitting
+    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 50)
+    return () => clearTimeout(timer)
+  }, [nodeKey, fitView])
+  return null
 }
 
 export function PhaseGraph({
@@ -264,6 +275,12 @@ export function PhaseGraph({
     return getLayoutedElements(initialNodes, initialEdges, null)
   }, [initialNodes, initialEdges])
 
+  // Stable key derived from node IDs to trigger fitView on node set changes
+  const nodeKey = useMemo(
+    () => layoutedNodes.map(n => n.id).join(','),
+    [layoutedNodes]
+  )
+
   if (layoutedNodes.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
@@ -297,6 +314,7 @@ export function PhaseGraph({
         preventScrolling={false}
         proOptions={{ hideAttribution: true }}
       >
+        <FitViewOnChange nodeKey={nodeKey} />
         <Background color="transparent" />
         <Controls showInteractive={false} position="top-left" />
       </ReactFlow>

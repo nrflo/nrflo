@@ -784,3 +784,86 @@ func TestChainUpdate_TicketTitlesInResponse(t *testing.T) {
 		}
 	}
 }
+
+// TestChainAppend_SuccessWithTitles verifies appending tickets to running chain returns updated chain with titles
+func TestChainAppend_SuccessWithTitles(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"A": base,
+		"B": base.Add(time.Second),
+		"C": base.Add(2 * time.Second),
+		"D": base.Add(3 * time.Second),
+	})
+	createChainDependencies(t, env, map[string][]string{
+		"B": {"A"},
+		"C": {"B"},
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+
+	// Create chain with A and B, mark as running
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Append Test",
+		WorkflowName: "test",
+		TicketIDs:    []string{"A", "B"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	chainRepo := repo.NewChainRepo(env.Pool)
+	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
+		t.Fatalf("failed to mark chain as running: %v", err)
+	}
+
+	// Append C (depends on B, already in chain) and D (no deps)
+	updated, err := chainSvc.AppendToChain(chain.ID, &types.ChainAppendRequest{
+		TicketIDs: []string{"C", "D"},
+	})
+	if err != nil {
+		t.Fatalf("AppendToChain failed: %v", err)
+	}
+
+	// Should have 4 items: A, B, C, D
+	if len(updated.Items) != 4 {
+		t.Fatalf("expected 4 items after append, got %d", len(updated.Items))
+	}
+
+	// Verify order: A (0), B (1), C (2), D (3)
+	expectedOrder := []string{"a", "b", "c", "d"}
+	for i, expected := range expectedOrder {
+		if updated.Items[i].TicketID != expected {
+			t.Errorf("item %d: expected %s, got %s", i, expected, updated.Items[i].TicketID)
+		}
+		if updated.Items[i].Position != i {
+			t.Errorf("item %d: expected position %d, got %d", i, i, updated.Items[i].Position)
+		}
+	}
+
+	// Verify all items have titles
+	for _, item := range updated.Items {
+		if item.TicketTitle == "" {
+			t.Errorf("expected non-empty title for %s", item.TicketID)
+		}
+	}
+
+	// Verify new items are pending
+	if updated.Items[2].Status != model.ChainItemPending {
+		t.Errorf("expected C to be pending, got %s", updated.Items[2].Status)
+	}
+	if updated.Items[3].Status != model.ChainItemPending {
+		t.Errorf("expected D to be pending, got %s", updated.Items[3].Status)
+	}
+
+	// Verify locks were acquired for new tickets
+	lockRepo := repo.NewChainLockRepo(env.Pool)
+	conflicts, err := lockRepo.CheckConflicts(env.ProjectID, []string{"C", "D"}, "")
+	if err != nil {
+		t.Fatalf("CheckConflicts failed: %v", err)
+	}
+	if len(conflicts) != 2 {
+		t.Errorf("expected C and D to be locked, got %d conflicts: %v", len(conflicts), conflicts)
+	}
+}

@@ -3,6 +3,7 @@ import type {
   ChainExecution,
   ChainCreateRequest,
   ChainUpdateRequest,
+  ChainAppendRequest,
 } from '@/types/chain'
 
 export interface ListChainsParams {
@@ -60,6 +61,16 @@ export async function cancelChain(
   return apiPost<{ status: string; chain_id: string }>(
     `/api/v1/chains/${encodeURIComponent(id)}/cancel`,
     {}
+  )
+}
+
+export async function appendToChain(
+  id: string,
+  data: ChainAppendRequest
+): Promise<ChainExecution> {
+  return apiPost<ChainExecution>(
+    `/api/v1/chains/${encodeURIComponent(id)}/append`,
+    data
   )
 }
 

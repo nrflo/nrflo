@@ -11,6 +11,7 @@ import {
   updateChain,
   startChain,
   cancelChain,
+  appendToChain,
   runEpicWorkflow,
   type ListChainsParams,
   type RunEpicWorkflowParams,
@@ -19,6 +20,7 @@ import type {
   ChainExecution,
   ChainCreateRequest,
   ChainUpdateRequest,
+  ChainAppendRequest,
 } from '@/types/chain'
 import { useProjectStore } from '@/stores/projectStore'
 
@@ -104,6 +106,18 @@ export function useCancelChain() {
     mutationFn: (id: string) => cancelChain(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: chainKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: chainKeys.lists() })
+    },
+  })
+}
+
+export function useAppendToChain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ChainAppendRequest }) =>
+      appendToChain(id, data),
+    onSuccess: (chain: ChainExecution) => {
+      queryClient.invalidateQueries({ queryKey: chainKeys.detail(chain.id) })
       queryClient.invalidateQueries({ queryKey: chainKeys.lists() })
     },
   })

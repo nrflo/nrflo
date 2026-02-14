@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { getProject } from '../api/client'
 import { ticketKeys, projectWorkflowKeys } from './useTickets'
+import { chainKeys } from './useChains'
 
 // Event types from backend
 export type WSEventType =
@@ -23,6 +24,7 @@ export type WSEventType =
   | 'orchestration.failed'
   | 'orchestration.retried'
   | 'orchestration.callback'
+  | 'chain.updated'
   | 'ticket.updated'
   | 'test.echo'
 
@@ -188,6 +190,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         } else {
           qc.invalidateQueries({ queryKey: ticketKeys.detail(ticket_id) })
           qc.invalidateQueries({ queryKey: ticketKeys.workflow(ticket_id) })
+        }
+        break
+
+      case 'chain.updated':
+        qc.invalidateQueries({ queryKey: chainKeys.lists() })
+        if (event.data?.chain_id) {
+          qc.invalidateQueries({ queryKey: chainKeys.detail(event.data.chain_id as string) })
         }
         break
 

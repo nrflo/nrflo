@@ -146,6 +146,35 @@ func (r *ChainItemRepo) GetNextPending(chainID string) (*model.ChainExecutionIte
 	return item, err
 }
 
+// GetMaxPosition returns the maximum position in a chain, or -1 if no items exist.
+func (r *ChainItemRepo) GetMaxPosition(chainID string) (int, error) {
+	var maxPos int
+	err := r.pool.QueryRow(
+		`SELECT COALESCE(MAX(position), -1) FROM chain_execution_items WHERE chain_id = ?`,
+		chainID).Scan(&maxPos)
+	return maxPos, err
+}
+
+// GetTicketIDsByChain returns all ticket IDs for a chain.
+func (r *ChainItemRepo) GetTicketIDsByChain(chainID string) ([]string, error) {
+	rows, err := r.pool.Query(
+		`SELECT ticket_id FROM chain_execution_items WHERE chain_id = ?`, chainID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // DeleteByChain deletes all items for a chain
 func (r *ChainItemRepo) DeleteByChain(chainID string) error {
 	_, err := r.pool.Exec(`DELETE FROM chain_execution_items WHERE chain_id = ?`, chainID)

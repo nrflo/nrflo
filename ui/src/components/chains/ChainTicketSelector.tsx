@@ -11,9 +11,10 @@ interface ChainTicketSelectorProps {
   selectedIds: string[]
   onChange: (ids: string[]) => void
   onEpicIdsChange?: (epicIds: string[]) => void
+  excludeIds?: Set<string>
 }
 
-export function ChainTicketSelector({ selectedIds, onChange, onEpicIdsChange }: ChainTicketSelectorProps) {
+export function ChainTicketSelector({ selectedIds, onChange, onEpicIdsChange, excludeIds }: ChainTicketSelectorProps) {
   const [search, setSearch] = useState('')
   const [activeEpicIds, setActiveEpicIds] = useState<string[]>([])
   const { data, isLoading } = useTicketList({ status: 'open' })
@@ -80,8 +81,8 @@ export function ChainTicketSelector({ selectedIds, onChange, onEpicIdsChange }: 
   }, [tickets, selectedIds, onChange, epicChildMap, activeEpicIds, activeEpicChildIds, updateEpicIds])
 
   const filtered = useMemo(() => {
-    // Hide children of selected epics from the list
-    let visible = tickets.filter((t) => !activeEpicChildIds.has(t.id))
+    // Hide children of selected epics and explicitly excluded tickets from the list
+    let visible = tickets.filter((t) => !activeEpicChildIds.has(t.id) && !excludeIds?.has(t.id))
     if (search) {
       const q = search.toLowerCase()
       visible = visible.filter(
@@ -90,7 +91,7 @@ export function ChainTicketSelector({ selectedIds, onChange, onEpicIdsChange }: 
       )
     }
     return visible
-  }, [tickets, search, activeEpicChildIds])
+  }, [tickets, search, activeEpicChildIds, excludeIds])
 
   if (isLoading) {
     return (

@@ -80,6 +80,9 @@ func (s *Server) Stop(ctx context.Context) error {
 		s.wsHub.Stop()
 	}
 	if s.httpServer != nil {
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		return s.httpServer.Shutdown(ctx)
 	}
 	return nil
@@ -234,6 +237,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/chains/{id}", s.handleUpdateChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/start", s.handleStartChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/cancel", s.handleCancelChain)
+	mux.HandleFunc("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
 
 	// Search
 	mux.HandleFunc("GET /api/v1/search", s.handleSearch)

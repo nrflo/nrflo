@@ -43,3 +43,7 @@ export interface ChainUpdateRequest {
   name?: string
   ticket_ids?: string[]
 }
+
+export interface ChainAppendRequest {
+  ticket_ids: string[]
+}

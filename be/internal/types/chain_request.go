@@ -13,3 +13,8 @@ type ChainUpdateRequest struct {
 	Name      *string  `json:"name,omitempty"`
 	TicketIDs []string `json:"ticket_ids,omitempty"`
 }
+
+// ChainAppendRequest is the request for appending tickets to a running chain
+type ChainAppendRequest struct {
+	TicketIDs []string `json:"ticket_ids"`
+}

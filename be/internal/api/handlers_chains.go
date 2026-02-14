@@ -10,6 +10,7 @@ import (
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
+	"be/internal/ws"
 )
 
 // handleListChains lists chain executions for a project.
@@ -178,6 +179,52 @@ func (s *Server) handleCancelChain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "canceled", "chain_id": chainID})
+}
+
+// handleAppendToChain appends tickets to a running chain.
+// POST /api/v1/chains/{id}/append
+func (s *Server) handleAppendToChain(w http.ResponseWriter, r *http.Request) {
+	chainID := extractID(r)
+	if chainID == "" {
+		writeError(w, http.StatusBadRequest, "chain ID required")
+		return
+	}
+
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	var req types.ChainAppendRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	defer pool.Close()
+
+	chainSvc := service.NewChainService(pool)
+	chain, err := chainSvc.AppendToChain(chainID, &req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if s.wsHub != nil {
+		event := ws.NewEvent("chain.updated", projectID, "", "", map[string]interface{}{
+			"chain_id": chainID,
+			"action":   "append",
+		})
+		s.wsHub.Broadcast(event)
+	}
+
+	writeJSON(w, http.StatusOK, chain)
 }
 
 // handleRunEpicWorkflow creates a chain from an epic's child tickets and optionally starts it.

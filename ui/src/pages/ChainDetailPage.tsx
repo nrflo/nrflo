@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Play, XCircle, Edit } from 'lucide-react'
+import { ArrowLeft, Play, XCircle, Edit, ListPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
+import { AppendToChainDialog } from '@/components/chains/AppendToChainDialog'
 import { useChain, useStartChain, useCancelChain } from '@/hooks/useChains'
 import {
   statusColor,
@@ -62,9 +63,11 @@ function ItemRow({ item }: { item: ChainExecutionItem }) {
 function ChainActions({
   chain,
   onEdit,
+  onAppend,
 }: {
   chain: ChainExecution
   onEdit: () => void
+  onAppend: () => void
 }) {
   const startMutation = useStartChain()
   const cancelMutation = useCancelChain()
@@ -104,19 +107,25 @@ function ChainActions({
         </>
       )}
       {chain.status === 'running' && (
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleCancel}
-          disabled={cancelMutation.isPending}
-        >
-          {cancelMutation.isPending ? (
-            <Spinner size="sm" className="mr-1" />
-          ) : (
-            <XCircle className="h-4 w-4 mr-1" />
-          )}
-          Cancel
-        </Button>
+        <>
+          <Button variant="outline" size="sm" onClick={onAppend}>
+            <ListPlus className="h-4 w-4 mr-1" />
+            Append Tickets
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleCancel}
+            disabled={cancelMutation.isPending}
+          >
+            {cancelMutation.isPending ? (
+              <Spinner size="sm" className="mr-1" />
+            ) : (
+              <XCircle className="h-4 w-4 mr-1" />
+            )}
+            Cancel
+          </Button>
+        </>
       )}
       {(startMutation.isError || cancelMutation.isError) && (
         <span className="text-xs text-destructive">
@@ -131,6 +140,7 @@ export function ChainDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [showEdit, setShowEdit] = useState(false)
+  const [showAppend, setShowAppend] = useState(false)
   const [polling, setPolling] = useState(false)
 
   const { data: displayChain, isLoading, error } = useChain(id!, {
@@ -192,7 +202,7 @@ export function ChainDetailPage() {
             </span>
           </div>
         </div>
-        <ChainActions chain={displayChain} onEdit={() => setShowEdit(true)} />
+        <ChainActions chain={displayChain} onEdit={() => setShowEdit(true)} onAppend={() => setShowAppend(true)} />
       </div>
 
       <div className="border border-border rounded-lg">
@@ -222,6 +232,14 @@ export function ChainDetailPage() {
         onClose={() => setShowEdit(false)}
         editChain={displayChain}
       />
+
+      {displayChain.status === 'running' && (
+        <AppendToChainDialog
+          open={showAppend}
+          onClose={() => setShowAppend(false)}
+          chain={displayChain}
+        />
+      )}
     </div>
   )
 }

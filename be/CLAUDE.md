@@ -70,6 +70,7 @@ be/
 │   │   ├── agent_definition.go  # Agent definition CRUD
 │   │   ├── findings.go          # Findings operations
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
+│   │   ├── chain_append.go      # AppendToChain for running chains
 │   │   └── daily_stats.go       # Daily stats computation from source tables
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection
@@ -97,7 +98,7 @@ be/
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution CRUD
-│   │   ├── chain_items.go       # Chain item operations
+│   │   ├── chain_items.go       # Chain item operations (GetMaxPosition, GetTicketIDsByChain)
 │   │   ├── chain_locks.go       # Chain lock operations
 │   │   └── daily_stats.go
 │   ├── types/                   # Shared request/response types
@@ -737,6 +738,7 @@ GET    /api/v1/chains/:id          # Get chain with items
 PATCH  /api/v1/chains/:id          # Update pending chain
 POST   /api/v1/chains/:id/start    # Start sequential execution
 POST   /api/v1/chains/:id/cancel   # Cancel chain and release locks
+POST   /api/v1/chains/:id/append   # Append tickets to running chain
 
 # Other
 GET /api/v1/search?q=              # Full-text search

@@ -27,9 +27,13 @@ vi.mock('@/stores/projectStore', () => ({
   }),
 }))
 
-// Mock CreateChainDialog
+// Mock CreateChainDialog and AppendToChainDialog
 vi.mock('@/components/chains/CreateChainDialog', () => ({
   CreateChainDialog: () => null,
+}))
+
+vi.mock('@/components/chains/AppendToChainDialog', () => ({
+  AppendToChainDialog: () => null,
 }))
 
 function createMockChain(overrides: Partial<ChainExecution> = {}): ChainExecution {
@@ -240,7 +244,7 @@ describe('ChainDetailPage - Action Buttons', () => {
     expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
   })
 
-  it('shows only Cancel button for running chain', () => {
+  it('shows Append Tickets and Cancel buttons for running chain', () => {
     const chain = createMockChain({ status: 'running' })
     mockUseChain.mockReturnValue({
       data: chain,
@@ -262,6 +266,7 @@ describe('ChainDetailPage - Action Buttons', () => {
 
     renderChainDetailPage()
 
+    expect(screen.getByRole('button', { name: /append tickets/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /start/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
@@ -291,6 +296,7 @@ describe('ChainDetailPage - Action Buttons', () => {
 
     expect(screen.queryByRole('button', { name: /start/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /append tickets/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
   })
 
@@ -318,6 +324,7 @@ describe('ChainDetailPage - Action Buttons', () => {
 
     expect(screen.queryByRole('button', { name: /start/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /append tickets/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
   })
 
@@ -345,7 +352,58 @@ describe('ChainDetailPage - Action Buttons', () => {
 
     expect(screen.queryByRole('button', { name: /start/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /append tickets/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
+  })
+
+  it('shows Append Tickets button only for running chains', () => {
+    const runningChain = createMockChain({ status: 'running' })
+    mockUseChain.mockReturnValue({
+      data: runningChain,
+      isLoading: false,
+      error: null,
+    })
+    mockUseStartChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.getByRole('button', { name: /append tickets/i })).toBeInTheDocument()
+  })
+
+  it('does not show Append Tickets button for pending chains', () => {
+    const pendingChain = createMockChain({ status: 'pending' })
+    mockUseChain.mockReturnValue({
+      data: pendingChain,
+      isLoading: false,
+      error: null,
+    })
+    mockUseStartChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.queryByRole('button', { name: /append tickets/i })).not.toBeInTheDocument()
   })
 })
 

@@ -8,7 +8,6 @@ import {
   useProjectAgentSessions,
   useRunProjectWorkflow,
   useStopProjectWorkflow,
-  useRestartProjectAgent,
   useRetryFailedProjectAgent,
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
@@ -58,7 +57,6 @@ export function ProjectWorkflowsPage() {
 
   const runMutation = useRunProjectWorkflow()
   const stopMutation = useStopProjectWorkflow()
-  const restartMutation = useRestartProjectAgent()
   const retryFailedMutation = useRetryFailedProjectAgent()
 
   // Filter to project-scoped workflows only

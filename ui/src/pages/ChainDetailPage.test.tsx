@@ -1526,7 +1526,7 @@ describe('ChainDetailPage - Tokens Used Column', () => {
       error: null,
     })
 
-    const { container } = renderChainDetailPage()
+    renderChainDetailPage()
 
     // Find the token value element
     const tokenElement = screen.getByText('150K tokens')

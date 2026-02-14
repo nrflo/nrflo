@@ -103,7 +103,7 @@ describe('ConfirmDialog', () => {
   })
 
   it('applies default variant styling', () => {
-    const { container } = render(
+    render(
       <ConfirmDialog
         open={true}
         onClose={vi.fn()}

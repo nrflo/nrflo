@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PhaseTimeline } from './PhaseTimeline'
-import type { WorkflowState } from '@/types/workflow'
+import type { WorkflowState, AgentSession } from '@/types/workflow'
 
 // Mock child components
 vi.mock('./PhaseGraph', () => ({
@@ -222,9 +222,9 @@ describe('PhaseTimeline', () => {
     it('fetches agent sessions when ticketId is provided and sessions prop is not', async () => {
       const { useAgentSessions } = await import('@/hooks/useTickets')
       vi.mocked(useAgentSessions).mockReturnValue({
-        data: { sessions: [] },
+        data: { ticket_id: 'T-123', sessions: [] },
         isLoading: false,
-      })
+      } as any)
 
       renderPhaseTimeline({
         workflow: makeWorkflow(),
@@ -258,7 +258,7 @@ describe('PhaseTimeline', () => {
       const { useAgentSessions } = await import('@/hooks/useTickets')
       vi.mocked(useAgentSessions).mockClear()
 
-      const sessions = [
+      const sessions: AgentSession[] = [
         {
           id: 'session-1',
           project_id: 'test-project',
@@ -290,7 +290,7 @@ describe('PhaseTimeline', () => {
     })
 
     it('uses sessions from prop when provided', () => {
-      const sessions = [
+      const sessions: AgentSession[] = [
         {
           id: 'session-1',
           project_id: 'test-project',

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Tooltip } from './Tooltip'
@@ -63,7 +63,7 @@ describe('Tooltip', () => {
     const placements: Array<'top' | 'bottom' | 'left' | 'right'> = ['top', 'bottom', 'left', 'right']
 
     for (const placement of placements) {
-      const { container, unmount } = render(
+      const { unmount } = render(
         <Tooltip text={`${placement} tooltip`} placement={placement}>
           <button>{placement}</button>
         </Tooltip>

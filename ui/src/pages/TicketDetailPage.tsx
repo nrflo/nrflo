@@ -29,7 +29,6 @@ import {
   useReopenTicket,
   useDeleteTicket,
   useStopWorkflow,
-  useRestartAgent,
   useRetryFailedAgent,
 } from '@/hooks/useTickets'
 import { useWebSocket } from '@/hooks/useWebSocket'
@@ -106,7 +105,6 @@ export function TicketDetailPage() {
   const reopenMutation = useReopenTicket()
   const deleteMutation = useDeleteTicket()
   const stopMutation = useStopWorkflow()
-  const restartMutation = useRestartAgent()
   const retryFailedMutation = useRetryFailedAgent()
 
   // Detect if orchestration is running (via _orchestration findings key)

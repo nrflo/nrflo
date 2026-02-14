@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { AppendToChainDialog } from './AppendToChainDialog'
-import type { ChainExecution, ChainExecutionItem } from '@/types/chain'
+import type { ChainExecution } from '@/types/chain'
 import type { PendingTicket } from '@/types/ticket'
 
 // Mock hooks
@@ -402,7 +402,6 @@ describe('AppendToChainDialog - Submit Behavior', () => {
   })
 
   it('does not submit when all selected tickets are already in chain', async () => {
-    const user = userEvent.setup()
     const mutateAsync = vi.fn().mockResolvedValue({})
     mockUseAppendToChain.mockReturnValue({
       mutateAsync,
@@ -667,7 +666,6 @@ describe('AppendToChainDialog - Form Reset on Close', () => {
   })
 
   it('resets error state when dialog is closed and reopened', async () => {
-    const user = userEvent.setup()
     const reset = vi.fn()
     mockUseAppendToChain.mockReturnValue({
       mutateAsync: vi.fn(),

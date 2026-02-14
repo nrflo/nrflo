@@ -199,6 +199,21 @@ func (e *TestEnv) InitWorkflow(t *testing.T, ticketID string) {
 	}
 }
 
+// InitWorkflowWithID initializes the "test" workflow on the given ticket with a specific workflow instance ID.
+// This is useful for tests that need to link existing workflow instances to chain items.
+func (e *TestEnv) InitWorkflowWithID(t *testing.T, ticketID, wfiID string) {
+	t.Helper()
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := e.Pool.Exec(`
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status,
+			current_phase, phase_order, phases, findings, retry_count, created_at, updated_at)
+		VALUES (?, ?, ?, 'test', 'ticket', 'active', '', '[]', '{}', '{}', 0, ?, ?)`,
+		wfiID, e.ProjectID, ticketID, now, now)
+	if err != nil {
+		t.Fatalf("failed to init workflow with ID %s: %v", wfiID, err)
+	}
+}
+
 // StartPhase starts a phase on the given ticket's workflow.
 func (e *TestEnv) StartPhase(t *testing.T, ticketID, phase string) {
 	t.Helper()

@@ -13,6 +13,7 @@ import {
   capitalize,
   formatRelativeTime,
   formatElapsedTime,
+  formatTokenCount,
 } from '@/lib/utils'
 import type { ChainExecution, ChainExecutionItem } from '@/types/chain'
 
@@ -57,6 +58,9 @@ function ItemRow({ item }: { item: ChainExecutionItem }) {
           {duration}
         </span>
       )}
+      <span className="text-xs font-mono text-muted-foreground shrink-0 w-20">
+        {item.total_tokens_used ? `${formatTokenCount(item.total_tokens_used)} tokens` : '—'}
+      </span>
     </div>
   )
 }
@@ -215,6 +219,7 @@ export function ChainDetailPage() {
             <span>Status</span>
             <span className="w-16">Started</span>
             <span className="w-16">Duration</span>
+            <span className="w-20">Tokens</span>
           </div>
         </div>
         {items.length === 0 ? (

@@ -60,6 +60,7 @@ type ChainExecutionItem struct {
 	WorkflowInstanceID sql.NullString  `json:"-"`
 	StartedAt          sql.NullString  `json:"-"`
 	EndedAt            sql.NullString  `json:"-"`
+	TotalTokensUsed    int64           `json:"-"`
 }
 
 // MarshalJSON implements custom JSON marshaling for ChainExecutionItem
@@ -87,6 +88,7 @@ func (i ChainExecutionItem) MarshalJSON() ([]byte, error) {
 		WorkflowInstanceID *string         `json:"workflow_instance_id,omitempty"`
 		StartedAt          *string         `json:"started_at,omitempty"`
 		EndedAt            *string         `json:"ended_at,omitempty"`
+		TotalTokensUsed    int64           `json:"total_tokens_used,omitempty"`
 	}{
 		ID:                 i.ID,
 		ChainID:            i.ChainID,
@@ -97,6 +99,7 @@ func (i ChainExecutionItem) MarshalJSON() ([]byte, error) {
 		WorkflowInstanceID: wfiID,
 		StartedAt:          startedAt,
 		EndedAt:            endedAt,
+		TotalTokensUsed:    i.TotalTokensUsed,
 	})
 }
 

@@ -949,3 +949,291 @@ describe('ChainDetailPage - Ticket Title Display', () => {
     expect(screen.getByText('TICKET-3')).toBeInTheDocument()
   })
 })
+
+describe('ChainDetailPage - Tokens Used Column', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStartChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+  })
+
+  it('renders Tokens column header in table', () => {
+    const chain = createMockChain()
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('Tokens')).toBeInTheDocument()
+  })
+
+  it('displays formatted token count when total_tokens_used is provided', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'completed',
+          total_tokens_used: 150000,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('150K tokens')).toBeInTheDocument()
+  })
+
+  it('displays em-dash when total_tokens_used is 0', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'pending',
+          total_tokens_used: 0,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Em-dash should be displayed for zero tokens
+    const emDashes = screen.getAllByText('—')
+    expect(emDashes.length).toBeGreaterThan(0)
+  })
+
+  it('displays em-dash when total_tokens_used is undefined', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'pending',
+          total_tokens_used: undefined,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Em-dash should be displayed for undefined tokens
+    const emDashes = screen.getAllByText('—')
+    expect(emDashes.length).toBeGreaterThan(0)
+  })
+
+  it('formats large token counts with K suffix', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          id: 'item-1',
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'completed',
+          total_tokens_used: 80000,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('80K tokens')).toBeInTheDocument()
+  })
+
+  it('formats token counts with decimal K suffix', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'completed',
+          total_tokens_used: 1500,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('1.5K tokens')).toBeInTheDocument()
+  })
+
+  it('displays plain number for tokens under 1000', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'completed',
+          total_tokens_used: 500,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('500 tokens')).toBeInTheDocument()
+  })
+
+  it('handles multiple items with varying token counts', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          id: 'item-1',
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'completed',
+          total_tokens_used: 150000,
+        }),
+        createMockItem({
+          id: 'item-2',
+          ticket_id: 'TICKET-2',
+          position: 1,
+          status: 'running',
+          total_tokens_used: 0,
+        }),
+        createMockItem({
+          id: 'item-3',
+          ticket_id: 'TICKET-3',
+          position: 2,
+          status: 'pending',
+          total_tokens_used: undefined,
+        }),
+        createMockItem({
+          id: 'item-4',
+          ticket_id: 'TICKET-4',
+          position: 3,
+          status: 'completed',
+          total_tokens_used: 80000,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    // Completed items with token data
+    expect(screen.getByText('150K tokens')).toBeInTheDocument()
+    expect(screen.getByText('80K tokens')).toBeInTheDocument()
+
+    // Items without tokens (running, pending, or 0)
+    const emDashes = screen.getAllByText('—')
+    expect(emDashes.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('applies correct styling to token column (w-20 width, monospace)', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'completed',
+          total_tokens_used: 150000,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Find the token value element
+    const tokenElement = screen.getByText('150K tokens')
+    expect(tokenElement).toHaveClass('text-xs')
+    expect(tokenElement).toHaveClass('font-mono')
+    expect(tokenElement).toHaveClass('text-muted-foreground')
+    expect(tokenElement).toHaveClass('shrink-0')
+    expect(tokenElement).toHaveClass('w-20')
+  })
+
+  it('aligns token column header with correct width (w-20)', () => {
+    const chain = createMockChain()
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    const { container } = renderChainDetailPage()
+
+    // Find the table header row
+    const headerRow = container.querySelector('.px-4.py-2.border-b')
+    expect(headerRow).toBeInTheDocument()
+
+    // The Tokens header should be the last span with w-20
+    const tokenHeader = screen.getByText('Tokens')
+    expect(tokenHeader).toHaveClass('w-20')
+  })
+
+  it('shows em-dash for failed items without token data', () => {
+    const chain = createMockChain({
+      items: [
+        createMockItem({
+          ticket_id: 'TICKET-1',
+          position: 0,
+          status: 'failed',
+          total_tokens_used: undefined,
+        }),
+      ],
+    })
+    mockUseChain.mockReturnValue({
+      data: chain,
+      isLoading: false,
+      error: null,
+    })
+
+    renderChainDetailPage()
+
+    const emDashes = screen.getAllByText('—')
+    expect(emDashes.length).toBeGreaterThan(0)
+  })
+})

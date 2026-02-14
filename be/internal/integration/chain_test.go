@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -865,5 +866,376 @@ func TestChainAppend_SuccessWithTitles(t *testing.T) {
 	}
 	if len(conflicts) != 2 {
 		t.Errorf("expected C and D to be locked, got %d conflicts: %v", len(conflicts), conflicts)
+	}
+}
+
+// TestChainItemTokensUsed_WithCompletedWorkflow verifies that chain items with
+// completed workflows include total_tokens_used in the response.
+func TestChainItemTokensUsed_WithCompletedWorkflow(t *testing.T) {
+	env := NewTestEnv(t)
+
+	base := time.Now()
+	createChainTickets(t, env, map[string]time.Time{
+		"TK-A": base,
+		"TK-B": base.Add(time.Second),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Token Test Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"TK-A", "TK-B"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	// Create workflow instances and agent sessions for each ticket
+	// TK-A: 2 agents with context_left 60 and 40
+	wfiA := "wfi-tka-001"
+	env.InitWorkflowWithID(t, "TK-A", wfiA)
+	insertSessionWithContextLeft(t, env, "sess-tka-1", "TK-A", wfiA,
+		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 60)
+	insertSessionWithContextLeft(t, env, "sess-tka-2", "TK-A", wfiA,
+		"builder", "implementor", "claude:opus", "completed", "pass", 40)
+
+	// TK-B: 1 agent with context_left 75
+	wfiB := "wfi-tkb-001"
+	env.InitWorkflowWithID(t, "TK-B", wfiB)
+	insertSessionWithContextLeft(t, env, "sess-tkb-1", "TK-B", wfiB,
+		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 75)
+
+	// Link workflow instances to chain items
+	itemRepo := repo.NewChainItemRepo(env.Pool)
+	items, err := itemRepo.ListByChain(chain.ID)
+	if err != nil {
+		t.Fatalf("failed to list chain items: %v", err)
+	}
+
+	for _, item := range items {
+		if item.TicketID == "tk-a" {
+			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiA); err != nil {
+				t.Fatalf("failed to set workflow instance for TK-A: %v", err)
+			}
+		} else if item.TicketID == "tk-b" {
+			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiB); err != nil {
+				t.Fatalf("failed to set workflow instance for TK-B: %v", err)
+			}
+		}
+	}
+
+	// Retrieve chain with items
+	retrieved, err := chainSvc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	if len(retrieved.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(retrieved.Items))
+	}
+
+	// Verify token calculations
+	// TK-A: 200000*(100-60)/100 + 200000*(100-40)/100 = 80000 + 120000 = 200000
+	// TK-B: 200000*(100-75)/100 = 50000
+	expectedTokens := map[string]int64{
+		"tk-a": 200000,
+		"tk-b": 50000,
+	}
+
+	for _, item := range retrieved.Items {
+		expected, ok := expectedTokens[item.TicketID]
+		if !ok {
+			t.Errorf("unexpected ticket ID: %s", item.TicketID)
+			continue
+		}
+		if item.TotalTokensUsed != expected {
+			t.Errorf("ticket %s: expected total_tokens_used %d, got %d",
+				item.TicketID, expected, item.TotalTokensUsed)
+		}
+	}
+}
+
+// TestChainItemTokensUsed_WithoutWorkflow verifies that chain items without
+// workflow instances return 0 for total_tokens_used.
+func TestChainItemTokensUsed_WithoutWorkflow(t *testing.T) {
+	env := NewTestEnv(t)
+
+	createChainTickets(t, env, map[string]time.Time{
+		"TK-C": time.Now(),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "No Workflow Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"TK-C"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	// Don't link any workflow instance - item should have no workflow_instance_id
+
+	// Retrieve chain with items
+	retrieved, err := chainSvc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	if len(retrieved.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(retrieved.Items))
+	}
+
+	item := retrieved.Items[0]
+	if item.TotalTokensUsed != 0 {
+		t.Errorf("expected total_tokens_used 0 for item without workflow, got %d", item.TotalTokensUsed)
+	}
+}
+
+// TestChainItemTokensUsed_RunningAgentsExcluded verifies that running and
+// continued agent sessions are excluded from the token calculation.
+func TestChainItemTokensUsed_RunningAgentsExcluded(t *testing.T) {
+	env := NewTestEnv(t)
+
+	createChainTickets(t, env, map[string]time.Time{
+		"TK-D": time.Now(),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Excluding Running Agents",
+		WorkflowName: "test",
+		TicketIDs:    []string{"TK-D"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	wfiD := "wfi-tkd-001"
+	env.InitWorkflowWithID(t, "TK-D", wfiD)
+
+	// Insert 1 completed agent with context_left=50
+	insertSessionWithContextLeft(t, env, "sess-tkd-1", "TK-D", wfiD,
+		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 50)
+
+	// Insert 1 running agent with context_left=30 (should be excluded)
+	insertSessionWithContextLeft(t, env, "sess-tkd-2", "TK-D", wfiD,
+		"builder", "implementor", "claude:opus", "running", "", 30)
+
+	// Insert 1 continued agent with context_left=20 (should be excluded)
+	insertSessionWithContextLeft(t, env, "sess-tkd-3", "TK-D", wfiD,
+		"verifier", "qa-verifier", "claude:sonnet", "continued", "", 20)
+
+	// Link workflow instance to chain item
+	itemRepo := repo.NewChainItemRepo(env.Pool)
+	items, err := itemRepo.ListByChain(chain.ID)
+	if err != nil {
+		t.Fatalf("failed to list chain items: %v", err)
+	}
+	if err := itemRepo.SetWorkflowInstanceID(items[0].ID, wfiD); err != nil {
+		t.Fatalf("failed to set workflow instance: %v", err)
+	}
+
+	// Retrieve chain with items
+	retrieved, err := chainSvc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	// Only the completed agent should be counted: 200000*(100-50)/100 = 100000
+	expectedTokens := int64(100000)
+	if retrieved.Items[0].TotalTokensUsed != expectedTokens {
+		t.Errorf("expected total_tokens_used %d (excluding running/continued), got %d",
+			expectedTokens, retrieved.Items[0].TotalTokensUsed)
+	}
+}
+
+// TestChainItemTokensUsed_NullContextLeftExcluded verifies that agent sessions
+// with NULL context_left are excluded from the token calculation.
+func TestChainItemTokensUsed_NullContextLeftExcluded(t *testing.T) {
+	env := NewTestEnv(t)
+
+	createChainTickets(t, env, map[string]time.Time{
+		"TK-E": time.Now(),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Null Context Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"TK-E"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	wfiE := "wfi-tke-001"
+	env.InitWorkflowWithID(t, "TK-E", wfiE)
+
+	// Insert 1 completed agent with context_left=80
+	insertSessionWithContextLeft(t, env, "sess-tke-1", "TK-E", wfiE,
+		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 80)
+
+	// Insert 1 completed agent with NULL context_left (should be excluded)
+	insertCompletedSession(t, env, "sess-tke-2", "TK-E", wfiE,
+		"builder", "implementor", "claude:opus", "completed", "pass")
+
+	// Link workflow instance to chain item
+	itemRepo := repo.NewChainItemRepo(env.Pool)
+	items, err := itemRepo.ListByChain(chain.ID)
+	if err != nil {
+		t.Fatalf("failed to list chain items: %v", err)
+	}
+	if err := itemRepo.SetWorkflowInstanceID(items[0].ID, wfiE); err != nil {
+		t.Fatalf("failed to set workflow instance: %v", err)
+	}
+
+	// Retrieve chain with items
+	retrieved, err := chainSvc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	// Only the agent with context_left=80 should be counted: 200000*(100-80)/100 = 40000
+	expectedTokens := int64(40000)
+	if retrieved.Items[0].TotalTokensUsed != expectedTokens {
+		t.Errorf("expected total_tokens_used %d (excluding NULL context_left), got %d",
+			expectedTokens, retrieved.Items[0].TotalTokensUsed)
+	}
+}
+
+// TestChainItemTokensUsed_BoundaryValues verifies token calculation at boundary
+// values: context_left=0 (fully consumed) and context_left=100 (no consumption).
+func TestChainItemTokensUsed_BoundaryValues(t *testing.T) {
+	env := NewTestEnv(t)
+
+	createChainTickets(t, env, map[string]time.Time{
+		"TK-F": time.Now(),
+		"TK-G": time.Now().Add(time.Second),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "Boundary Values Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"TK-F", "TK-G"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	// TK-F: context_left=0 (fully consumed) → 200000 tokens
+	wfiF := "wfi-tkf-001"
+	env.InitWorkflowWithID(t, "TK-F", wfiF)
+	insertSessionWithContextLeft(t, env, "sess-tkf-1", "TK-F", wfiF,
+		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 0)
+
+	// TK-G: context_left=100 (no consumption) → 0 tokens
+	wfiG := "wfi-tkg-001"
+	env.InitWorkflowWithID(t, "TK-G", wfiG)
+	insertSessionWithContextLeft(t, env, "sess-tkg-1", "TK-G", wfiG,
+		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 100)
+
+	// Link workflow instances to chain items
+	itemRepo := repo.NewChainItemRepo(env.Pool)
+	items, err := itemRepo.ListByChain(chain.ID)
+	if err != nil {
+		t.Fatalf("failed to list chain items: %v", err)
+	}
+
+	for _, item := range items {
+		if item.TicketID == "tk-f" {
+			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiF); err != nil {
+				t.Fatalf("failed to set workflow instance for TK-F: %v", err)
+			}
+		} else if item.TicketID == "tk-g" {
+			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiG); err != nil {
+				t.Fatalf("failed to set workflow instance for TK-G: %v", err)
+			}
+		}
+	}
+
+	// Retrieve chain with items
+	retrieved, err := chainSvc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	expectedTokens := map[string]int64{
+		"tk-f": 200000, // context_left=0 → 200000*(100-0)/100 = 200000
+		"tk-g": 0,      // context_left=100 → 200000*(100-100)/100 = 0
+	}
+
+	for _, item := range retrieved.Items {
+		expected, ok := expectedTokens[item.TicketID]
+		if !ok {
+			t.Errorf("unexpected ticket ID: %s", item.TicketID)
+			continue
+		}
+		if item.TotalTokensUsed != expected {
+			t.Errorf("ticket %s: expected total_tokens_used %d, got %d",
+				item.TicketID, expected, item.TotalTokensUsed)
+		}
+	}
+}
+
+// TestChainItemTokensUsed_JSONOmitsZero verifies that MarshalJSON includes
+// total_tokens_used in the JSON output with omitempty behavior.
+func TestChainItemTokensUsed_JSONOmitsZero(t *testing.T) {
+	env := NewTestEnv(t)
+
+	createChainTickets(t, env, map[string]time.Time{
+		"TK-H": time.Now(),
+	})
+
+	chainSvc := service.NewChainService(env.Pool)
+	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
+		Name:         "JSON Test Chain",
+		WorkflowName: "test",
+		TicketIDs:    []string{"TK-H"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChain failed: %v", err)
+	}
+
+	wfiH := "wfi-tkh-001"
+	env.InitWorkflowWithID(t, "TK-H", wfiH)
+	insertSessionWithContextLeft(t, env, "sess-tkh-1", "TK-H", wfiH,
+		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 50)
+
+	// Link workflow instance to chain item
+	itemRepo := repo.NewChainItemRepo(env.Pool)
+	items, err := itemRepo.ListByChain(chain.ID)
+	if err != nil {
+		t.Fatalf("failed to list chain items: %v", err)
+	}
+	if err := itemRepo.SetWorkflowInstanceID(items[0].ID, wfiH); err != nil {
+		t.Fatalf("failed to set workflow instance: %v", err)
+	}
+
+	// Retrieve chain with items
+	retrieved, err := chainSvc.GetChainWithItems(chain.ID)
+	if err != nil {
+		t.Fatalf("GetChainWithItems failed: %v", err)
+	}
+
+	// Marshal to JSON and verify total_tokens_used is present
+	data, err := json.Marshal(retrieved.Items[0])
+	if err != nil {
+		t.Fatalf("failed to marshal item: %v", err)
+	}
+
+	var jsonMap map[string]interface{}
+	if err := json.Unmarshal(data, &jsonMap); err != nil {
+		t.Fatalf("failed to unmarshal JSON: %v", err)
+	}
+
+	// Should include total_tokens_used (100000) since it's non-zero
+	tokensUsed, ok := jsonMap["total_tokens_used"].(float64)
+	if !ok {
+		t.Fatalf("expected total_tokens_used in JSON, got %v", jsonMap)
+	}
+	if int64(tokensUsed) != 100000 {
+		t.Errorf("expected total_tokens_used 100000 in JSON, got %v", tokensUsed)
 	}
 }

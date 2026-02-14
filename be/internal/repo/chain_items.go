@@ -57,10 +57,17 @@ func (r *ChainItemRepo) ListByChain(chainID string) ([]*model.ChainExecutionItem
 	rows, err := r.pool.Query(`
 		SELECT ci.id, ci.chain_id, ci.ticket_id, ci.position, ci.status,
 			ci.workflow_instance_id, ci.started_at, ci.ended_at,
-			COALESCE(t.title, '') AS ticket_title
+			COALESCE(t.title, '') AS ticket_title,
+			COALESCE(tok.total_tokens, 0) AS total_tokens_used
 		FROM chain_execution_items ci
 		LEFT JOIN chain_executions ce ON ce.id = ci.chain_id
 		LEFT JOIN tickets t ON LOWER(t.id) = LOWER(ci.ticket_id) AND LOWER(t.project_id) = LOWER(ce.project_id)
+		LEFT JOIN (
+			SELECT workflow_instance_id, SUM(200000 * (100 - context_left) / 100) AS total_tokens
+			FROM agent_sessions
+			WHERE status NOT IN ('running', 'continued') AND context_left IS NOT NULL
+			GROUP BY workflow_instance_id
+		) tok ON tok.workflow_instance_id = ci.workflow_instance_id
 		WHERE ci.chain_id = ?
 		ORDER BY ci.position ASC`, chainID)
 	if err != nil {
@@ -76,6 +83,7 @@ func (r *ChainItemRepo) ListByChain(chainID string) ([]*model.ChainExecutionItem
 			&item.Status, &item.WorkflowInstanceID,
 			&item.StartedAt, &item.EndedAt,
 			&item.TicketTitle,
+			&item.TotalTokensUsed,
 		)
 		if err != nil {
 			return nil, err

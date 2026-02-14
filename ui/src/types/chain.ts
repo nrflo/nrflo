@@ -27,6 +27,7 @@ export interface ChainExecutionItem {
   position: number
   status: ChainItemStatus
   workflow_instance_id?: string
+  total_tokens_used?: number
   started_at?: string
   ended_at?: string
 }

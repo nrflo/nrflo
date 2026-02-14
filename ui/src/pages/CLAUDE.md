@@ -1,0 +1,67 @@
+# Pages
+
+Route page components for the nrworkflow web UI. Uses React Router v6 for routing. This directory contains 36 files including page components and co-located tests.
+
+## Routes
+
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | `Dashboard.tsx` | Overview with ticket counts and status |
+| `/tickets` | `TicketListPage.tsx` | Ticket list with filtering |
+| `/tickets/new` | `CreateTicketPage.tsx` | Create new ticket form |
+| `/tickets/:id/edit` | `EditTicketPage.tsx` | Edit existing ticket form |
+| `/tickets/:id` | `TicketDetailPage.tsx` | Ticket detail with tabbed interface |
+| `/workflows` | `WorkflowsPage.tsx` | Workflow definitions and agent definitions CRUD |
+| `/project-workflows` | `ProjectWorkflowsPage.tsx` | Project-scoped workflows (3-tab layout) |
+| `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |
+| `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, 5s polling when running |
+| `/settings` | `SettingsPage.tsx` | Project management (create/update/delete) |
+
+Routes are defined in `src/App.tsx`.
+
+## Ticket Detail Page
+
+The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
+
+- **Hierarchy tab** (default): Blockers (add/remove), blocks, epic hierarchy (parent + siblings/children)
+- **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
+- **Details tab**: Read-only dependency lists, description text, metadata
+- **Workflow tab**: Shows phase timeline with agent history
+
+### Tab Content Components
+
+| Component | Content |
+|-----------|---------|
+| `HierarchyTabContent.tsx` | Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics) |
+| `DescriptionTabContent.tsx` | Ticket title as h2, metadata grid, description text |
+| `DetailsTabContent.tsx` | Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid |
+
+**Real-time updates**: The page uses WebSocket exclusively for real-time updates. Subscribes to the current ticket on mount via `useWebSocket()` hook. No REST polling.
+
+## ProjectWorkflowsPage
+
+3-tab layout for project-scoped workflows with multi-instance support:
+
+- **Run Workflow**: Inline workflow selector + instructions form
+- **Running**: Instance list with status
+- **Completed**: Instance list with completion details
+
+Sub-components in `ProjectWorkflowComponents.tsx`:
+- `RunWorkflowForm` — inline workflow selector + instructions
+- `InstanceList` — instance selector chips
+
+Supports multiple concurrent instances keyed by `instance_id`.
+
+## Real-Time Update Patterns
+
+Pages receive real-time updates via WebSocket (no REST polling):
+- Ticket pages subscribe to specific ticket ID
+- Project workflow pages subscribe with empty `ticketId` for project-scoped events
+- Layout.tsx subscribes to all project events for sidebar counts and dashboard updates
+- Subscriptions must be gated on `projectsLoaded` (see [hooks/CLAUDE.md](../hooks/CLAUDE.md))
+
+## Testing
+
+Tests are co-located with page components using `.test.tsx` suffix. Some pages use a `__tests__/` subdirectory for additional test organization.
+
+Run tests: `npx vitest run src/pages/`

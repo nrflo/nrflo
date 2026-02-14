@@ -199,8 +199,8 @@ export function AgentLogPanel({
     return (
       <div
         className={cn(
-          'relative border-l border-border bg-background transition-all duration-300 ease-in-out shrink-0',
-          collapsed ? 'w-10' : 'w-[280px]'
+          'relative border-l border-border bg-background transition-all duration-300 ease-in-out',
+          collapsed ? 'w-10 shrink-0' : 'flex-1 min-w-[280px]'
         )}
       >
         <button
@@ -231,8 +231,8 @@ export function AgentLogPanel({
   return (
     <div
       className={cn(
-        'relative border-l border-border bg-background transition-all duration-300 ease-in-out shrink-0',
-        collapsed ? 'w-10' : 'w-[280px]'
+        'relative border-l border-border bg-background transition-all duration-300 ease-in-out',
+        collapsed ? 'w-10 shrink-0' : 'flex-1 min-w-[280px]'
       )}
     >
       <button

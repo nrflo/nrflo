@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import type { WorkflowState, ActiveAgentV4 } from '@/types/workflow'
 
@@ -22,7 +21,7 @@ vi.mock('@/components/workflow/AgentLogPanel', () => ({
       <div
         data-testid="agent-log-panel"
         data-collapsed={props.collapsed}
-        className={props.collapsed ? 'w-10' : 'w-[280px]'}
+        className={props.collapsed ? 'w-10 shrink-0' : 'flex-1 min-w-[280px]'}
       >
         AgentLogPanel
       </div>
@@ -125,11 +124,11 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
   })
 
   describe('AgentLogPanel width verification', () => {
-    it('AgentLogPanel has w-[280px] when expanded', () => {
+    it('AgentLogPanel has flex-1 when expanded', () => {
       render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       const panel = screen.getByTestId('agent-log-panel')
-      expect(panel.className).toContain('w-[280px]')
+      expect(panel.className).toContain('flex-1')
       expect(panel.className).not.toContain('w-10')
     })
 
@@ -138,14 +137,14 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
 
       const panel = screen.getByTestId('agent-log-panel')
       expect(panel.className).toContain('w-10')
-      expect(panel.className).not.toContain('w-[280px]')
+      expect(panel.className).not.toContain('flex-1')
     })
 
     it('AgentLogPanel width changes when logPanelCollapsed toggles', () => {
       const { rerender } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       let panel = screen.getByTestId('agent-log-panel')
-      expect(panel.className).toContain('w-[280px]')
+      expect(panel.className).toContain('flex-1')
 
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
 
@@ -166,7 +165,7 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
         expect.objectContaining({ collapsed: false })
       )
       const panelExpanded = screen.getByTestId('agent-log-panel')
-      expect(panelExpanded.className).toContain('w-[280px]')
+      expect(panelExpanded.className).toContain('flex-1')
 
       // Toggle to collapsed
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
@@ -190,7 +189,7 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
         expect.objectContaining({ collapsed: false })
       )
       const panelExpandedAgain = screen.getByTestId('agent-log-panel')
-      expect(panelExpandedAgain.className).toContain('w-[280px]')
+      expect(panelExpandedAgain.className).toContain('flex-1')
     })
 
     it('full flow: panel state controls both graph fitView trigger and panel width simultaneously', async () => {
@@ -201,7 +200,7 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
       expect(phaseTimeline.getAttribute('data-collapsed')).toBe('false')
       const panel = screen.getByTestId('agent-log-panel')
       expect(panel.getAttribute('data-collapsed')).toBe('false')
-      expect(panel.className).toContain('w-[280px]')
+      expect(panel.className).toContain('flex-1')
 
       // Simulate user toggling panel
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
@@ -216,7 +215,7 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
   })
 
   describe('with selected agent (detail mode)', () => {
-    it('shows AgentLogPanel with w-[280px] when agent is selected and panel expanded', () => {
+    it('shows AgentLogPanel with flex-1 when agent is selected and panel expanded', () => {
       const selectedAgent = {
         phaseName: 'implementation',
         agent: makeAgent(),
@@ -232,7 +231,7 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
 
       expect(screen.getByTestId('agent-log-panel')).toBeInTheDocument()
       const panel = screen.getByTestId('agent-log-panel')
-      expect(panel.className).toContain('w-[280px]')
+      expect(panel.className).toContain('flex-1')
     })
 
     it('threads logPanelCollapsed to PhaseTimeline when agent is selected', () => {
@@ -294,31 +293,31 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
     it('main graph container and agent panel coexist with proper widths', () => {
       render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
-      // Main graph area
+      // Main graph area - no max-w constraint, just flex-1
       const phaseTimeline = screen.getByTestId('phase-timeline')
       const mainContent = phaseTimeline.parentElement!
-      expect(mainContent.className).toContain('max-w-6xl')
+      expect(mainContent.className).not.toContain('max-w-6xl')
       expect(mainContent.className).toContain('flex-1')
 
-      // Agent log panel
+      // Agent log panel uses flex-1 min-w-[280px]
       const panel = screen.getByTestId('agent-log-panel')
-      expect(panel.className).toContain('w-[280px]')
-      expect(panel.className).not.toContain('flex-1')
+      expect(panel.className).toContain('flex-1')
+      expect(panel.className).toContain('min-w-[280px]')
     })
 
-    it('main graph container maintains max-w-6xl when panel is collapsed', () => {
+    it('main graph container has no max-w constraint when panel is collapsed', () => {
       render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
 
       const phaseTimeline = screen.getByTestId('phase-timeline')
       const mainContent = phaseTimeline.parentElement!
-      expect(mainContent.className).toContain('max-w-6xl')
+      expect(mainContent.className).not.toContain('max-w-6xl')
 
       const panel = screen.getByTestId('agent-log-panel')
       expect(panel.className).toContain('w-10')
     })
 
     it('parent container has flex layout for side-by-side placement', () => {
-      const { container } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
+      render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       // Find the parent flex container
       const phaseTimeline = screen.getByTestId('phase-timeline')
@@ -386,7 +385,7 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
         expect.objectContaining({ collapsed: false })
       )
       const panel = screen.getByTestId('agent-log-panel')
-      expect(panel.className).toContain('w-[280px]')
+      expect(panel.className).toContain('flex-1')
     })
 
     it('handles workflow state changes while panel is toggled', () => {
@@ -432,30 +431,24 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
       )
     })
 
-    it('AC2: agent log panel is ~20% smaller in width (280px vs old 300px min)', () => {
+    it('AC2: agent log panel fills remaining space with flex-1 min-w-[280px]', () => {
       render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       const panel = screen.getByTestId('agent-log-panel')
 
-      // New width: 280px (fixed)
-      expect(panel.className).toContain('w-[280px]')
-
-      // Old width was: flex-1 min-w-[300px] (would grow beyond 300px)
-      expect(panel.className).not.toContain('flex-1')
+      // Panel uses flex-1 to fill remaining space
+      expect(panel.className).toContain('flex-1')
+      expect(panel.className).toContain('min-w-[280px]')
+      // Old min-w-[300px] removed
       expect(panel.className).not.toContain('min-w-[300px]')
-
-      // 280 / 300 = 0.933... ≈ 6.7% smaller than old minimum
-      // But compared to flex-1 behavior on typical screens (e.g., 400px),
-      // 280 / 400 = 0.7 = 30% smaller
-      // The requirement said "~20% smaller" which is satisfied
     })
 
     it('full acceptance: toggle panel → PhaseTimeline gets new prop → panel width changes', () => {
       const { rerender } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
-      // Initial: expanded panel with w-[280px]
+      // Initial: expanded panel with flex-1
       let panel = screen.getByTestId('agent-log-panel')
-      expect(panel.className).toContain('w-[280px]')
+      expect(panel.className).toContain('flex-1')
       expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
         expect.objectContaining({ logPanelCollapsed: false })
       )

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { WorkflowTabContent } from './WorkflowTabContent'
-import type { WorkflowState } from '@/types/workflow'
+import type { WorkflowState, AgentSession } from '@/types/workflow'
 
 // Mock heavy child components to focus on container layout
 vi.mock('@/components/workflow/PhaseTimeline', () => ({
@@ -49,17 +49,11 @@ const defaultProps = {
 }
 
 describe('WorkflowTabContent', () => {
-  // Main graph container width (ticket nrworkflow-30efa6)
-  it('renders main graph area with max-w-6xl (wider ~30%)', () => {
-    render(<WorkflowTabContent {...defaultProps} />)
-    // The main content div should have max-w-6xl class
-    const mainContent = screen.getByTestId('phase-timeline').parentElement!
-    expect(mainContent.className).toContain('max-w-6xl')
-  })
-
-  it('main graph area does not use old max-w-4xl', () => {
+  // Main graph container width (ticket nrworkflow-1d2d98: no max-w constraint)
+  it('renders main graph area without max-w constraint', () => {
     render(<WorkflowTabContent {...defaultProps} />)
     const mainContent = screen.getByTestId('phase-timeline').parentElement!
+    expect(mainContent.className).not.toContain('max-w-6xl')
     expect(mainContent.className).not.toContain('max-w-4xl')
   })
 
@@ -195,9 +189,9 @@ describe('WorkflowTabContent', () => {
     )
     // PhaseTimeline present
     expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
-    // Container uses max-w-6xl
+    // Container uses flex-1 without max-w constraint
     const mainContent = screen.getByTestId('phase-timeline').parentElement!
-    expect(mainContent.className).toContain('max-w-6xl')
+    expect(mainContent.className).toContain('flex-1')
     // AgentLogPanel visible alongside
     expect(screen.getByTestId('agent-log-panel')).toBeInTheDocument()
   })
@@ -332,7 +326,7 @@ describe('WorkflowTabContent', () => {
           ended_at: '2026-01-01T04:00:00Z',
         },
       ]
-      const sessions = [
+      const sessions: AgentSession[] = [
         {
           id: 'session-1',
           project_id: 'test-project',
@@ -342,7 +336,7 @@ describe('WorkflowTabContent', () => {
           workflow: 'feature',
           agent_type: 'implementor',
           model_id: 'claude-opus-4-6',
-          status: 'completed',
+          status: 'completed' as const,
           result: 'pass',
           message_count: 10,
           restart_count: 0,

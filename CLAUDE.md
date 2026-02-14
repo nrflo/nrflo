@@ -49,6 +49,13 @@ Workflow runtime state is stored in normalized database tables:
 
 Source files should be kept under 300 lines when possible. When a file grows beyond this limit, split it into logical sub-files. This applies to both code and documentation files.
 
+### 5. Documentation Hierarchy
+
+Root `CLAUDE.md` contains only project-level information (architecture principles, mandatory rules, CLI commands, workflows, brief summaries). Detailed implementation docs belong in subdirectory `CLAUDE.md` files:
+- Backend package details → `be/internal/<package>/CLAUDE.md`
+- Frontend module details → `ui/src/<module>/CLAUDE.md`
+- DB schema, full API listings, spawner internals, etc. must NOT be duplicated in root — use cross-references instead.
+
 ## Key Files
 
 | File | Purpose |
@@ -139,159 +146,19 @@ All ticket/deps commands use `--server` (default `NRWORKFLOW_API_URL` or `http:/
 
 ### Phase Definition Format
 
-Each phase entry must be an object with a required `layer` field:
-```json
-{"agent": "setup-analyzer", "layer": 0}
-```
-
-- `layer` (required): Integer >= 0. Same-layer agents run concurrently.
-- `agent` (required): Agent definition ID.
-- String-only entries and `parallel` field are rejected.
-- Supported models: `opus`, `sonnet`, `haiku`, `gpt_5.3`.
+Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. The `layer` (integer >= 0) and `agent` (agent definition ID) fields are required. String-only entries and the `parallel` field are rejected. Supported models: `opus`, `sonnet`, `haiku`, `gpt_5.3`. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for model mapping details.
 
 ## State Storage
 
-Workflow state is stored in normalized database tables. Multiple workflows can exist per ticket via separate `workflow_instances` rows. For project-scoped workflows, multiple concurrent instances of the same workflow are allowed (no unique constraint). Ticket-scoped workflows enforce one instance per ticket+workflow via a partial unique index.
+Workflow runtime state is stored in two main tables: `workflow_instances` (one row per ticket+workflow, stores current phase, phase statuses, findings, retry count) and `agent_sessions` (one row per agent execution, stores result, pid, findings, context usage, timestamps). Ticket-scoped workflows enforce one instance per ticket+workflow; project-scoped workflows allow multiple concurrent instances. Completion statistics (`completed_at`, `total_duration_sec`, `total_tokens_used`) are computed from agent session data. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md) for full schema.
 
-### `workflow_instances` table
+## API Response Format
 
-| Column | Description |
-|--------|-------------|
-| `id` | UUID primary key |
-| `project_id`, `ticket_id` | Links to ticket (ticket_id empty for project scope) |
-| `workflow_id` | FK to workflow definition |
-| `scope_type` | `ticket` (default) or `project` |
-| `status` | `active` / `completed` / `failed` / `project_completed` |
-| `current_phase` | Currently active phase ID |
-| `phase_order` | JSON array of phase IDs |
-| `phases` | JSON: `{phase_id: {status, result}}` |
-| `findings` | JSON: workflow-level findings |
-| `retry_count` | Number of retries |
-| `parent_session` | Orchestrating session UUID |
-| `created_at`, `updated_at` | Timestamps |
-
-### `agent_sessions` table
-
-| Column | Description |
-|--------|-------------|
-| `id` | UUID primary key (session ID) |
-| `project_id`, `ticket_id` | Links to ticket |
-| `workflow_instance_id` | FK to workflow_instances |
-| `phase` | Phase name (e.g., "investigation") |
-| `agent_type` | Agent identifier (e.g., "setup-analyzer") |
-| `model_id` | Model used (e.g., "claude:sonnet") |
-| `status` | `running` / `completed` / `failed` / `timeout` / `continued` / `project_completed` / `callback` |
-| `result` | `pass` / `fail` / `continue` / `timeout` / `callback` |
-| `result_reason` | Explanation for result |
-| `pid` | OS process ID |
-| `findings` | JSON: per-agent findings |
-| `context_left` | Remaining context window % |
-| `ancestor_session_id` | Links continuation chain |
-| `spawn_command` | Full CLI command for replay |
-| `prompt_context` | System prompt file contents |
-| `restart_count` | Number of low-context restarts (default 0) |
-| `started_at`, `ended_at` | Execution timestamps |
-| `created_at`, `updated_at` | Record timestamps |
-
-### API Response
-
-`GET /api/v1/tickets/:id/workflow` returns a wrapper with all workflow states:
-
-```json
-{
-  "ticket_id": "TICKET-123",
-  "has_workflow": true,
-  "state": { /* selected workflow state (v4 format, see below) */ },
-  "workflows": ["feature"],
-  "all_workflows": {
-    "feature": { /* v4 state */ }
-  }
-}
-```
-
-Each v4 workflow state contains:
-
-```json
-{
-  "version": 4,
-  "initialized_at": "2025-01-01T00:00:00Z",
-  "workflow": "feature",
-  "scope_type": "ticket",
-  "current_phase": "implementation",
-  "status": "completed",
-  "completed_at": "2025-01-01T05:23:45Z",
-  "total_duration_sec": 19425.5,
-  "total_tokens_used": 150000,
-  "retry_count": 0,
-  "phase_order": ["investigation", "test-design", "implementation", "verification", "docs"],
-  "phases": {"investigation": {"status": "completed", "result": "pass"}},
-  "active_agents": {
-    "implementor:claude:opus": {
-      "agent_id": "uuid", "agent_type": "implementor", "session_id": "uuid",
-      "model_id": "claude:opus", "cli": "claude", "model": "opus",
-      "pid": 12345, "started_at": "2025-01-01T00:00:00Z", "context_left": 75, "restart_count": 0, "restart_threshold": 25
-    }
-  },
-  "agent_retries": {},
-  "agent_history": [
-    {
-      "agent_id": "uuid", "agent_type": "setup-analyzer", "session_id": "uuid",
-      "model_id": "claude:sonnet", "status": "completed", "result": "pass",
-      "started_at": "...", "ended_at": "...", "context_left": 60, "restart_count": 0
-    }
-  ],
-  "findings": {
-    "setup-analyzer:claude:sonnet": {"files_to_modify": ["..."]},
-    "_callback": {"level": 2, "instructions": "Fix auth token expiry check", "from_layer": 3, "from_agent": "qa-verifier"}
-  },
-  "parent_session": "uuid"
-}
-```
-
-**Completion Statistics** (present when `status` is `"completed"`):
-- `status`: Workflow instance status (`"active"`, `"completed"`, `"failed"`, or `"project_completed"`)
-- `completed_at`: ISO 8601 timestamp when workflow completed
-- `total_duration_sec`: Total workflow duration in seconds (from creation to completion)
-- `total_tokens_used`: Total context/tokens consumed across all agents (calculated using 200K token window * (100 - context_left) / 100 for each completed agent)
+`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with `ticket_id`, `has_workflow`, `workflows` list, and `all_workflows` map keyed by workflow name. Each workflow state includes version, status, current phase, phase order, phases map, active agents, agent history, and findings. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full endpoint listing and [be/internal/service/CLAUDE.md](be/internal/service/CLAUDE.md) for response construction.
 
 ## Chain Execution
 
-Chains allow sequential execution of multiple tickets with a single workflow. A chain reserves tickets via locks to prevent overlapping runs across chains.
-
-### Chain Lifecycle
-
-```
-[*] → Pending → Running → Completed
-                   ↓          ↑
-                 Failed    (last item)
-Pending → Canceled
-Running → Canceled
-Running → Failed (item fails)
-```
-
-### Chain API
-
-```bash
-GET    /api/v1/chains              # List chains (?status=&epic_ticket_id= filters)
-POST   /api/v1/chains              # Create (pending), expands deps + topo sort
-GET    /api/v1/chains/:id          # Get with ordered items
-PATCH  /api/v1/chains/:id          # Edit (pending only)
-POST   /api/v1/chains/:id/start    # Start sequential execution
-POST   /api/v1/chains/:id/cancel   # Cancel + release locks
-POST   /api/v1/chains/:id/append   # Append tickets to running chain
-
-# Epic workflow (auto-create chain from epic children)
-POST   /api/v1/tickets/:id/workflow/run-epic  # Create chain from epic's children + optional start
-```
-
-### Key Behaviors
-
-- **Dependency expansion**: Selected tickets are expanded with transitive blockers
-- **Topological sort**: Items ordered by dependency graph (tie-break: created_at, then ID)
-- **Cycle detection**: DFS-based detection after expansion
-- **Lock exclusivity**: UNIQUE(project_id, ticket_id) prevents overlapping chains
-- **Sequential execution**: Items run one at a time via orchestrator
-- **Crash recovery**: Zombie running chains are marked failed on server startup
+Chains allow sequential execution of multiple tickets with a single workflow. Tickets are expanded with transitive dependency blockers, topologically sorted, and locked to prevent overlapping runs. Items execute one at a time via the orchestrator. Zombie running chains are marked failed on server startup (crash recovery). See [be/internal/orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) for chain runner details and [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for chain API endpoints.
 
 ## Server Scripts
 

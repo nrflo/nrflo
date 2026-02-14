@@ -209,6 +209,30 @@ func (s *Server) handleGetTicket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch parent ticket and siblings when ticket has a parent
+	var parentTicket *model.Ticket
+	var siblings []*model.Ticket
+	if ticket.ParentTicketID.Valid {
+		parent, err := ticketRepo.Get(projectID, ticket.ParentTicketID.String)
+		if err != nil {
+			log.Printf("warning: failed to fetch parent ticket %s: %v", ticket.ParentTicketID.String, err)
+		} else {
+			parentTicket = parent
+		}
+
+		allSiblings, err := ticketRepo.ListByParent(projectID, ticket.ParentTicketID.String)
+		if err != nil {
+			log.Printf("warning: failed to fetch siblings for parent %s: %v", ticket.ParentTicketID.String, err)
+		} else {
+			// Filter out current ticket from siblings
+			for _, s := range allSiblings {
+				if !strings.EqualFold(s.ID, id) {
+					siblings = append(siblings, s)
+				}
+			}
+		}
+	}
+
 	// Build response by merging ticket JSON with dependency/children fields.
 	// Cannot use struct embedding because model.Ticket has a custom MarshalJSON
 	// that would shadow the outer struct's fields.
@@ -229,10 +253,15 @@ func (s *Server) handleGetTicket(w http.ResponseWriter, r *http.Request) {
 	if children == nil {
 		children = []*model.Ticket{}
 	}
+	if siblings == nil {
+		siblings = []*model.Ticket{}
+	}
 
 	response["blockers"] = blockers
 	response["blocks"] = blocked
 	response["children"] = children
+	response["parent_ticket"] = parentTicket
+	response["siblings"] = siblings
 
 	writeJSON(w, http.StatusOK, response)
 }

@@ -255,6 +255,14 @@ function renderPage() {
   )
 }
 
+/** Navigate to workflow tab after page loads */
+async function goToWorkflowTab(user: ReturnType<typeof userEvent.setup>) {
+  await waitFor(() => {
+    expect(screen.getByText('E2E test ticket')).toBeInTheDocument()
+  })
+  await user.click(screen.getByText('Workflow'))
+}
+
 describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -268,6 +276,7 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsWithData)
 
     renderPage()
+    await goToWorkflowTab(user)
 
     // --- Step 1: Panel appears with running agents (overview mode) ---
     await waitFor(() => {
@@ -317,6 +326,7 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsWithData)
 
     renderPage()
+    await goToWorkflowTab(user)
 
     await waitFor(() => {
       expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
@@ -342,6 +352,7 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
 
     renderPage()
+    await goToWorkflowTab(user)
 
     await waitFor(() => {
       expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
@@ -366,6 +377,7 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsWithData)
 
     renderPage()
+    await goToWorkflowTab(user)
 
     await waitFor(() => {
       expect(screen.getByText('Running Agents (1)')).toBeInTheDocument()
@@ -387,6 +399,7 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsWithData)
 
     renderPage()
+    await goToWorkflowTab(user)
 
     await waitFor(() => {
       expect(screen.getByText('Running Agents (1)')).toBeInTheDocument()

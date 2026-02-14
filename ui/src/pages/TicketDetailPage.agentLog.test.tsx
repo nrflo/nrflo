@@ -94,6 +94,16 @@ vi.mock('@/api/workflows', () => ({
   stopWorkflow: vi.fn(),
 }))
 
+/** Navigate to workflow tab after page loads */
+async function goToWorkflowTab() {
+  const user = userEvent.setup()
+  await waitFor(() => {
+    expect(screen.getByText('Test ticket')).toBeInTheDocument()
+  })
+  await user.click(screen.getByText('Workflow'))
+  return user
+}
+
 describe('TicketDetailPage - RunningAgentLog integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -105,6 +115,7 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
@@ -116,10 +127,7 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowNoActivePhase)
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     expect(screen.queryByTestId('running-agent-log')).not.toBeInTheDocument()
   })
@@ -133,20 +141,17 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
     })
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     expect(screen.queryByTestId('running-agent-log')).not.toBeInTheDocument()
   })
 
   it('shows agent detail in panel when agent in log is clicked', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
@@ -161,11 +166,11 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
   })
 
   it('toggles log panel collapse state', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
@@ -181,11 +186,11 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
   })
 
   it('does not show RunningAgentLog on description tab', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()

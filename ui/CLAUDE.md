@@ -60,7 +60,8 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/pages/TicketListPage.tsx` | Ticket list with filtering |
 | `src/pages/CreateTicketPage.tsx` | Create new ticket form page |
 | `src/pages/EditTicketPage.tsx` | Edit existing ticket form page |
-| `src/pages/TicketDetailPage.tsx` | Ticket detail with tabbed interface |
+| `src/pages/TicketDetailPage.tsx` | Ticket detail with tabbed interface (hierarchy/description/details/workflow) |
+| `src/pages/HierarchyTabContent.tsx` | Hierarchy tab: blockers, blocks, epic hierarchy (parent + siblings/children) |
 | `src/pages/WorkflowsPage.tsx` | Workflow definitions CRUD and agent definition management |
 | `src/pages/ProjectWorkflowsPage.tsx` | Project-scoped workflow execution page (run/stop/view state) |
 | `src/pages/SettingsPage.tsx` | Project management (create/update/delete) |
@@ -164,9 +165,15 @@ Layout
 ### Ticket Detail Page
 
 The ticket detail page (`src/pages/TicketDetailPage.tsx`) uses a tabbed interface:
-- **Workflow tab** (default): Shows phase timeline with agent history
-- **Description tab**: Ticket description and dependencies
-- **Details tab**: Metadata (priority, type, dates, etc.)
+- **Hierarchy tab** (default): Blockers (add/remove), blocks, epic hierarchy (parent + siblings/children)
+- **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
+- **Details tab**: Read-only dependency lists, description text, metadata
+- **Workflow tab**: Shows phase timeline with agent history
+
+Tab content components:
+- `HierarchyTabContent.tsx`: Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics)
+- `DescriptionTabContent.tsx`: Ticket title as h2, metadata grid, description text
+- `DetailsTabContent.tsx`: Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid
 
 **Real-time updates**: The page uses WebSocket exclusively for real-time updates. The page subscribes to the current ticket on mount via `useWebSocket()` hook. No REST polling is used.
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { DetailsTabContent } from './DetailsTabContent'
-import type { TicketWithDeps, Ticket } from '@/types/ticket'
+import type { TicketWithDeps } from '@/types/ticket'
 
 const baseTicket: TicketWithDeps = {
   id: 'TICK-100',
@@ -18,48 +18,6 @@ const baseTicket: TicketWithDeps = {
   close_reason: null,
   blockers: [],
   blocks: [],
-}
-
-const childTicket1: Ticket = {
-  id: 'TICK-101',
-  title: 'First child ticket',
-  description: 'Child description',
-  status: 'open',
-  priority: 1,
-  issue_type: 'task',
-  created_at: '2026-01-03T00:00:00Z',
-  updated_at: '2026-01-03T00:00:00Z',
-  closed_at: null,
-  created_by: 'bob',
-  close_reason: null,
-}
-
-const childTicket2: Ticket = {
-  id: 'TICK-102',
-  title: 'Second child ticket',
-  description: null,
-  status: 'in_progress',
-  priority: 3,
-  issue_type: 'bug',
-  created_at: '2026-01-04T00:00:00Z',
-  updated_at: '2026-01-04T00:00:00Z',
-  closed_at: null,
-  created_by: 'charlie',
-  close_reason: null,
-}
-
-const childTicket3: Ticket = {
-  id: 'TICK-103',
-  title: 'Third child ticket',
-  description: null,
-  status: 'closed',
-  priority: 4,
-  issue_type: 'task',
-  created_at: '2026-01-05T00:00:00Z',
-  updated_at: '2026-01-05T00:00:00Z',
-  closed_at: '2026-01-06T00:00:00Z',
-  created_by: 'dave',
-  close_reason: 'done',
 }
 
 function renderPage(ticket: TicketWithDeps = baseTicket) {
@@ -132,158 +90,137 @@ describe('DetailsTabContent', () => {
     })
   })
 
-  describe('Parent epic link', () => {
-    it('renders parent epic link when parent_ticket_id is set', () => {
-      const ticketWithParent: TicketWithDeps = {
-        ...baseTicket,
-        parent_ticket_id: 'EPIC-1',
-      }
-      renderPage(ticketWithParent)
-      expect(screen.getByText('Parent Epic')).toBeInTheDocument()
-      const link = screen.getByText('EPIC-1')
-      expect(link).toBeInTheDocument()
-      expect(link.closest('a')).toHaveAttribute('href', '/tickets/EPIC-1')
-    })
-
-    it('does not render parent epic section when no parent', () => {
+  describe('Description text', () => {
+    it('renders description text', () => {
       renderPage()
-      expect(screen.queryByText('Parent Epic')).not.toBeInTheDocument()
+      expect(screen.getByText('Some description')).toBeInTheDocument()
+    })
+
+    it('renders "No description" when description is null', () => {
+      renderPage({ ...baseTicket, description: null })
+      expect(screen.getByText('No description')).toBeInTheDocument()
     })
   })
 
-  describe('Children section', () => {
-    it('renders Children section for epic ticket with children', () => {
-      const epicTicket: TicketWithDeps = {
+  describe('Dependencies display', () => {
+    it('renders blockers when present', () => {
+      const ticket: TicketWithDeps = {
         ...baseTicket,
-        issue_type: 'epic',
-        children: [childTicket1, childTicket2],
+        blockers: [
+          { issue_id: 'TICK-100', depends_on_id: 'TICK-50', type: 'blocks', created_at: '2026-01-01T00:00:00Z', created_by: 'user' },
+        ],
       }
-      renderPage(epicTicket)
-      expect(screen.getByText('Children')).toBeInTheDocument()
+      renderPage(ticket)
+      expect(screen.getByText('Blocked by')).toBeInTheDocument()
+      expect(screen.getByText('TICK-50')).toBeInTheDocument()
     })
 
-    it('renders all child tickets in Children section', () => {
-      const epicTicket: TicketWithDeps = {
+    it('renders blocks when present', () => {
+      const ticket: TicketWithDeps = {
         ...baseTicket,
-        issue_type: 'epic',
-        children: [childTicket1, childTicket2, childTicket3],
+        blocks: [
+          { issue_id: 'TICK-200', depends_on_id: 'TICK-100', type: 'blocks', created_at: '2026-01-01T00:00:00Z', created_by: 'user' },
+        ],
       }
-      renderPage(epicTicket)
-      expect(screen.getByText('TICK-101')).toBeInTheDocument()
-      expect(screen.getByText('First child ticket')).toBeInTheDocument()
-      expect(screen.getByText('TICK-102')).toBeInTheDocument()
-      expect(screen.getByText('Second child ticket')).toBeInTheDocument()
-      expect(screen.getByText('TICK-103')).toBeInTheDocument()
-      expect(screen.getByText('Third child ticket')).toBeInTheDocument()
+      renderPage(ticket)
+      expect(screen.getByText('Blocks')).toBeInTheDocument()
+      expect(screen.getByText('TICK-200')).toBeInTheDocument()
     })
 
-    it('renders status badge for each child ticket', () => {
-      const epicTicket: TicketWithDeps = {
-        ...baseTicket,
-        issue_type: 'epic',
-        children: [childTicket1, childTicket2, childTicket3],
-      }
-      renderPage(epicTicket)
-      // Status badges: 'open', 'in progress', 'closed'
-      expect(screen.getAllByText('open')).toHaveLength(2) // baseTicket + childTicket1
-      expect(screen.getByText('in progress')).toBeInTheDocument()
-      expect(screen.getByText('closed')).toBeInTheDocument()
+    it('does not render dependencies section when no blockers or blocks', () => {
+      renderPage()
+      expect(screen.queryByText('Dependencies')).not.toBeInTheDocument()
     })
 
-    it('renders priority label for each child ticket', () => {
-      const epicTicket: TicketWithDeps = {
+    it('renders blocker titles when provided', () => {
+      const ticket: TicketWithDeps = {
         ...baseTicket,
-        issue_type: 'epic',
-        children: [childTicket1, childTicket2, childTicket3],
+        blockers: [
+          {
+            issue_id: 'TICK-100',
+            depends_on_id: 'TICK-50',
+            depends_on_title: 'Fix auth bug',
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
       }
-      renderPage(epicTicket)
-      expect(screen.getByText('Critical')).toBeInTheDocument() // priority 1
-      expect(screen.getByText('Medium')).toBeInTheDocument() // priority 3
-      expect(screen.getByText('Low')).toBeInTheDocument() // priority 4
+      renderPage(ticket)
+      expect(screen.getByText('Fix auth bug')).toBeInTheDocument()
     })
 
-    it('child ticket IDs link to correct detail pages', () => {
-      const epicTicket: TicketWithDeps = {
+    it('renders blocker IDs without titles', () => {
+      const ticket: TicketWithDeps = {
         ...baseTicket,
-        issue_type: 'epic',
-        children: [childTicket1, childTicket2],
+        blockers: [
+          {
+            issue_id: 'TICK-100',
+            depends_on_id: 'TICK-50',
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
       }
-      renderPage(epicTicket)
-
-      const link1 = screen.getByText('TICK-101').closest('a')
-      expect(link1).toHaveAttribute('href', '/tickets/TICK-101')
-
-      const link2 = screen.getByText('TICK-102').closest('a')
-      expect(link2).toHaveAttribute('href', '/tickets/TICK-102')
+      renderPage(ticket)
+      expect(screen.getByText('TICK-50')).toBeInTheDocument()
     })
 
-    it('does not render Children section for epic ticket with empty children array', () => {
-      const epicTicket: TicketWithDeps = {
+    it('renders block titles when provided', () => {
+      const ticket: TicketWithDeps = {
         ...baseTicket,
-        issue_type: 'epic',
-        children: [],
+        blocks: [
+          {
+            issue_id: 'TICK-200',
+            depends_on_id: 'TICK-100',
+            issue_title: 'Deploy to prod',
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
       }
-      renderPage(epicTicket)
-      expect(screen.queryByText('Children')).not.toBeInTheDocument()
+      renderPage(ticket)
+      expect(screen.getByText('Deploy to prod')).toBeInTheDocument()
     })
 
-    it('does not render Children section for epic ticket with undefined children', () => {
-      const epicTicket: TicketWithDeps = {
+    it('renders blocker link with correct href', () => {
+      const ticket: TicketWithDeps = {
         ...baseTicket,
-        issue_type: 'epic',
-        children: undefined,
+        blockers: [
+          {
+            issue_id: 'TICK-100',
+            depends_on_id: 'TICK-50',
+            depends_on_title: 'Fix auth bug',
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
       }
-      renderPage(epicTicket)
-      expect(screen.queryByText('Children')).not.toBeInTheDocument()
+      const { container } = renderPage(ticket)
+      const link = container.querySelector('a[href="/tickets/TICK-50"]')
+      expect(link).toBeInTheDocument()
     })
 
-    it('does not render Children section for non-epic ticket even with children', () => {
-      const featureTicket: TicketWithDeps = {
+    it('renders blocks link with correct href', () => {
+      const ticket: TicketWithDeps = {
         ...baseTicket,
-        issue_type: 'feature',
-        children: [childTicket1, childTicket2],
+        blocks: [
+          {
+            issue_id: 'TICK-200',
+            depends_on_id: 'TICK-100',
+            issue_title: 'Deploy to prod',
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
       }
-      renderPage(featureTicket)
-      expect(screen.queryByText('Children')).not.toBeInTheDocument()
-    })
-
-    it('does not render Children section for task ticket', () => {
-      const taskTicket: TicketWithDeps = {
-        ...baseTicket,
-        issue_type: 'task',
-      }
-      renderPage(taskTicket)
-      expect(screen.queryByText('Children')).not.toBeInTheDocument()
-    })
-
-    it('does not render Children section for bug ticket', () => {
-      const bugTicket: TicketWithDeps = {
-        ...baseTicket,
-        issue_type: 'bug',
-      }
-      renderPage(bugTicket)
-      expect(screen.queryByText('Children')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Full flow: epic with parent and children', () => {
-    it('renders both parent epic link and children section', () => {
-      const epicTicket: TicketWithDeps = {
-        ...baseTicket,
-        issue_type: 'epic',
-        parent_ticket_id: 'MEGA-EPIC-1',
-        children: [childTicket1],
-      }
-      renderPage(epicTicket)
-
-      // Parent epic link
-      expect(screen.getByText('Parent Epic')).toBeInTheDocument()
-      expect(screen.getByText('MEGA-EPIC-1')).toBeInTheDocument()
-
-      // Children section
-      expect(screen.getByText('Children')).toBeInTheDocument()
-      expect(screen.getByText('TICK-101')).toBeInTheDocument()
-      expect(screen.getByText('First child ticket')).toBeInTheDocument()
+      const { container } = renderPage(ticket)
+      const link = container.querySelector('a[href="/tickets/TICK-200"]')
+      expect(link).toBeInTheDocument()
     })
   })
 })

@@ -8,6 +8,7 @@ import {
   FileText,
   GitBranch,
   Info,
+  Network,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useProjectStore } from '@/stores/projectStore'
@@ -36,6 +37,7 @@ import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
 import { cn, statusColor } from '@/lib/utils'
 import { WorkflowTabContent } from './WorkflowTabContent'
+import { HierarchyTabContent } from './HierarchyTabContent'
 import { DescriptionTabContent } from './DescriptionTabContent'
 import { DetailsTabContent } from './DetailsTabContent'
 
@@ -45,7 +47,7 @@ export function TicketDetailPage() {
   const [closeReason, setCloseReason] = useState('')
   const [showCloseForm, setShowCloseForm] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'workflow' | 'description' | 'details'>('workflow')
+  const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>('hierarchy')
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
@@ -249,16 +251,16 @@ export function TicketDetailPage() {
       <div className="border-b border-border">
         <div className="flex gap-1">
           <button
-            onClick={() => setActiveTab('workflow')}
+            onClick={() => setActiveTab('hierarchy')}
             className={cn(
               'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-              activeTab === 'workflow'
+              activeTab === 'hierarchy'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
-            <GitBranch className="h-4 w-4" />
-            Workflow
+            <Network className="h-4 w-4" />
+            Hierarchy
           </button>
           <button
             onClick={() => setActiveTab('description')}
@@ -284,11 +286,27 @@ export function TicketDetailPage() {
             <Info className="h-4 w-4" />
             Details
           </button>
+          <button
+            onClick={() => setActiveTab('workflow')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'workflow'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <GitBranch className="h-4 w-4" />
+            Workflow
+          </button>
         </div>
       </div>
 
       {/* Tab Content */}
       <div className="flex-1">
+        {activeTab === 'hierarchy' && (
+          <HierarchyTabContent ticket={ticket} />
+        )}
+
         {activeTab === 'workflow' && (
           <WorkflowTabContent
             ticketId={id}

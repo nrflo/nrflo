@@ -76,9 +76,11 @@ func (r *DependencyRepo) Delete(projectID, childID, parentID string) error {
 // GetBlockers returns all tickets that block the given ticket
 func (r *DependencyRepo) GetBlockers(projectID, ticketID string) ([]*model.Dependency, error) {
 	rows, err := r.db.Query(`
-		SELECT project_id, issue_id, depends_on_id, type, created_at, created_by
-		FROM dependencies
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(issue_id) = LOWER(?)`, projectID, ticketID)
+		SELECT d.project_id, d.issue_id, d.depends_on_id, d.type, d.created_at, d.created_by,
+		       COALESCE(t.title, '') AS depends_on_title
+		FROM dependencies d
+		LEFT JOIN tickets t ON LOWER(d.depends_on_id) = LOWER(t.id) AND LOWER(d.project_id) = LOWER(t.project_id)
+		WHERE LOWER(d.project_id) = LOWER(?) AND LOWER(d.issue_id) = LOWER(?)`, projectID, ticketID)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +90,7 @@ func (r *DependencyRepo) GetBlockers(projectID, ticketID string) ([]*model.Depen
 	for rows.Next() {
 		dep := &model.Dependency{}
 		var createdAt string
-		err := rows.Scan(&dep.ProjectID, &dep.IssueID, &dep.DependsOnID, &dep.Type, &createdAt, &dep.CreatedBy)
+		err := rows.Scan(&dep.ProjectID, &dep.IssueID, &dep.DependsOnID, &dep.Type, &createdAt, &dep.CreatedBy, &dep.DependsOnTitle)
 		if err != nil {
 			return nil, err
 		}
@@ -101,9 +103,11 @@ func (r *DependencyRepo) GetBlockers(projectID, ticketID string) ([]*model.Depen
 // GetBlocked returns all tickets blocked by the given ticket
 func (r *DependencyRepo) GetBlocked(projectID, ticketID string) ([]*model.Dependency, error) {
 	rows, err := r.db.Query(`
-		SELECT project_id, issue_id, depends_on_id, type, created_at, created_by
-		FROM dependencies
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(depends_on_id) = LOWER(?)`, projectID, ticketID)
+		SELECT d.project_id, d.issue_id, d.depends_on_id, d.type, d.created_at, d.created_by,
+		       COALESCE(t.title, '') AS issue_title
+		FROM dependencies d
+		LEFT JOIN tickets t ON LOWER(d.issue_id) = LOWER(t.id) AND LOWER(d.project_id) = LOWER(t.project_id)
+		WHERE LOWER(d.project_id) = LOWER(?) AND LOWER(d.depends_on_id) = LOWER(?)`, projectID, ticketID)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +117,7 @@ func (r *DependencyRepo) GetBlocked(projectID, ticketID string) ([]*model.Depend
 	for rows.Next() {
 		dep := &model.Dependency{}
 		var createdAt string
-		err := rows.Scan(&dep.ProjectID, &dep.IssueID, &dep.DependsOnID, &dep.Type, &createdAt, &dep.CreatedBy)
+		err := rows.Scan(&dep.ProjectID, &dep.IssueID, &dep.DependsOnID, &dep.Type, &createdAt, &dep.CreatedBy, &dep.IssueTitle)
 		if err != nil {
 			return nil, err
 		}

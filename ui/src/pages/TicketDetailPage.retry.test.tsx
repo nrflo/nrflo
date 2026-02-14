@@ -100,6 +100,16 @@ const sessionsData: AgentSessionsResponse = {
   sessions: [],
 }
 
+/** Navigate to workflow tab after page loads */
+async function goToWorkflowTab() {
+  const user = userEvent.setup()
+  await waitFor(() => {
+    expect(screen.getByText('Test ticket')).toBeInTheDocument()
+  })
+  await user.click(screen.getByText('Workflow'))
+  return user
+}
+
 describe('TicketDetailPage - Retry failed agent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -111,6 +121,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Workflow Failed')).toBeInTheDocument()
@@ -126,6 +137,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Workflow Failed')).toBeInTheDocument()
@@ -133,13 +145,13 @@ describe('TicketDetailPage - Retry failed agent', () => {
   })
 
   it('calls retryFailedAgent API with correct parameters when retry clicked', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithFailedAgent)
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
     vi.mocked(workflowsApi.retryFailedAgent).mockResolvedValue({ status: 'retrying' })
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Retry Failed')).toBeInTheDocument()
@@ -161,6 +173,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Workflow Failed')).toBeInTheDocument()
@@ -172,13 +185,13 @@ describe('TicketDetailPage - Retry failed agent', () => {
   })
 
   it('invalidates workflow and sessions queries on successful retry', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithFailedAgent)
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
     vi.mocked(workflowsApi.retryFailedAgent).mockResolvedValue({ status: 'retrying' })
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Retry Failed')).toBeInTheDocument()
@@ -207,10 +220,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     expect(screen.queryByText('Retry Failed')).not.toBeInTheDocument()
   })
@@ -225,10 +235,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     expect(screen.queryByText('Retry Failed')).not.toBeInTheDocument()
   })
@@ -246,10 +253,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     expect(screen.queryByText('Retry Failed')).not.toBeInTheDocument()
   })
@@ -260,41 +264,29 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Workflow Failed')).toBeInTheDocument()
     })
-
-    // WorkflowTabContent receives the necessary props
-    // (AgentLogPanel only renders when there are active agents, which is not the case
-    // in a failed workflow with no running agents)
   })
 
   it('uses first failed agent session_id when multiple failed agents', async () => {
-    const user = userEvent.setup()
     const workflowMultipleFailed = {
       ...workflowWithFailedAgent,
       state: {
         ...workflowWithFailedAgent.state,
         agent_history: [
           {
-            agent_id: 'a1',
-            agent_type: 'implementor',
-            phase: 'implementation',
-            model_id: 'claude-sonnet-4-5',
-            result: 'fail',
-            started_at: '2026-01-01T00:00:00Z',
-            ended_at: '2026-01-01T00:05:00Z',
+            agent_id: 'a1', agent_type: 'implementor', phase: 'implementation',
+            model_id: 'claude-sonnet-4-5', result: 'fail',
+            started_at: '2026-01-01T00:00:00Z', ended_at: '2026-01-01T00:05:00Z',
             session_id: 'sess-first-failed',
           },
           {
-            agent_id: 'a2',
-            agent_type: 'tester',
-            phase: 'verification',
-            model_id: 'claude-opus-4-6',
-            result: 'fail',
-            started_at: '2026-01-01T00:06:00Z',
-            ended_at: '2026-01-01T00:10:00Z',
+            agent_id: 'a2', agent_type: 'tester', phase: 'verification',
+            model_id: 'claude-opus-4-6', result: 'fail',
+            started_at: '2026-01-01T00:06:00Z', ended_at: '2026-01-01T00:10:00Z',
             session_id: 'sess-second-failed',
           },
         ],
@@ -306,6 +298,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     vi.mocked(workflowsApi.retryFailedAgent).mockResolvedValue({ status: 'retrying' })
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Retry Failed')).toBeInTheDocument()

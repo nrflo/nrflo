@@ -149,6 +149,16 @@ const sessionsData: AgentSessionsResponse = {
   }],
 }
 
+/** Navigate to workflow tab after page loads */
+async function goToWorkflowTab() {
+  const user = userEvent.setup()
+  await waitFor(() => {
+    expect(screen.getByText('Test ticket')).toBeInTheDocument()
+  })
+  await user.click(screen.getByText('Workflow'))
+  return user
+}
+
 describe('TicketDetailPage - Restart agent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -162,6 +172,7 @@ describe('TicketDetailPage - Restart agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
@@ -177,6 +188,7 @@ describe('TicketDetailPage - Restart agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('restart-btn-implementor')).toBeInTheDocument()
@@ -184,13 +196,13 @@ describe('TicketDetailPage - Restart agent', () => {
   })
 
   it('calls restartAgent API with correct parameters when restart clicked', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithSessionId)
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
     vi.mocked(workflowsApi.restartAgent).mockResolvedValue({ status: 'restarting' })
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('restart-btn-implementor')).toBeInTheDocument()
@@ -212,6 +224,7 @@ describe('TicketDetailPage - Restart agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(sessionsData)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
@@ -229,10 +242,7 @@ describe('TicketDetailPage - Restart agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     expect(screen.queryByTestId('restart-btn-implementor')).not.toBeInTheDocument()
   })
@@ -261,6 +271,7 @@ describe('TicketDetailPage - Restart agent', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()

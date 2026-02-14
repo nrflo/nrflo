@@ -98,10 +98,12 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 
 // Dependency represents a dependency between tickets
 type Dependency struct {
-	ProjectID   string    `json:"project_id"`
-	IssueID     string    `json:"issue_id"`
-	DependsOnID string    `json:"depends_on_id"`
-	Type        string    `json:"type"`
-	CreatedAt   time.Time `json:"created_at"`
-	CreatedBy   string    `json:"created_by"`
+	ProjectID     string    `json:"project_id"`
+	IssueID       string    `json:"issue_id"`
+	DependsOnID   string    `json:"depends_on_id"`
+	Type          string    `json:"type"`
+	CreatedAt     time.Time `json:"created_at"`
+	CreatedBy     string    `json:"created_by"`
+	DependsOnTitle string   `json:"depends_on_title,omitempty"`
+	IssueTitle     string   `json:"issue_title,omitempty"`
 }

@@ -62,6 +62,16 @@ vi.mock('@/api/workflows', () => ({
   stopWorkflow: vi.fn(),
 }))
 
+/** Navigate to workflow tab after page loads */
+async function goToWorkflowTab() {
+  const user = userEvent.setup()
+  await waitFor(() => {
+    expect(screen.getByText('Test ticket')).toBeInTheDocument()
+  })
+  await user.click(screen.getByText('Workflow'))
+  return user
+}
+
 describe('TicketDetailPage - Completion stats banner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -73,6 +83,7 @@ describe('TicketDetailPage - Completion stats banner', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowCompleted)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Completed')).toBeInTheDocument()
@@ -94,10 +105,7 @@ describe('TicketDetailPage - Completion stats banner', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowNoActivePhase)
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     // workflowNoActivePhase has no status='completed', so no banner
     expect(screen.queryByText('230K tokens')).not.toBeInTheDocument()
@@ -108,6 +116,7 @@ describe('TicketDetailPage - Completion stats banner', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowCompletedZeroTokens)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Completed')).toBeInTheDocument()
@@ -121,11 +130,11 @@ describe('TicketDetailPage - Completion stats banner', () => {
   })
 
   it('does not show completion banner on description tab', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowCompleted)
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByText('Completed')).toBeInTheDocument()

@@ -36,12 +36,16 @@ export interface Dependency {
   type: string
   created_at: string
   created_by: string
+  depends_on_title?: string
+  issue_title?: string
 }
 
 export interface TicketWithDeps extends Ticket {
   blockers: Dependency[]
   blocks: Dependency[]
   children?: Ticket[]
+  parent_ticket?: Ticket | null
+  siblings?: Ticket[]
 }
 
 export interface CreateTicketRequest {

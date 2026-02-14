@@ -79,6 +79,16 @@ const noWorkflow: WorkflowResponse = {
   all_workflows: {},
 }
 
+/** Navigate to workflow tab after page loads */
+async function goToWorkflowTab(ticketTitle: string) {
+  const user = userEvent.setup()
+  await waitFor(() => {
+    expect(screen.getByText(ticketTitle)).toBeInTheDocument()
+  })
+  await user.click(screen.getByText('Workflow'))
+  return user
+}
+
 describe('TicketDetailPage - Epic workflow integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -91,10 +101,7 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
-
-      await waitFor(() => {
-        expect(screen.getByText('Epic ticket')).toBeInTheDocument()
-      })
+      await goToWorkflowTab('Epic ticket')
 
       expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /^run workflow$/i })).not.toBeInTheDocument()
@@ -104,10 +111,7 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(taskTicket)
 
       renderPage('TICKET-TASK')
-
-      await waitFor(() => {
-        expect(screen.getByText('Task ticket')).toBeInTheDocument()
-      })
+      await goToWorkflowTab('Task ticket')
 
       expect(screen.queryByRole('button', { name: /run epic workflow/i })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /run workflow/i })).toBeInTheDocument()
@@ -157,43 +161,34 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       const { useChainList } = await import('@/hooks/useChains')
       const mockChainList = vi.mocked(useChainList)
       const activeChain: ChainExecution = {
-        id: 'chain-123',
-        project_id: 'test-project',
-        name: 'Test chain',
-        status: 'running',
-        workflow_name: 'feature',
-        epic_ticket_id: 'TICKET-EPIC',
-        created_by: 'test-user',
-        total_items: 3,
-        completed_items: 1,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
+        id: 'chain-123', project_id: 'test-project', name: 'Test chain',
+        status: 'running', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC',
+        created_by: 'test-user', total_items: 3, completed_items: 1,
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
       }
       mockChainList.mockReturnValue({ data: [activeChain] } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /view chain/i })).toBeInTheDocument()
       })
-
       expect(screen.queryByRole('button', { name: /run epic workflow/i })).not.toBeInTheDocument()
     })
 
     it('shows Run Epic Workflow button when no active chain', async () => {
       const { useChainList } = await import('@/hooks/useChains')
       vi.mocked(useChainList).mockReturnValue({ data: [] } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
       })
-
       expect(screen.queryByRole('link', { name: /view chain/i })).not.toBeInTheDocument()
     })
 
@@ -201,28 +196,20 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       const { useChainList } = await import('@/hooks/useChains')
       const mockChainList = vi.mocked(useChainList)
       const completedChain: ChainExecution = {
-        id: 'chain-123',
-        project_id: 'test-project',
-        name: 'Test chain',
-        status: 'completed',
-        workflow_name: 'feature',
-        epic_ticket_id: 'TICKET-EPIC',
-        created_by: 'test-user',
-        total_items: 3,
-        completed_items: 3,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
+        id: 'chain-123', project_id: 'test-project', name: 'Test chain',
+        status: 'completed', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC',
+        created_by: 'test-user', total_items: 3, completed_items: 3,
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
       }
       mockChainList.mockReturnValue({ data: [completedChain] } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
       })
-
       expect(screen.queryByRole('link', { name: /view chain/i })).not.toBeInTheDocument()
     })
 
@@ -230,28 +217,20 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       const { useChainList } = await import('@/hooks/useChains')
       const mockChainList = vi.mocked(useChainList)
       const pendingChain: ChainExecution = {
-        id: 'chain-123',
-        project_id: 'test-project',
-        name: 'Test chain',
-        status: 'pending',
-        workflow_name: 'feature',
-        epic_ticket_id: 'TICKET-EPIC',
-        created_by: 'test-user',
-        total_items: 3,
-        completed_items: 0,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
+        id: 'chain-123', project_id: 'test-project', name: 'Test chain',
+        status: 'pending', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC',
+        created_by: 'test-user', total_items: 3, completed_items: 0,
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
       }
       mockChainList.mockReturnValue({ data: [pendingChain] } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /view chain/i })).toBeInTheDocument()
       })
-
       expect(screen.queryByRole('button', { name: /run epic workflow/i })).not.toBeInTheDocument()
     })
 
@@ -259,43 +238,18 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       const { useChainList } = await import('@/hooks/useChains')
       const mockChainList = vi.mocked(useChainList)
       const chains: ChainExecution[] = [
-        {
-          id: 'chain-1',
-          project_id: 'test-project',
-          name: 'Completed',
-          status: 'completed',
-          workflow_name: 'feature',
-          epic_ticket_id: 'TICKET-EPIC',
-          created_by: 'test-user',
-          total_items: 3,
-          completed_items: 3,
-          created_at: '2026-01-01T00:00:00Z',
-          updated_at: '2026-01-01T00:00:00Z',
-        },
-        {
-          id: 'chain-2',
-          project_id: 'test-project',
-          name: 'Running',
-          status: 'running',
-          workflow_name: 'feature',
-          epic_ticket_id: 'TICKET-EPIC',
-          created_by: 'test-user',
-          total_items: 3,
-          completed_items: 1,
-          created_at: '2026-01-01T01:00:00Z',
-          updated_at: '2026-01-01T01:00:00Z',
-        },
+        { id: 'chain-1', project_id: 'test-project', name: 'Completed', status: 'completed', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC', created_by: 'test-user', total_items: 3, completed_items: 3, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+        { id: 'chain-2', project_id: 'test-project', name: 'Running', status: 'running', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC', created_by: 'test-user', total_items: 3, completed_items: 1, created_at: '2026-01-01T01:00:00Z', updated_at: '2026-01-01T01:00:00Z' },
       ]
       mockChainList.mockReturnValue({ data: chains } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /view chain/i })).toBeInTheDocument()
       })
-
       const link = screen.getByRole('link', { name: /view chain/i })
       expect(link).toHaveAttribute('href', '/chains/chain-2')
     })
@@ -303,17 +257,16 @@ describe('TicketDetailPage - Epic workflow integration', () => {
 
   describe('dialog integration', () => {
     it('opens RunEpicWorkflowDialog when button clicked', async () => {
-      const user = userEvent.setup()
       const { useChainList } = await import('@/hooks/useChains')
       vi.mocked(useChainList).mockReturnValue({ data: [] } as any)
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      const user = await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
       })
-
       await user.click(screen.getByRole('button', { name: /run epic workflow/i }))
 
       await waitFor(() => {
@@ -322,36 +275,33 @@ describe('TicketDetailPage - Epic workflow integration', () => {
     })
 
     it('does not open RunEpicWorkflowDialog for non-epic tickets', async () => {
-      const user = userEvent.setup()
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(taskTicket)
 
       renderPage('TICKET-TASK')
+      const user = await goToWorkflowTab('Task ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run workflow/i })).toBeInTheDocument()
       })
-
       await user.click(screen.getByRole('button', { name: /run workflow/i }))
 
       await waitFor(() => {
         expect(screen.getByTestId('run-workflow-dialog')).toBeInTheDocument()
       })
-
       expect(screen.queryByTestId('run-epic-workflow-dialog')).not.toBeInTheDocument()
     })
 
     it('passes correct props to RunEpicWorkflowDialog', async () => {
-      const user = userEvent.setup()
       const { useChainList } = await import('@/hooks/useChains')
       vi.mocked(useChainList).mockReturnValue({ data: [] } as any)
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      const user = await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
       })
-
       await user.click(screen.getByRole('button', { name: /run epic workflow/i }))
 
       await waitFor(() => {
@@ -364,16 +314,10 @@ describe('TicketDetailPage - Epic workflow integration', () => {
     it('handles ticket with undefined issue_type', async () => {
       const { useChainList } = await import('@/hooks/useChains')
       vi.mocked(useChainList).mockReturnValue({ data: [] } as any)
-      vi.mocked(ticketsApi.getTicket).mockResolvedValue({
-        ...epicTicket,
-        issue_type: undefined as any,
-      })
+      vi.mocked(ticketsApi.getTicket).mockResolvedValue({ ...epicTicket, issue_type: undefined as any })
 
       renderPage('TICKET-EPIC')
-
-      await waitFor(() => {
-        expect(screen.getByText('Epic ticket')).toBeInTheDocument()
-      })
+      await goToWorkflowTab('Epic ticket')
 
       expect(screen.queryByRole('button', { name: /run epic workflow/i })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /run workflow/i })).toBeInTheDocument()
@@ -385,10 +329,7 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
-
-      await waitFor(() => {
-        expect(screen.getByText('Epic ticket')).toBeInTheDocument()
-      })
+      await goToWorkflowTab('Epic ticket')
 
       expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
     })
@@ -397,27 +338,16 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       const { useChainList } = await import('@/hooks/useChains')
       const mockChainList = vi.mocked(useChainList)
       const failedChain: ChainExecution = {
-        id: 'chain-123',
-        project_id: 'test-project',
-        name: 'Test chain',
-        status: 'failed',
-        workflow_name: 'feature',
-        epic_ticket_id: 'TICKET-EPIC',
-        created_by: 'test-user',
-        total_items: 3,
-        completed_items: 1,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
+        id: 'chain-123', project_id: 'test-project', name: 'Test chain',
+        status: 'failed', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC',
+        created_by: 'test-user', total_items: 3, completed_items: 1,
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
       }
       mockChainList.mockReturnValue({ data: [failedChain] } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
-
-      await waitFor(() => {
-        expect(screen.getByText('Epic ticket')).toBeInTheDocument()
-      })
+      await goToWorkflowTab('Epic ticket')
 
       expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: /view chain/i })).not.toBeInTheDocument()
@@ -427,27 +357,16 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       const { useChainList } = await import('@/hooks/useChains')
       const mockChainList = vi.mocked(useChainList)
       const canceledChain: ChainExecution = {
-        id: 'chain-123',
-        project_id: 'test-project',
-        name: 'Test chain',
-        status: 'canceled',
-        workflow_name: 'feature',
-        epic_ticket_id: 'TICKET-EPIC',
-        created_by: 'test-user',
-        total_items: 3,
-        completed_items: 0,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
+        id: 'chain-123', project_id: 'test-project', name: 'Test chain',
+        status: 'canceled', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC',
+        created_by: 'test-user', total_items: 3, completed_items: 0,
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
       }
       mockChainList.mockReturnValue({ data: [canceledChain] } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
-
-      await waitFor(() => {
-        expect(screen.getByText('Epic ticket')).toBeInTheDocument()
-      })
+      await goToWorkflowTab('Epic ticket')
 
       expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: /view chain/i })).not.toBeInTheDocument()
@@ -461,11 +380,11 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByText(/no workflow configured/i)).toBeInTheDocument()
       })
-
       expect(screen.getByRole('button', { name: /run epic workflow/i })).toBeInTheDocument()
     })
 
@@ -473,28 +392,20 @@ describe('TicketDetailPage - Epic workflow integration', () => {
       const { useChainList } = await import('@/hooks/useChains')
       const mockChainList = vi.mocked(useChainList)
       const activeChain: ChainExecution = {
-        id: 'chain-123',
-        project_id: 'test-project',
-        name: 'Test chain',
-        status: 'running',
-        workflow_name: 'feature',
-        epic_ticket_id: 'TICKET-EPIC',
-        created_by: 'test-user',
-        total_items: 3,
-        completed_items: 1,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z',
+        id: 'chain-123', project_id: 'test-project', name: 'Test chain',
+        status: 'running', workflow_name: 'feature', epic_ticket_id: 'TICKET-EPIC',
+        created_by: 'test-user', total_items: 3, completed_items: 1,
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
       }
       mockChainList.mockReturnValue({ data: [activeChain] } as any)
-
       vi.mocked(ticketsApi.getTicket).mockResolvedValue(epicTicket)
 
       renderPage('TICKET-EPIC')
+      await goToWorkflowTab('Epic ticket')
 
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /view chain/i })).toBeInTheDocument()
       })
-
       expect(screen.queryByRole('button', { name: /run epic workflow/i })).not.toBeInTheDocument()
     })
   })

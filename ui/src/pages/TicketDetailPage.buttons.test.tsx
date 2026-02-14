@@ -81,6 +81,16 @@ vi.mock('@/api/workflows', () => ({
   stopWorkflow: vi.fn(),
 }))
 
+/** Navigate to workflow tab after page loads */
+async function goToWorkflowTab() {
+  const user = userEvent.setup()
+  await waitFor(() => {
+    expect(screen.getByText('Test ticket')).toBeInTheDocument()
+  })
+  await user.click(screen.getByText('Workflow'))
+  return user
+}
+
 describe('TicketDetailPage - Stop button placement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -92,6 +102,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -103,6 +114,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowOrchestrated)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -114,6 +126,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowOrchestratedNoAgents)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -125,10 +138,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowNoActivePhase)
 
     renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Test ticket')).toBeInTheDocument()
-    })
+    await goToWorkflowTab()
 
     expect(screen.queryByRole('button', { name: /stop/i })).not.toBeInTheDocument()
   })
@@ -138,6 +148,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowNoActivePhase)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /run workflow/i })).toBeInTheDocument()
@@ -149,6 +160,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -162,6 +174,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowOrchestrated)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -175,6 +188,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -193,6 +207,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowOrchestrated)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -210,6 +225,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -222,12 +238,12 @@ describe('TicketDetailPage - Stop button placement', () => {
   })
 
   it('Stop button calls stopWorkflow with correct params', async () => {
-    const user = userEvent.setup()
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
     vi.mocked(workflowsApi.stopWorkflow).mockResolvedValue({ status: 'stopped' })
 
     renderPage()
+    const user = await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
@@ -248,6 +264,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowMultiple)
 
     renderPage()
+    await goToWorkflowTab()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()

@@ -28,12 +28,7 @@ ${PROJECT_SPECIFIC}
    - Check for existing test coverage
    - Note any dependencies or related code
 
-3. **Determine Category**
-   - **docs**: Only markdown/text files, no code logic changes
-   - **simple**: Code change with existing test coverage (tests already exist)
-   - **full**: New feature or behavior requiring TDD (new tests needed)
-
-4. **Store Findings**
+3. **Store Findings**
    ```bash
    nrworkflow findings add ${TICKET_ID} ${AGENT} summary '<summary>' -w ${WORKFLOW}
    nrworkflow findings add ${TICKET_ID} ${AGENT} acceptance_criteria '<json-array>' -w ${WORKFLOW}
@@ -42,12 +37,7 @@ ${PROJECT_SPECIFIC}
    nrworkflow findings add ${TICKET_ID} ${AGENT} existing_tests '<json-array>' -w ${WORKFLOW}
    ```
 
-5. **Set Category**
-   ```bash
-   nrworkflow set ${TICKET_ID} category <docs|simple|full> -w ${WORKFLOW}
-   ```
-
-6. **Signal Completion** (MANDATORY)
+4. **Signal Completion** (MANDATORY)
    ```bash
    nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
    ```

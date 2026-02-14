@@ -184,7 +184,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 
 	// Validate phase order
-	if _, _, err := s.validateAndAdvancePhase(wi, req.WorkflowName, req.AgentType); err != nil {
+	if _, err := s.validateAndAdvancePhase(wi, req.WorkflowName, req.AgentType); err != nil {
 		return err
 	}
 

@@ -240,7 +240,7 @@ describe('RunEpicWorkflowDialog', () => {
       expect(screen.getByText('Third child ticket')).toBeInTheDocument()
     })
 
-    it('shows workflow and category badges after preview', async () => {
+    it('shows workflow badge after preview', async () => {
       const user = userEvent.setup()
       vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
       vi.mocked(chainsApi.runEpicWorkflow).mockResolvedValue(mockChain)

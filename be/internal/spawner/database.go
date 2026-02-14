@@ -123,12 +123,12 @@ func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*m
 }
 
 // validateAndAdvancePhase validates phase order.
-// Returns (phaseID, shouldSkip, error). Uses workflow_instances table for state.
+// Returns (phaseID, error). Uses workflow_instances table for state.
 // With layer-based execution, validates that all agents in prior layers are completed.
-func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowName, requestedAgent string) (string, bool, error) {
+func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowName, requestedAgent string) (string, error) {
 	workflow, ok := s.config.Workflows[workflowName]
 	if !ok {
-		return "", false, fmt.Errorf("unknown workflow: %s", workflowName)
+		return "", fmt.Errorf("unknown workflow: %s", workflowName)
 	}
 
 	// Find requested agent's phase
@@ -140,7 +140,7 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 		}
 	}
 	if requestedPhase == nil {
-		return "", false, fmt.Errorf("agent '%s' not found in workflow '%s'", requestedAgent, workflowName)
+		return "", fmt.Errorf("agent '%s' not found in workflow '%s'", requestedAgent, workflowName)
 	}
 
 	phases := wi.GetPhases()
@@ -154,11 +154,11 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 		if exists && phaseStatus.Status == "completed" {
 			continue
 		}
-		return "", false, fmt.Errorf("layer %d agent '%s' must complete before layer %d agent '%s'",
+		return "", fmt.Errorf("layer %d agent '%s' must complete before layer %d agent '%s'",
 			priorPhase.Layer, priorPhase.ID, requestedPhase.Layer, requestedPhase.ID)
 	}
 
-	return requestedPhase.ID, false, nil
+	return requestedPhase.ID, nil
 }
 
 // startPhase marks a phase as in_progress using workflow_instances table

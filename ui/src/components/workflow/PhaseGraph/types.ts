@@ -31,6 +31,8 @@ export interface PhaseGraphProps {
   sessions?: AgentSession[]
   // Callback when an agent is clicked (replaces internal modal)
   onAgentSelect?: (data: SelectedAgentData) => void
+  // Whether the agent log panel is collapsed — triggers fitView on change
+  logPanelCollapsed?: boolean
 }
 
 export interface AgentCardProps {

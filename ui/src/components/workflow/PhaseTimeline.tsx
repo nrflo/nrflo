@@ -13,9 +13,10 @@ interface PhaseTimelineProps {
   ticketId?: string
   sessions?: AgentSession[]
   onAgentSelect?: (data: SelectedAgentData) => void
+  logPanelCollapsed?: boolean
 }
 
-export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect }: PhaseTimelineProps) {
+export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect, logPanelCollapsed }: PhaseTimelineProps) {
   const phases = workflow.phases || {}
   const activeAgents = useMemo(() => workflow.active_agents || {}, [workflow.active_agents])
 
@@ -73,6 +74,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
         phaseOrder={workflow.phase_order}
         sessions={sessions}
         onAgentSelect={onAgentSelect}
+        logPanelCollapsed={logPanelCollapsed}
       />
 
       {/* Workflow Findings */}

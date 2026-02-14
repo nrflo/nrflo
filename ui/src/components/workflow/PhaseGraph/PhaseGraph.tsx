@@ -11,14 +11,21 @@ const nodeTypes: NodeTypes = {
   agent: AgentFlowNode,
 }
 
-/** Calls fitView() whenever the node set changes (e.g. workflow start, phase transitions). */
-function FitViewOnChange({ nodeKey }: { nodeKey: string }) {
+/** Calls fitView() whenever the node set changes (e.g. workflow start, phase transitions, panel toggle). */
+function FitViewOnChange({ nodeKey, logPanelCollapsed }: { nodeKey: string; logPanelCollapsed?: boolean }) {
   const { fitView } = useReactFlow()
   useEffect(() => {
     // Small delay to let React Flow finish internal layout before fitting
     const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 50)
     return () => clearTimeout(timer)
   }, [nodeKey, fitView])
+
+  // Re-fit after panel toggle with longer delay to wait for CSS transition (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
+    return () => clearTimeout(timer)
+  }, [logPanelCollapsed, fitView])
+
   return null
 }
 
@@ -29,6 +36,7 @@ export function PhaseGraph({
   phaseOrder,
   sessions,
   onAgentSelect,
+  logPanelCollapsed,
 }: PhaseGraphProps) {
 
   // Check if any agents are running
@@ -314,7 +322,7 @@ export function PhaseGraph({
         preventScrolling={false}
         proOptions={{ hideAttribution: true }}
       >
-        <FitViewOnChange nodeKey={nodeKey} />
+        <FitViewOnChange nodeKey={nodeKey} logPanelCollapsed={logPanelCollapsed} />
         <Background color="transparent" />
         <Controls showInteractive={false} position="top-left" />
       </ReactFlow>

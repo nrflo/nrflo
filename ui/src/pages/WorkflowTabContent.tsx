@@ -213,6 +213,7 @@ export function WorkflowTabContent({
               ticketId={ticketId}
               sessions={!ticketId ? sessions : undefined}
               onAgentSelect={onAgentSelect}
+              logPanelCollapsed={logPanelCollapsed}
             />
           </>
         ) : (

@@ -107,6 +107,8 @@ be/
 │   ├── integration/             # Integration tests
 │   │   ├── testenv.go           # NewTestEnv shared harness
 │   │   └── testdata/            # Test config, agent templates
+│   ├── logger/                  # Structured logging with trx propagation
+│   │   └── logger.go            # Init, Info/Warn/Error, NewTrx, WithTrx/TrxFromContext
 │   └── id/                      # ID generation
 │       └── generator.go
 ├── scripts/

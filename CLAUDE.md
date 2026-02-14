@@ -301,4 +301,4 @@ POST   /api/v1/tickets/:id/workflow/run-epic  # Create chain from epic's childre
 | `stop.sh` | Stop running BE + UI servers |
 | `ui/start-server.sh` | Start both servers in foreground (interactive mode) |
 
-Logs are written to `logs/backend.log` and `logs/ui.log` when using `restart.sh`.
+Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.log` when using `restart.sh`.

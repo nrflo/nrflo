@@ -11,6 +11,7 @@ import (
 	"be/internal/api"
 	"be/internal/config"
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/socket"
 
 	"github.com/spf13/cobra"
@@ -39,6 +40,11 @@ Example usage:
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		// Initialize logger
+		if err := logger.Init("/tmp/nrworkflow/logs/be.log"); err != nil {
+			return fmt.Errorf("failed to init logger: %w", err)
 		}
 
 		// Override port if specified via flag
@@ -83,10 +89,8 @@ Example usage:
 			serverError <- httpServer.Start(cfg.Server.Port)
 		}()
 
-		fmt.Printf("nrworkflow server started\n")
-		fmt.Printf("  HTTP API:  http://localhost:%d\n", cfg.Server.Port)
-		fmt.Printf("  Database:  %s\n", pool.Path)
-		fmt.Println()
+		ctx := context.Background()
+		logger.Info(ctx, "nrworkflow server started", "port", cfg.Server.Port, "db", pool.Path)
 
 		// Wait for shutdown signal or server error
 		select {
@@ -95,23 +99,23 @@ Example usage:
 				return fmt.Errorf("HTTP server error: %w", err)
 			}
 		case sig := <-shutdown:
-			fmt.Printf("\nReceived %v, shutting down...\n", sig)
+			logger.Info(ctx, "received signal, shutting down", "signal", sig)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		// Stop socket server
-		if err := socketServer.Stop(ctx); err != nil {
-			fmt.Printf("Socket server shutdown error: %v\n", err)
+		if err := socketServer.Stop(shutdownCtx); err != nil {
+			logger.Error(ctx, "socket server shutdown error", "error", err)
 		}
 
 		// Stop HTTP server
-		if err := httpServer.Stop(ctx); err != nil {
+		if err := httpServer.Stop(shutdownCtx); err != nil {
 			return fmt.Errorf("HTTP server shutdown error: %w", err)
 		}
 
-		fmt.Println("Server stopped gracefully")
+		logger.Info(ctx, "server stopped gracefully")
 		return nil
 	},
 }

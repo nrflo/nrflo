@@ -7,9 +7,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PORT=${NRWORKFLOW_PORT:-6587}
 UI_PORT=5173
-LOG_DIR="$SCRIPT_DIR/logs"
-BE_LOG="$LOG_DIR/backend.log"
-UI_LOG="$LOG_DIR/ui.log"
+LOG_DIR="/tmp/nrworkflow/logs"
+BE_LOG="$LOG_DIR/be.log"
+UI_LOG="$LOG_DIR/fe.log"
 
 # Colors
 RED='\033[0;31m'

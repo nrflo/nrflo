@@ -482,13 +482,6 @@ func (env *toResumeTestEnv) createContinuedSessionFull(t *testing.T, sessionID s
 	}
 }
 
-// buildSavePrompt mimics the format from context_save.go:64-69
-func buildSavePrompt(ticketID, agentType, workflowName, modelID string) string {
-	return "Save a summary of all your current work progress by running: " +
-		"nrworkflow findings add " + ticketID + " " + agentType + " to_resume:<your summary of all progress, findings, and context> -w " + workflowName + " --model " + modelID +
-		" — then call: nrworkflow agent continue " + ticketID + " " + agentType + " -w " + workflowName + " --model " + modelID
-}
-
 // contains is a helper to check if a string contains a substring
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))

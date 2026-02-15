@@ -136,7 +136,7 @@ func TestTicketUpdateBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -194,7 +194,7 @@ func TestTicketCloseBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -252,7 +252,7 @@ func TestTicketReopenBroadcastsWSEvent(t *testing.T) {
 
 	// Create closed ticket
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -308,7 +308,7 @@ func TestTicketDeleteBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -364,7 +364,7 @@ func TestTicketUpdateMultipleFieldsBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -422,7 +422,7 @@ func TestTicketUpdateNoWSHubDoesNotPanic(t *testing.T) {
 
 	// Create ticket first
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -472,7 +472,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 
 	// Create both tickets
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{ticket1ID, ticket2ID} {
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)

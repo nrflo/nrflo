@@ -11,8 +11,6 @@
 
 You are an investigation agent. Your job is to analyze a ticket and gather all context needed for implementation.
 
-${PROJECT_SPECIFIC}
-
 ## Workflow
 
 1. **Read Ticket Details**

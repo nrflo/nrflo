@@ -30,7 +30,7 @@ func NewEventLogRepo(database db.Querier) *EventLogRepo {
 
 // Append inserts an event into the log and returns the assigned sequence number.
 func (r *EventLogRepo) Append(projectID, ticketID, eventType, workflow string, payload json.RawMessage) (int64, error) {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if payload == nil {
 		payload = json.RawMessage("{}")
 	}
@@ -83,7 +83,7 @@ func (r *EventLogRepo) LatestSeq(projectID, ticketID string) (int64, error) {
 
 // Cleanup deletes events older than the given duration.
 func (r *EventLogRepo) Cleanup(olderThan time.Duration) (int64, error) {
-	cutoff := time.Now().UTC().Add(-olderThan).Format(time.RFC3339)
+	cutoff := time.Now().UTC().Add(-olderThan).Format(time.RFC3339Nano)
 	result, err := r.db.Exec(`DELETE FROM ws_event_log WHERE created_at < ?`, cutoff)
 	if err != nil {
 		return 0, err

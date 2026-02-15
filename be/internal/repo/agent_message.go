@@ -42,7 +42,7 @@ func (r *AgentMessageRepo) InsertBatch(sessionID string, seqStart int, messages 
 	}
 	defer stmt.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i, msg := range messages {
 		_, err := stmt.Exec(sessionID, seqStart+i, msg, now)
 		if err != nil {
@@ -171,7 +171,7 @@ func (r *AgentMessagePoolRepo) InsertBatch(sessionID string, seqStart int, messa
 	}
 	defer stmt.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i, msg := range messages {
 		_, err := stmt.Exec(sessionID, seqStart+i, msg, now)
 		if err != nil {

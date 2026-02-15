@@ -37,15 +37,15 @@ func scanChain(scanner interface{ Scan(...interface{}) error }) (*model.ChainExe
 	if err != nil {
 		return nil, err
 	}
-	c.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	c.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	c.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return c, nil
 }
 
 // Create creates a new chain execution
 func (r *ChainRepo) Create(c *model.ChainExecution) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	c.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	c.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	c.UpdatedAt = c.CreatedAt
 
 	var epicTicketID interface{}
@@ -92,8 +92,8 @@ func scanChainWithCounts(scanner interface{ Scan(...interface{}) error }) (*mode
 	if err != nil {
 		return nil, err
 	}
-	c.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	c.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	c.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return c, nil
 }
 
@@ -135,7 +135,7 @@ func (r *ChainRepo) List(projectID, status, epicTicketID string) ([]*model.Chain
 
 // UpdateStatus updates the chain execution status
 func (r *ChainRepo) UpdateStatus(id string, status model.ChainStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE chain_executions SET status = ?, updated_at = ? WHERE id = ?`,
 		status, now, id)
@@ -147,7 +147,7 @@ func (r *ChainRepo) UpdateStatus(id string, status model.ChainStatus) error {
 
 // UpdateName updates the chain name (pending only)
 func (r *ChainRepo) UpdateName(id, name string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE chain_executions SET name = ?, updated_at = ? WHERE id = ? AND status = 'pending'`,
 		name, now, id)

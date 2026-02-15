@@ -44,8 +44,8 @@ func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.
 	if err != nil {
 		return nil, err
 	}
-	s.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	s.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	s.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	s.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return s, nil
 }
 
@@ -135,7 +135,7 @@ func (s *AgentService) GetActive(projectID, ticketID string, req *types.AgentAct
 
 		elapsed := 0
 		if startedAt.Valid && startedAt.String != "" {
-			if t, err := time.Parse(time.RFC3339, startedAt.String); err == nil {
+			if t, err := time.Parse(time.RFC3339Nano, startedAt.String); err == nil {
 				elapsed = int(time.Since(t).Seconds())
 			}
 		}
@@ -258,7 +258,7 @@ func (s *AgentService) Callback(projectID, ticketID string, req *types.AgentCall
 	findings["callback_level"] = req.Level
 
 	data, _ := json.Marshal(findings)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = s.pool.Exec(
 		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
 		string(data), now, sessionID)
@@ -296,7 +296,7 @@ func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentTy
 		return "", fmt.Errorf("no active agent found for %s", agentType)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = s.pool.Exec(
 		`UPDATE agent_sessions SET result = ?, updated_at = ? WHERE id = ?`,
 		result, now, sessionID)
@@ -413,8 +413,8 @@ func (s *AgentService) GetProjectSessions(projectID, phase string) ([]*model.Age
 
 // CreateSession creates an agent session
 func (s *AgentService) CreateSession(session *model.AgentSession) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	session.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	session.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	session.UpdatedAt = session.CreatedAt
 
 	_, err := s.pool.Exec(`
@@ -450,7 +450,7 @@ func (s *AgentService) CreateSession(session *model.AgentSession) error {
 
 // UpdateSessionStatus updates an agent session status
 func (s *AgentService) UpdateSessionStatus(sessionID string, status model.AgentSessionStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.pool.Exec(
 		"UPDATE agent_sessions SET status = ?, updated_at = ? WHERE id = ?",
 		status, now, sessionID)

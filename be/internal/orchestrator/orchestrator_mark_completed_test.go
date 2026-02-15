@@ -277,7 +277,7 @@ func TestMarkCompletedProjectScopeUpdatesAgentSessions(t *testing.T) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	sessions := []struct {
 		id     string
 		status model.AgentSessionStatus
@@ -328,7 +328,7 @@ func TestMarkCompletedProjectScopeDoesNotUpdateRunningOrContinued(t *testing.T) 
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	sessions := []struct {
 		id     string
 		status model.AgentSessionStatus
@@ -379,7 +379,7 @@ func TestMarkCompletedTicketScopeStillUsesCompleted(t *testing.T) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, 'test-phase', 'test-agent', ?, ?, ?)`,

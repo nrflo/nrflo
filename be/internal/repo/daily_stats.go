@@ -18,7 +18,7 @@ func NewDailyStatsRepo(database *db.DB) *DailyStatsRepo {
 
 // Upsert inserts or replaces daily stats for a given project and date.
 func (r *DailyStatsRepo) Upsert(projectID, date string, stats model.DailyStats) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.Exec(`
 		INSERT OR REPLACE INTO daily_stats
 			(project_id, date, tickets_created, tickets_closed, tokens_spent, agent_time_sec, updated_at)

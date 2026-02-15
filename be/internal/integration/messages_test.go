@@ -20,7 +20,7 @@ func TestSessionMessages_InsertAndRetrieve(t *testing.T) {
 	insertTestSession(t, env, "sess-msg-1", "MSG-1")
 
 	// Insert messages directly via pool
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i, msg := range []string{"hello", "world", "done"} {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
@@ -58,7 +58,7 @@ func TestSessionMessages_BatchInsert(t *testing.T) {
 		t.Fatalf("failed to begin transaction: %v", err)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	msgTexts := []string{"msg-a", "msg-b", "msg-c", "msg-d", "msg-e"}
 	for i, msg := range msgTexts {
 		_, err := tx.Exec(
@@ -108,7 +108,7 @@ func TestSessionMessages_Pagination(t *testing.T) {
 	insertTestSession(t, env, "sess-page-1", "MSG-4")
 
 	// Insert 10 messages
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i := 0; i < 10; i++ {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
@@ -154,7 +154,7 @@ func TestSessionMessages_CountBatch(t *testing.T) {
 	insertTestSession(t, env, "sess-count-2", "MSG-5b")
 
 	// Insert different numbers of messages
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i := 0; i < 5; i++ {
 		env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
@@ -202,7 +202,7 @@ func TestSessionMessages_NoLimitParam_ReturnsAllMessages(t *testing.T) {
 	insertTestSession(t, env, "sess-nolimit-1", "MSG-NOLIMIT")
 
 	// Insert 150 messages (more than the old 100 limit)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i := 0; i < 150; i++ {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
@@ -234,7 +234,7 @@ func TestSessionMessages_ExplicitLimit_StillWorks(t *testing.T) {
 	insertTestSession(t, env, "sess-explicitlimit-1", "MSG-EXPLIMIT")
 
 	// Insert 150 messages
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i := 0; i < 150; i++ {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
@@ -267,7 +267,7 @@ func TestSessionMessages_LargeMessageCount(t *testing.T) {
 	insertTestSession(t, env, "sess-large-1", "MSG-LARGE")
 
 	// Insert 500 messages (realistic max for agent sessions)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i := 0; i < 500; i++ {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
@@ -299,7 +299,7 @@ func TestSessionMessages_EdgeCase_ExactlyOldLimit(t *testing.T) {
 	insertTestSession(t, env, "sess-100-1", "MSG-100")
 
 	// Insert exactly 100 messages (the old limit)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i := 0; i < 100; i++ {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
@@ -331,7 +331,7 @@ func TestSessionMessages_EdgeCase_101Messages(t *testing.T) {
 	insertTestSession(t, env, "sess-101-1", "MSG-101")
 
 	// Insert 101 messages (just over the old limit - this would have been truncated)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i := 0; i < 101; i++ {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,

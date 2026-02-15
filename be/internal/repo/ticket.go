@@ -22,8 +22,8 @@ func NewTicketRepo(database db.Querier) *TicketRepo {
 
 // Create creates a new ticket
 func (r *TicketRepo) Create(ticket *model.Ticket) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	ticket.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	ticket.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	ticket.UpdatedAt = ticket.CreatedAt
 
 	_, err := r.db.Exec(`
@@ -72,10 +72,10 @@ func scanTicket(scanner interface{ Scan(...interface{}) error }) (*model.Ticket,
 		return nil, err
 	}
 
-	ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	ticket.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	ticket.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	if closedAt.Valid {
-		t, _ := time.Parse(time.RFC3339, closedAt.String)
+		t, _ := time.Parse(time.RFC3339Nano, closedAt.String)
 		ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
 	}
 
@@ -214,7 +214,7 @@ func (r *TicketRepo) Update(projectID, ticketID string, fields *UpdateFields) er
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID)
@@ -235,7 +235,7 @@ func (r *TicketRepo) Update(projectID, ticketID string, fields *UpdateFields) er
 
 // Close closes a ticket with an optional reason
 func (r *TicketRepo) Close(projectID, ticketID string, reason string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	var closeReason interface{}
 	if reason != "" {
@@ -259,7 +259,7 @@ func (r *TicketRepo) Close(projectID, ticketID string, reason string) error {
 
 // Reopen reopens a closed ticket by setting status back to open
 func (r *TicketRepo) Reopen(projectID, ticketID string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	result, err := r.db.Exec(`
 		UPDATE tickets SET status = 'open', closed_at = NULL, close_reason = NULL, updated_at = ?

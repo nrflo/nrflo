@@ -41,8 +41,8 @@ func (r *DependencyRepo) Create(dep *model.Dependency) error {
 		return fmt.Errorf("ticket not found: %s", dep.DependsOnID)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	dep.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	dep.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 
 	_, err = r.db.Exec(`
 		INSERT INTO dependencies (project_id, issue_id, depends_on_id, type, created_at, created_by)
@@ -94,7 +94,7 @@ func (r *DependencyRepo) GetBlockers(projectID, ticketID string) ([]*model.Depen
 		if err != nil {
 			return nil, err
 		}
-		dep.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		dep.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 		deps = append(deps, dep)
 	}
 	return deps, nil
@@ -121,7 +121,7 @@ func (r *DependencyRepo) GetBlocked(projectID, ticketID string) ([]*model.Depend
 		if err != nil {
 			return nil, err
 		}
-		dep.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		dep.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 		deps = append(deps, dep)
 	}
 	return deps, nil

@@ -98,7 +98,7 @@ func (r *ChainItemRepo) ListByChain(chainID string) ([]*model.ChainExecutionItem
 
 // UpdateItemStatus updates the status of a chain item
 func (r *ChainItemRepo) UpdateItemStatus(id string, status model.ChainItemStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	var result sql.Result
 	var err error
 

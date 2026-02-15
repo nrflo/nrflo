@@ -52,7 +52,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		timeout = 20
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	id := strings.ToLower(req.ID)
 	pid := strings.ToLower(projectID)
 	wid := strings.ToLower(workflowID)
@@ -69,7 +69,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		return nil, err
 	}
 
-	ts, _ := time.Parse(time.RFC3339, now)
+	ts, _ := time.Parse(time.RFC3339Nano, now)
 	return &model.AgentDefinition{
 		ID:               id,
 		ProjectID:        pid,
@@ -106,8 +106,8 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		return nil, err
 	}
 
-	def.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	def.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	if restartThreshold.Valid {
 		v := int(restartThreshold.Int64)
 		def.RestartThreshold = &v
@@ -143,8 +143,8 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 			return nil, err
 		}
 
-		def.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		def.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 		if restartThreshold.Valid {
 			v := int(restartThreshold.Int64)
 			def.RestartThreshold = &v
@@ -181,7 +181,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID, workflowID, id)

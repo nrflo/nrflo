@@ -227,7 +227,7 @@ func TestEventLogCleanup(t *testing.T) {
 	repo := NewEventLogRepo(pool)
 
 	// Insert an old event by manually setting created_at
-	cutoff := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339)
+	cutoff := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339Nano)
 	_, err = pool.Exec(
 		`INSERT INTO ws_event_log (project_id, ticket_id, event_type, workflow, payload, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?)`,

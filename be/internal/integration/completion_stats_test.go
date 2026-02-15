@@ -166,7 +166,7 @@ func TestCompletedWorkflowDuration(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CS-4", "test")
 
 	// Set created_at to a known time in the past
-	past := time.Now().UTC().Add(-5 * time.Minute).Format(time.RFC3339)
+	past := time.Now().UTC().Add(-5 * time.Minute).Format(time.RFC3339Nano)
 	_, err := env.Pool.Exec(`UPDATE workflow_instances SET created_at = ? WHERE id = ?`, past, wfiID)
 	if err != nil {
 		t.Fatalf("failed to update created_at: %v", err)

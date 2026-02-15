@@ -34,7 +34,7 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 
 	// Create blocker and dependent tickets
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, dependentID} {
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -75,22 +75,29 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	// Verify first event: blocker ticket closed
-	event1 := expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second)
-	if event1.TicketID != blockerID {
-		t.Fatalf("expected blocker event for ticket %q, got %q", blockerID, event1.TicketID)
-	}
-	if event1.Data["status"] != string(model.StatusClosed) {
-		t.Fatalf("expected blocker status %q, got %v", model.StatusClosed, event1.Data["status"])
+	// Collect both events (order is non-deterministic)
+	events := make(map[string]ws.Event)
+	for i := 0; i < 2; i++ {
+		ev := expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second)
+		events[ev.TicketID] = ev
 	}
 
-	// Verify second event: dependent ticket unblocked
-	event2 := expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second)
-	if event2.TicketID != dependentID {
-		t.Fatalf("expected dependent event for ticket %q, got %q", dependentID, event2.TicketID)
+	// Verify blocker close event
+	blockerEvent, ok := events[blockerID]
+	if !ok {
+		t.Fatalf("expected blocker event for ticket %q, not received", blockerID)
 	}
-	if event2.Data["unblocked_by"] != blockerID {
-		t.Fatalf("expected unblocked_by %q, got %v", blockerID, event2.Data["unblocked_by"])
+	if blockerEvent.Data["status"] != string(model.StatusClosed) {
+		t.Fatalf("expected blocker status %q, got %v", model.StatusClosed, blockerEvent.Data["status"])
+	}
+
+	// Verify dependent unblock event
+	depEvent, ok := events[dependentID]
+	if !ok {
+		t.Fatalf("expected dependent event for ticket %q, not received", dependentID)
+	}
+	if depEvent.Data["unblocked_by"] != blockerID {
+		t.Fatalf("expected unblocked_by %q, got %v", blockerID, depEvent.Data["unblocked_by"])
 	}
 }
 
@@ -115,7 +122,7 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 
 	// Create blocker and three dependent tickets
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, dependent1ID, dependent2ID, dependent3ID} {
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -207,7 +214,7 @@ func TestCloseBlockerWithClosedDependent(t *testing.T) {
 
 	// Create blocker and two dependents (one open, one closed)
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, openDependentID} {
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -294,7 +301,7 @@ func TestCloseBlockerGetBlockedErrorHandling(t *testing.T) {
 
 	// Create ticket
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -372,7 +379,7 @@ func TestReopenBlockerDoesNotBroadcastUnblockEvents(t *testing.T) {
 
 	// Create closed blocker and open dependent
 	database, _ = db.Open(dbPath)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -465,7 +472,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 		t.Fatalf("failed to create blocker: %v", err)
 	}
 	resp.Body.Close()
-	drainChannel(ch) // Drain create event
+	expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second) // Wait for create event
 
 	// Step 2: Create dependent ticket
 	body = fmt.Sprintf(`{"id":"%s","title":"Dependent ticket","created_by":"tester"}`, dependentID)
@@ -478,7 +485,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 		t.Fatalf("failed to create dependent: %v", err)
 	}
 	resp.Body.Close()
-	drainChannel(ch) // Drain create event
+	expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second) // Wait for create event
 
 	// Step 3: Add dependency (dependent depends on blocker)
 	body = fmt.Sprintf(`{"issue_id":"%s","depends_on_id":"%s"}`, dependentID, blockerID)
@@ -525,20 +532,22 @@ func TestCloseBlockerE2E(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// Step 6: Verify WebSocket events
-	// First event: blocker closed
-	event1 := expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second)
-	if event1.TicketID != blockerID {
-		t.Fatalf("expected blocker event first, got %q", event1.TicketID)
+	// Step 6: Verify WebSocket events (collect both, order is non-deterministic)
+	events := make(map[string]ws.Event)
+	for i := 0; i < 2; i++ {
+		ev := expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second)
+		events[ev.TicketID] = ev
 	}
 
-	// Second event: dependent unblocked
-	event2 := expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second)
-	if event2.TicketID != dependentID {
-		t.Fatalf("expected dependent event second, got %q", event2.TicketID)
+	if _, ok := events[blockerID]; !ok {
+		t.Fatalf("expected blocker event for %q, not received", blockerID)
 	}
-	if event2.Data["unblocked_by"] != blockerID {
-		t.Fatalf("expected unblocked_by %q, got %v", blockerID, event2.Data["unblocked_by"])
+	depEvent, ok := events[dependentID]
+	if !ok {
+		t.Fatalf("expected dependent event for %q, not received", dependentID)
+	}
+	if depEvent.Data["unblocked_by"] != blockerID {
+		t.Fatalf("expected unblocked_by %q, got %v", blockerID, depEvent.Data["unblocked_by"])
 	}
 
 	// Step 7: Query dependent's blockers endpoint to verify no open blockers remain

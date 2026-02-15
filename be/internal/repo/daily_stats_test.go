@@ -77,7 +77,7 @@ func TestDailyStatsUpsertAndGet(t *testing.T) {
 	}
 
 	// Verify updated_at is a valid RFC3339 timestamp
-	_, err = time.Parse(time.RFC3339, retrieved.UpdatedAt)
+	_, err = time.Parse(time.RFC3339Nano, retrieved.UpdatedAt)
 	if err != nil {
 		t.Errorf("updated_at is not valid RFC3339: %v", err)
 	}

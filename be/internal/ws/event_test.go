@@ -75,7 +75,7 @@ func TestEventSchemaCommonFields(t *testing.T) {
 				t.Error("timestamp must be present")
 			}
 			// Verify timestamp is valid RFC3339
-			if _, err := time.Parse(time.RFC3339, event.Timestamp); err != nil {
+			if _, err := time.Parse(time.RFC3339Nano, event.Timestamp); err != nil {
 				t.Errorf("timestamp is not valid RFC3339: %v", err)
 			}
 			// Data field should match input

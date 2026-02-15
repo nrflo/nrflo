@@ -385,7 +385,7 @@ func setupToResumeTestEnvInternal(t *testing.T, scopeType string) *toResumeTestE
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`,
-		projectID, "Test Project", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
+		projectID, "Test Project", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create project: %v", err)
 	}
@@ -395,7 +395,7 @@ func setupToResumeTestEnvInternal(t *testing.T, scopeType string) *toResumeTestE
 		INSERT INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		projectID, workflowID, "Test workflow", scopeType,
-		"[]", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
+		"[]", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
 	}
@@ -405,7 +405,7 @@ func setupToResumeTestEnvInternal(t *testing.T, scopeType string) *toResumeTestE
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, phase_order, phases, findings, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wfiID, projectID, ticketID, workflowID, scopeType, "active",
-		"[]", "{}", "{}", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
+		"[]", "{}", "{}", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
@@ -475,8 +475,8 @@ func (env *toResumeTestEnv) createContinuedSessionFull(t *testing.T, sessionID s
 		Status:             model.AgentSessionContinued,
 		Result:             sql.NullString{String: "continue", Valid: true},
 		Findings:           sql.NullString{String: string(findingsJSON), Valid: true},
-		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339), Valid: true},
-		EndedAt:            sql.NullString{String: endedAt.UTC().Format(time.RFC3339), Valid: true},
+		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
+		EndedAt:            sql.NullString{String: endedAt.UTC().Format(time.RFC3339Nano), Valid: true},
 	}
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create continued session: %v", err)

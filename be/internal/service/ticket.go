@@ -39,10 +39,10 @@ func scanTicketRow(scanner interface{ Scan(...interface{}) error }) (*model.Tick
 		return nil, err
 	}
 
-	ticket.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	ticket.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	ticket.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	ticket.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	if closedAt.Valid {
-		t, _ := time.Parse(time.RFC3339, closedAt.String)
+		t, _ := time.Parse(time.RFC3339Nano, closedAt.String)
 		ticket.ClosedAt = sql.NullTime{Time: t, Valid: true}
 	}
 
@@ -109,7 +109,7 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 		priority = 2
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	ticket := &model.Ticket{
 		ID:        ticketID,
@@ -143,7 +143,7 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 		return nil, fmt.Errorf("failed to create ticket: %w", err)
 	}
 
-	ticket.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	ticket.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	ticket.UpdatedAt = ticket.CreatedAt
 
 	return ticket, nil
@@ -233,7 +233,7 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID)
@@ -254,7 +254,7 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 
 // SetInProgress sets a ticket's status to in_progress, but only if currently open.
 func (s *TicketService) SetInProgress(projectID, ticketID string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.pool.Exec(`
 		UPDATE tickets SET status = ?, updated_at = ?
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?) AND status = ?`,
@@ -264,7 +264,7 @@ func (s *TicketService) SetInProgress(projectID, ticketID string) error {
 
 // Close closes a ticket
 func (s *TicketService) Close(projectID, ticketID string, reason string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	var closeReason interface{}
 	if reason != "" {
@@ -288,7 +288,7 @@ func (s *TicketService) Close(projectID, ticketID string, reason string) error {
 
 // Reopen reopens a ticket by setting status back to open and clearing close metadata.
 func (s *TicketService) Reopen(projectID, ticketID string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := s.pool.Exec(`
 		UPDATE tickets SET status = 'open', closed_at = NULL, close_reason = NULL, updated_at = ?
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,

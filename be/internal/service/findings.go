@@ -62,7 +62,7 @@ func (s *FindingsService) findTargetSession(wfiID, agentType, modelStr string) (
 // updateSessionFindings writes the findings JSON to a session
 func (s *FindingsService) updateSessionFindings(sessionID string, findings map[string]interface{}) error {
 	data, _ := json.Marshal(findings)
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.pool.Exec(
 		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
 		string(data), now, sessionID)

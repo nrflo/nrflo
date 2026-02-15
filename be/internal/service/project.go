@@ -35,7 +35,7 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 		return nil, fmt.Errorf("project already exists: %s", projectID)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	name := req.Name
 	if name == "" {
@@ -72,7 +72,7 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 		return nil, fmt.Errorf("failed to create project: %w", err)
 	}
 
-	project.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	project.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	project.UpdatedAt = project.CreatedAt
 
 	return project, nil
@@ -101,8 +101,8 @@ func (s *ProjectService) Get(projectID string) (*model.Project, error) {
 		return nil, err
 	}
 
-	project.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	project.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	project.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	project.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 
 	return project, nil
 }
@@ -136,8 +136,8 @@ func (s *ProjectService) List() ([]*model.Project, error) {
 			return nil, err
 		}
 
-		project.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		project.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		project.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		project.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 
 		projects = append(projects, project)
 	}

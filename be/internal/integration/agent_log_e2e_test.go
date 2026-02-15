@@ -24,7 +24,7 @@ func seedSessionAndMessages(t *testing.T, dbPath string) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	// Ticket (FK: projects)
 	if _, err := database.Exec(`INSERT INTO tickets (id, project_id, title, created_at, updated_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -71,7 +71,7 @@ func seedSessionAndMessages(t *testing.T, dbPath string) {
 	}
 
 	for i, msg := range messages {
-		ts := baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339)
+		ts := baseTime.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano)
 		_, err := database.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
 			"sess-e2e-1", i, msg, ts,
@@ -161,7 +161,7 @@ func TestAgentLogImprovements_E2E(t *testing.T) {
 			t.Errorf("message[%d]: missing created_at timestamp", i)
 			continue
 		}
-		ts, err := time.Parse(time.RFC3339, msg.CreatedAt)
+		ts, err := time.Parse(time.RFC3339Nano, msg.CreatedAt)
 		if err != nil {
 			t.Errorf("message[%d]: invalid timestamp %q: %v", i, msg.CreatedAt, err)
 			continue
@@ -252,7 +252,7 @@ func TestAgentLogImprovements_MessageTimestamps_Service(t *testing.T) {
 	for i, ts := range []time.Time{t1, t2, t3} {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,
-			"sess-ts-1", i, fmt.Sprintf("msg-%d", i), ts.Format(time.RFC3339),
+			"sess-ts-1", i, fmt.Sprintf("msg-%d", i), ts.Format(time.RFC3339Nano),
 		)
 		if err != nil {
 			t.Fatalf("insert msg %d: %v", i, err)
@@ -268,9 +268,9 @@ func TestAgentLogImprovements_MessageTimestamps_Service(t *testing.T) {
 	}
 
 	expectedTimes := []string{
-		t1.Format(time.RFC3339),
-		t2.Format(time.RFC3339),
-		t3.Format(time.RFC3339),
+		t1.Format(time.RFC3339Nano),
+		t2.Format(time.RFC3339Nano),
+		t3.Format(time.RFC3339Nano),
 	}
 	for i, msg := range msgs {
 		if msg.CreatedAt != expectedTimes[i] {
@@ -317,7 +317,7 @@ func TestAgentLogImprovements_BatchInsertPreservesTimestamps(t *testing.T) {
 			t.Errorf("msg[%d]: empty created_at", i)
 			continue
 		}
-		_, err := time.Parse(time.RFC3339, msg.CreatedAt)
+		_, err := time.Parse(time.RFC3339Nano, msg.CreatedAt)
 		if err != nil {
 			t.Errorf("msg[%d]: invalid timestamp %q: %v", i, msg.CreatedAt, err)
 		}
@@ -342,7 +342,7 @@ func TestAgentLogImprovements_FullMessageNoTruncation(t *testing.T) {
 	longMsg := "[Edit] " + makeString('a', 200)
 	veryLongMsg := "[Bash] " + makeString('b', 500)
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for i, msg := range []string{shortMsg, mediumMsg, longMsg, veryLongMsg} {
 		_, err := env.Pool.Exec(
 			`INSERT INTO agent_messages (session_id, seq, content, created_at) VALUES (?, ?, ?, ?)`,

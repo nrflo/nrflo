@@ -10,7 +10,7 @@ import (
 // insertSessionWithContextLeft inserts an agent session with context_left set.
 func insertSessionWithContextLeft(t *testing.T, env *TestEnv, id, ticketID, wfiID, phase, agentType, modelID, status, result string, contextLeft int64) {
 	t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,

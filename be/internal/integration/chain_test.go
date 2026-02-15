@@ -18,7 +18,7 @@ import (
 func createChainTickets(t *testing.T, env *TestEnv, tickets map[string]time.Time) {
 	t.Helper()
 	for tid, createdAt := range tickets {
-		created := createdAt.UTC().Format(time.RFC3339)
+		created := createdAt.UTC().Format(time.RFC3339Nano)
 		_, err := env.Pool.Exec(`
 			INSERT INTO tickets (id, project_id, title, status, issue_type, priority, created_at, updated_at, created_by)
 			VALUES (?, ?, ?, 'open', 'feature', 2, ?, ?, 'test')`,

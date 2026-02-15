@@ -70,7 +70,7 @@ func seedProject(t *testing.T, dbPath, projectID string) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`, projectID, projectID, now, now)

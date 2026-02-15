@@ -55,7 +55,7 @@ func setupGitHandlerTestDB(t *testing.T) (*db.Pool, string, string) {
 	createTestCommit(t, repoPath, "test.txt", "content", "Test commit")
 
 	projectID := "test-project"
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	_, err = pool.Exec(`
 		INSERT INTO projects (id, name, root_path, default_branch, created_at, updated_at)
@@ -216,7 +216,7 @@ func TestHandleListGitCommits_MissingRootPath(t *testing.T) {
 	defer pool.Close()
 
 	projectID := "test-project-no-root"
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	// Create project without root_path
 	_, err = pool.Exec(`
@@ -294,7 +294,7 @@ func TestHandleListGitCommits_UsesDefaultBranch(t *testing.T) {
 	createTestCommit(t, repoPath, "test.txt", "content", "Test commit on master")
 
 	projectID := "test-project-master"
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	_, err = pool.Exec(`
 		INSERT INTO projects (id, name, root_path, default_branch, created_at, updated_at)
@@ -457,7 +457,7 @@ func TestHandleGetGitCommitDetail_MissingRootPath(t *testing.T) {
 	defer pool.Close()
 
 	projectID := "test-project-no-root"
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	_, err = pool.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
@@ -624,7 +624,7 @@ func TestHandleListGitCommits_NullDefaultBranch(t *testing.T) {
 	createTestCommit(t, repoPath, "test.txt", "content", "Test commit")
 
 	projectID := "test-project-null-branch"
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	// Insert with NULL default_branch using sql.NullString
 	_, err = pool.Exec(`

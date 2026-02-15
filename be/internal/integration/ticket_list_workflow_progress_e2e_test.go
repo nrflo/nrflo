@@ -68,7 +68,7 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	phaseOrder1 := []string{"investigation", "test-design", "implementation", "verification"}
 	phaseOrderJSON1, _ := json.Marshal(phaseOrder1)
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -221,7 +221,7 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	phaseOrder := []string{"phase1", "phase2", "phase3", "phase4", "phase5"}
 	phaseOrderJSON, _ := json.Marshal(phaseOrder)
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -345,7 +345,7 @@ func seedWorkflow(t *testing.T, dbPath, projectID, workflowID, description strin
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "phase1", "layer": 0},
 		{"agent": "phase2", "layer": 1},

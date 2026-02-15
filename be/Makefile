@@ -1,4 +1,4 @@
-.PHONY: build build-cli build-server build-release build-cli-release build-server-release clean test test-integration test-verbose install tidy
+.PHONY: build build-cli build-server build-release build-cli-release build-server-release clean test test-integration test-pkg test-verbose install tidy
 
 GO := /opt/homebrew/bin/go
 
@@ -36,6 +36,10 @@ test:
 # Run integration tests only
 test-integration:
 	$(GO) test -v ./internal/integration/...
+
+# Run tests for a specific package (usage: make test-pkg PKG=orchestrator)
+test-pkg:
+	$(GO) test -v ./internal/$(PKG)/...
 
 # Run all tests verbose
 test-verbose:

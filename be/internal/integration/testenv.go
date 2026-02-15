@@ -203,7 +203,7 @@ func (e *TestEnv) InitWorkflow(t *testing.T, ticketID string) {
 // This is useful for tests that need to link existing workflow instances to chain items.
 func (e *TestEnv) InitWorkflowWithID(t *testing.T, ticketID, wfiID string) {
 	t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := e.Pool.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status,
 			current_phase, phase_order, phases, findings, retry_count, created_at, updated_at)
@@ -256,7 +256,7 @@ func (e *TestEnv) GetWorkflowInstanceID(t *testing.T, ticketID, workflow string)
 // InsertAgentSession inserts an agent session row into the DB for testing.
 func (e *TestEnv) InsertAgentSession(t *testing.T, id, ticketID, wfiID, phase, agentType, modelID string) {
 	t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := e.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,

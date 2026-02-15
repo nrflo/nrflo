@@ -18,7 +18,7 @@ func setupDailyStatsTestDB(t *testing.T) (*db.Pool, string) {
 	}
 
 	projectID := "test-project"
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = pool.Exec(`
 		INSERT INTO projects (id, name, root_path, created_at, updated_at)
 		VALUES (?, 'Test Project', '/tmp/test', ?, ?)`,
@@ -38,7 +38,7 @@ func TestComputeAndStore_WithKnownData(t *testing.T) {
 	todayTime := time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
 
 	// Insert tickets created today
-	createdToday := todayTime.Format(time.RFC3339)
+	createdToday := todayTime.Format(time.RFC3339Nano)
 	for i := 1; i <= 5; i++ {
 		_, err := pool.Exec(`
 			INSERT INTO tickets (id, project_id, title, status, issue_type, priority, created_at, updated_at, created_by)
@@ -52,8 +52,8 @@ func TestComputeAndStore_WithKnownData(t *testing.T) {
 
 	// Insert tickets closed today (some were created earlier, some created today)
 	yesterdayTime := time.Date(2026, 2, 12, 10, 0, 0, 0, time.UTC)
-	yesterday := yesterdayTime.Format(time.RFC3339)
-	closedToday := todayTime.Add(2 * time.Hour).Format(time.RFC3339)
+	yesterday := yesterdayTime.Format(time.RFC3339Nano)
+	closedToday := todayTime.Add(2 * time.Hour).Format(time.RFC3339Nano)
 
 	// Tickets created yesterday, closed today (count towards closed)
 	for i := 6; i <= 8; i++ {
@@ -91,14 +91,14 @@ func TestComputeAndStore_WithKnownData(t *testing.T) {
 	// Session 3: completed, context_left=25 -> tokens = 200000 * (100-25) / 100 = 150000
 	// Total expected tokens: 300000
 
-	startedAt1 := todayTime.Format(time.RFC3339)
-	endedAt1 := todayTime.Add(1 * time.Hour).Format(time.RFC3339) // 3600 seconds
+	startedAt1 := todayTime.Format(time.RFC3339Nano)
+	endedAt1 := todayTime.Add(1 * time.Hour).Format(time.RFC3339Nano) // 3600 seconds
 
-	startedAt2 := todayTime.Add(2 * time.Hour).Format(time.RFC3339)
-	endedAt2 := todayTime.Add(2*time.Hour + 30*time.Minute).Format(time.RFC3339) // 1800 seconds
+	startedAt2 := todayTime.Add(2 * time.Hour).Format(time.RFC3339Nano)
+	endedAt2 := todayTime.Add(2*time.Hour + 30*time.Minute).Format(time.RFC3339Nano) // 1800 seconds
 
-	startedAt3 := todayTime.Add(3 * time.Hour).Format(time.RFC3339)
-	endedAt3 := todayTime.Add(3*time.Hour + 15*time.Minute).Format(time.RFC3339) // 900 seconds
+	startedAt3 := todayTime.Add(3 * time.Hour).Format(time.RFC3339Nano)
+	endedAt3 := todayTime.Add(3*time.Hour + 15*time.Minute).Format(time.RFC3339Nano) // 900 seconds
 
 	// Total expected agent_time_sec: 3600 + 1800 + 900 = 6300
 
@@ -160,7 +160,7 @@ func TestComputeAndStore_ExcludesRunningAndContinuedSessions(t *testing.T) {
 
 	today := "2026-02-13"
 	todayTime := time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
-	createdToday := todayTime.Format(time.RFC3339)
+	createdToday := todayTime.Format(time.RFC3339Nano)
 
 	// Create workflow instance
 	wfID := "test-workflow-instance"
@@ -180,8 +180,8 @@ func TestComputeAndStore_ExcludesRunningAndContinuedSessions(t *testing.T) {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
-	startedAt := todayTime.Format(time.RFC3339)
-	endedAt := todayTime.Add(1 * time.Hour).Format(time.RFC3339)
+	startedAt := todayTime.Format(time.RFC3339Nano)
+	endedAt := todayTime.Add(1 * time.Hour).Format(time.RFC3339Nano)
 
 	// Insert sessions with different statuses
 	sessions := []struct {
@@ -233,7 +233,7 @@ func TestComputeAndStore_ExcludesNullTimestamps(t *testing.T) {
 
 	today := "2026-02-13"
 	todayTime := time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
-	createdToday := todayTime.Format(time.RFC3339)
+	createdToday := todayTime.Format(time.RFC3339Nano)
 
 	// Create workflow instance
 	wfID := "test-workflow-instance"
@@ -253,8 +253,8 @@ func TestComputeAndStore_ExcludesNullTimestamps(t *testing.T) {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
-	startedAt := todayTime.Format(time.RFC3339)
-	endedAt := todayTime.Add(1 * time.Hour).Format(time.RFC3339)
+	startedAt := todayTime.Format(time.RFC3339Nano)
+	endedAt := todayTime.Add(1 * time.Hour).Format(time.RFC3339Nano)
 
 	// Insert sessions with NULL started_at or ended_at
 	sessions := []struct {
@@ -337,7 +337,7 @@ func TestComputeAndStore_UpsertUpdatesExisting(t *testing.T) {
 
 	today := "2026-02-13"
 	todayTime := time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
-	createdToday := todayTime.Format(time.RFC3339)
+	createdToday := todayTime.Format(time.RFC3339Nano)
 
 	// Insert initial ticket
 	_, err := pool.Exec(`
@@ -399,7 +399,7 @@ func TestComputeAndStore_CaseInsensitiveProjectID(t *testing.T) {
 
 	today := "2026-02-13"
 	todayTime := time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
-	createdToday := todayTime.Format(time.RFC3339)
+	createdToday := todayTime.Format(time.RFC3339Nano)
 
 	// Insert tickets with lowercase project_id
 	_, err := pool.Exec(`
@@ -429,7 +429,7 @@ func TestGetToday(t *testing.T) {
 
 	// Insert a ticket created today (UTC)
 	now := time.Now().UTC()
-	createdToday := now.Format(time.RFC3339)
+	createdToday := now.Format(time.RFC3339Nano)
 	_, err := pool.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, issue_type, priority, created_at, updated_at, created_by)
 		VALUES (?, ?, 'Ticket Today', 'open', 'feature', 2, ?, ?, 'test')`,
@@ -463,7 +463,7 @@ func TestComputeAndStore_TokensCalculation(t *testing.T) {
 
 	today := "2026-02-13"
 	todayTime := time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
-	createdToday := todayTime.Format(time.RFC3339)
+	createdToday := todayTime.Format(time.RFC3339Nano)
 
 	// Create workflow instance
 	wfID := "test-workflow-instance"
@@ -483,7 +483,7 @@ func TestComputeAndStore_TokensCalculation(t *testing.T) {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
-	endedAt := todayTime.Add(1 * time.Hour).Format(time.RFC3339)
+	endedAt := todayTime.Add(1 * time.Hour).Format(time.RFC3339Nano)
 
 	// Test edge cases for token calculation
 	testCases := []struct {
@@ -529,7 +529,7 @@ func TestComputeAndStore_AgentTimeCalculation(t *testing.T) {
 
 	today := "2026-02-13"
 	baseTime := time.Date(2026, 2, 13, 10, 0, 0, 0, time.UTC)
-	createdToday := baseTime.Format(time.RFC3339)
+	createdToday := baseTime.Format(time.RFC3339Nano)
 
 	// Create workflow instance
 	wfID := "test-workflow-instance"
@@ -563,8 +563,8 @@ func TestComputeAndStore_AgentTimeCalculation(t *testing.T) {
 
 	for i, tc := range testCases {
 		sessionID := "session-" + string(rune(i))
-		startedAt := baseTime.Add(time.Duration(i) * time.Hour).Format(time.RFC3339)
-		endedAt := baseTime.Add(time.Duration(i)*time.Hour + time.Duration(tc.durationSec)*time.Second).Format(time.RFC3339)
+		startedAt := baseTime.Add(time.Duration(i) * time.Hour).Format(time.RFC3339Nano)
+		endedAt := baseTime.Add(time.Duration(i)*time.Hour + time.Duration(tc.durationSec)*time.Second).Format(time.RFC3339Nano)
 
 		_, err := pool.Exec(`
 			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, context_left, started_at, ended_at, created_at, updated_at)

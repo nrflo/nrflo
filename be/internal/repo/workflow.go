@@ -22,8 +22,8 @@ func NewWorkflowRepo(database *db.DB) *WorkflowRepo {
 
 // Create creates a new workflow definition
 func (r *WorkflowRepo) Create(wf *model.Workflow) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	wf.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	wf.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	wf.UpdatedAt = wf.CreatedAt
 	if wf.ScopeType == "" {
 		wf.ScopeType = "ticket"
@@ -67,8 +67,8 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 		return nil, err
 	}
 
-	wf.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	wf.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	wf.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	wf.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 
 	return wf, nil
 }
@@ -102,8 +102,8 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 			return nil, err
 		}
 
-		wf.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		wf.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		wf.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		wf.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 
 		workflows = append(workflows, wf)
 	}
@@ -135,7 +135,7 @@ func (r *WorkflowRepo) Update(projectID, id string, fields *WorkflowUpdateFields
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID, id)

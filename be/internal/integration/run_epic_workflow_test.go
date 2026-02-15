@@ -32,7 +32,7 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	baseURL := startAPIServer(t, dbPath)
 
 	base := time.Now()
-	now := base.UTC().Format(time.RFC3339)
+	now := base.UTC().Format(time.RFC3339Nano)
 
 	// Open DB for seeding
 	database, err = db.OpenPath(dbPath)
@@ -52,7 +52,7 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 
 	// Create 3 child tickets with dependencies
 	for i, childID := range []string{"child-a", "child-b", "child-c"} {
-		created := base.Add(time.Duration(i+1) * time.Second).UTC().Format(time.RFC3339)
+		created := base.Add(time.Duration(i+1) * time.Second).UTC().Format(time.RFC3339Nano)
 		_, err := database.Exec(`
 			INSERT INTO tickets (id, project_id, title, status, issue_type, priority, parent_ticket_id, created_at, updated_at, created_by)
 			VALUES (?, ?, ?, 'open', 'feature', 2, 'epic-1', ?, ?, 'test')`,
@@ -158,7 +158,7 @@ func TestRunEpicWorkflow_NoChildren(t *testing.T) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, issue_type, priority, created_at, updated_at, created_by)
 		VALUES (?, ?, 'Empty Epic', 'open', 'epic', 1, ?, ?, 'test')`,
@@ -217,7 +217,7 @@ func TestRunEpicWorkflow_NonEpicTicket(t *testing.T) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, issue_type, priority, created_at, updated_at, created_by)
 		VALUES (?, ?, 'Regular Feature', 'open', 'feature', 2, ?, ?, 'test')`,
@@ -275,7 +275,7 @@ func TestRunEpicWorkflow_ExcludesClosedChildren(t *testing.T) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	// Create epic
 	_, err = database.Exec(`
@@ -404,7 +404,7 @@ func TestRunEpicWorkflow_MissingWorkflowName(t *testing.T) {
 	}
 	defer database.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, issue_type, priority, created_at, updated_at, created_by)
 		VALUES (?, ?, 'Epic', 'open', 'epic', 1, ?, ?, 'test')`,
@@ -451,7 +451,7 @@ func TestListByParent_ExcludesClosedChildren(t *testing.T) {
 		t.Fatalf("failed to init DB: %v", err)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	// Seed project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,

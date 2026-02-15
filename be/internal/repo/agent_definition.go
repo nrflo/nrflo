@@ -22,8 +22,8 @@ func NewAgentDefinitionRepo(database db.Querier) *AgentDefinitionRepo {
 
 // Create creates a new agent definition
 func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	def.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	def.UpdatedAt = def.CreatedAt
 
 	_, err := r.db.Exec(`
@@ -70,8 +70,8 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		return nil, err
 	}
 
-	def.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	def.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	if restartThreshold.Valid {
 		v := int(restartThreshold.Int64)
 		def.RestartThreshold = &v
@@ -113,8 +113,8 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			return nil, err
 		}
 
-		def.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		def.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 		if restartThreshold.Valid {
 			v := int(restartThreshold.Int64)
 			def.RestartThreshold = &v
@@ -160,7 +160,7 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID, workflowID, id)

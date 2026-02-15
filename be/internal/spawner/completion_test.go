@@ -48,7 +48,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`,
-		projectID, "Test Project", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
+		projectID, "Test Project", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create project: %v", err)
 	}
@@ -58,7 +58,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		INSERT INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		projectID, workflowID, "Test workflow", "ticket",
-		"[]", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
+		"[]", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
 	}
@@ -68,7 +68,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, phase_order, phases, findings, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wfiID, projectID, ticketID, workflowID, "ticket", "active",
-		"[]", "{}", "{}", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
+		"[]", "{}", "{}", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
@@ -112,7 +112,7 @@ func (env *testEnv) createSession(t *testing.T, modelID string) *model.AgentSess
 		AgentType:          "test-agent",
 		ModelID:            sql.NullString{String: modelID, Valid: true},
 		Status:             model.AgentSessionRunning,
-		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339), Valid: true},
+		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 	}
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create session: %v", err)
@@ -447,7 +447,7 @@ func TestHandleCompletion_EndedAtTimestamp(t *testing.T) {
 		t.Errorf("expected ended_at to be set")
 	}
 
-	endedAt, err := time.Parse(time.RFC3339, updatedSession.EndedAt.String)
+	endedAt, err := time.Parse(time.RFC3339Nano, updatedSession.EndedAt.String)
 	if err != nil {
 		t.Fatalf("failed to parse ended_at: %v", err)
 	}

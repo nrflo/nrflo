@@ -327,7 +327,7 @@ func (s *ChainService) topologicalSort(projectID string, ticketIDs []string, dep
 		if err != nil {
 			return nil, fmt.Errorf("ticket not found: %s", tid)
 		}
-		createdAt[tid], _ = time.Parse(time.RFC3339, ca)
+		createdAt[tid], _ = time.Parse(time.RFC3339Nano, ca)
 	}
 
 	// Build reverse mapping: blocker -> tickets that depend on it

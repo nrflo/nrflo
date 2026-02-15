@@ -19,7 +19,7 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		return
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	sessionRepo := repo.NewAgentSessionRepo(pool)
 	session := &model.AgentSession{
 		ID:                 sessionID,

@@ -22,8 +22,8 @@ func NewProjectRepo(database *db.DB) *ProjectRepo {
 
 // Create creates a new project
 func (r *ProjectRepo) Create(project *model.Project) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	project.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	project.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	project.UpdatedAt = project.CreatedAt
 
 	_, err := r.db.Exec(`
@@ -63,8 +63,8 @@ func (r *ProjectRepo) Get(id string) (*model.Project, error) {
 		return nil, err
 	}
 
-	project.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	project.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	project.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	project.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 
 	return project, nil
 }
@@ -108,8 +108,8 @@ func (r *ProjectRepo) List() ([]*model.Project, error) {
 			return nil, err
 		}
 
-		project.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		project.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		project.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		project.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 
 		projects = append(projects, project)
 	}
@@ -157,7 +157,7 @@ func (r *ProjectRepo) Update(id string, fields *ProjectUpdateFields) error {
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, id)

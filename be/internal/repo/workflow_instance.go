@@ -38,15 +38,15 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 	if wi.ScopeType == "" {
 		wi.ScopeType = "ticket"
 	}
-	wi.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	wi.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	wi.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	wi.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return wi, nil
 }
 
 // Create creates a new workflow instance
 func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	wi.CreatedAt, _ = time.Parse(time.RFC3339, now)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	wi.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	wi.UpdatedAt = wi.CreatedAt
 	if wi.ScopeType == "" {
 		wi.ScopeType = "ticket"
@@ -186,7 +186,7 @@ func (r *WorkflowInstanceRepo) ListByTicket(projectID, ticketID string) ([]*mode
 
 // UpdatePhases updates the phases JSON field
 func (r *WorkflowInstanceRepo) UpdatePhases(id string, phases string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET phases = ?, updated_at = ? WHERE id = ?`,
 		phases, now, id)
@@ -198,7 +198,7 @@ func (r *WorkflowInstanceRepo) UpdatePhases(id string, phases string) error {
 
 // UpdateCurrentPhase updates the current_phase field
 func (r *WorkflowInstanceRepo) UpdateCurrentPhase(id, phase string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET current_phase = ?, updated_at = ? WHERE id = ?`,
 		phase, now, id)
@@ -210,7 +210,7 @@ func (r *WorkflowInstanceRepo) UpdateCurrentPhase(id, phase string) error {
 
 // UpdateStatus updates the workflow instance status
 func (r *WorkflowInstanceRepo) UpdateStatus(id string, status model.WorkflowInstanceStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET status = ?, updated_at = ? WHERE id = ?`,
 		status, now, id)
@@ -222,7 +222,7 @@ func (r *WorkflowInstanceRepo) UpdateStatus(id string, status model.WorkflowInst
 
 // UpdateRetryCount updates the retry_count field
 func (r *WorkflowInstanceRepo) UpdateRetryCount(id string, retryCount int) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET retry_count = ?, updated_at = ? WHERE id = ?`,
 		retryCount, now, id)
@@ -234,7 +234,7 @@ func (r *WorkflowInstanceRepo) UpdateRetryCount(id string, retryCount int) error
 
 // UpdateFindings updates the workflow-level findings JSON
 func (r *WorkflowInstanceRepo) UpdateFindings(id string, findings string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET findings = ?, updated_at = ? WHERE id = ?`,
 		findings, now, id)
@@ -255,7 +255,7 @@ func (r *WorkflowInstanceRepo) StartPhase(id, phase string) error {
 	phases[phase] = model.PhaseStatus{Status: "in_progress"}
 	wi.SetPhases(phases)
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = r.pool.Exec(
 		`UPDATE workflow_instances SET phases = ?, current_phase = ?, updated_at = ? WHERE id = ?`,
 		wi.Phases, phase, now, id)
@@ -273,7 +273,7 @@ func (r *WorkflowInstanceRepo) CompletePhase(id, phase, result string) error {
 	phases[phase] = model.PhaseStatus{Status: "completed", Result: result}
 	wi.SetPhases(phases)
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = r.pool.Exec(
 		`UPDATE workflow_instances SET phases = ?, updated_at = ? WHERE id = ?`,
 		wi.Phases, now, id)
@@ -291,7 +291,7 @@ func (r *WorkflowInstanceRepo) ResetPhaseStatus(id, phase string) error {
 	phases[phase] = model.PhaseStatus{Status: "pending"}
 	wi.SetPhases(phases)
 
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = r.pool.Exec(
 		`UPDATE workflow_instances SET phases = ?, updated_at = ? WHERE id = ?`,
 		wi.Phases, now, id)

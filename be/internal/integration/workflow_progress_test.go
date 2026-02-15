@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-	"time"
 
 	"be/internal/model"
 	"be/internal/repo"
@@ -247,9 +246,6 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 	phasesJSON2, _ := json.Marshal(phases2)
 	phaseOrder2 := []string{"investigation", "implementation", "verification"}
 	phaseOrderJSON2, _ := json.Marshal(phaseOrder2)
-
-	// Wait to ensure different created_at/updated_at timestamps (SQLite timestamps are in seconds)
-	time.Sleep(1100 * time.Millisecond)
 
 	wi2 := &model.WorkflowInstance{
 		ID:           "wf-new",

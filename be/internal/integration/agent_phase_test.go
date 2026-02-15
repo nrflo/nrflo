@@ -11,7 +11,7 @@ import (
 // This bypasses the socket agent.complete flow which only sets result (not status).
 func insertCompletedSession(t *testing.T, env *TestEnv, id, ticketID, wfiID, phase, agentType, modelID, status, result string) {
 	t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
@@ -216,7 +216,7 @@ func TestAgentHistoryEmptyPhase(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "PH-4", "test")
 
 	// Insert completed agent session with explicit empty-string phase via raw SQL
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,

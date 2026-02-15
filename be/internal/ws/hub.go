@@ -57,7 +57,7 @@ func NewEvent(eventType, projectID, ticketID, workflow string, data map[string]i
 		ProjectID: projectID,
 		TicketID:  ticketID,
 		Workflow:  workflow,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Data:      data,
 	}
 }

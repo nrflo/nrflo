@@ -59,7 +59,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 		if userErr != nil {
 			return fmt.Errorf("failed to get current user: %w", userErr)
 		}
-		now := time.Now().UTC().Format(time.RFC3339)
+		now := time.Now().UTC().Format(time.RFC3339Nano)
 		_, createErr := s.pool.Exec(`
 			INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, created_at, updated_at, created_by)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -201,7 +201,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 
 	result := map[string]interface{}{
 		"version":        4,
-		"initialized_at": wi.CreatedAt.Format(time.RFC3339),
+		"initialized_at": wi.CreatedAt.Format(time.RFC3339Nano),
 		"instance_id":    wi.ID,
 		"scope_type":     scopeType,
 		"current_phase":  "",
@@ -221,7 +221,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	// Completion stats
 	result["status"] = string(wi.Status)
 	if wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceProjectCompleted {
-		result["completed_at"] = wi.UpdatedAt.Format(time.RFC3339)
+		result["completed_at"] = wi.UpdatedAt.Format(time.RFC3339Nano)
 		result["total_duration_sec"] = wi.UpdatedAt.Sub(wi.CreatedAt).Seconds()
 	}
 
@@ -274,7 +274,7 @@ func (s *WorkflowService) Set(projectID, ticketID string, req *types.WorkflowSet
 		}
 		return s.wfiRepo.UpdateRetryCount(wi.ID, count)
 	case "parent_session":
-		now := time.Now().UTC().Format(time.RFC3339)
+		now := time.Now().UTC().Format(time.RFC3339Nano)
 		_, err := s.pool.Exec(
 			`UPDATE workflow_instances SET parent_session = ?, updated_at = ? WHERE id = ?`,
 			sql.NullString{String: req.Value, Valid: req.Value != ""}, now, wi.ID)

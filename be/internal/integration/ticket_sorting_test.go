@@ -28,7 +28,7 @@ func TestListWithBlockedInfo_SortsByUpdatedThenCreated(t *testing.T) {
 
 	// Seed project
 	now := time.Now().UTC()
-	nowStr := now.Format(time.RFC3339)
+	nowStr := now.Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`, "testproj", "Test Project", nowStr, nowStr)
@@ -54,8 +54,8 @@ func TestListWithBlockedInfo_SortsByUpdatedThenCreated(t *testing.T) {
 	}
 
 	for _, tc := range tickets {
-		createdStr := tc.createdAt.Format(time.RFC3339)
-		updatedStr := tc.updatedAt.Format(time.RFC3339)
+		createdStr := tc.createdAt.Format(time.RFC3339Nano)
+		updatedStr := tc.updatedAt.Format(time.RFC3339Nano)
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type,
 				created_at, updated_at, created_by)
@@ -105,7 +105,7 @@ func TestListWithBlockedInfo_TypeFilter(t *testing.T) {
 	defer database.Close()
 
 	now := time.Now().UTC()
-	nowStr := now.Format(time.RFC3339)
+	nowStr := now.Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`, "proj", "Project", nowStr, nowStr)
@@ -126,8 +126,8 @@ func TestListWithBlockedInfo_TypeFilter(t *testing.T) {
 	}
 
 	for _, tc := range tickets {
-		createdStr := now.Add(-3 * time.Hour).Format(time.RFC3339)
-		updatedStr := tc.updatedAt.Format(time.RFC3339)
+		createdStr := now.Add(-3 * time.Hour).Format(time.RFC3339Nano)
+		updatedStr := tc.updatedAt.Format(time.RFC3339Nano)
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type,
 				created_at, updated_at, created_by)
@@ -174,7 +174,7 @@ func TestListWithBlockedInfo_NullUpdatedAt(t *testing.T) {
 	defer database.Close()
 
 	now := time.Now().UTC()
-	nowStr := now.Format(time.RFC3339)
+	nowStr := now.Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`, "proj", "Project", nowStr, nowStr)
@@ -194,10 +194,10 @@ func TestListWithBlockedInfo_NullUpdatedAt(t *testing.T) {
 	}
 
 	for _, tc := range tickets {
-		createdStr := tc.createdAt.Format(time.RFC3339)
+		createdStr := tc.createdAt.Format(time.RFC3339Nano)
 		var updatedStr interface{}
 		if tc.updatedAt != nil {
-			updatedStr = tc.updatedAt.Format(time.RFC3339)
+			updatedStr = tc.updatedAt.Format(time.RFC3339Nano)
 		} else {
 			updatedStr = createdStr // SQLite doesn't support NULL, so use created_at as fallback
 		}
@@ -248,7 +248,7 @@ func TestListWithBlockedInfo_StatusFilterSorting(t *testing.T) {
 	defer database.Close()
 
 	now := time.Now().UTC()
-	nowStr := now.Format(time.RFC3339)
+	nowStr := now.Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`, "proj", "Project", nowStr, nowStr)
@@ -269,8 +269,8 @@ func TestListWithBlockedInfo_StatusFilterSorting(t *testing.T) {
 	}
 
 	for _, tc := range tickets {
-		createdStr := now.Add(-3 * time.Hour).Format(time.RFC3339)
-		updatedStr := tc.updatedAt.Format(time.RFC3339)
+		createdStr := now.Add(-3 * time.Hour).Format(time.RFC3339Nano)
+		updatedStr := tc.updatedAt.Format(time.RFC3339Nano)
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type,
 				created_at, updated_at, created_by)
@@ -319,15 +319,14 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 	seedProject(t, dbPath, "httptest")
 	baseURL := startAPIServer(t, dbPath)
 
-	// Create tickets via HTTP API with delays to ensure different timestamps
+	// Create tickets via HTTP API (nano-precision timestamps ensure different ordering)
 	tickets := []struct {
 		id    string
 		title string
-		sleep time.Duration // sleep after creating this ticket
 	}{
-		{"HTTP-1", "First", 1100 * time.Millisecond},
-		{"HTTP-2", "Second", 1100 * time.Millisecond},
-		{"HTTP-3", "Third", 1100 * time.Millisecond},
+		{"HTTP-1", "First"},
+		{"HTTP-2", "Second"},
+		{"HTTP-3", "Third"},
 	}
 
 	for _, tc := range tickets {
@@ -344,10 +343,6 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 
 		if resp.StatusCode != http.StatusCreated {
 			t.Fatalf("failed to create ticket %s: status %d", tc.id, resp.StatusCode)
-		}
-
-		if tc.sleep > 0 {
-			time.Sleep(tc.sleep)
 		}
 	}
 
@@ -393,7 +388,7 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 	for i, expected := range expectedOrder {
 		if results[i].ID != expected {
 			t.Errorf("position %d: expected %s, got %s (title: %s, updated: %s)",
-				i, expected, results[i].ID, results[i].Title, results[i].UpdatedAt.Format(time.RFC3339))
+				i, expected, results[i].ID, results[i].Title, results[i].UpdatedAt.Format(time.RFC3339Nano))
 		}
 	}
 }
@@ -410,7 +405,7 @@ func TestListWithBlockedInfo_SameTimestamps(t *testing.T) {
 	defer database.Close()
 
 	now := time.Now().UTC()
-	nowStr := now.Format(time.RFC3339)
+	nowStr := now.Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES (?, ?, ?, ?)`, "proj", "Project", nowStr, nowStr)
@@ -430,8 +425,8 @@ func TestListWithBlockedInfo_SameTimestamps(t *testing.T) {
 	}
 
 	for _, tc := range tickets {
-		createdStr := tc.createdAt.Format(time.RFC3339)
-		updatedStr := sameUpdateTime.Format(time.RFC3339)
+		createdStr := tc.createdAt.Format(time.RFC3339Nano)
+		updatedStr := sameUpdateTime.Format(time.RFC3339Nano)
 		_, err = database.Exec(`
 			INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type,
 				created_at, updated_at, created_by)

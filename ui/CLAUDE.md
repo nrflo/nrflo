@@ -123,11 +123,45 @@ Layout
 
 ## Testing
 
-Test infrastructure in `src/test/`:
-- `setup.ts` — Vitest setup file (global mocks, test environment config)
-- `utils.tsx` — Shared test utilities (render helpers, mock factories)
+### Infrastructure
 
-Tests are co-located with source files using `.test.tsx` / `.test.ts` suffix. Some directories use `__tests__/` subdirectories. Variant tests use descriptive suffixes (e.g., `AgentLogPanel.width.test.tsx`).
+- **Framework:** Vitest + jsdom + React Testing Library
+- **Setup:** `src/test/setup.ts` — auto-cleanup after each test, `window.location` mock, `VITE_API_URL` env stub
+- **Utilities:** `src/test/utils.tsx` — `renderWithQuery()`, `createTestQueryClient()`, `createWrapper()`
+- **Matchers:** `@testing-library/jest-dom/vitest` (toBeInTheDocument, toHaveTextContent, etc.)
+- **User events:** `@testing-library/user-event` — always use `const user = userEvent.setup()`
+
+### Commands
+
+```bash
+npx vitest run                    # all tests
+npx vitest run src/components/    # directory
+npx vitest run path/to/file.test.tsx  # single file
+npx vitest run --reporter=verbose # with timing per test
+```
+
+### File Organization
+
+- Co-located with source: `Component.test.tsx` next to `Component.tsx`
+- Variant tests use descriptive suffixes: `Component.feature.test.tsx`
+- Some directories use `__tests__/` subdirectories
+- 300-line max per test file — split by feature area if exceeded
+
+### Patterns
+
+- **Factory functions** with override pattern: `makeAgent({status: "failed"})`
+- **QueryClient isolation:** fresh `createTestQueryClient()` per test (retry: false, gcTime: 0)
+- **Mock at boundaries:** mock hooks/API modules (`vi.mock('@/hooks/useTickets')`), not internals
+- **Queries:** prefer `getByRole` / `getByText` over `getByTestId`
+- **Async:** use `findBy*` queries (auto-wait) over `waitFor` with `getBy*`
+
+### What NOT to Test
+
+- Third-party library internals (React Router, TanStack Query, Zustand)
+- Implementation details (internal state, CSS class names)
+- Trivial renders without meaningful assertions
+- Simple pass-through props or basic HTML structure
+- Every prop combination — use representative samples
 
 ## Important Notes
 

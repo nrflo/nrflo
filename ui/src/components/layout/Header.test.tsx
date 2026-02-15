@@ -1,0 +1,136 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Header } from './Header'
+
+// Mock store - Header uses destructuring, not selector
+let mockCurrentProject = 'test-project'
+let mockProjects = [
+  {
+    id: 'test-project',
+    name: 'Test Project',
+    root_path: '/test',
+    default_workflow: 'feature',
+    default_branch: 'main',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+]
+
+const mockSetCurrentProject = vi.fn()
+
+vi.mock('@/stores/projectStore', () => ({
+  useProjectStore: vi.fn(() => ({
+    currentProject: mockCurrentProject,
+    projects: mockProjects,
+    setCurrentProject: mockSetCurrentProject,
+  })),
+}))
+
+// Mock DailyStats component
+vi.mock('./DailyStats', () => ({
+  DailyStats: () => <div data-testid="daily-stats">Daily Stats</div>,
+}))
+
+// Mock ProjectSelect component
+vi.mock('@/components/ui/ProjectSelect', () => ({
+  ProjectSelect: ({ value, projects }: { value: string; projects: unknown[] }) => (
+    <div data-testid="project-select">
+      Project: {value} (Total: {projects.length})
+    </div>
+  ),
+}))
+
+function renderHeader(initialRoute = '/') {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialRoute]}>
+        <Header />
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+}
+
+describe('Header - Git Status Link', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Reset to project with default_branch
+    mockCurrentProject = 'test-project'
+    mockProjects = [
+      {
+        id: 'test-project',
+        name: 'Test Project',
+        root_path: '/test',
+        default_workflow: 'feature',
+        default_branch: 'main',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ]
+  })
+
+  it('shows Git Status link when project has default_branch', () => {
+    renderHeader()
+
+    const gitStatusLink = screen.getByRole('link', { name: /git status/i })
+    expect(gitStatusLink).toBeInTheDocument()
+    expect(gitStatusLink).toHaveAttribute('href', '/git-status')
+  })
+
+  it('hides Git Status link when project has no default_branch', () => {
+    mockProjects = [
+      {
+        id: 'test-project',
+        name: 'Test Project',
+        root_path: '/test',
+        default_workflow: 'feature',
+        default_branch: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ]
+
+    renderHeader()
+
+    const gitStatusLink = screen.queryByRole('link', { name: /git status/i })
+    expect(gitStatusLink).not.toBeInTheDocument()
+  })
+
+  it('hides Git Status link when no project is selected', () => {
+    mockCurrentProject = ''
+
+    renderHeader()
+
+    const gitStatusLink = screen.queryByRole('link', { name: /git status/i })
+    expect(gitStatusLink).not.toBeInTheDocument()
+  })
+
+  it('shows Git Status link after Workflows link', () => {
+    renderHeader()
+
+    const allLinks = screen.getAllByRole('link')
+    const workflowsIndex = allLinks.findIndex((link) =>
+      link.textContent?.includes('Workflows')
+    )
+    const gitStatusIndex = allLinks.findIndex((link) =>
+      link.textContent?.includes('Git Status')
+    )
+
+    expect(workflowsIndex).toBeGreaterThan(-1)
+    expect(gitStatusIndex).toBeGreaterThan(-1)
+    expect(gitStatusIndex).toBeGreaterThan(workflowsIndex)
+  })
+
+  it('renders all main navigation links', () => {
+    renderHeader()
+
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /tickets/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /workflows/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /git status/i })).toBeInTheDocument()
+  })
+})

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Search, Settings } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
@@ -11,6 +11,11 @@ export function Header() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const { currentProject, setCurrentProject, projects } = useProjectStore()
+
+  const hasDefaultBranch = useMemo(() => {
+    const project = projects.find((p) => p.id === currentProject)
+    return !!project?.default_branch
+  }, [projects, currentProject])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,6 +54,14 @@ export function Header() {
           >
             Workflows
           </Link>
+          {hasDefaultBranch && (
+            <Link
+              to="/git-status"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Git Status
+            </Link>
+          )}
         </nav>
 
         <div className="flex-1" />

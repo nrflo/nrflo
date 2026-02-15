@@ -83,7 +83,7 @@ WebSocket-based, no REST polling. See [hooks/CLAUDE.md](src/hooks/CLAUDE.md) for
 
 ```
 Layout
-├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows, daily stats, settings link)
+├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows/Git Status, daily stats, settings link)
 ├── Sidebar (navigation, status counts)
 └── Outlet (page content via React Router)
 ```

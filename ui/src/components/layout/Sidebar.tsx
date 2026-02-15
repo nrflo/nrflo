@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -8,10 +9,12 @@ import {
   AlertCircle,
   Lock,
   FolderGit2,
+  GitCommitHorizontal,
   Link2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/useTickets'
+import { useProjectStore } from '@/stores/projectStore'
 import { Spinner } from '@/components/ui/Spinner'
 
 interface NavItemProps {
@@ -47,6 +50,13 @@ function NavItem({ to, icon, label, count, active, indicator }: NavItemProps) {
 export function Sidebar() {
   const location = useLocation()
   const { data: status } = useStatus()
+  const currentProject = useProjectStore((s) => s.currentProject)
+  const projects = useProjectStore((s) => s.projects)
+
+  const hasDefaultBranch = useMemo(() => {
+    const project = projects.find((p) => p.id === currentProject)
+    return !!project?.default_branch
+  }, [projects, currentProject])
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -81,6 +91,14 @@ export function Sidebar() {
           label="Project Workflows"
           active={isActive('/project-workflows')}
         />
+        {hasDefaultBranch && (
+          <NavItem
+            to="/git-status"
+            icon={<GitCommitHorizontal className="h-4 w-4" />}
+            label="Git Status"
+            active={isActive('/git-status')}
+          />
+        )}
         <NavItem
           to="/chains"
           icon={<Link2 className="h-4 w-4" />}

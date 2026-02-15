@@ -1,6 +1,6 @@
 # Pages
 
-Route page components for the nrworkflow web UI. Uses React Router v6 for routing. This directory contains 36 files including page components and co-located tests.
+Route page components for the nrworkflow web UI. Uses React Router v6 for routing. This directory contains 37 files including page components and co-located tests.
 
 ## Routes
 
@@ -13,6 +13,7 @@ Route page components for the nrworkflow web UI. Uses React Router v6 for routin
 | `/tickets/:id` | `TicketDetailPage.tsx` | Ticket detail with tabbed interface |
 | `/workflows` | `WorkflowsPage.tsx` | Workflow definitions and agent definitions CRUD |
 | `/project-workflows` | `ProjectWorkflowsPage.tsx` | Project-scoped workflows (3-tab layout) |
+| `/git-status` | `GitStatusPage.tsx` | Standalone git commit status page (conditional on `default_branch`) |
 | `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |
 | `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, 5s polling when running |
 | `/settings` | `SettingsPage.tsx` | Project management (create/update/delete) |
@@ -27,7 +28,6 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 - **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
 - **Details tab**: Read-only dependency lists, description text, metadata
 - **Workflow tab**: Shows phase timeline with agent history
-- **Git Status tab**: Paginated git commit list from project repo, click-to-open commit detail dialog with diff viewer
 
 ### Tab Content Components
 
@@ -36,7 +36,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 | `HierarchyTabContent.tsx` | Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics) |
 | `DescriptionTabContent.tsx` | Ticket title as h2, metadata grid, description text |
 | `DetailsTabContent.tsx` | Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid |
-| `GitStatusTabContent.tsx` | Paginated git commits list with refresh, opens CommitDetailDialog on click |
+| `GitStatusTabContent.tsx` | Paginated git commits list with refresh, opens CommitDetailDialog on click (used by `GitStatusPage`) |
 
 **Real-time updates**: The page uses WebSocket exclusively for real-time updates. Subscribes to the current ticket on mount via `useWebSocket()` hook. No REST polling.
 

@@ -234,8 +234,10 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	spawnWorkflows := convertToSpawnerWorkflows(svcWorkflows)
 	spawnAgents := convertToSpawnerAgents(svcAgents)
 
-	// Create orchestration context with cancel
-	orchCtx, cancel := context.WithCancel(ctx)
+	// Create orchestration context detached from HTTP request context.
+	// Using ctx (r.Context()) as parent would cancel the orchestration when
+	// the HTTP handler returns. Propagate the trx for log correlation.
+	orchCtx, cancel := context.WithCancel(logger.WithTrx(context.Background(), logger.TrxFromContext(ctx)))
 
 	rs := &runState{cancel: cancel}
 	o.mu.Lock()
@@ -492,8 +494,8 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		ScopeType:    scopeType,
 	}
 
-	// Create orchestration context
-	orchCtx, cancel := context.WithCancel(ctx)
+	// Create orchestration context detached from HTTP request context
+	orchCtx, cancel := context.WithCancel(logger.WithTrx(context.Background(), logger.TrxFromContext(ctx)))
 	rs := &runState{cancel: cancel}
 	o.mu.Lock()
 	o.runs[wi.ID] = rs

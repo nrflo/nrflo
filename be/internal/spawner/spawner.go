@@ -322,7 +322,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		Prompt:        prompt,
 		InitialPrompt: initialPrompt,
 		WorkDir:       workDir,
-		Env: append(os.Environ(),
+		Env: append(filterEnv(os.Environ(), "CLAUDECODE"),
 			fmt.Sprintf("NRWORKFLOW_PROJECT=%s", req.ProjectID),
 			"NRWF_SPAWNED=1",
 			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
@@ -678,6 +678,18 @@ func (s *Spawner) readCallbackFindings(proc *processInfo) (int, string) {
 	}
 
 	return level, instructions
+}
+
+// filterEnv returns a copy of env with the named variable removed.
+func filterEnv(env []string, name string) []string {
+	prefix := name + "="
+	out := make([]string, 0, len(env))
+	for _, e := range env {
+		if !strings.HasPrefix(e, prefix) {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 func parseModelID(modelID string) (cli, model string) {

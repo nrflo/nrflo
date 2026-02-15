@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -59,12 +60,12 @@ func Open(customPath string) (*DB, error) {
 
 // OpenPath opens a database at a specific path, sets PRAGMAs, and runs migrations.
 func OpenPath(path string) (*DB, error) {
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", buildDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := setPragmas(db); err != nil {
+	if err := setDatabasePragmas(db); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -90,16 +91,20 @@ func OpenOrCreate(customPath string) (*DB, error) {
 	return OpenPath(dbPath)
 }
 
-// setPragmas sets busy timeout, WAL mode, and foreign keys on a database connection.
-func setPragmas(db *sql.DB) error {
-	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
-		return fmt.Errorf("failed to set busy timeout: %w", err)
-	}
+// buildDSN returns a DSN with per-connection pragmas (busy_timeout, foreign_keys).
+// These are set via _pragma in the DSN so every pooled connection gets them,
+// not just the first one (which is what happens with Exec-based PRAGMA calls).
+func buildDSN(path string) string {
+	v := url.Values{}
+	v.Add("_pragma", "busy_timeout(10000)")
+	v.Add("_pragma", "foreign_keys(1)")
+	return "file:" + path + "?" + v.Encode()
+}
+
+// setDatabasePragmas sets database-level pragmas (WAL mode) that only need to run once.
+func setDatabasePragmas(db *sql.DB) error {
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		return fmt.Errorf("failed to enable WAL mode: %w", err)
-	}
-	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 	return nil
 }

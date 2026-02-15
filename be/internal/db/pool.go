@@ -47,12 +47,12 @@ func NewPoolPath(path string, config PoolConfig) (*Pool, error) {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", buildDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := setPragmas(db); err != nil {
+	if err := setDatabasePragmas(db); err != nil {
 		db.Close()
 		return nil, err
 	}

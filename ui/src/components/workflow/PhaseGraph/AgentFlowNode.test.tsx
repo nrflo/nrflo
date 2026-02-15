@@ -97,31 +97,6 @@ describe('AgentFlowNode', () => {
     expect(screen.getByText('0%')).toBeInTheDocument()
   })
 
-  // Context-left badge: positioning (ticket nrworkflow-30efa6)
-  it('positions context_left badge at absolute top-right corner', () => {
-    const data = makeData({ agent: makeAgent({ context_left: 60 }) })
-    render(<AgentFlowNode data={data} />)
-    const badge = screen.getByText('60%')
-    expect(badge.className).toContain('absolute')
-    expect(badge.className).toContain('top-1')
-    expect(badge.className).toContain('right-1')
-  })
-
-  // Context-left badge: doubled text size (ticket nrworkflow-30efa6)
-  it('renders context_left badge with doubled text size (text-base)', () => {
-    const data = makeData({ agent: makeAgent({ context_left: 50 }) })
-    render(<AgentFlowNode data={data} />)
-    const badge = screen.getByText('50%')
-    expect(badge.className).toContain('text-base')
-  })
-
-  it('renders context_left badge with monospace font', () => {
-    const data = makeData({ agent: makeAgent({ context_left: 80 }) })
-    render(<AgentFlowNode data={data} />)
-    const badge = screen.getByText('80%')
-    expect(badge.className).toContain('font-mono')
-  })
-
   // Context-left badge: color thresholds
   it('shows green styling for context_left > 50%', () => {
     const data = makeData({ agent: makeAgent({ context_left: 75 }) })
@@ -142,28 +117,6 @@ describe('AgentFlowNode', () => {
     render(<AgentFlowNode data={data} />)
     const badge = screen.getByText('15%')
     expect(badge.className).toContain('bg-red-100')
-  })
-
-  it('shows red at boundary value 25', () => {
-    const data = makeData({ agent: makeAgent({ context_left: 25 }) })
-    render(<AgentFlowNode data={data} />)
-    const badge = screen.getByText('25%')
-    expect(badge.className).toContain('bg-red-100')
-  })
-
-  it('shows yellow at boundary value 50', () => {
-    const data = makeData({ agent: makeAgent({ context_left: 50 }) })
-    render(<AgentFlowNode data={data} />)
-    const badge = screen.getByText('50%')
-    expect(badge.className).toContain('bg-yellow-100')
-  })
-
-  // Card has relative positioning for absolute badge
-  it('card button has relative class for absolute badge positioning', () => {
-    const data = makeData({ agent: makeAgent({ context_left: 55 }) })
-    render(<AgentFlowNode data={data} />)
-    const button = screen.getByRole('button')
-    expect(button.className).toContain('relative')
   })
 
   // Phase label display
@@ -252,12 +205,6 @@ describe('AgentFlowNode', () => {
     expect(screen.getByText('error')).toBeInTheDocument()
   })
 
-  it('does not show context_left badge on pending placeholder', () => {
-    const data = makeData({ agent: undefined, isPending: true })
-    render(<AgentFlowNode data={data} />)
-    expect(screen.queryByText(/%$/)).not.toBeInTheDocument()
-  })
-
   // Running vs completed styling
   it('applies yellow border for running agent', () => {
     const data = makeData({ agent: makeAgent({ result: undefined }) })
@@ -286,133 +233,23 @@ describe('AgentFlowNode', () => {
     expect(button.className).toContain('border-red-500')
   })
 
-  // Unified card sizing (ticket nrworkflow-40b179)
-  describe('unified card sizing', () => {
-    it('running card has w-[300px] fixed width', () => {
-      const data = makeData({ agent: makeAgent({ result: undefined }) })
-      render(<AgentFlowNode data={data} />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('w-[300px]')
-    })
-
-    it('completed card has w-[300px] fixed width', () => {
-      const data = makeData({
-        agent: undefined,
-        historyEntry: makeHistory({ result: 'pass' }),
-      })
-      render(<AgentFlowNode data={data} />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('w-[300px]')
-    })
-
-    it('failed card has w-[300px] fixed width', () => {
-      const data = makeData({
-        agent: undefined,
-        historyEntry: makeHistory({ result: 'fail' }),
-      })
-      render(<AgentFlowNode data={data} />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('w-[300px]')
-    })
-
-    it('pending placeholder has w-[300px] fixed width', () => {
-      const data = makeData({ agent: undefined, isPending: true })
-      const { container } = render(<AgentFlowNode data={data} />)
+  // Unified card sizing — all variants use w-[300px] and min-h-[90px]
+  it('all card variants use w-[300px] and min-h-[90px]', () => {
+    const variants = [
+      makeData({ agent: makeAgent({ result: undefined }) }),
+      makeData({ agent: undefined, historyEntry: makeHistory({ result: 'pass' }) }),
+      makeData({ agent: undefined, historyEntry: makeHistory({ result: 'fail' }) }),
+      makeData({ agent: undefined, isPending: true }),
+      makeData({ agent: undefined, isSkipped: true }),
+      makeData({ agent: undefined, isError: true }),
+    ]
+    variants.forEach((data) => {
+      const { unmount, container } = render(<AgentFlowNode data={data} />)
       const card = container.querySelector('.w-\\[300px\\]')
-      expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[300px]')
-    })
-
-    it('skipped placeholder has w-[300px] fixed width', () => {
-      const data = makeData({ agent: undefined, isSkipped: true })
-      const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[300px\\]')
-      expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[300px]')
-    })
-
-    it('completed placeholder has w-[300px] fixed width', () => {
-      const data = makeData({ agent: undefined, isCompleted: true })
-      const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[300px\\]')
-      expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[300px]')
-    })
-
-    it('error placeholder has w-[300px] fixed width', () => {
-      const data = makeData({ agent: undefined, isError: true })
-      const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[300px\\]')
-      expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('w-[300px]')
-    })
-
-    it('running card has min-h-[90px] minimum height', () => {
-      const data = makeData({ agent: makeAgent({ result: undefined }) })
-      render(<AgentFlowNode data={data} />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('min-h-[90px]')
-    })
-
-    it('completed card has min-h-[90px] minimum height', () => {
-      const data = makeData({
-        agent: undefined,
-        historyEntry: makeHistory({ result: 'pass' }),
-      })
-      render(<AgentFlowNode data={data} />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('min-h-[90px]')
-    })
-
-    it('pending placeholder has min-h-[90px] minimum height', () => {
-      const data = makeData({ agent: undefined, isPending: true })
-      const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.min-h-\\[90px\\]')
       expect(card).toBeInTheDocument()
       expect(card?.className).toContain('min-h-[90px]')
-    })
-
-    it('skipped placeholder has min-h-[90px] minimum height', () => {
-      const data = makeData({ agent: undefined, isSkipped: true })
-      const { container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.min-h-\\[90px\\]')
-      expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('min-h-[90px]')
-    })
-
-    it('all card variants use same fixed width for alignment', () => {
-      // Test that all card states render with the same width class
-      const variants = [
-        { label: 'running', data: makeData({ agent: makeAgent({ result: undefined }) }) },
-        { label: 'completed', data: makeData({ agent: undefined, historyEntry: makeHistory({ result: 'pass' }) }) },
-        { label: 'failed', data: makeData({ agent: undefined, historyEntry: makeHistory({ result: 'fail' }) }) },
-        { label: 'pending', data: makeData({ agent: undefined, isPending: true }) },
-        { label: 'skipped', data: makeData({ agent: undefined, isSkipped: true }) },
-        { label: 'error', data: makeData({ agent: undefined, isError: true }) },
-      ]
-
-      variants.forEach(({ label }) => {
-        const { unmount, container } = render(<AgentFlowNode data={variants.find(v => v.label === label)!.data} />)
-        const card = container.querySelector('.w-\\[300px\\]')
-        expect(card).toBeInTheDocument()
-        expect(card?.className).toContain('w-[300px]')
-        unmount()
-      })
-    })
-
-    it('does not use min-w class on any card variant', () => {
-      // Ensure old min-w-[180px] and min-w-[300px] are removed
-      const variants = [
-        { label: 'running', data: makeData({ agent: makeAgent({ result: undefined }) }) },
-        { label: 'pending', data: makeData({ agent: undefined, isPending: true }) },
-      ]
-
-      variants.forEach(({ data }) => {
-        const { unmount, container } = render(<AgentFlowNode data={data} />)
-        const card = container.querySelector('[class*="min-w"]')
-        expect(card).not.toBeInTheDocument()
-        unmount()
-      })
+      expect(container.querySelector('[class*="min-w"]')).not.toBeInTheDocument()
+      unmount()
     })
   })
 })

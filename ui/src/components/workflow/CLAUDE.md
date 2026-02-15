@@ -1,6 +1,6 @@
 # Workflow Components
 
-Workflow visualization and interaction components for ticket and project-scoped workflow views. This is the largest component directory (43 files) covering phase timeline, agent display, findings, and workflow definition management.
+Workflow visualization and interaction components for ticket and project-scoped workflow views. This is the largest component directory (42 files) covering phase timeline, agent display, findings, and workflow definition management.
 
 ## Component Tree
 

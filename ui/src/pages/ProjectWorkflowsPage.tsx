@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle, Play } from 'lucide-react'
+import { CheckCircle, GitCommitHorizontal, Play } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import {
   useProjectWorkflow,
@@ -11,16 +11,23 @@ import {
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
 import { WorkflowTabContent } from './WorkflowTabContent'
+import { GitStatusTabContent } from './GitStatusTabContent'
 import { RunWorkflowForm, InstanceList } from './ProjectWorkflowComponents'
 import { cn } from '@/lib/utils'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 
-type TabId = 'run' | 'running' | 'completed'
+type TabId = 'run' | 'running' | 'completed' | 'git'
 
 export function ProjectWorkflowsPage() {
   const currentProject = useProjectStore((s) => s.currentProject)
+  const projects = useProjectStore((s) => s.projects)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+
+  const hasDefaultBranch = useMemo(() => {
+    const project = projects.find((p) => p.id === currentProject)
+    return !!project?.default_branch
+  }, [projects, currentProject])
 
   const [activeTab, setActiveTab] = useState<TabId>('run')
   const [selectedInstanceId, setSelectedInstanceId] = useState('')
@@ -55,6 +62,13 @@ export function ProjectWorkflowsPage() {
   const projectWorkflows = workflowDefs
     ? Object.entries(workflowDefs).filter(([, def]) => def.scope_type === 'project')
     : []
+
+  // Reset git tab if project has no default_branch
+  useEffect(() => {
+    if (!hasDefaultBranch && activeTab === 'git') {
+      setActiveTab('run')
+    }
+  }, [hasDefaultBranch, activeTab])
 
   // Auto-select first workflow def
   useEffect(() => {
@@ -146,7 +160,7 @@ export function ProjectWorkflowsPage() {
 
   return (
     <div className={
-      (activeTab !== 'run' && (hasActivePhase || selectedPanelAgent))
+      ((activeTab === 'running' || activeTab === 'completed') && (hasActivePhase || selectedPanelAgent))
         ? 'max-w-full px-4 space-y-6'
         : 'max-w-7xl mx-auto p-6 space-y-6'
     }>
@@ -194,6 +208,20 @@ export function ProjectWorkflowsPage() {
             <CheckCircle className="h-4 w-4" />
             Completed ({completedCount})
           </button>
+          {hasDefaultBranch && (
+            <button
+              onClick={() => handleTabSwitch('git')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+                activeTab === 'git'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <GitCommitHorizontal className="h-4 w-4" />
+              Git Status
+            </button>
+          )}
         </div>
       </div>
 
@@ -271,6 +299,10 @@ export function ProjectWorkflowsPage() {
             }
           />
         </>
+      )}
+
+      {activeTab === 'git' && currentProject && (
+        <GitStatusTabContent projectId={currentProject} />
       )}
     </div>
   )

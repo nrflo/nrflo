@@ -7,8 +7,22 @@ import type { ProjectWorkflowResponse, ProjectAgentSessionsResponse, WorkflowSta
 
 // Mock dependencies
 vi.mock('@/stores/projectStore', () => ({
-  useProjectStore: (selector: (s: { currentProject: string; projectsLoaded: boolean }) => unknown) =>
-    selector({ currentProject: 'test-project', projectsLoaded: true }),
+  useProjectStore: (selector: (s: { currentProject: string; projects: unknown[]; projectsLoaded: boolean }) => unknown) =>
+    selector({
+      currentProject: 'test-project',
+      projects: [
+        {
+          id: 'test-project',
+          name: 'Test Project',
+          root_path: '/test',
+          default_workflow: 'feature',
+          default_branch: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+      projectsLoaded: true
+    }),
 }))
 
 // WebSocket subscription is now handled by WebSocketProvider (no direct hook usage)

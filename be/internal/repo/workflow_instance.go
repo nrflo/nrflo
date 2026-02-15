@@ -298,6 +298,24 @@ func (r *WorkflowInstanceRepo) ResetPhaseStatus(id, phase string) error {
 	return err
 }
 
+// CleanupKeepLatest deletes non-active workflow instances beyond the keep limit,
+// ordered by updated_at DESC. Active instances are never deleted.
+func (r *WorkflowInstanceRepo) CleanupKeepLatest(keep int) (int64, error) {
+	result, err := r.pool.Exec(`
+		DELETE FROM workflow_instances
+		WHERE status != ?
+		AND id NOT IN (
+			SELECT id FROM workflow_instances
+			WHERE status != ?
+			ORDER BY updated_at DESC
+			LIMIT ?
+		)`, model.WorkflowInstanceActive, model.WorkflowInstanceActive, keep)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // Delete deletes a workflow instance
 func (r *WorkflowInstanceRepo) Delete(id string) error {
 	result, err := r.pool.Exec(`DELETE FROM workflow_instances WHERE id = ?`, id)

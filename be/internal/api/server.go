@@ -55,6 +55,9 @@ func (s *Server) Start(port int) error {
 	// Initialize event log for durable WS event persistence
 	s.initEventLog()
 
+	// Start retention cleanup for workflow instances and agent sessions
+	s.startRetentionCleanup()
+
 	// Start WebSocket hub
 	go s.wsHub.Run()
 
@@ -121,6 +124,47 @@ func (s *Server) initEventLog() {
 			} else if deleted > 0 {
 				logger.Info(context.Background(), "event log cleanup", "deleted", deleted)
 			}
+		}
+	}()
+}
+
+// startRetentionCleanup trims workflow_instances and agent_sessions to keep
+// only the latest 100 non-active/non-running rows, every 20 minutes.
+func (s *Server) startRetentionCleanup() {
+	const keep = 100
+
+	cleanup := func() {
+		database, err := s.getDatabase()
+		if err != nil {
+			logger.Info(context.Background(), "retention cleanup: db open failed", "error", err)
+			return
+		}
+		defer database.Close()
+
+		pool := db.WrapAsPool(database)
+		wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+		asRepo := repo.NewAgentSessionRepo(database)
+
+		if deleted, err := wfiRepo.CleanupKeepLatest(keep); err != nil {
+			logger.Info(context.Background(), "retention cleanup: workflow_instances error", "error", err)
+		} else if deleted > 0 {
+			logger.Info(context.Background(), "retention cleanup: workflow_instances", "deleted", deleted)
+		}
+
+		if deleted, err := asRepo.CleanupKeepLatest(keep); err != nil {
+			logger.Info(context.Background(), "retention cleanup: agent_sessions error", "error", err)
+		} else if deleted > 0 {
+			logger.Info(context.Background(), "retention cleanup: agent_sessions", "deleted", deleted)
+		}
+	}
+
+	// Run once immediately on startup
+	go func() {
+		cleanup()
+		ticker := time.NewTicker(20 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			cleanup()
 		}
 	}()
 }

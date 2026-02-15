@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
@@ -33,7 +34,7 @@ func TestChainExecution_E2E_Sequential(t *testing.T) {
 	env.InitWorkflow(t, "B")
 
 	// Create chain
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Sequential E2E",
 		WorkflowName: "test",
@@ -65,7 +66,7 @@ func TestChainExecution_E2E_Sequential(t *testing.T) {
 	// 3. Locks are released on completion
 
 	// Simulate chain start by updating status
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	err = chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
 	if err != nil {
 		t.Fatalf("failed to update status: %v", err)
@@ -78,7 +79,7 @@ func TestChainExecution_E2E_Sequential(t *testing.T) {
 	}
 
 	// Simulate first item (A) execution
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, _ := itemRepo.ListByChain(chain.ID)
 
 	// Mark first item running
@@ -158,7 +159,7 @@ func TestChainExecution_E2E_Failure(t *testing.T) {
 		"C": {"B"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Failure E2E",
 		WorkflowName: "test",
@@ -173,8 +174,8 @@ func TestChainExecution_E2E_Failure(t *testing.T) {
 		t.Fatalf("expected 3 items, got %d", len(chain.Items))
 	}
 
-	chainRepo := repo.NewChainRepo(env.Pool)
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	lockRepo := repo.NewChainLockRepo(env.Pool)
 
 	// Start chain
@@ -232,7 +233,7 @@ func TestChainExecution_E2E_Cancel(t *testing.T) {
 		"B": base.Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Cancel E2E",
 		WorkflowName: "test",
@@ -242,8 +243,8 @@ func TestChainExecution_E2E_Cancel(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(env.Pool)
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	lockRepo := repo.NewChainLockRepo(env.Pool)
 
 	// Start chain
@@ -254,7 +255,7 @@ func TestChainExecution_E2E_Cancel(t *testing.T) {
 	itemRepo.UpdateItemStatus(items[0].ID, model.ChainItemRunning)
 
 	// Simulate cancel via ChainRunner
-	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub)
+	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub, clock.Real())
 
 	// Manually update to simulate what handleCancel does
 	itemRepo.UpdateItemStatus(items[0].ID, model.ChainItemCanceled)
@@ -296,7 +297,7 @@ func TestChainExecution_ItemWorkflowInstanceTracking(t *testing.T) {
 	})
 	env.InitWorkflow(t, "A")
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Workflow Tracking",
 		WorkflowName: "test",
@@ -310,7 +311,7 @@ func TestChainExecution_ItemWorkflowInstanceTracking(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "A", "test")
 
 	// Set workflow instance ID on chain item
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, _ := itemRepo.ListByChain(chain.ID)
 
 	err = itemRepo.SetWorkflowInstanceID(items[0].ID, wfiID)
@@ -339,7 +340,7 @@ func TestChainExecution_NextPending(t *testing.T) {
 		"C": base.Add(2 * time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Next Pending",
 		WorkflowName: "test",
@@ -349,7 +350,7 @@ func TestChainExecution_NextPending(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 
 	// First call should return A
 	next, err := itemRepo.GetNextPending(chain.ID)
@@ -414,7 +415,7 @@ func TestChainExecution_ConcurrentLockPrevention(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create first chain with ticket A
 	_, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{

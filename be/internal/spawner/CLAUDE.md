@@ -92,6 +92,8 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 
 The spawner uses a shared `*db.Pool` from `Config.Pool` for all database operations. The orchestrator creates one pool per workflow run and passes it to all spawners in that run. The `pool()` helper method provides access.
 
+The `Config.Clock` field (`clock.Clock`) provides time for DB timestamps (agent start time, message coalescing). Real-time operations (`time.Since`, poll intervals, grace periods) continue using `time.Now()` directly.
+
 Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
 
 ## Spawn Flow

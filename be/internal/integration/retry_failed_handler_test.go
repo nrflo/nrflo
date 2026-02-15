@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -225,11 +226,11 @@ func TestRetryFailedHandler_HappyPath(t *testing.T) {
 	database, _ = db.Open(dbPath)
 	pool := db.WrapAsPool(database)
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clock.Real())
 	wi, _ := wfiRepo.GetByTicketAndWorkflow("proj", "TICK-1", "test")
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceFailed)
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-retry-1",
 		ProjectID:          "proj",
@@ -263,7 +264,7 @@ func TestRetryFailedHandler_HappyPath(t *testing.T) {
 	// Verify workflow status reset to active
 	database, _ = db.Open(dbPath)
 	pool = db.WrapAsPool(database)
-	wfiRepo = repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo = repo.NewWorkflowInstanceRepo(pool, clock.Real())
 	wi, _ = wfiRepo.Get(wi.ID)
 	database.Close()
 
@@ -356,7 +357,7 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 		t.Fatalf("failed to update workflow scope: %v", err)
 	}
 
-	wfSvc := service.NewWorkflowService(pool)
+	wfSvc := service.NewWorkflowService(pool, clock.Real())
 	wi, err := wfSvc.InitProjectWorkflow("proj", &types.ProjectWorkflowRunRequest{
 		Workflow: "test",
 	})
@@ -364,10 +365,10 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 		t.Fatalf("failed to init project workflow: %v", err)
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clock.Real())
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceFailed)
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-proj-retry-1",
 		ProjectID:          "proj",
@@ -402,7 +403,7 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	// Verify workflow status reset to active
 	database, _ = db.Open(dbPath)
 	pool = db.WrapAsPool(database)
-	wfiRepo = repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo = repo.NewWorkflowInstanceRepo(pool, clock.Real())
 	wi, _ = wfiRepo.Get(wi.ID)
 	database.Close()
 

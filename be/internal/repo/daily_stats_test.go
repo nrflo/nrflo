@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
@@ -26,7 +27,7 @@ func TestDailyStatsUpsertAndGet(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	// Test data
 	projectID := "test-proj"
@@ -99,7 +100,7 @@ func TestDailyStatsUpsertUpdate(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	projectID := "test-proj"
 	date := "2025-01-15"
@@ -185,7 +186,7 @@ func TestDailyStatsGetByDateNonexistent(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	// Query nonexistent date
 	retrieved, err := repo.GetByDate("test-proj", "2099-12-31")
@@ -240,7 +241,7 @@ func TestDailyStatsMultipleProjects(t *testing.T) {
 		t.Fatalf("failed to create project B: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	date := "2025-01-20"
 
@@ -314,7 +315,7 @@ func TestDailyStatsMultipleDates(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	projectID := "test-proj"
 
@@ -358,7 +359,7 @@ func TestDailyStatsForeignKeyConstraint(t *testing.T) {
 	}
 	defer database.Close()
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	// Try to insert stats for nonexistent project
 	stats := model.DailyStats{
@@ -394,7 +395,7 @@ func TestDailyStatsDefaultValues(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	// Upsert with all zero values
 	stats := model.DailyStats{
@@ -444,7 +445,7 @@ func TestDailyStatsLargeValues(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database)
+	repo := NewDailyStatsRepo(database, clock.Real())
 
 	// Test with large values
 	stats := model.DailyStats{

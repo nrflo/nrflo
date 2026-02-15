@@ -4,21 +4,23 @@ import (
 	"database/sql"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 type DailyStatsRepo struct {
+	clock clock.Clock
 	db *db.DB
 }
 
-func NewDailyStatsRepo(database *db.DB) *DailyStatsRepo {
-	return &DailyStatsRepo{db: database}
+func NewDailyStatsRepo(database *db.DB, clk clock.Clock) *DailyStatsRepo {
+	return &DailyStatsRepo{db: database, clock: clk}
 }
 
 // Upsert inserts or replaces daily stats for a given project and date.
 func (r *DailyStatsRepo) Upsert(projectID, date string, stats model.DailyStats) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.Exec(`
 		INSERT OR REPLACE INTO daily_stats
 			(project_id, date, tickets_created, tickets_closed, tokens_spent, agent_time_sec, updated_at)

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/repo"
 )
 
@@ -50,20 +51,22 @@ type Event struct {
 	Data            map[string]interface{} `json:"data,omitempty"`
 }
 
-// NewEvent creates a new event with current timestamp
+// NewEvent creates a new event. Timestamp is assigned later by Hub.broadcastEvent().
 func NewEvent(eventType, projectID, ticketID, workflow string, data map[string]interface{}) *Event {
 	return &Event{
 		Type:      eventType,
 		ProjectID: projectID,
 		TicketID:  ticketID,
 		Workflow:  workflow,
-		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Data:      data,
 	}
 }
 
 // Hub manages WebSocket clients and broadcasts
 type Hub struct {
+	// Clock for timestamp generation
+	clock clock.Clock
+
 	// Registered clients
 	clients map[*Client]bool
 
@@ -105,8 +108,9 @@ type SnapshotChunk struct {
 }
 
 // NewHub creates a new Hub instance
-func NewHub() *Hub {
+func NewHub(clk clock.Clock) *Hub {
 	return &Hub{
+		clock:         clk,
 		clients:       make(map[*Client]bool),
 		subscriptions: make(map[string]map[string]map[*Client]bool),
 		broadcast:     make(chan *Event, 256),
@@ -270,8 +274,11 @@ func (h *Hub) removeClientSubscriptions(client *Client) {
 	}
 }
 
-// broadcastEvent logs the event to the durable log (if configured), assigns seq, then sends to clients.
+// broadcastEvent stamps the event timestamp, logs to the durable log (if configured), assigns seq, then sends to clients.
 func (h *Hub) broadcastEvent(event *Event) {
+	// Stamp timestamp at broadcast time
+	event.Timestamp = h.clock.Now().UTC().Format(time.RFC3339Nano)
+
 	// Persist to event log before dispatching
 	if h.eventLog != nil {
 		payload, _ := json.Marshal(event.Data)

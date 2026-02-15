@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
@@ -44,7 +45,7 @@ func setupCleanupTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
-	repo := NewAgentSessionRepo(database)
+	repo := NewAgentSessionRepo(database, clock.Real())
 	return database, repo, wfiID
 }
 

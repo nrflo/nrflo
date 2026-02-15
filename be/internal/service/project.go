@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/types"
@@ -13,12 +14,13 @@ import (
 
 // ProjectService handles project business logic
 type ProjectService struct {
-	pool *db.Pool
+	clock clock.Clock
+	pool  *db.Pool
 }
 
 // NewProjectService creates a new project service
-func NewProjectService(pool *db.Pool) *ProjectService {
-	return &ProjectService{pool: pool}
+func NewProjectService(pool *db.Pool, clk clock.Clock) *ProjectService {
+	return &ProjectService{pool: pool, clock: clk}
 }
 
 // Create creates a new project
@@ -35,7 +37,7 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 		return nil, fmt.Errorf("project already exists: %s", projectID)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	name := req.Name
 	if name == "" {

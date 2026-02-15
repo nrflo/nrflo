@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/id"
 	"be/internal/model"
@@ -51,12 +52,13 @@ func scanTicketRow(scanner interface{ Scan(...interface{}) error }) (*model.Tick
 
 // TicketService handles ticket business logic
 type TicketService struct {
-	pool *db.Pool
+	clock clock.Clock
+	pool   *db.Pool
 }
 
 // NewTicketService creates a new ticket service
-func NewTicketService(pool *db.Pool) *TicketService {
-	return &TicketService{pool: pool}
+func NewTicketService(pool *db.Pool, clk clock.Clock) *TicketService {
+	return &TicketService{pool: pool, clock: clk}
 }
 
 // Create creates a new ticket
@@ -109,7 +111,7 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 		priority = 2
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	ticket := &model.Ticket{
 		ID:        ticketID,
@@ -233,7 +235,7 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID)
@@ -254,7 +256,7 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 
 // SetInProgress sets a ticket's status to in_progress, but only if currently open.
 func (s *TicketService) SetInProgress(projectID, ticketID string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.pool.Exec(`
 		UPDATE tickets SET status = ?, updated_at = ?
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?) AND status = ?`,
@@ -264,7 +266,7 @@ func (s *TicketService) SetInProgress(projectID, ticketID string) error {
 
 // Close closes a ticket
 func (s *TicketService) Close(projectID, ticketID string, reason string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	var closeReason interface{}
 	if reason != "" {
@@ -288,7 +290,7 @@ func (s *TicketService) Close(projectID, ticketID string, reason string) error {
 
 // Reopen reopens a ticket by setting status back to open and clearing close metadata.
 func (s *TicketService) Reopen(projectID, ticketID string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := s.pool.Exec(`
 		UPDATE tickets SET status = 'open', closed_at = NULL, close_reason = NULL, updated_at = ?
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,

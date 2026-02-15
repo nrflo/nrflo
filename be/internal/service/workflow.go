@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -19,15 +20,17 @@ import (
 
 // WorkflowService handles workflow business logic
 type WorkflowService struct {
+	clock   clock.Clock
 	pool    *db.Pool
 	wfiRepo *repo.WorkflowInstanceRepo
 }
 
 // NewWorkflowService creates a new workflow service
-func NewWorkflowService(pool *db.Pool) *WorkflowService {
+func NewWorkflowService(pool *db.Pool, clk clock.Clock) *WorkflowService {
 	return &WorkflowService{
+		clock:   clk,
 		pool:    pool,
-		wfiRepo: repo.NewWorkflowInstanceRepo(pool),
+		wfiRepo: repo.NewWorkflowInstanceRepo(pool, clk),
 	}
 }
 
@@ -59,7 +62,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 		if userErr != nil {
 			return fmt.Errorf("failed to get current user: %w", userErr)
 		}
-		now := time.Now().UTC().Format(time.RFC3339Nano)
+		now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 		_, createErr := s.pool.Exec(`
 			INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, created_at, updated_at, created_by)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -274,7 +277,7 @@ func (s *WorkflowService) Set(projectID, ticketID string, req *types.WorkflowSet
 		}
 		return s.wfiRepo.UpdateRetryCount(wi.ID, count)
 	case "parent_session":
-		now := time.Now().UTC().Format(time.RFC3339Nano)
+		now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 		_, err := s.pool.Exec(
 			`UPDATE workflow_instances SET parent_session = ?, updated_at = ? WHERE id = ?`,
 			sql.NullString{String: req.Value, Valid: req.Value != ""}, now, wi.ID)

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
@@ -23,15 +24,17 @@ type ChainRunner struct {
 	orchestrator *Orchestrator
 	dataPath     string
 	wsHub        *ws.Hub
+	clock        clock.Clock
 }
 
 // NewChainRunner creates a new chain runner
-func NewChainRunner(orch *Orchestrator, dataPath string, wsHub *ws.Hub) *ChainRunner {
+func NewChainRunner(orch *Orchestrator, dataPath string, wsHub *ws.Hub, clk clock.Clock) *ChainRunner {
 	return &ChainRunner{
 		runs:         make(map[string]context.CancelFunc),
 		orchestrator: orch,
 		dataPath:     dataPath,
 		wsHub:        wsHub,
+		clock:        clk,
 	}
 }
 
@@ -43,7 +46,7 @@ func (cr *ChainRunner) Start(ctx context.Context, chainID string) error {
 	}
 	defer pool.Close()
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, cr.clock)
 	chain, err := chainRepo.Get(chainID)
 	if err != nil {
 		return err
@@ -97,7 +100,7 @@ func (cr *ChainRunner) Cancel(chainID string) error {
 		}
 		defer pool.Close()
 
-		chainRepo := repo.NewChainRepo(pool)
+		chainRepo := repo.NewChainRepo(pool, cr.clock)
 		chain, err := chainRepo.Get(chainID)
 		if err != nil {
 			return err
@@ -136,7 +139,7 @@ func (cr *ChainRunner) RecoverZombieChains() {
 	}
 	defer pool.Close()
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, cr.clock)
 	lockRepo := repo.NewChainLockRepo(pool)
 
 	rows, err := pool.Query(`SELECT id, project_id FROM chain_executions WHERE status = 'running'`)
@@ -155,7 +158,7 @@ func (cr *ChainRunner) RecoverZombieChains() {
 		chainRepo.UpdateStatus(id, model.ChainStatusFailed)
 		lockRepo.DeleteLocksByChain(id)
 
-		itemRepo := repo.NewChainItemRepo(pool)
+		itemRepo := repo.NewChainItemRepo(pool, cr.clock)
 		items, _ := itemRepo.ListByChain(id)
 		for _, item := range items {
 			if item.Status == model.ChainItemRunning || item.Status == model.ChainItemPending {
@@ -180,7 +183,7 @@ func (cr *ChainRunner) runLoop(ctx context.Context, chainID, projectID, workflow
 	}
 	defer pool.Close()
 
-	itemRepo := repo.NewChainItemRepo(pool)
+	itemRepo := repo.NewChainItemRepo(pool, cr.clock)
 
 	for {
 		select {
@@ -264,7 +267,7 @@ func (cr *ChainRunner) pollWorkflowInstance(ctx context.Context, instanceID stri
 				if err != nil {
 					return true, false
 				}
-				wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+				wfiRepo := repo.NewWorkflowInstanceRepo(pool, cr.clock)
 				wi, err := wfiRepo.Get(instanceID)
 				pool.Close()
 				if err != nil {
@@ -277,8 +280,8 @@ func (cr *ChainRunner) pollWorkflowInstance(ctx context.Context, instanceID stri
 }
 
 func (cr *ChainRunner) handleCancel(pool *db.Pool, chainID, projectID, workflowName string) {
-	chainRepo := repo.NewChainRepo(pool)
-	itemRepo := repo.NewChainItemRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, cr.clock)
+	itemRepo := repo.NewChainItemRepo(pool, cr.clock)
 	lockRepo := repo.NewChainLockRepo(pool)
 
 	items, _ := itemRepo.ListByChain(chainID)
@@ -297,7 +300,7 @@ func (cr *ChainRunner) handleCancel(pool *db.Pool, chainID, projectID, workflowN
 }
 
 func (cr *ChainRunner) markChainCompleted(pool *db.Pool, chainID, projectID string) {
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, cr.clock)
 	lockRepo := repo.NewChainLockRepo(pool)
 
 	chainRepo.UpdateStatus(chainID, model.ChainStatusCompleted)
@@ -311,7 +314,7 @@ func (cr *ChainRunner) markChainCompleted(pool *db.Pool, chainID, projectID stri
 		return
 	}
 	if chain.EpicTicketID != "" {
-		ticketService := service.NewTicketService(pool)
+		ticketService := service.NewTicketService(pool, cr.clock)
 		reason := fmt.Sprintf("All epic tickets completed via chain '%s'", chain.Name)
 		if err := ticketService.Close(projectID, chain.EpicTicketID, reason); err != nil {
 			logger.Error(context.Background(), "failed to close epic", "epic", chain.EpicTicketID, "err", err)
@@ -330,10 +333,10 @@ func (cr *ChainRunner) markChainFailed(chainID, projectID string) {
 	}
 	defer pool.Close()
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, cr.clock)
 	lockRepo := repo.NewChainLockRepo(pool)
 
-	itemRepo := repo.NewChainItemRepo(pool)
+	itemRepo := repo.NewChainItemRepo(pool, cr.clock)
 	items, _ := itemRepo.ListByChain(chainID)
 	for _, item := range items {
 		if item.Status == model.ChainItemPending {

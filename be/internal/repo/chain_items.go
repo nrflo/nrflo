@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // ChainItemRepo handles chain execution item operations
 type ChainItemRepo struct {
+	clock clock.Clock
 	pool *db.Pool
 }
 
 // NewChainItemRepo creates a new chain item repository
-func NewChainItemRepo(pool *db.Pool) *ChainItemRepo {
-	return &ChainItemRepo{pool: pool}
+func NewChainItemRepo(pool *db.Pool, clk clock.Clock) *ChainItemRepo {
+	return &ChainItemRepo{pool: pool, clock: clk}
 }
 
 const chainItemCols = `id, chain_id, ticket_id, position, status, workflow_instance_id, started_at, ended_at`
@@ -98,7 +100,7 @@ func (r *ChainItemRepo) ListByChain(chainID string) ([]*model.ChainExecutionItem
 
 // UpdateItemStatus updates the status of a chain item
 func (r *ChainItemRepo) UpdateItemStatus(id string, status model.ChainItemStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	var result sql.Result
 	var err error
 

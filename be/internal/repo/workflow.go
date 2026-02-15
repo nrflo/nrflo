@@ -6,23 +6,25 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // WorkflowRepo handles workflow definition CRUD operations
 type WorkflowRepo struct {
+	clock clock.Clock
 	db *db.DB
 }
 
 // NewWorkflowRepo creates a new workflow repository
-func NewWorkflowRepo(database *db.DB) *WorkflowRepo {
-	return &WorkflowRepo{db: database}
+func NewWorkflowRepo(database *db.DB, clk clock.Clock) *WorkflowRepo {
+	return &WorkflowRepo{db: database, clock: clk}
 }
 
 // Create creates a new workflow definition
 func (r *WorkflowRepo) Create(wf *model.Workflow) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	wf.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	wf.UpdatedAt = wf.CreatedAt
 	if wf.ScopeType == "" {
@@ -135,7 +137,7 @@ func (r *WorkflowRepo) Update(projectID, id string, fields *WorkflowUpdateFields
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID, id)

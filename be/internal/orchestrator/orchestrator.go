@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
@@ -56,14 +57,16 @@ type Orchestrator struct {
 	runs     map[string]*runState // wfi_id → state
 	dataPath string
 	wsHub    *ws.Hub
+	clock    clock.Clock
 }
 
 // New creates a new Orchestrator.
-func New(dataPath string, wsHub *ws.Hub) *Orchestrator {
+func New(dataPath string, wsHub *ws.Hub, clk clock.Clock) *Orchestrator {
 	return &Orchestrator{
 		runs:     make(map[string]*runState),
 		dataPath: dataPath,
 		wsHub:    wsHub,
+		clock:    clk,
 	}
 }
 
@@ -90,7 +93,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	projectRepo := repo.NewProjectRepo(database)
+	projectRepo := repo.NewProjectRepo(database, o.clock)
 	project, err := projectRepo.Get(req.ProjectID)
 	database.Close()
 	if err != nil {
@@ -106,14 +109,14 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	wfRepo := repo.NewWorkflowRepo(database)
+	wfRepo := repo.NewWorkflowRepo(database, o.clock)
 	dbWorkflows, err := wfRepo.List(req.ProjectID)
 	if err != nil {
 		database.Close()
 		return nil, fmt.Errorf("failed to load workflows: %w", err)
 	}
 	var dbAgentDefs []*model.AgentDefinition
-	adRepo := repo.NewAgentDefinitionRepo(database)
+	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
 	for _, wf := range dbWorkflows {
 		defs, loadErr := adRepo.List(req.ProjectID, wf.ID)
 		if loadErr == nil {
@@ -139,7 +142,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db pool: %w", err)
 	}
-	wfService := service.NewWorkflowService(pool)
+	wfService := service.NewWorkflowService(pool, o.clock)
 
 	var wi *model.WorkflowInstance
 	if req.IsProjectScope() {
@@ -162,7 +165,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			// Already exists — get existing instance and reset if completed/failed
 			wi, err = wfService.GetWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
 			if err == nil && (wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceFailed) {
-				wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+				wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 				wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
 
 				// Rebuild fresh phases from workflow definition
@@ -198,7 +201,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	}
 
 	// Store user instructions and orchestration status in findings
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	findings := wi.GetFindings()
 	if req.Instructions != "" {
 		findings["user_instructions"] = req.Instructions
@@ -222,7 +225,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Set ticket to in_progress if currently open (best-effort, ticket scope only)
 	if !req.IsProjectScope() {
 		if statusPool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig()); err == nil {
-			ticketService := service.NewTicketService(statusPool)
+			ticketService := service.NewTicketService(statusPool, o.clock)
 			if err := ticketService.SetInProgress(req.ProjectID, req.TicketID); err != nil {
 				logger.Warn(ctx, "failed to set ticket in_progress", "ticket", req.TicketID, "err", err)
 			} else {
@@ -283,7 +286,7 @@ func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName string) er
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 
 	if workflowName != "" {
 		wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
@@ -327,7 +330,7 @@ func (o *Orchestrator) StopByProject(projectID, workflowName, instanceID string)
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 
 	instances, err := wfiRepo.ListByProjectScope(projectID)
 	if err != nil {
@@ -375,7 +378,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 
 	var wi *model.WorkflowInstance
 	if instanceID != "" {
@@ -403,7 +406,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	o.mu.Unlock()
 
 	// Look up the failed session to get its phase
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
 	session, err := asRepo.Get(sessionID)
 	if err != nil {
 		return fmt.Errorf("agent session not found: %w", err)
@@ -414,7 +417,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	failedPhase := session.Phase
 
 	// Load project root
-	projectRepo := repo.NewProjectRepo(database)
+	projectRepo := repo.NewProjectRepo(database, o.clock)
 	project, err := projectRepo.Get(projectID)
 	if err != nil {
 		return fmt.Errorf("project not found: %w", err)
@@ -425,13 +428,13 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	projectRoot := project.RootPath.String
 
 	// Load workflow/agent definitions
-	wfRepo := repo.NewWorkflowRepo(database)
+	wfRepo := repo.NewWorkflowRepo(database, o.clock)
 	dbWorkflows, err := wfRepo.List(projectID)
 	if err != nil {
 		return fmt.Errorf("failed to load workflows: %w", err)
 	}
 	var dbAgentDefs []*model.AgentDefinition
-	adRepo := repo.NewAgentDefinitionRepo(database)
+	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
 	for _, wf := range dbWorkflows {
 		defs, loadErr := adRepo.List(projectID, wf.ID)
 		if loadErr == nil {
@@ -525,7 +528,7 @@ func (o *Orchestrator) RestartAgent(projectID, ticketID, workflowName, sessionID
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 	if err != nil {
 		return fmt.Errorf("workflow not found: %w", err)
@@ -572,7 +575,7 @@ func (o *Orchestrator) IsRunning(projectID, ticketID, workflowName string) bool 
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 	if err != nil {
 		return false
@@ -685,6 +688,7 @@ func (o *Orchestrator) runLoop(
 					ProjectRoot: projectRoot,
 					WSHub:       o.wsHub,
 					Pool:        pool,
+					Clock:       o.clock,
 				})
 
 				// Store spawner ref so RestartAgent can reach it
@@ -834,8 +838,8 @@ func (o *Orchestrator) handleCallback(
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-	asRepo := repo.NewAgentSessionRepo(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
 
 	// Save _callback metadata to workflow instance findings
 	wi, err := wfiRepo.Get(wfiID)
@@ -885,7 +889,7 @@ func (o *Orchestrator) clearCallbackMetadata(ctx context.Context, wfiID string) 
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	wi, err := wfiRepo.Get(wfiID)
 	if err != nil {
 		logger.Error(ctx, "failed to load WFI to clear callback metadata", "err", err)
@@ -934,15 +938,15 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 	}
 	defer database.Close()
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 
 	if req.IsProjectScope() {
 		wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceProjectCompleted)
-		asRepo := repo.NewAgentSessionRepo(database)
+		asRepo := repo.NewAgentSessionRepo(database, o.clock)
 		asRepo.UpdateStatusByWorkflowInstance(wfiID, model.AgentSessionProjectCompleted)
 	} else {
 		wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted)
-		ticketService := service.NewTicketService(pool)
+		ticketService := service.NewTicketService(pool, o.clock)
 		reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
 		if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
 			logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
@@ -966,12 +970,12 @@ func (o *Orchestrator) markFailed(wfiID string, req RunRequest, reason string) {
 	}
 	defer database.Close()
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
 
 	// Revert ticket from in_progress to open so it's not stuck (ticket scope only)
 	if !req.IsProjectScope() {
-		ticketService := service.NewTicketService(pool)
+		ticketService := service.NewTicketService(pool, o.clock)
 		if err := ticketService.Reopen(req.ProjectID, req.TicketID); err != nil {
 			logger.Error(context.Background(), "failed to reopen ticket after failure", "ticket", req.TicketID, "err", err)
 		} else {
@@ -994,7 +998,7 @@ func (o *Orchestrator) updateOrchestrationStatus(wfiID, status string) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	wi, err := wfiRepo.Get(wfiID)
 	if err != nil {
 		return

@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
@@ -60,6 +61,8 @@ type Config struct {
 	WSHub *ws.Hub
 	// Shared database connection pool (optional, falls back to DataPath per-call opens)
 	Pool *db.Pool
+	// Clock for timestamp generation (required)
+	Clock clock.Clock
 }
 
 // processInfo tracks a single spawned agent process
@@ -360,11 +363,11 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		agentType:      req.AgentType,
 		modelID:        modelID,
 		sessionID:      sessionID,
-		startTime:      time.Now(),
+		startTime:      s.config.Clock.Now(),
 		timeout:        time.Duration(timeout) * time.Minute,
 		pendingMessages:   make([]string, 0),
 		doneCh:            make(chan struct{}),
-		lastMessagesFlush: time.Now(),
+		lastMessagesFlush: s.config.Clock.Now(),
 		spawnCommand:   spawnCommand,
 		promptContext:  prompt,
 		projectID:     req.ProjectID,
@@ -653,7 +656,7 @@ func (s *Spawner) readCallbackFindings(proc *processInfo) (int, string) {
 		return 0, ""
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(pool)
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	session, err := sessionRepo.Get(proc.sessionID)
 	if err != nil {
 		return 0, ""

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/service"
 	"be/internal/types"
 )
@@ -383,5 +384,5 @@ func TestActiveAgentsRestartThresholdWithoutAgentDef(t *testing.T) {
 // getAgentDefService returns the AgentDefinitionService.
 func (e *TestEnv) getAgentDefService(t *testing.T) *service.AgentDefinitionService {
 	t.Helper()
-	return service.NewAgentDefinitionService(e.Pool)
+	return service.NewAgentDefinitionService(e.Pool, clock.Real())
 }

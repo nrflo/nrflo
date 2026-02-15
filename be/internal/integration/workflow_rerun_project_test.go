@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
@@ -42,7 +43,7 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	}
 
 	// Simulate completion: set status to project_completed and phases to completed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	completedPhases := map[string]model.PhaseStatus{
 		"setup": {Status: "completed", Result: "pass"},
 		"impl":  {Status: "completed", Result: "pass"},
@@ -68,7 +69,7 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	}
 
 	// Create orchestrator to re-run the workflow
-	orch := orchestrator.New(env.Pool.Path, env.Hub)
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 
 	// Start the workflow again — should create a NEW instance
 	ctx := context.Background()
@@ -145,7 +146,7 @@ func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	}
 
 	// Create orchestrator and start first workflow
-	orch := orchestrator.New(env.Pool.Path, env.Hub)
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 	ctx := context.Background()
 
 	result1, err := orch.Start(ctx, orchestrator.RunRequest{
@@ -178,7 +179,7 @@ func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify both instances exist
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	instances, _ := wfiRepo.ListByProjectScope(env.ProjectID)
 	if len(instances) != 2 {
 		t.Fatalf("expected 2 instances, got %d", len(instances))
@@ -197,7 +198,7 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 	env.InitWorkflow(t, "TICKET-1")
 
 	// Get the workflow instance
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "TICKET-1", "test")
 	if err != nil {
 		t.Fatalf("failed to get workflow instance: %v", err)
@@ -220,7 +221,7 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 	}
 
 	// Create orchestrator and try to start again
-	orch := orchestrator.New(env.Pool.Path, env.Hub)
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 	ctx := context.Background()
 
 	// Attempt to start the ticket workflow again
@@ -272,7 +273,7 @@ func TestMultipleProjectWorkflowsListed(t *testing.T) {
 		{"agent": "test-agent", "layer": 0},
 	})
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	for _, wf := range workflows {
 		// Create workflow definition

@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -11,12 +11,13 @@ import (
 
 // DailyStatsService computes and stores daily statistics from source tables.
 type DailyStatsService struct {
-	pool *db.Pool
+	clock clock.Clock
+	pool  *db.Pool
 }
 
 // NewDailyStatsService creates a new daily stats service.
-func NewDailyStatsService(pool *db.Pool) *DailyStatsService {
-	return &DailyStatsService{pool: pool}
+func NewDailyStatsService(pool *db.Pool, clk clock.Clock) *DailyStatsService {
+	return &DailyStatsService{pool: pool, clock: clk}
 }
 
 // ComputeAndStore queries tickets and agent_sessions for the given project+date,
@@ -78,7 +79,7 @@ func (s *DailyStatsService) ComputeAndStore(projectID, date string) (model.Daily
 	}
 	defer database.Close()
 
-	dailyRepo := repo.NewDailyStatsRepo(database)
+	dailyRepo := repo.NewDailyStatsRepo(database, s.clock)
 	if err := dailyRepo.Upsert(projectID, date, stats); err != nil {
 		return stats, fmt.Errorf("upsert daily stats: %w", err)
 	}
@@ -88,6 +89,6 @@ func (s *DailyStatsService) ComputeAndStore(projectID, date string) (model.Daily
 
 // GetToday computes and stores stats for today (UTC).
 func (s *DailyStatsService) GetToday(projectID string) (model.DailyStats, error) {
-	today := time.Now().UTC().Format("2006-01-02")
+	today := s.clock.Now().UTC().Format("2006-01-02")
 	return s.ComputeAndStore(projectID, today)
 }

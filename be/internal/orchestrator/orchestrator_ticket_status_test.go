@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/service"
@@ -22,7 +23,7 @@ func TestSetInProgressOnOpenTicket(t *testing.T) {
 		t.Fatalf("expected status 'open', got %v", ticket.Status)
 	}
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.SetInProgress(env.project, "SIP-1")
 	if err != nil {
 		t.Fatalf("SetInProgress failed: %v", err)
@@ -39,7 +40,7 @@ func TestSetInProgressOnClosedTicket(t *testing.T) {
 
 	env.createTicket(t, "SIP-2", "Closed ticket")
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.Close(env.project, "SIP-2", "done")
 	if err != nil {
 		t.Fatalf("failed to close ticket: %v", err)
@@ -61,7 +62,7 @@ func TestSetInProgressOnAlreadyInProgressTicket(t *testing.T) {
 
 	env.createTicket(t, "SIP-3", "Already in progress")
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.SetInProgress(env.project, "SIP-3")
 	if err != nil {
 		t.Fatalf("first SetInProgress failed: %v", err)
@@ -86,7 +87,7 @@ func TestSetInProgressUpdatesTimestamp(t *testing.T) {
 	before := env.getTicket(t, "SIP-4")
 	time.Sleep(1100 * time.Millisecond)
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.SetInProgress(env.project, "SIP-4")
 	if err != nil {
 		t.Fatalf("SetInProgress failed: %v", err)
@@ -114,7 +115,7 @@ func TestStartSetsTicketToInProgress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
-	ticketSvc := service.NewTicketService(pool)
+	ticketSvc := service.NewTicketService(pool, clock.Real())
 	err = ticketSvc.SetInProgress(env.project, "START-1")
 	pool.Close()
 	if err != nil {
@@ -144,7 +145,7 @@ func TestStartBroadcastsTicketUpdatedEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
-	ticketSvc := service.NewTicketService(pool)
+	ticketSvc := service.NewTicketService(pool, clock.Real())
 	err = ticketSvc.SetInProgress(env.project, "START-WS1")
 	if err != nil {
 		t.Fatalf("SetInProgress failed: %v", err)
@@ -178,7 +179,7 @@ func TestStartDoesNotChangeClosedTicketStatus(t *testing.T) {
 
 	env.createTicket(t, "START-2", "Closed before start")
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.Close(env.project, "START-2", "pre-closed")
 	if err != nil {
 		t.Fatalf("failed to close ticket: %v", err)
@@ -201,7 +202,7 @@ func TestMarkFailedRevertsTicketToOpen(t *testing.T) {
 	env.createTicket(t, "MF-2", "In progress before fail")
 	wfiID := env.initWorkflow(t, "MF-2")
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.SetInProgress(env.project, "MF-2")
 	if err != nil {
 		t.Fatalf("SetInProgress failed: %v", err)
@@ -224,7 +225,7 @@ func TestMarkFailedClearsCloseMetadata(t *testing.T) {
 
 	env.createTicket(t, "MF-3", "Verify Reopen clears close fields")
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 
 	// First close the ticket
 	err := ticketSvc.Close(env.project, "MF-3", "manually closed")
@@ -269,7 +270,7 @@ func TestMarkFailedBroadcastsTicketUpdatedEvent(t *testing.T) {
 	env.createTicket(t, "MF-4", "WS event on fail")
 	wfiID := env.initWorkflow(t, "MF-4")
 
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.SetInProgress(env.project, "MF-4")
 	if err != nil {
 		t.Fatalf("SetInProgress failed: %v", err)

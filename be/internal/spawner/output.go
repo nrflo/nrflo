@@ -351,7 +351,7 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 		return
 	}
 
-	msgRepo := repo.NewAgentMessageRepo(pool)
+	msgRepo := repo.NewAgentMessageRepo(pool, s.config.Clock)
 	msgRepo.InsertBatch(proc.sessionID, seqStart, pending)
 
 	// Broadcast messages update for real-time UI (coalesced per session)

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
@@ -36,7 +37,7 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 		t.Fatalf("failed to create workflow: %v", err)
 	}
 
-	repo := NewWorkflowInstanceRepo(pool)
+	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	// Create a workflow instance
 	phaseOrder, _ := json.Marshal([]string{"phase1"})
@@ -96,7 +97,7 @@ func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewWorkflowInstanceRepo(pool)
+	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	// Each instance needs its own workflow due to UNIQUE constraint on (project_id, workflow_id, scope_type).
 	instances := []struct {

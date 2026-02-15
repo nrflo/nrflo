@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/types"
@@ -13,12 +14,13 @@ import (
 
 // AgentDefinitionService handles agent definition business logic
 type AgentDefinitionService struct {
-	pool *db.Pool
+	clock clock.Clock
+	pool  *db.Pool
 }
 
 // NewAgentDefinitionService creates a new agent definition service
-func NewAgentDefinitionService(pool *db.Pool) *AgentDefinitionService {
-	return &AgentDefinitionService{pool: pool}
+func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock) *AgentDefinitionService {
+	return &AgentDefinitionService{pool: pool, clock: clk}
 }
 
 // CreateAgentDef creates a new agent definition
@@ -52,7 +54,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		timeout = 20
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	id := strings.ToLower(req.ID)
 	pid := strings.ToLower(projectID)
 	wid := strings.ToLower(workflowID)
@@ -181,7 +183,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID, workflowID, id)

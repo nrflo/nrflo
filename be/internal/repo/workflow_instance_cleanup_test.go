@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
@@ -40,7 +41,7 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 		}
 	}
 
-	repo := NewWorkflowInstanceRepo(pool)
+	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	phaseOrder, _ := json.Marshal([]string{"phase1"})
 	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed", Result: "pass"}})
@@ -158,7 +159,7 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 		}
 	}
 
-	repo := NewWorkflowInstanceRepo(pool)
+	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	phaseOrder, _ := json.Marshal([]string{"phase1"})
 	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed"}})
@@ -233,7 +234,7 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 		t.Fatalf("failed to create workflow: %v", err)
 	}
 
-	repo := NewWorkflowInstanceRepo(pool)
+	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	phaseOrder, _ := json.Marshal([]string{"phase1"})
 	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed"}})
@@ -292,7 +293,7 @@ func TestWorkflowInstanceCleanupKeepLatest_EmptyTable(t *testing.T) {
 	}
 	defer pool.Close()
 
-	repo := NewWorkflowInstanceRepo(pool)
+	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	// Call cleanup on empty table
 	deleted, err := repo.CleanupKeepLatest(10)
@@ -335,7 +336,7 @@ func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
 		}
 	}
 
-	repo := NewWorkflowInstanceRepo(pool)
+	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	phaseOrder, _ := json.Marshal([]string{"phase1"})
 	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "in_progress"}})

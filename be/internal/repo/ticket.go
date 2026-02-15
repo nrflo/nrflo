@@ -6,23 +6,25 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // TicketRepo handles ticket CRUD operations
 type TicketRepo struct {
+	clock clock.Clock
 	db db.Querier
 }
 
 // NewTicketRepo creates a new ticket repository
-func NewTicketRepo(database db.Querier) *TicketRepo {
-	return &TicketRepo{db: database}
+func NewTicketRepo(database db.Querier, clk clock.Clock) *TicketRepo {
+	return &TicketRepo{db: database, clock: clk}
 }
 
 // Create creates a new ticket
 func (r *TicketRepo) Create(ticket *model.Ticket) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	ticket.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	ticket.UpdatedAt = ticket.CreatedAt
 
@@ -214,7 +216,7 @@ func (r *TicketRepo) Update(projectID, ticketID string, fields *UpdateFields) er
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID)
@@ -235,7 +237,7 @@ func (r *TicketRepo) Update(projectID, ticketID string, fields *UpdateFields) er
 
 // Close closes a ticket with an optional reason
 func (r *TicketRepo) Close(projectID, ticketID string, reason string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	var closeReason interface{}
 	if reason != "" {
@@ -259,7 +261,7 @@ func (r *TicketRepo) Close(projectID, ticketID string, reason string) error {
 
 // Reopen reopens a closed ticket by setting status back to open
 func (r *TicketRepo) Reopen(projectID, ticketID string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	result, err := r.db.Exec(`
 		UPDATE tickets SET status = 'open', closed_at = NULL, close_reason = NULL, updated_at = ?

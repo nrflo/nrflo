@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -16,7 +17,7 @@ func TestUserInstructionsStoredAsDirectString(t *testing.T) {
 	wfiID := env.initWorkflow(t, "UI-1")
 
 	// Simulate what Start() does: store instructions as direct string
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wi := env.getWorkflowInstance(t, wfiID)
 	findings := wi.GetFindings()
 	findings["user_instructions"] = "Fix the login bug"

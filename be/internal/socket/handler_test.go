@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/service"
 	"be/internal/types"
@@ -33,15 +34,15 @@ func newHandlerTestEnv(t *testing.T) *handlerTestEnv {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 
-	hub := ws.NewHub()
+	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 
-	handler := NewHandler(pool, hub)
+	handler := NewHandler(pool, hub, clock.Real())
 
 	projectID := "test-project"
 
 	// Seed project
-	projectSvc := service.NewProjectService(pool)
+	projectSvc := service.NewProjectService(pool, clock.Real())
 	_, err = projectSvc.Create(projectID, &types.ProjectCreateRequest{
 		Name:     "Test Project",
 		RootPath: t.TempDir(),
@@ -51,7 +52,7 @@ func newHandlerTestEnv(t *testing.T) *handlerTestEnv {
 	}
 
 	// Seed test workflow definition
-	workflowSvc := service.NewWorkflowService(pool)
+	workflowSvc := service.NewWorkflowService(pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "analyzer", "layer": 0},
 	})
@@ -82,7 +83,7 @@ func newHandlerTestEnv(t *testing.T) *handlerTestEnv {
 func (e *handlerTestEnv) createTicketAndWorkflow(t *testing.T, ticketID string) {
 	t.Helper()
 
-	ticketSvc := service.NewTicketService(e.pool)
+	ticketSvc := service.NewTicketService(e.pool, clock.Real())
 	_, err := ticketSvc.Create(e.project, &types.TicketCreateRequest{
 		ID:    ticketID,
 		Title: "Test ticket",
@@ -91,7 +92,7 @@ func (e *handlerTestEnv) createTicketAndWorkflow(t *testing.T, ticketID string) 
 		t.Fatalf("failed to create ticket: %v", err)
 	}
 
-	workflowSvc := service.NewWorkflowService(e.pool)
+	workflowSvc := service.NewWorkflowService(e.pool, clock.Real())
 	err = workflowSvc.Init(e.project, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})

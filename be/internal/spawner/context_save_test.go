@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -365,6 +366,7 @@ func setupContextSaveTestEnv(t *testing.T) *contextSaveTestEnv {
 	spawner := New(Config{
 		DataPath: dbPath,
 		Pool:     db.WrapAsPool(database),
+		Clock:    clock.Real(),
 	})
 
 	return &contextSaveTestEnv{
@@ -391,7 +393,7 @@ func (env *contextSaveTestEnv) createSessionWithFindings(t *testing.T, findings 
 		t.Fatalf("failed to marshal findings: %v", err)
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          env.projectID,
@@ -416,7 +418,7 @@ func (env *contextSaveTestEnv) createSessionWithNullFindings(t *testing.T) strin
 
 	sessionID := uuid.New().String()
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          env.projectID,

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/repo"
 )
@@ -21,8 +22,8 @@ func TestSnapshotStreamingSuccess(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	// Create snapshot provider with multiple chunks
@@ -91,8 +92,8 @@ func TestSnapshotWithCurrentSeq(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	// Pre-populate event log
@@ -146,8 +147,8 @@ func TestSnapshotProviderError(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	// Snapshot provider that returns error
@@ -190,8 +191,8 @@ func TestSnapshotWithoutProvider(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 	// No snapshot provider
 
@@ -220,7 +221,7 @@ func TestSnapshotWithoutProvider(t *testing.T) {
 }
 
 func TestSnapshotEmptyChunks(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 
 	// Snapshot provider with no chunks
 	snapshotProvider := &mockSnapshotProvider{
@@ -253,7 +254,7 @@ func TestSnapshotEmptyChunks(t *testing.T) {
 }
 
 func TestSnapshotChunkContent(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 
 	// Snapshot provider with detailed chunk data
 	workflowData := map[string]interface{}{

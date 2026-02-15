@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -17,17 +18,19 @@ import (
 
 // AgentService handles agent business logic
 type AgentService struct {
+	clock       clock.Clock
 	pool        *db.Pool
 	workflowSvc *WorkflowService
 	msgRepo     *repo.AgentMessagePoolRepo
 }
 
 // NewAgentService creates a new agent service
-func NewAgentService(pool *db.Pool) *AgentService {
+func NewAgentService(pool *db.Pool, clk clock.Clock) *AgentService {
 	return &AgentService{
+		clock:       clk,
 		pool:        pool,
-		workflowSvc: NewWorkflowService(pool),
-		msgRepo:     repo.NewAgentMessagePoolRepo(pool),
+		workflowSvc: NewWorkflowService(pool, clk),
+		msgRepo:     repo.NewAgentMessagePoolRepo(pool, clk),
 	}
 }
 
@@ -258,7 +261,7 @@ func (s *AgentService) Callback(projectID, ticketID string, req *types.AgentCall
 	findings["callback_level"] = req.Level
 
 	data, _ := json.Marshal(findings)
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err = s.pool.Exec(
 		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
 		string(data), now, sessionID)
@@ -296,7 +299,7 @@ func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentTy
 		return "", fmt.Errorf("no active agent found for %s", agentType)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err = s.pool.Exec(
 		`UPDATE agent_sessions SET result = ?, updated_at = ? WHERE id = ?`,
 		result, now, sessionID)
@@ -413,7 +416,7 @@ func (s *AgentService) GetProjectSessions(projectID, phase string) ([]*model.Age
 
 // CreateSession creates an agent session
 func (s *AgentService) CreateSession(session *model.AgentSession) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	session.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	session.UpdatedAt = session.CreatedAt
 
@@ -450,7 +453,7 @@ func (s *AgentService) CreateSession(session *model.AgentSession) error {
 
 // UpdateSessionStatus updates an agent session status
 func (s *AgentService) UpdateSessionStatus(sessionID string, status model.AgentSessionStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.pool.Exec(
 		"UPDATE agent_sessions SET status = ?, updated_at = ? WHERE id = ?",
 		status, now, sessionID)

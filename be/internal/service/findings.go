@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/types"
 )
 
 // FindingsService handles findings business logic
 type FindingsService struct {
-	pool *db.Pool
+	clock clock.Clock
+	pool  *db.Pool
 }
 
 // NewFindingsService creates a new findings service
-func NewFindingsService(pool *db.Pool) *FindingsService {
-	return &FindingsService{pool: pool}
+func NewFindingsService(pool *db.Pool, clk clock.Clock) *FindingsService {
+	return &FindingsService{pool: pool, clock: clk}
 }
 
 // resolveWorkflowInstance finds the workflow instance ID for a ticket+workflow
@@ -62,7 +64,7 @@ func (s *FindingsService) findTargetSession(wfiID, agentType, modelStr string) (
 // updateSessionFindings writes the findings JSON to a session
 func (s *FindingsService) updateSessionFindings(sessionID string, findings map[string]interface{}) error {
 	data, _ := json.Marshal(findings)
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.pool.Exec(
 		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
 		string(data), now, sessionID)

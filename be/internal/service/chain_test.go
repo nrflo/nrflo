@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -54,7 +55,7 @@ func createTestDependencies(t *testing.T, pool *db.Pool, projectID string, deps 
 		t.Fatalf("failed to open DB: %v", err)
 	}
 	defer database.Close()
-	depRepo := repo.NewDependencyRepo(database)
+	depRepo := repo.NewDependencyRepo(database, clock.Real())
 
 	for child, blockers := range deps {
 		for _, blocker := range blockers {
@@ -83,7 +84,7 @@ func TestExpandWithBlockers_NoDependencies(t *testing.T) {
 		"B": now.Add(time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	allIDs, deps, err := svc.expandWithBlockers(projectID, []string{"A", "B"})
 	if err != nil {
 		t.Fatalf("expandWithBlockers failed: %v", err)
@@ -112,7 +113,7 @@ func TestExpandWithBlockers_DirectBlockers(t *testing.T) {
 		"C": {"A", "B"}, // C depends on A and B
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	allIDs, deps, err := svc.expandWithBlockers(projectID, []string{"C"})
 	if err != nil {
 		t.Fatalf("expandWithBlockers failed: %v", err)
@@ -142,7 +143,7 @@ func TestExpandWithBlockers_TransitiveBlockers(t *testing.T) {
 		"C": {"B"}, // C depends on B (transitively on A)
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	allIDs, deps, err := svc.expandWithBlockers(projectID, []string{"C"})
 	if err != nil {
 		t.Fatalf("expandWithBlockers failed: %v", err)
@@ -235,7 +236,7 @@ func TestTopologicalSort_Linear(t *testing.T) {
 		"c": {"b"},
 	}
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	sorted, err := svc.topologicalSort(projectID, []string{"a", "b", "c"}, deps)
 	if err != nil {
 		t.Fatalf("topologicalSort failed: %v", err)
@@ -270,7 +271,7 @@ func TestTopologicalSort_Diamond(t *testing.T) {
 		"d": {"b", "c"},
 	}
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	sorted, err := svc.topologicalSort(projectID, []string{"a", "b", "c", "d"}, deps)
 	if err != nil {
 		t.Fatalf("topologicalSort failed: %v", err)
@@ -308,7 +309,7 @@ func TestTopologicalSort_TieBreak(t *testing.T) {
 	// No dependencies
 	deps := map[string][]string{}
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	sorted, err := svc.topologicalSort(projectID, []string{"a", "b", "c"}, deps)
 	if err != nil {
 		t.Fatalf("topologicalSort failed: %v", err)
@@ -340,7 +341,7 @@ func TestCreateChain_HappyPath(t *testing.T) {
 		"B": {"A"},
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test Chain",
 		WorkflowName: "test",
@@ -394,7 +395,7 @@ func TestCreateChain_CycleDetection(t *testing.T) {
 		"B": {"A"}, // cycle
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	_, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Cycle Chain",
 		WorkflowName: "test",
@@ -418,7 +419,7 @@ func TestCreateChain_LockConflict(t *testing.T) {
 		"A": base,
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	// Create first chain
 	chain1, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Chain 1",
@@ -467,7 +468,7 @@ func TestUpdateChain_PendingOnly(t *testing.T) {
 		"A": base,
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test",
 		WorkflowName: "test",
@@ -478,7 +479,7 @@ func TestUpdateChain_PendingOnly(t *testing.T) {
 	}
 
 	// Update to running
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
 
 	// Try to edit running chain
@@ -510,7 +511,7 @@ func TestUpdateChain_TicketReexpansion(t *testing.T) {
 		"C": {"A"},
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test",
 		WorkflowName: "test",
@@ -551,7 +552,7 @@ func TestCreateChain_EmptyTicketList(t *testing.T) {
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	_, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Empty",
 		WorkflowName: "test",
@@ -574,7 +575,7 @@ func TestCreateChain_SingleTicketNoDeps(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Single",
 		WorkflowName: "test",
@@ -603,7 +604,7 @@ func TestChainItemTicketTitle_DeletedTicket(t *testing.T) {
 		"B": base.Add(time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test",
 		WorkflowName: "test",
@@ -660,7 +661,7 @@ func TestGetChainWithItems_TicketTitlesPopulated(t *testing.T) {
 		"TICKET-3": {"TICKET-2"},
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Multi-ticket",
 		WorkflowName: "test",

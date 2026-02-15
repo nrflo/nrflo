@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 )
 
@@ -20,17 +21,18 @@ type EventLogEntry struct {
 
 // EventLogRepo handles ws_event_log persistence
 type EventLogRepo struct {
+	clock clock.Clock
 	db db.Querier
 }
 
 // NewEventLogRepo creates a new event log repository
-func NewEventLogRepo(database db.Querier) *EventLogRepo {
-	return &EventLogRepo{db: database}
+func NewEventLogRepo(database db.Querier, clk clock.Clock) *EventLogRepo {
+	return &EventLogRepo{db: database, clock: clk}
 }
 
 // Append inserts an event into the log and returns the assigned sequence number.
 func (r *EventLogRepo) Append(projectID, ticketID, eventType, workflow string, payload json.RawMessage) (int64, error) {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	if payload == nil {
 		payload = json.RawMessage("{}")
 	}
@@ -83,7 +85,7 @@ func (r *EventLogRepo) LatestSeq(projectID, ticketID string) (int64, error) {
 
 // Cleanup deletes events older than the given duration.
 func (r *EventLogRepo) Cleanup(olderThan time.Duration) (int64, error) {
-	cutoff := time.Now().UTC().Add(-olderThan).Format(time.RFC3339Nano)
+	cutoff := r.clock.Now().UTC().Add(-olderThan).Format(time.RFC3339Nano)
 	result, err := r.db.Exec(`DELETE FROM ws_event_log WHERE created_at < ?`, cutoff)
 	if err != nil {
 		return 0, err

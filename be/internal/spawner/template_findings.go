@@ -54,7 +54,7 @@ func (s *Spawner) fetchFindings(projectID, ticketID, workflowName, agentType str
 		return nil, fmt.Errorf("failed to get database pool")
 	}
 
-	findingsService := service.NewFindingsService(pool)
+	findingsService := service.NewFindingsService(pool, s.config.Clock)
 
 	req := &types.FindingsGetRequest{
 		Workflow:  workflowName,

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -25,7 +26,7 @@ func TestRetryFailedAgent_WorkflowNotFailed(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-1",
 		ProjectID:          env.project,
@@ -64,7 +65,7 @@ func TestRetryFailedAgent_SessionNotFound(t *testing.T) {
 	wfiID := env.initWorkflow(t, "RTR-3")
 
 	// Mark workflow as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
 
 	err := env.orch.RetryFailedAgent(context.Background(), env.project, "RTR-3", "test", "sess-nonexistent")
@@ -87,7 +88,7 @@ func TestRetryFailedAgent_SessionDoesNotBelongToWorkflow(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-4",
 		ProjectID:          env.project,
@@ -101,7 +102,7 @@ func TestRetryFailedAgent_SessionDoesNotBelongToWorkflow(t *testing.T) {
 	asRepo.Create(session)
 
 	// Mark workflow B as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wfiRepo.UpdateStatus(wfiID_B, model.WorkflowInstanceFailed)
 
 	// Try to retry workflow B with session from workflow A
@@ -126,7 +127,7 @@ func TestRetryFailedAgent_FailedPhaseNotInWorkflowDef(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-5",
 		ProjectID:          env.project,
@@ -140,7 +141,7 @@ func TestRetryFailedAgent_FailedPhaseNotInWorkflowDef(t *testing.T) {
 	asRepo.Create(session)
 
 	// Mark workflow as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
 
 	err = env.orch.RetryFailedAgent(context.Background(), env.project, "RTR-5", "test", "sess-5")
@@ -164,7 +165,7 @@ func TestRetryFailedAgent_AlreadyRunning(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-6",
 		ProjectID:          env.project,
@@ -178,7 +179,7 @@ func TestRetryFailedAgent_AlreadyRunning(t *testing.T) {
 	asRepo.Create(session)
 
 	// Mark workflow as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
 
 	// Simulate already running
@@ -213,7 +214,7 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-7",
 		ProjectID:          env.project,
@@ -227,7 +228,7 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 	asRepo.Create(session)
 
 	// Mark phases - analyzer completed, builder failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wi := env.getWorkflowInstance(t, wfiID)
 	phases := wi.GetPhases()
 	phases["analyzer"] = model.PhaseStatus{Status: "completed", Result: "pass"}
@@ -344,7 +345,7 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	}
 
 	// Mark phases: layer 0 and 1 completed, layer 2 failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wi := env.getWorkflowInstance(t, wfiID)
 	phases := wi.GetPhases()
 	phases["phase1"] = model.PhaseStatus{Status: "completed", Result: "pass"}
@@ -360,7 +361,7 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-8",
 		ProjectID:          env.project,
@@ -413,7 +414,7 @@ func TestRetryFailedAgent_IncrementRetryCount(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-9",
 		ProjectID:          env.project,
@@ -427,7 +428,7 @@ func TestRetryFailedAgent_IncrementRetryCount(t *testing.T) {
 	asRepo.Create(session)
 
 	// Mark workflow as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
 
 	// First retry
@@ -485,7 +486,7 @@ func TestRetryFailedProjectAgent_HappyPath(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-p1",
 		ProjectID:          env.project,
@@ -499,7 +500,7 @@ func TestRetryFailedProjectAgent_HappyPath(t *testing.T) {
 	asRepo.Create(session)
 
 	// Mark workflow as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
 
 	// Subscribe to WS events (project scope uses empty ticket ID)

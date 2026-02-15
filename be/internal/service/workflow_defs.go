@@ -36,15 +36,15 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		return nil, fmt.Errorf("invalid phases: %w", err)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	wf := &model.Workflow{
 		ID:          strings.ToLower(req.ID),
 		ProjectID:   strings.ToLower(projectID),
 		Description: req.Description,
 		ScopeType:   scopeType,
 		Phases:      string(normalizedPhases),
-		CreatedAt:   time.Now().UTC(),
-		UpdatedAt:   time.Now().UTC(),
+		CreatedAt:   s.clock.Now().UTC(),
+		UpdatedAt:   s.clock.Now().UTC(),
 	}
 
 	_, err = s.pool.Exec(`
@@ -144,7 +144,7 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now, projectID, workflowID)
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/types"
@@ -23,7 +24,7 @@ func TestAppendToChain_RunningChainSucceeds(t *testing.T) {
 	})
 
 	// Create a running chain with ticket A
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test Chain",
 		WorkflowName: "test",
@@ -34,7 +35,7 @@ func TestAppendToChain_RunningChainSucceeds(t *testing.T) {
 	}
 
 	// Mark chain as running
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}
@@ -83,7 +84,7 @@ func TestAppendToChain_PendingChainFails(t *testing.T) {
 		"B": now.Add(time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Pending Chain",
 		WorkflowName: "test",
@@ -116,7 +117,7 @@ func TestAppendToChain_CompletedChainFails(t *testing.T) {
 		"B": now.Add(time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Completed Chain",
 		WorkflowName: "test",
@@ -127,7 +128,7 @@ func TestAppendToChain_CompletedChainFails(t *testing.T) {
 	}
 
 	// Mark chain as completed
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusCompleted); err != nil {
 		t.Fatalf("failed to mark chain as completed: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestAppendToChain_FailedChainFails(t *testing.T) {
 		"B": now.Add(time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Failed Chain",
 		WorkflowName: "test",
@@ -165,7 +166,7 @@ func TestAppendToChain_FailedChainFails(t *testing.T) {
 	}
 
 	// Mark chain as failed
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusFailed); err != nil {
 		t.Fatalf("failed to mark chain as failed: %v", err)
 	}
@@ -192,7 +193,7 @@ func TestAppendToChain_DuplicateTicketExcluded(t *testing.T) {
 		"B": now.Add(time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test Chain",
 		WorkflowName: "test",
@@ -203,7 +204,7 @@ func TestAppendToChain_DuplicateTicketExcluded(t *testing.T) {
 	}
 
 	// Mark chain as running
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}
@@ -234,7 +235,7 @@ func TestAppendToChain_LockedTicketFails(t *testing.T) {
 		"C": now.Add(2 * time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 
 	// Create chain 1 with ticket B
 	_, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
@@ -256,7 +257,7 @@ func TestAppendToChain_LockedTicketFails(t *testing.T) {
 		t.Fatalf("CreateChain 2 failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain2.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain 2 as running: %v", err)
 	}
@@ -293,7 +294,7 @@ func TestAppendToChain_TransitiveBlockersExpanded(t *testing.T) {
 		"D": {"C"},
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 
 	// Create chain with just A, mark as running
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
@@ -305,7 +306,7 @@ func TestAppendToChain_TransitiveBlockersExpanded(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}
@@ -362,7 +363,7 @@ func TestAppendToChain_BlockerAlreadyInChainExcluded(t *testing.T) {
 		"C": {"B"},
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 
 	// Create chain with A and B (B's blocker A is already in)
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
@@ -374,7 +375,7 @@ func TestAppendToChain_BlockerAlreadyInChainExcluded(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}
@@ -417,7 +418,7 @@ func TestAppendToChain_CycleDetection(t *testing.T) {
 		"C": {"B"},
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 
 	// Create chain with A, mark as running
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
@@ -429,7 +430,7 @@ func TestAppendToChain_CycleDetection(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}
@@ -457,7 +458,7 @@ func TestAppendToChain_EmptyAfterDedup(t *testing.T) {
 		"B": now.Add(time.Second),
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test Chain",
 		WorkflowName: "test",
@@ -467,7 +468,7 @@ func TestAppendToChain_EmptyAfterDedup(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}
@@ -496,7 +497,7 @@ func TestAppendToChain_EmptyTicketListFails(t *testing.T) {
 		"A": now,
 	})
 
-	svc := NewChainService(pool)
+	svc := NewChainService(pool, clock.Real())
 	chain, err := svc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         "Test Chain",
 		WorkflowName: "test",
@@ -506,7 +507,7 @@ func TestAppendToChain_EmptyTicketListFails(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(pool)
+	chainRepo := repo.NewChainRepo(pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}

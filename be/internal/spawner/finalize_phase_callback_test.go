@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -26,7 +27,7 @@ func mustMarshal(t *testing.T, data interface{}) string {
 func (env *testEnv) createSessionWithID(t *testing.T, sessionID, modelID string) string {
 	t.Helper()
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          env.projectID,
@@ -51,7 +52,7 @@ func TestFinalizePhase_CallbackDetection(t *testing.T) {
 	env.createSession(t, "claude:sonnet")
 
 	// Set session result to callback with callback_level and callback_instructions findings
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	findings := map[string]interface{}{
 		"callback_level":        1,
 		"callback_instructions": "Fix the implementation bug",
@@ -110,7 +111,7 @@ func TestFinalizePhase_CallbackLevelZero(t *testing.T) {
 
 	env.createSession(t, "claude:opus")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	findings := map[string]interface{}{
 		"callback_level":        0,
 		"callback_instructions": "Restart from beginning",
@@ -159,7 +160,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 
 	env.createSession(t, "claude:haiku")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	findings := map[string]interface{}{
 		"callback_level": 2,
 		// No callback_instructions
@@ -212,7 +213,7 @@ func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
 	sess1 := env.createSessionWithID(t, "sess-pass", "claude:sonnet")
 	sess2 := env.createSessionWithID(t, "sess-callback", "claude:opus")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 
 	// Set first session to PASS
 	sessionRepo.UpdateResult(sess1, "pass", "explicit")
@@ -283,7 +284,7 @@ func TestFinalizePhase_NoCallback_Pass(t *testing.T) {
 
 	env.createSession(t, "claude:sonnet")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	sessionRepo.UpdateResult(env.sessionID, "pass", "explicit")
 
 	cmd := exec.Command("true")
@@ -322,7 +323,7 @@ func TestFinalizePhase_NoCallback_Fail(t *testing.T) {
 
 	env.createSession(t, "claude:opus")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	sessionRepo.UpdateResult(env.sessionID, "fail", "explicit")
 
 	cmd := exec.Command("false")
@@ -367,7 +368,7 @@ func TestFinalizePhase_AllSkipped(t *testing.T) {
 
 	env.createSession(t, "claude:haiku")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	sessionRepo.UpdateResult(env.sessionID, "skip", "explicit")
 
 	cmd := exec.Command("true")
@@ -406,7 +407,7 @@ func TestFinalizePhase_CallbackLevelFloat(t *testing.T) {
 
 	env.createSession(t, "claude:sonnet")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	// JSON numbers unmarshal to float64
 	findings := map[string]interface{}{
 		"callback_level":        float64(3),

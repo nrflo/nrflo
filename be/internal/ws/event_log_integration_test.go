@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/repo"
 )
@@ -20,8 +21,8 @@ func TestHubBroadcastWithEventLog(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -89,8 +90,8 @@ func TestHubBroadcastSequentialSequence(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -144,8 +145,8 @@ func TestHubBroadcastAcrossProjects(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -177,7 +178,7 @@ func TestHubBroadcastAcrossProjects(t *testing.T) {
 
 func TestHubBroadcastWithoutEventLog(t *testing.T) {
 	// Hub without event log should work (backward compatibility)
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -217,8 +218,8 @@ func TestHubBroadcastCaseNormalization(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()

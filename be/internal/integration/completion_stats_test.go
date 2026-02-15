@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/types"
@@ -39,7 +40,7 @@ func TestCompletedWorkflowStats(t *testing.T) {
 	env.CompletePhase(t, "CS-1", "builder", "pass")
 
 	// Mark the workflow instance as completed (simulating orchestrator behavior)
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {
 		t.Fatalf("failed to set workflow completed: %v", err)
 	}
@@ -132,7 +133,7 @@ func TestCompletedWorkflowTokensBoundary(t *testing.T) {
 		"analyzer", "agent-null-context", "claude:haiku", "completed", "pass")
 
 	// Mark workflow completed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {
 		t.Fatalf("failed to set workflow completed: %v", err)
 	}
@@ -173,7 +174,7 @@ func TestCompletedWorkflowDuration(t *testing.T) {
 	}
 
 	// Mark completed (UpdateStatus sets updated_at to now)
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {
 		t.Fatalf("failed to set workflow completed: %v", err)
 	}
@@ -206,7 +207,7 @@ func TestCompletedWorkflowNoAgents(t *testing.T) {
 
 	wfiID := env.GetWorkflowInstanceID(t, "CS-5", "test")
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {
 		t.Fatalf("failed to set workflow completed: %v", err)
 	}

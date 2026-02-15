@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/types"
@@ -76,7 +77,7 @@ func TestAttachWorkflowProgress_HappyPath(t *testing.T) {
 		Findings:     "{}",
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	err = wfiRepo.Create(wi)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
@@ -153,7 +154,7 @@ func TestAttachWorkflowProgress_SkippedPhasesCountAsCompleted(t *testing.T) {
 		Findings:     "{}",
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	err = wfiRepo.Create(wi)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
@@ -231,7 +232,7 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 		Findings:     "{}",
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	err = wfiRepo.Create(wi1)
 	if err != nil {
 		t.Fatalf("failed to create first workflow instance: %v", err)
@@ -302,7 +303,7 @@ func TestListActiveByProject_EmptyForNoActiveWorkflows(t *testing.T) {
 	env.CreateTicket(t, "test-5", "Ticket 1")
 	env.CreateTicket(t, "test-6", "Ticket 2")
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	instances, err := wfiRepo.ListActiveByProject(env.ProjectID)
 	if err != nil {
 		t.Fatalf("failed to list active instances: %v", err)
@@ -338,7 +339,7 @@ func TestListActiveByProject_OnlyActiveWorkflows(t *testing.T) {
 		Findings:     "{}",
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	err := wfiRepo.Create(wi)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
@@ -488,7 +489,7 @@ func TestAttachWorkflowProgress_CaseInsensitiveTicketID(t *testing.T) {
 		Findings:     "{}",
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	err = wfiRepo.Create(wi)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)

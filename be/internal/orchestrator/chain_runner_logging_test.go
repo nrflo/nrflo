@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -14,7 +15,7 @@ func TestChainRunnerStart_GeneratesTrx(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create a chain
-	chainRepo := repo.NewChainRepo(env.pool)
+	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-log-1"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
@@ -28,7 +29,7 @@ func TestChainRunnerStart_GeneratesTrx(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	err = cr.Start(context.Background(), chainID)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -75,7 +76,7 @@ func TestChainRunnerStart_GeneratesTrx(t *testing.T) {
 func TestChainRunnerStart_LogsChainStarted(t *testing.T) {
 	env := newTestEnv(t)
 
-	chainRepo := repo.NewChainRepo(env.pool)
+	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-log-2"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
@@ -89,7 +90,7 @@ func TestChainRunnerStart_LogsChainStarted(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	err = cr.Start(context.Background(), chainID)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -119,7 +120,7 @@ func TestChainRunnerStart_LogsChainStarted(t *testing.T) {
 func TestChainRunnerStart_TrxPropagation(t *testing.T) {
 	env := newTestEnv(t)
 
-	chainRepo := repo.NewChainRepo(env.pool)
+	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-log-3"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
@@ -133,7 +134,7 @@ func TestChainRunnerStart_TrxPropagation(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	err = cr.Start(context.Background(), chainID)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -183,7 +184,7 @@ func TestChainRunner_LogsRecovery(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create a zombie chain (status = running but no goroutine)
-	chainRepo := repo.NewChainRepo(env.pool)
+	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-zombie-1"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
@@ -197,7 +198,7 @@ func TestChainRunner_LogsRecovery(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	cr.RecoverZombieChains()
 
 	time.Sleep(50 * time.Millisecond)
@@ -222,7 +223,7 @@ func TestChainRunner_LogsCancellation(t *testing.T) {
 
 	env := newTestEnv(t)
 
-	chainRepo := repo.NewChainRepo(env.pool)
+	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-log-cancel"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
@@ -236,7 +237,7 @@ func TestChainRunner_LogsCancellation(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	err = cr.Start(context.Background(), chainID)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -264,7 +265,7 @@ func TestChainRunner_LogsItemStart(t *testing.T) {
 
 	env := newTestEnv(t)
 
-	chainRepo := repo.NewChainRepo(env.pool)
+	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-log-item-1"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
@@ -278,7 +279,7 @@ func TestChainRunner_LogsItemStart(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	err = cr.Start(context.Background(), chainID)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -301,7 +302,7 @@ func TestChainRunner_LogsItemStart(t *testing.T) {
 func TestChainRunner_LogsErrorConditions(t *testing.T) {
 	env := newTestEnv(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 
 	// Try to start non-existent chain
 	err := cr.Start(context.Background(), "nonexistent-chain")
@@ -317,7 +318,7 @@ func TestChainRunner_LogsErrorConditions(t *testing.T) {
 func TestChainRunner_StructuredLogging(t *testing.T) {
 	env := newTestEnv(t)
 
-	chainRepo := repo.NewChainRepo(env.pool)
+	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-log-struct"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
@@ -331,7 +332,7 @@ func TestChainRunner_StructuredLogging(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	cr := NewChainRunner(env.orch, env.dbPath, env.hub)
+	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	err = cr.Start(context.Background(), chainID)
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)

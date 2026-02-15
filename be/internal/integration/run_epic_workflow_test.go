@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -63,7 +64,7 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	}
 
 	// Add dependencies: C depends on B, B depends on A
-	depRepo := repo.NewDependencyRepo(database)
+	depRepo := repo.NewDependencyRepo(database, clock.Real())
 	depRepo.Create(&model.Dependency{ProjectID: "test-proj", IssueID: "child-b", DependsOnID: "child-a", Type: "blocks", CreatedBy: "test"})
 	depRepo.Create(&model.Dependency{ProjectID: "test-proj", IssueID: "child-c", DependsOnID: "child-b", Type: "blocks", CreatedBy: "test"})
 
@@ -482,7 +483,7 @@ func TestListByParent_ExcludesClosedChildren(t *testing.T) {
 	}
 
 	// Query via TicketRepo.ListByParent
-	ticketRepo := repo.NewTicketRepo(database)
+	ticketRepo := repo.NewTicketRepo(database, clock.Real())
 	children, err := ticketRepo.ListByParent("test-proj", "parent-1")
 	if err != nil {
 		t.Fatalf("ListByParent failed: %v", err)

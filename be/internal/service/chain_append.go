@@ -17,7 +17,7 @@ import (
 // the combined graph, topologically sorted, and inserted after the current
 // max position.
 func (s *ChainService) AppendToChain(chainID string, req *types.ChainAppendRequest) (*model.ChainExecution, error) {
-	chainRepo := repo.NewChainRepo(s.pool)
+	chainRepo := repo.NewChainRepo(s.pool, s.clock)
 	chain, err := chainRepo.Get(chainID)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func (s *ChainService) AppendToChain(chainID string, req *types.ChainAppendReque
 		return nil, fmt.Errorf("at least one ticket_id is required")
 	}
 
-	itemRepo := repo.NewChainItemRepo(s.pool)
+	itemRepo := repo.NewChainItemRepo(s.pool, s.clock)
 
 	// Get existing ticket IDs in the chain
 	existingIDs, err := itemRepo.GetTicketIDsByChain(chainID)

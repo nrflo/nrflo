@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 )
 
@@ -16,12 +17,13 @@ type MessageWithTime struct {
 
 // AgentMessageRepo handles agent message CRUD operations
 type AgentMessageRepo struct {
+	clock clock.Clock
 	db db.Querier
 }
 
 // NewAgentMessageRepo creates a new agent message repository
-func NewAgentMessageRepo(database db.Querier) *AgentMessageRepo {
-	return &AgentMessageRepo{db: database}
+func NewAgentMessageRepo(database db.Querier, clk clock.Clock) *AgentMessageRepo {
+	return &AgentMessageRepo{db: database, clock: clk}
 }
 
 // InsertBatch inserts multiple messages in a single transaction
@@ -42,7 +44,7 @@ func (r *AgentMessageRepo) InsertBatch(sessionID string, seqStart int, messages 
 	}
 	defer stmt.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	for i, msg := range messages {
 		_, err := stmt.Exec(sessionID, seqStart+i, msg, now)
 		if err != nil {
@@ -145,12 +147,13 @@ func (r *AgentMessageRepo) GetCountsBySessionIDs(sessionIDs []string) (map[strin
 
 // AgentMessagePoolRepo handles agent message operations using the connection pool
 type AgentMessagePoolRepo struct {
+	clock clock.Clock
 	pool *db.Pool
 }
 
 // NewAgentMessagePoolRepo creates a new agent message pool repository
-func NewAgentMessagePoolRepo(pool *db.Pool) *AgentMessagePoolRepo {
-	return &AgentMessagePoolRepo{pool: pool}
+func NewAgentMessagePoolRepo(pool *db.Pool, clk clock.Clock) *AgentMessagePoolRepo {
+	return &AgentMessagePoolRepo{pool: pool, clock: clk}
 }
 
 // InsertBatch inserts multiple messages in a single transaction
@@ -171,7 +174,7 @@ func (r *AgentMessagePoolRepo) InsertBatch(sessionID string, seqStart int, messa
 	}
 	defer stmt.Close()
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	for i, msg := range messages {
 		_, err := stmt.Exec(sessionID, seqStart+i, msg, now)
 		if err != nil {

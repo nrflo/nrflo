@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -19,7 +20,7 @@ func TestHandleCompletion_ExitZeroWithExplicitCallback(t *testing.T) {
 	env.createSession(t, "claude:sonnet")
 
 	// Simulate explicit callback by setting result before handleCompletion
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "callback", "explicit"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
 	}
@@ -80,7 +81,7 @@ func TestHandleCompletion_CallbackStatusMapping(t *testing.T) {
 	env.createSession(t, "claude:opus")
 
 	// Simulate explicit callback
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "callback", "explicit"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
 	}
@@ -144,7 +145,7 @@ func TestHandleCompletion_CallbackWithOtherResults(t *testing.T) {
 
 			env.createSession(t, "claude:sonnet")
 
-			sessionRepo := repo.NewAgentSessionRepo(env.database)
+			sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 			if err := sessionRepo.UpdateResult(env.sessionID, tc.result, tc.resultReason); err != nil {
 				t.Fatalf("failed to update result: %v", err)
 			}
@@ -199,7 +200,7 @@ func TestHandleCompletion_CallbackGetAgentResult(t *testing.T) {
 	env.createSession(t, "claude:haiku")
 
 	// Set result to callback
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "callback", "explicit"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
 	}

@@ -6,18 +6,20 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // ChainRepo handles chain execution CRUD operations
 type ChainRepo struct {
+	clock clock.Clock
 	pool *db.Pool
 }
 
 // NewChainRepo creates a new chain repository
-func NewChainRepo(pool *db.Pool) *ChainRepo {
-	return &ChainRepo{pool: pool}
+func NewChainRepo(pool *db.Pool, clk clock.Clock) *ChainRepo {
+	return &ChainRepo{pool: pool, clock: clk}
 }
 
 const chainCols = `id, project_id, name, status, workflow_name, epic_ticket_id, created_by, created_at, updated_at`
@@ -44,7 +46,7 @@ func scanChain(scanner interface{ Scan(...interface{}) error }) (*model.ChainExe
 
 // Create creates a new chain execution
 func (r *ChainRepo) Create(c *model.ChainExecution) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	c.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	c.UpdatedAt = c.CreatedAt
 
@@ -135,7 +137,7 @@ func (r *ChainRepo) List(projectID, status, epicTicketID string) ([]*model.Chain
 
 // UpdateStatus updates the chain execution status
 func (r *ChainRepo) UpdateStatus(id string, status model.ChainStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE chain_executions SET status = ?, updated_at = ? WHERE id = ?`,
 		status, now, id)
@@ -147,7 +149,7 @@ func (r *ChainRepo) UpdateStatus(id string, status model.ChainStatus) error {
 
 // UpdateName updates the chain name (pending only)
 func (r *ChainRepo) UpdateName(id, name string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.pool.Exec(
 		`UPDATE chain_executions SET name = ?, updated_at = ? WHERE id = ? AND status = 'pending'`,
 		name, now, id)

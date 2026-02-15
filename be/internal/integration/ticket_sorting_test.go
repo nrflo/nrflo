@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/repo"
 )
@@ -67,7 +68,7 @@ func TestListWithBlockedInfo_SortsByUpdatedThenCreated(t *testing.T) {
 	}
 
 	// Test via repository
-	ticketRepo := repo.NewTicketRepo(database)
+	ticketRepo := repo.NewTicketRepo(database, clock.Real())
 	filter := &repo.ListFilter{
 		ProjectID: "testproj",
 		Status:    "open",
@@ -138,7 +139,7 @@ func TestListWithBlockedInfo_TypeFilter(t *testing.T) {
 		}
 	}
 
-	ticketRepo := repo.NewTicketRepo(database)
+	ticketRepo := repo.NewTicketRepo(database, clock.Real())
 	filter := &repo.ListFilter{
 		ProjectID: "proj",
 		IssueType: "bug",
@@ -211,7 +212,7 @@ func TestListWithBlockedInfo_NullUpdatedAt(t *testing.T) {
 		}
 	}
 
-	ticketRepo := repo.NewTicketRepo(database)
+	ticketRepo := repo.NewTicketRepo(database, clock.Real())
 	filter := &repo.ListFilter{
 		ProjectID: "proj",
 		Status:    "open",
@@ -281,7 +282,7 @@ func TestListWithBlockedInfo_StatusFilterSorting(t *testing.T) {
 		}
 	}
 
-	ticketRepo := repo.NewTicketRepo(database)
+	ticketRepo := repo.NewTicketRepo(database, clock.Real())
 	filter := &repo.ListFilter{
 		ProjectID: "proj",
 		Status:    "open",
@@ -437,7 +438,7 @@ func TestListWithBlockedInfo_SameTimestamps(t *testing.T) {
 		}
 	}
 
-	ticketRepo := repo.NewTicketRepo(database)
+	ticketRepo := repo.NewTicketRepo(database, clock.Real())
 	filter := &repo.ListFilter{
 		ProjectID: "proj",
 		Status:    "open",

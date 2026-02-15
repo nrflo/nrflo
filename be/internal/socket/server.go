@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/service"
@@ -48,22 +49,22 @@ type Server struct {
 }
 
 // NewServer creates a new socket server
-func NewServer(pool *db.Pool) *Server {
+func NewServer(pool *db.Pool, clk clock.Clock) *Server {
 	return &Server{
 		pool:       pool,
 		socketPath: GetSocketPath(),
 		shutdown:   make(chan struct{}),
-		handler:    NewHandler(pool, nil),
+		handler:    NewHandler(pool, nil, clk),
 	}
 }
 
 // NewServerWithHub creates a new socket server with WebSocket hub
-func NewServerWithHub(pool *db.Pool, hub *ws.Hub) *Server {
+func NewServerWithHub(pool *db.Pool, hub *ws.Hub, clk clock.Clock) *Server {
 	return &Server{
 		pool:       pool,
 		socketPath: GetSocketPath(),
 		shutdown:   make(chan struct{}),
-		handler:    NewHandler(pool, hub),
+		handler:    NewHandler(pool, hub, clk),
 		wsHub:      hub,
 	}
 }
@@ -238,10 +239,10 @@ type Handler struct {
 }
 
 // NewHandler creates a new request handler
-func NewHandler(pool *db.Pool, hub *ws.Hub) *Handler {
+func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock) *Handler {
 	return &Handler{
-		findingsSvc: service.NewFindingsService(pool),
-		agentSvc:    service.NewAgentService(pool),
+		findingsSvc: service.NewFindingsService(pool, clk),
+		agentSvc:    service.NewAgentService(pool, clk),
 		wsHub:       hub,
 	}
 }

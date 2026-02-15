@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/repo"
 	"be/internal/service"
@@ -35,7 +36,7 @@ func newSpawnerTestEnv(t *testing.T) *spawnerTestEnv {
 	projectID := "test-project"
 
 	// Seed project
-	projectSvc := service.NewProjectService(pool)
+	projectSvc := service.NewProjectService(pool, clock.Real())
 	_, err = projectSvc.Create(projectID, &types.ProjectCreateRequest{
 		Name:     "Test Project",
 		RootPath: t.TempDir(),
@@ -45,7 +46,7 @@ func newSpawnerTestEnv(t *testing.T) *spawnerTestEnv {
 	}
 
 	// Seed test workflow definition
-	workflowSvc := service.NewWorkflowService(pool)
+	workflowSvc := service.NewWorkflowService(pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "analyzer", "layer": 0},
 	})
@@ -74,7 +75,7 @@ func (e *spawnerTestEnv) initWorkflow(t *testing.T, ticketID string) string {
 	t.Helper()
 
 	// Create ticket
-	ticketSvc := service.NewTicketService(e.pool)
+	ticketSvc := service.NewTicketService(e.pool, clock.Real())
 	_, err := ticketSvc.Create(e.project, &types.TicketCreateRequest{
 		ID:    ticketID,
 		Title: "Test ticket",
@@ -83,7 +84,7 @@ func (e *spawnerTestEnv) initWorkflow(t *testing.T, ticketID string) string {
 		t.Fatalf("failed to create ticket: %v", err)
 	}
 
-	workflowSvc := service.NewWorkflowService(e.pool)
+	workflowSvc := service.NewWorkflowService(e.pool, clock.Real())
 	err = workflowSvc.Init(e.project, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})
@@ -109,7 +110,7 @@ func (e *spawnerTestEnv) setFindings(t *testing.T, wfiID string, findings map[st
 	if err != nil {
 		t.Fatalf("failed to marshal findings: %v", err)
 	}
-	wfiRepo := repo.NewWorkflowInstanceRepo(e.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(e.pool, clock.Real())
 	if err := wfiRepo.UpdateFindings(wfiID, string(data)); err != nil {
 		t.Fatalf("failed to update findings: %v", err)
 	}

@@ -28,7 +28,7 @@ func streamSnapshot(c *Client, projectID, ticketID string, hub *Hub) {
 		currentSeq, _ = el.LatestSeq(projectID, ticketID)
 	}
 
-	ts := time.Now().UTC().Format(time.RFC3339Nano)
+	ts := hub.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	// snapshot.begin
 	sendControlEvent(c, EventSnapshotBegin, projectID, ticketID, map[string]interface{}{

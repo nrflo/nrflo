@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 )
 
@@ -125,7 +126,7 @@ func TestComputeAndStore_WithKnownData(t *testing.T) {
 	}
 
 	// Test ComputeAndStore
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("ComputeAndStore failed: %v", err)
@@ -207,7 +208,7 @@ func TestComputeAndStore_ExcludesRunningAndContinuedSessions(t *testing.T) {
 	}
 
 	// Test ComputeAndStore
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("ComputeAndStore failed: %v", err)
@@ -280,7 +281,7 @@ func TestComputeAndStore_ExcludesNullTimestamps(t *testing.T) {
 	}
 
 	// Test ComputeAndStore
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("ComputeAndStore failed: %v", err)
@@ -310,7 +311,7 @@ func TestComputeAndStore_NoData(t *testing.T) {
 	today := "2026-02-13"
 
 	// No tickets or agent sessions inserted
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("ComputeAndStore failed: %v", err)
@@ -349,7 +350,7 @@ func TestComputeAndStore_UpsertUpdatesExisting(t *testing.T) {
 	}
 
 	// First compute
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats1, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("first ComputeAndStore failed: %v", err)
@@ -411,7 +412,7 @@ func TestComputeAndStore_CaseInsensitiveProjectID(t *testing.T) {
 	}
 
 	// Query with uppercase project_id (but use lowercase for upsert to avoid FK constraint)
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("ComputeAndStore failed: %v", err)
@@ -439,7 +440,7 @@ func TestGetToday(t *testing.T) {
 	}
 
 	// Test GetToday
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.GetToday(projectID)
 	if err != nil {
 		t.Fatalf("GetToday failed: %v", err)
@@ -510,7 +511,7 @@ func TestComputeAndStore_TokensCalculation(t *testing.T) {
 	}
 
 	// Test ComputeAndStore
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("ComputeAndStore failed: %v", err)
@@ -576,7 +577,7 @@ func TestComputeAndStore_AgentTimeCalculation(t *testing.T) {
 	}
 
 	// Test ComputeAndStore
-	svc := NewDailyStatsService(pool)
+	svc := NewDailyStatsService(pool, clock.Real())
 	stats, err := svc.ComputeAndStore(projectID, today)
 	if err != nil {
 		t.Fatalf("ComputeAndStore failed: %v", err)

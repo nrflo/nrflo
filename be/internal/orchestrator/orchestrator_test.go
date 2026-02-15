@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -35,15 +36,15 @@ func newTestEnv(t *testing.T) *testEnv {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 
-	hub := ws.NewHub()
+	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 
-	orch := New(dbPath, hub)
+	orch := New(dbPath, hub, clock.Real())
 
 	projectID := "test-project"
 
 	// Seed project
-	projectSvc := service.NewProjectService(pool)
+	projectSvc := service.NewProjectService(pool, clock.Real())
 	_, err = projectSvc.Create(projectID, &types.ProjectCreateRequest{
 		Name:     "Test Project",
 		RootPath: t.TempDir(),
@@ -53,7 +54,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 
 	// Seed test workflow definition
-	workflowSvc := service.NewWorkflowService(pool)
+	workflowSvc := service.NewWorkflowService(pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "analyzer", "layer": 0},
 		{"agent": "builder", "layer": 1},
@@ -84,7 +85,7 @@ func newTestEnv(t *testing.T) *testEnv {
 // createTicket creates a ticket in the test DB.
 func (e *testEnv) createTicket(t *testing.T, ticketID, title string) {
 	t.Helper()
-	ticketSvc := service.NewTicketService(e.pool)
+	ticketSvc := service.NewTicketService(e.pool, clock.Real())
 	_, err := ticketSvc.Create(e.project, &types.TicketCreateRequest{
 		ID:    ticketID,
 		Title: title,
@@ -97,7 +98,7 @@ func (e *testEnv) createTicket(t *testing.T, ticketID, title string) {
 // initWorkflow initializes the "test" workflow on a ticket and returns the instance ID.
 func (e *testEnv) initWorkflow(t *testing.T, ticketID string) string {
 	t.Helper()
-	workflowSvc := service.NewWorkflowService(e.pool)
+	workflowSvc := service.NewWorkflowService(e.pool, clock.Real())
 	err := workflowSvc.Init(e.project, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})
@@ -127,7 +128,7 @@ func (e *testEnv) initProjectWorkflow(t *testing.T, workflowID string) string {
 		t.Fatalf("failed to update workflow scope: %v", err)
 	}
 
-	workflowSvc := service.NewWorkflowService(e.pool)
+	workflowSvc := service.NewWorkflowService(e.pool, clock.Real())
 	wi, err := workflowSvc.InitProjectWorkflow(e.project, &types.ProjectWorkflowRunRequest{
 		Workflow: workflowID,
 	})
@@ -140,7 +141,7 @@ func (e *testEnv) initProjectWorkflow(t *testing.T, workflowID string) string {
 // getTicket retrieves a ticket from the DB.
 func (e *testEnv) getTicket(t *testing.T, ticketID string) *model.Ticket {
 	t.Helper()
-	ticketSvc := service.NewTicketService(e.pool)
+	ticketSvc := service.NewTicketService(e.pool, clock.Real())
 	ticket, err := ticketSvc.Get(e.project, ticketID)
 	if err != nil {
 		t.Fatalf("failed to get ticket: %v", err)
@@ -151,7 +152,7 @@ func (e *testEnv) getTicket(t *testing.T, ticketID string) *model.Ticket {
 // getWorkflowInstance retrieves a workflow instance from the DB.
 func (e *testEnv) getWorkflowInstance(t *testing.T, wfiID string) *model.WorkflowInstance {
 	t.Helper()
-	wfiRepo := repo.NewWorkflowInstanceRepo(e.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(e.pool, clock.Real())
 	wi, err := wfiRepo.Get(wfiID)
 	if err != nil {
 		t.Fatalf("failed to get workflow instance: %v", err)

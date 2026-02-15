@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"be/internal/clock"
 )
 
 func newTestClient(hub *Hub, id string) *Client {
@@ -17,7 +19,7 @@ func newTestClient(hub *Hub, id string) *Client {
 }
 
 func TestHubBroadcastToSubscriber(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -53,7 +55,7 @@ func TestHubBroadcastToSubscriber(t *testing.T) {
 }
 
 func TestHubBroadcastNoSubscribers(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -82,7 +84,7 @@ func TestHubBroadcastNoSubscribers(t *testing.T) {
 }
 
 func TestHubBroadcastProjectWide(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -115,7 +117,7 @@ func TestHubBroadcastProjectWide(t *testing.T) {
 }
 
 func TestHubBroadcastWrongProject(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -139,7 +141,7 @@ func TestHubBroadcastWrongProject(t *testing.T) {
 }
 
 func TestHubUnsubscribe(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 

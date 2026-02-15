@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -137,7 +138,7 @@ func TestMarkCompletedAlreadyClosedTicket(t *testing.T) {
 	wfiID := env.initWorkflow(t, "MC-5")
 
 	// Close the ticket first
-	ticketSvc := service.NewTicketService(env.pool)
+	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.Close(env.project, "MC-5", "manually closed")
 	if err != nil {
 		t.Fatalf("failed to pre-close ticket: %v", err)
@@ -196,7 +197,7 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create a second workflow definition for this test
-	workflowSvc := service.NewWorkflowService(env.pool)
+	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "analyzer", "layer": 0},
 	})
@@ -304,7 +305,7 @@ func TestMarkCompletedProjectScopeUpdatesAgentSessions(t *testing.T) {
 	})
 
 	// Verify all sessions are now project_completed
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	for _, s := range sessions {
 		session, err := asRepo.Get(s.id)
 		if err != nil {
@@ -354,7 +355,7 @@ func TestMarkCompletedProjectScopeDoesNotUpdateRunningOrContinued(t *testing.T) 
 	})
 
 	// Verify sessions are NOT changed
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	for _, s := range sessions {
 		session, err := asRepo.Get(s.id)
 		if err != nil {
@@ -402,7 +403,7 @@ func TestMarkCompletedTicketScopeStillUsesCompleted(t *testing.T) {
 	}
 
 	// Verify agent session status is still completed (not project_completed)
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session, err := asRepo.Get("session-ticket")
 	if err != nil {
 		t.Fatalf("failed to get session: %v", err)

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/types"
@@ -67,7 +68,7 @@ func TestRestartAgent_ForwardsToSpawner(t *testing.T) {
 	wfiID := env.initWorkflow(t, "RST-4")
 
 	// Create a real spawner and register it
-	sp := spawner.New(spawner.Config{})
+	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
@@ -103,7 +104,7 @@ func TestRestartAgent_BroadcastsWSEvent(t *testing.T) {
 
 	ch := env.subscribeWSClient(t, "ws-rst-5", "RST-5")
 
-	sp := spawner.New(spawner.Config{})
+	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
@@ -147,7 +148,7 @@ func TestRunState_SpawnerLifecycle(t *testing.T) {
 	env.orch.mu.Unlock()
 
 	// Phase 2: set spawner (during phase)
-	sp := spawner.New(spawner.Config{})
+	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 	env.orch.mu.Lock()
 	rs.spawner = sp
 	env.orch.mu.Unlock()
@@ -232,7 +233,7 @@ func TestSeedWorkflowWithAgentDefs(t *testing.T) {
 	// to make sure our test assumptions are correct
 	env := newTestEnv(t)
 
-	workflowSvc := service.NewWorkflowService(env.pool)
+	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
 
 	// Workflow "test" is already seeded by newTestEnv — verify it
 	raw, err := workflowSvc.GetStatus(env.project, "RST-SEED", &types.WorkflowGetRequest{})

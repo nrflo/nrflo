@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/service"
 	"be/internal/types"
@@ -17,7 +18,7 @@ func TestLayerGroupingAndSequencing(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create workflow with multiple layers
-	workflowSvc := service.NewWorkflowService(env.pool)
+	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "setup-a", "layer": 0},
 		{"agent": "setup-b", "layer": 0},
@@ -89,7 +90,7 @@ func TestLayerGroupingAndSequencing(t *testing.T) {
 func TestNonContiguousLayers(t *testing.T) {
 	env := newTestEnv(t)
 
-	workflowSvc := service.NewWorkflowService(env.pool)
+	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "setup", "layer": 0},
 		{"agent": "impl", "layer": 5},
@@ -256,7 +257,7 @@ func TestAllFailLayerStopsWorkflow(t *testing.T) {
 func TestSingleAgentLayer(t *testing.T) {
 	env := newTestEnv(t)
 
-	workflowSvc := service.NewWorkflowService(env.pool)
+	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "hotfix", "layer": 0},
 	})
@@ -293,7 +294,7 @@ func TestSingleAgentLayer(t *testing.T) {
 func TestLayerOrderPreserved(t *testing.T) {
 	env := newTestEnv(t)
 
-	workflowSvc := service.NewWorkflowService(env.pool)
+	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
 	// Phases in reverse layer order
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "verify", "layer": 3},

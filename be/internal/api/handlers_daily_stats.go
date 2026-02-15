@@ -23,7 +23,7 @@ func (s *Server) handleGetDailyStats(w http.ResponseWriter, r *http.Request) {
 	}
 	defer pool.Close()
 
-	svc := service.NewDailyStatsService(pool)
+	svc := service.NewDailyStatsService(pool, s.clock)
 	stats, err := svc.GetToday(projectID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

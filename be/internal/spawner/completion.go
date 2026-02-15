@@ -140,7 +140,7 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 
 	// Update the ancestor_session_id and restart_count on the new DB session record
 	if pool := s.pool(); pool != nil {
-		sessionRepo := repo.NewAgentSessionRepo(pool)
+		sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 		sessionRepo.UpdateAncestorSession(newProc.sessionID, ancestorID)
 		sessionRepo.UpdateRestartCount(newProc.sessionID, newProc.restartCount)
 	}
@@ -167,7 +167,7 @@ func (s *Spawner) getAgentResult(proc *processInfo) string {
 		return ""
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(pool)
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	session, err := sessionRepo.Get(proc.sessionID)
 	if err != nil {
 		return ""
@@ -194,6 +194,6 @@ func (s *Spawner) maybeFlushMessages(proc *processInfo) {
 			proc.messagesDirty = false
 		}
 		s.saveContextLeft(proc)
-		proc.lastMessagesFlush = time.Now()
+		proc.lastMessagesFlush = s.config.Clock.Now()
 	}
 }

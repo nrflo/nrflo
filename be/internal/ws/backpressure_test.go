@@ -2,10 +2,12 @@ package ws
 
 import (
 	"testing"
+
+	"be/internal/clock"
 )
 
 func TestCheckBackpressureUnderThreshold(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	client := newTestClient(hub, "test-1")
 
 	// Empty buffer
@@ -28,7 +30,7 @@ func TestCheckBackpressureUnderThreshold(t *testing.T) {
 }
 
 func TestCheckBackpressureAboveThreshold(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	client := newTestClient(hub, "test-1")
 
 	// Fill to 75% (at threshold)
@@ -47,7 +49,7 @@ func TestCheckBackpressureAboveThreshold(t *testing.T) {
 }
 
 func TestCheckBackpressureNearFull(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	client := newTestClient(hub, "test-1")
 
 	// Fill to 90%
@@ -66,7 +68,7 @@ func TestCheckBackpressureNearFull(t *testing.T) {
 }
 
 func TestCheckBackpressureFull(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	client := newTestClient(hub, "test-1")
 
 	// Fill completely
@@ -84,7 +86,7 @@ func TestCheckBackpressureFull(t *testing.T) {
 }
 
 func TestCheckBackpressureBoundary(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	client := newTestClient(hub, "test-1")
 
 	// Fill to exactly threshold - 1 (should be false)

@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
@@ -24,8 +25,8 @@ func TestGetBlockersWithTitles(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
-	depRepo := NewDependencyRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
+	depRepo := NewDependencyRepo(database, clock.Real())
 
 	// Create blocker ticket
 	blocker := &model.Ticket{
@@ -101,8 +102,8 @@ func TestGetBlockedWithTitles(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
-	depRepo := NewDependencyRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
+	depRepo := NewDependencyRepo(database, clock.Real())
 
 	// Create blocker ticket
 	blocker := &model.Ticket{
@@ -178,8 +179,8 @@ func TestGetBlockersDeletedTicket(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
-	depRepo := NewDependencyRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
+	depRepo := NewDependencyRepo(database, clock.Real())
 
 	// Create blocker ticket
 	blocker := &model.Ticket{
@@ -262,8 +263,8 @@ func TestGetBlockedCaseInsensitive(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
-	depRepo := NewDependencyRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
+	depRepo := NewDependencyRepo(database, clock.Real())
 
 	// Create blocker with mixed case
 	blocker := &model.Ticket{
@@ -336,8 +337,8 @@ func TestGetBlockersMultipleBlockers(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
-	depRepo := NewDependencyRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
+	depRepo := NewDependencyRepo(database, clock.Real())
 
 	// Create multiple blocker tickets
 	blocker1 := &model.Ticket{

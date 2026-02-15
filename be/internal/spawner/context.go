@@ -52,7 +52,7 @@ func (s *Spawner) saveContextLeft(proc *processInfo) {
 		return
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(pool)
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	sessionRepo.UpdateContextLeft(proc.sessionID, proc.contextLeft)
 	proc.contextLeftDirty = false
 }

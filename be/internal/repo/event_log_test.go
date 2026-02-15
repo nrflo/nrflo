@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 )
 
@@ -19,7 +20,7 @@ func TestEventLogAppend(t *testing.T) {
 	}
 	defer pool.Close()
 
-	repo := NewEventLogRepo(pool)
+	repo := NewEventLogRepo(pool, clock.Real())
 
 	// Append first event
 	payload1 := json.RawMessage(`{"session_id":"s1"}`)
@@ -70,7 +71,7 @@ func TestEventLogQuerySince(t *testing.T) {
 	}
 	defer pool.Close()
 
-	repo := NewEventLogRepo(pool)
+	repo := NewEventLogRepo(pool, clock.Real())
 
 	// Insert multiple events in same scope
 	for i := 1; i <= 5; i++ {
@@ -159,7 +160,7 @@ func TestEventLogLatestSeq(t *testing.T) {
 	}
 	defer pool.Close()
 
-	repo := NewEventLogRepo(pool)
+	repo := NewEventLogRepo(pool, clock.Real())
 
 	// Empty log returns 0
 	seq, err := repo.LatestSeq("proj-1", "ticket-1")
@@ -224,7 +225,7 @@ func TestEventLogCleanup(t *testing.T) {
 	}
 	defer pool.Close()
 
-	repo := NewEventLogRepo(pool)
+	repo := NewEventLogRepo(pool, clock.Real())
 
 	// Insert an old event by manually setting created_at
 	cutoff := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339Nano)

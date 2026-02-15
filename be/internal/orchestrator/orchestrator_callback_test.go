@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -54,7 +55,7 @@ func TestHandleCallback_SingleAgentCallback(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	asRepo.Create(&model.AgentSession{
 		ID:                 "sess-analyzer",
 		ProjectID:          env.project,
@@ -360,7 +361,7 @@ func TestHandleCallback_SessionsExcludeRunningAndContinued(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	asRepo.Create(&model.AgentSession{
 		ID:                 "sess-completed",
 		ProjectID:          env.project,

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -23,7 +24,7 @@ func TestChainCreate_WithEpicTicketID(t *testing.T) {
 		"A":      time.Now().Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Epic Chain",
 		WorkflowName: "test",
@@ -40,7 +41,7 @@ func TestChainCreate_WithEpicTicketID(t *testing.T) {
 	}
 
 	// Verify epic_ticket_id round-trips through Get
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	retrieved, err := chainRepo.Get(chain.ID)
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
@@ -70,7 +71,7 @@ func TestChainCreate_WithoutEpicTicketID(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "No Epic Chain",
 		WorkflowName: "test",
@@ -87,7 +88,7 @@ func TestChainCreate_WithoutEpicTicketID(t *testing.T) {
 	}
 
 	// Verify it round-trips as empty
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	retrieved, err := chainRepo.Get(chain.ID)
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
@@ -111,7 +112,7 @@ func TestChainCompletion_ClosesEpic(t *testing.T) {
 		"B": {"A"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Epic Test Chain",
 		WorkflowName: "test",
@@ -123,7 +124,7 @@ func TestChainCompletion_ClosesEpic(t *testing.T) {
 	}
 
 	// Verify epic ticket exists and is open
-	ticketSvc := service.NewTicketService(env.Pool)
+	ticketSvc := service.NewTicketService(env.Pool, clock.Real())
 	epic, err := ticketSvc.Get(env.ProjectID, "EPIC-1")
 	if err != nil {
 		t.Fatalf("Get epic failed: %v", err)
@@ -136,8 +137,8 @@ func TestChainCompletion_ClosesEpic(t *testing.T) {
 	wsClient, wsChan := env.NewWSClient(t, "test-client", "")
 
 	// Simulate chain completion
-	chainRepo := repo.NewChainRepo(env.Pool)
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	lockRepo := repo.NewChainLockRepo(env.Pool)
 
 	// Mark chain running
@@ -219,7 +220,7 @@ func TestChainCompletion_NoEpic(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "No Epic Chain",
 		WorkflowName: "test",
@@ -231,8 +232,8 @@ func TestChainCompletion_NoEpic(t *testing.T) {
 	}
 
 	// Simulate chain completion
-	chainRepo := repo.NewChainRepo(env.Pool)
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	lockRepo := repo.NewChainLockRepo(env.Pool)
 
 	chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
@@ -266,7 +267,7 @@ func TestChainCompletion_EpicCloseFailure(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Invalid Epic Chain",
 		WorkflowName: "test",
@@ -283,8 +284,8 @@ func TestChainCompletion_EpicCloseFailure(t *testing.T) {
 	}
 
 	// Simulate chain completion
-	chainRepo := repo.NewChainRepo(env.Pool)
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	lockRepo := repo.NewChainLockRepo(env.Pool)
 
 	chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
@@ -298,7 +299,7 @@ func TestChainCompletion_EpicCloseFailure(t *testing.T) {
 	lockRepo.DeleteLocksByChain(chain.ID)
 
 	// Simulate epic close attempt (will fail but should be logged and ignored)
-	ticketSvc := service.NewTicketService(env.Pool)
+	ticketSvc := service.NewTicketService(env.Pool, clock.Real())
 	retrievedChain, _ := chainRepo.Get(chain.ID)
 	if retrievedChain.EpicTicketID != "" {
 		err = ticketSvc.Close(env.ProjectID, retrievedChain.EpicTicketID, "All epic tickets completed via chain 'Invalid Epic Chain'")
@@ -335,7 +336,7 @@ func TestChainFailure_EpicRemainsOpen(t *testing.T) {
 		"B": {"A"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Failure Test Chain",
 		WorkflowName: "test",
@@ -347,7 +348,7 @@ func TestChainFailure_EpicRemainsOpen(t *testing.T) {
 	}
 
 	// Verify epic ticket exists and is open
-	ticketSvc := service.NewTicketService(env.Pool)
+	ticketSvc := service.NewTicketService(env.Pool, clock.Real())
 	epic, err := ticketSvc.Get(env.ProjectID, "EPIC-1")
 	if err != nil {
 		t.Fatalf("Get epic failed: %v", err)
@@ -357,8 +358,8 @@ func TestChainFailure_EpicRemainsOpen(t *testing.T) {
 	}
 
 	// Simulate chain failure
-	chainRepo := repo.NewChainRepo(env.Pool)
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	lockRepo := repo.NewChainLockRepo(env.Pool)
 
 	chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
@@ -403,7 +404,7 @@ func TestChainCancellation_EpicRemainsOpen(t *testing.T) {
 		"A":      time.Now().Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Cancel Test Chain",
 		WorkflowName: "test",
@@ -415,7 +416,7 @@ func TestChainCancellation_EpicRemainsOpen(t *testing.T) {
 	}
 
 	// Verify epic ticket exists and is open
-	ticketSvc := service.NewTicketService(env.Pool)
+	ticketSvc := service.NewTicketService(env.Pool, clock.Real())
 	epic, err := ticketSvc.Get(env.ProjectID, "EPIC-1")
 	if err != nil {
 		t.Fatalf("Get epic failed: %v", err)
@@ -425,8 +426,8 @@ func TestChainCancellation_EpicRemainsOpen(t *testing.T) {
 	}
 
 	// Simulate chain cancellation
-	chainRepo := repo.NewChainRepo(env.Pool)
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	lockRepo := repo.NewChainLockRepo(env.Pool)
 
 	chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
@@ -486,7 +487,7 @@ func TestChainEpic_MultipleChainsSameEpic(t *testing.T) {
 		"B":      base.Add(2 * time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create first chain with epic
 	chain1, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
@@ -517,7 +518,7 @@ func TestChainEpic_MultipleChainsSameEpic(t *testing.T) {
 	}
 
 	// Verify both chains exist with same epic_ticket_id
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	chains, err := chainRepo.List(env.ProjectID, "", "")
 	if err != nil {
 		t.Fatalf("List failed: %v", err)
@@ -547,7 +548,7 @@ func TestChainList_EpicTicketIDFilter(t *testing.T) {
 		"C":      base.Add(4 * time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create chain with EPIC-1
 	chain1, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
@@ -582,7 +583,7 @@ func TestChainList_EpicTicketIDFilter(t *testing.T) {
 		t.Fatalf("CreateChain 3 failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 
 	// Filter by EPIC-1
 	epic1Chains, err := chainRepo.List(env.ProjectID, "", "EPIC-1")
@@ -647,7 +648,7 @@ func TestChainList_CombinedFilters(t *testing.T) {
 		"C":      base.Add(3 * time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create three chains with EPIC-1
 	chain1, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
@@ -681,7 +682,7 @@ func TestChainList_CombinedFilters(t *testing.T) {
 	}
 
 	// Update statuses
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	chainRepo.UpdateStatus(chain2.ID, model.ChainStatusRunning)
 	chainRepo.UpdateStatus(chain3.ID, model.ChainStatusCompleted)
 
@@ -753,7 +754,7 @@ func TestChainList_EpicTicketIDCaseInsensitive(t *testing.T) {
 		"A":      base.Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	_, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Test Chain",
 		WorkflowName: "test",
@@ -764,7 +765,7 @@ func TestChainList_EpicTicketIDCaseInsensitive(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 
 	// Filter by exact case
 	chains, err := chainRepo.List(env.ProjectID, "", "EPIC-1")
@@ -796,7 +797,7 @@ func TestChainList_EmptyEpicTicketID(t *testing.T) {
 		"B":      base.Add(2 * time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create chain with epic
 	chainWithEpic, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
@@ -820,7 +821,7 @@ func TestChainList_EmptyEpicTicketID(t *testing.T) {
 		t.Fatalf("CreateChain without epic failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 
 	// Filter by EPIC-1 - should only return chain with epic
 	epicChains, err := chainRepo.List(env.ProjectID, "", "EPIC-1")

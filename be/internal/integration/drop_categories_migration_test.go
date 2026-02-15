@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/service"
 	"be/internal/types"
 )
@@ -242,7 +243,7 @@ func TestChainExecutionCRUDWithoutCategory(t *testing.T) {
 	env.CreateTicket(t, "CHAIN-NOCATS-2", "Chain test 2")
 
 	// Create a chain via service
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "test-chain-nocats",
 		WorkflowName: "test",
@@ -592,7 +593,7 @@ func TestChainWithEpicTicketWithoutCategory(t *testing.T) {
 	env.CreateTicket(t, "CHILD-NOCATS-2", "Child ticket 2")
 
 	// Create chain with epic and child tickets
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "epic-chain",
 		WorkflowName: "test",

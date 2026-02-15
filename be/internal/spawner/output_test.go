@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/ws"
 )
 
@@ -15,7 +16,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create hub for broadcasting
-	hub := ws.NewHub()
+	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -24,6 +25,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 		DataPath: env.dbPath,
 		Pool:     env.pool,
 		WSHub:    hub,
+		Clock:    clock.Real(),
 	})
 
 	// Get workflow instance ID
@@ -124,7 +126,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create hub for broadcasting
-	hub := ws.NewHub()
+	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -133,6 +135,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 		DataPath: env.dbPath,
 		Pool:     env.pool,
 		WSHub:    hub,
+		Clock:    clock.Real(),
 	})
 
 
@@ -233,7 +236,7 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create hub for broadcasting
-	hub := ws.NewHub()
+	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
 
@@ -242,6 +245,7 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 		DataPath: env.dbPath,
 		Pool:     env.pool,
 		WSHub:    hub,
+		Clock:    clock.Real(),
 	})
 
 	// Get workflow instance ID

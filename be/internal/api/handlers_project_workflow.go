@@ -189,7 +189,7 @@ func (s *Server) handleGetProjectWorkflow(w http.ResponseWriter, r *http.Request
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	workflowSvc := service.NewWorkflowService(pool)
+	workflowSvc := service.NewWorkflowService(pool, s.clock)
 
 	instances, err := workflowSvc.ListProjectWorkflowInstances(projectID)
 	if err != nil || len(instances) == 0 {
@@ -274,7 +274,7 @@ func (s *Server) handleGetProjectAgentSessions(w http.ResponseWriter, r *http.Re
 
 	phase := r.URL.Query().Get("phase")
 
-	agentSessionRepo := repo.NewAgentSessionRepo(database)
+	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
 	sessions, err := agentSessionRepo.GetByProjectScope(projectID, phase)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -287,7 +287,7 @@ func (s *Server) handleGetProjectAgentSessions(w http.ResponseWriter, r *http.Re
 
 	// Build findings from project-scoped workflow instances
 	pool := db.WrapAsPool(database)
-	workflowSvc := service.NewWorkflowService(pool)
+	workflowSvc := service.NewWorkflowService(pool, s.clock)
 	findings := make(map[string]interface{})
 
 	instances, _ := workflowSvc.ListProjectWorkflowInstances(projectID)

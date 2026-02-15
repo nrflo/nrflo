@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -16,12 +17,13 @@ import (
 
 // ChainService handles chain execution business logic
 type ChainService struct {
-	pool *db.Pool
+	clock clock.Clock
+	pool  *db.Pool
 }
 
 // NewChainService creates a new chain service
-func NewChainService(pool *db.Pool) *ChainService {
-	return &ChainService{pool: pool}
+func NewChainService(pool *db.Pool, clk clock.Clock) *ChainService {
+	return &ChainService{pool: pool, clock: clk}
 }
 
 // CreateChain builds and persists a chain from selected tickets.
@@ -76,7 +78,7 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 		EpicTicketID: req.EpicTicketID,
 	}
 
-	chainRepo := repo.NewChainRepo(s.pool)
+	chainRepo := repo.NewChainRepo(s.pool, s.clock)
 	if err := chainRepo.Create(chain); err != nil {
 		return nil, fmt.Errorf("failed to create chain: %w", err)
 	}
@@ -92,7 +94,7 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 			Status:   model.ChainItemPending,
 		}
 	}
-	itemRepo := repo.NewChainItemRepo(s.pool)
+	itemRepo := repo.NewChainItemRepo(s.pool, s.clock)
 	if err := itemRepo.BatchInsert(items); err != nil {
 		chainRepo.Delete(chainID) // best-effort cleanup
 		return nil, fmt.Errorf("failed to create chain items: %w", err)
@@ -114,7 +116,7 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 
 // UpdateChain updates a pending chain's tickets and/or name.
 func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest) (*model.ChainExecution, error) {
-	chainRepo := repo.NewChainRepo(s.pool)
+	chainRepo := repo.NewChainRepo(s.pool, s.clock)
 	chain, err := chainRepo.Get(chainID)
 	if err != nil {
 		return nil, err
@@ -153,7 +155,7 @@ func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest
 		}
 
 		// Delete old items and locks, insert new ones
-		itemRepo := repo.NewChainItemRepo(s.pool)
+		itemRepo := repo.NewChainItemRepo(s.pool, s.clock)
 		if err := itemRepo.DeleteByChain(chainID); err != nil {
 			return nil, err
 		}
@@ -183,7 +185,7 @@ func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest
 	if err != nil {
 		return nil, err
 	}
-	itemRepo := repo.NewChainItemRepo(s.pool)
+	itemRepo := repo.NewChainItemRepo(s.pool, s.clock)
 	chain.Items, err = itemRepo.ListByChain(chainID)
 	if err != nil {
 		return nil, err
@@ -193,13 +195,13 @@ func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest
 
 // GetChainWithItems returns a chain with its items loaded
 func (s *ChainService) GetChainWithItems(chainID string) (*model.ChainExecution, error) {
-	chainRepo := repo.NewChainRepo(s.pool)
+	chainRepo := repo.NewChainRepo(s.pool, s.clock)
 	chain, err := chainRepo.Get(chainID)
 	if err != nil {
 		return nil, err
 	}
 
-	itemRepo := repo.NewChainItemRepo(s.pool)
+	itemRepo := repo.NewChainItemRepo(s.pool, s.clock)
 	items, err := itemRepo.ListByChain(chainID)
 	if err != nil {
 		return nil, err
@@ -217,7 +219,7 @@ func (s *ChainService) expandWithBlockers(projectID string, ticketIDs []string) 
 	}
 	defer database.Close()
 
-	depRepo := repo.NewDependencyRepo(database)
+	depRepo := repo.NewDependencyRepo(database, s.clock)
 
 	visited := make(map[string]bool)
 	deps := make(map[string][]string) // ticket -> blockers

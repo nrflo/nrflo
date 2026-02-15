@@ -5,18 +5,20 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // DependencyRepo handles dependency CRUD operations
 type DependencyRepo struct {
+	clock clock.Clock
 	db *db.DB
 }
 
 // NewDependencyRepo creates a new dependency repository
-func NewDependencyRepo(database *db.DB) *DependencyRepo {
-	return &DependencyRepo{db: database}
+func NewDependencyRepo(database *db.DB, clk clock.Clock) *DependencyRepo {
+	return &DependencyRepo{db: database, clock: clk}
 }
 
 // Create adds a dependency (child depends on parent)
@@ -41,7 +43,7 @@ func (r *DependencyRepo) Create(dep *model.Dependency) error {
 		return fmt.Errorf("ticket not found: %s", dep.DependsOnID)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	dep.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 
 	_, err = r.db.Exec(`

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/logger"
 	"be/internal/repo"
 )
@@ -254,7 +255,7 @@ func TestRetryFailedAgent_LogsRetryAttempt(t *testing.T) {
 	wfiID := env.initWorkflow(t, "LOG-6")
 
 	// Mark workflow as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	err := wfiRepo.UpdateStatus(wfiID, "failed")
 	if err != nil {
 		t.Fatalf("failed to mark workflow as failed: %v", err)

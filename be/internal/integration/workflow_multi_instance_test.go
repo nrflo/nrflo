@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/orchestrator"
@@ -35,7 +36,7 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 	}
 
 	// Create orchestrator and start two instances
-	orch := orchestrator.New(env.Pool.Path, env.Hub)
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 	ctx := context.Background()
 
 	result1, err := orch.Start(ctx, orchestrator.RunRequest{
@@ -64,7 +65,7 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify first instance is stopped
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	_, err = wfiRepo.Get(result1.InstanceID)
 	if err != nil {
 		t.Fatalf("failed to get first instance: %v", err)
@@ -115,7 +116,7 @@ func TestStopAllProjectWorkflowInstances(t *testing.T) {
 	}
 
 	// Create orchestrator and start three instances
-	orch := orchestrator.New(env.Pool.Path, env.Hub)
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 	ctx := context.Background()
 
 	var instanceIDs []string
@@ -138,7 +139,7 @@ func TestStopAllProjectWorkflowInstances(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// All instances should exist in DB
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	instances, _ := wfiRepo.ListByProjectScope(env.ProjectID)
 	if len(instances) != 3 {
 		t.Fatalf("expected 3 instances in DB, got %d", len(instances))
@@ -181,7 +182,7 @@ func TestRestartProjectAgentWithInstanceID(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-restart-1",
 		ProjectID:          env.ProjectID,
@@ -200,7 +201,7 @@ func TestRestartProjectAgentWithInstanceID(t *testing.T) {
 	}
 
 	// Create orchestrator
-	orch := orchestrator.New(env.Pool.Path, env.Hub)
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 
 	// Restart the agent with instance_id
 	err = orch.RestartProjectAgent(env.ProjectID, "restart-test", "sess-restart-1", wi.ID)
@@ -217,7 +218,7 @@ func TestRestartProjectAgentWithInstanceID(t *testing.T) {
 	}
 
 	// Verify the workflow instance still exists
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	wi, err = wfiRepo.Get(wi.ID)
 	if err != nil {
 		t.Fatalf("failed to get workflow instance: %v", err)
@@ -258,7 +259,7 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 	}
 
 	// Mark workflow as failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceFailed)
 
 	// Create a failed agent session
@@ -269,7 +270,7 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database)
+	asRepo := repo.NewAgentSessionRepo(database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 "sess-retry-1",
 		ProjectID:          env.ProjectID,
@@ -287,7 +288,7 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 	}
 
 	// Create orchestrator
-	orch := orchestrator.New(env.Pool.Path, env.Hub)
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 	ctx := context.Background()
 
 	// Retry with instance_id - this should accept the instance_id parameter
@@ -329,7 +330,7 @@ func TestListActiveByProjectAndWorkflow(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	// Create three instances: 2 active, 1 completed
 	wi1, _ := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{

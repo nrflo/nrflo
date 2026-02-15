@@ -42,6 +42,8 @@ func TestSomething(t *testing.T) {
 
 Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.WorkflowSvc`, `env.AgentSvc`, `env.FindingsSvc`.
 
+`env.Clock` is a `*clock.TestClock` initialized to `2025-01-01T00:00:00Z`. Use `env.Clock.Advance(d)` to move time forward for timestamp differentiation instead of `time.Sleep`.
+
 ## Key Gotchas
 
 - **Socket path limit**: macOS has 104-char limit. `NewTestEnv` uses `/tmp/nrwf-it-*.sock`

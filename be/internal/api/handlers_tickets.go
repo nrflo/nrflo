@@ -51,7 +51,7 @@ func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enrich with workflow progress
-	wfiRepo := repo.NewWorkflowInstanceRepo(db.WrapAsPool(database))
+	wfiRepo := repo.NewWorkflowInstanceRepo(db.WrapAsPool(database), s.clock)
 	instances, err := wfiRepo.ListActiveByProject(projectID)
 	if err != nil {
 		log.Printf("warning: failed to load workflow progress: %v", err)

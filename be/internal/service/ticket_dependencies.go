@@ -14,7 +14,7 @@ func (s *TicketService) AddDependency(projectID, child, parent string) error {
 		return fmt.Errorf("failed to get current user: %w", err)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	_, err = s.pool.Exec(`
 		INSERT INTO dependencies (project_id, issue_id, depends_on_id, type, created_at, created_by)

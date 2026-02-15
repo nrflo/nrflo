@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"be/internal/client"
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/service"
 	"be/internal/socket"
@@ -23,6 +24,7 @@ type TestEnv struct {
 	Hub        *ws.Hub
 	Server     *socket.Server
 	Client     *client.Client
+	Clock      *clock.TestClock
 	SocketPath string
 	ProjectDir string
 	ProjectID  string
@@ -55,33 +57,36 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 
-	// 4. WS Hub
-	hub := ws.NewHub()
+	// 4. Test clock
+	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+
+	// 5. WS Hub
+	hub := ws.NewHub(clk)
 	go hub.Run()
 
-	// 5. Socket server
-	srv := socket.NewServerWithHub(pool, hub)
+	// 6. Socket server
+	srv := socket.NewServerWithHub(pool, hub, clk)
 	if err := srv.Start(); err != nil {
 		pool.Close()
 		hub.Stop()
 		t.Fatalf("failed to start server: %v", err)
 	}
 
-	// 6. Project dir
+	// 7. Project dir
 	projectDir := t.TempDir()
 
-	// 7. Services
-	projectSvc := service.NewProjectService(pool)
-	ticketSvc := service.NewTicketService(pool)
-	workflowSvc := service.NewWorkflowService(pool)
-	agentSvc := service.NewAgentService(pool)
-	findingsSvc := service.NewFindingsService(pool)
+	// 8. Services
+	projectSvc := service.NewProjectService(pool, clk)
+	ticketSvc := service.NewTicketService(pool, clk)
+	workflowSvc := service.NewWorkflowService(pool, clk)
+	agentSvc := service.NewAgentService(pool, clk)
+	findingsSvc := service.NewFindingsService(pool, clk)
 
-	// 8. Client (for agent/findings socket tests)
+	// 9. Client (for agent/findings socket tests)
 	projectID := "test-project"
 	c := client.NewWithSocket(socketPath, projectID)
 
-	// 9. Seed project via service
+	// 10. Seed project via service
 	_, err = projectSvc.Create(projectID, &types.ProjectCreateRequest{
 		Name:     "Test Project",
 		RootPath: projectDir,
@@ -90,7 +95,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("failed to seed project: %v", err)
 	}
 
-	// 10. Seed test workflow definition via service
+	// 11. Seed test workflow definition via service
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "analyzer", "layer": 0},
 		{"agent": "builder", "layer": 1},
@@ -109,6 +114,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		Hub:         hub,
 		Server:      srv,
 		Client:      c,
+		Clock:       clk,
 		SocketPath:  socketPath,
 		ProjectDir:  projectDir,
 		ProjectID:   projectID,
@@ -119,7 +125,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		FindingsSvc: findingsSvc,
 	}
 
-	// 11. Cleanup
+	// 12. Cleanup
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
@@ -203,7 +209,7 @@ func (e *TestEnv) InitWorkflow(t *testing.T, ticketID string) {
 // This is useful for tests that need to link existing workflow instances to chain items.
 func (e *TestEnv) InitWorkflowWithID(t *testing.T, ticketID, wfiID string) {
 	t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := e.Clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := e.Pool.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status,
 			current_phase, phase_order, phases, findings, retry_count, created_at, updated_at)
@@ -256,7 +262,7 @@ func (e *TestEnv) GetWorkflowInstanceID(t *testing.T, ticketID, workflow string)
 // InsertAgentSession inserts an agent session row into the DB for testing.
 func (e *TestEnv) InsertAgentSession(t *testing.T, id, ticketID, wfiID, phase, agentType, modelID string) {
 	t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := e.Clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := e.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
@@ -281,5 +287,5 @@ func nullStr(s string) interface{} {
 
 // getAgentDefServiceInternal returns the AgentDefinitionService for testing.
 func (e *TestEnv) getAgentDefServiceInternal(t *testing.T) *service.AgentDefinitionService {
-	return service.NewAgentDefinitionService(e.Pool)
+	return service.NewAgentDefinitionService(e.Pool, e.Clock)
 }

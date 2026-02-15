@@ -37,7 +37,7 @@ func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string)
 		return nil
 	}
 
-	adRepo := repo.NewAgentDefinitionRepo(pool)
+	adRepo := repo.NewAgentDefinitionRepo(pool, s.config.Clock)
 	def, err := adRepo.Get(projectID, workflowName, agentType)
 	if err != nil {
 		return nil
@@ -52,7 +52,7 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 		return "", fmt.Errorf("failed to get database pool")
 	}
 
-	adRepo := repo.NewAgentDefinitionRepo(pool)
+	adRepo := repo.NewAgentDefinitionRepo(pool, s.config.Clock)
 	def, err := adRepo.Get(projectID, workflowName, agentType)
 	if err != nil {
 		return "", fmt.Errorf("agent definition not found: %s (workflow=%s). Create via 'nrworkflow agent def create %s -w %s --prompt-file=<path>'", agentType, workflowName, agentType, workflowName)
@@ -71,7 +71,7 @@ func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, descriptio
 		return ticketID, "_No description available_"
 	}
 
-	ticketRepo := repo.NewTicketRepo(pool)
+	ticketRepo := repo.NewTicketRepo(pool, s.config.Clock)
 	ticket, err := ticketRepo.Get(projectID, ticketID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to fetch ticket %s: %v\n", ticketID, err)
@@ -95,7 +95,7 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID
 		return "_No user instructions provided_"
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	var wi *model.WorkflowInstance
 	var err error
 	if wfiID != "" {
@@ -131,7 +131,7 @@ func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, w
 		return "_No callback instructions_"
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	var wi *model.WorkflowInstance
 	var err error
 	if wfiID != "" {

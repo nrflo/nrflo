@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/repo"
 	"be/internal/types"
 )
@@ -18,7 +19,7 @@ func TestUserInstructionsEndToEnd(t *testing.T) {
 	env.InitWorkflow(t, "UI-1")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-1", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	// --- Simulate what the orchestrator does (orchestrator.go:152-161) ---
 	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-1", "test")
@@ -89,7 +90,7 @@ func TestUserInstructionsMissing(t *testing.T) {
 	env.CreateTicket(t, "UI-2", "No instructions test")
 	env.InitWorkflow(t, "UI-2")
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-2", "test")
 	if err != nil {
 		t.Fatalf("failed to get workflow instance: %v", err)
@@ -119,7 +120,7 @@ func TestUserInstructionsEmptyString(t *testing.T) {
 	env.InitWorkflow(t, "UI-3")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-3", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-3", "test")
 	if err != nil {
@@ -151,7 +152,7 @@ func TestUserInstructionsSpecialCharacters(t *testing.T) {
 	env.InitWorkflow(t, "UI-4")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-4", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	instructions := "Use \"double quotes\" and 'single quotes'.\nAlso newlines\tand tabs.\n## Markdown heading\n- bullet point"
 
@@ -185,7 +186,7 @@ func TestUserInstructionsNotOverwrittenByOrchestrationUpdate(t *testing.T) {
 	env.InitWorkflow(t, "UI-5")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-5", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	// Step 1: Store instructions (like orchestrator Start does)
 	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-5", "test")

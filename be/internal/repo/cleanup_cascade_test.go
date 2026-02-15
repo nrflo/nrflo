@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
@@ -49,8 +50,8 @@ func TestCleanupCascade(t *testing.T) {
 		}
 	}
 
-	wfiRepo := NewWorkflowInstanceRepo(pool)
-	asRepo := NewAgentSessionRepo(database)
+	wfiRepo := NewWorkflowInstanceRepo(pool, clock.Real())
+	asRepo := NewAgentSessionRepo(database, clock.Real())
 
 	phaseOrder, _ := json.Marshal([]string{"phase1"})
 	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed"}})
@@ -220,8 +221,8 @@ func TestAgentSessionCleanupIndependent(t *testing.T) {
 		t.Fatalf("failed to create workflow: %v", err)
 	}
 
-	wfiRepo := NewWorkflowInstanceRepo(pool)
-	asRepo := NewAgentSessionRepo(database)
+	wfiRepo := NewWorkflowInstanceRepo(pool, clock.Real())
+	asRepo := NewAgentSessionRepo(database, clock.Real())
 
 	phaseOrder, _ := json.Marshal([]string{"phase1"})
 	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "in_progress"}})

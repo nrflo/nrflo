@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/orchestrator"
@@ -38,7 +39,7 @@ func createChainDependencies(t *testing.T, env *TestEnv, deps map[string][]strin
 	}
 	defer database.Close()
 
-	depRepo := repo.NewDependencyRepo(database)
+	depRepo := repo.NewDependencyRepo(database, clock.Real())
 
 	for child, blockers := range deps {
 		for _, blocker := range blockers {
@@ -72,7 +73,7 @@ func TestChainCreate_WithDependencies(t *testing.T) {
 		"C": {"B"}, // C -> B -> A (transitive)
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Transitive Chain",
 		WorkflowName: "test",
@@ -130,7 +131,7 @@ func TestChainCreate_LocksInserted(t *testing.T) {
 		"B": {"A"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Lock Test",
 		WorkflowName: "test",
@@ -174,7 +175,7 @@ func TestChainCreate_OverlapConflict(t *testing.T) {
 		"B": base.Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create first chain with ticket A
 	chain1, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
@@ -225,7 +226,7 @@ func TestChainUpdate_PendingOnly(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Test",
 		WorkflowName: "test",
@@ -236,7 +237,7 @@ func TestChainUpdate_PendingOnly(t *testing.T) {
 	}
 
 	// Update chain to running status
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	err = chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
 	if err != nil {
 		t.Fatalf("failed to update chain status: %v", err)
@@ -263,7 +264,7 @@ func TestChainUpdate_NameOnly(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Original",
 		WorkflowName: "test",
@@ -312,7 +313,7 @@ func TestChainUpdate_TicketReexpansion(t *testing.T) {
 		"C": {"B"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Test",
 		WorkflowName: "test",
@@ -361,7 +362,7 @@ func TestChainList_StatusFilter(t *testing.T) {
 		"B": time.Now().Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create pending chain
 	chain1, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
@@ -383,7 +384,7 @@ func TestChainList_StatusFilter(t *testing.T) {
 		t.Fatalf("CreateChain 2 failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	chainRepo.UpdateStatus(chain2.ID, model.ChainStatusCompleted)
 
 	// List pending chains
@@ -418,7 +419,7 @@ func TestChainCancel_Pending(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Cancel Test",
 		WorkflowName: "test",
@@ -436,14 +437,14 @@ func TestChainCancel_Pending(t *testing.T) {
 	}
 
 	// Create chain runner and cancel
-	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub)
+	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub, clock.Real())
 	err = runner.Cancel(chain.ID)
 	if err != nil {
 		t.Fatalf("Cancel failed: %v", err)
 	}
 
 	// Verify status updated
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	updated, err := chainRepo.Get(chain.ID)
 	if err != nil {
 		t.Fatalf("Get chain failed: %v", err)
@@ -469,7 +470,7 @@ func TestChainRunner_ZombieRecovery(t *testing.T) {
 		"B": base.Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Zombie Test",
 		WorkflowName: "test",
@@ -480,16 +481,16 @@ func TestChainRunner_ZombieRecovery(t *testing.T) {
 	}
 
 	// Manually set chain to running (simulating crash during execution)
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning)
 
 	// Set first item to running
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, _ := itemRepo.ListByChain(chain.ID)
 	itemRepo.UpdateItemStatus(items[0].ID, model.ChainItemRunning)
 
 	// Run zombie recovery
-	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub)
+	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub, clock.Real())
 	runner.RecoverZombieChains()
 
 	// Verify chain marked as failed
@@ -531,7 +532,7 @@ func TestChainCreate_CycleRejection(t *testing.T) {
 		"B": {"A"}, // A -> B -> A cycle
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	_, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Cycle Chain",
 		WorkflowName: "test",
@@ -549,7 +550,7 @@ func TestChainCreate_CycleRejection(t *testing.T) {
 func TestChainCreate_EmptyTickets(t *testing.T) {
 	env := NewTestEnv(t)
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	_, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Empty",
 		WorkflowName: "test",
@@ -571,7 +572,7 @@ func TestChainCreate_MissingName(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	_, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "",
 		WorkflowName: "test",
@@ -593,7 +594,7 @@ func TestChainCreate_MissingWorkflow(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	_, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Test",
 		WorkflowName: "",
@@ -620,7 +621,7 @@ func TestChainGetWithItems(t *testing.T) {
 		"B": {"A"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Get Test",
 		WorkflowName: "test",
@@ -657,7 +658,7 @@ func TestChainRunner_IsRunning(t *testing.T) {
 		"A": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Running Test",
 		WorkflowName: "test",
@@ -667,7 +668,7 @@ func TestChainRunner_IsRunning(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub)
+	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub, clock.Real())
 
 	// Initially not running
 	if runner.IsRunning(chain.ID) {
@@ -693,7 +694,7 @@ func TestChainCreate_TicketTitlesInResponse(t *testing.T) {
 		"TICKET-C": {"TICKET-A", "TICKET-B"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Title Test Chain",
 		WorkflowName: "test",
@@ -749,7 +750,7 @@ func TestChainUpdate_TicketTitlesInResponse(t *testing.T) {
 		"T3": {"T1"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Update Test",
 		WorkflowName: "test",
@@ -802,7 +803,7 @@ func TestChainAppend_SuccessWithTitles(t *testing.T) {
 		"C": {"B"},
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 
 	// Create chain with A and B, mark as running
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
@@ -814,7 +815,7 @@ func TestChainAppend_SuccessWithTitles(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	chainRepo := repo.NewChainRepo(env.Pool)
+	chainRepo := repo.NewChainRepo(env.Pool, clock.Real())
 	if err := chainRepo.UpdateStatus(chain.ID, model.ChainStatusRunning); err != nil {
 		t.Fatalf("failed to mark chain as running: %v", err)
 	}
@@ -880,7 +881,7 @@ func TestChainItemTokensUsed_WithCompletedWorkflow(t *testing.T) {
 		"TK-B": base.Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Token Test Chain",
 		WorkflowName: "test",
@@ -906,7 +907,7 @@ func TestChainItemTokensUsed_WithCompletedWorkflow(t *testing.T) {
 		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 75)
 
 	// Link workflow instances to chain items
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, err := itemRepo.ListByChain(chain.ID)
 	if err != nil {
 		t.Fatalf("failed to list chain items: %v", err)
@@ -964,7 +965,7 @@ func TestChainItemTokensUsed_WithoutWorkflow(t *testing.T) {
 		"TK-C": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "No Workflow Chain",
 		WorkflowName: "test",
@@ -1001,7 +1002,7 @@ func TestChainItemTokensUsed_RunningAgentsExcluded(t *testing.T) {
 		"TK-D": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Excluding Running Agents",
 		WorkflowName: "test",
@@ -1027,7 +1028,7 @@ func TestChainItemTokensUsed_RunningAgentsExcluded(t *testing.T) {
 		"verifier", "qa-verifier", "claude:sonnet", "continued", "", 20)
 
 	// Link workflow instance to chain item
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, err := itemRepo.ListByChain(chain.ID)
 	if err != nil {
 		t.Fatalf("failed to list chain items: %v", err)
@@ -1059,7 +1060,7 @@ func TestChainItemTokensUsed_NullContextLeftExcluded(t *testing.T) {
 		"TK-E": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Null Context Chain",
 		WorkflowName: "test",
@@ -1081,7 +1082,7 @@ func TestChainItemTokensUsed_NullContextLeftExcluded(t *testing.T) {
 		"builder", "implementor", "claude:opus", "completed", "pass")
 
 	// Link workflow instance to chain item
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, err := itemRepo.ListByChain(chain.ID)
 	if err != nil {
 		t.Fatalf("failed to list chain items: %v", err)
@@ -1114,7 +1115,7 @@ func TestChainItemTokensUsed_BoundaryValues(t *testing.T) {
 		"TK-G": time.Now().Add(time.Second),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "Boundary Values Chain",
 		WorkflowName: "test",
@@ -1137,7 +1138,7 @@ func TestChainItemTokensUsed_BoundaryValues(t *testing.T) {
 		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 100)
 
 	// Link workflow instances to chain items
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, err := itemRepo.ListByChain(chain.ID)
 	if err != nil {
 		t.Fatalf("failed to list chain items: %v", err)
@@ -1188,7 +1189,7 @@ func TestChainItemTokensUsed_JSONOmitsZero(t *testing.T) {
 		"TK-H": time.Now(),
 	})
 
-	chainSvc := service.NewChainService(env.Pool)
+	chainSvc := service.NewChainService(env.Pool, clock.Real())
 	chain, err := chainSvc.CreateChain(env.ProjectID, &types.ChainCreateRequest{
 		Name:         "JSON Test Chain",
 		WorkflowName: "test",
@@ -1204,7 +1205,7 @@ func TestChainItemTokensUsed_JSONOmitsZero(t *testing.T) {
 		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 50)
 
 	// Link workflow instance to chain item
-	itemRepo := repo.NewChainItemRepo(env.Pool)
+	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
 	items, err := itemRepo.ListByChain(chain.ID)
 	if err != nil {
 		t.Fatalf("failed to list chain items: %v", err)

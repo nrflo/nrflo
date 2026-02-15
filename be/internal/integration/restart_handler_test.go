@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/service"
 	"be/internal/types"
@@ -237,7 +238,7 @@ func seedWorkflowDef(t *testing.T, dbPath, projectID string) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfSvc := service.NewWorkflowService(pool)
+	wfSvc := service.NewWorkflowService(pool, clock.Real())
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "analyzer", "layer": 0},
 		{"agent": "builder", "layer": 1},
@@ -262,7 +263,7 @@ func seedTicketAndWorkflow(t *testing.T, dbPath, projectID, ticketID string) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	ticketSvc := service.NewTicketService(pool)
+	ticketSvc := service.NewTicketService(pool, clock.Real())
 	_, err = ticketSvc.Create(projectID, &types.TicketCreateRequest{
 		ID:    ticketID,
 		Title: "Test ticket",
@@ -271,7 +272,7 @@ func seedTicketAndWorkflow(t *testing.T, dbPath, projectID, ticketID string) {
 		t.Fatalf("failed to seed ticket: %v", err)
 	}
 
-	wfSvc := service.NewWorkflowService(pool)
+	wfSvc := service.NewWorkflowService(pool, clock.Real())
 	err = wfSvc.Init(projectID, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})

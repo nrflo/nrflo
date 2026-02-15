@@ -44,7 +44,7 @@ func (s *Server) handleListGitCommits(w http.ResponseWriter, r *http.Request) {
 	}
 	defer pool.Close()
 
-	project, err := service.NewProjectService(pool).Get(projectID)
+	project, err := service.NewProjectService(pool, s.clock).Get(projectID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -97,7 +97,7 @@ func (s *Server) handleGetGitCommitDetail(w http.ResponseWriter, r *http.Request
 	}
 	defer pool.Close()
 
-	project, err := service.NewProjectService(pool).Get(projectID)
+	project, err := service.NewProjectService(pool, s.clock).Get(projectID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return

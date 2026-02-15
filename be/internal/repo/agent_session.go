@@ -6,18 +6,20 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // AgentSessionRepo handles agent session CRUD operations
 type AgentSessionRepo struct {
+	clock clock.Clock
 	db db.Querier
 }
 
 // NewAgentSessionRepo creates a new agent session repository
-func NewAgentSessionRepo(database db.Querier) *AgentSessionRepo {
-	return &AgentSessionRepo{db: database}
+func NewAgentSessionRepo(database db.Querier, clk clock.Clock) *AgentSessionRepo {
+	return &AgentSessionRepo{db: database, clock: clk}
 }
 
 const sessionCols = `id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
@@ -67,7 +69,7 @@ func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.
 
 // Create creates a new agent session
 func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	session.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	session.UpdatedAt = session.CreatedAt
 
@@ -169,7 +171,7 @@ func (r *AgentSessionRepo) GetByProjectScope(projectID, phase string) ([]*model.
 
 // UpdateStatus updates the status of a session
 func (r *AgentSessionRepo) UpdateStatus(id string, status model.AgentSessionStatus) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(
 		`UPDATE agent_sessions SET status = ?, updated_at = ? WHERE id = ?`,
 		status, now, id)
@@ -186,7 +188,7 @@ func (r *AgentSessionRepo) UpdateStatus(id string, status model.AgentSessionStat
 // UpdateStatusByWorkflowInstance bulk-updates agent session statuses for a workflow instance,
 // excluding running and continued sessions.
 func (r *AgentSessionRepo) UpdateStatusByWorkflowInstance(wfiID string, toStatus model.AgentSessionStatus) (int64, error) {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(
 		`UPDATE agent_sessions SET status = ?, updated_at = ?
 		WHERE workflow_instance_id = ? AND status NOT IN ('running', 'continued')`,
@@ -199,7 +201,7 @@ func (r *AgentSessionRepo) UpdateStatusByWorkflowInstance(wfiID string, toStatus
 
 // UpdateResult updates the result and result_reason fields
 func (r *AgentSessionRepo) UpdateResult(id, resultVal, reason string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.Exec(
 		`UPDATE agent_sessions SET result = ?, result_reason = ?, updated_at = ? WHERE id = ?`,
 		sql.NullString{String: resultVal, Valid: resultVal != ""},
@@ -210,7 +212,7 @@ func (r *AgentSessionRepo) UpdateResult(id, resultVal, reason string) error {
 
 // UpdateFindings updates the findings JSON field
 func (r *AgentSessionRepo) UpdateFindings(id string, findings string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.Exec(
 		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
 		sql.NullString{String: findings, Valid: findings != ""},
@@ -220,7 +222,7 @@ func (r *AgentSessionRepo) UpdateFindings(id string, findings string) error {
 
 // SetEndedAt sets the ended_at timestamp
 func (r *AgentSessionRepo) SetEndedAt(id string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.Exec(
 		`UPDATE agent_sessions SET ended_at = ?, updated_at = ? WHERE id = ?`,
 		now, now, id)
@@ -242,7 +244,7 @@ func (r *AgentSessionRepo) Delete(id string) error {
 
 // UpdateRestartCount updates the restart_count field
 func (r *AgentSessionRepo) UpdateRestartCount(id string, count int) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(
 		`UPDATE agent_sessions SET restart_count = ?, updated_at = ? WHERE id = ?`,
 		count, now, id)
@@ -258,7 +260,7 @@ func (r *AgentSessionRepo) UpdateRestartCount(id string, count int) error {
 
 // UpdateContextLeft updates the context_left percentage
 func (r *AgentSessionRepo) UpdateContextLeft(id string, contextLeft int) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(
 		`UPDATE agent_sessions SET context_left = ?, updated_at = ? WHERE id = ?`,
 		contextLeft, now, id)
@@ -274,7 +276,7 @@ func (r *AgentSessionRepo) UpdateContextLeft(id string, contextLeft int) error {
 
 // UpdateAncestorSession updates the ancestor_session_id
 func (r *AgentSessionRepo) UpdateAncestorSession(id string, ancestorSessionID string) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(
 		`UPDATE agent_sessions SET ancestor_session_id = ?, updated_at = ? WHERE id = ?`,
 		sql.NullString{String: ancestorSessionID, Valid: ancestorSessionID != ""}, now, id)
@@ -300,7 +302,7 @@ func (r *AgentSessionRepo) ResetSessionsForCallback(wfiID string, phases []strin
 	if len(phases) == 0 {
 		return nil
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	// Build placeholders for IN clause
 	placeholders := make([]string, len(phases))
 	args := make([]interface{}, 0, len(phases)+3)

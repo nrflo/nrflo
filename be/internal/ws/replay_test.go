@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/repo"
 )
@@ -20,8 +21,8 @@ func TestReplayWithValidCursor(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -78,8 +79,8 @@ func TestReplayWithCursorZero(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	// Create mock snapshot provider
@@ -127,8 +128,8 @@ func TestReplayWithPrunedEvents(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	// Create mock snapshot provider
@@ -183,8 +184,8 @@ func TestReplayWithGapRequiresSnapshot(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	snapshotProvider := &mockSnapshotProvider{
@@ -246,8 +247,8 @@ func TestReplayWithCaughtUpCursor(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -287,8 +288,8 @@ func TestReplayDifferentScope(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -329,7 +330,7 @@ func TestReplayDifferentScope(t *testing.T) {
 }
 
 func TestReplayWithoutEventLog(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(clock.Real())
 	// No event log configured
 
 	go hub.Run()

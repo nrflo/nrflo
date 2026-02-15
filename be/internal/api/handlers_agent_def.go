@@ -28,7 +28,7 @@ func (s *Server) handleListAgentDefs(w http.ResponseWriter, r *http.Request) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	svc := service.NewAgentDefinitionService(pool)
+	svc := service.NewAgentDefinitionService(pool, s.clock)
 
 	defs, err := svc.ListAgentDefs(projectID, workflowID)
 	if err != nil {
@@ -72,7 +72,7 @@ func (s *Server) handleCreateAgentDef(w http.ResponseWriter, r *http.Request) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	svc := service.NewAgentDefinitionService(pool)
+	svc := service.NewAgentDefinitionService(pool, s.clock)
 
 	def, err := svc.CreateAgentDef(projectID, workflowID, &req)
 	if err != nil {
@@ -118,7 +118,7 @@ func (s *Server) handleGetAgentDef(w http.ResponseWriter, r *http.Request) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	svc := service.NewAgentDefinitionService(pool)
+	svc := service.NewAgentDefinitionService(pool, s.clock)
 
 	def, err := svc.GetAgentDef(projectID, workflowID, id)
 	if err != nil {
@@ -158,7 +158,7 @@ func (s *Server) handleUpdateAgentDef(w http.ResponseWriter, r *http.Request) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	svc := service.NewAgentDefinitionService(pool)
+	svc := service.NewAgentDefinitionService(pool, s.clock)
 
 	if err := svc.UpdateAgentDef(projectID, workflowID, id, &req); err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -199,7 +199,7 @@ func (s *Server) handleDeleteAgentDef(w http.ResponseWriter, r *http.Request) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	svc := service.NewAgentDefinitionService(pool)
+	svc := service.NewAgentDefinitionService(pool, s.clock)
 
 	if err := svc.DeleteAgentDef(projectID, workflowID, id); err != nil {
 		if strings.Contains(err.Error(), "not found") {

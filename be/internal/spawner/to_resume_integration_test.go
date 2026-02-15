@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -280,6 +281,7 @@ func setupE2ETestEnv(t *testing.T) *e2eTestEnv {
 	spawner := New(Config{
 		DataPath: dbPath,
 		Pool:     db.WrapAsPool(database),
+		Clock:    clock.Real(),
 	})
 
 	return &e2eTestEnv{
@@ -313,7 +315,7 @@ func (env *e2eTestEnv) createContinuedSessionWithTime(t *testing.T, sessionID st
 		t.Fatalf("failed to marshal findings: %v", err)
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          env.projectID,
@@ -341,7 +343,7 @@ func (env *e2eTestEnv) createContinuedSessionForAgent(t *testing.T, sessionID st
 		t.Fatalf("failed to marshal findings: %v", err)
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          env.projectID,

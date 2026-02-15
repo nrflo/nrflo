@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -413,6 +414,7 @@ func setupToResumeTestEnvInternal(t *testing.T, scopeType string) *toResumeTestE
 	spawner := New(Config{
 		DataPath: dbPath,
 		Pool:     db.WrapAsPool(database),
+		Clock:    clock.Real(),
 	})
 
 	return &toResumeTestEnv{
@@ -463,7 +465,7 @@ func (env *toResumeTestEnv) createContinuedSessionFull(t *testing.T, sessionID s
 		t.Fatalf("failed to marshal findings: %v", err)
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          env.projectID,

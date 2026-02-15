@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -74,12 +75,13 @@ func setupTestEnv(t *testing.T) *testEnv {
 	}
 
 	// Create spawner
-	hub := ws.NewHub()
+	hub := ws.NewHub(clock.Real())
 	spawner := New(Config{
 		DataPath:           dbPath,
 		CompletionGraceSec: 1, // Short grace period for tests
 		WSHub:              hub,
 		Pool:               db.WrapAsPool(database),
+		Clock:              clock.Real(),
 	})
 
 	return &testEnv{
@@ -102,7 +104,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 func (env *testEnv) createSession(t *testing.T, modelID string) *model.AgentSession {
 	t.Helper()
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 env.sessionID,
 		ProjectID:          env.projectID,
@@ -154,7 +156,7 @@ func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
 	})
 
 	// Verify result in database
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	updatedSession, err := sessionRepo.Get(env.sessionID)
 	if err != nil {
 		t.Fatalf("failed to get updated session: %v", err)
@@ -186,7 +188,7 @@ func TestHandleCompletion_ExitZeroWithExplicitPass(t *testing.T) {
 	env.createSession(t, "claude:opus")
 
 	// Simulate explicit completion by setting result before handleCompletion
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "pass", "explicit"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
 	}
@@ -241,7 +243,7 @@ func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
 
 	env.createSession(t, "claude:haiku")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "fail", "explicit"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
 	}
@@ -300,7 +302,7 @@ func TestHandleCompletion_ExitZeroWithExplicitContinue(t *testing.T) {
 
 	env.createSession(t, "claude:sonnet")
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "continue", "explicit"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
 	}
@@ -382,7 +384,7 @@ func TestHandleCompletion_NonZeroExitCode(t *testing.T) {
 		AgentType:    "test-agent",
 	})
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	updatedSession, err := sessionRepo.Get(env.sessionID)
 	if err != nil {
 		t.Fatalf("failed to get updated session: %v", err)
@@ -437,7 +439,7 @@ func TestHandleCompletion_EndedAtTimestamp(t *testing.T) {
 		AgentType:    "test-agent",
 	})
 
-	sessionRepo := repo.NewAgentSessionRepo(env.database)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	updatedSession, err := sessionRepo.Get(env.sessionID)
 	if err != nil {
 		t.Fatalf("failed to get updated session: %v", err)

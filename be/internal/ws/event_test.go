@@ -71,12 +71,9 @@ func TestEventSchemaCommonFields(t *testing.T) {
 			if event.ProjectID != "proj-1" {
 				t.Errorf("expected project_id proj-1, got %s", event.ProjectID)
 			}
-			if event.Timestamp == "" {
-				t.Error("timestamp must be present")
-			}
-			// Verify timestamp is valid RFC3339
-			if _, err := time.Parse(time.RFC3339Nano, event.Timestamp); err != nil {
-				t.Errorf("timestamp is not valid RFC3339: %v", err)
+			// Note: Timestamp is set by Hub.broadcastEvent(), not NewEvent()
+			if event.Timestamp != "" {
+				t.Error("timestamp should not be set by NewEvent (set by broadcastEvent)")
 			}
 			// Data field should match input
 			if event.Data == nil && tt.data != nil {
@@ -233,6 +230,8 @@ func TestEventSerialization(t *testing.T) {
 		"session_id": "sess-123",
 		"result":     "pass",
 	})
+	// Manually set timestamp to simulate what broadcastEvent does
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 
 	data, err := json.Marshal(event)
 	if err != nil {

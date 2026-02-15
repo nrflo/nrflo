@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -227,7 +228,7 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 	}
 	defer database.Close()
 
-	adRepo := repo.NewAgentDefinitionRepo(database)
+	adRepo := repo.NewAgentDefinitionRepo(database, clock.Real())
 	err = adRepo.Create(&model.AgentDefinition{
 		ID:          "analyzer",
 		ProjectID:   env.project,
@@ -294,7 +295,7 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 	}
 	defer database.Close()
 
-	adRepo := repo.NewAgentDefinitionRepo(database)
+	adRepo := repo.NewAgentDefinitionRepo(database, clock.Real())
 	err = adRepo.Create(&model.AgentDefinition{
 		ID:          "analyzer",
 		ProjectID:   env.project,
@@ -348,7 +349,7 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 	}
 	defer database.Close()
 
-	adRepo := repo.NewAgentDefinitionRepo(database)
+	adRepo := repo.NewAgentDefinitionRepo(database, clock.Real())
 	err = adRepo.Create(&model.AgentDefinition{
 		ID:          "analyzer",
 		ProjectID:   env.project,

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
@@ -26,7 +27,7 @@ func TestListByParent(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
 
 	// Create an epic ticket
 	epic := &model.Ticket{
@@ -115,7 +116,7 @@ func TestListByParentNoChildren(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
 
 	// Create an epic with no children
 	epic := &model.Ticket{
@@ -159,7 +160,7 @@ func TestListByParentCaseInsensitive(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	ticketRepo := NewTicketRepo(database)
+	ticketRepo := NewTicketRepo(database, clock.Real())
 
 	// Create epic with mixed case
 	epic := &model.Ticket{

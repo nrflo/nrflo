@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/repo"
 )
@@ -24,8 +25,8 @@ func TestE2ESubscribeReplayLiveEvents(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -98,8 +99,8 @@ func TestE2EMultipleClientsReplay(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -193,8 +194,8 @@ func TestE2ESnapshotToLiveTransition(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	snapshotProvider := &mockSnapshotProvider{
@@ -263,8 +264,8 @@ func TestE2ECleanupDoesNotAffectActiveCursors(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()
@@ -310,8 +311,8 @@ func TestE2EProjectWideSubscription(t *testing.T) {
 	}
 	defer pool.Close()
 
-	hub := NewHub()
-	eventLog := repo.NewEventLogRepo(pool)
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
 	hub.SetEventLog(eventLog)
 
 	go hub.Run()

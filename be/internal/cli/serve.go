@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"be/internal/api"
+	"be/internal/clock"
 	"be/internal/config"
 	"be/internal/db"
 	"be/internal/logger"
@@ -74,7 +75,8 @@ Example usage:
 		httpServer := api.NewServer(cfg, DataPath)
 
 		// Create and start Unix socket server with shared WebSocket hub
-		socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub())
+		clk := clock.Real()
+		socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk)
 		if err := socketServer.Start(); err != nil {
 			return fmt.Errorf("failed to start socket server: %w", err)
 		}

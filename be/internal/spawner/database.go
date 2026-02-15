@@ -19,8 +19,8 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		return
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	sessionRepo := repo.NewAgentSessionRepo(pool)
+	now := s.config.Clock.Now().UTC().Format(time.RFC3339Nano)
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	session := &model.AgentSession{
 		ID:                 sessionID,
 		ProjectID:          projectID,
@@ -56,7 +56,7 @@ func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName,
 		return
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(pool)
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 
 	// Update result and reason
 	sessionRepo.UpdateResult(sessionID, result, resultReason)
@@ -92,7 +92,7 @@ func (s *Spawner) getWorkflowInstance(projectID, ticketID, workflowName string) 
 		return nil, fmt.Errorf("failed to get database pool")
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 	if err != nil {
 		return nil, fmt.Errorf("workflow '%s' not initialized on ticket '%s'. Use the web UI or API to initialize it",
@@ -108,7 +108,7 @@ func (s *Spawner) getProjectWorkflowInstance(projectID, workflowName string) (*m
 		return nil, fmt.Errorf("failed to get database pool")
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	instances, err := wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
 	if err != nil || len(instances) == 0 {
 		return nil, fmt.Errorf("project workflow '%s' not initialized. Use the web UI or API to initialize it",
@@ -125,7 +125,7 @@ func (s *Spawner) getWorkflowInstanceByID(instanceID string) (*model.WorkflowIns
 		return nil, fmt.Errorf("failed to get database pool")
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	return wfiRepo.Get(instanceID)
 }
 
@@ -175,7 +175,7 @@ func (s *Spawner) startPhase(ctx context.Context, wfiID, projectID, ticketID, wo
 		return
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	if err := wfiRepo.StartPhase(wfiID, phase); err != nil {
 		logger.Warn(ctx, "failed to start phase", "phase", phase, "err", err)
 		return
@@ -193,7 +193,7 @@ func (s *Spawner) completePhase(ctx context.Context, wfiID, projectID, ticketID,
 		return
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	if err := wfiRepo.CompletePhase(wfiID, phase, result); err != nil {
 		logger.Warn(ctx, "failed to complete phase", "phase", phase, "result", result, "err", err)
 		return

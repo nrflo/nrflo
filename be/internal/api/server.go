@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/config"
 	"be/internal/db"
 	"be/internal/logger"
@@ -25,18 +26,21 @@ type Server struct {
 	wsHub        *ws.Hub
 	orchestrator *orchestrator.Orchestrator
 	chainRunner  *orchestrator.ChainRunner
+	clock        clock.Clock
 }
 
 // NewServer creates a new API server
 func NewServer(cfg *config.Config, dataPath string) *Server {
-	hub := ws.NewHub()
-	orch := orchestrator.New(dataPath, hub)
+	clk := clock.Real()
+	hub := ws.NewHub(clk)
+	orch := orchestrator.New(dataPath, hub, clk)
 	return &Server{
 		config:       cfg,
 		dataPath:     dataPath,
 		wsHub:        hub,
 		orchestrator: orch,
-		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub),
+		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
+		clock:        clk,
 	}
 }
 
@@ -105,12 +109,12 @@ func (s *Server) initEventLog() {
 		logger.Info(context.Background(), "event log init failed, continuing without persistence", "error", err)
 		return
 	}
-	elRepo := repo.NewEventLogRepo(database)
+	elRepo := repo.NewEventLogRepo(database, s.clock)
 	s.wsHub.SetEventLog(elRepo)
 
 	// Set up snapshot provider backed by WorkflowService
 	pool := db.WrapAsPool(database)
-	wfSvc := service.NewWorkflowService(pool)
+	wfSvc := service.NewWorkflowService(pool, s.clock)
 	s.wsHub.SetSnapshotProvider(service.NewWorkflowSnapshotProvider(wfSvc))
 
 	// Start retention cleanup: delete events older than 24h, every hour
@@ -142,8 +146,8 @@ func (s *Server) startRetentionCleanup() {
 		defer database.Close()
 
 		pool := db.WrapAsPool(database)
-		wfiRepo := repo.NewWorkflowInstanceRepo(pool)
-		asRepo := repo.NewAgentSessionRepo(database)
+		wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+		asRepo := repo.NewAgentSessionRepo(database, s.clock)
 
 		if deleted, err := wfiRepo.CleanupKeepLatest(keep); err != nil {
 			logger.Info(context.Background(), "retention cleanup: workflow_instances error", "error", err)
@@ -180,7 +184,7 @@ func (s *Server) getRepos(r *http.Request) (*repo.TicketRepo, *repo.DependencyRe
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return repo.NewTicketRepo(database), repo.NewDependencyRepo(database), database, nil
+	return repo.NewTicketRepo(database, s.clock), repo.NewDependencyRepo(database, s.clock), database, nil
 }
 
 // getAllRepos returns all repos including agent session repo
@@ -189,7 +193,7 @@ func (s *Server) getAllRepos(r *http.Request) (*repo.TicketRepo, *repo.Dependenc
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
-	return repo.NewTicketRepo(database), repo.NewDependencyRepo(database), repo.NewAgentSessionRepo(database), repo.NewProjectRepo(database), database, nil
+	return repo.NewTicketRepo(database, s.clock), repo.NewDependencyRepo(database, s.clock), repo.NewAgentSessionRepo(database, s.clock), repo.NewProjectRepo(database, s.clock), database, nil
 }
 
 // corsMiddleware adds CORS headers

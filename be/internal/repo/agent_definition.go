@@ -6,23 +6,25 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // AgentDefinitionRepo handles agent definition CRUD operations
 type AgentDefinitionRepo struct {
+	clock clock.Clock
 	db db.Querier
 }
 
 // NewAgentDefinitionRepo creates a new agent definition repository
-func NewAgentDefinitionRepo(database db.Querier) *AgentDefinitionRepo {
-	return &AgentDefinitionRepo{db: database}
+func NewAgentDefinitionRepo(database db.Querier, clk clock.Clock) *AgentDefinitionRepo {
+	return &AgentDefinitionRepo{db: database, clock: clk}
 }
 
 // Create creates a new agent definition
 func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	def.UpdatedAt = def.CreatedAt
 
@@ -160,7 +162,7 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, projectID, workflowID, id)

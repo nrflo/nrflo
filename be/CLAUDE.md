@@ -113,6 +113,9 @@ be/
 │   ├── types/                   # Shared request/response types
 │   │   ├── request.go
 │   │   └── chain_request.go     # Chain create/update request types
+│   ├── clock/                   # Time abstraction for testability
+│   │   ├── clock.go             # Clock interface + Real() (production wall clock)
+│   │   └── test.go              # TestClock with Set()/Advance() for deterministic tests
 │   ├── integration/             # Integration tests
 │   │   ├── testenv.go           # NewTestEnv shared harness
 │   │   └── testdata/            # Test config, agent templates

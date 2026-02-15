@@ -6,23 +6,25 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 )
 
 // ProjectRepo handles project CRUD operations
 type ProjectRepo struct {
+	clock clock.Clock
 	db *db.DB
 }
 
 // NewProjectRepo creates a new project repository
-func NewProjectRepo(database *db.DB) *ProjectRepo {
-	return &ProjectRepo{db: database}
+func NewProjectRepo(database *db.DB, clk clock.Clock) *ProjectRepo {
+	return &ProjectRepo{db: database, clock: clk}
 }
 
 // Create creates a new project
 func (r *ProjectRepo) Create(project *model.Project) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	project.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	project.UpdatedAt = project.CreatedAt
 
@@ -157,7 +159,7 @@ func (r *ProjectRepo) Update(id string, fields *ProjectUpdateFields) error {
 		return nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	updates = append(updates, "updated_at = ?")
 	args = append(args, now)
 	args = append(args, id)

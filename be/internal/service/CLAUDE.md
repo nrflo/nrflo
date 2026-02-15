@@ -29,6 +29,10 @@ Key types in `workflow_types.go`:
 - **`WorkflowDef`** — workflow definition with ID, phases, description, scope_type
 - **`PhaseDef`** — phase definition with agent name and layer number
 
+## Constructor Pattern
+
+All service constructors take `(pool *db.Pool, clk clock.Clock)`. The clock is used for timestamps on DB records. In production, pass `clock.Real()`. In tests, pass `clock.NewTest(fixedTime)` for deterministic timestamps.
+
 ## Common Tasks
 
 ### Adding a New Agent Type

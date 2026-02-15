@@ -30,7 +30,7 @@ func (s *Server) handleGetWorkflow(w http.ResponseWriter, r *http.Request) {
 
 	id := extractID(r)
 	pool := db.WrapAsPool(database)
-	workflowSvc := service.NewWorkflowService(pool)
+	workflowSvc := service.NewWorkflowService(pool, s.clock)
 
 	// List all workflow instances for this ticket
 	instances, err := workflowSvc.ListWorkflowInstances(projectID, id)
@@ -116,7 +116,7 @@ func (s *Server) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
 
 	// Resolve workflow name
 	workflowName := req.Workflow
@@ -168,7 +168,7 @@ func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) 
 	id := extractID(r)
 	phase := r.URL.Query().Get("phase")
 
-	agentSessionRepo := repo.NewAgentSessionRepo(database)
+	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
 	sessions, err := agentSessionRepo.GetByTicket(projectID, id, phase)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -181,12 +181,12 @@ func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) 
 
 	// Build findings from workflow_instances + agent_sessions
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
 	findings := make(map[string]interface{})
 
 	instances, _ := wfiRepo.ListByTicket(projectID, id)
 	for _, wi := range instances {
-		workflowSvc := service.NewWorkflowService(pool)
+		workflowSvc := service.NewWorkflowService(pool, s.clock)
 		combined := workflowSvc.BuildCombinedFindings(wi)
 		for k, v := range combined {
 			findings[k] = v
@@ -212,7 +212,7 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 	sessionID := extractID(r)
 
 	pool := db.WrapAsPool(database)
-	agentSvc := service.NewAgentService(pool)
+	agentSvc := service.NewAgentService(pool, s.clock)
 
 	// Parse pagination params
 	limit := 0
@@ -254,8 +254,8 @@ func (s *Server) handleGetRecentAgents(w http.ResponseWriter, r *http.Request) {
 	}
 	defer database.Close()
 
-	agentSessionRepo := repo.NewAgentSessionRepo(database)
-	projectRepo := repo.NewProjectRepo(database)
+	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
+	projectRepo := repo.NewProjectRepo(database, s.clock)
 
 	// Parse limit from query param (default 10, max 50)
 	limit := 10

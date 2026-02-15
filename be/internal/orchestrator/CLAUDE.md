@@ -87,8 +87,22 @@ A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earl
 | `orchestrator.go` | Layer-grouped concurrent phase execution, cancellation support |
 | `chain_runner.go` | Sequential chain execution runner |
 
+## Ticket Status Management
+
+The orchestrator manages ticket status transitions for ticket-scoped workflows:
+
+- **Start**: `SetInProgress()` on workflow start (only transitions open → in_progress)
+- **Complete**: `Close()` on workflow completion (sets status to closed with reason)
+- **Fail/Cancel**: `Reopen()` on workflow failure or manual stop (reverts to open)
+
+Each transition broadcasts `ws.EventTicketUpdated` so the frontend sidebar updates without page refresh. Project-scoped workflows skip ticket status changes entirely.
+
 ## Testing
 
-Orchestrator behavior is covered by integration tests in `internal/integration/`. Key test files:
+Unit tests in-package:
+- `orchestrator_ticket_status_test.go` — SetInProgress, markFailed ticket reopen, WS broadcasts
+- `orchestrator_mark_completed_test.go` — markCompleted ticket close, project scope, WS broadcasts
+
+Integration tests in `internal/integration/`:
 - `chain_epic_test.go` — chain epic auto-close
 - `run_epic_workflow_test.go` — run-epic endpoint tests

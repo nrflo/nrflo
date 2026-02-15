@@ -459,4 +459,310 @@ describe('useWSReducer', () => {
       expect(result.got).toBe(15)
     })
   })
+
+  describe('orchestration events - ticket status invalidation', () => {
+    beforeEach(() => {
+      vi.spyOn(queryClient, 'invalidateQueries')
+    })
+
+    it('orchestration.started invalidates status, lists, and dailyStats for ticket-scoped events', () => {
+      const event: WSEventV2 = {
+        type: 'orchestration.started',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-15T00:00:00Z',
+        sequence: 1,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, queryClient)
+
+      // Verify all expected invalidations happened
+      const invalidateCalls = (queryClient.invalidateQueries as any).mock.calls
+
+      // Should invalidate workflow queries
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+
+      // Should invalidate ticketKeys.status()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('status')
+      )).toBe(true)
+
+      // Should invalidate ticketKeys.lists()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('list')
+      )).toBe(true)
+
+      // Should invalidate dailyStatsKeys.all
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('daily-stats')
+      )).toBe(true)
+    })
+
+    it('orchestration.completed invalidates status, lists, and dailyStats for ticket-scoped events', () => {
+      const event: WSEventV2 = {
+        type: 'orchestration.completed',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-15T00:00:00Z',
+        sequence: 2,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, queryClient)
+
+      const invalidateCalls = (queryClient.invalidateQueries as any).mock.calls
+
+      // Should invalidate workflow queries
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+
+      // Should invalidate ticketKeys.status()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('status')
+      )).toBe(true)
+
+      // Should invalidate ticketKeys.lists()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('list')
+      )).toBe(true)
+
+      // Should invalidate dailyStatsKeys.all
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('daily-stats')
+      )).toBe(true)
+    })
+
+    it('orchestration.failed invalidates status, lists, and dailyStats for ticket-scoped events', () => {
+      const event: WSEventV2 = {
+        type: 'orchestration.failed',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-15T00:00:00Z',
+        sequence: 3,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, queryClient)
+
+      const invalidateCalls = (queryClient.invalidateQueries as any).mock.calls
+
+      // Should invalidate workflow queries
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+
+      // Should invalidate ticketKeys.status()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('status')
+      )).toBe(true)
+
+      // Should invalidate ticketKeys.lists()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('list')
+      )).toBe(true)
+
+      // Should invalidate dailyStatsKeys.all
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('daily-stats')
+      )).toBe(true)
+    })
+
+    it('orchestration.started does NOT invalidate status/lists/dailyStats for project-scoped events', () => {
+      const event: WSEventV2 = {
+        type: 'orchestration.started',
+        project_id: 'proj1',
+        ticket_id: '', // Empty ticket_id = project scope
+        timestamp: '2026-02-15T00:00:00Z',
+        sequence: 4,
+        protocol_version: 2,
+      }
+
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      dispatchV2Event(event, localQueryClient)
+
+      const invalidateCalls = spy.mock.calls
+
+      // Should invalidate project workflow
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+
+      // Should NOT invalidate ticketKeys.status()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('tickets') &&
+        JSON.stringify(call[0].queryKey).includes('status')
+      )).toBe(false)
+
+      // Should NOT invalidate ticketKeys.lists()
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('tickets') &&
+        JSON.stringify(call[0].queryKey).includes('list')
+      )).toBe(false)
+
+      // Should NOT invalidate dailyStatsKeys.all
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('daily-stats')
+      )).toBe(false)
+    })
+
+    it('orchestration.completed does NOT invalidate status/lists/dailyStats for project-scoped events', () => {
+      const event: WSEventV2 = {
+        type: 'orchestration.completed',
+        project_id: 'proj1',
+        ticket_id: '', // Empty ticket_id = project scope
+        timestamp: '2026-02-15T00:00:00Z',
+        sequence: 5,
+        protocol_version: 2,
+      }
+
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      dispatchV2Event(event, localQueryClient)
+
+      const invalidateCalls = spy.mock.calls
+
+      // Should invalidate project workflow
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+
+      // Should NOT invalidate ticket-specific queries
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('tickets') &&
+        JSON.stringify(call[0].queryKey).includes('status')
+      )).toBe(false)
+
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('tickets') &&
+        JSON.stringify(call[0].queryKey).includes('list')
+      )).toBe(false)
+
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('daily-stats')
+      )).toBe(false)
+    })
+
+    it('orchestration.failed does NOT invalidate status/lists/dailyStats for project-scoped events', () => {
+      const event: WSEventV2 = {
+        type: 'orchestration.failed',
+        project_id: 'proj1',
+        ticket_id: '', // Empty ticket_id = project scope
+        timestamp: '2026-02-15T00:00:00Z',
+        sequence: 6,
+        protocol_version: 2,
+      }
+
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      dispatchV2Event(event, localQueryClient)
+
+      const invalidateCalls = spy.mock.calls
+
+      // Should invalidate project workflow
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+
+      // Should NOT invalidate ticket-specific queries
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('tickets') &&
+        JSON.stringify(call[0].queryKey).includes('status')
+      )).toBe(false)
+
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('tickets') &&
+        JSON.stringify(call[0].queryKey).includes('list')
+      )).toBe(false)
+
+      expect(invalidateCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('daily-stats')
+      )).toBe(false)
+    })
+
+    it('orchestration events invalidate workflow queries for both ticket and project scope', () => {
+      const ticketEvent: WSEventV2 = {
+        type: 'orchestration.completed',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-15T00:00:00Z',
+        sequence: 7,
+        protocol_version: 2,
+      }
+
+      const projectEvent: WSEventV2 = {
+        type: 'orchestration.completed',
+        project_id: 'proj1',
+        ticket_id: '',
+        timestamp: '2026-02-15T00:00:01Z',
+        sequence: 8,
+        protocol_version: 2,
+      }
+
+      const ticketQC = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const projectQC = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+      const ticketSpy = vi.spyOn(ticketQC, 'invalidateQueries')
+      const projectSpy = vi.spyOn(projectQC, 'invalidateQueries')
+
+      dispatchV2Event(ticketEvent, ticketQC)
+      dispatchV2Event(projectEvent, projectQC)
+
+      // Both should invalidate workflow queries
+      expect(ticketSpy).toHaveBeenCalled()
+      expect(projectSpy).toHaveBeenCalled()
+
+      const ticketCalls = ticketSpy.mock.calls
+      const projectCalls = projectSpy.mock.calls
+
+      expect(ticketCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+
+      expect(projectCalls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+    })
+
+    it('multiple sequential orchestration events trigger invalidations correctly', () => {
+      const events: WSEventV2[] = [
+        {
+          type: 'orchestration.started',
+          project_id: 'proj1',
+          ticket_id: 'tick1',
+          timestamp: '2026-02-15T00:00:00Z',
+          sequence: 10,
+          protocol_version: 2,
+        },
+        {
+          type: 'orchestration.completed',
+          project_id: 'proj1',
+          ticket_id: 'tick1',
+          timestamp: '2026-02-15T00:00:10Z',
+          sequence: 11,
+          protocol_version: 2,
+        },
+      ]
+
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      events.forEach(event => {
+        dispatchV2Event(event, localQueryClient)
+      })
+
+      // Both events should have triggered invalidations
+      expect(spy).toHaveBeenCalled()
+
+      // Verify each event was processed (not deduplicated)
+      expect(getLastSeq('proj1:tick1')).toBe(11)
+    })
+  })
 })

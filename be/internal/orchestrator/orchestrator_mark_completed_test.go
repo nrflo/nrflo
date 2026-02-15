@@ -411,3 +411,64 @@ func TestMarkCompletedTicketScopeStillUsesCompleted(t *testing.T) {
 		t.Fatalf("expected session status 'completed', got %v", session.Status)
 	}
 }
+
+func TestMarkCompletedBroadcastsTicketUpdatedEvent(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "MC-WS1", "Ticket update WS event")
+	wfiID := env.initWorkflow(t, "MC-WS1")
+
+	// Subscribe WS client
+	ch := env.subscribeWSClient(t, "ws-mcws1", "MC-WS1")
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		TicketID:     "MC-WS1",
+		WorkflowName: "test",
+	})
+
+	// Expect ticket.updated event with status=closed
+	event := expectEvent(t, ch, ws.EventTicketUpdated, 2*time.Second)
+	if event.TicketID != "MC-WS1" {
+		t.Fatalf("expected ticket_id 'MC-WS1', got %v", event.TicketID)
+	}
+	status, ok := event.Data["status"]
+	if !ok {
+		t.Fatal("expected 'status' in event data")
+	}
+	if status != "closed" {
+		t.Fatalf("expected status 'closed' in event, got %v", status)
+	}
+}
+
+func TestMarkCompletedProjectScopeDoesNotBroadcastTicketUpdated(t *testing.T) {
+	env := newTestEnv(t)
+
+	wfiID := env.initProjectWorkflow(t, "test")
+
+	// Subscribe WS client (to project, empty ticket)
+	ch := env.subscribeWSClient(t, "ws-proj", "")
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		WorkflowName: "test",
+		ScopeType:    "project",
+	})
+
+	// Expect orchestration.completed event but NOT ticket.updated
+	event := expectEvent(t, ch, ws.EventOrchestrationCompleted, 2*time.Second)
+	if event.Data["instance_id"] != wfiID {
+		t.Fatalf("expected instance_id %q, got %v", wfiID, event.Data["instance_id"])
+	}
+
+	// Ensure no ticket.updated event arrives
+	select {
+	case msg := <-ch:
+		var evt ws.Event
+		if err := json.Unmarshal(msg, &evt); err == nil && evt.Type == ws.EventTicketUpdated {
+			t.Fatalf("unexpected ticket.updated event for project-scoped workflow")
+		}
+	case <-time.After(500 * time.Millisecond):
+		// Good - no ticket.updated event
+	}
+}

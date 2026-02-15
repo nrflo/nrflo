@@ -223,12 +223,27 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
 
   'orchestration.started': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)
+    if (!isProjectScope) {
+      qc.invalidateQueries({ queryKey: ticketKeys.status() })
+      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+      qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
+    }
   },
   'orchestration.completed': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)
+    if (!isProjectScope) {
+      qc.invalidateQueries({ queryKey: ticketKeys.status() })
+      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+      qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
+    }
   },
   'orchestration.failed': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)
+    if (!isProjectScope) {
+      qc.invalidateQueries({ queryKey: ticketKeys.status() })
+      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+      qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
+    }
   },
   'orchestration.retried': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)

@@ -225,6 +225,8 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			ticketService := service.NewTicketService(statusPool)
 			if err := ticketService.SetInProgress(req.ProjectID, req.TicketID); err != nil {
 				logger.Warn(ctx, "failed to set ticket in_progress", "ticket", req.TicketID, "err", err)
+			} else {
+				o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "in_progress"}))
 			}
 			statusPool.Close()
 		}
@@ -944,6 +946,8 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 		reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
 		if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
 			logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
+		} else {
+			o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "closed"}))
 		}
 	}
 
@@ -964,6 +968,16 @@ func (o *Orchestrator) markFailed(wfiID string, req RunRequest, reason string) {
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool)
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
+
+	// Revert ticket from in_progress to open so it's not stuck (ticket scope only)
+	if !req.IsProjectScope() {
+		ticketService := service.NewTicketService(pool)
+		if err := ticketService.Reopen(req.ProjectID, req.TicketID); err != nil {
+			logger.Error(context.Background(), "failed to reopen ticket after failure", "ticket", req.TicketID, "err", err)
+		} else {
+			o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "open"}))
+		}
+	}
 
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationFailed, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"instance_id": wfiID,

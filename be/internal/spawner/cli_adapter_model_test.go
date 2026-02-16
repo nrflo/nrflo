@@ -267,6 +267,34 @@ func TestUnsupportedModelHandling(t *testing.T) {
 	}
 }
 
+// TestDefaultCLIForModel tests that GPT models route to opencode and Anthropic models route to claude.
+func TestDefaultCLIForModel(t *testing.T) {
+	tests := []struct {
+		model    string
+		expected string
+	}{
+		{"opus", "claude"},
+		{"sonnet", "claude"},
+		{"haiku", "claude"},
+		{"gpt_5.3", "opencode"},
+		{"gpt_max", "opencode"},
+		{"gpt_high", "opencode"},
+		{"gpt_medium", "opencode"},
+		{"gpt_low", "opencode"},
+		{"gpt-5.2-codex", "opencode"},
+		{"unknown", "claude"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			result := DefaultCLIForModel(tt.model)
+			if result != tt.expected {
+				t.Errorf("DefaultCLIForModel(%q) = %q, expected %q", tt.model, result, tt.expected)
+			}
+		})
+	}
+}
+
 // TestAllSupportedModelsAreValid tests that all supported model aliases
 // from the ticket (opus, sonnet, haiku, gpt_5.3) are properly handled.
 func TestAllSupportedModelsAreValid(t *testing.T) {

@@ -50,7 +50,6 @@ const (
 type Config struct {
 	Workflows   map[string]WorkflowDef
 	Agents      map[string]AgentConfig
-	DefaultCLI  string
 	DataPath    string
 	ProjectRoot string
 	// Spawner behavior settings
@@ -207,16 +206,12 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 
 	// Determine model to spawn (single agent per Spawn call)
 	model := "opus"
-	cliName := req.CLIName
-	if cliName == "" {
-		if s.config.DefaultCLI != "" {
-			cliName = s.config.DefaultCLI
-		} else {
-			cliName = "claude"
-		}
-	}
 	if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.Model != "" {
 		model = agentCfg.Model
+	}
+	cliName := req.CLIName
+	if cliName == "" {
+		cliName = DefaultCLIForModel(model)
 	}
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 
@@ -251,11 +246,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	// Parse modelID (cli:model format)
 	cliName, model := parseModelID(modelID)
 	if cliName == "" {
-		if s.config.DefaultCLI != "" {
-			cliName = s.config.DefaultCLI
-		} else {
-			cliName = "claude"
-		}
+		cliName = DefaultCLIForModel(model)
 		modelID = fmt.Sprintf("%s:%s", cliName, model)
 	}
 

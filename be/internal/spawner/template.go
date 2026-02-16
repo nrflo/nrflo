@@ -16,15 +16,12 @@ var findingsPattern = regexp.MustCompile(`#\{FINDINGS:([^:}]+)(?::([^}]*))?\}`)
 // Preview generates the prompt without spawning
 func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (string, error) {
 	model := "opus"
-	cliName := s.config.DefaultCLI
-	if cliName == "" {
-		cliName = "claude"
-	}
 	if agentCfg, ok := s.config.Agents[agentType]; ok {
 		if agentCfg.Model != "" {
 			model = agentCfg.Model
 		}
 	}
+	cliName := DefaultCLIForModel(model)
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "")
 }

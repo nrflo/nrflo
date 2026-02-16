@@ -774,7 +774,6 @@ func (o *Orchestrator) runLoop(
 				sp := spawner.New(spawner.Config{
 					Workflows:   workflows,
 					Agents:      agents,
-					DefaultCLI:  "claude",
 					DataPath:    o.dataPath,
 					ProjectRoot: projectRoot,
 					WSHub:       o.wsHub,

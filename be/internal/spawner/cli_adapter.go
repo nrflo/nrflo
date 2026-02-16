@@ -49,6 +49,15 @@ type SpawnOptions struct {
 	Env           []string
 }
 
+// DefaultCLIForModel returns the appropriate CLI name for a model.
+// GPT models use "opencode", everything else uses "claude".
+func DefaultCLIForModel(model string) string {
+	if strings.HasPrefix(model, "gpt_") || strings.HasPrefix(model, "gpt-") {
+		return "opencode"
+	}
+	return "claude"
+}
+
 // GetCLIAdapter returns the appropriate adapter for a CLI name
 func GetCLIAdapter(name string) (CLIAdapter, error) {
 	switch name {

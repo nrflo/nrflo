@@ -1,8 +1,8 @@
-import { useMemo, useCallback, useEffect } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { ReactFlow, Background, Controls, useReactFlow, type Node, type Edge, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
-import { getLayoutedElements } from './layout'
+import { getLayoutedElements, BASE_HEIGHT } from './layout'
 import { useTickingClock } from '@/hooks/useElapsedTime'
 import type { PhaseGraphProps, AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/workflow'
@@ -284,9 +284,19 @@ export function PhaseGraph({
     return edges
   }, [initialNodes])
 
-  // Apply auto-layout
-  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
-    return getLayoutedElements(initialNodes, initialEdges, null)
+  // Apply async ELK layout
+  const [layoutedNodes, setLayoutedNodes] = useState<Node<AgentFlowNodeData>[]>([])
+  const [layoutedEdges, setLayoutedEdges] = useState<Edge[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    getLayoutedElements(initialNodes, initialEdges, null).then(result => {
+      if (!cancelled) {
+        setLayoutedNodes(result.nodes)
+        setLayoutedEdges(result.edges)
+      }
+    })
+    return () => { cancelled = true }
   }, [initialNodes, initialEdges])
 
   // Stable key derived from node IDs to trigger fitView on node set changes
@@ -303,10 +313,10 @@ export function PhaseGraph({
     )
   }
 
-  // Calculate container height based on number of phase rows
-  const phaseIndices = new Set(layoutedNodes.map(n => n.data.phaseIndex))
-  const numRows = phaseIndices.size
-  const containerHeight = numRows * 150 + 100
+  // Calculate container height from actual layout output
+  const containerHeight = Math.max(
+    ...layoutedNodes.map(n => (n.position.y || 0) + (n.measured?.height || BASE_HEIGHT))
+  ) + 50
 
   return (
     <div style={{ height: containerHeight }} className="w-full">

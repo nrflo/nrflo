@@ -10,7 +10,7 @@ PhaseTimeline (PhaseTimeline.tsx)
 ├── PhaseGraph (PhaseGraph/)
 │   ├── PhaseGraph.tsx - Main container using React Flow (@xyflow/react)
 │   ├── AgentFlowNode.tsx - Custom React Flow node for agents (clickable, opens modal)
-│   ├── layout.ts - Auto-layout helper for vertical positioning
+│   ├── layout.ts - ELK.js-based auto-layout (layered/Sugiyama algorithm)
 │   ├── PhaseFlowNode.tsx - Custom React Flow node for phases
 │   ├── PhaseNode.tsx - Standalone phase node
 │   ├── AgentCard.tsx - Running agent card with elapsed time

@@ -1,58 +1,108 @@
+import ELK from 'elkjs/lib/elk.bundled.js'
 import type { Node, Edge } from '@xyflow/react'
 import type { AgentFlowNodeData } from './types'
 
-const AGENT_NODE_WIDTH = 320
-const HORIZONTAL_GAP = 60
-const VERTICAL_GAP = 120
-const BASE_HEIGHT = 110
-const EXPANDED_HEIGHT = 420  // Base + messages area
+export const AGENT_NODE_WIDTH = 320
+export const BASE_HEIGHT = 110
+export const EXPANDED_HEIGHT = 420  // Base + messages area
 
-export function getLayoutedElements(
+const elk = new ELK()
+
+/** Build synthetic edges between adjacent layers so ELK places same-layer nodes in the same row. */
+function buildLayerEdges(nodes: Node<AgentFlowNodeData>[], existingEdges: Edge[]) {
+  const existingSources = new Set(existingEdges.map(e => e.source))
+  const existingTargets = new Set(existingEdges.map(e => e.target))
+
+  // Group node IDs by phaseIndex
+  const byPhase: Record<number, string[]> = {}
+  for (const node of nodes) {
+    const idx = node.data.phaseIndex
+    if (!byPhase[idx]) byPhase[idx] = []
+    byPhase[idx].push(node.id)
+  }
+
+  const phases = Object.keys(byPhase).map(Number).sort((a, b) => a - b)
+  const syntheticEdges: { id: string; sources: string[]; targets: string[] }[] = []
+
+  for (let i = 0; i < phases.length - 1; i++) {
+    const currentIds = byPhase[phases[i]]
+    const nextIds = byPhase[phases[i + 1]]
+    for (const src of currentIds) {
+      for (const tgt of nextIds) {
+        // Only add if no existing edge already connects these
+        if (!(existingSources.has(src) && existingTargets.has(tgt))) {
+          syntheticEdges.push({
+            id: `_synth_${src}_${tgt}`,
+            sources: [src],
+            targets: [tgt],
+          })
+        }
+      }
+    }
+  }
+
+  return syntheticEdges
+}
+
+export async function getLayoutedElements(
   nodes: Node<AgentFlowNodeData>[],
   edges: Edge[],
   expandedAgentKey: string | null
-): { nodes: Node<AgentFlowNodeData>[]; edges: Edge[] } {
-  // Group nodes by phaseIndex
-  const nodesByPhase: Record<number, Node<AgentFlowNodeData>[]> = {}
-  nodes.forEach(node => {
-    const idx = node.data.phaseIndex
-    if (!nodesByPhase[idx]) nodesByPhase[idx] = []
-    nodesByPhase[idx].push(node)
-  })
+): Promise<{ nodes: Node<AgentFlowNodeData>[]; edges: Edge[] }> {
+  if (nodes.length === 0) return { nodes, edges }
 
-  let currentY = 0
-  const phaseIndices = Object.keys(nodesByPhase).map(Number).sort((a, b) => a - b)
+  const elkEdges = edges.map(edge => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+  }))
 
-  phaseIndices.forEach(phaseIdx => {
-    const phaseNodes = nodesByPhase[phaseIdx]
-    const count = phaseNodes.length
+  // Add synthetic edges for layer connectivity so ELK assigns correct layers
+  const syntheticEdges = buildLayerEdges(nodes, edges)
 
-    // Calculate max height for this row (if any expanded)
-    let maxHeight = BASE_HEIGHT
-    phaseNodes.forEach(node => {
-      if (expandedAgentKey === node.id) {
-        maxHeight = EXPANDED_HEIGHT
-      }
-    })
-
-    // Center agents horizontally
-    const totalWidth = count * AGENT_NODE_WIDTH + (count - 1) * HORIZONTAL_GAP
-    const startX = -totalWidth / 2
-
-    phaseNodes.forEach((node, i) => {
+  const elkGraph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'DOWN',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '120',
+      'elk.spacing.nodeNode': '60',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      'elk.alignment': 'CENTER',
+      'elk.partitioning.activate': 'true',
+    },
+    children: nodes.map(node => {
       const isExpanded = expandedAgentKey === node.id
-      node.position = {
-        x: startX + i * (AGENT_NODE_WIDTH + HORIZONTAL_GAP),
-        y: currentY
+      const height = isExpanded ? EXPANDED_HEIGHT : BASE_HEIGHT
+      return {
+        id: node.id,
+        width: AGENT_NODE_WIDTH,
+        height,
+        layoutOptions: {
+          'elk.partitioning.partition': String(node.data.phaseIndex),
+        },
       }
+    }),
+    edges: [...elkEdges, ...syntheticEdges],
+  }
+
+  const layout = await elk.layout(elkGraph)
+
+  const nodeMap = new Map(
+    (layout.children ?? []).map(child => [child.id, child])
+  )
+
+  for (const node of nodes) {
+    const elkNode = nodeMap.get(node.id)
+    if (elkNode) {
+      node.position = { x: elkNode.x ?? 0, y: elkNode.y ?? 0 }
+      const isExpanded = expandedAgentKey === node.id
       node.measured = {
         width: AGENT_NODE_WIDTH,
-        height: isExpanded ? EXPANDED_HEIGHT : BASE_HEIGHT
+        height: isExpanded ? EXPANDED_HEIGHT : BASE_HEIGHT,
       }
-    })
-
-    currentY += maxHeight + VERTICAL_GAP
-  })
+    }
+  }
 
   return { nodes, edges }
 }

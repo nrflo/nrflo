@@ -20,7 +20,8 @@ vi.mock('@xyflow/react', async () => {
 })
 
 vi.mock('./layout', () => ({
-  getLayoutedElements: (nodes: any[], edges: any[]) => ({ nodes, edges }),
+  getLayoutedElements: (nodes: any[], edges: any[]) => Promise.resolve({ nodes, edges }),
+  BASE_HEIGHT: 110,
 }))
 
 vi.mock('./AgentFlowNode', () => ({
@@ -79,6 +80,11 @@ function makeProps(overrides: Partial<PhaseGraphProps> = {}): PhaseGraphProps {
   }
 }
 
+/** Flush pending microtasks (async layout Promise) */
+async function flushLayout() {
+  await act(async () => {})
+}
+
 describe('PhaseGraph', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -90,7 +96,7 @@ describe('PhaseGraph', () => {
   })
 
   describe('FitViewOnChange', () => {
-    it('calls fitView with correct options after 50ms on mount', () => {
+    it('calls fitView with correct options after 50ms on mount', async () => {
       const props = makeProps({
         phases: { investigation: makePhaseState({ status: 'in_progress' }) },
         phaseOrder: ['investigation'],
@@ -100,19 +106,21 @@ describe('PhaseGraph', () => {
       })
 
       render(<PhaseGraph {...props} />)
+      await flushLayout()
 
       expect(mockFitView).not.toHaveBeenCalled()
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     })
 
-    it('calls fitView again when nodes change (workflow starts)', () => {
+    it('calls fitView again when nodes change (workflow starts)', async () => {
       const props = makeProps({
         phases: { investigation: makePhaseState({ status: 'pending' }) },
         phaseOrder: ['investigation'],
       })
 
       const { rerender } = render(<PhaseGraph {...props} />)
+      await flushLayout()
       act(() => { vi.advanceTimersByTime(50) })
       vi.clearAllMocks()
 
@@ -123,12 +131,13 @@ describe('PhaseGraph', () => {
           'setup-analyzer:claude:sonnet': makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation' }),
         },
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     })
 
-    it('calls fitView when phase transitions to next phase', () => {
+    it('calls fitView when phase transitions to next phase', async () => {
       const props = makeProps({
         phases: {
           investigation: makePhaseState({ status: 'in_progress' }),
@@ -141,6 +150,7 @@ describe('PhaseGraph', () => {
       })
 
       const { rerender } = render(<PhaseGraph {...props} />)
+      await flushLayout()
       act(() => { vi.advanceTimersByTime(50) })
       vi.clearAllMocks()
 
@@ -155,12 +165,13 @@ describe('PhaseGraph', () => {
         },
         agentHistory: [makeHistory({ phase: 'investigation', agent_type: 'setup-analyzer' })],
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     })
 
-    it('does not call fitView when nodes remain the same', () => {
+    it('does not call fitView when nodes remain the same', async () => {
       const props = makeProps({
         phases: { investigation: makePhaseState({ status: 'in_progress' }) },
         phaseOrder: ['investigation'],
@@ -172,6 +183,7 @@ describe('PhaseGraph', () => {
       })
 
       const { rerender } = render(<PhaseGraph {...props} />)
+      await flushLayout()
       act(() => { vi.advanceTimersByTime(50) })
       const initialCallCount = mockFitView.mock.calls.length
 
@@ -185,6 +197,7 @@ describe('PhaseGraph', () => {
           }),
         },
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(100) })
       expect(mockFitView).toHaveBeenCalledTimes(initialCallCount)
@@ -192,7 +205,7 @@ describe('PhaseGraph', () => {
   })
 
   describe('nodeKey stability', () => {
-    it('changes nodeKey when node count changes', () => {
+    it('changes nodeKey when node count changes', async () => {
       const props = makeProps({
         phases: { investigation: makePhaseState({ status: 'in_progress' }) },
         phaseOrder: ['investigation'],
@@ -202,6 +215,7 @@ describe('PhaseGraph', () => {
       })
 
       const { rerender } = render(<PhaseGraph {...props} />)
+      await flushLayout()
       act(() => { vi.advanceTimersByTime(50) })
       vi.clearAllMocks()
 
@@ -215,6 +229,7 @@ describe('PhaseGraph', () => {
           }),
         },
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalled()
@@ -222,13 +237,14 @@ describe('PhaseGraph', () => {
   })
 
   describe('edge cases', () => {
-    it('shows empty state when no phases exist', () => {
+    it('shows empty state when no phases exist', async () => {
       render(<PhaseGraph {...makeProps({ phases: {}, phaseOrder: [] })} />)
+      await flushLayout()
       expect(screen.getByText('No workflow phases defined')).toBeInTheDocument()
       expect(screen.queryByTestId('react-flow')).not.toBeInTheDocument()
     })
 
-    it('renders with pending phases only', () => {
+    it('renders with pending phases only', async () => {
       render(<PhaseGraph {...makeProps({
         phases: {
           investigation: makePhaseState({ status: 'pending' }),
@@ -236,13 +252,14 @@ describe('PhaseGraph', () => {
         },
         phaseOrder: ['investigation', 'implementation'],
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalled()
       expect(screen.getByTestId('react-flow')).toBeInTheDocument()
     })
 
-    it('renders with skipped phases', () => {
+    it('renders with skipped phases', async () => {
       render(<PhaseGraph {...makeProps({
         phases: {
           investigation: makePhaseState({ status: 'completed' }),
@@ -252,12 +269,13 @@ describe('PhaseGraph', () => {
         phaseOrder: ['investigation', 'test-design', 'implementation'],
         agentHistory: [makeHistory({ phase: 'investigation' })],
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalled()
     })
 
-    it('handles multiple agents in same layer', () => {
+    it('handles multiple agents in same layer', async () => {
       render(<PhaseGraph {...makeProps({
         phases: { implementation: makePhaseState({ status: 'in_progress' }) },
         phaseOrder: ['implementation'],
@@ -268,6 +286,7 @@ describe('PhaseGraph', () => {
           }),
         },
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
@@ -276,11 +295,12 @@ describe('PhaseGraph', () => {
   })
 
   describe('ReactFlow integration', () => {
-    it('renders ReactFlow with Background and Controls', () => {
+    it('renders ReactFlow with Background and Controls', async () => {
       render(<PhaseGraph {...makeProps({
         phases: { investigation: makePhaseState({ status: 'pending' }) },
         phaseOrder: ['investigation'],
       })} />)
+      await flushLayout()
 
       expect(screen.getByTestId('react-flow')).toBeInTheDocument()
       expect(screen.getByTestId('background')).toBeInTheDocument()
@@ -289,7 +309,7 @@ describe('PhaseGraph', () => {
   })
 
   describe('onAgentSelect callback', () => {
-    it('renders graph with onAgentSelect callback', () => {
+    it('renders graph with onAgentSelect callback', async () => {
       render(<PhaseGraph {...makeProps({
         phases: { investigation: makePhaseState({ status: 'in_progress' }) },
         phaseOrder: ['investigation'],
@@ -298,13 +318,14 @@ describe('PhaseGraph', () => {
         },
         onAgentSelect: vi.fn(),
       })} />)
+      await flushLayout()
 
       expect(screen.getByTestId('react-flow')).toBeInTheDocument()
     })
   })
 
   describe('completed workflow with history', () => {
-    it('centers graph when showing completed workflow', () => {
+    it('centers graph when showing completed workflow', async () => {
       render(<PhaseGraph {...makeProps({
         phases: {
           investigation: makePhaseState({ status: 'completed' }),
@@ -318,6 +339,7 @@ describe('PhaseGraph', () => {
           makeHistory({ phase: 'verification', agent_type: 'qa-verifier' }),
         ],
       })} />)
+      await flushLayout()
 
       act(() => { vi.advanceTimersByTime(50) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })

@@ -20,7 +20,8 @@ vi.mock('@xyflow/react', async () => {
 })
 
 vi.mock('./layout', () => ({
-  getLayoutedElements: (nodes: any[], edges: any[]) => ({ nodes, edges }),
+  getLayoutedElements: (nodes: any[], edges: any[]) => Promise.resolve({ nodes, edges }),
+  BASE_HEIGHT: 110,
 }))
 
 vi.mock('./AgentFlowNode', () => ({
@@ -80,6 +81,11 @@ function propsWithAgent(logPanelCollapsed?: boolean): PhaseGraphProps {
   })
 }
 
+/** Flush pending microtasks (async layout Promise) */
+async function flushLayout() {
+  await act(async () => {})
+}
+
 describe('PhaseGraph - Panel Toggle', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -90,8 +96,9 @@ describe('PhaseGraph - Panel Toggle', () => {
     vi.useRealTimers()
   })
 
-  it('calls fitView with correct options after 350ms delay on collapse', () => {
+  it('calls fitView with correct options after 350ms delay on collapse', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+    await flushLayout()
 
     // Initial mount fitView (50ms nodeKey timer)
     act(() => { vi.advanceTimersByTime(50) })
@@ -99,6 +106,7 @@ describe('PhaseGraph - Panel Toggle', () => {
 
     // Collapse panel
     rerender(<PhaseGraph {...propsWithAgent(true)} />)
+    await flushLayout()
 
     // Not called before 350ms
     act(() => { vi.advanceTimersByTime(349) })
@@ -110,32 +118,39 @@ describe('PhaseGraph - Panel Toggle', () => {
     expect(mockFitView).toHaveBeenCalledTimes(1)
   })
 
-  it('calls fitView after 350ms delay on expand', () => {
+  it('calls fitView after 350ms delay on expand', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(true)} />)
+    await flushLayout()
     act(() => { vi.advanceTimersByTime(50) })
     vi.clearAllMocks()
 
     rerender(<PhaseGraph {...propsWithAgent(false)} />)
+    await flushLayout()
 
     act(() => { vi.advanceTimersByTime(350) })
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
   })
 
-  it('handles multiple rapid toggles (each creates a timer)', () => {
+  it('handles multiple rapid toggles (each creates a timer)', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+    await flushLayout()
     act(() => { vi.advanceTimersByTime(50) })
     vi.clearAllMocks()
 
     rerender(<PhaseGraph {...propsWithAgent(true)} />)
+    await flushLayout()
     rerender(<PhaseGraph {...propsWithAgent(false)} />)
+    await flushLayout()
     rerender(<PhaseGraph {...propsWithAgent(true)} />)
+    await flushLayout()
 
     act(() => { vi.advanceTimersByTime(350) })
     expect(mockFitView.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('fires fitView independently for node changes and panel toggle', () => {
+  it('fires fitView independently for node changes and panel toggle', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+    await flushLayout()
     act(() => { vi.advanceTimersByTime(50) })
     vi.clearAllMocks()
 
@@ -149,6 +164,7 @@ describe('PhaseGraph - Panel Toggle', () => {
       },
       logPanelCollapsed: true,
     })} />)
+    await flushLayout()
 
     // Node change fires at 50ms
     act(() => { vi.advanceTimersByTime(50) })
@@ -159,13 +175,15 @@ describe('PhaseGraph - Panel Toggle', () => {
     expect(mockFitView).toHaveBeenCalledTimes(2)
   })
 
-  it('does not fire fitView on panel toggle when no nodes exist', () => {
+  it('does not fire fitView on panel toggle when no nodes exist', async () => {
     const props = makeProps({ phases: {}, phaseOrder: [], logPanelCollapsed: false })
     const { rerender } = render(<PhaseGraph {...props} />)
+    await flushLayout()
     act(() => { vi.advanceTimersByTime(50) })
     vi.clearAllMocks()
 
     rerender(<PhaseGraph {...props} logPanelCollapsed={true} />)
+    await flushLayout()
     act(() => { vi.advanceTimersByTime(400) })
 
     expect(mockFitView).not.toHaveBeenCalled()

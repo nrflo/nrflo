@@ -13,6 +13,7 @@ type Project struct {
 	RootPath        sql.NullString `json:"-"`
 	DefaultWorkflow sql.NullString `json:"-"`
 	DefaultBranch   sql.NullString `json:"-"`
+	UseGitWorktrees bool           `json:"use_git_worktrees"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 }
@@ -40,6 +41,7 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		RootPath        *string   `json:"root_path"`
 		DefaultWorkflow *string   `json:"default_workflow"`
 		DefaultBranch   *string   `json:"default_branch"`
+		UseGitWorktrees bool      `json:"use_git_worktrees"`
 		CreatedAt       time.Time `json:"created_at"`
 		UpdatedAt       time.Time `json:"updated_at"`
 	}{
@@ -48,6 +50,7 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		RootPath:        rootPath,
 		DefaultWorkflow: defaultWorkflow,
 		DefaultBranch:   defaultBranch,
+		UseGitWorktrees: p.UseGitWorktrees,
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
 	})

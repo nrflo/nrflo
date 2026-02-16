@@ -34,6 +34,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    root_path     TEXT                                                │
 │    default_workflow TEXT                                             │
 │    default_branch TEXT                                               │
+│    use_git_worktrees INTEGER NOT NULL DEFAULT 0                      │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │                                                                      │

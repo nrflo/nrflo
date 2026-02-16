@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN use_git_worktrees INTEGER NOT NULL DEFAULT 0;

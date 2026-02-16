@@ -29,13 +29,14 @@ func (r *ProjectRepo) Create(project *model.Project) error {
 	project.UpdatedAt = project.CreatedAt
 
 	_, err := r.db.Exec(`
-		INSERT INTO projects (id, name, root_path, default_workflow, default_branch, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO projects (id, name, root_path, default_workflow, default_branch, use_git_worktrees, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(project.ID),
 		project.Name,
 		project.RootPath,
 		project.DefaultWorkflow,
 		project.DefaultBranch,
+		project.UseGitWorktrees,
 		now,
 		now,
 	)
@@ -48,13 +49,14 @@ func (r *ProjectRepo) Get(id string) (*model.Project, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, name, root_path, default_workflow, default_branch, created_at, updated_at
+		SELECT id, name, root_path, default_workflow, default_branch, use_git_worktrees, created_at, updated_at
 		FROM projects WHERE LOWER(id) = LOWER(?)`, id).Scan(
 		&project.ID,
 		&project.Name,
 		&project.RootPath,
 		&project.DefaultWorkflow,
 		&project.DefaultBranch,
+		&project.UseGitWorktrees,
 		&createdAt,
 		&updatedAt,
 	)
@@ -84,7 +86,7 @@ func (r *ProjectRepo) Exists(id string) (bool, error) {
 // List retrieves all projects
 func (r *ProjectRepo) List() ([]*model.Project, error) {
 	rows, err := r.db.Query(`
-		SELECT id, name, root_path, default_workflow, default_branch, created_at, updated_at
+		SELECT id, name, root_path, default_workflow, default_branch, use_git_worktrees, created_at, updated_at
 		FROM projects
 		ORDER BY created_at DESC`)
 	if err != nil {
@@ -103,6 +105,7 @@ func (r *ProjectRepo) List() ([]*model.Project, error) {
 			&project.RootPath,
 			&project.DefaultWorkflow,
 			&project.DefaultBranch,
+			&project.UseGitWorktrees,
 			&createdAt,
 			&updatedAt,
 		)
@@ -125,6 +128,7 @@ type ProjectUpdateFields struct {
 	RootPath        *string
 	DefaultWorkflow *string
 	DefaultBranch   *string
+	UseGitWorktrees *bool
 }
 
 // Update updates a project
@@ -153,6 +157,10 @@ func (r *ProjectRepo) Update(id string, fields *ProjectUpdateFields) error {
 	if fields.DefaultBranch != nil {
 		updates = append(updates, "default_branch = ?")
 		args = append(args, *fields.DefaultBranch)
+	}
+	if fields.UseGitWorktrees != nil {
+		updates = append(updates, "use_git_worktrees = ?")
+		args = append(args, *fields.UseGitWorktrees)
 	}
 
 	if len(updates) == 0 {

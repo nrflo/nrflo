@@ -69,6 +69,20 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 
 	t.Cleanup(func() {
+		// Cancel all running orchestrations and wait for goroutines to exit
+		// before TempDir cleanup removes DB files out from under them.
+		orch.mu.Lock()
+		var doneChans []chan struct{}
+		for _, rs := range orch.runs {
+			rs.cancel()
+			if rs.done != nil {
+				doneChans = append(doneChans, rs.done)
+			}
+		}
+		orch.mu.Unlock()
+		for _, ch := range doneChans {
+			<-ch
+		}
 		hub.Stop()
 		pool.Close()
 	})
@@ -169,6 +183,25 @@ func (e *testEnv) subscribeWSClient(t *testing.T, id, ticketID string) chan []by
 	e.hub.Subscribe(client, e.project, ticketID)
 	time.Sleep(50 * time.Millisecond)
 	return ch
+}
+
+// stopAndWaitRun cancels a running orchestration and waits for its goroutine to exit.
+func (e *testEnv) stopAndWaitRun(t *testing.T, wfiID string) {
+	t.Helper()
+	e.orch.mu.Lock()
+	rs, ok := e.orch.runs[wfiID]
+	e.orch.mu.Unlock()
+	if !ok {
+		return
+	}
+	rs.cancel()
+	if rs.done != nil {
+		select {
+		case <-rs.done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timeout waiting for orchestration goroutine to exit")
+		}
+	}
 }
 
 // expectEvent waits for a specific WS event type on the channel.

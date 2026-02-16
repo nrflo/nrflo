@@ -57,6 +57,7 @@ type worktreeInfo struct {
 type runState struct {
 	cancel  context.CancelFunc
 	spawner *spawner.Spawner // nil between phases
+	done    chan struct{}     // closed when runLoop goroutine exits
 }
 
 // Orchestrator manages server-side workflow runs.
@@ -296,7 +297,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// the HTTP handler returns. Propagate the trx for log correlation.
 	orchCtx, cancel := context.WithCancel(logger.WithTrx(context.Background(), logger.TrxFromContext(ctx)))
 
-	rs := &runState{cancel: cancel}
+	rs := &runState{cancel: cancel, done: make(chan struct{})}
 	o.mu.Lock()
 	o.runs[wi.ID] = rs
 	o.mu.Unlock()
@@ -575,7 +576,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Create orchestration context detached from HTTP request context
 	orchCtx, cancel := context.WithCancel(logger.WithTrx(context.Background(), logger.TrxFromContext(ctx)))
-	rs := &runState{cancel: cancel}
+	rs := &runState{cancel: cancel, done: make(chan struct{})}
 	o.mu.Lock()
 	o.runs[wi.ID] = rs
 	o.mu.Unlock()
@@ -697,10 +698,18 @@ func (o *Orchestrator) runLoop(
 	startLayerIdx int,
 	wt *worktreeInfo,
 ) {
+	// Grab done channel before any race can occur
+	o.mu.Lock()
+	doneCh := o.runs[wfiID].done
+	o.mu.Unlock()
+
 	defer func() {
 		o.mu.Lock()
 		delete(o.runs, wfiID)
 		o.mu.Unlock()
+		if doneCh != nil {
+			close(doneCh)
+		}
 	}()
 
 	// Create shared pool for spawners in this orchestration run

@@ -307,13 +307,8 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 		t.Errorf("expected failed_session_id=sess-7, got %v", event.Data["failed_session_id"])
 	}
 
-	// Cleanup
-	env.orch.mu.Lock()
-	if rs, ok := env.orch.runs[wfiID]; ok {
-		rs.cancel()
-		delete(env.orch.runs, wfiID)
-	}
-	env.orch.mu.Unlock()
+	// Cleanup: cancel and wait for goroutine to finish
+	env.stopAndWaitRun(t, wfiID)
 }
 
 func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
@@ -393,13 +388,8 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 		t.Errorf("expected phase3=pending, got %s", phases["phase3"].Status)
 	}
 
-	// Cleanup
-	env.orch.mu.Lock()
-	if rs, ok := env.orch.runs[wfiID]; ok {
-		rs.cancel()
-		delete(env.orch.runs, wfiID)
-	}
-	env.orch.mu.Unlock()
+	// Cleanup: cancel and wait for goroutine to finish
+	env.stopAndWaitRun(t, wfiID)
 }
 
 func TestRetryFailedAgent_IncrementRetryCount(t *testing.T) {
@@ -466,13 +456,8 @@ func TestRetryFailedAgent_IncrementRetryCount(t *testing.T) {
 		t.Errorf("expected retry_count=2, got %d", wi.RetryCount)
 	}
 
-	// Cleanup
-	env.orch.mu.Lock()
-	if rs, ok := env.orch.runs[wfiID]; ok {
-		rs.cancel()
-		delete(env.orch.runs, wfiID)
-	}
-	env.orch.mu.Unlock()
+	// Cleanup: cancel and wait for goroutine to finish
+	env.stopAndWaitRun(t, wfiID)
 }
 
 func TestRetryFailedProjectAgent_HappyPath(t *testing.T) {
@@ -537,11 +522,6 @@ func TestRetryFailedProjectAgent_HappyPath(t *testing.T) {
 		t.Errorf("expected empty ticket_id for project scope, got %s", event.TicketID)
 	}
 
-	// Cleanup
-	env.orch.mu.Lock()
-	if rs, ok := env.orch.runs[wfiID]; ok {
-		rs.cancel()
-		delete(env.orch.runs, wfiID)
-	}
-	env.orch.mu.Unlock()
+	// Cleanup: cancel and wait for goroutine to finish
+	env.stopAndWaitRun(t, wfiID)
 }

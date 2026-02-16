@@ -112,6 +112,13 @@ nrworkflow findings append <ticket> <agent-type> <key> <value> -w <workflow> [--
 nrworkflow findings append <ticket> <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
 nrworkflow findings get <ticket> <agent-type> [key] -w <workflow> [--model <model>] [-k <key>...]
 nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow> [--model <model>]
+
+nrworkflow findings project-add <key> <value>
+nrworkflow findings project-add key1:val1 [key2:val2...]
+nrworkflow findings project-get [key] [-k <key>...]
+nrworkflow findings project-append <key> <value>
+nrworkflow findings project-append key1:val1 [key2:val2...]
+nrworkflow findings project-delete <key1> [key2...]
 ```
 
 ## Ticket CLI Commands

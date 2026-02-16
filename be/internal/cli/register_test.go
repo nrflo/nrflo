@@ -245,7 +245,7 @@ func TestTicketsSubcommands(t *testing.T) {
 
 // TestFindingsSubcommands verifies that findings subcommands are registered via init()
 func TestFindingsSubcommands(t *testing.T) {
-	expectedSubcommands := []string{"add", "get", "append", "delete"}
+	expectedSubcommands := []string{"add", "get", "append", "delete", "project-add", "project-get", "project-append", "project-delete"}
 	actualSubcommands := getCommandNames(findingsCmd)
 
 	for _, expected := range expectedSubcommands {
@@ -254,9 +254,9 @@ func TestFindingsSubcommands(t *testing.T) {
 		}
 	}
 
-	// Verify exact count: 4 subcommands
-	if len(actualSubcommands) != 4 {
-		t.Errorf("findingsCmd has %d subcommands, want 4. Subcommands: %v", len(actualSubcommands), actualSubcommands)
+	// Verify exact count: 8 subcommands
+	if len(actualSubcommands) != 8 {
+		t.Errorf("findingsCmd has %d subcommands, want 8. Subcommands: %v", len(actualSubcommands), actualSubcommands)
 	}
 }
 

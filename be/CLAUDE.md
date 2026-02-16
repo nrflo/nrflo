@@ -14,6 +14,7 @@ be/
 │   │   ├── serve.go             # HTTP API server (auto-migrates DB)
 │   │   ├── agent.go             # agent complete/fail/continue (agent-only)
 │   │   ├── findings.go          # findings add/append/get/delete (agent-only)
+│   │   ├── findings_project.go  # project-level findings (project-add/get/append/delete)
 │   │   ├── tickets.go           # tickets list/get/create (HTTP)
 │   │   ├── tickets_update.go    # tickets update/close/reopen/delete (HTTP)
 │   │   └── deps.go              # deps list/add/remove (HTTP)
@@ -168,7 +169,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 - **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **Auto-migration** — database schema is automatically migrated on startup
 
-The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.complete/fail/continue/callback`, and `ws.broadcast` methods are supported.
+The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.complete/fail/continue/callback`, and `ws.broadcast` methods are supported.
 
 ## Package Documentation
 

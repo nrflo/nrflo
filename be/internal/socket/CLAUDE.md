@@ -29,6 +29,12 @@ The socket uses a **JSON-RPC style protocol** (line-delimited JSON) at `/tmp/nrw
 | `findings.append` | Append to an existing finding value |
 | `findings.append-bulk` | Append multiple findings at once |
 | `findings.delete` | Delete specific finding keys |
+| `project_findings.add` | Add a single project-level finding |
+| `project_findings.add-bulk` | Add multiple project-level findings |
+| `project_findings.get` | Get project-level findings |
+| `project_findings.append` | Append to a project-level finding |
+| `project_findings.append-bulk` | Append multiple project-level findings |
+| `project_findings.delete` | Delete project-level finding keys |
 | `agent.complete` | Mark agent as completed (pass); broadcasts with `session_id`, `model_id`, `result` |
 | `agent.fail` | Mark agent as failed; broadcasts with `session_id`, `model_id`, `result` |
 | `agent.continue` | Mark agent for continuation; broadcasts with `session_id`, `model_id` |

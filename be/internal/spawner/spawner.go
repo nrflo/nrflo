@@ -295,12 +295,14 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 	promptFile.Close()
 
-	// Initial prompt
+	// Initial prompt (skipped for stdin-based adapters — the template IS the full prompt)
 	var initialPrompt string
-	if req.IsProjectScope() {
-		initialPrompt = fmt.Sprintf(`Begin working on project %s. Follow the workflow steps in your system prompt.`, req.ProjectID)
-	} else {
-		initialPrompt = fmt.Sprintf(`Begin working on ticket %s. Follow the workflow steps in your system prompt.`, req.TicketID)
+	if !adapter.UsesStdinPrompt() {
+		if req.IsProjectScope() {
+			initialPrompt = fmt.Sprintf(`Begin working on project %s. Follow the workflow steps in your system prompt.`, req.ProjectID)
+		} else {
+			initialPrompt = fmt.Sprintf(`Begin working on ticket %s. Follow the workflow steps in your system prompt.`, req.TicketID)
+		}
 	}
 
 	// Prepare spawn options
@@ -326,8 +328,22 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	// Build command using adapter
 	cmd := adapter.BuildCommand(opts)
 
+	// For stdin-based adapters, pipe the prompt file to stdin
+	var stdinFile *os.File
+	if adapter.UsesStdinPrompt() {
+		stdinFile, err = os.Open(promptFile.Name())
+		if err != nil {
+			os.Remove(promptFile.Name())
+			return nil, fmt.Errorf("failed to open prompt file for stdin: %w", err)
+		}
+		cmd.Stdin = stdinFile
+	}
+
 	// Capture spawn command for debugging/replay
 	spawnCommand := strings.Join(cmd.Args, " ")
+	if adapter.UsesStdinPrompt() {
+		spawnCommand += " < " + promptFile.Name()
+	}
 
 	// Create pipes
 	stdout, err := cmd.StdoutPipe()
@@ -343,8 +359,15 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 
 	// Start process
 	if err := cmd.Start(); err != nil {
+		if stdinFile != nil {
+			stdinFile.Close()
+		}
 		os.Remove(promptFile.Name())
 		return nil, fmt.Errorf("failed to start agent: %w", err)
+	}
+	// Close stdin file — child process has its own fd copy
+	if stdinFile != nil {
+		stdinFile.Close()
 	}
 
 	// Create process info

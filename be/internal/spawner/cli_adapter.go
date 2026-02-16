@@ -26,6 +26,10 @@ type CLIAdapter interface {
 	// SupportsResume returns true if the CLI supports resuming a session
 	SupportsResume() bool
 
+	// UsesStdinPrompt returns true if the CLI reads the prompt from stdin
+	// instead of a positional argument (e.g., opencode run < prompt.txt)
+	UsesStdinPrompt() bool
+
 	// BuildResumeCommand creates the exec.Cmd for resuming a session with a prompt
 	BuildResumeCommand(opts ResumeOptions) *exec.Cmd
 }
@@ -118,6 +122,10 @@ func (a *ClaudeAdapter) SupportsResume() bool {
 	return true
 }
 
+func (a *ClaudeAdapter) UsesStdinPrompt() bool {
+	return false
+}
+
 func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 	args := []string{
 		"--resume", opts.SessionID,
@@ -149,9 +157,6 @@ func (a *OpencodeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 	model := a.MapModel(opts.Model)
 	reasoningEffort := a.GetReasoningEffort(opts.Model)
 
-	// Opencode doesn't support --append-system-prompt-file, so we pass full prompt as message
-	fullPrompt := opts.Prompt + "\n\n" + opts.InitialPrompt
-
 	args := []string{
 		"run",
 		"--format", "json",
@@ -163,7 +168,7 @@ func (a *OpencodeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		args = append(args, "--variant", reasoningEffort)
 	}
 
-	args = append(args, fullPrompt)
+	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
 
 	cmd := exec.Command("opencode", args...)
 	cmd.Dir = opts.WorkDir
@@ -221,11 +226,15 @@ func (a *OpencodeAdapter) SupportsSessionID() bool {
 }
 
 func (a *OpencodeAdapter) SupportsSystemPromptFile() bool {
-	return false // Must pass prompt inline
+	return false // Prompt piped via stdin
 }
 
 func (a *OpencodeAdapter) SupportsResume() bool {
 	return false
+}
+
+func (a *OpencodeAdapter) UsesStdinPrompt() bool {
+	return true
 }
 
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
@@ -310,6 +319,10 @@ func (a *CodexAdapter) SupportsSystemPromptFile() bool {
 }
 
 func (a *CodexAdapter) SupportsResume() bool {
+	return false
+}
+
+func (a *CodexAdapter) UsesStdinPrompt() bool {
 	return false
 }
 

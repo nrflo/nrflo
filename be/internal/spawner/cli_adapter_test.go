@@ -198,6 +198,11 @@ func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
 		}
 	}
 
+	// Prompt must NOT appear in args — it's piped via stdin
+	if strings.Contains(args, "System prompt") || strings.Contains(args, "Do the task") {
+		t.Errorf("Command args should not contain prompt text (stdin adapter): %s", args)
+	}
+
 	// Check working directory
 	if cmd.Dir != "/tmp" {
 		t.Errorf("cmd.Dir = %q, want '/tmp'", cmd.Dir)
@@ -226,5 +231,31 @@ func TestOpencodeAdapter_BuildCommand_WithoutVariant(t *testing.T) {
 	// Should contain correct model
 	if !strings.Contains(args, "anthropic/claude-sonnet-4-5") {
 		t.Errorf("Command args missing anthropic/claude-sonnet-4-5: %s", args)
+	}
+
+	// Prompt must NOT appear in args
+	if strings.Contains(args, "System prompt") || strings.Contains(args, "Do the task") {
+		t.Errorf("Command args should not contain prompt text (stdin adapter): %s", args)
+	}
+}
+
+func TestUsesStdinPrompt(t *testing.T) {
+	tests := []struct {
+		cli  string
+		want bool
+	}{
+		{"claude", false},
+		{"opencode", true},
+		{"codex", false},
+	}
+
+	for _, tt := range tests {
+		adapter, err := GetCLIAdapter(tt.cli)
+		if err != nil {
+			t.Fatalf("GetCLIAdapter(%q) error: %v", tt.cli, err)
+		}
+		if got := adapter.UsesStdinPrompt(); got != tt.want {
+			t.Errorf("%s.UsesStdinPrompt() = %v, want %v", tt.cli, got, tt.want)
+		}
 	}
 }

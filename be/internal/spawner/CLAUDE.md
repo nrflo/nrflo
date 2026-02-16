@@ -16,6 +16,7 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │    ├── SupportsSessionID() bool                                     │
 │    ├── SupportsSystemPromptFile() bool                              │
 │    ├── SupportsResume() bool                                        │
+│    ├── UsesStdinPrompt() bool                                       │
 │    └── BuildResumeCommand(opts ResumeOptions) *exec.Cmd             │
 │                                                                      │
 │  Implementations:                                                    │
@@ -36,7 +37,8 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  │   ├── Reasoning: --variant (max, high, medium, low)         │    │
 │  │   │   └── gpt_max → max, gpt_high → high, etc.              │    │
 │  │   ├── SessionID: ✗ (generates own)                          │    │
-│  │   ├── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  │   ├── SystemPromptFile: ✗                                   │    │
+│  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
 │  │   └── Resume: ✗                                             │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────────────────────────────┐    │

@@ -46,7 +46,7 @@ export function RunWorkflowForm({
   }
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-xl space-y-4">
       <div>
         <label htmlFor="project-workflow-select" className="block text-sm font-medium mb-1.5">Workflow</label>
         <Select

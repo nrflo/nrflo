@@ -427,13 +427,8 @@ func TestRetryFailedAgent_IncrementRetryCount(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Stop orchestration
-	env.orch.mu.Lock()
-	if rs, ok := env.orch.runs[wfiID]; ok {
-		rs.cancel()
-		delete(env.orch.runs, wfiID)
-	}
-	env.orch.mu.Unlock()
+	// Stop orchestration and wait for goroutine to finish
+	env.stopAndWaitRun(t, wfiID)
 
 	// Verify retry_count = 1
 	wi := env.getWorkflowInstance(t, wfiID)

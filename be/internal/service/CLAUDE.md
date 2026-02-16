@@ -21,6 +21,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `chain_append.go` | Append tickets to running chains |
 | `daily_stats.go` | Daily stats computation from source tables |
 | `git.go` | Git operations: paginated commit listing, commit detail with diff (os/exec, no DB) |
+| `worktree.go` | Git worktree lifecycle: Setup (branch+worktree creation), MergeAndCleanup, Cleanup (os/exec, no DB) |
 
 ## Workflow Types
 

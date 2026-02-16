@@ -87,6 +87,16 @@ A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earl
 | `orchestrator.go` | Layer-grouped concurrent phase execution, cancellation support |
 | `chain_runner.go` | Sequential chain execution runner |
 
+## Git Worktree Lifecycle
+
+When a project has `use_git_worktrees=true` and `default_branch` configured, the orchestrator creates an isolated git worktree for each workflow run:
+
+- **Setup** (`Start`/`retryFailed`): Creates a branch (named after ticket ID) and worktree at `/tmp/nrworkflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
+- **Success** (`runLoop` completion): Merges the branch into `default_branch`, removes worktree and branch. If merge fails (conflicts), logs error and preserves branch for manual resolution.
+- **Failure/Cancellation** (`runLoop` defer): Force-removes worktree and branch without merging.
+
+The `worktreeInfo` struct in `runLoop` tracks original project root, worktree path, branch name, and default branch. A `worktreeHandled` flag prevents the cleanup defer from running after a successful merge.
+
 ## Ticket Status Management
 
 The orchestrator manages ticket status transitions for ticket-scoped workflows:
@@ -102,6 +112,7 @@ Each transition broadcasts `ws.EventTicketUpdated` so the frontend sidebar updat
 Unit tests in-package:
 - `orchestrator_ticket_status_test.go` — SetInProgress, markFailed ticket reopen, WS broadcasts
 - `orchestrator_mark_completed_test.go` — markCompleted ticket close, project scope, WS broadcasts
+- `orchestrator_worktree_test.go` — worktree setup/merge/cleanup lifecycle, project scope branch naming
 
 Integration tests in `internal/integration/`:
 - `chain_epic_test.go` — chain epic auto-close

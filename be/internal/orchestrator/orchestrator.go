@@ -45,6 +45,14 @@ type RunResult struct {
 	Status     string `json:"status"`
 }
 
+// worktreeInfo stores git worktree metadata for a workflow run.
+type worktreeInfo struct {
+	projectRoot   string // original project root (for merge commands)
+	worktreePath  string
+	branchName    string
+	defaultBranch string
+}
+
 // runState tracks a running orchestration's cancel func and active spawner.
 type runState struct {
 	cancel  context.CancelFunc
@@ -68,6 +76,29 @@ func New(dataPath string, wsHub *ws.Hub, clk clock.Clock) *Orchestrator {
 		wsHub:    wsHub,
 		clock:    clk,
 	}
+}
+
+// setupWorktree creates a git worktree for a workflow run if the project has
+// worktrees enabled. Returns worktreeInfo (nil if disabled) and the effective
+// projectRoot (worktree path if enabled, original path if disabled).
+func setupWorktree(project *model.Project, projectRoot, branchName string) (*worktreeInfo, string, error) {
+	if !project.UseGitWorktrees || !project.DefaultBranch.Valid {
+		return nil, projectRoot, nil
+	}
+	defaultBranch := project.DefaultBranch.String
+
+	wtService := &service.WorktreeService{}
+	worktreePath, err := wtService.Setup(projectRoot, defaultBranch, branchName)
+	if err != nil {
+		return nil, "", fmt.Errorf("worktree setup failed: %w", err)
+	}
+	wt := &worktreeInfo{
+		projectRoot:   projectRoot,
+		worktreePath:  worktreePath,
+		branchName:    branchName,
+		defaultBranch: defaultBranch,
+	}
+	return wt, worktreePath, nil
 }
 
 // Start begins an orchestrated workflow run. It initializes the workflow
@@ -103,6 +134,27 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, fmt.Errorf("project '%s' has no root_path configured", req.ProjectID)
 	}
 	projectRoot := project.RootPath.String
+
+	// Setup git worktree if enabled
+	branchName := req.TicketID
+	if req.IsProjectScope() {
+		branchName = "project-" + uuid.New().String()[:8]
+	}
+	wt, projectRoot, err := setupWorktree(project, projectRoot, branchName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Clean up worktree if we fail before launching runLoop
+	launched := false
+	if wt != nil {
+		defer func() {
+			if !launched {
+				wtService := &service.WorktreeService{}
+				wtService.Cleanup(wt.projectRoot, wt.branchName, wt.worktreePath)
+			}
+		}()
+	}
 
 	// Load DB workflow definitions and agent definitions
 	database, err = db.Open(o.dataPath)
@@ -255,7 +307,8 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	}))
 
 	// Run orchestration loop in goroutine
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0)
+	launched = true
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt)
 
 	return &RunResult{
 		InstanceID: wi.ID,
@@ -427,6 +480,27 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}
 	projectRoot := project.RootPath.String
 
+	// Setup git worktree if enabled
+	branchName := ticketID
+	if scopeType == "project" {
+		branchName = "project-" + uuid.New().String()[:8]
+	}
+	wt, projectRoot, wtErr := setupWorktree(project, projectRoot, branchName)
+	if wtErr != nil {
+		return wtErr
+	}
+
+	// Clean up worktree if we fail before launching runLoop
+	launched := false
+	if wt != nil {
+		defer func() {
+			if !launched {
+				wtService := &service.WorktreeService{}
+				wtService.Cleanup(wt.projectRoot, wt.branchName, wt.worktreePath)
+			}
+		}()
+	}
+
 	// Load workflow/agent definitions
 	wfRepo := repo.NewWorkflowRepo(database, o.clock)
 	dbWorkflows, err := wfRepo.List(projectID)
@@ -514,7 +588,8 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		"failed_session_id": sessionID,
 	}))
 
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx)
+	launched = true
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt)
 
 	return nil
 }
@@ -620,6 +695,7 @@ func (o *Orchestrator) runLoop(
 	agents map[string]spawner.AgentConfig,
 	svcWf service.SpawnerWorkflowDef,
 	startLayerIdx int,
+	wt *worktreeInfo,
 ) {
 	defer func() {
 		o.mu.Lock()
@@ -635,6 +711,21 @@ func (o *Orchestrator) runLoop(
 		return
 	}
 	defer pool.Close()
+
+	// Worktree cleanup on failure/cancellation (deferred after pool so git commands still work)
+	worktreeHandled := false
+	if wt != nil {
+		defer func() {
+			if !worktreeHandled {
+				wtService := &service.WorktreeService{}
+				if err := wtService.Cleanup(wt.projectRoot, wt.branchName, wt.worktreePath); err != nil {
+					logger.Error(ctx, "worktree cleanup failed", "branch", wt.branchName, "err", err)
+				} else {
+					logger.Info(ctx, "worktree cleaned up on failure/cancel", "branch", wt.branchName)
+				}
+			}
+		}()
+	}
 
 	target := req.TicketID
 	if req.IsProjectScope() {
@@ -799,6 +890,24 @@ func (o *Orchestrator) runLoop(
 
 	// All layers completed
 	logger.Info(ctx, "workflow completed", "workflow", req.WorkflowName, "target", target)
+
+	// Merge worktree branch on success
+	if wt != nil {
+		wtService := &service.WorktreeService{}
+		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
+			logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution", "branch", wt.branchName, "err", err)
+			o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+				"instance_id":    wfiID,
+				"merge_error":    err.Error(),
+				"branch":         wt.branchName,
+				"worktree_path":  wt.worktreePath,
+			}))
+		} else {
+			logger.Info(ctx, "worktree merged and cleaned up", "branch", wt.branchName)
+		}
+		worktreeHandled = true
+	}
+
 	o.markCompleted(wfiID, req)
 }
 

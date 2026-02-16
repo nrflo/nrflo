@@ -126,7 +126,7 @@ func TestWorktreeSetup_EnabledWithDefaultBranch(t *testing.T) {
 	}
 
 	// Test setupWorktree
-	wt, effectiveRoot, err := setupWorktree(project, gitRepo, ticketID)
+	wt, effectiveRoot, err := setupWorktree(project, gitRepo, ticketID, "ticket")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}
@@ -214,7 +214,7 @@ func TestWorktreeSetup_DisabledWhenFlagFalse(t *testing.T) {
 		t.Fatalf("failed to get project: %v", err)
 	}
 
-	wt, effectiveRoot, err := setupWorktree(project, gitRepo, ticketID)
+	wt, effectiveRoot, err := setupWorktree(project, gitRepo, ticketID, "ticket")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestWorktreeSetup_DisabledWhenNoDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to get project: %v", err)
 	}
 
-	wt, effectiveRoot, err := setupWorktree(project, gitRepo, ticketID)
+	wt, effectiveRoot, err := setupWorktree(project, gitRepo, ticketID, "ticket")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}
@@ -295,7 +295,7 @@ func TestWorktreeSetup_DisabledWhenNoDefaultBranch(t *testing.T) {
 	}
 }
 
-// TestWorktreeSetup_ProjectScope verifies branch naming for project-scoped workflows.
+// TestWorktreeSetup_ProjectScope verifies that project-scoped workflows skip worktree creation.
 func TestWorktreeSetup_ProjectScope(t *testing.T) {
 	gitRepo := setupGitRepo(t)
 	defer os.RemoveAll(gitRepo)
@@ -342,26 +342,19 @@ func TestWorktreeSetup_ProjectScope(t *testing.T) {
 		t.Fatalf("failed to get project: %v", err)
 	}
 
-	// Project scope uses "project-<uuid>" pattern
-	branchName := "project-abc123"
-
-	wt, _, err := setupWorktree(project, gitRepo, branchName)
+	// Project scope should skip worktree even when UseGitWorktrees=true
+	wt, effectiveRoot, err := setupWorktree(project, gitRepo, "unused-branch", "project")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}
 
-	if wt.branchName != branchName {
-		t.Errorf("branchName mismatch: got %s, want %s", wt.branchName, branchName)
+	if wt != nil {
+		t.Error("worktreeInfo should be nil for project-scoped workflows")
 	}
 
-	// Verify branch has "project-" prefix
-	if !strings.HasPrefix(wt.branchName, "project-") {
-		t.Errorf("project scope branch should have 'project-' prefix, got: %s", wt.branchName)
+	if effectiveRoot != gitRepo {
+		t.Errorf("effectiveRoot should be original project root for project scope, got: %s", effectiveRoot)
 	}
-
-	// Clean up
-	wtSvc := &service.WorktreeService{}
-	wtSvc.Cleanup(wt.projectRoot, wt.branchName, wt.worktreePath)
 }
 
 // TestRunLoop_WorktreeCleanupOnFailure verifies worktree cleanup when workflow fails.
@@ -414,7 +407,7 @@ func TestRunLoop_WorktreeCleanupOnFailure(t *testing.T) {
 		t.Fatalf("failed to get project: %v", err)
 	}
 
-	wt, _, err := setupWorktree(project, gitRepo, ticketID)
+	wt, _, err := setupWorktree(project, gitRepo, ticketID, "ticket")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}
@@ -494,7 +487,7 @@ func TestRunLoop_WorktreeMergeOnSuccess(t *testing.T) {
 		t.Fatalf("failed to get project: %v", err)
 	}
 
-	wt, worktreePath, err := setupWorktree(project, gitRepo, ticketID)
+	wt, worktreePath, err := setupWorktree(project, gitRepo, ticketID, "ticket")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}
@@ -597,7 +590,7 @@ func TestRunLoop_WorktreeMergeConflict(t *testing.T) {
 		t.Fatalf("failed to get project: %v", err)
 	}
 
-	wt, worktreePath, err := setupWorktree(project, gitRepo, ticketID)
+	wt, worktreePath, err := setupWorktree(project, gitRepo, ticketID, "ticket")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}
@@ -709,7 +702,7 @@ func TestWorktreeCleanup_Idempotent(t *testing.T) {
 		t.Fatalf("failed to get project: %v", err)
 	}
 
-	wt, _, err := setupWorktree(project, gitRepo, ticketID)
+	wt, _, err := setupWorktree(project, gitRepo, ticketID, "ticket")
 	if err != nil {
 		t.Fatalf("setupWorktree failed: %v", err)
 	}

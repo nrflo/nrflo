@@ -89,9 +89,11 @@ A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earl
 
 ## Git Worktree Lifecycle
 
-When a project has `use_git_worktrees=true` and `default_branch` configured, the orchestrator creates an isolated git worktree for each workflow run:
+Worktrees are only used for **ticket-scoped** workflows. Project-scoped workflows always run in the original project root, regardless of `use_git_worktrees` setting.
 
-- **Setup** (`Start`/`retryFailed`): Creates a branch (named after ticket ID) and worktree at `/tmp/nrworkflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
+When a project has `use_git_worktrees=true` and `default_branch` configured, the orchestrator creates an isolated git worktree for each ticket-scoped workflow run:
+
+- **Setup** (`Start`/`retryFailed`): `setupWorktree()` returns early with `nil` worktree for project scope. For ticket scope, creates a branch (named after ticket ID) and worktree at `/tmp/nrworkflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
 - **Success** (`runLoop` completion): Merges the branch into `default_branch`, removes worktree and branch. If merge fails (conflicts), logs error and preserves branch for manual resolution.
 - **Failure/Cancellation** (`runLoop` defer): Force-removes worktree and branch without merging.
 
@@ -112,7 +114,7 @@ Each transition broadcasts `ws.EventTicketUpdated` so the frontend sidebar updat
 Unit tests in-package:
 - `orchestrator_ticket_status_test.go` — SetInProgress, markFailed ticket reopen, WS broadcasts
 - `orchestrator_mark_completed_test.go` — markCompleted ticket close, project scope, WS broadcasts
-- `orchestrator_worktree_test.go` — worktree setup/merge/cleanup lifecycle, project scope branch naming
+- `orchestrator_worktree_test.go` — worktree setup/merge/cleanup lifecycle, project scope skips worktree
 
 Integration tests in `internal/integration/`:
 - `chain_epic_test.go` — chain epic auto-close

@@ -82,7 +82,10 @@ func New(dataPath string, wsHub *ws.Hub, clk clock.Clock) *Orchestrator {
 // setupWorktree creates a git worktree for a workflow run if the project has
 // worktrees enabled. Returns worktreeInfo (nil if disabled) and the effective
 // projectRoot (worktree path if enabled, original path if disabled).
-func setupWorktree(project *model.Project, projectRoot, branchName string) (*worktreeInfo, string, error) {
+func setupWorktree(project *model.Project, projectRoot, branchName, scopeType string) (*worktreeInfo, string, error) {
+	if scopeType == "project" {
+		return nil, projectRoot, nil
+	}
 	if !project.UseGitWorktrees || !project.DefaultBranch.Valid {
 		return nil, projectRoot, nil
 	}
@@ -138,10 +141,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Setup git worktree if enabled
 	branchName := req.TicketID
-	if req.IsProjectScope() {
-		branchName = "project-" + uuid.New().String()[:8]
-	}
-	wt, projectRoot, err := setupWorktree(project, projectRoot, branchName)
+	wt, projectRoot, err := setupWorktree(project, projectRoot, branchName, req.ScopeType)
 	if err != nil {
 		return nil, err
 	}
@@ -483,10 +483,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Setup git worktree if enabled
 	branchName := ticketID
-	if scopeType == "project" {
-		branchName = "project-" + uuid.New().String()[:8]
-	}
-	wt, projectRoot, wtErr := setupWorktree(project, projectRoot, branchName)
+	wt, projectRoot, wtErr := setupWorktree(project, projectRoot, branchName, scopeType)
 	if wtErr != nil {
 		return wtErr
 	}

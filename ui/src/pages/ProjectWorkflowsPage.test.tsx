@@ -67,6 +67,20 @@ vi.mock('./WorkflowTabContent', () => ({
   ),
 }))
 
+vi.mock('@/components/workflow/CompletedAgentsTable', () => ({
+  CompletedAgentsTable: (props: any) => (
+    <div data-testid="completed-agents-table">
+      <div data-testid="completed-agents-count">{props.agentHistory?.length ?? 0}</div>
+      <div data-testid="completed-sessions-count">{props.sessions?.length ?? 0}</div>
+      <div data-testid="show-workflow-column">{String(!!props.showWorkflowColumn)}</div>
+    </div>
+  ),
+}))
+
+vi.mock('@/components/workflow/AgentLogPanel', () => ({
+  AgentLogPanel: () => <div data-testid="agent-log-panel" />,
+}))
+
 const sampleWorkflowState: WorkflowState = {
   workflow: 'feature',
   instance_id: 'instance-1',
@@ -492,8 +506,36 @@ describe('ProjectWorkflowsPage', () => {
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('workflows-count').textContent).toBe('2')
-        expect(screen.getByTestId('displayed-status').textContent).toBe('completed')
+        // Completed tab renders CompletedAgentsTable directly (not WorkflowTabContent)
+        expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
+        // Both completed instances have 1 agent_history entry each = 2 total
+        expect(screen.getByTestId('completed-agents-count').textContent).toBe('2')
+      })
+    })
+
+    it('passes showWorkflowColumn=true to CompletedAgentsTable on Completed tab', async () => {
+      const user = userEvent.setup()
+      const completedWorkflowResponse: ProjectWorkflowResponse = {
+        project_id: 'test-project',
+        has_workflow: true,
+        state: sampleCompletedWorkflowState,
+        workflows: ['bugfix'],
+        all_workflows: {
+          'instance-2': sampleCompletedWorkflowState,
+        },
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: completedWorkflowResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      await user.click(screen.getByRole('button', { name: /Completed/ }))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('show-workflow-column').textContent).toBe('true')
       })
     })
 
@@ -529,8 +571,9 @@ describe('ProjectWorkflowsPage', () => {
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('workflows-count').textContent).toBe('1')
-        expect(screen.getByTestId('displayed-status').textContent).toBe('project_completed')
+        // Completed tab renders CompletedAgentsTable with merged agents
+        expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
+        expect(screen.getByTestId('completed-agents-count').textContent).toBe('1')
       })
     })
   })
@@ -560,11 +603,13 @@ describe('ProjectWorkflowsPage', () => {
       await user.click(screen.getByRole('button', { name: /Running/ }))
       expect(screen.getByTestId('displayed-workflow').textContent).toBe('feature')
 
-      // Switch to Completed tab
+      // Switch to Completed tab — now renders CompletedAgentsTable directly
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('displayed-workflow').textContent).toBe('bugfix')
+        expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
+        // WorkflowTabContent should no longer be rendered
+        expect(screen.queryByTestId('workflow-tab-content')).not.toBeInTheDocument()
       })
     })
   })

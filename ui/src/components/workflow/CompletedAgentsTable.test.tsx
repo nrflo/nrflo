@@ -76,6 +76,8 @@ describe('CompletedAgentsTable', () => {
           phase: 'investigation',
           model_id: 'claude-opus-4-6',
           result: 'pass',
+          started_at: '2026-01-01T00:00:00Z',
+          ended_at: '2026-01-01T00:02:00Z',
           duration_sec: 120,
         }),
       ]
@@ -372,8 +374,32 @@ describe('CompletedAgentsTable', () => {
   })
 
   describe('duration formatting', () => {
-    it('formats duration in minutes and seconds', () => {
-      const history = [makeHistoryEntry({ duration_sec: 125 })]
+    it('uses formatElapsedTime when started_at and ended_at are present', () => {
+      const history = [makeHistoryEntry({
+        started_at: '2026-01-01T00:00:00Z',
+        ended_at: '2026-01-01T00:02:05Z',
+        duration_sec: 0,
+      })]
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText('2m 5s')).toBeInTheDocument()
+    })
+
+    it('falls back to formatDuration when timestamps are missing', () => {
+      const history = [makeHistoryEntry({
+        started_at: undefined,
+        ended_at: undefined,
+        duration_sec: 125,
+      })]
       const sessions = [makeSession()]
       const onAgentSelect = vi.fn()
 
@@ -389,7 +415,11 @@ describe('CompletedAgentsTable', () => {
     })
 
     it('formats duration with only minutes when no remainder', () => {
-      const history = [makeHistoryEntry({ duration_sec: 120 })]
+      const history = [makeHistoryEntry({
+        started_at: '2026-01-01T00:00:00Z',
+        ended_at: '2026-01-01T00:02:00Z',
+        duration_sec: 0,
+      })]
       const sessions = [makeSession()]
       const onAgentSelect = vi.fn()
 
@@ -405,7 +435,11 @@ describe('CompletedAgentsTable', () => {
     })
 
     it('formats duration with only seconds when less than a minute', () => {
-      const history = [makeHistoryEntry({ duration_sec: 45 })]
+      const history = [makeHistoryEntry({
+        started_at: '2026-01-01T00:00:00Z',
+        ended_at: '2026-01-01T00:00:45Z',
+        duration_sec: 0,
+      })]
       const sessions = [makeSession()]
       const onAgentSelect = vi.fn()
 
@@ -420,8 +454,12 @@ describe('CompletedAgentsTable', () => {
       expect(screen.getByText('45s')).toBeInTheDocument()
     })
 
-    it('displays 0s for undefined duration', () => {
-      const history = [makeHistoryEntry({ duration_sec: undefined })]
+    it('displays 0s for undefined duration and missing timestamps', () => {
+      const history = [makeHistoryEntry({
+        started_at: undefined,
+        ended_at: undefined,
+        duration_sec: undefined,
+      })]
       const sessions = [makeSession()]
       const onAgentSelect = vi.fn()
 
@@ -436,8 +474,12 @@ describe('CompletedAgentsTable', () => {
       expect(screen.getByText('0s')).toBeInTheDocument()
     })
 
-    it('displays 0s for zero duration', () => {
-      const history = [makeHistoryEntry({ duration_sec: 0 })]
+    it('displays 0s for zero duration and missing timestamps', () => {
+      const history = [makeHistoryEntry({
+        started_at: undefined,
+        ended_at: undefined,
+        duration_sec: 0,
+      })]
       const sessions = [makeSession()]
       const onAgentSelect = vi.fn()
 
@@ -716,6 +758,205 @@ describe('CompletedAgentsTable', () => {
       expect(headerRow.className).toContain('text-muted-foreground')
       expect(headerRow.className).toContain('border-b')
       expect(headerRow.className).toContain('border-border')
+    })
+  })
+
+  describe('pagination', () => {
+    it('shows pagination controls when more than 20 agents', () => {
+      const history = Array.from({ length: 25 }, (_, i) =>
+        makeHistoryEntry({
+          agent_id: `a${i}`,
+          agent_type: `agent-${i}`,
+          session_id: `session-${i}`,
+          ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
+        })
+      )
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      // Should show pagination controls
+      expect(screen.getByText(/1–20 of 25/)).toBeInTheDocument()
+
+      // Should show prev/next buttons
+      const buttons = screen.getAllByRole('button')
+      const prevButton = buttons.find(b => b.querySelector('svg'))
+      expect(prevButton).toBeDefined()
+    })
+
+    it('displays only 20 agents per page', () => {
+      const history = Array.from({ length: 25 }, (_, i) =>
+        makeHistoryEntry({
+          agent_id: `a${i}`,
+          agent_type: `agent-${i}`,
+          session_id: `session-${i}`,
+          ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
+        })
+      )
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const rows = document.querySelectorAll('tbody tr')
+      expect(rows).toHaveLength(20)
+    })
+
+    it('navigates to next page when clicking next button', async () => {
+      const user = userEvent.setup()
+      const history = Array.from({ length: 25 }, (_, i) =>
+        makeHistoryEntry({
+          agent_id: `a${i}`,
+          agent_type: `agent-${i}`,
+          session_id: `session-${i}`,
+          ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
+        })
+      )
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.getByText(/1–20 of 25/)).toBeInTheDocument()
+
+      // Click next button (second button)
+      const buttons = screen.getAllByRole('button')
+      const nextButton = buttons[buttons.length - 1]
+      await user.click(nextButton)
+
+      expect(screen.getByText(/21–25 of 25/)).toBeInTheDocument()
+      const rows = document.querySelectorAll('tbody tr')
+      expect(rows).toHaveLength(5)
+    })
+
+    it('navigates back to previous page when clicking prev button', async () => {
+      const user = userEvent.setup()
+      const history = Array.from({ length: 25 }, (_, i) =>
+        makeHistoryEntry({
+          agent_id: `a${i}`,
+          agent_type: `agent-${i}`,
+          session_id: `session-${i}`,
+          ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
+        })
+      )
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      // Go to page 2
+      const buttons = screen.getAllByRole('button')
+      await user.click(buttons[buttons.length - 1])
+
+      expect(screen.getByText(/21–25 of 25/)).toBeInTheDocument()
+
+      // Click prev button (first button)
+      const updatedButtons = screen.getAllByRole('button')
+      await user.click(updatedButtons[updatedButtons.length - 2])
+
+      expect(screen.getByText(/1–20 of 25/)).toBeInTheDocument()
+    })
+
+    it('disables prev button on first page', () => {
+      const history = Array.from({ length: 25 }, (_, i) =>
+        makeHistoryEntry({
+          agent_id: `a${i}`,
+          agent_type: `agent-${i}`,
+          session_id: `session-${i}`,
+          ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
+        })
+      )
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      const buttons = screen.getAllByRole('button')
+      const prevButton = buttons[buttons.length - 2]
+      expect(prevButton).toBeDisabled()
+    })
+
+    it('disables next button on last page', async () => {
+      const user = userEvent.setup()
+      const history = Array.from({ length: 25 }, (_, i) =>
+        makeHistoryEntry({
+          agent_id: `a${i}`,
+          agent_type: `agent-${i}`,
+          session_id: `session-${i}`,
+          ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
+        })
+      )
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      // Navigate to last page
+      const buttons = screen.getAllByRole('button')
+      await user.click(buttons[buttons.length - 1])
+
+      const updatedButtons = screen.getAllByRole('button')
+      const nextButton = updatedButtons[updatedButtons.length - 1]
+      expect(nextButton).toBeDisabled()
+    })
+
+    it('does not show pagination controls when 20 or fewer agents', () => {
+      const history = Array.from({ length: 20 }, (_, i) =>
+        makeHistoryEntry({
+          agent_id: `a${i}`,
+          agent_type: `agent-${i}`,
+          session_id: `session-${i}`,
+        })
+      )
+      const sessions = [makeSession()]
+      const onAgentSelect = vi.fn()
+
+      render(
+        <CompletedAgentsTable
+          agentHistory={history}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+
+      expect(screen.queryByText(/of 20/)).not.toBeInTheDocument()
     })
   })
 

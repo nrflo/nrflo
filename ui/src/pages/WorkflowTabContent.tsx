@@ -18,7 +18,6 @@ import { Select } from '@/components/ui/Select'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
-import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import type { WorkflowState, AgentSession, ActiveAgentV4 } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
@@ -50,7 +49,6 @@ interface WorkflowTabContentProps {
   activeChainId?: string | null
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
-  isCompletedProjectWorkflow?: boolean
 }
 
 export function WorkflowTabContent({
@@ -79,7 +77,6 @@ export function WorkflowTabContent({
   activeChainId,
   onRetryFailed,
   retryingSessionId,
-  isCompletedProjectWorkflow,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
@@ -221,25 +218,16 @@ export function WorkflowTabContent({
                 )}
               </div>
             )}
-            {isCompletedProjectWorkflow ? (
-              <CompletedAgentsTable
-                agentHistory={agentHistory ?? []}
-                sessions={sessions}
-                onAgentSelect={onAgentSelect}
-              />
-            ) : (
-              <PhaseTimeline
-                workflow={displayedState}
-                agentHistory={agentHistory}
-                ticketId={ticketId}
-                sessions={!ticketId ? sessions : undefined}
-                onAgentSelect={onAgentSelect}
-                logPanelCollapsed={logPanelCollapsed}
-                showFindings={!isCompletedProjectWorkflow}
-                onRetryFailed={onRetryFailed}
-                retryingSessionId={retryingSessionId}
-              />
-            )}
+            <PhaseTimeline
+              workflow={displayedState}
+              agentHistory={agentHistory}
+              ticketId={ticketId}
+              sessions={!ticketId ? sessions : undefined}
+              onAgentSelect={onAgentSelect}
+              logPanelCollapsed={logPanelCollapsed}
+              onRetryFailed={onRetryFailed}
+              retryingSessionId={retryingSessionId}
+            />
           </>
         ) : (
           <div className="text-center py-8 space-y-3">

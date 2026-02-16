@@ -42,6 +42,10 @@ export interface AgentHistoryEntry {
   restart_threshold?: number
 }
 
+export interface CompletedAgentRow extends AgentHistoryEntry {
+  workflow_label: string
+}
+
 // Findings structure: agent_type -> findings (field -> value)
 export type WorkflowFindings = Record<string, Record<string, unknown>>
 

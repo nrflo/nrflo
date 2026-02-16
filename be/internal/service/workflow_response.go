@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"be/internal/model"
 )
@@ -115,6 +116,17 @@ func (s *WorkflowService) buildAgentHistory(wfiID string) []interface{} {
 		}
 		if endedAt.Valid {
 			entry["ended_at"] = endedAt.String
+		}
+		if startedAt.Valid && endedAt.Valid {
+			if start, err := time.Parse(time.RFC3339Nano, startedAt.String); err == nil {
+				if end, err := time.Parse(time.RFC3339Nano, endedAt.String); err == nil {
+					dur := end.Sub(start).Seconds()
+					if dur < 0 {
+						dur = 0
+					}
+					entry["duration_sec"] = dur
+				}
+			}
 		}
 		if contextLeft.Valid {
 			entry["context_left"] = contextLeft.Int64

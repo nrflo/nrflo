@@ -12,8 +12,10 @@ import {
 import { listWorkflowDefs } from '@/api/workflows'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import { RunWorkflowForm, InstanceList } from './ProjectWorkflowComponents'
+import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
+import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import { cn } from '@/lib/utils'
-import type { WorkflowState } from '@/types/workflow'
+import type { WorkflowState, CompletedAgentRow } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 
 type TabId = 'run' | 'running' | 'completed'
@@ -110,6 +112,24 @@ export function ProjectWorkflowsPage() {
     if (!sessionsData?.sessions || !resolvedInstanceId) return sessionsData?.sessions ?? []
     return sessionsData.sessions.filter(s => s.workflow_instance_id === resolvedInstanceId)
   }, [sessionsData?.sessions, resolvedInstanceId])
+
+  // Merged data for completed tab: flat array of all completed agents + all their sessions
+  const mergedCompletedAgents = useMemo<CompletedAgentRow[]>(() => {
+    const rows: CompletedAgentRow[] = []
+    for (const [instanceId, state] of Object.entries(completedInstances)) {
+      const label = selectorLabels[instanceId] ?? instanceId.substring(0, 8)
+      for (const entry of state.agent_history ?? []) {
+        rows.push({ ...entry, workflow_label: label })
+      }
+    }
+    return rows
+  }, [completedInstances, selectorLabels])
+
+  const allCompletedSessions = useMemo(() => {
+    if (!sessionsData?.sessions) return []
+    const completedIds = new Set(Object.keys(completedInstances))
+    return sessionsData.sessions.filter(s => completedIds.has(s.workflow_instance_id))
+  }, [sessionsData?.sessions, completedInstances])
 
   const activeAgents = displayedState?.active_agents ?? {}
 
@@ -216,7 +236,39 @@ export function ProjectWorkflowsPage() {
         />
       )}
 
-      {(activeTab === 'running' || activeTab === 'completed') && (
+      {activeTab === 'completed' && (
+        <div className={cn(
+          'flex gap-0',
+          selectedPanelAgent && 'min-h-[calc(100vh-280px)]'
+        )}>
+          <div className="flex-1 min-w-0 space-y-4">
+            {mergedCompletedAgents.length > 0 ? (
+              <CompletedAgentsTable
+                agentHistory={mergedCompletedAgents}
+                sessions={allCompletedSessions}
+                onAgentSelect={setSelectedPanelAgent}
+                showWorkflowColumn
+              />
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground text-sm">No completed workflows</p>
+              </div>
+            )}
+          </div>
+          {selectedPanelAgent && (
+            <AgentLogPanel
+              activeAgents={{}}
+              sessions={allCompletedSessions}
+              collapsed={logPanelCollapsed}
+              onToggleCollapse={() => setLogPanelCollapsed((p) => !p)}
+              selectedAgent={selectedPanelAgent}
+              onAgentSelect={setSelectedPanelAgent}
+            />
+          )}
+        </div>
+      )}
+
+      {activeTab === 'running' && (
         <>
           {instanceIds.length > 0 && (
             <InstanceList
@@ -246,7 +298,6 @@ export function ProjectWorkflowsPage() {
             onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
             selectedPanelAgent={selectedPanelAgent}
             onAgentSelect={setSelectedPanelAgent}
-            isCompletedProjectWorkflow={activeTab === 'completed'}
             onStop={() =>
               currentProject &&
               stopMutation.mutate({

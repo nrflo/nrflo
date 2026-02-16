@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { WorkflowTabContent } from './WorkflowTabContent'
-import type { WorkflowState, AgentSession } from '@/types/workflow'
+import type { WorkflowState } from '@/types/workflow'
 
 // Mock heavy child components to focus on container layout
 vi.mock('@/components/workflow/PhaseTimeline', () => ({
@@ -9,9 +9,6 @@ vi.mock('@/components/workflow/PhaseTimeline', () => ({
 }))
 vi.mock('@/components/workflow/AgentLogPanel', () => ({
   AgentLogPanel: () => <div data-testid="agent-log-panel">AgentLogPanel</div>,
-}))
-vi.mock('@/components/workflow/CompletedAgentsTable', () => ({
-  CompletedAgentsTable: () => <div data-testid="completed-agents-table">CompletedAgentsTable</div>,
 }))
 
 function makeState(overrides: Partial<WorkflowState> = {}): WorkflowState {
@@ -230,137 +227,19 @@ describe('WorkflowTabContent', () => {
     expect(onShowRunDialog).toHaveBeenCalledTimes(1)
   })
 
-  // Ticket nrworkflow-46fb2e: CompletedAgentsTable vs PhaseTimeline rendering
-  describe('completed project workflow rendering', () => {
-    it('renders CompletedAgentsTable when isCompletedProjectWorkflow is true', () => {
-      const completedState = makeState({
-        status: 'project_completed',
-        completed_at: '2026-01-01T05:00:00Z',
-        agent_history: [
-          {
-            agent_id: 'a1',
-            agent_type: 'implementor',
-            phase: 'implementation',
-            session_id: 'session-1',
-            result: 'pass',
-            ended_at: '2026-01-01T02:00:00Z',
-          },
-        ],
-      })
-      render(
-        <WorkflowTabContent
-          {...defaultProps}
-          displayedState={completedState}
-          isCompletedProjectWorkflow={true}
-          ticketId={undefined}
-        />
-      )
-
-      expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
-      expect(screen.queryByTestId('phase-timeline')).not.toBeInTheDocument()
+  // PhaseTimeline is always rendered for workflow content (completed tab uses its own table directly)
+  it('always renders PhaseTimeline for any workflow state', () => {
+    const completedState = makeState({
+      status: 'completed',
+      completed_at: '2026-01-01T05:00:00Z',
     })
+    render(
+      <WorkflowTabContent
+        {...defaultProps}
+        displayedState={completedState}
+      />
+    )
 
-    it('renders PhaseTimeline when isCompletedProjectWorkflow is false', () => {
-      const completedState = makeState({
-        status: 'completed',
-        completed_at: '2026-01-01T05:00:00Z',
-      })
-      render(
-        <WorkflowTabContent
-          {...defaultProps}
-          displayedState={completedState}
-          isCompletedProjectWorkflow={false}
-        />
-      )
-
-      expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
-      expect(screen.queryByTestId('completed-agents-table')).not.toBeInTheDocument()
-    })
-
-    it('renders PhaseTimeline when isCompletedProjectWorkflow is undefined (default)', () => {
-      render(
-        <WorkflowTabContent
-          {...defaultProps}
-          displayedState={makeState()}
-        />
-      )
-
-      expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
-      expect(screen.queryByTestId('completed-agents-table')).not.toBeInTheDocument()
-    })
-
-    it('renders CompletedAgentsTable for completed project workflows even when ticketId is present', () => {
-      const completedState = makeState({
-        status: 'project_completed',
-        completed_at: '2026-01-01T05:00:00Z',
-      })
-      render(
-        <WorkflowTabContent
-          {...defaultProps}
-          ticketId="T-123"
-          displayedState={completedState}
-          isCompletedProjectWorkflow={true}
-        />
-      )
-
-      expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
-      expect(screen.queryByTestId('phase-timeline')).not.toBeInTheDocument()
-    })
-
-    it('passes correct props to CompletedAgentsTable', () => {
-      const agentHistory = [
-        {
-          agent_id: 'a1',
-          agent_type: 'implementor',
-          phase: 'implementation',
-          session_id: 'session-1',
-          result: 'pass',
-          ended_at: '2026-01-01T02:00:00Z',
-        },
-        {
-          agent_id: 'a2',
-          agent_type: 'qa-verifier',
-          phase: 'verification',
-          session_id: 'session-2',
-          result: 'pass',
-          ended_at: '2026-01-01T04:00:00Z',
-        },
-      ]
-      const sessions: AgentSession[] = [
-        {
-          id: 'session-1',
-          project_id: 'test-project',
-          ticket_id: '',
-          workflow_instance_id: 'wi-1',
-          phase: 'implementation',
-          workflow: 'feature',
-          agent_type: 'implementor',
-          model_id: 'claude-opus-4-6',
-          status: 'completed' as const,
-          result: 'pass',
-          message_count: 10,
-          restart_count: 0,
-          created_at: '2026-01-01T00:00:00Z',
-          updated_at: '2026-01-01T02:00:00Z',
-        },
-      ]
-      const completedState = makeState({
-        status: 'project_completed',
-        agent_history: agentHistory,
-      })
-      const onAgentSelect = vi.fn()
-
-      render(
-        <WorkflowTabContent
-          {...defaultProps}
-          displayedState={completedState}
-          sessions={sessions}
-          onAgentSelect={onAgentSelect}
-          isCompletedProjectWorkflow={true}
-        />
-      )
-
-      expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
-    })
+    expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
   })
 })

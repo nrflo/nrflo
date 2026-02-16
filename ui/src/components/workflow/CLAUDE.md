@@ -58,7 +58,7 @@ The panel also shows when a completed agent is selected from PhaseGraph (even af
 | `AgentSessionCard.tsx` | Reusable agent session card |
 | `AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
 | `AgentLogDetail.tsx` | Single-agent detail with message table (timestamp, tool, message columns) |
-| `CompletedAgentsTable.tsx` | Table of completed agents sorted by `ended_at` DESC, used in project completed workflows tab |
+| `CompletedAgentsTable.tsx` | Unified pageable table of completed agents sorted by `ended_at` DESC. Supports optional Workflow column (`showWorkflowColumn` prop) and client-side pagination (20 rows/page). Duration uses `formatElapsedTime` from timestamps with `formatDuration` fallback. Used directly by `ProjectWorkflowsPage` for the completed tab (bypasses `WorkflowTabContent`). |
 | `LogMessage.tsx` | Log message with tool name color highlighting. Exports `parseToolName` and `ToolBadge` |
 | `ActiveAgentsPanel.tsx` | Active agents display panel |
 | `FindingsViewer.tsx` | Simple KEY: VALUE findings display |

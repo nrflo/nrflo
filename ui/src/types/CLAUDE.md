@@ -22,6 +22,7 @@ TypeScript type definitions matching Go API models. Contains 3 files.
 | `ProjectWorkflowResponse` | API response for project-scoped workflows. `all_workflows` keyed by instance_id (not workflow name). Multiple concurrent instances allowed. Each state includes `instance_id` and `workflow` fields. Stop/restart/retry API calls include `instance_id` to target a specific instance. |
 | `ProjectAgentSessionsResponse` | API response for project-scoped agent sessions (project_id + sessions array) |
 | `AgentHistoryEntry` | Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left) |
+| `CompletedAgentRow` | Extends `AgentHistoryEntry` with `workflow_label: string` for unified completed agents table |
 | `AgentSession` | Session record with `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left` |
 | `WorkflowFindings` | `Record<string, Record<string, unknown>>` (agent_type → field → value) |
 

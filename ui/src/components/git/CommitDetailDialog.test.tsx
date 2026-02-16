@@ -348,6 +348,172 @@ describe('CommitDetailDialog - Diff Rendering', () => {
   })
 })
 
+describe('CommitDetailDialog - Changes Row (Total Stats)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders Changes row with both additions and deletions', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(createMockCommitDetail())
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Changes:')).toBeInTheDocument()
+    })
+    // Default mock has 60 total additions and 35 total deletions
+    expect(screen.getByText(/Changes:/)).toBeInTheDocument()
+    const changesRow = screen.getByText(/Changes:/).parentElement
+    expect(changesRow).toHaveTextContent('+60')
+    expect(changesRow).toHaveTextContent('-35')
+  })
+
+  it('renders Changes row with only additions (no deletions)', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(
+      createMockCommitDetail({
+        files: [
+          {
+            path: 'src/new.ts',
+            status: 'added',
+            additions: 75,
+            deletions: 0,
+          },
+        ],
+      })
+    )
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Changes:')).toBeInTheDocument()
+    })
+    const changesRow = screen.getByText(/Changes:/).parentElement
+    expect(changesRow).toHaveTextContent('+75')
+    expect(changesRow).not.toHaveTextContent('-')
+  })
+
+  it('renders Changes row with only deletions (no additions)', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(
+      createMockCommitDetail({
+        files: [
+          {
+            path: 'src/removed.ts',
+            status: 'deleted',
+            additions: 0,
+            deletions: 120,
+          },
+        ],
+      })
+    )
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Changes:')).toBeInTheDocument()
+    })
+    const changesRow = screen.getByText(/Changes:/).parentElement
+    expect(changesRow).toHaveTextContent('-120')
+    expect(changesRow).not.toHaveTextContent('+')
+  })
+
+  it('does not render Changes row when commit has no files', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(
+      createMockCommitDetail({
+        files: [],
+      })
+    )
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Commit Details')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Changes:')).not.toBeInTheDocument()
+  })
+
+  it('does not render Changes row when all files have zero additions and deletions', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(
+      createMockCommitDetail({
+        files: [
+          {
+            path: 'binary-file.bin',
+            status: 'modified',
+            additions: 0,
+            deletions: 0,
+          },
+        ],
+      })
+    )
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Commit Details')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Changes:')).not.toBeInTheDocument()
+  })
+
+  it('applies correct color classes to Changes row stats', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(createMockCommitDetail())
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Changes:')).toBeInTheDocument()
+    })
+
+    // Check for green color class on additions
+    const additionsSpan = screen.getByText('+60')
+    expect(additionsSpan).toHaveClass('text-green-600', 'dark:text-green-400')
+
+    // Check for red color class on deletions
+    const deletionsSpan = screen.getByText('-35')
+    expect(deletionsSpan).toHaveClass('text-red-600', 'dark:text-red-400')
+  })
+
+  it('renders Changes row after Date line', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(createMockCommitDetail())
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Changes:')).toBeInTheDocument()
+    })
+
+    // Get the parent container
+    const headerSection = screen.getByText('Date:').closest('.space-y-2')
+    expect(headerSection).toBeInTheDocument()
+
+    // Verify Changes row is in the same section
+    expect(headerSection).toContainElement(screen.getByText('Changes:'))
+  })
+
+  it('computes totals correctly from multiple files', async () => {
+    mockGetGitCommitDetail.mockResolvedValue(
+      createMockCommitDetail({
+        files: [
+          { path: 'file1.ts', status: 'added', additions: 100, deletions: 0 },
+          { path: 'file2.ts', status: 'modified', additions: 25, deletions: 10 },
+          { path: 'file3.ts', status: 'modified', additions: 15, deletions: 30 },
+          { path: 'file4.ts', status: 'deleted', additions: 0, deletions: 50 },
+        ],
+      })
+    )
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText('Changes:')).toBeInTheDocument()
+    })
+
+    // Total: 100 + 25 + 15 + 0 = 140 additions
+    // Total: 0 + 10 + 30 + 50 = 90 deletions
+    const changesRow = screen.getByText(/Changes:/).parentElement
+    expect(changesRow).toHaveTextContent('+140')
+    expect(changesRow).toHaveTextContent('-90')
+  })
+})
+
 describe('CommitDetailDialog - Edge Cases', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -385,14 +551,17 @@ describe('CommitDetailDialog - Edge Cases', () => {
             deletions: 0,
           },
         ],
+        diff: '', // Clear default diff to avoid mismatch
       })
     )
 
     renderCommitDialog()
 
     await waitFor(() => {
-      expect(screen.getByText('+100')).toBeInTheDocument()
+      expect(screen.getByText('src/new.ts')).toBeInTheDocument()
     })
+    // Should render +100 in file row and Changes row
+    expect(screen.getAllByText('+100').length).toBeGreaterThan(0)
     // Should not render -0
     const fileRow = screen.getByText('src/new.ts').closest('button')
     expect(fileRow).not.toHaveTextContent('-0')
@@ -409,14 +578,17 @@ describe('CommitDetailDialog - Edge Cases', () => {
             deletions: 50,
           },
         ],
+        diff: '', // Clear default diff to avoid mismatch
       })
     )
 
     renderCommitDialog()
 
     await waitFor(() => {
-      expect(screen.getByText('-50')).toBeInTheDocument()
+      expect(screen.getByText('src/removed.ts')).toBeInTheDocument()
     })
+    // Should render -50 in file row and Changes row
+    expect(screen.getAllByText('-50').length).toBeGreaterThan(0)
     // Should not render +0
     const fileRow = screen.getByText('src/removed.ts').closest('button')
     expect(fileRow).not.toHaveTextContent('+0')

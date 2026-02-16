@@ -1,5 +1,5 @@
 import { Copy, Check } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Dialog, DialogHeader, DialogBody } from '@/components/ui/Dialog'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
@@ -83,6 +83,17 @@ export function CommitDetailDialog({ projectId, hash, onClose }: CommitDetailDia
   const { data, isLoading, error } = useGitCommitDetail(projectId, hash)
   const commit = data?.commit
 
+  const { totalAdditions, totalDeletions } = useMemo(() => {
+    if (!commit?.files?.length) return { totalAdditions: 0, totalDeletions: 0 }
+    return commit.files.reduce(
+      (acc, f) => ({
+        totalAdditions: acc.totalAdditions + f.additions,
+        totalDeletions: acc.totalDeletions + f.deletions,
+      }),
+      { totalAdditions: 0, totalDeletions: 0 }
+    )
+  }, [commit?.files])
+
   return (
     <Dialog open={!!hash} onClose={onClose} className="max-w-5xl">
       <DialogHeader onClose={onClose}>
@@ -121,6 +132,18 @@ export function CommitDetailDialog({ projectId, hash, onClose }: CommitDetailDia
                   ({new Date(commit.date).toLocaleString()})
                 </span>
               </div>
+              {(totalAdditions > 0 || totalDeletions > 0) && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Changes: </span>
+                  {totalAdditions > 0 && (
+                    <span className="text-green-600 dark:text-green-400">+{totalAdditions}</span>
+                  )}
+                  {totalAdditions > 0 && totalDeletions > 0 && ' '}
+                  {totalDeletions > 0 && (
+                    <span className="text-red-600 dark:text-red-400">-{totalDeletions}</span>
+                  )}
+                </div>
+              )}
               <div className="mt-3 p-3 bg-muted rounded-lg">
                 <p className="text-sm whitespace-pre-wrap">{commit.message}</p>
               </div>

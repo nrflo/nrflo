@@ -158,6 +158,10 @@ export function AgentLogPanel({
   const runningCount = runningAgents.length
 
   const findSession = (agent: ActiveAgentV4): AgentSession | undefined => {
+    if (agent.session_id) {
+      const byId = sessions.find(s => s.id === agent.session_id)
+      if (byId) return byId
+    }
     return sessions.find(s =>
       s.agent_type === agent.agent_type &&
       s.phase === agent.phase &&

@@ -113,6 +113,10 @@ export function PhaseGraph({
   // Find session for running agent
   const findSessionForAgent = useCallback((agent: ActiveAgentV4, phaseName: string): AgentSession | undefined => {
     if (!sessions) return undefined
+    if (agent.session_id) {
+      const byId = sessions.find(s => s.id === agent.session_id)
+      if (byId) return byId
+    }
     return sessions.find(s =>
       s.agent_type === agent.agent_type &&
       s.phase === phaseName &&
@@ -123,6 +127,12 @@ export function PhaseGraph({
   // Find session for history entry
   const findSessionForHistory = useCallback((entry: AgentHistoryEntry, phaseName: string): AgentSession | undefined => {
     if (!sessions) return undefined
+
+    // Prefer exact session_id match
+    if (entry.session_id) {
+      const byId = sessions.find(s => s.id === entry.session_id)
+      if (byId) return byId
+    }
 
     // First try exact match with model_id
     const exactMatch = sessions.find(s =>

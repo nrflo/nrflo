@@ -106,6 +106,11 @@ export function ProjectWorkflowsPage() {
     }
   }, [instanceIds, tabInstances, resolvedInstanceId])
 
+  const filteredSessions = useMemo(() => {
+    if (!sessionsData?.sessions || !resolvedInstanceId) return sessionsData?.sessions ?? []
+    return sessionsData.sessions.filter(s => s.workflow_instance_id === resolvedInstanceId)
+  }, [sessionsData?.sessions, resolvedInstanceId])
+
   const activeAgents = displayedState?.active_agents ?? {}
 
   const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
@@ -236,7 +241,7 @@ export function ProjectWorkflowsPage() {
             isOrchestrated={isOrchestrated}
             hasActivePhase={hasActivePhase}
             activeAgents={activeAgents}
-            sessions={sessionsData?.sessions ?? []}
+            sessions={filteredSessions}
             logPanelCollapsed={logPanelCollapsed}
             onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
             selectedPanelAgent={selectedPanelAgent}

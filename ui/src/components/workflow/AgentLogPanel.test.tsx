@@ -277,6 +277,77 @@ describe('AgentLogPanel', () => {
         expect.objectContaining({ session: correctSession })
       )
     })
+
+    it('prefers session_id match over agent_type+phase+model_id match', async () => {
+      const user = userEvent.setup()
+      const agent = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        session_id: 'session-correct',
+      })
+      // Session with matching session_id but different properties
+      const correctSession = makeSession({
+        id: 'session-correct',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+      // Session that matches agent properties but has wrong session_id
+      const wrongSession = makeSession({
+        id: 'session-wrong',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+      const onAgentSelect = vi.fn()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:opus': agent },
+        sessions: [wrongSession, correctSession],
+        onAgentSelect,
+      })
+
+      const agentButton = screen.getByRole('button', { name: /implementation/i })
+      await user.click(agentButton)
+
+      // Should select correctSession by session_id, not wrongSession by properties
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ session: correctSession })
+      )
+    })
+
+    it('falls back to property matching when session_id match not found', async () => {
+      const user = userEvent.setup()
+      const agent = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+        session_id: 'non-existent-session',
+      })
+      // No session with id 'non-existent-session', but one that matches properties
+      const fallbackSession = makeSession({
+        id: 'fallback-session',
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-opus-4-6',
+      })
+      const onAgentSelect = vi.fn()
+
+      renderPanel({
+        activeAgents: { 'implementor:claude:opus': agent },
+        sessions: [fallbackSession],
+        onAgentSelect,
+      })
+
+      const agentButton = screen.getByRole('button', { name: /implementation/i })
+      await user.click(agentButton)
+
+      // Should fall back to property matching
+      expect(onAgentSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ session: fallbackSession })
+      )
+    })
   })
 
   describe('ticket nrworkflow-720aec: table view in overview mode', () => {

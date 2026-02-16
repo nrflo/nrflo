@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/Badge'
 import { AgentCard } from './AgentCard'
 import { AgentSessionCard } from '../AgentSessionCard'
 import type { PhaseNodeProps } from './types'
-import type { PhaseStatus, AgentSession } from '@/types/workflow'
+import type { ActiveAgentV4, PhaseStatus, AgentSession } from '@/types/workflow'
 
 function StatusIcon({ status }: { status: PhaseStatus }) {
   switch (status) {
@@ -81,12 +81,16 @@ export function PhaseNode({
   const hasActiveAgents = activeAgents.length > 0 && status === 'in_progress'
 
   // Find sessions for agents in this phase
-  const getSessionForAgent = (agentType: string, modelId?: string): AgentSession | undefined => {
+  const getSessionForAgent = (agent: ActiveAgentV4): AgentSession | undefined => {
     if (!sessions) return undefined
+    if (agent.session_id) {
+      const byId = sessions.find(s => s.id === agent.session_id)
+      if (byId) return byId
+    }
     return sessions.find(s =>
-      s.agent_type === agentType &&
+      s.agent_type === agent.agent_type &&
       s.status === 'running' &&
-      (!modelId || s.model_id === modelId)
+      (!agent.model_id || s.model_id === agent.model_id)
     )
   }
 
@@ -117,7 +121,7 @@ export function PhaseNode({
           <div className="flex flex-wrap justify-center gap-2 mt-2 pt-2 border-t border-yellow-200 dark:border-yellow-800">
             {activeAgents.map((agent, i) => {
               const agentKey = `${node.name}-${i}`
-              const session = getSessionForAgent(agent.agent_type, agent.model_id)
+              const session = getSessionForAgent(agent)
               return (
                 <AgentCard
                   key={agentKey}
@@ -151,7 +155,7 @@ export function PhaseNode({
           {activeAgents.map((agent, i) => {
             const agentKey = `${node.name}-${i}`
             if (expandedAgentKey !== agentKey) return null
-            const session = getSessionForAgent(agent.agent_type, agent.model_id)
+            const session = getSessionForAgent(agent)
             if (!session) {
               return (
                 <div key={agentKey} className="text-sm text-muted-foreground text-center p-2 border rounded-lg">

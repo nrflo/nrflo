@@ -141,7 +141,7 @@ const sampleAgentSessionsResponse: ProjectAgentSessionsResponse = {
       id: 'session-1',
       project_id: 'test-project',
       ticket_id: '',
-      workflow_instance_id: 'wi-1',
+      workflow_instance_id: 'instance-1',
       phase: 'implementation',
       workflow: 'feature',
       agent_type: 'implementor',
@@ -156,7 +156,7 @@ const sampleAgentSessionsResponse: ProjectAgentSessionsResponse = {
       id: 'session-2',
       project_id: 'test-project',
       ticket_id: '',
-      workflow_instance_id: 'wi-1',
+      workflow_instance_id: 'instance-1',
       phase: 'investigation',
       workflow: 'feature',
       agent_type: 'setup-analyzer',
@@ -704,6 +704,230 @@ describe('ProjectWorkflowsPage', () => {
       }
 
       expect(stateWithInstanceId.instance_id).toBe('test-instance-id')
+    })
+  })
+
+  describe('Session Filtering by Instance', () => {
+    it('filters sessions to show only selected instance sessions', async () => {
+      const user = userEvent.setup()
+
+      // Two instances of the same workflow with different sessions
+      const instance1State: WorkflowState = {
+        workflow: 'feature',
+        instance_id: 'instance-alpha',
+        version: 4,
+        scope_type: 'project',
+        current_phase: 'implementation',
+        status: 'active',
+        phases: {
+          implementation: { status: 'in_progress' },
+        },
+        phase_order: ['implementation'],
+        active_agents: {
+          'implementor:claude:opus': {
+            agent_id: 'a-alpha',
+            agent_type: 'implementor',
+            phase: 'implementation',
+            model_id: 'claude-opus-4-6',
+            cli: 'claude',
+            pid: 111,
+            session_id: 'session-alpha',
+            started_at: '2026-01-01T00:00:00Z',
+          },
+        },
+        findings: {},
+      }
+
+      const instance2State: WorkflowState = {
+        workflow: 'feature',
+        instance_id: 'instance-beta',
+        version: 4,
+        scope_type: 'project',
+        current_phase: 'implementation',
+        status: 'active',
+        phases: {
+          implementation: { status: 'in_progress' },
+        },
+        phase_order: ['implementation'],
+        active_agents: {
+          'implementor:claude:opus': {
+            agent_id: 'a-beta',
+            agent_type: 'implementor',
+            phase: 'implementation',
+            model_id: 'claude-opus-4-6',
+            cli: 'claude',
+            pid: 222,
+            session_id: 'session-beta',
+            started_at: '2026-01-01T01:00:00Z',
+          },
+        },
+        findings: {},
+      }
+
+      // Sessions from both instances
+      const multiInstanceSessionsResponse: ProjectAgentSessionsResponse = {
+        project_id: 'test-project',
+        sessions: [
+          {
+            id: 'session-alpha',
+            project_id: 'test-project',
+            ticket_id: '',
+            workflow_instance_id: 'instance-alpha',
+            phase: 'implementation',
+            workflow: 'feature',
+            agent_type: 'implementor',
+            model_id: 'claude-opus-4-6',
+            status: 'running',
+            message_count: 5,
+            restart_count: 0,
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-01-01T00:00:00Z',
+          },
+          {
+            id: 'session-beta',
+            project_id: 'test-project',
+            ticket_id: '',
+            workflow_instance_id: 'instance-beta',
+            phase: 'implementation',
+            workflow: 'feature',
+            agent_type: 'implementor',
+            model_id: 'claude-opus-4-6',
+            status: 'running',
+            message_count: 10,
+            restart_count: 0,
+            created_at: '2026-01-01T01:00:00Z',
+            updated_at: '2026-01-01T01:00:00Z',
+          },
+        ],
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: {
+          project_id: 'test-project',
+          has_workflow: true,
+          state: instance1State,
+          workflows: ['feature'],
+          all_workflows: {
+            'instance-alpha': instance1State,
+            'instance-beta': instance2State,
+          },
+        },
+        isLoading: false,
+      })
+
+      useProjectAgentSessions.mockReturnValue({
+        data: multiInstanceSessionsResponse,
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Switch to Running tab
+      const runningTab = screen.getByRole('button', { name: /Running/ })
+      await user.click(runningTab)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
+      })
+
+      // By default, first instance (alpha) is selected
+      // WorkflowTabContent should receive only alpha's session (1 session from instance-alpha)
+      await waitFor(() => {
+        const sessionsCount = screen.getByTestId('sessions-count')
+        expect(sessionsCount).toHaveTextContent('1')
+      })
+
+      // Both instance buttons should be rendered (they have the same workflow name, different instance IDs)
+      // They will have names like "feature (#instance)" where instance is the first 8 chars
+      const instanceButtons = screen.getAllByRole('button', { name: /feature \(#instance/ })
+      expect(instanceButtons).toHaveLength(2)
+
+      // Click the second instance button (instance-beta is alphabetically second)
+      await user.click(instanceButtons[1])
+
+      // WorkflowTabContent should now receive only beta's session (1 session from instance-beta)
+      await waitFor(() => {
+        const sessionsCount = screen.getByTestId('sessions-count')
+        expect(sessionsCount).toHaveTextContent('1')
+      })
+    })
+
+    it('returns all sessions when no instance is selected (resolvedInstanceId empty)', async () => {
+      const user = userEvent.setup()
+
+      // Single completed workflow (on Completed tab)
+      const completedState: WorkflowState = {
+        workflow: 'feature',
+        instance_id: 'completed-instance',
+        version: 4,
+        scope_type: 'project',
+        current_phase: 'implementation',
+        status: 'completed',
+        completed_at: '2026-01-01T05:00:00Z',
+        total_duration_sec: 3600,
+        total_tokens_used: 50000,
+        phases: {
+          implementation: { status: 'completed', result: 'pass' },
+        },
+        phase_order: ['implementation'],
+        active_agents: {},
+        findings: {},
+      }
+
+      useProjectWorkflow.mockReturnValue({
+        data: {
+          project_id: 'test-project',
+          has_workflow: true,
+          state: completedState,
+          workflows: ['feature'],
+          all_workflows: {
+            'completed-instance': completedState,
+          },
+        },
+        isLoading: false,
+      })
+
+      useProjectAgentSessions.mockReturnValue({
+        data: {
+          project_id: 'test-project',
+          sessions: [
+            {
+              id: 'completed-session',
+              project_id: 'test-project',
+              ticket_id: '',
+              workflow_instance_id: 'completed-instance',
+              phase: 'implementation',
+              workflow: 'feature',
+              agent_type: 'implementor',
+              model_id: 'claude-opus-4-6',
+              status: 'completed',
+              result: 'pass',
+              message_count: 3,
+              restart_count: 0,
+              created_at: '2026-01-01T00:00:00Z',
+              updated_at: '2026-01-01T00:00:00Z',
+              started_at: '2026-01-01T00:00:00Z',
+              ended_at: '2026-01-01T05:00:00Z',
+            },
+          ],
+        },
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Switch to Running tab where there are NO running instances
+      const runningTab = screen.getByRole('button', { name: /Running/ })
+      await user.click(runningTab)
+
+      // The Running tab has no instances, so resolvedInstanceId will be empty
+      // The filter should return all sessions (no-op) without crashing
+      await waitFor(() => {
+        // WorkflowTabContent still renders (with hasWorkflow=false)
+        expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
+        // And all sessions are passed through (1 session)
+        expect(screen.getByTestId('sessions-count')).toHaveTextContent('1')
+      })
     })
   })
 

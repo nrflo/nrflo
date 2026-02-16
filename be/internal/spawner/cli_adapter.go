@@ -183,7 +183,7 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 		"opus":       "anthropic/claude-opus-4-5",
 		"sonnet":     "anthropic/claude-sonnet-4-5",
 		"haiku":      "anthropic/claude-haiku-4-5",
-		"gpt_5.3":    "openai/gpt-5.3",
+		"gpt_5.3":    "openai/gpt-5.3-codex",
 		"gpt_max":    "openai/gpt-5.2-codex",
 		"gpt_high":   "openai/gpt-5.2-codex",
 		"gpt_medium": "openai/gpt-5.2-codex",

@@ -321,7 +321,26 @@ func (r *AgentSessionRepo) ResetSessionsForCallback(wfiID string, phases []strin
 
 // CleanupKeepLatest deletes non-running agent sessions beyond the keep limit,
 // ordered by updated_at DESC. Running sessions are never deleted.
+// Also cleans up associated agent_messages and any orphaned messages.
 func (r *AgentSessionRepo) CleanupKeepLatest(keep int) (int64, error) {
+	// Delete messages for sessions that will be removed
+	_, _ = r.db.Exec(`
+		DELETE FROM agent_messages WHERE session_id IN (
+			SELECT id FROM agent_sessions
+			WHERE status != ?
+			AND id NOT IN (
+				SELECT id FROM agent_sessions
+				WHERE status != ?
+				ORDER BY updated_at DESC
+				LIMIT ?
+			)
+		)`, model.AgentSessionRunning, model.AgentSessionRunning, keep)
+
+	// Delete orphaned messages (session no longer exists)
+	_, _ = r.db.Exec(`
+		DELETE FROM agent_messages
+		WHERE session_id NOT IN (SELECT id FROM agent_sessions)`)
+
 	result, err := r.db.Exec(`
 		DELETE FROM agent_sessions
 		WHERE status != ?

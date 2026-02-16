@@ -18,7 +18,7 @@ func TestOpencodeAdapterModelMapping(t *testing.T) {
 		{"haiku", "anthropic/claude-haiku-4-5"},
 
 		// GPT models
-		{"gpt_5.3", "openai/gpt-5.3"},
+		{"gpt_5.3", "openai/gpt-5.3-codex"},
 		{"gpt_max", "openai/gpt-5.2-codex"},
 		{"gpt_high", "openai/gpt-5.2-codex"},
 		{"gpt_medium", "openai/gpt-5.2-codex"},
@@ -26,7 +26,7 @@ func TestOpencodeAdapterModelMapping(t *testing.T) {
 
 		// Already provider/model format (pass-through)
 		{"anthropic/claude-opus-4-5", "anthropic/claude-opus-4-5"},
-		{"openai/gpt-5.3", "openai/gpt-5.3"},
+		{"openai/gpt-5.3-codex", "openai/gpt-5.3-codex"},
 		{"custom/my-model", "custom/my-model"},
 
 		// Unknown model (should default to anthropic provider)
@@ -87,7 +87,7 @@ func TestGPT53ModelSupport(t *testing.T) {
 		{
 			name:     "OpencodeAdapter maps gpt_5.3",
 			adapter:  &OpencodeAdapter{},
-			expected: "openai/gpt-5.3",
+			expected: "openai/gpt-5.3-codex",
 		},
 		{
 			name:     "CodexAdapter maps gpt_5.3",
@@ -319,7 +319,7 @@ func TestAllSupportedModelsAreValid(t *testing.T) {
 
 				// For gpt_5.3, verify it doesn't get mapped to something else incorrectly
 				if model == "gpt_5.3" {
-					if adapter.name == "OpencodeAdapter" && result != "openai/gpt-5.3" {
+					if adapter.name == "OpencodeAdapter" && result != "openai/gpt-5.3-codex" {
 						t.Errorf("%s.MapModel('gpt_5.3') = %q, expected 'openai/gpt-5.3'", adapter.name, result)
 					}
 					if adapter.name == "CodexAdapter" && result != "gpt-5.3" {

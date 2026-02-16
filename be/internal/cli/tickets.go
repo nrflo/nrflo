@@ -133,6 +133,7 @@ func runTicketGet(cmd *cobra.Command, args []string) error {
 // --- create ---
 
 var (
+	ticketCreateID          string
 	ticketCreateTitle       string
 	ticketCreateDescription string
 	ticketCreateType        string
@@ -147,6 +148,7 @@ func init() {
 		Short: "Create a new ticket",
 		RunE:  runTicketCreate,
 	}
+	createCmd.Flags().StringVar(&ticketCreateID, "id", "", "Custom ticket ID (auto-generated if omitted)")
 	createCmd.Flags().StringVar(&ticketCreateTitle, "title", "", "Ticket title (required)")
 	createCmd.Flags().StringVar(&ticketCreateDescription, "description", "", "Ticket description")
 	createCmd.Flags().StringVar(&ticketCreateType, "type", "task", "Issue type (bug, feature, task, epic)")
@@ -168,6 +170,9 @@ func runTicketCreate(cmd *cobra.Command, args []string) error {
 		"issue_type": ticketCreateType,
 		"priority":   ticketCreatePriority,
 		"created_by": ticketCreateCreatedBy,
+	}
+	if ticketCreateID != "" {
+		body["id"] = ticketCreateID
 	}
 	if ticketCreateDescription != "" {
 		body["description"] = ticketCreateDescription

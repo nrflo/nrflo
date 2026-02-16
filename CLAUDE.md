@@ -121,7 +121,7 @@ Manage tickets and dependencies via the HTTP API (requires server running):
 ```bash
 nrworkflow tickets list [--status <status>] [--type <type>] [--parent <id>] [--json]
 nrworkflow tickets get <id> [--json]
-nrworkflow tickets create --title <title> [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>] [--created-by <name>] [--json]
+nrworkflow tickets create --title <title> [--id <id>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>] [--created-by <name>] [--json]
 nrworkflow tickets update <id> [--title <title>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>]
 nrworkflow tickets close <id> [--reason <text>]
 nrworkflow tickets reopen <id>

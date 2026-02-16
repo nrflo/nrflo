@@ -30,11 +30,12 @@ type TestEnv struct {
 	ProjectID  string
 
 	// Services for direct data seeding (socket no longer handles project/ticket/workflow)
-	ProjectSvc  *service.ProjectService
-	TicketSvc   *service.TicketService
-	WorkflowSvc *service.WorkflowService
-	AgentSvc    *service.AgentService
-	FindingsSvc *service.FindingsService
+	ProjectSvc         *service.ProjectService
+	TicketSvc          *service.TicketService
+	WorkflowSvc        *service.WorkflowService
+	AgentSvc           *service.AgentService
+	FindingsSvc        *service.FindingsService
+	ProjectFindingsSvc *service.ProjectFindingsService
 }
 
 // NewTestEnv creates a fully isolated test environment:
@@ -81,6 +82,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	workflowSvc := service.NewWorkflowService(pool, clk)
 	agentSvc := service.NewAgentService(pool, clk)
 	findingsSvc := service.NewFindingsService(pool, clk)
+	projectFindingsSvc := service.NewProjectFindingsService(pool, clk)
 
 	// 9. Client (for agent/findings socket tests)
 	projectID := "test-project"
@@ -121,8 +123,9 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		ProjectSvc:  projectSvc,
 		TicketSvc:   ticketSvc,
 		WorkflowSvc: workflowSvc,
-		AgentSvc:    agentSvc,
-		FindingsSvc: findingsSvc,
+		AgentSvc:           agentSvc,
+		FindingsSvc:        findingsSvc,
+		ProjectFindingsSvc: projectFindingsSvc,
 	}
 
 	// 12. Cleanup

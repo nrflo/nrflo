@@ -233,17 +233,19 @@ func (s *Server) writeResponse(conn net.Conn, resp Response) error {
 
 // Handler dispatches requests to services
 type Handler struct {
-	findingsSvc *service.FindingsService
-	agentSvc    *service.AgentService
-	wsHub       *ws.Hub
+	findingsSvc        *service.FindingsService
+	projectFindingsSvc *service.ProjectFindingsService
+	agentSvc           *service.AgentService
+	wsHub              *ws.Hub
 }
 
 // NewHandler creates a new request handler
 func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock) *Handler {
 	return &Handler{
-		findingsSvc: service.NewFindingsService(pool, clk),
-		agentSvc:    service.NewAgentService(pool, clk),
-		wsHub:       hub,
+		findingsSvc:        service.NewFindingsService(pool, clk),
+		projectFindingsSvc: service.NewProjectFindingsService(pool, clk),
+		agentSvc:           service.NewAgentService(pool, clk),
+		wsHub:              hub,
 	}
 }
 

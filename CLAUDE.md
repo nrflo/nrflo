@@ -71,7 +71,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 ## Architecture Principles
 
 1. **Server-only**: `nrworkflow_server serve` is the only user-facing command; all management via web UI
-2. **Agent CLI subset**: Spawned agents use `agent complete/fail/continue` and `findings add/append/get/delete` via Unix socket
+2. **Agent CLI subset**: Spawned agents use `agent complete/fail/continue`, `findings add/append/get/delete`, and `project_findings add/add-bulk/get/append/append-bulk/delete` via Unix socket
 3. **Auto-migrate**: Database migrations run automatically on server startup
 4. **Two Go binaries**: `nrworkflow_server` (serve command only) and `nrworkflow` (agent/findings/tickets/deps CLI)
 5. **Project-scoped**: Project discovered from `NRWORKFLOW_PROJECT` env variable

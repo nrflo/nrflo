@@ -203,6 +203,13 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    INDEX idx_ws_event_log_created_at (created_at)                   │
 │    Retention: events older than 24h cleaned up hourly                │
 │                                                                      │
+│  PROJECT_FINDINGS                                                    │
+│    project_id  TEXT NOT NULL (FK → projects.id, CASCADE)             │
+│    key         TEXT NOT NULL                                         │
+│    value       TEXT NOT NULL DEFAULT ''  (JSON-serialized value)     │
+│    updated_at  TEXT NOT NULL                                         │
+│    PRIMARY KEY (project_id, key)                                     │
+│                                                                      │
 │  TICKETS_FTS (Full-text search)                                      │
 │    project_id, id, title, description                                │
 │                                                                      │

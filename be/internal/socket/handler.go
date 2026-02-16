@@ -33,6 +33,8 @@ func (h *Handler) Handle(req Request) Response {
 	switch resource {
 	case "findings":
 		return h.handleFindings(req, action)
+	case "project_findings":
+		return h.handleProjectFindings(req, action)
 	case "agent":
 		return h.handleAgent(ctx, req, action)
 	case "ws":

@@ -283,7 +283,7 @@ func (s *FindingsService) Append(projectID, ticketID string, req *types.Findings
 		newValue = req.Value
 	}
 
-	findings[req.Key] = appendValue(findings[req.Key], newValue)
+	findings[req.Key] = AppendValue(findings[req.Key], newValue)
 	return s.updateSessionFindings(sessionID, findings)
 }
 
@@ -313,7 +313,7 @@ func (s *FindingsService) AppendBulk(projectID, ticketID string, req *types.Find
 		if err := json.Unmarshal([]byte(value), &newValue); err != nil {
 			newValue = value
 		}
-		findings[key] = appendValue(findings[key], newValue)
+		findings[key] = AppendValue(findings[key], newValue)
 	}
 
 	return s.updateSessionFindings(sessionID, findings)
@@ -363,7 +363,7 @@ func (s *FindingsService) Delete(projectID, ticketID string, req *types.Findings
 // - If existing is array AND new is array: flatten (merge arrays)
 // - If existing is array AND new is not array: append element
 // - If existing is not array: convert to [existing, new] (or flatten if new is array)
-func appendValue(existing, newValue interface{}) interface{} {
+func AppendValue(existing, newValue interface{}) interface{} {
 	if existing == nil {
 		return newValue
 	}

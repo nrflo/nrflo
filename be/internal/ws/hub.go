@@ -34,8 +34,9 @@ const (
 	EventOrchestrationFailed    = "orchestration.failed"
 	EventOrchestrationRetried   = "orchestration.retried"
 	EventOrchestrationCallback  = "orchestration.callback"
-	EventChainUpdated           = "chain.updated"
-	EventTestEcho               = "test.echo"
+	EventChainUpdated                = "chain.updated"
+	EventProjectFindingsUpdated      = "project_findings.updated"
+	EventTestEcho                    = "test.echo"
 )
 
 // Event represents a WebSocket event to broadcast

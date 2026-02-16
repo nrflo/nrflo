@@ -120,6 +120,39 @@ type FindingsDeleteRequest struct {
 	Model     string   `json:"model,omitempty"`
 }
 
+// ProjectFindingsAddRequest is the request for adding a project finding
+type ProjectFindingsAddRequest struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// ProjectFindingsAddBulkRequest is the request for adding multiple project findings
+type ProjectFindingsAddBulkRequest struct {
+	KeyValues map[string]string `json:"key_values"`
+}
+
+// ProjectFindingsGetRequest is the request for getting project findings
+type ProjectFindingsGetRequest struct {
+	Key  string   `json:"key,omitempty"`
+	Keys []string `json:"keys,omitempty"`
+}
+
+// ProjectFindingsAppendRequest is the request for appending to a project finding
+type ProjectFindingsAppendRequest struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// ProjectFindingsAppendBulkRequest is the request for appending multiple project findings
+type ProjectFindingsAppendBulkRequest struct {
+	KeyValues map[string]string `json:"key_values"`
+}
+
+// ProjectFindingsDeleteRequest is the request for deleting project finding keys
+type ProjectFindingsDeleteRequest struct {
+	Keys []string `json:"keys"`
+}
+
 // AgentSpawnRequest is the request for spawning an agent
 type AgentSpawnRequest struct {
 	AgentType     string `json:"agent_type"`

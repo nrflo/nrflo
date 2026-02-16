@@ -147,7 +147,7 @@ func TestOpencodeReasoningEffort(t *testing.T) {
 		{"opus", ""},
 		{"sonnet", ""},
 		{"haiku", ""},
-		{"gpt_5.3", ""},
+		{"gpt_5.3", "xhigh"},
 		{"unknown", ""},
 	}
 
@@ -175,7 +175,7 @@ func TestCodexReasoningEffort(t *testing.T) {
 		{"opus", "high"},        // Codex maps opus to high
 		{"sonnet", "medium"},     // Codex maps sonnet to medium
 		{"haiku", "medium"},      // Codex maps haiku to medium
-		{"gpt_5.3", "high"},      // Codex maps gpt_5.3 to high
+		{"gpt_5.3", "xhigh"},     // Codex maps gpt_5.3 to xhigh
 		{"unknown", "medium"},    // Codex defaults to medium
 	}
 

@@ -209,6 +209,8 @@ func (a *OpencodeAdapter) GetReasoningEffort(model string) string {
 	switch model {
 	case "gpt_max":
 		return "max"
+	case "gpt_5.3":
+		return "xhigh"
 	case "gpt_high":
 		return "high"
 	case "gpt_medium":
@@ -298,7 +300,7 @@ func (a *CodexAdapter) MapModel(model string) string {
 func (a *CodexAdapter) GetReasoningEffort(model string) string {
 	switch model {
 	case "gpt_5.3":
-		return "high"
+		return "xhigh"
 	case "gpt_xhigh":
 		return "xhigh"
 	case "gpt_high", "opus":

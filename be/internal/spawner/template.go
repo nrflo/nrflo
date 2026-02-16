@@ -13,6 +13,9 @@ import (
 // findingsPattern matches #{FINDINGS:agent_type} or #{FINDINGS:agent_type:key(s)}
 var findingsPattern = regexp.MustCompile(`#\{FINDINGS:([^:}]+)(?::([^}]*))?\}`)
 
+// projectFindingsPattern matches #{PROJECT_FINDINGS:key} or #{PROJECT_FINDINGS:k1,k2}
+var projectFindingsPattern = regexp.MustCompile(`#\{PROJECT_FINDINGS:([^}]+)\}`)
+
 // Preview generates the prompt without spawning
 func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (string, error) {
 	model := "opus"
@@ -224,6 +227,12 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	template, err = s.expandFindings(template, projectID, ticketID, workflowName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: findings expansion: %v\n", err)
+	}
+
+	// Expand project findings patterns
+	template, err = s.expandProjectFindings(template, projectID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: project findings expansion: %v\n", err)
 	}
 
 	return template, nil

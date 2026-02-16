@@ -161,8 +161,10 @@ Templates use placeholders injected by the spawner:
 - `${MODEL}` - Just the model name (e.g., "sonnet")
 - `${PREVIOUS_DATA}` - The `to_resume` key from findings of the most recent continued session (same agent, model, phase). Populated on low-context restarts. Empty string if no prior continued session.
 - `${CALLBACK_INSTRUCTIONS}` - Callback instructions from `workflow_instances.findings["_callback"]`. Returns `"_No callback instructions_"` when no callback is active.
+- `#{PROJECT_FINDINGS:key}` - Single project finding value from `project_findings` table. Returns `"_No project finding for key 'keyname'_"` if missing.
+- `#{PROJECT_FINDINGS:k1,k2}` - Multiple project findings as `key: value` lines. Missing keys get individual placeholders.
 
-Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them.
+Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them. Project findings are only queried when `#{PROJECT_FINDINGS:...}` patterns are present.
 
 For project-scoped workflows, `${TICKET_ID}` is empty, and `${TICKET_TITLE}`/`${TICKET_DESCRIPTION}` are replaced with empty strings. Validation at workflow creation rejects project-scoped workflows whose agent prompts use ticket-specific variables.
 
@@ -200,6 +202,22 @@ files_to_modify:
 ```
 
 **Missing findings:** `_No findings yet available from setup-analyzer_`
+
+### Project Findings
+
+Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pattern. These are stored in the `project_findings` table (separate from agent-level findings).
+
+**Syntax:**
+- `#{PROJECT_FINDINGS:key}` - Single key value
+- `#{PROJECT_FINDINGS:k1,k2}` - Multiple keys as `key: value` lines
+
+**Example template:**
+```markdown
+## Project Context
+#{PROJECT_FINDINGS:architecture,conventions}
+```
+
+**Missing key:** `_No project finding for key 'architecture'_`
 
 ## Message Output Format
 
@@ -253,10 +271,11 @@ files_to_modify:
 
 ## Testing
 
-13 test files in this package:
+15 test files in this package:
 
 | File | Tests |
 |------|-------|
 | `cli_adapter_test.go` | CLI adapter unit tests |
+| `template_project_findings_test.go` | Project findings template expansion tests |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

@@ -6,6 +6,7 @@ export interface Project {
   root_path: string | null
   default_workflow: string | null
   default_branch: string | null
+  use_git_worktrees: boolean
   created_at: string
   updated_at: string
 }
@@ -20,6 +21,7 @@ export interface CreateProjectRequest {
   root_path?: string
   default_workflow?: string
   default_branch?: string
+  use_git_worktrees?: boolean
 }
 
 export interface UpdateProjectRequest {
@@ -27,6 +29,7 @@ export interface UpdateProjectRequest {
   root_path?: string
   default_workflow?: string
   default_branch?: string
+  use_git_worktrees?: boolean
 }
 
 export async function listProjects(): Promise<ProjectsResponse> {

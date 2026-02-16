@@ -203,4 +203,4 @@ Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.l
 - Findings display with workflow-level and agent findings separated
 - Create/edit/close tickets
 - Multi-project support via project selector
-- Settings page for project management (create/update/delete)
+- Settings page for project management (create/update/delete, Toggle for git worktrees)

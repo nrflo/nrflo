@@ -4,6 +4,7 @@ import { Settings, Plus, Pencil, Trash2, X, Check, FolderOpen } from 'lucide-rea
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { Toggle } from '@/components/ui/Toggle'
 import { useProjectStore } from '@/stores/projectStore'
 import {
   listProjects,
@@ -27,6 +28,7 @@ interface ProjectFormData {
   root_path: string
   default_workflow: string
   default_branch: string
+  use_git_worktrees: boolean
 }
 
 const emptyForm: ProjectFormData = {
@@ -35,6 +37,7 @@ const emptyForm: ProjectFormData = {
   root_path: '',
   default_workflow: '',
   default_branch: '',
+  use_git_worktrees: false,
 }
 
 export function SettingsPage() {
@@ -109,6 +112,7 @@ export function SettingsPage() {
       root_path: project.root_path || '',
       default_workflow: project.default_workflow || '',
       default_branch: project.default_branch || '',
+      use_git_worktrees: project.use_git_worktrees || false,
     })
   }
 
@@ -126,6 +130,7 @@ export function SettingsPage() {
       root_path: formData.root_path.trim() || undefined,
       default_workflow: formData.default_workflow.trim() || undefined,
       default_branch: formData.default_branch.trim() || undefined,
+      use_git_worktrees: formData.use_git_worktrees,
     })
   }
 
@@ -138,6 +143,7 @@ export function SettingsPage() {
         root_path: formData.root_path.trim() || undefined,
         default_workflow: formData.default_workflow.trim() || undefined,
         default_branch: formData.default_branch.trim() || undefined,
+        use_git_worktrees: formData.use_git_worktrees,
       },
     })
   }
@@ -238,10 +244,23 @@ export function SettingsPage() {
                     </label>
                     <Input
                       value={formData.default_branch}
-                      onChange={(e) =>
-                        setFormData({ ...formData, default_branch: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setFormData({
+                          ...formData,
+                          default_branch: val,
+                          use_git_worktrees: val.trim() ? formData.use_git_worktrees : false,
+                        })
+                      }}
                       placeholder="main"
+                    />
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <Toggle
+                      checked={formData.use_git_worktrees}
+                      onChange={(checked) => setFormData({ ...formData, use_git_worktrees: checked })}
+                      label="Use Git Worktrees"
+                      disabled={!formData.default_branch.trim()}
                     />
                   </div>
                 </div>
@@ -327,10 +346,23 @@ export function SettingsPage() {
                           </label>
                           <Input
                             value={formData.default_branch}
-                            onChange={(e) =>
-                              setFormData({ ...formData, default_branch: e.target.value })
-                            }
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setFormData({
+                                ...formData,
+                                default_branch: val,
+                                use_git_worktrees: val.trim() ? formData.use_git_worktrees : false,
+                              })
+                            }}
                             placeholder="main"
+                          />
+                        </div>
+                        <div className="flex items-end pb-1">
+                          <Toggle
+                            checked={formData.use_git_worktrees}
+                            onChange={(checked) => setFormData({ ...formData, use_git_worktrees: checked })}
+                            label="Use Git Worktrees"
+                            disabled={!formData.default_branch.trim()}
                           />
                         </div>
                       </div>
@@ -390,6 +422,7 @@ export function SettingsPage() {
                               project.root_path && `Path: ${project.root_path}`,
                               project.default_workflow && `Workflow: ${project.default_workflow}`,
                               project.default_branch && `Branch: ${project.default_branch}`,
+                              project.use_git_worktrees && 'Worktrees: enabled',
                             ]
                               .filter(Boolean)
                               .map((text, i, arr) => (

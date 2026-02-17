@@ -30,6 +30,15 @@ Update [be/CLAUDE.md](be/CLAUDE.md) when modifying:
 Update [ui/CLAUDE.md](ui/CLAUDE.md) when modifying:
 - Frontend components, pages, WebSocket protocol, API client code, TypeScript types
 
+#### 1d. Agent Manual
+
+Update [agent_manual.md](agent_manual.md) when modifying:
+- Template variables in `be/internal/spawner/template.go`
+- Findings patterns in `be/internal/spawner/template_findings.go` or `template_project_findings.go`
+- Agent CLI commands in `be/internal/cli/agent.go` or `be/internal/cli/findings.go`
+- Agent definition schema in `be/internal/model/agent_definition.go`
+- Workflow phase format or layer execution rules
+
 ### 2. Layer-Based Phase Execution
 
 Agents are grouped by `layer` number. All agents in the same layer run concurrently; layers execute in ascending order. The spawner validates:
@@ -67,6 +76,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 | `restart.sh` | Rebuild and restart BE + UI servers (background) |
 | `stop.sh` | Stop running servers |
 | `rebuild-cli.sh` | Rebuild and re-symlink CLI binary without restarting server |
+| `agent_manual.md` | Agent definition cheat-sheet (template vars, findings, CLI) |
 
 ## Architecture Principles
 
@@ -83,7 +93,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 11. **Layer-based execution**: Phases grouped by layer; same-layer agents run concurrently, layers execute sequentially with fan-in (pass_count >= 1)
 12. **WebSocket real-time**: UI receives all real-time updates via WebSocket (`/api/v1/ws`), no REST polling
 13. **DB-stored workflow definitions**: Workflow definitions (phases) stored in `workflows` table, managed via `/api/v1/workflows` API
-14. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB. Templates support `${VAR}` variable substitution and `#{FINDINGS:agent}` / `#{PROJECT_FINDINGS:key}` pattern expansion. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for full template variable reference.
+14. **DB-stored agent definitions**: Agent definitions (model, timeout, prompt template) stored in `agent_definitions` table, managed via `/api/v1/workflows/{wid}/agents` API. The spawner loads templates exclusively from DB. Templates support `${VAR}` variable substitution and `#{FINDINGS:agent}` / `#{PROJECT_FINDINGS:key}` pattern expansion. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for full template variable reference. See [agent_manual.md](agent_manual.md) for the complete agent definition cheat-sheet.
 15. **Server-side orchestration**: Workflows run from the web UI via `POST /api/v1/tickets/:id/workflow/run`. The orchestrator groups phases by layer and runs all agents in each layer concurrently (one goroutine per agent calling `spawner.Spawn()`), with cancellation support via `/workflow/stop`.
 16. **Low-context relaunch**: When an agent's context drops below threshold (default ~25% remaining, configurable per agent via `restart_threshold` in agent_definitions), the spawner kills the agent, resumes with `claude --resume` instructing it to save progress under the `to_resume` findings key, then spawns a fresh agent with `${PREVIOUS_DATA}` populated from that `to_resume` key. Old sessions get `status='continued'` and are excluded from agent history.
 17. **Manual agent restart**: Users can trigger an agent restart from the UI via `POST /api/v1/tickets/:id/workflow/restart` with `{workflow, session_id}`. This triggers the same context-save-and-relaunch flow as the automatic low-context restart, regardless of current token usage.

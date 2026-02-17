@@ -15,7 +15,7 @@ import (
 //   - #{FINDINGS:agent}           - All findings for agent
 //   - #{FINDINGS:agent:key}       - Single specific key
 //   - #{FINDINGS:agent:key1,key2} - Multiple specific keys
-func (s *Spawner) expandFindings(template, projectID, ticketID, workflowName string) (string, error) {
+func (s *Spawner) expandFindings(template, projectID, ticketID, workflowName, wfiID string) (string, error) {
 	// Pattern: #{FINDINGS:agent_type} or #{FINDINGS:agent_type:key(s)}
 	re := findingsPattern
 
@@ -35,7 +35,7 @@ func (s *Spawner) expandFindings(template, projectID, ticketID, workflowName str
 			}
 		}
 
-		findings, err := s.fetchFindings(projectID, ticketID, workflowName, agentType, keys)
+		findings, err := s.fetchFindings(projectID, ticketID, workflowName, agentType, wfiID, keys)
 		if err != nil {
 			lastErr = err
 			return s.formatFindingsError(agentType)
@@ -48,7 +48,7 @@ func (s *Spawner) expandFindings(template, projectID, ticketID, workflowName str
 }
 
 // fetchFindings retrieves findings from the database using the FindingsService
-func (s *Spawner) fetchFindings(projectID, ticketID, workflowName, agentType string, keys []string) (interface{}, error) {
+func (s *Spawner) fetchFindings(projectID, ticketID, workflowName, agentType, wfiID string, keys []string) (interface{}, error) {
 	pool := s.pool()
 	if pool == nil {
 		return nil, fmt.Errorf("failed to get database pool")
@@ -57,9 +57,10 @@ func (s *Spawner) fetchFindings(projectID, ticketID, workflowName, agentType str
 	findingsService := service.NewFindingsService(pool, s.config.Clock)
 
 	req := &types.FindingsGetRequest{
-		Workflow:  workflowName,
-		AgentType: agentType,
-		Keys:      keys,
+		Workflow:    workflowName,
+		AgentType:   agentType,
+		Keys:        keys,
+		InstanceID:  wfiID,
 	}
 
 	return findingsService.Get(projectID, ticketID, req)

@@ -224,7 +224,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	}
 
 	// Expand findings patterns (after variable substitution)
-	template, err = s.expandFindings(template, projectID, ticketID, workflowName)
+	template, err = s.expandFindings(template, projectID, ticketID, workflowName, wfiID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: findings expansion: %v\n", err)
 	}

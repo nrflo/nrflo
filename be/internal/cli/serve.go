@@ -14,6 +14,7 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/socket"
+	"be/internal/spawner"
 
 	"github.com/spf13/cobra"
 )
@@ -47,6 +48,9 @@ Example usage:
 		if err := logger.Init("/tmp/nrworkflow/logs/be.log"); err != nil {
 			return fmt.Errorf("failed to init logger: %w", err)
 		}
+
+		// Clean up any stale Docker containers from previous runs
+		spawner.CleanupStaleContainers()
 
 		// Override port if specified via flag
 		if servePort != 0 {

@@ -21,6 +21,7 @@ be/
 │   ├── spawner/                 # Agent spawner
 │   │   ├── spawner.go           # Spawn and monitor agents
 │   │   ├── cli_adapter.go       # CLI adapter pattern (Claude, Opencode, Codex)
+│   │   ├── docker_adapter.go    # Docker isolation wrapper (DockerCLIAdapter)
 │   │   ├── cli_adapter_test.go  # Adapter tests
 │   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution, detected by orchestrator)
 │   │   ├── completion.go        # Completion handling, continuation relaunch

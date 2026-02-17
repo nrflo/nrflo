@@ -62,6 +62,8 @@ type Config struct {
 	Pool *db.Pool
 	// Clock for timestamp generation (required)
 	Clock clock.Clock
+	// DockerConfig enables Docker isolation when non-nil
+	DockerConfig *DockerConfig
 }
 
 // processInfo tracks a single spawned agent process
@@ -254,6 +256,11 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	adapter, err := GetCLIAdapter(cliName)
 	if err != nil {
 		return nil, err
+	}
+
+	// Wrap with Docker adapter when Docker isolation is enabled
+	if s.config.DockerConfig != nil {
+		adapter = NewDockerCLIAdapter(adapter, *s.config.DockerConfig)
 	}
 
 	// Get agent config

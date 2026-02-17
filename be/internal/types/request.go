@@ -71,53 +71,65 @@ type PhaseUpdateRequest struct {
 
 // FindingsAddRequest is the request for adding findings
 type FindingsAddRequest struct {
-	Workflow  string `json:"workflow"`
-	AgentType string `json:"agent_type"`
-	Key       string `json:"key"`
-	Value     string `json:"value"`
-	Model     string `json:"model,omitempty"`
+	Workflow   string `json:"workflow"`
+	AgentType  string `json:"agent_type"`
+	Key        string `json:"key"`
+	Value      string `json:"value"`
+	Model      string `json:"model,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
+	SessionID  string `json:"session_id,omitempty"`
 }
 
 // FindingsAddBulkRequest is the request for adding multiple findings at once
 type FindingsAddBulkRequest struct {
-	Workflow  string            `json:"workflow"`
-	AgentType string            `json:"agent_type"`
-	KeyValues map[string]string `json:"key_values"` // key -> value (string or JSON)
-	Model     string            `json:"model,omitempty"`
+	Workflow   string            `json:"workflow"`
+	AgentType  string            `json:"agent_type"`
+	KeyValues  map[string]string `json:"key_values"` // key -> value (string or JSON)
+	Model      string            `json:"model,omitempty"`
+	InstanceID string            `json:"instance_id,omitempty"`
+	SessionID  string            `json:"session_id,omitempty"`
 }
 
 // FindingsGetRequest is the request for getting findings
 type FindingsGetRequest struct {
-	Workflow  string   `json:"workflow"`
-	AgentType string   `json:"agent_type"`
-	Key       string   `json:"key,omitempty"`
-	Keys      []string `json:"keys,omitempty"` // Multiple keys to fetch
-	Model     string   `json:"model,omitempty"`
+	Workflow   string   `json:"workflow"`
+	AgentType  string   `json:"agent_type"`
+	Key        string   `json:"key,omitempty"`
+	Keys       []string `json:"keys,omitempty"` // Multiple keys to fetch
+	Model      string   `json:"model,omitempty"`
+	InstanceID string   `json:"instance_id,omitempty"`
+	SessionID  string   `json:"session_id,omitempty"`
 }
 
 // FindingsAppendRequest is the request for appending to findings
 type FindingsAppendRequest struct {
-	Workflow  string `json:"workflow"`
-	AgentType string `json:"agent_type"`
-	Key       string `json:"key"`
-	Value     string `json:"value"`
-	Model     string `json:"model,omitempty"`
+	Workflow   string `json:"workflow"`
+	AgentType  string `json:"agent_type"`
+	Key        string `json:"key"`
+	Value      string `json:"value"`
+	Model      string `json:"model,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
+	SessionID  string `json:"session_id,omitempty"`
 }
 
 // FindingsAppendBulkRequest is the request for appending multiple values
 type FindingsAppendBulkRequest struct {
-	Workflow  string            `json:"workflow"`
-	AgentType string            `json:"agent_type"`
-	KeyValues map[string]string `json:"key_values"`
-	Model     string            `json:"model,omitempty"`
+	Workflow   string            `json:"workflow"`
+	AgentType  string            `json:"agent_type"`
+	KeyValues  map[string]string `json:"key_values"`
+	Model      string            `json:"model,omitempty"`
+	InstanceID string            `json:"instance_id,omitempty"`
+	SessionID  string            `json:"session_id,omitempty"`
 }
 
 // FindingsDeleteRequest is the request for deleting finding keys
 type FindingsDeleteRequest struct {
-	Workflow  string   `json:"workflow"`
-	AgentType string   `json:"agent_type"`
-	Keys      []string `json:"keys"`
-	Model     string   `json:"model,omitempty"`
+	Workflow   string   `json:"workflow"`
+	AgentType  string   `json:"agent_type"`
+	Keys       []string `json:"keys"`
+	Model      string   `json:"model,omitempty"`
+	InstanceID string   `json:"instance_id,omitempty"`
+	SessionID  string   `json:"session_id,omitempty"`
 }
 
 // ProjectFindingsAddRequest is the request for adding a project finding
@@ -180,9 +192,11 @@ type AgentKillRequest struct {
 
 // AgentCompleteRequest is the request for marking an agent as complete/failed
 type AgentCompleteRequest struct {
-	Workflow  string `json:"workflow"`
-	AgentType string `json:"agent_type"`
-	Model     string `json:"model,omitempty"`
+	Workflow   string `json:"workflow"`
+	AgentType  string `json:"agent_type"`
+	Model      string `json:"model,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
+	SessionID  string `json:"session_id,omitempty"`
 }
 
 // AgentCallbackRequest is the request for marking an agent as callback

@@ -259,10 +259,11 @@ func TestGetProjectAgentSessions_FindingsAggregation(t *testing.T) {
 
 	// Add findings via service
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"project_id": env.ProjectID,
-		"ticket_id":  "",
-		"workflow":   "proj-findings",
-		"agent_type": "setup-agent",
+		"project_id":  env.ProjectID,
+		"ticket_id":   "",
+		"workflow":    "proj-findings",
+		"agent_type":  "setup-agent",
+		"instance_id": instance.ID,
 		"data": map[string]interface{}{
 			"test_key": "test_value",
 		},

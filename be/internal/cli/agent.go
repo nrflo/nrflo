@@ -62,6 +62,7 @@ var agentCompleteCmd = &cobra.Command{
 		if params.Model != "" {
 			reqParams["model"] = params.Model
 		}
+		addSpawnerIDs(reqParams)
 
 		if err := c.ExecuteAndUnmarshal("agent.complete", reqParams, nil); err != nil {
 			return err
@@ -104,6 +105,7 @@ var agentFailCmd = &cobra.Command{
 		if params.Model != "" {
 			reqParams["model"] = params.Model
 		}
+		addSpawnerIDs(reqParams)
 
 		if err := c.ExecuteAndUnmarshal("agent.fail", reqParams, nil); err != nil {
 			return err
@@ -145,6 +147,7 @@ Use -T/--no-ticket for project-scoped workflows.`,
 		if agentContinueModel != "" {
 			reqParams["model"] = agentContinueModel
 		}
+		addSpawnerIDs(reqParams)
 
 		if err := c.ExecuteAndUnmarshal("agent.continue", reqParams, nil); err != nil {
 			return err
@@ -194,6 +197,7 @@ Use -T/--no-ticket for project-scoped workflows.`,
 		if agentCallbackModel != "" {
 			reqParams["model"] = agentCallbackModel
 		}
+		addSpawnerIDs(reqParams)
 
 		if err := c.ExecuteAndUnmarshal("agent.callback", reqParams, nil); err != nil {
 			return err

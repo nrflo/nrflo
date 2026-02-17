@@ -327,6 +327,8 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		WorkDir:       workDir,
 		Env: append(filterEnv(os.Environ(), "CLAUDECODE"),
 			fmt.Sprintf("NRWORKFLOW_PROJECT=%s", req.ProjectID),
+			fmt.Sprintf("NRWF_WORKFLOW_INSTANCE_ID=%s", wfiID),
+			fmt.Sprintf("NRWF_SESSION_ID=%s", sessionID),
 			"NRWF_SPAWNED=1",
 			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
 		),

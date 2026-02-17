@@ -26,9 +26,11 @@ func TestSocketHandler_AgentComplete_LogsWithTrx(t *testing.T) {
 
 	// Execute agent.complete via socket
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "SOCK-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "SOCK-1",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-1",
+		"instance_id": wfiID,
 	}, nil)
 
 	logs := logBuf.String()
@@ -85,9 +87,11 @@ func TestSocketHandler_AgentFail_LogsWithWarnLevel(t *testing.T) {
 
 	// Execute agent.fail via socket
 	env.MustExecute(t, "agent.fail", map[string]interface{}{
-		"ticket_id":  "SOCK-2",
-		"workflow":   "test",
-		"agent_type": "builder",
+		"ticket_id":   "SOCK-2",
+		"workflow":    "test",
+		"agent_type":  "builder",
+		"session_id":  "sess-2",
+		"instance_id": wfiID,
 	}, nil)
 
 	logs := logBuf.String()
@@ -136,9 +140,11 @@ func TestSocketHandler_AgentContinue_LogsDetails(t *testing.T) {
 
 	// Execute agent.continue via socket
 	env.MustExecute(t, "agent.continue", map[string]interface{}{
-		"ticket_id":  "SOCK-3",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "SOCK-3",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-3",
+		"instance_id": wfiID,
 	}, nil)
 
 	logs := logBuf.String()
@@ -188,8 +194,10 @@ func TestSocketHandler_AgentCallback_LogsWithLevel(t *testing.T) {
 		"ticket_id":    "SOCK-4",
 		"workflow":     "test",
 		"agent_type":   "verifier",
+		"session_id":   "sess-4",
 		"level":        2,
 		"instructions": "Fix implementation",
+		"instance_id":  wfiID,
 	}, nil)
 
 	logs := logBuf.String()
@@ -357,6 +365,7 @@ func TestSocketHandler_FindingsNotLogged(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "test_key",
 		"value":      "test_value",
+		"instance_id": wfiID,
 	}, nil)
 
 	logs := logBuf.String()
@@ -384,15 +393,19 @@ func TestSocketHandler_TrxGeneratedPerRequest(t *testing.T) {
 
 	// Execute two agent commands
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "SOCK-8",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "SOCK-8",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-8a",
+		"instance_id": wfiID,
 	}, nil)
 
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "SOCK-8",
-		"workflow":   "test",
-		"agent_type": "builder",
+		"ticket_id":   "SOCK-8",
+		"workflow":    "test",
+		"agent_type":  "builder",
+		"session_id":  "sess-8b",
+		"instance_id": wfiID,
 	}, nil)
 
 	logs := logBuf.String()

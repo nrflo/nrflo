@@ -161,6 +161,20 @@ Agent definitions store model, timeout, and prompt template per agent type per w
 | `qa-verifier` | Verification and quality checks | opus |
 | `doc-updater` | Documentation updates | sonnet |
 
+## Agent Environment Variables
+
+The spawner sets these env vars on every spawned agent process. Child processes (e.g., `nrworkflow` CLI calls) inherit them.
+
+| Variable | Purpose |
+|----------|---------|
+| `NRWORKFLOW_PROJECT` | Project ID |
+| `NRWF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID — used by CLI to target the correct instance directly (required for findings/agent commands) |
+| `NRWF_SESSION_ID` | Agent session UUID — used by CLI to target the correct session directly (required for findings/agent commands) |
+| `NRWF_SPAWNED` | Set to `1` to indicate agent was spawned by the orchestrator |
+| `NRWF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
+
+On relaunch (continuation), `spawnSingle` is called again, so `NRWF_SESSION_ID` gets the new session's UUID. `NRWF_WORKFLOW_INSTANCE_ID` stays the same. The resume flow (`context_save.go`) reuses `proc.cmd.Env`, preserving the old session ID for the save step, then the fresh spawn gets the new one.
+
 ## Template Variables
 
 Templates use placeholders injected by the spawner:

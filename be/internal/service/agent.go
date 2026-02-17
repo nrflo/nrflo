@@ -96,11 +96,13 @@ func (s *AgentService) GetActive(projectID, ticketID string, req *types.AgentAct
 		return nil, fmt.Errorf("workflow is required")
 	}
 
-	// Find workflow instance
+	// Find workflow instance (prefer active, then most recent)
 	var wfiID string
 	err := s.pool.QueryRow(`
 		SELECT id FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
+		ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, created_at DESC
+		LIMIT 1`,
 		projectID, ticketID, req.Workflow).Scan(&wfiID)
 	if err != nil {
 		return []ActiveAgent{}, nil
@@ -179,7 +181,9 @@ func (s *AgentService) Kill(projectID, ticketID string, req *types.AgentKillRequ
 	var wfiID string
 	err := s.pool.QueryRow(`
 		SELECT id FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
+		ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, created_at DESC
+		LIMIT 1`,
 		projectID, ticketID, req.Workflow).Scan(&wfiID)
 	if err != nil {
 		return 0, fmt.Errorf("workflow '%s' not found", req.Workflow)
@@ -227,22 +231,22 @@ func (s *AgentService) Kill(projectID, ticketID string, req *types.AgentKillRequ
 
 // Complete marks an agent as completed. Returns the session ID.
 func (s *AgentService) Complete(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
-	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "pass", req.Model)
+	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "pass", req.Model)
 }
 
 // Fail marks an agent as failed. Returns the session ID.
 func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
-	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "fail", req.Model)
+	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "fail", req.Model)
 }
 
 // Continue marks an agent as needing context continuation. Returns the session ID.
 func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
-	return s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "continue", req.Model)
+	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "continue", req.Model)
 }
 
 // Callback marks an agent as requesting a callback to a previous layer
 func (s *AgentService) Callback(projectID, ticketID string, req *types.AgentCallbackRequest) error {
-	sessionID, err := s.setAgentResult(projectID, ticketID, req.Workflow, req.AgentType, "callback", req.Model)
+	sessionID, err := s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "callback", req.Model)
 	if err != nil {
 		return err
 	}
@@ -268,39 +272,13 @@ func (s *AgentService) Callback(projectID, ticketID string, req *types.AgentCall
 	return err
 }
 
-func (s *AgentService) setAgentResult(projectID, ticketID, workflowName, agentType, result, modelID string) (string, error) {
-	if workflowName == "" {
-		return "", fmt.Errorf("workflow is required")
-	}
-
-	var wfiID string
-	err := s.pool.QueryRow(`
-		SELECT id FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-		projectID, ticketID, workflowName).Scan(&wfiID)
-	if err != nil {
-		return "", fmt.Errorf("workflow '%s' not found", workflowName)
-	}
-
-	// Find matching active session
-	query := `SELECT id FROM agent_sessions
-		WHERE workflow_instance_id = ? AND agent_type = ? AND status = 'running'`
-	args := []interface{}{wfiID, agentType}
-
-	if modelID != "" {
-		query += ` AND model_id = ?`
-		args = append(args, modelID)
-	}
-	query += ` LIMIT 1`
-
-	var sessionID string
-	err = s.pool.QueryRow(query, args...).Scan(&sessionID)
-	if err != nil {
-		return "", fmt.Errorf("no active agent found for %s", agentType)
+func (s *AgentService) setAgentResult(sessionID, instanceID, agentType, result, modelID string) (string, error) {
+	if sessionID == "" {
+		return "", fmt.Errorf("session_id is required (NRWF_SESSION_ID env var)")
 	}
 
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
-	_, err = s.pool.Exec(
+	_, err := s.pool.Exec(
 		`UPDATE agent_sessions SET result = ?, updated_at = ? WHERE id = ?`,
 		result, now, sessionID)
 	return sessionID, err

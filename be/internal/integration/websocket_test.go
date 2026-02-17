@@ -69,6 +69,7 @@ func TestWSFindingsEvents(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "data",
 		"value":      `"hello"`,
+		"instance_id": wfiID,
 	}, nil)
 	event := expectEvent(t, ch, ws.EventFindingsUpdated, 2*time.Second)
 	if event.Data["action"] != "add" {
@@ -82,6 +83,7 @@ func TestWSFindingsEvents(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "data",
 		"value":      `"world"`,
+		"instance_id": wfiID,
 	}, nil)
 	event = expectEvent(t, ch, ws.EventFindingsUpdated, 2*time.Second)
 	if event.Data["action"] != "append" {
@@ -94,6 +96,7 @@ func TestWSFindingsEvents(t *testing.T) {
 		"workflow":   "test",
 		"agent_type": "analyzer",
 		"keys":       []string{"data"},
+		"instance_id": wfiID,
 	}, nil)
 	event = expectEvent(t, ch, ws.EventFindingsUpdated, 2*time.Second)
 	if event.Data["action"] != "delete" {
@@ -114,9 +117,11 @@ func TestWSAgentEvents(t *testing.T) {
 
 	// Complete agent -> should broadcast agent.completed
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "WS-A1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "WS-A1",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-ws-agent",
+		"instance_id": wfiID,
 	}, nil)
 	event := expectEvent(t, ch, ws.EventAgentCompleted, 2*time.Second)
 	if event.Data["agent_type"] != "analyzer" {
@@ -149,6 +154,7 @@ func TestWSSubscriptionFiltering(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "x",
 		"value":      `"1"`,
+		"instance_id": wfi2,
 	}, nil)
 
 	// Client1 should get event
@@ -164,6 +170,7 @@ func TestWSSubscriptionFiltering(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "x",
 		"value":      `"2"`,
+		"instance_id": wfi2,
 	}, nil)
 
 	// Client2 should get event

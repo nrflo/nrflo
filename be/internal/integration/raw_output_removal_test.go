@@ -275,13 +275,16 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "test_key",
 		"value":      "test_value",
+		"instance_id": wfiID,
 	}, nil)
 
 	// Complete analyzer
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "E2E-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "E2E-1",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-e2e-analyzer",
+		"instance_id": wfiID,
 	}, nil)
 
 	env.CompletePhase(t, "E2E-1", "analyzer", "pass")
@@ -292,9 +295,11 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 
 	// Complete builder
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "E2E-1",
-		"workflow":   "test",
-		"agent_type": "builder",
+		"ticket_id":   "E2E-1",
+		"workflow":    "test",
+		"agent_type":  "builder",
+		"session_id":  "sess-e2e-builder",
+		"instance_id": wfiID,
 	}, nil)
 
 	env.CompletePhase(t, "E2E-1", "builder", "pass")

@@ -19,10 +19,12 @@ func TestAgentCallback(t *testing.T) {
 
 	// Call agent.callback via socket
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":  "AGT-CB-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"level":      1,
+		"ticket_id":   "AGT-CB-1",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-cb-1",
+		"level":       1,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify session result is "callback" via service
@@ -61,11 +63,13 @@ func TestAgentCallbackWithModel(t *testing.T) {
 
 	// Call agent.callback with model filter
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":  "AGT-CB-2",
-		"workflow":   "test",
-		"agent_type": "builder",
-		"model":      "opus",
-		"level":      2,
+		"ticket_id":   "AGT-CB-2",
+		"workflow":    "test",
+		"agent_type":  "builder",
+		"model":       "opus",
+		"session_id":  "sess-cb-2",
+		"level":       2,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify session result is "callback"
@@ -100,10 +104,12 @@ func TestAgentCallbackZeroLevel(t *testing.T) {
 
 	// Call agent.callback with level 0
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":  "AGT-CB-3",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"level":      0,
+		"ticket_id":   "AGT-CB-3",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-cb-3",
+		"level":       0,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify session result
@@ -132,13 +138,16 @@ func TestAgentCallbackNoActiveAgent(t *testing.T) {
 
 	env.CreateTicket(t, "AGT-CB-4", "Agent callback no active")
 	env.InitWorkflow(t, "AGT-CB-4")
+	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-4", "test")
 
 	// No active agent session — expect error
 	env.ExpectError(t, "agent.callback", map[string]interface{}{
-		"ticket_id":  "AGT-CB-4",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"level":      1,
+		"ticket_id":   "AGT-CB-4",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "nonexistent-session",
+		"level":        1,
+		"instance_id": wfiID,
 	}, -32603) // Internal error
 }
 
@@ -160,14 +169,17 @@ func TestAgentCallbackPreservesExistingFindings(t *testing.T) {
 			"callback_instructions": "Fix the bug in layer 0",
 			"bug_description":       "NPE in handler",
 		},
+		"instance_id": wfiID,
 	}, nil)
 
 	// Call agent.callback
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":  "AGT-CB-5",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"level":      1,
+		"ticket_id":   "AGT-CB-5",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-cb-5",
+		"level":       1,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify all findings are preserved
@@ -200,10 +212,12 @@ func TestAgentCallbackStatusMapping(t *testing.T) {
 
 	// Set result to callback
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":  "AGT-CB-6",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"level":      0,
+		"ticket_id":   "AGT-CB-6",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-cb-6",
+		"level":       0,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Simulate spawner setting status to callback via UpdateSessionStatus
@@ -240,14 +254,17 @@ func TestAgentCallbackE2E(t *testing.T) {
 			"callback_instructions": "The implementation has a bug. Need to fix variable naming in layer 0.",
 			"files_affected":        `["main.go","handler.go"]`,
 		},
+		"instance_id": wfiID,
 	}, nil)
 
 	// 2. Agent calls agent.callback with level
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":  "AGT-CB-E2E",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"level":      0,
+		"ticket_id":   "AGT-CB-E2E",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-cb-e2e",
+		"level":       0,
+		"instance_id": wfiID,
 	}, nil)
 
 	// 3. Verify result is callback
@@ -345,10 +362,12 @@ func TestAgentCallbackDifferentLevels(t *testing.T) {
 
 			// Call agent.callback with specific level
 			env.MustExecute(t, "agent.callback", map[string]interface{}{
-				"ticket_id":  tc.ticketID,
-				"workflow":   "test",
-				"agent_type": "analyzer",
-				"level":      tc.level,
+				"ticket_id":   tc.ticketID,
+				"workflow":    "test",
+				"agent_type":  "analyzer",
+				"session_id":  sessionID,
+				"level":       tc.level,
+				"instance_id": wfiID,
 			}, nil)
 
 			// Verify callback_level

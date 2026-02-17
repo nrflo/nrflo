@@ -435,13 +435,16 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "files_to_check",
 		"value":      "main.go,config.go",
+		"instance_id": wfiID,
 	}, nil)
 
 	// Complete analyzer
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "E2E-NOCATS-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "E2E-NOCATS-1",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-e2e-nocats-analyzer",
+		"instance_id": wfiID,
 	}, nil)
 
 	env.CompletePhase(t, "E2E-NOCATS-1", "analyzer", "pass")
@@ -452,9 +455,11 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 
 	// Complete builder
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "E2E-NOCATS-1",
-		"workflow":   "test",
-		"agent_type": "builder",
+		"ticket_id":   "E2E-NOCATS-1",
+		"workflow":    "test",
+		"agent_type":  "builder",
+		"session_id":  "sess-e2e-nocats-builder",
+		"instance_id": wfiID,
 	}, nil)
 
 	env.CompletePhase(t, "E2E-NOCATS-1", "builder", "pass")
@@ -491,8 +496,9 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 
 	// Verify findings were preserved
 	findings, err := env.FindingsSvc.Get(env.ProjectID, "E2E-NOCATS-1", &types.FindingsGetRequest{
-		Workflow:  "test",
-		AgentType: "analyzer",
+		Workflow:   "test",
+		AgentType:  "analyzer",
+		InstanceID: wfiID,
 	})
 	if err != nil {
 		t.Fatalf("failed to get findings: %v", err)

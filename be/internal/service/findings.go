@@ -22,25 +22,27 @@ func NewFindingsService(pool *db.Pool, clk clock.Clock) *FindingsService {
 	return &FindingsService{pool: pool, clock: clk}
 }
 
-// resolveWorkflowInstance finds the workflow instance ID for a ticket+workflow
-func (s *FindingsService) resolveWorkflowInstance(projectID, ticketID, workflow string) (string, error) {
-	var wfiID string
-	err := s.pool.QueryRow(`
-		SELECT id FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-		projectID, ticketID, workflow).Scan(&wfiID)
-	if err == sql.ErrNoRows {
-		return "", fmt.Errorf("workflow '%s' not found on %s", workflow, ticketID)
+// resolveWorkflowInstance returns the workflow instance ID.
+// Requires instanceID from NRWF_WORKFLOW_INSTANCE_ID env var (set by spawner).
+func (s *FindingsService) resolveWorkflowInstance(instanceID string) (string, error) {
+	if instanceID == "" {
+		return "", fmt.Errorf("instance_id is required (NRWF_WORKFLOW_INSTANCE_ID env var)")
 	}
-	if err != nil {
-		return "", err
-	}
-	return wfiID, nil
+	return instanceID, nil
 }
 
-// findTargetSession finds the most recent session for agent_type+model in a workflow instance.
-// Prefers running sessions over completed ones.
-func (s *FindingsService) findTargetSession(wfiID, agentType, modelStr string) (string, sql.NullString, error) {
+// resolveSession returns the session ID and current findings.
+// Uses sessionID directly when provided (from NRWF_SESSION_ID env var).
+func (s *FindingsService) resolveSession(sessionID, wfiID, agentType, modelStr string) (string, sql.NullString, error) {
+	if sessionID != "" {
+		var findings sql.NullString
+		err := s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, sessionID).Scan(&findings)
+		if err == sql.ErrNoRows {
+			return "", sql.NullString{}, fmt.Errorf("session %s not found", sessionID)
+		}
+		return sessionID, findings, err
+	}
+
 	query := `SELECT id, findings FROM agent_sessions
 		WHERE workflow_instance_id = ? AND agent_type = ?`
 	args := []interface{}{wfiID, agentType}
@@ -52,13 +54,13 @@ func (s *FindingsService) findTargetSession(wfiID, agentType, modelStr string) (
 
 	query += ` ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END, created_at DESC LIMIT 1`
 
-	var sessionID string
+	var sid string
 	var findings sql.NullString
-	err := s.pool.QueryRow(query, args...).Scan(&sessionID, &findings)
+	err := s.pool.QueryRow(query, args...).Scan(&sid, &findings)
 	if err == sql.ErrNoRows {
 		return "", sql.NullString{}, fmt.Errorf("no session found for agent %s", agentType)
 	}
-	return sessionID, findings, err
+	return sid, findings, err
 }
 
 // updateSessionFindings writes the findings JSON to a session
@@ -87,12 +89,12 @@ func (s *FindingsService) Add(projectID, ticketID string, req *types.FindingsAdd
 		return fmt.Errorf("workflow is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(projectID, ticketID, req.Workflow)
+	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
 	if err != nil {
 		return err
 	}
 
-	sessionID, findingsNS, err := s.findTargetSession(wfiID, req.AgentType, req.Model)
+	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
 	if err != nil {
 		return err
 	}
@@ -117,12 +119,12 @@ func (s *FindingsService) AddBulk(projectID, ticketID string, req *types.Finding
 		return fmt.Errorf("at least one key-value pair is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(projectID, ticketID, req.Workflow)
+	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
 	if err != nil {
 		return err
 	}
 
-	sessionID, findingsNS, err := s.findTargetSession(wfiID, req.AgentType, req.Model)
+	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
 	if err != nil {
 		return err
 	}
@@ -152,14 +154,14 @@ func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGet
 		keys = []string{req.Key}
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(projectID, ticketID, req.Workflow)
+	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
 	if err != nil {
 		return nil, err
 	}
 
 	// If specific model requested, return that session's findings
 	if req.Model != "" {
-		_, findingsNS, err := s.findTargetSession(wfiID, req.AgentType, req.Model)
+		_, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
 		if err != nil {
 			return map[string]interface{}{}, nil
 		}
@@ -266,12 +268,12 @@ func (s *FindingsService) Append(projectID, ticketID string, req *types.Findings
 		return fmt.Errorf("key is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(projectID, ticketID, req.Workflow)
+	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
 	if err != nil {
 		return err
 	}
 
-	sessionID, findingsNS, err := s.findTargetSession(wfiID, req.AgentType, req.Model)
+	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
 	if err != nil {
 		return err
 	}
@@ -296,12 +298,12 @@ func (s *FindingsService) AppendBulk(projectID, ticketID string, req *types.Find
 		return fmt.Errorf("at least one key-value pair is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(projectID, ticketID, req.Workflow)
+	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
 	if err != nil {
 		return err
 	}
 
-	sessionID, findingsNS, err := s.findTargetSession(wfiID, req.AgentType, req.Model)
+	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
 	if err != nil {
 		return err
 	}
@@ -328,12 +330,12 @@ func (s *FindingsService) Delete(projectID, ticketID string, req *types.Findings
 		return 0, fmt.Errorf("at least one key is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(projectID, ticketID, req.Workflow)
+	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
 	if err != nil {
 		return 0, err
 	}
 
-	sessionID, findingsNS, err := s.findTargetSession(wfiID, req.AgentType, req.Model)
+	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
 	if err != nil {
 		return 0, nil // No session = nothing to delete
 	}

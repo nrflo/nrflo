@@ -20,6 +20,7 @@ func TestFindingsAddAndGet(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "issues",
 		"value":      `["issue1", "issue2"]`,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Get by agent_type (all findings)
@@ -28,6 +29,7 @@ func TestFindingsAddAndGet(t *testing.T) {
 		"ticket_id":  "FIND-1",
 		"workflow":   "test",
 		"agent_type": "analyzer",
+		"instance_id": wfiID,
 	}, &allFindings)
 
 	issues, ok := allFindings["issues"].([]interface{})
@@ -45,6 +47,7 @@ func TestFindingsAddAndGet(t *testing.T) {
 		"workflow":   "test",
 		"agent_type": "analyzer",
 		"key":        "issues",
+		"instance_id": wfiID,
 	}, &keyResult)
 
 	arr, ok := keyResult.([]interface{})
@@ -72,6 +75,7 @@ func TestFindingsAppend(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "items",
 		"value":      `"v1"`,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Append
@@ -81,6 +85,7 @@ func TestFindingsAppend(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "items",
 		"value":      `"v2"`,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify array result
@@ -90,6 +95,7 @@ func TestFindingsAppend(t *testing.T) {
 		"workflow":   "test",
 		"agent_type": "analyzer",
 		"key":        "items",
+		"instance_id": wfiID,
 	}, &result)
 
 	arr, ok := result.([]interface{})
@@ -107,6 +113,7 @@ func TestFindingsAppend(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "items",
 		"value":      `"v3"`,
+		"instance_id": wfiID,
 	}, nil)
 
 	env.MustExecute(t, "findings.get", map[string]interface{}{
@@ -114,6 +121,7 @@ func TestFindingsAppend(t *testing.T) {
 		"workflow":   "test",
 		"agent_type": "analyzer",
 		"key":        "items",
+		"instance_id": wfiID,
 	}, &result)
 
 	arr, ok = result.([]interface{})
@@ -141,6 +149,7 @@ func TestFindingsAddBulk(t *testing.T) {
 			"score":      "95",
 			"categories": `["cat1", "cat2"]`,
 		},
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify all retrievable
@@ -149,6 +158,7 @@ func TestFindingsAddBulk(t *testing.T) {
 		"ticket_id":  "FIND-3",
 		"workflow":   "test",
 		"agent_type": "analyzer",
+		"instance_id": wfiID,
 	}, &all)
 
 	if all["summary"] != "All good" {
@@ -179,6 +189,7 @@ func TestFindingsAppendBulk(t *testing.T) {
 		"agent_type": "builder",
 		"key":        "files",
 		"value":      `"main.go"`,
+		"instance_id": wfiID,
 	}, nil)
 	env.MustExecute(t, "findings.add", map[string]interface{}{
 		"ticket_id":  "FIND-4",
@@ -186,6 +197,7 @@ func TestFindingsAppendBulk(t *testing.T) {
 		"agent_type": "builder",
 		"key":        "tests",
 		"value":      `"main_test.go"`,
+		"instance_id": wfiID,
 	}, nil)
 
 	// Append bulk
@@ -197,6 +209,7 @@ func TestFindingsAppendBulk(t *testing.T) {
 			"files": `"util.go"`,
 			"tests": `"util_test.go"`,
 		},
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify arrays
@@ -205,6 +218,7 @@ func TestFindingsAppendBulk(t *testing.T) {
 		"ticket_id":  "FIND-4",
 		"workflow":   "test",
 		"agent_type": "builder",
+		"instance_id": wfiID,
 	}, &all)
 
 	files, ok := all["files"].([]interface{})
@@ -236,6 +250,7 @@ func TestFindingsDelete(t *testing.T) {
 			"remove1": "temp",
 			"remove2": "temp",
 		},
+		"instance_id": wfiID,
 	}, nil)
 
 	// Delete 2
@@ -245,6 +260,7 @@ func TestFindingsDelete(t *testing.T) {
 		"workflow":   "test",
 		"agent_type": "analyzer",
 		"keys":       []string{"remove1", "remove2"},
+		"instance_id": wfiID,
 	}, &delResult)
 
 	if delResult["deleted"].(float64) != 2 {
@@ -257,6 +273,7 @@ func TestFindingsDelete(t *testing.T) {
 		"ticket_id":  "FIND-5",
 		"workflow":   "test",
 		"agent_type": "analyzer",
+		"instance_id": wfiID,
 	}, &all)
 
 	if all["keep"] != "important" {
@@ -285,6 +302,7 @@ func TestFindingsWithModel(t *testing.T) {
 		"key":        "result",
 		"value":      `"sonnet-result"`,
 		"model":      "sonnet",
+		"instance_id": wfiID,
 	}, nil)
 
 	// Add findings with model "opus"
@@ -295,6 +313,7 @@ func TestFindingsWithModel(t *testing.T) {
 		"key":        "result",
 		"value":      `"opus-result"`,
 		"model":      "opus",
+		"instance_id": wfiID,
 	}, nil)
 
 	// Get with specific model
@@ -305,6 +324,7 @@ func TestFindingsWithModel(t *testing.T) {
 		"agent_type": "analyzer",
 		"key":        "result",
 		"model":      "sonnet",
+		"instance_id": wfiID,
 	}, &sonnetResult)
 	if sonnetResult != "sonnet-result" {
 		t.Fatalf("expected 'sonnet-result', got %v", sonnetResult)
@@ -316,6 +336,7 @@ func TestFindingsWithModel(t *testing.T) {
 		"ticket_id":  "FIND-6",
 		"workflow":   "test",
 		"agent_type": "analyzer",
+		"instance_id": wfiID,
 	}, &grouped)
 
 	groupedMap, ok := grouped.(map[string]interface{})

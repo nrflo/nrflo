@@ -20,9 +20,11 @@ func TestAgentCompleteAndFail(t *testing.T) {
 
 	// Complete analyzer via socket
 	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":  "AGT-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "AGT-1",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-1",
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify analyzer session has result "pass" via service
@@ -36,9 +38,11 @@ func TestAgentCompleteAndFail(t *testing.T) {
 
 	// Fail builder via socket
 	env.MustExecute(t, "agent.fail", map[string]interface{}{
-		"ticket_id":  "AGT-1",
-		"workflow":   "test",
-		"agent_type": "builder",
+		"ticket_id":   "AGT-1",
+		"workflow":    "test",
+		"agent_type":  "builder",
+		"session_id":  "sess-2",
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify builder session has result "fail" via service
@@ -62,9 +66,11 @@ func TestAgentContinue(t *testing.T) {
 
 	// Continue analyzer via socket
 	env.MustExecute(t, "agent.continue", map[string]interface{}{
-		"ticket_id":  "AGT-2",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"ticket_id":   "AGT-2",
+		"workflow":    "test",
+		"agent_type":  "analyzer",
+		"session_id":  "sess-cont-1",
+		"instance_id": wfiID,
 	}, nil)
 
 	// Verify session result is "continue" via service

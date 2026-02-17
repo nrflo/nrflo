@@ -81,6 +81,7 @@ Examples:
 			if findingsAddModel != "" {
 				params["model"] = findingsAddModel
 			}
+			addSpawnerIDs(params)
 
 			if err := c.ExecuteAndUnmarshal("findings.add", params, nil); err != nil {
 				return fmt.Errorf("failed to add finding: %w", err)
@@ -113,6 +114,7 @@ Examples:
 		if findingsAddModel != "" {
 			params["model"] = findingsAddModel
 		}
+		addSpawnerIDs(params)
 
 		var result struct {
 			Status string `json:"status"`
@@ -224,6 +226,7 @@ Examples:
 		if findingsGetModel != "" {
 			reqParams["model"] = findingsGetModel
 		}
+		addSpawnerIDs(reqParams)
 
 		var result interface{}
 		if err := c.ExecuteAndUnmarshal("findings.get", reqParams, &result); err != nil {
@@ -293,6 +296,7 @@ Examples:
 			if findingsAppendModel != "" {
 				params["model"] = findingsAppendModel
 			}
+			addSpawnerIDs(params)
 
 			if err := c.ExecuteAndUnmarshal("findings.append", params, nil); err != nil {
 				return fmt.Errorf("failed to append finding: %w", err)
@@ -325,6 +329,7 @@ Examples:
 		if findingsAppendModel != "" {
 			params["model"] = findingsAppendModel
 		}
+		addSpawnerIDs(params)
 
 		var result struct {
 			Status string `json:"status"`
@@ -391,6 +396,7 @@ Examples:
 		if findingsDeleteModel != "" {
 			params["model"] = findingsDeleteModel
 		}
+		addSpawnerIDs(params)
 
 		var result struct {
 			Status  string `json:"status"`

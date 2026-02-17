@@ -137,9 +137,11 @@ func TestAgentCompleteEventPayload(t *testing.T) {
 	}{
 		TicketID: "TEST-1",
 		AgentCompleteRequest: types.AgentCompleteRequest{
-			Workflow:  "test",
-			AgentType: "analyzer",
-			Model:     "claude-opus-4",
+			Workflow:   "test",
+			AgentType:  "analyzer",
+			Model:      "claude-opus-4",
+			InstanceID: wfiID,
+			SessionID:  "sess-test-complete",
 		},
 	}
 	paramsData, _ := json.Marshal(params)
@@ -231,9 +233,11 @@ func TestAgentFailEventPayload(t *testing.T) {
 	}{
 		TicketID: "TEST-1",
 		AgentCompleteRequest: types.AgentCompleteRequest{
-			Workflow:  "test",
-			AgentType: "analyzer",
-			Model:     "claude-sonnet-4",
+			Workflow:   "test",
+			AgentType:  "analyzer",
+			Model:      "claude-sonnet-4",
+			InstanceID: wfiID,
+			SessionID:  "sess-test-fail",
 		},
 	}
 	paramsData, _ := json.Marshal(params)
@@ -320,9 +324,11 @@ func TestAgentContinueEventPayload(t *testing.T) {
 	}{
 		TicketID: "TEST-1",
 		AgentCompleteRequest: types.AgentCompleteRequest{
-			Workflow:  "test",
-			AgentType: "analyzer",
-			Model:     "gpt-5.3",
+			Workflow:   "test",
+			AgentType:  "analyzer",
+			Model:      "gpt-5.3",
+			InstanceID: wfiID,
+			SessionID:  "sess-test-continue",
 		},
 	}
 	paramsData, _ := json.Marshal(params)
@@ -405,9 +411,11 @@ func TestAgentCallbackEventPayload(t *testing.T) {
 		TicketID: "TEST-1",
 		AgentCallbackRequest: types.AgentCallbackRequest{
 			AgentCompleteRequest: types.AgentCompleteRequest{
-				Workflow:  "test",
-				AgentType: "analyzer",
-				Model:     "claude-opus-4",
+				Workflow:   "test",
+				AgentType:  "analyzer",
+				Model:      "claude-opus-4",
+				InstanceID: wfiID,
+				SessionID:  "sess-test-callback",
 			},
 			Level: 0,
 		},

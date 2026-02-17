@@ -8,8 +8,10 @@ The socket uses a **JSON-RPC style protocol** (line-delimited JSON) at `/tmp/nrw
 
 ### Request Format
 
+All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set automatically from `NRWF_WORKFLOW_INSTANCE_ID` and `NRWF_SESSION_ID` env vars by the CLI).
+
 ```json
-{"method": "findings.add", "params": {"ticket_id": "T-1", "agent_type": "analyzer", "key": "summary", "value": "..."}}
+{"method": "findings.add", "params": {"ticket_id": "T-1", "instance_id": "uuid", "session_id": "uuid", "agent_type": "analyzer", "key": "summary", "value": "..."}}
 ```
 
 ### Response Format

@@ -86,3 +86,23 @@ func GetProjectRootPath() string {
 	}
 	return "."
 }
+
+// GetWorkflowInstanceID returns the workflow instance ID from env var (set by spawner)
+func GetWorkflowInstanceID() string {
+	return os.Getenv("NRWF_WORKFLOW_INSTANCE_ID")
+}
+
+// GetSessionID returns the agent session ID from env var (set by spawner)
+func GetSessionID() string {
+	return os.Getenv("NRWF_SESSION_ID")
+}
+
+// addSpawnerIDs adds instance_id and session_id to socket params from env vars
+func addSpawnerIDs(params map[string]interface{}) {
+	if id := GetWorkflowInstanceID(); id != "" {
+		params["instance_id"] = id
+	}
+	if id := GetSessionID(); id != "" {
+		params["session_id"] = id
+	}
+}

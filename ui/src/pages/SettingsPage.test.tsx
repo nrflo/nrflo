@@ -40,6 +40,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     default_workflow: 'feature',
     default_branch: 'main',
     use_git_worktrees: false,
+    use_docker_isolation: false,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -170,6 +171,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           default_workflow: undefined,
           default_branch: 'main',
           use_git_worktrees: true,
+          use_docker_isolation: false,
         })
       })
     })
@@ -207,6 +209,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           default_workflow: undefined,
           default_branch: 'main',
           use_git_worktrees: false,
+          use_docker_isolation: false,
         })
       })
     })
@@ -313,6 +316,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           default_workflow: 'feature',
           default_branch: 'main',
           use_git_worktrees: true,
+          use_docker_isolation: false,
         })
       })
     })
@@ -347,6 +351,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           default_workflow: 'feature',
           default_branch: 'main',
           use_git_worktrees: false,
+          use_docker_isolation: false,
         })
       })
     })

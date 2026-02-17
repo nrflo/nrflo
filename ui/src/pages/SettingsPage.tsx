@@ -29,6 +29,7 @@ interface ProjectFormData {
   default_workflow: string
   default_branch: string
   use_git_worktrees: boolean
+  use_docker_isolation: boolean
 }
 
 const emptyForm: ProjectFormData = {
@@ -38,6 +39,7 @@ const emptyForm: ProjectFormData = {
   default_workflow: '',
   default_branch: '',
   use_git_worktrees: false,
+  use_docker_isolation: false,
 }
 
 export function SettingsPage() {
@@ -113,6 +115,7 @@ export function SettingsPage() {
       default_workflow: project.default_workflow || '',
       default_branch: project.default_branch || '',
       use_git_worktrees: project.use_git_worktrees || false,
+      use_docker_isolation: project.use_docker_isolation || false,
     })
   }
 
@@ -131,6 +134,7 @@ export function SettingsPage() {
       default_workflow: formData.default_workflow.trim() || undefined,
       default_branch: formData.default_branch.trim() || undefined,
       use_git_worktrees: formData.use_git_worktrees,
+      use_docker_isolation: formData.use_docker_isolation,
     })
   }
 
@@ -144,6 +148,7 @@ export function SettingsPage() {
         default_workflow: formData.default_workflow.trim() || undefined,
         default_branch: formData.default_branch.trim() || undefined,
         use_git_worktrees: formData.use_git_worktrees,
+        use_docker_isolation: formData.use_docker_isolation,
       },
     })
   }
@@ -264,6 +269,15 @@ export function SettingsPage() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-end pb-1">
+                    <Toggle
+                      checked={formData.use_docker_isolation}
+                      onChange={(checked) => setFormData({ ...formData, use_docker_isolation: checked })}
+                      label="Use Docker Isolation"
+                    />
+                  </div>
+                </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" onClick={handleCancel}>
                     Cancel
@@ -366,6 +380,15 @@ export function SettingsPage() {
                           />
                         </div>
                       </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-end pb-1">
+                          <Toggle
+                            checked={formData.use_docker_isolation}
+                            onChange={(checked) => setFormData({ ...formData, use_docker_isolation: checked })}
+                            label="Use Docker Isolation"
+                          />
+                        </div>
+                      </div>
                       <div className="flex gap-2 justify-end">
                         <Button variant="ghost" onClick={handleCancel}>
                           <X className="h-4 w-4 mr-1" />
@@ -423,6 +446,7 @@ export function SettingsPage() {
                               project.default_workflow && `Workflow: ${project.default_workflow}`,
                               project.default_branch && `Branch: ${project.default_branch}`,
                               project.use_git_worktrees && 'Worktrees: enabled',
+                              project.use_docker_isolation && 'Docker: enabled',
                             ]
                               .filter(Boolean)
                               .map((text, i, arr) => (

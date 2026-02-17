@@ -3,7 +3,6 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
@@ -53,9 +52,7 @@ func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 	// Enrich with workflow progress
 	wfiRepo := repo.NewWorkflowInstanceRepo(db.WrapAsPool(database), s.clock)
 	instances, err := wfiRepo.ListActiveByProject(projectID)
-	if err != nil {
-		log.Printf("warning: failed to load workflow progress: %v", err)
-	} else {
+	if err == nil {
 		repo.AttachWorkflowProgress(tickets, instances)
 	}
 
@@ -214,16 +211,12 @@ func (s *Server) handleGetTicket(w http.ResponseWriter, r *http.Request) {
 	var siblings []*model.Ticket
 	if ticket.ParentTicketID.Valid {
 		parent, err := ticketRepo.Get(projectID, ticket.ParentTicketID.String)
-		if err != nil {
-			log.Printf("warning: failed to fetch parent ticket %s: %v", ticket.ParentTicketID.String, err)
-		} else {
+		if err == nil {
 			parentTicket = parent
 		}
 
 		allSiblings, err := ticketRepo.ListByParent(projectID, ticket.ParentTicketID.String)
-		if err != nil {
-			log.Printf("warning: failed to fetch siblings for parent %s: %v", ticket.ParentTicketID.String, err)
-		} else {
+		if err == nil {
 			// Filter out current ticket from siblings
 			for _, s := range allSiblings {
 				if !strings.EqualFold(s.ID, id) {

@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"be/internal/db"
-	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -100,8 +99,6 @@ func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Info(r.Context(), "chain created", "chain_id", chain.ID)
-
 	writeJSON(w, http.StatusCreated, chain)
 }
 
@@ -151,8 +148,6 @@ func (s *Server) handleStartChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Info(r.Context(), "chain start requested", "chain_id", chainID)
-
 	err := s.chainRunner.Start(r.Context(), chainID)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -175,8 +170,6 @@ func (s *Server) handleCancelChain(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "chain runner not available")
 		return
 	}
-
-	logger.Info(r.Context(), "chain cancel requested", "chain_id", chainID)
 
 	err := s.chainRunner.Cancel(chainID)
 	if err != nil {

@@ -1,8 +1,10 @@
 package ws
 
 import (
-	"log"
+	"context"
 	"net/http"
+
+	"be/internal/logger"
 
 	"github.com/gorilla/websocket"
 )
@@ -30,7 +32,7 @@ func NewHandler(hub *Hub) *Handler {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[ws] upgrade error: %v", err)
+		logger.Error(context.Background(), "ws upgrade error", "error", err)
 		return
 	}
 

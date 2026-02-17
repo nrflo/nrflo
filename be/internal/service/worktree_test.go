@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // setupWorktreeTestRepo creates a test git repo with a main branch and commits.
@@ -289,12 +290,12 @@ func TestMergeAndCleanup_Conflict(t *testing.T) {
 		t.Error("branch should be preserved after merge conflict")
 	}
 
-	// Worktree should still exist for manual resolution
-	if !worktreeExists(worktreePath) {
-		t.Error("worktree should be preserved after merge conflict")
+	// Worktree is removed before merge attempt (new behavior)
+	if worktreeExists(worktreePath) {
+		t.Error("worktree should be removed before merge attempt")
 	}
 
-	// Clean up manually
+	// Clean up branch manually
 	svc.Cleanup(repoPath, "conflict-branch", worktreePath)
 }
 
@@ -402,5 +403,75 @@ func TestWorktreePath(t *testing.T) {
 	// Should contain the branch name
 	if !strings.Contains(worktreePath, "path-test-branch") {
 		t.Errorf("worktree path should contain branch name, got: %s", worktreePath)
+	}
+}
+
+// TestMergeAndCleanup_StaleLock verifies merge succeeds after stale lock removal.
+func TestMergeAndCleanup_StaleLock(t *testing.T) {
+	repoPath := setupWorktreeTestRepo(t)
+	defer os.RemoveAll(repoPath)
+
+	svc := &WorktreeService{}
+	worktreePath, err := svc.Setup(repoPath, "main", "lock-branch")
+	if err != nil {
+		t.Fatalf("Setup failed: %v", err)
+	}
+
+	// Commit a change in the worktree
+	createCommit(t, worktreePath, "locktest.txt", "lock test content", "Lock test commit")
+
+	// Create a stale index.lock (old mtime, no owning process)
+	lockPath := filepath.Join(repoPath, ".git", "index.lock")
+	if err := os.WriteFile(lockPath, []byte("99999999"), 0o644); err != nil {
+		t.Fatalf("failed to create lock file: %v", err)
+	}
+	// Backdate mtime so removeStaleLock considers it stale
+	staleTime := time.Now().Add(-10 * time.Second)
+	os.Chtimes(lockPath, staleTime, staleTime)
+
+	// MergeAndCleanup should retry and succeed after removing stale lock
+	err = svc.MergeAndCleanup(repoPath, "main", "lock-branch", worktreePath)
+	if err != nil {
+		t.Errorf("MergeAndCleanup should succeed after stale lock removal, got: %v", err)
+	}
+
+	// Lock should be gone
+	if _, err := os.Stat(lockPath); err == nil {
+		t.Error("stale lock file should have been removed")
+	}
+
+	// Verify merge happened
+	mergedFile := filepath.Join(repoPath, "locktest.txt")
+	if _, err := os.Stat(mergedFile); err != nil {
+		t.Error("merged changes not found in main branch")
+	}
+
+	// Branch should be cleaned up
+	if branchExists(t, repoPath, "lock-branch") {
+		t.Error("branch should be deleted after successful merge")
+	}
+}
+
+// TestRemoveStaleLock_NoFile verifies removeStaleLock is a no-op without a lock.
+func TestRemoveStaleLock_NoFile(t *testing.T) {
+	// Should not panic or error
+	removeStaleLock("/nonexistent/path/index.lock")
+}
+
+// TestRemoveStaleLock_FreshLock verifies fresh locks are not removed.
+func TestRemoveStaleLock_FreshLock(t *testing.T) {
+	lockPath := filepath.Join("/tmp", "test_fresh_lock_"+t.Name())
+	defer os.Remove(lockPath)
+
+	// Create a fresh lock (non-numeric content, fresh mtime)
+	if err := os.WriteFile(lockPath, []byte("not-a-pid"), 0o644); err != nil {
+		t.Fatalf("failed to create lock file: %v", err)
+	}
+
+	removeStaleLock(lockPath)
+
+	// Fresh lock with non-parseable PID should remain
+	if _, err := os.Stat(lockPath); err != nil {
+		t.Error("fresh lock file should not be removed")
 	}
 }

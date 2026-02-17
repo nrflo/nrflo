@@ -94,7 +94,7 @@ Worktrees are only used for **ticket-scoped** workflows. Project-scoped workflow
 When a project has `use_git_worktrees=true` and `default_branch` configured, the orchestrator creates an isolated git worktree for each ticket-scoped workflow run:
 
 - **Setup** (`Start`/`retryFailed`): `setupWorktree()` returns early with `nil` worktree for project scope. For ticket scope, creates a branch (named after ticket ID) and worktree at `/tmp/nrworkflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
-- **Success** (`runLoop` completion): Merges the branch into `default_branch`, removes worktree and branch. If merge fails (conflicts), logs error and preserves branch for manual resolution.
+- **Success** (`runLoop` completion): Removes the worktree first (commits live in `.git/refs/heads/`, not the worktree dir), then merges the branch into `default_branch` with retry (up to 5 attempts with stale `index.lock` removal), and deletes the branch. If merge fails (conflicts), logs error and preserves branch for manual resolution.
 - **Failure/Cancellation** (`runLoop` defer): Force-removes worktree and branch without merging.
 
 The `worktreeInfo` struct in `runLoop` tracks original project root, worktree path, branch name, and default branch. A `worktreeHandled` flag prevents the cleanup defer from running after a successful merge.

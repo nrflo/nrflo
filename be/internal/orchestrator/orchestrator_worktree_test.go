@@ -644,9 +644,10 @@ func TestRunLoop_WorktreeMergeConflict(t *testing.T) {
 		t.Errorf("branch %s should be preserved after conflict", ticketID)
 	}
 
-	// Verify worktree still exists (for manual resolution)
-	if _, err := os.Stat(wt.worktreePath); err != nil {
-		t.Error("worktree should be preserved after conflict for manual resolution")
+	// Worktree is removed before merge attempt (worktree removal happens first
+	// to avoid lock contention; branch is preserved for manual resolution)
+	if _, err := os.Stat(wt.worktreePath); err == nil {
+		t.Error("worktree should be removed before merge attempt")
 	}
 
 	// Clean up manually

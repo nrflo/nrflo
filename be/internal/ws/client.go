@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"log"
 	"sync"
 	"time"
 
@@ -72,16 +71,12 @@ func (c *Client) ReadPump() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("[ws] client %s read error: %v", c.id, err)
-			}
 			break
 		}
 
 		// Parse client message
 		var msg ClientMessage
 		if err := json.Unmarshal(message, &msg); err != nil {
-			log.Printf("[ws] client %s invalid message: %v", c.id, err)
 			continue
 		}
 
@@ -103,7 +98,6 @@ func (c *Client) ReadPump() {
 			}
 		case "test":
 			if msg.ProjectID != "" {
-				log.Printf("[ws] client %s test broadcast: project=%s ticket=%s", c.id, msg.ProjectID, msg.TicketID)
 				event := NewEvent(EventTestEcho, msg.ProjectID, msg.TicketID, "", map[string]interface{}{
 					"source_client": c.id,
 					"message":       "broadcast pipeline test",
@@ -111,7 +105,6 @@ func (c *Client) ReadPump() {
 				c.hub.Broadcast(event)
 			}
 		default:
-			log.Printf("[ws] client %s unknown action: %s", c.id, msg.Action)
 		}
 	}
 }

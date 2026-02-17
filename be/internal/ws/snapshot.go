@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 )
 
@@ -17,7 +16,6 @@ func streamSnapshot(c *Client, projectID, ticketID string, hub *Hub) {
 
 	chunks, err := sp.BuildSnapshot(projectID, ticketID)
 	if err != nil {
-		log.Printf("[ws] snapshot build failed for client %s: %v", c.id, err)
 		sendControlEvent(c, EventResyncRequired, projectID, ticketID, nil)
 		return
 	}
@@ -50,7 +48,6 @@ func streamSnapshot(c *Client, projectID, ticketID string, hub *Hub) {
 		select {
 		case c.send <- evtData:
 		default:
-			log.Printf("[ws] snapshot: client %s buffer full during chunk send", c.id)
 			return
 		}
 	}
@@ -59,6 +56,4 @@ func streamSnapshot(c *Client, projectID, ticketID string, hub *Hub) {
 	sendControlEvent(c, EventSnapshotEnd, projectID, ticketID, map[string]interface{}{
 		"current_seq": currentSeq,
 	})
-
-	log.Printf("[ws] snapshot sent to client %s (%d chunks, current_seq=%d)", c.id, len(chunks), currentSeq)
 }

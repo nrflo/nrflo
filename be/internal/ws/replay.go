@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"log"
 	"strings"
 )
 
@@ -23,7 +22,6 @@ func handleReplay(c *Client, projectID, ticketID string, sinceSeq int64, hub *Hu
 
 	entries, err := el.QuerySince(projectID, ticketID, sinceSeq, replayBatchLimit)
 	if err != nil {
-		log.Printf("[ws] replay query failed for client %s: %v", c.id, err)
 		sendControlEvent(c, EventResyncRequired, projectID, ticketID, nil)
 		return
 	}
@@ -73,12 +71,10 @@ func handleReplay(c *Client, projectID, ticketID string, sinceSeq int64, hub *Hu
 		select {
 		case c.send <- evtData:
 		default:
-			log.Printf("[ws] replay: client %s buffer full, aborting replay", c.id)
 			return
 		}
 	}
 
-	log.Printf("[ws] replayed %d events to client %s (since_seq=%d)", len(entries), c.id, sinceSeq)
 }
 
 // sendControlEvent sends a protocol v2 control event to a single client.

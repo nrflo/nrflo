@@ -68,7 +68,7 @@ func (s *Server) Start(port int) error {
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
 
-	handler := s.loggingMiddleware(s.corsMiddleware(s.projectMiddleware(mux)))
+	handler := s.corsMiddleware(s.projectMiddleware(mux))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -234,81 +234,6 @@ func (s *Server) projectMiddleware(next http.Handler) http.Handler {
 		project := r.Header.Get("X-Project")
 		ctx := context.WithValue(r.Context(), projectKey, project)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-// responseWriter wraps http.ResponseWriter to capture the status code.
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-	written    bool
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	if !rw.written {
-		rw.statusCode = code
-		rw.written = true
-	}
-	rw.ResponseWriter.WriteHeader(code)
-}
-
-func (rw *responseWriter) Unwrap() http.ResponseWriter {
-	return rw.ResponseWriter
-}
-
-// excludedFromLogging returns true for high-frequency GET endpoints that should not be logged per-request.
-func excludedFromLogging(method, path string) bool {
-	if method != "GET" {
-		return false
-	}
-	// Exact matches
-	switch path {
-	case "/api/v1/agents/recent", "/api/v1/status", "/api/v1/daily-stats":
-		return true
-	}
-	// Parameterized patterns: /api/v1/tickets/{id}/workflow, /api/v1/sessions/{id}/messages,
-	// /api/v1/projects/{id}/workflow, /api/v1/projects/{id}/agents
-	if strings.HasPrefix(path, "/api/v1/tickets/") && strings.HasSuffix(path, "/workflow") {
-		return true
-	}
-	if strings.HasPrefix(path, "/api/v1/sessions/") && strings.HasSuffix(path, "/messages") {
-		return true
-	}
-	if strings.HasPrefix(path, "/api/v1/projects/") && (strings.HasSuffix(path, "/workflow") || strings.HasSuffix(path, "/agents")) {
-		return true
-	}
-	return false
-}
-
-// loggingMiddleware generates a trx per request, logs request/response, and skips excluded paths.
-func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip OPTIONS and WebSocket upgrade requests
-		if r.Method == "OPTIONS" || r.Header.Get("Upgrade") == "websocket" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Skip high-frequency polling endpoints
-		if excludedFromLogging(r.Method, r.URL.Path) {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		trx := logger.NewTrx()
-		ctx := logger.WithTrx(r.Context(), trx)
-		r = r.WithContext(ctx)
-
-		projectID := r.Header.Get("X-Project")
-		logger.Info(ctx, "api request", "method", r.Method, "path", r.URL.Path, "project", projectID)
-
-		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		start := time.Now()
-
-		next.ServeHTTP(wrapped, r)
-
-		elapsed := time.Since(start).Milliseconds()
-		logger.Info(ctx, "api response", "method", r.Method, "path", r.URL.Path, "status", wrapped.statusCode, "duration_ms", elapsed)
 	})
 }
 

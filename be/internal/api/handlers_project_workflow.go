@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"be/internal/db"
-	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
@@ -36,8 +35,6 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "workflow name is required")
 		return
 	}
-
-	logger.Info(r.Context(), "run project workflow requested", "project", projectID, "workflow", body.Workflow)
 
 	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
 		ProjectID:    projectID,
@@ -72,8 +69,6 @@ func (s *Server) handleStopProjectWorkflow(w http.ResponseWriter, r *http.Reques
 		InstanceID string `json:"instance_id"`
 	}
 	readJSON(r, &body)
-
-	logger.Info(r.Context(), "stop project workflow requested", "project", projectID)
 
 	err := s.orchestrator.StopByProject(projectID, body.Workflow, body.InstanceID)
 	if err != nil {
@@ -117,8 +112,6 @@ func (s *Server) handleRestartProjectAgent(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	logger.Info(r.Context(), "restart project agent requested", "project", projectID, "session_id", body.SessionID)
-
 	err := s.orchestrator.RestartProjectAgent(projectID, body.Workflow, body.SessionID, body.InstanceID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
@@ -160,8 +153,6 @@ func (s *Server) handleRetryFailedProjectAgent(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusBadRequest, "session_id is required")
 		return
 	}
-
-	logger.Info(r.Context(), "retry failed project agent requested", "project", projectID, "session_id", body.SessionID)
 
 	err := s.orchestrator.RetryFailedProjectAgent(r.Context(), projectID, body.Workflow, body.SessionID, body.InstanceID)
 	if err != nil {

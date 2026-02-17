@@ -2,13 +2,14 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"strings"
 	"sync"
 	"time"
 
 	"be/internal/clock"
+	"be/internal/logger"
 	"be/internal/repo"
 )
 
@@ -144,7 +145,6 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()
-			log.Printf("[ws] client registered: %s", client.id)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -154,7 +154,6 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 			h.mu.Unlock()
-			log.Printf("[ws] client unregistered: %s", client.id)
 
 		case event := <-h.broadcast:
 			h.broadcastEvent(event)
@@ -191,7 +190,6 @@ func (h *Hub) Broadcast(event *Event) {
 	select {
 	case h.broadcast <- event:
 	default:
-		log.Printf("[ws] broadcast channel full, dropping event: %s", event.Type)
 	}
 }
 
@@ -216,9 +214,6 @@ func (h *Hub) Subscribe(client *Client, projectID, ticketID string) {
 	client.mu.Lock()
 	client.subscriptions[subscriptionKey(projectID, ticketID)] = true
 	client.mu.Unlock()
-
-	log.Printf("[ws] client %s subscribed to project=%s ticket=%s (project has %d subscriptions, %d total clients)",
-		client.id, projectID, ticketID, len(h.subscriptions[projectID]), len(h.clients))
 }
 
 // Unsubscribe removes a client subscription
@@ -246,8 +241,6 @@ func (h *Hub) Unsubscribe(client *Client, projectID, ticketID string) {
 	client.mu.Lock()
 	delete(client.subscriptions, subscriptionKey(projectID, ticketID))
 	client.mu.Unlock()
-
-	log.Printf("[ws] client %s unsubscribed from project=%s ticket=%s", client.id, projectID, ticketID)
 }
 
 // removeClientSubscriptions removes all subscriptions for a client (must hold h.mu)
@@ -291,7 +284,7 @@ func (h *Hub) broadcastEvent(event *Event) {
 			payload,
 		)
 		if err != nil {
-			log.Printf("[ws] event log append failed: %v", err)
+			logger.Error(context.Background(), "event log append failed", "error", err)
 		} else {
 			event.Sequence = seq
 			event.ProtocolVersion = ProtocolVersion
@@ -308,7 +301,6 @@ func (h *Hub) broadcastEvent(event *Event) {
 	// Marshal event once
 	data, err := json.Marshal(event)
 	if err != nil {
-		log.Printf("[ws] failed to marshal event: %v", err)
 		return
 	}
 
@@ -336,17 +328,6 @@ func (h *Hub) broadcastEvent(event *Event) {
 		}
 	}
 
-	if len(sent) > 0 {
-		log.Printf("[ws] broadcast %s to %d clients (project=%s ticket=%s)",
-			event.Type, len(sent), projectID, ticketID)
-	} else {
-		var projectKeys []string
-		for k := range h.subscriptions {
-			projectKeys = append(projectKeys, k)
-		}
-		log.Printf("[ws] broadcast %s: no subscribers (project=%s ticket=%s, known projects: %v)",
-			event.Type, projectID, ticketID, projectKeys)
-	}
 }
 
 // sendToClient sends data to a client (non-blocking)
@@ -356,7 +337,6 @@ func (h *Hub) sendToClient(client *Client, data []byte) {
 	case client.send <- data:
 	default:
 		// Client buffer full, will be disconnected by write pump
-		log.Printf("[ws] client %s buffer full, dropping message", client.id)
 	}
 }
 

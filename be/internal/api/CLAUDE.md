@@ -24,6 +24,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_chains.go` | Chain list/get/create/update/start/cancel/append |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
+| `handlers_docs.go` | Documentation (agent manual) |
 
 ## HTTP API Endpoints
 
@@ -105,6 +106,9 @@ PATCH  /api/v1/chains/:id          # Update pending chain
 POST   /api/v1/chains/:id/start    # Start sequential execution
 POST   /api/v1/chains/:id/cancel   # Cancel chain and release locks
 POST   /api/v1/chains/:id/append   # Append tickets to running chain
+
+# Documentation
+GET /api/v1/docs/agent-manual      # Agent manual markdown content
 
 # Other
 GET /api/v1/search?q=              # Full-text search

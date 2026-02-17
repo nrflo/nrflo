@@ -331,6 +331,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	wsHandler := ws.NewHandler(s.wsHub)
 	mux.Handle("GET /api/v1/ws", wsHandler)
 
+	// Documentation
+	mux.HandleFunc("GET /api/v1/docs/agent-manual", s.handleGetAgentManual)
+
 	// Projects
 	mux.HandleFunc("GET /api/v1/projects", s.handleListProjects)
 	mux.HandleFunc("POST /api/v1/projects", s.handleCreateProject)

@@ -21,6 +21,7 @@ API client modules for communicating with the nrworkflow backend. Contains 10 fi
 | `projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart/agent sessions) |
 | `agentDefs.ts` | Agent definition API client |
 | `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/append/runEpicWorkflow) |
+| `docs.ts` | Documentation API functions (getAgentManual) |
 
 ## REST API Endpoints
 
@@ -96,6 +97,9 @@ GET    /api/v1/agents/recent?limit=10
 # Session messages (paginated)
 GET    /api/v1/sessions/:id/messages
 GET    /api/v1/sessions/:id/messages?limit=100&offset=0
+
+# Documentation
+GET    /api/v1/docs/agent-manual    # Agent manual markdown content
 
 # Other
 GET    /api/v1/search?q=            # Full-text search

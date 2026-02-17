@@ -62,6 +62,12 @@ export function Header() {
               Git Status
             </Link>
           )}
+          <Link
+            to="/documentation"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Documentation
+          </Link>
         </nav>
 
         <div className="flex-1" />

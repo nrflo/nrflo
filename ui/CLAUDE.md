@@ -19,6 +19,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
 | `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, AppendToChainDialog) |
 | `src/components/git/` | Git commit detail dialog and diff viewer components |
+| `src/pages/DocumentationPage.tsx` | Agent documentation page — fetches and renders markdown from `/api/v1/docs/agent-manual` via `react-markdown` |
 | `src/pages/` | Route page components (see [pages/CLAUDE.md](src/pages/CLAUDE.md)) |
 | `src/assets/` | Static assets |
 | `src/test/` | Test infrastructure (`setup.ts`, `utils.tsx`) |
@@ -83,7 +84,7 @@ WebSocket-based, no REST polling. See [hooks/CLAUDE.md](src/hooks/CLAUDE.md) for
 
 ```
 Layout
-├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows/Git Status, daily stats, settings link)
+├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows/Git Status/Documentation, daily stats, settings link)
 ├── Sidebar (navigation, status counts)
 └── Outlet (page content via React Router)
 ```
@@ -204,3 +205,4 @@ Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.l
 - Create/edit/close tickets
 - Multi-project support via project selector
 - Settings page for project management (create/update/delete, Toggle for git worktrees)
+- Documentation page with agent manual (rendered markdown from API)

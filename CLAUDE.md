@@ -75,7 +75,8 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 | `nrworkflow.data` | SQLite database (tickets, projects, sessions) |
 | `restart.sh` | Rebuild and restart BE + UI servers (background) |
 | `stop.sh` | Stop running servers |
-| `rebuild-cli.sh` | Rebuild and re-symlink CLI binary without restarting server |
+| `rebuild-cli.sh` | Rebuild and re-symlink CLI binary (also rebuilds Docker image if it exists) |
+| `rebuild-docker.sh` | Nuclear-option Docker image rebuild: stops containers, removes image, rebuilds from scratch |
 | `agent_manual.md` | Agent definition cheat-sheet (template vars, findings, CLI) |
 
 ## Architecture Principles
@@ -185,7 +186,8 @@ Chains allow sequential execution of multiple tickets with a single workflow. Ti
 |--------|---------|
 | `restart.sh` | Kill existing servers, rebuild both binaries (`make build`), start `nrworkflow_server` + UI in background |
 | `stop.sh` | Stop running BE + UI servers |
-| `rebuild-cli.sh` | Rebuild and re-symlink the CLI binary without restarting the server |
+| `rebuild-cli.sh` | Rebuild and re-symlink the CLI binary (also rebuilds Docker image if it exists) |
+| `rebuild-docker.sh` | Nuclear-option Docker image rebuild: stops containers, removes image, rebuilds from scratch |
 | `ui/start-server.sh` | Start both servers in foreground (uses `nrworkflow_server serve`) |
 
 Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.log` when using `restart.sh`.

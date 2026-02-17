@@ -187,10 +187,14 @@ func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) 
 
 // buildSavePrompt constructs the prompt sent to a resumed agent to save its progress.
 func buildSavePrompt(ticketID, agentType, workflowName, modelID string) string {
+	ticketArg := ticketID
+	if ticketID == "" {
+		ticketArg = "-T"
+	}
 	return fmt.Sprintf(
 		"Save a summary of all your current work progress by running: "+
 			"nrworkflow findings add %s %s to_resume:<your summary of all progress, findings, and context> -w %s --model %s"+
 			" — then call: nrworkflow agent continue %s %s -w %s --model %s",
-		ticketID, agentType, workflowName, modelID,
-		ticketID, agentType, workflowName, modelID)
+		ticketArg, agentType, workflowName, modelID,
+		ticketArg, agentType, workflowName, modelID)
 }

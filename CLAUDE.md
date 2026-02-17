@@ -124,6 +124,10 @@ nrworkflow findings append <ticket> <agent-type> key1:val1 [key2:val2...] -w <wo
 nrworkflow findings get <ticket> <agent-type> [key] -w <workflow> [--model <model>] [-k <key>...]
 nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow> [--model <model>]
 
+# Project-scoped (no ticket): use -T/--no-ticket instead of <ticket>
+nrworkflow agent complete -T <agent-type> -w <workflow> [--model <model>]
+nrworkflow findings add -T <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
+
 nrworkflow findings project-add <key> <value>
 nrworkflow findings project-add key1:val1 [key2:val2...]
 nrworkflow findings project-get [key] [-k <key>...]

@@ -197,6 +197,9 @@ nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
 
 # Callback to re-run an earlier layer
 nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--model <model>]
+
+# Project-scoped (no ticket): use -T instead of <ticket>
+nrworkflow agent complete -T <agent-type> -w <workflow> [--model <model>]
 ```
 
 | Command | When to use |
@@ -206,7 +209,7 @@ nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--mod
 | `continue` | Context window exhausted; save progress to `to_resume` first |
 | `callback` | Issue found that requires re-running an earlier layer; `--level` (0-based layer index) is required |
 
-All commands require `-w/--workflow`. The `--model` flag is only needed for parallel agents (multiple models in the same layer).
+All commands require `-w/--workflow`. The `--model` flag is only needed for parallel agents (multiple models in the same layer). Use `-T/--no-ticket` for project-scoped workflows (skips the `<ticket>` positional arg).
 
 ---
 
@@ -232,6 +235,10 @@ nrworkflow findings get <ticket> <agent-type> -k key1 -k key2 -w <workflow>  # m
 
 # Delete findings
 nrworkflow findings delete <ticket> <agent-type> <key1> [key2...] -w <workflow> [--model <model>]
+
+# Project-scoped (no ticket): use -T instead of <ticket>
+nrworkflow findings add -T <agent-type> key1:val1 -w <workflow> [--model <model>]
+nrworkflow findings get -T <agent-type> -w <workflow> -k summary
 ```
 
 ### Project-Level Findings
@@ -425,9 +432,13 @@ Analyze the ticket and codebase. Store your findings:
 - `files_to_modify` — JSON array of file paths
 - `implementation_plan` — Step-by-step plan
 
-When done:
+When done (ticket-scoped):
 nrworkflow findings add ${TICKET_ID} ${AGENT} summary:'...' files_to_modify:'[...]' implementation_plan:'...' -w ${WORKFLOW} --model ${MODEL}
 nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW} --model ${MODEL}
+
+When done (project-scoped, use -T):
+nrworkflow findings add -T ${AGENT} summary:'...' files_to_modify:'[...]' implementation_plan:'...' -w ${WORKFLOW} --model ${MODEL}
+nrworkflow agent complete -T ${AGENT} -w ${WORKFLOW} --model ${MODEL}
 ```
 
 ### Example 2: Implementor with Findings Injection and Callbacks

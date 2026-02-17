@@ -12,8 +12,8 @@ be/
 │   ├── cli/                     # Cobra commands
 │   │   ├── root.go              # Root command, global flags, project discovery
 │   │   ├── serve.go             # HTTP API server (auto-migrates DB)
-│   │   ├── agent.go             # agent complete/fail/continue (agent-only)
-│   │   ├── findings.go          # findings add/append/get/delete (agent-only)
+│   │   ├── agent.go             # agent complete/fail/continue (agent-only, -T for project scope)
+│   │   ├── findings.go          # findings add/append/get/delete (agent-only, -T for project scope)
 │   │   ├── findings_project.go  # project-level findings (project-add/get/append/delete)
 │   │   ├── tickets.go           # tickets list/get/create (HTTP)
 │   │   ├── tickets_update.go    # tickets update/close/reopen/delete (HTTP)

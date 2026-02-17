@@ -13,6 +13,9 @@ var agentCmd = &cobra.Command{
 	Short: "Agent lifecycle commands (used by spawned agents)",
 }
 
+// Shared no-ticket flag for project-scoped workflows
+var agentNoTicket bool
+
 // Agent complete/fail/continue/callback flags
 var (
 	agentCompleteWorkflow string
@@ -28,9 +31,9 @@ var (
 )
 
 var agentCompleteCmd = &cobra.Command{
-	Use:   "complete <ticket> <agent-type>",
+	Use:   "complete [-T] [<ticket>] <agent-type>",
 	Short: "Mark an agent as completed successfully",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -39,8 +42,7 @@ var agentCompleteCmd = &cobra.Command{
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
+		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
 
 		if agentCompleteWorkflow == "" {
 			return fmt.Errorf("-w/--workflow is required")
@@ -71,9 +73,9 @@ var agentCompleteCmd = &cobra.Command{
 }
 
 var agentFailCmd = &cobra.Command{
-	Use:   "fail <ticket> <agent-type>",
+	Use:   "fail [-T] [<ticket>] <agent-type>",
 	Short: "Mark an agent as failed",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -82,8 +84,7 @@ var agentFailCmd = &cobra.Command{
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
+		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
 
 		if agentFailWorkflow == "" {
 			return fmt.Errorf("-w/--workflow is required")
@@ -114,12 +115,13 @@ var agentFailCmd = &cobra.Command{
 }
 
 var agentContinueCmd = &cobra.Command{
-	Use:   "continue <ticket> <agent-type>",
+	Use:   "continue [-T] [<ticket>] <agent-type>",
 	Short: "Signal that an agent needs context continuation",
 	Long: `Signal that an agent has exhausted its context window and needs to be
 relaunched with fresh context to continue the task. The spawner will
-automatically relaunch the agent if max_continuations has not been reached.`,
-	Args: cobra.ExactArgs(2),
+automatically relaunch the agent if max_continuations has not been reached.
+Use -T/--no-ticket for project-scoped workflows.`,
+	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -128,8 +130,7 @@ automatically relaunch the agent if max_continuations has not been reached.`,
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
+		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
 
 		if agentContinueWorkflow == "" {
 			return fmt.Errorf("-w/--workflow is required")
@@ -155,12 +156,13 @@ automatically relaunch the agent if max_continuations has not been reached.`,
 }
 
 var agentCallbackCmd = &cobra.Command{
-	Use:   "callback <ticket> <agent-type>",
+	Use:   "callback [-T] [<ticket>] <agent-type>",
 	Short: "Signal a callback to a previous execution layer",
 	Long: `Signal that the agent needs to callback to a previous layer for fixes.
 The --level flag specifies the target layer index (0-based) to callback to.
-The agent should save callback_instructions as a finding before calling this.`,
-	Args: cobra.ExactArgs(2),
+The agent should save callback_instructions as a finding before calling this.
+Use -T/--no-ticket for project-scoped workflows.`,
+	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -169,8 +171,7 @@ The agent should save callback_instructions as a finding before calling this.`,
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
+		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
 
 		if agentCallbackWorkflow == "" {
 			return fmt.Errorf("-w/--workflow is required")
@@ -203,7 +204,20 @@ The agent should save callback_instructions as a finding before calling this.`,
 	},
 }
 
+// parseAgentArgs extracts ticketID and agentType from positional args.
+// When noTicket is true, ticketID is "" and args[0] is agentType.
+func parseAgentArgs(args []string, noTicket bool) (ticketID, agentType string) {
+	if noTicket {
+		return "", args[0]
+	}
+	return args[0], args[1]
+}
+
 func init() {
+	for _, cmd := range []*cobra.Command{agentCompleteCmd, agentFailCmd, agentContinueCmd, agentCallbackCmd} {
+		cmd.Flags().BoolVarP(&agentNoTicket, "no-ticket", "T", false, "Project-scoped workflow (no ticket ID)")
+	}
+
 	// agent complete
 	agentCompleteCmd.Flags().StringVarP(&agentCompleteWorkflow, "workflow", "w", "", "Workflow name (required)")
 	agentCompleteCmd.Flags().StringVar(&agentCompleteModel, "model", "", "Model ID")

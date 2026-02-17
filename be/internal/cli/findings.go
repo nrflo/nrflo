@@ -14,6 +14,9 @@ var findingsCmd = &cobra.Command{
 	Short: "Manage workflow findings",
 }
 
+// Shared no-ticket flag for project-scoped workflows
+var findingsNoTicket bool
+
 // Findings add flags
 var (
 	findingsAddWorkflow string
@@ -21,12 +24,14 @@ var (
 )
 
 var findingsAddCmd = &cobra.Command{
-	Use:   "add <ticket> <agent-type> <key:value>... | <key> <value>",
+	Use:   "add [-T] [<ticket>] <agent-type> <key:value>... | <key> <value>",
 	Short: "Add finding(s) for an agent",
 	Long: `Add one or more findings for an agent during a workflow phase.
 
 Findings are stored in the workflow state and can be retrieved later.
 Values can be JSON (arrays, objects) or plain strings.
+
+Use -T/--no-ticket for project-scoped workflows (no ticket ID needed).
 
 Two syntax modes:
   1. Single finding (legacy): <key> <value> as separate arguments
@@ -36,15 +41,12 @@ Examples:
   # Legacy single finding
   nrworkflow findings add TICKET-1 setup-analyzer summary "Initial analysis complete" -w feature
 
-  # Single finding with key:value syntax
-  nrworkflow findings add TICKET-1 setup-analyzer summary:'Initial analysis' -w feature
-
   # Multiple findings at once
   nrworkflow findings add TICKET-1 setup-analyzer summary:'Done' status:'passed' -w feature
 
-  # JSON values
-  nrworkflow findings add TICKET-1 setup-analyzer files:'["a.go","b.go"]' -w feature`,
-	Args: cobra.MinimumNArgs(3),
+  # Project-scoped (no ticket)
+  nrworkflow findings add -T consolidate summary:'Done' -w learning`,
+	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -53,8 +55,10 @@ Examples:
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
+		ticketID, agentType, rest := parseFindingsArgs(args, findingsNoTicket)
+		if len(rest) < 1 {
+			return fmt.Errorf("requires at least one key:value pair after agent-type")
+		}
 
 		if findingsAddWorkflow == "" {
 			return fmt.Errorf("-w/--workflow is required")
@@ -62,11 +66,10 @@ Examples:
 
 		c := GetClient()
 
-		// Detect syntax mode: if exactly 4 args and 3rd arg doesn't contain ':', use legacy mode
-		if len(args) == 4 && !strings.Contains(args[2], ":") {
-			// Legacy mode: <key> <value>
-			key := args[2]
-			value := args[3]
+		// Detect syntax mode: if exactly 2 rest args and 1st doesn't contain ':', use legacy mode
+		if len(rest) == 2 && !strings.Contains(rest[0], ":") {
+			key := rest[0]
+			value := rest[1]
 
 			params := map[string]interface{}{
 				"ticket_id":  ticketID,
@@ -93,10 +96,10 @@ Examples:
 
 		// New mode: key:value pairs
 		keyValues := make(map[string]string)
-		for i := 2; i < len(args); i++ {
-			kv, err := parseKeyValue(args[i])
+		for _, arg := range rest {
+			kv, err := parseKeyValue(arg)
 			if err != nil {
-				return fmt.Errorf("invalid key:value format '%s': %w", args[i], err)
+				return fmt.Errorf("invalid key:value format '%s': %w", arg, err)
 			}
 			keyValues[kv.key] = kv.value
 		}
@@ -165,41 +168,24 @@ var (
 )
 
 var findingsGetCmd = &cobra.Command{
-	Use:   "get <ticket> <agent-type> [key]",
+	Use:   "get [-T] [<ticket>] <agent-type> [key]",
 	Short: "Get findings for an agent",
 	Long: `Get findings stored by an agent during a workflow phase.
 
 If no key is specified, returns all findings for the agent.
 Use -k/--key to fetch specific keys (can be repeated).
-
-For parallel phases with multiple agents:
-  - Without --model: returns ALL agents' findings grouped by model ID
-  - With --model: returns only that specific agent's findings
+Use -T/--no-ticket for project-scoped workflows (no ticket ID needed).
 
 Examples:
   # Get all findings for a single agent
   nrworkflow findings get TICKET-1 setup-analyzer -w feature
 
-  # Get specific key using -k flag
+  # Get specific key
   nrworkflow findings get TICKET-1 setup-analyzer -w feature -k summary
 
-  # Get multiple specific keys
-  nrworkflow findings get TICKET-1 setup-analyzer -w feature -k summary -k status
-
-  # Legacy: Get specific key as positional argument
-  nrworkflow findings get TICKET-1 setup-analyzer summary -w feature
-
-  # Get all parallel agents' findings (grouped by model)
-  nrworkflow findings get TICKET-1 setup-analyzer -w parallel-test
-  # Returns: {"claude:sonnet": {...}, "codex:gpt_high": {...}}
-
-  # Get specific parallel agent's findings
-  nrworkflow findings get TICKET-1 setup-analyzer -w parallel-test --model=claude:sonnet
-
-  # Get specific key from all parallel agents
-  nrworkflow findings get TICKET-1 setup-analyzer -w parallel-test -k summary
-  # Returns: {"claude:sonnet": "...", "codex:gpt_high": "..."}`,
-	Args: cobra.RangeArgs(2, 3),
+  # Project-scoped (no ticket)
+  nrworkflow findings get -T consolidate -w learning -k summary`,
+	Args: cobra.RangeArgs(1, 3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -208,13 +194,12 @@ Examples:
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
+		ticketID, agentType, rest := parseFindingsArgs(args, findingsNoTicket)
 
 		// Collect keys: from positional arg and/or -k flags
 		var keys []string
-		if len(args) > 2 {
-			keys = append(keys, args[2])
+		if len(rest) > 0 {
+			keys = append(keys, rest[0])
 		}
 		keys = append(keys, findingsGetKeys...)
 
@@ -257,15 +242,11 @@ var (
 )
 
 var findingsAppendCmd = &cobra.Command{
-	Use:   "append <ticket> <agent-type> <key:value>... | <key> <value>",
+	Use:   "append [-T] [<ticket>] <agent-type> <key:value>... | <key> <value>",
 	Short: "Append value(s) to finding(s)",
 	Long: `Append one or more values to existing findings (creating arrays if needed).
 
-Append logic:
-  - If key doesn't exist: store value as-is
-  - If existing is array AND new is array: flatten (merge arrays)
-  - If existing is array AND new is not array: append element
-  - If existing is not array: convert to [existing, new]
+Use -T/--no-ticket for project-scoped workflows (no ticket ID needed).
 
 Two syntax modes:
   1. Single append (legacy): <key> <value> as separate arguments
@@ -274,16 +255,10 @@ Two syntax modes:
 Examples:
   # Append to a key (creates array if needed)
   nrworkflow findings append TICKET-1 setup-analyzer files:'src/main.go' -w feature
-  nrworkflow findings append TICKET-1 setup-analyzer files:'src/util.go' -w feature
-  # Result: files = ["src/main.go", "src/util.go"]
 
-  # Append array (flattens)
-  nrworkflow findings append TICKET-1 setup-analyzer files:'["a.go","b.go"]' -w feature
-  # If files was ["main.go"], now: ["main.go", "a.go", "b.go"]
-
-  # Multiple appends at once
-  nrworkflow findings append TICKET-1 setup-analyzer files:'new.go' errors:'error1' -w feature`,
-	Args: cobra.MinimumNArgs(3),
+  # Project-scoped (no ticket)
+  nrworkflow findings append -T consolidate files:'src/main.go' -w learning`,
+	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -292,8 +267,10 @@ Examples:
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
+		ticketID, agentType, rest := parseFindingsArgs(args, findingsNoTicket)
+		if len(rest) < 1 {
+			return fmt.Errorf("requires at least one key:value pair after agent-type")
+		}
 
 		if findingsAppendWorkflow == "" {
 			return fmt.Errorf("-w/--workflow is required")
@@ -301,11 +278,10 @@ Examples:
 
 		c := GetClient()
 
-		// Detect syntax mode: if exactly 4 args and 3rd arg doesn't contain ':', use legacy mode
-		if len(args) == 4 && !strings.Contains(args[2], ":") {
-			// Legacy mode: <key> <value>
-			key := args[2]
-			value := args[3]
+		// Detect syntax mode: if exactly 2 rest args and 1st doesn't contain ':', use legacy mode
+		if len(rest) == 2 && !strings.Contains(rest[0], ":") {
+			key := rest[0]
+			value := rest[1]
 
 			params := map[string]interface{}{
 				"ticket_id":  ticketID,
@@ -332,10 +308,10 @@ Examples:
 
 		// New mode: key:value pairs
 		keyValues := make(map[string]string)
-		for i := 2; i < len(args); i++ {
-			kv, err := parseKeyValue(args[i])
+		for _, arg := range rest {
+			kv, err := parseKeyValue(arg)
 			if err != nil {
-				return fmt.Errorf("invalid key:value format '%s': %w", args[i], err)
+				return fmt.Errorf("invalid key:value format '%s': %w", arg, err)
 			}
 			keyValues[kv.key] = kv.value
 		}
@@ -374,20 +350,19 @@ var (
 )
 
 var findingsDeleteCmd = &cobra.Command{
-	Use:   "delete <ticket> <agent-type> <key>...",
+	Use:   "delete [-T] [<ticket>] <agent-type> <key>...",
 	Short: "Delete finding key(s)",
 	Long: `Delete one or more finding keys from an agent.
+
+Use -T/--no-ticket for project-scoped workflows (no ticket ID needed).
 
 Examples:
   # Delete a single key
   nrworkflow findings delete TICKET-1 setup-analyzer summary -w feature
 
-  # Delete multiple keys
-  nrworkflow findings delete TICKET-1 setup-analyzer summary status files -w feature
-
-  # Delete from specific parallel agent
-  nrworkflow findings delete TICKET-1 setup-analyzer summary -w feature --model=claude:sonnet`,
-	Args: cobra.MinimumNArgs(3),
+  # Project-scoped (no ticket)
+  nrworkflow findings delete -T consolidate summary -w learning`,
+	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -396,9 +371,10 @@ Examples:
 			return err
 		}
 
-		ticketID := args[0]
-		agentType := args[1]
-		keys := args[2:]
+		ticketID, agentType, rest := parseFindingsArgs(args, findingsNoTicket)
+		if len(rest) < 1 {
+			return fmt.Errorf("requires at least one key to delete after agent-type")
+		}
 
 		if findingsDeleteWorkflow == "" {
 			return fmt.Errorf("-w/--workflow is required")
@@ -410,7 +386,7 @@ Examples:
 			"ticket_id":  ticketID,
 			"workflow":   findingsDeleteWorkflow,
 			"agent_type": agentType,
-			"keys":       keys,
+			"keys":       rest,
 		}
 		if findingsDeleteModel != "" {
 			params["model"] = findingsDeleteModel
@@ -434,6 +410,10 @@ Examples:
 }
 
 func init() {
+	for _, cmd := range []*cobra.Command{findingsAddCmd, findingsGetCmd, findingsAppendCmd, findingsDeleteCmd} {
+		cmd.Flags().BoolVarP(&findingsNoTicket, "no-ticket", "T", false, "Project-scoped workflow (no ticket ID)")
+	}
+
 	findingsAddCmd.Flags().StringVarP(&findingsAddWorkflow, "workflow", "w", "", "Workflow name (required)")
 	findingsAddCmd.Flags().StringVar(&findingsAddModel, "model", "", "Model ID for parallel agents")
 	findingsCmd.AddCommand(findingsAddCmd)
@@ -450,6 +430,15 @@ func init() {
 	findingsDeleteCmd.Flags().StringVarP(&findingsDeleteWorkflow, "workflow", "w", "", "Workflow name (required)")
 	findingsDeleteCmd.Flags().StringVar(&findingsDeleteModel, "model", "", "Model ID for parallel agents")
 	findingsCmd.AddCommand(findingsDeleteCmd)
+}
+
+// parseFindingsArgs extracts ticketID, agentType, and remaining args.
+// When noTicket is true, ticketID is "" and args[0] is agentType.
+func parseFindingsArgs(args []string, noTicket bool) (ticketID, agentType string, rest []string) {
+	if noTicket {
+		return "", args[0], args[1:]
+	}
+	return args[0], args[1], args[2:]
 }
 
 func truncate(s string, maxLen int) string {

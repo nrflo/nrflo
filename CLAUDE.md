@@ -174,7 +174,7 @@ Workflow runtime state is stored in two main tables: `workflow_instances` (one r
 
 ## API Response Format
 
-`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with `ticket_id`, `has_workflow`, `workflows` list, and `all_workflows` map keyed by workflow name. Each workflow state includes version, status, current phase, phase order, phases map, active agents, agent history, and findings. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full endpoint listing and [be/internal/service/CLAUDE.md](be/internal/service/CLAUDE.md) for response construction.
+`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with `ticket_id`, `has_workflow`, `workflows` list, and `all_workflows` map keyed by workflow name. Each workflow state includes version, status, current phase, phase order, phase layers (map of phase name to layer number for parallel layout), phases map, active agents, agent history, and findings. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full endpoint listing and [be/internal/service/CLAUDE.md](be/internal/service/CLAUDE.md) for response construction.
 
 ## Chain Execution
 

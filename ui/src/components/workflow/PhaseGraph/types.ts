@@ -27,6 +27,7 @@ export interface PhaseGraphProps {
   agentHistory?: AgentHistoryEntry[]
   // Phase order from config.json (preserved through workflow state)
   phaseOrder?: string[]
+  phaseLayers?: Record<string, number>
   // Agent sessions for displaying messages
   sessions?: AgentSession[]
   // Callback when an agent is clicked (replaces internal modal)

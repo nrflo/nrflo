@@ -221,6 +221,15 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 		result["parent_session"] = wi.ParentSession.String
 	}
 
+	// Phase layers from workflow definition
+	if wf, err := s.GetWorkflowDef(wi.ProjectID, wi.WorkflowID); err == nil {
+		phaseLayers := make(map[string]int, len(wf.Phases))
+		for _, p := range wf.Phases {
+			phaseLayers[p.ID] = p.Layer
+		}
+		result["phase_layers"] = phaseLayers
+	}
+
 	// Completion stats
 	result["status"] = string(wi.Status)
 	if wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceProjectCompleted {

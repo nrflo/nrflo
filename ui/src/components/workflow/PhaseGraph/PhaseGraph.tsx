@@ -34,6 +34,7 @@ export function PhaseGraph({
   activeAgents,
   agentHistory,
   phaseOrder,
+  phaseLayers,
   sessions,
   onAgentSelect,
   logPanelCollapsed,
@@ -155,7 +156,8 @@ export function PhaseGraph({
   const initialNodes: Node<AgentFlowNodeData>[] = useMemo(() => {
     const nodes: Node<AgentFlowNodeData>[] = []
 
-    sortedPhaseEntries.forEach(([phaseName, phase], phaseIndex) => {
+    sortedPhaseEntries.forEach(([phaseName, phase], idx) => {
+      const phaseIndex = phaseLayers?.[phaseName] ?? idx
       const phaseAgents = agentsByPhase[phaseName] || []
       const history = agentHistory?.filter(h => h.phase === phaseName) || []
 
@@ -240,7 +242,7 @@ export function PhaseGraph({
     })
 
     return nodes
-  }, [sortedPhaseEntries, agentsByPhase, agentHistory, handleAgentClick, findSessionForAgent, findSessionForHistory, onRetryFailed, retryingSessionId, workflowStatus])
+  }, [sortedPhaseEntries, agentsByPhase, agentHistory, phaseLayers, handleAgentClick, findSessionForAgent, findSessionForHistory, onRetryFailed, retryingSessionId, workflowStatus])
 
   // Build React Flow edges with layer-based branching pattern
   const initialEdges: Edge[] = useMemo(() => {

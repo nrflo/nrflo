@@ -63,6 +63,7 @@ export interface WorkflowState {
   total_tokens_used?: number
   phases?: Record<string, PhaseState>
   phase_order?: string[]
+  phase_layers?: Record<string, number>
   active_agents?: Record<string, ActiveAgentV4>  // key is "agent_type:cli:model"
   findings?: WorkflowFindings
   agent_history?: AgentHistoryEntry[]

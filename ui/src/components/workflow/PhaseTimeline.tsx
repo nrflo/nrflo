@@ -75,6 +75,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
         activeAgents={activeAgents}
         agentHistory={agentHistory}
         phaseOrder={workflow.phase_order}
+        phaseLayers={workflow.phase_layers}
         sessions={sessions}
         onAgentSelect={onAgentSelect}
         logPanelCollapsed={logPanelCollapsed}

@@ -32,13 +32,18 @@ vi.mock('./AgentLogDetail', async () => {
     }: {
       selectedAgent: SelectedAgentData
       onBack: () => void
-    }) => (
-      <div data-testid="agent-log-detail">
-        <span data-testid="detail-phase">{selectedAgent.phaseName}</span>
-        <span data-testid="detail-agent-type">{selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type}</span>
-        <button data-testid="back-button" onClick={onBack}>Back</button>
-      </div>
-    ),
+    }) => {
+      const isRunning = selectedAgent.agent && !selectedAgent.agent.result
+      return (
+        <div data-testid="agent-log-detail">
+          <span data-testid="detail-phase">{selectedAgent.phaseName}</span>
+          <span data-testid="detail-agent-type">{selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type}</span>
+          <span data-testid="detail-result">{selectedAgent.agent?.result ?? ''}</span>
+          <span data-testid="detail-is-running">{isRunning ? 'running' : 'stopped'}</span>
+          <button data-testid="back-button" onClick={onBack}>Back</button>
+        </div>
+      )
+    },
   }
 })
 
@@ -770,6 +775,178 @@ describe('AgentLogPanel', () => {
       })
 
       expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+    })
+  })
+
+  describe('ticket nrworkflow-e1c40d: stale spinner fix — live agent resolution', () => {
+    it('detail mode shows running state when agent has no result', () => {
+      const runningAgent = makeAgent({
+        session_id: 'sess-run',
+        result: undefined,
+      })
+      const selectedAgent = {
+        phaseName: 'implementation',
+        agent: runningAgent,
+        session: makeSession({ id: 'sess-run' }),
+      }
+
+      renderPanel({
+        selectedAgent,
+        activeAgents: { 'implementor:claude:sonnet': runningAgent },
+        sessions: [makeSession({ id: 'sess-run' })],
+      })
+
+      expect(screen.getByTestId('detail-is-running')).toHaveTextContent('running')
+      expect(screen.getByTestId('detail-result')).toHaveTextContent('')
+    })
+
+    it('detail mode switches to stopped when live activeAgents updates agent with result', () => {
+      const staleAgent = makeAgent({
+        session_id: 'sess-42',
+        result: undefined, // captured snapshot: still running
+      })
+      const liveCompletedAgent = makeAgent({
+        session_id: 'sess-42',
+        result: 'pass', // live update: agent completed
+      })
+      const selectedAgent = {
+        phaseName: 'implementation',
+        agent: staleAgent, // stale reference at click time
+        session: makeSession({ id: 'sess-42' }),
+      }
+
+      const { rerender } = renderPanel({
+        selectedAgent,
+        // activeAgents still shows running (no result) — should be running
+        activeAgents: { 'implementor:claude:sonnet': staleAgent },
+        sessions: [makeSession({ id: 'sess-42' })],
+      })
+
+      expect(screen.getByTestId('detail-is-running')).toHaveTextContent('running')
+      expect(screen.getByTestId('detail-result')).toHaveTextContent('')
+
+      // Agent completes: activeAgents updates via React Query invalidation
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentLogPanel
+            activeAgents={{ 'implementor:claude:sonnet': liveCompletedAgent }}
+            sessions={[makeSession({ id: 'sess-42', status: 'completed', result: 'pass' })]}
+            collapsed={false}
+            onToggleCollapse={vi.fn()}
+            selectedAgent={selectedAgent} // still the stale captured snapshot
+            onAgentSelect={vi.fn()}
+          />
+        </QueryClientProvider>
+      )
+
+      // Live resolution should pick up liveCompletedAgent from activeAgents
+      expect(screen.getByTestId('detail-is-running')).toHaveTextContent('stopped')
+      expect(screen.getByTestId('detail-result')).toHaveTextContent('pass')
+    })
+
+    it('falls back gracefully when agent is no longer in activeAgents', () => {
+      const staleAgent = makeAgent({
+        session_id: 'sess-gone',
+        result: undefined,
+      })
+      const selectedAgent = {
+        phaseName: 'implementation',
+        agent: staleAgent,
+        session: makeSession({ id: 'sess-gone' }),
+      }
+
+      // Agent removed from activeAgents (e.g., moved to history by server)
+      renderPanel({
+        selectedAgent,
+        activeAgents: {}, // agent no longer present
+        sessions: [makeSession({ id: 'sess-gone' })],
+      })
+
+      // Falls back to stale captured snapshot — no crash, still shows in detail
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+      // stale agent has no result, fallback snapshot is used → isRunning stays true
+      expect(screen.getByTestId('detail-is-running')).toHaveTextContent('running')
+    })
+
+    it('prefers session_id match over agent_type+phase+model_id for live resolution', () => {
+      const staleAgent = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-sonnet-4-5',
+        session_id: 'sess-exact',
+        result: undefined,
+      })
+      // Agent matching by session_id only — same props but different session (e.g., retry)
+      const liveBySessionId = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-sonnet-4-5',
+        session_id: 'sess-exact',
+        result: 'pass', // completed
+      })
+      // Different agent matching by agent_type+phase+model_id only
+      const liveByProps = makeAgent({
+        agent_type: 'implementor',
+        phase: 'implementation',
+        model_id: 'claude-sonnet-4-5',
+        session_id: 'sess-other',
+        result: undefined, // still running
+      })
+
+      const selectedAgent = {
+        phaseName: 'implementation',
+        agent: staleAgent,
+        session: makeSession({ id: 'sess-exact' }),
+      }
+
+      // Both agents in activeAgents — session_id match should win
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentLogPanel
+            activeAgents={{
+              'implementor:sonnet:exact': liveBySessionId,
+              'implementor:sonnet:other': liveByProps,
+            }}
+            sessions={[makeSession({ id: 'sess-exact' }), makeSession({ id: 'sess-other' })]}
+            collapsed={false}
+            onToggleCollapse={vi.fn()}
+            selectedAgent={selectedAgent}
+            onAgentSelect={vi.fn()}
+          />
+        </QueryClientProvider>
+      )
+
+      // Should resolve to liveBySessionId (result='pass'), not liveByProps (no result)
+      expect(screen.getByTestId('detail-is-running')).toHaveTextContent('stopped')
+      expect(screen.getByTestId('detail-result')).toHaveTextContent('pass')
+    })
+
+    it('historyEntry path is unaffected by live resolution (no agent field)', () => {
+      const selectedAgent = {
+        phaseName: 'investigation',
+        historyEntry: {
+          agent_id: 'h1',
+          agent_type: 'setup-analyzer',
+          phase: 'investigation',
+          result: 'pass',
+          duration_sec: 120,
+        },
+        session: makeSession({ id: 'hist-session', agent_type: 'setup-analyzer', phase: 'investigation' }),
+      }
+
+      // Even if activeAgents has something, historyEntry path sets agent=undefined
+      renderPanel({
+        selectedAgent,
+        activeAgents: { 'setup-analyzer:claude:sonnet': makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation', result: undefined }) },
+        sessions: [makeSession({ id: 'hist-session' })],
+      })
+
+      // No agent field → liveAgent=undefined → isRunningAgent=false
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
+      // detail-is-running is based on agent field only; no agent → 'stopped'
+      expect(screen.getByTestId('detail-is-running')).toHaveTextContent('stopped')
     })
   })
 })

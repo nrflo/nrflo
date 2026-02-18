@@ -187,13 +187,23 @@ export function AgentLogPanel({
 
   // Detail mode: show selected agent
   if (selectedAgent) {
-    // For running agents (agent present, no result), look up latest session for live updates.
-    // For completed agents (historyEntry or agent with result), use the captured session directly.
-    const isRunningAgent = selectedAgent.agent && !selectedAgent.agent.result
+    // Resolve live agent data from activeAgents to replace stale captured snapshot.
+    // When the agent completes via WebSocket, activeAgents updates but selectedAgent.agent doesn't.
+    const liveAgent = selectedAgent.agent
+      ? Object.values(activeAgents).find(a =>
+          a.session_id === selectedAgent.agent!.session_id ||
+          (a.agent_type === selectedAgent.agent!.agent_type &&
+           a.phase === selectedAgent.agent!.phase &&
+           a.model_id === selectedAgent.agent!.model_id)
+        ) ?? selectedAgent.agent
+      : undefined
+
+    const resolvedSelected = { ...selectedAgent, agent: liveAgent }
+    const isRunningAgent = resolvedSelected.agent && !resolvedSelected.agent.result
     const liveSession = isRunningAgent
-      ? findSession(selectedAgent.agent!) || selectedAgent.session
-      : selectedAgent.session
-    const agentWithSession = { ...selectedAgent, session: liveSession }
+      ? findSession(resolvedSelected.agent!) || resolvedSelected.session
+      : resolvedSelected.session
+    const agentWithSession = { ...resolvedSelected, session: liveSession }
 
     return (
       <div

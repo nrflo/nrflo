@@ -108,8 +108,11 @@ type processInfo struct {
 
 // Spawner manages agent lifecycle
 type Spawner struct {
-	config    Config
-	restartCh chan string // carries sessionID of agent to restart
+	config           Config
+	restartCh        chan string            // carries sessionID of agent to restart
+	takeControlCh    chan string            // carries sessionID of agent to take control of
+	interactiveWaits map[string]chan struct{} // sessionID → closed when interactive session completes
+	mu               sync.Mutex              // protects interactiveWaits
 }
 
 // SpawnRequest contains parameters for spawning an agent
@@ -132,8 +135,10 @@ func (r SpawnRequest) IsProjectScope() bool {
 // New creates a new spawner
 func New(config Config) *Spawner {
 	return &Spawner{
-		config:    config,
-		restartCh: make(chan string, 1),
+		config:           config,
+		restartCh:        make(chan string, 1),
+		takeControlCh:    make(chan string, 1),
+		interactiveWaits: make(map[string]chan struct{}),
 	}
 }
 
@@ -143,6 +148,31 @@ func (s *Spawner) RequestRestart(sessionID string) {
 	select {
 	case s.restartCh <- sessionID:
 	default:
+	}
+}
+
+// RequestTakeControl sends a take-control signal for the given session ID.
+// Non-blocking: if a take-control is already pending, this is a no-op.
+func (s *Spawner) RequestTakeControl(sessionID string) {
+	select {
+	case s.takeControlCh <- sessionID:
+	default:
+	}
+}
+
+// CompleteInteractive signals that the interactive session has ended,
+// unblocking the spawner's monitorAll wait.
+func (s *Spawner) CompleteInteractive(sessionID string) {
+	s.mu.Lock()
+	ch, ok := s.interactiveWaits[sessionID]
+	s.mu.Unlock()
+	if ok {
+		select {
+		case <-ch:
+			// already closed
+		default:
+			close(ch)
+		}
 	}
 }
 
@@ -493,6 +523,79 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					go s.initiateContextSave(ctx, proc, req, oldDoneCh, newDoneCh)
 					break
 				}
+			}
+		case takeControlSessionID := <-s.takeControlCh:
+			// Take-control requested — find matching proc, validate, kill, and block
+			for i, proc := range running {
+				if proc.sessionID != takeControlSessionID {
+					continue
+				}
+				// Validate CLI supports resume
+				cliName, _ := parseModelID(proc.modelID)
+				adapter, adapterErr := GetCLIAdapter(cliName)
+				if adapterErr != nil || !adapter.SupportsResume() {
+					logger.Error(ctx, "take-control: CLI does not support resume", "cli", cliName, "session_id", takeControlSessionID)
+					break
+				}
+
+				logger.Info(ctx, "take-control: killing agent", "session_id", takeControlSessionID)
+
+				// Kill process: SIGTERM → grace → SIGKILL
+				StopContainer(proc.containerName)
+				if proc.cmd.Process != nil {
+					proc.cmd.Process.Signal(syscall.SIGTERM)
+				}
+				gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second
+				if gracePeriod == 0 {
+					gracePeriod = 5 * time.Second
+				}
+				select {
+				case <-proc.doneCh:
+				case <-time.After(gracePeriod):
+					if proc.cmd.Process != nil {
+						proc.cmd.Process.Kill()
+					}
+					<-proc.doneCh
+				}
+
+				// Flush messages and register stop
+				s.saveMessages(proc)
+				s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
+					proc.sessionID, proc.agentID, "user_interactive", "take_control", proc.modelID)
+
+				// Broadcast take-control event
+				s.broadcast(ws.EventAgentTakeControl, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+					"session_id": proc.sessionID,
+					"agent_type": proc.agentType,
+					"model_id":   proc.modelID,
+				})
+
+				// Remove from running
+				running = append(running[:i], running[i+1:]...)
+
+				// Create interactive wait channel and block until interactive session completes
+				waitCh := make(chan struct{})
+				s.mu.Lock()
+				s.interactiveWaits[proc.sessionID] = waitCh
+				s.mu.Unlock()
+
+				logger.Info(ctx, "take-control: waiting for interactive session to complete", "session_id", takeControlSessionID)
+				select {
+				case <-waitCh:
+					logger.Info(ctx, "take-control: interactive session completed", "session_id", takeControlSessionID)
+				case <-ctx.Done():
+					logger.Warn(ctx, "take-control: cancelled while waiting for interactive session", "session_id", takeControlSessionID)
+				}
+
+				s.mu.Lock()
+				delete(s.interactiveWaits, proc.sessionID)
+				s.mu.Unlock()
+
+				// Mark as PASS so finalizePhase proceeds
+				proc.finalStatus = "PASS"
+				proc.elapsed = time.Since(proc.startTime)
+				completed = append(completed, proc)
+				break
 			}
 		default:
 		}

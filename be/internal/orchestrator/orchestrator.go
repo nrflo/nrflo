@@ -646,6 +646,81 @@ func (o *Orchestrator) restartAgentByInstance(wfiID, workflowName, target, sessi
 	return nil
 }
 
+// TakeControl sends a take-control signal to the active spawner for a ticket-scoped workflow.
+func (o *Orchestrator) TakeControl(projectID, ticketID, workflowName, sessionID string) (string, error) {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
+	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	if err != nil {
+		return "", fmt.Errorf("workflow not found: %w", err)
+	}
+
+	return o.takeControlByInstance(wi.ID, workflowName, ticketID, sessionID)
+}
+
+// TakeControlProject sends a take-control signal for a project-scoped workflow.
+func (o *Orchestrator) TakeControlProject(projectID, workflowName, sessionID, instanceID string) (string, error) {
+	if instanceID == "" {
+		return "", fmt.Errorf("instance_id is required for project-scoped workflow take-control")
+	}
+	return o.takeControlByInstance(instanceID, workflowName, projectID, sessionID)
+}
+
+func (o *Orchestrator) takeControlByInstance(wfiID, workflowName, target, sessionID string) (string, error) {
+	logger.Info(context.Background(), "take-control requested", "session_id", sessionID, "workflow", workflowName)
+	o.mu.Lock()
+	rs, ok := o.runs[wfiID]
+	o.mu.Unlock()
+	if !ok {
+		return "", fmt.Errorf("no running orchestration for workflow '%s' on %s", workflowName, target)
+	}
+
+	o.mu.Lock()
+	sp := rs.spawner
+	o.mu.Unlock()
+	if sp == nil {
+		return "", fmt.Errorf("no active spawner (agent may be between phases)")
+	}
+
+	sp.RequestTakeControl(sessionID)
+	return sessionID, nil
+}
+
+// CompleteInteractive signals that the interactive session has ended.
+// It updates the agent session in DB and unblocks the spawner's wait.
+func (o *Orchestrator) CompleteInteractive(sessionID string) error {
+	logger.Info(context.Background(), "interactive session completing", "session_id", sessionID)
+
+	// Update agent session in DB
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	if err := asRepo.UpdateStatusToInteractiveCompleted(sessionID); err != nil {
+		return fmt.Errorf("failed to update session: %w", err)
+	}
+
+	// Find the runState that has this session's spawner and call CompleteInteractive
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	for _, rs := range o.runs {
+		if rs.spawner != nil {
+			rs.spawner.CompleteInteractive(sessionID)
+		}
+	}
+
+	return nil
+}
+
 // IsRunning checks if an orchestration is running for a ticket+workflow.
 func (o *Orchestrator) IsRunning(projectID, ticketID, workflowName string) bool {
 	database, err := db.Open(o.dataPath)

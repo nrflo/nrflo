@@ -146,9 +146,19 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Call WorkflowService.CompletePhase() directly (in-process)
 
 BROADCAST: The spawner broadcasts WebSocket events (agent.started,
-messages.updated, agent.completed, phase.started, phase.completed)
-directly via the in-process WebSocket hub. messages.updated events
-are coalesced to one broadcast per session per 2-second window.
+messages.updated, agent.completed, agent.take_control, phase.started,
+phase.completed) directly via the in-process WebSocket hub.
+messages.updated events are coalesced to one per session per 2s window.
+
+6. TAKE-CONTROL (interactive session)
+   - `takeControlCh` receives session ID from orchestrator
+   - Kills agent: SIGTERM → grace period → SIGKILL
+   - Sets session status to user_interactive
+   - Broadcasts agent.take_control event
+   - Blocks monitorAll on interactiveWaitCh
+   - `CompleteInteractive(sessionID)` closes the channel, unblocking
+   - Proc treated as PASS for finalizePhase
+   - Only works for CLIs with SupportsResume() == true
 ```
 
 ## Agent Definitions
@@ -310,5 +320,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `cli_adapter_test.go` | CLI adapter unit tests |
 | `docker_adapter_test.go` | Docker CLI adapter decorator tests |
 | `template_project_findings_test.go` | Project findings template expansion tests |
+| `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

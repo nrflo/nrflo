@@ -350,6 +350,24 @@ func (r *AgentSessionRepo) CleanupKeepLatest(keep int) (int64, error) {
 	return result.RowsAffected()
 }
 
+// UpdateStatusToInteractiveCompleted sets status to interactive_completed, result to pass, and ended_at to now.
+func (r *AgentSessionRepo) UpdateStatusToInteractiveCompleted(id string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.Exec(
+		`UPDATE agent_sessions SET status = ?, result = ?, ended_at = ?, updated_at = ? WHERE id = ?`,
+		model.AgentSessionInteractiveCompleted,
+		sql.NullString{String: "pass", Valid: true},
+		now, now, id)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("agent session not found: %s", id)
+	}
+	return nil
+}
+
 // GetRecent retrieves the most recent agent sessions
 func (r *AgentSessionRepo) GetRecent(limit int) ([]*model.AgentSession, error) {
 	rows, err := r.db.Query(`

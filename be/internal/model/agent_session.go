@@ -15,8 +15,10 @@ const (
 	AgentSessionFailed           AgentSessionStatus = "failed"
 	AgentSessionTimeout          AgentSessionStatus = "timeout"
 	AgentSessionContinued        AgentSessionStatus = "continued"
-	AgentSessionProjectCompleted AgentSessionStatus = "project_completed"
-	AgentSessionCallback         AgentSessionStatus = "callback"
+	AgentSessionProjectCompleted    AgentSessionStatus = "project_completed"
+	AgentSessionCallback            AgentSessionStatus = "callback"
+	AgentSessionUserInteractive     AgentSessionStatus = "user_interactive"
+	AgentSessionInteractiveCompleted AgentSessionStatus = "interactive_completed"
 )
 
 // AgentSession represents a spawned agent session

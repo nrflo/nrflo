@@ -153,6 +153,103 @@ func (s *Server) handleRetryFailedAgent(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "retrying"})
 }
 
+// handleTakeControl initiates a take-control flow: kills the agent and returns the session ID.
+// POST /api/v1/tickets/:id/workflow/take-control
+func (s *Server) handleTakeControl(w http.ResponseWriter, r *http.Request) {
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	ticketID := extractID(r)
+	if ticketID == "" {
+		writeError(w, http.StatusBadRequest, "ticket ID required")
+		return
+	}
+
+	if s.orchestrator == nil {
+		writeError(w, http.StatusServiceUnavailable, "orchestrator not available")
+		return
+	}
+
+	var body struct {
+		Workflow  string `json:"workflow"`
+		SessionID string `json:"session_id"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.Workflow == "" {
+		writeError(w, http.StatusBadRequest, "workflow name is required")
+		return
+	}
+	if body.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+
+	sessionID, err := s.orchestrator.TakeControl(projectID, ticketID, body.Workflow, body.SessionID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "interactive", "session_id": sessionID})
+}
+
+// handleExitInteractive signals that the interactive session has ended.
+// POST /api/v1/tickets/:id/workflow/exit-interactive
+func (s *Server) handleExitInteractive(w http.ResponseWriter, r *http.Request) {
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	ticketID := extractID(r)
+	if ticketID == "" {
+		writeError(w, http.StatusBadRequest, "ticket ID required")
+		return
+	}
+
+	if s.orchestrator == nil {
+		writeError(w, http.StatusServiceUnavailable, "orchestrator not available")
+		return
+	}
+
+	var body struct {
+		Workflow  string `json:"workflow"`
+		SessionID string `json:"session_id"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.Workflow == "" {
+		writeError(w, http.StatusBadRequest, "workflow name is required")
+		return
+	}
+	if body.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+
+	_ = projectID // validated above; CompleteInteractive uses sessionID directly
+	_ = ticketID
+
+	err := s.orchestrator.CompleteInteractive(body.SessionID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "completed"})
+}
+
 // handleStopWorkflow stops a running orchestrated workflow.
 // POST /api/v1/tickets/:id/workflow/stop
 func (s *Server) handleStopWorkflow(w http.ResponseWriter, r *http.Request) {

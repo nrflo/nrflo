@@ -17,8 +17,8 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_tickets.go` | Ticket list/create/get |
 | `handlers_tickets_update.go` | Ticket update/delete/close/reopen |
 | `handlers_workflow.go` | Workflow state get/patch |
-| `handlers_orchestrate.go` | Ticket-scoped run/stop/restart/retry-failed/run-epic |
-| `handlers_project_workflow.go` | Project-scoped run/stop/restart/retry-failed/state/agents |
+| `handlers_orchestrate.go` | Ticket-scoped run/stop/restart/retry-failed/take-control/exit-interactive/run-epic |
+| `handlers_project_workflow.go` | Project-scoped run/stop/restart/retry-failed/take-control/exit-interactive/state/agents |
 | `handlers_workflow_def.go` | Workflow definition CRUD |
 | `handlers_agent_def.go` | Agent definition CRUD |
 | `handlers_chains.go` | Chain list/get/create/update/start/cancel/append |
@@ -54,6 +54,8 @@ POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
 POST /api/v1/tickets/:id/workflow/restart       # Restart agent (context save + relaunch)
 POST /api/v1/tickets/:id/workflow/retry-failed  # Retry failed workflow from failed layer
+POST /api/v1/tickets/:id/workflow/take-control     # Kill agent, return session ID for interactive use
+POST /api/v1/tickets/:id/workflow/exit-interactive  # Signal interactive session completed, unblock spawner
 POST /api/v1/tickets/:id/workflow/run-epic    # Create chain from epic children, optionally start
 
 # Workflow definitions (project-scoped, require X-Project header)
@@ -68,6 +70,8 @@ POST /api/v1/projects/:id/workflow/run      # Start project workflow
 POST /api/v1/projects/:id/workflow/stop     # Stop project workflow
 POST /api/v1/projects/:id/workflow/restart       # Restart project agent
 POST /api/v1/projects/:id/workflow/retry-failed  # Retry failed project workflow
+POST /api/v1/projects/:id/workflow/take-control     # Kill project agent, return session ID
+POST /api/v1/projects/:id/workflow/exit-interactive  # Signal project interactive session completed
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
 GET  /api/v1/projects/:id/agents           # Get project agent sessions
 

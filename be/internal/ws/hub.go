@@ -38,6 +38,7 @@ const (
 	EventChainUpdated                = "chain.updated"
 	EventProjectFindingsUpdated      = "project_findings.updated"
 	EventAgentContextUpdated         = "agent.context_updated"
+	EventAgentTakeControl            = "agent.take_control"
 	EventTestEcho                    = "test.echo"
 )
 

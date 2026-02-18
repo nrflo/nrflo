@@ -99,6 +99,18 @@ When a project has `use_git_worktrees=true` and `default_branch` configured, the
 
 The `worktreeInfo` struct in `runLoop` tracks original project root, worktree path, branch name, and default branch. A `worktreeHandled` flag prevents the cleanup defer from running after a successful merge.
 
+## Take-Control (Interactive Session)
+
+The orchestrator supports taking interactive control of a running agent:
+
+1. `TakeControl(projectID, ticketID, workflow, sessionID)` — finds the active spawner and sends `RequestTakeControl`
+2. Spawner kills the agent (SIGTERM → grace → SIGKILL), sets session status to `user_interactive`
+3. Spawner blocks `monitorAll` on an `interactiveWaitCh` — the workflow does not advance
+4. `CompleteInteractive(sessionID)` — updates DB to `interactive_completed` with `result=pass`, closes the wait channel
+5. Spawner unblocks, treats the proc as PASS, and `finalizePhase` proceeds normally
+
+Only works for Claude CLI agents (`SupportsResume() == true`). Project-scoped equivalents: `TakeControlProject`, same `CompleteInteractive`.
+
 ## Ticket Status Management
 
 The orchestrator manages ticket status transitions for ticket-scoped workflows:
@@ -115,6 +127,7 @@ Unit tests in-package:
 - `orchestrator_ticket_status_test.go` — SetInProgress, markFailed ticket reopen, WS broadcasts
 - `orchestrator_mark_completed_test.go` — markCompleted ticket close, project scope, WS broadcasts
 - `orchestrator_worktree_test.go` — worktree setup/merge/cleanup lifecycle, project scope skips worktree
+- `orchestrator_take_control_test.go` — TakeControl/TakeControlProject/CompleteInteractive methods
 
 Integration tests in `internal/integration/`:
 - `chain_epic_test.go` — chain epic auto-close

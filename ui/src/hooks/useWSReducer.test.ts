@@ -409,7 +409,10 @@ describe('useWSReducer', () => {
       expect(queryClient.invalidateQueries).toHaveBeenCalled()
     })
 
-    it('routes messages.updated event with session_id', () => {
+    it('routes messages.updated event and invalidates session-messages, agentSessions, and workflow (ticket scope)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
       const event: WSEventV2 = {
         type: 'messages.updated',
         project_id: 'proj1',
@@ -420,8 +423,40 @@ describe('useWSReducer', () => {
         data: { session_id: 'sess-123' },
       }
 
-      dispatchV2Event(event, queryClient)
-      expect(queryClient.invalidateQueries).toHaveBeenCalled()
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('session-messages')
+      )).toBe(true)
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('agents')
+      )).toBe(true)
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+    })
+
+    it('routes messages.updated event and invalidates project workflow (project scope)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'messages.updated',
+        project_id: 'proj1',
+        ticket_id: '', // project scope
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 1,
+        protocol_version: 2,
+        data: { session_id: 'sess-456' },
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
     })
 
     it('routes chain.updated event', () => {

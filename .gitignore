@@ -9,6 +9,10 @@ be/nrworkflow_server
 *.so
 *.dylib
 
+# Docker build artifacts
+docker/nrworkflow
+docker/env
+
 # Go build artifacts
 *.test
 *.out
@@ -34,6 +38,7 @@ logs/
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
+.opencode/
 *.swp
 *.swo
 *~

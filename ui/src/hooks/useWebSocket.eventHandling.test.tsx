@@ -791,7 +791,7 @@ describe('useWebSocket - messages.updated narrowing', () => {
     invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
   })
 
-  it('messages.updated only invalidates session-messages and agentSessions for ticket scope', () => {
+  it('messages.updated invalidates session-messages, agentSessions, and workflow for ticket scope', () => {
     const event: WSEvent = {
       type: 'messages.updated',
       project_id: 'test-project',
@@ -801,17 +801,18 @@ describe('useWebSocket - messages.updated narrowing', () => {
       data: { session_id: 'session-123' },
     }
 
-    // Simulate narrowed handler (M5 - targeted invalidation)
+    // Simulate handler — now includes workflow invalidation
     queryClient.invalidateQueries({ queryKey: ['session-messages', event.data?.session_id] })
     queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
 
-    // Verify ONLY these two invalidations
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['session-messages', 'session-123'] })
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.agentSessions('TICKET-MSG') })
-    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.workflow('TICKET-MSG') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
   })
 
-  it('messages.updated does NOT invalidate workflow queries (narrowed)', () => {
+  it('messages.updated invalidates workflow queries (context_left update fix)', () => {
     const event: WSEvent = {
       type: 'messages.updated',
       project_id: 'test-project',
@@ -823,16 +824,17 @@ describe('useWebSocket - messages.updated narrowing', () => {
 
     queryClient.invalidateQueries({ queryKey: ['session-messages', event.data?.session_id] })
     queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
 
-    // Verify workflow queries were NOT invalidated
+    // Verify workflow query IS now invalidated (fixes stale context_left)
     const workflowInvalidations = invalidateQueriesSpy.mock.calls.filter(
       (call: any) => call[0] && JSON.stringify(call[0].queryKey).includes('workflow')
     )
 
-    expect(workflowInvalidations.length).toBe(0)
+    expect(workflowInvalidations.length).toBe(1)
   })
 
-  it('messages.updated for project scope only invalidates session-messages and project agentSessions', () => {
+  it('messages.updated for project scope invalidates session-messages, project agentSessions, and project workflow', () => {
     const event: WSEvent = {
       type: 'messages.updated',
       project_id: 'test-project',
@@ -844,13 +846,15 @@ describe('useWebSocket - messages.updated narrowing', () => {
 
     queryClient.invalidateQueries({ queryKey: ['session-messages', event.data?.session_id] })
     queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+    queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
 
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['session-messages', 'session-789'] })
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.agentSessions('test-project') })
-    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: projectWorkflowKeys.workflow('test-project') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(3)
   })
 
-  it('messages.updated without session_id still invalidates agentSessions', () => {
+  it('messages.updated without session_id still invalidates agentSessions and workflow', () => {
     const event: WSEvent = {
       type: 'messages.updated',
       project_id: 'test-project',
@@ -860,11 +864,13 @@ describe('useWebSocket - messages.updated narrowing', () => {
       data: {},
     }
 
-    // Fallback when session_id missing: still invalidate agentSessions
+    // Fallback when session_id missing: invalidate agentSessions and workflow
     queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
 
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.agentSessions('TICKET-NO-SID') })
-    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(1)
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ticketKeys.workflow('TICKET-NO-SID') })
+    expect(invalidateQueriesSpy).toHaveBeenCalledTimes(2)
   })
 })
 

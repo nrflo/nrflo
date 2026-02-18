@@ -28,6 +28,8 @@ var (
 	agentCallbackWorkflow string
 	agentCallbackModel    string
 	agentCallbackLevel    int
+	// context-update flags
+	agentContextUpdatePctUsed float64
 )
 
 var agentCompleteCmd = &cobra.Command{
@@ -208,6 +210,36 @@ Use -T/--no-ticket for project-scoped workflows.`,
 	},
 }
 
+var agentContextUpdateCmd = &cobra.Command{
+	Use:   "context-update <session-id>",
+	Short: "Update context usage for an agent session (used by hooks)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// No RequireProject — session_id is globally unique
+		if err := CheckServer(); err != nil {
+			// Server not running — exit silently
+			return nil
+		}
+
+		sessionID := args[0]
+		contextLeft := int(100 - agentContextUpdatePctUsed)
+		if contextLeft < 0 {
+			contextLeft = 0
+		}
+		if contextLeft > 100 {
+			contextLeft = 100
+		}
+
+		c := GetClient()
+		reqParams := map[string]interface{}{
+			"session_id":   sessionID,
+			"context_left": contextLeft,
+		}
+
+		return c.ExecuteAndUnmarshal("agent.context_update", reqParams, nil)
+	},
+}
+
 // parseAgentArgs extracts ticketID and agentType from positional args.
 // When noTicket is true, ticketID is "" and args[0] is agentType.
 func parseAgentArgs(args []string, noTicket bool) (ticketID, agentType string) {
@@ -243,4 +275,8 @@ func init() {
 	agentCallbackCmd.Flags().StringVar(&agentCallbackModel, "model", "", "Model ID")
 	agentCallbackCmd.Flags().IntVar(&agentCallbackLevel, "level", 0, "Target layer index to callback to (required)")
 	agentCmd.AddCommand(agentCallbackCmd)
+
+	// agent context-update
+	agentContextUpdateCmd.Flags().Float64Var(&agentContextUpdatePctUsed, "pct-used", 0, "Percentage of context used")
+	agentCmd.AddCommand(agentContextUpdateCmd)
 }

@@ -1,58 +1,51 @@
 package spawner
 
 import (
-	"encoding/json"
-	"os"
+	"fmt"
+	"strings"
 
-	"be/internal/repo"
+	"be/internal/db"
 )
 
-// contextFileEntry represents one entry in /tmp/nrworkflow/usable_context.json
-type contextFileEntry struct {
-	PctUsed *float64 `json:"pct_used"`
-}
+// readContextLeftFromDB reads context_left from the database for all running processes
+// and updates each proc.contextLeft in place.
+func readContextLeftFromDB(pool *db.Pool, procs []*processInfo) {
+	if pool == nil || len(procs) == 0 {
+		return
+	}
 
-// readContextFile reads /tmp/nrworkflow/usable_context.json and returns parsed data.
-// Returns nil on any error (file not found, parse error, etc).
-func readContextFile() map[string]contextFileEntry {
-	data, err := os.ReadFile("/tmp/nrworkflow/usable_context.json")
+	// Build IN clause
+	ids := make([]string, len(procs))
+	args := make([]interface{}, len(procs))
+	for i, p := range procs {
+		ids[i] = "?"
+		args[i] = p.sessionID
+	}
+
+	query := fmt.Sprintf(
+		`SELECT id, context_left FROM agent_sessions WHERE id IN (%s)`,
+		strings.Join(ids, ","))
+
+	rows, err := pool.Query(query, args...)
 	if err != nil {
-		return nil
+		return
 	}
-	var result map[string]contextFileEntry
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil
-	}
-	return result
-}
+	defer rows.Close()
 
-// updateContextLeft updates the context_left field on a process from context file data
-func updateContextLeft(proc *processInfo, contextData map[string]contextFileEntry) {
-	if contextData == nil {
-		return
-	}
-	entry, ok := contextData[proc.sessionID]
-	if !ok || entry.PctUsed == nil {
-		return
-	}
-	remaining := 100 - int(*entry.PctUsed)
-	if remaining != proc.contextLeft {
-		proc.contextLeft = remaining
-		proc.contextLeftDirty = true
-	}
-}
-
-// saveContextLeft saves context_left to the database if dirty
-func (s *Spawner) saveContextLeft(proc *processInfo) {
-	if !proc.contextLeftDirty {
-		return
-	}
-	pool := s.pool()
-	if pool == nil {
-		return
+	// Build lookup
+	contextMap := make(map[string]int)
+	for rows.Next() {
+		var id string
+		var contextLeft int
+		if rows.Scan(&id, &contextLeft) == nil {
+			contextMap[id] = contextLeft
+		}
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-	sessionRepo.UpdateContextLeft(proc.sessionID, proc.contextLeft)
-	proc.contextLeftDirty = false
+	// Update procs
+	for _, p := range procs {
+		if cl, ok := contextMap[p.sessionID]; ok {
+			p.contextLeft = cl
+		}
+	}
 }

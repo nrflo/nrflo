@@ -167,7 +167,6 @@ func (s *Spawner) maybeFlushMessages(proc *processInfo) {
 			s.saveMessages(proc)
 			proc.messagesDirty = false
 		}
-		s.saveContextLeft(proc)
 		proc.lastMessagesFlush = s.config.Clock.Now()
 	}
 }

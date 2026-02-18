@@ -99,7 +99,6 @@ func (a *DockerCLIAdapter) volumeMounts() []string {
 		fmt.Sprintf("%s/.config/opencode:%s/.config/opencode", home, home),
 		fmt.Sprintf("%s/.local/share/opencode:%s/.local/share/opencode", home, home),
 		"/tmp/nrworkflow:/tmp/nrworkflow",
-		"/tmp/usable_context.json:/tmp/usable_context.json",
 		fmt.Sprintf("%s/.ai_common/safety.json:%s/.ai_common/safety.json:ro", home, home),
 	}
 

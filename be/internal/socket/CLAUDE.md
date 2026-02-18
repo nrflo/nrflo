@@ -41,6 +41,7 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `agent.fail` | Mark agent as failed; broadcasts with `session_id`, `model_id`, `result` |
 | `agent.continue` | Mark agent for continuation; broadcasts with `session_id`, `model_id` |
 | `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |
+| `agent.context_update` | Update context_left for a session; no project required, no broadcast |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 
 ## Common Tasks

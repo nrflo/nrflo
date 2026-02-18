@@ -87,8 +87,7 @@ type processInfo struct {
 	messagesDirty     bool
 	lastMessagesFlush time.Time
 	// Context tracking
-	contextLeft      int
-	contextLeftDirty bool
+	contextLeft int
 	// Spawn context (for debugging/replay)
 	spawnCommand  string
 	promptContext string
@@ -494,16 +493,13 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			lastStatusTime = now
 		}
 
-		// Read context file once per iteration
-		contextData := readContextFile()
+		// Read context_left from DB once per iteration
+		readContextLeftFromDB(s.pool(), running)
 
 		// Check each process using doneCh (no double-wait bug)
 		var stillRunning []*processInfo
 		for _, proc := range running {
 			elapsed := time.Since(proc.startTime)
-
-			// Update context tracking
-			updateContextLeft(proc, contextData)
 
 			// Detect low context and initiate save (only for CLIs that support resume)
 			if !proc.lowContextSaving && proc.contextLeft > 0 && proc.contextLeft <= proc.restartThreshold {
@@ -523,7 +519,6 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			case <-proc.doneCh:
 				// Process exited
 				proc.elapsed = elapsed
-				s.saveContextLeft(proc)
 				proc.lowContextSaving = false
 
 				// If context save already set finalStatus, skip handleCompletion
@@ -555,7 +550,6 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			default:
 				// Still running - check timeout
 				if elapsed > proc.timeout {
-					s.saveContextLeft(proc)
 					s.handleGracefulTimeout(ctx, proc, req)
 					completed = append(completed, proc)
 				} else {

@@ -190,6 +190,24 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 }
 
 func (h *Handler) handleAgent(ctx context.Context, req Request, action string) Response {
+	// context_update doesn't require project — session_id is globally unique
+	if action == "context_update" {
+		var params struct {
+			SessionID   string `json:"session_id"`
+			ContextLeft int    `json:"context_left"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.SessionID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
+		}
+		if err := h.agentSvc.UpdateContextLeft(params.SessionID, params.ContextLeft); err != nil {
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "updated"})
+	}
+
 	projectID := req.Project
 	if projectID == "" {
 		return MakeErrorResponse(req.ID, NewValidationError("project is required"))

@@ -214,7 +214,7 @@ func TestAgentSubcommands(t *testing.T) {
 	// agentCmd subcommands are registered in agent.go init()
 	// They should be attached to agentCmd, not rootCmd
 
-	expectedSubcommands := []string{"complete", "fail", "continue", "callback"}
+	expectedSubcommands := []string{"complete", "fail", "continue", "callback", "context-update"}
 	actualSubcommands := getCommandNames(agentCmd)
 
 	for _, expected := range expectedSubcommands {
@@ -223,9 +223,9 @@ func TestAgentSubcommands(t *testing.T) {
 		}
 	}
 
-	// Verify exact count: 4 subcommands
-	if len(actualSubcommands) != 4 {
-		t.Errorf("agentCmd has %d subcommands, want 4. Subcommands: %v", len(actualSubcommands), actualSubcommands)
+	// Verify exact count: 5 subcommands
+	if len(actualSubcommands) != 5 {
+		t.Errorf("agentCmd has %d subcommands, want 5. Subcommands: %v", len(actualSubcommands), actualSubcommands)
 	}
 }
 

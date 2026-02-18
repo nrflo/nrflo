@@ -258,20 +258,14 @@ func (r *AgentSessionRepo) UpdateRestartCount(id string, count int) error {
 	return nil
 }
 
-// UpdateContextLeft updates the context_left percentage
+// UpdateContextLeft updates the context_left percentage.
+// Returns nil on 0 rows affected (session not in DB, e.g. interactive sessions).
 func (r *AgentSessionRepo) UpdateContextLeft(id string, contextLeft int) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	result, err := r.db.Exec(
+	_, err := r.db.Exec(
 		`UPDATE agent_sessions SET context_left = ?, updated_at = ? WHERE id = ?`,
 		contextLeft, now, id)
-	if err != nil {
-		return err
-	}
-	n, _ := result.RowsAffected()
-	if n == 0 {
-		return fmt.Errorf("agent session not found: %s", id)
-	}
-	return nil
+	return err
 }
 
 // UpdateAncestorSession updates the ancestor_session_id

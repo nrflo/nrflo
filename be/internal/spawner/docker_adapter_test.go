@@ -301,7 +301,6 @@ func TestDockerCLIAdapter_VolumeMounts_SharedTmp(t *testing.T) {
 	args := strings.Join(cmd.Args, " ")
 
 	assertMount(t, args, "/tmp/nrworkflow:/tmp/nrworkflow")
-	assertMount(t, args, "/tmp/usable_context.json:/tmp/usable_context.json")
 }
 
 func TestDockerCLIAdapter_VolumeMounts_DirectProjectMount(t *testing.T) {

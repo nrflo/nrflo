@@ -44,9 +44,8 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 		<-processDoneCh
 	}
 
-	// 2. Flush messages and context from the killed process
+	// 2. Flush messages from the killed process
 	s.saveMessages(proc)
-	s.saveContextLeft(proc)
 
 	// 3. Resume with save instructions (only for CLIs that support it)
 	cliName, _ := parseModelID(proc.modelID)

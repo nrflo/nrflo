@@ -26,7 +26,7 @@ be/
 │   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution, detected by orchestrator)
 │   │   ├── completion.go        # Completion handling, continuation relaunch
 │   │   ├── context_save.go      # Low-context save: kill, resume, save findings, relaunch
-│   │   ├── context.go           # Context tracking from /tmp/nrworkflow/usable_context.json
+│   │   ├── context.go           # Context tracking (reads context_left from DB)
 │   │   ├── database.go          # DB operations: register start/stop, phase management
 │   │   ├── output.go            # Output monitoring, message formatting
 │   │   ├── template.go          # Template loading, variable expansion

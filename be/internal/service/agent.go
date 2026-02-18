@@ -284,6 +284,15 @@ func (s *AgentService) setAgentResult(sessionID, instanceID, agentType, result, 
 	return sessionID, err
 }
 
+// UpdateContextLeft updates context_left for a session. Returns nil on "not found" (interactive sessions).
+func (s *AgentService) UpdateContextLeft(sessionID string, contextLeft int) error {
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err := s.pool.Exec(
+		`UPDATE agent_sessions SET context_left = ?, updated_at = ? WHERE id = ?`,
+		contextLeft, now, sessionID)
+	return err
+}
+
 // GetRecentSessions gets recent agent sessions
 func (s *AgentService) GetRecentSessions(projectID string, limit int) ([]*model.AgentSession, error) {
 	if limit <= 0 {

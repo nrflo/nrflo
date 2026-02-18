@@ -73,6 +73,7 @@ func (a *DockerCLIAdapter) buildDockerArgs(sessionID string, env []string, isRes
 	// Environment variables
 	args = append(args, "-e", fmt.Sprintf("HOST_UID=%d", a.config.UID))
 	args = append(args, "-e", fmt.Sprintf("HOST_GID=%d", a.config.GID))
+	args = append(args, "-e", "TMPDIR=/tmp")
 	for _, e := range env {
 		args = append(args, "-e", e)
 	}

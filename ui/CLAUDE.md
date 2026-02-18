@@ -96,6 +96,37 @@ Layout
 - Dark mode support via `prefers-color-scheme`
 - Custom utility `cn()` for conditional class merging
 
+## UI Component Standards
+
+All UI elements must use the shared components from `src/components/ui/`. Do not use raw HTML elements (`<select>`, `<input>`, `<button>`, `<textarea>`) directly — use the corresponding wrapper components instead.
+
+### Standard Components
+
+| HTML Element | Use Instead | File |
+|---|---|---|
+| `<button>` | `Button` | `src/components/ui/Button.tsx` |
+| `<input>` | `Input` | `src/components/ui/Input.tsx` |
+| `<textarea>` | `Textarea` | `src/components/ui/Textarea.tsx` |
+| `<select>` | `Dropdown` | `src/components/ui/Dropdown.tsx` |
+
+### Dropdown Pattern
+
+All dropdowns use the custom `Dropdown` component (not native `<select>`). This renders a button trigger with a floating panel, matching the ProjectSelect style:
+- Button with chevron icon, border, and hover state
+- Floating panel with shadow and border
+- Checkmark on selected option
+- Click-outside and Escape key to close
+
+For searchable dropdowns, use `TicketSearchDropdown` which follows the same panel styling.
+
+### Adding New UI Components
+
+When creating a new reusable UI component:
+1. Place it in `src/components/ui/`
+2. Use `cn()` for class merging
+3. Follow existing component patterns (forwardRef, consistent prop naming)
+4. Match the project's design tokens (CSS variables from `src/index.css`)
+
 ## Common Tasks
 
 ### Adding a New API Endpoint

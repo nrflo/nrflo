@@ -9,10 +9,6 @@ vi.mock('./PhaseGraph', () => ({
   PhaseGraph: () => <div data-testid="phase-graph">PhaseGraph</div>,
 }))
 
-vi.mock('./WorkflowFindings', () => ({
-  WorkflowFindings: () => <div data-testid="workflow-findings">WorkflowFindings</div>,
-}))
-
 vi.mock('@/hooks/useTickets', () => ({
   useAgentSessions: vi.fn(() => ({
     data: { sessions: [] },
@@ -137,84 +133,6 @@ describe('PhaseTimeline', () => {
       renderPhaseTimeline({ workflow })
 
       expect(screen.queryByText('Agents running')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('ticket nrworkflow-46fb2e: showFindings prop', () => {
-    it('renders WorkflowFindings when showFindings is true (default)', () => {
-      const workflow = makeWorkflow({
-        findings: {
-          'implementor:claude:opus': { files_modified: ['src/App.tsx'] },
-        },
-      })
-      renderPhaseTimeline({ workflow })
-
-      expect(screen.getByTestId('workflow-findings')).toBeInTheDocument()
-    })
-
-    it('renders WorkflowFindings when showFindings is explicitly true', () => {
-      const workflow = makeWorkflow({
-        findings: {
-          'implementor:claude:opus': { files_modified: ['src/App.tsx'] },
-        },
-      })
-      renderPhaseTimeline({ workflow, showFindings: true })
-
-      expect(screen.getByTestId('workflow-findings')).toBeInTheDocument()
-    })
-
-    it('does not render WorkflowFindings when showFindings is false', () => {
-      const workflow = makeWorkflow({
-        findings: {
-          'implementor:claude:opus': { files_modified: ['src/App.tsx'] },
-        },
-      })
-      renderPhaseTimeline({ workflow, showFindings: false })
-
-      expect(screen.queryByTestId('workflow-findings')).not.toBeInTheDocument()
-    })
-
-    it('does not render WorkflowFindings when findings is empty object, even if showFindings is true', () => {
-      const workflow = makeWorkflow({
-        findings: {},
-      })
-      renderPhaseTimeline({ workflow, showFindings: true })
-
-      expect(screen.queryByTestId('workflow-findings')).not.toBeInTheDocument()
-    })
-
-    it('does not render WorkflowFindings when findings is undefined, even if showFindings is true', () => {
-      const workflow = makeWorkflow({
-        findings: undefined,
-      })
-      renderPhaseTimeline({ workflow, showFindings: true })
-
-      expect(screen.queryByTestId('workflow-findings')).not.toBeInTheDocument()
-    })
-
-    it('hides WorkflowFindings for completed project workflows when showFindings is false', () => {
-      const workflow = makeWorkflow({
-        status: 'project_completed',
-        findings: {
-          'implementor:claude:opus': { summary: 'Implemented feature' },
-          'qa-verifier:claude:sonnet': { test_results: 'all passed' },
-        },
-      })
-      renderPhaseTimeline({ workflow, showFindings: false })
-
-      expect(screen.queryByTestId('workflow-findings')).not.toBeInTheDocument()
-    })
-
-    it('shows WorkflowFindings for regular completed workflows when showFindings is true', () => {
-      const workflow = makeWorkflow({
-        status: 'completed',
-        findings: {
-          'implementor:claude:opus': { summary: 'Implemented feature' },
-        },
-      })
-      renderPhaseTimeline({ workflow, showFindings: true })
-
-      expect(screen.getByTestId('workflow-findings')).toBeInTheDocument()
     })
   })
 

@@ -16,9 +16,6 @@ PhaseTimeline (PhaseTimeline.tsx)
 │   ├── AgentCard.tsx - Running agent card with elapsed time
 │   ├── HistoryAgentCard.tsx - Completed agent card for phase history
 │   └── types.ts - TypeScript types for graph components
-└── WorkflowFindings (all workflow findings at bottom)
-    ├── WorkflowLevelFindings (findings['workflow'] - blue styling)
-    └── AgentFindings (other keys, empty findings filtered out - purple styling)
 ```
 
 ## PhaseGraph Features
@@ -61,25 +58,6 @@ The panel also shows when a completed agent is selected from PhaseGraph (even af
 | `CompletedAgentsTable.tsx` | Unified pageable table of completed agents sorted by `ended_at` DESC. Supports optional Workflow column (`showWorkflowColumn` prop) and client-side pagination (20 rows/page). Duration uses `formatElapsedTime` from timestamps with `formatDuration` fallback. Used directly by `ProjectWorkflowsPage` for the completed tab (bypasses `WorkflowTabContent`). |
 | `LogMessage.tsx` | Log message with tool name color highlighting. Exports `parseToolName` and `ToolBadge` |
 | `ActiveAgentsPanel.tsx` | Active agents display panel |
-| `FindingsViewer.tsx` | Simple KEY: VALUE findings display |
-| `WorkflowFindings.tsx` | Workflow-level findings grouped by agent |
-| `PhaseCard.tsx` | Phase card with agent history and findings |
-
-## Findings Display Rules
-
-Findings use a simple KEY: VALUE format with minimal parsing:
-- **First level only**: Each key is shown with its value directly
-- **No truncation**: Full content is always displayed
-- **JSON formatting**: Objects/arrays are pretty-printed with `JSON.stringify(value, null, 2)`
-- **String values**: If a string is valid JSON, it's parsed and pretty-printed; otherwise shown as-is
-
-**Workflow vs Agent Findings:**
-- Findings under the `'workflow'` key are displayed separately at the top with blue styling (Workflow icon)
-- Agent findings (all other keys) are displayed below with purple styling (Cpu icon)
-- Empty agent findings (`{}`) are filtered out and not displayed
-- `WorkflowFindings` component handles this separation and filtering automatically
-- Components: `SimpleFindingValue` in PhaseCard.tsx, WorkflowFindings.tsx, FindingsViewer.tsx
-
 ## Workflow Definition Management
 
 | Component | Purpose |

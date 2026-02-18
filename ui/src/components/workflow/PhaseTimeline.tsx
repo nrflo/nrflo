@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { Clock, Cpu } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { PhaseGraph } from './PhaseGraph'
-import { WorkflowFindings } from './WorkflowFindings'
 import { useAgentSessions } from '@/hooks/useTickets'
 import type { WorkflowState, AgentHistoryEntry, AgentSession } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
@@ -14,12 +13,11 @@ interface PhaseTimelineProps {
   sessions?: AgentSession[]
   onAgentSelect?: (data: SelectedAgentData) => void
   logPanelCollapsed?: boolean
-  showFindings?: boolean
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
 }
 
-export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect, logPanelCollapsed, showFindings = true, onRetryFailed, retryingSessionId }: PhaseTimelineProps) {
+export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect, logPanelCollapsed, onRetryFailed, retryingSessionId }: PhaseTimelineProps) {
   const phases = workflow.phases || {}
   const activeAgents = useMemo(() => workflow.active_agents || {}, [workflow.active_agents])
 
@@ -84,10 +82,6 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
         workflowStatus={workflow.status}
       />
 
-      {/* Workflow Findings */}
-      {showFindings && workflow.findings && Object.keys(workflow.findings).length > 0 && (
-        <WorkflowFindings findings={workflow.findings} />
-      )}
     </div>
   )
 }

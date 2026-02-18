@@ -68,6 +68,12 @@ export function Header() {
           >
             Documentation
           </Link>
+          <Link
+            to="/logs"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Logs
+          </Link>
         </nav>
 
         <div className="flex-1" />

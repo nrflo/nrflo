@@ -15,6 +15,7 @@ import { ChainListPage } from '@/pages/ChainListPage'
 import { ChainDetailPage } from '@/pages/ChainDetailPage'
 import { GitStatusPage } from '@/pages/GitStatusPage'
 import { DocumentationPage } from '@/pages/DocumentationPage'
+import { LogsPage } from '@/pages/LogsPage'
 import { useProjectStore } from '@/stores/projectStore'
 
 const queryClient = new QueryClient({
@@ -48,6 +49,7 @@ function App() {
               <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
               <Route path="git-status" element={<GitStatusPage />} />
               <Route path="documentation" element={<DocumentationPage />} />
+              <Route path="logs" element={<LogsPage />} />
               <Route path="chains" element={<ChainListPage />} />
               <Route path="chains/:id" element={<ChainDetailPage />} />
               <Route path="settings" element={<SettingsPage />} />

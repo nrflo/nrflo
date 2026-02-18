@@ -25,6 +25,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_docs.go` | Documentation (agent manual) |
+| `handlers_logs.go` | Log file viewer (BE/FE logs) |
 
 ## HTTP API Endpoints
 
@@ -109,6 +110,9 @@ POST   /api/v1/chains/:id/append   # Append tickets to running chain
 
 # Documentation
 GET /api/v1/docs/agent-manual      # Agent manual markdown content
+
+# Logs
+GET /api/v1/logs                   # Log file contents (?type=be|fe, default be)
 
 # Other
 GET /api/v1/search?q=              # Full-text search

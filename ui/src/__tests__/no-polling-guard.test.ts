@@ -14,6 +14,8 @@ const ALLOWLIST = [
   '.test.tsx',
   // This guard file itself
   'no-polling-guard.test.ts',
+  // Logs hook polls external log files (not workflow data) — no WebSocket events available
+  'useLogs.ts',
 ]
 
 function getAllFiles(dir: string, files: string[] = []): string[] {

@@ -45,7 +45,8 @@ be/
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
 │   │   ├── handlers_git.go        # Git commit history endpoints
-│   │   └── handlers_daily_stats.go # Daily stats endpoint
+│   │   ├── handlers_daily_stats.go # Daily stats endpoint
+│   │   └── handlers_logs.go       # Log file viewer (BE/FE logs)
 │   ├── ws/                      # WebSocket support (protocol v2)
 │   │   ├── hub.go               # Client management, event log integration, broadcasting
 │   │   ├── client.go            # Connection handling, subscriptions, cursor support

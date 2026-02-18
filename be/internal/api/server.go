@@ -259,6 +259,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Documentation
 	mux.HandleFunc("GET /api/v1/docs/agent-manual", s.handleGetAgentManual)
 
+	// Logs
+	mux.HandleFunc("GET /api/v1/logs", s.handleGetLogs)
+
 	// Projects
 	mux.HandleFunc("GET /api/v1/projects", s.handleListProjects)
 	mux.HandleFunc("POST /api/v1/projects", s.handleCreateProject)

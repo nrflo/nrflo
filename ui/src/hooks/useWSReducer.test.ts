@@ -312,6 +312,75 @@ describe('useWSReducer', () => {
       expect(queryClient.invalidateQueries).toHaveBeenCalled()
     })
 
+    it('routes agent.context_updated to ticketKeys.workflow and detail (ticket scope)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.context_updated',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 1,
+        protocol_version: 2,
+        data: { session_id: 'sess-abc', context_left: 42000 },
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('detail')
+      )).toBe(true)
+    })
+
+    it('routes agent.context_updated to projectWorkflowKeys.workflow (project scope)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.context_updated',
+        project_id: 'proj1',
+        ticket_id: '', // project scope
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 2,
+        protocol_version: 2,
+        data: { session_id: 'sess-abc', context_left: 20000 },
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+    })
+
+    it('agent.context_updated does not invalidate agentSessions (unlike agent.started)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.context_updated',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 3,
+        protocol_version: 2,
+        data: { session_id: 'sess-abc', context_left: 10000 },
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      expect(calls.every((call: any) =>
+        !JSON.stringify(call[0].queryKey).includes('agents')
+      )).toBe(true)
+    })
+
     it('routes phase.started event', () => {
       const event: WSEventV2 = {
         type: 'phase.started',

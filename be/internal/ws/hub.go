@@ -37,6 +37,7 @@ const (
 	EventOrchestrationCallback  = "orchestration.callback"
 	EventChainUpdated                = "chain.updated"
 	EventProjectFindingsUpdated      = "project_findings.updated"
+	EventAgentContextUpdated         = "agent.context_updated"
 	EventTestEcho                    = "test.echo"
 )
 

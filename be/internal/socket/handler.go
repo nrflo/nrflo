@@ -202,8 +202,15 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 		if params.SessionID == "" {
 			return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
 		}
-		if err := h.agentSvc.UpdateContextLeft(params.SessionID, params.ContextLeft); err != nil {
+		projectID, ticketID, workflow, err := h.agentSvc.UpdateContextLeft(params.SessionID, params.ContextLeft)
+		if err != nil {
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		if projectID != "" {
+			h.broadcast(ws.EventAgentContextUpdated, projectID, ticketID, workflow, map[string]interface{}{
+				"session_id":   params.SessionID,
+				"context_left": params.ContextLeft,
+			})
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "updated"})
 	}

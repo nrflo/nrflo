@@ -152,6 +152,10 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     }
   },
 
+  'agent.context_updated': (event, qc, isProjectScope) => {
+    invalidateWorkflow(event, qc, isProjectScope)
+  },
+
   'phase.started': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)
     if (!isProjectScope) {

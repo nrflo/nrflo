@@ -284,13 +284,29 @@ func (s *AgentService) setAgentResult(sessionID, instanceID, agentType, result, 
 	return sessionID, err
 }
 
-// UpdateContextLeft updates context_left for a session. Returns nil on "not found" (interactive sessions).
-func (s *AgentService) UpdateContextLeft(sessionID string, contextLeft int) error {
+// UpdateContextLeft updates context_left for a session. Returns project/ticket/workflow info for broadcasting.
+// Returns empty strings (no error) if session not found (interactive sessions).
+func (s *AgentService) UpdateContextLeft(sessionID string, contextLeft int) (projectID, ticketID, workflowName string, err error) {
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
-	_, err := s.pool.Exec(
+	_, err = s.pool.Exec(
 		`UPDATE agent_sessions SET context_left = ?, updated_at = ? WHERE id = ?`,
 		contextLeft, now, sessionID)
-	return err
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// Look up project_id, ticket_id, and workflow_id for broadcasting
+	err = s.pool.QueryRow(`
+		SELECT s.project_id, s.ticket_id, wi.workflow_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE s.id = ?`, sessionID).Scan(&projectID, &ticketID, &workflowName)
+	if err != nil {
+		// Session not found or workflow instance deleted — not an error, just skip broadcast
+		return "", "", "", nil
+	}
+
+	return projectID, ticketID, workflowName, nil
 }
 
 // GetRecentSessions gets recent agent sessions

@@ -71,6 +71,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `agent.started` | agent_id, agent_type, model_id, session_id, phase | Agent spawned |
 | `agent.completed` | agent_id, result, result_reason, model_id | Agent finished |
 | `agent.continued` | agent_id, model_id | Agent relaunched |
+| `agent.context_updated` | session_id, context_left | Context window updated |
 | `phase.started` | phase | Phase began |
 | `phase.completed` | phase, result | Phase finished |
 | `findings.updated` | agent_type, key, action | Findings changed |

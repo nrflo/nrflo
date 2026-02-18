@@ -77,9 +77,8 @@ func setupTestEnv(t *testing.T) *testEnv {
 	// Create spawner
 	hub := ws.NewHub(clock.Real())
 	spawner := New(Config{
-		DataPath:           dbPath,
-		CompletionGraceSec: 1, // Short grace period for tests
-		WSHub:              hub,
+		DataPath: dbPath,
+		WSHub:    hub,
 		Pool:               db.WrapAsPool(database),
 		Clock:              clock.Real(),
 	})
@@ -179,15 +178,15 @@ func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
 	}
 }
 
-// TestHandleCompletion_ExitZeroWithExplicitPass tests that explicit pass
-// is detected and honored during the grace period
-func TestHandleCompletion_ExitZeroWithExplicitPass(t *testing.T) {
+// TestHandleCompletion_ExitZeroIgnoresExplicitPass tests that exit 0 is always
+// implicit pass — explicit pass in DB is ignored (agents should not call agent complete)
+func TestHandleCompletion_ExitZeroIgnoresExplicitPass(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
 	env.createSession(t, "claude:opus")
 
-	// Simulate explicit completion by setting result before handleCompletion
+	// Even if result='pass' is set in DB, handleCompletion should treat exit 0 as implicit
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "pass", "explicit"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
@@ -226,8 +225,9 @@ func TestHandleCompletion_ExitZeroWithExplicitPass(t *testing.T) {
 		t.Errorf("expected result='pass', got %v", updatedSession.Result)
 	}
 
-	if !updatedSession.ResultReason.Valid || updatedSession.ResultReason.String != "explicit" {
-		t.Errorf("expected result_reason='explicit', got %v", updatedSession.ResultReason)
+	// Should be implicit, not explicit — exit 0 = implicit pass regardless of DB state
+	if !updatedSession.ResultReason.Valid || updatedSession.ResultReason.String != "implicit" {
+		t.Errorf("expected result_reason='implicit', got %v", updatedSession.ResultReason)
 	}
 
 	if proc.finalStatus != "PASS" {

@@ -183,12 +183,9 @@ For multiple keys, each missing key gets its own placeholder while found keys di
 
 ## 4. Agent Lifecycle Commands
 
-Spawned agents report results via CLI over Unix socket.
+Spawned agents report results via CLI over Unix socket. **Exiting with code 0 is an implicit pass** — no explicit completion call needed. Only call `agent fail` when the task cannot be completed.
 
 ```bash
-# Mark agent as completed successfully
-nrworkflow agent complete <ticket> <agent-type> -w <workflow> [--model <model>]
-
 # Mark agent as failed
 nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--model <model>] [--reason <text>]
 
@@ -199,17 +196,18 @@ nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
 nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--model <model>]
 
 # Project-scoped (no ticket): use -T instead of <ticket>
-nrworkflow agent complete -T <agent-type> -w <workflow> [--model <model>]
+nrworkflow agent fail -T <agent-type> -w <workflow> [--model <model>] [--reason <text>]
 ```
 
 | Command | When to use |
 |---------|------------|
-| `complete` | Task finished successfully |
 | `fail` | Task cannot be completed; `--reason` is optional but recommended |
 | `continue` | Context window exhausted; save progress to `to_resume` first |
 | `callback` | Issue found that requires re-running an earlier layer; `--level` (0-based layer index) is required |
 
 All commands require `-w/--workflow`. The `--model` flag is only needed for parallel agents (multiple models in the same layer). Use `-T/--no-ticket` for project-scoped workflows (skips the `<ticket>` positional arg).
+
+**Completion semantics:** Exit 0 = pass (immediate, no grace period). Exit non-zero = fail. Only use `agent fail` for explicit failure with a reason.
 
 ---
 
@@ -434,11 +432,11 @@ Analyze the ticket and codebase. Store your findings:
 
 When done (ticket-scoped):
 nrworkflow findings add ${TICKET_ID} ${AGENT} summary:'...' files_to_modify:'[...]' implementation_plan:'...' -w ${WORKFLOW} --model ${MODEL}
-nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW} --model ${MODEL}
 
 When done (project-scoped, use -T):
 nrworkflow findings add -T ${AGENT} summary:'...' files_to_modify:'[...]' implementation_plan:'...' -w ${WORKFLOW} --model ${MODEL}
-nrworkflow agent complete -T ${AGENT} -w ${WORKFLOW} --model ${MODEL}
+
+(Just exit cleanly — exit 0 = pass)
 ```
 
 ### Example 2: Implementor with Findings Injection and Callbacks
@@ -464,7 +462,8 @@ Implement the changes described in the analysis. Follow the test specifications.
 
 When done:
 nrworkflow findings add ${TICKET_ID} ${AGENT} be_changes_summary:'...' be_files_changed:'[...]' -w ${WORKFLOW} --model ${MODEL}
-nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW} --model ${MODEL}
+
+(Just exit cleanly — exit 0 = pass)
 
 If blocked, fail with a reason:
 nrworkflow agent fail ${TICKET_ID} ${AGENT} -w ${WORKFLOW} --model ${MODEL} --reason "..."

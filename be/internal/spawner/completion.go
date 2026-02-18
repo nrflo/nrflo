@@ -61,37 +61,11 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 		resultReason = "exit_code"
 		proc.finalStatus = "FAIL"
 	} else {
-		// Exit 0: check for explicit completion within grace period
-		gracePeriod := time.Duration(s.config.CompletionGraceSec) * time.Second
-		if gracePeriod == 0 {
-			gracePeriod = 60 * time.Second
-		}
-
-		deadline := time.Now().Add(gracePeriod)
-		for time.Now().Before(deadline) {
-			explicit := s.getAgentResult(proc)
-			if explicit == "pass" {
-				result = "pass"
-				resultReason = "explicit"
-				break
-			} else if explicit == "fail" {
-				result = "fail"
-				resultReason = "explicit"
-				break
-			} else if explicit == "continue" {
-				result = "continue"
-				resultReason = "explicit"
-				break
-			} else if explicit == "callback" {
-				result = "callback"
-				resultReason = "explicit"
-				break
-			}
-			time.Sleep(500 * time.Millisecond)
-		}
-
-		if result == "" {
-			// No explicit completion within grace period — treat clean exit as success
+		// Exit 0: check DB for explicit fail/continue/callback set before process exited
+		if explicit := s.getAgentResult(proc); explicit == "fail" || explicit == "continue" || explicit == "callback" {
+			result = explicit
+			resultReason = "explicit"
+		} else {
 			result = "pass"
 			resultReason = "implicit"
 		}

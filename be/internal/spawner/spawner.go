@@ -54,7 +54,6 @@ type Config struct {
 	ProjectRoot string
 	// Spawner behavior settings
 	TimeoutGraceSec        int // Grace period for SIGTERM before SIGKILL (default: 5)
-	CompletionGraceSec     int // Wait for explicit completion after exit 0 (default: 60)
 	MessageFlushIntervalMs int // Interval between message flushes (default: 2000)
 	// WebSocket hub for real-time updates (optional)
 	WSHub *ws.Hub

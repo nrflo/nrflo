@@ -110,10 +110,9 @@ Web UI: `./restart.sh` then open `http://localhost:5173`
 
 ## Agent CLI Commands
 
-Spawned agents use these commands to report results (via Unix socket to the server):
+Spawned agents use these commands to report results (via Unix socket to the server). Exit 0 = pass (no explicit call needed). Only call `agent fail` for explicit failure.
 
 ```bash
-nrworkflow agent complete <ticket> <agent-type> -w <workflow> [--model <model>]
 nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--model <model>] [--reason <text>]
 nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
 nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--model <model>]
@@ -126,7 +125,7 @@ nrworkflow findings get <ticket> <agent-type> [key] -w <workflow> [--model <mode
 nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow> [--model <model>]
 
 # Project-scoped (no ticket): use -T/--no-ticket instead of <ticket>
-nrworkflow agent complete -T <agent-type> -w <workflow> [--model <model>]
+nrworkflow agent fail -T <agent-type> -w <workflow> [--model <model>] [--reason <text>]
 nrworkflow findings add -T <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
 
 nrworkflow findings project-add <key> <value>

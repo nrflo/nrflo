@@ -14,6 +14,9 @@ import (
 func (s *Spawner) handleGracefulTimeout(ctx context.Context, proc *processInfo, req SpawnRequest) {
 	proc.elapsed = time.Since(proc.startTime)
 
+	// Stop Docker container first (no-op if not Docker)
+	StopContainer(proc.containerName)
+
 	// Send SIGTERM first
 	if proc.cmd.Process != nil {
 		proc.cmd.Process.Signal(syscall.SIGTERM)

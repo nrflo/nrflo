@@ -102,6 +102,8 @@ type processInfo struct {
 	restartThreshold  int    // Effective context threshold for this agent (percentage remaining)
 	// Low-context save state
 	lowContextSaving bool // True while initiateContextSave is running
+	// Docker container name (empty when not using Docker isolation)
+	containerName string
 }
 
 // Spawner manages agent lifecycle
@@ -257,8 +259,10 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 
 	// Wrap with Docker adapter when Docker isolation is enabled
+	var dockerAdapter *DockerCLIAdapter
 	if s.config.DockerConfig != nil {
-		adapter = NewDockerCLIAdapter(adapter, *s.config.DockerConfig)
+		dockerAdapter = NewDockerCLIAdapter(adapter, *s.config.DockerConfig)
+		adapter = dockerAdapter
 	}
 
 	// Get agent config
@@ -377,6 +381,12 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		stdinFile.Close()
 	}
 
+	// Resolve Docker container name (if applicable)
+	var ctrName string
+	if dockerAdapter != nil {
+		ctrName = dockerAdapter.ContainerName(sessionID)
+	}
+
 	// Create process info
 	proc := &processInfo{
 		cmd:            cmd,
@@ -396,6 +406,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		workflowName:       req.WorkflowName,
 		workflowInstanceID: wfiID,
 		restartThreshold:   effectiveThreshold,
+		containerName:      ctrName,
 	}
 
 	// Register agent start (create agent_sessions row)
@@ -442,6 +453,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			// Kill all running processes
 			logger.Warn(ctx, "agents cancelled", "count", len(running))
 			for _, proc := range running {
+				StopContainer(proc.containerName)
 				if proc.cmd.Process != nil {
 					proc.cmd.Process.Signal(syscall.SIGTERM)
 				}

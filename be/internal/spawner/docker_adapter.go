@@ -134,6 +134,19 @@ func (a *DockerCLIAdapter) hostDir() string {
 	return a.config.ProjectRoot
 }
 
+// ContainerName returns the Docker container name for a given session ID.
+func (a *DockerCLIAdapter) ContainerName(sessionID string) string {
+	return a.containerName(sessionID, false)
+}
+
+// StopContainer force-removes a running Docker container by name.
+func StopContainer(name string) {
+	if name == "" {
+		return
+	}
+	exec.Command("docker", "rm", "-f", name).Run()
+}
+
 // CleanupStaleContainers removes any leftover containers with the nrwf- name prefix.
 func CleanupStaleContainers() {
 	exec.Command("sh", "-c", "docker ps -a --filter name=nrwf- -q | xargs -r docker rm -f").Run()

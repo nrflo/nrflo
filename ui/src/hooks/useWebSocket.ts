@@ -41,6 +41,7 @@ export type WSEventType =
   | 'orchestration.failed'
   | 'orchestration.retried'
   | 'orchestration.callback'
+  | 'agent.take_control'
   | 'chain.updated'
   | 'ticket.updated'
   | 'test.echo'

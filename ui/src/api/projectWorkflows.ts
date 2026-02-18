@@ -5,6 +5,9 @@ import type {
   RunWorkflowResponse,
   RestartAgentRequest,
   ProjectAgentSessionsResponse,
+  TakeControlRequest,
+  TakeControlResponse,
+  ExitInteractiveRequest,
 } from '@/types/workflow'
 
 /** Get workflow state for a project (all project-scoped instances) */
@@ -67,6 +70,28 @@ export async function retryFailedProjectAgent(
 ): Promise<{ status: string }> {
   return apiPost<{ status: string }>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/retry-failed`,
+    params
+  )
+}
+
+/** Take interactive control of a running agent (project-scoped) */
+export async function takeControlProject(
+  projectId: string,
+  params: TakeControlRequest
+): Promise<TakeControlResponse> {
+  return apiPost<TakeControlResponse>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/take-control`,
+    params
+  )
+}
+
+/** Exit interactive session (project-scoped) */
+export async function exitInteractiveProject(
+  projectId: string,
+  params: ExitInteractiveRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/exit-interactive`,
     params
   )
 }

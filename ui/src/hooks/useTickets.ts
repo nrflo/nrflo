@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query'
-import { runWorkflow, stopWorkflow, restartAgent, retryFailedAgent } from '@/api/workflows'
+import { runWorkflow, stopWorkflow, restartAgent, retryFailedAgent, takeControl, exitInteractive } from '@/api/workflows'
 import {
   getProjectWorkflow,
   getProjectAgentSessions,
@@ -12,6 +12,8 @@ import {
   stopProjectWorkflow,
   restartProjectAgent,
   retryFailedProjectAgent,
+  takeControlProject,
+  exitInteractiveProject,
 } from '@/api/projectWorkflows'
 import {
   listTickets,
@@ -39,7 +41,7 @@ import type {
   StatusResponse,
   DailyStats,
 } from '@/types/ticket'
-import type { WorkflowResponse, ProjectWorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, ProjectAgentSessionsResponse, RunWorkflowRequest, ProjectWorkflowRunRequest, RestartAgentRequest, SessionMessagesResponse } from '@/types/workflow'
+import type { WorkflowResponse, ProjectWorkflowResponse, UpdateWorkflowRequest, AgentSessionsResponse, ProjectAgentSessionsResponse, RunWorkflowRequest, ProjectWorkflowRunRequest, RestartAgentRequest, SessionMessagesResponse, TakeControlRequest, TakeControlResponse, ExitInteractiveRequest } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 
 // Query keys factory
@@ -286,6 +288,30 @@ export function useRetryFailedAgent() {
   })
 }
 
+export function useTakeControl() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, params }: { ticketId: string; params: TakeControlRequest }) =>
+      takeControl(ticketId, params),
+    onSuccess: (_data: TakeControlResponse, variables) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(variables.ticketId) })
+    },
+  })
+}
+
+export function useExitInteractive() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, params }: { ticketId: string; params: ExitInteractiveRequest }) =>
+      exitInteractive(ticketId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(variables.ticketId) })
+    },
+  })
+}
+
 export function useSessionMessages(
   sessionId: string | undefined,
   options?: { enabled?: boolean; isRunning?: boolean }
@@ -372,6 +398,30 @@ export function useRetryFailedProjectAgent() {
       retryFailedProjectAgent(projectId, params),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+    },
+  })
+}
+
+export function useTakeControlProject() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, params }: { projectId: string; params: TakeControlRequest }) =>
+      takeControlProject(projectId, params),
+    onSuccess: (_data: TakeControlResponse, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })
+    },
+  })
+}
+
+export function useExitInteractiveProject() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, params }: { projectId: string; params: ExitInteractiveRequest }) =>
+      exitInteractiveProject(projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })
     },
   })
 }

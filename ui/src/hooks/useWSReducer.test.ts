@@ -312,6 +312,89 @@ describe('useWSReducer', () => {
       expect(queryClient.invalidateQueries).toHaveBeenCalled()
     })
 
+    it('routes agent.take_control event (ticket scope) — invalidates workflow and agent sessions', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.take_control',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 1,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      // Invalidates workflow query
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+      // Invalidates agent sessions (key contains 'agents')
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('agents')
+      )).toBe(true)
+      // Also invalidates ticket detail
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('detail')
+      )).toBe(true)
+    })
+
+    it('routes agent.take_control event (project scope) — invalidates project workflow and agent sessions', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.take_control',
+        project_id: 'proj1',
+        ticket_id: '', // project scope
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 2,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      // Invalidates project workflow query
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+      // Invalidates agent sessions (key contains 'agents')
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('agents')
+      )).toBe(true)
+      // Does NOT invalidate ticket detail (project scope)
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('detail')
+      )).toBe(false)
+    })
+
+    it('agent.take_control does NOT invalidate ticket list (unlike phase.started)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.take_control',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 1,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      const calls = spy.mock.calls
+      // Should NOT invalidate tickets list
+      expect(calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('tickets') &&
+        JSON.stringify(call[0].queryKey).includes('list')
+      )).toBe(false)
+    })
+
     it('routes agent.context_updated to ticketKeys.workflow and detail (ticket scope)', () => {
       const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
       const spy = vi.spyOn(localQueryClient, 'invalidateQueries')

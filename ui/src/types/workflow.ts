@@ -108,7 +108,24 @@ export interface DependencyRequest {
 }
 
 // Agent session types for real-time monitoring
-export type AgentSessionStatus = 'running' | 'completed' | 'failed' | 'timeout' | 'continued'
+export type AgentSessionStatus = 'running' | 'completed' | 'failed' | 'timeout' | 'continued' | 'user_interactive' | 'interactive_completed'
+
+export interface TakeControlRequest {
+  workflow: string
+  session_id: string
+  instance_id?: string
+}
+
+export interface TakeControlResponse {
+  status: string
+  session_id: string
+}
+
+export interface ExitInteractiveRequest {
+  workflow: string
+  session_id: string
+  instance_id?: string
+}
 
 export interface AgentSession {
   id: string

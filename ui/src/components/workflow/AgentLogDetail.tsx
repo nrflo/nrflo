@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { parseToolName, ToolBadge } from './LogMessage'
 import { cn } from '@/lib/utils'
@@ -27,7 +27,8 @@ interface AgentLogDetailProps {
 
 export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
   const { agent, historyEntry, session, phaseName } = selectedAgent
-  const isRunning = agent && !agent.result
+  const isInteractive = session?.status === 'user_interactive'
+  const isRunning = agent && !agent.result && !isInteractive
   const result = agent?.result || historyEntry?.result
   const modelId = agent?.model_id || historyEntry?.model_id
   const modelName = modelId
@@ -57,20 +58,30 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
         </button>
         <div className={cn(
           'flex items-center justify-center w-7 h-7 rounded-full shrink-0',
+          isInteractive && 'bg-blue-100 dark:bg-blue-900/30',
           isRunning && 'bg-yellow-100 dark:bg-yellow-900/30',
           result === 'pass' && 'bg-green-100 dark:bg-green-900/30',
           result === 'fail' && 'bg-red-100 dark:bg-red-900/30',
-          !result && !isRunning && 'bg-gray-100 dark:bg-gray-800'
+          !result && !isRunning && !isInteractive && 'bg-gray-100 dark:bg-gray-800'
         )}>
+          {isInteractive && <Terminal className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
           {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin" />}
           {result === 'pass' && <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />}
           {result === 'fail' && <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
-          {!result && !isRunning && <Cpu className="h-3.5 w-3.5 text-muted-foreground" />}
+          {!result && !isRunning && !isInteractive && <Cpu className="h-3.5 w-3.5 text-muted-foreground" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate">{phaseName.replace(/_/g, ' ')}</div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{modelName}</span>
+            {isInteractive && (
+              <>
+                <span>·</span>
+                <Badge className="text-[10px] px-1 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  User controlling
+                </Badge>
+              </>
+            )}
             {duration && (
               <>
                 <span>·</span>

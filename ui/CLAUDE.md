@@ -239,3 +239,4 @@ Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.l
 - Settings page for project management (create/update/delete, Toggle for git worktrees, Toggle for docker isolation)
 - Documentation page with agent manual (rendered markdown from API)
 - Logs page with BE/FE sub-tabs, 5s polling via `useLogs` hook (`GET /api/v1/logs?type={be|fe}`)
+- Interactive agent control: "Take Control" button kills a running Claude agent and opens an xterm.js terminal dialog connected to the PTY WebSocket (`/api/v1/pty/{sessionId}`). Components: `XTerminal` (lazy-loaded xterm.js + WebSocket relay), `AgentTerminalDialog` (Dialog wrapper). Hooks: `useTakeControl`, `useExitInteractive` (+ project-scoped variants). WS event: `agent.take_control`. Agent status `user_interactive` shows blue glow in AgentCard and blue "User controlling" badge in AgentLogDetail.

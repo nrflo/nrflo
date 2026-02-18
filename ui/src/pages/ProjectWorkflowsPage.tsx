@@ -8,12 +8,15 @@ import {
   useRunProjectWorkflow,
   useStopProjectWorkflow,
   useRetryFailedProjectAgent,
+  useTakeControlProject,
+  useExitInteractiveProject,
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import { RunWorkflowForm, InstanceList } from './ProjectWorkflowComponents'
 import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
+import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
 import { cn } from '@/lib/utils'
 import type { WorkflowState, CompletedAgentRow } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
@@ -28,6 +31,7 @@ export function ProjectWorkflowsPage() {
   const [selectedInstanceId, setSelectedInstanceId] = useState('')
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
+  const [interactiveSession, setInteractiveSession] = useState<{ sessionId: string; agentType: string } | null>(null)
 
   // Run Workflow form state
   const [selectedWorkflowDef, setSelectedWorkflowDef] = useState('')
@@ -52,6 +56,8 @@ export function ProjectWorkflowsPage() {
   const runMutation = useRunProjectWorkflow()
   const stopMutation = useStopProjectWorkflow()
   const retryFailedMutation = useRetryFailedProjectAgent()
+  const takeControlMutation = useTakeControlProject()
+  const exitInteractiveMutation = useExitInteractiveProject()
 
   // Filter to project-scoped workflows only
   const projectWorkflows = workflowDefs
@@ -321,10 +327,49 @@ export function ProjectWorkflowsPage() {
                 ? (retryFailedMutation.variables?.params.session_id ?? null)
                 : null
             }
+            onTakeControl={(sessionId) => {
+              if (!currentProject) return
+              const agent = Object.values(activeAgents).find((a) => a.session_id === sessionId)
+              takeControlMutation.mutate(
+                {
+                  projectId: currentProject,
+                  params: {
+                    workflow: displayedState?.workflow ?? '',
+                    session_id: sessionId,
+                    instance_id: resolvedInstanceId || undefined,
+                  },
+                },
+                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: agent?.agent_type ?? 'agent' }) }
+              )
+            }}
+            takeControlPending={takeControlMutation.isPending}
           />
         </>
       )}
 
+      {/* Interactive Terminal Dialog */}
+      {interactiveSession && currentProject && (
+        <AgentTerminalDialog
+          open={!!interactiveSession}
+          onClose={() => setInteractiveSession(null)}
+          onExitSession={() => {
+            exitInteractiveMutation.mutate(
+              {
+                projectId: currentProject,
+                params: {
+                  workflow: displayedState?.workflow ?? '',
+                  session_id: interactiveSession.sessionId,
+                  instance_id: resolvedInstanceId || undefined,
+                },
+              },
+              { onSuccess: () => setInteractiveSession(null) }
+            )
+          }}
+          exitPending={exitInteractiveMutation.isPending}
+          sessionId={interactiveSession.sessionId}
+          agentType={interactiveSession.agentType}
+        />
+      )}
     </div>
   )
 }

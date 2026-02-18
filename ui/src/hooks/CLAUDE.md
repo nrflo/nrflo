@@ -79,6 +79,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `workflow.updated` | action (init, set) | Workflow state changed |
 | `workflow_def.*` | workflow_id | Workflow def CRUD |
 | `agent_def.*` | workflow_id, agent_id | Agent def CRUD |
+| `agent.take_control` | session_id, agent_type | Agent entered interactive mode |
 | `orchestration.*` | instance_id | Orchestration lifecycle |
 | `chain.updated` | chain_id | Chain state changed |
 | `ticket.updated` | | Ticket state changed |
@@ -94,6 +95,10 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useChains.ts` | TanStack Query hooks for chain executions |
 | `useElapsedTime.ts` | Elapsed time hooks |
 | `useGoBack.ts` | History-aware back navigation |
+| `useTakeControl()` | Mutation: take interactive control of running Claude agent (ticket-scoped) |
+| `useExitInteractive()` | Mutation: exit interactive session, unblock spawner (ticket-scoped) |
+| `useTakeControlProject()` | Project-scoped variant of useTakeControl |
+| `useExitInteractiveProject()` | Project-scoped variant of useExitInteractive |
 
 ## Testing
 

@@ -14,8 +14,10 @@ const ALLOWLIST = [
   '.test.tsx',
   // This guard file itself
   'single-socket-guard.test.ts',
-  // useWebSocket hook is the ONLY file allowed to create WebSocket
+  // useWebSocket hook is the ONLY file allowed to create the broadcast WebSocket
   'hooks/useWebSocket.ts',
+  // XTerminal creates a 1:1 PTY WebSocket (separate from the broadcast socket)
+  'components/workflow/XTerminal.tsx',
 ]
 
 function getAllFiles(dir: string, files: string[] = []): string[] {

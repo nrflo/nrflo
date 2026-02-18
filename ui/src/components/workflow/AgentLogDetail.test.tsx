@@ -536,6 +536,50 @@ describe('AgentLogDetail', () => {
     })
   })
 
+  describe('user_interactive status display', () => {
+    it('shows "User controlling" badge when session status is user_interactive', async () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: 'sess-interactive' }),
+        session: makeSession({ status: 'user_interactive' }),
+      })
+
+      expect(screen.getByText('User controlling')).toBeInTheDocument()
+    })
+
+    it('does not show "User controlling" badge for running agent', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession({ status: 'running' }),
+      })
+
+      expect(screen.queryByText('User controlling')).not.toBeInTheDocument()
+    })
+
+    it('applies blue background to status circle for user_interactive', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: 'sess-interactive' }),
+        session: makeSession({ status: 'user_interactive' }),
+      })
+
+      // The status circle div has blue background class for interactive
+      const circleDiv = document.querySelector('.bg-blue-100, .bg-blue-900\\/30')
+      expect(circleDiv).not.toBeNull()
+    })
+
+    it('does not apply blue background for regular running agent', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession({ status: 'running' }),
+      })
+
+      expect(document.querySelector('.bg-blue-100')).toBeNull()
+    })
+  })
+
   describe('ticket nrworkflow-d3a7c4: project-level agent messages with session_id fallback', () => {
     it('fetches messages using agent.session_id when session object is undefined', async () => {
       const sessionId = 'fallback-session-id'

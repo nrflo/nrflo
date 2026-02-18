@@ -1,9 +1,12 @@
-import { Loader2, CheckCircle, XCircle, Timer, AlertTriangle } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, Timer, AlertTriangle, Terminal } from 'lucide-react'
 import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import type { AgentCardProps } from './types'
 
-function AgentStatusIcon({ result }: { result?: string }) {
+function AgentStatusIcon({ result, isInteractive }: { result?: string; isInteractive?: boolean }) {
+  if (isInteractive) {
+    return <Terminal className="h-3.5 w-3.5 text-blue-500" />
+  }
   if (!result) {
     return <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin" />
   }
@@ -17,7 +20,8 @@ function AgentStatusIcon({ result }: { result?: string }) {
 }
 
 export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardProps) {
-  const isRunning = !agent.result
+  const isInteractive = session?.status === 'user_interactive'
+  const isRunning = !agent.result && !isInteractive
   const elapsedTime = agent.started_at
     ? formatElapsedTime(agent.started_at, agent.ended_at)
     : '0s'
@@ -39,9 +43,10 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
       className={cn(
         'relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg border transition-all',
         'hover:bg-muted/50 cursor-pointer w-full',
+        isInteractive && 'border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 animate-pulse-glow-blue',
         isRunning && 'border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/20 animate-pulse-glow',
-        !isRunning && agent.result === 'pass' && 'border-green-400 bg-green-50/50 dark:bg-green-900/20',
-        !isRunning && agent.result === 'fail' && 'border-red-400 bg-red-50/50 dark:bg-red-900/20',
+        !isRunning && !isInteractive && agent.result === 'pass' && 'border-green-400 bg-green-50/50 dark:bg-green-900/20',
+        !isRunning && !isInteractive && agent.result === 'fail' && 'border-red-400 bg-red-50/50 dark:bg-red-900/20',
         isExpanded && 'ring-2 ring-primary ring-offset-1'
       )}
     >
@@ -54,8 +59,8 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
 
       {/* Status + Model */}
       <div className="flex items-center gap-1.5">
-        <AgentStatusIcon result={agent.result} />
-        <span className="text-xs font-medium">{modelName}</span>
+        <AgentStatusIcon result={agent.result} isInteractive={isInteractive} />
+        <span className="text-xs font-medium">{isInteractive ? 'Interactive' : modelName}</span>
       </div>
 
       {/* Elapsed time + context */}

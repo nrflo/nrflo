@@ -7,6 +7,7 @@ import {
   Layers,
   Play,
   Square,
+  Terminal,
   Zap,
   XCircle,
   RefreshCw,
@@ -49,6 +50,8 @@ interface WorkflowTabContentProps {
   activeChainId?: string | null
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
+  onTakeControl?: (sessionId: string) => void
+  takeControlPending?: boolean
 }
 
 export function WorkflowTabContent({
@@ -77,10 +80,22 @@ export function WorkflowTabContent({
   activeChainId,
   onRetryFailed,
   retryingSessionId,
+  onTakeControl,
+  takeControlPending,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
   const failedAgent = agentHistory?.find(a => a.result === 'fail')
+
+  // Find a running Claude agent for Take Control
+  const runningClaudeAgent = Object.values(activeAgents).find(
+    (a) => !a.result && a.cli === 'claude' && a.session_id
+  )
+  // Use selected panel agent if it's running and claude, else fallback
+  const takeControlTarget =
+    selectedPanelAgent?.agent && !selectedPanelAgent.agent.result && selectedPanelAgent.agent.cli === 'claude' && selectedPanelAgent.agent.session_id
+      ? selectedPanelAgent.agent
+      : runningClaudeAgent
 
   return (
     <div className={cn(
@@ -111,20 +126,40 @@ export function WorkflowTabContent({
                   </Badge>
                 )}
                 {(isOrchestrated || hasActivePhase) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onStop}
-                    disabled={stopPending}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    {stopPending ? (
-                      <Spinner size="sm" className="mr-2" />
-                    ) : (
-                      <Square className="h-4 w-4 mr-2" />
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onStop}
+                      disabled={stopPending}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      {stopPending ? (
+                        <Spinner size="sm" className="mr-2" />
+                      ) : (
+                        <Square className="h-4 w-4 mr-2" />
+                      )}
+                      Stop
+                    </Button>
+                    {onTakeControl && takeControlTarget?.session_id && (
+                      <Tooltip text="Take interactive control of agent" placement="top">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onTakeControl(takeControlTarget.session_id!)}
+                          disabled={takeControlPending}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          {takeControlPending ? (
+                            <Spinner size="sm" className="mr-2" />
+                          ) : (
+                            <Terminal className="h-4 w-4 mr-2" />
+                          )}
+                          Take Control
+                        </Button>
+                      </Tooltip>
                     )}
-                    Stop
-                  </Button>
+                  </>
                 )}
               </div>
               {!(isOrchestrated || hasActivePhase) && (

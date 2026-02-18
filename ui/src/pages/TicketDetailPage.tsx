@@ -29,12 +29,15 @@ import {
   useDeleteTicket,
   useStopWorkflow,
   useRetryFailedAgent,
+  useTakeControl,
+  useExitInteractive,
 } from '@/hooks/useTickets'
 import { useWebSocketSubscription } from '@/hooks/useWebSocketSubscription'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
 import { cn, statusColor } from '@/lib/utils'
+import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import { HierarchyTabContent } from './HierarchyTabContent'
 import { DescriptionTabContent } from './DescriptionTabContent'
@@ -52,6 +55,7 @@ export function TicketDetailPage() {
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
+  const [interactiveSession, setInteractiveSession] = useState<{ sessionId: string; agentType: string } | null>(null)
 
   // WebSocket subscription for this ticket's real-time updates
   useWebSocketSubscription(id)
@@ -95,6 +99,8 @@ export function TicketDetailPage() {
   const deleteMutation = useDeleteTicket()
   const stopMutation = useStopWorkflow()
   const retryFailedMutation = useRetryFailedAgent()
+  const takeControlMutation = useTakeControl()
+  const exitInteractiveMutation = useExitInteractive()
 
   // Detect if orchestration is running (via _orchestration findings key)
   const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
@@ -328,6 +334,15 @@ export function TicketDetailPage() {
               })
             }
             retryingSessionId={retryFailedMutation.isPending ? (retryFailedMutation.variables?.params.session_id ?? null) : null}
+            onTakeControl={(sessionId) => {
+              if (!id) return
+              const agent = Object.values(activeAgents).find((a) => a.session_id === sessionId)
+              takeControlMutation.mutate(
+                { ticketId: id, params: { workflow: displayedWorkflowName, session_id: sessionId } },
+                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: agent?.agent_type ?? 'agent' }) }
+              )
+            }}
+            takeControlPending={takeControlMutation.isPending}
           />
         )}
 
@@ -357,6 +372,23 @@ export function TicketDetailPage() {
           onClose={() => setShowEpicRunDialog(false)}
           ticketId={id}
           ticketTitle={ticket.title}
+        />
+      )}
+
+      {/* Interactive Terminal Dialog */}
+      {interactiveSession && id && (
+        <AgentTerminalDialog
+          open={!!interactiveSession}
+          onClose={() => setInteractiveSession(null)}
+          onExitSession={() => {
+            exitInteractiveMutation.mutate(
+              { ticketId: id, params: { workflow: displayedWorkflowName, session_id: interactiveSession.sessionId } },
+              { onSuccess: () => setInteractiveSession(null) }
+            )
+          }}
+          exitPending={exitInteractiveMutation.isPending}
+          sessionId={interactiveSession.sessionId}
+          agentType={interactiveSession.agentType}
         />
       )}
     </div>

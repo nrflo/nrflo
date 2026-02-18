@@ -8,6 +8,9 @@ import type {
   RunWorkflowResponse,
   StopWorkflowRequest,
   RestartAgentRequest,
+  TakeControlRequest,
+  TakeControlResponse,
+  ExitInteractiveRequest,
 } from '@/types/workflow'
 
 /** List all workflow definitions for current project */
@@ -87,6 +90,28 @@ export async function retryFailedAgent(
 ): Promise<{ status: string }> {
   return apiPost<{ status: string }>(
     `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/retry-failed`,
+    params
+  )
+}
+
+/** Take interactive control of a running agent */
+export async function takeControl(
+  ticketId: string,
+  params: TakeControlRequest
+): Promise<TakeControlResponse> {
+  return apiPost<TakeControlResponse>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/take-control`,
+    params
+  )
+}
+
+/** Exit interactive session and resume workflow */
+export async function exitInteractive(
+  ticketId: string,
+  params: ExitInteractiveRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/exit-interactive`,
     params
   )
 }

@@ -289,7 +289,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 	safePrefix := strings.ReplaceAll(filePrefix, "/", "_")
 	safePrefix = strings.ReplaceAll(safePrefix, "\\", "_")
-	promptFile, err := os.CreateTemp("", fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
+	promptFile, err := os.CreateTemp("/tmp/nrworkflow", fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}

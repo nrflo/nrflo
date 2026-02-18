@@ -98,42 +98,30 @@ func TestCompleteInteractive_UnknownSession(t *testing.T) {
 	sp.CompleteInteractive("no-such-session")
 }
 
-// TestRegisterAgentStopWithReason_UserInteractive documents the production bug:
-// the DB schema is missing a migration to allow 'user_interactive' and
-// 'interactive_completed' as valid values for the status and result columns.
-// The CHECK constraints reject these values, causing all DB updates in
-// registerAgentStopWithReason to fail silently (errors are not checked).
-//
-// Production bug: a migration is missing. See be_production_bugs in ticket findings.
-func TestRegisterAgentStopWithReason_UserInteractive_DBConstraintBug(t *testing.T) {
+// TestUserInteractive_DBConstraintFixed verifies that migration 000026 added
+// user_interactive and interactive_completed to the agent_sessions CHECK constraint,
+// so DB updates for interactive sessions now succeed.
+func TestUserInteractive_DBConstraintFixed(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
 	env.createSession(t, "claude:sonnet")
 
-	// Verify that updating status to user_interactive fails with a DB constraint.
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	err := sessionRepo.UpdateStatus(env.sessionID, model.AgentSessionUserInteractive)
-	if err == nil {
-		t.Fatal("expected UpdateStatus to fail for user_interactive (missing migration)")
-	}
-	// The error should mention a constraint violation.
-	if !containsConstraintError(err) {
-		t.Errorf("expected constraint error, got: %v", err)
+	if err != nil {
+		t.Fatalf("UpdateStatus to user_interactive should succeed after migration 000026: %v", err)
 	}
 
-	// Similarly, UpdateStatusToInteractiveCompleted should fail.
-	err2 := sessionRepo.UpdateStatusToInteractiveCompleted(env.sessionID)
-	if err2 == nil {
-		t.Fatal("expected UpdateStatusToInteractiveCompleted to fail (missing migration)")
+	err = sessionRepo.UpdateStatusToInteractiveCompleted(env.sessionID)
+	if err != nil {
+		t.Fatalf("UpdateStatusToInteractiveCompleted should succeed after migration 000026: %v", err)
 	}
 }
 
 // TestRegisterAgentStopWithReason_UserInteractive_BroadcastsEvent verifies
 // that registerAgentStopWithReason broadcasts an EventAgentCompleted event
 // with result=user_interactive when hub is configured.
-// NOTE: The DB updates fail silently due to the missing migration, but the
-// WS broadcast still happens (it uses the function parameter, not DB state).
 func TestRegisterAgentStopWithReason_UserInteractive_BroadcastsEvent(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()

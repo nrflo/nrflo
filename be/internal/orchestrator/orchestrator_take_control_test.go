@@ -172,11 +172,9 @@ func TestCompleteInteractive_SessionNotFound(t *testing.T) {
 	}
 }
 
-// TestCompleteInteractive_DBConstraintBug documents that CompleteInteractive
-// currently fails because the DB schema is missing a migration to allow
-// 'interactive_completed' as a valid status value.
-// Production bug: this will work once the migration is added.
-func TestCompleteInteractive_DBConstraintBug(t *testing.T) {
+// TestCompleteInteractive_Succeeds verifies that CompleteInteractive updates
+// the session status to interactive_completed (fixed by migration 000026).
+func TestCompleteInteractive_Succeeds(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "TC-CI-BUG", "Constraint bug test")
 	wfiID := env.initWorkflow(t, "TC-CI-BUG")
@@ -184,11 +182,9 @@ func TestCompleteInteractive_DBConstraintBug(t *testing.T) {
 	sessionID := "ci-constraint-bug-session"
 	insertRunningSession(t, env, wfiID, "TC-CI-BUG", sessionID)
 
-	// CompleteInteractive calls UpdateStatusToInteractiveCompleted which fails
-	// because the DB CHECK constraint rejects 'interactive_completed' status.
 	err := env.orch.CompleteInteractive(sessionID)
-	if err == nil {
-		t.Fatal("expected CompleteInteractive to fail due to missing DB migration")
+	if err != nil {
+		t.Fatalf("CompleteInteractive should succeed after migration 000026: %v", err)
 	}
 }
 

@@ -19,6 +19,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_workflow.go` | Workflow state get/patch |
 | `handlers_orchestrate.go` | Ticket-scoped run/stop/restart/retry-failed/take-control/exit-interactive/run-epic |
 | `handlers_project_workflow.go` | Project-scoped run/stop/restart/retry-failed/take-control/exit-interactive/state/agents |
+| `handlers_pty.go` | PTY WebSocket handler: upgrade, validate session, spawn/relay PTY, handle resize, exit-interactive on process exit |
 | `handlers_workflow_def.go` | Workflow definition CRUD |
 | `handlers_agent_def.go` | Agent definition CRUD |
 | `handlers_chains.go` | Chain list/get/create/update/start/cancel/append |
@@ -122,7 +123,8 @@ GET /api/v1/logs                   # Log file contents (?type=be|fe, default be)
 GET /api/v1/search?q=              # Full-text search
 GET /api/v1/status                 # Dashboard summary
 GET /api/v1/daily-stats            # Daily stats (tickets, tokens, agent time) per project
-GET /api/v1/ws                     # WebSocket for real-time updates
+GET /api/v1/ws                     # WebSocket for real-time updates (broadcast)
+GET /api/v1/pty/:session_id        # PTY WebSocket (1:1 interactive terminal relay)
 ```
 
 ## Common Tasks

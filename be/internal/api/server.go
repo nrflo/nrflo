@@ -13,6 +13,7 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/orchestrator"
+	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/ws"
@@ -26,6 +27,7 @@ type Server struct {
 	wsHub        *ws.Hub
 	orchestrator *orchestrator.Orchestrator
 	chainRunner  *orchestrator.ChainRunner
+	ptyManager   *ptyPkg.Manager
 	clock        clock.Clock
 }
 
@@ -40,6 +42,7 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 		wsHub:        hub,
 		orchestrator: orch,
 		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
+		ptyManager:   ptyPkg.NewManager(),
 		clock:        clk,
 	}
 }
@@ -87,6 +90,10 @@ func (s *Server) Stop(ctx context.Context) error {
 	// Cancel all active orchestrations
 	if s.orchestrator != nil {
 		s.orchestrator.StopAll()
+	}
+	// Close all PTY sessions
+	if s.ptyManager != nil {
+		s.ptyManager.CloseAll()
 	}
 	// Stop WebSocket hub
 	if s.wsHub != nil {
@@ -252,9 +259,10 @@ func getProjectID(r *http.Request) string {
 
 // registerRoutes sets up all API routes
 func (s *Server) registerRoutes(mux *http.ServeMux) {
-	// WebSocket endpoint
+	// WebSocket endpoints
 	wsHandler := ws.NewHandler(s.wsHub)
 	mux.Handle("GET /api/v1/ws", wsHandler)
+	mux.HandleFunc("GET /api/v1/pty/{session_id}", s.handlePtyWebSocket)
 
 	// Documentation
 	mux.HandleFunc("GET /api/v1/docs/agent-manual", s.handleGetAgentManual)

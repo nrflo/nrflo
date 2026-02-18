@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -9,20 +8,14 @@ import (
 	"be/internal/model"
 )
 
-// TestUpdateStatusToInteractiveCompleted_DBConstraintMissingMigration documents
-// that the DB schema is missing a migration to allow 'user_interactive' and
-// 'interactive_completed' as valid status values, and 'user_interactive' as a
-// valid result value.
-//
-// Production bug: both Create(status=user_interactive) and
-// UpdateStatusToInteractiveCompleted fail with DB CHECK constraints.
-// A migration is needed to extend the allowed status/result values.
-// See be_production_bugs in ticket findings.
-func TestUpdateStatusToInteractiveCompleted_DBConstraintMissingMigration(t *testing.T) {
+// TestUserInteractive_StatusConstraintFixed verifies that migration 000026
+// added user_interactive and interactive_completed to the agent_sessions
+// CHECK constraint, so DB operations with these statuses now succeed.
+func TestUserInteractive_StatusConstraintFixed(t *testing.T) {
 	database, r, wfiID := setupTestDB(t)
 	defer database.Close()
 
-	// Attempt to create session with user_interactive status — must fail.
+	// Create session with user_interactive status — should succeed.
 	session := &model.AgentSession{
 		ID:                 "ic-sess-constraint",
 		ProjectID:          "proj",
@@ -33,15 +26,11 @@ func TestUpdateStatusToInteractiveCompleted_DBConstraintMissingMigration(t *test
 		Status:             model.AgentSessionUserInteractive,
 	}
 	err := r.Create(session)
-	if err == nil {
-		t.Fatal("expected Create to fail for user_interactive status (missing migration)")
-	}
-	if !isConstraintError(err) {
-		t.Errorf("expected DB constraint error, got: %v", err)
+	if err != nil {
+		t.Fatalf("Create with user_interactive status should succeed after migration 000026: %v", err)
 	}
 
-	// UpdateStatus to user_interactive must also fail.
-	// First create a valid session.
+	// UpdateStatus to user_interactive should also succeed.
 	validSession := &model.AgentSession{
 		ID:                 "ic-sess-valid",
 		ProjectID:          "proj",
@@ -55,45 +44,32 @@ func TestUpdateStatusToInteractiveCompleted_DBConstraintMissingMigration(t *test
 		t.Fatalf("failed to create valid session: %v", err)
 	}
 
-	// Attempt to update to user_interactive — must fail.
 	err = r.UpdateStatus("ic-sess-valid", model.AgentSessionUserInteractive)
-	if err == nil {
-		t.Fatal("expected UpdateStatus to user_interactive to fail (missing migration)")
-	}
-	if !isConstraintError(err) {
-		t.Errorf("expected DB constraint error, got: %v", err)
+	if err != nil {
+		t.Fatalf("UpdateStatus to user_interactive should succeed: %v", err)
 	}
 
-	// Attempt UpdateStatusToInteractiveCompleted — must fail because
-	// interactive_completed is also not allowed.
+	// UpdateStatusToInteractiveCompleted should succeed.
 	err = r.UpdateStatusToInteractiveCompleted("ic-sess-valid")
-	if err == nil {
-		t.Fatal("expected UpdateStatusToInteractiveCompleted to fail (missing migration)")
-	}
-	if !isConstraintError(err) {
-		t.Errorf("expected DB constraint error, got: %v", err)
+	if err != nil {
+		t.Fatalf("UpdateStatusToInteractiveCompleted should succeed: %v", err)
 	}
 }
 
 // TestUpdateStatusToInteractiveCompleted_NotFound verifies that
 // UpdateStatusToInteractiveCompleted returns an error for a nonexistent session ID.
-//
-// NOTE: Because the status 'interactive_completed' violates the DB CHECK constraint,
-// this test actually returns a constraint error rather than "not found". Both are
-// errors, which is the property being tested.
 func TestUpdateStatusToInteractiveCompleted_NotFound(t *testing.T) {
 	database, r, _ := setupTestDB(t)
 	defer database.Close()
 
 	err := r.UpdateStatusToInteractiveCompleted("nonexistent-session-ic")
 	if err == nil {
-		t.Fatal("expected error for nonexistent/constraint-failing session, got nil")
+		t.Fatal("expected error for nonexistent session, got nil")
 	}
 }
 
-// TestUpdateStatusToInteractiveCompleted_TimestampUsesRepoClock documents that
-// UpdateStatusToInteractiveCompleted would use the injected clock if the DB
-// constraint were relaxed. Currently the call fails due to missing migration.
+// TestUpdateStatusToInteractiveCompleted_TimestampUsesRepoClock verifies that
+// UpdateStatusToInteractiveCompleted uses the injected clock for timestamps.
 func TestUpdateStatusToInteractiveCompleted_TimestampUsesRepoClock(t *testing.T) {
 	database, _, wfiID := setupTestDB(t)
 	defer database.Close()
@@ -102,7 +78,6 @@ func TestUpdateStatusToInteractiveCompleted_TimestampUsesRepoClock(t *testing.T)
 	clk := clock.NewTest(fixedTime)
 	r := NewAgentSessionRepo(database, clk)
 
-	// Create a valid session to operate on.
 	validSession := &model.AgentSession{
 		ID:                 "ic-clk-valid",
 		ProjectID:          "proj",
@@ -116,19 +91,20 @@ func TestUpdateStatusToInteractiveCompleted_TimestampUsesRepoClock(t *testing.T)
 		t.Fatalf("failed to create session: %v", err)
 	}
 
-	// UpdateStatusToInteractiveCompleted fails due to constraint violation.
-	// This documents the production bug: migration is needed.
 	err := r.UpdateStatusToInteractiveCompleted("ic-clk-valid")
-	if err == nil {
-		t.Fatal("expected UpdateStatusToInteractiveCompleted to fail (missing migration)")
+	if err != nil {
+		t.Fatalf("UpdateStatusToInteractiveCompleted should succeed: %v", err)
 	}
-}
 
-// isConstraintError returns true if err is a DB CHECK constraint failure.
-func isConstraintError(err error) bool {
-	if err == nil {
-		return false
+	// Verify the session was updated with the fixed clock time.
+	session, err := r.Get("ic-clk-valid")
+	if err != nil {
+		t.Fatalf("failed to get session: %v", err)
 	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "constraint") || strings.Contains(msg, "check")
+	if session.Status != model.AgentSessionInteractiveCompleted {
+		t.Errorf("expected status interactive_completed, got %s", session.Status)
+	}
+	if !session.EndedAt.Valid {
+		t.Fatal("expected ended_at to be set")
+	}
 }

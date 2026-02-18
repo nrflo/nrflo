@@ -35,7 +35,7 @@ be/
 │   │   ├── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)
 │   │   └── chain_runner.go      # Sequential chain execution runner
 │   ├── api/                     # HTTP API
-│   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator
+│   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator, PTY manager
 │   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints
 │   │   ├── handlers_tickets_update.go # Ticket update/delete/close/reopen endpoints
 │   │   ├── handlers_workflow.go # Workflow state endpoints
@@ -43,6 +43,7 @@ be/
 │   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
+│   │   ├── handlers_pty.go      # PTY WebSocket handler (1:1 interactive terminal relay)
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
 │   │   ├── handlers_git.go        # Git commit history endpoints
 │   │   ├── handlers_daily_stats.go # Daily stats endpoint
@@ -56,6 +57,9 @@ be/
 │   │   ├── snapshot.go          # Snapshot streaming (begin/chunk/end)
 │   │   ├── backpressure.go      # Client queue depth monitoring
 │   │   └── testing.go           # Test helpers (NewTestClient)
+│   ├── pty/                     # PTY session management for interactive agent control
+│   │   ├── session.go           # Session struct wrapping creack/pty (spawn, read/write, resize, close)
+│   │   └── manager.go           # Manager: create/get/remove/close-all PTY sessions by session ID
 │   ├── config/                  # Configuration management
 │   │   └── config.go
 │   ├── client/                  # Socket + HTTP clients
@@ -146,6 +150,7 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 - modernc.org/sqlite - Pure Go SQLite (no CGO)
 - github.com/google/uuid - UUID generation
 - github.com/gorilla/websocket - WebSocket implementation
+- github.com/creack/pty - PTY allocation for interactive agent sessions
 - github.com/golang-migrate/migrate - Database migrations
 
 ## Building from Source

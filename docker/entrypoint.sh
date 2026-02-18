@@ -28,8 +28,10 @@ if [ -n "$HOST_UID" ] && [ -n "$HOST_GID" ]; then
     mkdir -p "$HOME_DIR/.local/state" "$HOME_DIR/.config"
     # chown specific dirs — skip $HOME_DIR recursively to avoid :ro mounts like .ai_common/safety.json
     chown "$HOST_UID:$HOST_GID" "$HOME_DIR"
-    chown -R "$HOST_UID:$HOST_GID" "$HOME_DIR/.local" "$HOME_DIR/.config" "$HOME_DIR/.claude"
-    chown -h "$HOST_UID:$HOST_GID" "$HOME_DIR/.claude.json"
+    chown -R "$HOST_UID:$HOST_GID" "$HOME_DIR/.local" "$HOME_DIR/.config"
+    # .claude is selectively mounted (individual files/dirs, not whole dir) — chown what exists
+    chown -R "$HOST_UID:$HOST_GID" "$HOME_DIR/.claude" 2>/dev/null || true
+    chown -h "$HOST_UID:$HOST_GID" "$HOME_DIR/.claude.json" 2>/dev/null || true
     exec su-exec agentuser "$@"
 fi
 

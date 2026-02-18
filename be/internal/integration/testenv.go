@@ -86,7 +86,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 
 	// 9. Client (for agent/findings socket tests)
 	projectID := "test-project"
-	c := client.NewWithSocket(socketPath, projectID)
+	c := client.NewWithAddr("unix", socketPath, projectID)
 
 	// 10. Seed project via service
 	_, err = projectSvc.Create(projectID, &types.ProjectCreateRequest{

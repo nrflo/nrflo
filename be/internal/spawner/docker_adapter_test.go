@@ -289,9 +289,18 @@ func TestDockerCLIAdapter_VolumeMounts_HomeDirectories(t *testing.T) {
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
 	args := strings.Join(cmd.Args, " ")
 
-	assertMount(t, args, "/home/alice/.claude:/home/alice/.claude")
+	// Claude CLI selective mounts (auth, settings, project configs, hooks)
+	assertMount(t, args, "/home/alice/.claude/.claude.json:/home/alice/.claude/.claude.json")
+	assertMount(t, args, "/home/alice/.claude/.credentials.json:/home/alice/.claude/.credentials.json")
+	assertMount(t, args, "/home/alice/.claude/settings.json:/home/alice/.claude/settings.json:ro")
+	assertMount(t, args, "/home/alice/.claude/projects:/home/alice/.claude/projects")
+	assertMount(t, args, "/home/alice/.claude/hooks:/home/alice/.claude/hooks:ro")
+
+	// Opencode
 	assertMount(t, args, "/home/alice/.config/opencode:/home/alice/.config/opencode")
 	assertMount(t, args, "/home/alice/.local/share/opencode:/home/alice/.local/share/opencode")
+
+	// Safety
 	assertMount(t, args, "/home/alice/.ai_common/safety.json:/home/alice/.ai_common/safety.json:ro")
 }
 
@@ -512,19 +521,35 @@ func TestDockerCLIAdapter_ImplementsCLIAdapter(t *testing.T) {
 	var _ CLIAdapter = NewDockerCLIAdapter(defaultMock(), defaultConfig())
 }
 
-// ---- Safety.json is read-only ------------------------------------------
+// ---- TCP socket env var for Docker agents --------------------------------
 
-func TestDockerCLIAdapter_SafetyJsonMountedReadOnly(t *testing.T) {
-	cfg := DockerConfig{
-		ProjectRoot: "/projects/app",
-		HomeDir:     "/home/user",
-	}
-	adapter := NewDockerCLIAdapter(defaultMock(), cfg)
+func TestDockerCLIAdapter_SetsAgentHostEnv(t *testing.T) {
+	adapter := NewDockerCLIAdapter(defaultMock(), defaultConfig())
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
 	args := strings.Join(cmd.Args, " ")
 
-	expected := "/home/user/.ai_common/safety.json:/home/user/.ai_common/safety.json:ro"
-	if !strings.Contains(args, expected) {
-		t.Errorf("safety.json should be mounted :ro; missing %q in: %s", expected, args)
+	if !strings.Contains(args, "-e NRWORKFLOW_AGENT_HOST=host.docker.internal:6588") {
+		t.Errorf("args missing NRWORKFLOW_AGENT_HOST: %s", args)
+	}
+}
+
+// ---- Safety.json is read-only ------------------------------------------
+
+func TestDockerCLIAdapter_SafetyJsonMountedReadOnly(t *testing.T) {
+	adapter := NewDockerCLIAdapter(defaultMock(), defaultConfig())
+	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
+	args := strings.Join(cmd.Args, " ")
+
+	assertMount(t, args, "/home/user/.ai_common/safety.json:/home/user/.ai_common/safety.json:ro")
+}
+
+func TestDockerCLIAdapter_NoSessionsMounted(t *testing.T) {
+	adapter := NewDockerCLIAdapter(defaultMock(), defaultConfig())
+	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
+	args := strings.Join(cmd.Args, " ")
+
+	// Should NOT mount the whole .claude dir (brings stale host session state)
+	if strings.Contains(args, "-v /home/user/.claude:/home/user/.claude") {
+		t.Errorf("should not mount entire .claude directory: %s", args)
 	}
 }

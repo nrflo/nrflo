@@ -1,6 +1,6 @@
 # Claude Code Instructions for nrworkflow Backend
 
-Go backend for nrworkflow. Two binaries: `nrworkflow_server` (server) and `nrworkflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. The CLI binary exposes agent commands (`agent complete/fail/continue`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
+Go backend for nrworkflow. Two binaries: `nrworkflow_server` (server) and `nrworkflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket (and optional TCP socket for Docker agents) for agent communication. The CLI binary exposes agent commands (`agent complete/fail/continue`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
 
 ## Project Structure
 
@@ -169,6 +169,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 `nrworkflow_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
 - **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
+- **TCP socket** on `127.0.0.1:6588` — for Docker agents via `host.docker.internal:6588`, always started
 - **Auto-migration** — database schema is automatically migrated on startup
 
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.complete/fail/continue/callback`, and `ws.broadcast` methods are supported.

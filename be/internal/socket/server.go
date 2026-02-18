@@ -23,6 +23,8 @@ const (
 	DefaultSocketDir = "/tmp/nrworkflow"
 	// DefaultSocketName is the default socket file name
 	DefaultSocketName = "nrworkflow.sock"
+	// DefaultTCPPort is the TCP port for Docker agent communication
+	DefaultTCPPort = 6588
 )
 
 // GetSocketPath returns the socket path from env or default
@@ -33,13 +35,24 @@ func GetSocketPath() string {
 	return filepath.Join(DefaultSocketDir, DefaultSocketName)
 }
 
-// Server is the Unix socket server
+// GetServerAddr returns the network and address for connecting to the server.
+// If NRWORKFLOW_AGENT_HOST is set (e.g. "host.docker.internal:6588"), returns ("tcp", host).
+// Otherwise falls back to ("unix", socketPath).
+func GetServerAddr() (network, address string) {
+	if host := os.Getenv("NRWORKFLOW_AGENT_HOST"); host != "" {
+		return "tcp", host
+	}
+	return "unix", GetSocketPath()
+}
+
+// Server is the Unix socket server (with optional TCP listener for Docker agents)
 type Server struct {
-	pool       *db.Pool
-	listener   net.Listener
-	handler    *Handler
-	socketPath string
-	wsHub      *ws.Hub
+	pool        *db.Pool
+	listener    net.Listener
+	tcpListener net.Listener
+	handler     *Handler
+	socketPath  string
+	wsHub       *ws.Hub
 
 	// Shutdown handling
 	shutdown chan struct{}
@@ -106,7 +119,31 @@ func (s *Server) Start() error {
 	logger.Info(context.Background(), "socket server listening", "path", s.socketPath)
 
 	// Accept connections
-	go s.acceptLoop()
+	go s.acceptLoop(s.listener)
+
+	return nil
+}
+
+// StartTCP starts an additional TCP listener on the given port.
+// This allows Docker containers to connect via host.docker.internal:<port>.
+func (s *Server) StartTCP(port int) error {
+	s.mu.Lock()
+	if !s.running {
+		s.mu.Unlock()
+		return fmt.Errorf("server not running; call Start() first")
+	}
+	s.mu.Unlock()
+
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("failed to create TCP listener: %w", err)
+	}
+	s.tcpListener = ln
+
+	logger.Info(context.Background(), "socket server TCP listening", "addr", addr)
+
+	go s.acceptLoop(ln)
 
 	return nil
 }
@@ -124,9 +161,12 @@ func (s *Server) Stop(ctx context.Context) error {
 	// Signal shutdown
 	close(s.shutdown)
 
-	// Close listener to stop accepting new connections
+	// Close listeners to stop accepting new connections
 	if s.listener != nil {
 		s.listener.Close()
+	}
+	if s.tcpListener != nil {
+		s.tcpListener.Close()
 	}
 
 	// Wait for all connections to finish with timeout
@@ -155,9 +195,9 @@ func (s *Server) SocketPath() string {
 	return s.socketPath
 }
 
-func (s *Server) acceptLoop() {
+func (s *Server) acceptLoop(ln net.Listener) {
 	for {
-		conn, err := s.listener.Accept()
+		conn, err := ln.Accept()
 		if err != nil {
 			select {
 			case <-s.shutdown:

@@ -85,6 +85,11 @@ Example usage:
 			return fmt.Errorf("failed to start socket server: %w", err)
 		}
 
+		// Start TCP listener for Docker agent communication
+		if err := socketServer.StartTCP(socket.DefaultTCPPort); err != nil {
+			return fmt.Errorf("failed to start TCP socket listener: %w", err)
+		}
+
 		// Handle graceful shutdown
 		shutdown := make(chan os.Signal, 1)
 		signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)

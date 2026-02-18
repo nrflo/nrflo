@@ -3,6 +3,8 @@ package spawner
 import (
 	"fmt"
 	"os/exec"
+
+	"be/internal/socket"
 )
 
 // DockerConfig holds configuration for Docker-based agent isolation.
@@ -74,6 +76,7 @@ func (a *DockerCLIAdapter) buildDockerArgs(sessionID string, env []string, isRes
 	args = append(args, "-e", fmt.Sprintf("HOST_UID=%d", a.config.UID))
 	args = append(args, "-e", fmt.Sprintf("HOST_GID=%d", a.config.GID))
 	args = append(args, "-e", "TMPDIR=/tmp")
+	args = append(args, "-e", fmt.Sprintf("NRWORKFLOW_AGENT_HOST=host.docker.internal:%d", socket.DefaultTCPPort))
 	for _, e := range env {
 		args = append(args, "-e", e)
 	}
@@ -95,11 +98,27 @@ func (a *DockerCLIAdapter) buildDockerArgs(sessionID string, env []string, isRes
 // volumeMounts returns the list of -v mount specifications.
 func (a *DockerCLIAdapter) volumeMounts() []string {
 	home := a.config.HomeDir
+	claude := home + "/.claude"
+
 	mounts := []string{
-		fmt.Sprintf("%s/.claude:%s/.claude", home, home),
+		// Claude CLI — only auth, settings, project configs, hooks (NOT sessions/debug/history)
+		fmt.Sprintf("%s/.claude.json:%s/.claude.json", claude, claude),
+		fmt.Sprintf("%s/.credentials.json:%s/.credentials.json", claude, claude),
+		fmt.Sprintf("%s/settings.json:%s/settings.json:ro", claude, claude),
+		fmt.Sprintf("%s/CLAUDE.md:%s/CLAUDE.md:ro", claude, claude),
+		fmt.Sprintf("%s/projects:%s/projects", claude, claude),
+		fmt.Sprintf("%s/hooks:%s/hooks:ro", claude, claude),
+		fmt.Sprintf("%s/hooks.json:%s/hooks.json:ro", claude, claude),
+		fmt.Sprintf("%s/statsig:%s/statsig", claude, claude),
+
+		// Opencode
 		fmt.Sprintf("%s/.config/opencode:%s/.config/opencode", home, home),
 		fmt.Sprintf("%s/.local/share/opencode:%s/.local/share/opencode", home, home),
+
+		// Shared temp (prompt files)
 		"/tmp/nrworkflow:/tmp/nrworkflow",
+
+		// Safety config
 		fmt.Sprintf("%s/.ai_common/safety.json:%s/.ai_common/safety.json:ro", home, home),
 	}
 

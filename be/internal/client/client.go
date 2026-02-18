@@ -14,31 +14,35 @@ import (
 	"be/internal/socket"
 )
 
-// Client is a Unix socket client for nrworkflow server
+// Client is a socket client for nrworkflow server (Unix or TCP)
 type Client struct {
-	socketPath string
-	projectID  string
+	network   string
+	address   string
+	projectID string
 }
 
-// New creates a new client
+// New creates a new client using auto-detected connection (TCP if NRWORKFLOW_AGENT_HOST set, else Unix)
 func New(projectID string) *Client {
+	network, address := socket.GetServerAddr()
 	return &Client{
-		socketPath: socket.GetSocketPath(),
-		projectID:  projectID,
+		network:   network,
+		address:   address,
+		projectID: projectID,
 	}
 }
 
-// NewWithSocket creates a new client with a custom socket path
-func NewWithSocket(socketPath, projectID string) *Client {
+// NewWithAddr creates a new client with explicit network and address
+func NewWithAddr(network, address, projectID string) *Client {
 	return &Client{
-		socketPath: socketPath,
-		projectID:  projectID,
+		network:   network,
+		address:   address,
+		projectID: projectID,
 	}
 }
 
 // IsServerRunning checks if the server is running
 func (c *Client) IsServerRunning() bool {
-	conn, err := net.DialTimeout("unix", c.socketPath, 2*time.Second)
+	conn, err := net.DialTimeout(c.network, c.address, 2*time.Second)
 	if err != nil {
 		return false
 	}
@@ -58,7 +62,7 @@ func (c *Client) Execute(method string, params interface{}) (*socket.Response, e
 
 	// Retry connection up to 3 times with backoff for transient errors
 	for attempt := 0; attempt < 3; attempt++ {
-		conn, err = net.DialTimeout("unix", c.socketPath, 5*time.Second)
+		conn, err = net.DialTimeout(c.network, c.address, 5*time.Second)
 		if err == nil {
 			break
 		}
@@ -144,7 +148,7 @@ func (c *Client) ExecuteAndUnmarshal(method string, params interface{}, result i
 // ExecuteStreaming sends a request and returns a channel for streaming responses
 // This is used for agent spawn which has streaming output
 func (c *Client) ExecuteStreaming(method string, params interface{}) (<-chan socket.StreamChunk, <-chan error, error) {
-	conn, err := net.DialTimeout("unix", c.socketPath, 5*time.Second)
+	conn, err := net.DialTimeout(c.network, c.address, 5*time.Second)
 	if err != nil {
 		if os.IsNotExist(err) || isConnectionRefused(err) {
 			return nil, nil, ServerNotRunningError()

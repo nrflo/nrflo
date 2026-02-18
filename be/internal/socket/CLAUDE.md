@@ -1,10 +1,17 @@
 # Socket Package
 
-Unix socket server for agent communication. Handles agent-facing methods only — all other operations go through the HTTP API.
+Socket server for agent communication (Unix + optional TCP). Handles agent-facing methods only — all other operations go through the HTTP API.
+
+## Transport
+
+- **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — used by native (non-Docker) agents
+- **TCP listener** on `127.0.0.1:6588` — used by Docker agents via `host.docker.internal:6588`. Always started. Both listeners share the same handler and connection tracking.
+
+Clients auto-detect transport: if `NRWORKFLOW_AGENT_HOST` env var is set, connect via TCP; otherwise use Unix socket.
 
 ## Protocol
 
-The socket uses a **JSON-RPC style protocol** (line-delimited JSON) at `/tmp/nrworkflow/nrworkflow.sock`.
+The socket uses a **JSON-RPC style protocol** (line-delimited JSON).
 
 ### Request Format
 

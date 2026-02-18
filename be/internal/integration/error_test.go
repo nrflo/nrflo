@@ -11,7 +11,7 @@ func TestErrorMissingProject(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a client with empty project ID
-	c := client.NewWithSocket(env.SocketPath, "")
+	c := client.NewWithAddr("unix", env.SocketPath, "")
 
 	resp, err := c.Execute("findings.get", map[string]interface{}{
 		"ticket_id":  "some-ticket",
@@ -51,7 +51,7 @@ func TestErrorAgentMissingProject(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Agent commands require project
-	c := client.NewWithSocket(env.SocketPath, "")
+	c := client.NewWithAddr("unix", env.SocketPath, "")
 	resp, err := c.Execute("agent.complete", map[string]interface{}{
 		"ticket_id":  "test",
 		"workflow":   "test",

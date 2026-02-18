@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Select } from '@/components/ui/Select'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
 import { useChainList } from '@/hooks/useChains'
@@ -64,18 +64,19 @@ export function ChainListPage() {
       </div>
 
       <div className="flex items-center gap-4">
-        <Select
+        <Dropdown
           value={statusFilter}
-          onChange={(e) => handleStatusChange(e.target.value)}
+          onChange={handleStatusChange}
           className="w-40"
-        >
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="running">Running</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-          <option value="canceled">Canceled</option>
-        </Select>
+          options={[
+            { value: '', label: 'All Statuses' },
+            { value: 'pending', label: 'Pending' },
+            { value: 'running', label: 'Running' },
+            { value: 'completed', label: 'Completed' },
+            { value: 'failed', label: 'Failed' },
+            { value: 'canceled', label: 'Canceled' },
+          ]}
+        />
         {statusFilter && (
           <Button variant="ghost" size="sm" onClick={() => handleStatusChange('')}>
             Clear filter

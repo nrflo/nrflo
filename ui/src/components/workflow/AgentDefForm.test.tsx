@@ -30,8 +30,17 @@ function renderForm(
   }
 }
 
-function getModelSelect() {
-  return document.querySelector('select') as HTMLSelectElement
+/** Get the Dropdown trigger button for the model field */
+function getModelDropdownButton() {
+  // The Model label is followed by the Dropdown which renders a <button type="button">
+  const label = screen.getByText('Model')
+  return label.parentElement!.querySelector('button[type="button"]') as HTMLButtonElement
+}
+
+/** Select an option from the Dropdown by opening it and clicking the option */
+async function selectDropdownOption(user: ReturnType<typeof userEvent.setup>, triggerButton: HTMLButtonElement, optionLabel: string) {
+  await user.click(triggerButton)
+  await user.click(screen.getByText(optionLabel))
 }
 
 function getTimeoutInput() {
@@ -44,31 +53,38 @@ function getRestartInput() {
 
 describe('AgentDefForm', () => {
   describe('model dropdown', () => {
-    it('renders model dropdown with exactly 4 options', () => {
+    it('renders model dropdown with exactly 4 options', async () => {
+      const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      expect(modelSelect).toBeInTheDocument()
+      const dropdownBtn = getModelDropdownButton()
+      expect(dropdownBtn).toBeInTheDocument()
 
-      const options = Array.from(modelSelect.querySelectorAll('option'))
-      expect(options).toHaveLength(4)
+      // Open the dropdown to see options
+      await user.click(dropdownBtn)
+
+      // Each option is rendered as a div with the label text inside the dropdown menu
+      const optionsContainer = dropdownBtn.parentElement!.querySelector('.absolute')!
+      const optionDivs = optionsContainer.querySelectorAll('.cursor-pointer')
+      expect(optionDivs).toHaveLength(4)
     })
 
-    it('contains opus, sonnet, haiku, gpt_5.3 options', () => {
+    it('contains opus, sonnet, haiku, gpt_5.3 options', async () => {
+      const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      const options = Array.from(modelSelect.querySelectorAll('option'))
-      const values = options.map((opt) => opt.value)
+      await user.click(getModelDropdownButton())
 
-      expect(values).toEqual(['opus', 'sonnet', 'haiku', 'gpt_5.3'])
+      const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
+      const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
+      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'gpt_5.3'])
     })
 
     it('defaults to sonnet', () => {
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      expect(modelSelect.value).toBe('sonnet')
+      const dropdownBtn = getModelDropdownButton()
+      expect(dropdownBtn.textContent).toContain('sonnet')
     })
 
     it('uses initial model value when provided', () => {
@@ -77,8 +93,8 @@ describe('AgentDefForm', () => {
         initial: { model: 'opus' },
       })
 
-      const modelSelect = getModelSelect()
-      expect(modelSelect.value).toBe('opus')
+      const dropdownBtn = getModelDropdownButton()
+      expect(dropdownBtn.textContent).toContain('opus')
     })
 
     it('allows changing model selection', async () => {
@@ -89,8 +105,7 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
 
-      const modelSelect = getModelSelect()
-      await user.selectOptions(modelSelect, 'gpt_5.3')
+      await selectDropdownOption(user, getModelDropdownButton(), 'gpt_5.3')
 
       const submitButton = screen.getByRole('button', { name: /create/i })
       await user.click(submitButton)
@@ -105,12 +120,10 @@ describe('AgentDefForm', () => {
     it('model dropdown uses correct styling', () => {
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      expect(modelSelect.className).toContain('rounded-md')
-      expect(modelSelect.className).toContain('border')
-      expect(modelSelect.className).toContain('bg-background')
-      expect(modelSelect.className).toContain('px-3')
-      expect(modelSelect.className).toContain('text-sm')
+      const dropdownBtn = getModelDropdownButton()
+      expect(dropdownBtn.className).toContain('rounded-md')
+      expect(dropdownBtn.className).toContain('border')
+      expect(dropdownBtn.className).toContain('text-sm')
     })
   })
 
@@ -123,8 +136,7 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'setup-analyzer')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'You are a setup analyzer...')
 
-      const modelSelect = getModelSelect()
-      await user.selectOptions(modelSelect, 'opus')
+      await selectDropdownOption(user, getModelDropdownButton(), 'opus')
 
       const timeoutInput = getTimeoutInput()
       await user.clear(timeoutInput)
@@ -263,7 +275,7 @@ describe('AgentDefForm', () => {
         },
       })
 
-      expect(getModelSelect()).toHaveValue('haiku')
+      expect(getModelDropdownButton().textContent).toContain('haiku')
       expect(getTimeoutInput()).toHaveValue(45)
       expect(getRestartInput()).toHaveValue(30)
       expect(screen.getByPlaceholderText(/agent prompt template/i)).toHaveValue('Initial prompt')
@@ -296,58 +308,48 @@ describe('AgentDefForm', () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      await user.selectOptions(modelSelect, 'opus')
+      await selectDropdownOption(user, getModelDropdownButton(), 'opus')
 
-      expect(modelSelect).toHaveValue('opus')
+      expect(getModelDropdownButton().textContent).toContain('opus')
     })
 
-    it('sonnet option exists and is selectable', async () => {
-      const user = userEvent.setup()
+    it('sonnet option exists and is selectable', () => {
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      await user.selectOptions(modelSelect, 'sonnet')
-
-      expect(modelSelect).toHaveValue('sonnet')
+      // sonnet is the default, so it's already selected
+      expect(getModelDropdownButton().textContent).toContain('sonnet')
     })
 
     it('haiku option exists and is selectable', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      await user.selectOptions(modelSelect, 'haiku')
+      await selectDropdownOption(user, getModelDropdownButton(), 'haiku')
 
-      expect(modelSelect).toHaveValue('haiku')
+      expect(getModelDropdownButton().textContent).toContain('haiku')
     })
 
     it('gpt_5.3 option exists and is selectable', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      await user.selectOptions(modelSelect, 'gpt_5.3')
+      await selectDropdownOption(user, getModelDropdownButton(), 'gpt_5.3')
 
-      expect(modelSelect).toHaveValue('gpt_5.3')
+      expect(getModelDropdownButton().textContent).toContain('gpt_5.3')
     })
 
-    it('no extra model options exist', () => {
+    it('no extra model options exist', async () => {
+      const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const modelSelect = getModelSelect()
-      const options = Array.from(modelSelect.querySelectorAll('option'))
+      // Open dropdown to see options
+      await user.click(getModelDropdownButton())
 
-      // Verify exactly 4 options with correct values
-      expect(options).toHaveLength(4)
-      const values = options.map((opt) => opt.value)
-      expect(values).toContain('opus')
-      expect(values).toContain('sonnet')
-      expect(values).toContain('haiku')
-      expect(values).toContain('gpt_5.3')
+      const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
+      const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
 
-      // No other values
-      expect(values.filter((v) => !['opus', 'sonnet', 'haiku', 'gpt_5.3'].includes(v))).toHaveLength(0)
+      expect(optionTexts).toHaveLength(4)
+      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'gpt_5.3'])
     })
   })
 

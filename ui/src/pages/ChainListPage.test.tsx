@@ -316,11 +316,12 @@ describe('ChainListPage - Status Filter', () => {
 
     renderChainListPage()
 
-    const select = screen.getByRole('combobox')
-    expect(select).toHaveValue('')
+    // Dropdown button shows "All Statuses" when value is empty
+    expect(screen.getByText('All Statuses')).toBeInTheDocument()
   })
 
-  it('displays all status filter options', () => {
+  it('displays all status filter options', async () => {
+    const user = userEvent.setup()
     mockUseChainList.mockReturnValue({
       data: [],
       isLoading: false,
@@ -329,12 +330,15 @@ describe('ChainListPage - Status Filter', () => {
 
     renderChainListPage()
 
-    expect(screen.getByRole('option', { name: 'All Statuses' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Pending' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Running' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Completed' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Failed' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Canceled' })).toBeInTheDocument()
+    // Open the dropdown
+    const dropdownBtn = screen.getByText('All Statuses').closest('button')!
+    await user.click(dropdownBtn)
+
+    expect(screen.getByText('Pending')).toBeInTheDocument()
+    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+    expect(screen.getByText('Failed')).toBeInTheDocument()
+    expect(screen.getByText('Canceled')).toBeInTheDocument()
   })
 
   it('calls useChainList with status filter parameter', () => {

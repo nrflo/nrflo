@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Play } from 'lucide-react'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { listWorkflowDefs } from '@/api/workflows'
 import { useRunWorkflow } from '@/hooks/useTickets'
@@ -86,17 +86,14 @@ export function RunWorkflowDialog({ open, onClose, ticketId }: RunWorkflowDialog
           <>
             <div>
               <label className="block text-sm font-medium mb-1.5">Workflow</label>
-              <Select
+              <Dropdown
                 value={selectedWorkflow}
-                onChange={(e) => setSelectedWorkflow(e.target.value)}
-              >
-                {workflowIds.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
-                    {workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''}
-                  </option>
-                ))}
-              </Select>
+                onChange={setSelectedWorkflow}
+                options={workflowIds.map((id) => ({
+                  value: id,
+                  label: id + (workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''),
+                }))}
+              />
             </div>
 
             <div>

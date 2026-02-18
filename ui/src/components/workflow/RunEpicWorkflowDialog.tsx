@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Layers, Play } from 'lucide-react'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { Badge } from '@/components/ui/Badge'
 import { listWorkflowDefs } from '@/api/workflows'
@@ -131,18 +131,14 @@ export function RunEpicWorkflowDialog({
         ) : !pendingChain ? (
           <div>
             <label htmlFor="epic-workflow-select" className="block text-sm font-medium mb-1.5">Workflow</label>
-            <Select
-              id="epic-workflow-select"
+            <Dropdown
               value={selectedWorkflow}
-              onChange={(e) => setSelectedWorkflow(e.target.value)}
-            >
-              {workflowIds.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                  {workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''}
-                </option>
-              ))}
-            </Select>
+              onChange={setSelectedWorkflow}
+              options={workflowIds.map((id) => ({
+                value: id,
+                label: id + (workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''),
+              }))}
+            />
           </div>
         ) : (
           <>

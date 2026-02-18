@@ -266,12 +266,13 @@ describe('TicketDetailPage - Stop button placement', () => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
     })
 
-    // Should show workflow selector dropdown, not badge
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    // Should show workflow selector dropdown (Dropdown component renders a button), not a badge
+    // The Dropdown trigger button contains the selected workflow text and a chevron icon
+    const dropdownBtn = screen.getByText('feature').closest('button[type="button"]')!
+    expect(dropdownBtn).toBeInTheDocument()
     // Stop button and dropdown should be in the same left-side container
-    const dropdown = screen.getByRole('combobox')
     const stopButton = screen.getByRole('button', { name: /stop/i })
-    expect(dropdown.closest('.flex.items-center.gap-3'))
+    expect(dropdownBtn.closest('.flex.items-center.gap-3'))
       .toBe(stopButton.closest('.flex.items-center.gap-3'))
   })
 })

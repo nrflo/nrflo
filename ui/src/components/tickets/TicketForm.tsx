@@ -1,10 +1,10 @@
-import { useForm, type SubmitHandler } from 'react-hook-form'
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
-import { Select } from '@/components/ui/Select'
 import { Spinner } from '@/components/ui/Spinner'
 
 const ticketSchema = z.object({
@@ -42,6 +42,7 @@ export function TicketForm({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema) as never,
@@ -120,24 +121,44 @@ export function TicketForm({
           <label htmlFor="issue_type" className="text-sm font-medium">
             Type
           </label>
-          <Select id="issue_type" {...register('issue_type')}>
-            <option value="task">Task</option>
-            <option value="bug">Bug</option>
-            <option value="feature">Feature</option>
-            <option value="epic">Epic</option>
-          </Select>
+          <Controller
+            name="issue_type"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                value={field.value}
+                onChange={field.onChange}
+                options={[
+                  { value: 'task', label: 'Task' },
+                  { value: 'bug', label: 'Bug' },
+                  { value: 'feature', label: 'Feature' },
+                  { value: 'epic', label: 'Epic' },
+                ]}
+              />
+            )}
+          />
         </div>
 
         <div className="space-y-2">
           <label htmlFor="priority" className="text-sm font-medium">
             Priority
           </label>
-          <Select id="priority" {...register('priority')}>
-            <option value="1">1 - Critical</option>
-            <option value="2">2 - High</option>
-            <option value="3">3 - Medium</option>
-            <option value="4">4 - Low</option>
-          </Select>
+          <Controller
+            name="priority"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                value={String(field.value)}
+                onChange={field.onChange}
+                options={[
+                  { value: '1', label: '1 - Critical' },
+                  { value: '2', label: '2 - High' },
+                  { value: '3', label: '3 - Medium' },
+                  { value: '4', label: '4 - Low' },
+                ]}
+              />
+            )}
+          />
         </div>
       </div>
 
@@ -146,14 +167,23 @@ export function TicketForm({
           <label htmlFor="parent_ticket_id" className="text-sm font-medium">
             Parent Epic
           </label>
-          <Select id="parent_ticket_id" {...register('parent_ticket_id')}>
-            <option value="">None</option>
-            {parentOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.id} - {opt.title}
-              </option>
-            ))}
-          </Select>
+          <Controller
+            name="parent_ticket_id"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                options={[
+                  { value: '', label: 'None' },
+                  ...parentOptions.map((opt) => ({
+                    value: opt.id,
+                    label: `${opt.id} - ${opt.title}`,
+                  })),
+                ]}
+              />
+            )}
+          />
         </div>
       )}
 

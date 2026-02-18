@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
@@ -49,16 +50,16 @@ export function AgentDefForm({
       <div className="flex gap-3">
         <div className="flex-1">
           <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>
-          <select
+          <Dropdown
             value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-          >
-            <option value="opus">opus</option>
-            <option value="sonnet">sonnet</option>
-            <option value="haiku">haiku</option>
-            <option value="gpt_5.3">gpt_5.3</option>
-          </select>
+            onChange={setModel}
+            options={[
+              { value: 'opus', label: 'opus' },
+              { value: 'sonnet', label: 'sonnet' },
+              { value: 'haiku', label: 'haiku' },
+              { value: 'gpt_5.3', label: 'gpt_5.3' },
+            ]}
+          />
         </div>
         <div className="w-32">
           <label className="block text-xs font-medium text-muted-foreground mb-1">Timeout (min)</label>

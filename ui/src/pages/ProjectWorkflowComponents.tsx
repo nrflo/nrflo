@@ -1,7 +1,7 @@
 import { Play } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Select } from '@/components/ui/Select'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn, formatElapsedTime } from '@/lib/utils'
 import type { WorkflowState } from '@/types/workflow'
@@ -49,18 +49,14 @@ export function RunWorkflowForm({
     <div className="max-w-xl space-y-4">
       <div>
         <label htmlFor="project-workflow-select" className="block text-sm font-medium mb-1.5">Workflow</label>
-        <Select
-          id="project-workflow-select"
+        <Dropdown
           value={selectedWorkflowDef}
-          onChange={(e) => onSelectWorkflowDef(e.target.value)}
-        >
-          {projectWorkflows.map(([id, def]) => (
-            <option key={id} value={id}>
-              {id}
-              {def.description ? ` - ${def.description}` : ''}
-            </option>
-          ))}
-        </Select>
+          onChange={onSelectWorkflowDef}
+          options={projectWorkflows.map(([id, def]) => ({
+            value: id,
+            label: id + (def.description ? ` - ${def.description}` : ''),
+          }))}
+        />
       </div>
 
       <div>

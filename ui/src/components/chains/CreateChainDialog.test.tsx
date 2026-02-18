@@ -155,7 +155,7 @@ describe('CreateChainDialog - Render States', () => {
 
     expect(screen.getByRole('heading', { name: /create chain/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/workflow/i)).toBeInTheDocument()
+    expect(screen.getByText('Workflow')).toBeInTheDocument()
   })
 })
 
@@ -237,7 +237,8 @@ describe('CreateChainDialog - Create Mode', () => {
     expect(screen.getByRole('heading', { name: /create chain/i })).toBeInTheDocument()
   })
 
-  it('shows all ticket-scoped workflows in selector', () => {
+  it('shows all ticket-scoped workflows in selector', async () => {
+    const user = userEvent.setup()
     mockUseCreateChain.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
@@ -246,11 +247,17 @@ describe('CreateChainDialog - Create Mode', () => {
 
     renderDialog()
 
-    expect(screen.getByRole('option', { name: /feature/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /bugfix/i })).toBeInTheDocument()
+    // Open the dropdown to see options
+    const dropdownBtn = screen.getAllByText(/feature - feature workflow/i)[0].closest('button')!
+    await user.click(dropdownBtn)
+
+    // Both options should be visible (feature appears in both button and option list)
+    expect(screen.getAllByText(/feature - feature workflow/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/bugfix - bugfix workflow/i)).toBeInTheDocument()
   })
 
-  it('filters out project-scoped workflows from selector', () => {
+  it('filters out project-scoped workflows from selector', async () => {
+    const user = userEvent.setup()
     mockUseQuery.mockReturnValue({
       data: {
         feature: createMockWorkflowDef('feature', { scope_type: 'ticket' }),
@@ -266,8 +273,12 @@ describe('CreateChainDialog - Create Mode', () => {
 
     renderDialog()
 
-    expect(screen.getByRole('option', { name: /feature/i })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /project_deploy/i })).not.toBeInTheDocument()
+    // Open the dropdown
+    const dropdownBtn = screen.getAllByText(/feature - feature workflow/i)[0].closest('button')!
+    await user.click(dropdownBtn)
+
+    expect(screen.getAllByText(/feature - feature workflow/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryByText(/project_deploy/i)).not.toBeInTheDocument()
   })
 
   it('auto-selects first workflow when loaded', () => {
@@ -279,8 +290,8 @@ describe('CreateChainDialog - Create Mode', () => {
 
     renderDialog()
 
-    const workflowSelect = screen.getByLabelText(/workflow/i) as HTMLSelectElement
-    expect(workflowSelect.value).toBe('feature')
+    // Dropdown button should show the first workflow
+    expect(screen.getByText(/feature - feature workflow/i)).toBeInTheDocument()
   })
 
   it('calls createChain mutation with correct data on submit', async () => {
@@ -363,8 +374,7 @@ describe('CreateChainDialog - Edit Mode', () => {
     renderDialog(true, chain)
 
     await waitFor(() => {
-      const workflowSelect = screen.getByLabelText(/workflow/i) as HTMLSelectElement
-      expect(workflowSelect.value).toBe('feature')
+      expect(screen.getByText(/feature - feature workflow/i)).toBeInTheDocument()
     })
   })
 
@@ -379,8 +389,10 @@ describe('CreateChainDialog - Edit Mode', () => {
     renderDialog(true, chain)
 
     await waitFor(() => {
-      const workflowSelect = screen.getByLabelText(/workflow/i)
-      expect(workflowSelect).toBeDisabled()
+      // Dropdown button should have opacity-50 and cursor-not-allowed when disabled
+      const dropdownBtn = screen.getByText(/feature - feature workflow/i).closest('button')!
+      expect(dropdownBtn.className).toContain('opacity-50')
+      expect(dropdownBtn.className).toContain('cursor-not-allowed')
     })
   })
 

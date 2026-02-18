@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
-import { Select } from '@/components/ui/Select'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
@@ -93,17 +93,15 @@ export function WorkflowTabContent({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {hasMultipleWorkflows ? (
-                  <Select
+                  <Dropdown
                     value={selectedWorkflow || workflows[0] || ''}
-                    onChange={(e) => onSelectWorkflow(e.target.value)}
+                    onChange={onSelectWorkflow}
                     className="w-48 h-8 text-sm"
-                  >
-                    {workflows.map((wf) => (
-                      <option key={wf} value={wf}>
-                        {workflowLabels?.[wf] ?? wf}
-                      </option>
-                    ))}
-                  </Select>
+                    options={workflows.map((wf) => ({
+                      value: wf,
+                      label: workflowLabels?.[wf] ?? wf,
+                    }))}
+                  />
                 ) : displayedWorkflowName ? (
                   <Badge variant="secondary">{displayedWorkflowName}</Badge>
                 ) : null}

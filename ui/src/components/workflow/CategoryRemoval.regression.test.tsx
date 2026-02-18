@@ -272,8 +272,8 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
         </QueryClientProvider>
       )
 
-      // Wait for workflows to load
-      await screen.findByLabelText(/workflow/i)
+      // Wait for workflows to load — Dropdown renders a button with the selected workflow text
+      await screen.findByText(/feature - Feature workflow/i)
 
       // Should not have any category-related UI
       expect(screen.queryByText(/category/i)).not.toBeInTheDocument()

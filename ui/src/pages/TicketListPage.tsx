@@ -1,7 +1,7 @@
 import { useSearchParams, Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { TicketList } from '@/components/tickets/TicketList'
 import { useTicketList, useTicketSearch } from '@/hooks/useTickets'
 
@@ -65,29 +65,31 @@ export function TicketListPage() {
 
       {!isSearching && (
         <div className="flex items-center gap-4">
-          <Select
+          <Dropdown
             value={statusFilter}
-            onChange={(e) => handleFilterChange('status', e.target.value)}
+            onChange={(v) => handleFilterChange('status', v)}
             className="w-40"
-          >
-            <option value="">All Statuses</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="closed">Closed</option>
-            <option value="blocked">Blocked</option>
-          </Select>
+            options={[
+              { value: '', label: 'All Statuses' },
+              { value: 'open', label: 'Open' },
+              { value: 'in_progress', label: 'In Progress' },
+              { value: 'closed', label: 'Closed' },
+              { value: 'blocked', label: 'Blocked' },
+            ]}
+          />
 
-          <Select
+          <Dropdown
             value={typeFilter}
-            onChange={(e) => handleFilterChange('type', e.target.value)}
+            onChange={(v) => handleFilterChange('type', v)}
             className="w-40"
-          >
-            <option value="">All Types</option>
-            <option value="bug">Bug</option>
-            <option value="feature">Feature</option>
-            <option value="task">Task</option>
-            <option value="epic">Epic</option>
-          </Select>
+            options={[
+              { value: '', label: 'All Types' },
+              { value: 'bug', label: 'Bug' },
+              { value: 'feature', label: 'Feature' },
+              { value: 'task', label: 'Task' },
+              { value: 'epic', label: 'Epic' },
+            ]}
+          />
 
           {(statusFilter || typeFilter) && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>

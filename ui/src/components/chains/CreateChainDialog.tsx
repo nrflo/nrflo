@@ -5,7 +5,7 @@ import { generateChainName } from '@/lib/generateChainName'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { ChainTicketSelector } from './ChainTicketSelector'
 import { listWorkflowDefs } from '@/api/workflows'
@@ -130,19 +130,15 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
 
             <div>
               <label htmlFor="chain-workflow" className="block text-sm font-medium mb-1.5">Workflow</label>
-              <Select
-                id="chain-workflow"
+              <Dropdown
                 value={selectedWorkflow}
-                onChange={(e) => setSelectedWorkflow(e.target.value)}
+                onChange={setSelectedWorkflow}
                 disabled={isEditing}
-              >
-                {workflowIds.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
-                    {workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''}
-                  </option>
-                ))}
-              </Select>
+                options={workflowIds.map((id) => ({
+                  value: id,
+                  label: id + (workflowDefs![id].description ? ` - ${workflowDefs![id].description}` : ''),
+                }))}
+              />
             </div>
 
             <div>

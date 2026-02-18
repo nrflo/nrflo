@@ -368,7 +368,7 @@ describe('ProjectWorkflowsPage', () => {
       renderPage()
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Workflow')).toBeInTheDocument()
+        expect(screen.getByText('Workflow')).toBeInTheDocument()
       })
     })
 
@@ -1221,12 +1221,11 @@ describe('ProjectWorkflowsPage', () => {
 
       // Step 1: On Run Workflow tab by default
       await waitFor(() => {
-        expect(screen.getByLabelText('Workflow')).toBeInTheDocument()
+        expect(screen.getByText('Workflow')).toBeInTheDocument()
       })
 
-      // Step 2: Workflow is auto-selected
-      const workflowSelect = screen.getByLabelText('Workflow')
-      expect(workflowSelect).toHaveValue('feature')
+      // Step 2: Workflow is auto-selected — Dropdown button shows the selected workflow text
+      expect(screen.getByText(/feature/)).toBeInTheDocument()
 
       // Step 3: Enter instructions
       const instructionsTextarea = screen.getByPlaceholderText(/Additional context/)
@@ -1445,7 +1444,7 @@ describe('ProjectWorkflowsPage', () => {
       renderPage()
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Workflow')).toBeInTheDocument()
+        expect(screen.getByText('Workflow')).toBeInTheDocument()
       })
 
       const runButton = screen.getByRole('button', { name: /^Run$/ })

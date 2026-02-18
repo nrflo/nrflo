@@ -112,14 +112,20 @@ describe('RunEpicWorkflowDialog', () => {
 
   describe('workflow filtering', () => {
     it('filters to ticket-scoped workflows only', async () => {
+      const user = userEvent.setup()
       vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
       renderDialog()
 
+      // Wait for data to load and auto-select first workflow
       await waitFor(() => {
-        expect(screen.getByText(/ticket-workflow-1/i)).toBeInTheDocument()
-        expect(screen.getByText(/ticket-workflow-2/i)).toBeInTheDocument()
+        expect(screen.getByText(/ticket-workflow-1 - First ticket workflow/i)).toBeInTheDocument()
       })
 
+      // Open dropdown to check all options
+      const dropdownBtn = screen.getByText(/ticket-workflow-1 - First ticket workflow/i).closest('button')!
+      await user.click(dropdownBtn)
+
+      expect(screen.getByText(/ticket-workflow-2 - Second ticket workflow/i)).toBeInTheDocument()
       expect(screen.queryByText(/project-workflow/i)).not.toBeInTheDocument()
     })
 
@@ -163,8 +169,8 @@ describe('RunEpicWorkflowDialog', () => {
       renderDialog()
 
       await waitFor(() => {
-        const select = screen.getByLabelText(/workflow/i) as HTMLSelectElement
-        expect(select.value).toBe('ticket-workflow-1')
+        // Dropdown button should display the first workflow
+        expect(screen.getByText(/ticket-workflow-1 - First ticket workflow/i)).toBeInTheDocument()
       })
     })
 
@@ -174,22 +180,30 @@ describe('RunEpicWorkflowDialog', () => {
       renderDialog()
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/workflow/i)).toBeInTheDocument()
+        expect(screen.getByText(/ticket-workflow-1 - First ticket workflow/i)).toBeInTheDocument()
       })
 
-      const workflowSelect = screen.getByLabelText(/workflow/i)
-      await user.selectOptions(workflowSelect, 'ticket-workflow-2')
+      // Open dropdown and select the second option
+      const dropdownBtn = screen.getByText(/ticket-workflow-1 - First ticket workflow/i).closest('button')!
+      await user.click(dropdownBtn)
+      await user.click(screen.getByText(/ticket-workflow-2 - Second ticket workflow/i))
 
-      expect((workflowSelect as HTMLSelectElement).value).toBe('ticket-workflow-2')
+      // Dropdown should now show the selected option
+      expect(screen.getByText(/ticket-workflow-2 - Second ticket workflow/i)).toBeInTheDocument()
     })
 
     it('displays workflow descriptions in options', async () => {
+      const user = userEvent.setup()
       vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue(mockWorkflowDefs)
       renderDialog()
 
       await waitFor(() => {
         expect(screen.getByText(/ticket-workflow-1 - First ticket workflow/i)).toBeInTheDocument()
       })
+
+      // Open dropdown to see all options
+      const dropdownBtn = screen.getByText(/ticket-workflow-1 - First ticket workflow/i).closest('button')!
+      await user.click(dropdownBtn)
 
       expect(screen.getByText(/ticket-workflow-2 - Second ticket workflow/i)).toBeInTheDocument()
     })

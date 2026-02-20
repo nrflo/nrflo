@@ -55,6 +55,79 @@ function renderHeader(initialRoute = '/') {
   )
 }
 
+describe('Header - Brand label', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCurrentProject = 'test-project'
+    mockProjects = [
+      {
+        id: 'test-project',
+        name: 'Test Project',
+        root_path: '/test',
+        default_workflow: 'feature',
+        default_branch: 'main',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ]
+  })
+
+  it('shows project name and uppercased first-letter icon when project is selected', () => {
+    renderHeader()
+
+    const brandLink = screen.getByRole('link', { name: /test project/i })
+    expect(brandLink).toBeInTheDocument()
+    // icon letter is first char of project name, uppercased
+    expect(brandLink).toHaveTextContent('T')
+    // full project name in the brand label
+    expect(brandLink).toHaveTextContent('Test Project')
+  })
+
+  it('falls back to N icon and nrworkflow text when no project is selected', () => {
+    mockCurrentProject = ''
+
+    renderHeader()
+
+    const brandLink = screen.getByRole('link', { name: /nrworkflow/i })
+    expect(brandLink).toBeInTheDocument()
+    expect(brandLink).toHaveTextContent('N')
+    expect(brandLink).toHaveTextContent('nrworkflow')
+  })
+
+  it('updates brand label when a different project is selected', () => {
+    mockProjects = [
+      {
+        id: 'project-a',
+        name: 'Alpha Suite',
+        root_path: '/a',
+        default_workflow: 'feature',
+        default_branch: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 'project-b',
+        name: 'Beta Tools',
+        root_path: '/b',
+        default_workflow: 'feature',
+        default_branch: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ]
+    mockCurrentProject = 'project-a'
+    const { unmount } = renderHeader()
+
+    expect(screen.getByRole('link', { name: /alpha suite/i })).toHaveTextContent('A')
+
+    unmount()
+    mockCurrentProject = 'project-b'
+    renderHeader()
+
+    expect(screen.getByRole('link', { name: /beta tools/i })).toHaveTextContent('B')
+  })
+})
+
 describe('Header - Git Status Link', () => {
   beforeEach(() => {
     vi.clearAllMocks()

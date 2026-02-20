@@ -12,10 +12,11 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('')
   const { currentProject, setCurrentProject, projects } = useProjectStore()
 
-  const hasDefaultBranch = useMemo(() => {
-    const project = projects.find((p) => p.id === currentProject)
-    return !!project?.default_branch
-  }, [projects, currentProject])
+  const currentProjectObj = useMemo(
+    () => projects.find((p) => p.id === currentProject),
+    [projects, currentProject],
+  )
+  const hasDefaultBranch = !!currentProjectObj?.default_branch
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,9 +31,9 @@ export function Header() {
       <div className="flex h-14 items-center px-4 gap-4">
         <Link to="/" className="flex items-center gap-2 font-semibold">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            N
+            {currentProjectObj?.name?.[0]?.toUpperCase() ?? 'N'}
           </div>
-          <span className="hidden sm:inline-block">nrworkflow</span>
+          <span className="hidden sm:inline-block">{currentProjectObj?.name ?? 'nrworkflow'}</span>
         </Link>
 
         <nav className="flex items-center gap-4 ml-4">

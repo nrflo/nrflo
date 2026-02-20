@@ -185,19 +185,33 @@ export function AgentLogPanel({
     })
   }
 
+  // Resolve live agent data from activeAgents to replace stale captured snapshot.
+  // Hoisted above conditional return for hooks rules compliance.
+  const liveAgent = useMemo(() => {
+    if (!selectedAgent?.agent) return undefined
+    return Object.values(activeAgents).find(a =>
+      a.session_id === selectedAgent.agent!.session_id ||
+      (a.agent_type === selectedAgent.agent!.agent_type &&
+       a.phase === selectedAgent.agent!.phase &&
+       a.model_id === selectedAgent.agent!.model_id)
+    ) ?? selectedAgent.agent
+  }, [selectedAgent, activeAgents])
+
+  // Auto-switch to next running agent when selected agent completes
+  const liveAgentResult = liveAgent?.result
+  useEffect(() => {
+    if (!liveAgentResult || runningAgents.length === 0) return
+    const nextAgent = runningAgents[0]
+    const session = findSession(nextAgent)
+    onAgentSelect({
+      phaseName: nextAgent.phase || nextAgent.agent_type || '',
+      agent: nextAgent,
+      session,
+    })
+  }, [liveAgentResult, runningAgents]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Detail mode: show selected agent
   if (selectedAgent) {
-    // Resolve live agent data from activeAgents to replace stale captured snapshot.
-    // When the agent completes via WebSocket, activeAgents updates but selectedAgent.agent doesn't.
-    const liveAgent = selectedAgent.agent
-      ? Object.values(activeAgents).find(a =>
-          a.session_id === selectedAgent.agent!.session_id ||
-          (a.agent_type === selectedAgent.agent!.agent_type &&
-           a.phase === selectedAgent.agent!.phase &&
-           a.model_id === selectedAgent.agent!.model_id)
-        ) ?? selectedAgent.agent
-      : undefined
-
     const resolvedSelected = { ...selectedAgent, agent: liveAgent }
     const isRunningAgent = resolvedSelected.agent && !resolvedSelected.agent.result
     const liveSession = isRunningAgent

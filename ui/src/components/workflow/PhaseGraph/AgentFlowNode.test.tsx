@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { AgentFlowNode } from './AgentFlowNode'
+import { useTickingClock } from '@/hooks/useElapsedTime'
 import type { AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentHistoryEntry, AgentSession } from '@/types/workflow'
 
@@ -8,6 +9,11 @@ import type { ActiveAgentV4, AgentHistoryEntry, AgentSession } from '@/types/wor
 vi.mock('@xyflow/react', () => ({
   Handle: () => null,
   Position: { Top: 'top', Bottom: 'bottom' },
+}))
+
+// Mock useTickingClock to verify it is called with the correct argument
+vi.mock('@/hooks/useElapsedTime', () => ({
+  useTickingClock: vi.fn(),
 }))
 
 function makeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
@@ -231,6 +237,27 @@ describe('AgentFlowNode', () => {
     render(<AgentFlowNode data={data} />)
     const button = screen.getByRole('button')
     expect(button.className).toContain('border-red-500')
+  })
+
+  describe('timer hook (useTickingClock)', () => {
+    beforeEach(() => vi.mocked(useTickingClock).mockClear())
+
+    it('calls useTickingClock(true) when agent is running (no result)', () => {
+      render(<AgentFlowNode data={makeData()} />)
+      expect(vi.mocked(useTickingClock)).toHaveBeenCalledWith(true)
+    })
+
+    it('calls useTickingClock(false) when agent is completed (has result)', () => {
+      const data = makeData({ agent: undefined, historyEntry: makeHistory({ result: 'pass' }) })
+      render(<AgentFlowNode data={data} />)
+      expect(vi.mocked(useTickingClock)).toHaveBeenCalledWith(false)
+    })
+
+    it('calls useTickingClock(false) when phase is pending (no agent)', () => {
+      const data = makeData({ agent: undefined, isPending: true })
+      render(<AgentFlowNode data={data} />)
+      expect(vi.mocked(useTickingClock)).toHaveBeenCalledWith(false)
+    })
   })
 
   // Unified card sizing — all variants use w-[300px] and min-h-[90px]

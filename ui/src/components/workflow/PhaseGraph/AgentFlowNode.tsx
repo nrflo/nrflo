@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward, AlertTriangle, RefreshCw } from 'lucide-react'
 import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
+import { useTickingClock } from '@/hooks/useElapsedTime'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
@@ -45,6 +46,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const { phaseName, agent, historyEntry, session, isPending, isSkipped, isCompleted, isError, onToggleExpand, onRetryFailed, retryingSessionId, workflowStatus } = data
   const isRunning = agent && !agent.result
+  useTickingClock(!!isRunning)
   const result = agent?.result || historyEntry?.result
   const hasMessages = session && session.message_count > 0
 

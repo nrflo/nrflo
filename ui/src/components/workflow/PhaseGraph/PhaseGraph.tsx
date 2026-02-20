@@ -3,7 +3,6 @@ import { ReactFlow, Background, Controls, useReactFlow, type Node, type Edge, ty
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
 import { getLayoutedElements, BASE_HEIGHT } from './layout'
-import { useTickingClock } from '@/hooks/useElapsedTime'
 import type { PhaseGraphProps, AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/workflow'
 
@@ -42,15 +41,6 @@ export function PhaseGraph({
   retryingSessionId,
   workflowStatus,
 }: PhaseGraphProps) {
-
-  // Check if any agents are running
-  const hasRunningAgents = useMemo(() => {
-    if (!activeAgents) return false
-    return Object.values(activeAgents).some(a => !a.result)
-  }, [activeAgents])
-
-  // Update elapsed time every second when agents are running
-  useTickingClock(hasRunningAgents)
 
   // Build phase start times map from agent history
   const phaseStartTimes: Record<string, number> = useMemo(() => {

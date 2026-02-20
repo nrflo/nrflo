@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+// PhaseStatus represents the status of a phase within a workflow instance.
+// Used by service.derivePhaseStatuses — not stored in workflow_instances table.
+type PhaseStatus struct {
+	Status string `json:"status"`
+	Result string `json:"result,omitempty"`
+}
+
 // WorkflowInstanceStatus represents the status of a workflow instance
 type WorkflowInstanceStatus string
 
@@ -16,12 +23,6 @@ const (
 	WorkflowInstanceProjectCompleted WorkflowInstanceStatus = "project_completed"
 )
 
-// PhaseStatus represents the status of a phase within a workflow instance
-type PhaseStatus struct {
-	Status string `json:"status"`
-	Result string `json:"result,omitempty"`
-}
-
 // WorkflowInstance represents a running workflow on a ticket or project
 type WorkflowInstance struct {
 	ID            string                 `json:"id"`
@@ -30,9 +31,6 @@ type WorkflowInstance struct {
 	WorkflowID    string                 `json:"workflow_id"`
 	ScopeType     string                 `json:"scope_type"` // "ticket" or "project"
 	Status        WorkflowInstanceStatus `json:"status"`
-	CurrentPhase  sql.NullString         `json:"-"`
-	PhaseOrder    string                 `json:"-"` // JSON array string
-	Phases        string                 `json:"-"` // JSON object string
 	Findings      string                 `json:"-"` // JSON object string
 	RetryCount    int                    `json:"retry_count"`
 	ParentSession sql.NullString         `json:"-"`
@@ -43,26 +41,6 @@ type WorkflowInstance struct {
 // IsProjectScope returns true if this is a project-scoped workflow instance
 func (wi *WorkflowInstance) IsProjectScope() bool {
 	return wi.ScopeType == "project"
-}
-
-// GetPhaseOrder returns the phase order as a string slice
-func (wi *WorkflowInstance) GetPhaseOrder() []string {
-	var order []string
-	json.Unmarshal([]byte(wi.PhaseOrder), &order)
-	return order
-}
-
-// GetPhases returns the phases as a map of phase ID -> PhaseStatus
-func (wi *WorkflowInstance) GetPhases() map[string]PhaseStatus {
-	phases := make(map[string]PhaseStatus)
-	json.Unmarshal([]byte(wi.Phases), &phases)
-	return phases
-}
-
-// SetPhases updates the phases JSON string from a map
-func (wi *WorkflowInstance) SetPhases(phases map[string]PhaseStatus) {
-	data, _ := json.Marshal(phases)
-	wi.Phases = string(data)
 }
 
 // GetFindings returns the workflow-level findings as a map
@@ -80,26 +58,9 @@ func (wi *WorkflowInstance) SetFindings(findings map[string]interface{}) {
 
 // MarshalJSON implements custom JSON marshaling for WorkflowInstance
 func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
-	var currentPhase *string
-	if wi.CurrentPhase.Valid {
-		currentPhase = &wi.CurrentPhase.String
-	}
 	var parentSession *string
 	if wi.ParentSession.Valid {
 		parentSession = &wi.ParentSession.String
-	}
-
-	// Parse JSON fields for proper serialization
-	var phaseOrder []string
-	json.Unmarshal([]byte(wi.PhaseOrder), &phaseOrder)
-	if phaseOrder == nil {
-		phaseOrder = []string{}
-	}
-
-	var phases map[string]PhaseStatus
-	json.Unmarshal([]byte(wi.Phases), &phases)
-	if phases == nil {
-		phases = make(map[string]PhaseStatus)
 	}
 
 	var findings map[string]interface{}
@@ -120,9 +81,6 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		WorkflowID    string                 `json:"workflow_id"`
 		ScopeType     string                 `json:"scope_type"`
 		Status        WorkflowInstanceStatus `json:"status"`
-		CurrentPhase  *string                `json:"current_phase,omitempty"`
-		PhaseOrder    []string               `json:"phase_order"`
-		Phases        map[string]PhaseStatus `json:"phases"`
 		Findings      map[string]interface{} `json:"findings"`
 		RetryCount    int                    `json:"retry_count"`
 		ParentSession *string                `json:"parent_session,omitempty"`
@@ -135,9 +93,6 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		WorkflowID:    wi.WorkflowID,
 		ScopeType:     scopeType,
 		Status:        wi.Status,
-		CurrentPhase:  currentPhase,
-		PhaseOrder:    phaseOrder,
-		Phases:        phases,
 		Findings:      findings,
 		RetryCount:    wi.RetryCount,
 		ParentSession: parentSession,

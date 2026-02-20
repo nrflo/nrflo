@@ -146,12 +146,9 @@ func TestMultiPhaseWorkflowAgentState(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "PH-3", "test")
 
 	// Phase 1: analyzer - completed agent
-	env.StartPhase(t, "PH-3", "analyzer")
 	insertCompletedSession(t, env, "sess-analyze", "PH-3", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass")
-	env.CompletePhase(t, "PH-3", "analyzer", "pass")
 
 	// Phase 2: builder - running agent
-	env.StartPhase(t, "PH-3", "builder")
 	env.InsertAgentSession(t, "sess-build", "PH-3", wfiID, "builder", "implementor", "claude:opus")
 
 	// Get workflow status - this is the critical check

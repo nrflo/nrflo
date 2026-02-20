@@ -227,14 +227,8 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 	}
 	asRepo.Create(session)
 
-	// Mark phases - analyzer completed, builder failed
+	// Mark workflow as failed
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
-	wi := env.getWorkflowInstance(t, wfiID)
-	phases := wi.GetPhases()
-	phases["analyzer"] = model.PhaseStatus{Status: "completed", Result: "pass"}
-	phases["builder"] = model.PhaseStatus{Status: "failed", Result: "fail"}
-	wi.SetPhases(phases)
-	wfiRepo.UpdatePhases(wfiID, wi.Phases)
 	wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceFailed)
 
 	// Subscribe to WS events
@@ -247,7 +241,7 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 	}
 
 	// Verify workflow status reset to active
-	wi = env.getWorkflowInstance(t, wfiID)
+	wi := env.getWorkflowInstance(t, wfiID)
 	if wi.Status != model.WorkflowInstanceActive {
 		t.Errorf("expected status=active, got %s", wi.Status)
 	}
@@ -255,17 +249,6 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 	// Verify retry_count incremented
 	if wi.RetryCount != 1 {
 		t.Errorf("expected retry_count=1, got %d", wi.RetryCount)
-	}
-
-	// Verify failed phase reset to pending
-	phases = wi.GetPhases()
-	if phases["builder"].Status != "pending" {
-		t.Errorf("expected builder phase status=pending, got %s", phases["builder"].Status)
-	}
-
-	// Verify completed phase (earlier layer) unchanged
-	if phases["analyzer"].Status != "completed" {
-		t.Errorf("expected analyzer phase status=completed, got %s", phases["analyzer"].Status)
 	}
 
 	// Verify orchestration status in findings
@@ -332,22 +315,12 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	// Init workflow
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-8', ?, 'RTR-8', 'test-3layer', 'failed', '["phase1","phase2","phase3"]', '{}', '{}', 0, datetime('now'), datetime('now'))
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-8', ?, 'RTR-8', 'test-3layer', 'failed', '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
-
-	// Mark phases: layer 0 and 1 completed, layer 2 failed
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
-	wi := env.getWorkflowInstance(t, wfiID)
-	phases := wi.GetPhases()
-	phases["phase1"] = model.PhaseStatus{Status: "completed", Result: "pass"}
-	phases["phase2"] = model.PhaseStatus{Status: "completed", Result: "pass"}
-	phases["phase3"] = model.PhaseStatus{Status: "failed", Result: "fail"}
-	wi.SetPhases(phases)
-	wfiRepo.UpdatePhases(wfiID, wi.Phases)
 
 	// Create failed session for phase3
 	database, err := db.Open(env.dbPath)
@@ -373,19 +346,6 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	err = env.orch.RetryFailedAgent(context.Background(), env.project, "RTR-8", "test-3layer", "sess-8")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify only phase3 (layer 2) is reset
-	wi = env.getWorkflowInstance(t, wfiID)
-	phases = wi.GetPhases()
-	if phases["phase1"].Status != "completed" {
-		t.Errorf("expected phase1=completed, got %s", phases["phase1"].Status)
-	}
-	if phases["phase2"].Status != "completed" {
-		t.Errorf("expected phase2=completed, got %s", phases["phase2"].Status)
-	}
-	if phases["phase3"].Status != "pending" {
-		t.Errorf("expected phase3=pending, got %s", phases["phase3"].Status)
 	}
 
 	// Cleanup: cancel and wait for goroutine to finish

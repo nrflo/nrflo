@@ -1,12 +1,10 @@
 package spawner
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"time"
 
-	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/ws"
@@ -202,39 +200,3 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 	return requestedPhase.ID, nil
 }
 
-// startPhase marks a phase as in_progress using workflow_instances table
-func (s *Spawner) startPhase(ctx context.Context, wfiID, projectID, ticketID, workflowName, phase string) {
-	pool := s.pool()
-	if pool == nil {
-		return
-	}
-
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
-	if err := wfiRepo.StartPhase(wfiID, phase); err != nil {
-		logger.Warn(ctx, "failed to start phase", "phase", phase, "err", err)
-		return
-	}
-
-	s.broadcast(ws.EventPhaseStarted, projectID, ticketID, workflowName, map[string]interface{}{
-		"phase": phase,
-	})
-}
-
-// completePhase marks a phase as completed using workflow_instances table
-func (s *Spawner) completePhase(ctx context.Context, wfiID, projectID, ticketID, workflowName, phase, result string) {
-	pool := s.pool()
-	if pool == nil {
-		return
-	}
-
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
-	if err := wfiRepo.CompletePhase(wfiID, phase, result); err != nil {
-		logger.Warn(ctx, "failed to complete phase", "phase", phase, "result", result, "err", err)
-		return
-	}
-
-	s.broadcast(ws.EventPhaseCompleted, projectID, ticketID, workflowName, map[string]interface{}{
-		"phase":  phase,
-		"result": result,
-	})
-}

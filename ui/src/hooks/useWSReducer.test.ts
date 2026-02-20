@@ -372,7 +372,7 @@ describe('useWSReducer', () => {
       )).toBe(false)
     })
 
-    it('agent.take_control does NOT invalidate ticket list (unlike phase.started)', () => {
+    it('agent.take_control does NOT invalidate ticket list', () => {
       const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
       const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
 
@@ -462,20 +462,6 @@ describe('useWSReducer', () => {
       expect(calls.every((call: any) =>
         !JSON.stringify(call[0].queryKey).includes('agents')
       )).toBe(true)
-    })
-
-    it('routes phase.started event', () => {
-      const event: WSEventV2 = {
-        type: 'phase.started',
-        project_id: 'proj1',
-        ticket_id: 'tick1',
-        timestamp: '2026-02-14T00:00:00Z',
-        sequence: 1,
-        protocol_version: 2,
-      }
-
-      dispatchV2Event(event, queryClient)
-      expect(queryClient.invalidateQueries).toHaveBeenCalled()
     })
 
     it('routes findings.updated event', () => {
@@ -609,6 +595,82 @@ describe('useWSReducer', () => {
       }
 
       expect(() => dispatchV2Event(event, queryClient)).not.toThrow()
+    })
+
+    it('phase.started is not handled — no query invalidations (dead handler removed)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event = {
+        type: 'phase.started',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-20T00:00:00Z',
+        sequence: 1,
+        protocol_version: 2,
+      }
+
+      expect(() => dispatchV2Event(event as any, localQueryClient)).not.toThrow()
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('phase.completed is not handled — no query invalidations (dead handler removed)', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event = {
+        type: 'phase.completed',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-20T00:00:00Z',
+        sequence: 1,
+        protocol_version: 2,
+      }
+
+      expect(() => dispatchV2Event(event as any, localQueryClient)).not.toThrow()
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('agent.started still invalidates workflow queries after phase handlers removed', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.started',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-20T00:00:00Z',
+        sequence: 2,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      expect(spy).toHaveBeenCalled()
+      expect(spy.mock.calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
+    })
+
+    it('agent.completed still invalidates workflow queries after phase handlers removed', () => {
+      const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.completed',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-20T00:00:00Z',
+        sequence: 3,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, localQueryClient)
+
+      expect(spy).toHaveBeenCalled()
+      expect(spy.mock.calls.some((call: any) =>
+        JSON.stringify(call[0].queryKey).includes('workflow')
+      )).toBe(true)
     })
   })
 

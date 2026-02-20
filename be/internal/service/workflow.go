@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"os/user"
 	"strconv"
@@ -117,31 +116,13 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 
 // buildWorkflowInstance creates a WorkflowInstance from a workflow definition
 func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef) *model.WorkflowInstance {
-	phaseOrder := make([]string, len(wf.Phases))
-	phases := make(map[string]model.PhaseStatus)
-	var firstPhase string
-
-	for i, p := range wf.Phases {
-		phaseOrder[i] = p.ID
-		phases[p.ID] = model.PhaseStatus{Status: "pending"}
-		if i == 0 {
-			firstPhase = p.ID
-		}
-	}
-
-	phaseOrderJSON, _ := json.Marshal(phaseOrder)
-	phasesJSON, _ := json.Marshal(phases)
-
 	return &model.WorkflowInstance{
-		ID:           uuid.New().String(),
-		ProjectID:    projectID,
-		WorkflowID:   workflowName,
-		Status:       model.WorkflowInstanceActive,
-		CurrentPhase: sql.NullString{String: firstPhase, Valid: firstPhase != ""},
-		PhaseOrder:   string(phaseOrderJSON),
-		Phases:       string(phasesJSON),
-		Findings:     "{}",
-		RetryCount:   0,
+		ID:         uuid.New().String(),
+		ProjectID:  projectID,
+		WorkflowID: workflowName,
+		Status:     model.WorkflowInstanceActive,
+		Findings:   "{}",
+		RetryCount: 0,
 	}
 }
 
@@ -285,8 +266,6 @@ func (s *WorkflowService) Set(projectID, ticketID string, req *types.WorkflowSet
 	}
 
 	switch req.Key {
-	case "current_phase":
-		return s.wfiRepo.UpdateCurrentPhase(wi.ID, req.Value)
 	case "retry_count":
 		count, err := strconv.Atoi(req.Value)
 		if err != nil {
@@ -300,35 +279,8 @@ func (s *WorkflowService) Set(projectID, ticketID string, req *types.WorkflowSet
 			sql.NullString{String: req.Value, Valid: req.Value != ""}, now, wi.ID)
 		return err
 	default:
-		return fmt.Errorf("unknown key '%s'. Allowed: current_phase, retry_count, parent_session", req.Key)
+		return fmt.Errorf("unknown key '%s'. Allowed: retry_count, parent_session", req.Key)
 	}
-}
-
-// StartPhase starts a phase
-func (s *WorkflowService) StartPhase(projectID, ticketID string, req *types.PhaseUpdateRequest) error {
-	if req.Workflow == "" {
-		return fmt.Errorf("workflow is required")
-	}
-	wi, err := s.wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, req.Workflow)
-	if err != nil {
-		return err
-	}
-	return s.wfiRepo.StartPhase(wi.ID, req.Phase)
-}
-
-// CompletePhase completes a phase
-func (s *WorkflowService) CompletePhase(projectID, ticketID string, req *types.PhaseUpdateRequest) error {
-	if req.Result != "pass" && req.Result != "fail" && req.Result != "skipped" {
-		return fmt.Errorf("result must be 'pass', 'fail', or 'skipped'")
-	}
-	if req.Workflow == "" {
-		return fmt.Errorf("workflow is required")
-	}
-	wi, err := s.wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, req.Workflow)
-	if err != nil {
-		return err
-	}
-	return s.wfiRepo.CompletePhase(wi.ID, req.Phase, req.Result)
 }
 
 // GetWorkflowInstance returns the workflow instance for a ticket+workflow

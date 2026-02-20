@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"database/sql"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -165,8 +164,6 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 		TicketID:   "test-4",
 		WorkflowID: "test",
 		Status:     model.WorkflowInstanceActive,
-		PhaseOrder: `["analyzer","builder"]`,
-		Phases:     `{}`,
 		Findings:   "{}",
 	}
 
@@ -182,8 +179,6 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 		TicketID:   "test-4",
 		WorkflowID: "bugfix",
 		Status:     model.WorkflowInstanceActive,
-		PhaseOrder: `["investigation","implementation","verification"]`,
-		Phases:     `{}`,
 		Findings:   "{}",
 	}
 	err = wfiRepo.Create(wi2)
@@ -241,23 +236,13 @@ func TestListActiveByProject_OnlyActiveWorkflows(t *testing.T) {
 	env.CreateTicket(t, "test-7", "Ticket with completed workflow")
 
 	// Create completed workflow (should not be returned)
-	phases := map[string]model.PhaseStatus{
-		"phase1": {Status: "completed", Result: "pass"},
-	}
-	phasesJSON, _ := json.Marshal(phases)
-	phaseOrder := []string{"phase1"}
-	phaseOrderJSON, _ := json.Marshal(phaseOrder)
-
 	wi := &model.WorkflowInstance{
-		ID:           "wf-completed",
-		ProjectID:    env.ProjectID,
-		TicketID:     "test-7",
-		WorkflowID:   "test",
-		Status:       model.WorkflowInstanceCompleted,
-		CurrentPhase: sql.NullString{String: "phase1", Valid: true},
-		PhaseOrder:   string(phaseOrderJSON),
-		Phases:       string(phasesJSON),
-		Findings:     "{}",
+		ID:         "wf-completed",
+		ProjectID:  env.ProjectID,
+		TicketID:   "test-7",
+		WorkflowID: "test",
+		Status:     model.WorkflowInstanceCompleted,
+		Findings:   "{}",
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -397,8 +382,6 @@ func TestAttachWorkflowProgress_CaseInsensitiveTicketID(t *testing.T) {
 		TicketID:   strings.ToLower("TEST-10"),
 		WorkflowID: "test",
 		Status:     model.WorkflowInstanceActive,
-		PhaseOrder: `["phase1"]`,
-		Phases:     `{}`,
 		Findings:   "{}",
 	}
 

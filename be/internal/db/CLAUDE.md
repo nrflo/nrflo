@@ -74,9 +74,6 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                    CHECK (scope_type IN ('ticket', 'project'))       │
 │    status          TEXT NOT NULL                                     │
 │                    (active|completed|failed|project_completed)       │
-│    current_phase   TEXT               (currently active phase)       │
-│    phase_order     TEXT NOT NULL      (JSON array of phase IDs)      │
-│    phases          TEXT NOT NULL      (JSON: {phase: {status,result}})│
 │    findings        TEXT NOT NULL      (JSON: workflow-level findings)│
 │    retry_count     INTEGER NOT NULL DEFAULT 0                        │
 │    parent_session  TEXT               (orchestrating session UUID)   │

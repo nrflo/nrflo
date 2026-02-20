@@ -126,8 +126,8 @@ func TestFetchCallbackInstructions_ProjectScope(t *testing.T) {
 	// Create project-scoped workflow instance
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, '', 'test', 'active', 'project', '["analyzer"]', '{"analyzer":{"status":"pending"}}', '{}', 0, datetime('now'), datetime('now'))
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
+		VALUES (?, ?, '', 'test', 'active', 'project', '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, uuid.New().String(), env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("failed to create project workflow instance: %v", err)

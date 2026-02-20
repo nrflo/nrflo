@@ -118,8 +118,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Format as cli:model (e.g. claude:opus)
    - Each Spawn() call handles exactly one agent
 
-3. START PHASE & SPAWN
-   - Call WorkflowService.StartPhase() directly (in-process)
+3. SPAWN
    - Assemble prompt with ${MODEL_ID}, ${MODEL} placeholders
    - Spawn CLI process
    - Register session with pid and model
@@ -134,11 +133,10 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - pass_count >= 1 → layer passes (fan-in)
    - all skipped → layer passes
    - pass_count == 0 → layer fails
-   - Call WorkflowService.CompletePhase() directly (in-process)
 
 BROADCAST: The spawner broadcasts WebSocket events (agent.started,
-messages.updated, agent.completed, agent.take_control, phase.started,
-phase.completed) directly via the in-process WebSocket hub.
+messages.updated, agent.completed, agent.take_control) directly via
+the in-process WebSocket hub.
 messages.updated events are coalesced to one per session per 2s window.
 
 6. TAKE-CONTROL (interactive session)

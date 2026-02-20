@@ -88,19 +88,11 @@ func emptyWorkflowState() map[string]interface{} {
 
 // UpdateWorkflowRequest represents the request to update workflow state
 type UpdateWorkflowRequest struct {
-	Workflow     string  `json:"workflow"`
-	CurrentPhase *string `json:"current_phase,omitempty"`
+	Workflow string `json:"workflow"`
 }
 
-// handleUpdateWorkflow updates the workflow instance for a ticket
+// handleUpdateWorkflow broadcasts a workflow update event.
 func (s *Server) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
 	projectID := getProjectID(r)
 	if projectID == "" {
 		writeError(w, http.StatusBadRequest, "project is required")
@@ -115,38 +107,13 @@ func (s *Server) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
-
-	// Resolve workflow name
-	workflowName := req.Workflow
-	if workflowName == "" {
-		instances, err := wfiRepo.ListByTicket(projectID, id)
-		if err != nil || len(instances) == 0 {
-			writeError(w, http.StatusNotFound, "no workflow found on ticket")
-			return
-		}
-		workflowName = instances[0].WorkflowID
-	}
-
-	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, id, workflowName)
-	if err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	// Apply updates
-	if req.CurrentPhase != nil {
-		wfiRepo.UpdateCurrentPhase(wi.ID, *req.CurrentPhase)
-	}
-
 	// Broadcast workflow update
 	if s.wsHub != nil {
-		event := ws.NewEvent(ws.EventWorkflowUpdated, projectID, id, workflowName, nil)
+		event := ws.NewEvent(ws.EventWorkflowUpdated, projectID, id, req.Workflow, nil)
 		s.wsHub.Broadcast(event)
 	}
 
-	// Return the updated workflow
+	// Return the current workflow state
 	s.handleGetWorkflow(w, r)
 }
 

@@ -53,8 +53,6 @@ func TestCleanupCascade(t *testing.T) {
 	wfiRepo := NewWorkflowInstanceRepo(pool, clock.Real())
 	asRepo := NewAgentSessionRepo(database, clock.Real())
 
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 
 	// Create 3 completed workflow instances with different timestamps
@@ -72,8 +70,8 @@ func TestCleanupCascade(t *testing.T) {
 
 	for _, inst := range instances {
 		updatedAt := now.Add(inst.offset).Format(time.RFC3339Nano)
-		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			inst.id, "test-project", inst.ticketID, inst.workflowID, model.WorkflowInstanceCompleted, "ticket", string(phaseOrder), string(phases), string(findings), updatedAt, updatedAt)
+		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			inst.id, "test-project", inst.ticketID, inst.workflowID, model.WorkflowInstanceCompleted, "ticket", string(findings), updatedAt, updatedAt)
 		if err != nil {
 			t.Fatalf("failed to create workflow instance %s: %v", inst.id, err)
 		}
@@ -224,8 +222,6 @@ func TestAgentSessionCleanupIndependent(t *testing.T) {
 	wfiRepo := NewWorkflowInstanceRepo(pool, clock.Real())
 	asRepo := NewAgentSessionRepo(database, clock.Real())
 
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "in_progress"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 
 	// Create 1 active workflow instance
@@ -236,8 +232,6 @@ func TestAgentSessionCleanupIndependent(t *testing.T) {
 		WorkflowID: "test-workflow",
 		ScopeType:  "ticket",
 		Status:     model.WorkflowInstanceActive,
-		PhaseOrder: string(phaseOrder),
-		Phases:     string(phases),
 		Findings:   string(findings),
 	}
 	if err := wfiRepo.Create(wi); err != nil {

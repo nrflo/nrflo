@@ -167,20 +167,6 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     invalidateWorkflow(event, qc, isProjectScope)
   },
 
-  'phase.started': (event, qc, isProjectScope) => {
-    invalidateWorkflow(event, qc, isProjectScope)
-    if (!isProjectScope) {
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-  },
-
-  'phase.completed': (event, qc, isProjectScope) => {
-    invalidateWorkflow(event, qc, isProjectScope)
-    if (!isProjectScope) {
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-  },
-
   'findings.updated': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)
   },

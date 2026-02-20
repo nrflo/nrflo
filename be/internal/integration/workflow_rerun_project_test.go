@@ -42,15 +42,9 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 		t.Fatalf("failed to init project workflow: %v", err)
 	}
 
-	// Simulate completion: set status to project_completed and phases to completed
+	// Simulate completion: set status to project_completed
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
-	completedPhases := map[string]model.PhaseStatus{
-		"setup": {Status: "completed", Result: "pass"},
-		"impl":  {Status: "completed", Result: "pass"},
-	}
-	completedPhasesJSON, _ := json.Marshal(completedPhases)
 	wfiRepo.UpdateStatus(firstInstance.ID, model.WorkflowInstanceProjectCompleted)
-	wfiRepo.UpdatePhases(firstInstance.ID, string(completedPhasesJSON))
 	wfiRepo.UpdateFindings(firstInstance.ID, `{"some_key": "some_value"}`)
 
 	// Verify it's completed
@@ -104,12 +98,6 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	// New instance should have retry_count = 0 (fresh instance)
 	if newInstance.RetryCount != 0 {
 		t.Fatalf("expected retry_count 0 for new instance, got %d", newInstance.RetryCount)
-	}
-
-	// Verify phases are pending (fresh)
-	phases := newInstance.GetPhases()
-	if phases["setup"].Status != "pending" {
-		t.Fatalf("expected setup phase to be pending, got %v", phases["setup"].Status)
 	}
 
 	// Old instance should still be project_completed
@@ -205,13 +193,7 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 	}
 
 	// Set it to completed (ticket-scoped workflows use "completed" not "project_completed")
-	completedPhases := map[string]model.PhaseStatus{
-		"analyzer": {Status: "completed", Result: "pass"},
-		"builder":  {Status: "completed", Result: "pass"},
-	}
-	completedPhasesJSON, _ := json.Marshal(completedPhases)
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceCompleted)
-	wfiRepo.UpdatePhases(wi.ID, string(completedPhasesJSON))
 	wfiRepo.UpdateFindings(wi.ID, `{"ticket_finding": "ticket_value"}`)
 
 	// Verify status is completed

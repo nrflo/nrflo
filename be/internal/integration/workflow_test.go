@@ -198,20 +198,3 @@ func TestWorkflowDuplicateInit(t *testing.T) {
 	}
 }
 
-func TestWorkflowInvalidPhaseResult(t *testing.T) {
-	env := NewTestEnv(t)
-
-	env.CreateTicket(t, "WF-5", "Bad result")
-	env.InitWorkflow(t, "WF-5")
-	env.StartPhase(t, "WF-5", "analyzer")
-
-	// Complete with invalid result
-	err := env.WorkflowSvc.CompletePhase(env.ProjectID, "WF-5", &types.PhaseUpdateRequest{
-		Workflow: "test",
-		Phase:   "analyzer",
-		Result:  "invalid_result",
-	})
-	if err == nil {
-		t.Fatal("expected error for invalid phase result")
-	}
-}

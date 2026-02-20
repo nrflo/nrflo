@@ -37,9 +37,8 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	// Create workflow instance: layer 0 and 1 completed, layer 2 active
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-e2e', ?, 'CB-E2E', 'callback-e2e', 'active', '["analyzer","builder","verifier"]',
-		        '{"analyzer":{"status":"completed","result":"pass"},"builder":{"status":"completed","result":"pass"},"verifier":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-e2e', ?, 'CB-E2E', 'callback-e2e', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -83,15 +82,7 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	// === Step 2: Simulate layer 1 (builder) completing successfully ===
 	// In the real runLoop, after layer 1 completes, wasCallback would be set to true
 	// and clearCallbackMetadata would be called.
-
-	// Mark layer 1 as completed
-	_, err = env.pool.Exec(`
-		UPDATE workflow_instances
-		SET phases = json_set(phases, '$.builder', json_object('status', 'completed', 'result', 'pass'))
-		WHERE id = ?`, wfiID)
-	if err != nil {
-		t.Fatalf("failed to update phases: %v", err)
-	}
+	// Phase statuses are now derived from agent_sessions, so no phases column to update.
 
 	// === Step 3: Clear callback metadata (as runLoop does after callback layer completes) ===
 	env.orch.clearCallbackMetadata(context.Background(),wfiID)
@@ -150,9 +141,8 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-multi', ?, 'CB-MULTI', 'multi-cb', 'active', '["analyzer","builder","tester","verifier"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"completed"},"tester":{"status":"completed"},"verifier":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-multi', ?, 'CB-MULTI', 'multi-cb', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -242,9 +232,8 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-leak', ?, 'CB-LEAK', 'leak-test', 'active', '["analyzer","builder","tester","deployer"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"completed"},"tester":{"status":"active"},"deployer":{"status":"pending"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-leak', ?, 'CB-LEAK', 'leak-test', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -312,9 +301,8 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-proj', ?, '', 'proj-cb', 'active', 'project', '["analyzer","builder"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-proj', ?, '', 'proj-cb', 'active', 'project',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {

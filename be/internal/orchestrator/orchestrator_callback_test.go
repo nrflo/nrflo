@@ -39,9 +39,8 @@ func TestHandleCallback_SingleAgentCallback(t *testing.T) {
 	// Init workflow
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-1', ?, 'CB-1', 'callback-test', 'active', '["analyzer","builder","verifier"]',
-		        '{"analyzer":{"status":"completed","result":"pass"},"builder":{"status":"completed","result":"pass"},"verifier":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-1', ?, 'CB-1', 'callback-test', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -122,18 +121,6 @@ func TestHandleCallback_SingleAgentCallback(t *testing.T) {
 		t.Errorf("expected from_agent='verifier', got %v", callback["from_agent"])
 	}
 
-	// Verify phases reset for layers 1 and 2
-	phases := wi.GetPhases()
-	if phases["analyzer"].Status != "completed" {
-		t.Errorf("expected analyzer status=completed (not reset), got %s", phases["analyzer"].Status)
-	}
-	if phases["builder"].Status != "pending" {
-		t.Errorf("expected builder status=pending (reset), got %s", phases["builder"].Status)
-	}
-	if phases["verifier"].Status != "pending" {
-		t.Errorf("expected verifier status=pending (reset), got %s", phases["verifier"].Status)
-	}
-
 	// Verify agent sessions marked as callback with cleared findings
 	builderSess, _ := asRepo.Get("sess-builder")
 	if builderSess.Status != model.AgentSessionCallback {
@@ -189,9 +176,8 @@ func TestHandleCallback_MultiAgentLayerUsesLowestLevel(t *testing.T) {
 
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-multi', ?, 'CB-MULTI', 'multi-callback', 'active', '["analyzer","impl-a","impl-b","verifier"]',
-		        '{"analyzer":{"status":"completed"},"impl-a":{"status":"completed"},"impl-b":{"status":"completed"},"verifier":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-multi', ?, 'CB-MULTI', 'multi-callback', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -220,21 +206,6 @@ func TestHandleCallback_MultiAgentLayerUsesLowestLevel(t *testing.T) {
 		t.Errorf("expected targetIdx=0 (lowest level), got %d", targetIdx)
 	}
 
-	// Verify all phases from layer 0 onwards are reset
-	wi := env.getWorkflowInstance(t, wfiID)
-	phases := wi.GetPhases()
-	if phases["analyzer"].Status != "pending" {
-		t.Errorf("expected analyzer=pending, got %s", phases["analyzer"].Status)
-	}
-	if phases["impl-a"].Status != "pending" {
-		t.Errorf("expected impl-a=pending, got %s", phases["impl-a"].Status)
-	}
-	if phases["impl-b"].Status != "pending" {
-		t.Errorf("expected impl-b=pending, got %s", phases["impl-b"].Status)
-	}
-	if phases["verifier"].Status != "pending" {
-		t.Errorf("expected verifier=pending, got %s", phases["verifier"].Status)
-	}
 }
 
 // TestHandleCallback_InvalidLayerNumber tests that handleCallback returns -1
@@ -246,9 +217,8 @@ func TestHandleCallback_InvalidLayerNumber(t *testing.T) {
 
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-invalid', ?, 'CB-INVALID', 'test', 'active', '["analyzer","builder"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-invalid', ?, 'CB-INVALID', 'test', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -285,9 +255,8 @@ func TestHandleCallback_CallbackMetadataPreserved(t *testing.T) {
 
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-meta', ?, 'CB-META', 'test', 'active', '["analyzer","builder"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-meta', ?, 'CB-META', 'test', 'active',
 		        '{"existing_key":"existing_value"}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -345,9 +314,8 @@ func TestHandleCallback_SessionsExcludeRunningAndContinued(t *testing.T) {
 
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-excl', ?, 'CB-EXCL', 'test', 'active', '["analyzer","builder"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-excl', ?, 'CB-EXCL', 'test', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -443,9 +411,8 @@ func TestHandleCallback_CallbackToLayerZero(t *testing.T) {
 
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-zero', ?, 'CB-ZERO', 'test', 'active', '["analyzer","builder"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-zero', ?, 'CB-ZERO', 'test', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -471,17 +438,8 @@ func TestHandleCallback_CallbackToLayerZero(t *testing.T) {
 		t.Errorf("expected targetIdx=0, got %d", targetIdx)
 	}
 
-	// Verify both phases are reset
-	wi := env.getWorkflowInstance(t, wfiID)
-	phases := wi.GetPhases()
-	if phases["analyzer"].Status != "pending" {
-		t.Errorf("expected analyzer=pending, got %s", phases["analyzer"].Status)
-	}
-	if phases["builder"].Status != "pending" {
-		t.Errorf("expected builder=pending, got %s", phases["builder"].Status)
-	}
-
 	// Verify _callback metadata
+	wi := env.getWorkflowInstance(t, wfiID)
 	findings := wi.GetFindings()
 	callback := findings["_callback"].(map[string]interface{})
 	if callback["level"] != float64(0) {
@@ -524,9 +482,8 @@ func TestHandleCallback_ProjectScope(t *testing.T) {
 
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-proj', ?, '', 'test', 'active', 'project', '["analyzer","builder"]',
-		        '{"analyzer":{"status":"completed"},"builder":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-proj', ?, '', 'test', 'active', 'project',
 		        '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {

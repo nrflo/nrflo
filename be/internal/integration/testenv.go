@@ -215,36 +215,11 @@ func (e *TestEnv) InitWorkflowWithID(t *testing.T, ticketID, wfiID string) {
 	now := e.Clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := e.Pool.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status,
-			current_phase, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, ?, 'test', 'ticket', 'active', '', '[]', '{}', '{}', 0, ?, ?)`,
+			findings, retry_count, created_at, updated_at)
+		VALUES (?, ?, ?, 'test', 'ticket', 'active', '{}', 0, ?, ?)`,
 		wfiID, e.ProjectID, ticketID, now, now)
 	if err != nil {
 		t.Fatalf("failed to init workflow with ID %s: %v", wfiID, err)
-	}
-}
-
-// StartPhase starts a phase on the given ticket's workflow.
-func (e *TestEnv) StartPhase(t *testing.T, ticketID, phase string) {
-	t.Helper()
-	err := e.WorkflowSvc.StartPhase(e.ProjectID, ticketID, &types.PhaseUpdateRequest{
-		Workflow: "test",
-		Phase:   phase,
-	})
-	if err != nil {
-		t.Fatalf("failed to start phase %s: %v", phase, err)
-	}
-}
-
-// CompletePhase completes a phase on the given ticket's workflow.
-func (e *TestEnv) CompletePhase(t *testing.T, ticketID, phase, result string) {
-	t.Helper()
-	err := e.WorkflowSvc.CompletePhase(e.ProjectID, ticketID, &types.PhaseUpdateRequest{
-		Workflow: "test",
-		Phase:   phase,
-		Result:  result,
-	})
-	if err != nil {
-		t.Fatalf("failed to complete phase %s: %v", phase, err)
 	}
 }
 

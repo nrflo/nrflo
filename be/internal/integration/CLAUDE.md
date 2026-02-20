@@ -15,7 +15,6 @@ func TestSomething(t *testing.T) {
     // Setup via service helpers
     env.CreateTicket(t, "TICKET-1", "Test ticket")
     env.InitWorkflow(t, "TICKET-1")
-    env.StartPhase(t, "TICKET-1", "analyzer")
 
     // Socket calls for agent/findings
     env.MustExecute(t, "findings.add", map[string]interface{}{...}, nil)
@@ -32,13 +31,13 @@ func TestSomething(t *testing.T) {
 |--------|---------|
 | `CreateTicket(t, id, title)` | Create ticket via service |
 | `InitWorkflow(t, ticketID)` | Init "test" workflow via service |
-| `StartPhase(t, ticketID, phase)` | Start phase via service |
-| `CompletePhase(t, ticketID, phase, result)` | Complete phase via service |
+| `InitWorkflowWithID(t, ticketID, wfiID)` | Init workflow with specific instance ID |
+| `InsertAgentSession(t, ...)` | Insert agent session row directly |
+| `CompleteAgentSession(t, sessionID, result)` | Mark agent session completed |
 | `MustExecute(t, method, params, &result)` | Call socket method (agent/findings only) |
 | `ExpectError(t, method, params, code)` | Assert socket error response |
 | `NewWSClient(t, id, ticketID)` | Create subscribed WS test client |
 | `GetWorkflowInstanceID(t, ticketID, workflow)` | Get workflow instance UUID |
-| `InsertAgentSession(t, ...)` | Insert agent session row directly |
 
 Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.WorkflowSvc`, `env.AgentSvc`, `env.FindingsSvc`.
 

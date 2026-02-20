@@ -43,8 +43,6 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed", Result: "pass"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 
 	// Insert 5 instances: 3 completed, 2 active
@@ -67,8 +65,8 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 		// Create instances with different updated_at timestamps (older first)
 		updatedAt := now.Add(time.Duration(-5+i) * time.Minute).Format(time.RFC3339Nano)
 
-		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			inst.id, "test-project", inst.ticketID, inst.workflowID, inst.status, "ticket", string(phaseOrder), string(phases), string(findings), updatedAt, updatedAt)
+		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			inst.id, "test-project", inst.ticketID, inst.workflowID, inst.status, "ticket", string(findings), updatedAt, updatedAt)
 		if err != nil {
 			t.Fatalf("failed to create workflow instance %s: %v", inst.id, err)
 		}
@@ -161,8 +159,6 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 
 	// Insert 3 completed instances
@@ -178,8 +174,6 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 			WorkflowID: wfID,
 			ScopeType:  "ticket",
 			Status:     model.WorkflowInstanceCompleted,
-			PhaseOrder: string(phaseOrder),
-			Phases:     string(phases),
 			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {
@@ -236,8 +230,6 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 
 	// Insert only 2 completed instances
@@ -252,8 +244,6 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 			WorkflowID: "test-workflow",
 			ScopeType:  "ticket",
 			Status:     model.WorkflowInstanceCompleted,
-			PhaseOrder: string(phaseOrder),
-			Phases:     string(phases),
 			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {
@@ -338,8 +328,6 @@ func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "in_progress"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 
 	// Insert only active instances
@@ -355,8 +343,6 @@ func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
 			WorkflowID: wfID,
 			ScopeType:  "ticket",
 			Status:     model.WorkflowInstanceActive,
-			PhaseOrder: string(phaseOrder),
-			Phases:     string(phases),
 			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {

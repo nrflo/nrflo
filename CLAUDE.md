@@ -177,7 +177,7 @@ Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. Th
 
 ## State Storage
 
-Workflow runtime state is stored in two main tables: `workflow_instances` (one row per ticket+workflow, stores findings, retry count) and `agent_sessions` (one row per agent execution, stores result, pid, findings, context usage, timestamps). Phase statuses, phase order, and current phase are derived at read time from `agent_sessions` rows + workflow definition — the `phases`/`phase_order`/`current_phase` columns on `workflow_instances` are still written to (for rollback safety) but not read by the API. Ticket-scoped workflows enforce one instance per ticket+workflow; project-scoped workflows allow multiple concurrent instances. Completion statistics (`completed_at`, `total_duration_sec`, `total_tokens_used`) are computed from agent session data. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md) for full schema.
+Workflow runtime state is stored in two main tables: `workflow_instances` (one row per ticket+workflow, stores findings, retry count) and `agent_sessions` (one row per agent execution, stores result, pid, findings, context usage, timestamps). Phase statuses, phase order, and current phase are derived at read time from `agent_sessions` rows + workflow definition. Ticket-scoped workflows enforce one instance per ticket+workflow; project-scoped workflows allow multiple concurrent instances. Completion statistics (`completed_at`, `total_duration_sec`, `total_tokens_used`) are computed from agent session data. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md) for full schema.
 
 ## API Response Format
 

@@ -33,12 +33,6 @@ func TestCompletedWorkflowStats(t *testing.T) {
 	insertSessionWithContextLeft(t, env, "cs-sess-2", "CS-1", wfiID,
 		"builder", "implementor", "claude:opus", "completed", "pass", 25)
 
-	// Complete both phases
-	env.StartPhase(t, "CS-1", "analyzer")
-	env.CompletePhase(t, "CS-1", "analyzer", "pass")
-	env.StartPhase(t, "CS-1", "builder")
-	env.CompletePhase(t, "CS-1", "builder", "pass")
-
 	// Mark the workflow instance as completed (simulating orchestrator behavior)
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {

@@ -29,7 +29,7 @@ You are a test design agent. Your job is to create TDD-style tests that define t
 
 **Integration tests** (`be/internal/integration/`):
 - Use `NewTestEnv(t)` from `testenv.go` — creates isolated DB, socket, WS hub, seeded project + workflow
-- Helpers: `CreateTicket`, `InitWorkflow`, `StartPhase`, `CompletePhase`, `MustExecute`, `ExpectError`, `NewWSClient`, `InsertAgentSession`
+- Helpers: `CreateTicket`, `InitWorkflow`, `MustExecute`, `ExpectError`, `NewWSClient`, `InsertAgentSession`
 - Services directly available: `env.ProjectSvc`, `env.TicketSvc`, `env.WorkflowSvc`, `env.AgentSvc`, `env.FindingsSvc`
 - Read `be/internal/integration/testenv.go` for the full helper API
 

@@ -25,8 +25,6 @@ export type WSEventType =
   | 'agent.completed'
   | 'agent.continued'
   | 'agent.context_updated'
-  | 'phase.started'
-  | 'phase.completed'
   | 'findings.updated'
   | 'messages.updated'
   | 'workflow.updated'

@@ -68,8 +68,8 @@ func insertPtyTestSession(t *testing.T, dbPath, sessionID string, status model.A
 	}
 
 	wfiID := "wfi-pty-test"
-	_, err = database.Exec(`INSERT OR IGNORE INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, created_at, updated_at)
-		VALUES (?, 'proj-pty', 'TKT-PTY', 'test-wf', 'active', 'ticket', '[]', '{}', '{}', ?, ?)`, wfiID, now, now)
+	_, err = database.Exec(`INSERT OR IGNORE INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
+		VALUES (?, 'proj-pty', 'TKT-PTY', 'test-wf', 'active', 'ticket', '{}', ?, ?)`, wfiID, now, now)
 	if err != nil {
 		t.Fatalf("insertPtyTestSession: insert wfi: %v", err)
 	}

@@ -5,7 +5,6 @@ package orchestrator
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -221,30 +220,11 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			if err == nil && (wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceFailed) {
 				wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 				wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
-
-				// Rebuild fresh phases from workflow definition
-				phaseOrder := make([]string, len(svcWf.Phases))
-				phases := make(map[string]model.PhaseStatus)
-				var firstPhase string
-				for i, p := range svcWf.Phases {
-					phaseOrder[i] = p.ID
-					phases[p.ID] = model.PhaseStatus{Status: "pending"}
-					if i == 0 {
-						firstPhase = p.ID
-					}
-				}
-				phaseOrderJSON, _ := json.Marshal(phaseOrder)
-				phasesJSON, _ := json.Marshal(phases)
-				wfiRepo.UpdatePhases(wi.ID, string(phasesJSON))
-				wfiRepo.UpdateCurrentPhase(wi.ID, firstPhase)
 				wfiRepo.UpdateFindings(wi.ID, "{}")
 				wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
 
 				// Update in-memory copy
 				wi.Status = model.WorkflowInstanceActive
-				wi.PhaseOrder = string(phaseOrderJSON)
-				wi.Phases = string(phasesJSON)
-				wi.CurrentPhase = sql.NullString{String: firstPhase, Valid: firstPhase != ""}
 				wi.Findings = "{}"
 			}
 		}
@@ -544,11 +524,6 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Reset workflow instance status to active
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
-
-	// Reset phases in the failed layer back to pending
-	for _, p := range layerGroups[startLayerIdx].phases {
-		wfiRepo.ResetPhaseStatus(wi.ID, p.Agent)
-	}
 
 	// Increment retry count
 	wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
@@ -1053,11 +1028,10 @@ func (o *Orchestrator) handleCallback(
 		wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
 	}
 
-	// Reset phases for all layers from targetIdx to currentIdx (inclusive)
+	// Collect phase names for agent session reset
 	var resetPhases []string
 	for i := targetIdx; i <= currentIdx; i++ {
 		for _, p := range layerGroups[i].phases {
-			wfiRepo.ResetPhaseStatus(wfiID, p.Agent)
 			resetPhases = append(resetPhases, p.Agent)
 		}
 	}

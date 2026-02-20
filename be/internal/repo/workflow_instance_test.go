@@ -40,8 +40,6 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	// Create a workflow instance
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "pending"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 
 	wi := &model.WorkflowInstance{
@@ -51,8 +49,6 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 		WorkflowID: "test-workflow",
 		ScopeType:  "project",
 		Status:     model.WorkflowInstanceActive,
-		PhaseOrder: string(phaseOrder),
-		Phases:     string(phases),
 		Findings:   string(findings),
 	}
 
@@ -111,8 +107,6 @@ func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 		{"wfi-proj-completed", "wf-proj-completed", model.WorkflowInstanceProjectCompleted},
 	}
 
-	phaseOrder, _ := json.Marshal([]string{"phase1"})
-	phases, _ := json.Marshal(map[string]model.PhaseStatus{"phase1": {Status: "completed", Result: "pass"}})
 	findings, _ := json.Marshal(map[string]interface{}{})
 	phasesJSON, _ := json.Marshal([]map[string]interface{}{
 		{"agent": "test-agent", "layer": 0},
@@ -132,8 +126,6 @@ func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 			WorkflowID: inst.workflowID,
 			ScopeType:  "project",
 			Status:     inst.status,
-			PhaseOrder: string(phaseOrder),
-			Phases:     string(phases),
 			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {

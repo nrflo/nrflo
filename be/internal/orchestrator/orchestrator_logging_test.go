@@ -381,9 +381,9 @@ func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 	// Create workflow instance directly without ticket
 	wfiID := "test-wfi-nocall"
 	_, err := env.pool.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-	`, wfiID, env.project, "NONEXISTENT", "test", "active", "ticket", "[]", "{}")
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+	`, wfiID, env.project, "NONEXISTENT", "test", "active", "ticket")
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}

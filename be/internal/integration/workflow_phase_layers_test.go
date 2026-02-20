@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"database/sql"
 	"encoding/json"
 	"testing"
 	"time"
@@ -143,17 +142,14 @@ func TestBuildV4State_PhaseLayers_WorkflowDefMissing(t *testing.T) {
 	// Build a WorkflowInstance that points to a non-existent workflow ID.
 	// Use GetStatusByInstance directly — it doesn't require a DB row for the instance.
 	wi := &model.WorkflowInstance{
-		ID:           "test-instance-no-def",
-		ProjectID:    env.ProjectID,
-		WorkflowID:   "nonexistent-workflow-def",
-		Status:       model.WorkflowInstanceActive,
-		ScopeType:    "ticket",
-		CurrentPhase: sql.NullString{String: "phase1", Valid: true},
-		PhaseOrder:   `["phase1","phase2"]`,
-		Phases:       `{"phase1":{"status":"pending"},"phase2":{"status":"pending"}}`,
-		Findings:     "{}",
-		CreatedAt:    time.Now().UTC(),
-		UpdatedAt:    time.Now().UTC(),
+		ID:         "test-instance-no-def",
+		ProjectID:  env.ProjectID,
+		WorkflowID: "nonexistent-workflow-def",
+		Status:     model.WorkflowInstanceActive,
+		ScopeType:  "ticket",
+		Findings:   "{}",
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
 	}
 
 	raw, err := env.WorkflowSvc.GetStatusByInstance(wi)

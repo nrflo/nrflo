@@ -35,8 +35,8 @@ func setupTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
 	}
 
 	wfiID := "wfi-test-123"
-	_, err = database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, created_at, updated_at)
-		VALUES (?, 'proj', '', 'test-workflow', 'active', 'ticket', '[]', '{}', '{}', datetime('now'), datetime('now'))`, wfiID)
+	_, err = database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
+		VALUES (?, 'proj', '', 'test-workflow', 'active', 'ticket', '{}', datetime('now'), datetime('now'))`, wfiID)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}

@@ -18,9 +18,8 @@ func TestClearCallbackMetadata(t *testing.T) {
 	// Create workflow instance with callback metadata in findings
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-clear', ?, 'CB-CLEAR', 'test', 'active', '["analyzer","builder"]',
-		        '{"analyzer":{"status":"active"},"builder":{"status":"pending"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-clear', ?, 'CB-CLEAR', 'test', 'active',
 		        '{"_callback":{"level":0,"instructions":"Fix it","from_layer":1,"from_agent":"builder"},"other_key":"other_value"}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
@@ -63,9 +62,8 @@ func TestClearCallbackMetadata_NoCallback(t *testing.T) {
 	// Create workflow instance without callback metadata
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-noclear', ?, 'CB-NOCLEAR', 'test', 'active', '["analyzer"]',
-		        '{"analyzer":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-noclear', ?, 'CB-NOCLEAR', 'test', 'active',
 		        '{"some_key":"some_value"}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
@@ -94,9 +92,8 @@ func TestClearCallbackMetadata_EmptyFindings(t *testing.T) {
 	// Create workflow instance with empty findings
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-cb-empty', ?, 'CB-EMPTY', 'test', 'active', '["analyzer"]',
-		        '{"analyzer":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-cb-empty', ?, 'CB-EMPTY', 'test', 'active',
 		        '{}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
@@ -141,9 +138,8 @@ func TestClearCallbackMetadata_ProjectScope(t *testing.T) {
 	// Create project-scoped workflow instance with callback metadata
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-proj-clear', ?, '', 'test', 'active', 'project', '["analyzer"]',
-		        '{"analyzer":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
+		VALUES ('wfi-proj-clear', ?, '', 'test', 'active', 'project',
 		        '{"_callback":{"level":0,"instructions":"Project callback","from_agent":"verifier"},"project_key":"project_value"}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
@@ -188,9 +184,8 @@ func TestClearCallbackMetadata_MultipleCallbackFields(t *testing.T) {
 
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, phase_order, phases, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, 'CB-MULTI', 'test', 'active', '["analyzer"]',
-		        '{"analyzer":{"status":"active"}}',
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		VALUES (?, ?, 'CB-MULTI', 'test', 'active',
 		        ?, 0, datetime('now'), datetime('now'))
 		RETURNING id`, uuid.New().String(), env.project, string(findingsJSON)).Scan(&wfiID)
 	if err != nil {

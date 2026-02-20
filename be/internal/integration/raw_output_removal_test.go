@@ -262,9 +262,6 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 	env.InitWorkflow(t, "E2E-1")
 	wfiID := env.GetWorkflowInstanceID(t, "E2E-1", "test")
 
-	// Start analyzer phase
-	env.StartPhase(t, "E2E-1", "analyzer")
-
 	// Create analyzer session
 	env.InsertAgentSession(t, "sess-e2e-analyzer", "E2E-1", wfiID, "analyzer", "analyzer", "sonnet")
 
@@ -278,25 +275,19 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 		"instance_id": wfiID,
 	}, nil)
 
-	// Mark analyzer session as completed (agent.complete removed; set result directly)
+	// Mark analyzer session as completed
 	_, err := env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-analyzer")
 	if err != nil {
 		t.Fatalf("failed to complete analyzer session: %v", err)
 	}
 
-	env.CompletePhase(t, "E2E-1", "analyzer", "pass")
-
-	// Start builder phase
-	env.StartPhase(t, "E2E-1", "builder")
+	// Create and complete builder session
 	env.InsertAgentSession(t, "sess-e2e-builder", "E2E-1", wfiID, "builder", "builder", "opus")
 
-	// Mark builder session as completed (agent.complete removed; set result directly)
 	_, err = env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-builder")
 	if err != nil {
 		t.Fatalf("failed to complete builder session: %v", err)
 	}
-
-	env.CompletePhase(t, "E2E-1", "builder", "pass")
 
 	// Verify workflow status
 	statusRaw, err := env.WorkflowSvc.GetStatus(env.ProjectID, "E2E-1", &types.WorkflowGetRequest{

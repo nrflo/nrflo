@@ -256,13 +256,9 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 	logger.Info(ctx, "spawning agent", "agent_type", req.AgentType, "target", spawnTarget, "model", modelID, "workflow", req.WorkflowName, "layer", phase.Layer)
 
-	// Start phase
-	s.startPhase(ctx, wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID)
-
 	// Spawn agent
 	proc, err := s.spawnSingle(req, modelID, phase.ID, wi.ID)
 	if err != nil {
-		s.completePhase(ctx, wi.ID, req.ProjectID, req.TicketID, req.WorkflowName, phase.ID, "fail")
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
 	logger.Info(ctx, "agent process started", "model", modelID, "pid", proc.cmd.Process.Pid, "session_id", proc.sessionID)
@@ -507,11 +503,6 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					proc.sessionID, proc.agentID, "fail", "cancelled", proc.modelID)
 				completed = append(completed, proc)
 			}
-			wfiID := ""
-			if len(completed) > 0 {
-				wfiID = completed[0].workflowInstanceID
-			}
-			s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
 			return ctx.Err()
 		case restartSessionID := <-s.restartCh:
 			// Manual restart requested — find matching proc and initiate context save
@@ -742,35 +733,26 @@ func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, r
 		}
 	}
 
-	wfiID := ""
-	if len(completed) > 0 {
-		wfiID = completed[0].workflowInstanceID
-	}
-
 	// Callback detected — read callback_level from session findings and signal orchestrator
 	if callbackCount > 0 {
 		level, instructions := s.readCallbackFindings(callbackProc)
-		s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "callback")
 		logger.Info(ctx, "phase finalized", "phase", phase, "result", "CALLBACK", "callback_level", level)
 		return &CallbackError{Level: level, Instructions: instructions, AgentType: req.AgentType}
 	}
 
 	// All skipped = success (continue to next layer)
 	if skippedCount == len(completed) {
-		s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "skipped")
 		logger.Info(ctx, "phase finalized", "phase", phase, "result", "SKIPPED")
 		return nil
 	}
 
 	// At least one pass = success
 	if passCount >= 1 {
-		s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "pass")
 		logger.Info(ctx, "phase finalized", "phase", phase, "result", "PASS", "pass_count", passCount, "total", len(completed))
 		return nil
 	}
 
 	// No passes = fail
-	s.completePhase(ctx, wfiID, req.ProjectID, req.TicketID, req.WorkflowName, phase, "fail")
 
 	var failedModels []string
 	for _, proc := range completed {

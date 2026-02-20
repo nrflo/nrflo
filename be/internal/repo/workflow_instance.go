@@ -22,16 +22,15 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 	return &WorkflowInstanceRepo{pool: pool, clock: clk}
 }
 
-const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status, current_phase,
-	phase_order, phases, findings, retry_count, parent_session, created_at, updated_at`
+const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
+	findings, retry_count, parent_session, created_at, updated_at`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
 	wi := &model.WorkflowInstance{}
 	var createdAt, updatedAt string
 	err := scanner.Scan(
 		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
-		&wi.Status, &wi.CurrentPhase,
-		&wi.PhaseOrder, &wi.Phases, &wi.Findings,
+		&wi.Status, &wi.Findings,
 		&wi.RetryCount, &wi.ParentSession, &createdAt, &updatedAt,
 	)
 	if err != nil {
@@ -56,11 +55,10 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
-		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status, wi.CurrentPhase,
-		wi.PhaseOrder, wi.Phases, wi.Findings,
-		wi.RetryCount, wi.ParentSession, now, now,
+		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
+		wi.Findings, wi.RetryCount, wi.ParentSession, now, now,
 	)
 	if err != nil {
 		if wi.ScopeType == "ticket" && strings.Contains(err.Error(), "UNIQUE constraint") {
@@ -186,30 +184,6 @@ func (r *WorkflowInstanceRepo) ListByTicket(projectID, ticketID string) ([]*mode
 	return instances, nil
 }
 
-// UpdatePhases updates the phases JSON field
-func (r *WorkflowInstanceRepo) UpdatePhases(id string, phases string) error {
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	result, err := r.pool.Exec(
-		`UPDATE workflow_instances SET phases = ?, updated_at = ? WHERE id = ?`,
-		phases, now, id)
-	if err != nil {
-		return err
-	}
-	return checkAffected(result, id)
-}
-
-// UpdateCurrentPhase updates the current_phase field
-func (r *WorkflowInstanceRepo) UpdateCurrentPhase(id, phase string) error {
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	result, err := r.pool.Exec(
-		`UPDATE workflow_instances SET current_phase = ?, updated_at = ? WHERE id = ?`,
-		phase, now, id)
-	if err != nil {
-		return err
-	}
-	return checkAffected(result, id)
-}
-
 // UpdateStatus updates the workflow instance status
 func (r *WorkflowInstanceRepo) UpdateStatus(id string, status model.WorkflowInstanceStatus) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
@@ -244,60 +218,6 @@ func (r *WorkflowInstanceRepo) UpdateFindings(id string, findings string) error 
 		return err
 	}
 	return checkAffected(result, id)
-}
-
-// StartPhase sets a phase to in_progress and updates current_phase
-func (r *WorkflowInstanceRepo) StartPhase(id, phase string) error {
-	wi, err := r.Get(id)
-	if err != nil {
-		return err
-	}
-
-	phases := wi.GetPhases()
-	phases[phase] = model.PhaseStatus{Status: "in_progress"}
-	wi.SetPhases(phases)
-
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	_, err = r.pool.Exec(
-		`UPDATE workflow_instances SET phases = ?, current_phase = ?, updated_at = ? WHERE id = ?`,
-		wi.Phases, phase, now, id)
-	return err
-}
-
-// CompletePhase sets a phase to completed with a result
-func (r *WorkflowInstanceRepo) CompletePhase(id, phase, result string) error {
-	wi, err := r.Get(id)
-	if err != nil {
-		return err
-	}
-
-	phases := wi.GetPhases()
-	phases[phase] = model.PhaseStatus{Status: "completed", Result: result}
-	wi.SetPhases(phases)
-
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	_, err = r.pool.Exec(
-		`UPDATE workflow_instances SET phases = ?, updated_at = ? WHERE id = ?`,
-		wi.Phases, now, id)
-	return err
-}
-
-// ResetPhaseStatus resets a specific phase back to pending.
-func (r *WorkflowInstanceRepo) ResetPhaseStatus(id, phase string) error {
-	wi, err := r.Get(id)
-	if err != nil {
-		return err
-	}
-
-	phases := wi.GetPhases()
-	phases[phase] = model.PhaseStatus{Status: "pending"}
-	wi.SetPhases(phases)
-
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	_, err = r.pool.Exec(
-		`UPDATE workflow_instances SET phases = ?, updated_at = ? WHERE id = ?`,
-		wi.Phases, now, id)
-	return err
 }
 
 // CleanupKeepLatest deletes non-active workflow instances beyond the keep limit,

@@ -93,10 +93,10 @@ func TestWorkflowsTableSchemaAfterMigration018(t *testing.T) {
 func TestWorkflowInstancesTableSchemaAfterMigration018(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Expected columns (no category)
+	// Expected columns (no category, no phase columns after migration 000028)
 	expectedColumns := []string{
 		"id", "project_id", "ticket_id", "workflow_id", "scope_type", "status",
-		"current_phase", "phase_order", "phases", "findings", "retry_count",
+		"findings", "retry_count",
 		"parent_session", "created_at", "updated_at",
 	}
 
@@ -209,11 +209,9 @@ func TestWorkflowInstanceCRUDWithoutCategory(t *testing.T) {
 		t.Fatalf("expected status 'active', got %v", status)
 	}
 
-	// Start and complete a phase (with agent session for derivation)
-	env.StartPhase(t, "WI-NOCATS-1", "analyzer")
+	// Create and complete an agent session (phase status derived from agent_sessions)
 	env.InsertAgentSession(t, "sess-wi-nocats", "WI-NOCATS-1", wfiID, "analyzer", "analyzer", "sonnet")
 	env.CompleteAgentSession(t, "sess-wi-nocats", "pass")
-	env.CompletePhase(t, "WI-NOCATS-1", "analyzer", "pass")
 
 	// Verify phase completion via service
 	statusRaw, err := env.WorkflowSvc.GetStatus(env.ProjectID, "WI-NOCATS-1", &types.WorkflowGetRequest{
@@ -423,9 +421,6 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 	env.InitWorkflow(t, "E2E-NOCATS-1")
 	wfiID := env.GetWorkflowInstanceID(t, "E2E-NOCATS-1", "test")
 
-	// Start analyzer phase
-	env.StartPhase(t, "E2E-NOCATS-1", "analyzer")
-
 	// Create analyzer session
 	env.InsertAgentSession(t, "sess-e2e-nocats-analyzer", "E2E-NOCATS-1", wfiID, "analyzer", "analyzer", "sonnet")
 
@@ -439,25 +434,19 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 		"instance_id": wfiID,
 	}, nil)
 
-	// Mark analyzer session as completed (agent.complete removed; set result directly)
+	// Mark analyzer session as completed
 	_, err := env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-nocats-analyzer")
 	if err != nil {
 		t.Fatalf("failed to complete analyzer session: %v", err)
 	}
 
-	env.CompletePhase(t, "E2E-NOCATS-1", "analyzer", "pass")
-
-	// Start builder phase
-	env.StartPhase(t, "E2E-NOCATS-1", "builder")
+	// Create and complete builder session
 	env.InsertAgentSession(t, "sess-e2e-nocats-builder", "E2E-NOCATS-1", wfiID, "builder", "builder", "opus")
 
-	// Mark builder session as completed (agent.complete removed; set result directly)
 	_, err = env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-nocats-builder")
 	if err != nil {
 		t.Fatalf("failed to complete builder session: %v", err)
 	}
-
-	env.CompletePhase(t, "E2E-NOCATS-1", "builder", "pass")
 
 	// Verify workflow status
 	statusRaw, err := env.WorkflowSvc.GetStatus(env.ProjectID, "E2E-NOCATS-1", &types.WorkflowGetRequest{

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { DailyStats } from '@/components/layout/DailyStats'
+import { UsageLimits } from '@/components/layout/UsageLimits'
 import { useProjectStore } from '@/stores/projectStore'
 
 export function Header() {
@@ -79,6 +80,7 @@ export function Header() {
 
         <div className="flex-1" />
 
+        <UsageLimits />
         <DailyStats />
 
         <div className="flex-1" />

@@ -88,17 +88,31 @@ func TestCodexAdapter_BuildCommand(t *testing.T) {
 	requiredArgs := []string{
 		"exec",
 		"--json",
-		"--full-auto",
-		"--sandbox", "danger-full-access",
-		"--skip-git-repo-check",
 		"--model", "gpt-5.3-codex",
-		"model_reasoning_effort=high",
 	}
 
 	for _, arg := range requiredArgs {
 		if !strings.Contains(args, arg) {
 			t.Errorf("Command args missing %q: %s", arg, args)
 		}
+	}
+
+	// Reasoning effort must have quoted value
+	if !strings.Contains(args, `model_reasoning_effort="high"`) {
+		t.Errorf("Command args missing quoted reasoning effort: %s", args)
+	}
+
+	// Removed flags must NOT be present
+	removedFlags := []string{"--full-auto", "--sandbox", "--skip-git-repo-check"}
+	for _, flag := range removedFlags {
+		if strings.Contains(args, flag) {
+			t.Errorf("Command args should not contain %q: %s", flag, args)
+		}
+	}
+
+	// Prompt must NOT appear in args — it's piped via stdin
+	if strings.Contains(args, "System prompt") || strings.Contains(args, "Do the task") {
+		t.Errorf("Command args should not contain prompt text (stdin adapter): %s", args)
 	}
 
 	// Check working directory
@@ -231,7 +245,7 @@ func TestUsesStdinPrompt(t *testing.T) {
 	}{
 		{"claude", false},
 		{"opencode", true},
-		{"codex", false},
+		{"codex", true},
 	}
 
 	for _, tt := range tests {

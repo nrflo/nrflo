@@ -104,6 +104,8 @@ type processInfo struct {
 	lowContextSaving bool // True while initiateContextSave is running
 	// Docker container name (empty when not using Docker isolation)
 	containerName string
+	// External session ID (e.g., codex thread_id) — for logging only
+	externalSessionID string
 }
 
 // Spawner manages agent lifecycle

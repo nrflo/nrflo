@@ -110,10 +110,26 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 
 	// === Codex CLI format ===
 	case "thread.started":
-		// Session start from codex
+		if threadID, ok := data["thread_id"].(string); ok && threadID != "" {
+			proc.externalSessionID = threadID
+			fmt.Printf("  %s Codex thread: %s\n", s.formatPrefix(proc), threadID)
+		}
 
 	case "turn.started":
 		// Turn start from codex
+
+	case "item.started":
+		// In-progress item from codex (logging only, no DB tracking)
+		item, _ := data["item"].(map[string]interface{})
+		if item != nil {
+			itemType, _ := item["type"].(string)
+			if itemType == "command_execution" {
+				command, _ := item["command"].(string)
+				if command != "" {
+					fmt.Printf("  %s [executing] %s\n", s.formatPrefix(proc), command)
+				}
+			}
+		}
 
 	case "item.completed":
 		// Item completion from codex - contains messages and tool calls
@@ -121,10 +137,20 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 		if item != nil {
 			itemType, _ := item["type"].(string)
 			switch itemType {
+			case "reasoning":
+				text, _ := item["text"].(string)
+				if text != "" {
+					s.handleTextMessage(proc, "[thinking] "+text)
+				}
 			case "agent_message":
 				text, _ := item["text"].(string)
 				if text != "" {
 					s.handleTextMessage(proc, text)
+				}
+			case "command_execution":
+				command, _ := item["command"].(string)
+				if command != "" {
+					s.handleToolUse(proc, "Bash", map[string]interface{}{"command": command})
 				}
 			case "tool_call":
 				toolName, _ := item["name"].(string)
@@ -138,7 +164,19 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 		}
 
 	case "turn.completed":
-		// Turn completion from codex
+		usage, _ := data["usage"].(map[string]interface{})
+		if usage != nil {
+			inputTokens, _ := usage["input_tokens"].(float64)
+			outputTokens, _ := usage["output_tokens"].(float64)
+			totalUsed := int(inputTokens) + int(outputTokens)
+			maxContext := 200000
+			pctLeft := 100 - (totalUsed * 100 / maxContext)
+			if pctLeft < 0 {
+				pctLeft = 0
+			}
+			proc.contextLeft = pctLeft
+			s.updateContextLeft(proc)
+		}
 	}
 }
 

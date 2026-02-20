@@ -43,10 +43,11 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │ CodexAdapter                                                 │    │
 │  │   ├── Name: "codex"                                         │    │
+│  │   ├── Command: codex exec --json --model -c                 │    │
 │  │   ├── Model: codex_gpt_normal/high → gpt-5.3-codex          │    │
 │  │   │   └── Both use reasoning effort "high"                   │    │
-│  │   ├── SessionID: ✗ (generates own)                          │    │
-│  │   ├── SystemPromptFile: ✗ (prompt passed inline)            │    │
+│  │   ├── SessionID: ✗ (generates own thread_id)                │    │
+│  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
 │  │   └── Resume: ✗                                             │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                      │
@@ -295,6 +296,14 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 │    ├── Short (≤500 chars): Displayed in full                        │
 │    └── Long (>500 chars): Truncated as START...END                  │
 │                                                                      │
+│  Codex CLI format (type: "thread.started", "item.*", "turn.*"):    │
+│    thread.started → extracts thread_id as externalSessionID        │
+│    item.completed type=reasoning → [thinking] prefix + text         │
+│    item.completed type=agent_message → text message                 │
+│    item.completed type=command_execution → [Bash] tool use          │
+│    item.started type=command_execution → console log only           │
+│    turn.completed → usage tokens → contextLeft (200k window)        │
+│                                                                      │
 │  Stderr capture: [stderr] Error message from CLI                     │
 │  Scanner buffer: 10MB limit for large JSON outputs                  │
 │                                                                      │
@@ -307,8 +316,10 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 
 | File | Tests |
 |------|-------|
-| `cli_adapter_test.go` | CLI adapter unit tests |
+| `cli_adapter_test.go` | CLI adapter unit tests (claude, opencode, codex) |
 | `docker_adapter_test.go` | Docker CLI adapter decorator tests |
+| `output_codex_test.go` | Codex output parsing: thread.started, item types, turn.completed token counting |
+| `context_test.go` | Context left DB read/write tests |
 | `template_project_findings_test.go` | Project findings template expansion tests |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 

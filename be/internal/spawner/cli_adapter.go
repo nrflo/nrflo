@@ -244,19 +244,14 @@ func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 	model := a.MapModel(opts.Model)
 	reasoningEffort := a.GetReasoningEffort(opts.Model)
 
-	// Codex doesn't support --append-system-prompt-file, so we pass full prompt as message
-	fullPrompt := opts.Prompt + "\n\n" + opts.InitialPrompt
-
 	args := []string{
 		"exec",
 		"--json",
-		"--full-auto",
-		"--sandbox", "danger-full-access",
-		"--skip-git-repo-check",
 		"--model", model,
-		"-c", fmt.Sprintf("model_reasoning_effort=%s", reasoningEffort),
-		fullPrompt,
+		"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", reasoningEffort),
 	}
+
+	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
 
 	cmd := exec.Command("codex", args...)
 	cmd.Dir = opts.WorkDir
@@ -290,7 +285,7 @@ func (a *CodexAdapter) SupportsSessionID() bool {
 }
 
 func (a *CodexAdapter) SupportsSystemPromptFile() bool {
-	return false // Must pass prompt inline
+	return false // Prompt piped via stdin
 }
 
 func (a *CodexAdapter) SupportsResume() bool {
@@ -298,7 +293,7 @@ func (a *CodexAdapter) SupportsResume() bool {
 }
 
 func (a *CodexAdapter) UsesStdinPrompt() bool {
-	return false
+	return true
 }
 
 func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {

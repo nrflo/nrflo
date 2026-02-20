@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"be/internal/db"
+	"be/internal/ws"
 )
 
 // readContextLeftFromDB reads context_left from the database for all running processes
@@ -48,4 +49,25 @@ func readContextLeftFromDB(pool *db.Pool, procs []*processInfo) {
 			p.contextLeft = cl
 		}
 	}
+}
+
+// updateContextLeft persists context_left to the database and broadcasts a WS event.
+// Called from processOutput when turn.completed provides token usage (e.g., codex).
+func (s *Spawner) updateContextLeft(proc *processInfo) {
+	pool := s.pool()
+	if pool == nil {
+		return
+	}
+
+	_, err := pool.Exec(
+		`UPDATE agent_sessions SET context_left = ? WHERE id = ?`,
+		proc.contextLeft, proc.sessionID)
+	if err != nil {
+		return
+	}
+
+	s.broadcast(ws.EventAgentContextUpdated, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
+		"session_id":   proc.sessionID,
+		"context_left": proc.contextLeft,
+	})
 }

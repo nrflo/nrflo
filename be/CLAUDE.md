@@ -60,6 +60,12 @@ be/
 │   ├── pty/                     # PTY session management for interactive agent control
 │   │   ├── session.go           # Session struct wrapping creack/pty (spawn, read/write, resize, close)
 │   │   └── manager.go           # Manager: create/get/remove/close-all PTY sessions by session ID
+│   ├── usagelimits/             # CLI usage limits scraper (Claude, Codex)
+│   │   ├── types.go             # UsageLimits, ToolUsage, UsageMetric structs
+│   │   ├── fetcher.go           # PTY-based scraper: spawn CLI, send /usage or /status, read output
+│   │   ├── ansi.go              # ANSI escape code stripping (cursor moves, SGR, OSC)
+│   │   ├── parser.go            # Output parsing: Claude /usage and Codex /status regex extraction
+│   │   └── cache.go             # Thread-safe cache with RWMutex
 │   ├── config/                  # Configuration management
 │   │   └── config.go
 │   ├── client/                  # Socket + HTTP clients
@@ -191,6 +197,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Database schema, migrations, connection pool |
 | `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Service layer, file mapping, workflow types, common tasks |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
+| `internal/usagelimits/` | — | CLI usage scraper, ANSI stripping, parser, cache |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
 
 ## Running Tests

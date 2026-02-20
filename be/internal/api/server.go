@@ -16,19 +16,21 @@ import (
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
+	"be/internal/usagelimits"
 	"be/internal/ws"
 )
 
 // Server represents the HTTP API server
 type Server struct {
-	config       *config.Config
-	dataPath     string
-	httpServer   *http.Server
-	wsHub        *ws.Hub
-	orchestrator *orchestrator.Orchestrator
-	chainRunner  *orchestrator.ChainRunner
-	ptyManager   *ptyPkg.Manager
-	clock        clock.Clock
+	config           *config.Config
+	dataPath         string
+	httpServer       *http.Server
+	wsHub            *ws.Hub
+	orchestrator     *orchestrator.Orchestrator
+	chainRunner      *orchestrator.ChainRunner
+	ptyManager       *ptyPkg.Manager
+	clock            clock.Clock
+	usageLimitsCache *usagelimits.Cache
 }
 
 // NewServer creates a new API server
@@ -37,13 +39,14 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 	hub := ws.NewHub(clk)
 	orch := orchestrator.New(dataPath, hub, clk)
 	return &Server{
-		config:       cfg,
-		dataPath:     dataPath,
-		wsHub:        hub,
-		orchestrator: orch,
-		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
-		ptyManager:   ptyPkg.NewManager(),
-		clock:        clk,
+		config:           cfg,
+		dataPath:         dataPath,
+		wsHub:            hub,
+		orchestrator:     orch,
+		chainRunner:      orchestrator.NewChainRunner(orch, dataPath, hub, clk),
+		ptyManager:       ptyPkg.NewManager(),
+		clock:            clk,
+		usageLimitsCache: usagelimits.NewCache(),
 	}
 }
 
@@ -64,6 +67,9 @@ func (s *Server) Start(port int) error {
 
 	// Start retention cleanup for workflow instances and agent sessions
 	s.startRetentionCleanup()
+
+	// Start background usage limits fetcher
+	s.startUsageLimitsFetcher()
 
 	// Start WebSocket hub
 	go s.wsHub.Run()
@@ -176,6 +182,27 @@ func (s *Server) startRetentionCleanup() {
 		defer ticker.Stop()
 		for range ticker.C {
 			cleanup()
+		}
+	}()
+}
+
+// startUsageLimitsFetcher runs a background goroutine that fetches CLI usage
+// limits on startup and every 20 minutes thereafter.
+func (s *Server) startUsageLimitsFetcher() {
+	fetch := func() {
+		data := usagelimits.FetchAll()
+		s.usageLimitsCache.Set(data)
+		logger.Info(context.Background(), "usage-limits: fetched",
+			"claude_available", data.Claude.Available,
+			"codex_available", data.Codex.Available)
+	}
+
+	go func() {
+		fetch()
+		ticker := time.NewTicker(20 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			fetch()
 		}
 	}()
 }
@@ -348,6 +375,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Search
 	mux.HandleFunc("GET /api/v1/search", s.handleSearch)
+
+	// Usage limits (global, no project scoping)
+	mux.HandleFunc("GET /api/v1/usage-limits", s.handleGetUsageLimits)
 
 	// Status/Dashboard
 	mux.HandleFunc("GET /api/v1/status", s.handleStatus)

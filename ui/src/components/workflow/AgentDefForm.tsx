@@ -57,7 +57,10 @@ export function AgentDefForm({
               { value: 'opus', label: 'opus' },
               { value: 'sonnet', label: 'sonnet' },
               { value: 'haiku', label: 'haiku' },
-              { value: 'gpt_5.3', label: 'gpt_5.3' },
+              { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },
+              { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
+              { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
+              { value: 'codex_gpt_high', label: 'codex_gpt_high' },
             ]}
           />
         </div>

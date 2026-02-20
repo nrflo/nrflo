@@ -295,23 +295,15 @@ nrworkflow findings add TICKET-1 implementor summary:'Fixed the auth bug' files_
 
 | Model value | Maps to |
 |-------------|---------|
-| `opus` | `anthropic/claude-opus-4-5` |
-| `sonnet` | `anthropic/claude-sonnet-4-5` |
-| `haiku` | `anthropic/claude-haiku-4-5` |
-| `gpt_5.3` | `openai/gpt-5.3-codex` with `--variant xhigh` |
-| `gpt_max` | `openai/gpt-5.2-codex` with `--variant max` |
-| `gpt_high` | `openai/gpt-5.2-codex` with `--variant high` |
-| `gpt_medium` | `openai/gpt-5.2-codex` with `--variant medium` |
-| `gpt_low` | `openai/gpt-5.2-codex` with `--variant low` |
+| `opencode_gpt_normal` | `openai/gpt-5.3-codex` with `--variant high` |
+| `opencode_gpt_high` | `openai/gpt-5.3-codex` with `--variant high` |
 
 **Codex (`codex` CLI):**
 
 | Model value | Maps to |
 |-------------|---------|
-| `gpt_5.3` | `gpt-5.3` reasoning effort "xhigh" |
-| `gpt_xhigh` | `gpt-5.2-codex` reasoning effort "xhigh" |
-| `gpt_high` / `opus` | `gpt-5.2-codex` reasoning effort "high" |
-| `gpt_medium` / `sonnet` / `haiku` | `gpt-5.2-codex` reasoning effort "medium" |
+| `codex_gpt_normal` | `gpt-5.3-codex` reasoning effort "high" |
+| `codex_gpt_high` | `gpt-5.3-codex` reasoning effort "high" |
 
 > Check `be/internal/spawner/CLAUDE.md` for the latest model mapping if new adapters are added.
 

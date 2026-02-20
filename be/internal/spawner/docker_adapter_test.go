@@ -91,7 +91,7 @@ func TestDockerCLIAdapter_DelegatesMethods(t *testing.T) {
 	if got := adapter.Name(); got != "opencode" {
 		t.Errorf("Name() = %q, want %q", got, "opencode")
 	}
-	if got := adapter.MapModel("gpt_high"); got != "openai/gpt-5.2" {
+	if got := adapter.MapModel("opencode_gpt_high"); got != "openai/gpt-5.2" {
 		t.Errorf("MapModel() = %q, want %q", got, "openai/gpt-5.2")
 	}
 	if adapter.SupportsSessionID() {

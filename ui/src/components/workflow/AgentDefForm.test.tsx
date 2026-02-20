@@ -53,7 +53,7 @@ function getRestartInput() {
 
 describe('AgentDefForm', () => {
   describe('model dropdown', () => {
-    it('renders model dropdown with exactly 4 options', async () => {
+    it('renders model dropdown with exactly 7 options', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
@@ -66,10 +66,10 @@ describe('AgentDefForm', () => {
       // Each option is rendered as a div with the label text inside the dropdown menu
       const optionsContainer = dropdownBtn.parentElement!.querySelector('.absolute')!
       const optionDivs = optionsContainer.querySelectorAll('.cursor-pointer')
-      expect(optionDivs).toHaveLength(4)
+      expect(optionDivs).toHaveLength(7)
     })
 
-    it('contains opus, sonnet, haiku, gpt_5.3 options', async () => {
+    it('contains all model options', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
@@ -77,7 +77,7 @@ describe('AgentDefForm', () => {
 
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
-      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'gpt_5.3'])
+      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high'])
     })
 
     it('defaults to sonnet', () => {
@@ -105,14 +105,14 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'gpt_5.3')
+      await selectDropdownOption(user, getModelDropdownButton(), 'opencode_gpt_high')
 
       const submitButton = screen.getByRole('button', { name: /create/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt_5.3',
+          model: 'opencode_gpt_high',
         })
       )
     })
@@ -329,13 +329,13 @@ describe('AgentDefForm', () => {
       expect(getModelDropdownButton().textContent).toContain('haiku')
     })
 
-    it('gpt_5.3 option exists and is selectable', async () => {
+    it('opencode_gpt_high option exists and is selectable', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'gpt_5.3')
+      await selectDropdownOption(user, getModelDropdownButton(), 'opencode_gpt_high')
 
-      expect(getModelDropdownButton().textContent).toContain('gpt_5.3')
+      expect(getModelDropdownButton().textContent).toContain('opencode_gpt_high')
     })
 
     it('no extra model options exist', async () => {
@@ -348,8 +348,8 @@ describe('AgentDefForm', () => {
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
 
-      expect(optionTexts).toHaveLength(4)
-      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'gpt_5.3'])
+      expect(optionTexts).toHaveLength(7)
+      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high'])
     })
   })
 

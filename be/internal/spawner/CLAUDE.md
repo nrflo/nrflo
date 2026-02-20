@@ -31,11 +31,10 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │ OpencodeAdapter                                              │    │
 │  │   ├── Name: "opencode"                                      │    │
-│  │   ├── Model: provider/model (anthropic/claude-opus-4-5)     │    │
-│  │   │   ├── Auto-maps: opus → anthropic/claude-opus-4-5       │    │
-│  │   │   └── GPT aliases: gpt_high → openai/gpt-5.2-codex      │    │
-│  │   ├── Reasoning: --variant (max, high, medium, low)         │    │
-│  │   │   └── gpt_max → max, gpt_high → high, etc.              │    │
+│  │   ├── Model: provider/model format                          │    │
+│  │   │   ├── opencode_gpt_normal → openai/gpt-5.3-codex        │    │
+│  │   │   └── opencode_gpt_high → openai/gpt-5.3-codex          │    │
+│  │   ├── Reasoning: --variant high (both models)               │    │
 │  │   ├── SessionID: ✗ (generates own)                          │    │
 │  │   ├── SystemPromptFile: ✗                                   │    │
 │  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
@@ -44,8 +43,8 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │ CodexAdapter                                                 │    │
 │  │   ├── Name: "codex"                                         │    │
-│  │   ├── Model: gpt-5.2-codex with reasoning effort levels     │    │
-│  │   │   └── gpt_high → high, gpt_xhigh → xhigh, etc.          │    │
+│  │   ├── Model: codex_gpt_normal/high → gpt-5.3-codex          │    │
+│  │   │   └── Both use reasoning effort "high"                   │    │
 │  │   ├── SessionID: ✗ (generates own)                          │    │
 │  │   ├── SystemPromptFile: ✗ (prompt passed inline)            │    │
 │  │   └── Resume: ✗                                             │    │
@@ -89,23 +88,14 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 | (any) | `DockerCLIAdapter` | Wraps inner adapter (decorator) | Delegates to inner |
 
 **Model mapping for opencode:**
-- `opus` → `anthropic/claude-opus-4-5`
-- `sonnet` → `anthropic/claude-sonnet-4-5`
-- `haiku` → `anthropic/claude-haiku-4-5`
-- `gpt_max` → `openai/gpt-5.2-codex` with `--variant max`
-- `gpt_high` → `openai/gpt-5.2-codex` with `--variant high`
-- `gpt_medium` → `openai/gpt-5.2-codex` with `--variant medium`
-- `gpt_low` → `openai/gpt-5.2-codex` with `--variant low`
-- Full format (`openai/gpt-5.2`) → passed as-is (no variant)
+- `opencode_gpt_normal` → `openai/gpt-5.3-codex` with `--variant high`
+- `opencode_gpt_high` → `openai/gpt-5.3-codex` with `--variant high`
+- Full format (`openai/gpt-5.3-codex`) → passed as-is (no variant)
 
 **Model mapping for codex:**
-- `gpt_xhigh` → `gpt-5.2-codex` with reasoning effort "xhigh"
-- `gpt_high` → `gpt-5.2-codex` with reasoning effort "high"
-- `opus` → `gpt-5.2-codex` with reasoning effort "high"
-- `gpt_medium` → `gpt-5.2-codex` with reasoning effort "medium"
-- `sonnet` → `gpt-5.2-codex` with reasoning effort "medium"
-- `haiku` → `gpt-5.2-codex` with reasoning effort "medium"
-- Custom model names → passed as-is with reasoning effort "medium"
+- `codex_gpt_normal` → `gpt-5.3-codex` with reasoning effort "high"
+- `codex_gpt_high` → `gpt-5.3-codex` with reasoning effort "high"
+- Custom model names → passed as-is with reasoning effort "high"
 
 ## Database Access
 

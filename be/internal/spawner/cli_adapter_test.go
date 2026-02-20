@@ -33,12 +33,8 @@ func TestCodexAdapter_MapModel(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"gpt_xhigh", "gpt-5.2-codex"},
-		{"gpt_high", "gpt-5.2-codex"},
-		{"gpt_medium", "gpt-5.2-codex"},
-		{"opus", "gpt-5.2-codex"},
-		{"sonnet", "gpt-5.2-codex"},
-		{"haiku", "gpt-5.2-codex"},
+		{"codex_gpt_normal", "gpt-5.3-codex"},
+		{"codex_gpt_high", "gpt-5.3-codex"},
 		{"custom-model", "custom-model"},
 	}
 
@@ -57,13 +53,9 @@ func TestCodexAdapter_GetReasoningEffort(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"gpt_xhigh", "xhigh"},
-		{"gpt_high", "high"},
-		{"opus", "high"},
-		{"gpt_medium", "medium"},
-		{"sonnet", "medium"},
-		{"haiku", "medium"},
-		{"custom", "medium"},
+		{"codex_gpt_normal", "high"},
+		{"codex_gpt_high", "high"},
+		{"custom", "high"},
 	}
 
 	for _, tt := range tests {
@@ -78,7 +70,7 @@ func TestCodexAdapter_BuildCommand(t *testing.T) {
 	adapter := &CodexAdapter{}
 
 	opts := SpawnOptions{
-		Model:         "gpt_high",
+		Model:         "codex_gpt_high",
 		Prompt:        "System prompt",
 		InitialPrompt: "Do the task",
 		WorkDir:       "/tmp",
@@ -99,7 +91,7 @@ func TestCodexAdapter_BuildCommand(t *testing.T) {
 		"--full-auto",
 		"--sandbox", "danger-full-access",
 		"--skip-git-repo-check",
-		"--model", "gpt-5.2-codex",
+		"--model", "gpt-5.3-codex",
 		"model_reasoning_effort=high",
 	}
 
@@ -122,10 +114,8 @@ func TestOpencodeAdapter_GetReasoningEffort(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"gpt_max", "max"},
-		{"gpt_high", "high"},
-		{"gpt_medium", "medium"},
-		{"gpt_low", "low"},
+		{"opencode_gpt_normal", "high"},
+		{"opencode_gpt_high", "high"},
 		{"opus", ""},   // Anthropic models don't use variant
 		{"sonnet", ""}, // Anthropic models don't use variant
 		{"haiku", ""},  // Anthropic models don't use variant
@@ -147,15 +137,10 @@ func TestOpencodeAdapter_MapModel(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"opus", "anthropic/claude-opus-4-5"},
-		{"sonnet", "anthropic/claude-sonnet-4-5"},
-		{"haiku", "anthropic/claude-haiku-4-5"},
-		{"gpt_max", "openai/gpt-5.2-codex"},
-		{"gpt_high", "openai/gpt-5.2-codex"},
-		{"gpt_medium", "openai/gpt-5.2-codex"},
-		{"gpt_low", "openai/gpt-5.2-codex"},
+		{"opencode_gpt_normal", "openai/gpt-5.3-codex"},
+		{"opencode_gpt_high", "openai/gpt-5.3-codex"},
 		{"openai/gpt-4o", "openai/gpt-4o"}, // Already in provider/model format
-		{"custom", "anthropic/custom"},     // Unknown defaults to anthropic
+		{"custom", "anthropic/custom"},       // Unknown defaults to anthropic
 	}
 
 	for _, tt := range tests {
@@ -170,7 +155,7 @@ func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
 	adapter := &OpencodeAdapter{}
 
 	opts := SpawnOptions{
-		Model:         "gpt_high",
+		Model:         "opencode_gpt_high",
 		Prompt:        "System prompt",
 		InitialPrompt: "Do the task",
 		WorkDir:       "/tmp",
@@ -188,7 +173,7 @@ func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
 	requiredArgs := []string{
 		"run",
 		"--format", "json",
-		"--model", "openai/gpt-5.2-codex",
+		"--model", "openai/gpt-5.3-codex",
 		"--variant", "high",
 	}
 
@@ -229,8 +214,8 @@ func TestOpencodeAdapter_BuildCommand_WithoutVariant(t *testing.T) {
 	}
 
 	// Should contain correct model
-	if !strings.Contains(args, "anthropic/claude-sonnet-4-5") {
-		t.Errorf("Command args missing anthropic/claude-sonnet-4-5: %s", args)
+	if !strings.Contains(args, "anthropic/sonnet") {
+		t.Errorf("Command args missing anthropic/sonnet: %s", args)
 	}
 
 	// Prompt must NOT appear in args

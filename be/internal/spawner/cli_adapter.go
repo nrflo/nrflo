@@ -54,10 +54,13 @@ type SpawnOptions struct {
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.
-// GPT models use "opencode", everything else uses "claude".
+// opencode_gpt_* → opencode, codex_gpt_* → codex, everything else → claude.
 func DefaultCLIForModel(model string) string {
-	if strings.HasPrefix(model, "gpt_") || strings.HasPrefix(model, "gpt-") {
+	if strings.HasPrefix(model, "opencode_gpt_") {
 		return "opencode"
+	}
+	if strings.HasPrefix(model, "codex_gpt_") {
+		return "codex"
 	}
 	return "claude"
 }
@@ -182,17 +185,9 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 		return model
 	}
 
-	// Map short names to full opencode model names
-	// For GPT models with reasoning suffixes, map to openai/o3
 	modelMap := map[string]string{
-		"opus":       "anthropic/claude-opus-4-5",
-		"sonnet":     "anthropic/claude-sonnet-4-5",
-		"haiku":      "anthropic/claude-haiku-4-5",
-		"gpt_5.3":    "openai/gpt-5.3-codex",
-		"gpt_max":    "openai/gpt-5.2-codex",
-		"gpt_high":   "openai/gpt-5.2-codex",
-		"gpt_medium": "openai/gpt-5.2-codex",
-		"gpt_low":    "openai/gpt-5.2-codex",
+		"opencode_gpt_normal": "openai/gpt-5.3-codex",
+		"opencode_gpt_high":   "openai/gpt-5.3-codex",
 	}
 
 	if mapped, ok := modelMap[model]; ok {
@@ -207,18 +202,9 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 // Opencode uses --variant flag with values: max, high, medium, low, minimal
 func (a *OpencodeAdapter) GetReasoningEffort(model string) string {
 	switch model {
-	case "gpt_max":
-		return "max"
-	case "gpt_5.3":
-		return "xhigh"
-	case "gpt_high":
+	case "opencode_gpt_normal", "opencode_gpt_high":
 		return "high"
-	case "gpt_medium":
-		return "medium"
-	case "gpt_low":
-		return "low"
 	default:
-		// No variant for Anthropic models or unknown models
 		return ""
 	}
 }
@@ -279,16 +265,9 @@ func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 }
 
 func (a *CodexAdapter) MapModel(model string) string {
-	// Map short names to gpt-5.2-codex with reasoning levels
-	// Reasoning effort is handled separately in GetReasoningEffort
 	modelMap := map[string]string{
-		"opus":       "gpt-5.2-codex",
-		"sonnet":     "gpt-5.2-codex",
-		"haiku":      "gpt-5.2-codex",
-		"gpt_5.3":    "gpt-5.3",
-		"gpt_xhigh":  "gpt-5.2-codex",
-		"gpt_high":   "gpt-5.2-codex",
-		"gpt_medium": "gpt-5.2-codex",
+		"codex_gpt_normal": "gpt-5.3-codex",
+		"codex_gpt_high":   "gpt-5.3-codex",
 	}
 	if mapped, ok := modelMap[model]; ok {
 		return mapped
@@ -299,16 +278,10 @@ func (a *CodexAdapter) MapModel(model string) string {
 // GetReasoningEffort returns the reasoning effort level for a model alias
 func (a *CodexAdapter) GetReasoningEffort(model string) string {
 	switch model {
-	case "gpt_5.3":
-		return "xhigh"
-	case "gpt_xhigh":
-		return "xhigh"
-	case "gpt_high", "opus":
+	case "codex_gpt_normal", "codex_gpt_high":
 		return "high"
-	case "gpt_medium", "sonnet", "haiku":
-		return "medium"
 	default:
-		return "medium" // default for custom models
+		return "high"
 	}
 }
 

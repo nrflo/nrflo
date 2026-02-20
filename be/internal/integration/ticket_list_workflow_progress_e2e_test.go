@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"be/internal/db"
-	"be/internal/model"
 	"be/internal/repo"
 )
 
@@ -57,42 +56,56 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 		t.Fatalf("failed to open DB: %v", err)
 	}
 
-	// Create active workflow for TESTPROJ-001
-	phases1 := map[string]model.PhaseStatus{
-		"investigation": {Status: "completed", Result: "pass"},
-		"test-design":   {Status: "skipped"},
-		"implementation": {Status: "in_progress"},
-		"verification":  {Status: "pending"},
-	}
-	phasesJSON1, _ := json.Marshal(phases1)
-	phaseOrder1 := []string{"investigation", "test-design", "implementation", "verification"}
-	phaseOrderJSON1, _ := json.Marshal(phaseOrder1)
-
 	now := time.Now().UTC().Format(time.RFC3339Nano)
+
+	// Update "feature" workflow def to have 4 phases matching what the test expects
+	_, err = database.Exec(`UPDATE workflows SET phases = ? WHERE project_id = 'testproj' AND id = 'feature'`,
+		`[{"agent":"investigation","layer":0},{"agent":"test-design","layer":1},{"agent":"implementation","layer":2},{"agent":"verification","layer":3}]`)
+	if err != nil {
+		database.Close()
+		t.Fatalf("failed to update feature workflow phases: %v", err)
+	}
+
+	// Create active workflow for TESTPROJ-001
 	_, err = database.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"wf-1", "testproj", "testproj-001", "feature", "active", "implementation",
-		string(phaseOrderJSON1), string(phasesJSON1), "{}", 0, sql.NullString{}, now, now)
+		`[]`, `{}`, "{}", 0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
 		t.Fatalf("failed to create workflow instance 1: %v", err)
 	}
 
-	// Create completed workflow for TESTPROJ-003
-	phases3 := map[string]model.PhaseStatus{
-		"investigation": {Status: "completed", Result: "pass"},
-		"implementation": {Status: "completed", Result: "pass"},
+	// Create agent_sessions for derivation:
+	// investigation completed (L0), test-design skipped (L1, no session), implementation running (L2)
+	_, err = database.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+			status, result, restart_count, started_at, ended_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"sess-inv", "testproj", "testproj-001", "wf-1", "investigation", "investigation",
+		"completed", "pass", 0, now, now, now, now)
+	if err != nil {
+		database.Close()
+		t.Fatalf("failed to create investigation session: %v", err)
 	}
-	phasesJSON3, _ := json.Marshal(phases3)
-	phaseOrder3 := []string{"investigation", "implementation"}
-	phaseOrderJSON3, _ := json.Marshal(phaseOrder3)
+	_, err = database.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+			status, restart_count, started_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"sess-impl", "testproj", "testproj-001", "wf-1", "implementation", "implementation",
+		"running", 0, now, now, now)
+	if err != nil {
+		database.Close()
+		t.Fatalf("failed to create implementation session: %v", err)
+	}
 
+	// Create completed workflow for TESTPROJ-003
 	_, err = database.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"wf-3", "testproj", "testproj-003", "bugfix", "completed", "implementation",
-		string(phaseOrderJSON3), string(phasesJSON3), "{}", 0, sql.NullString{}, now, now)
+		`[]`, `{}`, "{}", 0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
 		t.Fatalf("failed to create workflow instance 3: %v", err)
@@ -209,27 +222,44 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 		t.Fatalf("failed to update ticket status: %v", err)
 	}
 
-	// Create active workflow for PROJ2-001
-	phases := map[string]model.PhaseStatus{
-		"phase1": {Status: "completed", Result: "pass"},
-		"phase2": {Status: "completed", Result: "pass"},
-		"phase3": {Status: "in_progress"},
-		"phase4": {Status: "pending"},
-		"phase5": {Status: "pending"},
-	}
-	phasesJSON, _ := json.Marshal(phases)
-	phaseOrder := []string{"phase1", "phase2", "phase3", "phase4", "phase5"}
-	phaseOrderJSON, _ := json.Marshal(phaseOrder)
-
 	now := time.Now().UTC().Format(time.RFC3339Nano)
+
+	// Update "feature" workflow def to have 5 phases
+	_, err = database.Exec(`UPDATE workflows SET phases = ? WHERE project_id = 'testproj2' AND id = 'feature'`,
+		`[{"agent":"phase1","layer":0},{"agent":"phase2","layer":1},{"agent":"phase3","layer":2},{"agent":"phase4","layer":3},{"agent":"phase5","layer":4}]`)
+	if err != nil {
+		database.Close()
+		t.Fatalf("failed to update feature workflow: %v", err)
+	}
+
+	// Create active workflow for PROJ2-001
 	_, err = database.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, current_phase, phase_order, phases, findings, retry_count, parent_session, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"wf-prog", "testproj2", "proj2-001", "feature", "active", "phase3",
-		string(phaseOrderJSON), string(phasesJSON), "{}", 0, sql.NullString{}, now, now)
+		`[]`, `{}`, "{}", 0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
 		t.Fatalf("failed to create workflow instance: %v", err)
+	}
+
+	// Create agent_sessions for derivation: phase1 & phase2 completed, phase3 running
+	for _, sess := range []struct{ id, phase, status, result string }{
+		{"sess-p1", "phase1", "completed", "pass"},
+		{"sess-p2", "phase2", "completed", "pass"},
+		{"sess-p3", "phase3", "running", ""},
+	} {
+		result := sql.NullString{String: sess.result, Valid: sess.result != ""}
+		_, err = database.Exec(`
+			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+				status, result, restart_count, started_at, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			sess.id, "testproj2", "proj2-001", "wf-prog", sess.phase, sess.phase,
+			sess.status, result, 0, now, now, now)
+		if err != nil {
+			database.Close()
+			t.Fatalf("failed to create session %s: %v", sess.id, err)
+		}
 	}
 
 	database.Close()

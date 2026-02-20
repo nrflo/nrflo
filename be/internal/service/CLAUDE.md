@@ -13,7 +13,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `workflow_config.go` | Workflow config loading |
 | `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef` |
 | `workflow_validation.go` | Validation: layer ordering, fan-in rules, project scope constraints |
-| `workflow_response.go` | V4 response building: active agents, history, findings aggregation |
+| `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status derivation from agent_sessions |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |
 | `agent_definition.go` | Agent definition CRUD |
 | `findings.go` | Findings add/append/get/delete operations |

@@ -398,9 +398,9 @@ func TestProjectWorkflowBackwardCompatibility(t *testing.T) {
 		t.Fatalf("expected scope_type 'ticket' in status, got %v", status["scope_type"])
 	}
 
-	// Verify phase operations work
-	env.StartPhase(t, "COMPAT-1", "analyzer")
-	env.CompletePhase(t, "COMPAT-1", "analyzer", "pass")
+	// Verify phase operations work (agent session needed for derivation)
+	env.InsertAgentSession(t, "sess-compat-analyzer", "COMPAT-1", wfi, "analyzer", "analyzer", "")
+	env.CompleteAgentSession(t, "sess-compat-analyzer", "pass")
 
 	status, err = getWorkflowStatus(t, env, "COMPAT-1", &types.WorkflowGetRequest{
 		Workflow: "test",

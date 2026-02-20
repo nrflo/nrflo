@@ -10,6 +10,7 @@ import (
 	"be/internal/id"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -49,11 +50,14 @@ func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 		tickets = []*repo.PendingTicket{}
 	}
 
-	// Enrich with workflow progress
-	wfiRepo := repo.NewWorkflowInstanceRepo(db.WrapAsPool(database), s.clock)
+	// Enrich with workflow progress (derived from agent_sessions + workflow definition)
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
 	instances, err := wfiRepo.ListActiveByProject(projectID)
 	if err == nil {
-		repo.AttachWorkflowProgress(tickets, instances)
+		wfService := service.NewWorkflowService(pool, s.clock)
+		progress := wfService.DeriveWorkflowProgress(instances)
+		repo.AttachWorkflowProgress(tickets, progress)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

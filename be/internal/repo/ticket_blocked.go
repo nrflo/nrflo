@@ -180,32 +180,14 @@ func (r *TicketRepo) GetRecentlyClosed(projectID string, limit int) ([]*model.Ti
 	return tickets, nil
 }
 
-// AttachWorkflowProgress enriches tickets with workflow completion data
-func AttachWorkflowProgress(tickets []*PendingTicket, instances map[string]*model.WorkflowInstance) {
+// AttachWorkflowProgress enriches tickets with pre-computed workflow progress data.
+func AttachWorkflowProgress(tickets []*PendingTicket, progress map[string]*WorkflowProgress) {
 	for _, pt := range tickets {
-		wi, ok := instances[strings.ToLower(pt.Ticket.ID)]
+		wp, ok := progress[strings.ToLower(pt.Ticket.ID)]
 		if !ok {
 			continue
 		}
-		phases := wi.GetPhases()
-		phaseOrder := wi.GetPhaseOrder()
-		completed := 0
-		for _, ps := range phases {
-			if ps.Status == "completed" || ps.Status == "skipped" {
-				completed++
-			}
-		}
-		currentPhase := ""
-		if wi.CurrentPhase.Valid {
-			currentPhase = wi.CurrentPhase.String
-		}
-		pt.WorkflowProgress = &WorkflowProgress{
-			WorkflowName:    wi.WorkflowID,
-			CurrentPhase:    currentPhase,
-			CompletedPhases: completed,
-			TotalPhases:     len(phaseOrder),
-			Status:          string(wi.Status),
-		}
+		pt.WorkflowProgress = wp
 	}
 }
 

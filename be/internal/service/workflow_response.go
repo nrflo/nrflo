@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"be/internal/model"
+	"be/internal/repo"
 )
 
 func (s *WorkflowService) buildActiveAgentsMap(wfiID string) map[string]interface{} {
@@ -135,6 +136,118 @@ func (s *WorkflowService) buildAgentHistory(wfiID string) []interface{} {
 		history = append(history, entry)
 	}
 	return history
+}
+
+// derivePhaseStatuses derives phase statuses from agent_sessions rows instead of the phases JSON column.
+// This eliminates the race condition where parallel agents overwrite each other's status in the JSON blob.
+func (s *WorkflowService) derivePhaseStatuses(wfiID string, phases []PhaseDef) map[string]model.PhaseStatus {
+	result := make(map[string]model.PhaseStatus, len(phases))
+
+	// Default all phases to pending
+	for _, p := range phases {
+		result[p.ID] = model.PhaseStatus{Status: "pending"}
+	}
+
+	// Query latest non-continued/callback session per agent_type
+	rows, err := s.pool.Query(`
+		SELECT agent_type, status, result FROM agent_sessions
+		WHERE workflow_instance_id = ? AND status NOT IN ('continued', 'callback')
+		ORDER BY created_at DESC`, wfiID)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+
+	// Group by agent_type, take latest session per agent
+	seen := make(map[string]bool)
+	maxLayer := -1 // track highest layer with a session
+	for rows.Next() {
+		var agentType, status string
+		var sessionResult sql.NullString
+		rows.Scan(&agentType, &status, &sessionResult)
+
+		if seen[agentType] {
+			continue
+		}
+		seen[agentType] = true
+
+		var ps model.PhaseStatus
+		switch status {
+		case "running", "user_interactive":
+			ps = model.PhaseStatus{Status: "in_progress"}
+		case "completed", "project_completed", "interactive_completed":
+			ps = model.PhaseStatus{Status: "completed", Result: "pass"}
+			if sessionResult.Valid && sessionResult.String != "" {
+				ps.Result = sessionResult.String
+			}
+		case "failed":
+			ps = model.PhaseStatus{Status: "completed", Result: "fail"}
+		case "timeout":
+			ps = model.PhaseStatus{Status: "completed", Result: "timeout"}
+		default:
+			continue
+		}
+		result[agentType] = ps
+
+		// Track max layer that has a session
+		for _, p := range phases {
+			if p.ID == agentType && p.Layer > maxLayer {
+				maxLayer = p.Layer
+			}
+		}
+	}
+
+	// Infer "skipped": if a phase has no session but a later layer does have sessions,
+	// the phase's layer was already processed and the phase was skipped.
+	// This works for both active and terminal workflows because the orchestrator
+	// processes all phases in a layer before advancing to the next layer.
+	for _, p := range phases {
+		if !seen[p.ID] && p.Layer < maxLayer {
+			result[p.ID] = model.PhaseStatus{Status: "completed", Result: "skipped"}
+		}
+	}
+
+	return result
+}
+
+// deriveCurrentPhase returns the phase of the latest running agent session, or empty string if none.
+func (s *WorkflowService) deriveCurrentPhase(wfiID string) string {
+	var phase sql.NullString
+	err := s.pool.QueryRow(`
+		SELECT phase FROM agent_sessions
+		WHERE workflow_instance_id = ? AND status IN ('running', 'user_interactive')
+		ORDER BY created_at DESC LIMIT 1`, wfiID).Scan(&phase)
+	if err != nil || !phase.Valid {
+		return ""
+	}
+	return phase.String
+}
+
+// DeriveWorkflowProgress computes workflow progress for a set of workflow instances.
+// Returns a map of lowercased ticket ID -> WorkflowProgress.
+func (s *WorkflowService) DeriveWorkflowProgress(instances map[string]*model.WorkflowInstance) map[string]*repo.WorkflowProgress {
+	result := make(map[string]*repo.WorkflowProgress, len(instances))
+	for ticketKey, wi := range instances {
+		wf, err := s.GetWorkflowDef(wi.ProjectID, wi.WorkflowID)
+		if err != nil {
+			continue
+		}
+		phases := s.derivePhaseStatuses(wi.ID, wf.Phases)
+		completed := 0
+		for _, ps := range phases {
+			if ps.Status == "completed" {
+				completed++
+			}
+		}
+		result[ticketKey] = &repo.WorkflowProgress{
+			WorkflowName:    wi.WorkflowID,
+			CurrentPhase:    s.deriveCurrentPhase(wi.ID),
+			CompletedPhases: completed,
+			TotalPhases:     len(wf.Phases),
+			Status:          string(wi.Status),
+		}
+	}
+	return result
 }
 
 // BuildCombinedFindings merges workflow-level and per-session findings

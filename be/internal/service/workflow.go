@@ -202,32 +202,40 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 		scopeType = "ticket"
 	}
 
+	// Load workflow definition for phase derivation
+	var phaseOrder []string
+	phases := make(map[string]model.PhaseStatus)
+	currentPhase := ""
+	var phaseLayers map[string]int
+
+	if wf, err := s.GetWorkflowDef(wi.ProjectID, wi.WorkflowID); err == nil {
+		phaseOrder = make([]string, len(wf.Phases))
+		phaseLayers = make(map[string]int, len(wf.Phases))
+		for i, p := range wf.Phases {
+			phaseOrder[i] = p.ID
+			phaseLayers[p.ID] = p.Layer
+		}
+		phases = s.derivePhaseStatuses(wi.ID, wf.Phases)
+		currentPhase = s.deriveCurrentPhase(wi.ID)
+	}
+
 	result := map[string]interface{}{
 		"version":        4,
 		"initialized_at": wi.CreatedAt.Format(time.RFC3339Nano),
 		"instance_id":    wi.ID,
 		"scope_type":     scopeType,
-		"current_phase":  "",
+		"current_phase":  currentPhase,
 		"retry_count":    wi.RetryCount,
-		"phases":         wi.GetPhases(),
-		"phase_order":    wi.GetPhaseOrder(),
+		"phases":         phases,
+		"phase_order":    phaseOrder,
 		"workflow":       wi.WorkflowID,
 		"agent_retries":  map[string]int{},
 	}
-	if wi.CurrentPhase.Valid {
-		result["current_phase"] = wi.CurrentPhase.String
+	if phaseLayers != nil {
+		result["phase_layers"] = phaseLayers
 	}
 	if wi.ParentSession.Valid {
 		result["parent_session"] = wi.ParentSession.String
-	}
-
-	// Phase layers from workflow definition
-	if wf, err := s.GetWorkflowDef(wi.ProjectID, wi.WorkflowID); err == nil {
-		phaseLayers := make(map[string]int, len(wf.Phases))
-		for _, p := range wf.Phases {
-			phaseLayers[p.ID] = p.Layer
-		}
-		result["phase_layers"] = phaseLayers
 	}
 
 	// Completion stats

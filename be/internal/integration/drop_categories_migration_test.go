@@ -209,9 +209,10 @@ func TestWorkflowInstanceCRUDWithoutCategory(t *testing.T) {
 		t.Fatalf("expected status 'active', got %v", status)
 	}
 
-	// Start and complete a phase
+	// Start and complete a phase (with agent session for derivation)
 	env.StartPhase(t, "WI-NOCATS-1", "analyzer")
 	env.InsertAgentSession(t, "sess-wi-nocats", "WI-NOCATS-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.CompleteAgentSession(t, "sess-wi-nocats", "pass")
 	env.CompletePhase(t, "WI-NOCATS-1", "analyzer", "pass")
 
 	// Verify phase completion via service

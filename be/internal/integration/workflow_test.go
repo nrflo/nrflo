@@ -3,6 +3,7 @@ package integration
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"be/internal/types"
 )
@@ -89,10 +90,12 @@ func TestWorkflowPhaseLifecycle(t *testing.T) {
 	env.CreateTicket(t, "WF-2", "Phase lifecycle")
 	env.InitWorkflow(t, "WF-2")
 
-	// Start analyzer phase
-	env.StartPhase(t, "WF-2", "analyzer")
+	wfiID := env.GetWorkflowInstanceID(t, "WF-2", "test")
 
-	// Verify in_progress
+	// Create a running agent session for analyzer (derivation reads agent_sessions)
+	env.InsertAgentSession(t, "sess-analyzer", "WF-2", wfiID, "analyzer", "analyzer", "")
+
+	// Verify in_progress (derived from running agent session)
 	status, err := getWorkflowStatus(t, env, "WF-2", &types.WorkflowGetRequest{
 		Workflow: "test",
 	})
@@ -105,8 +108,8 @@ func TestWorkflowPhaseLifecycle(t *testing.T) {
 		t.Fatalf("expected analyzer in_progress, got %v", analyzerPhase["status"])
 	}
 
-	// Complete analyzer with "pass"
-	env.CompletePhase(t, "WF-2", "analyzer", "pass")
+	// Complete the analyzer session
+	env.CompleteAgentSession(t, "sess-analyzer", "pass")
 
 	// Verify completed
 	status, err = getWorkflowStatus(t, env, "WF-2", &types.WorkflowGetRequest{
@@ -121,9 +124,10 @@ func TestWorkflowPhaseLifecycle(t *testing.T) {
 		t.Fatalf("expected analyzer result 'pass', got %v", analyzerPhase["result"])
 	}
 
-	// Start and complete builder
-	env.StartPhase(t, "WF-2", "builder")
-	env.CompletePhase(t, "WF-2", "builder", "pass")
+	// Create and complete builder session
+	env.Clock.Advance(1 * time.Second)
+	env.InsertAgentSession(t, "sess-builder", "WF-2", wfiID, "builder", "builder", "")
+	env.CompleteAgentSession(t, "sess-builder", "pass")
 
 	// Verify both completed
 	status, err = getWorkflowStatus(t, env, "WF-2", &types.WorkflowGetRequest{

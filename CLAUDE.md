@@ -49,8 +49,9 @@ Agents are grouped by `layer` number. All agents in the same layer run concurren
 ### 3. State is Stored in Database Tables
 
 Workflow runtime state is stored in normalized database tables:
-- **`workflow_instances`** — one row per ticket+workflow, stores current phase, phase statuses, workflow-level findings
+- **`workflow_instances`** — one row per ticket+workflow, stores workflow-level findings, retry count
 - **`agent_sessions`** — one row per agent execution, stores result, pid, findings, timestamps
+- Phase statuses, phase order, and current phase are derived from `agent_sessions` + workflow definition at read time
 - Active agents = `agent_sessions WHERE status = 'running'`
 - Agent history = `agent_sessions WHERE status != 'running'`
 
@@ -176,7 +177,7 @@ Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. Th
 
 ## State Storage
 
-Workflow runtime state is stored in two main tables: `workflow_instances` (one row per ticket+workflow, stores current phase, phase statuses, findings, retry count) and `agent_sessions` (one row per agent execution, stores result, pid, findings, context usage, timestamps). Ticket-scoped workflows enforce one instance per ticket+workflow; project-scoped workflows allow multiple concurrent instances. Completion statistics (`completed_at`, `total_duration_sec`, `total_tokens_used`) are computed from agent session data. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md) for full schema.
+Workflow runtime state is stored in two main tables: `workflow_instances` (one row per ticket+workflow, stores findings, retry count) and `agent_sessions` (one row per agent execution, stores result, pid, findings, context usage, timestamps). Phase statuses, phase order, and current phase are derived at read time from `agent_sessions` rows + workflow definition — the `phases`/`phase_order`/`current_phase` columns on `workflow_instances` are still written to (for rollback safety) but not read by the API. Ticket-scoped workflows enforce one instance per ticket+workflow; project-scoped workflows allow multiple concurrent instances. Completion statistics (`completed_at`, `total_duration_sec`, `total_tokens_used`) are computed from agent session data. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md) for full schema.
 
 ## API Response Format
 

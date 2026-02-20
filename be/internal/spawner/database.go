@@ -132,7 +132,7 @@ func (s *Spawner) getWorkflowInstanceByID(instanceID string) (*model.WorkflowIns
 }
 
 // validateAndAdvancePhase validates phase order.
-// Returns (phaseID, error). Uses workflow_instances table for state.
+// Returns (phaseID, error). Queries agent_sessions for terminal status validation.
 // With layer-based execution, validates that all agents in prior layers are completed.
 func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowName, requestedAgent string) (string, error) {
 	workflow, ok := s.config.Workflows[workflowName]
@@ -152,19 +152,51 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 		return "", fmt.Errorf("agent '%s' not found in workflow '%s'", requestedAgent, workflowName)
 	}
 
-	phases := wi.GetPhases()
-
-	// Validate that all agents in prior layers are completed
-	for _, priorPhase := range workflow.Phases {
-		if priorPhase.Layer >= requestedPhase.Layer {
-			continue // same or later layer, skip validation
+	// Collect prior-layer agent types that need to be completed
+	var priorAgents []PhaseDef
+	for _, p := range workflow.Phases {
+		if p.Layer < requestedPhase.Layer {
+			priorAgents = append(priorAgents, p)
 		}
-		phaseStatus, exists := phases[priorPhase.ID]
-		if exists && phaseStatus.Status == "completed" {
+	}
+
+	// No prior layers — no validation needed
+	if len(priorAgents) == 0 {
+		return requestedPhase.ID, nil
+	}
+
+	// Query terminal sessions for this workflow instance
+	pool := s.pool()
+	if pool == nil {
+		return "", fmt.Errorf("failed to get database pool")
+	}
+
+	rows, err := pool.Query(`
+		SELECT agent_type, status FROM agent_sessions
+		WHERE workflow_instance_id = ? AND status NOT IN ('running', 'continued', 'callback')
+		ORDER BY created_at DESC`, wi.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to query agent sessions: %w", err)
+	}
+	defer rows.Close()
+
+	// Track which agent_types have a terminal session
+	terminalAgents := make(map[string]bool)
+	for rows.Next() {
+		var agentType, status string
+		rows.Scan(&agentType, &status)
+		if !terminalAgents[agentType] {
+			terminalAgents[agentType] = true
+		}
+	}
+
+	// Validate that all agents in prior layers have a terminal session
+	for _, prior := range priorAgents {
+		if terminalAgents[prior.Agent] {
 			continue
 		}
 		return "", fmt.Errorf("layer %d agent '%s' must complete before layer %d agent '%s'",
-			priorPhase.Layer, priorPhase.ID, requestedPhase.Layer, requestedPhase.ID)
+			prior.Layer, prior.ID, requestedPhase.Layer, requestedPhase.ID)
 	}
 
 	return requestedPhase.ID, nil

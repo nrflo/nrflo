@@ -281,6 +281,18 @@ func (e *TestEnv) InsertAgentSession(t *testing.T, id, ticketID, wfiID, phase, a
 	}
 }
 
+// CompleteAgentSession marks an agent session as completed with the given result.
+func (e *TestEnv) CompleteAgentSession(t *testing.T, sessionID, result string) {
+	t.Helper()
+	now := e.Clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err := e.Pool.Exec(`
+		UPDATE agent_sessions SET status = 'completed', result = ?, ended_at = ?, updated_at = ?
+		WHERE id = ?`, result, now, now, sessionID)
+	if err != nil {
+		t.Fatalf("failed to complete session %s: %v", sessionID, err)
+	}
+}
+
 func nullStr(s string) interface{} {
 	if s == "" {
 		return nil

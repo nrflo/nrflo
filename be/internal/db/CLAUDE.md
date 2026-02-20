@@ -216,9 +216,9 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-1. Create `migrations/NNNNNN_description.up.sql` and `.down.sql` (next sequence number)
+1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)
-3. The down file reverses it (e.g. `ALTER TABLE ... DROP COLUMN`)
+3. Down migrations are not used — rollbacks are done via new forward migrations
 4. Migrations are embedded automatically via `//go:embed *.sql` in `migrations/embed.go`
 5. Rebuild: `cd be && make build`
 6. Migrations run automatically on server startup — no manual `migrate` command needed

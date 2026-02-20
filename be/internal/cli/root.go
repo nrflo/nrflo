@@ -23,13 +23,10 @@ var ProjectRoot string
 var rootCmd = &cobra.Command{
 	Use:   "nrworkflow",
 	Short: "nrworkflow - Multi-workflow agent orchestration",
-	Long: `nrworkflow is a server for ticket management and AI agent orchestration.
+	Long: `nrworkflow is the agent CLI for nrworkflow orchestration system.
 
-Start the server with: nrworkflow_server serve
-Manage workflows and tickets via the web UI at http://localhost:6587
-
-Agent CLI subset (used by spawned agents):
-  nrworkflow agent complete/fail/continue <ticket> <agent-type> -w <workflow>
+Agent commands (used by spawned agents):
+  nrworkflow agent fail/continue <ticket> <agent-type> -w <workflow>
   nrworkflow findings add/append/get/delete ...`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if envProject := os.Getenv("NRWORKFLOW_PROJECT"); envProject != "" {

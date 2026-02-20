@@ -93,10 +93,7 @@ nrworkflow agent continue ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
 
 **You MUST call one of these commands as your very last action. The workflow cannot proceed without it.**
 
-When finished successfully:
-```bash
-nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
-```
+When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (build fails, tests fail, blocked):
 ```bash

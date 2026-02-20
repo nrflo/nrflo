@@ -74,10 +74,7 @@ Your findings must include:
 
 **You MUST call one of these commands as your very last action. The workflow cannot proceed without it.**
 
-When finished successfully:
-```bash
-nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
-```
+When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can't find docs to update, unclear changes):
 ```bash
@@ -88,7 +85,6 @@ Note: It's valid to complete with no docs updated if the implementation doesn't 
 ```bash
 nrworkflow findings add ${TICKET_ID} ${AGENT} docs_updated '[]' -w ${WORKFLOW}
 nrworkflow findings add ${TICKET_ID} ${AGENT} summary 'No documentation updates needed' -w ${WORKFLOW}
-nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
 ```
 
 If running out of context but task is not done (store `continuation_notes` finding first):

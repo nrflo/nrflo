@@ -438,14 +438,11 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 		"instance_id": wfiID,
 	}, nil)
 
-	// Complete analyzer
-	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":   "E2E-NOCATS-1",
-		"workflow":    "test",
-		"agent_type":  "analyzer",
-		"session_id":  "sess-e2e-nocats-analyzer",
-		"instance_id": wfiID,
-	}, nil)
+	// Mark analyzer session as completed (agent.complete removed; set result directly)
+	_, err := env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-nocats-analyzer")
+	if err != nil {
+		t.Fatalf("failed to complete analyzer session: %v", err)
+	}
 
 	env.CompletePhase(t, "E2E-NOCATS-1", "analyzer", "pass")
 
@@ -453,14 +450,11 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 	env.StartPhase(t, "E2E-NOCATS-1", "builder")
 	env.InsertAgentSession(t, "sess-e2e-nocats-builder", "E2E-NOCATS-1", wfiID, "builder", "builder", "opus")
 
-	// Complete builder
-	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":   "E2E-NOCATS-1",
-		"workflow":    "test",
-		"agent_type":  "builder",
-		"session_id":  "sess-e2e-nocats-builder",
-		"instance_id": wfiID,
-	}, nil)
+	// Mark builder session as completed (agent.complete removed; set result directly)
+	_, err = env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-nocats-builder")
+	if err != nil {
+		t.Fatalf("failed to complete builder session: %v", err)
+	}
 
 	env.CompletePhase(t, "E2E-NOCATS-1", "builder", "pass")
 

@@ -6,35 +6,16 @@ import (
 	"be/internal/types"
 )
 
-func TestAgentCompleteAndFail(t *testing.T) {
+func TestAgentFail(t *testing.T) {
 	env := NewTestEnv(t)
 
-	env.CreateTicket(t, "AGT-1", "Agent complete")
+	env.CreateTicket(t, "AGT-1", "Agent fail")
 	env.InitWorkflow(t, "AGT-1")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-1", "test")
 
-	// Create running agent sessions via DB
-	env.InsertAgentSession(t, "sess-1", "AGT-1", wfiID, "analyzer", "analyzer", "sonnet")
+	// Create running agent session via DB
 	env.InsertAgentSession(t, "sess-2", "AGT-1", wfiID, "analyzer", "builder", "opus")
-
-	// Complete analyzer via socket
-	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":   "AGT-1",
-		"workflow":    "test",
-		"agent_type":  "analyzer",
-		"session_id":  "sess-1",
-		"instance_id": wfiID,
-	}, nil)
-
-	// Verify analyzer session has result "pass" via service
-	session, err := env.AgentSvc.GetSessionByID("sess-1")
-	if err != nil {
-		t.Fatalf("failed to get session: %v", err)
-	}
-	if session.Result.String != "pass" {
-		t.Fatalf("expected analyzer result 'pass', got %v", session.Result.String)
-	}
 
 	// Fail builder via socket
 	env.MustExecute(t, "agent.fail", map[string]interface{}{
@@ -46,7 +27,7 @@ func TestAgentCompleteAndFail(t *testing.T) {
 	}, nil)
 
 	// Verify builder session has result "fail" via service
-	session, err = env.AgentSvc.GetSessionByID("sess-2")
+	session, err := env.AgentSvc.GetSessionByID("sess-2")
 	if err != nil {
 		t.Fatalf("failed to get session: %v", err)
 	}

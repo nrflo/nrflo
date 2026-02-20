@@ -76,7 +76,7 @@ func TestE2E_SubcommandIntegrity(t *testing.T) {
 
 	// Agent subcommands
 	agentSubcmds := getCommandNames(agentCmd)
-	expectedAgentSubcmds := []string{"complete", "fail", "continue", "callback"}
+	expectedAgentSubcmds := []string{"fail", "continue", "callback"}
 	for _, expected := range expectedAgentSubcmds {
 		if !contains(agentSubcmds, expected) {
 			t.Errorf("agentCmd missing subcommand %q after registration", expected)
@@ -135,11 +135,6 @@ func TestE2E_FlagIntegrity(t *testing.T) {
 	}
 
 	// Agent subcommands should have their flags (from init())
-	agentCompleteWorkflowFlag := agentCompleteCmd.Flags().Lookup("workflow")
-	if agentCompleteWorkflowFlag == nil {
-		t.Error("agentCompleteCmd missing --workflow flag")
-	}
-
 	agentCallbackLevelFlag := agentCallbackCmd.Flags().Lookup("level")
 	if agentCallbackLevelFlag == nil {
 		t.Error("agentCallbackCmd missing --level flag")

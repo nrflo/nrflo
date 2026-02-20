@@ -221,39 +221,16 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 	}
 
 	switch action {
-	case "complete":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.AgentCompleteRequest
-		}
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
-		}
-		logger.Info(ctx, "agent complete received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		sessionID, err := h.agentSvc.Complete(projectID, params.TicketID, &params.AgentCompleteRequest)
-		if err != nil {
-			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
-			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
-		}
-		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
-			"action":     "complete",
-			"agent_type": params.AgentType,
-			"session_id": sessionID,
-			"model_id":   params.Model,
-			"result":     "pass",
-		})
-		return MakeResponse(req.ID, map[string]string{"status": "completed"})
-
 	case "fail":
 		var params struct {
 			TicketID string `json:"ticket_id"`
-			types.AgentCompleteRequest
+			types.AgentRequest
 		}
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
 		logger.Warn(ctx, "agent fail received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		sessionID, err := h.agentSvc.Fail(projectID, params.TicketID, &params.AgentCompleteRequest)
+		sessionID, err := h.agentSvc.Fail(projectID, params.TicketID, &params.AgentRequest)
 		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
@@ -270,13 +247,13 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 	case "continue":
 		var params struct {
 			TicketID string `json:"ticket_id"`
-			types.AgentCompleteRequest
+			types.AgentRequest
 		}
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
 		logger.Info(ctx, "agent continue received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		sessionID, err := h.agentSvc.Continue(projectID, params.TicketID, &params.AgentCompleteRequest)
+		sessionID, err := h.agentSvc.Continue(projectID, params.TicketID, &params.AgentRequest)
 		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))

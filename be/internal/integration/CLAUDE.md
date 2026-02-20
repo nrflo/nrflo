@@ -19,7 +19,7 @@ func TestSomething(t *testing.T) {
 
     // Socket calls for agent/findings
     env.MustExecute(t, "findings.add", map[string]interface{}{...}, nil)
-    env.MustExecute(t, "agent.complete", map[string]interface{}{...}, nil)
+    env.MustExecute(t, "agent.fail", map[string]interface{}{...}, nil)
 
     // WebSocket testing
     _, ch := env.NewWSClient(t, "client-id", "TICKET-1")
@@ -68,7 +68,7 @@ make test-integration        # integration only (verbose)
 | `testenv.go` | Shared test harness (`NewTestEnv`) |
 | `workflow_test.go` | Workflow init, phases, set/get (via service) |
 | `findings_test.go` | Findings add/append/delete, models (via socket) |
-| `agent_test.go` | Agent complete/fail/continue (via socket) |
+| `agent_test.go` | Agent fail/continue (via socket) |
 | `websocket_test.go` | WS broadcast, subscription filtering |
 | `messages_test.go` | Agent message storage, pagination (via service) |
 | `chain_epic_test.go` | Chain epic auto-close on completion |

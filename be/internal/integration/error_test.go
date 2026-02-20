@@ -52,7 +52,7 @@ func TestErrorAgentMissingProject(t *testing.T) {
 
 	// Agent commands require project
 	c := client.NewWithAddr("unix", env.SocketPath, "")
-	resp, err := c.Execute("agent.complete", map[string]interface{}{
+	resp, err := c.Execute("agent.fail", map[string]interface{}{
 		"ticket_id":  "test",
 		"workflow":   "test",
 		"agent_type": "analyzer",

@@ -229,18 +229,13 @@ func (s *AgentService) Kill(projectID, ticketID string, req *types.AgentKillRequ
 	return killed, nil
 }
 
-// Complete marks an agent as completed. Returns the session ID.
-func (s *AgentService) Complete(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
-	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "pass", req.Model)
-}
-
 // Fail marks an agent as failed. Returns the session ID.
-func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
+func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentRequest) (string, error) {
 	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "fail", req.Model)
 }
 
 // Continue marks an agent as needing context continuation. Returns the session ID.
-func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentCompleteRequest) (string, error) {
+func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentRequest) (string, error) {
 	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "continue", req.Model)
 }
 

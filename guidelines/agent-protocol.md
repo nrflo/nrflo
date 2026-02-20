@@ -7,8 +7,7 @@ Guidelines for prompt authors writing agent definition prompts.
 Agents communicate with the nrworkflow server via CLI commands over Unix socket:
 
 ```bash
-# Report completion
-nrworkflow agent complete <ticket> <agent-type> -w <workflow>
+# Report results (exit 0 = pass, no explicit call needed)
 nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--reason <text>]
 nrworkflow agent continue <ticket> <agent-type> -w <workflow>
 

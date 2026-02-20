@@ -115,8 +115,8 @@ func TestWSAgentEvents(t *testing.T) {
 
 	_, ch := env.NewWSClient(t, "ws-agent", "WS-A1")
 
-	// Complete agent -> should broadcast agent.completed
-	env.MustExecute(t, "agent.complete", map[string]interface{}{
+	// Fail agent -> should broadcast agent.completed
+	env.MustExecute(t, "agent.fail", map[string]interface{}{
 		"ticket_id":   "WS-A1",
 		"workflow":    "test",
 		"agent_type":  "analyzer",

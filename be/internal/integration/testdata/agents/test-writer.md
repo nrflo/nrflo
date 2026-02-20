@@ -99,10 +99,7 @@ Your findings must include:
 
 **You MUST call one of these commands as your very last action. The workflow cannot proceed without it.**
 
-When finished successfully:
-```bash
-nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
-```
+When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can't find patterns, unclear criteria):
 ```bash

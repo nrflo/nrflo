@@ -226,7 +226,7 @@ func TestCLIBinary_AgentSubcommands(t *testing.T) {
 	}
 
 	helpText := string(output)
-	expectedSubcommands := []string{"complete", "fail", "continue", "callback"}
+	expectedSubcommands := []string{"fail", "continue", "callback"}
 	for _, subcmd := range expectedSubcommands {
 		if !strings.Contains(helpText, subcmd) {
 			t.Errorf("nrworkflow agent --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)

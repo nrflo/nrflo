@@ -16,11 +16,9 @@ var agentCmd = &cobra.Command{
 // Shared no-ticket flag for project-scoped workflows
 var agentNoTicket bool
 
-// Agent complete/fail/continue/callback flags
+// Agent fail/continue/callback flags
 var (
-	agentCompleteWorkflow string
-	agentCompleteModel    string
-	agentFailWorkflow     string
+	agentFailWorkflow string
 	agentFailModel        string
 	agentFailReason       string
 	agentContinueWorkflow string
@@ -31,49 +29,6 @@ var (
 	// context-update flags
 	agentContextUpdatePctUsed float64
 )
-
-var agentCompleteCmd = &cobra.Command{
-	Use:   "complete [-T] [<ticket>] <agent-type>",
-	Short: "Mark an agent as completed successfully",
-	Args:  cobra.RangeArgs(1, 2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := RequireProject(); err != nil {
-			return err
-		}
-		if err := CheckServer(); err != nil {
-			return err
-		}
-
-		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
-
-		if agentCompleteWorkflow == "" {
-			return fmt.Errorf("-w/--workflow is required")
-		}
-
-		c := GetClient()
-		params := types.AgentCompleteRequest{
-			Workflow:  agentCompleteWorkflow,
-			AgentType: agentType,
-			Model:     agentCompleteModel,
-		}
-		reqParams := map[string]interface{}{
-			"ticket_id":  ticketID,
-			"workflow":   params.Workflow,
-			"agent_type": params.AgentType,
-		}
-		if params.Model != "" {
-			reqParams["model"] = params.Model
-		}
-		addSpawnerIDs(reqParams)
-
-		if err := c.ExecuteAndUnmarshal("agent.complete", reqParams, nil); err != nil {
-			return err
-		}
-
-		fmt.Printf("Agent %s marked as pass\n", agentType)
-		return nil
-	},
-}
 
 var agentFailCmd = &cobra.Command{
 	Use:   "fail [-T] [<ticket>] <agent-type>",
@@ -94,7 +49,7 @@ var agentFailCmd = &cobra.Command{
 		}
 
 		c := GetClient()
-		params := types.AgentCompleteRequest{
+		params := types.AgentRequest{
 			Workflow:  agentFailWorkflow,
 			AgentType: agentType,
 			Model:     agentFailModel,
@@ -250,14 +205,9 @@ func parseAgentArgs(args []string, noTicket bool) (ticketID, agentType string) {
 }
 
 func init() {
-	for _, cmd := range []*cobra.Command{agentCompleteCmd, agentFailCmd, agentContinueCmd, agentCallbackCmd} {
+	for _, cmd := range []*cobra.Command{agentFailCmd, agentContinueCmd, agentCallbackCmd} {
 		cmd.Flags().BoolVarP(&agentNoTicket, "no-ticket", "T", false, "Project-scoped workflow (no ticket ID)")
 	}
-
-	// agent complete
-	agentCompleteCmd.Flags().StringVarP(&agentCompleteWorkflow, "workflow", "w", "", "Workflow name (required)")
-	agentCompleteCmd.Flags().StringVar(&agentCompleteModel, "model", "", "Model ID")
-	agentCmd.AddCommand(agentCompleteCmd)
 
 	// agent fail
 	agentFailCmd.Flags().StringVarP(&agentFailWorkflow, "workflow", "w", "", "Workflow name (required)")

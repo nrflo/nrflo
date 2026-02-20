@@ -36,10 +36,7 @@ You are an investigation agent. Your job is to analyze a ticket and gather all c
    ```
 
 4. **Signal Completion** (MANDATORY)
-   ```bash
-   nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
-   ```
-   If you cannot complete:
+   Exit 0 = pass. If you cannot complete:
    ```bash
    nrworkflow agent fail ${TICKET_ID} ${AGENT} --reason="<explanation>" -w ${WORKFLOW}
    ```

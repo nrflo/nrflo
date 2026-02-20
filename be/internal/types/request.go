@@ -190,8 +190,8 @@ type AgentKillRequest struct {
 	Model    string `json:"model,omitempty"`
 }
 
-// AgentCompleteRequest is the request for marking an agent as complete/failed
-type AgentCompleteRequest struct {
+// AgentRequest is the shared request for agent lifecycle commands (fail/continue/callback)
+type AgentRequest struct {
 	Workflow   string `json:"workflow"`
 	AgentType  string `json:"agent_type"`
 	Model      string `json:"model,omitempty"`
@@ -201,7 +201,7 @@ type AgentCompleteRequest struct {
 
 // AgentCallbackRequest is the request for marking an agent as callback
 type AgentCallbackRequest struct {
-	AgentCompleteRequest
+	AgentRequest
 	Level int `json:"level"`
 }
 

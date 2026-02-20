@@ -309,7 +309,7 @@ func TestAgentCallbackE2E(t *testing.T) {
 }
 
 func TestAgentCallbackRequestUnmarshal(t *testing.T) {
-	// Test that AgentCallbackRequest correctly embeds AgentCompleteRequest and includes Level
+	// Test that AgentCallbackRequest correctly embeds AgentRequest and includes Level
 	reqJSON := `{
 		"workflow": "test",
 		"agent_type": "analyzer",

@@ -1,6 +1,6 @@
 # Claude Code Instructions for nrworkflow Backend
 
-Go backend for nrworkflow. Two binaries: `nrworkflow_server` (server) and `nrworkflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket (and optional TCP socket for Docker agents) for agent communication. The CLI binary exposes agent commands (`agent complete/fail/continue`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
+Go backend for nrworkflow. Two binaries: `nrworkflow_server` (server) and `nrworkflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket (and optional TCP socket for Docker agents) for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
 
 ## Project Structure
 
@@ -12,7 +12,7 @@ be/
 │   ├── cli/                     # Cobra commands
 │   │   ├── root.go              # Root command, global flags, project discovery
 │   │   ├── serve.go             # HTTP API server (auto-migrates DB)
-│   │   ├── agent.go             # agent complete/fail/continue (agent-only, -T for project scope)
+│   │   ├── agent.go             # agent fail/continue/callback (agent-only, -T for project scope)
 │   │   ├── findings.go          # findings add/append/get/delete (agent-only, -T for project scope)
 │   │   ├── findings_project.go  # project-level findings (project-add/get/append/delete)
 │   │   ├── tickets.go           # tickets list/get/create (HTTP)
@@ -177,7 +177,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 - **TCP socket** on `127.0.0.1:6588` — for Docker agents via `host.docker.internal:6588`, always started
 - **Auto-migration** — database schema is automatically migrated on startup
 
-The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.complete/fail/continue/callback`, and `ws.broadcast` methods are supported.
+The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback`, and `ws.broadcast` methods are supported.
 
 ## Package Documentation
 

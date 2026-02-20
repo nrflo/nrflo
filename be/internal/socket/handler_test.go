@@ -101,102 +101,6 @@ func (e *handlerTestEnv) createTicketAndWorkflow(t *testing.T, ticketID string) 
 	}
 }
 
-// TestAgentCompleteEventPayload verifies agent.complete broadcasts include required fields.
-func TestAgentCompleteEventPayload(t *testing.T) {
-	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "TEST-1")
-
-	// Get workflow instance ID
-	var wfiID string
-	err := env.pool.QueryRow(`SELECT id FROM workflow_instances WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-		env.project, "TEST-1", "test").Scan(&wfiID)
-	if err != nil {
-		t.Fatalf("failed to get workflow instance ID: %v", err)
-	}
-
-	// Create an active agent session directly in DB
-	sessionID := "sess-test-complete"
-	_, err = env.pool.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', 'claude-opus-4', 'running', datetime('now'), datetime('now'))
-	`, sessionID, env.project, "TEST-1", wfiID)
-	if err != nil {
-		t.Fatalf("failed to create session: %v", err)
-	}
-
-	// Subscribe a test client to receive broadcasts
-	client, sendCh := ws.NewTestClient(env.hub, "test-client")
-	env.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
-	env.hub.Subscribe(client, env.project, "TEST-1")
-
-	// Call agent.complete
-	params := struct {
-		TicketID string `json:"ticket_id"`
-		types.AgentCompleteRequest
-	}{
-		TicketID: "TEST-1",
-		AgentCompleteRequest: types.AgentCompleteRequest{
-			Workflow:   "test",
-			AgentType:  "analyzer",
-			Model:      "claude-opus-4",
-			InstanceID: wfiID,
-			SessionID:  "sess-test-complete",
-		},
-	}
-	paramsData, _ := json.Marshal(params)
-
-	req := Request{
-		ID:      "req-1",
-		Method:  "agent.complete",
-		Project: env.project,
-		Params:  paramsData,
-	}
-
-	resp := env.handler.Handle(req)
-
-	if resp.Error != nil {
-		t.Fatalf("expected no error, got: %v", resp.Error)
-	}
-
-	// Verify broadcast event
-	select {
-	case msg := <-sendCh:
-		var event ws.Event
-		if err := json.Unmarshal(msg, &event); err != nil {
-			t.Fatalf("failed to unmarshal event: %v", err)
-		}
-
-		if event.Type != ws.EventAgentCompleted {
-			t.Errorf("expected event type %s, got %s", ws.EventAgentCompleted, event.Type)
-		}
-
-		// Verify required payload fields
-		sessionID, ok := event.Data["session_id"].(string)
-		if !ok || sessionID == "" {
-			t.Errorf("session_id must be present in payload, got: %v", event.Data["session_id"])
-		}
-
-		modelID, ok := event.Data["model_id"].(string)
-		if !ok || modelID != "claude-opus-4" {
-			t.Errorf("expected model_id=claude-opus-4, got: %v", event.Data["model_id"])
-		}
-
-		result, ok := event.Data["result"].(string)
-		if !ok || result != "pass" {
-			t.Errorf("expected result=pass, got: %v", event.Data["result"])
-		}
-
-		agentType, ok := event.Data["agent_type"].(string)
-		if !ok || agentType != "analyzer" {
-			t.Errorf("expected agent_type=analyzer, got: %v", event.Data["agent_type"])
-		}
-
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for agent.completed broadcast")
-	}
-}
-
 // TestAgentFailEventPayload verifies agent.fail broadcasts include required fields.
 func TestAgentFailEventPayload(t *testing.T) {
 	env := newHandlerTestEnv(t)
@@ -229,10 +133,10 @@ func TestAgentFailEventPayload(t *testing.T) {
 	// Call agent.fail
 	params := struct {
 		TicketID string `json:"ticket_id"`
-		types.AgentCompleteRequest
+		types.AgentRequest
 	}{
 		TicketID: "TEST-1",
-		AgentCompleteRequest: types.AgentCompleteRequest{
+		AgentRequest: types.AgentRequest{
 			Workflow:   "test",
 			AgentType:  "analyzer",
 			Model:      "claude-sonnet-4",
@@ -320,10 +224,10 @@ func TestAgentContinueEventPayload(t *testing.T) {
 	// Call agent.continue
 	params := struct {
 		TicketID string `json:"ticket_id"`
-		types.AgentCompleteRequest
+		types.AgentRequest
 	}{
 		TicketID: "TEST-1",
-		AgentCompleteRequest: types.AgentCompleteRequest{
+		AgentRequest: types.AgentRequest{
 			Workflow:   "test",
 			AgentType:  "analyzer",
 			Model:      "gpt-5.3",
@@ -410,7 +314,7 @@ func TestAgentCallbackEventPayload(t *testing.T) {
 	}{
 		TicketID: "TEST-1",
 		AgentCallbackRequest: types.AgentCallbackRequest{
-			AgentCompleteRequest: types.AgentCompleteRequest{
+			AgentRequest: types.AgentRequest{
 				Workflow:   "test",
 				AgentType:  "analyzer",
 				Model:      "claude-opus-4",
@@ -489,16 +393,37 @@ func TestSocketHandlerInvalidMethod(t *testing.T) {
 	}
 }
 
+// TestAgentCompleteMethodRejected verifies agent.complete is no longer a valid method.
+func TestAgentCompleteMethodRejected(t *testing.T) {
+	env := newHandlerTestEnv(t)
+
+	req := Request{
+		ID:      "req-complete",
+		Method:  "agent.complete",
+		Project: env.project,
+		Params:  []byte(`{"ticket_id":"TEST-1","workflow":"test","agent_type":"analyzer"}`),
+	}
+
+	resp := env.handler.Handle(req)
+
+	if resp.Error == nil {
+		t.Fatal("expected error for removed agent.complete method")
+	}
+	if resp.Error.Code != -32601 {
+		t.Errorf("expected code -32601 (method not found), got: %d", resp.Error.Code)
+	}
+}
+
 // TestSocketHandlerMissingProject verifies requests without project return error.
 func TestSocketHandlerMissingProject(t *testing.T) {
 	env := newHandlerTestEnv(t)
 
 	params := struct {
 		TicketID string `json:"ticket_id"`
-		types.AgentCompleteRequest
+		types.AgentRequest
 	}{
 		TicketID: "TEST-1",
-		AgentCompleteRequest: types.AgentCompleteRequest{
+		AgentRequest: types.AgentRequest{
 			Workflow:  "test",
 			AgentType: "analyzer",
 		},
@@ -507,7 +432,7 @@ func TestSocketHandlerMissingProject(t *testing.T) {
 
 	req := Request{
 		ID:      "req-1",
-		Method:  "agent.complete",
+		Method:  "agent.fail",
 		Project: "", // Missing project
 		Params:  paramsData,
 	}

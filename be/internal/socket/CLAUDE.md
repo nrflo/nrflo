@@ -44,7 +44,6 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `project_findings.append` | Append to a project-level finding |
 | `project_findings.append-bulk` | Append multiple project-level findings |
 | `project_findings.delete` | Delete project-level finding keys |
-| `agent.complete` | Mark agent as completed (pass); broadcasts with `session_id`, `model_id`, `result` |
 | `agent.fail` | Mark agent as failed; broadcasts with `session_id`, `model_id`, `result` |
 | `agent.continue` | Mark agent for continuation; broadcasts with `session_id`, `model_id` |
 | `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |

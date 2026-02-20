@@ -88,10 +88,7 @@ Mark as **FAIL** if:
 
 **You MUST call one of these commands as your very last action. The workflow cannot proceed without it.**
 
-If ALL criteria pass:
-```bash
-nrworkflow agent complete ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
-```
+If ALL criteria pass, just exit cleanly (exit 0 = pass).
 
 If ANY criterion fails:
 ```bash

@@ -8,7 +8,6 @@ import (
 )
 
 // insertCompletedSession inserts a completed agent session directly into the DB.
-// This bypasses the socket agent.complete flow which only sets result (not status).
 func insertCompletedSession(t *testing.T, env *TestEnv, id, ticketID, wfiID, phase, agentType, modelID, status, result string) {
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)

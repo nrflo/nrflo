@@ -10,67 +10,6 @@ import (
 	"be/internal/logger"
 )
 
-// TestSocketHandler_AgentComplete_LogsWithTrx verifies agent.complete logs with trx and details.
-func TestSocketHandler_AgentComplete_LogsWithTrx(t *testing.T) {
-	env := NewTestEnv(t)
-
-	var logBuf bytes.Buffer
-	logger.SetWriter(&logBuf)
-	defer logger.SetWriter(os.Stderr)
-
-	env.CreateTicket(t, "SOCK-1", "Socket logging test")
-	env.InitWorkflow(t, "SOCK-1")
-
-	wfiID := env.GetWorkflowInstanceID(t, "SOCK-1", "test")
-	env.InsertAgentSession(t, "sess-1", "SOCK-1", wfiID, "analyzer", "analyzer", "sonnet")
-
-	// Execute agent.complete via socket
-	env.MustExecute(t, "agent.complete", map[string]interface{}{
-		"ticket_id":   "SOCK-1",
-		"workflow":    "test",
-		"agent_type":  "analyzer",
-		"session_id":  "sess-1",
-		"instance_id": wfiID,
-	}, nil)
-
-	logs := logBuf.String()
-
-	// Verify log line exists
-	if !strings.Contains(logs, "agent complete received") {
-		t.Errorf("logs missing 'agent complete received': %s", logs)
-	}
-
-	// Verify details are logged
-	if !strings.Contains(logs, "agent_type=analyzer") {
-		t.Errorf("logs missing agent_type: %s", logs)
-	}
-	if !strings.Contains(logs, "ticket=SOCK-1") {
-		t.Errorf("logs missing ticket: %s", logs)
-	}
-	if !strings.Contains(logs, "workflow=test") {
-		t.Errorf("logs missing workflow: %s", logs)
-	}
-
-	// Verify trx is present
-	logLines := extractLogLines(logs, "agent complete received")
-	if len(logLines) != 1 {
-		t.Fatalf("expected 1 log line, got %d", len(logLines))
-	}
-
-	trx := extractTrx(logLines[0])
-	if trx == "" {
-		t.Errorf("log line missing trx: %s", logLines[0])
-	}
-	if len(trx) != 8 {
-		t.Errorf("trx length = %d, want 8: %s", len(trx), trx)
-	}
-
-	// Verify it's INFO level
-	if !strings.Contains(logLines[0], "INFO") {
-		t.Errorf("expected INFO level, got: %s", logLines[0])
-	}
-}
-
 // TestSocketHandler_AgentFail_LogsWithWarnLevel verifies agent.fail logs at WARN level.
 func TestSocketHandler_AgentFail_LogsWithWarnLevel(t *testing.T) {
 	env := NewTestEnv(t)
@@ -269,8 +208,8 @@ func TestSocketHandler_AgentError_LogsError(t *testing.T) {
 	logger.SetWriter(&logBuf)
 	defer logger.SetWriter(os.Stderr)
 
-	// Try to complete non-existent agent (will fail)
-	env.ExpectError(t, "agent.complete", map[string]interface{}{
+	// Try to fail non-existent agent (will fail)
+	env.ExpectError(t, "agent.fail", map[string]interface{}{
 		"ticket_id":  "NONEXISTENT",
 		"workflow":   "test",
 		"agent_type": "analyzer",
@@ -290,7 +229,7 @@ func TestSocketHandler_AgentError_LogsError(t *testing.T) {
 	}
 
 	// Verify method is logged
-	if !strings.Contains(logs, "method=agent.complete") {
+	if !strings.Contains(logs, "method=agent.fail") {
 		t.Errorf("logs missing method: %s", logs)
 	}
 
@@ -392,7 +331,7 @@ func TestSocketHandler_TrxGeneratedPerRequest(t *testing.T) {
 	env.InsertAgentSession(t, "sess-8b", "SOCK-8", wfiID, "builder", "builder", "opus")
 
 	// Execute two agent commands
-	env.MustExecute(t, "agent.complete", map[string]interface{}{
+	env.MustExecute(t, "agent.fail", map[string]interface{}{
 		"ticket_id":   "SOCK-8",
 		"workflow":    "test",
 		"agent_type":  "analyzer",
@@ -400,7 +339,7 @@ func TestSocketHandler_TrxGeneratedPerRequest(t *testing.T) {
 		"instance_id": wfiID,
 	}, nil)
 
-	env.MustExecute(t, "agent.complete", map[string]interface{}{
+	env.MustExecute(t, "agent.fail", map[string]interface{}{
 		"ticket_id":   "SOCK-8",
 		"workflow":    "test",
 		"agent_type":  "builder",
@@ -411,7 +350,7 @@ func TestSocketHandler_TrxGeneratedPerRequest(t *testing.T) {
 	logs := logBuf.String()
 
 	// Extract trx from both log lines
-	logLines := extractLogLines(logs, "agent complete received")
+	logLines := extractLogLines(logs, "agent fail received")
 	if len(logLines) != 2 {
 		t.Fatalf("expected 2 log lines, got %d", len(logLines))
 	}

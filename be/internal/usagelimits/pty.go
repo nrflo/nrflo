@@ -1,6 +1,7 @@
 package usagelimits
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"strings"
@@ -51,10 +52,14 @@ func (s *ptySession) send(data string) {
 	s.ptmx.WriteString(data) //nolint:errcheck
 }
 
-// waitFor polls until one of the patterns appears in the accumulated output or timeout expires.
-func (s *ptySession) waitFor(patterns []string, timeout time.Duration) bool {
+// waitFor polls until one of the patterns appears in the accumulated output,
+// the timeout expires, or ctx is cancelled. Returns false on timeout/cancel.
+func (s *ptySession) waitFor(ctx context.Context, patterns []string, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
+		if ctx.Err() != nil {
+			return false
+		}
 		s.mu.Lock()
 		text := s.buf.String()
 		s.mu.Unlock()
@@ -63,7 +68,11 @@ func (s *ptySession) waitFor(patterns []string, timeout time.Duration) bool {
 				return true
 			}
 		}
-		time.Sleep(50 * time.Millisecond)
+		select {
+		case <-time.After(50 * time.Millisecond):
+		case <-ctx.Done():
+			return false
+		}
 	}
 	return false
 }

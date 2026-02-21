@@ -12,8 +12,8 @@ import (
 )
 
 // FetchAll scrapes usage limits from Claude and Codex CLIs concurrently via PTY.
-func FetchAll() *UsageLimits {
-	ctx := context.Background()
+// The context can be cancelled to abort in-flight PTY sessions (e.g., on server shutdown).
+func FetchAll(ctx context.Context) *UsageLimits {
 	result := &UsageLimits{FetchedAt: time.Now()}
 	env := filteredEnv()
 
@@ -45,19 +45,25 @@ func fetchClaude(ctx context.Context, env []string) ToolUsage {
 	defer sess.close()
 
 	// Wait for prompt ready ("Ctx:" appears in the status line)
-	sess.waitFor([]string{"Ctx:"}, 10*time.Second)
+	if !sess.waitFor(ctx, []string{"Ctx:"}, 10*time.Second) && ctx.Err() != nil {
+		return ToolUsage{Available: false}
+	}
 
 	// Type /usage; wait for autocomplete to settle, then press Enter
 	sess.send("/usage")
-	time.Sleep(1500 * time.Millisecond)
+	if !sleepCtx(ctx, 1500*time.Millisecond) {
+		return ToolUsage{Available: false}
+	}
 	sess.send("\r")
 
 	// Wait for usage data to render
-	sess.waitFor([]string{"resets", "Resets"}, 20*time.Second)
-	time.Sleep(2 * time.Second)
+	sess.waitFor(ctx, []string{"resets", "Resets"}, 20*time.Second)
+	if !sleepCtx(ctx, 2*time.Second) {
+		return ToolUsage{Available: false}
+	}
 
 	sess.send("/exit\r")
-	time.Sleep(500 * time.Millisecond)
+	sleepCtx(ctx, 500*time.Millisecond) //nolint:errcheck
 
 	session, weekly := parseClaude(sess.output())
 	if session == nil && weekly == nil {
@@ -79,26 +85,42 @@ func fetchCodex(ctx context.Context, env []string) ToolUsage {
 	defer sess.close()
 
 	// Wait for prompt ready ("context left" appears in status bar)
-	sess.waitFor([]string{"context left"}, 10*time.Second)
+	if !sess.waitFor(ctx, []string{"context left"}, 10*time.Second) && ctx.Err() != nil {
+		return ToolUsage{Available: false}
+	}
 
 	// Type /status; wait for autocomplete to settle, then press Enter
 	sess.send("/status")
-	time.Sleep(1500 * time.Millisecond)
+	if !sleepCtx(ctx, 1500*time.Millisecond) {
+		return ToolUsage{Available: false}
+	}
 	sess.send("\r")
 
 	// Wait for limits data to load
-	sess.waitFor([]string{"% left", "% used"}, 12*time.Second)
-	time.Sleep(1 * time.Second)
+	sess.waitFor(ctx, []string{"% left", "% used"}, 12*time.Second)
+	if !sleepCtx(ctx, 1*time.Second) {
+		return ToolUsage{Available: false}
+	}
 
 	// Exit via Ctrl+C — codex panics on /exit due to a Rust wrapping bug
 	sess.send("\x03")
-	time.Sleep(500 * time.Millisecond)
+	sleepCtx(ctx, 500*time.Millisecond) //nolint:errcheck
 
 	session, weekly := parseCodex(sess.output())
 	if session == nil && weekly == nil {
 		return ToolUsage{Available: true, Error: "failed to parse /status output"}
 	}
 	return ToolUsage{Available: true, Session: session, Weekly: weekly}
+}
+
+// sleepCtx sleeps for d or returns false early if ctx is cancelled.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	select {
+	case <-time.After(d):
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
 
 // filteredEnv returns os.Environ() with CLAUDECODE removed.

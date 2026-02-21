@@ -32,6 +32,7 @@ type Server struct {
 	clock            clock.Clock
 	usageLimitsCache *usagelimits.Cache
 	pool             *db.Pool
+	fetcherCancel    context.CancelFunc
 }
 
 // NewServer creates a new API server
@@ -108,6 +109,10 @@ func (s *Server) Start(port int) error {
 
 // Stop gracefully stops the server
 func (s *Server) Stop(ctx context.Context) error {
+	// Cancel usage limits fetcher goroutine and any in-flight PTY scrapes
+	if s.fetcherCancel != nil {
+		s.fetcherCancel()
+	}
 	// Cancel all active orchestrations
 	if s.orchestrator != nil {
 		s.orchestrator.StopAll()
@@ -210,8 +215,14 @@ func (s *Server) startRetentionCleanup() {
 // the DB (< 30 min old), it populates the cache immediately and skips the
 // initial PTY scrape.
 func (s *Server) startUsageLimitsFetcher() {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.fetcherCancel = cancel
+
 	fetch := func() {
-		data := usagelimits.FetchAll()
+		data := usagelimits.FetchAll(ctx)
+		if ctx.Err() != nil {
+			return
+		}
 		s.usageLimitsCache.Set(data)
 		s.wsHub.BroadcastGlobal(ws.NewEvent(ws.EventGlobalUsageLimits, "", "", "", nil))
 		logger.Info(context.Background(), "usage-limits: fetched",
@@ -236,8 +247,13 @@ func (s *Server) startUsageLimitsFetcher() {
 		}
 		ticker := time.NewTicker(20 * time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			fetch()
+		for {
+			select {
+			case <-ticker.C:
+				fetch()
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 }

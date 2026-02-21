@@ -211,6 +211,7 @@ type WorkflowDefCreateRequest struct {
 	Description string          `json:"description,omitempty"`
 	ScopeType   string          `json:"scope_type,omitempty"` // "ticket" (default) or "project"
 	Phases      json.RawMessage `json:"phases"`               // accepts both string and object entries
+	Groups      []string        `json:"groups,omitempty"`
 }
 
 // WorkflowDefUpdateRequest is the request for updating a workflow definition
@@ -218,6 +219,7 @@ type WorkflowDefUpdateRequest struct {
 	Description *string          `json:"description,omitempty"`
 	ScopeType   *string          `json:"scope_type,omitempty"`
 	Phases      *json.RawMessage `json:"phases,omitempty"`
+	Groups      *[]string        `json:"groups,omitempty"`
 }
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow
@@ -233,6 +235,7 @@ type AgentDefCreateRequest struct {
 	Timeout          int    `json:"timeout,omitempty"`
 	Prompt           string `json:"prompt"`
 	RestartThreshold *int   `json:"restart_threshold,omitempty"`
+	Tag              string `json:"tag,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -241,6 +244,7 @@ type AgentDefUpdateRequest struct {
 	Timeout          *int    `json:"timeout,omitempty"`
 	Prompt           *string `json:"prompt,omitempty"`
 	RestartThreshold *int    `json:"restart_threshold,omitempty"`
+	Tag              *string `json:"tag,omitempty"`
 }
 
 // DependencyRequest is the request for adding/removing dependencies

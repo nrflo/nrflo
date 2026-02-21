@@ -39,6 +39,7 @@ const (
 	EventProjectFindingsUpdated      = "project_findings.updated"
 	EventAgentContextUpdated         = "agent.context_updated"
 	EventAgentTakeControl            = "agent.take_control"
+	EventSkipTagAdded                = "skip_tag.added"
 	EventTestEcho                    = "test.echo"
 )
 

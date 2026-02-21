@@ -99,3 +99,18 @@ func ValidateScopeType(scopeType string) error {
 	}
 	return nil
 }
+
+// ValidateGroups validates that groups is an array of non-empty, unique strings
+func ValidateGroups(groups []string) error {
+	seen := make(map[string]bool, len(groups))
+	for _, g := range groups {
+		if strings.TrimSpace(g) == "" {
+			return fmt.Errorf("groups must not contain empty strings")
+		}
+		if seen[g] {
+			return fmt.Errorf("duplicate group: '%s'", g)
+		}
+		seen[g] = true
+	}
+	return nil
+}

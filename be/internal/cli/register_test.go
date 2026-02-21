@@ -86,12 +86,13 @@ func TestRegisterCLICommands(t *testing.T) {
 	// Get all registered commands
 	commands := getCommandNames(rootCmd)
 
-	// Expected: agent, findings, tickets, deps, version
+	// Expected: agent, findings, tickets, deps, skip, version
 	expectedCommands := map[string]bool{
 		"agent":    true,
 		"findings": true,
 		"tickets":  true,
 		"deps":     true,
+		"skip":     true,
 		"version":  true,
 	}
 
@@ -107,9 +108,9 @@ func TestRegisterCLICommands(t *testing.T) {
 		t.Errorf("RegisterCLICommands: unexpected command 'serve' should not be registered")
 	}
 
-	// Verify exact count: agent + findings + tickets + deps + version = 5
-	if len(commands) != 5 {
-		t.Errorf("RegisterCLICommands: got %d commands, want 5. Commands: %v", len(commands), commands)
+	// Verify exact count: agent + findings + tickets + deps + skip + version = 6
+	if len(commands) != 6 {
+		t.Errorf("RegisterCLICommands: got %d commands, want 6. Commands: %v", len(commands), commands)
 	}
 }
 

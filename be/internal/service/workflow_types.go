@@ -36,6 +36,7 @@ type AgentConfig struct {
 type WorkflowDef struct {
 	Description string            `json:"description"`
 	ScopeType   string            `json:"scope_type"` // "ticket" or "project"
+	Groups      []string          `json:"groups"`
 	Phases      []PhaseDef        `json:"-"`
 	RawPhases   []json.RawMessage `json:"-"` // Internal, used during parsing
 }
@@ -45,6 +46,7 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 	type Alias struct {
 		Description string     `json:"description"`
 		ScopeType   string     `json:"scope_type"`
+		Groups      []string   `json:"groups"`
 		Phases      []PhaseDef `json:"phases"`
 	}
 	phases := wf.Phases
@@ -55,9 +57,14 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 	if scopeType == "" {
 		scopeType = "ticket"
 	}
+	groups := wf.Groups
+	if groups == nil {
+		groups = []string{}
+	}
 	return json.Marshal(Alias{
 		Description: wf.Description,
 		ScopeType:   scopeType,
+		Groups:      groups,
 		Phases:      phases,
 	})
 }

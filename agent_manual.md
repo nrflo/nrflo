@@ -197,6 +197,9 @@ nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--mod
 
 # Project-scoped (no ticket): use -T instead of <ticket>
 nrworkflow agent fail -T <agent-type> -w <workflow> [--model <model>] [--reason <text>]
+
+# Skip a workflow group tag (reads NRWF_WORKFLOW_INSTANCE_ID from env)
+nrworkflow skip <tag>
 ```
 
 | Command | When to use |
@@ -204,6 +207,7 @@ nrworkflow agent fail -T <agent-type> -w <workflow> [--model <model>] [--reason 
 | `fail` | Task cannot be completed; `--reason` is optional but recommended |
 | `continue` | Context window exhausted; save progress to `to_resume` first |
 | `callback` | Issue found that requires re-running an earlier layer; `--level` (0-based layer index) is required |
+| `skip <tag>` | Skip a workflow group in subsequent layers; tag must be in workflow's `groups` |
 
 All commands require `-w/--workflow`. The `--model` flag is only needed for parallel agents (multiple models in the same layer). Use `-T/--no-ticket` for project-scoped workflows (skips the `<ticket>` positional arg).
 
@@ -280,6 +284,7 @@ nrworkflow findings add TICKET-1 implementor summary:'Fixed the auth bug' files_
 | `timeout` | int | `20` | Max execution time in minutes |
 | `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns |
 | `restart_threshold` | int (optional) | `25` | Percentage of context remaining that triggers low-context save (lower = more aggressive) |
+| `tag` | string (optional) | `""` | Group tag for skip-tag feature; must be in parent workflow's `groups` |
 
 ### Supported Models by CLI Adapter
 
@@ -331,6 +336,10 @@ Each phase is a JSON object with `agent` (agent definition ID) and `layer` (inte
 - **Fan-in validation:** If layer N has >1 agent, layer N+1 must have exactly 1 agent
 - **Pass condition:** At least 1 agent in a layer must pass (`pass_count >= 1`) for the workflow to proceed
 - **All skipped:** If all agents in a layer are skipped, the workflow continues
+
+### Workflow Groups (Skip Tags)
+
+Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs"]`). Agents can be assigned a `tag` from the workflow's groups. During execution, an agent can call `nrworkflow skip <tag>` to add a tag to the instance's `skip_tags`. The orchestrator reads `skip_tags` before each layer to skip agents whose tag is in the list.
 
 ### Scope Types
 

@@ -15,6 +15,7 @@ func RegisterCLICommands() {
 	rootCmd.AddCommand(findingsCmd)
 	rootCmd.AddCommand(ticketsCmd)
 	rootCmd.AddCommand(depsCmd)
+	rootCmd.AddCommand(skipCmd)
 
 	// Register ticketsCmd persistent flags (moved from tickets.go init).
 	// Guard against double-registration which would cause a panic.

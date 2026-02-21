@@ -37,6 +37,8 @@ func (h *Handler) Handle(req Request) Response {
 		return h.handleProjectFindings(req, action)
 	case "agent":
 		return h.handleAgent(ctx, req, action)
+	case "workflow":
+		return h.handleWorkflow(ctx, req, action)
 	case "ws":
 		return h.handleWS(ctx, req, action)
 	default:
@@ -291,6 +293,46 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", "agent."+action)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("agent."+action))
+	}
+}
+
+func (h *Handler) handleWorkflow(ctx context.Context, req Request, action string) Response {
+	switch action {
+	case "skip":
+		var params struct {
+			InstanceID string `json:"instance_id"`
+			Tag        string `json:"tag"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.InstanceID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("instance_id is required"))
+		}
+		if params.Tag == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("tag is required"))
+		}
+		logger.Info(ctx, "workflow skip received", "instance_id", params.InstanceID, "tag", params.Tag)
+		projectID, ticketID, workflow, err := h.workflowSvc.AddSkipTag(params.InstanceID, params.Tag)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
+			}
+			if strings.Contains(err.Error(), "not in workflow groups") {
+				return MakeErrorResponse(req.ID, NewValidationError(err.Error()))
+			}
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		h.broadcast(ws.EventSkipTagAdded, projectID, ticketID, workflow, map[string]interface{}{
+			"instance_id": params.InstanceID,
+			"tag":         params.Tag,
+		})
+		return MakeResponse(req.ID, map[string]string{"status": "added", "tag": params.Tag})
+
+	default:
+		logger.Warn(ctx, "unknown socket method", "method", "workflow."+action)
+		return MakeErrorResponse(req.ID, NewMethodNotFoundError("workflow."+action))
 	}
 }
 

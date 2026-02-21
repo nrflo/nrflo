@@ -276,6 +276,7 @@ type Handler struct {
 	findingsSvc        *service.FindingsService
 	projectFindingsSvc *service.ProjectFindingsService
 	agentSvc           *service.AgentService
+	workflowSvc        *service.WorkflowService
 	wsHub              *ws.Hub
 }
 
@@ -285,6 +286,7 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock) *Handler {
 		findingsSvc:        service.NewFindingsService(pool, clk),
 		projectFindingsSvc: service.NewProjectFindingsService(pool, clk),
 		agentSvc:           service.NewAgentService(pool, clk),
+		workflowSvc:        service.NewWorkflowService(pool, clk),
 		wsHub:              hub,
 	}
 }

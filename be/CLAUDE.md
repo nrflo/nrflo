@@ -15,6 +15,7 @@ be/
 │   │   ├── agent.go             # agent fail/continue/callback (agent-only, -T for project scope)
 │   │   ├── findings.go          # findings add/append/get/delete (agent-only, -T for project scope)
 │   │   ├── findings_project.go  # project-level findings (project-add/get/append/delete)
+│   │   ├── skip.go              # skip <tag> command (adds skip tag to running workflow instance)
 │   │   ├── tickets.go           # tickets list/get/create (HTTP)
 │   │   ├── tickets_update.go    # tickets update/close/reopen/delete (HTTP)
 │   │   └── deps.go              # deps list/add/remove (HTTP)
@@ -185,7 +186,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 - **TCP socket** on `127.0.0.1:6588` — for Docker agents via `host.docker.internal:6588`, always started
 - **Auto-migration** — database schema is automatically migrated on startup
 
-The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback`, and `ws.broadcast` methods are supported.
+The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.
 
 ## Package Documentation
 

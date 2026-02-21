@@ -322,3 +322,38 @@ func (s *WorkflowService) ListProjectWorkflowInstances(projectID string) ([]*mod
 func (s *WorkflowService) ListWorkflows(projectID string) (map[string]WorkflowDef, error) {
 	return s.ListWorkflowDefs(projectID)
 }
+
+// AddSkipTag adds a skip tag to a running workflow instance.
+// Returns (projectID, ticketID, workflowID, error) for broadcast context.
+func (s *WorkflowService) AddSkipTag(instanceID, tag string) (string, string, string, error) {
+	wi, err := s.wfiRepo.Get(instanceID)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// Load workflow def to validate tag against groups
+	wf, err := s.GetWorkflowDef(wi.ProjectID, wi.WorkflowID)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to load workflow definition: %w", err)
+	}
+
+	found := false
+	for _, g := range wf.Groups {
+		if g == tag {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return "", "", "", fmt.Errorf("tag '%s' is not in workflow groups %v", tag, wf.Groups)
+	}
+
+	// AddSkipTag handles dedup
+	wi.AddSkipTag(tag)
+
+	if err := s.wfiRepo.UpdateSkipTags(wi.ID, wi.SkipTags); err != nil {
+		return "", "", "", err
+	}
+
+	return wi.ProjectID, wi.TicketID, wi.WorkflowID, nil
+}

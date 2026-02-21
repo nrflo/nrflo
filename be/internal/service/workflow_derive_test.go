@@ -16,9 +16,12 @@ import (
 func setupDeriveTestEnv(t *testing.T) (*db.Pool, *WorkflowService, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "derive_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
 
@@ -447,9 +450,12 @@ func BenchmarkDerivePhaseStatuses(b *testing.B) {
 func setupDeriveTestEnvBench(b *testing.B) (*db.Pool, *WorkflowService, string) {
 	b.Helper()
 	dbPath := filepath.Join(b.TempDir(), "bench.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		b.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		b.Fatalf("failed to create pool: %v", err)
+		b.Fatalf("failed to open pool: %v", err)
 	}
 	b.Cleanup(func() { pool.Close() })
 

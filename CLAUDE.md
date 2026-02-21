@@ -151,6 +151,8 @@ nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--model <model>] [--r
 nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
 nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--model <model>]
 
+nrworkflow skip <tag>  # Add skip tag to running workflow instance (reads NRWF_WORKFLOW_INSTANCE_ID from env)
+
 nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
 nrworkflow findings add <ticket> <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
 nrworkflow findings append <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]

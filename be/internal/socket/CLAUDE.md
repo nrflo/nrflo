@@ -48,6 +48,7 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `agent.continue` | Mark agent for continuation; broadcasts with `session_id`, `model_id` |
 | `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |
 | `agent.context_update` | Update context_left for a session; no project required; broadcasts `agent.context_updated` with `session_id`, `context_left` |
+| `workflow.skip` | Add a skip tag to a workflow instance; validates tag against workflow groups; broadcasts `skip_tag.added` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 
 ## Common Tasks

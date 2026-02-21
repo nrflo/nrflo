@@ -74,6 +74,10 @@ vi.mock('@/hooks/useTickets', () => ({
   useTicket: () => ({
     data: { id: 'TEST-1', title: 'Test ticket' },
   }),
+  useTicketList: () => ({
+    data: { tickets: [] },
+    isLoading: false,
+  }),
 }))
 
 vi.mock('@/components/chains/ChainTicketSelector', () => ({

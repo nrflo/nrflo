@@ -46,8 +46,15 @@ v1 clients (no `since_seq`) continue working unchanged — no replay, no snapsho
 | `backpressure.go` | Client queue depth monitoring |
 | `testing.go` | Test helpers (NewTestClient) |
 
+## Global Broadcast
+
+`BroadcastGlobal(event)` sends an event to ALL connected clients regardless of subscription scope. Used for cross-project signal events like `global.running_agents`. These events are ephemeral — not persisted to the event log and not eligible for cursor-based replay.
+
+The spawner emits `global.running_agents` whenever an agent starts or completes. The frontend refetches running agents via `GET /api/v1/agents/running` on receipt.
+
 ## Architecture
 
 Events flow: Producer → Hub.Broadcast → EventLogRepo.Append (assigns seq) → broadcastEvent → clients.
+Global events flow: Producer → Hub.BroadcastGlobal → broadcastGlobalEvent → ALL clients (no event log).
 Replay flow: Client subscribe with since_seq → handleReplay → EventLogRepo.QuerySince → stream to client.
 Snapshot flow: Cursor too old or since_seq=0 → streamSnapshot → SnapshotProvider.BuildSnapshot → chunks to client.

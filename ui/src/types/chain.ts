@@ -16,6 +16,7 @@ export interface ChainExecution {
   created_at: string
   updated_at: string
   items?: ChainExecutionItem[]
+  deps?: Record<string, string[]>
 }
 
 // Chain item — matches be/internal/model/chain.go ChainExecutionItem (JSON output)
@@ -32,17 +33,26 @@ export interface ChainExecutionItem {
   ended_at?: string
 }
 
+// Preview response — matches be/internal/types/chain_request.go
+export interface ChainPreviewResponse {
+  ticket_ids: string[]
+  deps: Record<string, string[]>
+  added_by_deps: string[]
+}
+
 // Request types — matches be/internal/types/chain_request.go
 export interface ChainCreateRequest {
   name: string
   workflow_name: string
   epic_ticket_id?: string
   ticket_ids: string[]
+  ordered_ticket_ids?: string[]
 }
 
 export interface ChainUpdateRequest {
   name?: string
   ticket_ids?: string[]
+  ordered_ticket_ids?: string[]
 }
 
 export interface ChainAppendRequest {

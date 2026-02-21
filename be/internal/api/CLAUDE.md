@@ -92,6 +92,10 @@ DELETE /api/v1/workflows/:wid/agents/:id       # Delete agent definition
 GET /api/v1/tickets/:id/agents
 GET /api/v1/tickets/:id/agents?phase=investigation
 
+# Running agents (cross-project, no X-Project header required)
+GET /api/v1/agents/running
+GET /api/v1/agents/running?limit=50
+
 # Recent agents (cross-project, no X-Project header required)
 GET /api/v1/agents/recent
 GET /api/v1/agents/recent?limit=10

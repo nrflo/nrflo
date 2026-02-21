@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link2 } from 'lucide-react'
 import { generateChainName } from '@/lib/generateChainName'
@@ -8,8 +8,11 @@ import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { ChainTicketSelector } from './ChainTicketSelector'
+import { ChainOrderList } from './ChainOrderList'
 import { listWorkflowDefs } from '@/api/workflows'
+import { previewChain } from '@/api/chains'
 import { useCreateChain, useUpdateChain } from '@/hooks/useChains'
+import { useTicketList } from '@/hooks/useTickets'
 import { useProjectStore } from '@/stores/projectStore'
 import type { ChainExecution } from '@/types/chain'
 
@@ -24,6 +27,11 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
   const [ticketIds, setTicketIds] = useState<string[]>([])
   const [epicIds, setEpicIds] = useState<string[]>([])
+  const [orderedIds, setOrderedIds] = useState<string[]>([])
+  const [deps, setDeps] = useState<Record<string, string[]>>({})
+  const [addedByDeps, setAddedByDeps] = useState<string[]>([])
+  const previewTimerRef = useRef<number | null>(null)
+  const previewRequestRef = useRef(0)
 
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
@@ -33,6 +41,16 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
     queryFn: listWorkflowDefs,
     enabled: open && projectsLoaded,
   })
+
+  const { data: ticketData } = useTicketList({ status: 'open' }, { enabled: open && projectsLoaded })
+
+  const ticketTitleMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of ticketData?.tickets ?? []) {
+      map.set(t.id, t.title)
+    }
+    return map
+  }, [ticketData])
 
   const createMutation = useCreateChain()
   const updateMutation = useUpdateChain()
@@ -55,7 +73,19 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
     if (editChain) {
       setName(editChain.name)
       setSelectedWorkflow(editChain.workflow_name)
-      setTicketIds(editChain.items?.map((i) => i.ticket_id) ?? [])
+      const itemIds = editChain.items
+        ?.slice()
+        .sort((a, b) => a.position - b.position)
+        .map((i) => i.ticket_id) ?? []
+      setTicketIds(itemIds)
+      setOrderedIds(itemIds)
+      setDeps(editChain.deps ?? {})
+      // Fetch preview to get addedByDeps for edit mode
+      if (itemIds.length > 0) {
+        previewChain({ ticket_ids: itemIds }).then((res) => {
+          setAddedByDeps(res.added_by_deps)
+        }).catch(() => {})
+      }
     }
   }, [editChain])
 
@@ -66,26 +96,93 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
       setSelectedWorkflow('')
       setTicketIds([])
       setEpicIds([])
+      setOrderedIds([])
+      setDeps({})
+      setAddedByDeps([])
+      if (previewTimerRef.current) {
+        clearTimeout(previewTimerRef.current)
+        previewTimerRef.current = null
+      }
     }
   }, [open])
+
+  // Debounced preview call on ticket selection change
+  const fetchPreview = useCallback((nonEpicIds: string[]) => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current)
+    }
+    if (nonEpicIds.length === 0) {
+      setOrderedIds([])
+      setDeps({})
+      setAddedByDeps([])
+      return
+    }
+    const requestId = ++previewRequestRef.current
+    previewTimerRef.current = window.setTimeout(async () => {
+      try {
+        const res = await previewChain({ ticket_ids: nonEpicIds })
+        // Ignore stale responses
+        if (requestId !== previewRequestRef.current) return
+        setOrderedIds(res.ticket_ids)
+        setDeps(res.deps)
+        setAddedByDeps(res.added_by_deps)
+      } catch {
+        // Preview failure is non-blocking
+      }
+    }, 300)
+  }, [])
+
+  // Trigger preview on ticket selection changes (skip for initial editChain population)
+  const prevTicketIdsRef = useRef<string[] | null>(null)
+  useEffect(() => {
+    // Skip the first render when populated from editChain
+    if (prevTicketIdsRef.current === null) {
+      prevTicketIdsRef.current = ticketIds
+      if (editChain) return
+    }
+    prevTicketIdsRef.current = ticketIds
+    const epicSet = new Set(epicIds)
+    const nonEpicIds = ticketIds.filter((id) => !epicSet.has(id))
+    fetchPreview(nonEpicIds)
+  }, [ticketIds, epicIds, fetchPreview, editChain])
+
+  // Derive ChainOrderList items from orderedIds + ticketTitleMap
+  const orderItems = useMemo(
+    () =>
+      orderedIds.map((id) => ({
+        ticketId: id,
+        title: ticketTitleMap.get(id) ?? id,
+      })),
+    [orderedIds, ticketTitleMap]
+  )
+
+  const handleReorder = useCallback((newIds: string[]) => {
+    setOrderedIds(newIds)
+  }, [])
 
   const handleSubmit = async () => {
     if (!name.trim() || !selectedWorkflow || ticketIds.length === 0) return
     // Exclude epic IDs from ticket_ids — epics aren't chain items
     const epicSet = new Set(epicIds)
     const childOnlyIds = ticketIds.filter((id) => !epicSet.has(id))
+    const finalTicketIds = childOnlyIds.length > 0 ? childOnlyIds : ticketIds
     try {
       if (isEditing && editChain) {
         await updateMutation.mutateAsync({
           id: editChain.id,
-          data: { name: name.trim(), ticket_ids: childOnlyIds.length > 0 ? childOnlyIds : ticketIds },
+          data: {
+            name: name.trim(),
+            ticket_ids: finalTicketIds,
+            ordered_ticket_ids: orderedIds.length > 0 ? orderedIds : undefined,
+          },
         })
       } else {
         await createMutation.mutateAsync({
           name: name.trim(),
           workflow_name: selectedWorkflow,
-          ticket_ids: childOnlyIds.length > 0 ? childOnlyIds : ticketIds,
+          ticket_ids: finalTicketIds,
           epic_ticket_id: epicIds.length === 1 ? epicIds[0] : undefined,
+          ordered_ticket_ids: orderedIds.length > 0 ? orderedIds : undefined,
         })
       }
       onClose()
@@ -149,6 +246,15 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
                 onEpicIdsChange={setEpicIds}
               />
             </div>
+
+            {orderedIds.length > 0 && (
+              <ChainOrderList
+                items={orderItems}
+                deps={deps}
+                addedByDeps={addedByDeps}
+                onReorder={handleReorder}
+              />
+            )}
           </>
         )}
 

@@ -368,6 +368,30 @@ func (r *AgentSessionRepo) UpdateStatusToInteractiveCompleted(id string) error {
 	return nil
 }
 
+// GetRunning retrieves currently running agent sessions across all projects
+func (r *AgentSessionRepo) GetRunning(limit int) ([]*model.AgentSession, error) {
+	rows, err := r.db.Query(`
+		SELECT `+sessionColsJoined+`
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE s.status = 'running'
+		ORDER BY s.started_at ASC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []*model.AgentSession
+	for rows.Next() {
+		s, err := scanSessionJoined(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, nil
+}
+
 // GetRecent retrieves the most recent agent sessions
 func (r *AgentSessionRepo) GetRecent(limit int) ([]*model.AgentSession, error) {
 	rows, err := r.db.Query(`

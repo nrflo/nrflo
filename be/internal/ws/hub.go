@@ -78,8 +78,11 @@ type Hub struct {
 	// Empty ticketID means subscribed to all tickets in project
 	subscriptions map[string]map[string]map[*Client]bool
 
-	// Broadcast channel for events
+	// Broadcast channel for events (subscription-scoped)
 	broadcast chan *Event
+
+	// Global broadcast channel (sent to ALL connected clients)
+	globalBroadcast chan *Event
 
 	// Register requests from clients
 	register chan *Client
@@ -117,8 +120,9 @@ func NewHub(clk clock.Clock) *Hub {
 		clock:         clk,
 		clients:       make(map[*Client]bool),
 		subscriptions: make(map[string]map[string]map[*Client]bool),
-		broadcast:     make(chan *Event, 256),
-		register:      make(chan *Client),
+		broadcast:       make(chan *Event, 256),
+		globalBroadcast: make(chan *Event, 256),
+		register:        make(chan *Client),
 		unregister:    make(chan *Client),
 		shutdown:      make(chan struct{}),
 	}
@@ -160,6 +164,9 @@ func (h *Hub) Run() {
 		case event := <-h.broadcast:
 			h.broadcastEvent(event)
 
+		case event := <-h.globalBroadcast:
+			h.broadcastGlobalEvent(event)
+
 		case <-h.shutdown:
 			h.mu.Lock()
 			for client := range h.clients {
@@ -192,6 +199,33 @@ func (h *Hub) Broadcast(event *Event) {
 	select {
 	case h.broadcast <- event:
 	default:
+	}
+}
+
+// BroadcastGlobal sends an event to ALL connected clients regardless of subscription.
+// These are ephemeral signal events — not persisted to event log.
+func (h *Hub) BroadcastGlobal(event *Event) {
+	select {
+	case h.globalBroadcast <- event:
+	default:
+	}
+}
+
+// broadcastGlobalEvent stamps timestamp and sends to all connected clients.
+// Does NOT persist to event log (ephemeral notifications).
+func (h *Hub) broadcastGlobalEvent(event *Event) {
+	event.Timestamp = h.clock.Now().UTC().Format(time.RFC3339Nano)
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for client := range h.clients {
+		h.sendToClient(client, data)
 	}
 }
 

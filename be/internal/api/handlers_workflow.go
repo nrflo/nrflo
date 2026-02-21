@@ -1,9 +1,11 @@
 package api
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"be/internal/db"
 	"be/internal/model"
@@ -260,5 +262,79 @@ func (s *Server) handleGetRecentAgents(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"sessions": sessions,
 		"projects": projectMap,
+	})
+}
+
+// handleGetRunningAgents returns currently running agent sessions across all projects.
+// No X-Project header required — this is a global endpoint.
+func (s *Server) handleGetRunningAgents(w http.ResponseWriter, r *http.Request) {
+	database, err := s.getDatabase()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer database.Close()
+
+	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
+	projectRepo := repo.NewProjectRepo(database, s.clock)
+
+	// Parse limit from query param (default 50, max 100)
+	limit := 50
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+
+	sessions, err := agentSessionRepo.GetRunning(limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Get project names
+	projects, err := projectRepo.List()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	projectMap := make(map[string]string)
+	for _, p := range projects {
+		projectMap[p.ID] = p.Name
+	}
+
+	now := s.clock.Now()
+	agents := make([]map[string]interface{}, 0, len(sessions))
+	for _, sess := range sessions {
+		var elapsedSec float64
+		if sess.StartedAt.Valid {
+			if t, err := time.Parse(time.RFC3339Nano, sess.StartedAt.String); err == nil {
+				elapsedSec = math.Round(now.Sub(t).Seconds())
+			}
+		}
+		var modelID string
+		if sess.ModelID.Valid {
+			modelID = sess.ModelID.String
+		}
+		agents = append(agents, map[string]interface{}{
+			"session_id":   sess.ID,
+			"project_id":   sess.ProjectID,
+			"project_name": projectMap[sess.ProjectID],
+			"ticket_id":    sess.TicketID,
+			"workflow_id":  sess.Workflow,
+			"agent_type":   sess.AgentType,
+			"model_id":     modelID,
+			"phase":        sess.Phase,
+			"started_at":   sess.StartedAt.String,
+			"elapsed_sec":  elapsedSec,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"agents": agents,
+		"count":  len(agents),
 	})
 }

@@ -45,6 +45,7 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		"phase":             phase,
 		"restart_threshold": restartThreshold,
 	})
+	s.broadcastGlobal()
 }
 
 // registerAgentStopWithReason updates the agent_sessions row when an agent stops
@@ -83,6 +84,7 @@ func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName,
 		"result_reason": resultReason,
 		"model_id":      modelID,
 	})
+	s.broadcastGlobal()
 }
 
 // getWorkflowInstance retrieves the workflow instance for a ticket, returning an error if not initialized
@@ -198,5 +200,15 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 	}
 
 	return requestedPhase.ID, nil
+}
+
+// broadcastGlobal sends a signal-only global.running_agents event to all WS clients.
+// The frontend refetches via REST on receipt — no data payload needed.
+func (s *Spawner) broadcastGlobal() {
+	if s.config.WSHub == nil {
+		return
+	}
+	event := ws.NewEvent(ws.EventGlobalRunningAgents, "", "", "", nil)
+	s.config.WSHub.BroadcastGlobal(event)
 }
 

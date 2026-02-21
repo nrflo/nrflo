@@ -52,7 +52,7 @@ be/
 │   │   ├── hub.go               # Client management, event log integration, broadcasting
 │   │   ├── client.go            # Connection handling, subscriptions, cursor support
 │   │   ├── handler.go           # HTTP upgrade handler
-│   │   ├── protocol.go          # Protocol v2 constants and entity types
+│   │   ├── protocol.go          # Protocol v2 constants, entity types, global event types
 │   │   ├── replay.go            # Cursor-based replay from event log
 │   │   ├── snapshot.go          # Snapshot streaming (begin/chunk/end)
 │   │   ├── backpressure.go      # Client queue depth monitoring

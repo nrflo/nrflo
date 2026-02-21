@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPatch } from './client'
 import type {
   ChainExecution,
+  ChainPreviewResponse,
   ChainCreateRequest,
   ChainUpdateRequest,
   ChainAppendRequest,
@@ -28,6 +29,12 @@ export async function listChains(
 
 export async function getChain(id: string): Promise<ChainExecution> {
   return apiGet<ChainExecution>(`/api/v1/chains/${encodeURIComponent(id)}`)
+}
+
+export async function previewChain(
+  data: { ticket_ids: string[] }
+): Promise<ChainPreviewResponse> {
+  return apiPost<ChainPreviewResponse>('/api/v1/chains/preview', data)
 }
 
 export async function createChain(

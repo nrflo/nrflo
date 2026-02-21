@@ -12,6 +12,9 @@ const (
 	EventSnapshotEnd    = "snapshot.end"
 	EventResyncRequired = "resync.required"
 	EventHeartbeat      = "heartbeat"
+
+	// Global event types (sent to all clients regardless of subscription)
+	EventGlobalRunningAgents = "global.running_agents"
 )
 
 // Entity types used in snapshot chunks

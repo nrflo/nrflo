@@ -17,7 +17,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/ui/` | Reusable UI components: Badge, Button, Card, ConfirmDialog (variant-based), Dialog (modal with backdrop/ESC/click-outside), Dropdown (generic custom dropdown with click-outside/Escape/Check icon), Input, MarkdownEditor (CodeMirror 6), codemirror-theme.ts, ProjectSelect (uses Dropdown internally), Spinner, Textarea, Toggle, Tooltip (portal-based positioning) |
 | `src/components/layout/` | Layout components (Header, Sidebar, DailyStats, UsageLimits) |
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
-| `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, AppendToChainDialog) |
+| `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, ChainOrderList, AppendToChainDialog) |
 | `src/components/git/` | Git commit detail dialog and diff viewer components |
 | `src/pages/DocumentationPage.tsx` | Agent documentation page — fetches and renders markdown from `/api/v1/docs/agent-manual` via `react-markdown` |
 | `src/pages/LogsPage.tsx` | Server logs page — displays BE/FE log files with sub-tab switching, fetched via `useLogs` hook with 5s polling |

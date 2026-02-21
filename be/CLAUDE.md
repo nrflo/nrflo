@@ -65,7 +65,7 @@ be/
 │   │   ├── fetcher.go           # PTY-based scraper: spawn CLI, send /usage or /status, read output
 │   │   ├── ansi.go              # ANSI escape code stripping (cursor moves, SGR, OSC)
 │   │   ├── parser.go            # Output parsing: Claude /usage and Codex /status regex extraction
-│   │   └── cache.go             # Thread-safe cache with RWMutex
+│   │   └── cache.go             # Thread-safe cache with RWMutex + DB persistence via Store interface
 │   ├── config/                  # Configuration management
 │   │   └── config.go
 │   ├── client/                  # Socket + HTTP clients
@@ -199,7 +199,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Database schema, migrations, connection pool |
 | `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Service layer, file mapping, workflow types, common tasks |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
-| `internal/usagelimits/` | — | CLI usage scraper, ANSI stripping, parser, cache |
+| `internal/usagelimits/` | [usagelimits/CLAUDE.md](internal/usagelimits/CLAUDE.md) | CLI usage scraper, ANSI stripping, parser, cache with DB persistence |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
 
 ## Running Tests

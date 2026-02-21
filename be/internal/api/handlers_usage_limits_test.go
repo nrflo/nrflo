@@ -11,7 +11,7 @@ import (
 )
 
 func newUsageLimitsServer() *Server {
-	return &Server{usageLimitsCache: usagelimits.NewCache()}
+	return &Server{usageLimitsCache: usagelimits.NewCache(nil, nil)}
 }
 
 func TestHandleGetUsageLimits_NilCache(t *testing.T) {

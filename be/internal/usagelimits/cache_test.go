@@ -7,7 +7,7 @@ import (
 )
 
 func TestCache_GetEmpty(t *testing.T) {
-	c := NewCache()
+	c := NewCache(nil, nil)
 	got := c.Get()
 	if got != nil {
 		t.Errorf("Get() on empty cache = %+v, want nil", got)
@@ -15,7 +15,7 @@ func TestCache_GetEmpty(t *testing.T) {
 }
 
 func TestCache_SetThenGet(t *testing.T) {
-	c := NewCache()
+	c := NewCache(nil, nil)
 	data := &UsageLimits{
 		Claude: ToolUsage{
 			Available: true,
@@ -43,7 +43,7 @@ func TestCache_SetThenGet(t *testing.T) {
 }
 
 func TestCache_SetNil(t *testing.T) {
-	c := NewCache()
+	c := NewCache(nil, nil)
 	data := &UsageLimits{FetchedAt: time.Now()}
 	c.Set(data)
 	c.Set(nil)
@@ -54,7 +54,7 @@ func TestCache_SetNil(t *testing.T) {
 }
 
 func TestCache_OverwriteWithNewData(t *testing.T) {
-	c := NewCache()
+	c := NewCache(nil, nil)
 
 	first := &UsageLimits{Claude: ToolUsage{Available: true}}
 	second := &UsageLimits{Claude: ToolUsage{Available: false}}
@@ -73,7 +73,7 @@ func TestCache_OverwriteWithNewData(t *testing.T) {
 
 func TestCache_Concurrent(t *testing.T) {
 	// Run with -race to verify no data races.
-	c := NewCache()
+	c := NewCache(nil, nil)
 
 	var wg sync.WaitGroup
 	const goroutines = 50
@@ -104,7 +104,7 @@ func TestCache_Concurrent(t *testing.T) {
 }
 
 func TestCache_ConcurrentReadsDontBlock(t *testing.T) {
-	c := NewCache()
+	c := NewCache(nil, nil)
 	data := &UsageLimits{Claude: ToolUsage{Available: true}}
 	c.Set(data)
 

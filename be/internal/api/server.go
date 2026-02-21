@@ -31,6 +31,7 @@ type Server struct {
 	ptyManager       *ptyPkg.Manager
 	clock            clock.Clock
 	usageLimitsCache *usagelimits.Cache
+	pool             *db.Pool
 }
 
 // NewServer creates a new API server
@@ -38,6 +39,19 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	orch := orchestrator.New(dataPath, hub, clk)
+
+	// Create a DB pool for the preferences service (usage limits persistence)
+	var ulCache *usagelimits.Cache
+	pool, err := db.NewPool(dataPath, db.DefaultPoolConfig())
+	if err != nil {
+		logger.Info(context.Background(), "server: failed to create pool for preferences, usage limits persistence disabled", "error", err)
+		ulCache = usagelimits.NewCache(nil, nil)
+		pool = nil
+	} else {
+		prefsSvc := service.NewPreferencesService(pool, clk)
+		ulCache = usagelimits.NewCache(prefsSvc, clk)
+	}
+
 	return &Server{
 		config:           cfg,
 		dataPath:         dataPath,
@@ -46,7 +60,8 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 		chainRunner:      orchestrator.NewChainRunner(orch, dataPath, hub, clk),
 		ptyManager:       ptyPkg.NewManager(),
 		clock:            clk,
-		usageLimitsCache: usagelimits.NewCache(),
+		usageLimitsCache: ulCache,
+		pool:             pool,
 	}
 }
 
@@ -104,6 +119,10 @@ func (s *Server) Stop(ctx context.Context) error {
 	// Stop WebSocket hub
 	if s.wsHub != nil {
 		s.wsHub.Stop()
+	}
+	// Close DB pool
+	if s.pool != nil {
+		s.pool.Close()
 	}
 	if s.httpServer != nil {
 		if ctx == nil {
@@ -187,7 +206,9 @@ func (s *Server) startRetentionCleanup() {
 }
 
 // startUsageLimitsFetcher runs a background goroutine that fetches CLI usage
-// limits on startup and every 20 minutes thereafter.
+// limits on startup and every 20 minutes thereafter. If fresh data exists in
+// the DB (< 30 min old), it populates the cache immediately and skips the
+// initial PTY scrape.
 func (s *Server) startUsageLimitsFetcher() {
 	fetch := func() {
 		data := usagelimits.FetchAll()
@@ -198,7 +219,11 @@ func (s *Server) startUsageLimitsFetcher() {
 	}
 
 	go func() {
-		fetch()
+		if s.usageLimitsCache.LoadFromDB() {
+			logger.Info(context.Background(), "usage-limits: loaded fresh data from DB, skipping initial fetch")
+		} else {
+			fetch()
+		}
 		ticker := time.NewTicker(20 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {

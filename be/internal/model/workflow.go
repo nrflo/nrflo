@@ -12,13 +12,34 @@ type Workflow struct {
 	Description string    `json:"description"`
 	ScopeType   string    `json:"scope_type"` // "ticket" or "project"
 	Phases      string    `json:"-"`           // JSON array string
+	Groups      string    `json:"-"`           // JSON array of tag strings
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// GetGroups returns the parsed groups as a string slice
+func (w *Workflow) GetGroups() []string {
+	var groups []string
+	if w.Groups != "" {
+		json.Unmarshal([]byte(w.Groups), &groups)
+	}
+	if groups == nil {
+		groups = []string{}
+	}
+	return groups
+}
+
+// SetGroups sets the groups from a string slice
+func (w *Workflow) SetGroups(groups []string) {
+	if groups == nil {
+		groups = []string{}
+	}
+	data, _ := json.Marshal(groups)
+	w.Groups = string(data)
+}
+
 // MarshalJSON implements custom JSON marshaling for Workflow
 func (w Workflow) MarshalJSON() ([]byte, error) {
-	// Parse phases from JSON string to []interface{}
 	var phases []interface{}
 	if w.Phases != "" {
 		_ = json.Unmarshal([]byte(w.Phases), &phases)
@@ -26,6 +47,8 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 	if phases == nil {
 		phases = []interface{}{}
 	}
+
+	groups := w.GetGroups()
 
 	scopeType := w.ScopeType
 	if scopeType == "" {
@@ -38,6 +61,7 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		Description string        `json:"description"`
 		ScopeType   string        `json:"scope_type"`
 		Phases      []interface{} `json:"phases"`
+		Groups      []string      `json:"groups"`
 		CreatedAt   time.Time     `json:"created_at"`
 		UpdatedAt   time.Time     `json:"updated_at"`
 	}{
@@ -46,6 +70,7 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		Description: w.Description,
 		ScopeType:   scopeType,
 		Phases:      phases,
+		Groups:      groups,
 		CreatedAt:   w.CreatedAt,
 		UpdatedAt:   w.UpdatedAt,
 	})

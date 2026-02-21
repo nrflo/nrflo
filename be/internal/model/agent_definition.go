@@ -11,6 +11,7 @@ type AgentDefinition struct {
 	Timeout          int       `json:"timeout"`
 	Prompt           string    `json:"prompt"`
 	RestartThreshold *int      `json:"restart_threshold,omitempty"`
+	Tag              string    `json:"tag"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

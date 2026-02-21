@@ -23,14 +23,14 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 }
 
 const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
-	findings, retry_count, parent_session, created_at, updated_at`
+	findings, skip_tags, retry_count, parent_session, created_at, updated_at`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
 	wi := &model.WorkflowInstance{}
 	var createdAt, updatedAt string
 	err := scanner.Scan(
 		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
-		&wi.Status, &wi.Findings,
+		&wi.Status, &wi.Findings, &wi.SkipTags,
 		&wi.RetryCount, &wi.ParentSession, &createdAt, &updatedAt,
 	)
 	if err != nil {
@@ -55,10 +55,10 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
-		wi.Findings, wi.RetryCount, wi.ParentSession, now, now,
+		wi.Findings, wi.SkipTags, wi.RetryCount, wi.ParentSession, now, now,
 	)
 	if err != nil {
 		if wi.ScopeType == "ticket" && strings.Contains(err.Error(), "UNIQUE constraint") {
@@ -214,6 +214,18 @@ func (r *WorkflowInstanceRepo) UpdateFindings(id string, findings string) error 
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET findings = ?, updated_at = ? WHERE id = ?`,
 		findings, now, id)
+	if err != nil {
+		return err
+	}
+	return checkAffected(result, id)
+}
+
+// UpdateSkipTags updates the skip_tags JSON
+func (r *WorkflowInstanceRepo) UpdateSkipTags(id string, skipTags string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.pool.Exec(
+		`UPDATE workflow_instances SET skip_tags = ?, updated_at = ? WHERE id = ?`,
+		skipTags, now, id)
 	if err != nil {
 		return err
 	}

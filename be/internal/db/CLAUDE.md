@@ -75,6 +75,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    status          TEXT NOT NULL                                     │
 │                    (active|completed|failed|project_completed)       │
 │    findings        TEXT NOT NULL      (JSON: workflow-level findings)│
+│    skip_tags       TEXT NOT NULL DEFAULT '[]' (JSON: skipped tags)  │
 │    retry_count     INTEGER NOT NULL DEFAULT 0                        │
 │    parent_session  TEXT               (orchestrating session UUID)   │
 │    created_at      TEXT NOT NULL                                     │
@@ -95,7 +96,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    agent_type    TEXT NOT NULL       (e.g., "setup-analyzer")        │
 │    model_id      TEXT                (e.g., "claude:sonnet")         │
 │    status        TEXT NOT NULL                                       │
-│      (running|completed|failed|timeout|continued|project_completed|callback)
+│      (running|completed|failed|timeout|continued|project_completed|callback|user_interactive|interactive_completed|skipped)
 │    result        TEXT                                                │
 │      (pass|fail|continue|timeout|callback)                          │
 │    result_reason TEXT                (explanation for result)        │
@@ -111,7 +112,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    FK workflow_instance_id → workflow_instances(id) CASCADE          │
-│    FK ancestor_session_id → agent_sessions(id) RESTRICT             │
+│    FK ancestor_session_id → agent_sessions(id) SET NULL             │
 │                                                                      │
 │  AGENT_MESSAGES                                                      │
 │    id            INTEGER PRIMARY KEY AUTOINCREMENT                   │
@@ -128,6 +129,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    scope_type    TEXT NOT NULL DEFAULT 'ticket'                      │
 │                  CHECK (scope_type IN ('ticket', 'project'))         │
 │    phases        TEXT NOT NULL  (JSON array string)                  │
+│    groups        TEXT NOT NULL DEFAULT '[]' (JSON: tag groups)      │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, id)                                      │
@@ -140,6 +142,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    timeout       INTEGER NOT NULL DEFAULT 20                         │
 │    prompt        TEXT NOT NULL DEFAULT ''                            │
 │    restart_threshold INTEGER       (NULL = use global default 25%)   │
+│    tag           TEXT NOT NULL DEFAULT '' (skip-tag assignment)      │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, workflow_id, id)                         │

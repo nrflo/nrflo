@@ -19,6 +19,7 @@ const (
 	AgentSessionCallback            AgentSessionStatus = "callback"
 	AgentSessionUserInteractive     AgentSessionStatus = "user_interactive"
 	AgentSessionInteractiveCompleted AgentSessionStatus = "interactive_completed"
+	AgentSessionSkipped              AgentSessionStatus = "skipped"
 )
 
 // AgentSession represents a spawned agent session

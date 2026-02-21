@@ -29,8 +29,8 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 	def.UpdatedAt = def.CreatedAt
 
 	_, err := r.db.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -38,6 +38,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		def.Timeout,
 		def.Prompt,
 		def.RestartThreshold,
+		def.Tag,
 		now,
 		now,
 	)
@@ -51,7 +52,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 
 	var restartThreshold sql.NullInt64
 	err := r.db.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -62,6 +63,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		&def.Timeout,
 		&def.Prompt,
 		&restartThreshold,
+		&def.Tag,
 		&createdAt,
 		&updatedAt,
 	)
@@ -85,7 +87,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 // List retrieves all agent definitions for a workflow
 func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY id`, projectID, workflowID)
@@ -108,6 +110,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			&def.Timeout,
 			&def.Prompt,
 			&restartThreshold,
+			&def.Tag,
 			&createdAt,
 			&updatedAt,
 		)
@@ -134,6 +137,7 @@ type AgentDefUpdateFields struct {
 	Timeout          *int
 	Prompt           *string
 	RestartThreshold *int
+	Tag              *string
 }
 
 // Update updates an agent definition
@@ -156,6 +160,10 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.RestartThreshold != nil {
 		updates = append(updates, "restart_threshold = ?")
 		args = append(args, *fields.RestartThreshold)
+	}
+	if fields.Tag != nil {
+		updates = append(updates, "tag = ?")
+		args = append(args, *fields.Tag)
 	}
 
 	if len(updates) == 0 {

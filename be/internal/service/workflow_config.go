@@ -106,6 +106,7 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 			Description: wf.Description,
 			ScopeType:   scopeType,
 			Phases:      phases,
+			Groups:      wf.GetGroups(),
 		}
 	}
 
@@ -114,6 +115,7 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 		agents[def.ID] = SpawnerAgentConfig{
 			Model:   def.Model,
 			Timeout: def.Timeout,
+			Tag:     def.Tag,
 		}
 	}
 
@@ -125,6 +127,7 @@ type SpawnerWorkflowDef struct {
 	Description string            `json:"description"`
 	ScopeType   string            `json:"scope_type"`
 	Phases      []SpawnerPhaseDef `json:"phases"`
+	Groups      []string          `json:"groups"`
 }
 
 // SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building
@@ -138,6 +141,7 @@ type SpawnerPhaseDef struct {
 type SpawnerAgentConfig struct {
 	Model   string `json:"model"`
 	Timeout int    `json:"timeout"`
+	Tag     string `json:"tag"`
 }
 
 // parseWorkflowDefFromDB parses a WorkflowDef from database fields

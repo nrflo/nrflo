@@ -2,78 +2,26 @@ package usagelimits
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"be/internal/logger"
 )
 
-const scriptTimeout = 65 * time.Second
-
-// scriptResult matches the JSON output structure of scripts/usage-limits.sh.
-type scriptResult struct {
-	Claude scriptTool `json:"claude"`
-	Codex  scriptTool `json:"codex"`
-}
-
-type scriptTool struct {
-	Available bool         `json:"available"`
-	Session   *UsageMetric `json:"session"`
-	Weekly    *UsageMetric `json:"weekly"`
-	Error     string       `json:"error,omitempty"`
-}
-
-// FetchAll runs scripts/usage-limits.sh and returns parsed usage data.
-func FetchAll(scriptPath string) *UsageLimits {
+// FetchAll scrapes usage limits from Claude and Codex CLIs concurrently via PTY.
+func FetchAll() *UsageLimits {
 	ctx := context.Background()
 	result := &UsageLimits{FetchedAt: time.Now()}
+	env := filteredEnv()
 
-	if _, err := os.Stat(scriptPath); err != nil {
-		logger.Info(ctx, "usage-limits: script not found", "path", scriptPath)
-		result.Claude = ToolUsage{Available: false, Error: "script not found"}
-		result.Codex = ToolUsage{Available: false, Error: "script not found"}
-		return result
-	}
-
-	logger.Info(ctx, "usage-limits: running script", "path", scriptPath)
-
-	cmdCtx, cancel := context.WithTimeout(ctx, scriptTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(cmdCtx, scriptPath)
-	cmd.Env = filteredEnv()
-
-	out, err := cmd.Output()
-	if err != nil {
-		logger.Info(ctx, "usage-limits: script failed", "error", err, "output", string(out))
-		result.Claude = ToolUsage{Available: false, Error: "script error: " + err.Error()}
-		result.Codex = ToolUsage{Available: false, Error: "script error: " + err.Error()}
-		return result
-	}
-
-	var parsed scriptResult
-	if err := json.Unmarshal(out, &parsed); err != nil {
-		logger.Info(ctx, "usage-limits: parse failed", "error", err, "output", string(out))
-		result.Claude = ToolUsage{Available: false, Error: "parse error: " + err.Error()}
-		result.Codex = ToolUsage{Available: false, Error: "parse error: " + err.Error()}
-		return result
-	}
-
-	result.Claude = ToolUsage{
-		Available: parsed.Claude.Available,
-		Session:   parsed.Claude.Session,
-		Weekly:    parsed.Claude.Weekly,
-		Error:     parsed.Claude.Error,
-	}
-	result.Codex = ToolUsage{
-		Available: parsed.Codex.Available,
-		Session:   parsed.Codex.Session,
-		Weekly:    parsed.Codex.Weekly,
-		Error:     parsed.Codex.Error,
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); result.Claude = fetchClaude(ctx, env) }()
+	go func() { defer wg.Done(); result.Codex = fetchCodex(ctx, env) }()
+	wg.Wait()
 
 	logger.Info(ctx, "usage-limits: FetchAll done",
 		"claude_available", result.Claude.Available,
@@ -82,6 +30,75 @@ func FetchAll(scriptPath string) *UsageLimits {
 		"codex_error", result.Codex.Error,
 	)
 	return result
+}
+
+func fetchClaude(ctx context.Context, env []string) ToolUsage {
+	if _, err := exec.LookPath("claude"); err != nil {
+		return ToolUsage{Available: false}
+	}
+	logger.Info(ctx, "usage-limits: scraping claude")
+
+	sess, err := startPTY("claude", env)
+	if err != nil {
+		return ToolUsage{Available: true, Error: "spawn error: " + err.Error()}
+	}
+	defer sess.close()
+
+	// Wait for prompt ready ("Ctx:" appears in the status line)
+	sess.waitFor([]string{"Ctx:"}, 10*time.Second)
+
+	// Type /usage; wait for autocomplete to settle, then press Enter
+	sess.send("/usage")
+	time.Sleep(1500 * time.Millisecond)
+	sess.send("\r")
+
+	// Wait for usage data to render
+	sess.waitFor([]string{"resets", "Resets"}, 20*time.Second)
+	time.Sleep(2 * time.Second)
+
+	sess.send("/exit\r")
+	time.Sleep(500 * time.Millisecond)
+
+	session, weekly := parseClaude(sess.output())
+	if session == nil && weekly == nil {
+		return ToolUsage{Available: true, Error: "failed to parse /usage output"}
+	}
+	return ToolUsage{Available: true, Session: session, Weekly: weekly}
+}
+
+func fetchCodex(ctx context.Context, env []string) ToolUsage {
+	if _, err := exec.LookPath("codex"); err != nil {
+		return ToolUsage{Available: false}
+	}
+	logger.Info(ctx, "usage-limits: scraping codex")
+
+	sess, err := startPTY("codex", env)
+	if err != nil {
+		return ToolUsage{Available: true, Error: "spawn error: " + err.Error()}
+	}
+	defer sess.close()
+
+	// Wait for prompt ready ("context left" appears in status bar)
+	sess.waitFor([]string{"context left"}, 10*time.Second)
+
+	// Type /status; wait for autocomplete to settle, then press Enter
+	sess.send("/status")
+	time.Sleep(1500 * time.Millisecond)
+	sess.send("\r")
+
+	// Wait for limits data to load
+	sess.waitFor([]string{"% left", "% used"}, 12*time.Second)
+	time.Sleep(1 * time.Second)
+
+	// Exit via Ctrl+C — codex panics on /exit due to a Rust wrapping bug
+	sess.send("\x03")
+	time.Sleep(500 * time.Millisecond)
+
+	session, weekly := parseCodex(sess.output())
+	if session == nil && weekly == nil {
+		return ToolUsage{Available: true, Error: "failed to parse /status output"}
+	}
+	return ToolUsage{Available: true, Session: session, Weekly: weekly}
 }
 
 // filteredEnv returns os.Environ() with CLAUDECODE removed.

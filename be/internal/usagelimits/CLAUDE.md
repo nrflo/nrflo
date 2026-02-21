@@ -40,6 +40,6 @@ Stored under `"usage_limits"` in the `preferences` table. Value is JSON-serializ
 |------|---------|
 | `cache.go` | Cache struct, Store interface, Get/Set/LoadFromDB |
 | `types.go` | UsageLimits, ToolUsage, UsageMetric types |
-| `fetch.go` | PTY-based fetching (FetchAll, FetchClaude, FetchCodex) |
-| `parse.go` | Output parsing for claude/codex CLI tools |
-| `ansi.go` | ANSI escape sequence stripping |
+| `fetcher.go` | PTY-based fetching: FetchAll, fetchClaude, fetchCodex, filteredEnv |
+| `pty.go` | ptySession: startPTY, send, waitFor, output, close |
+| `parse.go` | ANSI stripping (stripANSI) + output parsing (parseClaude, parseCodex) |

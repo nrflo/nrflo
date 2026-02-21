@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -211,10 +210,8 @@ func (s *Server) startRetentionCleanup() {
 // the DB (< 30 min old), it populates the cache immediately and skips the
 // initial PTY scrape.
 func (s *Server) startUsageLimitsFetcher() {
-	resolvedDataPath := db.GetDBPath(s.dataPath)
-	scriptPath := filepath.Join(filepath.Dir(resolvedDataPath), "scripts", "usage-limits.sh")
 	fetch := func() {
-		data := usagelimits.FetchAll(scriptPath)
+		data := usagelimits.FetchAll()
 		s.usageLimitsCache.Set(data)
 		logger.Info(context.Background(), "usage-limits: fetched",
 			"claude_available", data.Claude.Available,

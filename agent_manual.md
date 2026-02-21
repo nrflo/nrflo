@@ -1,6 +1,6 @@
 # Agent Definition Manual
 
-> Last updated: 2026-02-17
+> Last updated: 2026-02-21
 
 Cheat-sheet for creating agent definitions. Agent definitions are stored in the `agent_definitions` table and managed via `/api/v1/workflows/{wid}/agents` API or the Workflows page in the web UI.
 
@@ -459,4 +459,39 @@ nrworkflow findings add ${TICKET_ID} ${AGENT} be_changes_summary:'...' be_files_
 
 If blocked, fail with a reason:
 nrworkflow agent fail ${TICKET_ID} ${AGENT} -w ${WORKFLOW} --model ${MODEL} --reason "..."
+```
+
+---
+
+## 11. Ticket Management CLI Commands
+
+Use the `nrworkflow tickets` CLI — **never use `curl` or direct HTTP API calls**.
+Requires `NRWORKFLOW_PROJECT` env var (already set in spawned sessions).
+
+```bash
+# List tickets
+nrworkflow tickets list
+nrworkflow tickets list --status open --type task --parent EPIC-1
+
+# Get a ticket
+nrworkflow tickets get TICKET-1
+
+# Create a ticket
+nrworkflow tickets create --title "My task" [--id MY-ID] [--description "..."] \
+  [--type task|bug|epic|story] [--priority 1-4] [--parent PARENT-ID]
+
+# Update ticket fields (only specified flags are changed)
+nrworkflow tickets update TICKET-1 --title "New title"
+nrworkflow tickets update TICKET-1 --parent EPIC-1       # set parent
+nrworkflow tickets update TICKET-1 --parent ""           # clear parent
+nrworkflow tickets update TICKET-1 --priority 2 --type bug
+
+# Close / reopen
+nrworkflow tickets close TICKET-1 [--reason "Done"]
+nrworkflow tickets reopen TICKET-1
+
+# Dependency management
+nrworkflow deps list TICKET-1
+nrworkflow deps add TICKET-1 BLOCKER-1      # TICKET-1 is blocked by BLOCKER-1
+nrworkflow deps remove TICKET-1 BLOCKER-1
 ```

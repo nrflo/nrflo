@@ -15,6 +15,7 @@ const (
 
 	// Global event types (sent to all clients regardless of subscription)
 	EventGlobalRunningAgents = "global.running_agents"
+	EventGlobalUsageLimits   = "global.usage_limits"
 )
 
 // Entity types used in snapshot chunks

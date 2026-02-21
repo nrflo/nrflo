@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:check": "./scripts/test.sh"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.2",

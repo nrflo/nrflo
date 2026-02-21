@@ -171,7 +171,17 @@ npx vitest run                    # all tests
 npx vitest run src/components/    # directory
 npx vitest run path/to/file.test.tsx  # single file
 npx vitest run --reporter=verbose # with timing per test
+./scripts/test.sh                 # run with 15s wall-time check (mirrors BE constraint)
 ```
+
+### Performance Constraint
+
+The full test suite (`vitest run`) must complete in **≤15 seconds wall time**. Enforced by `./scripts/test.sh`.
+
+**Never introduce:**
+- `setTimeout` in test bodies or mock implementations — use a never-resolving promise `new Promise(() => {})` to keep a mutation in-flight for `isPending` tests
+- `vi.advanceTimersByTime()` with real timer dependencies — use `vi.useFakeTimers()` instead
+- Arbitrary delays or polling loops with sleeps
 
 ### File Organization
 

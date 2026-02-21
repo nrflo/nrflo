@@ -213,6 +213,7 @@ func (s *Server) startUsageLimitsFetcher() {
 	fetch := func() {
 		data := usagelimits.FetchAll()
 		s.usageLimitsCache.Set(data)
+		s.wsHub.BroadcastGlobal(ws.NewEvent(ws.EventGlobalUsageLimits, "", "", "", nil))
 		logger.Info(context.Background(), "usage-limits: fetched",
 			"claude_available", data.Claude.Available,
 			"codex_available", data.Codex.Available)

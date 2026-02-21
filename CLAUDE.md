@@ -71,6 +71,21 @@ The full backend test suite (`cd be && go test ./internal/... -count=1`) must co
 
 If the test suite exceeds 15 seconds, **identify and eliminate the cause before merging**.
 
+### 4b. CRITICAL: Frontend Test Suite Must Run in Under 15 Seconds
+
+The full frontend test suite (`cd ui && npx vitest run`) must complete in **≤15 seconds wall time**. Enforced by `ui/scripts/test.sh` (mirrors the BE constraint). Pool is set to `threads` in `vitest.config.ts` for speed.
+
+**Never introduce:**
+- `setTimeout` in test bodies or mock implementations — use `new Promise(() => {})` (never-resolving) to keep a mutation in-flight for `isPending` tests
+- Real delays inside mock API implementations — mocks should resolve immediately or stay pending
+
+**Patterns that are allowed:**
+- `vi.useFakeTimers()` + `vi.advanceTimersByTime(ms)` — for timer-dependent components
+- `new Promise(() => {})` — keeps mutation `isPending: true` without any real delay
+- `waitFor(() => expect(...))` — RTL polling for genuinely async React state
+
+If the test suite exceeds 15 seconds, **identify and eliminate the cause before merging**.
+
 ### 5. Keep Source Files Under 300 Lines
 
 Source files should be kept under 300 lines when possible. When a file grows beyond this limit, split it into logical sub-files. This applies to both code and documentation files.

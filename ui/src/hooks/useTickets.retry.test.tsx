@@ -124,7 +124,7 @@ describe('useRetryFailedAgent', () => {
 
   it('sets isPending to true during mutation', async () => {
     vi.mocked(workflowsApi.retryFailedAgent).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ status: 'retrying' }), 100))
+      () => new Promise(() => {}) // never resolves — keeps mutation in-flight
     )
 
     const { result } = renderHook(() => useRetryFailedAgent(), {
@@ -231,7 +231,7 @@ describe('useRetryFailedProjectAgent', () => {
 
   it('sets isPending to true during mutation', async () => {
     vi.mocked(projectWorkflowsApi.retryFailedProjectAgent).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ status: 'retrying' }), 100))
+      () => new Promise(() => {}) // never resolves — keeps mutation in-flight
     )
 
     const { result } = renderHook(() => useRetryFailedProjectAgent(), {

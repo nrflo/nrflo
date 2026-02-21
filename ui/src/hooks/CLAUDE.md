@@ -82,6 +82,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `chain.updated` | chain_id | Chain state changed |
 | `ticket.updated` | | Ticket state changed |
 | `global.running_agents` | | Running agents changed (global broadcast, no subscription scope) |
+| `global.usage_limits` | | Usage limits refreshed (global broadcast, no subscription scope) |
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`
 **Exception:** `global.running_agents` is a global broadcast with no project_id/ticket_id/seq. Handled as early return before `dispatchV2Event`.

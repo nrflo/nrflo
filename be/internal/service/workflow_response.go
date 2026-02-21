@@ -184,6 +184,8 @@ func (s *WorkflowService) derivePhaseStatuses(wfiID string, phases []PhaseDef) m
 			ps = model.PhaseStatus{Status: "completed", Result: "fail"}
 		case "timeout":
 			ps = model.PhaseStatus{Status: "completed", Result: "timeout"}
+		case "skipped":
+			ps = model.PhaseStatus{Status: "skipped", Result: "skipped"}
 		default:
 			continue
 		}
@@ -203,7 +205,7 @@ func (s *WorkflowService) derivePhaseStatuses(wfiID string, phases []PhaseDef) m
 	// processes all phases in a layer before advancing to the next layer.
 	for _, p := range phases {
 		if !seen[p.ID] && p.Layer < maxLayer {
-			result[p.ID] = model.PhaseStatus{Status: "completed", Result: "skipped"}
+			result[p.ID] = model.PhaseStatus{Status: "skipped", Result: "skipped"}
 		}
 	}
 
@@ -235,7 +237,7 @@ func (s *WorkflowService) DeriveWorkflowProgress(instances map[string]*model.Wor
 		phases := s.derivePhaseStatuses(wi.ID, wf.Phases)
 		completed := 0
 		for _, ps := range phases {
-			if ps.Status == "completed" {
+			if ps.Status == "completed" || ps.Status == "skipped" {
 				completed++
 			}
 		}

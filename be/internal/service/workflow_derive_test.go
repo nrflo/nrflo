@@ -178,7 +178,7 @@ func TestDerivePhaseStatuses(t *testing.T) {
 				// Only builder has a session; analyzer has none but layer 1 > layer 0
 				insertSession(t, pool, "s1", wfiID, "builder", "completed", "pass", "")
 			},
-			wantAnalyzer: wantPhase{"completed", "skipped"},
+			wantAnalyzer: wantPhase{"skipped", "skipped"},
 			wantBuilder:  wantPhase{"completed", "pass"},
 		},
 		{
@@ -222,6 +222,38 @@ func TestDerivePhaseStatuses(t *testing.T) {
 			wantBuilder:  wantPhase{"pending", ""},
 		},
 	}
+
+	// Explicit skipped session (created by orchestrator skip tags via orchestrator_skip.go)
+	tests = append(tests,
+		struct {
+			name         string
+			setupFn      func(pool *db.Pool, wfiID string)
+			wantAnalyzer wantPhase
+			wantBuilder  wantPhase
+		}{
+			name: "explicit skipped session → skipped/skipped",
+			setupFn: func(pool *db.Pool, wfiID string) {
+				insertSession(t, pool, "s1", wfiID, "analyzer", "skipped", "skipped", "")
+			},
+			wantAnalyzer: wantPhase{"skipped", "skipped"},
+			wantBuilder:  wantPhase{"pending", ""},
+		},
+		struct {
+			name         string
+			setupFn      func(pool *db.Pool, wfiID string)
+			wantAnalyzer wantPhase
+			wantBuilder  wantPhase
+		}{
+			// seen[agentType]=true blocks inference path from overriding explicit skipped
+			name: "explicit skipped with later completed → seen blocks inference override",
+			setupFn: func(pool *db.Pool, wfiID string) {
+				insertSession(t, pool, "s1", wfiID, "analyzer", "skipped", "skipped", "")
+				insertSession(t, pool, "s2", wfiID, "builder", "completed", "pass", "")
+			},
+			wantAnalyzer: wantPhase{"skipped", "skipped"},
+			wantBuilder:  wantPhase{"completed", "pass"},
+		},
+	)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -373,8 +405,8 @@ func TestDerivePhaseStatuses_ThreeLayerSkipInference(t *testing.T) {
 	}
 	got := svc.derivePhaseStatuses(wfiID2, phases3)
 
-	assertPhase(t, got, "p1", "completed", "skipped")
-	assertPhase(t, got, "p2", "completed", "skipped")
+	assertPhase(t, got, "p1", "skipped", "skipped")
+	assertPhase(t, got, "p2", "skipped", "skipped")
 	assertPhase(t, got, "p3", "completed", "pass")
 }
 
@@ -423,6 +455,34 @@ func TestDerivePhaseStatuses_SessionForDifferentWFI(t *testing.T) {
 
 	assertPhase(t, got, "analyzer", "pending", "")
 	assertPhase(t, got, "builder", "pending", "")
+}
+
+// TestDeriveWorkflowProgress_SkippedPhasesCountAsCompleted verifies that skipped phases
+// count toward completed progress (e.g., 5/5 not 3/5 when 2 phases are skipped).
+func TestDeriveWorkflowProgress_SkippedPhasesCountAsCompleted(t *testing.T) {
+	pool, svc, wfiID := setupDeriveTestEnv(t)
+
+	// analyzer (layer 0) is explicitly skipped; builder (layer 1) is completed
+	insertSession(t, pool, "s1", wfiID, "analyzer", "skipped", "skipped", "")
+	insertSession(t, pool, "s2", wfiID, "builder", "completed", "pass", "")
+
+	wi := &model.WorkflowInstance{
+		ID:         wfiID,
+		ProjectID:  "test-proj",
+		WorkflowID: "test-wf",
+	}
+	got := svc.DeriveWorkflowProgress(map[string]*model.WorkflowInstance{"ticket-1": wi})
+
+	prog, ok := got["ticket-1"]
+	if !ok {
+		t.Fatal("expected progress entry for ticket-1")
+	}
+	if prog.TotalPhases != 2 {
+		t.Errorf("TotalPhases = %d, want 2", prog.TotalPhases)
+	}
+	if prog.CompletedPhases != 2 {
+		t.Errorf("CompletedPhases = %d, want 2 (skipped counts as completed)", prog.CompletedPhases)
+	}
 }
 
 // BenchmarkDerivePhaseStatuses measures the performance of phase derivation.

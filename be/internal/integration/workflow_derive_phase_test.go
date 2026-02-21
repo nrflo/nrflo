@@ -238,8 +238,8 @@ func TestGetStatus_SkippedPhaseInferred(t *testing.T) {
 	analyzerPhase, _ := phases["analyzer"].(map[string]interface{})
 	builderPhase, _ := phases["builder"].(map[string]interface{})
 
-	if analyzerPhase["status"] != "completed" {
-		t.Errorf("analyzer.status = %v, want completed (skipped)", analyzerPhase["status"])
+	if analyzerPhase["status"] != "skipped" {
+		t.Errorf("analyzer.status = %v, want skipped", analyzerPhase["status"])
 	}
 	if analyzerPhase["result"] != "skipped" {
 		t.Errorf("analyzer.result = %v, want skipped", analyzerPhase["result"])
@@ -354,8 +354,8 @@ func TestDeriveWorkflowProgress_CurrentPhase(t *testing.T) {
 	if wp.CurrentPhase != "builder" {
 		t.Errorf("CurrentPhase = %q, want builder", wp.CurrentPhase)
 	}
-	// analyzer inferred as skipped (status=completed), builder is in_progress
-	// Only status=completed counts: 1 (analyzer skipped)
+	// analyzer inferred as skipped (status=skipped), builder is in_progress
+	// skipped counts toward completion: 1 (analyzer skipped)
 	if wp.CompletedPhases != 1 {
 		t.Errorf("CompletedPhases = %d, want 1 (analyzer inferred skipped)", wp.CompletedPhases)
 	}

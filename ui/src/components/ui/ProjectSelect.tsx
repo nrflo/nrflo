@@ -22,6 +22,7 @@ export function ProjectSelect({ value, onChange, projects }: ProjectSelectProps)
       options={options}
       icon={<FolderOpen className="h-4 w-4 text-muted-foreground" />}
       className="w-auto"
+      labelClassName="hidden md:inline"
     />
   )
 }

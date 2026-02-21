@@ -171,4 +171,25 @@ describe('Dropdown', () => {
     await user.click(screen.getByText('Project One'))
     expect(onChange).toHaveBeenCalledWith('p1')
   })
+
+  it('applies labelClassName to the label span', () => {
+    renderDropdown({ value: 'alpha', labelClassName: 'hidden md:inline' })
+    const btn = screen.getByRole('button')
+    // The label span is inside the button, has the truncate + labelClassName classes
+    const labelSpan = btn.querySelector('span.hidden')
+    expect(labelSpan).toBeInTheDocument()
+    expect(labelSpan).toHaveClass('hidden', 'md:inline')
+  })
+
+  it('ProjectSelect applies hidden md:inline labelClassName for responsive label hiding', async () => {
+    const { ProjectSelect } = await import('./ProjectSelect')
+    const projects = [{ id: 'p1', name: 'Alpha Project' }]
+    render(<ProjectSelect value="p1" onChange={vi.fn()} projects={projects} />)
+
+    const btn = screen.getByRole('button')
+    const labelSpan = btn.querySelector('span.hidden')
+    expect(labelSpan).toBeInTheDocument()
+    expect(labelSpan).toHaveClass('hidden', 'md:inline')
+    expect(labelSpan).toHaveTextContent('Alpha Project')
+  })
 })

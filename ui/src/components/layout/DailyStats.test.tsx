@@ -90,7 +90,7 @@ describe('DailyStats - Rendering', () => {
     const { container } = renderDailyStats()
     const statsDiv = container.querySelector('.hidden')
     expect(statsDiv).toBeInTheDocument()
-    expect(statsDiv).toHaveClass('sm:flex')
+    expect(statsDiv).toHaveClass('md:flex')
   })
 })
 

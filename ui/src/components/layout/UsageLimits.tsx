@@ -42,7 +42,7 @@ export function UsageLimits() {
   if (!data.claude.available && !data.codex.available) return null
 
   return (
-    <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
+    <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
       <ToolSection label="Claude" icon={Zap} usage={data.claude} />
       <ToolSection label="Codex" icon={Activity} usage={data.codex} />
     </div>

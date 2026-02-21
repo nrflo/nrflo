@@ -15,6 +15,7 @@ interface DropdownProps {
   disabled?: boolean
   className?: string
   icon?: ReactNode
+  labelClassName?: string
 }
 
 export function Dropdown({
@@ -25,6 +26,7 @@ export function Dropdown({
   disabled = false,
   className,
   icon,
+  labelClassName,
 }: DropdownProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -66,7 +68,7 @@ export function Dropdown({
         )}
       >
         {icon}
-        <span className="truncate flex-1 text-left">
+        <span className={cn("truncate flex-1 text-left", labelClassName)}>
           {selected?.label ?? placeholder}
         </span>
         <ChevronDown

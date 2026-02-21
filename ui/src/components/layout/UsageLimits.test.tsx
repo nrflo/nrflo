@@ -86,7 +86,7 @@ describe('UsageLimits - Rendering', () => {
 
     const wrapper = container.querySelector('.hidden')
     expect(wrapper).toBeInTheDocument()
-    expect(wrapper).toHaveClass('sm:flex')
+    expect(wrapper).toHaveClass('md:flex')
   })
 
   it('rounds fractional percentages', () => {

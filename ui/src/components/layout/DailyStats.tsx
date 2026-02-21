@@ -8,7 +8,7 @@ export function DailyStats() {
   if (isLoading || !data) return null
 
   return (
-    <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
+    <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
       <div className="flex items-center gap-1">
         <PlusCircle className="h-3.5 w-3.5" />
         <span>{data.tickets_created} created</span>

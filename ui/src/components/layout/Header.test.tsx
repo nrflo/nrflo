@@ -230,25 +230,26 @@ describe('Header - Icon-only nav links', () => {
     ]
   })
 
-  it('all 6 nav links render with correct titles, hrefs, and no visible text', () => {
+  it('all 6 nav links render with correct titles, hrefs, and responsive text labels', () => {
     renderHeader()
 
     const expectedLinks = [
-      { title: 'Dashboard', href: '/' },
-      { title: 'Tickets', href: '/tickets' },
-      { title: 'Workflows', href: '/workflows' },
-      { title: 'Git Status', href: '/git-status' },
-      { title: 'Documentation', href: '/documentation' },
-      { title: 'Logs', href: '/logs' },
+      { title: 'Dashboard', href: '/', label: 'Dashboard' },
+      { title: 'Tickets', href: '/tickets', label: 'Tickets' },
+      { title: 'Workflows', href: '/workflows', label: 'Workflows' },
+      { title: 'Git Status', href: '/git-status', label: 'Git Status' },
+      { title: 'Documentation', href: '/documentation', label: 'Docs' },
+      { title: 'Logs', href: '/logs', label: 'Logs' },
     ]
 
-    for (const { title, href } of expectedLinks) {
-      const link = screen.getByRole('link', { name: title })
+    for (const { title, href, label } of expectedLinks) {
+      const link = screen.getByTitle(title).closest('a')!
       expect(link).toBeInTheDocument()
       expect(link).toHaveAttribute('href', href)
-      expect(link).toHaveAttribute('title', title)
-      // Icon-only: link contains only an SVG, no text label
-      expect(link.textContent?.trim()).toBe('')
+      // Icon + responsive text label (hidden md:inline)
+      const span = link.querySelector('span.hidden')
+      expect(span).toBeInTheDocument()
+      expect(span?.textContent).toBe(label)
     }
   })
 })

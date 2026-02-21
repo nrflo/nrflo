@@ -17,7 +17,7 @@ export function LogsPage() {
   const { data, isLoading, error, refetch } = useLogs(activeTab)
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Logs</h1>
 
       <div className="border-b border-border">

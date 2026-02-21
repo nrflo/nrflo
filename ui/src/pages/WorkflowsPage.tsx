@@ -178,7 +178,7 @@ export function WorkflowsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Workflows</h1>

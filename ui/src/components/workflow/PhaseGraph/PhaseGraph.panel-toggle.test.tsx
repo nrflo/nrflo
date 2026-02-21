@@ -34,6 +34,10 @@ vi.mock('@/hooks/useElapsedTime', () => ({
   useTickingClock: vi.fn(),
 }))
 
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () => false,
+}))
+
 function makePhaseState(overrides: Partial<PhaseState> = {}): PhaseState {
   return { status: 'pending', ...overrides }
 }

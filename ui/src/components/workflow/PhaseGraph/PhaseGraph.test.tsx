@@ -20,7 +20,7 @@ vi.mock('@xyflow/react', async () => {
 })
 
 vi.mock('./layout', () => ({
-  getLayoutedElements: (nodes: any[], edges: any[]) => Promise.resolve({ nodes, edges }),
+  getLayoutedElements: (nodes: any[], edges: any[], _expanded: any, _isMobile?: boolean) => Promise.resolve({ nodes, edges }),
   BASE_HEIGHT: 110,
 }))
 
@@ -32,6 +32,10 @@ vi.mock('./AgentFlowNode', () => ({
 
 vi.mock('@/hooks/useElapsedTime', () => ({
   useTickingClock: vi.fn(),
+}))
+
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () => false,
 }))
 
 function makePhaseState(overrides: Partial<PhaseState> = {}): PhaseState {

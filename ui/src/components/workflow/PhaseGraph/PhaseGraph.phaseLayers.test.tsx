@@ -36,6 +36,10 @@ vi.mock('./AgentFlowNode', () => ({
   ),
 }))
 
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () => false,
+}))
+
 vi.mock('@/hooks/useElapsedTime', () => ({
   useTickingClock: vi.fn(),
 }))

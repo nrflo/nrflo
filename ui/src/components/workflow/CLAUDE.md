@@ -38,6 +38,7 @@ PhaseTimeline (PhaseTimeline.tsx)
 - Session lookup for history entries uses fallback matching (exact model_id match first, then agent_type+phase only)
 - Agent sessions always fetched for ticket (enables history messages), refreshed via WebSocket `messages.updated` events
 - Custom node uses `nopan nodrag` classes and `pointerEvents: 'all'` for click handling in ReactFlow
+- **Responsive mobile layout**: Nodes are 220px on mobile (<640px), 300px on desktop. ELK spacing reduced on mobile (30/60 vs 60/120). Touch interactions enabled: pinch-to-zoom always on, pan-on-drag on mobile only. Uses `useIsMobile` hook for JS-level detection and Tailwind `sm:` breakpoints for CSS.
 
 ## Agent Log Panel
 

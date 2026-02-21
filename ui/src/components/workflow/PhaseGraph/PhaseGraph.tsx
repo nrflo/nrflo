@@ -3,6 +3,7 @@ import { ReactFlow, Background, Controls, useReactFlow, type Node, type Edge, ty
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
 import { getLayoutedElements, BASE_HEIGHT } from './layout'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import type { PhaseGraphProps, AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/workflow'
 
@@ -41,6 +42,8 @@ export function PhaseGraph({
   retryingSessionId,
   workflowStatus,
 }: PhaseGraphProps) {
+
+  const isMobile = useIsMobile()
 
   // Build phase start times map from agent history
   const phaseStartTimes: Record<string, number> = useMemo(() => {
@@ -292,14 +295,14 @@ export function PhaseGraph({
 
   useEffect(() => {
     let cancelled = false
-    getLayoutedElements(initialNodes, initialEdges, null).then(result => {
+    getLayoutedElements(initialNodes, initialEdges, null, isMobile).then(result => {
       if (!cancelled) {
         setLayoutedNodes(result.nodes)
         setLayoutedEdges(result.edges)
       }
     })
     return () => { cancelled = true }
-  }, [initialNodes, initialEdges])
+  }, [initialNodes, initialEdges, isMobile])
 
   // Stable key derived from node IDs to trigger fitView on node set changes
   const nodeKey = useMemo(
@@ -331,11 +334,11 @@ export function PhaseGraph({
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
-        panOnDrag={false}
+        panOnDrag={isMobile}
         zoomOnScroll={false}
-        zoomOnPinch={false}
+        zoomOnPinch={true}
         zoomOnDoubleClick={false}
-        minZoom={0.5}
+        minZoom={0.3}
         maxZoom={2}
         preventScrolling={false}
         proOptions={{ hideAttribution: true }}

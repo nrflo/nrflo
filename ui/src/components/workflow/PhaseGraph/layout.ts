@@ -3,6 +3,7 @@ import type { Node, Edge } from '@xyflow/react'
 import type { AgentFlowNodeData } from './types'
 
 export const AGENT_NODE_WIDTH = 320
+export const MOBILE_NODE_WIDTH = 240
 export const BASE_HEIGHT = 110
 export const EXPANDED_HEIGHT = 420  // Base + messages area
 
@@ -47,9 +48,14 @@ function buildLayerEdges(nodes: Node<AgentFlowNodeData>[], existingEdges: Edge[]
 export async function getLayoutedElements(
   nodes: Node<AgentFlowNodeData>[],
   edges: Edge[],
-  expandedAgentKey: string | null
+  expandedAgentKey: string | null,
+  isMobile = false
 ): Promise<{ nodes: Node<AgentFlowNodeData>[]; edges: Edge[] }> {
   if (nodes.length === 0) return { nodes, edges }
+
+  const nodeWidth = isMobile ? MOBILE_NODE_WIDTH : AGENT_NODE_WIDTH
+  const betweenLayersSpacing = isMobile ? '60' : '120'
+  const nodeSpacing = isMobile ? '30' : '60'
 
   const elkEdges = edges.map(edge => ({
     id: edge.id,
@@ -65,8 +71,8 @@ export async function getLayoutedElements(
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': 'DOWN',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '120',
-      'elk.spacing.nodeNode': '60',
+      'elk.layered.spacing.nodeNodeBetweenLayers': betweenLayersSpacing,
+      'elk.spacing.nodeNode': nodeSpacing,
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
       'elk.alignment': 'CENTER',
       'elk.partitioning.activate': 'true',
@@ -76,7 +82,7 @@ export async function getLayoutedElements(
       const height = isExpanded ? EXPANDED_HEIGHT : BASE_HEIGHT
       return {
         id: node.id,
-        width: AGENT_NODE_WIDTH,
+        width: nodeWidth,
         height,
         layoutOptions: {
           'elk.partitioning.partition': String(node.data.phaseIndex),
@@ -98,7 +104,7 @@ export async function getLayoutedElements(
       node.position = { x: elkNode.x ?? 0, y: elkNode.y ?? 0 }
       const isExpanded = expandedAgentKey === node.id
       node.measured = {
-        width: AGENT_NODE_WIDTH,
+        width: nodeWidth,
         height: isExpanded ? EXPANDED_HEIGHT : BASE_HEIGHT,
       }
     }

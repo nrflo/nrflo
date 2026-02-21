@@ -22,7 +22,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_pty.go` | PTY WebSocket handler: upgrade, validate session, spawn/relay PTY, handle resize, exit-interactive on process exit |
 | `handlers_workflow_def.go` | Workflow definition CRUD |
 | `handlers_agent_def.go` | Agent definition CRUD |
-| `handlers_chains.go` | Chain list/get/create/update/start/cancel/append |
+| `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/append |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_docs.go` | Documentation (agent manual) |
@@ -107,9 +107,10 @@ DELETE /api/v1/dependencies           # Remove dependency
 
 # Chain executions (require X-Project header)
 GET    /api/v1/chains              # List chains (?status=&epic_ticket_id= filters)
-POST   /api/v1/chains              # Create chain (pending)
-GET    /api/v1/chains/:id          # Get chain with items
-PATCH  /api/v1/chains/:id          # Update pending chain
+POST   /api/v1/chains              # Create chain (pending); optional ordered_ticket_ids for custom order
+POST   /api/v1/chains/preview      # Preview: expanded ticket_ids, deps map, added_by_deps
+GET    /api/v1/chains/:id          # Get chain with items + deps map
+PATCH  /api/v1/chains/:id          # Update pending chain; optional ordered_ticket_ids
 POST   /api/v1/chains/:id/start    # Start sequential execution
 POST   /api/v1/chains/:id/cancel   # Cancel chain and release locks
 POST   /api/v1/chains/:id/append   # Append tickets to running chain

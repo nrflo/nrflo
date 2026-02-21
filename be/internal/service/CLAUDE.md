@@ -18,6 +18,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `agent_definition.go` | Agent definition CRUD |
 | `findings.go` | Findings add/append/get/delete operations |
 | `chain.go` | Chain build, dependency expansion, topological sort, cycle detection |
+| `chain_preview.go` | Chain preview, custom order validation (validateCustomOrder, validateSameSet, computeDeps, PreviewChain) |
 | `chain_append.go` | Append tickets to running chains |
 | `daily_stats.go` | Daily stats computation from source tables |
 | `git.go` | Git operations: paginated commit listing, commit detail with diff (os/exec, no DB) |

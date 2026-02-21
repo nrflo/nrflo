@@ -47,6 +47,9 @@ type ChainExecution struct {
 
 	// Loaded via join, not stored in chain_executions table
 	Items []*ChainExecutionItem `json:"items,omitempty"`
+
+	// JSON-only field (not stored in DB), populated at read time
+	Deps map[string][]string `json:"deps,omitempty"`
 }
 
 // ChainExecutionItem represents a single ticket in a chain execution

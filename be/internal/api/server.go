@@ -367,6 +367,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Chain executions
 	mux.HandleFunc("GET /api/v1/chains", s.handleListChains)
 	mux.HandleFunc("POST /api/v1/chains", s.handleCreateChain)
+	mux.HandleFunc("POST /api/v1/chains/preview", s.handlePreviewChain)
 	mux.HandleFunc("GET /api/v1/chains/{id}", s.handleGetChain)
 	mux.HandleFunc("PATCH /api/v1/chains/{id}", s.handleUpdateChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/start", s.handleStartChain)

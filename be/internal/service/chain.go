@@ -57,6 +57,23 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 		return nil, fmt.Errorf("failed to sort tickets: %w", err)
 	}
 
+	// If custom ordering provided, validate and use it
+	if len(req.OrderedTicketIDs) > 0 {
+		normalized := make([]string, len(req.OrderedTicketIDs))
+		for i, id := range req.OrderedTicketIDs {
+			normalized[i] = strings.ToLower(id)
+		}
+		// Validate same ticket set
+		if err := validateSameSet(normalized, sorted); err != nil {
+			return nil, err
+		}
+		// Validate dependency constraints
+		if err := validateCustomOrder(normalized, deps); err != nil {
+			return nil, err
+		}
+		sorted = normalized
+	}
+
 	// Check lock conflicts
 	lockRepo := repo.NewChainLockRepo(s.pool)
 	conflicts, err := lockRepo.CheckConflicts(projectID, sorted, "")
@@ -76,6 +93,7 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 		Status:       model.ChainStatusPending,
 		WorkflowName: req.WorkflowName,
 		EpicTicketID: req.EpicTicketID,
+		Deps:         deps,
 	}
 
 	chainRepo := repo.NewChainRepo(s.pool, s.clock)
@@ -145,6 +163,21 @@ func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest
 			return nil, err
 		}
 
+		// If custom ordering provided, validate and use it
+		if len(req.OrderedTicketIDs) > 0 {
+			normalized := make([]string, len(req.OrderedTicketIDs))
+			for i, id := range req.OrderedTicketIDs {
+				normalized[i] = strings.ToLower(id)
+			}
+			if err := validateSameSet(normalized, sorted); err != nil {
+				return nil, err
+			}
+			if err := validateCustomOrder(normalized, deps); err != nil {
+				return nil, err
+			}
+			sorted = normalized
+		}
+
 		lockRepo := repo.NewChainLockRepo(s.pool)
 		conflicts, err := lockRepo.CheckConflicts(chain.ProjectID, sorted, chainID)
 		if err != nil {
@@ -190,6 +223,14 @@ func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest
 	if err != nil {
 		return nil, err
 	}
+
+	// Populate deps for response
+	ticketIDs := make([]string, len(chain.Items))
+	for i, item := range chain.Items {
+		ticketIDs[i] = item.TicketID
+	}
+	chain.Deps, _ = s.computeDeps(chain.ProjectID, ticketIDs)
+
 	return chain, nil
 }
 
@@ -207,6 +248,14 @@ func (s *ChainService) GetChainWithItems(chainID string) (*model.ChainExecution,
 		return nil, err
 	}
 	chain.Items = items
+
+	// Populate deps for response
+	ticketIDs := make([]string, len(items))
+	for i, item := range items {
+		ticketIDs[i] = item.TicketID
+	}
+	chain.Deps, _ = s.computeDeps(chain.ProjectID, ticketIDs)
+
 	return chain, nil
 }
 
@@ -379,3 +428,4 @@ func sortByCreatedThenID(ids []string, createdAt map[string]time.Time) {
 		return ids[i] < ids[j]
 	})
 }
+

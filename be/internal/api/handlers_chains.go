@@ -12,6 +12,38 @@ import (
 	"be/internal/ws"
 )
 
+// handlePreviewChain returns expanded tickets, dependency map, and auto-added tickets.
+// POST /api/v1/chains/preview
+func (s *Server) handlePreviewChain(w http.ResponseWriter, r *http.Request) {
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	var req types.ChainPreviewRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	defer pool.Close()
+
+	chainSvc := service.NewChainService(pool, s.clock)
+	resp, err := chainSvc.PreviewChain(projectID, &req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // handleListChains lists chain executions for a project.
 // GET /api/v1/chains?status=
 func (s *Server) handleListChains(w http.ResponseWriter, r *http.Request) {

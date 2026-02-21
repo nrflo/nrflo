@@ -92,6 +92,7 @@ be/
 │   │   ├── chain_append.go      # AppendToChain for running chains
 │   │   ├── daily_stats.go       # Daily stats computation from source tables
 │   │   ├── git.go               # Git operations (commit listing, detail via os/exec)
+│   │   ├── preferences.go       # Global server preferences (key-value upsert)
 │   │   └── snapshot.go          # WS snapshot provider (builds chunks from workflow state)
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection
@@ -108,7 +109,8 @@ be/
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution, item, lock models
-│   │   └── daily_stats.go
+│   │   ├── daily_stats.go
+│   │   └── preference.go        # Global server preference (key-value)
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
 │   │   ├── ticket.go

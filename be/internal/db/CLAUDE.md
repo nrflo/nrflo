@@ -208,6 +208,12 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    updated_at  TEXT NOT NULL                                         │
 │    PRIMARY KEY (project_id, key)                                     │
 │                                                                      │
+│  PREFERENCES                                                         │
+│    name        TEXT PRIMARY KEY                                      │
+│    value       TEXT NOT NULL DEFAULT ''                               │
+│    created_at  TEXT NOT NULL                                          │
+│    updated_at  TEXT NOT NULL                                          │
+│                                                                      │
 │  TICKETS_FTS (Full-text search)                                      │
 │    project_id, id, title, description                                │
 │                                                                      │

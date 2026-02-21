@@ -222,22 +222,22 @@ export function AgentLogPanel({
     return (
       <div
         className={cn(
-          'relative border-l border-border bg-background transition-all duration-300 ease-in-out',
-          collapsed ? 'w-10 shrink-0' : 'flex-1 min-w-[280px]'
+          'relative border-t md:border-t-0 md:border-l border-border bg-background transition-all duration-300 ease-in-out',
+          collapsed ? 'h-10 md:h-auto md:w-10 shrink-0' : 'h-[50vh] md:h-auto md:flex-1 md:min-w-[280px]'
         )}
       >
         <button
           onClick={onToggleCollapse}
-          className="absolute -left-5 top-3 z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
+          className="absolute -top-5 left-3 md:top-3 md:-left-5 md:left-auto z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
           title={collapsed ? 'Expand agent log' : 'Collapse agent log'}
         >
           {collapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
 
         {collapsed ? (
-          <div className="flex flex-col items-center pt-16 gap-2">
+          <div className="flex flex-row items-center gap-2 justify-center md:flex-col md:pt-16">
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground [writing-mode:vertical-lr] rotate-180">
+            <span className="text-xs text-muted-foreground md:[writing-mode:vertical-lr] md:rotate-180">
               Agent Log
             </span>
           </div>
@@ -254,24 +254,24 @@ export function AgentLogPanel({
   return (
     <div
       className={cn(
-        'relative border-l border-border bg-background transition-all duration-300 ease-in-out',
-        collapsed ? 'w-10 shrink-0' : 'flex-1 min-w-[280px]'
+        'relative border-t md:border-t-0 md:border-l border-border bg-background transition-all duration-300 ease-in-out',
+        collapsed ? 'h-10 md:h-auto md:w-10 shrink-0' : 'h-[50vh] md:h-auto md:flex-1 md:min-w-[280px]'
       )}
     >
       <button
         onClick={onToggleCollapse}
-        className="absolute -left-5 top-3 z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
+        className="absolute -top-5 left-3 md:top-3 md:-left-5 md:left-auto z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
         title={collapsed ? 'Expand agent log' : 'Collapse agent log'}
       >
         {collapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
       </button>
 
       {collapsed ? (
-        <div className="flex flex-col items-center pt-16 gap-2">
+        <div className="flex flex-row items-center gap-2 justify-center md:flex-col md:pt-16">
           <div className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-xs font-medium text-yellow-700 dark:text-yellow-400">
             {runningCount}
           </div>
-          <span className="text-xs text-muted-foreground [writing-mode:vertical-lr] rotate-180">
+          <span className="text-xs text-muted-foreground md:[writing-mode:vertical-lr] md:rotate-180">
             Agent Log
           </span>
         </div>

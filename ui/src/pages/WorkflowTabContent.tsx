@@ -99,8 +99,8 @@ export function WorkflowTabContent({
 
   return (
     <div className={cn(
-      'flex gap-0',
-      (hasActivePhase || selectedPanelAgent) && 'min-h-[calc(100vh-280px)]'
+      'flex flex-col md:flex-row gap-0',
+      (hasActivePhase || selectedPanelAgent) && 'md:min-h-[calc(100vh-280px)]'
     )}>
       <div className="flex-1 min-w-0 space-y-4">
         {hasWorkflow && displayedState ? (

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { getProject } from '../api/client'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
+import { runningAgentsKeys } from './useRunningAgents'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
 import { isControlEvent, subscriptionKey } from './useWSProtocol'
 import {
@@ -42,6 +43,7 @@ export type WSEventType =
   | 'agent.take_control'
   | 'chain.updated'
   | 'ticket.updated'
+  | 'global.running_agents'
   | 'test.echo'
 
 export interface WSEvent {
@@ -180,6 +182,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       return
     }
 
+    // Handle global running agents signal (no subscription scope)
+    if (event.type === 'global.running_agents') {
+      qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
+      return
+    }
+
     // Dispatch through v2 reducer (handles seq tracking + cache invalidation)
     dispatchV2Event(event, qc)
     persistSeqs()
@@ -196,6 +204,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
     qc.invalidateQueries({ queryKey: ['agent-defs'] })
     qc.invalidateQueries({ queryKey: ['session-messages'] })
+    qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
   }, [])
 
   // Build subscribe message with cursor for v2 resume

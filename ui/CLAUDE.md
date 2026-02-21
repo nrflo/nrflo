@@ -15,7 +15,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/lib/` | Utility functions (`cn`, `formatDate`, `statusColor`, etc.) |
 | `src/components/workflow/` | Workflow visualization components (see [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)) |
 | `src/components/ui/` | Reusable UI components: Badge, Button, Card, ConfirmDialog (variant-based), Dialog (modal with backdrop/ESC/click-outside), Dropdown (generic custom dropdown with click-outside/Escape/Check icon), Input, MarkdownEditor (CodeMirror 6), codemirror-theme.ts, ProjectSelect (uses Dropdown internally), Spinner, Textarea, Toggle, Tooltip (portal-based positioning) |
-| `src/components/layout/` | Layout components (Header, Sidebar, DailyStats, UsageLimits) |
+| `src/components/layout/` | Layout components (Header, Sidebar, DailyStats, UsageLimits, RunningAgentsIndicator) |
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
 | `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, ChainOrderList, AppendToChainDialog) |
 | `src/components/git/` | Git commit detail dialog and diff viewer components |
@@ -239,4 +239,5 @@ Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.l
 - Settings page for project management (create/update/delete, Toggle for git worktrees, Toggle for docker isolation)
 - Documentation page with agent manual (rendered markdown from API)
 - Logs page with BE/FE sub-tabs, 5s polling via `useLogs` hook (`GET /api/v1/logs?type={be|fe}`)
+- Running agents indicator: `RunningAgentsIndicator` in header shows animated spinner with count badge when agents are running across any project. Hover popover lists agents grouped by project with clickable links. Data fetched via `useRunningAgents` hook (`GET /api/v1/agents/running`, not project-scoped). WS event `global.running_agents` invalidates the query for real-time updates. Types in `src/types/agents.ts`, API in `src/api/agents.ts`.
 - Interactive agent control: "Take Control" button kills a running Claude agent and opens an xterm.js terminal dialog connected to the PTY WebSocket (`/api/v1/pty/{sessionId}`). Components: `XTerminal` (lazy-loaded xterm.js + WebSocket relay), `AgentTerminalDialog` (Dialog wrapper). Hooks: `useTakeControl`, `useExitInteractive` (+ project-scoped variants). WS event: `agent.take_control`. Agent status `user_interactive` shows blue glow in AgentCard and blue "User controlling" badge in AgentLogDetail.

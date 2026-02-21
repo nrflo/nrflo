@@ -33,6 +33,11 @@ vi.mock('./DailyStats', () => ({
   DailyStats: () => <div data-testid="daily-stats">Daily Stats</div>,
 }))
 
+// Mock RunningAgentsIndicator component
+vi.mock('./RunningAgentsIndicator', () => ({
+  RunningAgentsIndicator: () => <div data-testid="running-agents">Running Agents</div>,
+}))
+
 // Mock ProjectSelect component
 vi.mock('@/components/ui/ProjectSelect', () => ({
   ProjectSelect: ({ value, projects }: { value: string; projects: unknown[] }) => (

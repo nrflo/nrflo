@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { DailyStats } from '@/components/layout/DailyStats'
 import { UsageLimits } from '@/components/layout/UsageLimits'
+import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
 import { useProjectStore } from '@/stores/projectStore'
 
 export function Header() {
@@ -84,6 +85,8 @@ export function Header() {
         <DailyStats />
 
         <div className="flex-1" />
+
+        <RunningAgentsIndicator />
 
         <form onSubmit={handleSearch} className="hidden sm:block">
           <div className="relative">

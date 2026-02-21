@@ -18,6 +18,8 @@ const ALLOWLIST = [
   'useLogs.ts',
   // Usage limits polls a cached REST endpoint — no WebSocket events available for this data
   'useUsageLimits.ts',
+  // Running agents uses 30s fallback polling in case global WS broadcast events are missed
+  'useRunningAgents.ts',
 ]
 
 function getAllFiles(dir: string, files: string[] = []): string[] {

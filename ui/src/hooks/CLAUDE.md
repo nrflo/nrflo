@@ -81,8 +81,10 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `orchestration.*` | instance_id | Orchestration lifecycle |
 | `chain.updated` | chain_id | Chain state changed |
 | `ticket.updated` | | Ticket state changed |
+| `global.running_agents` | | Running agents changed (global broadcast, no subscription scope) |
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`
+**Exception:** `global.running_agents` is a global broadcast with no project_id/ticket_id/seq. Handled as early return before `dispatchV2Event`.
 
 ## Other Hooks
 
@@ -97,6 +99,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useExitInteractive()` | Mutation: exit interactive session, unblock spawner (ticket-scoped) |
 | `useTakeControlProject()` | Project-scoped variant of useTakeControl |
 | `useExitInteractiveProject()` | Project-scoped variant of useExitInteractive |
+| `useRunningAgents.ts` | TanStack Query hook for global running agents (`GET /api/v1/agents/running`), 30s polling fallback, 5s stale time. WS `global.running_agents` invalidates cache. |
 
 ## Testing
 

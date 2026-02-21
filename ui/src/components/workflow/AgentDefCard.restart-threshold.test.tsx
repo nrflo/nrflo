@@ -22,13 +22,13 @@ function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
   }
 }
 
-function renderCard(def: AgentDef) {
+function renderCard(def: AgentDef, groups: string[] = []) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <AgentDefCard def={def} workflowId="feature" />
+      <AgentDefCard def={def} workflowId="feature" groups={groups} />
     </QueryClientProvider>
   )
 }
@@ -148,9 +148,9 @@ describe('AgentDefCard - restart_threshold display', () => {
       render(
         <QueryClientProvider client={queryClient}>
           <div>
-            <AgentDefCard def={makeAgentDef({ id: 'agent-1', restart_threshold: 20 })} workflowId="feature" />
-            <AgentDefCard def={makeAgentDef({ id: 'agent-2', restart_threshold: 40 })} workflowId="feature" />
-            <AgentDefCard def={makeAgentDef({ id: 'agent-3', restart_threshold: undefined })} workflowId="feature" />
+            <AgentDefCard def={makeAgentDef({ id: 'agent-1', restart_threshold: 20 })} workflowId="feature" groups={[]} />
+            <AgentDefCard def={makeAgentDef({ id: 'agent-2', restart_threshold: 40 })} workflowId="feature" groups={[]} />
+            <AgentDefCard def={makeAgentDef({ id: 'agent-3', restart_threshold: undefined })} workflowId="feature" groups={[]} />
           </div>
         </QueryClientProvider>
       )

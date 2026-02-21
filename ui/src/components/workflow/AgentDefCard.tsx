@@ -12,9 +12,11 @@ import type { AgentDef, AgentDefUpdateRequest } from '@/types/workflow'
 export function AgentDefCard({
   def,
   workflowId,
+  groups,
 }: {
   def: AgentDef
   workflowId: string
+  groups: string[]
 }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -44,6 +46,7 @@ export function AgentDefCard({
       <AgentDefForm
         initial={def}
         isCreate={false}
+        groups={groups}
         onSubmit={(data) => updateMutation.mutate(data as AgentDefUpdateRequest)}
         onCancel={() => setEditing(false)}
       />
@@ -62,6 +65,11 @@ export function AgentDefCard({
           <span className="text-xs text-muted-foreground">{def.timeout}m timeout</span>
           {def.restart_threshold != null && (
             <span className="text-xs text-muted-foreground">{def.restart_threshold}% restart</span>
+          )}
+          {def.tag && (
+            <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">
+              {def.tag}
+            </Badge>
           )}
         </div>
         <div className="flex items-center gap-1">

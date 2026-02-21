@@ -9,26 +9,30 @@ export function AgentDefForm({
   onSubmit,
   onCancel,
   isCreate,
+  groups = [],
 }: {
   initial?: Partial<AgentDef>
   onSubmit: (data: AgentDefCreateRequest | AgentDefUpdateRequest) => void
   onCancel: () => void
   isCreate: boolean
+  groups?: string[]
 }) {
   const [id, setId] = useState(initial?.id || '')
   const [model, setModel] = useState(initial?.model || 'sonnet')
   const [timeout, setTimeout] = useState(initial?.timeout || 20)
   const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
+  const [tag, setTag] = useState(initial?.tag || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (isCreate && !prompt.trim()) return
     const threshold = restartThreshold !== '' ? restartThreshold : undefined
+    const tagValue = tag || undefined
     if (isCreate) {
-      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold } as AgentDefCreateRequest)
+      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, tag: tagValue } as AgentDefCreateRequest)
     } else {
-      onSubmit({ model, timeout, prompt, restart_threshold: threshold } as AgentDefUpdateRequest)
+      onSubmit({ model, timeout, prompt, restart_threshold: threshold, tag: tagValue } as AgentDefUpdateRequest)
     }
   }
 
@@ -87,6 +91,23 @@ export function AgentDefForm({
           />
         </div>
       </div>
+      {groups.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Tag</label>
+          <Dropdown
+            value={tag}
+            onChange={setTag}
+            options={[
+              { value: '', label: '(none)' },
+              ...groups.map((g) => ({ value: g, label: g })),
+            ]}
+            placeholder="(none)"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Assign a group tag for skip logic (optional)
+          </p>
+        </div>
+      )}
       <div>
         <label className="block text-xs font-medium text-muted-foreground mb-1">Prompt Template</label>
         <MarkdownEditor

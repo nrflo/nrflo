@@ -208,6 +208,7 @@ describe('WorkflowDefForm', () => {
         id: 'feature',
         description: 'Full TDD workflow',
         scope_type: 'ticket',
+        groups: [],
         phases: [
           {
             id: 'setup-analyzer',
@@ -241,6 +242,7 @@ describe('WorkflowDefForm', () => {
       expect(onSubmit).toHaveBeenCalledWith({
         description: 'New description',
         scope_type: 'ticket',
+        groups: [],
         phases: [
           {
             id: 'setup-analyzer',

@@ -11,6 +11,19 @@ import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateReq
 import { useProjectStore } from '@/stores/projectStore'
 import { cn } from '@/lib/utils'
 
+function GroupBadges({ groups }: { groups?: string[] }) {
+  if (!groups?.length) return null
+  return (
+    <>
+      {groups.map((g) => (
+        <Badge key={g} variant="outline" className="text-xs border-emerald-300 text-emerald-600">
+          {g}
+        </Badge>
+      ))}
+    </>
+  )
+}
+
 function WorkflowCard({
   id,
   def,
@@ -70,6 +83,7 @@ function WorkflowCard({
               project
             </Badge>
           )}
+          <GroupBadges groups={def.groups} />
           <span className="text-xs text-muted-foreground">
             {def.phases?.length || 0} agents
           </span>
@@ -105,7 +119,7 @@ function WorkflowCard({
             </div>
           )}
 
-          <AgentDefsSection workflowId={id} />
+          <AgentDefsSection workflowId={id} groups={def.groups || []} />
         </div>
       )}
     </div>
@@ -116,6 +130,7 @@ interface EditingWorkflow {
   id: string
   description?: string
   scope_type?: ScopeType
+  groups?: string[]
   phases?: PhaseDef[]
 }
 

@@ -62,11 +62,11 @@ The panel also shows when a completed agent is selected from PhaseGraph (even af
 
 | Component | Purpose |
 |-----------|---------|
-| `WorkflowDefForm.tsx` | Workflow definition create/edit form |
+| `WorkflowDefForm.tsx` | Workflow definition create/edit form (includes groups chip input) |
 | `PhaseListEditor.tsx` | Layer-aware phase list editor with fan-in validation |
-| `AgentDefForm.tsx` | Agent definition create/edit form |
-| `AgentDefCard.tsx` | Agent definition card with edit/delete |
-| `AgentDefsSection.tsx` | Agent definitions list within a workflow |
+| `AgentDefForm.tsx` | Agent definition create/edit form (includes tag dropdown when groups available) |
+| `AgentDefCard.tsx` | Agent definition card with edit/delete (shows tag badge) |
+| `AgentDefsSection.tsx` | Agent definitions list within a workflow (passes groups to children) |
 | `RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs |
 | `RunEpicWorkflowDialog.tsx` | Dialog for epic workflow execution: two-step flow (create chain preview, then start) |
 | `AgentTerminalDialog.tsx` | Dialog wrapper for interactive agent terminal: non-dismissable backdrop, lazy-loads XTerminal, Exit Session footer button |

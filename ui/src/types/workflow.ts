@@ -185,6 +185,7 @@ export interface PhaseDef {
 export interface WorkflowDefSummary {
   description: string
   scope_type?: ScopeType
+  groups?: string[]
   phases: PhaseDef[]
 }
 
@@ -194,6 +195,7 @@ export interface WorkflowDef {
   project_id: string
   description: string
   scope_type?: ScopeType
+  groups?: string[]
   phases: PhaseDef[]
   created_at: string
   updated_at: string
@@ -203,12 +205,14 @@ export interface WorkflowDefCreateRequest {
   id: string
   description?: string
   scope_type?: ScopeType
+  groups?: string[]
   phases: PhaseDef[]
 }
 
 export interface WorkflowDefUpdateRequest {
   description?: string
   scope_type?: ScopeType
+  groups?: string[]
   phases?: PhaseDef[]
 }
 
@@ -222,6 +226,7 @@ export interface AgentDef {
   timeout: number
   prompt: string
   restart_threshold?: number
+  tag?: string
   created_at: string
   updated_at: string
 }
@@ -232,6 +237,7 @@ export interface AgentDefCreateRequest {
   timeout?: number
   prompt: string
   restart_threshold?: number
+  tag?: string
 }
 
 export interface AgentDefUpdateRequest {
@@ -239,6 +245,7 @@ export interface AgentDefUpdateRequest {
   timeout?: number
   prompt?: string
   restart_threshold?: number
+  tag?: string
 }
 
 // Orchestration types

@@ -8,7 +8,7 @@ import { listAgentDefs, createAgentDef } from '@/api/agentDefs'
 import { useProjectStore } from '@/stores/projectStore'
 import type { AgentDefCreateRequest } from '@/types/workflow'
 
-export function AgentDefsSection({ workflowId }: { workflowId: string }) {
+export function AgentDefsSection({ workflowId, groups }: { workflowId: string; groups: string[] }) {
   const [creating, setCreating] = useState(false)
   const queryClient = useQueryClient()
   const currentProject = useProjectStore((s) => s.currentProject)
@@ -44,6 +44,7 @@ export function AgentDefsSection({ workflowId }: { workflowId: string }) {
       {creating && (
         <AgentDefForm
           isCreate
+          groups={groups}
           onSubmit={(data) => createMutation.mutate(data as AgentDefCreateRequest)}
           onCancel={() => setCreating(false)}
         />
@@ -57,7 +58,7 @@ export function AgentDefsSection({ workflowId }: { workflowId: string }) {
 
       <div className="space-y-2">
         {defs?.map((def) => (
-          <AgentDefCard key={def.id} def={def} workflowId={workflowId} />
+          <AgentDefCard key={def.id} def={def} workflowId={workflowId} groups={groups} />
         ))}
       </div>
     </div>

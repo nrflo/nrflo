@@ -154,6 +154,7 @@ describe('AgentDefForm', () => {
         timeout: 30,
         prompt: 'You are a setup analyzer...',
         restart_threshold: 20,
+        tag: undefined,
       })
     })
 
@@ -178,6 +179,7 @@ describe('AgentDefForm', () => {
         timeout: 20,
         prompt: 'New prompt',
         restart_threshold: undefined,
+        tag: undefined,
       })
     })
 

@@ -192,10 +192,10 @@ describe('Header - Git Status Link', () => {
 
     const allLinks = screen.getAllByRole('link')
     const workflowsIndex = allLinks.findIndex((link) =>
-      link.textContent?.includes('Workflows')
+      link.getAttribute('title') === 'Workflows'
     )
     const gitStatusIndex = allLinks.findIndex((link) =>
-      link.textContent?.includes('Git Status')
+      link.getAttribute('title') === 'Git Status'
     )
 
     expect(workflowsIndex).toBeGreaterThan(-1)
@@ -210,5 +210,45 @@ describe('Header - Git Status Link', () => {
     expect(screen.getByRole('link', { name: /tickets/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /workflows/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /git status/i })).toBeInTheDocument()
+  })
+})
+
+describe('Header - Icon-only nav links', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCurrentProject = 'test-project'
+    mockProjects = [
+      {
+        id: 'test-project',
+        name: 'Test Project',
+        root_path: '/test',
+        default_workflow: 'feature',
+        default_branch: 'main',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ]
+  })
+
+  it('all 6 nav links render with correct titles, hrefs, and no visible text', () => {
+    renderHeader()
+
+    const expectedLinks = [
+      { title: 'Dashboard', href: '/' },
+      { title: 'Tickets', href: '/tickets' },
+      { title: 'Workflows', href: '/workflows' },
+      { title: 'Git Status', href: '/git-status' },
+      { title: 'Documentation', href: '/documentation' },
+      { title: 'Logs', href: '/logs' },
+    ]
+
+    for (const { title, href } of expectedLinks) {
+      const link = screen.getByRole('link', { name: title })
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveAttribute('href', href)
+      expect(link).toHaveAttribute('title', title)
+      // Icon-only: link contains only an SVG, no text label
+      expect(link.textContent?.trim()).toBe('')
+    }
   })
 })

@@ -206,18 +206,26 @@ EXPECT
   $DEBUG && echo "debug: codex raw ($(wc -c < "$raw") bytes):" >&2
   $DEBUG && cat -v "$raw" >&2
 
-  local cleaned
-  cleaned=$(strip_ansi < "$raw")
-
-  # Parse codex /status output
-  # Status tab format: "5h limit: [...] 80% left (resets 22:26)"
-  #                    "Weekly limit: [...] 71% left (resets 23:26 on 26 Feb)"
-  # Fix "Rese s" → "Resets" (cursor-move artifact)
+  # Parse codex /status output directly from the raw file.
+  # strip_ansi (sed-based) doesn't handle codex's ESC[>...] and OSC/ST sequences,
+  # so we let Python do the comprehensive stripping instead.
   local parsed
-  parsed=$(echo "$cleaned" | python3 -c '
+  parsed=$(python3 - "$raw" <<'PYEOF'
 import sys, re, json
 
-text = sys.stdin.read()
+raw_path = sys.argv[1]
+with open(raw_path, "rb") as f:
+    text = f.read().decode("utf-8", errors="replace")
+
+# Comprehensive ANSI stripping
+text = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text)       # CSI: SGR, cursor, erase
+text = re.sub(r"\x1b\[[?!>][0-9;]*[a-zA-Z]", "", text)  # DEC private / GT-mode
+text = re.sub(r"\x1b\][^\x07\x1b]*\x07", "", text)       # OSC with BEL terminator
+text = re.sub(r"\x1b\][^\x1b]*\x1b\\", "", text)         # OSC with ST terminator
+text = re.sub(r"\x1b[^[\]()]", "", text)                  # Other ESC sequences
+text = re.sub(r"[\r\x0f]", "", text)                      # CR, Shift-In
+# Collapse all whitespace — codex renders char-by-char so words get fragmented
+text = re.sub(r"\s+", " ", text)
 text = re.sub(r"Rese\s+s\b", "Resets", text)
 result = {}
 
@@ -247,7 +255,8 @@ if result:
     print(json.dumps(result))
 else:
     sys.exit(1)
-' 2>/dev/null) || return 1
+PYEOF
+) || return 1
 
   if has_cmd jq; then
     echo "$parsed" | jq '{

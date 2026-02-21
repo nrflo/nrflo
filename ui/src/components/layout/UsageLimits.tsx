@@ -10,7 +10,7 @@ function pctColor(pct: number): string {
 }
 
 function ToolSection({ label, icon: Icon, usage }: { label: string; icon: typeof Zap; usage: ToolUsage }) {
-  if (!usage.available) return null
+  if (!usage.available || (!usage.session && !usage.weekly)) return null
 
   return (
     <div className="flex items-center gap-1">

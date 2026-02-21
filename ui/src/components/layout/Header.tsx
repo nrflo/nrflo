@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Search, Settings } from 'lucide-react'
+import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, Terminal } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
@@ -38,44 +38,26 @@ export function Header() {
           <span className="hidden sm:inline-block">{currentProjectObj?.name ?? 'nrworkflow'}</span>
         </Link>
 
-        <nav className="flex items-center gap-4 ml-4">
-          <Link
-            to="/"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Dashboard
+        <nav className="flex items-center gap-1 ml-4">
+          <Link to="/" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Dashboard">
+            <LayoutDashboard className="h-5 w-5" />
           </Link>
-          <Link
-            to="/tickets"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Tickets
+          <Link to="/tickets" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Tickets">
+            <Ticket className="h-5 w-5" />
           </Link>
-          <Link
-            to="/workflows"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Workflows
+          <Link to="/workflows" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Workflows">
+            <FolderGit2 className="h-5 w-5" />
           </Link>
           {hasDefaultBranch && (
-            <Link
-              to="/git-status"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Git Status
+            <Link to="/git-status" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Git Status">
+              <GitCommitHorizontal className="h-5 w-5" />
             </Link>
           )}
-          <Link
-            to="/documentation"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Documentation
+          <Link to="/documentation" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Documentation">
+            <BookOpen className="h-5 w-5" />
           </Link>
-          <Link
-            to="/logs"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Logs
+          <Link to="/logs" className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Logs">
+            <Terminal className="h-5 w-5" />
           </Link>
         </nav>
 

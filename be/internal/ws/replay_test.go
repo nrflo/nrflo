@@ -39,7 +39,6 @@ func TestReplayWithValidCursor(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe with cursor (should replay events after seq=2)
 	handleReplay(client, "proj-1", "ticket-1", 2, hub)
@@ -96,7 +95,6 @@ func TestReplayWithCursorZero(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe with cursor=0 should trigger snapshot
 	handleReplay(client, "proj-1", "ticket-1", 0, hub)
@@ -158,7 +156,6 @@ func TestReplayWithPrunedEvents(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe with cursor=5 (all events were pruned, latestSeq=0)
 	// sinceSeq=5 > latestSeq=0, but since no events exist and sinceSeq > 0,
@@ -220,7 +217,6 @@ func TestReplayWithGapRequiresSnapshot(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe with cursor=2 (events 1-3 were pruned, latest is 6)
 	// sinceSeq=2 < latestSeq=6 and no events exist after seq=2 below seq=4
@@ -264,7 +260,6 @@ func TestReplayWithCaughtUpCursor(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe with current cursor (caught up)
 	handleReplay(client, "proj-1", "ticket-1", 3, hub)
@@ -311,7 +306,6 @@ func TestReplayDifferentScope(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Replay for ticket-2 only
 	handleReplay(client, "proj-1", "ticket-2", 0, hub)
@@ -338,7 +332,6 @@ func TestReplayWithoutEventLog(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Replay without event log should be a no-op
 	handleReplay(client, "proj-1", "ticket-1", 0, hub)

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"be/internal/db"
 )
 
 // ticketResponse is used to decode ticket JSON responses with nullable fields.
@@ -26,11 +25,9 @@ func setupReopenTest(t *testing.T) (baseURL string) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "reopen")
 	return startAPIServer(t, dbPath)

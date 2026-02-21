@@ -84,11 +84,9 @@ func TestCreateTicketWithExplicitID(t *testing.T) {
 	dbPath := filepath.Join(dbDir, "test.db")
 
 	// Initialize DB (migrations run on Open)
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "myproj")
 	baseURL := startAPIServer(t, dbPath)
@@ -129,11 +127,9 @@ func TestCreateTicketAutoGeneratesID(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "myproj")
 	baseURL := startAPIServer(t, dbPath)
@@ -177,11 +173,9 @@ func TestCreateTicketAutoIDWithEmptyString(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -218,11 +212,9 @@ func TestCreateTicketAutoIDUnique(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "uniq")
 	baseURL := startAPIServer(t, dbPath)
@@ -268,11 +260,9 @@ func TestCreateTicketMissingTitle(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "errproj")
 	baseURL := startAPIServer(t, dbPath)
@@ -303,11 +293,9 @@ func TestCreateTicketMissingCreatedBy(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "errproj")
 	baseURL := startAPIServer(t, dbPath)
@@ -338,11 +326,9 @@ func TestCreateTicketMissingProject(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -366,11 +352,9 @@ func TestCreateTicketDefaultsApplied(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "defaults")
 	baseURL := startAPIServer(t, dbPath)
@@ -412,11 +396,9 @@ func TestGetEpicTicketWithChildren(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "epic-proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -449,9 +431,6 @@ func TestGetEpicTicketWithChildren(t *testing.T) {
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201 for child 1, got %d", resp.StatusCode)
 	}
-
-	// Sleep briefly to ensure different created_at timestamp
-	time.Sleep(10 * time.Millisecond)
 
 	// Create child ticket with lower priority (should come first)
 	child2Body := `{"id":"CHILD-002","title":"Child 2","parent_ticket_id":"EPIC-001","priority":1,"created_by":"tester"}`
@@ -517,11 +496,9 @@ func TestGetEpicTicketWithNoChildren(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "empty-epic")
 	baseURL := startAPIServer(t, dbPath)
@@ -576,11 +553,9 @@ func TestGetNonEpicTicketHasEmptyChildrenArray(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "task-proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -639,11 +614,9 @@ func TestGetBugTicketHasEmptyChildrenArray(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "bug-proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -702,11 +675,9 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "order-proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -805,11 +776,9 @@ func TestGetEpicCaseInsensitiveParentLookup(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "case-proj")
 	baseURL := startAPIServer(t, dbPath)

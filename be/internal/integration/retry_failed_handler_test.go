@@ -76,11 +76,9 @@ func seedProjectWithRoot(t *testing.T, dbPath, projectID string) {
 func TestRetryFailedHandler_MissingProject(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -103,11 +101,9 @@ func TestRetryFailedHandler_MissingProject(t *testing.T) {
 func TestRetryFailedHandler_MissingWorkflow(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -131,11 +127,9 @@ func TestRetryFailedHandler_MissingWorkflow(t *testing.T) {
 func TestRetryFailedHandler_MissingSessionID(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -159,11 +153,9 @@ func TestRetryFailedHandler_MissingSessionID(t *testing.T) {
 func TestRetryFailedHandler_WorkflowNotFound(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -181,11 +173,9 @@ func TestRetryFailedHandler_WorkflowNotFound(t *testing.T) {
 func TestRetryFailedHandler_WorkflowNotFailed(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
@@ -212,18 +202,16 @@ func TestRetryFailedHandler_WorkflowNotFailed(t *testing.T) {
 func TestRetryFailedHandler_HappyPath(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProjectWithRoot(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
 	seedTicketAndWorkflow(t, dbPath, "proj", "TICK-1")
 
 	// Mark workflow as failed and create failed agent session
-	database, _ = db.Open(dbPath)
+	database, _ := db.Open(dbPath)
 	pool := db.WrapAsPool(database)
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clock.Real())
@@ -279,11 +267,9 @@ func TestRetryFailedHandler_HappyPath(t *testing.T) {
 func TestRetryFailedHandler_InvalidJSON(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -308,11 +294,9 @@ func TestRetryFailedHandler_InvalidJSON(t *testing.T) {
 func TestRetryFailedHandler_EmptyBody(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -337,17 +321,15 @@ func TestRetryFailedHandler_EmptyBody(t *testing.T) {
 func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProjectWithRoot(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
 
 	// Create project-scoped workflow
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	pool := db.WrapAsPool(database)
 
 	// Update workflow to project scope
@@ -418,11 +400,9 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 func TestRetryFailedProjectHandler_MissingProject(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -440,11 +420,9 @@ func TestRetryFailedProjectHandler_MissingProject(t *testing.T) {
 func TestRetryFailedProjectHandler_MissingWorkflow(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -462,11 +440,9 @@ func TestRetryFailedProjectHandler_MissingWorkflow(t *testing.T) {
 func TestRetryFailedProjectHandler_MissingSessionID(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)

@@ -34,17 +34,13 @@ func TestE2ESubscribeReplayLiveEvents(t *testing.T) {
 
 	// Phase 1: Log some events before client connects
 	for i := 1; i <= 3; i++ {
-		event := NewEvent(EventAgentStarted, "proj-1", "ticket-1", "feature", map[string]interface{}{
-			"phase": i,
-		})
-		hub.Broadcast(event)
+		payload, _ := json.Marshal(map[string]interface{}{"phase": i})
+		eventLog.Append("proj-1", "ticket-1", EventAgentStarted, "feature", payload)
 	}
-	time.Sleep(100 * time.Millisecond)
 
 	// Phase 2: Client connects and subscribes with cursor=1 (should replay 2, 3)
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj-1", "ticket-1")
 
 	// Trigger replay
@@ -108,17 +104,13 @@ func TestE2EMultipleClientsReplay(t *testing.T) {
 
 	// Log 10 events
 	for i := 1; i <= 10; i++ {
-		event := NewEvent(EventTestEcho, "proj-1", "ticket-1", "feature", map[string]interface{}{
-			"index": i,
-		})
-		hub.Broadcast(event)
+		payload, _ := json.Marshal(map[string]interface{}{"index": i})
+		eventLog.Append("proj-1", "ticket-1", EventTestEcho, "feature", payload)
 	}
-	time.Sleep(100 * time.Millisecond)
 
 	// Client 1 subscribes with cursor=5 (should get 6-10)
 	client1 := newTestClient(hub, "client-1")
 	hub.Register(client1)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client1, "proj-1", "ticket-1")
 	handleReplay(client1, "proj-1", "ticket-1", 5, hub)
 
@@ -133,7 +125,6 @@ func TestE2EMultipleClientsReplay(t *testing.T) {
 	// Client 2 subscribes with cursor=8 (should get 9-10)
 	client2 := newTestClient(hub, "client-2")
 	hub.Register(client2)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client2, "proj-1", "ticket-1")
 	handleReplay(client2, "proj-1", "ticket-1", 8, hub)
 
@@ -148,7 +139,6 @@ func TestE2EMultipleClientsReplay(t *testing.T) {
 	// Client 3 subscribes caught up (should get no replay)
 	client3 := newTestClient(hub, "client-3")
 	hub.Register(client3)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client3, "proj-1", "ticket-1")
 	handleReplay(client3, "proj-1", "ticket-1", 10, hub)
 
@@ -211,7 +201,6 @@ func TestE2ESnapshotToLiveTransition(t *testing.T) {
 	// Client subscribes with cursor=0 when no events exist (triggers snapshot)
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj-1", "ticket-1")
 
 	handleReplay(client, "proj-1", "ticket-1", 0, hub)
@@ -273,10 +262,8 @@ func TestE2ECleanupDoesNotAffectActiveCursors(t *testing.T) {
 
 	// Log recent events
 	for i := 1; i <= 10; i++ {
-		event := NewEvent(EventTestEcho, "proj-1", "ticket-1", "feature", nil)
-		hub.Broadcast(event)
+		eventLog.Append("proj-1", "ticket-1", EventTestEcho, "feature", nil)
 	}
-	time.Sleep(100 * time.Millisecond)
 
 	// Run cleanup with very long retention (should delete nothing)
 	deleted, err := eventLog.Cleanup(24 * time.Hour)
@@ -290,7 +277,6 @@ func TestE2ECleanupDoesNotAffectActiveCursors(t *testing.T) {
 	// Client can still replay
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj-1", "ticket-1")
 	handleReplay(client, "proj-1", "ticket-1", 5, hub)
 
@@ -321,7 +307,6 @@ func TestE2EProjectWideSubscription(t *testing.T) {
 	// Client subscribes project-wide (empty ticketID)
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj-1", "")
 
 	// Broadcast events to different tickets

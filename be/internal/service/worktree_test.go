@@ -408,6 +408,10 @@ func TestWorktreePath(t *testing.T) {
 
 // TestMergeAndCleanup_StaleLock verifies merge succeeds after stale lock removal.
 func TestMergeAndCleanup_StaleLock(t *testing.T) {
+	orig := mergeRetryDelay
+	mergeRetryDelay = 0
+	t.Cleanup(func() { mergeRetryDelay = orig })
+
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 

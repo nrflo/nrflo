@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -210,8 +211,10 @@ func (s *Server) startRetentionCleanup() {
 // the DB (< 30 min old), it populates the cache immediately and skips the
 // initial PTY scrape.
 func (s *Server) startUsageLimitsFetcher() {
+	resolvedDataPath := db.GetDBPath(s.dataPath)
+	scriptPath := filepath.Join(filepath.Dir(resolvedDataPath), "scripts", "usage-limits.sh")
 	fetch := func() {
-		data := usagelimits.FetchAll()
+		data := usagelimits.FetchAll(scriptPath)
 		s.usageLimitsCache.Set(data)
 		logger.Info(context.Background(), "usage-limits: fetched",
 			"claude_available", data.Claude.Available,
@@ -219,9 +222,18 @@ func (s *Server) startUsageLimitsFetcher() {
 	}
 
 	go func() {
-		if s.usageLimitsCache.LoadFromDB() {
+		loaded := s.usageLimitsCache.LoadFromDB()
+		cached := s.usageLimitsCache.Get()
+		// "empty" means no actual usage metrics — available:true with parse errors doesn't count
+		isEmpty := cached == nil ||
+			(cached.Claude.Session == nil && cached.Claude.Weekly == nil &&
+				cached.Codex.Session == nil && cached.Codex.Weekly == nil)
+		if loaded && !isEmpty {
 			logger.Info(context.Background(), "usage-limits: loaded fresh data from DB, skipping initial fetch")
 		} else {
+			if loaded && isEmpty {
+				logger.Info(context.Background(), "usage-limits: DB data has no available tools, re-fetching")
+			}
 			fetch()
 		}
 		ticker := time.NewTicker(20 * time.Minute)

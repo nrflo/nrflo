@@ -16,11 +16,9 @@ func TestCreateProjectWithUseDockerIsolation(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -53,7 +51,7 @@ func TestCreateProjectWithUseDockerIsolation(t *testing.T) {
 	}
 
 	// Verify use_docker_isolation is 1 in DB
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -75,11 +73,9 @@ func TestCreateProjectWithoutUseDockerIsolation(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -108,7 +104,7 @@ func TestCreateProjectWithoutUseDockerIsolation(t *testing.T) {
 	}
 
 	// Verify use_docker_isolation is 0 in DB (default)
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -130,11 +126,9 @@ func TestCreateProjectWithUseDockerIsolationFalse(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -163,7 +157,7 @@ func TestCreateProjectWithUseDockerIsolationFalse(t *testing.T) {
 	}
 
 	// Verify use_docker_isolation is 0 in DB
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -185,11 +179,9 @@ func TestGetProjectReturnsUseDockerIsolation(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -235,11 +227,9 @@ func TestGetProjectReturnsUseDockerIsolationFalse(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -285,11 +275,9 @@ func TestListProjectsReturnsUseDockerIsolation(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 

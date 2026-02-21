@@ -25,7 +25,6 @@ func TestHubBroadcastToSubscriber(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	hub.Subscribe(client, "proj-1", "ticket-1")
 
@@ -63,13 +62,9 @@ func TestHubBroadcastNoSubscribers(t *testing.T) {
 	event := NewEvent(EventAgentStarted, "proj-1", "ticket-1", "wf", nil)
 	hub.Broadcast(event)
 
-	// Give hub time to process
-	time.Sleep(50 * time.Millisecond)
-
 	// Also test with a registered client but no subscriptions
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	event = NewEvent(EventAgentStarted, "proj-1", "ticket-1", "wf", nil)
 	hub.Broadcast(event)
@@ -90,7 +85,6 @@ func TestHubBroadcastProjectWide(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe to project-wide (empty ticketID)
 	hub.Subscribe(client, "proj-1", "")
@@ -123,7 +117,6 @@ func TestHubBroadcastWrongProject(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Subscribe to proj-1
 	hub.Subscribe(client, "proj-1", "ticket-1")
@@ -147,7 +140,6 @@ func TestHubUnsubscribe(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	hub.Subscribe(client, "proj-1", "ticket-1")
 

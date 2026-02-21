@@ -41,7 +41,6 @@ func TestSnapshotStreamingSuccess(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Stream snapshot
 	streamSnapshot(client, "proj-1", "ticket-1", hub)
@@ -116,7 +115,6 @@ func TestSnapshotWithCurrentSeq(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Stream snapshot
 	streamSnapshot(client, "proj-1", "ticket-1", hub)
@@ -162,7 +160,6 @@ func TestSnapshotProviderError(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Stream snapshot (should send resync.required on error)
 	streamSnapshot(client, "proj-1", "ticket-1", hub)
@@ -201,7 +198,6 @@ func TestSnapshotWithoutProvider(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Stream snapshot without provider should send resync.required
 	streamSnapshot(client, "proj-1", "ticket-1", hub)
@@ -234,7 +230,6 @@ func TestSnapshotEmptyChunks(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	// Stream snapshot with empty chunks
 	streamSnapshot(client, "proj-1", "ticket-1", hub)
@@ -274,7 +269,6 @@ func TestSnapshotChunkContent(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	streamSnapshot(client, "proj-1", "ticket-1", hub)
 

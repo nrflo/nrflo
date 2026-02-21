@@ -347,7 +347,6 @@ func TestUpdateContextLeft_BroadcastsWSEvent(t *testing.T) {
 	// Subscribe a test client
 	client, sendCh := ws.NewTestClient(hub, "client-ucl-ws")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj", "T-1")
 
 	proc := &processInfo{

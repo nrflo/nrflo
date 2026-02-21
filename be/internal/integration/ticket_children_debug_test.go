@@ -16,11 +16,9 @@ func TestGetEpicTicketWithChildrenDebug(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "epic-proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -58,7 +56,7 @@ func TestGetEpicTicketWithChildrenDebug(t *testing.T) {
 	t.Logf("Child 1 created: %s", string(respBody))
 
 	// Open DB and check what was actually stored
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}

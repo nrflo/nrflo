@@ -94,6 +94,22 @@ func (p *Pool) GetConfig(key string) (string, error) {
 	return value, err
 }
 
+// OpenPoolExisting opens a pool to an already-migrated database, skipping migrations.
+// Use this when copying from a template DB in tests.
+func OpenPoolExisting(path string, config PoolConfig) (*Pool, error) {
+	db, err := sql.Open("sqlite", buildDSN(path))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	if err := setDatabasePragmas(db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	pool := &Pool{DB: db, Path: path}
+	pool.applyConfig(config)
+	return pool, nil
+}
+
 // Health checks if the database is healthy
 func (p *Pool) Health() error {
 	return p.Ping()

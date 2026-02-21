@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"be/internal/db"
 )
 
 func doTakeControl(t *testing.T, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
@@ -51,11 +50,9 @@ func doExitInteractive(t *testing.T, baseURL, ticketID, project string, body map
 func TestTakeControlHandler_MissingProject(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -78,11 +75,9 @@ func TestTakeControlHandler_MissingProject(t *testing.T) {
 func TestTakeControlHandler_MissingWorkflow(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -105,11 +100,9 @@ func TestTakeControlHandler_MissingWorkflow(t *testing.T) {
 func TestTakeControlHandler_MissingSessionID(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -132,11 +125,9 @@ func TestTakeControlHandler_MissingSessionID(t *testing.T) {
 func TestTakeControlHandler_WorkflowNotFound(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -156,11 +147,9 @@ func TestTakeControlHandler_WorkflowNotFound(t *testing.T) {
 func TestTakeControlHandler_NoRunningOrchestration(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
@@ -186,11 +175,9 @@ func TestTakeControlHandler_NoRunningOrchestration(t *testing.T) {
 func TestTakeControlHandler_InvalidBody(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -216,11 +203,9 @@ func TestTakeControlHandler_InvalidBody(t *testing.T) {
 func TestExitInteractiveHandler_MissingProject(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -243,11 +228,9 @@ func TestExitInteractiveHandler_MissingProject(t *testing.T) {
 func TestExitInteractiveHandler_MissingWorkflow(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -270,11 +253,9 @@ func TestExitInteractiveHandler_MissingWorkflow(t *testing.T) {
 func TestExitInteractiveHandler_MissingSessionID(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -299,11 +280,9 @@ func TestExitInteractiveHandler_MissingSessionID(t *testing.T) {
 func TestExitInteractiveHandler_SessionNotFound(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -324,11 +303,9 @@ func TestExitInteractiveHandler_SessionNotFound(t *testing.T) {
 func TestTakeControlProjectHandler_MissingWorkflow(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -354,11 +331,9 @@ func TestTakeControlProjectHandler_MissingWorkflow(t *testing.T) {
 func TestTakeControlProjectHandler_NoRunningOrchestration(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -388,11 +363,9 @@ func TestTakeControlProjectHandler_NoRunningOrchestration(t *testing.T) {
 func TestExitInteractiveProjectHandler_SessionNotFound(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 

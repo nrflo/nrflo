@@ -15,11 +15,9 @@ func TestUpdateProjectToggleUseGitWorktrees(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -63,7 +61,7 @@ func TestUpdateProjectToggleUseGitWorktrees(t *testing.T) {
 	}
 
 	// Verify in DB
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -126,11 +124,9 @@ func TestUpdateProjectWithoutUseGitWorktreesDoesNotReset(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -175,7 +171,7 @@ func TestUpdateProjectWithoutUseGitWorktreesDoesNotReset(t *testing.T) {
 	}
 
 	// Verify in DB
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -197,11 +193,9 @@ func TestUpdateProjectMultipleFieldsIncludingUseGitWorktrees(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -250,11 +244,9 @@ func TestProjectUseGitWorktreesEndToEnd(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 

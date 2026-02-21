@@ -129,6 +129,21 @@ func (cr *ChainRunner) IsRunning(chainID string) bool {
 	return ok
 }
 
+// WaitAll blocks until all running chain goroutines have exited, or until timeout.
+// Used in tests to avoid log buffer pollution between test runs.
+func (cr *ChainRunner) WaitAll(timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		cr.mu.Lock()
+		n := len(cr.runs)
+		cr.mu.Unlock()
+		if n == 0 {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
 // RecoverZombieChains marks running chains as failed on startup (crash recovery)
 func (cr *ChainRunner) RecoverZombieChains() {
 	ctx := context.Background()

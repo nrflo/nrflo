@@ -184,8 +184,8 @@ expect {
     "% used" { sleep 1 }
 }
 
-# Exit
-send "/exit\r"
+# Exit via Ctrl+C (codex crashes on /exit due to a Rust wrapping bug)
+send "\x03"
 set timeout 3
 expect {
     timeout { }
@@ -294,7 +294,7 @@ if has_cmd codex; then
   if result=$(scrape_codex); then
     codex_json="$result"
   else
-    codex_json='{"available":true,"five_hour":null,"weekly":null,"error":"failed to parse /status output"}'
+    codex_json='{"available":true,"session":null,"weekly":null,"error":"failed to parse /status output"}'
   fi
 fi
 

@@ -35,7 +35,9 @@ func TestChainRunnerStart_GeneratesTrx(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	// Cancel and wait for goroutine to exit before reading log to prevent pollution.
+	cr.Cancel(chainID)
+	cr.WaitAll(500 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -68,9 +70,6 @@ func TestChainRunnerStart_GeneratesTrx(t *testing.T) {
 	if len(trxID) != 8 {
 		t.Errorf("trx ID length = %d, want 8 (hex string)", len(trxID))
 	}
-
-	// Clean up
-	cr.Cancel(chainID)
 }
 
 func TestChainRunnerStart_LogsChainStarted(t *testing.T) {
@@ -96,7 +95,8 @@ func TestChainRunnerStart_LogsChainStarted(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	cr.Cancel(chainID)
+	cr.WaitAll(500 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -112,9 +112,6 @@ func TestChainRunnerStart_LogsChainStarted(t *testing.T) {
 	if !strings.Contains(output, "workflow=test") {
 		t.Errorf("log output missing workflow: %s", output)
 	}
-
-	// Clean up
-	cr.Cancel(chainID)
 }
 
 func TestChainRunnerStart_TrxPropagation(t *testing.T) {
@@ -140,7 +137,8 @@ func TestChainRunnerStart_TrxPropagation(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(150 * time.Millisecond)
+	cr.Cancel(chainID)
+	cr.WaitAll(500 * time.Millisecond)
 
 	output := logBuf.String()
 	lines := strings.Split(output, "\n")
@@ -175,9 +173,6 @@ func TestChainRunnerStart_TrxPropagation(t *testing.T) {
 			t.Errorf("trx ID mismatch at line %d: got %s, want %s", i, trx, firstTrx)
 		}
 	}
-
-	// Clean up
-	cr.Cancel(chainID)
 }
 
 func TestChainRunner_LogsRecovery(t *testing.T) {
@@ -201,8 +196,6 @@ func TestChainRunner_LogsRecovery(t *testing.T) {
 	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
 	cr.RecoverZombieChains()
 
-	time.Sleep(50 * time.Millisecond)
-
 	output := logBuf.String()
 
 	if !strings.Contains(output, "WARN") {
@@ -217,10 +210,6 @@ func TestChainRunner_LogsRecovery(t *testing.T) {
 }
 
 func TestChainRunner_LogsCancellation(t *testing.T) {
-	// This test verifies that chain runner logs are properly structured
-	// The actual cancellation behavior is tested in chain_runner functional tests
-	// Here we just verify logging infrastructure works
-
 	env := newTestEnv(t)
 
 	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
@@ -243,7 +232,8 @@ func TestChainRunner_LogsCancellation(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	cr.Cancel(chainID)
+	cr.WaitAll(500 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -254,15 +244,9 @@ func TestChainRunner_LogsCancellation(t *testing.T) {
 	if !strings.Contains(output, "chain") {
 		t.Errorf("log output missing chain-related message: %s", output)
 	}
-
-	// Clean up
-	cr.Cancel(chainID)
 }
 
 func TestChainRunner_LogsItemStart(t *testing.T) {
-	// This test verifies trx propagation and structured logging for chain execution
-	// The actual chain item execution is tested in integration tests
-
 	env := newTestEnv(t)
 
 	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
@@ -285,8 +269,8 @@ func TestChainRunner_LogsItemStart(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	// Give it time to start
-	time.Sleep(100 * time.Millisecond)
+	cr.Cancel(chainID)
+	cr.WaitAll(500 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -294,9 +278,6 @@ func TestChainRunner_LogsItemStart(t *testing.T) {
 	if !strings.Contains(output, "chain started") && !strings.Contains(output, "chain completed") {
 		t.Errorf("log output missing chain execution messages: %s", output)
 	}
-
-	// Clean up
-	cr.Cancel(chainID)
 }
 
 func TestChainRunner_LogsErrorConditions(t *testing.T) {
@@ -338,7 +319,8 @@ func TestChainRunner_StructuredLogging(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	cr.Cancel(chainID)
+	cr.WaitAll(500 * time.Millisecond)
 
 	output := logBuf.String()
 	lines := strings.Split(output, "\n")
@@ -367,7 +349,4 @@ func TestChainRunner_StructuredLogging(t *testing.T) {
 			t.Errorf("log line missing [trx]: %s", line)
 		}
 	}
-
-	// Clean up
-	cr.Cancel(chainID)
 }

@@ -43,6 +43,15 @@ Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.Wo
 
 `env.Clock` is a `*clock.TestClock` initialized to `2025-01-01T00:00:00Z`. Use `env.Clock.Advance(d)` to move time forward for timestamp differentiation instead of `time.Sleep`.
 
+## CRITICAL: No Sleeps in Tests
+
+**Never use `time.Sleep` in integration tests.** The full test suite must run in ≤15 seconds.
+
+- Use `env.Clock.Advance(d)` for time-dependent logic
+- Use `waitForCondition(t, timeout, interval, fn)` for genuinely async HTTP/WS results
+- Use `copyTemplateDB(dbPath)` + `db.OpenPoolExisting` — never `db.NewPoolPath` (runs migrations per-test)
+- `TestMain` pre-migrates once; each test copies the template file (~instant)
+
 ## Key Gotchas
 
 - **Socket path limit**: macOS has 104-char limit. `NewTestEnv` uses `/tmp/nrwf-it-*.sock`

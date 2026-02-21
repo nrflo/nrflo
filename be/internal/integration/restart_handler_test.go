@@ -36,11 +36,9 @@ func doRestart(t *testing.T, baseURL, ticketID, project string, body map[string]
 func TestRestartHandler_MissingProject(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -63,11 +61,9 @@ func TestRestartHandler_MissingProject(t *testing.T) {
 func TestRestartHandler_MissingWorkflow(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -91,11 +87,9 @@ func TestRestartHandler_MissingWorkflow(t *testing.T) {
 func TestRestartHandler_MissingSessionID(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -119,11 +113,9 @@ func TestRestartHandler_MissingSessionID(t *testing.T) {
 func TestRestartHandler_WorkflowNotFound(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -142,11 +134,9 @@ func TestRestartHandler_WorkflowNotFound(t *testing.T) {
 func TestRestartHandler_NoRunningOrchestration(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
@@ -173,11 +163,9 @@ func TestRestartHandler_NoRunningOrchestration(t *testing.T) {
 func TestRestartHandler_InvalidJSON(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -202,11 +190,9 @@ func TestRestartHandler_InvalidJSON(t *testing.T) {
 func TestRestartHandler_EmptyBody(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "proj")
 	baseURL := startAPIServer(t, dbPath)

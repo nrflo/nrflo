@@ -85,9 +85,11 @@ func TestSetInProgressUpdatesTimestamp(t *testing.T) {
 	env.createTicket(t, "SIP-4", "Timestamp check")
 
 	before := env.getTicket(t, "SIP-4")
-	time.Sleep(1100 * time.Millisecond)
 
-	ticketSvc := service.NewTicketService(env.pool, clock.Real())
+	// Use a clock 2 seconds ahead to ensure updated_at advances beyond the
+	// second-resolution SQLite datetime stored at creation time.
+	futureClock := clock.NewTest(time.Now().Add(2 * time.Second))
+	ticketSvc := service.NewTicketService(env.pool, futureClock)
 	err := ticketSvc.SetInProgress(env.project, "SIP-4")
 	if err != nil {
 		t.Fatalf("SetInProgress failed: %v", err)

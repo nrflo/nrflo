@@ -52,10 +52,13 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	t.Cleanup(func() { os.Remove(socketPath) })
 	t.Setenv("NRWORKFLOW_SOCKET", socketPath)
 
-	// 3. DB pool
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	// 3. DB pool — copy pre-migrated template instead of running migrations each time
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 
 	// 4. Test clock
@@ -178,9 +181,7 @@ func (e *TestEnv) NewWSClient(t *testing.T, id, ticketID string) (*ws.Client, ch
 	t.Helper()
 	c, ch := ws.NewTestClient(e.Hub, id)
 	e.Hub.Register(c)
-	time.Sleep(50 * time.Millisecond) // let registration propagate
 	e.Hub.Subscribe(c, e.ProjectID, ticketID)
-	time.Sleep(50 * time.Millisecond) // let subscription propagate
 	return c, ch
 }
 

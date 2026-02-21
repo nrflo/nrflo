@@ -729,9 +729,8 @@ func (o *Orchestrator) IsInstanceRunning(instanceID string) bool {
 func (o *Orchestrator) StopAll() {
 	o.mu.Lock()
 	logger.Warn(context.Background(), "stopping all orchestrations", "count", len(o.runs))
-	for id, rs := range o.runs {
+	for _, rs := range o.runs {
 		rs.cancel()
-		delete(o.runs, id)
 	}
 	o.mu.Unlock()
 }

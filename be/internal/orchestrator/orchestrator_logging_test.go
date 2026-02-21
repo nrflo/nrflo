@@ -5,7 +5,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 
 	"be/internal/clock"
 	"be/internal/logger"
@@ -46,9 +45,6 @@ func TestOrchestratorStart_GeneratesTrx(t *testing.T) {
 	if result.InstanceID == "" {
 		t.Error("Start() returned empty instance ID")
 	}
-
-	// Wait a moment for async logging
-	time.Sleep(100 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -101,8 +97,6 @@ func TestOrchestratorStart_LogsWorkflowInstanceCreated(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
 	output := logBuf.String()
 
 	// Verify log contains expected fields
@@ -145,8 +139,6 @@ func TestOrchestratorStart_ProjectScope_LogsCorrectScope(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
 	output := logBuf.String()
 
 	if !strings.Contains(output, "scope=project") {
@@ -168,8 +160,6 @@ func TestRestartAgent_LogsRestartRequest(t *testing.T) {
 	if err != nil {
 		// Error expected if no running orchestration, but log should still happen
 	}
-
-	time.Sleep(50 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -214,9 +204,6 @@ func TestStopAll_LogsStopCount(t *testing.T) {
 	}
 	result2, _ := env.orch.Start(context.Background(), req2)
 
-	// Give time for orchestrations to start and register
-	time.Sleep(100 * time.Millisecond)
-
 	// Check how many are actually running before we capture logs
 	env.orch.mu.Lock()
 	runCount := len(env.orch.runs)
@@ -225,8 +212,6 @@ func TestStopAll_LogsStopCount(t *testing.T) {
 	logBuf := setupLogCapture(t)
 
 	env.orch.StopAll()
-
-	time.Sleep(50 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -279,8 +264,6 @@ func TestRetryFailedAgent_LogsRetryAttempt(t *testing.T) {
 		// May fail due to missing project root_path or other issues, but log should happen
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
 	output := logBuf.String()
 
 	if !strings.Contains(output, "INFO") {
@@ -308,8 +291,6 @@ func TestHandleCallback_LogsCallbackDetection(t *testing.T) {
 	// clearCallbackMetadata doesn't return error, it just logs
 	// So we call it with invalid ID to trigger error logging
 	env.orch.clearCallbackMetadata(context.Background(), "nonexistent-wfi-id")
-
-	time.Sleep(50 * time.Millisecond)
 
 	output := logBuf.String()
 
@@ -340,8 +321,6 @@ func TestOrchestratorStart_TrxPropagation_SameTrxInAllLogs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
-
-	time.Sleep(100 * time.Millisecond)
 
 	output := logBuf.String()
 	lines := strings.Split(output, "\n")
@@ -398,8 +377,6 @@ func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 
 	env.orch.markCompleted(wfiID, req)
 
-	time.Sleep(100 * time.Millisecond)
-
 	output := logBuf.String()
 
 	if !strings.Contains(output, "ERROR") {
@@ -435,8 +412,6 @@ func TestProjectScope_LogsProjectCompleted(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
 	output := logBuf.String()
 
 	// Verify project scope is logged
@@ -465,8 +440,6 @@ func TestOrchestratorLogging_StructuredFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
-
-	time.Sleep(100 * time.Millisecond)
 
 	output := logBuf.String()
 	lines := strings.Split(output, "\n")

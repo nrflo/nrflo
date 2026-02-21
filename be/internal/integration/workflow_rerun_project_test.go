@@ -87,7 +87,9 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 
 	// Stop right away to avoid spawning actual agents
 	orch.Stop(result.InstanceID)
-	time.Sleep(50 * time.Millisecond)
+	waitForCondition(t, time.Second, func() bool {
+		return !orch.IsInstanceRunning(result.InstanceID)
+	})
 
 	// Verify the NEW instance was created with fresh state
 	newInstance, err := wfiRepo.Get(result.InstanceID)
@@ -164,7 +166,9 @@ func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	// Stop both
 	orch.Stop(result1.InstanceID)
 	orch.Stop(result2.InstanceID)
-	time.Sleep(50 * time.Millisecond)
+	waitForCondition(t, time.Second, func() bool {
+		return !orch.IsInstanceRunning(result1.InstanceID) && !orch.IsInstanceRunning(result2.InstanceID)
+	})
 
 	// Verify both instances exist
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -221,7 +225,9 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 
 	// Stop immediately
 	orch.Stop(result.InstanceID)
-	time.Sleep(100 * time.Millisecond)
+	waitForCondition(t, time.Second, func() bool {
+		return !orch.IsInstanceRunning(result.InstanceID)
+	})
 
 	// Verify the ticket workflow instance state
 	wi, err = wfiRepo.Get(wi.ID)

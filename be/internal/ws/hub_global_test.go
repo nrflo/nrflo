@@ -16,7 +16,6 @@ func TestBroadcastGlobal_UnsubscribedClientReceives(t *testing.T) {
 	// Register client with NO subscription
 	client := newTestClient(hub, "global-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	event := NewEvent(EventGlobalRunningAgents, "", "", "", nil)
 	hub.BroadcastGlobal(event)
@@ -48,7 +47,6 @@ func TestBroadcastGlobal_AllClientsReceive(t *testing.T) {
 	hub.Register(client1)
 	hub.Register(client2)
 	hub.Register(client3)
-	time.Sleep(50 * time.Millisecond)
 
 	// client1: subscribed to proj-A/ticket-1
 	hub.Subscribe(client1, "proj-a", "ticket-1")
@@ -90,7 +88,6 @@ func TestBroadcastGlobal_WrongProjectClientReceives(t *testing.T) {
 	// BroadcastGlobal must bypass this and still deliver.
 	client := newTestClient(hub, "wrong-proj-client")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj-x", "ticket-99")
 
 	// First verify regular broadcast for a different project is NOT received
@@ -132,7 +129,6 @@ func TestBroadcastGlobal_StampsTimestamp(t *testing.T) {
 
 	client := newTestClient(hub, "ts-client")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	event := NewEvent(EventGlobalRunningAgents, "", "", "", nil)
 	hub.BroadcastGlobal(event)
@@ -163,11 +159,7 @@ func TestBroadcastGlobal_NoClientsNoPanic(t *testing.T) {
 	go hub.Run()
 	defer hub.Stop()
 
-	time.Sleep(50 * time.Millisecond)
-
 	// Broadcast with no clients — must not panic
 	event := NewEvent(EventGlobalRunningAgents, "", "", "", nil)
 	hub.BroadcastGlobal(event)
-
-	time.Sleep(100 * time.Millisecond) // allow hub to process
 }

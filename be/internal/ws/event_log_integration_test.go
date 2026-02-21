@@ -30,7 +30,6 @@ func TestHubBroadcastWithEventLog(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 
 	hub.Subscribe(client, "proj-1", "ticket-1")
 
@@ -99,7 +98,6 @@ func TestHubBroadcastSequentialSequence(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj-1", "ticket-1")
 
 	// Broadcast multiple events
@@ -184,7 +182,6 @@ func TestHubBroadcastWithoutEventLog(t *testing.T) {
 
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, "proj-1", "ticket-1")
 
 	event := NewEvent(EventTestEcho, "proj-1", "ticket-1", "feature", nil)

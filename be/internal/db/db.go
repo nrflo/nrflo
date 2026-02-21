@@ -78,6 +78,20 @@ func OpenPath(path string) (*DB, error) {
 	return &DB{DB: db, Path: path}, nil
 }
 
+// OpenPathExisting opens an already-migrated database, skipping migrations.
+// Use when copying from a template DB in tests.
+func OpenPathExisting(path string) (*DB, error) {
+	db, err := sql.Open("sqlite", buildDSN(path))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	if err := setDatabasePragmas(db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return &DB{DB: db, Path: path}, nil
+}
+
 // OpenOrCreate opens an existing database or creates a new one.
 func OpenOrCreate(customPath string) (*DB, error) {
 	dbPath := GetDBPath(customPath)

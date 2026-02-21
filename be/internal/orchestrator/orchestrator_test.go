@@ -179,9 +179,7 @@ func (e *testEnv) subscribeWSClient(t *testing.T, id, ticketID string) chan []by
 	t.Helper()
 	client, ch := ws.NewTestClient(e.hub, id)
 	e.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	e.hub.Subscribe(client, e.project, ticketID)
-	time.Sleep(50 * time.Millisecond)
 	return ch
 }
 

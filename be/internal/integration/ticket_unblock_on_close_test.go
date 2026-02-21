@@ -21,11 +21,9 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "unblock-test"
 	blockerID := "unblock-blocker"
@@ -33,7 +31,7 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create blocker and dependent tickets
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, dependentID} {
 		_, err = database.Exec(`
@@ -107,11 +105,9 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "multi-unblock"
 	blockerID := "multi-blocker"
@@ -121,7 +117,7 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create blocker and three dependent tickets
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, dependent1ID, dependent2ID, dependent3ID} {
 		_, err = database.Exec(`
@@ -200,11 +196,9 @@ func TestCloseBlockerWithClosedDependent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "closed-dep"
 	blockerID := "closed-dep-blocker"
@@ -213,7 +207,7 @@ func TestCloseBlockerWithClosedDependent(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create blocker and two dependents (one open, one closed)
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, openDependentID} {
 		_, err = database.Exec(`
@@ -289,18 +283,16 @@ func TestCloseBlockerGetBlockedErrorHandling(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "error-test"
 	ticketID := "error-ticket"
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -366,11 +358,9 @@ func TestReopenBlockerDoesNotBroadcastUnblockEvents(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "reopen-test"
 	blockerID := "reopen-blocker"
@@ -378,7 +368,7 @@ func TestReopenBlockerDoesNotBroadcastUnblockEvents(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create closed blocker and open dependent
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -447,11 +437,9 @@ func TestCloseBlockerE2E(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "e2e-unblock"
 	blockerID := "e2e-blocker"

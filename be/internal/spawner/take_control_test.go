@@ -134,9 +134,7 @@ func TestRegisterAgentStopWithReason_UserInteractive_BroadcastsEvent(t *testing.
 
 	client, ch := ws.NewTestClient(hub, "test-ws-client")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, env.projectID, env.ticketID)
-	time.Sleep(50 * time.Millisecond)
 
 	env.spawner.config.WSHub = hub
 
@@ -180,9 +178,7 @@ func TestTakeControlBroadcastsEventAgentTakeControl(t *testing.T) {
 
 	client, ch := ws.NewTestClient(hub, "ws-take-ctrl")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, env.projectID, env.ticketID)
-	time.Sleep(50 * time.Millisecond)
 
 	env.spawner.config.WSHub = hub
 

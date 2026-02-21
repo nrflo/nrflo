@@ -16,11 +16,9 @@ func TestCreateProjectWithUseGitWorktrees(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -53,7 +51,7 @@ func TestCreateProjectWithUseGitWorktrees(t *testing.T) {
 	}
 
 	// Verify use_git_worktrees is 1 in DB
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -75,11 +73,9 @@ func TestCreateProjectWithoutUseGitWorktrees(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -108,7 +104,7 @@ func TestCreateProjectWithoutUseGitWorktrees(t *testing.T) {
 	}
 
 	// Verify use_git_worktrees is 0 in DB (default)
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -130,11 +126,9 @@ func TestCreateProjectWithUseGitWorktreesFalse(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -163,7 +157,7 @@ func TestCreateProjectWithUseGitWorktreesFalse(t *testing.T) {
 	}
 
 	// Verify use_git_worktrees is 0 in DB
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to reopen DB: %v", err)
 	}
@@ -185,11 +179,9 @@ func TestGetProjectReturnsUseGitWorktrees(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -235,11 +227,9 @@ func TestGetProjectReturnsUseGitWorktreesFalse(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 
@@ -285,11 +275,9 @@ func TestListProjectsReturnsUseGitWorktrees(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	baseURL := startAPIServer(t, dbPath)
 

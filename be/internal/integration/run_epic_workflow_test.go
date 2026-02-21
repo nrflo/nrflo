@@ -23,11 +23,9 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	dbPath := filepath.Join(dbDir, "test.db")
 
 	// Initialize DB
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "test-proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -36,7 +34,7 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	now := base.UTC().Format(time.RFC3339Nano)
 
 	// Open DB for seeding
-	database, err = db.OpenPath(dbPath)
+	database, err := db.OpenPath(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -143,17 +141,15 @@ func TestRunEpicWorkflow_NoChildren(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "test-proj")
 	baseURL := startAPIServer(t, dbPath)
 
 	// Create epic with no children
-	database, err = db.OpenPath(dbPath)
+	database, err := db.OpenPath(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -202,17 +198,15 @@ func TestRunEpicWorkflow_NonEpicTicket(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "test-proj")
 	baseURL := startAPIServer(t, dbPath)
 
 	// Create regular feature ticket
-	database, err = db.OpenPath(dbPath)
+	database, err := db.OpenPath(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -261,16 +255,14 @@ func TestRunEpicWorkflow_ExcludesClosedChildren(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "test-proj")
 	baseURL := startAPIServer(t, dbPath)
 
-	database, err = db.OpenPath(dbPath)
+	database, err := db.OpenPath(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -346,11 +338,9 @@ func TestRunEpicWorkflow_TicketNotFound(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "test-proj")
 	baseURL := startAPIServer(t, dbPath)
@@ -389,17 +379,15 @@ func TestRunEpicWorkflow_MissingWorkflowName(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "test-proj")
 	baseURL := startAPIServer(t, dbPath)
 
 	// Create epic
-	database, err = db.OpenPath(dbPath)
+	database, err := db.OpenPath(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}

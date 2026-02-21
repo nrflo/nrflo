@@ -95,11 +95,9 @@ func TestAgentLogImprovements_E2E(t *testing.T) {
 	dbPath := filepath.Join(dbDir, "test.db")
 
 	// Initialize DB (runs migrations)
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	// Seed data
 	seedProject(t, dbPath, "e2eproj")

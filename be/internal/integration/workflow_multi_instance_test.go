@@ -15,6 +15,19 @@ import (
 	"be/internal/types"
 )
 
+// waitForCondition polls check() every 5ms until it returns true or the timeout elapses.
+func waitForCondition(t *testing.T, timeout time.Duration, check func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if check() {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("condition not met within timeout")
+}
+
 // TestStopSpecificProjectWorkflowInstance tests that stopping a specific instance
 // by instance_id only stops that instance and leaves others running.
 func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
@@ -57,12 +70,11 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 		t.Fatalf("failed to start second instance: %v", err)
 	}
 
-	// Allow instances to initialize
-	time.Sleep(100 * time.Millisecond)
-
-	// Stop only the first instance by instance_id
+	// Stop only the first instance by instance_id (may already have failed quickly due to missing agent defs)
 	orch.StopByProject(env.ProjectID, "stop-test", result1.InstanceID)
-	time.Sleep(100 * time.Millisecond)
+	waitForCondition(t, time.Second, func() bool {
+		return !orch.IsInstanceRunning(result1.InstanceID)
+	})
 
 	// Verify first instance is stopped
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -86,7 +98,9 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 
 	// Clean up second instance
 	orch.Stop(result2.InstanceID)
-	time.Sleep(50 * time.Millisecond)
+	waitForCondition(t, time.Second, func() bool {
+		return !orch.IsInstanceRunning(result2.InstanceID)
+	})
 
 	// Verify both instances exist in DB
 	instances, _ := wfiRepo.ListByProjectScope(env.ProjectID)
@@ -132,11 +146,16 @@ func TestStopAllProjectWorkflowInstances(t *testing.T) {
 		instanceIDs = append(instanceIDs, result.InstanceID)
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
-	// Stop all instances by NOT providing instance_id
+	// Stop all instances by NOT providing instance_id (some may have already failed due to missing agent defs)
 	orch.StopByProject(env.ProjectID, "stop-all-test", "")
-	time.Sleep(100 * time.Millisecond)
+	waitForCondition(t, time.Second, func() bool {
+		for _, id := range instanceIDs {
+			if orch.IsInstanceRunning(id) {
+				return false
+			}
+		}
+		return true
+	})
 
 	// All instances should exist in DB
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -307,7 +326,9 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 
 	// Clean up
 	orch.Stop(wi.ID)
-	time.Sleep(50 * time.Millisecond)
+	waitForCondition(t, time.Second, func() bool {
+		return !orch.IsInstanceRunning(wi.ID)
+	})
 }
 
 // TestListActiveByProjectAndWorkflow tests the new repo method that returns

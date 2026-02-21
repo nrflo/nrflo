@@ -394,7 +394,7 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 
 	// Broadcast messages update for real-time UI (coalesced per session)
 	if proc.projectID != "" {
-		now := time.Now()
+		now := s.config.Clock.Now()
 		lastBroadcastMu.Lock()
 		last := lastBroadcastPerSession[proc.sessionID]
 		shouldBroadcast := now.Sub(last) >= broadcastCoalesceWindow

@@ -69,7 +69,7 @@ func (s *WorktreeService) Setup(projectRoot, defaultBranch, branchName string) (
 const mergeRetryAttempts = 5
 
 // mergeRetryDelay is the wait between retry attempts.
-const mergeRetryDelay = 500 * time.Millisecond
+var mergeRetryDelay = 500 * time.Millisecond
 
 // MergeAndCleanup removes the worktree, merges the branch into defaultBranch
 // (with retry for transient index.lock contention), and deletes the branch.

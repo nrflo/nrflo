@@ -55,7 +55,23 @@ Workflow runtime state is stored in normalized database tables:
 - Active agents = `agent_sessions WHERE status = 'running'`
 - Agent history = `agent_sessions WHERE status != 'running'`
 
-### 4. Keep Source Files Under 300 Lines
+### 4. CRITICAL: Backend Test Suite Must Run in Under 15 Seconds
+
+The full backend test suite (`cd be && go test ./internal/... -count=1`) must complete in **≤15 seconds wall time**. This is a hard constraint enforced by the test script.
+
+**Never introduce:**
+- `time.Sleep` in tests — use `clock.TestClock.Advance()` for time-dependent logic, or poll with a tight loop+timeout for async conditions
+- Unnecessary waits after hub `Register`/`Subscribe` — these are synchronous via mutex
+- Sleeps waiting for log output — logging before goroutine launch is synchronous
+
+**Patterns that are allowed:**
+- `waitForCondition(t, 2*time.Second, 5*time.Millisecond, fn)` — tight polling with short timeout for genuinely async operations
+- `clock.TestClock.Advance(d)` — advance fake clock instead of sleeping
+- `env.Clock.Advance(d)` — in integration tests
+
+If the test suite exceeds 15 seconds, **identify and eliminate the cause before merging**.
+
+### 5. Keep Source Files Under 300 Lines
 
 Source files should be kept under 300 lines when possible. When a file grows beyond this limit, split it into logical sub-files. This applies to both code and documentation files.
 

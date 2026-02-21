@@ -56,7 +56,10 @@ else
 fi
 
 echo "Running tests: $PKGS"
+START_TIME=$(date +%s)
 $GO test "${ARGS[@]}" $PKGS
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
 
 # Coverage summary
 if $COVERAGE; then
@@ -65,4 +68,10 @@ if $COVERAGE; then
     $GO tool cover -func=coverage.out | tail -1
     echo ""
     echo "Full report: go tool cover -html=coverage.out"
+fi
+
+if [ "$ELAPSED" -gt 15 ] && ! $INTEGRATION_ONLY && ! $RACE && ! $COVERAGE; then
+    echo ""
+    echo "CRITICAL: TEST SUITE TOOK ${ELAPSED}s, IT SHOULD BE LESS THAN 15 SECONDS TOTAL, ANALYZE AND FIX IT"
+    echo "  Hints: eliminate time.Sleep, use clock.TestClock.Advance(), use copyTemplateDB() in integration tests"
 fi

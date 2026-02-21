@@ -60,9 +60,7 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 	// Create test WS client subscribed to the ticket
 	client, ch := ws.NewTestClient(hub, "test-ws-client")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, projectID, ticketID)
-	time.Sleep(50 * time.Millisecond)
 
 	t.Cleanup(func() {
 		srv.Stop(nil)
@@ -76,11 +74,9 @@ func TestTicketCreateBroadcastsWSEvent(t *testing.T) {
 	dbPath := filepath.Join(dbDir, "test.db")
 
 	// Initialize DB
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticketID := "ws-test-create1"
@@ -124,18 +120,16 @@ func TestTicketUpdateBroadcastsWSEvent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticketID := "ws-test-update1"
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -182,18 +176,16 @@ func TestTicketCloseBroadcastsWSEvent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticketID := "ws-test-close1"
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -240,18 +232,16 @@ func TestTicketReopenBroadcastsWSEvent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticketID := "ws-test-reopen1"
 	seedProject(t, dbPath, projectID)
 
 	// Create closed ticket
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -296,18 +286,16 @@ func TestTicketDeleteBroadcastsWSEvent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticketID := "ws-test-delete1"
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -352,18 +340,16 @@ func TestTicketUpdateMultipleFieldsBroadcastsWSEvent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticketID := "ws-test-multi1"
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -410,18 +396,16 @@ func TestTicketUpdateNoWSHubDoesNotPanic(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticketID := "ws-test-nowshub1"
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -459,11 +443,9 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	projectID := "ws-test"
 	ticket1ID := "ws-test-filter1"
@@ -471,7 +453,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create both tickets
-	database, _ = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{ticket1ID, ticket2ID} {
 		_, err = database.Exec(`
@@ -518,15 +500,11 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	// Create two WS clients subscribed to different tickets
 	client1, ch1 := ws.NewTestClient(hub, "client1")
 	hub.Register(client1)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client1, projectID, ticket1ID)
-	time.Sleep(50 * time.Millisecond)
 
 	client2, ch2 := ws.NewTestClient(hub, "client2")
 	hub.Register(client2)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client2, projectID, ticket2ID)
-	time.Sleep(50 * time.Millisecond)
 
 	t.Cleanup(func() {
 		srv.Stop(nil)

@@ -15,8 +15,10 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	ticketID := "TEST-COAL-1"
 	env.initWorkflow(t, ticketID)
 
+	testClock := clock.NewTest(time.Now())
+
 	// Create hub for broadcasting
-	hub := ws.NewHub(clock.Real())
+	hub := ws.NewHub(testClock)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -25,7 +27,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 		DataPath: env.dbPath,
 		Pool:     env.pool,
 		WSHub:    hub,
-		Clock:    clock.Real(),
+		Clock:    testClock,
 	})
 
 	// Get workflow instance ID
@@ -49,7 +51,6 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	// Subscribe a test client to receive broadcasts
 	client, sendCh := ws.NewTestClient(hub, "test-client")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, env.project, ticketID)
 
 	// Create a process info (simulate running agent)
@@ -93,8 +94,8 @@ func TestMessageCoalescingWindow(t *testing.T) {
 		// Expected - no broadcast within window
 	}
 
-	// Wait for coalesce window to expire (2s + buffer)
-	time.Sleep(2200 * time.Millisecond)
+	// Advance clock past the coalesce window
+	testClock.Advance(3 * time.Second)
 
 	// Track and flush again (should broadcast now)
 	spawner.trackMessage(proc, "Message 3")
@@ -125,8 +126,10 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 	ticketID := "TEST-COAL-2"
 	env.initWorkflow(t, ticketID)
 
+	testClock := clock.NewTest(time.Now())
+
 	// Create hub for broadcasting
-	hub := ws.NewHub(clock.Real())
+	hub := ws.NewHub(testClock)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -135,7 +138,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 		DataPath: env.dbPath,
 		Pool:     env.pool,
 		WSHub:    hub,
-		Clock:    clock.Real(),
+		Clock:    testClock,
 	})
 
 
@@ -168,7 +171,6 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 	// Subscribe a test client to receive broadcasts
 	client, sendCh := ws.NewTestClient(hub, "test-client")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, env.project, ticketID)
 
 	// Create process infos for both sessions
@@ -235,8 +237,10 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 	ticketID := "TEST-COAL-3"
 	env.initWorkflow(t, ticketID)
 
+	testClock := clock.NewTest(time.Now())
+
 	// Create hub for broadcasting
-	hub := ws.NewHub(clock.Real())
+	hub := ws.NewHub(testClock)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -245,7 +249,7 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 		DataPath: env.dbPath,
 		Pool:     env.pool,
 		WSHub:    hub,
-		Clock:    clock.Real(),
+		Clock:    testClock,
 	})
 
 	// Get workflow instance ID
@@ -269,7 +273,6 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 	// Subscribe a test client to receive broadcasts
 	client, sendCh := ws.NewTestClient(hub, "test-client")
 	hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	hub.Subscribe(client, env.project, ticketID)
 
 	// Create a process info

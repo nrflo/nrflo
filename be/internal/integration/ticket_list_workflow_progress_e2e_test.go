@@ -20,11 +20,9 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	dbPath := filepath.Join(dbDir, "test.db")
 
 	// Initialize DB
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	// Seed project
 	seedProject(t, dbPath, "testproj")
@@ -51,7 +49,7 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	}
 
 	// Directly seed workflow instances in DB
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -196,11 +194,9 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "testproj2")
 	seedWorkflow(t, dbPath, "testproj2", "feature", "Feature workflow")
@@ -211,7 +207,7 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	createTicketViaAPI(t, baseURL, "testproj2", "PROJ2-002", "Open ticket")
 
 	// Set PROJ2-001 to in-progress status
-	database, err = db.Open(dbPath)
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -322,11 +318,9 @@ func TestTicketListAPI_WorkflowProgressErrorRecovery(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to init DB: %v", err)
+	if err := copyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
 	}
-	database.Close()
 
 	seedProject(t, dbPath, "testproj3")
 	baseURL := startAPIServer(t, dbPath)

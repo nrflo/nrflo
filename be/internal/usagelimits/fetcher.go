@@ -44,23 +44,21 @@ func fetchClaude(ctx context.Context, env []string) ToolUsage {
 	}
 	defer sess.close()
 
-	// Wait for prompt ready ("Ctx:" appears in the status line)
-	if !sess.waitFor(ctx, []string{"Ctx:"}, 10*time.Second) && ctx.Err() != nil {
+	// Wait for prompt ready ("Ctx:" appears in the status line); 25s for cold starts.
+	if !sess.waitFor(ctx, []string{"Ctx:"}, 25*time.Second) && ctx.Err() != nil {
 		return ToolUsage{Available: false}
 	}
+	// Ensure screen is stable before typing the command.
+	sess.waitIdle(ctx, 400*time.Millisecond, 3*time.Second)
 
-	// Type /usage; wait for autocomplete to settle, then press Enter
+	// Type /usage; wait for autocomplete to settle, then press Enter.
 	sess.send("/usage")
-	if !sleepCtx(ctx, 1500*time.Millisecond) {
-		return ToolUsage{Available: false}
-	}
+	sess.waitIdle(ctx, 300*time.Millisecond, 2*time.Second)
 	sess.send("\r")
 
-	// Wait for usage data to render
+	// Wait for usage data to render, then a stable frame.
 	sess.waitFor(ctx, []string{"resets", "Resets"}, 20*time.Second)
-	if !sleepCtx(ctx, 2*time.Second) {
-		return ToolUsage{Available: false}
-	}
+	sess.waitIdle(ctx, 500*time.Millisecond, 3*time.Second)
 
 	sess.send("/exit\r")
 	sleepCtx(ctx, 500*time.Millisecond) //nolint:errcheck
@@ -84,25 +82,30 @@ func fetchCodex(ctx context.Context, env []string) ToolUsage {
 	}
 	defer sess.close()
 
-	// Wait for prompt ready ("context left" appears in status bar)
-	if !sess.waitFor(ctx, []string{"context left"}, 10*time.Second) && ctx.Err() != nil {
-		return ToolUsage{Available: false}
+	// Wait for prompt ready: "context left" is typical but allow fallback to any
+	// stable idle frame (Codex may vary wording between versions).
+	// 25s gives room for cold start, auth restore, and slow networks.
+	if !sess.waitFor(ctx, []string{"context left", "Context left"}, 25*time.Second) {
+		if ctx.Err() != nil {
+			return ToolUsage{Available: false}
+		}
+		// Prompt signal not seen — wait for a stable frame anyway, then try.
+		sess.waitIdle(ctx, 600*time.Millisecond, 5*time.Second)
+	} else {
+		// Prompt seen — wait for screen to stop repainting before typing.
+		sess.waitIdle(ctx, 400*time.Millisecond, 3*time.Second)
 	}
 
-	// Type /status; wait for autocomplete to settle, then press Enter
+	// Type /status; wait for autocomplete to settle, then press Enter.
 	sess.send("/status")
-	if !sleepCtx(ctx, 1500*time.Millisecond) {
-		return ToolUsage{Available: false}
-	}
+	sess.waitIdle(ctx, 300*time.Millisecond, 2*time.Second)
 	sess.send("\r")
 
-	// Wait for limits data to load
-	sess.waitFor(ctx, []string{"% left", "% used"}, 12*time.Second)
-	if !sleepCtx(ctx, 1*time.Second) {
-		return ToolUsage{Available: false}
-	}
+	// Wait for limits data, then a stable frame to ensure full render.
+	sess.waitFor(ctx, []string{"% left", "% used", "% remaining"}, 15*time.Second)
+	sess.waitIdle(ctx, 500*time.Millisecond, 3*time.Second)
 
-	// Exit via Ctrl+C — codex panics on /exit due to a Rust wrapping bug
+	// Exit via Ctrl+C — codex panics on /exit due to a Rust wrapping bug.
 	sess.send("\x03")
 	sleepCtx(ctx, 500*time.Millisecond) //nolint:errcheck
 

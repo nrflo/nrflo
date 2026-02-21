@@ -22,7 +22,14 @@ type ptySession struct {
 // startPTY spawns name in a PTY with the given environment.
 func startPTY(name string, env []string) (*ptySession, error) {
 	cmd := exec.Command(name)
-	cmd.Env = env
+	// Inject predictable terminal settings last so they override anything from env.
+	// NO_COLOR=1 reduces ANSI noise; explicit COLUMNS/LINES match the PTY size.
+	cmd.Env = append(env,
+		"TERM=xterm-256color",
+		"COLUMNS=220",
+		"LINES=50",
+		"NO_COLOR=1",
+	)
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 50, Cols: 220})
 	if err != nil {
 		return nil, err
@@ -67,6 +74,38 @@ func (s *ptySession) waitFor(ctx context.Context, patterns []string, timeout tim
 			if strings.Contains(text, p) {
 				return true
 			}
+		}
+		select {
+		case <-time.After(50 * time.Millisecond):
+		case <-ctx.Done():
+			return false
+		}
+	}
+	return false
+}
+
+// waitIdle polls until no new bytes have arrived for stillFor, or timeout/ctx fires.
+// Use this to detect a stable screen frame before sending the next command.
+func (s *ptySession) waitIdle(ctx context.Context, stillFor time.Duration, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	var lastLen int
+	var lastChange time.Time
+	for time.Now().Before(deadline) {
+		if ctx.Err() != nil {
+			return false
+		}
+		s.mu.Lock()
+		n := s.buf.Len()
+		s.mu.Unlock()
+		now := time.Now()
+		if n != lastLen {
+			lastLen = n
+			lastChange = now
+		} else if lastChange.IsZero() {
+			lastChange = now
+		}
+		if !lastChange.IsZero() && now.Sub(lastChange) >= stillFor {
+			return true
 		}
 		select {
 		case <-time.After(50 * time.Millisecond):

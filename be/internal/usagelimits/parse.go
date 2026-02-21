@@ -20,9 +20,13 @@ var (
 	reClaudeSession = regexp.MustCompile(`(?is)Current\s+session.*?(\d+(?:\.\d+)?)\s*%\s*used.*?Resets\s+(.+?)(?:Current|\n\s*\n|$)`)
 	reClaudeWeekly  = regexp.MustCompile(`(?is)Current\s+week\s*\(all\s+models?\).*?(\d+(?:\.\d+)?)\s*%\s*used.*?Resets\s+(.+?)(?:Current|\n\s*\n|$)`)
 
-	// Codex /status patterns (% left → convert to % used)
-	reCodexSession = regexp.MustCompile(`(?is)5h\s+limit:.*?(\d+(?:\.\d+)?)\s*%\s*left.*?\(resets?\s+([^)]+)\)`)
-	reCodexWeekly  = regexp.MustCompile(`(?is)weekly\s+limit:.*?(\d+(?:\.\d+)?)\s*%\s*left.*?\(resets?\s+([^)]+)\)`)
+	// Codex /status patterns.
+	// Tolerates:
+	//   - "5h", "5-hour", "5 hour" for the session limit label
+	//   - "% left", "% remaining" (inverted to used) OR "% used" (taken as-is)
+	//   - optional "(resets …)" / "(reset in …)" capture — match succeeds without it
+	reCodexSession = regexp.MustCompile(`(?is)5[-\s]?h(?:our)?\s+limit:.*?(\d+(?:\.\d+)?)\s*%\s*(left|remaining|used)(?:[^(]*\(rese[a-z\s]+([^)]*)\))?`)
+	reCodexWeekly  = regexp.MustCompile(`(?is)weekly\s+limit:.*?(\d+(?:\.\d+)?)\s*%\s*(left|remaining|used)(?:[^(]*\(rese[a-z\s]+([^)]*)\))?`)
 )
 
 // stripANSI removes ANSI/VT escape sequences.
@@ -62,19 +66,27 @@ func parseClaude(raw string) (*UsageMetric, *UsageMetric) {
 // Codex renders each character on its own line; lines are joined before matching.
 func parseCodex(raw string) (*UsageMetric, *UsageMetric) {
 	text := stripANSI(raw)
-	// Reconstruct: join all lines without separator to undo char-by-char rendering
+	// Reconstruct: join all lines without separator to undo char-by-char rendering.
 	text = strings.Join(strings.Split(text, "\n"), "")
 	text = reMultiSpace.ReplaceAllString(text, " ")
 	text = reResetsGap.ReplaceAllString(text, "Resets")
 
 	var session, weekly *UsageMetric
 	if m := reCodexSession.FindStringSubmatch(text); m != nil {
-		pct, _ := strconv.ParseFloat(m[1], 64)
-		session = &UsageMetric{UsedPct: 100.0 - pct, ResetsAt: strings.TrimSpace(m[2])}
+		session = codexMetric(m)
 	}
 	if m := reCodexWeekly.FindStringSubmatch(text); m != nil {
-		pct, _ := strconv.ParseFloat(m[1], 64)
-		weekly = &UsageMetric{UsedPct: 100.0 - pct, ResetsAt: strings.TrimSpace(m[2])}
+		weekly = codexMetric(m)
 	}
 	return session, weekly
+}
+
+// codexMetric converts a reCodexSession/Weekly submatch into a UsageMetric.
+// m[1]=pct, m[2]=direction (left|remaining|used), m[3]=resets string (may be empty).
+func codexMetric(m []string) *UsageMetric {
+	pct, _ := strconv.ParseFloat(m[1], 64)
+	if strings.ToLower(m[2]) != "used" {
+		pct = 100.0 - pct // "left"/"remaining" → invert to used
+	}
+	return &UsageMetric{UsedPct: pct, ResetsAt: strings.TrimSpace(m[3])}
 }

@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Sidebar } from './Sidebar'
 import type { StatusResponse } from '@/types/ticket'
 
-// Mock useStatus hook
+// Mock useStatus and useProjectWorkflow hooks
 const mockUseStatus = vi.fn()
+const mockUseProjectWorkflow = vi.fn()
 vi.mock('@/hooks/useTickets', () => ({
   useStatus: () => mockUseStatus(),
+  useProjectWorkflow: () => mockUseProjectWorkflow(),
 }))
 
 function renderSidebar(initialRoute = '/') {
@@ -43,6 +45,7 @@ function createMockStatus(overrides: Partial<StatusResponse> = {}): StatusRespon
 describe('Sidebar - Spinner Visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
   })
 
   it('shows spinner when in_progress count > 0', () => {
@@ -180,6 +183,7 @@ describe('Sidebar - Spinner Visibility', () => {
 
 describe('Sidebar - Navigation', () => {
   beforeEach(() => {
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseStatus.mockReturnValue({
       data: createMockStatus({
         counts: {
@@ -247,6 +251,10 @@ describe('Sidebar - Navigation', () => {
 })
 
 describe('Sidebar - Spinner Component Properties', () => {
+  beforeEach(() => {
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+  })
+
   it('uses Spinner component with size="sm"', () => {
     mockUseStatus.mockReturnValue({
       data: createMockStatus({
@@ -292,6 +300,10 @@ describe('Sidebar - Spinner Component Properties', () => {
 })
 
 describe('Sidebar - Edge Cases', () => {
+  beforeEach(() => {
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+  })
+
   it('handles missing counts gracefully', () => {
     mockUseStatus.mockReturnValue({
       data: {
@@ -372,5 +384,96 @@ describe('Sidebar - Edge Cases', () => {
     // Spinner should now appear
     spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
+  })
+})
+
+describe('Sidebar - Project Workflow Spinner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStatus.mockReturnValue({ data: createMockStatus() })
+  })
+
+  it('shows spinner on Project Workflows nav item when a workflow is active', () => {
+    mockUseProjectWorkflow.mockReturnValue({
+      data: { all_workflows: { 'inst-1': { status: 'active' } } },
+    })
+
+    const { container } = renderSidebar()
+
+    const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
+    expect(spinner).toBeInTheDocument()
+  })
+
+  it('hides spinner on Project Workflows nav item when all workflows are completed', () => {
+    mockUseProjectWorkflow.mockReturnValue({
+      data: {
+        all_workflows: {
+          'inst-1': { status: 'completed' },
+          'inst-2': { status: 'failed' },
+          'inst-3': { status: 'project_completed' },
+        },
+      },
+    })
+
+    const { container } = renderSidebar()
+
+    const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
+    expect(spinner).not.toBeInTheDocument()
+  })
+
+  it('hides spinner when all_workflows is undefined', () => {
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+
+    const { container } = renderSidebar()
+
+    const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
+    expect(spinner).not.toBeInTheDocument()
+  })
+
+  it('hides spinner when all_workflows is empty', () => {
+    mockUseProjectWorkflow.mockReturnValue({ data: { all_workflows: {} } })
+
+    const { container } = renderSidebar()
+
+    const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
+    expect(spinner).not.toBeInTheDocument()
+  })
+
+  it('shows spinner when at least one workflow is active among mixed statuses', () => {
+    mockUseProjectWorkflow.mockReturnValue({
+      data: {
+        all_workflows: {
+          'inst-1': { status: 'completed' },
+          'inst-2': { status: 'active' },
+          'inst-3': { status: 'failed' },
+        },
+      },
+    })
+
+    renderSidebar()
+
+    const link = screen.getByRole('link', { name: /project workflows/i })
+    const spinner = link.querySelector('[class*="animate-spin"]')
+    expect(spinner).toBeInTheDocument()
+  })
+
+  it('two spinners appear when both in_progress tickets and active project workflow exist', () => {
+    mockUseStatus.mockReturnValue({
+      data: createMockStatus({
+        counts: { open: 0, in_progress: 1, closed: 0, blocked: 0, total: 1 },
+      }),
+    })
+    mockUseProjectWorkflow.mockReturnValue({
+      data: { all_workflows: { 'inst-1': { status: 'active' } } },
+    })
+
+    const { container } = renderSidebar()
+
+    const spinners = container.querySelectorAll('[class*="animate-spin"]')
+    expect(spinners).toHaveLength(2)
   })
 })

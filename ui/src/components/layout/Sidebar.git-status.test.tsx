@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Sidebar } from './Sidebar'
 import type { StatusResponse } from '@/types/ticket'
 
-// Mock useStatus hook
+// Mock useStatus and useProjectWorkflow hooks
 const mockUseStatus = vi.fn()
+const mockUseProjectWorkflow = vi.fn()
 vi.mock('@/hooks/useTickets', () => ({
   useStatus: () => mockUseStatus(),
+  useProjectWorkflow: () => mockUseProjectWorkflow(),
 }))
 
 // Mock store with selector pattern
@@ -66,6 +68,7 @@ describe('Sidebar - Git Status Navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     // Reset to project with default_branch
     mockCurrentProject = 'test-project'
     mockProjects = [

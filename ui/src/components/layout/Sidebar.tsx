@@ -15,7 +15,7 @@ import {
   Terminal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useStatus } from '@/hooks/useTickets'
+import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
 import { useProjectStore } from '@/stores/projectStore'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -55,6 +55,15 @@ export function Sidebar() {
   const currentProject = useProjectStore((s) => s.currentProject)
   const projects = useProjectStore((s) => s.projects)
 
+  const { data: projectWorkflowData } = useProjectWorkflow(currentProject)
+  const hasRunningProjectWorkflow = useMemo(
+    () =>
+      Object.values(projectWorkflowData?.all_workflows ?? {}).some(
+        (w) => w.status === 'active'
+      ),
+    [projectWorkflowData]
+  )
+
   const hasDefaultBranch = useMemo(() => {
     const project = projects.find((p) => p.id === currentProject)
     return !!project?.default_branch
@@ -92,6 +101,7 @@ export function Sidebar() {
           icon={<FolderGit2 className="h-4 w-4" />}
           label="Project Workflows"
           active={isActive('/project-workflows')}
+          indicator={hasRunningProjectWorkflow ? <Spinner size="sm" /> : undefined}
         />
         {hasDefaultBranch && (
           <NavItem

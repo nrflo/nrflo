@@ -13,6 +13,11 @@ vi.mock('@/hooks/useTickets', () => ({
   useProjectWorkflow: () => mockUseProjectWorkflow(),
 }))
 
+const mockUseChainList = vi.fn()
+vi.mock('@/hooks/useChains', () => ({
+  useChainList: () => mockUseChainList(),
+}))
+
 function renderSidebar(initialRoute = '/') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -46,6 +51,7 @@ describe('Sidebar - Spinner Visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    mockUseChainList.mockReturnValue({ data: [] })
   })
 
   it('shows spinner when in_progress count > 0', () => {
@@ -184,6 +190,7 @@ describe('Sidebar - Spinner Visibility', () => {
 describe('Sidebar - Navigation', () => {
   beforeEach(() => {
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    mockUseChainList.mockReturnValue({ data: [] })
     mockUseStatus.mockReturnValue({
       data: createMockStatus({
         counts: {
@@ -253,6 +260,7 @@ describe('Sidebar - Navigation', () => {
 describe('Sidebar - Spinner Component Properties', () => {
   beforeEach(() => {
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    mockUseChainList.mockReturnValue({ data: [] })
   })
 
   it('uses Spinner component with size="sm"', () => {
@@ -302,6 +310,7 @@ describe('Sidebar - Spinner Component Properties', () => {
 describe('Sidebar - Edge Cases', () => {
   beforeEach(() => {
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    mockUseChainList.mockReturnValue({ data: [] })
   })
 
   it('handles missing counts gracefully', () => {
@@ -391,6 +400,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
+    mockUseChainList.mockReturnValue({ data: [] })
   })
 
   it('shows spinner on Project Workflows nav item when a workflow is active', () => {
@@ -475,5 +485,60 @@ describe('Sidebar - Project Workflow Spinner', () => {
 
     const spinners = container.querySelectorAll('[class*="animate-spin"]')
     expect(spinners).toHaveLength(2)
+  })
+})
+
+describe('Sidebar - Chain Execution Spinner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStatus.mockReturnValue({ data: createMockStatus() })
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+  })
+
+  it('shows spinner on Chain Executions nav item when chains are running', () => {
+    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running' }] })
+
+    renderSidebar()
+
+    const link = screen.getByRole('link', { name: /chain executions/i })
+    const spinner = link.querySelector('[class*="animate-spin"]')
+    expect(spinner).toBeInTheDocument()
+  })
+
+  it('hides spinner when no chains are running', () => {
+    mockUseChainList.mockReturnValue({ data: [] })
+
+    renderSidebar()
+
+    const link = screen.getByRole('link', { name: /chain executions/i })
+    const spinner = link.querySelector('[class*="animate-spin"]')
+    expect(spinner).not.toBeInTheDocument()
+  })
+
+  it('hides spinner when chain data is undefined', () => {
+    mockUseChainList.mockReturnValue({ data: undefined })
+
+    renderSidebar()
+
+    const link = screen.getByRole('link', { name: /chain executions/i })
+    const spinner = link.querySelector('[class*="animate-spin"]')
+    expect(spinner).not.toBeInTheDocument()
+  })
+
+  it('shows three spinners when in_progress tickets, active project workflow, and running chains all exist', () => {
+    mockUseStatus.mockReturnValue({
+      data: createMockStatus({
+        counts: { open: 0, in_progress: 1, closed: 0, blocked: 0, total: 1 },
+      }),
+    })
+    mockUseProjectWorkflow.mockReturnValue({
+      data: { all_workflows: { 'inst-1': { status: 'active' } } },
+    })
+    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running' }] })
+
+    const { container } = renderSidebar()
+
+    const spinners = container.querySelectorAll('[class*="animate-spin"]')
+    expect(spinners).toHaveLength(3)
   })
 })

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
+import { useChainList } from '@/hooks/useChains'
 import { useProjectStore } from '@/stores/projectStore'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -63,6 +64,8 @@ export function Sidebar() {
       ),
     [projectWorkflowData]
   )
+
+  const { data: runningChains } = useChainList({ status: 'running' })
 
   const hasDefaultBranch = useMemo(() => {
     const project = projects.find((p) => p.id === currentProject)
@@ -116,6 +119,7 @@ export function Sidebar() {
           icon={<Link2 className="h-4 w-4" />}
           label="Chain Executions"
           active={isActive('/chains')}
+          indicator={runningChains?.length ? <Spinner size="sm" /> : undefined}
         />
         <NavItem
           to="/documentation"

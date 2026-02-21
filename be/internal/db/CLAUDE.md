@@ -98,7 +98,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    status        TEXT NOT NULL                                       │
 │      (running|completed|failed|timeout|continued|project_completed|callback|user_interactive|interactive_completed|skipped)
 │    result        TEXT                                                │
-│      (pass|fail|continue|timeout|callback)                          │
+│      (pass|fail|continue|timeout|callback|skipped)                  │
 │    result_reason TEXT                (explanation for result)        │
 │    pid           INTEGER             (OS process ID)                 │
 │    findings      TEXT                (JSON: per-agent findings)      │

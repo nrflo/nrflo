@@ -255,6 +255,17 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     invalidateWorkflow(event, qc, isProjectScope)
   },
 
+  'layer.skipped': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    }
+  },
+
   'chain.updated': (event, qc) => {
     qc.invalidateQueries({ queryKey: chainKeys.lists() })
     if (event.data?.chain_id) {

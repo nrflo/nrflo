@@ -42,6 +42,7 @@ export type WSEventType =
   | 'orchestration.callback'
   | 'agent.take_control'
   | 'chain.updated'
+  | 'layer.skipped'
   | 'ticket.updated'
   | 'global.running_agents'
   | 'global.usage_limits'

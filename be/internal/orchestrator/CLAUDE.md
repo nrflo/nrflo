@@ -69,6 +69,17 @@ A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earl
 6. After target layer succeeds, `_callback` is cleared
 7. Max 3 callbacks per workflow run
 
+## Layer-Skip Logic
+
+Before spawning agents for each layer, the orchestrator checks if the layer should be skipped based on workflow instance `skip_tags`. If any agent in the layer has a tag matching a skip tag, the entire layer is skipped:
+
+1. `shouldSkipLayer()` reloads skip_tags from DB each layer (agents may add tags concurrently)
+2. Creates `agent_sessions` with `status=skipped`, `result=skipped` for each agent
+3. Broadcasts `EventAgentCompleted` (result=skipped) per agent and `EventLayerSkipped` per layer
+4. Skipped layers count as passed for fan-in (loop continues to next layer)
+
+Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `shouldSkipLayer()`, `createSkippedSessions()`.
+
 ## Chain Runner
 
 `chain_runner.go` handles sequential chain execution:
@@ -85,6 +96,7 @@ A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earl
 | File | Purpose |
 |------|-------|
 | `orchestrator.go` | Layer-grouped concurrent phase execution, cancellation support |
+| `orchestrator_skip.go` | Layer-skip logic: tag matching, skipped session creation |
 | `chain_runner.go` | Sequential chain execution runner |
 
 ## Git Worktree Lifecycle
@@ -128,6 +140,7 @@ Unit tests in-package:
 - `orchestrator_mark_completed_test.go` — markCompleted ticket close, project scope, WS broadcasts
 - `orchestrator_worktree_test.go` — worktree setup/merge/cleanup lifecycle, project scope skips worktree
 - `orchestrator_take_control_test.go` — TakeControl/TakeControlProject/CompleteInteractive methods
+- `orchestrator_skip_tag_test.go` — buildAgentTags, shouldSkipLayer, createSkippedSessions, WS events
 
 Integration tests in `internal/integration/`:
 - `chain_epic_test.go` — chain epic auto-close

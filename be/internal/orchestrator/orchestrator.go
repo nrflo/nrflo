@@ -273,6 +273,9 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	spawnWorkflows := convertToSpawnerWorkflows(svcWorkflows)
 	spawnAgents := convertToSpawnerAgents(svcAgents)
 
+	// Build agent tag lookup map for layer-skip logic
+	agentTags := buildAgentTags(svcAgents)
+
 	// Create orchestration context detached from HTTP request context.
 	// Using ctx (r.Context()) as parent would cancel the orchestration when
 	// the HTTP handler returns. Propagate the trx for log correlation.
@@ -293,7 +296,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags)
 
 	return &RunResult{
 		InstanceID: wi.ID,
@@ -540,6 +543,9 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	spawnWorkflows := convertToSpawnerWorkflows(svcWorkflows)
 	spawnAgents := convertToSpawnerAgents(svcAgents)
 
+	// Build agent tag lookup map for layer-skip logic
+	agentTags := buildAgentTags(svcAgents)
+
 	parentSession := uuid.New().String()
 
 	// Build run request
@@ -569,7 +575,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	dockerCfg := buildDockerConfig(project, wt)
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags)
 
 	return nil
 }
@@ -751,6 +757,7 @@ func (o *Orchestrator) runLoop(
 	startLayerIdx int,
 	wt *worktreeInfo,
 	dockerCfg *spawner.DockerConfig,
+	agentTags map[string]string,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -818,6 +825,34 @@ func (o *Orchestrator) runLoop(
 		}
 
 		runnableAgents := lg.phases
+
+		// Check if layer should be skipped based on workflow instance skip_tags
+		if shouldSkip, matchingTag := o.shouldSkipLayer(ctx, wfiID, runnableAgents, agentTags); shouldSkip {
+			agentNames := make([]string, len(runnableAgents))
+			for i, p := range runnableAgents {
+				agentNames[i] = p.Agent
+			}
+			logger.Info(ctx, "layer skipped due to tag", "layer", lg.layer, "tag", matchingTag, "agents", agentNames)
+
+			o.createSkippedSessions(ctx, wfiID, req, runnableAgents, pool)
+
+			for _, phase := range runnableAgents {
+				o.wsHub.Broadcast(ws.NewEvent(ws.EventAgentCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+					"agent_id":   phase.Agent,
+					"agent_type": phase.Agent,
+					"result":     "skipped",
+				}))
+			}
+			o.wsHub.Broadcast(ws.NewEvent(ws.EventLayerSkipped, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+				"instance_id": wfiID,
+				"layer":       lg.layer,
+				"skip_tag":    matchingTag,
+				"agents":      agentNames,
+			}))
+
+			layerIdx++
+			continue
+		}
 
 		logger.Info(ctx, "running layer", "layer_idx", layerIdx+1, "total", len(layerGroups), "agents", len(runnableAgents))
 

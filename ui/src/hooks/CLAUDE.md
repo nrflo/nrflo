@@ -79,6 +79,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `agent_def.*` | workflow_id, agent_id | Agent def CRUD |
 | `agent.take_control` | session_id, agent_type | Agent entered interactive mode |
 | `orchestration.*` | instance_id | Orchestration lifecycle |
+| `layer.skipped` | instance_id, layer, skip_tag, agents | Layer skipped due to skip tag |
 | `chain.updated` | chain_id | Chain state changed |
 | `ticket.updated` | | Ticket state changed |
 | `global.running_agents` | | Running agents changed (global broadcast, no subscription scope) |

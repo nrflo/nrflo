@@ -21,7 +21,7 @@ CREATE TABLE agent_sessions_new (
     status                TEXT NOT NULL DEFAULT 'running'
         CHECK (status IN ('running', 'completed', 'failed', 'timeout', 'continued', 'project_completed', 'callback', 'user_interactive', 'interactive_completed', 'skipped')),
     result                TEXT
-        CHECK (result IS NULL OR result IN ('pass', 'fail', 'continue', 'timeout', 'callback')),
+        CHECK (result IS NULL OR result IN ('pass', 'fail', 'continue', 'timeout', 'callback', 'skipped')),
     result_reason         TEXT,
     pid                   INTEGER,
     findings              TEXT,

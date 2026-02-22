@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-
-	"be/internal/socket"
 )
 
 // CLIAdapter defines the interface for different CLI backends
@@ -251,16 +249,14 @@ func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		"--json",
 		"--model", model,
 		"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", reasoningEffort),
+		"--dangerously-bypass-approvals-and-sandbox",
 	}
 
 	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
 
 	cmd := exec.Command("codex", args...)
 	cmd.Dir = opts.WorkDir
-	// Codex runs in a sandbox that restricts Unix socket access. Force TCP
-	// (same port the Docker TCP listener uses) so nrworkflow CLI sub-commands
-	// can reach the server.
-	cmd.Env = append(opts.Env, fmt.Sprintf("NRWORKFLOW_AGENT_HOST=127.0.0.1:%d", socket.DefaultTCPPort))
+	cmd.Env = opts.Env
 	return cmd
 }
 

@@ -378,10 +378,20 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		cmd.Stdin = stdinFile
 	}
 
-	// Capture spawn command for debugging/replay
+	// Capture spawn command for debugging/replay — prepend nrworkflow env vars
+	// so the recorded command is fully reproducible.
+	var envParts []string
+	for _, e := range cmd.Env {
+		if strings.HasPrefix(e, "NRWF_") || strings.HasPrefix(e, "NRWORKFLOW_") {
+			envParts = append(envParts, e)
+		}
+	}
 	spawnCommand := strings.Join(cmd.Args, " ")
 	if adapter.UsesStdinPrompt() {
 		spawnCommand += " < " + promptFile.Name()
+	}
+	if len(envParts) > 0 {
+		spawnCommand = strings.Join(envParts, " ") + " " + spawnCommand
 	}
 
 	// Create pipes

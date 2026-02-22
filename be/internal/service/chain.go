@@ -269,6 +269,22 @@ func (s *ChainService) expandWithBlockers(projectID string, ticketIDs []string) 
 	defer database.Close()
 
 	depRepo := repo.NewDependencyRepo(database, s.clock)
+	ticketRepo := repo.NewTicketRepo(database, s.clock)
+
+	// Cache ticket statuses to avoid redundant queries
+	statusCache := make(map[string]model.Status)
+	getStatus := func(tid string) model.Status {
+		if st, ok := statusCache[tid]; ok {
+			return st
+		}
+		ticket, err := ticketRepo.Get(projectID, tid)
+		if err != nil {
+			// Treat missing/errored tickets as open (preserve existing LEFT JOIN behavior)
+			return model.StatusOpen
+		}
+		statusCache[tid] = ticket.Status
+		return ticket.Status
+	}
 
 	visited := make(map[string]bool)
 	deps := make(map[string][]string) // ticket -> blockers
@@ -293,6 +309,10 @@ func (s *ChainService) expandWithBlockers(projectID string, ticketIDs []string) 
 
 		for _, blocker := range blockers {
 			blockerID := strings.ToLower(blocker.DependsOnID)
+			// Skip closed blockers — they represent completed work
+			if getStatus(blockerID) == model.StatusClosed {
+				continue
+			}
 			deps[tid] = append(deps[tid], blockerID)
 			if !visited[blockerID] {
 				queue = append(queue, blockerID)

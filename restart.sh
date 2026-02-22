@@ -62,6 +62,9 @@ else
     echo -e "${RED}  Backend build failed!${NC}"
     exit 1
 fi
+
+sudo ln -sf "$SCRIPT_DIR/be/nrworkflow" /usr/local/bin/nrworkflow
+echo -e "${GREEN}  CLI symlinked to /usr/local/bin/nrworkflow${NC}"
 echo ""
 
 # ─────────────────────────────────────────

@@ -130,19 +130,10 @@ func TestAgentFailEventPayload(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	env.hub.Subscribe(client, env.project, "TEST-1")
 
-	// Call agent.fail
-	params := struct {
-		TicketID string `json:"ticket_id"`
-		types.AgentRequest
-	}{
-		TicketID: "TEST-1",
-		AgentRequest: types.AgentRequest{
-			Workflow:   "test",
-			AgentType:  "analyzer",
-			Model:      "claude-sonnet-4",
-			InstanceID: wfiID,
-			SessionID:  "sess-test-fail",
-		},
+	// Call agent.fail — context derived from session_id on server
+	params := types.AgentRequest{
+		InstanceID: wfiID,
+		SessionID:  "sess-test-fail",
 	}
 	paramsData, _ := json.Marshal(params)
 
@@ -221,19 +212,10 @@ func TestAgentContinueEventPayload(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	env.hub.Subscribe(client, env.project, "TEST-1")
 
-	// Call agent.continue
-	params := struct {
-		TicketID string `json:"ticket_id"`
-		types.AgentRequest
-	}{
-		TicketID: "TEST-1",
-		AgentRequest: types.AgentRequest{
-			Workflow:   "test",
-			AgentType:  "analyzer",
-			Model:      "gpt-5.3",
-			InstanceID: wfiID,
-			SessionID:  "sess-test-continue",
-		},
+	// Call agent.continue — context derived from session_id on server
+	params := types.AgentRequest{
+		InstanceID: wfiID,
+		SessionID:  "sess-test-continue",
 	}
 	paramsData, _ := json.Marshal(params)
 
@@ -307,22 +289,13 @@ func TestAgentCallbackEventPayload(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	env.hub.Subscribe(client, env.project, "TEST-1")
 
-	// Call agent.callback
-	params := struct {
-		TicketID string `json:"ticket_id"`
-		types.AgentCallbackRequest
-	}{
-		TicketID: "TEST-1",
-		AgentCallbackRequest: types.AgentCallbackRequest{
-			AgentRequest: types.AgentRequest{
-				Workflow:   "test",
-				AgentType:  "analyzer",
-				Model:      "claude-opus-4",
-				InstanceID: wfiID,
-				SessionID:  "sess-test-callback",
-			},
-			Level: 0,
+	// Call agent.callback — context derived from session_id on server
+	params := types.AgentCallbackRequest{
+		AgentRequest: types.AgentRequest{
+			InstanceID: wfiID,
+			SessionID:  "sess-test-callback",
 		},
+		Level: 0,
 	}
 	paramsData, _ := json.Marshal(params)
 
@@ -418,16 +391,7 @@ func TestAgentCompleteMethodRejected(t *testing.T) {
 func TestSocketHandlerMissingProject(t *testing.T) {
 	env := newHandlerTestEnv(t)
 
-	params := struct {
-		TicketID string `json:"ticket_id"`
-		types.AgentRequest
-	}{
-		TicketID: "TEST-1",
-		AgentRequest: types.AgentRequest{
-			Workflow:  "test",
-			AgentType: "analyzer",
-		},
-	}
+	params := types.AgentRequest{}
 	paramsData, _ := json.Marshal(params)
 
 	req := Request{

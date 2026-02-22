@@ -16,6 +16,34 @@ import (
 	"be/internal/types"
 )
 
+// BroadcastCtx holds context needed to broadcast a WebSocket event after a service operation.
+// It is derived from the agent_sessions row via a JOIN with workflow_instances.
+type BroadcastCtx struct {
+	SessionID string
+	ProjectID string
+	TicketID  string
+	Workflow  string
+	AgentType string
+	ModelID   string
+}
+
+// sessionBroadcastCtx loads broadcast context for a session from agent_sessions + workflow_instances.
+func sessionBroadcastCtx(pool *db.Pool, sessionID string) (BroadcastCtx, error) {
+	var ctx BroadcastCtx
+	ctx.SessionID = sessionID
+	var modelID sql.NullString
+	err := pool.QueryRow(`
+		SELECT s.project_id, s.ticket_id, wi.workflow_id, s.agent_type, s.model_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE s.id = ?`, sessionID).Scan(
+		&ctx.ProjectID, &ctx.TicketID, &ctx.Workflow, &ctx.AgentType, &modelID)
+	if modelID.Valid {
+		ctx.ModelID = modelID.String
+	}
+	return ctx, err
+}
+
 // AgentService handles agent business logic
 type AgentService struct {
 	clock       clock.Clock
@@ -229,28 +257,38 @@ func (s *AgentService) Kill(projectID, ticketID string, req *types.AgentKillRequ
 	return killed, nil
 }
 
-// Fail marks an agent as failed. Returns the session ID.
-func (s *AgentService) Fail(projectID, ticketID string, req *types.AgentRequest) (string, error) {
-	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "fail", req.Model)
-}
-
-// Continue marks an agent as needing context continuation. Returns the session ID.
-func (s *AgentService) Continue(projectID, ticketID string, req *types.AgentRequest) (string, error) {
-	return s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "continue", req.Model)
-}
-
-// Callback marks an agent as requesting a callback to a previous layer
-func (s *AgentService) Callback(projectID, ticketID string, req *types.AgentCallbackRequest) error {
-	sessionID, err := s.setAgentResult(req.SessionID, req.InstanceID, req.AgentType, "callback", req.Model)
+// Fail marks an agent as failed. Returns BroadcastCtx for WS broadcasting.
+func (s *AgentService) Fail(req *types.AgentRequest) (BroadcastCtx, error) {
+	bctx, err := s.setAgentResult(req.SessionID, "fail")
 	if err != nil {
-		return err
+		return BroadcastCtx{}, err
+	}
+	if req.Reason != "" {
+		now := s.clock.Now().UTC().Format(time.RFC3339Nano)
+		_, _ = s.pool.Exec(
+			`UPDATE agent_sessions SET result_reason = ?, updated_at = ? WHERE id = ?`,
+			req.Reason, now, req.SessionID)
+	}
+	return bctx, nil
+}
+
+// Continue marks an agent as needing context continuation. Returns BroadcastCtx for WS broadcasting.
+func (s *AgentService) Continue(req *types.AgentRequest) (BroadcastCtx, error) {
+	return s.setAgentResult(req.SessionID, "continue")
+}
+
+// Callback marks an agent as requesting a callback to a previous layer. Returns BroadcastCtx.
+func (s *AgentService) Callback(req *types.AgentCallbackRequest) (BroadcastCtx, error) {
+	bctx, err := s.setAgentResult(req.SessionID, "callback")
+	if err != nil {
+		return BroadcastCtx{}, err
 	}
 
 	// Save callback_level as a finding on the session
 	var findingsStr sql.NullString
-	err = s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, sessionID).Scan(&findingsStr)
+	err = s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, req.SessionID).Scan(&findingsStr)
 	if err != nil {
-		return fmt.Errorf("failed to read session findings: %w", err)
+		return BroadcastCtx{}, fmt.Errorf("failed to read session findings: %w", err)
 	}
 
 	findings := make(map[string]interface{})
@@ -263,20 +301,23 @@ func (s *AgentService) Callback(projectID, ticketID string, req *types.AgentCall
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err = s.pool.Exec(
 		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
-		string(data), now, sessionID)
-	return err
+		string(data), now, req.SessionID)
+	return bctx, err
 }
 
-func (s *AgentService) setAgentResult(sessionID, instanceID, agentType, result, modelID string) (string, error) {
+func (s *AgentService) setAgentResult(sessionID, result string) (BroadcastCtx, error) {
 	if sessionID == "" {
-		return "", fmt.Errorf("session_id is required (NRWF_SESSION_ID env var)")
+		return BroadcastCtx{}, fmt.Errorf("session_id is required (NRWF_SESSION_ID env var)")
 	}
 
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.pool.Exec(
 		`UPDATE agent_sessions SET result = ?, updated_at = ? WHERE id = ?`,
 		result, now, sessionID)
-	return sessionID, err
+	if err != nil {
+		return BroadcastCtx{}, err
+	}
+	return sessionBroadcastCtx(s.pool, sessionID)
 }
 
 // UpdateContextLeft updates context_left for a session. Returns project/ticket/workflow info for broadcasting.

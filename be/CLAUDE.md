@@ -12,8 +12,8 @@ be/
 │   ├── cli/                     # Cobra commands
 │   │   ├── root.go              # Root command, global flags, project discovery
 │   │   ├── serve.go             # HTTP API server (auto-migrates DB)
-│   │   ├── agent.go             # agent fail/continue/callback (agent-only, -T for project scope)
-│   │   ├── findings.go          # findings add/append/get/delete (agent-only, -T for project scope)
+│   │   ├── agent.go             # agent fail/continue/callback (context from NRWF_SESSION_ID + NRWF_WORKFLOW_INSTANCE_ID env vars)
+│   │   ├── findings.go          # findings add/append/get/delete (own-session writes; cross-agent reads via agent-type arg)
 │   │   ├── findings_project.go  # project-level findings (project-add/get/append/delete)
 │   │   ├── skip.go              # skip <tag> command (adds skip tag to running workflow instance)
 │   │   ├── tickets.go           # tickets list/get/create (HTTP)

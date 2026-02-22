@@ -55,42 +55,38 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 
 	switch action {
 	case "add":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.FindingsAddRequest
-		}
+		var params types.FindingsAddRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		if err := h.findingsSvc.Add(projectID, params.TicketID, &params.FindingsAddRequest); err != nil {
+		bctx, err := h.findingsSvc.Add(&params)
+		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
 				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, projectID, params.TicketID, params.Workflow, map[string]interface{}{
-			"agent_type": params.AgentType,
+		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+			"agent_type": bctx.AgentType,
 			"key":        params.Key,
 			"action":     "add",
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "added"})
 
 	case "add-bulk":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.FindingsAddBulkRequest
-		}
+		var params types.FindingsAddBulkRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		if err := h.findingsSvc.AddBulk(projectID, params.TicketID, &params.FindingsAddBulkRequest); err != nil {
+		bctx, err := h.findingsSvc.AddBulk(&params)
+		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
 				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, projectID, params.TicketID, params.Workflow, map[string]interface{}{
-			"agent_type": params.AgentType,
+		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+			"agent_type": bctx.AgentType,
 			"action":     "add-bulk",
 			"count":      len(params.KeyValues),
 		})
@@ -100,14 +96,11 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 		})
 
 	case "get":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.FindingsGetRequest
-		}
+		var params types.FindingsGetRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		findings, err := h.findingsSvc.Get(projectID, params.TicketID, &params.FindingsGetRequest)
+		findings, err := h.findingsSvc.Get(&params)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
 				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
@@ -117,42 +110,38 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 		return MakeResponse(req.ID, findings)
 
 	case "append":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.FindingsAppendRequest
-		}
+		var params types.FindingsAppendRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		if err := h.findingsSvc.Append(projectID, params.TicketID, &params.FindingsAppendRequest); err != nil {
+		bctx, err := h.findingsSvc.Append(&params)
+		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
 				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, projectID, params.TicketID, params.Workflow, map[string]interface{}{
-			"agent_type": params.AgentType,
+		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+			"agent_type": bctx.AgentType,
 			"key":        params.Key,
 			"action":     "append",
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "appended"})
 
 	case "append-bulk":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.FindingsAppendBulkRequest
-		}
+		var params types.FindingsAppendBulkRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		if err := h.findingsSvc.AppendBulk(projectID, params.TicketID, &params.FindingsAppendBulkRequest); err != nil {
+		bctx, err := h.findingsSvc.AppendBulk(&params)
+		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
 				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, projectID, params.TicketID, params.Workflow, map[string]interface{}{
-			"agent_type": params.AgentType,
+		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+			"agent_type": bctx.AgentType,
 			"action":     "append-bulk",
 			"count":      len(params.KeyValues),
 		})
@@ -162,22 +151,19 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 		})
 
 	case "delete":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.FindingsDeleteRequest
-		}
+		var params types.FindingsDeleteRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		deleted, err := h.findingsSvc.Delete(projectID, params.TicketID, &params.FindingsDeleteRequest)
+		bctx, deleted, err := h.findingsSvc.Delete(&params)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
 				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, projectID, params.TicketID, params.Workflow, map[string]interface{}{
-			"agent_type": params.AgentType,
+		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+			"agent_type": bctx.AgentType,
 			"action":     "delete",
 			"deleted":    deleted,
 		})
@@ -224,68 +210,60 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 
 	switch action {
 	case "fail":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.AgentRequest
-		}
+		var params types.AgentRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		logger.Warn(ctx, "agent fail received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		sessionID, err := h.agentSvc.Fail(projectID, params.TicketID, &params.AgentRequest)
+		bctx, err := h.agentSvc.Fail(&params)
 		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
+		logger.Warn(ctx, "agent fail received", "agent_type", bctx.AgentType, "ticket", bctx.TicketID, "workflow", bctx.Workflow)
+		h.broadcast(ws.EventAgentCompleted, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
 			"action":     "fail",
-			"agent_type": params.AgentType,
-			"session_id": sessionID,
-			"model_id":   params.Model,
+			"agent_type": bctx.AgentType,
+			"session_id": bctx.SessionID,
+			"model_id":   bctx.ModelID,
 			"result":     "fail",
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "failed"})
 
 	case "continue":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.AgentRequest
-		}
+		var params types.AgentRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		logger.Info(ctx, "agent continue received", "agent_type", params.AgentType, "ticket", params.TicketID, "workflow", params.Workflow)
-		sessionID, err := h.agentSvc.Continue(projectID, params.TicketID, &params.AgentRequest)
+		bctx, err := h.agentSvc.Continue(&params)
 		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventAgentContinued, projectID, params.TicketID, params.Workflow, map[string]interface{}{
+		logger.Info(ctx, "agent continue received", "agent_type", bctx.AgentType, "ticket", bctx.TicketID, "workflow", bctx.Workflow)
+		h.broadcast(ws.EventAgentContinued, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
 			"action":     "continue",
-			"agent_type": params.AgentType,
-			"session_id": sessionID,
-			"model_id":   params.Model,
+			"agent_type": bctx.AgentType,
+			"session_id": bctx.SessionID,
+			"model_id":   bctx.ModelID,
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "continued"})
 
 	case "callback":
-		var params struct {
-			TicketID string `json:"ticket_id"`
-			types.AgentCallbackRequest
-		}
+		var params types.AgentCallbackRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		logger.Info(ctx, "agent callback received", "agent_type", params.AgentType, "ticket", params.TicketID, "level", params.Level)
-		if err := h.agentSvc.Callback(projectID, params.TicketID, &params.AgentCallbackRequest); err != nil {
+		bctx, err := h.agentSvc.Callback(&params)
+		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventAgentCompleted, projectID, params.TicketID, params.Workflow, map[string]interface{}{
+		logger.Info(ctx, "agent callback received", "agent_type", bctx.AgentType, "ticket", bctx.TicketID, "level", params.Level)
+		h.broadcast(ws.EventAgentCompleted, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
 			"action":     "callback",
-			"agent_type": params.AgentType,
+			"agent_type": bctx.AgentType,
 			"level":      params.Level,
-			"model_id":   params.Model,
+			"model_id":   bctx.ModelID,
 			"result":     "callback",
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "callback"})

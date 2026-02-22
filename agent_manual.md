@@ -187,20 +187,19 @@ Spawned agents report results via CLI over Unix socket. **Exiting with code 0 is
 
 ```bash
 # Mark agent as failed
-nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--model <model>] [--reason <text>]
+nrworkflow agent fail [--reason <text>]
 
 # Signal context exhaustion — triggers relaunch with fresh context
-nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
+nrworkflow agent continue
 
 # Callback to re-run an earlier layer
-nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--model <model>]
-
-# Project-scoped (no ticket): use -T instead of <ticket>
-nrworkflow agent fail -T <agent-type> -w <workflow> [--model <model>] [--reason <text>]
+nrworkflow agent callback --level <N>
 
 # Skip a workflow group tag (reads NRWF_WORKFLOW_INSTANCE_ID from env)
 nrworkflow skip <tag>
 ```
+
+All context (project, ticket, workflow, agent_type) is derived server-side from `NRWF_SESSION_ID` and `NRWF_WORKFLOW_INSTANCE_ID` env vars set by the spawner. No positional args or `-w`/`-T` flags needed.
 
 | Command | When to use |
 |---------|------------|
@@ -208,8 +207,6 @@ nrworkflow skip <tag>
 | `continue` | Context window exhausted; save progress to `to_resume` first |
 | `callback` | Issue found that requires re-running an earlier layer; `--level` (0-based layer index) is required |
 | `skip <tag>` | Skip a workflow group in subsequent layers; tag must be in workflow's `groups` |
-
-All commands require `-w/--workflow`. The `--model` flag is only needed for parallel agents (multiple models in the same layer). Use `-T/--no-ticket` for project-scoped workflows (skips the `<ticket>` positional arg).
 
 **Completion semantics:** Exit 0 = pass (immediate, no grace period). Exit non-zero = fail. Only use `agent fail` for explicit failure with a reason.
 
@@ -220,32 +217,35 @@ All commands require `-w/--workflow`. The `--model` flag is only needed for para
 ### Agent-Level Findings
 
 ```bash
-# Add single finding
-nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
+# Add single finding (own session)
+nrworkflow findings add <key> <value>
 
 # Add multiple findings (batch syntax)
-nrworkflow findings add <ticket> <agent-type> key1:val1 key2:val2 -w <workflow> [--model <model>]
+nrworkflow findings add key1:val1 key2:val2
 
 # Append to existing finding (creates array if needed)
-nrworkflow findings append <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
-nrworkflow findings append <ticket> <agent-type> key1:val1 key2:val2 -w <workflow>
+nrworkflow findings append <key> <value>
+nrworkflow findings append key1:val1 key2:val2
 
-# Get findings
-nrworkflow findings get <ticket> <agent-type> -w <workflow>              # all findings
-nrworkflow findings get <ticket> <agent-type> <key> -w <workflow>        # single key (positional)
-nrworkflow findings get <ticket> <agent-type> -k key1 -k key2 -w <workflow>  # multiple keys
+# Get own findings
+nrworkflow findings get                      # all own findings
+nrworkflow findings get <key>               # single key (positional)
+nrworkflow findings get -k key1 -k key2    # multiple keys
+
+# Get another agent's findings (cross-agent read)
+nrworkflow findings get <agent-type>             # all findings for agent
+nrworkflow findings get <agent-type> <key>      # single key
+nrworkflow findings get <agent-type> -k key1    # multiple keys
 
 # Delete findings
-nrworkflow findings delete <ticket> <agent-type> <key1> [key2...] -w <workflow> [--model <model>]
-
-# Project-scoped (no ticket): use -T instead of <ticket>
-nrworkflow findings add -T <agent-type> key1:val1 -w <workflow> [--model <model>]
-nrworkflow findings get -T <agent-type> -w <workflow> -k summary
+nrworkflow findings delete <key1> [key2...]
 ```
+
+All context is derived from `NRWF_SESSION_ID` and `NRWF_WORKFLOW_INSTANCE_ID` env vars. Cross-agent reads require providing the target `<agent-type>` and use `NRWF_WORKFLOW_INSTANCE_ID` to scope the lookup.
 
 ### Project-Level Findings
 
-Project findings have no `-w`, `--model`, ticket, or agent-type parameters.
+Project findings have no ticket or agent-type parameters.
 
 ```bash
 # Add

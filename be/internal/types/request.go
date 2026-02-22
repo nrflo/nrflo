@@ -69,67 +69,51 @@ type PhaseUpdateRequest struct {
 	Result   string `json:"result,omitempty"` // for complete: pass, fail, skipped
 }
 
-// FindingsAddRequest is the request for adding findings
+// FindingsAddRequest is the request for adding a single finding
 type FindingsAddRequest struct {
-	Workflow   string `json:"workflow"`
-	AgentType  string `json:"agent_type"`
 	Key        string `json:"key"`
 	Value      string `json:"value"`
-	Model      string `json:"model,omitempty"`
-	InstanceID string `json:"instance_id,omitempty"`
 	SessionID  string `json:"session_id,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
 }
 
 // FindingsAddBulkRequest is the request for adding multiple findings at once
 type FindingsAddBulkRequest struct {
-	Workflow   string            `json:"workflow"`
-	AgentType  string            `json:"agent_type"`
 	KeyValues  map[string]string `json:"key_values"` // key -> value (string or JSON)
-	Model      string            `json:"model,omitempty"`
-	InstanceID string            `json:"instance_id,omitempty"`
 	SessionID  string            `json:"session_id,omitempty"`
+	InstanceID string            `json:"instance_id,omitempty"`
 }
 
 // FindingsGetRequest is the request for getting findings
 type FindingsGetRequest struct {
-	Workflow   string   `json:"workflow"`
-	AgentType  string   `json:"agent_type"`
+	AgentType  string   `json:"agent_type,omitempty"` // omit = own session, provide = cross-agent read
 	Key        string   `json:"key,omitempty"`
 	Keys       []string `json:"keys,omitempty"` // Multiple keys to fetch
 	Model      string   `json:"model,omitempty"`
-	InstanceID string   `json:"instance_id,omitempty"`
-	SessionID  string   `json:"session_id,omitempty"`
+	InstanceID string   `json:"instance_id,omitempty"` // required for cross-agent reads
+	SessionID  string   `json:"session_id,omitempty"`  // required for own-session reads
 }
 
 // FindingsAppendRequest is the request for appending to findings
 type FindingsAppendRequest struct {
-	Workflow   string `json:"workflow"`
-	AgentType  string `json:"agent_type"`
 	Key        string `json:"key"`
 	Value      string `json:"value"`
-	Model      string `json:"model,omitempty"`
-	InstanceID string `json:"instance_id,omitempty"`
 	SessionID  string `json:"session_id,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
 }
 
 // FindingsAppendBulkRequest is the request for appending multiple values
 type FindingsAppendBulkRequest struct {
-	Workflow   string            `json:"workflow"`
-	AgentType  string            `json:"agent_type"`
 	KeyValues  map[string]string `json:"key_values"`
-	Model      string            `json:"model,omitempty"`
-	InstanceID string            `json:"instance_id,omitempty"`
 	SessionID  string            `json:"session_id,omitempty"`
+	InstanceID string            `json:"instance_id,omitempty"`
 }
 
 // FindingsDeleteRequest is the request for deleting finding keys
 type FindingsDeleteRequest struct {
-	Workflow   string   `json:"workflow"`
-	AgentType  string   `json:"agent_type"`
 	Keys       []string `json:"keys"`
-	Model      string   `json:"model,omitempty"`
-	InstanceID string   `json:"instance_id,omitempty"`
 	SessionID  string   `json:"session_id,omitempty"`
+	InstanceID string   `json:"instance_id,omitempty"`
 }
 
 // ProjectFindingsAddRequest is the request for adding a project finding
@@ -190,11 +174,10 @@ type AgentKillRequest struct {
 	Model    string `json:"model,omitempty"`
 }
 
-// AgentRequest is the shared request for agent lifecycle commands (fail/continue/callback)
+// AgentRequest is the shared request for agent lifecycle commands (fail/continue/callback).
+// All context (project, ticket, workflow, agent_type) is derived from the session on the server side.
 type AgentRequest struct {
-	Workflow   string `json:"workflow"`
-	AgentType  string `json:"agent_type"`
-	Model      string `json:"model,omitempty"`
+	Reason     string `json:"reason,omitempty"`
 	InstanceID string `json:"instance_id,omitempty"`
 	SessionID  string `json:"session_id,omitempty"`
 }

@@ -57,13 +57,12 @@ func (s *Spawner) fetchFindings(projectID, ticketID, workflowName, agentType, wf
 	findingsService := service.NewFindingsService(pool, s.config.Clock)
 
 	req := &types.FindingsGetRequest{
-		Workflow:    workflowName,
-		AgentType:   agentType,
-		Keys:        keys,
-		InstanceID:  wfiID,
+		AgentType:  agentType,
+		Keys:       keys,
+		InstanceID: wfiID,
 	}
 
-	return findingsService.Get(projectID, ticketID, req)
+	return findingsService.Get(req)
 }
 
 // formatFindings converts findings to human-readable text (YAML-like format)

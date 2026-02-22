@@ -15,10 +15,12 @@ The socket uses a **JSON-RPC style protocol** (line-delimited JSON).
 
 ### Request Format
 
-All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set automatically from `NRWF_WORKFLOW_INSTANCE_ID` and `NRWF_SESSION_ID` env vars by the CLI).
+All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set automatically from `NRWF_WORKFLOW_INSTANCE_ID` and `NRWF_SESSION_ID` env vars by the CLI). The service derives ticket, workflow, and agent_type from the session row — callers do not send them.
 
 ```json
-{"method": "findings.add", "params": {"ticket_id": "T-1", "instance_id": "uuid", "session_id": "uuid", "agent_type": "analyzer", "key": "summary", "value": "..."}}
+{"method": "findings.add", "params": {"instance_id": "uuid", "session_id": "uuid", "key": "summary", "value": "..."}}
+{"method": "agent.fail", "params": {"instance_id": "uuid", "session_id": "uuid", "reason": "..."}}
+{"method": "agent.callback", "params": {"instance_id": "uuid", "session_id": "uuid", "level": 1}}
 ```
 
 ### Response Format

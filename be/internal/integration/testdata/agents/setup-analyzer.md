@@ -28,21 +28,21 @@ You are an investigation agent. Your job is to analyze a ticket and gather all c
 
 3. **Store Findings**
    ```bash
-   nrworkflow findings add ${TICKET_ID} ${AGENT} summary '<summary>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} acceptance_criteria '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} files_to_modify '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} patterns '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} existing_tests '<json-array>' -w ${WORKFLOW}
+   nrworkflow findings add summary '<summary>'
+   nrworkflow findings add acceptance_criteria '<json-array>'
+   nrworkflow findings add files_to_modify '<json-array>'
+   nrworkflow findings add patterns '<json-array>'
+   nrworkflow findings add existing_tests '<json-array>'
    ```
 
 4. **Signal Completion** (MANDATORY)
    Exit 0 = pass. If you cannot complete:
    ```bash
-   nrworkflow agent fail ${TICKET_ID} ${AGENT} --reason="<explanation>" -w ${WORKFLOW}
+   nrworkflow agent fail --reason="<explanation>"
    ```
    If running out of context but task is not done (store `continuation_notes` finding first):
    ```bash
-   nrworkflow agent continue ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
+   nrworkflow agent continue
    ```
 
 ## Findings Schema

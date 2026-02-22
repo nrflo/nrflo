@@ -299,12 +299,10 @@ func TestSocketHandler_FindingsNotLogged(t *testing.T) {
 
 	// Execute findings.add (should not log per-request)
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "SOCK-7",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "test_key",
-		"value":      "test_value",
+		"session_id":  "sess-7",
 		"instance_id": wfiID,
+		"key":         "test_key",
+		"value":       "test_value",
 	}, nil)
 
 	logs := logBuf.String()

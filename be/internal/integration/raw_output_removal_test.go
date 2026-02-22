@@ -267,12 +267,10 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 
 	// Update findings via socket
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "E2E-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "test_key",
-		"value":      "test_value",
+		"session_id":  "sess-e2e-analyzer",
 		"instance_id": wfiID,
+		"key":         "test_key",
+		"value":       "test_value",
 	}, nil)
 
 	// Mark analyzer session as completed

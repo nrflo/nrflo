@@ -240,12 +240,10 @@ func TestMigration028EndToEnd(t *testing.T) {
 
 	// Add findings via socket
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":   "MI028-E2E-1",
-		"workflow":    "test",
-		"agent_type":  "analyzer",
+		"session_id":  "sess-e2e-028-a",
+		"instance_id": wfiID,
 		"key":         "analysis",
 		"value":       "ok",
-		"instance_id": wfiID,
 	}, nil)
 
 	env.CompleteAgentSession(t, "sess-e2e-028-a", "pass")
@@ -292,9 +290,8 @@ func TestMigration028EndToEnd(t *testing.T) {
 		t.Errorf("expected 2 sessions, got %d", len(sessions))
 	}
 
-	// Verify findings preserved
-	findings, err := env.FindingsSvc.Get(env.ProjectID, "MI028-E2E-1", &types.FindingsGetRequest{
-		Workflow:   "test",
+	// Verify findings preserved (cross-agent read by agent_type + instance_id)
+	findings, err := env.FindingsSvc.Get(&types.FindingsGetRequest{
 		AgentType:  "analyzer",
 		InstanceID: wfiID,
 	})

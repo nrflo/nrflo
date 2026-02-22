@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"be/internal/types"
 )
 
 var agentCmd = &cobra.Command{
@@ -13,27 +11,25 @@ var agentCmd = &cobra.Command{
 	Short: "Agent lifecycle commands (used by spawned agents)",
 }
 
-// Shared no-ticket flag for project-scoped workflows
-var agentNoTicket bool
-
 // Agent fail/continue/callback flags
 var (
-	agentFailWorkflow string
-	agentFailModel        string
-	agentFailReason       string
-	agentContinueWorkflow string
-	agentContinueModel    string
-	agentCallbackWorkflow string
-	agentCallbackModel    string
-	agentCallbackLevel    int
+	agentFailReason    string
+	agentCallbackLevel int
 	// context-update flags
 	agentContextUpdatePctUsed float64
 )
 
 var agentFailCmd = &cobra.Command{
-	Use:   "fail [-T] [<ticket>] <agent-type>",
-	Short: "Mark an agent as failed",
-	Args:  cobra.RangeArgs(1, 2),
+	Use:   "fail",
+	Short: "Mark the current agent session as failed",
+	Long: `Mark the current agent session as failed.
+
+Context is read from environment variables set by the spawner:
+  NRWF_SESSION_ID          — current agent session ID (required)
+  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID
+
+Use --reason to provide a failure description.`,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -42,25 +38,17 @@ var agentFailCmd = &cobra.Command{
 			return err
 		}
 
-		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
-
-		if agentFailWorkflow == "" {
-			return fmt.Errorf("-w/--workflow is required")
+		sessionID := GetSessionID()
+		if sessionID == "" {
+			return fmt.Errorf("NRWF_SESSION_ID env var is required")
 		}
 
 		c := GetClient()
-		params := types.AgentRequest{
-			Workflow:  agentFailWorkflow,
-			AgentType: agentType,
-			Model:     agentFailModel,
-		}
 		reqParams := map[string]interface{}{
-			"ticket_id":  ticketID,
-			"workflow":   params.Workflow,
-			"agent_type": params.AgentType,
+			"session_id": sessionID,
 		}
-		if params.Model != "" {
-			reqParams["model"] = params.Model
+		if agentFailReason != "" {
+			reqParams["reason"] = agentFailReason
 		}
 		addSpawnerIDs(reqParams)
 
@@ -68,19 +56,22 @@ var agentFailCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Agent %s marked as fail\n", agentType)
+		fmt.Println("Agent marked as fail")
 		return nil
 	},
 }
 
 var agentContinueCmd = &cobra.Command{
-	Use:   "continue [-T] [<ticket>] <agent-type>",
-	Short: "Signal that an agent needs context continuation",
-	Long: `Signal that an agent has exhausted its context window and needs to be
-relaunched with fresh context to continue the task. The spawner will
-automatically relaunch the agent if max_continuations has not been reached.
-Use -T/--no-ticket for project-scoped workflows.`,
-	Args: cobra.RangeArgs(1, 2),
+	Use:   "continue",
+	Short: "Signal that the current agent needs context continuation",
+	Long: `Signal that the current agent has exhausted its context window and needs to be
+relaunched with fresh context to continue the task. Save progress to the
+'to_resume' finding before calling this.
+
+Context is read from environment variables set by the spawner:
+  NRWF_SESSION_ID          — current agent session ID (required)
+  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -89,20 +80,14 @@ Use -T/--no-ticket for project-scoped workflows.`,
 			return err
 		}
 
-		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
-
-		if agentContinueWorkflow == "" {
-			return fmt.Errorf("-w/--workflow is required")
+		sessionID := GetSessionID()
+		if sessionID == "" {
+			return fmt.Errorf("NRWF_SESSION_ID env var is required")
 		}
 
 		c := GetClient()
 		reqParams := map[string]interface{}{
-			"ticket_id":  ticketID,
-			"workflow":   agentContinueWorkflow,
-			"agent_type": agentType,
-		}
-		if agentContinueModel != "" {
-			reqParams["model"] = agentContinueModel
+			"session_id": sessionID,
 		}
 		addSpawnerIDs(reqParams)
 
@@ -110,19 +95,22 @@ Use -T/--no-ticket for project-scoped workflows.`,
 			return err
 		}
 
-		fmt.Printf("Agent %s marked as continue (context continuation requested)\n", agentType)
+		fmt.Println("Agent marked as continue (context continuation requested)")
 		return nil
 	},
 }
 
 var agentCallbackCmd = &cobra.Command{
-	Use:   "callback [-T] [<ticket>] <agent-type>",
+	Use:   "callback",
 	Short: "Signal a callback to a previous execution layer",
 	Long: `Signal that the agent needs to callback to a previous layer for fixes.
 The --level flag specifies the target layer index (0-based) to callback to.
-The agent should save callback_instructions as a finding before calling this.
-Use -T/--no-ticket for project-scoped workflows.`,
-	Args: cobra.RangeArgs(1, 2),
+Save callback_instructions as a finding before calling this.
+
+Context is read from environment variables set by the spawner:
+  NRWF_SESSION_ID          — current agent session ID (required)
+  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
 			return err
@@ -131,10 +119,9 @@ Use -T/--no-ticket for project-scoped workflows.`,
 			return err
 		}
 
-		ticketID, agentType := parseAgentArgs(args, agentNoTicket)
-
-		if agentCallbackWorkflow == "" {
-			return fmt.Errorf("-w/--workflow is required")
+		sessionID := GetSessionID()
+		if sessionID == "" {
+			return fmt.Errorf("NRWF_SESSION_ID env var is required")
 		}
 
 		if !cmd.Flags().Changed("level") {
@@ -146,13 +133,8 @@ Use -T/--no-ticket for project-scoped workflows.`,
 
 		c := GetClient()
 		reqParams := map[string]interface{}{
-			"ticket_id":  ticketID,
-			"workflow":   agentCallbackWorkflow,
-			"agent_type": agentType,
+			"session_id": sessionID,
 			"level":      agentCallbackLevel,
-		}
-		if agentCallbackModel != "" {
-			reqParams["model"] = agentCallbackModel
 		}
 		addSpawnerIDs(reqParams)
 
@@ -160,7 +142,7 @@ Use -T/--no-ticket for project-scoped workflows.`,
 			return err
 		}
 
-		fmt.Printf("Agent %s marked as callback (target layer: %d)\n", agentType, agentCallbackLevel)
+		fmt.Printf("Agent marked as callback (target layer: %d)\n", agentCallbackLevel)
 		return nil
 	},
 }
@@ -195,34 +177,15 @@ var agentContextUpdateCmd = &cobra.Command{
 	},
 }
 
-// parseAgentArgs extracts ticketID and agentType from positional args.
-// When noTicket is true, ticketID is "" and args[0] is agentType.
-func parseAgentArgs(args []string, noTicket bool) (ticketID, agentType string) {
-	if noTicket {
-		return "", args[0]
-	}
-	return args[0], args[1]
-}
-
 func init() {
-	for _, cmd := range []*cobra.Command{agentFailCmd, agentContinueCmd, agentCallbackCmd} {
-		cmd.Flags().BoolVarP(&agentNoTicket, "no-ticket", "T", false, "Project-scoped workflow (no ticket ID)")
-	}
-
 	// agent fail
-	agentFailCmd.Flags().StringVarP(&agentFailWorkflow, "workflow", "w", "", "Workflow name (required)")
-	agentFailCmd.Flags().StringVar(&agentFailModel, "model", "", "Model ID")
 	agentFailCmd.Flags().StringVar(&agentFailReason, "reason", "", "Failure reason")
 	agentCmd.AddCommand(agentFailCmd)
 
 	// agent continue
-	agentContinueCmd.Flags().StringVarP(&agentContinueWorkflow, "workflow", "w", "", "Workflow name (required)")
-	agentContinueCmd.Flags().StringVar(&agentContinueModel, "model", "", "Model ID")
 	agentCmd.AddCommand(agentContinueCmd)
 
 	// agent callback
-	agentCallbackCmd.Flags().StringVarP(&agentCallbackWorkflow, "workflow", "w", "", "Workflow name (required)")
-	agentCallbackCmd.Flags().StringVar(&agentCallbackModel, "model", "", "Model ID")
 	agentCallbackCmd.Flags().IntVar(&agentCallbackLevel, "level", 0, "Target layer index to callback to (required)")
 	agentCmd.AddCommand(agentCallbackCmd)
 

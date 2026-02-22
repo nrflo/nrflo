@@ -31,36 +31,29 @@ func (s *FindingsService) resolveWorkflowInstance(instanceID string) (string, er
 	return instanceID, nil
 }
 
-// resolveSession returns the session ID and current findings.
-// Uses sessionID directly when provided (from NRWF_SESSION_ID env var).
-func (s *FindingsService) resolveSession(sessionID, wfiID, agentType, modelStr string) (string, sql.NullString, error) {
-	if sessionID != "" {
-		var findings sql.NullString
-		err := s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, sessionID).Scan(&findings)
-		if err == sql.ErrNoRows {
-			return "", sql.NullString{}, fmt.Errorf("session %s not found", sessionID)
-		}
-		return sessionID, findings, err
+// loadSession loads broadcast context and current findings for a session in one query.
+// Used by write operations — requires session_id (NRWF_SESSION_ID env var).
+func (s *FindingsService) loadSession(sessionID string) (BroadcastCtx, sql.NullString, error) {
+	if sessionID == "" {
+		return BroadcastCtx{}, sql.NullString{}, fmt.Errorf("session_id is required (NRWF_SESSION_ID env var)")
 	}
-
-	query := `SELECT id, findings FROM agent_sessions
-		WHERE workflow_instance_id = ? AND agent_type = ?`
-	args := []interface{}{wfiID, agentType}
-
-	if modelStr != "" {
-		query += ` AND model_id = ?`
-		args = append(args, modelStr)
-	}
-
-	query += ` ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END, created_at DESC LIMIT 1`
-
-	var sid string
+	var bctx BroadcastCtx
 	var findings sql.NullString
-	err := s.pool.QueryRow(query, args...).Scan(&sid, &findings)
+	var modelID sql.NullString
+	bctx.SessionID = sessionID
+	err := s.pool.QueryRow(`
+		SELECT s.findings, s.project_id, s.ticket_id, wi.workflow_id, s.agent_type, s.model_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE s.id = ?`, sessionID).Scan(
+		&findings, &bctx.ProjectID, &bctx.TicketID, &bctx.Workflow, &bctx.AgentType, &modelID)
 	if err == sql.ErrNoRows {
-		return "", sql.NullString{}, fmt.Errorf("no session found for agent %s", agentType)
+		return BroadcastCtx{}, sql.NullString{}, fmt.Errorf("session %s not found", sessionID)
 	}
-	return sid, findings, err
+	if modelID.Valid {
+		bctx.ModelID = modelID.String
+	}
+	return bctx, findings, err
 }
 
 // updateSessionFindings writes the findings JSON to a session
@@ -83,20 +76,11 @@ func parseFindings(ns sql.NullString) map[string]interface{} {
 	return m
 }
 
-// Add adds a finding for an agent
-func (s *FindingsService) Add(projectID, ticketID string, req *types.FindingsAddRequest) error {
-	if req.Workflow == "" {
-		return fmt.Errorf("workflow is required")
-	}
-
-	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
+// Add adds a finding to the current agent session
+func (s *FindingsService) Add(req *types.FindingsAddRequest) (BroadcastCtx, error) {
+	bctx, findingsNS, err := s.loadSession(req.SessionID)
 	if err != nil {
-		return err
-	}
-
-	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
-	if err != nil {
-		return err
+		return BroadcastCtx{}, err
 	}
 
 	findings := parseFindings(findingsNS)
@@ -107,26 +91,18 @@ func (s *FindingsService) Add(projectID, ticketID string, req *types.FindingsAdd
 	}
 
 	findings[req.Key] = parsedValue
-	return s.updateSessionFindings(sessionID, findings)
+	return bctx, s.updateSessionFindings(req.SessionID, findings)
 }
 
-// AddBulk adds multiple findings for an agent in one operation
-func (s *FindingsService) AddBulk(projectID, ticketID string, req *types.FindingsAddBulkRequest) error {
-	if req.Workflow == "" {
-		return fmt.Errorf("workflow is required")
-	}
+// AddBulk adds multiple findings to the current agent session in one operation
+func (s *FindingsService) AddBulk(req *types.FindingsAddBulkRequest) (BroadcastCtx, error) {
 	if len(req.KeyValues) == 0 {
-		return fmt.Errorf("at least one key-value pair is required")
+		return BroadcastCtx{}, fmt.Errorf("at least one key-value pair is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
+	bctx, findingsNS, err := s.loadSession(req.SessionID)
 	if err != nil {
-		return err
-	}
-
-	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
-	if err != nil {
-		return err
+		return BroadcastCtx{}, err
 	}
 
 	findings := parseFindings(findingsNS)
@@ -139,21 +115,33 @@ func (s *FindingsService) AddBulk(projectID, ticketID string, req *types.Finding
 		findings[key] = parsedValue
 	}
 
-	return s.updateSessionFindings(sessionID, findings)
+	return bctx, s.updateSessionFindings(req.SessionID, findings)
 }
 
-// Get gets findings for an agent
-func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGetRequest) (interface{}, error) {
-	if req.Workflow == "" {
-		return nil, fmt.Errorf("workflow is required")
-	}
-
+// Get gets findings for an agent.
+// If AgentType is omitted, reads the current session's own findings (requires SessionID).
+// If AgentType is provided, reads cross-agent findings (requires InstanceID).
+func (s *FindingsService) Get(req *types.FindingsGetRequest) (interface{}, error) {
 	// Normalize: if single Key is set, add to Keys slice
 	keys := req.Keys
 	if req.Key != "" && len(keys) == 0 {
 		keys = []string{req.Key}
 	}
 
+	// Own-session read (no agent_type provided)
+	if req.AgentType == "" {
+		if req.SessionID == "" {
+			return nil, fmt.Errorf("session_id is required for own-session reads")
+		}
+		var findingsNS sql.NullString
+		err := s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, req.SessionID).Scan(&findingsNS)
+		if err != nil {
+			return map[string]interface{}{}, nil
+		}
+		return s.extractKeys(parseFindings(findingsNS), keys)
+	}
+
+	// Cross-agent read — requires instance_id
 	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
 	if err != nil {
 		return nil, err
@@ -161,14 +149,20 @@ func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGet
 
 	// If specific model requested, return that session's findings
 	if req.Model != "" {
-		_, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
+		var sid string
+		var findingsNS sql.NullString
+		err := s.pool.QueryRow(`
+			SELECT id, findings FROM agent_sessions
+			WHERE workflow_instance_id = ? AND agent_type = ? AND model_id = ?
+			ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END, created_at DESC LIMIT 1`,
+			wfiID, req.AgentType, req.Model).Scan(&sid, &findingsNS)
 		if err != nil {
 			return map[string]interface{}{}, nil
 		}
 		return s.extractKeys(parseFindings(findingsNS), keys)
 	}
 
-	// No model specified - collect findings from ALL sessions for this agent type
+	// No model specified — collect findings from ALL sessions for this agent type
 	rows, err := s.pool.Query(`
 		SELECT model_id, findings FROM agent_sessions
 		WHERE workflow_instance_id = ? AND agent_type = ? AND findings IS NOT NULL AND findings != ''
@@ -212,7 +206,7 @@ func (s *FindingsService) Get(projectID, ticketID string, req *types.FindingsGet
 		}
 	}
 
-	// Multiple agents - return grouped by model
+	// Multiple agents — return grouped by model
 	if len(keys) > 0 {
 		keyFindings := make(map[string]interface{})
 		for modelKey, v := range allAgentFindings {
@@ -260,22 +254,14 @@ func (s *FindingsService) extractKeys(findings map[string]interface{}, keys []st
 }
 
 // Append appends a value to an existing finding (creating array if needed)
-func (s *FindingsService) Append(projectID, ticketID string, req *types.FindingsAppendRequest) error {
-	if req.Workflow == "" {
-		return fmt.Errorf("workflow is required")
-	}
+func (s *FindingsService) Append(req *types.FindingsAppendRequest) (BroadcastCtx, error) {
 	if req.Key == "" {
-		return fmt.Errorf("key is required")
+		return BroadcastCtx{}, fmt.Errorf("key is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
+	bctx, findingsNS, err := s.loadSession(req.SessionID)
 	if err != nil {
-		return err
-	}
-
-	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
-	if err != nil {
-		return err
+		return BroadcastCtx{}, err
 	}
 
 	findings := parseFindings(findingsNS)
@@ -286,26 +272,18 @@ func (s *FindingsService) Append(projectID, ticketID string, req *types.Findings
 	}
 
 	findings[req.Key] = AppendValue(findings[req.Key], newValue)
-	return s.updateSessionFindings(sessionID, findings)
+	return bctx, s.updateSessionFindings(req.SessionID, findings)
 }
 
 // AppendBulk appends multiple values at once
-func (s *FindingsService) AppendBulk(projectID, ticketID string, req *types.FindingsAppendBulkRequest) error {
-	if req.Workflow == "" {
-		return fmt.Errorf("workflow is required")
-	}
+func (s *FindingsService) AppendBulk(req *types.FindingsAppendBulkRequest) (BroadcastCtx, error) {
 	if len(req.KeyValues) == 0 {
-		return fmt.Errorf("at least one key-value pair is required")
+		return BroadcastCtx{}, fmt.Errorf("at least one key-value pair is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
+	bctx, findingsNS, err := s.loadSession(req.SessionID)
 	if err != nil {
-		return err
-	}
-
-	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
-	if err != nil {
-		return err
+		return BroadcastCtx{}, err
 	}
 
 	findings := parseFindings(findingsNS)
@@ -318,26 +296,18 @@ func (s *FindingsService) AppendBulk(projectID, ticketID string, req *types.Find
 		findings[key] = AppendValue(findings[key], newValue)
 	}
 
-	return s.updateSessionFindings(sessionID, findings)
+	return bctx, s.updateSessionFindings(req.SessionID, findings)
 }
 
-// Delete removes finding keys from an agent
-func (s *FindingsService) Delete(projectID, ticketID string, req *types.FindingsDeleteRequest) (int, error) {
-	if req.Workflow == "" {
-		return 0, fmt.Errorf("workflow is required")
-	}
+// Delete removes finding keys from the current agent session
+func (s *FindingsService) Delete(req *types.FindingsDeleteRequest) (BroadcastCtx, int, error) {
 	if len(req.Keys) == 0 {
-		return 0, fmt.Errorf("at least one key is required")
+		return BroadcastCtx{}, 0, fmt.Errorf("at least one key is required")
 	}
 
-	wfiID, err := s.resolveWorkflowInstance(req.InstanceID)
+	bctx, findingsNS, err := s.loadSession(req.SessionID)
 	if err != nil {
-		return 0, err
-	}
-
-	sessionID, findingsNS, err := s.resolveSession(req.SessionID, wfiID, req.AgentType, req.Model)
-	if err != nil {
-		return 0, nil // No session = nothing to delete
+		return BroadcastCtx{}, 0, nil // No session = nothing to delete
 	}
 
 	findings := parseFindings(findingsNS)
@@ -351,13 +321,13 @@ func (s *FindingsService) Delete(projectID, ticketID string, req *types.Findings
 	}
 
 	if deleted == 0 {
-		return 0, nil
+		return bctx, 0, nil
 	}
 
-	if err := s.updateSessionFindings(sessionID, findings); err != nil {
-		return 0, err
+	if err := s.updateSessionFindings(req.SessionID, findings); err != nil {
+		return BroadcastCtx{}, 0, err
 	}
-	return deleted, nil
+	return bctx, deleted, nil
 }
 
 // appendValue implements the append logic:

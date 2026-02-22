@@ -147,23 +147,25 @@ Web UI: `./restart.sh` then open `http://localhost:5173`
 Spawned agents use these commands to report results (via Unix socket to the server). Exit 0 = pass (no explicit call needed). Only call `agent fail` for explicit failure.
 
 ```bash
-nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--model <model>] [--reason <text>]
-nrworkflow agent continue <ticket> <agent-type> -w <workflow> [--model <model>]
-nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N> [--model <model>]
+# All context derived from NRWF_SESSION_ID + NRWF_WORKFLOW_INSTANCE_ID env vars (set by spawner)
+nrworkflow agent fail [--reason <text>]
+nrworkflow agent continue
+nrworkflow agent callback --level <N>
 
 nrworkflow skip <tag>  # Add skip tag to running workflow instance (reads NRWF_WORKFLOW_INSTANCE_ID from env)
 
-nrworkflow findings add <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
-nrworkflow findings add <ticket> <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
-nrworkflow findings append <ticket> <agent-type> <key> <value> -w <workflow> [--model <model>]
-nrworkflow findings append <ticket> <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
-nrworkflow findings get <ticket> <agent-type> [key] -w <workflow> [--model <model>] [-k <key>...]
-nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow> [--model <model>]
+# Own-session findings (write to current agent's session)
+nrworkflow findings add <key> <value>
+nrworkflow findings add key1:val1 [key2:val2...]
+nrworkflow findings append <key> <value>
+nrworkflow findings append key1:val1 [key2:val2...]
+nrworkflow findings get [key] [-k <key>...]
+nrworkflow findings delete <key1> [key2...]
 
-# Project-scoped (no ticket): use -T/--no-ticket instead of <ticket>
-nrworkflow agent fail -T <agent-type> -w <workflow> [--model <model>] [--reason <text>]
-nrworkflow findings add -T <agent-type> key1:val1 [key2:val2...] -w <workflow> [--model <model>]
+# Cross-agent read (provide target agent-type; uses NRWF_WORKFLOW_INSTANCE_ID to scope)
+nrworkflow findings get <agent-type> [key] [-k <key>...]
 
+# Project-level findings (scoped to NRWORKFLOW_PROJECT)
 nrworkflow findings project-add <key> <value>
 nrworkflow findings project-add key1:val1 [key2:val2...]
 nrworkflow findings project-get [key] [-k <key>...]

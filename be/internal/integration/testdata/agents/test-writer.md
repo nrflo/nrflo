@@ -59,7 +59,7 @@ cd be && ./scripts/test.sh -c     # with coverage report
 
 1. **Read Context**
    ```bash
-   nrworkflow findings get ${TICKET_ID} setup-analyzer -w ${WORKFLOW}
+   nrworkflow findings get setup-analyzer
    ```
 
 2. **Understand Acceptance Criteria**
@@ -78,9 +78,9 @@ cd be && ./scripts/test.sh -c     # with coverage report
 
 5. **Store Findings**
    ```bash
-   nrworkflow findings add ${TICKET_ID} ${AGENT} test_files '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} test_cases '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} coverage_plan '<string>' -w ${WORKFLOW}
+   nrworkflow findings add test_files '<json-array>'
+   nrworkflow findings add test_cases '<json-array>'
+   nrworkflow findings add coverage_plan '<string>'
    ```
 
 ## Findings Schema
@@ -103,12 +103,12 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can't find patterns, unclear criteria):
 ```bash
-nrworkflow agent fail ${TICKET_ID} ${AGENT} --reason="<explanation>" -w ${WORKFLOW}
+nrworkflow agent fail --reason="<explanation>"
 ```
 
 If running out of context but task is not done (store `continuation_notes` finding first):
 ```bash
-nrworkflow agent continue ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
+nrworkflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**

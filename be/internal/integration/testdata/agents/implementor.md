@@ -22,8 +22,8 @@ You are an implementation agent. Your job is to implement the ticket based on in
 
 1. **Read Context**
    ```bash
-   nrworkflow findings get ${TICKET_ID} setup-analyzer -w ${WORKFLOW}
-   nrworkflow findings get ${TICKET_ID} test-writer -w ${WORKFLOW}  # May be empty for simple/docs
+   nrworkflow findings get setup-analyzer
+   nrworkflow findings get test-writer  # May be empty for simple/docs
    ```
 
 2. **Understand Scope**
@@ -44,11 +44,11 @@ You are an implementation agent. Your job is to implement the ticket based on in
 
 5. **Store Findings**
    ```bash
-   nrworkflow findings add ${TICKET_ID} ${AGENT} files_created '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} files_modified '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} build_result 'pass' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} test_result 'pass' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} summary '<summary>' -w ${WORKFLOW}
+   nrworkflow findings add files_created '<json-array>'
+   nrworkflow findings add files_modified '<json-array>'
+   nrworkflow findings add build_result 'pass'
+   nrworkflow findings add test_result 'pass'
+   nrworkflow findings add summary '<summary>'
    ```
 
 ## Findings Schema
@@ -79,12 +79,12 @@ The spawner will relaunch you with fresh context, preserving your findings and p
 1. Store ALL your progress as findings (files modified, current state, what's left to do)
 2. Add a `continuation_notes` finding with what the next session should do:
    ```bash
-   nrworkflow findings add ${TICKET_ID} ${AGENT} continuation_notes 'Describe remaining work here' -w ${WORKFLOW}
+   nrworkflow findings add continuation_notes 'Describe remaining work here'
    ```
 
 **To request continuation:**
 ```bash
-nrworkflow agent continue ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
+nrworkflow agent continue
 ```
 
 ---
@@ -97,12 +97,12 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (build fails, tests fail, blocked):
 ```bash
-nrworkflow agent fail ${TICKET_ID} ${AGENT} --reason="<explanation>" -w ${WORKFLOW}
+nrworkflow agent fail --reason="<explanation>"
 ```
 
 If running out of context but task is not done:
 ```bash
-nrworkflow agent continue ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
+nrworkflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**

@@ -162,14 +162,12 @@ func TestAgentCallbackPreservesExistingFindings(t *testing.T) {
 
 	// Add initial findings via socket (use findings.add-bulk)
 	env.MustExecute(t, "findings.add-bulk", map[string]interface{}{
-		"ticket_id":  "AGT-CB-5",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"session_id":  "sess-cb-5",
+		"instance_id": wfiID,
 		"key_values": map[string]interface{}{
 			"callback_instructions": "Fix the bug in layer 0",
 			"bug_description":       "NPE in handler",
 		},
-		"instance_id": wfiID,
 	}, nil)
 
 	// Call agent.callback
@@ -247,14 +245,12 @@ func TestAgentCallbackE2E(t *testing.T) {
 
 	// 1. Agent saves callback_instructions finding
 	env.MustExecute(t, "findings.add-bulk", map[string]interface{}{
-		"ticket_id":  "AGT-CB-E2E",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"session_id":  "sess-cb-e2e",
+		"instance_id": wfiID,
 		"key_values": map[string]interface{}{
 			"callback_instructions": "The implementation has a bug. Need to fix variable naming in layer 0.",
 			"files_affected":        `["main.go","handler.go"]`,
 		},
-		"instance_id": wfiID,
 	}, nil)
 
 	// 2. Agent calls agent.callback with level
@@ -311,9 +307,8 @@ func TestAgentCallbackE2E(t *testing.T) {
 func TestAgentCallbackRequestUnmarshal(t *testing.T) {
 	// Test that AgentCallbackRequest correctly embeds AgentRequest and includes Level
 	reqJSON := `{
-		"workflow": "test",
-		"agent_type": "analyzer",
-		"model": "sonnet",
+		"session_id": "sess-abc",
+		"instance_id": "wfi-xyz",
 		"level": 2
 	}`
 
@@ -323,14 +318,11 @@ func TestAgentCallbackRequestUnmarshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal AgentCallbackRequest: %v", err)
 	}
 
-	if req.Workflow != "test" {
-		t.Fatalf("expected workflow 'test', got %v", req.Workflow)
+	if req.SessionID != "sess-abc" {
+		t.Fatalf("expected session_id 'sess-abc', got %v", req.SessionID)
 	}
-	if req.AgentType != "analyzer" {
-		t.Fatalf("expected agent_type 'analyzer', got %v", req.AgentType)
-	}
-	if req.Model != "sonnet" {
-		t.Fatalf("expected model 'sonnet', got %v", req.Model)
+	if req.InstanceID != "wfi-xyz" {
+		t.Fatalf("expected instance_id 'wfi-xyz', got %v", req.InstanceID)
 	}
 	if req.Level != 2 {
 		t.Fatalf("expected level 2, got %v", req.Level)

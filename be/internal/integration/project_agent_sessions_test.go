@@ -257,16 +257,12 @@ func TestGetProjectAgentSessions_FindingsAggregation(t *testing.T) {
 	// Insert agent session with findings
 	env.InsertAgentSession(t, "findings-sess", "", instance.ID, "setup", "setup-agent", "sonnet")
 
-	// Add findings via service
+	// Add findings via socket (session_id targets the session directly)
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"project_id":  env.ProjectID,
-		"ticket_id":   "",
-		"workflow":    "proj-findings",
-		"agent_type":  "setup-agent",
+		"session_id":  "findings-sess",
 		"instance_id": instance.ID,
-		"data": map[string]interface{}{
-			"test_key": "test_value",
-		},
+		"key":         "test_key",
+		"value":       `"test_value"`,
 	}, nil)
 
 	// Get project sessions - findings should be aggregated

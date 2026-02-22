@@ -17,11 +17,8 @@ func TestAgentFail(t *testing.T) {
 	// Create running agent session via DB
 	env.InsertAgentSession(t, "sess-2", "AGT-1", wfiID, "analyzer", "builder", "opus")
 
-	// Fail builder via socket
+	// Fail builder via socket — context derived from session on the server
 	env.MustExecute(t, "agent.fail", map[string]interface{}{
-		"ticket_id":   "AGT-1",
-		"workflow":    "test",
-		"agent_type":  "builder",
 		"session_id":  "sess-2",
 		"instance_id": wfiID,
 	}, nil)
@@ -47,9 +44,6 @@ func TestAgentContinue(t *testing.T) {
 
 	// Continue analyzer via socket
 	env.MustExecute(t, "agent.continue", map[string]interface{}{
-		"ticket_id":   "AGT-2",
-		"workflow":    "test",
-		"agent_type":  "analyzer",
 		"session_id":  "sess-cont-1",
 		"instance_id": wfiID,
 	}, nil)

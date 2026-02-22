@@ -22,7 +22,7 @@ You are a documentation agent. Your job is to update project documentation to re
 
 1. **Read Implementation Findings**
    ```bash
-   nrworkflow findings get ${TICKET_ID} implementor -w ${WORKFLOW}
+   nrworkflow findings get implementor
    ```
 
 2. **Identify What Changed**
@@ -43,8 +43,8 @@ You are a documentation agent. Your job is to update project documentation to re
 
 5. **Store Findings**
    ```bash
-   nrworkflow findings add ${TICKET_ID} ${AGENT} docs_updated '<json-array>' -w ${WORKFLOW}
-   nrworkflow findings add ${TICKET_ID} ${AGENT} summary '<string>' -w ${WORKFLOW}
+   nrworkflow findings add docs_updated '<json-array>'
+   nrworkflow findings add summary '<string>'
    ```
 
 ## Common Documentation Files
@@ -78,18 +78,18 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can't find docs to update, unclear changes):
 ```bash
-nrworkflow agent fail ${TICKET_ID} ${AGENT} --reason="<explanation>" -w ${WORKFLOW}
+nrworkflow agent fail --reason="<explanation>"
 ```
 
 Note: It's valid to complete with no docs updated if the implementation doesn't require documentation changes. In that case:
 ```bash
-nrworkflow findings add ${TICKET_ID} ${AGENT} docs_updated '[]' -w ${WORKFLOW}
-nrworkflow findings add ${TICKET_ID} ${AGENT} summary 'No documentation updates needed' -w ${WORKFLOW}
+nrworkflow findings add docs_updated '[]'
+nrworkflow findings add summary 'No documentation updates needed'
 ```
 
 If running out of context but task is not done (store `continuation_notes` finding first):
 ```bash
-nrworkflow agent continue ${TICKET_ID} ${AGENT} -w ${WORKFLOW}
+nrworkflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**

@@ -426,12 +426,10 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 
 	// Update findings via socket
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "E2E-NOCATS-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "files_to_check",
-		"value":      "main.go,config.go",
+		"session_id":  "sess-e2e-nocats-analyzer",
 		"instance_id": wfiID,
+		"key":         "files_to_check",
+		"value":       "main.go,config.go",
 	}, nil)
 
 	// Mark analyzer session as completed
@@ -478,9 +476,8 @@ func TestEndToEndWorkflowWithoutCategoryColumn(t *testing.T) {
 		t.Fatalf("expected 2 sessions, got %d", len(allSessions))
 	}
 
-	// Verify findings were preserved
-	findings, err := env.FindingsSvc.Get(env.ProjectID, "E2E-NOCATS-1", &types.FindingsGetRequest{
-		Workflow:   "test",
+	// Verify findings were preserved (cross-agent read by agent_type + instance_id)
+	findings, err := env.FindingsSvc.Get(&types.FindingsGetRequest{
 		AgentType:  "analyzer",
 		InstanceID: wfiID,
 	})

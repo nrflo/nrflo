@@ -64,12 +64,10 @@ func TestWSFindingsEvents(t *testing.T) {
 
 	// Add finding
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "WS-F1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "data",
-		"value":      `"hello"`,
+		"session_id":  "sess-findings",
 		"instance_id": wfiID,
+		"key":         "data",
+		"value":       `"hello"`,
 	}, nil)
 	event := expectEvent(t, ch, ws.EventFindingsUpdated, 2*time.Second)
 	if event.Data["action"] != "add" {
@@ -78,12 +76,10 @@ func TestWSFindingsEvents(t *testing.T) {
 
 	// Append
 	env.MustExecute(t, "findings.append", map[string]interface{}{
-		"ticket_id":  "WS-F1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "data",
-		"value":      `"world"`,
+		"session_id":  "sess-findings",
 		"instance_id": wfiID,
+		"key":         "data",
+		"value":       `"world"`,
 	}, nil)
 	event = expectEvent(t, ch, ws.EventFindingsUpdated, 2*time.Second)
 	if event.Data["action"] != "append" {
@@ -92,11 +88,9 @@ func TestWSFindingsEvents(t *testing.T) {
 
 	// Delete
 	env.MustExecute(t, "findings.delete", map[string]interface{}{
-		"ticket_id":  "WS-F1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"keys":       []string{"data"},
+		"session_id":  "sess-findings",
 		"instance_id": wfiID,
+		"keys":        []string{"data"},
 	}, nil)
 	event = expectEvent(t, ch, ws.EventFindingsUpdated, 2*time.Second)
 	if event.Data["action"] != "delete" {
@@ -147,14 +141,12 @@ func TestWSSubscriptionFiltering(t *testing.T) {
 	_, ch1 := env.NewWSClient(t, "ws-filter-1", "WS-S1")
 	_, ch2 := env.NewWSClient(t, "ws-filter-2", "WS-S2")
 
-	// Add findings on ticket1
+	// Add findings on ticket1 (session from ticket1 → broadcasts to ticket1 subscribers)
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "WS-S1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "x",
-		"value":      `"1"`,
-		"instance_id": wfi2,
+		"session_id":  "sess-filt-1",
+		"instance_id": wfi1,
+		"key":         "x",
+		"value":       `"1"`,
 	}, nil)
 
 	// Client1 should get event
@@ -163,14 +155,12 @@ func TestWSSubscriptionFiltering(t *testing.T) {
 	// Client2 should NOT get event
 	expectNoEvent(t, ch2, 200*time.Millisecond)
 
-	// Add findings on ticket2
+	// Add findings on ticket2 (session from ticket2 → broadcasts to ticket2 subscribers)
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "WS-S2",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "x",
-		"value":      `"2"`,
+		"session_id":  "sess-filt-2",
 		"instance_id": wfi2,
+		"key":         "x",
+		"value":       `"2"`,
 	}, nil)
 
 	// Client2 should get event

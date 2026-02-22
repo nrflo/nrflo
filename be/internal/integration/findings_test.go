@@ -15,20 +15,16 @@ func TestFindingsAddAndGet(t *testing.T) {
 
 	// Add finding with JSON array value
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "FIND-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "issues",
-		"value":      `["issue1", "issue2"]`,
+		"session_id":  "sess-find-1",
 		"instance_id": wfiID,
+		"key":         "issues",
+		"value":       `["issue1", "issue2"]`,
 	}, nil)
 
-	// Get by agent_type (all findings)
+	// Get by agent_type (all findings) — cross-agent read using instance_id + agent_type
 	var allFindings map[string]interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"agent_type":  "analyzer",
 		"instance_id": wfiID,
 	}, &allFindings)
 
@@ -40,14 +36,11 @@ func TestFindingsAddAndGet(t *testing.T) {
 		t.Fatalf("expected 2 issues, got %d", len(issues))
 	}
 
-	// Get by specific key
+	// Get own session findings by key
 	var keyResult interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-1",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"session_id": "sess-find-1",
 		"key":        "issues",
-		"instance_id": wfiID,
 	}, &keyResult)
 
 	arr, ok := keyResult.([]interface{})
@@ -70,32 +63,25 @@ func TestFindingsAppend(t *testing.T) {
 
 	// Add initial value
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "FIND-2",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "items",
-		"value":      `"v1"`,
+		"session_id":  "sess-append-1",
 		"instance_id": wfiID,
+		"key":         "items",
+		"value":       `"v1"`,
 	}, nil)
 
 	// Append
 	env.MustExecute(t, "findings.append", map[string]interface{}{
-		"ticket_id":  "FIND-2",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "items",
-		"value":      `"v2"`,
+		"session_id":  "sess-append-1",
 		"instance_id": wfiID,
+		"key":         "items",
+		"value":       `"v2"`,
 	}, nil)
 
-	// Verify array result
+	// Verify array result (own-session read)
 	var result interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-2",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"session_id": "sess-append-1",
 		"key":        "items",
-		"instance_id": wfiID,
 	}, &result)
 
 	arr, ok := result.([]interface{})
@@ -108,20 +94,15 @@ func TestFindingsAppend(t *testing.T) {
 
 	// Append again
 	env.MustExecute(t, "findings.append", map[string]interface{}{
-		"ticket_id":  "FIND-2",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "items",
-		"value":      `"v3"`,
+		"session_id":  "sess-append-1",
 		"instance_id": wfiID,
+		"key":         "items",
+		"value":       `"v3"`,
 	}, nil)
 
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-2",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"session_id": "sess-append-1",
 		"key":        "items",
-		"instance_id": wfiID,
 	}, &result)
 
 	arr, ok = result.([]interface{})
@@ -141,24 +122,19 @@ func TestFindingsAddBulk(t *testing.T) {
 
 	// Add 3 key-value pairs at once
 	env.MustExecute(t, "findings.add-bulk", map[string]interface{}{
-		"ticket_id":  "FIND-3",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"session_id":  "sess-bulk-1",
+		"instance_id": wfiID,
 		"key_values": map[string]string{
 			"summary":    "All good",
 			"score":      "95",
 			"categories": `["cat1", "cat2"]`,
 		},
-		"instance_id": wfiID,
 	}, nil)
 
-	// Verify all retrievable
+	// Verify all retrievable (own-session read)
 	var all map[string]interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-3",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"instance_id": wfiID,
+		"session_id": "sess-bulk-1",
 	}, &all)
 
 	if all["summary"] != "All good" {
@@ -184,41 +160,32 @@ func TestFindingsAppendBulk(t *testing.T) {
 
 	// Add initial values
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "FIND-4",
-		"workflow":   "test",
-		"agent_type": "builder",
-		"key":        "files",
-		"value":      `"main.go"`,
+		"session_id":  "sess-abk-1",
 		"instance_id": wfiID,
+		"key":         "files",
+		"value":       `"main.go"`,
 	}, nil)
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "FIND-4",
-		"workflow":   "test",
-		"agent_type": "builder",
-		"key":        "tests",
-		"value":      `"main_test.go"`,
+		"session_id":  "sess-abk-1",
 		"instance_id": wfiID,
+		"key":         "tests",
+		"value":       `"main_test.go"`,
 	}, nil)
 
 	// Append bulk
 	env.MustExecute(t, "findings.append-bulk", map[string]interface{}{
-		"ticket_id":  "FIND-4",
-		"workflow":   "test",
-		"agent_type": "builder",
+		"session_id":  "sess-abk-1",
+		"instance_id": wfiID,
 		"key_values": map[string]string{
 			"files": `"util.go"`,
 			"tests": `"util_test.go"`,
 		},
-		"instance_id": wfiID,
 	}, nil)
 
-	// Verify arrays
+	// Verify arrays (own-session read)
 	var all map[string]interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-4",
-		"workflow":   "test",
-		"agent_type": "builder",
-		"instance_id": wfiID,
+		"session_id": "sess-abk-1",
 	}, &all)
 
 	files, ok := all["files"].([]interface{})
@@ -242,38 +209,31 @@ func TestFindingsDelete(t *testing.T) {
 
 	// Add 3 findings
 	env.MustExecute(t, "findings.add-bulk", map[string]interface{}{
-		"ticket_id":  "FIND-5",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"session_id":  "sess-del-1",
+		"instance_id": wfiID,
 		"key_values": map[string]string{
 			"keep":    "important",
 			"remove1": "temp",
 			"remove2": "temp",
 		},
-		"instance_id": wfiID,
 	}, nil)
 
 	// Delete 2
 	var delResult map[string]interface{}
 	env.MustExecute(t, "findings.delete", map[string]interface{}{
-		"ticket_id":  "FIND-5",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"keys":       []string{"remove1", "remove2"},
+		"session_id":  "sess-del-1",
 		"instance_id": wfiID,
+		"keys":        []string{"remove1", "remove2"},
 	}, &delResult)
 
 	if delResult["deleted"].(float64) != 2 {
 		t.Fatalf("expected 2 deleted, got %v", delResult["deleted"])
 	}
 
-	// Verify only 1 remains
+	// Verify only 1 remains (own-session read)
 	var all map[string]interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-5",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"instance_id": wfiID,
+		"session_id": "sess-del-1",
 	}, &all)
 
 	if all["keep"] != "important" {
@@ -294,48 +254,38 @@ func TestFindingsWithModel(t *testing.T) {
 	env.InsertAgentSession(t, "sess-model-s", "FIND-6", wfiID, "analyzer", "analyzer", "sonnet")
 	env.InsertAgentSession(t, "sess-model-o", "FIND-6", wfiID, "analyzer", "analyzer", "opus")
 
-	// Add findings with model "sonnet"
+	// Add findings to sonnet session
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "FIND-6",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "result",
-		"value":      `"sonnet-result"`,
-		"model":      "sonnet",
+		"session_id":  "sess-model-s",
 		"instance_id": wfiID,
+		"key":         "result",
+		"value":       `"sonnet-result"`,
 	}, nil)
 
-	// Add findings with model "opus"
+	// Add findings to opus session
 	env.MustExecute(t, "findings.add", map[string]interface{}{
-		"ticket_id":  "FIND-6",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "result",
-		"value":      `"opus-result"`,
-		"model":      "opus",
+		"session_id":  "sess-model-o",
 		"instance_id": wfiID,
+		"key":         "result",
+		"value":       `"opus-result"`,
 	}, nil)
 
-	// Get with specific model
+	// Get with specific model (cross-agent read)
 	var sonnetResult interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-6",
-		"workflow":   "test",
-		"agent_type": "analyzer",
-		"key":        "result",
-		"model":      "sonnet",
+		"agent_type":  "analyzer",
+		"key":         "result",
+		"model":       "sonnet",
 		"instance_id": wfiID,
 	}, &sonnetResult)
 	if sonnetResult != "sonnet-result" {
 		t.Fatalf("expected 'sonnet-result', got %v", sonnetResult)
 	}
 
-	// Get without model (should return grouped by model since 2 models exist)
+	// Get without model — should return grouped by model since 2 models exist
 	var grouped interface{}
 	env.MustExecute(t, "findings.get", map[string]interface{}{
-		"ticket_id":  "FIND-6",
-		"workflow":   "test",
-		"agent_type": "analyzer",
+		"agent_type":  "analyzer",
 		"instance_id": wfiID,
 	}, &grouped)
 

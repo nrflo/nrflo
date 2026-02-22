@@ -5,6 +5,53 @@ import (
 	"testing"
 )
 
+func TestClaudeAdapter_BuildCommand_DisallowsInteractiveTools(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := SpawnOptions{
+		Model:         "opus",
+		SessionID:     "test-session-id",
+		PromptFile:    "/tmp/prompt.txt",
+		InitialPrompt: "Do the task",
+		WorkDir:       "/tmp",
+	}
+
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	// Interactive tools must be disallowed
+	if !strings.Contains(args, "--disallowed-tools") {
+		t.Errorf("Command args missing --disallowed-tools: %s", args)
+	}
+	for _, tool := range []string{"AskUserQuestion", "EnterPlanMode", "ExitPlanMode"} {
+		if !strings.Contains(args, tool) {
+			t.Errorf("Command args missing disallowed tool %q: %s", tool, args)
+		}
+	}
+}
+
+func TestClaudeAdapter_BuildResumeCommand_DisallowsInteractiveTools(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := ResumeOptions{
+		SessionID: "test-session-id",
+		Prompt:    "Continue",
+		WorkDir:   "/tmp",
+	}
+
+	cmd := adapter.BuildResumeCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if !strings.Contains(args, "--disallowed-tools") {
+		t.Errorf("Resume command args missing --disallowed-tools: %s", args)
+	}
+	for _, tool := range []string{"AskUserQuestion", "EnterPlanMode", "ExitPlanMode"} {
+		if !strings.Contains(args, tool) {
+			t.Errorf("Resume command args missing disallowed tool %q: %s", tool, args)
+		}
+	}
+}
+
 func TestGetCLIAdapter_Codex(t *testing.T) {
 	adapter, err := GetCLIAdapter("codex")
 	if err != nil {

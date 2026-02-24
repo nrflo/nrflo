@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 
+	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -166,6 +168,16 @@ func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
 				s.wsHub.Broadcast(evt)
 			}
 		}
+	}
+
+	// Best-effort: auto-close parent epic if all children are now closed
+	pool := db.WrapAsPool(database)
+	ticketService := service.NewTicketService(pool, s.clock)
+	epic, err := ticketService.TryCloseParentEpic(projectID, id)
+	if err != nil {
+		logger.Error(context.Background(), "failed to auto-close parent epic", "ticket_id", id, "error", err)
+	} else if epic != nil && s.wsHub != nil {
+		s.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, projectID, epic.ID, "", map[string]interface{}{"status": "closed"}))
 	}
 }
 

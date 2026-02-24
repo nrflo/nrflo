@@ -1158,6 +1158,12 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 			logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
 		} else {
 			o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "closed"}))
+			// Best-effort: auto-close parent epic if all children are now closed
+			if epic, err := ticketService.TryCloseParentEpic(req.ProjectID, req.TicketID); err != nil {
+				logger.Error(context.Background(), "failed to auto-close parent epic", "ticket", req.TicketID, "err", err)
+			} else if epic != nil {
+				o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, epic.ID, "", map[string]interface{}{"status": "closed"}))
+			}
 		}
 	}
 

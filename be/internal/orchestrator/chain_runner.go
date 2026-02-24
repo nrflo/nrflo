@@ -338,6 +338,12 @@ func (cr *ChainRunner) markChainCompleted(pool *db.Pool, chainID, projectID stri
 				"status": "closed",
 			}))
 		}
+		// Best-effort: auto-close parent epic if the chain's epic is itself a child
+		if epic, err := ticketService.TryCloseParentEpic(projectID, chain.EpicTicketID); err != nil {
+			logger.Error(context.Background(), "failed to auto-close parent epic", "epic", chain.EpicTicketID, "err", err)
+		} else if epic != nil && cr.wsHub != nil {
+			cr.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, projectID, epic.ID, "", map[string]interface{}{"status": "closed"}))
+		}
 	}
 }
 

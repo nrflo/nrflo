@@ -264,6 +264,53 @@ func (s *TicketService) SetInProgress(projectID, ticketID string) error {
 	return err
 }
 
+// TryCloseParentEpic checks if the closed ticket's parent epic has no remaining
+// open children and closes it if so. Returns the epic ticket if it was closed, nil otherwise.
+func (s *TicketService) TryCloseParentEpic(projectID, ticketID string) (*model.Ticket, error) {
+	// Get parent_ticket_id for the closed ticket (not in scanTicketRow, use raw query)
+	var parentID sql.NullString
+	err := s.pool.QueryRow(
+		`SELECT parent_ticket_id FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
+		projectID, ticketID,
+	).Scan(&parentID)
+	if err != nil || !parentID.Valid {
+		return nil, err
+	}
+
+	// Check parent is an epic and not already closed
+	var issueType string
+	var status string
+	err = s.pool.QueryRow(
+		`SELECT issue_type, status FROM tickets WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
+		projectID, parentID.String,
+	).Scan(&issueType, &status)
+	if err != nil {
+		return nil, err
+	}
+	if model.IssueType(issueType) != model.IssueTypeEpic || model.Status(status) == model.StatusClosed {
+		return nil, nil
+	}
+
+	// Count open children
+	var openCount int
+	err = s.pool.QueryRow(
+		`SELECT COUNT(*) FROM tickets WHERE LOWER(parent_ticket_id) = LOWER(?) AND status != ?`,
+		parentID.String, string(model.StatusClosed),
+	).Scan(&openCount)
+	if err != nil {
+		return nil, err
+	}
+	if openCount > 0 {
+		return nil, nil
+	}
+
+	// All children closed — close the epic
+	if err := s.Close(projectID, parentID.String, "All child tickets closed"); err != nil {
+		return nil, err
+	}
+	return s.Get(projectID, parentID.String)
+}
+
 // Close closes a ticket
 func (s *TicketService) Close(projectID, ticketID string, reason string) error {
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)

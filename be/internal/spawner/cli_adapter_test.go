@@ -28,6 +28,14 @@ func TestClaudeAdapter_BuildCommand_DisallowsInteractiveTools(t *testing.T) {
 			t.Errorf("Command args missing disallowed tool %q: %s", tool, args)
 		}
 	}
+
+	// System prompt file and initial prompt must NOT appear (stdin adapter)
+	if strings.Contains(args, "--append-system-prompt-file") {
+		t.Errorf("Command args should not contain --append-system-prompt-file: %s", args)
+	}
+	if strings.Contains(args, "Do the task") {
+		t.Errorf("Command args should not contain InitialPrompt text (stdin adapter): %s", args)
+	}
 }
 
 func TestClaudeAdapter_BuildResumeCommand_DisallowsInteractiveTools(t *testing.T) {
@@ -290,7 +298,7 @@ func TestUsesStdinPrompt(t *testing.T) {
 		cli  string
 		want bool
 	}{
-		{"claude", false},
+		{"claude", true},
 		{"opencode", true},
 		{"codex", true},
 	}

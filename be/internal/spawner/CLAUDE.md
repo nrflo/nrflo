@@ -25,7 +25,8 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  │   ├── Name: "claude"                                        │    │
 │  │   ├── Model: short names (opus, sonnet, haiku)              │    │
 │  │   ├── SessionID: ✓ (--session-id)                           │    │
-│  │   ├── SystemPromptFile: ✓ (--append-system-prompt-file)     │    │
+│  │   ├── SystemPromptFile: ✗                                   │    │
+│  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
 │  │   └── Resume: ✓ (--resume <session-id>)                     │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────────────────────────────┐    │

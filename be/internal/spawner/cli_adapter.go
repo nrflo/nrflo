@@ -99,8 +99,7 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
 		"--model", opts.Model,
 		"--session-id", opts.SessionID,
-		"--append-system-prompt-file", opts.PromptFile,
-		opts.InitialPrompt,
+		// prompt piped via stdin — no PromptFile arg, no InitialPrompt
 	}
 
 	cmd := exec.Command("claude", args...)
@@ -119,7 +118,7 @@ func (a *ClaudeAdapter) SupportsSessionID() bool {
 }
 
 func (a *ClaudeAdapter) SupportsSystemPromptFile() bool {
-	return true
+	return false
 }
 
 func (a *ClaudeAdapter) SupportsResume() bool {
@@ -127,7 +126,7 @@ func (a *ClaudeAdapter) SupportsResume() bool {
 }
 
 func (a *ClaudeAdapter) UsesStdinPrompt() bool {
-	return false
+	return true
 }
 
 func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {

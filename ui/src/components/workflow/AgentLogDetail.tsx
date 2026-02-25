@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, Filter } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { parseToolName, ToolBadge } from './LogMessage'
 import { cn } from '@/lib/utils'
@@ -7,12 +7,12 @@ import { useSessionMessages } from '@/hooks/useTickets'
 import type { MessageCategory } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
-const CATEGORY_OPTIONS: { value: MessageCategory | 'all'; label: string }[] = [
+const CATEGORY_TABS: { value: MessageCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'text', label: 'Text' },
-  { value: 'tool', label: 'Tool' },
-  { value: 'subagent', label: 'SubAgent' },
-  { value: 'skill', label: 'Skill' },
+  { value: 'tool', label: 'Tools' },
+  { value: 'subagent', label: 'Sub-agents' },
+  { value: 'skill', label: 'Skills' },
 ]
 
 function formatDuration(durationSec?: number): string {
@@ -49,10 +49,23 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
   const sessionId = session?.id || agent?.session_id || historyEntry?.session_id
   const { data: messagesData, isLoading: messagesLoading } = useSessionMessages(sessionId, {
     isRunning: isRunning || false,
-    category: categoryFilter === 'all' ? undefined : categoryFilter,
   })
 
   const messages = messagesData?.messages ?? []
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0 }
+    for (const m of messages) {
+      const cat = m.category || 'text'
+      counts[cat] = (counts[cat] || 0) + 1
+    }
+    return counts
+  }, [messages])
+
+  const filteredMessages = useMemo(
+    () => categoryFilter === 'all' ? messages : messages.filter(m => (m.category || 'text') === categoryFilter),
+    [messages, categoryFilter],
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -118,23 +131,39 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
           </div>
         ) : messages.length > 0 ? (
           <div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-              <div className="flex items-center gap-1.5">
-                <MessageSquare className="h-3 w-3" />
-                <span>{messagesData ? `${messagesData.total} messages` : `${messages.length} messages`}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Filter className="h-3 w-3" />
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value as MessageCategory | 'all')}
-                  className="text-xs bg-transparent border border-border rounded px-1 py-0.5 text-foreground"
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+              <MessageSquare className="h-3 w-3" />
+              <span>
+                {categoryFilter !== 'all'
+                  ? `${filteredMessages.length} of ${messages.length} messages`
+                  : `${messages.length} messages`}
+              </span>
+            </div>
+            <div className="flex items-center gap-0.5 mb-2 border-b border-border" role="tablist">
+              {CATEGORY_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  role="tab"
+                  aria-selected={categoryFilter === tab.value}
+                  onClick={() => setCategoryFilter(tab.value)}
+                  className={cn(
+                    'px-2 py-1 text-xs font-medium transition-colors rounded-t',
+                    categoryFilter === tab.value
+                      ? 'border-b-2 border-primary text-foreground bg-muted'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
                 >
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
+                  {tab.label}
+                  <span className={cn(
+                    'ml-1 px-1 py-0.5 rounded text-[10px]',
+                    categoryFilter === tab.value
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground',
+                  )}>
+                    {categoryCounts[tab.value] ?? 0}
+                  </span>
+                </button>
+              ))}
             </div>
             <table className="w-full text-xs font-mono border-collapse">
               <thead>
@@ -145,7 +174,7 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
                 </tr>
               </thead>
               <tbody>
-                {[...messages].reverse().map((msg, i) => {
+                {[...filteredMessages].reverse().map((msg, i) => {
                   const { toolName, rest } = parseToolName(msg.content)
                   return (
                     <tr key={i} className="border-b border-border/50 align-top">

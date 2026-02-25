@@ -292,11 +292,10 @@ describe('AgentLogDetail', () => {
       expect(fourthRowCells[2].textContent).toBe('git status')
 
       // --- Criterion 3: No messages/raw toggle ---
-      // There should be no toggle, tab, or button for switching between messages and raw
+      // There should be no toggle or button for switching between messages and raw
       expect(screen.queryByText('Messages')).not.toBeInTheDocument()
       expect(screen.queryByText('Raw')).not.toBeInTheDocument()
       expect(screen.queryByText('Raw Output')).not.toBeInTheDocument()
-      expect(screen.queryByRole('tab')).toBeNull()
 
       // Messages are always displayed directly (the table IS the default and only view)
       expect(table).toBeVisible()
@@ -583,7 +582,7 @@ describe('AgentLogDetail', () => {
   })
 
   describe('category filter', () => {
-    it('renders category filter dropdown when messages exist', async () => {
+    it('renders category filter tabs when messages exist', async () => {
       renderDetail({
         phaseName: 'implementation',
         agent: makeRunningAgent(),
@@ -594,12 +593,12 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('3 messages')).toBeInTheDocument()
       })
 
-      const select = screen.getByRole('combobox')
-      expect(select).toBeInTheDocument()
-      expect(select).toHaveValue('all')
+      const tabs = screen.getAllByRole('tab')
+      expect(tabs).toHaveLength(5)
+      expect(tabs[0]).toHaveAttribute('aria-selected', 'true') // All is default
     })
 
-    it('category dropdown has All/Text/Tool/SubAgent/Skill options', async () => {
+    it('category tabs show All/Text/Tools/Sub-agents/Skills labels', async () => {
       renderDetail({
         phaseName: 'implementation',
         agent: makeRunningAgent(),
@@ -610,12 +609,26 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('3 messages')).toBeInTheDocument()
       })
 
-      const select = screen.getByRole('combobox')
-      const options = Array.from(select.querySelectorAll('option')).map(o => o.value)
-      expect(options).toEqual(['all', 'text', 'tool', 'subagent', 'skill'])
+      const tablist = screen.getByRole('tablist')
+      expect(tablist).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /All/ })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /Text/ })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /Tools/ })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /Sub-agents/ })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /Skills/ })).toBeInTheDocument()
     })
 
-    it('selecting a category passes it to the API', async () => {
+    it('clicking a category tab filters messages client-side', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: '[Bash] git status', category: 'tool', created_at: '2026-01-01T00:00:10Z' },
+          { content: 'plain text', category: 'text', created_at: '2026-01-01T00:00:20Z' },
+          { content: '[Task] sub-agent work', category: 'subagent', created_at: '2026-01-01T00:00:30Z' },
+        ],
+        total: 3,
+      })
+
       const user = userEvent.setup()
       renderDetail({
         phaseName: 'implementation',
@@ -627,39 +640,50 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('3 messages')).toBeInTheDocument()
       })
 
-      const select = screen.getByRole('combobox')
-      await user.selectOptions(select, 'tool')
+      // Click Tools tab — should show only tool messages
+      await user.click(screen.getByRole('tab', { name: /Tools/ }))
 
       await waitFor(() => {
-        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', 'tool')
-      })
-    })
-
-    it('switching back to "all" resets the dropdown to all', async () => {
-      const user = userEvent.setup()
-      renderDetail({
-        phaseName: 'implementation',
-        agent: makeRunningAgent(),
-        session: makeSession(),
+        expect(screen.getByText('1 of 3 messages')).toBeInTheDocument()
       })
 
-      await waitFor(() => {
-        expect(screen.getByText('3 messages')).toBeInTheDocument()
-      })
-
-      const select = screen.getByRole('combobox')
-      await user.selectOptions(select, 'subagent')
-      expect(select).toHaveValue('subagent')
-
-      await user.selectOptions(select, 'all')
-      expect(select).toHaveValue('all')
-
-      // Initial 'all' call used undefined, 'subagent' call used 'subagent'
+      // API should NOT be called with category — always fetches all
       expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', undefined)
-      expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', 'subagent')
     })
 
-    it('does not render category filter when no messages', async () => {
+    it('switching back to All tab shows all messages', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: '[Bash] git status', category: 'tool', created_at: '2026-01-01T00:00:10Z' },
+          { content: 'plain text', category: 'text', created_at: '2026-01-01T00:00:20Z' },
+        ],
+        total: 2,
+      })
+
+      const user = userEvent.setup()
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('2 messages')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole('tab', { name: /Tools/ }))
+      await waitFor(() => {
+        expect(screen.getByText('1 of 2 messages')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole('tab', { name: /All/ }))
+      await waitFor(() => {
+        expect(screen.getByText('2 messages')).toBeInTheDocument()
+      })
+    })
+
+    it('does not render category tabs when no messages', async () => {
       vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
         session_id: 'session-1',
         messages: [],
@@ -676,7 +700,7 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('No messages available')).toBeInTheDocument()
       })
 
-      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+      expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     })
   })
 

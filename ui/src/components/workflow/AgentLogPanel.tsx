@@ -41,6 +41,7 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRetryFailed, retry
     : agent.cli || agent.agent_type || 'agent'
 
   const displayMessages = useMemo(() => messages.slice(-20).reverse(), [messages])
+  const subagentCount = useMemo(() => messagesData?.messages?.filter(m => m.category === 'subagent').length ?? 0, [messagesData])
 
   return (
     <div className="border-b border-border last:border-b-0">
@@ -77,6 +78,11 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRetryFailed, retry
               )}
             </button>
           </Tooltip>
+        )}
+        {subagentCount > 0 && (
+          <span className="text-[10px] text-muted-foreground shrink-0">
+            {subagentCount} sub-agent{subagentCount !== 1 ? 's' : ''}
+          </span>
         )}
         <MessageSquare className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0", !(agent.result === 'fail' && workflowStatus === 'failed' && onRetryFailed) && "ml-auto")} />
       </div>

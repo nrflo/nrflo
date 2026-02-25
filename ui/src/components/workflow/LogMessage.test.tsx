@@ -158,11 +158,11 @@ describe('ToolBadge', () => {
     expect(badge.className).toContain('bg-gray-100')
   })
 
-  it('renders TaskResult badge with indigo-50 styling (lighter than Task)', () => {
+  it('renders TaskResult badge with emerald-100 styling', () => {
     render(<ToolBadge name="TaskResult" />)
     const badge = screen.getByText('TaskResult')
     expect(badge).toBeInTheDocument()
-    expect(badge.className).toContain('bg-indigo-50')
+    expect(badge.className).toContain('bg-emerald-100')
   })
 
   it('renders Task badge with indigo-100 styling', () => {
@@ -172,15 +172,15 @@ describe('ToolBadge', () => {
     expect(badge.className).toContain('bg-indigo-100')
   })
 
-  it('TaskResult has lighter styling than Task (indigo-50 vs indigo-100)', () => {
+  it('TaskResult uses emerald (green) while Task uses indigo', () => {
     const { rerender } = render(<ToolBadge name="Task" />)
     const taskBadge = screen.getByText('Task')
     expect(taskBadge.className).toContain('bg-indigo-100')
-    expect(taskBadge.className).not.toContain('bg-indigo-50')
+    expect(taskBadge.className).not.toContain('bg-emerald-100')
 
     rerender(<ToolBadge name="TaskResult" />)
     const resultBadge = screen.getByText('TaskResult')
-    expect(resultBadge.className).toContain('bg-indigo-50')
+    expect(resultBadge.className).toContain('bg-emerald-100')
     expect(resultBadge.className).not.toContain('bg-indigo-100')
   })
 })

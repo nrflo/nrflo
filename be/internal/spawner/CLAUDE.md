@@ -130,7 +130,13 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Handle completion/timeout
    - Broadcast messages.updated (coalesced to one per session per 2s window)
 
-5. FINALIZE PHASE
+5. AUTO-RESTART ON FAILURE (if configured)
+   - After handleCompletion sets FAIL, check maxFailRestarts > 0 && failRestartCount < maxFailRestarts
+   - Override session: status=continued, result=continue, result_reason=fail_restart
+   - Increment failRestartCount, set finalStatus=CONTINUE → relaunchForContinuation handles relaunch
+   - failRestartCount is independent of restartCount (low-context restarts)
+
+6. FINALIZE PHASE
    - pass_count >= 1 → layer passes (fan-in)
    - all skipped → layer passes
    - pass_count == 0 → layer fails
@@ -140,7 +146,7 @@ messages.updated, agent.completed, agent.take_control) directly via
 the in-process WebSocket hub.
 messages.updated events are coalesced to one per session per 2s window.
 
-6. TAKE-CONTROL (interactive session)
+7. TAKE-CONTROL (interactive session)
    - `takeControlCh` receives session ID from orchestrator
    - Kills agent: SIGTERM → grace period → SIGKILL
    - Sets session status to user_interactive
@@ -311,7 +317,7 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 
 ## Testing
 
-16 test files in this package:
+20 test files in this package:
 
 | File | Tests |
 |------|-------|
@@ -320,6 +326,7 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `output_codex_test.go` | Codex output parsing: thread.started, item types, turn.completed token counting |
 | `context_test.go` | Context left DB read/write tests |
 | `template_project_findings_test.go` | Project findings template expansion tests |
+| `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

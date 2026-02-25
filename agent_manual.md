@@ -1,6 +1,6 @@
 # Agent Definition Manual
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-25
 
 Cheat-sheet for creating agent definitions. Agent definitions are stored in the `agent_definitions` table and managed via `/api/v1/workflows/{wid}/agents` API or the Workflows page in the web UI.
 
@@ -284,6 +284,7 @@ nrworkflow findings add TICKET-1 implementor summary:'Fixed the auth bug' files_
 | `timeout` | int | `20` | Max execution time in minutes |
 | `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns |
 | `restart_threshold` | int (optional) | `25` | Percentage of context remaining that triggers low-context save (lower = more aggressive) |
+| `max_fail_restarts` | int (optional) | `0` | Max auto-restarts on agent failure (0 = disabled). Failed agent is relaunched fresh (no context save). |
 | `tag` | string (optional) | `""` | Group tag for skip-tag feature; must be in parent workflow's `groups` |
 
 ### Supported Models by CLI Adapter
@@ -406,7 +407,22 @@ Continue implementation from where the previous session left off.
 
 ---
 
-## 10. Common Patterns & Examples
+## 10. Automatic Failure Restart
+
+When `max_fail_restarts > 0`, a failed agent (non-zero exit or explicit `agent fail`) is automatically restarted up to `max_fail_restarts` times before the failure is final. Unlike low-context continuation, the agent starts completely fresh (no `${PREVIOUS_DATA}`).
+
+### How It Works
+
+1. Agent exits with non-zero code or calls `agent fail`
+2. Spawner checks `failRestartCount < max_fail_restarts`
+3. If restarts remain: marks old session as `continued` with `result_reason=fail_restart`, relaunches fresh
+4. If exhausted: failure propagates normally
+
+The `failRestartCount` is tracked independently from the low-context `restartCount`, so both mechanisms can coexist.
+
+---
+
+## 11. Common Patterns & Examples
 
 ### Example 1: Setup Analyzer Prompt
 
@@ -472,7 +488,7 @@ nrworkflow agent fail ${TICKET_ID} ${AGENT} -w ${WORKFLOW} --model ${MODEL} --re
 
 ---
 
-## 11. Ticket Management CLI Commands
+## 12. Ticket Management CLI Commands
 
 Use the `nrworkflow tickets` CLI — **never use `curl` or direct HTTP API calls**.
 Requires `NRWORKFLOW_PROJECT` env var (already set in spawned sessions).

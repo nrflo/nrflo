@@ -226,6 +226,7 @@ export interface AgentDef {
   timeout: number
   prompt: string
   restart_threshold?: number
+  max_fail_restarts?: number
   tag?: string
   created_at: string
   updated_at: string
@@ -237,6 +238,7 @@ export interface AgentDefCreateRequest {
   timeout?: number
   prompt: string
   restart_threshold?: number
+  max_fail_restarts?: number
   tag?: string
 }
 
@@ -245,6 +247,7 @@ export interface AgentDefUpdateRequest {
   timeout?: number
   prompt?: string
   restart_threshold?: number
+  max_fail_restarts?: number
   tag?: string
 }
 

@@ -68,9 +68,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.Tag, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, tag, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.Tag, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -88,6 +88,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		Timeout:          timeout,
 		Prompt:           req.Prompt,
 		RestartThreshold: req.RestartThreshold,
+		MaxFailRestarts:  req.MaxFailRestarts,
 		Tag:              req.Tag,
 		CreatedAt:        ts,
 		UpdatedAt:        ts,
@@ -98,16 +99,16 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (*model.AgentDefinition, error) {
 	def := &model.AgentDefinition{}
 	var createdAt, updatedAt string
-	var restartThreshold sql.NullInt64
+	var restartThreshold, maxFailRestarts sql.NullInt64
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, tag, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
 		&def.ID, &def.ProjectID, &def.WorkflowID,
 		&def.Model, &def.Timeout, &def.Prompt,
-		&restartThreshold, &def.Tag,
+		&restartThreshold, &maxFailRestarts, &def.Tag,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -123,13 +124,17 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		v := int(restartThreshold.Int64)
 		def.RestartThreshold = &v
 	}
+	if maxFailRestarts.Valid {
+		v := int(maxFailRestarts.Int64)
+		def.MaxFailRestarts = &v
+	}
 	return def, nil
 }
 
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, tag, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY id`, projectID, workflowID)
@@ -142,12 +147,12 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 	for rows.Next() {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
-		var restartThreshold sql.NullInt64
+		var restartThreshold, maxFailRestarts sql.NullInt64
 
 		err := rows.Scan(
 			&def.ID, &def.ProjectID, &def.WorkflowID,
 			&def.Model, &def.Timeout, &def.Prompt,
-			&restartThreshold, &def.Tag,
+			&restartThreshold, &maxFailRestarts, &def.Tag,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -159,6 +164,10 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 		if restartThreshold.Valid {
 			v := int(restartThreshold.Int64)
 			def.RestartThreshold = &v
+		}
+		if maxFailRestarts.Valid {
+			v := int(maxFailRestarts.Int64)
+			def.MaxFailRestarts = &v
 		}
 		defs = append(defs, def)
 	}
@@ -186,6 +195,10 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.RestartThreshold != nil {
 		updates = append(updates, "restart_threshold = ?")
 		args = append(args, *req.RestartThreshold)
+	}
+	if req.MaxFailRestarts != nil {
+		updates = append(updates, "max_fail_restarts = ?")
+		args = append(args, *req.MaxFailRestarts)
 	}
 	if req.Tag != nil {
 		if *req.Tag != "" {

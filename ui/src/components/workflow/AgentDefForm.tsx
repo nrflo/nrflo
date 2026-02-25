@@ -21,6 +21,7 @@ export function AgentDefForm({
   const [model, setModel] = useState(initial?.model || 'sonnet')
   const [timeout, setTimeout] = useState(initial?.timeout || 20)
   const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
+  const [maxFailRestarts, setMaxFailRestarts] = useState<number | ''>(initial?.max_fail_restarts ?? '')
   const [tag, setTag] = useState(initial?.tag || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
 
@@ -28,11 +29,12 @@ export function AgentDefForm({
     e.preventDefault()
     if (isCreate && !prompt.trim()) return
     const threshold = restartThreshold !== '' ? restartThreshold : undefined
+    const failRestarts = maxFailRestarts !== '' ? maxFailRestarts : undefined
     const tagValue = tag || undefined
     if (isCreate) {
-      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, tag: tagValue } as AgentDefCreateRequest)
+      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue } as AgentDefCreateRequest)
     } else {
-      onSubmit({ model, timeout, prompt, restart_threshold: threshold, tag: tagValue } as AgentDefUpdateRequest)
+      onSubmit({ model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue } as AgentDefUpdateRequest)
     }
   }
 
@@ -87,6 +89,18 @@ export function AgentDefForm({
             placeholder="25"
             min={1}
             max={99}
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          />
+        </div>
+        <div className="w-32">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Fail restarts</label>
+          <input
+            type="number"
+            value={maxFailRestarts}
+            onChange={(e) => setMaxFailRestarts(e.target.value === '' ? '' : Number(e.target.value))}
+            placeholder="0"
+            min={0}
+            max={10}
             className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
           />
         </div>

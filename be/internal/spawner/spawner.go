@@ -100,6 +100,8 @@ type processInfo struct {
 	ancestorSessionID string // Root session in a continuation chain
 	restartCount      int    // How many times this agent has been restarted for low context
 	restartThreshold  int    // Effective context threshold for this agent (percentage remaining)
+	maxFailRestarts   int    // Max auto-restarts on failure (0 = disabled)
+	failRestartCount  int    // How many times this agent has been auto-restarted on failure
 	// Low-context save state
 	lowContextSaving bool // True while initiateContextSave is running
 	// Docker container name (empty when not using Docker isolation)
@@ -301,11 +303,15 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		}
 	}
 
-	// Load agent definition to get per-agent restart threshold
+	// Load agent definition to get per-agent restart threshold and fail restart limit
 	effectiveThreshold := defaultContextThreshold
+	maxFailRestarts := 0
 	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
 	if agentDef != nil && agentDef.RestartThreshold != nil {
 		effectiveThreshold = *agentDef.RestartThreshold
+	}
+	if agentDef != nil && agentDef.MaxFailRestarts != nil {
+		maxFailRestarts = *agentDef.MaxFailRestarts
 	}
 
 	// Load agent template
@@ -444,6 +450,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		workflowName:       req.WorkflowName,
 		workflowInstanceID: wfiID,
 		restartThreshold:   effectiveThreshold,
+		maxFailRestarts:    maxFailRestarts,
 		containerName:      ctrName,
 	}
 
@@ -642,6 +649,20 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				// If context save already set finalStatus, skip handleCompletion
 				if proc.finalStatus == "" {
 					s.handleCompletion(ctx, proc, req)
+				}
+
+				// Auto-restart failed agent if configured
+				if proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts {
+					logger.Info(ctx, "auto-restarting failed agent", "model", proc.modelID,
+						"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
+					// Override the already-registered failed session to continued/fail_restart
+					if pool := s.pool(); pool != nil {
+						sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+						sessionRepo.UpdateResult(proc.sessionID, "continue", "fail_restart")
+						sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
+					}
+					proc.failRestartCount++
+					proc.finalStatus = "CONTINUE"
 				}
 
 				// Check for continuation

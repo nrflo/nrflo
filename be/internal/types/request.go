@@ -218,6 +218,7 @@ type AgentDefCreateRequest struct {
 	Timeout          int    `json:"timeout,omitempty"`
 	Prompt           string `json:"prompt"`
 	RestartThreshold *int   `json:"restart_threshold,omitempty"`
+	MaxFailRestarts  *int   `json:"max_fail_restarts,omitempty"`
 	Tag              string `json:"tag,omitempty"`
 }
 
@@ -227,6 +228,7 @@ type AgentDefUpdateRequest struct {
 	Timeout          *int    `json:"timeout,omitempty"`
 	Prompt           *string `json:"prompt,omitempty"`
 	RestartThreshold *int    `json:"restart_threshold,omitempty"`
+	MaxFailRestarts  *int    `json:"max_fail_restarts,omitempty"`
 	Tag              *string `json:"tag,omitempty"`
 }
 

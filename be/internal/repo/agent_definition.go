@@ -29,8 +29,8 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 	def.UpdatedAt = def.CreatedAt
 
 	_, err := r.db.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, tag, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -38,6 +38,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		def.Timeout,
 		def.Prompt,
 		def.RestartThreshold,
+		def.MaxFailRestarts,
 		def.Tag,
 		now,
 		now,
@@ -50,9 +51,9 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 	def := &model.AgentDefinition{}
 	var createdAt, updatedAt string
 
-	var restartThreshold sql.NullInt64
+	var restartThreshold, maxFailRestarts sql.NullInt64
 	err := r.db.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, tag, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -63,6 +64,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		&def.Timeout,
 		&def.Prompt,
 		&restartThreshold,
+		&maxFailRestarts,
 		&def.Tag,
 		&createdAt,
 		&updatedAt,
@@ -80,6 +82,10 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		v := int(restartThreshold.Int64)
 		def.RestartThreshold = &v
 	}
+	if maxFailRestarts.Valid {
+		v := int(maxFailRestarts.Int64)
+		def.MaxFailRestarts = &v
+	}
 
 	return def, nil
 }
@@ -87,7 +93,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 // List retrieves all agent definitions for a workflow
 func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, tag, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, tag, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY id`, projectID, workflowID)
@@ -100,7 +106,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 	for rows.Next() {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
-		var restartThreshold sql.NullInt64
+		var restartThreshold, maxFailRestarts sql.NullInt64
 
 		err := rows.Scan(
 			&def.ID,
@@ -110,6 +116,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			&def.Timeout,
 			&def.Prompt,
 			&restartThreshold,
+			&maxFailRestarts,
 			&def.Tag,
 			&createdAt,
 			&updatedAt,
@@ -124,6 +131,10 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			v := int(restartThreshold.Int64)
 			def.RestartThreshold = &v
 		}
+		if maxFailRestarts.Valid {
+			v := int(maxFailRestarts.Int64)
+			def.MaxFailRestarts = &v
+		}
 
 		defs = append(defs, def)
 	}
@@ -137,6 +148,7 @@ type AgentDefUpdateFields struct {
 	Timeout          *int
 	Prompt           *string
 	RestartThreshold *int
+	MaxFailRestarts  *int
 	Tag              *string
 }
 
@@ -160,6 +172,10 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.RestartThreshold != nil {
 		updates = append(updates, "restart_threshold = ?")
 		args = append(args, *fields.RestartThreshold)
+	}
+	if fields.MaxFailRestarts != nil {
+		updates = append(updates, "max_fail_restarts = ?")
+		args = append(args, *fields.MaxFailRestarts)
 	}
 	if fields.Tag != nil {
 		updates = append(updates, "tag = ?")

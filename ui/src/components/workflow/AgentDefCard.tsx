@@ -66,6 +66,9 @@ export function AgentDefCard({
           {def.restart_threshold != null && (
             <span className="text-xs text-muted-foreground">{def.restart_threshold}% restart</span>
           )}
+          {def.max_fail_restarts != null && def.max_fail_restarts > 0 && (
+            <span className="text-xs text-muted-foreground">{def.max_fail_restarts}x fail retry</span>
+          )}
           {def.tag && (
             <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">
               {def.tag}

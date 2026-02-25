@@ -314,11 +314,11 @@ export function useExitInteractive() {
 
 export function useSessionMessages(
   sessionId: string | undefined,
-  options?: { enabled?: boolean; isRunning?: boolean }
+  options?: { enabled?: boolean; isRunning?: boolean; category?: string }
 ) {
   return useQuery<SessionMessagesResponse>({
-    queryKey: ['session-messages', sessionId],
-    queryFn: () => getSessionMessages(sessionId!),
+    queryKey: ['session-messages', sessionId, options?.category],
+    queryFn: () => getSessionMessages(sessionId!, options?.category),
     enabled: !!sessionId && (options?.enabled ?? true),
     staleTime: options?.isRunning ? 2000 : 30000,
   })

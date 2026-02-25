@@ -152,8 +152,11 @@ export interface AgentSession {
   updated_at: string
 }
 
+export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill'
+
 export interface MessageWithTime {
   content: string
+  category: MessageCategory
   created_at: string
 }
 

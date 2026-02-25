@@ -30,7 +30,7 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRetryFailed, retry
   const messages: MessageWithTime[] = useMemo(() => {
     if (messagesData?.messages) return messagesData.messages
     if (session?.last_messages) {
-      return session.last_messages.map(content => ({ content, created_at: '' }))
+      return session.last_messages.map(content => ({ content, category: 'text' as const, created_at: '' }))
     }
     return []
   }, [messagesData, session?.last_messages])

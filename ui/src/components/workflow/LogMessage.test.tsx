@@ -157,4 +157,30 @@ describe('ToolBadge', () => {
     expect(badge).toBeInTheDocument()
     expect(badge.className).toContain('bg-gray-100')
   })
+
+  it('renders TaskResult badge with indigo-50 styling (lighter than Task)', () => {
+    render(<ToolBadge name="TaskResult" />)
+    const badge = screen.getByText('TaskResult')
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('bg-indigo-50')
+  })
+
+  it('renders Task badge with indigo-100 styling', () => {
+    render(<ToolBadge name="Task" />)
+    const badge = screen.getByText('Task')
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('bg-indigo-100')
+  })
+
+  it('TaskResult has lighter styling than Task (indigo-50 vs indigo-100)', () => {
+    const { rerender } = render(<ToolBadge name="Task" />)
+    const taskBadge = screen.getByText('Task')
+    expect(taskBadge.className).toContain('bg-indigo-100')
+    expect(taskBadge.className).not.toContain('bg-indigo-50')
+
+    rerender(<ToolBadge name="TaskResult" />)
+    const resultBadge = screen.getByText('TaskResult')
+    expect(resultBadge.className).toContain('bg-indigo-50')
+    expect(resultBadge.className).not.toContain('bg-indigo-100')
+  })
 })

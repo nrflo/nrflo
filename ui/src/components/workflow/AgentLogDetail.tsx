@@ -1,10 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, Filter } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { parseToolName, ToolBadge } from './LogMessage'
 import { cn } from '@/lib/utils'
-import { getSessionMessages } from '@/api/tickets'
+import { useSessionMessages } from '@/hooks/useTickets'
+import type { MessageCategory } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
+
+const CATEGORY_OPTIONS: { value: MessageCategory | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'text', label: 'Text' },
+  { value: 'tool', label: 'Tool' },
+  { value: 'subagent', label: 'SubAgent' },
+  { value: 'skill', label: 'Skill' },
+]
 
 function formatDuration(durationSec?: number): string {
   if (!durationSec) return '0s'
@@ -36,12 +45,11 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
     : agent?.cli || historyEntry?.agent_type || 'agent'
   const duration = historyEntry?.duration_sec ? formatDuration(historyEntry.duration_sec) : null
 
+  const [categoryFilter, setCategoryFilter] = useState<MessageCategory | 'all'>('all')
   const sessionId = session?.id || agent?.session_id || historyEntry?.session_id
-  const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ['session-messages', sessionId],
-    queryFn: () => getSessionMessages(sessionId!),
-    enabled: !!sessionId,
-    staleTime: isRunning ? 2000 : 30000,
+  const { data: messagesData, isLoading: messagesLoading } = useSessionMessages(sessionId, {
+    isRunning: isRunning || false,
+    category: categoryFilter === 'all' ? undefined : categoryFilter,
   })
 
   const messages = messagesData?.messages ?? []
@@ -110,9 +118,23 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
           </div>
         ) : messages.length > 0 ? (
           <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-              <MessageSquare className="h-3 w-3" />
-              <span>{messagesData ? `${messagesData.total} messages` : `${messages.length} messages`}</span>
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+              <div className="flex items-center gap-1.5">
+                <MessageSquare className="h-3 w-3" />
+                <span>{messagesData ? `${messagesData.total} messages` : `${messages.length} messages`}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Filter className="h-3 w-3" />
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value as MessageCategory | 'all')}
+                  className="text-xs bg-transparent border border-border rounded px-1 py-0.5 text-foreground"
+                >
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <table className="w-full text-xs font-mono border-collapse">
               <thead>

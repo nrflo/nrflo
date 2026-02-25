@@ -60,6 +60,21 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 					if toolName != "" {
 						input, _ := itemMap["input"].(map[string]interface{})
 						s.handleToolUse(proc, toolName, input)
+						// Track in-flight Task invocations for tool_result correlation
+						if toolName == "Task" {
+							if id, ok := itemMap["id"].(string); ok && id != "" {
+								desc, _ := input["description"].(string)
+								subagentType, _ := input["subagent_type"].(string)
+								bg, _ := input["run_in_background"].(bool)
+								proc.messagesMutex.Lock()
+								proc.pendingTasks[id] = taskInfo{
+									description:  desc,
+									subagentType: subagentType,
+									background:   bg,
+								}
+								proc.messagesMutex.Unlock()
+							}
+						}
 					}
 				}
 			}
@@ -67,6 +82,10 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 
 	case "result":
 		// Result subtype tracked via messages only
+
+	case "content_block_stop":
+		// Claude tool_result arrives as content_block_stop with tool_use_id
+		s.handleClaudeToolResult(proc, data)
 
 	// === Opencode format ===
 	case "text":
@@ -100,7 +119,8 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 		}
 
 	case "tool_result":
-		// Tool result from opencode
+		// Tool result from opencode or Claude (both use type=tool_result)
+		s.handleClaudeToolResult(proc, data)
 
 	case "step_finish":
 		// Step completion from opencode
@@ -183,7 +203,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 // handleTextMessage processes text output from either Claude or opencode
 func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	// Track full message content
-	s.trackMessage(proc, text)
+	s.trackMessage(proc, text, "text")
 
 	// Print to console with truncation for long messages
 	prefix := s.formatPrefix(proc)
@@ -198,23 +218,89 @@ func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	}
 }
 
+// toolCategory returns the message category for a tool invocation
+func toolCategory(toolName string) string {
+	switch toolName {
+	case "Task":
+		return "subagent"
+	case "Skill":
+		return "skill"
+	default:
+		return "tool"
+	}
+}
+
 // handleToolUse processes tool usage from either Claude or opencode
 func (s *Spawner) handleToolUse(proc *processInfo, toolName string, input map[string]interface{}) {
 	toolDetail := s.formatToolDetail(toolName, input)
+	category := toolCategory(toolName)
 
 	// Track message
-	s.trackMessage(proc, toolDetail)
+	s.trackMessage(proc, toolDetail, category)
 
 	// Print to console with prefix
 	prefix := s.formatPrefix(proc)
 	fmt.Printf("  %s %s\n", prefix, toolDetail)
 }
 
+// handleClaudeToolResult processes a Claude tool_result event and generates
+// a [TaskResult] message if the tool_use_id matches a pending Task invocation.
+func (s *Spawner) handleClaudeToolResult(proc *processInfo, data map[string]interface{}) {
+	// Try top-level tool_use_id
+	toolUseID, _ := data["tool_use_id"].(string)
+	if toolUseID == "" {
+		// Try nested content[0].tool_use_id
+		if content, ok := data["content"].([]interface{}); ok {
+			for _, item := range content {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					if id, ok := itemMap["tool_use_id"].(string); ok && id != "" {
+						toolUseID = id
+						break
+					}
+				}
+			}
+		}
+	}
+	if toolUseID == "" {
+		return
+	}
+
+	proc.messagesMutex.Lock()
+	info, found := proc.pendingTasks[toolUseID]
+	if found {
+		delete(proc.pendingTasks, toolUseID)
+	}
+	proc.messagesMutex.Unlock()
+
+	if !found {
+		return
+	}
+
+	// Build [TaskResult] message
+	detail := info.description
+	if info.subagentType != "" {
+		detail = info.subagentType + ": " + info.description
+	}
+	if detail == "" {
+		detail = "completed"
+	}
+	// Truncate long details
+	if len(detail) > 200 {
+		detail = detail[:200] + "..."
+	}
+	msg := "[TaskResult] " + detail
+
+	s.trackMessage(proc, msg, "subagent")
+
+	prefix := s.formatPrefix(proc)
+	fmt.Printf("  %s %s\n", prefix, msg)
+}
+
 // trackMessage adds a message to the pending queue for DB insertion
-func (s *Spawner) trackMessage(proc *processInfo, msg string) {
+func (s *Spawner) trackMessage(proc *processInfo, msg string, category string) {
 	proc.messagesMutex.Lock()
 	defer proc.messagesMutex.Unlock()
-	proc.pendingMessages = append(proc.pendingMessages, msg)
+	proc.pendingMessages = append(proc.pendingMessages, repo.MessageEntry{Content: msg, Category: category})
 	proc.lastMessage = msg
 	proc.messagesDirty = true
 }
@@ -375,7 +461,7 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 	// Drain pending messages
 	proc.messagesMutex.Lock()
 	pending := proc.pendingMessages
-	proc.pendingMessages = make([]string, 0)
+	proc.pendingMessages = make([]repo.MessageEntry, 0)
 	seqStart := proc.nextSeq
 	proc.nextSeq += len(pending)
 	proc.messagesMutex.Unlock()

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"be/internal/clock"
+	"be/internal/repo"
 	"be/internal/ws"
 )
 
@@ -18,7 +19,8 @@ func minProc(sessionID string) *processInfo {
 		sessionID:       sessionID,
 		agentType:       "test-agent",
 		modelID:         "codex:codex_gpt_high",
-		pendingMessages: make([]string, 0),
+		pendingMessages: make([]repo.MessageEntry, 0),
+		pendingTasks:    make(map[string]taskInfo),
 	}
 }
 
@@ -33,12 +35,14 @@ func processJSON(s *Spawner, proc *processInfo, data map[string]interface{}) {
 	s.processOutput(proc, string(line))
 }
 
-// pendingMessages is a test helper that returns a copy of proc.pendingMessages under the lock.
+// pendingMessages is a test helper that returns message content strings under the lock.
 func pendingMessages(proc *processInfo) []string {
 	proc.messagesMutex.Lock()
 	defer proc.messagesMutex.Unlock()
 	out := make([]string, len(proc.pendingMessages))
-	copy(out, proc.pendingMessages)
+	for i, m := range proc.pendingMessages {
+		out[i] = m.Content
+	}
 	return out
 }
 

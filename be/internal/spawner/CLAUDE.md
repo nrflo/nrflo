@@ -297,6 +297,17 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 │    ├── WebSearch: input.query                                       │
 │    └── Others: just [ToolName]                                      │
 │                                                                      │
+│  Task result tracking (Claude tool_result / content_block_stop):    │
+│    ├── tool_use items with name=Task are tracked in pendingTasks    │
+│    ├── tool_result/content_block_stop events correlate by tool_use_id│
+│    └── Matched: [TaskResult] subagent_type: description             │
+│                                                                      │
+│  Message categories:                                                 │
+│    ├── text: plain text messages                                    │
+│    ├── tool: Bash, Read, Edit, Grep, etc.                           │
+│    ├── subagent: Task and TaskResult messages                       │
+│    └── skill: Skill tool invocations                                │
+│                                                                      │
 │  Text message handling:                                              │
 │    ├── Short (≤500 chars): Displayed in full                        │
 │    └── Long (>500 chars): Truncated as START...END                  │
@@ -317,12 +328,13 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 
 ## Testing
 
-20 test files in this package:
-
 | File | Tests |
 |------|-------|
 | `cli_adapter_test.go` | CLI adapter unit tests (claude, opencode, codex) |
 | `docker_adapter_test.go` | Docker CLI adapter decorator tests |
+| `output_test.go` | General output parsing tests |
+| `output_claude_test.go` | Claude category assignment, pendingTasks tracking, tool_result correlation |
+| `output_claude_advanced_test.go` | Nested content, content_block_stop, multiple in-flight tasks, TaskResult formatting |
 | `output_codex_test.go` | Codex output parsing: thread.started, item types, turn.completed token counting |
 | `context_test.go` | Context left DB read/write tests |
 | `template_project_findings_test.go` | Project findings template expansion tests |

@@ -100,9 +100,10 @@ GET /api/v1/agents/running?limit=50
 GET /api/v1/agents/recent
 GET /api/v1/agents/recent?limit=10
 
-# Session messages (paginated, lazy-loaded)
+# Session messages (paginated, lazy-loaded, filterable by category)
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
+GET /api/v1/sessions/:id/messages?category=subagent  # text|tool|subagent|skill
 
 # Dependencies
 GET /api/v1/tickets/:id/dependencies  # Get ticket dependencies

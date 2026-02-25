@@ -119,6 +119,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    session_id    TEXT NOT NULL  (FK → agent_sessions.id, CASCADE)   │
 │    seq           INTEGER NOT NULL    (message sequence number)       │
 │    content       TEXT NOT NULL       (message text)                  │
+│    category      TEXT NOT NULL DEFAULT 'text'                        │
+│                  (text|tool|subagent|skill)                          │
 │    created_at    TEXT NOT NULL                                       │
 │    INDEX idx_agent_messages_session (session_id, seq)                │
 │                                                                      │

@@ -173,9 +173,11 @@ describe('AgentLogDetail', () => {
       expect(table).toBeInTheDocument()
 
       // Table headers
-      expect(screen.getByText('Time')).toBeInTheDocument()
-      expect(screen.getByText('Tool')).toBeInTheDocument()
-      expect(screen.getByText('Message')).toBeInTheDocument()
+      const thead = table!.querySelector('thead')!
+      expect(thead).toBeInTheDocument()
+      expect(thead.textContent).toContain('Time')
+      expect(thead.textContent).toContain('Tool')
+      expect(thead.textContent).toContain('Message')
 
       // Messages content
       expect(screen.getByText('Setting up project...')).toBeInTheDocument()
@@ -580,6 +582,104 @@ describe('AgentLogDetail', () => {
     })
   })
 
+  describe('category filter', () => {
+    it('renders category filter dropdown when messages exist', async () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('3 messages')).toBeInTheDocument()
+      })
+
+      const select = screen.getByRole('combobox')
+      expect(select).toBeInTheDocument()
+      expect(select).toHaveValue('all')
+    })
+
+    it('category dropdown has All/Text/Tool/SubAgent/Skill options', async () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('3 messages')).toBeInTheDocument()
+      })
+
+      const select = screen.getByRole('combobox')
+      const options = Array.from(select.querySelectorAll('option')).map(o => o.value)
+      expect(options).toEqual(['all', 'text', 'tool', 'subagent', 'skill'])
+    })
+
+    it('selecting a category passes it to the API', async () => {
+      const user = userEvent.setup()
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('3 messages')).toBeInTheDocument()
+      })
+
+      const select = screen.getByRole('combobox')
+      await user.selectOptions(select, 'tool')
+
+      await waitFor(() => {
+        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', 'tool')
+      })
+    })
+
+    it('switching back to "all" resets the dropdown to all', async () => {
+      const user = userEvent.setup()
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('3 messages')).toBeInTheDocument()
+      })
+
+      const select = screen.getByRole('combobox')
+      await user.selectOptions(select, 'subagent')
+      expect(select).toHaveValue('subagent')
+
+      await user.selectOptions(select, 'all')
+      expect(select).toHaveValue('all')
+
+      // Initial 'all' call used undefined, 'subagent' call used 'subagent'
+      expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', undefined)
+      expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', 'subagent')
+    })
+
+    it('does not render category filter when no messages', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [],
+        total: 0,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('No messages available')).toBeInTheDocument()
+      })
+
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    })
+  })
+
   describe('ticket nrworkflow-d3a7c4: project-level agent messages with session_id fallback', () => {
     it('fetches messages using agent.session_id when session object is undefined', async () => {
       const sessionId = 'fallback-session-id'
@@ -598,7 +698,7 @@ describe('AgentLogDetail', () => {
       })
 
       await waitFor(() => {
-        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith(sessionId)
+        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith(sessionId, undefined)
       })
 
       await waitFor(() => {
@@ -626,7 +726,7 @@ describe('AgentLogDetail', () => {
       })
 
       await waitFor(() => {
-        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith(sessionObjectId)
+        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith(sessionObjectId, undefined)
       })
 
       await waitFor(() => {
@@ -656,7 +756,7 @@ describe('AgentLogDetail', () => {
       })
 
       await waitFor(() => {
-        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('project-session')
+        expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('project-session', undefined)
       })
 
       await waitFor(() => {

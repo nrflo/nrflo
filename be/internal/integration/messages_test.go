@@ -32,7 +32,7 @@ func TestSessionMessages_InsertAndRetrieve(t *testing.T) {
 	}
 
 	// Retrieve via service
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-msg-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-msg-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestSessionMessages_BatchInsert(t *testing.T) {
 	}
 
 	// Verify via service
-	msgs, _, err := env.AgentSvc.GetSessionMessages("sess-batch-1", 0, 0)
+	msgs, _, err := env.AgentSvc.GetSessionMessages("sess-batch-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestSessionMessages_EmptySession(t *testing.T) {
 	insertTestSession(t, env, "sess-empty-1", "MSG-3")
 
 	// Retrieve messages for session with no messages
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-empty-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-empty-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestSessionMessages_Pagination(t *testing.T) {
 	}
 
 	// Get first page (limit=3, offset=0)
-	msgs1, total1, err := env.AgentSvc.GetSessionMessages("sess-page-1", 3, 0)
+	msgs1, total1, err := env.AgentSvc.GetSessionMessages("sess-page-1", 3, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get page 1: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestSessionMessages_Pagination(t *testing.T) {
 	}
 
 	// Get second page (limit=3, offset=3)
-	msgs2, _, err := env.AgentSvc.GetSessionMessages("sess-page-1", 3, 3)
+	msgs2, _, err := env.AgentSvc.GetSessionMessages("sess-page-1", 3, 3, "")
 	if err != nil {
 		t.Fatalf("failed to get page 2: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestSessionMessages_CountBatch(t *testing.T) {
 	}
 
 	// Verify counts via service
-	_, total1, err := env.AgentSvc.GetSessionMessages("sess-count-1", 0, 0)
+	_, total1, err := env.AgentSvc.GetSessionMessages("sess-count-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get sess-count-1 messages: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestSessionMessages_CountBatch(t *testing.T) {
 		t.Fatalf("expected 5 messages for sess-count-1, got %d", total1)
 	}
 
-	_, total2, err := env.AgentSvc.GetSessionMessages("sess-count-2", 0, 0)
+	_, total2, err := env.AgentSvc.GetSessionMessages("sess-count-2", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get sess-count-2 messages: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestSessionMessages_NotFound(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Service should return error for non-existent session
-	_, _, err := env.AgentSvc.GetSessionMessages("does-not-exist", 0, 0)
+	_, _, err := env.AgentSvc.GetSessionMessages("does-not-exist", 0, 0, "")
 	if err == nil {
 		t.Fatal("expected error for non-existent session")
 	}
@@ -214,7 +214,7 @@ func TestSessionMessages_NoLimitParam_ReturnsAllMessages(t *testing.T) {
 	}
 
 	// Retrieve with limit=0 (no limit param behavior)
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-nolimit-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-nolimit-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestSessionMessages_ExplicitLimit_StillWorks(t *testing.T) {
 	}
 
 	// Retrieve with explicit limit=50
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-explicitlimit-1", 50, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-explicitlimit-1", 50, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestSessionMessages_LargeMessageCount(t *testing.T) {
 	}
 
 	// Retrieve all with limit=0
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-large-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-large-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestSessionMessages_EdgeCase_ExactlyOldLimit(t *testing.T) {
 	}
 
 	// Retrieve with limit=0
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-100-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-100-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestSessionMessages_EdgeCase_101Messages(t *testing.T) {
 	}
 
 	// Retrieve with limit=0 (no limit)
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-101-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-101-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("failed to get messages: %v", err)
 	}

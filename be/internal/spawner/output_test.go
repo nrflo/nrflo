@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"be/internal/clock"
+	"be/internal/repo"
 	"be/internal/ws"
 )
 
@@ -61,12 +62,12 @@ func TestMessageCoalescingWindow(t *testing.T) {
 		agentType:       "analyzer",
 		workflowName:    "test",
 		modelID:         "cli:claude-opus-4",
-		pendingMessages: make([]string, 0),
+		pendingMessages: make([]repo.MessageEntry, 0),
 		nextSeq:         0,
 	}
 
 	// Track messages and flush (first broadcast should always happen)
-	spawner.trackMessage(proc, "Message 1")
+	spawner.trackMessage(proc, "Message 1", "text")
 	spawner.saveMessages(proc)
 
 	// Drain first broadcast
@@ -84,7 +85,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	}
 
 	// Track and flush again immediately (should be suppressed by coalescing)
-	spawner.trackMessage(proc, "Message 2")
+	spawner.trackMessage(proc, "Message 2", "text")
 	spawner.saveMessages(proc)
 
 	select {
@@ -98,7 +99,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	testClock.Advance(3 * time.Second)
 
 	// Track and flush again (should broadcast now)
-	spawner.trackMessage(proc, "Message 3")
+	spawner.trackMessage(proc, "Message 3", "text")
 	spawner.saveMessages(proc)
 
 	select {
@@ -181,7 +182,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 		agentType:       "analyzer",
 		workflowName:    "test",
 		modelID:         "cli:claude-opus-4",
-		pendingMessages: make([]string, 0),
+		pendingMessages: make([]repo.MessageEntry, 0),
 		nextSeq:         0,
 	}
 	proc2 := &processInfo{
@@ -191,12 +192,12 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 		agentType:       "builder",
 		workflowName:    "test",
 		modelID:         "cli:claude-sonnet-4",
-		pendingMessages: make([]string, 0),
+		pendingMessages: make([]repo.MessageEntry, 0),
 		nextSeq:         0,
 	}
 
 	// Flush from session 1
-	spawner.trackMessage(proc1, "Session 1 message")
+	spawner.trackMessage(proc1, "Session 1 message", "text")
 	spawner.saveMessages(proc1)
 
 	// Drain first broadcast from session 1
@@ -213,7 +214,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 	}
 
 	// Flush from session 2 immediately (should broadcast because different session)
-	spawner.trackMessage(proc2, "Session 2 message")
+	spawner.trackMessage(proc2, "Session 2 message", "text")
 	spawner.saveMessages(proc2)
 
 	select {
@@ -283,12 +284,12 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 		agentType:       "analyzer",
 		workflowName:    "test",
 		modelID:         "cli:claude-opus-4",
-		pendingMessages: make([]string, 0),
+		pendingMessages: make([]repo.MessageEntry, 0),
 		nextSeq:         0,
 	}
 
 	// Track and save messages
-	spawner.trackMessage(proc, "Test message")
+	spawner.trackMessage(proc, "Test message", "text")
 	spawner.saveMessages(proc)
 
 	// Verify broadcast payload

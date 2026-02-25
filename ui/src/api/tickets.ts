@@ -138,10 +138,12 @@ export async function getAgentSessions(
 
 // Session messages (lazy-loaded)
 export async function getSessionMessages(
-  sessionId: string
+  sessionId: string,
+  category?: string
 ): Promise<SessionMessagesResponse> {
+  const params = category ? `?category=${encodeURIComponent(category)}` : ''
   return apiGet<SessionMessagesResponse>(
-    `/api/v1/sessions/${encodeURIComponent(sessionId)}/messages`
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/messages${params}`
   )
 }
 

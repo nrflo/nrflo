@@ -59,7 +59,7 @@ describe('useSessionMessages', () => {
       expect(result.current.data).toBeDefined()
     })
 
-    expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1')
+    expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', undefined)
     expect(result.current.data?.messages).toEqual(sampleResponse.messages)
     expect(result.current.data?.total).toBe(3)
   })
@@ -116,6 +116,36 @@ describe('useSessionMessages', () => {
 
     // The hook should have been called - staleTime=30000 for non-running
     expect(ticketsApi.getSessionMessages).toHaveBeenCalledTimes(1)
+  })
+
+  it('passes category to getSessionMessages when provided', async () => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue(sampleResponse)
+
+    const { result } = renderHook(
+      () => useSessionMessages('session-1', { category: 'tool' }),
+      { wrapper: createWrapper() }
+    )
+
+    await waitFor(() => {
+      expect(result.current.data).toBeDefined()
+    })
+
+    expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', 'tool')
+  })
+
+  it('passes undefined category when category option is omitted', async () => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue(sampleResponse)
+
+    const { result } = renderHook(
+      () => useSessionMessages('session-1'),
+      { wrapper: createWrapper() }
+    )
+
+    await waitFor(() => {
+      expect(result.current.data).toBeDefined()
+    })
+
+    expect(ticketsApi.getSessionMessages).toHaveBeenCalledWith('session-1', undefined)
   })
 
   it('returns error state when API call fails', async () => {

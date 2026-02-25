@@ -63,6 +63,7 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
 function makeMessages(count: number): MessageWithTime[] {
   return Array.from({ length: count }, (_, i) => ({
     content: `Message ${i + 1}`,
+    category: 'text' as const,
     created_at: `2026-01-01T00:${String(i + 1).padStart(2, '0')}:00Z`,
   }))
 }
@@ -258,8 +259,8 @@ describe('AgentLogPanel - Messages Limit (nrworkflow-1b9198)', () => {
   describe('timestamps rendering', () => {
     it('renders timestamps in HH:MM:SS format in time column', () => {
       const messages: MessageWithTime[] = [
-        { content: 'First', created_at: '2026-01-01T10:15:30Z' },
-        { content: 'Second', created_at: '2026-01-01T10:15:45Z' },
+        { content: 'First', category: 'text', created_at: '2026-01-01T10:15:30Z' },
+        { content: 'Second', category: 'text', created_at: '2026-01-01T10:15:45Z' },
       ]
       renderPanel(messages)
 

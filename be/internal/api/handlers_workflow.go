@@ -183,7 +183,7 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 	pool := db.WrapAsPool(database)
 	agentSvc := service.NewAgentService(pool, s.clock)
 
-	// Parse pagination params
+	// Parse pagination and filter params
 	limit := 0
 	offset := 0
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
@@ -196,8 +196,9 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 			offset = parsed
 		}
 	}
+	category := r.URL.Query().Get("category")
 
-	messages, total, err := agentSvc.GetSessionMessages(sessionID, limit, offset)
+	messages, total, err := agentSvc.GetSessionMessages(sessionID, limit, offset, category)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())

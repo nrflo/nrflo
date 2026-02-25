@@ -258,7 +258,7 @@ func TestAgentLogImprovements_MessageTimestamps_Service(t *testing.T) {
 		}
 	}
 
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-ts-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-ts-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("GetSessionMessages: %v", err)
 	}
@@ -289,10 +289,10 @@ func TestAgentLogImprovements_BatchInsertPreservesTimestamps(t *testing.T) {
 	insertTestSession(t, env, "sess-bi-1", "BI-1")
 
 	msgRepo := repo.NewAgentMessagePoolRepo(env.Pool, clock.Real())
-	err := msgRepo.InsertBatch("sess-bi-1", 0, []string{
-		"[Bash] git status",
-		"[Read] main.go",
-		"[Edit] handler.go",
+	err := msgRepo.InsertBatch("sess-bi-1", 0, []repo.MessageEntry{
+		{Content: "[Bash] git status", Category: "tool"},
+		{Content: "[Read] main.go", Category: "tool"},
+		{Content: "[Edit] handler.go", Category: "tool"},
 	})
 	if err != nil {
 		t.Fatalf("InsertBatch: %v", err)
@@ -352,7 +352,7 @@ func TestAgentLogImprovements_FullMessageNoTruncation(t *testing.T) {
 		}
 	}
 
-	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-full-1", 0, 0)
+	msgs, total, err := env.AgentSvc.GetSessionMessages("sess-full-1", 0, 0, "")
 	if err != nil {
 		t.Fatalf("GetSessionMessages: %v", err)
 	}

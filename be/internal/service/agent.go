@@ -528,8 +528,9 @@ func (s *AgentService) GetSessionByID(sessionID string) (*model.AgentSession, er
 	return session, nil
 }
 
-// GetSessionMessages returns paginated messages with timestamps for a session
-func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) ([]repo.MessageWithTime, int, error) {
+// GetSessionMessages returns paginated messages with timestamps for a session.
+// When category is non-empty, only messages of that category are returned.
+func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int, category string) ([]repo.MessageWithTime, int, error) {
 	// Validate session exists
 	var exists int
 	err := s.pool.QueryRow("SELECT 1 FROM agent_sessions WHERE id = ?", sessionID).Scan(&exists)
@@ -537,7 +538,12 @@ func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) (
 		return nil, 0, fmt.Errorf("session not found: %s", sessionID)
 	}
 
-	total, err := s.msgRepo.CountBySession(sessionID)
+	var total int
+	if category != "" {
+		total, err = s.msgRepo.CountBySessionFiltered(sessionID, category)
+	} else {
+		total, err = s.msgRepo.CountBySession(sessionID)
+	}
 	if err != nil {
 		return nil, 0, err
 	}
@@ -546,7 +552,12 @@ func (s *AgentService) GetSessionMessages(sessionID string, limit, offset int) (
 		limit = -1 // SQLite: LIMIT -1 returns all rows
 	}
 
-	messages, err := s.msgRepo.GetBySessionPaginated(sessionID, limit, offset)
+	var messages []repo.MessageWithTime
+	if category != "" {
+		messages, err = s.msgRepo.GetBySessionPaginatedFiltered(sessionID, category, limit, offset)
+	} else {
+		messages, err = s.msgRepo.GetBySessionPaginated(sessionID, limit, offset)
+	}
 	if err != nil {
 		return nil, 0, err
 	}

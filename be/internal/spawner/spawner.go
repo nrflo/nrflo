@@ -65,6 +65,13 @@ type Config struct {
 	DockerConfig *DockerConfig
 }
 
+// taskInfo tracks an in-flight Task tool invocation for tool_result correlation
+type taskInfo struct {
+	description  string
+	subagentType string
+	background   bool
+}
+
 // processInfo tracks a single spawned agent process
 type processInfo struct {
 	cmd           *exec.Cmd
@@ -74,10 +81,11 @@ type processInfo struct {
 	sessionID     string
 	startTime     time.Time
 	timeout       time.Duration
-	pendingMessages []string   // messages not yet flushed to DB
-	lastMessage     string     // most recent message (for status display)
-	nextSeq         int        // next sequence number for agent_messages table
+	pendingMessages []repo.MessageEntry // messages not yet flushed to DB
+	lastMessage     string              // most recent message (for status display)
+	nextSeq         int                 // next sequence number for agent_messages table
 	messagesMutex   sync.Mutex
+	pendingTasks    map[string]taskInfo  // tool_use_id -> taskInfo for in-flight Task invocations
 	finalStatus   string
 	elapsed       time.Duration
 	// Process lifecycle tracking
@@ -440,7 +448,8 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		sessionID:      sessionID,
 		startTime:      s.config.Clock.Now(),
 		timeout:        time.Duration(timeout) * time.Minute,
-		pendingMessages:   make([]string, 0),
+		pendingMessages:   make([]repo.MessageEntry, 0),
+		pendingTasks:      make(map[string]taskInfo),
 		doneCh:            make(chan struct{}),
 		lastMessagesFlush: s.config.Clock.Now(),
 		spawnCommand:   spawnCommand,
@@ -466,7 +475,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 			line := scanner.Text()
 			// Display and track stderr for debugging
 			fmt.Printf("  %s [stderr] %s\n", prefix, line)
-			s.trackMessage(proc, "[stderr] "+line)
+			s.trackMessage(proc, "[stderr] "+line, "text")
 		}
 	}()
 

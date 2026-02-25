@@ -690,7 +690,27 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				// Still running - check timeout
 				if elapsed > proc.timeout {
 					s.handleGracefulTimeout(ctx, proc, req)
-					completed = append(completed, proc)
+					// Auto-restart timed-out agent if configured
+					if proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts {
+						logger.Info(ctx, "auto-restarting timed-out agent", "model", proc.modelID,
+							"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
+						if pool := s.pool(); pool != nil {
+							sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+							sessionRepo.UpdateResult(proc.sessionID, "continue", "timeout_restart")
+							sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
+						}
+						proc.failRestartCount++
+						proc.finalStatus = "CONTINUE"
+						newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
+						if err != nil {
+							logger.Error(ctx, "failed to relaunch after timeout", "model", proc.modelID, "err", err)
+							completed = append(completed, proc)
+						} else {
+							stillRunning = append(stillRunning, newProc)
+						}
+					} else {
+						completed = append(completed, proc)
+					}
 				} else {
 					stillRunning = append(stillRunning, proc)
 					s.maybeFlushMessages(proc)

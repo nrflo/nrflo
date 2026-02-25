@@ -21,6 +21,7 @@ func TestAutoRestartCondition_Boundaries(t *testing.T) {
 		failRestartCount int
 		want             bool
 	}{
+		// FAIL status entries
 		{name: "disabled_default_zero", finalStatus: "FAIL", maxFailRestarts: 0, failRestartCount: 0, want: false},
 		{name: "first_restart_allowed", finalStatus: "FAIL", maxFailRestarts: 2, failRestartCount: 0, want: true},
 		{name: "second_restart_allowed", finalStatus: "FAIL", maxFailRestarts: 2, failRestartCount: 1, want: true},
@@ -30,6 +31,13 @@ func TestAutoRestartCondition_Boundaries(t *testing.T) {
 		{name: "continue_status_no_restart", finalStatus: "CONTINUE", maxFailRestarts: 2, failRestartCount: 0, want: false},
 		{name: "max_1_first_allowed", finalStatus: "FAIL", maxFailRestarts: 1, failRestartCount: 0, want: true},
 		{name: "max_1_already_used", finalStatus: "FAIL", maxFailRestarts: 1, failRestartCount: 1, want: false},
+		// TIMEOUT status entries — shares the same counter and limits as FAIL
+		{name: "timeout_first_restart_allowed", finalStatus: "TIMEOUT", maxFailRestarts: 2, failRestartCount: 0, want: true},
+		{name: "timeout_second_restart_allowed", finalStatus: "TIMEOUT", maxFailRestarts: 2, failRestartCount: 1, want: true},
+		{name: "timeout_at_limit_no_restart", finalStatus: "TIMEOUT", maxFailRestarts: 2, failRestartCount: 2, want: false},
+		{name: "timeout_disabled_no_restart", finalStatus: "TIMEOUT", maxFailRestarts: 0, failRestartCount: 0, want: false},
+		{name: "timeout_max_1_first_allowed", finalStatus: "TIMEOUT", maxFailRestarts: 1, failRestartCount: 0, want: true},
+		{name: "timeout_max_1_already_used", finalStatus: "TIMEOUT", maxFailRestarts: 1, failRestartCount: 1, want: false},
 	}
 
 	for _, tt := range tests {
@@ -39,7 +47,7 @@ func TestAutoRestartCondition_Boundaries(t *testing.T) {
 				maxFailRestarts:  tt.maxFailRestarts,
 				failRestartCount: tt.failRestartCount,
 			}
-			got := proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts
+			got := (proc.finalStatus == "FAIL" || proc.finalStatus == "TIMEOUT") && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts
 			if got != tt.want {
 				t.Errorf("condition = %v, want %v (finalStatus=%q maxFailRestarts=%d failRestartCount=%d)",
 					got, tt.want, tt.finalStatus, tt.maxFailRestarts, tt.failRestartCount)

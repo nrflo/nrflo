@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"strings"
 
 	"be/internal/model"
 )
@@ -54,31 +53,6 @@ func (pt *PendingTicket) UnmarshalJSON(data []byte) error {
 	pt.IsBlocked = aux.IsBlocked
 	pt.BlockedBy = aux.BlockedBy
 	return nil
-}
-
-// Search searches tickets
-func (s *TicketService) Search(projectID, query string) ([]*model.Ticket, error) {
-	rows, err := s.pool.Query(`
-		SELECT `+ticketColsT+`
-		FROM tickets t
-		INNER JOIN tickets_fts fts ON t.project_id = fts.project_id AND t.id = fts.id
-		WHERE fts.project_id = ? AND tickets_fts MATCH ?
-		ORDER BY rank`, strings.ToLower(projectID), query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tickets []*model.Ticket
-	for rows.Next() {
-		ticket, err := scanTicketRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		tickets = append(tickets, ticket)
-	}
-
-	return tickets, nil
 }
 
 // GetReady returns tickets that are not blocked

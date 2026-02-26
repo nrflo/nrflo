@@ -58,6 +58,11 @@ func TestEventSchemaCommonFields(t *testing.T) {
 			eventType: EventChainUpdated,
 			data:      map[string]interface{}{"chain_id": "c1"},
 		},
+		{
+			name:      "agent.retry_waiting",
+			eventType: EventAgentRetryWaiting,
+			data:      map[string]interface{}{"agent_type": "test", "session_id": "s1", "delay_seconds": 15, "fail_restart_count": 0, "max_fail_restarts": 2},
+		},
 	}
 
 	for _, tt := range tests {

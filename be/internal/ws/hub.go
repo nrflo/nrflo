@@ -40,6 +40,7 @@ const (
 	EventAgentContextUpdated         = "agent.context_updated"
 	EventAgentTakeControl            = "agent.take_control"
 	EventLayerSkipped                = "layer.skipped"
+	EventAgentRetryWaiting           = "agent.retry_waiting"
 	EventSkipTagAdded                = "skip_tag.added"
 	EventTestEcho                    = "test.echo"
 )

@@ -44,6 +44,7 @@ type AgentConfig struct {
 const (
 	defaultMaxContinuations = 10
 	defaultContextThreshold = 25
+	defaultFailRetryDelay   = 15 * time.Second
 )
 
 // Config holds the spawner configuration
@@ -207,6 +208,27 @@ func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, dat
 	}
 	event := ws.NewEvent(eventType, projectID, ticketID, workflow, data)
 	s.config.WSHub.Broadcast(event)
+}
+
+// waitBeforeRetry waits for defaultFailRetryDelay before retrying a failed/timed-out agent.
+// Returns true if the wait completed, false if the context was cancelled (should not retry).
+// Broadcasts an agent.retry_waiting event before sleeping.
+func (s *Spawner) waitBeforeRetry(ctx context.Context, proc *processInfo) bool {
+	s.broadcast(ws.EventAgentRetryWaiting, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
+		"agent_type":         proc.agentType,
+		"session_id":         proc.sessionID,
+		"model_id":           proc.modelID,
+		"delay_seconds":      int(defaultFailRetryDelay.Seconds()),
+		"fail_restart_count": proc.failRestartCount,
+		"max_fail_restarts":  proc.maxFailRestarts,
+	})
+	logger.Info(ctx, "waiting before fail-restart", "delay", defaultFailRetryDelay, "model", proc.modelID)
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(defaultFailRetryDelay):
+		return true
+	}
 }
 
 // Spawn spawns agents for a phase with context cancellation support.
@@ -662,16 +684,18 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 
 				// Auto-restart failed agent if configured
 				if proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts {
-					logger.Info(ctx, "auto-restarting failed agent", "model", proc.modelID,
-						"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
-					// Override the already-registered failed session to continued/fail_restart
-					if pool := s.pool(); pool != nil {
-						sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-						sessionRepo.UpdateResult(proc.sessionID, "continue", "fail_restart")
-						sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
+					if s.waitBeforeRetry(ctx, proc) {
+						logger.Info(ctx, "auto-restarting failed agent", "model", proc.modelID,
+							"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
+						// Override the already-registered failed session to continued/fail_restart
+						if pool := s.pool(); pool != nil {
+							sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+							sessionRepo.UpdateResult(proc.sessionID, "continue", "fail_restart")
+							sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
+						}
+						proc.failRestartCount++
+						proc.finalStatus = "CONTINUE"
 					}
-					proc.failRestartCount++
-					proc.finalStatus = "CONTINUE"
 				}
 
 				// Check for continuation
@@ -701,21 +725,25 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					s.handleGracefulTimeout(ctx, proc, req)
 					// Auto-restart timed-out agent if configured
 					if proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts {
-						logger.Info(ctx, "auto-restarting timed-out agent", "model", proc.modelID,
-							"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
-						if pool := s.pool(); pool != nil {
-							sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-							sessionRepo.UpdateResult(proc.sessionID, "continue", "timeout_restart")
-							sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
-						}
-						proc.failRestartCount++
-						proc.finalStatus = "CONTINUE"
-						newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
-						if err != nil {
-							logger.Error(ctx, "failed to relaunch after timeout", "model", proc.modelID, "err", err)
+						if !s.waitBeforeRetry(ctx, proc) {
 							completed = append(completed, proc)
 						} else {
-							stillRunning = append(stillRunning, newProc)
+							logger.Info(ctx, "auto-restarting timed-out agent", "model", proc.modelID,
+								"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
+							if pool := s.pool(); pool != nil {
+								sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+								sessionRepo.UpdateResult(proc.sessionID, "continue", "timeout_restart")
+								sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
+							}
+							proc.failRestartCount++
+							proc.finalStatus = "CONTINUE"
+							newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
+							if err != nil {
+								logger.Error(ctx, "failed to relaunch after timeout", "model", proc.modelID, "err", err)
+								completed = append(completed, proc)
+							} else {
+								stillRunning = append(stillRunning, newProc)
+							}
 						}
 					} else {
 						completed = append(completed, proc)

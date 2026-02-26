@@ -132,8 +132,12 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
 
 5. AUTO-RESTART ON FAILURE (if configured)
    - After handleCompletion sets FAIL, check maxFailRestarts > 0 && failRestartCount < maxFailRestarts
+   - Wait 15s (defaultFailRetryDelay) before retrying — context-aware via select{ctx.Done(), time.After()}
+   - Broadcast agent.retry_waiting WS event with delay_seconds, fail_restart_count, max_fail_restarts
+   - If context cancelled during wait, skip restart (agent stays failed)
    - Override session: status=continued, result=continue, result_reason=fail_restart
    - Increment failRestartCount, set finalStatus=CONTINUE → relaunchForContinuation handles relaunch
+   - Same delay applies to TIMEOUT auto-restart path (timeout_restart)
    - failRestartCount is independent of restartCount (low-context restarts)
 
 6. FINALIZE PHASE

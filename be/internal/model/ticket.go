@@ -96,6 +96,53 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON implements custom JSON unmarshaling for Ticket
+func (t *Ticket) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		ID             string     `json:"id"`
+		ProjectID      string     `json:"project_id"`
+		Title          string     `json:"title"`
+		Description    *string    `json:"description"`
+		Status         Status     `json:"status"`
+		Priority       int        `json:"priority"`
+		IssueType      IssueType  `json:"issue_type"`
+		ParentTicketID *string    `json:"parent_ticket_id"`
+		CreatedAt      time.Time  `json:"created_at"`
+		UpdatedAt      time.Time  `json:"updated_at"`
+		ClosedAt       *time.Time `json:"closed_at"`
+		CreatedBy      string     `json:"created_by"`
+		CloseReason    *string    `json:"close_reason"`
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	t.ID = aux.ID
+	t.ProjectID = aux.ProjectID
+	t.Title = aux.Title
+	t.Status = aux.Status
+	t.Priority = aux.Priority
+	t.IssueType = aux.IssueType
+	t.CreatedAt = aux.CreatedAt
+	t.UpdatedAt = aux.UpdatedAt
+	t.CreatedBy = aux.CreatedBy
+
+	if aux.Description != nil {
+		t.Description = sql.NullString{String: *aux.Description, Valid: true}
+	}
+	if aux.ParentTicketID != nil {
+		t.ParentTicketID = sql.NullString{String: *aux.ParentTicketID, Valid: true}
+	}
+	if aux.ClosedAt != nil {
+		t.ClosedAt = sql.NullTime{Time: *aux.ClosedAt, Valid: true}
+	}
+	if aux.CloseReason != nil {
+		t.CloseReason = sql.NullString{String: *aux.CloseReason, Valid: true}
+	}
+
+	return nil
+}
+
 // Dependency represents a dependency between tickets
 type Dependency struct {
 	ProjectID     string    `json:"project_id"`

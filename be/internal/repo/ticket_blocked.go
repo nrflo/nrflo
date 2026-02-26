@@ -50,6 +50,30 @@ func (pt PendingTicket) MarshalJSON() ([]byte, error) {
 	return json.Marshal(result)
 }
 
+// UnmarshalJSON implements custom JSON unmarshaling for PendingTicket.
+// Required because *model.Ticket.UnmarshalJSON would be promoted and called
+// on a nil embedded pointer, causing a panic.
+func (pt *PendingTicket) UnmarshalJSON(data []byte) error {
+	if pt.Ticket == nil {
+		pt.Ticket = &model.Ticket{}
+	}
+	if err := pt.Ticket.UnmarshalJSON(data); err != nil {
+		return err
+	}
+	var aux struct {
+		IsBlocked        bool              `json:"is_blocked"`
+		BlockedBy        []string          `json:"blocked_by,omitempty"`
+		WorkflowProgress *WorkflowProgress `json:"workflow_progress,omitempty"`
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	pt.IsBlocked = aux.IsBlocked
+	pt.BlockedBy = aux.BlockedBy
+	pt.WorkflowProgress = aux.WorkflowProgress
+	return nil
+}
+
 // ListWithBlockedInfo returns tickets with computed blocked status info
 func (r *TicketRepo) ListWithBlockedInfo(filter *ListFilter) ([]*PendingTicket, error) {
 	query := "SELECT " + ticketSelectColsPrefixed + " FROM tickets t WHERE LOWER(t.project_id) = LOWER(?)"

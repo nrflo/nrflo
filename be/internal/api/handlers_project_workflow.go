@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"be/internal/db"
 	"be/internal/model"
@@ -9,6 +10,7 @@ import (
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
+	"be/internal/ws"
 )
 
 // handleRunProjectWorkflow starts an orchestrated project-scoped workflow run.
@@ -203,6 +205,73 @@ func (s *Server) handleTakeControlProject(w http.ResponseWriter, r *http.Request
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "interactive", "session_id": sessionID})
+}
+
+// handleResumeSessionProject sets a finished project-scoped agent session to
+// user_interactive status without requiring a running orchestration.
+// POST /api/v1/projects/{id}/workflow/resume-session
+func (s *Server) handleResumeSessionProject(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	var body struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+
+	database, err := s.getDatabase()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, s.clock)
+	session, err := asRepo.Get(body.SessionID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "session not found")
+		return
+	}
+
+	if !strings.EqualFold(session.ProjectID, projectID) {
+		writeError(w, http.StatusBadRequest, "session does not belong to this project")
+		return
+	}
+
+	if err := validateResumeSession(session); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := asRepo.UpdateStatus(body.SessionID, model.AgentSessionUserInteractive); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+	workflowName := ""
+	if wfi, err := wfiRepo.Get(session.WorkflowInstanceID); err == nil {
+		workflowName = wfi.WorkflowID
+	}
+
+	s.wsHub.Broadcast(ws.NewEvent(ws.EventAgentTakeControl, session.ProjectID, session.TicketID, workflowName, map[string]interface{}{
+		"session_id": session.ID,
+		"agent_type": session.AgentType,
+		"model_id":   session.ModelID.String,
+	}))
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "interactive", "session_id": body.SessionID})
 }
 
 // handleExitInteractiveProject signals that the interactive session has ended for a project-scoped workflow.

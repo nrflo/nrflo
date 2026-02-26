@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Spinner } from '@/components/ui/Spinner'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { parseToolName, ToolBadge } from './LogMessage'
 import { cn } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
@@ -32,9 +35,11 @@ export function formatTime(dateStr: string): string {
 interface AgentLogDetailProps {
   selectedAgent: SelectedAgentData
   onBack: () => void
+  onResumeSession?: (sessionId: string) => void
+  resumePending?: boolean
 }
 
-export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
+export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending }: AgentLogDetailProps) {
   const { agent, historyEntry, session, phaseName } = selectedAgent
   const isInteractive = session?.status === 'user_interactive'
   const isRunning = agent && !agent.result && !isInteractive
@@ -120,6 +125,24 @@ export function AgentLogDetail({ selectedAgent, onBack }: AgentLogDetailProps) {
             )}
           </div>
         </div>
+        {onResumeSession && sessionId && (result === 'pass' || result === 'fail') && modelId?.startsWith('claude:') && session?.status !== 'user_interactive' && (
+          <Tooltip text="Resume this session in an interactive terminal" placement="top">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onResumeSession(sessionId)}
+              disabled={resumePending}
+              className="text-blue-600 hover:text-blue-700 shrink-0"
+            >
+              {resumePending ? (
+                <Spinner size="sm" className="mr-1.5" />
+              ) : (
+                <Terminal className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Resume
+            </Button>
+          </Tooltip>
+        )}
       </div>
 
       {/* Content area */}

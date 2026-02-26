@@ -277,6 +277,10 @@ export interface RestartAgentRequest {
   instance_id?: string
 }
 
+export interface ResumeSessionRequest {
+  session_id: string
+}
+
 export interface ProjectWorkflowRunRequest {
   workflow: string
   instructions?: string

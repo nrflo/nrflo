@@ -142,6 +142,8 @@ interface AgentLogPanelProps {
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
   workflowStatus?: string
+  onResumeSession?: (sessionId: string) => void
+  resumePending?: boolean
 }
 
 export function AgentLogPanel({
@@ -154,6 +156,8 @@ export function AgentLogPanel({
   onRetryFailed,
   retryingSessionId,
   workflowStatus,
+  onResumeSession,
+  resumePending,
 }: AgentLogPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -248,7 +252,7 @@ export function AgentLogPanel({
             </span>
           </div>
         ) : (
-          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} />
+          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} onResumeSession={onResumeSession} resumePending={resumePending} />
         )}
       </div>
     )

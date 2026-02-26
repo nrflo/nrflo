@@ -10,6 +10,7 @@ import {
   useRetryFailedProjectAgent,
   useTakeControlProject,
   useExitInteractiveProject,
+  useResumeSessionProject,
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
 import { WorkflowTabContent } from './WorkflowTabContent'
@@ -57,6 +58,7 @@ export function ProjectWorkflowsPage() {
   const stopMutation = useStopProjectWorkflow()
   const retryFailedMutation = useRetryFailedProjectAgent()
   const takeControlMutation = useTakeControlProject()
+  const resumeSessionMutation = useResumeSessionProject()
   const exitInteractiveMutation = useExitInteractiveProject()
 
   // Filter to project-scoped workflows only
@@ -265,6 +267,14 @@ export function ProjectWorkflowsPage() {
               onToggleCollapse={() => setLogPanelCollapsed((p) => !p)}
               selectedAgent={selectedPanelAgent}
               onAgentSelect={setSelectedPanelAgent}
+              onResumeSession={(sessionId) => {
+                if (!currentProject) return
+                resumeSessionMutation.mutate(
+                  { projectId: currentProject, params: { session_id: sessionId } },
+                  { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+                )
+              }}
+              resumePending={resumeSessionMutation.isPending}
             />
           )}
         </div>
@@ -343,6 +353,14 @@ export function ProjectWorkflowsPage() {
               )
             }}
             takeControlPending={takeControlMutation.isPending}
+            onResumeSession={(sessionId) => {
+              if (!currentProject) return
+              resumeSessionMutation.mutate(
+                { projectId: currentProject, params: { session_id: sessionId } },
+                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+              )
+            }}
+            resumeSessionPending={resumeSessionMutation.isPending}
           />
         </>
       )}

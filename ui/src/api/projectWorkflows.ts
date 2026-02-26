@@ -8,6 +8,7 @@ import type {
   TakeControlRequest,
   TakeControlResponse,
   ExitInteractiveRequest,
+  ResumeSessionRequest,
 } from '@/types/workflow'
 
 /** Get workflow state for a project (all project-scoped instances) */
@@ -81,6 +82,17 @@ export async function takeControlProject(
 ): Promise<TakeControlResponse> {
   return apiPost<TakeControlResponse>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/take-control`,
+    params
+  )
+}
+
+/** Resume a finished agent session (project-scoped) */
+export async function resumeSessionProject(
+  projectId: string,
+  params: ResumeSessionRequest
+): Promise<TakeControlResponse> {
+  return apiPost<TakeControlResponse>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/resume-session`,
     params
   )
 }

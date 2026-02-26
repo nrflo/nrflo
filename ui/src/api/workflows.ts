@@ -11,6 +11,7 @@ import type {
   TakeControlRequest,
   TakeControlResponse,
   ExitInteractiveRequest,
+  ResumeSessionRequest,
 } from '@/types/workflow'
 
 /** List all workflow definitions for current project */
@@ -101,6 +102,17 @@ export async function takeControl(
 ): Promise<TakeControlResponse> {
   return apiPost<TakeControlResponse>(
     `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/take-control`,
+    params
+  )
+}
+
+/** Resume a finished agent session (open interactive terminal) */
+export async function resumeSession(
+  ticketId: string,
+  params: ResumeSessionRequest
+): Promise<TakeControlResponse> {
+  return apiPost<TakeControlResponse>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/resume-session`,
     params
   )
 }

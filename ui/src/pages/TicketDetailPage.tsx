@@ -31,6 +31,7 @@ import {
   useRetryFailedAgent,
   useTakeControl,
   useExitInteractive,
+  useResumeSession,
 } from '@/hooks/useTickets'
 import { useWebSocketSubscription } from '@/hooks/useWebSocketSubscription'
 import type { WorkflowState } from '@/types/workflow'
@@ -100,6 +101,7 @@ export function TicketDetailPage() {
   const stopMutation = useStopWorkflow()
   const retryFailedMutation = useRetryFailedAgent()
   const takeControlMutation = useTakeControl()
+  const resumeSessionMutation = useResumeSession()
   const exitInteractiveMutation = useExitInteractive()
 
   // Detect if orchestration is running (via _orchestration findings key)
@@ -343,6 +345,14 @@ export function TicketDetailPage() {
               )
             }}
             takeControlPending={takeControlMutation.isPending}
+            onResumeSession={(sessionId) => {
+              if (!id) return
+              resumeSessionMutation.mutate(
+                { ticketId: id, params: { session_id: sessionId } },
+                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+              )
+            }}
+            resumeSessionPending={resumeSessionMutation.isPending}
           />
         )}
 

@@ -52,6 +52,8 @@ interface WorkflowTabContentProps {
   retryingSessionId?: string | null
   onTakeControl?: (sessionId: string) => void
   takeControlPending?: boolean
+  onResumeSession?: (sessionId: string) => void
+  resumeSessionPending?: boolean
 }
 
 export function WorkflowTabContent({
@@ -82,6 +84,8 @@ export function WorkflowTabContent({
   retryingSessionId,
   onTakeControl,
   takeControlPending,
+  onResumeSession,
+  resumeSessionPending,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
@@ -307,6 +311,8 @@ export function WorkflowTabContent({
           onRetryFailed={onRetryFailed}
           retryingSessionId={retryingSessionId}
           workflowStatus={displayedState?.status}
+          onResumeSession={onResumeSession}
+          resumePending={resumeSessionPending}
         />
       )}
     </div>

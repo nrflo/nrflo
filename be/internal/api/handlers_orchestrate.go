@@ -1,9 +1,15 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
+	"be/internal/db"
+	"be/internal/model"
 	"be/internal/orchestrator"
+	"be/internal/repo"
+	"be/internal/ws"
 )
 
 // handleRunWorkflow starts an orchestrated workflow run.
@@ -200,6 +206,74 @@ func (s *Server) handleTakeControl(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "interactive", "session_id": sessionID})
 }
 
+// handleResumeSession sets a finished agent session to user_interactive status
+// without requiring a running orchestration. Reuses the existing PTY handler.
+// POST /api/v1/tickets/:id/workflow/resume-session
+func (s *Server) handleResumeSession(w http.ResponseWriter, r *http.Request) {
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	var body struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+
+	database, err := s.getDatabase()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, s.clock)
+	session, err := asRepo.Get(body.SessionID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "session not found")
+		return
+	}
+
+	if !strings.EqualFold(session.ProjectID, projectID) {
+		writeError(w, http.StatusBadRequest, "session does not belong to this project")
+		return
+	}
+
+	if err := validateResumeSession(session); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := asRepo.UpdateStatus(body.SessionID, model.AgentSessionUserInteractive); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Look up workflow name for the broadcast event.
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+	workflowName := ""
+	if wfi, err := wfiRepo.Get(session.WorkflowInstanceID); err == nil {
+		workflowName = wfi.WorkflowID
+	}
+
+	s.wsHub.Broadcast(ws.NewEvent(ws.EventAgentTakeControl, session.ProjectID, session.TicketID, workflowName, map[string]interface{}{
+		"session_id": session.ID,
+		"agent_type": session.AgentType,
+		"model_id":   session.ModelID.String,
+	}))
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "interactive", "session_id": body.SessionID})
+}
+
 // handleExitInteractive signals that the interactive session has ended.
 // POST /api/v1/tickets/:id/workflow/exit-interactive
 func (s *Server) handleExitInteractive(w http.ResponseWriter, r *http.Request) {
@@ -283,4 +357,30 @@ func (s *Server) handleStopWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "stopping"})
+}
+
+// validateResumeSession checks that a session is eligible for resume:
+// must be a Claude CLI agent in a terminal state.
+func validateResumeSession(session *model.AgentSession) error {
+	// Check model_id is valid and indicates a Claude CLI agent.
+	if !session.ModelID.Valid || session.ModelID.String == "" {
+		return fmt.Errorf("session has no model_id, cannot determine CLI type")
+	}
+	cliName := session.ModelID.String
+	if idx := strings.Index(cliName, ":"); idx >= 0 {
+		cliName = cliName[:idx]
+	}
+	if cliName != "claude" {
+		return fmt.Errorf("session CLI %q does not support resume (only Claude CLI supports resume)", cliName)
+	}
+
+	// Check session is in a terminal state.
+	switch session.Status {
+	case model.AgentSessionCompleted, model.AgentSessionFailed, model.AgentSessionTimeout,
+		model.AgentSessionInteractiveCompleted, model.AgentSessionSkipped:
+		// OK
+	default:
+		return fmt.Errorf("session status is %s, expected a terminal state (completed, failed, timeout, interactive_completed, skipped)", session.Status)
+	}
+	return nil
 }

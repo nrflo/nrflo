@@ -11,7 +11,9 @@ type AgentDefinition struct {
 	Timeout          int       `json:"timeout"`
 	Prompt           string    `json:"prompt"`
 	RestartThreshold *int      `json:"restart_threshold,omitempty"`
-	MaxFailRestarts  *int      `json:"max_fail_restarts,omitempty"`
+	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
+	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
+	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
 	Tag              string    `json:"tag"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`

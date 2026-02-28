@@ -145,6 +145,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    prompt        TEXT NOT NULL DEFAULT ''                            │
 │    restart_threshold INTEGER       (NULL = use global default 25%)   │
 │    max_fail_restarts INTEGER       (NULL/0 = disabled, >0 = auto-restart on failure) │
+│    stall_start_timeout_sec INTEGER (NULL = 120s default, 0 = disabled)│
+│    stall_running_timeout_sec INTEGER (NULL = 480s default, 0 = disabled)│
 │    tag           TEXT NOT NULL DEFAULT '' (skip-tag assignment)      │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │

@@ -140,6 +140,18 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Same delay applies to TIMEOUT auto-restart path (timeout_restart)
    - failRestartCount is independent of restartCount (low-context restarts)
 
+5b. STALL DETECTION (in monitorAll poll loop)
+   - Checked for still-running procs before timeout check
+   - Skipped if lowContextSaving or stallRestartCount >= maxStallRestarts (3)
+   - Start stall: no messages received && stallStartTimeout > 0 && sinceLastMsg > stallStartTimeout (default 2min)
+   - Running stall: has messages && stallRunningTimeout > 0 && sinceLastMsg > stallRunningTimeout (default 8min)
+   - On stall: broadcast agent.stall_restart event, kill process (SIGTERM→grace→SIGKILL), flush messages,
+     register stop with result=continue reason=stall_restart_{start_stall|running_stall},
+     increment stallRestartCount, set finalStatus=CONTINUE → relaunchForContinuation
+   - No context save attempted (agent is frozen), no delay before retry (unlike fail_restart)
+   - Stall timeouts configurable per agent_definition: stall_start_timeout_sec, stall_running_timeout_sec
+     (NULL = defaults, 0 = disabled)
+
 6. FINALIZE PHASE
    - pass_count >= 1 → layer passes (fan-in)
    - all skipped → layer passes
@@ -344,5 +356,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `template_project_findings_test.go` | Project findings template expansion tests |
 | `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
+| `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

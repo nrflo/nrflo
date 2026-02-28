@@ -116,6 +116,9 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.restartThreshold = oldProc.restartThreshold
 	newProc.maxFailRestarts = oldProc.maxFailRestarts
 	newProc.failRestartCount = oldProc.failRestartCount
+	newProc.stallRestartCount = oldProc.stallRestartCount
+	newProc.stallStartTimeout = oldProc.stallStartTimeout
+	newProc.stallRunningTimeout = oldProc.stallRunningTimeout
 
 	// Update the ancestor_session_id and restart_count on the new DB session record
 	if pool := s.pool(); pool != nil {

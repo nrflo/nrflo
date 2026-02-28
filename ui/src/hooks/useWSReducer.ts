@@ -174,6 +174,17 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     }
   },
 
+  'agent.stall_restart': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    }
+  },
+
   'agent.context_updated': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)
   },

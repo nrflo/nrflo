@@ -285,6 +285,8 @@ nrworkflow findings add TICKET-1 implementor summary:'Fixed the auth bug' files_
 | `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns |
 | `restart_threshold` | int (optional) | `25` | Percentage of context remaining that triggers low-context save (lower = more aggressive) |
 | `max_fail_restarts` | int (optional) | `0` | Max auto-restarts on agent failure (0 = disabled). Failed agent is relaunched fresh (no context save). |
+| `stall_start_timeout_sec` | int (optional) | `120` | Seconds with no output before start-stall restart. `0` = disabled. `NULL` = default (120s). |
+| `stall_running_timeout_sec` | int (optional) | `480` | Seconds of silence mid-execution before running-stall restart. `0` = disabled. `NULL` = default (480s). |
 | `tag` | string (optional) | `""` | Group tag for skip-tag feature; must be in parent workflow's `groups` |
 
 ### Supported Models by CLI Adapter
@@ -422,7 +424,30 @@ The `failRestartCount` is tracked independently from the low-context `restartCou
 
 ---
 
-## 11. Common Patterns & Examples
+## 11. Stall Detection & Auto-Restart
+
+The spawner monitors time since last agent message and automatically restarts frozen agents. Two stall types are detected:
+
+- **Start stall**: Agent produces no output at all within `stall_start_timeout_sec` (default 120s)
+- **Running stall**: Agent was active but stopped producing output for `stall_running_timeout_sec` (default 480s)
+
+### How It Works
+
+1. `lastMessageTime` is updated on every `trackMessage()` call (inside `messagesMutex`)
+2. `monitorAll()` checks elapsed time since last message each poll iteration
+3. On stall: kills agent immediately (no context save — agent is frozen), marks session as `continued` with `result_reason=stall_restart_start_stall` or `stall_restart_running_stall`, relaunches fresh
+4. Stall restarts are capped at `maxStallRestarts` (3) to prevent infinite loops
+5. Broadcasts `agent.stall_restart` WS event with stall type and count
+
+### Configuration
+
+- `stall_start_timeout_sec`: NULL = 120s default, 0 = disabled, positive integer = custom seconds
+- `stall_running_timeout_sec`: NULL = 480s default, 0 = disabled, positive integer = custom seconds
+- `stallRestartCount` is independent of `failRestartCount` and `restartCount` (low-context)
+
+---
+
+## 12. Common Patterns & Examples
 
 ### Example 1: Setup Analyzer Prompt
 

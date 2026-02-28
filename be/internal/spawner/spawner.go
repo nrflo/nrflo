@@ -42,9 +42,12 @@ type AgentConfig struct {
 }
 
 const (
-	defaultMaxContinuations = 10
-	defaultContextThreshold = 25
-	defaultFailRetryDelay   = 15 * time.Second
+	defaultMaxContinuations    = 10
+	defaultContextThreshold    = 25
+	defaultFailRetryDelay      = 15 * time.Second
+	defaultStallStartTimeout   = 2 * time.Minute
+	defaultStallRunningTimeout = 8 * time.Minute
+	maxStallRestarts           = 3
 )
 
 // Config holds the spawner configuration
@@ -113,6 +116,12 @@ type processInfo struct {
 	failRestartCount  int    // How many times this agent has been auto-restarted on failure
 	// Low-context save state
 	lowContextSaving bool // True while initiateContextSave is running
+	// Stall detection
+	lastMessageTime     time.Time     // set on spawn, updated on every trackMessage()
+	hasReceivedMessage  bool          // distinguishes "no messages yet" from "had messages, now stalled"
+	stallStartTimeout   time.Duration // from agent_definition or default 120s
+	stallRunningTimeout time.Duration // from agent_definition or default 480s
+	stallRestartCount   int           // incremented on each stall restart
 	// Docker container name (empty when not using Docker isolation)
 	containerName string
 	// External session ID (e.g., codex thread_id) — for logging only
@@ -343,6 +352,22 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	if agentDef != nil && agentDef.MaxFailRestarts != nil {
 		maxFailRestarts = *agentDef.MaxFailRestarts
 	}
+	stallStartTimeout := defaultStallStartTimeout
+	stallRunningTimeout := defaultStallRunningTimeout
+	if agentDef != nil && agentDef.StallStartTimeoutSec != nil {
+		if *agentDef.StallStartTimeoutSec == 0 {
+			stallStartTimeout = 0
+		} else {
+			stallStartTimeout = time.Duration(*agentDef.StallStartTimeoutSec) * time.Second
+		}
+	}
+	if agentDef != nil && agentDef.StallRunningTimeoutSec != nil {
+		if *agentDef.StallRunningTimeoutSec == 0 {
+			stallRunningTimeout = 0
+		} else {
+			stallRunningTimeout = time.Duration(*agentDef.StallRunningTimeoutSec) * time.Second
+		}
+	}
 
 	// Load agent template
 	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID)
@@ -480,9 +505,12 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		ticketID:      req.TicketID,
 		workflowName:       req.WorkflowName,
 		workflowInstanceID: wfiID,
-		restartThreshold:   effectiveThreshold,
-		maxFailRestarts:    maxFailRestarts,
-		containerName:      ctrName,
+		restartThreshold:    effectiveThreshold,
+		maxFailRestarts:     maxFailRestarts,
+		containerName:       ctrName,
+		lastMessageTime:     s.config.Clock.Now(),
+		stallStartTimeout:   stallStartTimeout,
+		stallRunningTimeout: stallRunningTimeout,
 	}
 
 	// Register agent start (create agent_sessions row)
@@ -720,6 +748,25 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					completed = append(completed, proc)
 				}
 			default:
+				// Stall detection — check before timeout
+				if s.checkStall(ctx, proc, req) {
+					proc.elapsed = elapsed
+					// checkStall already killed the process and set finalStatus=CONTINUE
+					if proc.restartCount < defaultMaxContinuations {
+						newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
+						if err != nil {
+							logger.Error(ctx, "failed to relaunch after stall", "model", proc.modelID, "err", err)
+							completed = append(completed, proc)
+						} else {
+							stillRunning = append(stillRunning, newProc)
+						}
+					} else {
+						logger.Error(ctx, "max continuations reached after stall", "model", proc.modelID)
+						proc.finalStatus = "FAIL"
+						completed = append(completed, proc)
+					}
+					continue
+				}
 				// Still running - check timeout
 				if elapsed > proc.timeout {
 					s.handleGracefulTimeout(ctx, proc, req)

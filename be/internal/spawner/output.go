@@ -303,6 +303,8 @@ func (s *Spawner) trackMessage(proc *processInfo, msg string, category string) {
 	proc.pendingMessages = append(proc.pendingMessages, repo.MessageEntry{Content: msg, Category: category})
 	proc.lastMessage = msg
 	proc.messagesDirty = true
+	proc.lastMessageTime = s.config.Clock.Now()
+	proc.hasReceivedMessage = true
 }
 
 // formatPrefix returns a prefix string with agent type and model for console output

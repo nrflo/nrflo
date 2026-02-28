@@ -16,7 +16,6 @@ import (
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
-	"be/internal/usagelimits"
 	"be/internal/ws"
 )
 
@@ -28,11 +27,8 @@ type Server struct {
 	wsHub            *ws.Hub
 	orchestrator     *orchestrator.Orchestrator
 	chainRunner      *orchestrator.ChainRunner
-	ptyManager       *ptyPkg.Manager
-	clock            clock.Clock
-	usageLimitsCache *usagelimits.Cache
-	pool             *db.Pool
-	fetcherCancel    context.CancelFunc
+	ptyManager *ptyPkg.Manager
+	clock      clock.Clock
 }
 
 // NewServer creates a new API server
@@ -41,28 +37,14 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 	hub := ws.NewHub(clk)
 	orch := orchestrator.New(dataPath, hub, clk)
 
-	// Create a DB pool for the preferences service (usage limits persistence)
-	var ulCache *usagelimits.Cache
-	pool, err := db.NewPool(dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		logger.Info(context.Background(), "server: failed to create pool for preferences, usage limits persistence disabled", "error", err)
-		ulCache = usagelimits.NewCache(nil, nil)
-		pool = nil
-	} else {
-		prefsSvc := service.NewPreferencesService(pool, clk)
-		ulCache = usagelimits.NewCache(prefsSvc, clk)
-	}
-
 	return &Server{
-		config:           cfg,
-		dataPath:         dataPath,
-		wsHub:            hub,
-		orchestrator:     orch,
-		chainRunner:      orchestrator.NewChainRunner(orch, dataPath, hub, clk),
-		ptyManager:       ptyPkg.NewManager(),
-		clock:            clk,
-		usageLimitsCache: ulCache,
-		pool:             pool,
+		config:       cfg,
+		dataPath:     dataPath,
+		wsHub:        hub,
+		orchestrator: orch,
+		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
+		ptyManager:   ptyPkg.NewManager(),
+		clock:        clk,
 	}
 }
 
@@ -83,9 +65,6 @@ func (s *Server) Start(port int) error {
 
 	// Start retention cleanup for workflow instances and agent sessions
 	s.startRetentionCleanup()
-
-	// Start background usage limits fetcher
-	s.startUsageLimitsFetcher()
 
 	// Start WebSocket hub
 	go s.wsHub.Run()
@@ -109,10 +88,6 @@ func (s *Server) Start(port int) error {
 
 // Stop gracefully stops the server
 func (s *Server) Stop(ctx context.Context) error {
-	// Cancel usage limits fetcher goroutine and any in-flight PTY scrapes
-	if s.fetcherCancel != nil {
-		s.fetcherCancel()
-	}
 	// Cancel all active orchestrations
 	if s.orchestrator != nil {
 		s.orchestrator.StopAll()
@@ -124,10 +99,6 @@ func (s *Server) Stop(ctx context.Context) error {
 	// Stop WebSocket hub
 	if s.wsHub != nil {
 		s.wsHub.Stop()
-	}
-	// Close DB pool
-	if s.pool != nil {
-		s.pool.Close()
 	}
 	if s.httpServer != nil {
 		if ctx == nil {
@@ -206,54 +177,6 @@ func (s *Server) startRetentionCleanup() {
 		defer ticker.Stop()
 		for range ticker.C {
 			cleanup()
-		}
-	}()
-}
-
-// startUsageLimitsFetcher runs a background goroutine that fetches CLI usage
-// limits on startup and every 20 minutes thereafter. If fresh data exists in
-// the DB (< 30 min old), it populates the cache immediately and skips the
-// initial PTY scrape.
-func (s *Server) startUsageLimitsFetcher() {
-	ctx, cancel := context.WithCancel(context.Background())
-	s.fetcherCancel = cancel
-
-	fetch := func() {
-		data := usagelimits.FetchAll(ctx)
-		if ctx.Err() != nil {
-			return
-		}
-		s.usageLimitsCache.Set(data)
-		s.wsHub.BroadcastGlobal(ws.NewEvent(ws.EventGlobalUsageLimits, "", "", "", nil))
-		logger.Info(context.Background(), "usage-limits: fetched",
-			"claude_available", data.Claude.Available,
-			"codex_available", data.Codex.Available)
-	}
-
-	go func() {
-		loaded := s.usageLimitsCache.LoadFromDB()
-		cached := s.usageLimitsCache.Get()
-		// "empty" means no actual usage metrics — available:true with parse errors doesn't count
-		isEmpty := cached == nil ||
-			(cached.Claude.Session == nil && cached.Claude.Weekly == nil &&
-				cached.Codex.Session == nil && cached.Codex.Weekly == nil)
-		if loaded && !isEmpty {
-			logger.Info(context.Background(), "usage-limits: loaded fresh data from DB, skipping initial fetch")
-		} else {
-			if loaded && isEmpty {
-				logger.Info(context.Background(), "usage-limits: DB data has no available tools, re-fetching")
-			}
-			fetch()
-		}
-		ticker := time.NewTicker(20 * time.Minute)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				fetch()
-			case <-ctx.Done():
-				return
-			}
 		}
 	}()
 }
@@ -430,9 +353,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Search
 	mux.HandleFunc("GET /api/v1/search", s.handleSearch)
-
-	// Usage limits (global, no project scoping)
-	mux.HandleFunc("GET /api/v1/usage-limits", s.handleGetUsageLimits)
 
 	// Status/Dashboard
 	mux.HandleFunc("GET /api/v1/status", s.handleStatus)

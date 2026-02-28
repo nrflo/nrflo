@@ -47,7 +47,6 @@ export type WSEventType =
   | 'layer.skipped'
   | 'ticket.updated'
   | 'global.running_agents'
-  | 'global.usage_limits'
   | 'test.echo'
 
 export interface WSEvent {
@@ -189,12 +188,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     // Handle global running agents signal (no subscription scope)
     if (event.type === 'global.running_agents') {
       qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
-      return
-    }
-
-    // Handle global usage limits signal (no subscription scope)
-    if (event.type === 'global.usage_limits') {
-      qc.invalidateQueries({ queryKey: ['usage-limits'] })
       return
     }
 

@@ -61,12 +61,6 @@ be/
 │   ├── pty/                     # PTY session management for interactive agent control
 │   │   ├── session.go           # Session struct wrapping creack/pty (spawn, read/write, resize, close)
 │   │   └── manager.go           # Manager: create/get/remove/close-all PTY sessions by session ID
-│   ├── usagelimits/             # CLI usage limits scraper (Claude, Codex)
-│   │   ├── types.go             # UsageLimits, ToolUsage, UsageMetric structs
-│   │   ├── fetcher.go           # PTY-based scraper: spawn CLI, send /usage or /status, read output
-│   │   ├── ansi.go              # ANSI escape code stripping (cursor moves, SGR, OSC)
-│   │   ├── parser.go            # Output parsing: Claude /usage and Codex /status regex extraction
-│   │   └── cache.go             # Thread-safe cache with RWMutex + DB persistence via Store interface
 │   ├── config/                  # Configuration management
 │   │   └── config.go
 │   ├── client/                  # Socket + HTTP clients
@@ -93,7 +87,6 @@ be/
 │   │   ├── chain_append.go      # AppendToChain for running chains
 │   │   ├── daily_stats.go       # Daily stats computation from source tables
 │   │   ├── git.go               # Git operations (commit listing, detail via os/exec)
-│   │   ├── preferences.go       # Global server preferences (key-value upsert)
 │   │   └── snapshot.go          # WS snapshot provider (builds chunks from workflow state)
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection
@@ -110,8 +103,7 @@ be/
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution, item, lock models
-│   │   ├── daily_stats.go
-│   │   └── preference.go        # Global server preference (key-value)
+│   │   └── daily_stats.go
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -200,7 +192,6 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Database schema, migrations, connection pool |
 | `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Service layer, file mapping, workflow types, common tasks |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
-| `internal/usagelimits/` | [usagelimits/CLAUDE.md](internal/usagelimits/CLAUDE.md) | CLI usage scraper, ANSI stripping, parser, cache with DB persistence |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
 
 ## Running Tests

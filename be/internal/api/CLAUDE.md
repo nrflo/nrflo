@@ -27,7 +27,6 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_logs.go` | Log file viewer (BE/FE logs) |
-| `handlers_usage_limits.go` | CLI usage limits (cached, global) |
 
 ## HTTP API Endpoints
 
@@ -132,7 +131,6 @@ GET /api/v1/logs                   # Log file contents (?type=be|fe, default be)
 GET /api/v1/search?q=              # Full-text search
 GET /api/v1/status                 # Dashboard summary
 GET /api/v1/daily-stats            # Daily stats (tickets, tokens, agent time) per project
-GET /api/v1/usage-limits           # CLI usage limits (Claude/Codex, cached, global)
 GET /api/v1/ws                     # WebSocket for real-time updates (broadcast)
 GET /api/v1/pty/:session_id        # PTY WebSocket (1:1 interactive terminal relay)
 ```

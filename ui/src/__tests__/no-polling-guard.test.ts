@@ -16,8 +16,6 @@ const ALLOWLIST = [
   'no-polling-guard.test.ts',
   // Logs hook polls external log files (not workflow data) — no WebSocket events available
   'useLogs.ts',
-  // Usage limits polls a cached REST endpoint — no WebSocket events available for this data
-  'useUsageLimits.ts',
   // Running agents uses 30s fallback polling in case global WS broadcast events are missed
   'useRunningAgents.ts',
 ]

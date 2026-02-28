@@ -60,14 +60,15 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 					if toolName != "" {
 						input, _ := itemMap["input"].(map[string]interface{})
 						s.handleToolUse(proc, toolName, input)
-						// Track in-flight Task invocations for tool_result correlation
-						if toolName == "Task" {
+						// Track in-flight Task/Agent invocations for tool_result correlation
+						if toolName == "Task" || toolName == "Agent" {
 							if id, ok := itemMap["id"].(string); ok && id != "" {
 								desc, _ := input["description"].(string)
 								subagentType, _ := input["subagent_type"].(string)
 								bg, _ := input["run_in_background"].(bool)
 								proc.messagesMutex.Lock()
 								proc.pendingTasks[id] = taskInfo{
+									toolName:     toolName,
 									description:  desc,
 									subagentType: subagentType,
 									background:   bg,
@@ -221,7 +222,7 @@ func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 // toolCategory returns the message category for a tool invocation
 func toolCategory(toolName string) string {
 	switch toolName {
-	case "Task":
+	case "Task", "Agent":
 		return "subagent"
 	case "Skill":
 		return "skill"
@@ -276,7 +277,7 @@ func (s *Spawner) handleClaudeToolResult(proc *processInfo, data map[string]inte
 		return
 	}
 
-	// Build [TaskResult] message
+	// Build [TaskResult] or [AgentResult] message based on original tool name
 	detail := info.description
 	if info.subagentType != "" {
 		detail = info.subagentType + ": " + info.description
@@ -288,7 +289,11 @@ func (s *Spawner) handleClaudeToolResult(proc *processInfo, data map[string]inte
 	if len(detail) > 200 {
 		detail = detail[:200] + "..."
 	}
-	msg := "[TaskResult] " + detail
+	resultTag := "TaskResult"
+	if info.toolName == "Agent" {
+		resultTag = "AgentResult"
+	}
+	msg := "[" + resultTag + "] " + detail
 
 	s.trackMessage(proc, msg, "subagent")
 
@@ -399,7 +404,7 @@ func (s *Spawner) formatToolDetail(toolName string, input map[string]interface{}
 			}
 		}
 
-	case "Task":
+	case "Task", "Agent":
 		desc, _ := input["description"].(string)
 		agentType, _ := input["subagent_type"].(string)
 		if desc != "" {

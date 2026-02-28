@@ -183,4 +183,52 @@ describe('ToolBadge', () => {
     expect(resultBadge.className).toContain('bg-emerald-100')
     expect(resultBadge.className).not.toContain('bg-indigo-100')
   })
+
+  it('renders Agent badge with indigo-100 styling', () => {
+    render(<ToolBadge name="Agent" />)
+    const badge = screen.getByText('Agent')
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('bg-indigo-100')
+  })
+
+  it('renders AgentResult badge with emerald-100 styling', () => {
+    render(<ToolBadge name="AgentResult" />)
+    const badge = screen.getByText('AgentResult')
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('bg-emerald-100')
+  })
+
+  it('AgentResult uses emerald while Agent uses indigo (mirrors Task/TaskResult)', () => {
+    const { rerender } = render(<ToolBadge name="Agent" />)
+    const agentBadge = screen.getByText('Agent')
+    expect(agentBadge.className).toContain('bg-indigo-100')
+    expect(agentBadge.className).not.toContain('bg-emerald-100')
+
+    rerender(<ToolBadge name="AgentResult" />)
+    const resultBadge = screen.getByText('AgentResult')
+    expect(resultBadge.className).toContain('bg-emerald-100')
+    expect(resultBadge.className).not.toContain('bg-indigo-100')
+  })
+
+  it('Agent and Task share the same indigo color', () => {
+    const { rerender } = render(<ToolBadge name="Task" />)
+    const taskClass = screen.getByText('Task').className
+
+    rerender(<ToolBadge name="Agent" />)
+    const agentClass = screen.getByText('Agent').className
+
+    expect(agentClass).toContain('bg-indigo-100')
+    expect(taskClass).toContain('bg-indigo-100')
+  })
+
+  it('AgentResult and TaskResult share the same emerald color', () => {
+    const { rerender } = render(<ToolBadge name="TaskResult" />)
+    const taskResultClass = screen.getByText('TaskResult').className
+
+    rerender(<ToolBadge name="AgentResult" />)
+    const agentResultClass = screen.getByText('AgentResult').className
+
+    expect(agentResultClass).toContain('bg-emerald-100')
+    expect(taskResultClass).toContain('bg-emerald-100')
+  })
 })

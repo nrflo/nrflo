@@ -90,6 +90,89 @@ func TestProcessOutput_Claude_ContentBlockStop_MatchesTask(t *testing.T) {
 	}
 }
 
+// TestProcessOutput_Claude_ToolResult_NestedContent_MatchesAgent mirrors the Task version for Agent.
+func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesAgent(t *testing.T) {
+	s := noPoolSpawner()
+	proc := minProc("sess-agent-nc-1")
+
+	processJSON(s, proc, map[string]interface{}{
+		"type": "assistant",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type": "tool_use",
+					"id":   "toolu_agent_nested",
+					"name": "Agent",
+					"input": map[string]interface{}{
+						"description": "nested id agent test",
+					},
+				},
+			},
+		},
+	})
+
+	// tool_use_id nested inside content array (alternative format)
+	processJSON(s, proc, map[string]interface{}{
+		"type": "tool_result",
+		"content": []interface{}{
+			map[string]interface{}{
+				"tool_use_id": "toolu_agent_nested",
+				"type":        "tool_result",
+			},
+		},
+	})
+
+	entries := pendingEntries(proc)
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries (Agent + AgentResult), got %d", len(entries))
+	}
+	if !strings.HasPrefix(entries[1].Content, "[AgentResult]") {
+		t.Errorf("expected [AgentResult] message, got: %q", entries[1].Content)
+	}
+	if entries[1].Category != "subagent" {
+		t.Errorf("category = %q, want subagent", entries[1].Category)
+	}
+}
+
+// TestProcessOutput_Claude_ContentBlockStop_MatchesAgent mirrors the Task version for Agent.
+func TestProcessOutput_Claude_ContentBlockStop_MatchesAgent(t *testing.T) {
+	s := noPoolSpawner()
+	proc := minProc("sess-agent-cbs-1")
+
+	processJSON(s, proc, map[string]interface{}{
+		"type": "assistant",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type": "tool_use",
+					"id":   "toolu_agent_cbs001",
+					"name": "Agent",
+					"input": map[string]interface{}{
+						"description":   "background agent task",
+						"subagent_type": "general-purpose",
+					},
+				},
+			},
+		},
+	})
+
+	processJSON(s, proc, map[string]interface{}{
+		"type":        "content_block_stop",
+		"tool_use_id": "toolu_agent_cbs001",
+	})
+
+	entries := pendingEntries(proc)
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries (Agent + AgentResult), got %d", len(entries))
+	}
+	if !strings.HasPrefix(entries[1].Content, "[AgentResult]") {
+		t.Errorf("content_block_stop should generate [AgentResult] for Agent tool, got: %q", entries[1].Content)
+	}
+	if entries[1].Category != "subagent" {
+		t.Errorf("category = %q, want subagent", entries[1].Category)
+	}
+}
+
 func TestProcessOutput_Claude_ContentBlockStop_UnknownID_Ignored(t *testing.T) {
 	s := noPoolSpawner()
 	proc := minProc("sess-cbs-2")

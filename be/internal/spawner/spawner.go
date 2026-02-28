@@ -69,8 +69,9 @@ type Config struct {
 	DockerConfig *DockerConfig
 }
 
-// taskInfo tracks an in-flight Task tool invocation for tool_result correlation
+// taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
 type taskInfo struct {
+	toolName     string // original tool name ("Task" or "Agent")
 	description  string
 	subagentType string
 	background   bool

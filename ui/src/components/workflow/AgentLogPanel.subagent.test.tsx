@@ -92,7 +92,7 @@ describe('AgentLogPanel - subagent count indicator', () => {
   it('shows "1 sub-agent" (singular) when one subagent message exists', () => {
     renderPanel([
       { content: 'text msg', category: 'text', created_at: '2026-01-01T00:00:10Z' },
-      { content: '[Task] sub-agent', category: 'subagent', created_at: '2026-01-01T00:00:20Z' },
+      { content: '[Agent] sub-agent', category: 'subagent', created_at: '2026-01-01T00:00:20Z' },
     ])
 
     expect(screen.getByText('1 sub-agent')).toBeInTheDocument()
@@ -100,9 +100,9 @@ describe('AgentLogPanel - subagent count indicator', () => {
 
   it('shows "N sub-agents" (plural) when multiple subagent messages exist', () => {
     renderPanel([
-      { content: '[Task] agent 1', category: 'subagent', created_at: '2026-01-01T00:00:10Z' },
-      { content: '[TaskResult] done 1', category: 'subagent', created_at: '2026-01-01T00:00:11Z' },
-      { content: '[Task] agent 2', category: 'subagent', created_at: '2026-01-01T00:00:20Z' },
+      { content: '[Agent] agent 1', category: 'subagent', created_at: '2026-01-01T00:00:10Z' },
+      { content: '[AgentResult] done 1', category: 'subagent', created_at: '2026-01-01T00:00:11Z' },
+      { content: '[Task] agent 2 (legacy)', category: 'subagent', created_at: '2026-01-01T00:00:20Z' },
     ])
 
     expect(screen.getByText('3 sub-agents')).toBeInTheDocument()
@@ -127,12 +127,21 @@ describe('AgentLogPanel - subagent count indicator', () => {
     renderPanel([
       { content: 'text 1', category: 'text', created_at: '2026-01-01T00:00:01Z' },
       { content: '[Bash] tool', category: 'tool', created_at: '2026-01-01T00:00:02Z' },
-      { content: '[Task] sub 1', category: 'subagent', created_at: '2026-01-01T00:00:03Z' },
+      { content: '[Agent] sub 1', category: 'subagent', created_at: '2026-01-01T00:00:03Z' },
       { content: '[Skill] skill', category: 'skill', created_at: '2026-01-01T00:00:04Z' },
-      { content: '[TaskResult] done', category: 'subagent', created_at: '2026-01-01T00:00:05Z' },
+      { content: '[AgentResult] done', category: 'subagent', created_at: '2026-01-01T00:00:05Z' },
     ])
 
     // Only 2 subagent messages out of 5 total
+    expect(screen.getByText('2 sub-agents')).toBeInTheDocument()
+  })
+
+  it('counts [Agent] and legacy [Task] messages equally when both have subagent category', () => {
+    renderPanel([
+      { content: '[Task] old-style sub-agent', category: 'subagent', created_at: '2026-01-01T00:00:10Z' },
+      { content: '[Agent] new-style sub-agent', category: 'subagent', created_at: '2026-01-01T00:00:20Z' },
+    ])
+
     expect(screen.getByText('2 sub-agents')).toBeInTheDocument()
   })
 })

@@ -24,6 +24,7 @@ func TestToolCategory(t *testing.T) {
 		want     string
 	}{
 		{"Task", "subagent"},
+		{"Agent", "subagent"},
 		{"Skill", "skill"},
 		{"Bash", "tool"},
 		{"Read", "tool"},
@@ -61,6 +62,7 @@ func TestProcessOutput_Claude_CategoryAssignment(t *testing.T) {
 		{"read", "Read", "tool"},
 		{"write", "Write", "tool"},
 		{"task", "Task", "subagent"},
+		{"agent", "Agent", "subagent"},
 		{"skill", "Skill", "skill"},
 		{"grep", "Grep", "tool"},
 		{"glob", "Glob", "tool"},
@@ -115,7 +117,7 @@ func buildToolInput(toolName string) map[string]interface{} {
 		return map[string]interface{}{"command": "ls"}
 	case "Read", "Write", "Edit":
 		return map[string]interface{}{"file_path": "file.go"}
-	case "Task":
+	case "Task", "Agent":
 		return map[string]interface{}{"description": "analyze the code"}
 	case "Skill":
 		return map[string]interface{}{"skill": "commit"}

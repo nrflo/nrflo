@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"syscall"
 	"time"
 
@@ -59,6 +60,7 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	}
 
 	savePrompt := buildSavePrompt()
+	logger.Info(ctx, "context save prompt", "prompt", savePrompt, "session_id", proc.sessionID)
 
 	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
 		SessionID: proc.sessionID,
@@ -66,6 +68,9 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 		WorkDir:   s.config.ProjectRoot,
 		Env:       proc.cmd.Env,
 	})
+
+	// Pipe prompt via stdin (same as normal spawn)
+	resumeCmd.Stdin = strings.NewReader(savePrompt)
 
 	// Capture stdout/stderr for monitoring
 	stdout, err := resumeCmd.StdoutPipe()
@@ -76,6 +81,10 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 		proc.finalStatus = "CONTINUE"
 		return
 	}
+	stderr, stderrErr := resumeCmd.StderrPipe()
+	if stderrErr != nil {
+		logger.Error(ctx, "context save failed to create stderr pipe", "err", stderrErr, "session_id", proc.sessionID)
+	}
 
 	if err := resumeCmd.Start(); err != nil {
 		logger.Error(ctx, "context save failed to start resume", "err", err, "session_id", proc.sessionID)
@@ -84,16 +93,35 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 		proc.finalStatus = "CONTINUE"
 		return
 	}
-	logger.Info(ctx, "context save resume started", "pid", resumeCmd.Process.Pid, "session_id", proc.sessionID)
+	logger.Info(ctx, "context save resume started", "pid", resumeCmd.Process.Pid, "cmd", resumeCmd.Args, "session_id", proc.sessionID)
 
-	// Drain resume stdout to prevent blocking
+	// Capture and log resume stdout
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		buf := make([]byte, 0, 1024*1024)
 		scanner.Buffer(buf, 10*1024*1024)
+		lineCount := 0
 		for scanner.Scan() {
+			lineCount++
+			line := scanner.Text()
+			if len(line) > 500 {
+				line = line[:250] + "..." + line[len(line)-250:]
+			}
+			logger.Info(ctx, "context save output", "line", lineCount, "content", line, "session_id", proc.sessionID)
 		}
+		logger.Info(ctx, "context save output finished", "total_lines", lineCount, "session_id", proc.sessionID)
 	}()
+
+	// Capture and log resume stderr
+	if stderrErr == nil {
+		go func() {
+			scanner := bufio.NewScanner(stderr)
+			scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+			for scanner.Scan() {
+				logger.Warn(ctx, "context save stderr", "content", scanner.Text(), "session_id", proc.sessionID)
+			}
+		}()
+	}
 
 	// 4. Wait for resume process to finish (with timeout)
 	resumeDone := make(chan struct{})

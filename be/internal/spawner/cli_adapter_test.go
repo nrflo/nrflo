@@ -58,6 +58,10 @@ func TestClaudeAdapter_BuildResumeCommand_DisallowsInteractiveTools(t *testing.T
 			t.Errorf("Resume command args missing disallowed tool %q: %s", tool, args)
 		}
 	}
+	// Prompt must NOT appear in args — it's piped via stdin
+	if strings.Contains(args, "Continue") {
+		t.Errorf("Resume command args should not contain prompt text (stdin): %s", args)
+	}
 }
 
 func TestGetCLIAdapter_Codex(t *testing.T) {

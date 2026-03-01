@@ -137,7 +137,7 @@ func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 		"--verbose",
 		"--output-format", "stream-json",
 		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
-		opts.Prompt,
+		// prompt piped via stdin (same as BuildCommand)
 	}
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = opts.WorkDir

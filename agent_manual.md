@@ -1,6 +1,6 @@
 # Agent Definition Manual
 
-> Last updated: 2026-02-25
+> Last updated: 2026-03-01
 
 Cheat-sheet for creating agent definitions. Agent definitions are stored in the `agent_definitions` table and managed via `/api/v1/workflows/{wid}/agents` API or the Workflows page in the web UI.
 
@@ -270,7 +270,7 @@ nrworkflow findings project-delete <key1> [key2...]
 Both `add` and `append` support `key:value` pairs. The first colon separates the key from the value:
 
 ```bash
-nrworkflow findings add TICKET-1 implementor summary:'Fixed the auth bug' files_changed:'["auth.go"]' -w bugfix
+nrworkflow findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
 ```
 
 ---
@@ -362,11 +362,11 @@ Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an ear
 1. Verifier agent detects an issue
 2. Verifier saves callback instructions as a finding:
    ```bash
-   nrworkflow findings add TICKET-1 qa-verifier callback_instructions:"Fix the auth bug in middleware/auth.go" -w feature
+   nrworkflow findings add callback_instructions:"Fix the auth bug in middleware/auth.go"
    ```
 3. Verifier triggers callback:
    ```bash
-   nrworkflow agent callback TICKET-1 qa-verifier -w feature --level 2
+   nrworkflow agent callback --level 2
    ```
 4. Orchestrator saves `_callback` metadata, resets phases/sessions from target layer forward
 5. Target agent (implementor at layer 2) re-runs with `${CALLBACK_INSTRUCTIONS}` expanded
@@ -472,13 +472,8 @@ Analyze the ticket and codebase. Store your findings:
 - `files_to_modify` — JSON array of file paths
 - `implementation_plan` — Step-by-step plan
 
-When done (ticket-scoped):
-nrworkflow findings add ${TICKET_ID} ${AGENT} summary:'...' files_to_modify:'[...]' implementation_plan:'...' -w ${WORKFLOW} --model ${MODEL}
-
-When done (project-scoped, use -T):
-nrworkflow findings add -T ${AGENT} summary:'...' files_to_modify:'[...]' implementation_plan:'...' -w ${WORKFLOW} --model ${MODEL}
-
-(Just exit cleanly — exit 0 = pass)
+When done, save your findings and exit cleanly (exit 0 = pass):
+nrworkflow findings add summary:'...' files_to_modify:'[...]' implementation_plan:'...'
 ```
 
 ### Example 2: Implementor with Findings Injection and Callbacks
@@ -502,13 +497,11 @@ ${PREVIOUS_DATA}
 
 Implement the changes described in the analysis. Follow the test specifications.
 
-When done:
-nrworkflow findings add ${TICKET_ID} ${AGENT} be_changes_summary:'...' be_files_changed:'[...]' -w ${WORKFLOW} --model ${MODEL}
-
-(Just exit cleanly — exit 0 = pass)
+When done, save your findings and exit cleanly (exit 0 = pass):
+nrworkflow findings add be_changes_summary:'...' be_files_changed:'[...]'
 
 If blocked, fail with a reason:
-nrworkflow agent fail ${TICKET_ID} ${AGENT} -w ${WORKFLOW} --model ${MODEL} --reason "..."
+nrworkflow agent fail --reason "..."
 ```
 
 ---

@@ -179,38 +179,31 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 	}
 }
 
-// TestSavePromptStructure tests the exact structure of the save prompt
+// TestSavePromptStructure tests the structure of the save prompt uses env-var-based CLI
 func TestSavePromptStructure(t *testing.T) {
-	ticketID := "TICKET-456"
-	agentType := "qa-verifier"
-	workflowName := "bugfix"
-	modelID := "claude:opus"
+	prompt := buildSavePrompt()
 
-	prompt := buildSavePrompt(ticketID, agentType, workflowName, modelID)
-
-	// Verify the prompt has the correct structure
+	// Verify the prompt has the correct structure (env-var-based, no positional args)
 	tests := []struct {
 		name     string
 		contains string
+		want     bool // true = must contain, false = must NOT contain
 	}{
-		{"has to_resume key", "to_resume:"},
-		{"has findings add command", "nrworkflow findings add"},
-		{"has agent continue command", "nrworkflow agent continue"},
-		{"has ticket ID in findings", "findings add " + ticketID},
-		{"has ticket ID in continue", "agent continue " + ticketID},
-		{"has agent type in findings", ticketID + " " + agentType + " to_resume"},
-		{"has agent type in continue", "continue " + ticketID + " " + agentType},
-		{"has workflow flag in findings", "-w " + workflowName},
-		{"has workflow flag in continue", "-w " + workflowName},
-		{"has model flag in findings", "--model " + modelID},
-		{"has model flag in continue", "--model " + modelID},
-		{"has placeholder instruction", "<your summary"},
+		{"has to_resume key", "to_resume", true},
+		{"has findings add command", "nrworkflow findings add to_resume", true},
+		{"has agent continue command", "nrworkflow agent continue", true},
+		{"no -w flag", "-w ", false},
+		{"no --model flag", "--model ", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if !containsHelper(prompt, tt.contains) {
+			found := containsHelper(prompt, tt.contains)
+			if tt.want && !found {
 				t.Errorf("prompt should contain %q, got: %s", tt.contains, prompt)
+			}
+			if !tt.want && found {
+				t.Errorf("prompt should NOT contain %q (obsolete), got: %s", tt.contains, prompt)
 			}
 		})
 	}

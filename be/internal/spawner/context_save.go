@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"syscall"
 	"time"
 
@@ -59,7 +58,7 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 		return
 	}
 
-	savePrompt := buildSavePrompt(req.TicketID, proc.agentType, req.WorkflowName, proc.modelID)
+	savePrompt := buildSavePrompt()
 
 	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
 		SessionID: proc.sessionID,
@@ -186,15 +185,11 @@ func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) 
 }
 
 // buildSavePrompt constructs the prompt sent to a resumed agent to save its progress.
-func buildSavePrompt(ticketID, agentType, workflowName, modelID string) string {
-	ticketArg := ticketID
-	if ticketID == "" {
-		ticketArg = "-T"
-	}
-	return fmt.Sprintf(
-		"Save a summary of all your current work progress by running: "+
-			"nrworkflow findings add %s %s to_resume:<your summary of all progress, findings, and context> -w %s --model %s"+
-			" — then call: nrworkflow agent continue %s %s -w %s --model %s",
-		ticketArg, agentType, workflowName, modelID,
-		ticketArg, agentType, workflowName, modelID)
+// The CLI reads NRWF_SESSION_ID and NRWF_WORKFLOW_INSTANCE_ID from env vars (inherited from the original process).
+func buildSavePrompt() string {
+	return "URGENT: Save a summary of ALL your current work progress immediately. " +
+		"Run these two commands in order:\n\n" +
+		"1. nrworkflow findings add to_resume \"<detailed summary of all progress, findings, files changed, and remaining work>\"\n" +
+		"2. nrworkflow agent continue\n\n" +
+		"The session and workflow context are provided via environment variables. Do NOT add any extra flags."
 }

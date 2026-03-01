@@ -297,44 +297,25 @@ func TestFetchPreviousData_ProjectScope(t *testing.T) {
 	}
 }
 
-// TestSavePromptFormat tests that the save prompt contains the to_resume instruction
+// TestSavePromptFormat tests that the save prompt uses env-var-based CLI commands
 func TestSavePromptFormat(t *testing.T) {
-	ticketID := "TICKET-123"
-	agentType := "implementor"
-	workflowName := "feature"
-	modelID := "claude:sonnet"
+	savePrompt := buildSavePrompt()
 
-	savePrompt := buildSavePrompt(ticketID, agentType, workflowName, modelID)
-
-	// Verify it contains "to_resume:" instruction
-	if !contains(savePrompt, "to_resume:") {
-		t.Errorf("savePrompt should contain 'to_resume:' instruction, got: %s", savePrompt)
-	}
-
-	// Verify it contains both findings add and agent continue commands
-	if !contains(savePrompt, "nrworkflow findings add") {
-		t.Errorf("savePrompt should contain 'nrworkflow findings add', got: %s", savePrompt)
+	// Verify it contains the correct CLI commands
+	if !contains(savePrompt, "nrworkflow findings add to_resume") {
+		t.Errorf("savePrompt should contain 'nrworkflow findings add to_resume', got: %s", savePrompt)
 	}
 
 	if !contains(savePrompt, "nrworkflow agent continue") {
 		t.Errorf("savePrompt should contain 'nrworkflow agent continue', got: %s", savePrompt)
 	}
 
-	// Verify it contains all required parameters
-	if !contains(savePrompt, ticketID) {
-		t.Errorf("savePrompt should contain ticket ID '%s', got: %s", ticketID, savePrompt)
+	// Verify it does NOT contain obsolete flags
+	if contains(savePrompt, "-w ") {
+		t.Errorf("savePrompt should NOT contain '-w' flag (obsolete), got: %s", savePrompt)
 	}
-
-	if !contains(savePrompt, agentType) {
-		t.Errorf("savePrompt should contain agent type '%s', got: %s", agentType, savePrompt)
-	}
-
-	if !contains(savePrompt, workflowName) {
-		t.Errorf("savePrompt should contain workflow name '%s', got: %s", workflowName, savePrompt)
-	}
-
-	if !contains(savePrompt, modelID) {
-		t.Errorf("savePrompt should contain model ID '%s', got: %s", modelID, savePrompt)
+	if contains(savePrompt, "--model ") {
+		t.Errorf("savePrompt should NOT contain '--model' flag (obsolete), got: %s", savePrompt)
 	}
 }
 

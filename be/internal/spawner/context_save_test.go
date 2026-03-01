@@ -230,80 +230,32 @@ func TestCheckToResumeFindings_InvalidJSON(t *testing.T) {
 }
 
 // TestBuildSavePrompt_CorrectFormat tests that buildSavePrompt produces
-// the correct format with all parameters
+// the correct format with env-var-based CLI commands (no positional ticket/agent/workflow args)
 func TestBuildSavePrompt_CorrectFormat(t *testing.T) {
-	tests := []struct {
-		name         string
-		ticketID     string
-		agentType    string
-		workflowName string
-		modelID      string
-	}{
-		{
-			name:         "standard parameters",
-			ticketID:     "TICKET-123",
-			agentType:    "implementor",
-			workflowName: "feature",
-			modelID:      "claude:sonnet",
-		},
-		{
-			name:         "different model",
-			ticketID:     "TICKET-456",
-			agentType:    "qa-verifier",
-			workflowName: "bugfix",
-			modelID:      "claude:opus",
-		},
-		{
-			name:         "haiku model",
-			ticketID:     "TICKET-789",
-			agentType:    "doc-updater",
-			workflowName: "docs",
-			modelID:      "claude:haiku",
-		},
+	prompt := buildSavePrompt()
+
+	// Verify it contains the correct env-var-based CLI commands
+	if !containsHelper(prompt, "nrworkflow findings add to_resume") {
+		t.Errorf("prompt should contain 'nrworkflow findings add to_resume'")
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			prompt := buildSavePrompt(tt.ticketID, tt.agentType, tt.workflowName, tt.modelID)
+	if !containsHelper(prompt, "nrworkflow agent continue") {
+		t.Errorf("prompt should contain 'nrworkflow agent continue'")
+	}
 
-			// Verify it contains to_resume instruction
-			if !containsHelper(prompt, "to_resume:") {
-				t.Errorf("prompt should contain 'to_resume:' instruction")
-			}
+	// Verify it does NOT contain obsolete flags
+	if containsHelper(prompt, "-w ") {
+		t.Errorf("prompt should NOT contain '-w' flag (obsolete)")
+	}
+	if containsHelper(prompt, "--model ") {
+		t.Errorf("prompt should NOT contain '--model' flag (obsolete)")
+	}
 
-			// Verify it contains both findings add and agent continue commands
-			if !containsHelper(prompt, "nrworkflow findings add") {
-				t.Errorf("prompt should contain 'nrworkflow findings add'")
-			}
-
-			if !containsHelper(prompt, "nrworkflow agent continue") {
-				t.Errorf("prompt should contain 'nrworkflow agent continue'")
-			}
-
-			// Verify it contains all required parameters
-			if !containsHelper(prompt, tt.ticketID) {
-				t.Errorf("prompt should contain ticket ID '%s'", tt.ticketID)
-			}
-
-			if !containsHelper(prompt, tt.agentType) {
-				t.Errorf("prompt should contain agent type '%s'", tt.agentType)
-			}
-
-			if !containsHelper(prompt, tt.workflowName) {
-				t.Errorf("prompt should contain workflow name '%s'", tt.workflowName)
-			}
-
-			if !containsHelper(prompt, tt.modelID) {
-				t.Errorf("prompt should contain model ID '%s'", tt.modelID)
-			}
-
-			// Verify the order: findings add should come before agent continue
-			addIdx := indexOfSubstring(prompt, "nrworkflow findings add")
-			continueIdx := indexOfSubstring(prompt, "nrworkflow agent continue")
-			if addIdx == -1 || continueIdx == -1 || addIdx >= continueIdx {
-				t.Errorf("'findings add' should appear before 'agent continue'")
-			}
-		})
+	// Verify the order: findings add should come before agent continue
+	addIdx := indexOfSubstring(prompt, "nrworkflow findings add")
+	continueIdx := indexOfSubstring(prompt, "nrworkflow agent continue")
+	if addIdx == -1 || continueIdx == -1 || addIdx >= continueIdx {
+		t.Errorf("'findings add' should appear before 'agent continue'")
 	}
 }
 

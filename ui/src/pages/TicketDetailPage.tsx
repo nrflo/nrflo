@@ -372,6 +372,10 @@ export function TicketDetailPage() {
           open={showRunDialog}
           onClose={() => setShowRunDialog(false)}
           ticketId={id}
+          onInteractiveStart={(sessionId, agentType) => {
+            setShowRunDialog(false)
+            setInteractiveSession({ sessionId, agentType })
+          }}
         />
       )}
 

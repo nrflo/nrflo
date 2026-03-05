@@ -1,10 +1,19 @@
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Play } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
+import { listAgentDefs } from '@/api/agentDefs'
 import { cn, formatElapsedTime } from '@/lib/utils'
-import type { WorkflowState } from '@/types/workflow'
+import type { WorkflowState, AgentDef, WorkflowDefSummary } from '@/types/workflow'
+
+type StartMode = 'normal' | 'interactive' | 'plan'
+
+function isClaudeModel(model: string): boolean {
+  return !model.startsWith('opencode_gpt_') && !model.startsWith('codex_gpt_')
+}
 
 // --- Inline Run Workflow Form ---
 
@@ -19,16 +28,51 @@ export function RunWorkflowForm({
   runPending,
   runError,
 }: {
-  projectWorkflows: [string, { description: string; scope_type?: string }][]
+  projectWorkflows: [string, { description: string; scope_type?: string; phases: WorkflowDefSummary['phases'] }][]
   defsLoading: boolean
   selectedWorkflowDef: string
   onSelectWorkflowDef: (v: string) => void
   instructions: string
   onInstructionsChange: (v: string) => void
-  onRun: () => void
+  onRun: (startMode: StartMode) => void
   runPending: boolean
   runError: Error | null
 }) {
+  const [startMode, setStartMode] = useState<StartMode>('normal')
+
+  const { data: agents } = useQuery({
+    queryKey: ['workflows', selectedWorkflowDef, 'agents'],
+    queryFn: () => listAgentDefs(selectedWorkflowDef),
+    enabled: !!selectedWorkflowDef,
+  })
+
+  const selectedDef = projectWorkflows.find(([id]) => id === selectedWorkflowDef)?.[1]
+
+  const { canInteractive } = useMemo(() => {
+    if (!selectedDef || !agents) return { canInteractive: false }
+
+    const l0Phases = selectedDef.phases.filter((p) => p.layer === 0)
+    if (l0Phases.length !== 1) return { canInteractive: false }
+
+    const l0AgentId = l0Phases[0].agent
+    const agentDef = agents.find((a: AgentDef) => a.id === l0AgentId)
+    if (!agentDef || !isClaudeModel(agentDef.model)) {
+      return { canInteractive: false }
+    }
+
+    return { canInteractive: true }
+  }, [selectedDef, agents])
+
+  const canPlan = useMemo(() => {
+    if (!selectedDef || !agents) return false
+
+    const l0Phases = selectedDef.phases.filter((p) => p.layer === 0)
+    return l0Phases.some((p) => {
+      const agentDef = agents.find((a: AgentDef) => a.id === p.agent)
+      return agentDef && isClaudeModel(agentDef.model)
+    })
+  }, [selectedDef, agents])
+
   if (defsLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -59,18 +103,47 @@ export function RunWorkflowForm({
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1.5">
-          Instructions <span className="text-muted-foreground font-normal">(optional)</span>
-        </label>
-        <textarea
-          value={instructions}
-          onChange={(e) => onInstructionsChange(e.target.value)}
-          placeholder="Additional context or instructions for the agents..."
-          rows={4}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-        />
-      </div>
+      {(canInteractive || canPlan) && (
+        <div className="flex gap-4">
+          {canInteractive && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={startMode === 'interactive'}
+                onChange={(e) => setStartMode(e.target.checked ? 'interactive' : 'normal')}
+                className="rounded border-input"
+              />
+              Start Interactive
+            </label>
+          )}
+          {canPlan && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={startMode === 'plan'}
+                onChange={(e) => setStartMode(e.target.checked ? 'plan' : 'normal')}
+                className="rounded border-input"
+              />
+              Plan Before Execution
+            </label>
+          )}
+        </div>
+      )}
+
+      {startMode !== 'plan' && (
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Instructions <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <textarea
+            value={instructions}
+            onChange={(e) => onInstructionsChange(e.target.value)}
+            placeholder="Additional context or instructions for the agents..."
+            rows={4}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+          />
+        </div>
+      )}
 
       {runError && (
         <p className="text-sm text-destructive">
@@ -79,7 +152,7 @@ export function RunWorkflowForm({
       )}
 
       <Button
-        onClick={onRun}
+        onClick={() => onRun(startMode)}
         disabled={!selectedWorkflowDef || runPending}
       >
         {runPending && <Spinner size="sm" className="mr-2" />}

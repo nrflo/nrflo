@@ -68,7 +68,7 @@ The panel also shows when a completed agent is selected from PhaseGraph (even af
 | `AgentDefForm.tsx` | Agent definition create/edit form (includes tag dropdown when groups available) |
 | `AgentDefCard.tsx` | Agent definition card with edit/delete (shows tag badge) |
 | `AgentDefsSection.tsx` | Agent definitions list within a workflow (passes groups to children) |
-| `RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs |
+| `RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs. Supports "Start Interactive" and "Plan Before Execution" checkboxes (mutually exclusive). Queries agent defs to compute `canInteractive` (L0 has exactly 1 Claude-based agent). Props: `onInteractiveStart?(sessionId, agentType)` callback for opening PTY terminal. |
 | `RunEpicWorkflowDialog.tsx` | Dialog for epic workflow execution: two-step flow (create chain preview, then start) |
 | `AgentTerminalDialog.tsx` | Dialog wrapper for interactive agent terminal: non-dismissable backdrop, lazy-loads XTerminal, Exit Session footer button |
 | `XTerminal.tsx` | xterm.js terminal connected to PTY WebSocket (`/api/v1/pty/{sessionId}`). Relays keystrokes to WS, output to terminal. FitAddon for auto-resize, debounced resize events, dark theme |

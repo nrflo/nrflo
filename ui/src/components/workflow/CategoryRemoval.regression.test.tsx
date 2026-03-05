@@ -106,18 +106,27 @@ vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual('@tanstack/react-query')
   return {
     ...actual,
-    useQuery: () => ({
-      data: {
-        feature: {
-          id: 'feature',
-          project_id: 'test-project',
-          description: 'Feature workflow',
-          scope_type: 'ticket',
-          phases: [{ id: 'setup', agent: 'setup', layer: 0 }],
+    useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
+      // Agent defs query returns an array
+      if (queryKey[0] === 'workflows' && queryKey[2] === 'agents') {
+        return {
+          data: [{ id: 'setup', model: 'sonnet', timeout: 300, prompt: '', workflow_id: 'feature', project_id: 'test-project', created_at: '', updated_at: '' }],
+          isLoading: false,
+        }
+      }
+      return {
+        data: {
+          feature: {
+            id: 'feature',
+            project_id: 'test-project',
+            description: 'Feature workflow',
+            scope_type: 'ticket',
+            phases: [{ id: 'setup', agent: 'setup', layer: 0 }],
+          },
         },
-      },
-      isLoading: false,
-    }),
+        isLoading: false,
+      }
+    },
   }
 })
 

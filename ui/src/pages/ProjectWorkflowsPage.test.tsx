@@ -50,6 +50,12 @@ vi.mock('@/api/workflows', () => ({
   }),
 }))
 
+vi.mock('@/api/agentDefs', () => ({
+  listAgentDefs: vi.fn().mockResolvedValue([
+    { id: 'setup', model: 'sonnet', timeout: 300, prompt: 'test', workflow_id: 'feature', project_id: 'test-project', created_at: '', updated_at: '' },
+  ]),
+}))
+
 vi.mock('./WorkflowTabContent', () => ({
   WorkflowTabContent: (props: any) => (
     <div data-testid="workflow-tab-content">

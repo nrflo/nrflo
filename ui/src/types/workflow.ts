@@ -259,11 +259,14 @@ export interface AgentDefUpdateRequest {
 export interface RunWorkflowRequest {
   workflow: string
   instructions?: string
+  interactive?: boolean
+  plan_mode?: boolean
 }
 
 export interface RunWorkflowResponse {
   instance_id: string
   status: string
+  session_id?: string
 }
 
 export interface StopWorkflowRequest {
@@ -284,4 +287,6 @@ export interface ResumeSessionRequest {
 export interface ProjectWorkflowRunRequest {
   workflow: string
   instructions?: string
+  interactive?: boolean
+  plan_mode?: boolean
 }

@@ -159,7 +159,7 @@ export function ProjectWorkflowsPage() {
     setSelectedPanelAgent(null)
   }
 
-  const handleRun = async () => {
+  const handleRun = async (startMode: 'normal' | 'interactive' | 'plan' = 'normal') => {
     if (!selectedWorkflowDef || !currentProject) return
     try {
       const result = await runMutation.mutateAsync({
@@ -167,8 +167,18 @@ export function ProjectWorkflowsPage() {
         params: {
           workflow: selectedWorkflowDef,
           instructions: instructions || undefined,
+          ...(startMode === 'interactive' && { interactive: true }),
+          ...(startMode === 'plan' && { plan_mode: true }),
         },
       })
+
+      if ((startMode === 'interactive' || startMode === 'plan') && result.session_id) {
+        setInteractiveSession({
+          sessionId: result.session_id,
+          agentType: startMode === 'plan' ? 'planner' : selectedWorkflowDef,
+        })
+      }
+
       setInstructions('')
       setSelectedInstanceId(result.instance_id)
       setActiveTab('running')

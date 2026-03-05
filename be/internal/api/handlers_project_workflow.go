@@ -38,11 +38,18 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if body.Interactive && body.PlanMode {
+		writeError(w, http.StatusBadRequest, "interactive and plan_mode are mutually exclusive")
+		return
+	}
+
 	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
 		ProjectID:    projectID,
 		WorkflowName: body.Workflow,
 		Instructions: body.Instructions,
 		ScopeType:    "project",
+		Interactive:  body.Interactive,
+		PlanMode:     body.PlanMode,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

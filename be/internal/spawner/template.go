@@ -169,6 +169,12 @@ func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, w
 	return result
 }
 
+// LoadTemplate is the public wrapper around loadTemplate. It loads and expands
+// an agent template from DB. Used by the orchestrator to build PTY command prompts.
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string) (string, error) {
+	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID)
+}
+
 // loadTemplate loads and expands an agent template from DB.
 // wfiID is optional — when set, used for instance-specific lookups (user instructions, callbacks).
 func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string) (string, error) {

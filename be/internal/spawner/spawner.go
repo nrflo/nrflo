@@ -199,6 +199,18 @@ func (s *Spawner) CompleteInteractive(sessionID string) {
 	}
 }
 
+// RegisterInteractiveWait creates and returns a channel that blocks until
+// CompleteInteractive is called for the given session ID. Used by the
+// orchestrator to wait on interactive/plan PTY sessions before entering
+// the layer execution loop.
+func (s *Spawner) RegisterInteractiveWait(sessionID string) <-chan struct{} {
+	ch := make(chan struct{})
+	s.mu.Lock()
+	s.interactiveWaits[sessionID] = ch
+	s.mu.Unlock()
+	return ch
+}
+
 // Close is a no-op retained for API compatibility (e.g. orchestrator defer).
 func (s *Spawner) Close() {}
 

@@ -51,7 +51,7 @@ GET /api/v1/tickets/:id/workflow
 PATCH /api/v1/tickets/:id/workflow
 
 # Workflow orchestration (run/stop/restart from UI)
-POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run
+POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run; body accepts `interactive` (bool) and `plan_mode` (bool), mutually exclusive (400 if both true). When set, response includes `session_id` and status `"interactive"` or `"planning"`
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
 POST /api/v1/tickets/:id/workflow/restart       # Restart agent (context save + relaunch)
 POST /api/v1/tickets/:id/workflow/retry-failed  # Retry failed workflow from failed layer
@@ -68,7 +68,7 @@ PATCH  /api/v1/workflows/:id          # Update
 DELETE /api/v1/workflows/:id          # Delete
 
 # Project-scoped workflow operations
-POST /api/v1/projects/:id/workflow/run      # Start project workflow
+POST /api/v1/projects/:id/workflow/run      # Start project workflow; body accepts `interactive` (bool) and `plan_mode` (bool), mutually exclusive (400 if both true). When set, response includes `session_id` and status `"interactive"` or `"planning"`
 POST /api/v1/projects/:id/workflow/stop     # Stop project workflow
 POST /api/v1/projects/:id/workflow/restart       # Restart project agent
 POST /api/v1/projects/:id/workflow/retry-failed  # Retry failed project workflow

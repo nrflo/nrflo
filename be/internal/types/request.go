@@ -209,6 +209,8 @@ type WorkflowDefUpdateRequest struct {
 type ProjectWorkflowRunRequest struct {
 	Workflow     string `json:"workflow"`
 	Instructions string `json:"instructions,omitempty"`
+	Interactive  bool   `json:"interactive,omitempty"`
+	PlanMode     bool   `json:"plan_mode,omitempty"`
 }
 
 // AgentDefCreateRequest is the request for creating an agent definition

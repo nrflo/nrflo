@@ -32,6 +32,8 @@ type RunRequest struct {
 	WorkflowName string `json:"workflow"`
 	Instructions string `json:"instructions"` // User-provided instructions
 	ScopeType    string `json:"scope_type"`   // "ticket" (default) or "project"
+	Interactive  bool   `json:"interactive"`   // If true, start with interactive PTY session before layer execution
+	PlanMode     bool   `json:"plan_mode"`     // If true, start with planning PTY session, read plan file after
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -42,6 +44,7 @@ func (r RunRequest) IsProjectScope() bool {
 // RunResult contains the result of starting an orchestrated workflow.
 type RunResult struct {
 	InstanceID string `json:"instance_id"`
+	SessionID  string `json:"session_id,omitempty"`
 	Status     string `json:"status"`
 }
 
@@ -67,6 +70,10 @@ type Orchestrator struct {
 	dataPath string
 	wsHub    *ws.Hub
 	clock    clock.Clock
+
+	// OnRegisterPtyCommand is called when interactive/plan mode needs to register
+	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.
+	OnRegisterPtyCommand func(sessionID string, cmd string, args []string)
 }
 
 // New creates a new Orchestrator.
@@ -294,13 +301,42 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Build Docker config if isolation is enabled
 	dockerCfg := buildDockerConfig(project, wt)
 
+	// Setup interactive/plan pre-step if requested
+	var pre *interactivePreStep
+	if req.Interactive || req.PlanMode {
+		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot)
+		if err != nil {
+			cancel()
+			o.mu.Lock()
+			delete(o.runs, wi.ID)
+			o.mu.Unlock()
+			return nil, fmt.Errorf("failed to setup interactive pre-step: %w", err)
+		}
+		// Store the pre-step spawner in runState so CompleteInteractive can find it
+		o.mu.Lock()
+		rs.spawner = pre.spawner
+		o.mu.Unlock()
+	}
+
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre)
+
+	status := "started"
+	sessionID := ""
+	if pre != nil {
+		sessionID = pre.sessionID
+		if req.PlanMode {
+			status = "planning"
+		} else {
+			status = "interactive"
+		}
+	}
 
 	return &RunResult{
 		InstanceID: wi.ID,
-		Status:     "started",
+		SessionID:  sessionID,
+		Status:     status,
 	}, nil
 }
 
@@ -575,7 +611,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	dockerCfg := buildDockerConfig(project, wt)
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil)
 
 	return nil
 }
@@ -758,6 +794,7 @@ func (o *Orchestrator) runLoop(
 	wt *worktreeInfo,
 	dockerCfg *spawner.DockerConfig,
 	agentTags map[string]string,
+	pre *interactivePreStep,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -805,6 +842,40 @@ func (o *Orchestrator) runLoop(
 
 	// Group phases by layer
 	layerGroups := groupPhasesByLayer(svcWf.Phases)
+
+	// Interactive/plan pre-step: wait for PTY session to complete before starting layers
+	if pre != nil {
+		logger.Info(ctx, "waiting for interactive pre-step", "session_id", pre.sessionID, "mode", func() string {
+			if req.PlanMode {
+				return "plan"
+			}
+			return "interactive"
+		}())
+		if !waitForInteractivePreStep(ctx, pre) {
+			logger.Warn(ctx, "interactive pre-step cancelled")
+			o.markFailed(wfiID, req, "cancelled")
+			return
+		}
+		// Clear the pre-step spawner from runState
+		o.mu.Lock()
+		if rs, ok := o.runs[wfiID]; ok {
+			rs.spawner = nil
+		}
+		o.mu.Unlock()
+		pre.spawner.Close()
+
+		if req.PlanMode {
+			if err := handlePlanModePostStep(pre.sessionID, projectRoot, pool, wfiID, o.clock); err != nil {
+				logger.Error(ctx, "plan mode post-step failed", "err", err)
+				o.markFailed(wfiID, req, fmt.Sprintf("plan_read_failed: %v", err))
+				return
+			}
+		} else {
+			// Interactive mode: skip L0 (user already did the work)
+			startLayerIdx = 1
+		}
+		logger.Info(ctx, "interactive pre-step completed", "start_layer", startLayerIdx)
+	}
 
 	const maxCallbacks = 3
 	callbackCount := 0

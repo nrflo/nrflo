@@ -36,6 +36,10 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	orch := orchestrator.New(dataPath, hub, clk)
+	ptyMgr := ptyPkg.NewManager()
+	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
+		ptyMgr.RegisterCommand(sessionID, cmd, args)
+	}
 
 	return &Server{
 		config:       cfg,
@@ -43,7 +47,7 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 		wsHub:        hub,
 		orchestrator: orch,
 		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
-		ptyManager:   ptyPkg.NewManager(),
+		ptyManager:   ptyMgr,
 		clock:        clk,
 	}
 }

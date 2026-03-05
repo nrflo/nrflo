@@ -97,6 +97,8 @@ Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `shouldSkipLayer()`, `cre
 |------|-------|
 | `orchestrator.go` | Layer-grouped concurrent phase execution, cancellation support |
 | `orchestrator_skip.go` | Layer-skip logic: tag matching, skipped session creation |
+| `orchestrator_interactive.go` | Interactive start & plan mode pre-step logic |
+| `plan_reader.go` | Plan file reader for plan-before-execute mode |
 | `chain_runner.go` | Sequential chain execution runner |
 
 ## Git Worktree Lifecycle
@@ -122,6 +124,27 @@ The orchestrator supports taking interactive control of a running agent:
 5. Spawner unblocks, treats the proc as PASS, and `finalizePhase` proceeds normally
 
 Only works for Claude CLI agents (`SupportsResume() == true`). Project-scoped equivalents: `TakeControlProject`, same `CompleteInteractive`.
+
+## Interactive Start & Plan Mode
+
+The orchestrator supports two pre-launch modes that create a `user_interactive` agent session before the normal layer execution begins. Both are triggered via the workflow run endpoint and are mutually exclusive (passing both `interactive=true` and `plan_mode=true` returns 400).
+
+**Interactive mode** (`interactive=true`):
+
+1. `Start()` creates an agent session with `status=user_interactive` for the L0 agent and registers a wait channel before launching `runLoop` (avoids race with PTY registration)
+2. A PTY command is registered via the `OnRegisterPtyCommand` callback so the UI can open a terminal
+3. `runLoop` blocks until the PTY session completes (wait channel closed)
+4. After unblocking, `runLoop` skips L0 and begins execution from L1
+
+**Plan mode** (`plan_mode=true`):
+
+1. Same pre-launch setup: `user_interactive` session, wait channel, PTY command registration
+2. `runLoop` blocks until the PTY session completes
+3. After unblocking, the orchestrator reads the plan file from `~/.claude/plans/` via `plan_reader.go`
+4. Plan file content is stored as `user_instructions` in the workflow instance findings
+5. `runLoop` then executes all layers starting from L0 (no layer skip)
+
+The wait channel is registered in `Start()` before the `runLoop` goroutine launches to ensure the PTY handler can find it immediately, preventing a race between PTY connection and orchestrator startup.
 
 ## Ticket Status Management
 

@@ -173,6 +173,24 @@ messages.updated events are coalesced to one per session per 2s window.
    - Only works for CLIs with SupportsResume() == true
 ```
 
+## Public Helper Methods
+
+### RegisterInteractiveWait
+
+```go
+func (s *Spawner) RegisterInteractiveWait(sessionID string) <-chan struct{}
+```
+
+Creates and returns a channel that blocks until `CompleteInteractive` is called for the given session ID. Used by the orchestrator to wait on interactive or plan PTY sessions before entering the layer execution loop. The returned channel is closed when the interactive session finishes, unblocking the caller. This is the external entry point for the same interactive-wait mechanism used internally by the take-control flow (step 7 in the spawn flow above).
+
+### LoadTemplate
+
+```go
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string) (string, error)
+```
+
+Public wrapper around the private `loadTemplate`. Expands an agent definition's prompt template with the given parameters, performing all variable substitution (`${VAR}` placeholders), findings expansion (`#{FINDINGS:...}`), and project findings expansion (`#{PROJECT_FINDINGS:...}`). Used by the orchestrator to expand L0 agent templates for building interactive PTY command args without going through the full spawn flow.
+
 ## Agent Definitions
 
 Agent definitions store model, timeout, and prompt template per agent type per workflow. Stored in `agent_definitions` DB table, managed via API (`/api/v1/workflows/{wid}/agents`) and UI (`/workflows`).

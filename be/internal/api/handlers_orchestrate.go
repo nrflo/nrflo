@@ -35,6 +35,8 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Workflow     string `json:"workflow"`
 		Instructions string `json:"instructions"`
+		Interactive  bool   `json:"interactive"`
+		PlanMode     bool   `json:"plan_mode"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -46,11 +48,18 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if body.Interactive && body.PlanMode {
+		writeError(w, http.StatusBadRequest, "interactive and plan_mode are mutually exclusive")
+		return
+	}
+
 	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
 		ProjectID:    projectID,
 		TicketID:     ticketID,
 		WorkflowName: body.Workflow,
 		Instructions: body.Instructions,
+		Interactive:  body.Interactive,
+		PlanMode:     body.PlanMode,
 	})
 	if err != nil {
 		// Check if it's a "already running" error

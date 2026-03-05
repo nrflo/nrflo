@@ -34,6 +34,8 @@ be/
 │   │   └── template_findings.go # Findings expansion, ${PREVIOUS_DATA}, formatting
 │   ├── orchestrator/            # Server-side workflow orchestration
 │   │   ├── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)
+│   │   ├── orchestrator_interactive.go # Interactive start & plan-before-execute pre-step
+│   │   ├── plan_reader.go       # Plan file reader for plan-before-execute mode
 │   │   └── chain_runner.go      # Sequential chain execution runner
 │   ├── api/                     # HTTP API
 │   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator, PTY manager

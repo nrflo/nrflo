@@ -2,13 +2,10 @@ package pty
 
 import (
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	creackpty "github.com/creack/pty"
 )
 
 // buildTestEnv returns a minimal environment for spawning test commands.
@@ -22,42 +19,18 @@ func buildTestEnv() []string {
 	return env
 }
 
-// newSessionWithCmd creates a Session wrapping an arbitrary command rather than
-// `claude --resume`. It has the same internal structure as NewSession but allows
-// injecting any command for testing without requiring the claude binary.
-func newSessionWithCmd(name string, args []string, workDir string, env []string) (*Session, error) {
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Dir = workDir
-	cmd.Env = env
-
-	ptmx, err := creackpty.Start(cmd)
-	if err != nil {
-		return nil, err
-	}
-
-	s := &Session{
-		ptmx:      ptmx,
-		cmd:       cmd,
-		sessionID: "test-session-id",
-		done:      make(chan struct{}),
-	}
-	_ = name // unused but kept for readability at call sites
-
-	go func() {
-		_ = cmd.Wait()
-		close(s.done)
-	}()
-
-	return s, nil
+// newTestSession creates a Session via NewSession with "test-session-id".
+func newTestSession(command string, args []string, workDir string, env []string) (*Session, error) {
+	return NewSession("test-session-id", workDir, env, command, args)
 }
 
 // TestNewSession_SpawnsProcess verifies that a session started via
-// newSessionWithCmd produces a valid Session with the correct SessionID,
+// newTestSession produces a valid Session with the correct SessionID,
 // and that Done() closes when the process is explicitly terminated.
 func TestNewSession_SpawnsProcess(t *testing.T) {
-	sess, err := newSessionWithCmd("cat", []string{"cat"}, t.TempDir(), buildTestEnv())
+	sess, err := newTestSession("cat", nil, t.TempDir(), buildTestEnv())
 	if err != nil {
-		t.Fatalf("newSessionWithCmd: %v", err)
+		t.Fatalf("newTestSession: %v", err)
 	}
 
 	if sess.SessionID() != "test-session-id" {
@@ -77,9 +50,9 @@ func TestNewSession_SpawnsProcess(t *testing.T) {
 // TestSession_ReadOutput verifies that output written by the child process is
 // readable via Session.Read.
 func TestSession_ReadOutput(t *testing.T) {
-	sess, err := newSessionWithCmd("cat", []string{"cat"}, t.TempDir(), buildTestEnv())
+	sess, err := newTestSession("cat", nil, t.TempDir(), buildTestEnv())
 	if err != nil {
-		t.Fatalf("newSessionWithCmd: %v", err)
+		t.Fatalf("newTestSession: %v", err)
 	}
 	t.Cleanup(func() { _ = sess.Close() })
 
@@ -111,9 +84,9 @@ func TestSession_ReadOutput(t *testing.T) {
 // TestSession_Resize verifies that Resize does not return an error on a
 // running PTY.
 func TestSession_Resize(t *testing.T) {
-	sess, err := newSessionWithCmd("cat", []string{"cat"}, t.TempDir(), buildTestEnv())
+	sess, err := newTestSession("cat", nil, t.TempDir(), buildTestEnv())
 	if err != nil {
-		t.Fatalf("newSessionWithCmd: %v", err)
+		t.Fatalf("newTestSession: %v", err)
 	}
 	t.Cleanup(func() { _ = sess.Close() })
 
@@ -128,9 +101,9 @@ func TestSession_Resize(t *testing.T) {
 // TestSession_CloseTerminatesProcess verifies that Close kills the process and
 // Done() closes.
 func TestSession_CloseTerminatesProcess(t *testing.T) {
-	sess, err := newSessionWithCmd("cat", []string{"cat"}, t.TempDir(), buildTestEnv())
+	sess, err := newTestSession("cat", nil, t.TempDir(), buildTestEnv())
 	if err != nil {
-		t.Fatalf("newSessionWithCmd: %v", err)
+		t.Fatalf("newTestSession: %v", err)
 	}
 
 	if err := sess.Close(); err != nil {
@@ -148,9 +121,9 @@ func TestSession_CloseTerminatesProcess(t *testing.T) {
 
 // TestSession_CloseIsIdempotent verifies that calling Close twice does not panic.
 func TestSession_CloseIsIdempotent(t *testing.T) {
-	sess, err := newSessionWithCmd("cat", []string{"cat"}, t.TempDir(), buildTestEnv())
+	sess, err := newTestSession("cat", nil, t.TempDir(), buildTestEnv())
 	if err != nil {
-		t.Fatalf("newSessionWithCmd: %v", err)
+		t.Fatalf("newTestSession: %v", err)
 	}
 
 	_ = sess.Close()
@@ -159,9 +132,9 @@ func TestSession_CloseIsIdempotent(t *testing.T) {
 
 // TestSession_Wait blocks until process exits.
 func TestSession_Wait(t *testing.T) {
-	sess, err := newSessionWithCmd("sh", []string{"sh", "-c", "exit 0"}, t.TempDir(), buildTestEnv())
+	sess, err := newTestSession("sh", []string{"-c", "exit 0"}, t.TempDir(), buildTestEnv())
 	if err != nil {
-		t.Fatalf("newSessionWithCmd: %v", err)
+		t.Fatalf("newTestSession: %v", err)
 	}
 	t.Cleanup(func() { _ = sess.Close() })
 
@@ -182,9 +155,9 @@ func TestSession_Wait(t *testing.T) {
 // TestSession_DoneChannelSignalsOnExit verifies the Done channel semantics
 // using a session whose process exits immediately.
 func TestSession_DoneChannelSignalsOnExit(t *testing.T) {
-	sess, err := newSessionWithCmd("sh", []string{"sh", "-c", "exit 0"}, t.TempDir(), buildTestEnv())
+	sess, err := newTestSession("sh", []string{"-c", "exit 0"}, t.TempDir(), buildTestEnv())
 	if err != nil {
-		t.Fatalf("newSessionWithCmd: %v", err)
+		t.Fatalf("newTestSession: %v", err)
 	}
 	t.Cleanup(func() { _ = sess.Close() })
 
@@ -200,6 +173,41 @@ func TestSession_DoneChannelSignalsOnExit(t *testing.T) {
 		// expected — channel was closed on exit
 	case <-time.After(5 * time.Second):
 		t.Fatal("Done() channel not closed after process exit")
+	}
+}
+
+// TestSession_ExitCode_ReturnsMinusOneBeforeExit verifies ExitCode returns -1
+// while the process is still running (ProcessState is nil).
+func TestSession_ExitCode_ReturnsMinusOneBeforeExit(t *testing.T) {
+	// cat blocks on stdin; it will not exit while the PTY master is open.
+	sess, err := newTestSession("cat", nil, t.TempDir(), buildTestEnv())
+	if err != nil {
+		t.Fatalf("newTestSession: %v", err)
+	}
+	t.Cleanup(func() { _ = sess.Close() })
+
+	if got := sess.ExitCode(); got != -1 {
+		t.Errorf("ExitCode() before exit = %d, want -1", got)
+	}
+}
+
+// TestSession_ExitCode_ReturnsCorrectCodeAfterExit verifies ExitCode returns
+// the actual process exit code once the process has exited.
+func TestSession_ExitCode_ReturnsCorrectCodeAfterExit(t *testing.T) {
+	sess, err := newTestSession("sh", []string{"-c", "exit 42"}, t.TempDir(), buildTestEnv())
+	if err != nil {
+		t.Fatalf("newTestSession: %v", err)
+	}
+	t.Cleanup(func() { _ = sess.Close() })
+
+	select {
+	case <-sess.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("Done() not closed within timeout after process exit")
+	}
+
+	if got := sess.ExitCode(); got != 42 {
+		t.Errorf("ExitCode() after exit = %d, want 42", got)
 	}
 }
 

@@ -19,10 +19,10 @@ type Session struct {
 	closeOnce sync.Once
 }
 
-// NewSession spawns `claude --resume <sessionID>` in a new PTY.
+// NewSession spawns the given command in a new PTY.
 // workDir sets the process working directory; env is the full environment.
-func NewSession(sessionID, workDir string, env []string) (*Session, error) {
-	cmd := exec.Command("claude", "--resume", sessionID)
+func NewSession(sessionID, workDir string, env []string, command string, args []string) (*Session, error) {
+	cmd := exec.Command(command, args...)
 	cmd.Dir = workDir
 	cmd.Env = env
 
@@ -88,4 +88,14 @@ func (s *Session) Done() <-chan struct{} {
 // SessionID returns the nrworkflow session ID associated with this PTY.
 func (s *Session) SessionID() string {
 	return s.sessionID
+}
+
+// ExitCode returns the process exit code. Returns -1 if the process hasn't
+// exited yet or ProcessState is nil. Callers should wait for Done() before
+// calling ExitCode() to avoid a race.
+func (s *Session) ExitCode() int {
+	if s.cmd.ProcessState == nil {
+		return -1
+	}
+	return s.cmd.ProcessState.ExitCode()
 }

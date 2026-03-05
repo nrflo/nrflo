@@ -59,8 +59,8 @@ be/
 │   │   ├── backpressure.go      # Client queue depth monitoring
 │   │   └── testing.go           # Test helpers (NewTestClient)
 │   ├── pty/                     # PTY session management for interactive agent control
-│   │   ├── session.go           # Session struct wrapping creack/pty (spawn, read/write, resize, close)
-│   │   └── manager.go           # Manager: create/get/remove/close-all PTY sessions by session ID
+│   │   ├── session.go           # Session: spawn arbitrary command in PTY (read/write, resize, close, ExitCode)
+│   │   └── manager.go           # Manager: create/get/remove/close-all sessions; RegisterCommand for custom commands
 │   ├── config/                  # Configuration management
 │   │   └── config.go
 │   ├── client/                  # Socket + HTTP clients

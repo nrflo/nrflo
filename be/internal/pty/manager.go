@@ -5,17 +5,34 @@ import (
 	"sync"
 )
 
+// PendingCommand stores a pre-registered command+args for a PTY session.
+type PendingCommand struct {
+	Command string
+	Args    []string
+}
+
 // Manager tracks active PTY sessions by session ID.
 type Manager struct {
 	mu       sync.Mutex
 	sessions map[string]*Session
+	pending  map[string]*PendingCommand
 }
 
 // NewManager creates a new PTY manager.
 func NewManager() *Manager {
 	return &Manager{
 		sessions: make(map[string]*Session),
+		pending:  make(map[string]*PendingCommand),
 	}
+}
+
+// RegisterCommand pre-registers a command+args for a session ID. When Create()
+// is called for this session ID, the registered command will be used instead of
+// the default `claude --resume`.
+func (m *Manager) RegisterCommand(sessionID, cmd string, args []string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pending[sessionID] = &PendingCommand{Command: cmd, Args: args}
 }
 
 // Create spawns a new PTY session and tracks it. Returns an error if one
@@ -29,7 +46,15 @@ func (m *Manager) Create(sessionID, workDir string, env []string) (*Session, err
 		return s, nil
 	}
 
-	s, err := NewSession(sessionID, workDir, env)
+	command := "claude"
+	args := []string{"--resume", sessionID}
+	if pc, ok := m.pending[sessionID]; ok {
+		command = pc.Command
+		args = pc.Args
+		delete(m.pending, sessionID)
+	}
+
+	s, err := NewSession(sessionID, workDir, env, command, args)
 	if err != nil {
 		return nil, fmt.Errorf("create pty session: %w", err)
 	}
@@ -56,6 +81,7 @@ func (m *Manager) Remove(sessionID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.sessions, sessionID)
+	delete(m.pending, sessionID)
 }
 
 // CloseAll closes all active PTY sessions. Called on server shutdown.

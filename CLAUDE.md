@@ -210,7 +210,7 @@ All ticket/deps commands use `--server` (default `NRWORKFLOW_API_URL` or `http:/
 
 ### Phase Definition Format
 
-Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. The `layer` (integer >= 0) and `agent` (agent definition ID) fields are required. String-only entries and the `parallel` field are rejected. Supported models: `opus`, `sonnet`, `haiku`, `opencode_gpt_normal`, `opencode_gpt_high`, `codex_gpt_normal`, `codex_gpt_high`. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for model mapping details.
+Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. The `layer` (integer >= 0) and `agent` (agent definition ID) fields are required. String-only entries and the `parallel` field are rejected. Supported models: `opus`, `sonnet`, `haiku`, `opencode_gpt_normal`, `opencode_gpt_high`, `codex_gpt_normal`, `codex_gpt_high`, `codex_gpt54_normal`, `codex_gpt54_high`. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for model mapping details.
 
 ## State Storage
 

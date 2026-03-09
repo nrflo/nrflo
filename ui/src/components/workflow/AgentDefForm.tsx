@@ -67,6 +67,8 @@ export function AgentDefForm({
               { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
               { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
               { value: 'codex_gpt_high', label: 'codex_gpt_high' },
+              { value: 'codex_gpt54_normal', label: 'codex_gpt54_normal' },
+              { value: 'codex_gpt54_high', label: 'codex_gpt54_high' },
             ]}
           />
         </div>

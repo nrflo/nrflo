@@ -54,12 +54,12 @@ type SpawnOptions struct {
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.
-// opencode_gpt_* → opencode, codex_gpt_* → codex, everything else → claude.
+// opencode_gpt_* → opencode, codex_gpt* → codex, everything else → claude.
 func DefaultCLIForModel(model string) string {
 	if strings.HasPrefix(model, "opencode_gpt_") {
 		return "opencode"
 	}
-	if strings.HasPrefix(model, "codex_gpt_") {
+	if strings.HasPrefix(model, "codex_gpt") {
 		return "codex"
 	}
 	return "claude"
@@ -263,8 +263,10 @@ func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 
 func (a *CodexAdapter) MapModel(model string) string {
 	modelMap := map[string]string{
-		"codex_gpt_normal": "gpt-5.3-codex",
-		"codex_gpt_high":   "gpt-5.3-codex",
+		"codex_gpt_normal":  "gpt-5.3-codex",
+		"codex_gpt_high":    "gpt-5.3-codex",
+		"codex_gpt54_normal": "gpt-5.4",
+		"codex_gpt54_high":   "gpt-5.4",
 	}
 	if mapped, ok := modelMap[model]; ok {
 		return mapped
@@ -276,6 +278,10 @@ func (a *CodexAdapter) MapModel(model string) string {
 func (a *CodexAdapter) GetReasoningEffort(model string) string {
 	switch model {
 	case "codex_gpt_normal", "codex_gpt_high":
+		return "high"
+	case "codex_gpt54_normal":
+		return "medium"
+	case "codex_gpt54_high":
 		return "high"
 	default:
 		return "high"

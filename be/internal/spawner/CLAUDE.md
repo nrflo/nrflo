@@ -97,6 +97,8 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 **Model mapping for codex:**
 - `codex_gpt_normal` → `gpt-5.3-codex` with reasoning effort "high"
 - `codex_gpt_high` → `gpt-5.3-codex` with reasoning effort "high"
+- `codex_gpt54_normal` → `gpt-5.4` with reasoning effort "medium"
+- `codex_gpt54_high` → `gpt-5.4` with reasoning effort "high"
 - Custom model names → passed as-is with reasoning effort "high"
 
 ## Database Access

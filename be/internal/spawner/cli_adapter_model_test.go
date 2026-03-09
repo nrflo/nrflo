@@ -43,9 +43,11 @@ func TestCodexAdapterModelMapping(t *testing.T) {
 		input    string
 		expected string
 	}{
-		// New predefined codex models
+		// Predefined codex models
 		{"codex_gpt_normal", "gpt-5.3-codex"},
 		{"codex_gpt_high", "gpt-5.3-codex"},
+		{"codex_gpt54_normal", "gpt-5.4"},
+		{"codex_gpt54_high", "gpt-5.4"},
 
 		// Unknown model (pass-through)
 		{"custom-model", "custom-model"},
@@ -124,6 +126,8 @@ func TestCodexReasoningEffort(t *testing.T) {
 	}{
 		{"codex_gpt_normal", "high"},
 		{"codex_gpt_high", "high"},
+		{"codex_gpt54_normal", "medium"},
+		{"codex_gpt54_high", "high"},
 		{"unknown", "high"},
 	}
 
@@ -153,6 +157,8 @@ func TestModelMappingRoundTrip(t *testing.T) {
 		{"opencode_gpt_high", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
+		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
+		{"codex_gpt54_high", &CodexAdapter{}, "CodexAdapter"},
 	}
 
 	for _, tt := range tests {
@@ -216,6 +222,8 @@ func TestDefaultCLIForModel(t *testing.T) {
 		{"opencode_gpt_high", "opencode"},
 		{"codex_gpt_normal", "codex"},
 		{"codex_gpt_high", "codex"},
+		{"codex_gpt54_normal", "codex"},
+		{"codex_gpt54_high", "codex"},
 		{"unknown", "claude"},
 	}
 
@@ -244,6 +252,8 @@ func TestAllSupportedModelsAreValid(t *testing.T) {
 		{"opencode_gpt_high", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
+		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
+		{"codex_gpt54_high", &CodexAdapter{}, "CodexAdapter"},
 	}
 
 	for _, tt := range tests {

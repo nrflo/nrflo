@@ -154,6 +154,16 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Stall timeouts configurable per agent_definition: stall_start_timeout_sec, stall_running_timeout_sec
      (NULL = defaults, 0 = disabled)
 
+5c. INSTANT STALL DETECTION (post-completion, in monitorAll after handleCompletion)
+   - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
+   - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute, stallRestartCount < maxStallRestarts (3),
+     message count <= 1 (queried from agent_messages via CountBySession)
+   - On match: override session result=continue reason=instant_stall, status=continued,
+     increment stallRestartCount, set finalStatus=CONTINUE → relaunchForContinuation
+   - Broadcasts agent.instant_stall_restart event with session_id, agent_type, elapsed, message_count
+   - Shares stall restart budget with regular stall detection (both increment stallRestartCount, capped at 3)
+   - Messages are already flushed by handleCompletion before this check runs
+
 6. FINALIZE PHASE
    - pass_count >= 1 → layer passes (fan-in)
    - all skipped → layer passes
@@ -377,5 +387,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 | `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
+| `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/msgCount>1, budget cap |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

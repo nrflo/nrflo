@@ -47,7 +47,7 @@ const (
 	defaultFailRetryDelay      = 15 * time.Second
 	defaultStallStartTimeout   = 2 * time.Minute
 	defaultStallRunningTimeout = 8 * time.Minute
-	maxStallRestarts           = 3
+	maxStallRestarts           = 6
 )
 
 // Config holds the spawner configuration
@@ -724,8 +724,18 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				}
 
 				// Instant stall detection (exit 0 but too fast with minimal output)
+				instantStallDetected := false
 				if proc.finalStatus == "PASS" {
 					s.checkInstantStall(ctx, proc, req)
+					instantStallDetected = proc.finalStatus == "CONTINUE"
+				}
+
+				// Wait before instant stall restart
+				if instantStallDetected {
+					if !s.waitBeforeStallRetry(ctx, proc, req) {
+						completed = append(completed, proc)
+						continue
+					}
 				}
 
 				// Auto-restart failed agent if configured
@@ -770,6 +780,11 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if s.checkStall(ctx, proc, req) {
 					proc.elapsed = elapsed
 					// checkStall already killed the process and set finalStatus=CONTINUE
+					// Wait before relaunching
+					if !s.waitBeforeStallRetry(ctx, proc, req) {
+						completed = append(completed, proc)
+						continue
+					}
 					if proc.restartCount < defaultMaxContinuations {
 						newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
 						if err != nil {

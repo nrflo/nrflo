@@ -41,6 +41,7 @@ const (
 	EventAgentTakeControl            = "agent.take_control"
 	EventLayerSkipped                = "layer.skipped"
 	EventAgentRetryWaiting           = "agent.retry_waiting"
+	EventAgentStallWaiting           = "agent.stall_waiting"
 	EventAgentStallRestart           = "agent.stall_restart"
 	EventAgentInstantStallRestart    = "agent.instant_stall_restart"
 	EventSkipTagAdded                = "skip_tag.added"

@@ -73,7 +73,6 @@ func TestCheckInstantStall_GuardConditions(t *testing.T) {
 		{"msg_count_3_skipped", "claude:sonnet", 15 * time.Second, 3, 0, false},
 		// 0 messages also triggers: production guard is msgCount > 1 (threshold <= 1 includes 0).
 		{"msg_count_0_triggers", "claude:sonnet", 15 * time.Second, 0, 0, true},
-		{"budget_exhausted_skipped", "claude:sonnet", 15 * time.Second, 1, maxStallRestarts, false},
 		{"budget_at_limit_minus_1_triggers", "claude:sonnet", 15 * time.Second, 1, maxStallRestarts - 1, true},
 	}
 
@@ -145,11 +144,10 @@ func TestCheckInstantStall_ConsumesBudget(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	// One prior stall restart consumed — 2 restarts left.
 	env.createSession(t, "claude:sonnet")
 	insertTestMessages(t, env, 1)
 
-	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, 2) // 2 prior (maxStallRestarts-1)
+	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, maxStallRestarts-1)
 	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
 
 	if proc.finalStatus != "CONTINUE" {
@@ -196,13 +194,13 @@ func TestCheckInstantStall_SequenceOfRestarts(t *testing.T) {
 // TestCheckInstantStall_SharedBudgetWithStallRestart verifies that instant stall and
 // regular stall share the same stallRestartCount budget.
 func TestCheckInstantStall_SharedBudgetWithStallRestart(t *testing.T) {
-	// Simulate proc that had 2 regular stall restarts already.
+	// Simulate proc that had maxStallRestarts-1 regular stall restarts already.
 	proc := &processInfo{
-		stallRestartCount: 2,
+		stallRestartCount: maxStallRestarts - 1,
 		finalStatus:       "PASS",
 	}
 
-	// Guard for instant stall: stallRestartCount < maxStallRestarts (3)
+	// Guard for instant stall: stallRestartCount < maxStallRestarts
 	instantStallAllowed := proc.stallRestartCount < maxStallRestarts
 	if !instantStallAllowed {
 		t.Errorf("instant stall should be allowed at count=%d (max=%d)", proc.stallRestartCount, maxStallRestarts)
@@ -214,13 +212,46 @@ func TestCheckInstantStall_SharedBudgetWithStallRestart(t *testing.T) {
 
 	// Budget is now exhausted — both instant stall and regular stall are blocked.
 	if proc.stallRestartCount < maxStallRestarts {
-		t.Errorf("budget should be exhausted after 3rd restart: stallRestartCount=%d", proc.stallRestartCount)
+		t.Errorf("budget should be exhausted: stallRestartCount=%d", proc.stallRestartCount)
 	}
 
 	// Regular stall guard also blocks.
 	regularStallAllowed := proc.stallRestartCount < maxStallRestarts
 	if regularStallAllowed {
 		t.Error("regular stall should also be blocked (shared budget)")
+	}
+}
+
+// TestCheckInstantStall_BudgetExhausted_MarkedFailed verifies that when an instant stall
+// is detected but the stall restart budget is exhausted, the session is marked as failed.
+func TestCheckInstantStall_BudgetExhausted_MarkedFailed(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.cleanup()
+
+	env.createSession(t, "claude:sonnet")
+	insertTestMessages(t, env, 1)
+
+	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, maxStallRestarts)
+	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
+
+	if proc.finalStatus != "FAIL" {
+		t.Errorf("finalStatus = %q, want FAIL when budget exhausted", proc.finalStatus)
+	}
+
+	// Verify DB state
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
+	sess, err := sessionRepo.Get(env.sessionID)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	if sess.Status != model.AgentSessionFailed {
+		t.Errorf("status = %q, want %q", sess.Status, model.AgentSessionFailed)
+	}
+	if !sess.Result.Valid || sess.Result.String != "fail" {
+		t.Errorf("result = %v, want fail", sess.Result)
+	}
+	if !sess.ResultReason.Valid || sess.ResultReason.String != "stall_budget_exhausted" {
+		t.Errorf("result_reason = %v, want stall_budget_exhausted", sess.ResultReason)
 	}
 }
 

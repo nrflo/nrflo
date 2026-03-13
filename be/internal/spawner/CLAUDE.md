@@ -144,24 +144,27 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
 
 5b. STALL DETECTION (in monitorAll poll loop)
    - Checked for still-running procs before timeout check
-   - Skipped if lowContextSaving or stallRestartCount >= maxStallRestarts (3)
+   - Skipped if lowContextSaving or stallRestartCount >= maxStallRestarts (6)
    - Start stall: no messages received && stallStartTimeout > 0 && sinceLastMsg > stallStartTimeout (default 2min)
    - Running stall: has messages && stallRunningTimeout > 0 && sinceLastMsg > stallRunningTimeout (default 8min)
    - On stall: broadcast agent.stall_restart event, kill process (SIGTERM→grace→SIGKILL), flush messages,
      register stop with result=continue reason=stall_restart_{start_stall|running_stall},
      increment stallRestartCount, set finalStatus=CONTINUE → relaunchForContinuation
-   - No context save attempted (agent is frozen), no delay before retry (unlike fail_restart)
+   - No context save attempted (agent is frozen)
+   - 15s delay before retry (waitBeforeStallRetry, broadcasts agent.stall_waiting event)
    - Stall timeouts configurable per agent_definition: stall_start_timeout_sec, stall_running_timeout_sec
      (NULL = defaults, 0 = disabled)
 
 5c. INSTANT STALL DETECTION (post-completion, in monitorAll after handleCompletion)
    - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
-   - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute, stallRestartCount < maxStallRestarts (3),
+   - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
      message count <= 1 (queried from agent_messages via CountBySession)
-   - On match: override session result=continue reason=instant_stall, status=continued,
-     increment stallRestartCount, set finalStatus=CONTINUE → relaunchForContinuation
+   - If stallRestartCount >= maxStallRestarts (6): marks session as failed with reason
+     stall_budget_exhausted (instead of letting false pass through)
+   - On match (budget available): override session result=continue reason=instant_stall, status=continued,
+     increment stallRestartCount, set finalStatus=CONTINUE → 15s delay → relaunchForContinuation
    - Broadcasts agent.instant_stall_restart event with session_id, agent_type, elapsed, message_count
-   - Shares stall restart budget with regular stall detection (both increment stallRestartCount, capped at 3)
+   - Shares stall restart budget with regular stall detection (both increment stallRestartCount, capped at 6)
    - Messages are already flushed by handleCompletion before this check runs
 
 6. FINALIZE PHASE
@@ -387,6 +390,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 | `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
-| `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/msgCount>1, budget cap |
+| `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/msgCount>1, budget cap, budget-exhausted marks failed |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

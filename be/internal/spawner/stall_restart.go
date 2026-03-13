@@ -105,3 +105,23 @@ func (s *Spawner) handleStallRestart(ctx context.Context, proc *processInfo, req
 	proc.stallRestartCount++
 	proc.finalStatus = "CONTINUE"
 }
+
+// waitBeforeStallRetry waits for defaultFailRetryDelay (15s) before retrying a stalled agent.
+// Returns true if the wait completed, false if the context was cancelled (should not retry).
+// Broadcasts an agent.stall_waiting event before sleeping.
+func (s *Spawner) waitBeforeStallRetry(ctx context.Context, proc *processInfo, req SpawnRequest) bool {
+	s.broadcast(ws.EventAgentStallWaiting, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+		"agent_type":          proc.agentType,
+		"session_id":          proc.sessionID,
+		"model_id":            proc.modelID,
+		"delay_seconds":       int(defaultFailRetryDelay.Seconds()),
+		"stall_restart_count": proc.stallRestartCount,
+	})
+	logger.Info(ctx, "waiting before stall restart", "delay", defaultFailRetryDelay, "model", proc.modelID)
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(defaultFailRetryDelay):
+		return true
+	}
+}

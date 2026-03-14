@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PORT=${NRWORKFLOW_PORT:-6587}
-UI_PORT=5173
+UI_PORT=5175
 LOG_DIR="/tmp/nrworkflow/logs"
 BE_LOG="$LOG_DIR/be.log"
 UI_LOG="$LOG_DIR/fe.log"

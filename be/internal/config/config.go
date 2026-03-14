@@ -29,7 +29,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
 			Port:        DefaultPort,
-			CORSOrigins: []string{"http://localhost:5173"},
+			CORSOrigins: []string{"http://localhost:5175"},
 		},
 	}
 }
@@ -69,7 +69,7 @@ func Load() (*Config, error) {
 		cfg.Server.Port = DefaultPort
 	}
 	if len(cfg.Server.CORSOrigins) == 0 {
-		cfg.Server.CORSOrigins = []string{"http://localhost:5173"}
+		cfg.Server.CORSOrigins = []string{"http://localhost:5175"}
 	}
 
 	return &cfg, nil

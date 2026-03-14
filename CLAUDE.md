@@ -142,7 +142,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 ## Quick Start
 
-Web UI: `./restart.sh` then open `http://localhost:5173`
+Web UI: `./restart.sh` then open `http://localhost:5175`
 
 ## Agent CLI Commands
 

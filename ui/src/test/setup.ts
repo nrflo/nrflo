@@ -12,7 +12,7 @@ Object.defineProperty(window, 'location', {
   writable: true,
   value: {
     protocol: 'http:',
-    host: 'localhost:5173',
+    host: 'localhost:5175',
   },
 })
 

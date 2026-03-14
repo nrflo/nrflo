@@ -6,7 +6,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 
 `nrworkflow_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
-- **CORS** enabled for `http://localhost:5173`
+- **CORS** enabled for `http://localhost:5175`
 - **WebSocket** at `/api/v1/ws` for real-time updates
 
 ## Handler File Mapping

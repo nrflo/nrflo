@@ -26,12 +26,12 @@ func sentinelHandler(called *bool) http.Handler {
 // --- corsMiddleware tests ---
 
 func TestCORSMiddleware_AllowedOrigin(t *testing.T) {
-	s := newServerWithCORSOrigins([]string{"http://localhost:5173"})
+	s := newServerWithCORSOrigins([]string{"http://localhost:5175"})
 	called := false
 	handler := s.corsMiddleware(sentinelHandler(&called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Origin", "http://localhost:5175")
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -39,13 +39,13 @@ func TestCORSMiddleware_AllowedOrigin(t *testing.T) {
 	if !called {
 		t.Error("expected next handler to be called")
 	}
-	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5173" {
-		t.Errorf("Access-Control-Allow-Origin = %q, want %q", got, "http://localhost:5173")
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5175" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want %q", got, "http://localhost:5175")
 	}
 }
 
 func TestCORSMiddleware_DisallowedOrigin(t *testing.T) {
-	s := newServerWithCORSOrigins([]string{"http://localhost:5173"})
+	s := newServerWithCORSOrigins([]string{"http://localhost:5175"})
 	called := false
 	handler := s.corsMiddleware(sentinelHandler(&called))
 
@@ -83,12 +83,12 @@ func TestCORSMiddleware_WildcardOrigin(t *testing.T) {
 }
 
 func TestCORSMiddleware_PreflyhtOPTIONS(t *testing.T) {
-	s := newServerWithCORSOrigins([]string{"http://localhost:5173"})
+	s := newServerWithCORSOrigins([]string{"http://localhost:5175"})
 	called := false
 	handler := s.corsMiddleware(sentinelHandler(&called))
 
 	req := httptest.NewRequest(http.MethodOptions, "/api/v1/tickets", nil)
-	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Origin", "http://localhost:5175")
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -102,12 +102,12 @@ func TestCORSMiddleware_PreflyhtOPTIONS(t *testing.T) {
 }
 
 func TestCORSMiddleware_AlwaysSetsMethodsAndHeaders(t *testing.T) {
-	s := newServerWithCORSOrigins([]string{"http://localhost:5173"})
+	s := newServerWithCORSOrigins([]string{"http://localhost:5175"})
 	called := false
 	handler := s.corsMiddleware(sentinelHandler(&called))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Origin", "http://localhost:5175")
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -127,7 +127,7 @@ func TestCORSMiddleware_AlwaysSetsMethodsAndHeaders(t *testing.T) {
 }
 
 func TestCORSMiddleware_NoOriginHeader(t *testing.T) {
-	s := newServerWithCORSOrigins([]string{"http://localhost:5173"})
+	s := newServerWithCORSOrigins([]string{"http://localhost:5175"})
 	called := false
 	handler := s.corsMiddleware(sentinelHandler(&called))
 
@@ -146,14 +146,14 @@ func TestCORSMiddleware_NoOriginHeader(t *testing.T) {
 }
 
 func TestCORSMiddleware_MultipleAllowedOrigins(t *testing.T) {
-	origins := []string{"http://localhost:5173", "http://localhost:3000", "https://app.example.com"}
+	origins := []string{"http://localhost:5175", "http://localhost:3000", "https://app.example.com"}
 	s := newServerWithCORSOrigins(origins)
 
 	cases := []struct {
 		origin      string
 		wantAllowed bool
 	}{
-		{"http://localhost:5173", true},
+		{"http://localhost:5175", true},
 		{"http://localhost:3000", true},
 		{"https://app.example.com", true},
 		{"http://evil.com", false},

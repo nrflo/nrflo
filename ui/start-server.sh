@@ -31,16 +31,16 @@ if lsof -i :$PORT > /dev/null 2>&1; then
     sleep 1
 fi
 
-# Kill existing server if running on UI port (5173)
-if lsof -i :5173 > /dev/null 2>&1; then
-    echo -e "${YELLOW}Killing existing process on port 5173...${NC}"
-    lsof -ti :5173 | xargs kill -9 2>/dev/null || true
+# Kill existing server if running on UI port (5175)
+if lsof -i :5175 > /dev/null 2>&1; then
+    echo -e "${YELLOW}Killing existing process on port 5175...${NC}"
+    lsof -ti :5175 | xargs kill -9 2>/dev/null || true
     sleep 1
 fi
 
 echo ""
 echo -e "API server will start on ${YELLOW}http://localhost:$PORT${NC}"
-echo -e "UI will start on ${YELLOW}http://localhost:5173${NC}"
+echo -e "UI will start on ${YELLOW}http://localhost:5175${NC}"
 echo "Press Ctrl+C to stop"
 echo ""
 

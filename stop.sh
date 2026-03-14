@@ -2,7 +2,7 @@
 # Stop nrworkflow servers (Backend + UI)
 
 PORT=${NRWORKFLOW_PORT:-6587}
-UI_PORT=5173
+UI_PORT=5175
 
 # Colors
 RED='\033[0;31m'

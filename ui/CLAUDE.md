@@ -44,7 +44,7 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 ## Development Commands
 
 ```bash
-npm run dev        # Start dev server (port 5173)
+npm run dev        # Start dev server (port 5175)
 npm run build      # Production build (includes tsc)
 npm run lint       # ESLint
 npx tsc --noEmit   # TypeScript check only
@@ -209,7 +209,7 @@ The full test suite (`vitest run`) must complete in **≤15 seconds wall time**.
 ## Important Notes
 
 - The backend (`nrworkflow_server serve`) must be running for the UI to work
-- Default port is 6587 for API, 5173 for UI
+- Default port is 6587 for API, 5175 for UI
 - Projects are loaded from `/api/v1/projects` endpoint
 - Multi-project support uses `X-Project` header
 - Database is at `~/projects/2026/nrworkflow/nrworkflow.data` (global)
@@ -222,7 +222,7 @@ The full test suite (`vitest run`) must complete in **≤15 seconds wall time**.
 
 # Or start manually:
 nrworkflow_server serve       # Start API server (port 6587)
-cd ui && npm run dev          # Start UI dev server (port 5173)
+cd ui && npm run dev          # Start UI dev server (port 5175)
 
 # Stop servers
 ./stop.sh

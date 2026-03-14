@@ -109,7 +109,9 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 }
 
 func (a *ClaudeAdapter) MapModel(model string) string {
-	// Claude CLI uses short names directly: opus, sonnet, haiku
+	if model == "opus_1m" {
+		return "opus[1m]"
+	}
 	return model
 }
 

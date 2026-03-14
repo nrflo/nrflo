@@ -61,6 +61,7 @@ export function AgentDefForm({
             onChange={setModel}
             options={[
               { value: 'opus', label: 'opus' },
+              { value: 'opus_1m', label: 'opus_1m' },
               { value: 'sonnet', label: 'sonnet' },
               { value: 'haiku', label: 'haiku' },
               { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },

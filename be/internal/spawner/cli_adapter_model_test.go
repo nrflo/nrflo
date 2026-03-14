@@ -74,6 +74,7 @@ func TestClaudeAdapterModelMapping(t *testing.T) {
 		expected string
 	}{
 		{"opus", "opus"},
+		{"opus_1m", "opus[1m]"},
 		{"sonnet", "sonnet"},
 		{"haiku", "haiku"},
 		{"claude-opus-4-5", "claude-opus-4-5"},
@@ -151,6 +152,7 @@ func TestModelMappingRoundTrip(t *testing.T) {
 		name    string
 	}{
 		{"opus", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"opencode_gpt_normal", &OpencodeAdapter{}, "OpencodeAdapter"},
@@ -216,6 +218,7 @@ func TestDefaultCLIForModel(t *testing.T) {
 		expected string
 	}{
 		{"opus", "claude"},
+		{"opus_1m", "claude"},
 		{"sonnet", "claude"},
 		{"haiku", "claude"},
 		{"opencode_gpt_normal", "opencode"},
@@ -246,6 +249,7 @@ func TestAllSupportedModelsAreValid(t *testing.T) {
 		name    string
 	}{
 		{"opus", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"opencode_gpt_normal", &OpencodeAdapter{}, "OpencodeAdapter"},

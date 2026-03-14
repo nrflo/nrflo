@@ -66,7 +66,7 @@ describe('AgentDefForm', () => {
       // Each option is rendered as a div with the label text inside the dropdown menu
       const optionsContainer = dropdownBtn.parentElement!.querySelector('.absolute')!
       const optionDivs = optionsContainer.querySelectorAll('.cursor-pointer')
-      expect(optionDivs).toHaveLength(9)
+      expect(optionDivs).toHaveLength(10)
     })
 
     it('contains all model options', async () => {
@@ -77,7 +77,7 @@ describe('AgentDefForm', () => {
 
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
-      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high', 'codex_gpt54_normal', 'codex_gpt54_high'])
+      expect(optionTexts).toEqual(['opus', 'opus_1m', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high', 'codex_gpt54_normal', 'codex_gpt54_high'])
     })
 
     it('defaults to sonnet', () => {
@@ -350,8 +350,8 @@ describe('AgentDefForm', () => {
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
 
-      expect(optionTexts).toHaveLength(9)
-      expect(optionTexts).toEqual(['opus', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high', 'codex_gpt54_normal', 'codex_gpt54_high'])
+      expect(optionTexts).toHaveLength(10)
+      expect(optionTexts).toEqual(['opus', 'opus_1m', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high', 'codex_gpt54_normal', 'codex_gpt54_high'])
     })
   })
 

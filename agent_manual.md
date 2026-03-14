@@ -295,7 +295,8 @@ nrworkflow findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
 
 | Model value | Maps to |
 |-------------|---------|
-| `opus` | Claude Opus |
+| `opus` | Claude Opus (200k context) |
+| `opus_1m` | Claude Opus (1M context) |
 | `sonnet` | Claude Sonnet |
 | `haiku` | Claude Haiku |
 

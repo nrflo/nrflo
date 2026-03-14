@@ -435,6 +435,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 			fmt.Sprintf("NRWF_SESSION_ID=%s", sessionID),
 			"NRWF_SPAWNED=1",
 			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
+			fmt.Sprintf("NRWF_MAX_CONTEXT=%d", maxContextForModel(model)),
 		),
 	}
 
@@ -976,6 +977,13 @@ func filterEnv(env []string, name string) []string {
 		}
 	}
 	return out
+}
+
+func maxContextForModel(model string) int {
+	if model == "opus_1m" {
+		return 1000000
+	}
+	return 200000
 }
 
 func parseModelID(modelID string) (cli, model string) {

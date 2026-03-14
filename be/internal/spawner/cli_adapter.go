@@ -91,13 +91,14 @@ func (a *ClaudeAdapter) Name() string {
 }
 
 func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
+	model := a.MapModel(opts.Model)
 	args := []string{
 		"--print",
 		"--verbose",
 		"--dangerously-skip-permissions",
 		"--output-format", "stream-json",
 		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
-		"--model", opts.Model,
+		"--model", model,
 		"--session-id", opts.SessionID,
 		// prompt piped via stdin — no PromptFile arg, no InitialPrompt
 	}

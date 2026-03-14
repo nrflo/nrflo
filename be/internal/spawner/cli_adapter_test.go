@@ -297,6 +297,48 @@ func TestOpencodeAdapter_BuildCommand_WithoutVariant(t *testing.T) {
 	}
 }
 
+func TestClaudeAdapter_MapModel(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"opus", "opus"},
+		{"opus_1m", "opus[1m]"},
+		{"sonnet", "sonnet"},
+		{"haiku", "haiku"},
+	}
+
+	for _, tt := range tests {
+		got := adapter.MapModel(tt.input)
+		if got != tt.want {
+			t.Errorf("MapModel(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestClaudeAdapter_BuildCommand_MapsModel(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := SpawnOptions{
+		Model:     "opus_1m",
+		SessionID: "test-session",
+		WorkDir:   "/tmp",
+	}
+
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	// Must contain the mapped model name, not the raw alias
+	if !strings.Contains(args, "--model opus[1m]") {
+		t.Errorf("Expected --model opus[1m], got: %s", args)
+	}
+	if strings.Contains(args, "--model opus_1m") {
+		t.Errorf("Raw model name opus_1m should not appear in args: %s", args)
+	}
+}
+
 func TestUsesStdinPrompt(t *testing.T) {
 	tests := []struct {
 		cli  string

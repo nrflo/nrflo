@@ -21,7 +21,12 @@ func newRunningAgentsServer(t *testing.T) (*Server, *db.DB) {
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	s := &Server{dataPath: dbPath, clock: clock.Real()}
+	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	t.Cleanup(func() { pool.Close() })
+	s := &Server{dataPath: dbPath, pool: pool, clock: clock.Real()}
 	return s, database
 }
 
@@ -158,7 +163,13 @@ func TestHandleGetRunningAgents_ElapsedSec(t *testing.T) {
 	}
 	defer database.Close()
 
-	s := &Server{dataPath: dbPath, clock: testClock}
+	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	defer pool.Close()
+
+	s := &Server{dataPath: dbPath, pool: pool, clock: testClock}
 	wfiID := seedProject(t, database, "proj-elapsed", "Elapsed Project")
 	startedAt := fixedNow.Add(-120 * time.Second).Format(time.RFC3339Nano)
 	insertHandlerSession(t, database, "sess-elapsed", wfiID, "proj-elapsed", "running", startedAt)

@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
@@ -43,15 +42,8 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Open DB and look up session.
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer database.Close()
-
-	asRepo := repo.NewAgentSessionRepo(database, s.clock)
+	// Look up session.
+	asRepo := s.agentSessionRepo()
 	session, err := asRepo.Get(sessionID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "session not found")
@@ -64,8 +56,7 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Look up workflow instance for the workflow name (needed for broadcast).
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 	wfi, err := wfiRepo.Get(session.WorkflowInstanceID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to look up workflow instance")
@@ -74,7 +65,7 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 	workflowName := wfi.WorkflowID
 
 	// Look up project root for working directory.
-	projectRepo := repo.NewProjectRepo(database, s.clock)
+	projectRepo := s.projectRepo()
 	project, err := projectRepo.Get(session.ProjectID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to look up project")

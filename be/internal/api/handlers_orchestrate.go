@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"be/internal/db"
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
@@ -237,14 +236,7 @@ func (s *Server) handleResumeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	asRepo := repo.NewAgentSessionRepo(database, s.clock)
+	asRepo := s.agentSessionRepo()
 	session, err := asRepo.Get(body.SessionID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "session not found")
@@ -267,8 +259,7 @@ func (s *Server) handleResumeSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Look up workflow name for the broadcast event.
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 	workflowName := ""
 	if wfi, err := wfiRepo.Get(session.WorkflowInstanceID); err == nil {
 		workflowName = wfi.WorkflowID

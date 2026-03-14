@@ -8,12 +8,7 @@ import (
 
 // handleSearch performs FTS5 search
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, _, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {

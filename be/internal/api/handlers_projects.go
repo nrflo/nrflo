@@ -10,12 +10,7 @@ import (
 
 // handleListProjects returns all projects
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
-	_, _, _, projectRepo, database, err := s.getAllRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	projectRepo := s.projectRepo()
 
 	projects, err := projectRepo.List()
 	if err != nil {
@@ -45,12 +40,7 @@ type CreateProjectRequest struct {
 
 // handleCreateProject creates a new project
 func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
-	_, _, _, projectRepo, database, err := s.getAllRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	projectRepo := s.projectRepo()
 
 	var req CreateProjectRequest
 	if err := readJSON(r, &req); err != nil {
@@ -103,12 +93,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 
 // handleGetProject returns a single project by ID
 func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
-	_, _, _, projectRepo, database, err := s.getAllRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	projectRepo := s.projectRepo()
 
 	id := extractID(r)
 	project, err := projectRepo.Get(id)
@@ -122,12 +107,7 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 
 // handleDeleteProject deletes a project
 func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
-	_, _, _, projectRepo, database, err := s.getAllRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	projectRepo := s.projectRepo()
 
 	id := extractID(r)
 	if err := projectRepo.Delete(id); err != nil {
@@ -150,12 +130,7 @@ type UpdateProjectRequest struct {
 
 // handleUpdateProject updates a project
 func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
-	_, _, _, projectRepo, database, err := s.getAllRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	projectRepo := s.projectRepo()
 
 	id := extractID(r)
 

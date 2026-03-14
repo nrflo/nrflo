@@ -14,11 +14,11 @@ import (
 // WorkflowRepo handles workflow definition CRUD operations
 type WorkflowRepo struct {
 	clock clock.Clock
-	db *db.DB
+	db db.Querier
 }
 
 // NewWorkflowRepo creates a new workflow repository
-func NewWorkflowRepo(database *db.DB, clk clock.Clock) *WorkflowRepo {
+func NewWorkflowRepo(database db.Querier, clk clock.Clock) *WorkflowRepo {
 	return &WorkflowRepo{db: database, clock: clk}
 }
 

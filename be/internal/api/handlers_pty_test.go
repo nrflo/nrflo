@@ -35,11 +35,12 @@ func newPtyTestServer(t *testing.T) (*Server, string) {
 
 	orch := orchestrator.New(dbPath, hub, clock.Real())
 	s := &Server{
-		dataPath:   dbPath,
+		dataPath:     dbPath,
+		pool:         pool,
 		orchestrator: orch,
 		ptyManager:   ptyPkg.NewManager(),
-		wsHub:      hub,
-		clock:      clock.Real(),
+		wsHub:        hub,
+		clock:        clock.Real(),
 	}
 	return s, dbPath
 }
@@ -359,24 +360,6 @@ func TestHandlePtyWebSocket_StatusTable(t *testing.T) {
 				t.Errorf("status %q → HTTP %d, want 400", tc.status, rr.Code)
 			}
 		})
-	}
-}
-
-// TestHandlePtyWebSocket_DatabaseOpenError verifies that an invalid data path
-// returns 500.
-func TestHandlePtyWebSocket_DatabaseOpenError(t *testing.T) {
-	s := &Server{
-		dataPath:   "/nonexistent/path/to/pty_test.db",
-		ptyManager: ptyPkg.NewManager(),
-		clock:      clock.Real(),
-	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/pty/any-session", nil)
-	req.SetPathValue("session_id", "any-session")
-	rr := httptest.NewRecorder()
-	s.handlePtyWebSocket(rr, req)
-
-	if rr.Code != http.StatusInternalServerError {
-		t.Errorf("status = %d, want 500 for unopenable DB path", rr.Code)
 	}
 }
 

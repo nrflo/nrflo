@@ -33,8 +33,14 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 	cfg := config.DefaultConfig()
 	cfg.Server.CORSOrigins = []string{"*"}
 
+	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	t.Cleanup(func() { pool.Close() })
+
 	// Create server (it creates its own hub internally)
-	srv := api.NewServer(cfg, dbPath)
+	srv := api.NewServer(cfg, dbPath, pool)
 
 	// Get the hub from the server
 	hub := srv.GetWSHub()
@@ -477,7 +483,13 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Server.CORSOrigins = []string{"*"}
 
-	srv := api.NewServer(cfg, dbPath)
+	pool2, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	t.Cleanup(func() { pool2.Close() })
+
+	srv := api.NewServer(cfg, dbPath, pool2)
 	hub := srv.GetWSHub()
 
 	go func() {

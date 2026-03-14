@@ -33,6 +33,7 @@ func newResumeTestServer(t *testing.T) (*Server, string) {
 
 	s := &Server{
 		dataPath: dbPath,
+		pool:     pool,
 		wsHub:    hub,
 		clock:    clock.Real(),
 	}

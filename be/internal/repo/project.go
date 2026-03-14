@@ -14,11 +14,11 @@ import (
 // ProjectRepo handles project CRUD operations
 type ProjectRepo struct {
 	clock clock.Clock
-	db *db.DB
+	db db.Querier
 }
 
 // NewProjectRepo creates a new project repository
-func NewProjectRepo(database *db.DB, clk clock.Clock) *ProjectRepo {
+func NewProjectRepo(database db.Querier, clk clock.Clock) *ProjectRepo {
 	return &ProjectRepo{db: database, clock: clk}
 }
 

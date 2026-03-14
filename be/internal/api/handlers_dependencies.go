@@ -14,12 +14,7 @@ type AddDependencyRequest struct {
 
 // handleAddDependency adds a dependency between tickets
 func (s *Server) handleAddDependency(w http.ResponseWriter, r *http.Request) {
-	_, depRepo, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	depRepo := s.depRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -62,12 +57,7 @@ type RemoveDependencyRequest struct {
 
 // handleRemoveDependency removes a dependency between tickets
 func (s *Server) handleRemoveDependency(w http.ResponseWriter, r *http.Request) {
-	_, depRepo, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	depRepo := s.depRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -96,12 +86,7 @@ func (s *Server) handleRemoveDependency(w http.ResponseWriter, r *http.Request) 
 
 // handleGetDependencies returns dependencies for a ticket
 func (s *Server) handleGetDependencies(w http.ResponseWriter, r *http.Request) {
-	_, depRepo, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	depRepo := s.depRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {

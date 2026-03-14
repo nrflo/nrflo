@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"strings"
 
-	"be/internal/db"
-	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
 )
@@ -18,15 +16,7 @@ func (s *Server) handleListWorkflowDefs(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	svc := service.NewWorkflowService(pool, s.clock)
+	svc := s.workflowService()
 
 	defs, err := svc.ListWorkflowDefs(projectID)
 	if err != nil {
@@ -60,15 +50,7 @@ func (s *Server) handleCreateWorkflowDef(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	svc := service.NewWorkflowService(pool, s.clock)
+	svc := s.workflowService()
 
 	wf, err := svc.CreateWorkflowDef(projectID, &req)
 	if err != nil {
@@ -104,15 +86,7 @@ func (s *Server) handleGetWorkflowDef(w http.ResponseWriter, r *http.Request) {
 
 	id := extractID(r)
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	svc := service.NewWorkflowService(pool, s.clock)
+	svc := s.workflowService()
 
 	wf, err := svc.GetWorkflowDef(projectID, id)
 	if err != nil {
@@ -143,15 +117,7 @@ func (s *Server) handleUpdateWorkflowDef(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	svc := service.NewWorkflowService(pool, s.clock)
+	svc := s.workflowService()
 
 	if err := svc.UpdateWorkflowDef(projectID, id, &req); err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -186,15 +152,7 @@ func (s *Server) handleDeleteWorkflowDef(w http.ResponseWriter, r *http.Request)
 
 	id := extractID(r)
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	svc := service.NewWorkflowService(pool, s.clock)
+	svc := s.workflowService()
 
 	if err := svc.DeleteWorkflowDef(projectID, id); err != nil {
 		if strings.Contains(err.Error(), "not found") {

@@ -23,6 +23,7 @@ import (
 type Server struct {
 	config           *config.Config
 	dataPath         string
+	pool             *db.Pool
 	httpServer       *http.Server
 	wsHub            *ws.Hub
 	orchestrator     *orchestrator.Orchestrator
@@ -32,7 +33,7 @@ type Server struct {
 }
 
 // NewServer creates a new API server
-func NewServer(cfg *config.Config, dataPath string) *Server {
+func NewServer(cfg *config.Config, dataPath string, pool *db.Pool) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	orch := orchestrator.New(dataPath, hub, clk)
@@ -44,6 +45,7 @@ func NewServer(cfg *config.Config, dataPath string) *Server {
 	return &Server{
 		config:       cfg,
 		dataPath:     dataPath,
+		pool:         pool,
 		wsHub:        hub,
 		orchestrator: orch,
 		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
@@ -116,17 +118,11 @@ func (s *Server) Stop(ctx context.Context) error {
 // initEventLog sets up the event log repo on the hub, configures the snapshot provider,
 // and starts the retention cleanup goroutine.
 func (s *Server) initEventLog() {
-	database, err := s.getDatabase()
-	if err != nil {
-		logger.Info(context.Background(), "event log init failed, continuing without persistence", "error", err)
-		return
-	}
-	elRepo := repo.NewEventLogRepo(database, s.clock)
+	elRepo := repo.NewEventLogRepo(s.pool, s.clock)
 	s.wsHub.SetEventLog(elRepo)
 
 	// Set up snapshot provider backed by WorkflowService
-	pool := db.WrapAsPool(database)
-	wfSvc := service.NewWorkflowService(pool, s.clock)
+	wfSvc := service.NewWorkflowService(s.pool, s.clock)
 	s.wsHub.SetSnapshotProvider(service.NewWorkflowSnapshotProvider(wfSvc))
 
 	// Start retention cleanup: delete events older than 24h, every hour
@@ -150,16 +146,8 @@ func (s *Server) startRetentionCleanup() {
 	const keep = 100
 
 	cleanup := func() {
-		database, err := s.getDatabase()
-		if err != nil {
-			logger.Info(context.Background(), "retention cleanup: db open failed", "error", err)
-			return
-		}
-		defer database.Close()
-
-		pool := db.WrapAsPool(database)
-		wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
-		asRepo := repo.NewAgentSessionRepo(database, s.clock)
+		wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
+		asRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
 
 		if deleted, err := wfiRepo.CleanupKeepLatest(keep); err != nil {
 			logger.Info(context.Background(), "retention cleanup: workflow_instances error", "error", err)
@@ -185,27 +173,29 @@ func (s *Server) startRetentionCleanup() {
 	}()
 }
 
-// getDatabase returns a fresh database connection
-func (s *Server) getDatabase() (*db.DB, error) {
-	return db.Open(s.dataPath)
+// ticketRepo returns a ticket repo backed by the connection pool
+func (s *Server) ticketRepo() *repo.TicketRepo {
+	return repo.NewTicketRepo(s.pool, s.clock)
 }
 
-// getRepos returns ticket and dependency repos for the current request
-func (s *Server) getRepos(r *http.Request) (*repo.TicketRepo, *repo.DependencyRepo, *db.DB, error) {
-	database, err := s.getDatabase()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return repo.NewTicketRepo(database, s.clock), repo.NewDependencyRepo(database, s.clock), database, nil
+// depRepo returns a dependency repo backed by the connection pool
+func (s *Server) depRepo() *repo.DependencyRepo {
+	return repo.NewDependencyRepo(s.pool, s.clock)
 }
 
-// getAllRepos returns all repos including agent session repo
-func (s *Server) getAllRepos(r *http.Request) (*repo.TicketRepo, *repo.DependencyRepo, *repo.AgentSessionRepo, *repo.ProjectRepo, *db.DB, error) {
-	database, err := s.getDatabase()
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	return repo.NewTicketRepo(database, s.clock), repo.NewDependencyRepo(database, s.clock), repo.NewAgentSessionRepo(database, s.clock), repo.NewProjectRepo(database, s.clock), database, nil
+// projectRepo returns a project repo backed by the connection pool
+func (s *Server) projectRepo() *repo.ProjectRepo {
+	return repo.NewProjectRepo(s.pool, s.clock)
+}
+
+// agentSessionRepo returns an agent session repo backed by the connection pool
+func (s *Server) agentSessionRepo() *repo.AgentSessionRepo {
+	return repo.NewAgentSessionRepo(s.pool, s.clock)
+}
+
+// workflowService returns a workflow service backed by the connection pool
+func (s *Server) workflowService() *service.WorkflowService {
+	return service.NewWorkflowService(s.pool, s.clock)
 }
 
 // corsMiddleware adds CORS headers

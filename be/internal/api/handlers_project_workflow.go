@@ -4,11 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"be/internal/db"
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
-	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
 )
@@ -236,14 +234,7 @@ func (s *Server) handleResumeSessionProject(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	asRepo := repo.NewAgentSessionRepo(database, s.clock)
+	asRepo := s.agentSessionRepo()
 	session, err := asRepo.Get(body.SessionID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "session not found")
@@ -265,8 +256,7 @@ func (s *Server) handleResumeSessionProject(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 	workflowName := ""
 	if wfi, err := wfiRepo.Get(session.WorkflowInstanceID); err == nil {
 		workflowName = wfi.WorkflowID
@@ -333,15 +323,7 @@ func (s *Server) handleGetProjectWorkflow(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	pool := db.WrapAsPool(database)
-	workflowSvc := service.NewWorkflowService(pool, s.clock)
+	workflowSvc := s.workflowService()
 
 	instances, err := workflowSvc.ListProjectWorkflowInstances(projectID)
 	if err != nil || len(instances) == 0 {
@@ -417,17 +399,9 @@ func (s *Server) handleGetProjectAgentSessions(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
 	phase := r.URL.Query().Get("phase")
 
-	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
-	sessions, err := agentSessionRepo.GetByProjectScope(projectID, phase)
+	sessions, err := s.agentSessionRepo().GetByProjectScope(projectID, phase)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -438,8 +412,7 @@ func (s *Server) handleGetProjectAgentSessions(w http.ResponseWriter, r *http.Re
 	}
 
 	// Build findings from project-scoped workflow instances
-	pool := db.WrapAsPool(database)
-	workflowSvc := service.NewWorkflowService(pool, s.clock)
+	workflowSvc := s.workflowService()
 	findings := make(map[string]interface{})
 
 	instances, _ := workflowSvc.ListProjectWorkflowInstances(projectID)

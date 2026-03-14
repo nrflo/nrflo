@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/service"
@@ -23,12 +22,7 @@ type UpdateTicketRequest struct {
 
 // handleUpdateTicket updates a ticket
 func (s *Server) handleUpdateTicket(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, _, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -77,12 +71,7 @@ func (s *Server) handleUpdateTicket(w http.ResponseWriter, r *http.Request) {
 
 // handleDeleteTicket deletes a ticket
 func (s *Server) handleDeleteTicket(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, _, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -113,12 +102,8 @@ type CloseTicketRequest struct {
 
 // handleCloseTicket closes a ticket
 func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, depRepo, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
+	depRepo := s.depRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -171,8 +156,7 @@ func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Best-effort: auto-close parent epic if all children are now closed
-	pool := db.WrapAsPool(database)
-	ticketService := service.NewTicketService(pool, s.clock)
+	ticketService := service.NewTicketService(s.pool, s.clock)
 	epic, err := ticketService.TryCloseParentEpic(projectID, id)
 	if err != nil {
 		logger.Error(context.Background(), "failed to auto-close parent epic", "ticket_id", id, "error", err)
@@ -183,12 +167,7 @@ func (s *Server) handleCloseTicket(w http.ResponseWriter, r *http.Request) {
 
 // handleReopenTicket reopens a closed ticket
 func (s *Server) handleReopenTicket(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, _, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {

@@ -13,11 +13,11 @@ import (
 // DependencyRepo handles dependency CRUD operations
 type DependencyRepo struct {
 	clock clock.Clock
-	db *db.DB
+	db db.Querier
 }
 
 // NewDependencyRepo creates a new dependency repository
-func NewDependencyRepo(database *db.DB, clk clock.Clock) *DependencyRepo {
+func NewDependencyRepo(database db.Querier, clk clock.Clock) *DependencyRepo {
 	return &DependencyRepo{db: database, clock: clk}
 }
 

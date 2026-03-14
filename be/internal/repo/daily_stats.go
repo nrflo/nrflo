@@ -11,10 +11,10 @@ import (
 
 type DailyStatsRepo struct {
 	clock clock.Clock
-	db *db.DB
+	db db.Querier
 }
 
-func NewDailyStatsRepo(database *db.DB, clk clock.Clock) *DailyStatsRepo {
+func NewDailyStatsRepo(database db.Querier, clk clock.Clock) *DailyStatsRepo {
 	return &DailyStatsRepo{db: database, clock: clk}
 }
 

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"be/internal/db"
 	"be/internal/id"
 	"be/internal/model"
 	"be/internal/repo"
@@ -16,12 +15,7 @@ import (
 
 // handleListTickets returns tickets with optional filters
 func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, _, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -51,11 +45,10 @@ func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enrich with workflow progress (derived from agent_sessions + workflow definition)
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 	instances, err := wfiRepo.ListActiveByProject(projectID)
 	if err == nil {
-		wfService := service.NewWorkflowService(pool, s.clock)
+		wfService := service.NewWorkflowService(s.pool, s.clock)
 		progress := wfService.DeriveWorkflowProgress(instances)
 		repo.AttachWorkflowProgress(tickets, progress)
 	}
@@ -78,12 +71,7 @@ type CreateTicketRequest struct {
 
 // handleCreateTicket creates a new ticket
 func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, _, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -167,12 +155,8 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 
 // handleGetTicket returns a single ticket by ID
 func (s *Server) handleGetTicket(w http.ResponseWriter, r *http.Request) {
-	ticketRepo, depRepo, database, err := s.getRepos(r)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
+	ticketRepo := s.ticketRepo()
+	depRepo := s.depRepo()
 
 	projectID := getProjectID(r)
 	if projectID == "" {

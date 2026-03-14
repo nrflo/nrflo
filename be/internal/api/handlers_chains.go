@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -27,14 +26,7 @@ func (s *Server) handlePreviewChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
-	chainSvc := service.NewChainService(pool, s.clock)
+	chainSvc := service.NewChainService(s.pool, s.clock)
 	resp, err := chainSvc.PreviewChain(projectID, &req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -53,16 +45,9 @@ func (s *Server) handleListChains(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
 	status := r.URL.Query().Get("status")
 	epicTicketID := r.URL.Query().Get("epic_ticket_id")
-	chainRepo := repo.NewChainRepo(pool, s.clock)
+	chainRepo := repo.NewChainRepo(s.pool, s.clock)
 	chains, err := chainRepo.List(projectID, status, epicTicketID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -85,14 +70,7 @@ func (s *Server) handleGetChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
-	chainSvc := service.NewChainService(pool, s.clock)
+	chainSvc := service.NewChainService(s.pool, s.clock)
 	chain, err := chainSvc.GetChainWithItems(chainID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
@@ -117,14 +95,7 @@ func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
-	chainSvc := service.NewChainService(pool, s.clock)
+	chainSvc := service.NewChainService(s.pool, s.clock)
 	chain, err := chainSvc.CreateChain(projectID, &req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -149,14 +120,7 @@ func (s *Server) handleUpdateChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
-	chainSvc := service.NewChainService(pool, s.clock)
+	chainSvc := service.NewChainService(s.pool, s.clock)
 	chain, err := chainSvc.UpdateChain(chainID, &req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -233,14 +197,7 @@ func (s *Server) handleAppendToChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
-	chainSvc := service.NewChainService(pool, s.clock)
+	chainSvc := service.NewChainService(s.pool, s.clock)
 	chain, err := chainSvc.AppendToChain(chainID, &req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -287,14 +244,7 @@ func (s *Server) handleRunEpicWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Look up the ticket and validate it's an epic
-	database, err := db.Open(s.dataPath)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer database.Close()
-
-	ticketRepo := repo.NewTicketRepo(database, s.clock)
+	ticketRepo := s.ticketRepo()
 	ticket, err := ticketRepo.Get(projectID, ticketID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, fmt.Sprintf("ticket not found: %s", ticketID))
@@ -322,14 +272,7 @@ func (s *Server) handleRunEpicWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create chain via ChainService
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
-	chainSvc := service.NewChainService(pool, s.clock)
+	chainSvc := service.NewChainService(s.pool, s.clock)
 	chain, err := chainSvc.CreateChain(projectID, &types.ChainCreateRequest{
 		Name:         fmt.Sprintf("Epic: %s", ticket.Title),
 		WorkflowName: body.WorkflowName,

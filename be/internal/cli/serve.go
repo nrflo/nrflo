@@ -76,7 +76,7 @@ Example usage:
 		defer pool.Close()
 
 		// Create HTTP server (creates WebSocket hub)
-		httpServer := api.NewServer(cfg, DataPath)
+		httpServer := api.NewServer(cfg, DataPath, pool)
 
 		// Create and start Unix socket server with shared WebSocket hub
 		clk := clock.Real()

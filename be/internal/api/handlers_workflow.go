@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -17,13 +16,6 @@ import (
 
 // handleGetWorkflow returns the workflow state for a ticket from workflow_instances + agent_sessions
 func (s *Server) handleGetWorkflow(w http.ResponseWriter, r *http.Request) {
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
 	projectID := getProjectID(r)
 	if projectID == "" {
 		writeError(w, http.StatusBadRequest, "project is required")
@@ -31,8 +23,7 @@ func (s *Server) handleGetWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := extractID(r)
-	pool := db.WrapAsPool(database)
-	workflowSvc := service.NewWorkflowService(pool, s.clock)
+	workflowSvc := s.workflowService()
 
 	// List all workflow instances for this ticket
 	instances, err := workflowSvc.ListWorkflowInstances(projectID, id)
@@ -121,13 +112,6 @@ func (s *Server) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 
 // handleGetAgentSessions returns agent sessions for a ticket with findings from DB
 func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) {
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
 	projectID := getProjectID(r)
 	if projectID == "" {
 		writeError(w, http.StatusBadRequest, "project is required")
@@ -137,8 +121,7 @@ func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) 
 	id := extractID(r)
 	phase := r.URL.Query().Get("phase")
 
-	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
-	sessions, err := agentSessionRepo.GetByTicket(projectID, id, phase)
+	sessions, err := s.agentSessionRepo().GetByTicket(projectID, id, phase)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -149,13 +132,12 @@ func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Build findings from workflow_instances + agent_sessions
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.clock)
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 	findings := make(map[string]interface{})
 
 	instances, _ := wfiRepo.ListByTicket(projectID, id)
+	workflowSvc := s.workflowService()
 	for _, wi := range instances {
-		workflowSvc := service.NewWorkflowService(pool, s.clock)
 		combined := workflowSvc.BuildCombinedFindings(wi)
 		for k, v := range combined {
 			findings[k] = v
@@ -171,17 +153,9 @@ func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) 
 
 // handleGetSessionMessages returns paginated messages for an agent session
 func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request) {
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
 	sessionID := extractID(r)
 
-	pool := db.WrapAsPool(database)
-	agentSvc := service.NewAgentService(pool, s.clock)
+	agentSvc := service.NewAgentService(s.pool, s.clock)
 
 	// Parse pagination and filter params
 	limit := 0
@@ -217,15 +191,8 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 
 // handleGetRecentAgents returns recent agent sessions across all projects
 func (s *Server) handleGetRecentAgents(w http.ResponseWriter, r *http.Request) {
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
-	projectRepo := repo.NewProjectRepo(database, s.clock)
+	agentSessionRepo := s.agentSessionRepo()
+	projectRepo := s.projectRepo()
 
 	// Parse limit from query param (default 10, max 50)
 	limit := 10
@@ -269,15 +236,8 @@ func (s *Server) handleGetRecentAgents(w http.ResponseWriter, r *http.Request) {
 // handleGetRunningAgents returns currently running agent sessions across all projects.
 // No X-Project header required — this is a global endpoint.
 func (s *Server) handleGetRunningAgents(w http.ResponseWriter, r *http.Request) {
-	database, err := s.getDatabase()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer database.Close()
-
-	agentSessionRepo := repo.NewAgentSessionRepo(database, s.clock)
-	projectRepo := repo.NewProjectRepo(database, s.clock)
+	agentSessionRepo := s.agentSessionRepo()
+	projectRepo := s.projectRepo()
 
 	// Parse limit from query param (default 50, max 100)
 	limit := 50

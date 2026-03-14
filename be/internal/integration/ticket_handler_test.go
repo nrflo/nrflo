@@ -34,7 +34,13 @@ func startAPIServer(t *testing.T, dbPath string) string {
 	cfg := config.DefaultConfig()
 	cfg.Server.CORSOrigins = []string{"*"}
 
-	srv := api.NewServer(cfg, dbPath)
+	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	t.Cleanup(func() { pool.Close() })
+
+	srv := api.NewServer(cfg, dbPath, pool)
 
 	// Start in background
 	go func() {

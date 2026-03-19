@@ -246,7 +246,7 @@ func TestLoadTemplate_ProjectFindingsExpansion(t *testing.T) {
 	}
 
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -305,7 +305,7 @@ func TestLoadTemplate_MixedPatterns(t *testing.T) {
 	// Note: We don't create any agent sessions, so #{FINDINGS:analyzer} should produce the placeholder
 
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("implementor", ticketID, env.project, "parent-1", "child-1", "test", "claude:opus", "implementation", "")
+	template, err := sp.loadTemplate("implementor", ticketID, env.project, "parent-1", "child-1", "test", "claude:opus", "implementation", "", nil)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestLoadTemplate_NoProjectFindings(t *testing.T) {
 	}
 
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

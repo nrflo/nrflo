@@ -253,7 +253,7 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -319,7 +319,7 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -364,7 +364,7 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 
 	// No callback metadata - should get default placeholder
 	sp := env.newSpawner()
-	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "")
+	template, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

@@ -146,8 +146,9 @@ type SpawnRequest struct {
 	WorkflowName       string
 	ParentSession      string
 	CLIName            string
-	ScopeType          string // "ticket" (default) or "project"
-	WorkflowInstanceID string // when set, used directly instead of DB lookup
+	ScopeType          string            // "ticket" (default) or "project"
+	WorkflowInstanceID string            // when set, used directly instead of DB lookup
+	ExtraVars          map[string]string  // Additional template variables (e.g., BRANCH_NAME, DEFAULT_BRANCH)
 }
 
 // IsProjectScope returns true if this is a project-scoped spawn request
@@ -383,7 +384,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 
 	// Load agent template
-	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID)
+	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load template: %w", err)
 	}

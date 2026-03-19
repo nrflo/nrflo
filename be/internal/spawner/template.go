@@ -8,6 +8,7 @@ import (
 
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 )
 
 // findingsPattern matches #{FINDINGS:agent_type} or #{FINDINGS:agent_type:key(s)}
@@ -26,7 +27,7 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	}
 	cliName := DefaultCLIForModel(model)
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
-	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "")
+	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil)
 }
 
 // loadAgentDefinition loads the full agent definition from the DB.
@@ -46,21 +47,35 @@ func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string)
 }
 
 // loadPromptContent loads the prompt content for an agent from the DB.
+// Falls back to system_agent_definitions when project-scoped lookup fails.
 func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (string, error) {
 	pool := s.pool()
 	if pool == nil {
 		return "", fmt.Errorf("failed to get database pool")
 	}
 
+	// Try project-scoped agent definition first
 	adRepo := repo.NewAgentDefinitionRepo(pool, s.config.Clock)
 	def, err := adRepo.Get(projectID, workflowName, agentType)
-	if err != nil {
-		return "", fmt.Errorf("agent definition not found: %s (workflow=%s). Create via 'nrworkflow agent def create %s -w %s --prompt-file=<path>'", agentType, workflowName, agentType, workflowName)
+	if err == nil {
+		if def.Prompt == "" {
+			return "", fmt.Errorf("agent definition '%s' has empty prompt", agentType)
+		}
+		return def.Prompt, nil
 	}
-	if def.Prompt == "" {
-		return "", fmt.Errorf("agent definition '%s' has empty prompt", agentType)
+
+	// Fallback to system agent definition
+	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock)
+	sysDef, sysErr := svc.Get(agentType)
+	if sysErr == nil {
+		if sysDef.Prompt == "" {
+			return "", fmt.Errorf("system agent definition '%s' has empty prompt", agentType)
+		}
+		return sysDef.Prompt, nil
 	}
-	return def.Prompt, nil
+
+	// Both lookups failed — return original project-scoped error
+	return "", fmt.Errorf("agent definition not found: %s (workflow=%s). Create via 'nrworkflow agent def create %s -w %s --prompt-file=<path>'", agentType, workflowName, agentType, workflowName)
 }
 
 // fetchTicketInfo returns the ticket title and description for template expansion.
@@ -171,13 +186,14 @@ func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, w
 
 // LoadTemplate is the public wrapper around loadTemplate. It loads and expands
 // an agent template from DB. Used by the orchestrator to build PTY command prompts.
-func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string) (string, error) {
-	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID)
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, error) {
+	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID, extraVars)
 }
 
 // loadTemplate loads and expands an agent template from DB.
 // wfiID is optional — when set, used for instance-specific lookups (user instructions, callbacks).
-func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string) (string, error) {
+// extraVars is optional — when set, expanded after standard ${VAR} substitution.
+func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {
 		return "", err
@@ -199,6 +215,11 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	template = strings.ReplaceAll(template, "${CHILD_SESSION}", childSession)
 	template = strings.ReplaceAll(template, "${MODEL_ID}", modelID)
 	template = strings.ReplaceAll(template, "${MODEL}", model)
+
+	// Expand extra variables (caller-injected, e.g. BRANCH_NAME, DEFAULT_BRANCH)
+	for k, v := range extraVars {
+		template = strings.ReplaceAll(template, "${"+k+"}", v)
+	}
 
 	// Expand ticket context variables (skip DB fetch for project scope)
 	if strings.Contains(template, "${TICKET_TITLE}") || strings.Contains(template, "${TICKET_DESCRIPTION}") {

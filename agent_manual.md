@@ -25,6 +25,11 @@ Cheat-sheet for creating agent definitions. Agent definitions are stored in the 
 | `${CHILD_SESSION}` | This agent's session UUID | Both | Always set |
 | `${MODEL_ID}` | Full model ID (e.g., `claude:opus`) | Both | Always set |
 | `${MODEL}` | Model name (e.g., `opus`) | Both | `sonnet` if empty |
+| `${BRANCH_NAME}` | Git branch name | ExtraVars only | Empty if not provided |
+| `${DEFAULT_BRANCH}` | Default branch (e.g., `main`) | ExtraVars only | Empty if not provided |
+| `${MERGE_ERROR}` | Merge error message | ExtraVars only | Empty if not provided |
+
+> **Note:** `BRANCH_NAME`, `DEFAULT_BRANCH`, and `MERGE_ERROR` are only available for system agents spawned with `ExtraVars` on `SpawnRequest`. They are not available for regular workflow agents.
 
 ### Findings Patterns
 

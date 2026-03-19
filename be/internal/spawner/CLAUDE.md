@@ -206,14 +206,31 @@ Creates and returns a channel that blocks until `CompleteInteractive` is called 
 ### LoadTemplate
 
 ```go
-func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string) (string, error)
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, error)
 ```
 
-Public wrapper around the private `loadTemplate`. Expands an agent definition's prompt template with the given parameters, performing all variable substitution (`${VAR}` placeholders), findings expansion (`#{FINDINGS:...}`), and project findings expansion (`#{PROJECT_FINDINGS:...}`). Used by the orchestrator to expand L0 agent templates for building interactive PTY command args without going through the full spawn flow.
+Public wrapper around the private `loadTemplate`. Expands an agent definition's prompt template with the given parameters, performing all variable substitution (`${VAR}` placeholders), extra variables (`ExtraVars`), findings expansion (`#{FINDINGS:...}`), and project findings expansion (`#{PROJECT_FINDINGS:...}`). Used by the orchestrator to expand L0 agent templates for building interactive PTY command args without going through the full spawn flow. Pass `nil` for `extraVars` when no extra variables are needed.
+
+## ExtraVars (Caller-Injected Template Variables)
+
+`SpawnRequest.ExtraVars` (`map[string]string`) allows callers to inject arbitrary template variables into agent prompts. Variables are expanded as `${KEY}` after standard variable expansion but before conditional DB fetches (ticket info, user instructions, etc.).
+
+**Expansion order:** standard vars → ExtraVars → ticket context → user instructions → callback → previous data → findings patterns.
+
+If an ExtraVars key overlaps a standard variable (e.g., `AGENT`), the ExtraVars value overwrites (last-write-wins). Callers should not overlap with standard variable names.
+
+**Common ExtraVars** (used by system agents like conflict-resolver):
+- `BRANCH_NAME` — Git branch name
+- `DEFAULT_BRANCH` — Default branch (e.g., `main`)
+- `MERGE_ERROR` — Merge error message
 
 ## Agent Definitions
 
 Agent definitions store model, timeout, and prompt template per agent type per workflow. Stored in `agent_definitions` DB table, managed via API (`/api/v1/workflows/{wid}/agents`) and UI (`/workflows`).
+
+### System Agent Definition Fallback
+
+`loadPromptContent()` first looks up the agent definition in the project-scoped `agent_definitions` table. If not found, it falls back to `system_agent_definitions` (global, no project/workflow scope). This allows system agents (e.g., conflict-resolver) to be defined once and used across all projects without per-project agent definition setup. The fallback only applies to prompt loading — agent config (model, timeout, stall settings) is loaded separately by the orchestrator via `Config.Agents`.
 
 | Template | Purpose | Model |
 |----------|---------|-------|
@@ -254,6 +271,9 @@ Templates use placeholders injected by the spawner:
 - `${MODEL}` - Just the model name (e.g., "sonnet")
 - `${PREVIOUS_DATA}` - The `to_resume` key from findings of the most recent continued session (same agent, model, phase). Populated on low-context restarts. Empty string if no prior continued session.
 - `${CALLBACK_INSTRUCTIONS}` - Callback instructions from `workflow_instances.findings["_callback"]`. Returns `"_No callback instructions_"` when no callback is active.
+- `${BRANCH_NAME}` - Git branch name (ExtraVars only, system agents)
+- `${DEFAULT_BRANCH}` - Default branch e.g. "main" (ExtraVars only, system agents)
+- `${MERGE_ERROR}` - Merge error message (ExtraVars only, system agents)
 - `#{PROJECT_FINDINGS:key}` - Single project finding value from `project_findings` table. Returns `"_No project finding for key 'keyname'_"` if missing.
 - `#{PROJECT_FINDINGS:k1,k2}` - Multiple project findings as `key: value` lines. Missing keys get individual placeholders.
 

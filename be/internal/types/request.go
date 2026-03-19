@@ -238,6 +238,29 @@ type AgentDefUpdateRequest struct {
 	Tag                    *string `json:"tag,omitempty"`
 }
 
+// SystemAgentDefCreateRequest is the request for creating a system agent definition
+type SystemAgentDefCreateRequest struct {
+	ID                     string `json:"id"`
+	Model                  string `json:"model,omitempty"`
+	Timeout                int    `json:"timeout,omitempty"`
+	Prompt                 string `json:"prompt"`
+	RestartThreshold       *int   `json:"restart_threshold,omitempty"`
+	MaxFailRestarts        *int   `json:"max_fail_restarts,omitempty"`
+	StallStartTimeoutSec   *int   `json:"stall_start_timeout_sec,omitempty"`
+	StallRunningTimeoutSec *int   `json:"stall_running_timeout_sec,omitempty"`
+}
+
+// SystemAgentDefUpdateRequest is the request for updating a system agent definition
+type SystemAgentDefUpdateRequest struct {
+	Model                  *string `json:"model,omitempty"`
+	Timeout                *int    `json:"timeout,omitempty"`
+	Prompt                 *string `json:"prompt,omitempty"`
+	RestartThreshold       *int    `json:"restart_threshold,omitempty"`
+	MaxFailRestarts        *int    `json:"max_fail_restarts,omitempty"`
+	StallStartTimeoutSec   *int    `json:"stall_start_timeout_sec,omitempty"`
+	StallRunningTimeoutSec *int    `json:"stall_running_timeout_sec,omitempty"`
+}
+
 // DependencyRequest is the request for adding/removing dependencies
 type DependencyRequest struct {
 	Child  string `json:"child"`

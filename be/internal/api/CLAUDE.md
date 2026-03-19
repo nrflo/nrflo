@@ -22,6 +22,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_pty.go` | PTY WebSocket handler: upgrade, validate session, spawn/relay PTY, handle resize, exit-interactive on process exit |
 | `handlers_workflow_def.go` | Workflow definition CRUD |
 | `handlers_agent_def.go` | Agent definition CRUD |
+| `handlers_system_agent_def.go` | System agent definition CRUD (global, no project scope) |
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/append |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
@@ -88,6 +89,13 @@ POST   /api/v1/workflows/:wid/agents           # Create agent definition
 GET    /api/v1/workflows/:wid/agents/:id       # Get agent definition
 PATCH  /api/v1/workflows/:wid/agents/:id       # Update agent definition
 DELETE /api/v1/workflows/:wid/agents/:id       # Delete agent definition
+
+# System agent definitions (global, no project scope)
+GET    /api/v1/system-agents           # List all system agent definitions
+POST   /api/v1/system-agents           # Create system agent definition
+GET    /api/v1/system-agents/:id       # Get system agent definition
+PATCH  /api/v1/system-agents/:id       # Update system agent definition
+DELETE /api/v1/system-agents/:id       # Delete system agent definition
 
 # Agent sessions
 GET /api/v1/tickets/:id/agents

@@ -153,6 +153,18 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    PRIMARY KEY (project_id, workflow_id, id)                         │
 │    FK (project_id, workflow_id) → workflows(project_id, id) CASCADE │
 │                                                                      │
+│  SYSTEM_AGENT_DEFINITIONS                                            │
+│    id            TEXT PRIMARY KEY                                    │
+│    model         TEXT NOT NULL DEFAULT 'sonnet'                      │
+│    timeout       INTEGER NOT NULL DEFAULT 20                         │
+│    prompt        TEXT NOT NULL DEFAULT ''                            │
+│    restart_threshold INTEGER                                         │
+│    max_fail_restarts INTEGER                                         │
+│    stall_start_timeout_sec INTEGER                                   │
+│    stall_running_timeout_sec INTEGER                                 │
+│    created_at    TEXT NOT NULL                                       │
+│    updated_at    TEXT NOT NULL                                       │
+│                                                                      │
 │  CHAIN_EXECUTIONS                                                    │
 │    id            TEXT PRIMARY KEY   (UUID)                            │
 │    project_id    TEXT NOT NULL                                        │

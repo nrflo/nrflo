@@ -324,6 +324,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/workflows/{wid}/agents/{id}", s.handleUpdateAgentDef)
 	mux.HandleFunc("DELETE /api/v1/workflows/{wid}/agents/{id}", s.handleDeleteAgentDef)
 
+	// System agent definitions (global, no project scope)
+	mux.HandleFunc("GET /api/v1/system-agents", s.handleListSystemAgentDefs)
+	mux.HandleFunc("POST /api/v1/system-agents", s.handleCreateSystemAgentDef)
+	mux.HandleFunc("GET /api/v1/system-agents/{id}", s.handleGetSystemAgentDef)
+	mux.HandleFunc("PATCH /api/v1/system-agents/{id}", s.handleUpdateSystemAgentDef)
+	mux.HandleFunc("DELETE /api/v1/system-agents/{id}", s.handleDeleteSystemAgentDef)
+
 	// Agent sessions
 	mux.HandleFunc("GET /api/v1/tickets/{id}/agents", s.handleGetAgentSessions)
 	mux.HandleFunc("GET /api/v1/agents/running", s.handleGetRunningAgents)

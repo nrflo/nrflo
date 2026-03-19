@@ -46,6 +46,7 @@ be/
 │   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
+│   │   ├── handlers_system_agent_def.go # System agent definition CRUD (global)
 │   │   ├── handlers_pty.go      # PTY WebSocket handler (1:1 interactive terminal relay)
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
 │   │   ├── handlers_git.go        # Git commit history endpoints
@@ -84,6 +85,7 @@ be/
 │   │   ├── workflow_response.go # V4 response building (active agents, history)
 │   │   ├── agent.go             # Agent operations
 │   │   ├── agent_definition.go  # Agent definition CRUD
+│   │   ├── system_agent_definition.go # System agent definition CRUD (global)
 │   │   ├── findings.go          # Findings operations
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
 │   │   ├── chain_append.go      # AppendToChain for running chains
@@ -102,6 +104,7 @@ be/
 │   │   ├── agent_session.go
 │   │   ├── agent_message.go
 │   │   ├── agent_definition.go
+│   │   ├── system_agent_definition.go
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution, item, lock models

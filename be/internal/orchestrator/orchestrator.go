@@ -1064,13 +1064,20 @@ func (o *Orchestrator) runLoop(
 	if wt != nil {
 		wtService := &service.WorktreeService{}
 		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
-			logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution", "branch", wt.branchName, "err", err)
-			o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-				"instance_id":    wfiID,
-				"merge_error":    err.Error(),
-				"branch":         wt.branchName,
-				"worktree_path":  wt.worktreePath,
-			}))
+			// Attempt automatic conflict resolution
+			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error()); resolveErr != nil {
+				// Resolution failed or no resolver configured — fall through to manual resolution
+				logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
+					"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)
+				o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+					"instance_id":   wfiID,
+					"merge_error":   err.Error(),
+					"branch":        wt.branchName,
+					"worktree_path": wt.worktreePath,
+				}))
+			} else {
+				logger.Info(ctx, "merge conflict resolved automatically", "branch", wt.branchName)
+			}
 		} else {
 			logger.Info(ctx, "worktree merged and cleaned up", "branch", wt.branchName)
 		}

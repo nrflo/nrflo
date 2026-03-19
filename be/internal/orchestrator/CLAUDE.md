@@ -80,6 +80,20 @@ Before spawning agents for each layer, the orchestrator checks if the layer shou
 
 Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `shouldSkipLayer()`, `createSkippedSessions()`.
 
+## Automatic Merge Conflict Resolution
+
+When `MergeAndCleanup()` fails after all layers complete, the orchestrator attempts automatic resolution before falling back to manual resolution:
+
+1. `attemptConflictResolution()` loads `conflict-resolver` from `system_agent_definitions`
+2. If not found, returns error → falls through to existing manual-resolution behavior
+3. Broadcasts `merge.conflict_resolving` WS event
+4. Constructs a spawner with a synthetic `_conflict_resolution` workflow containing a single-phase `conflict-resolver` agent
+5. Spawns the resolver in `wt.projectRoot` (original project root on default branch) with `ExtraVars`: `BRANCH_NAME`, `DEFAULT_BRANCH`, `MERGE_ERROR`
+6. On success: deletes feature branch, broadcasts `merge.conflict_resolved`
+7. On failure: broadcasts `merge.conflict_failed`, returns error → manual resolution
+
+The resolver agent's session is tracked under the existing workflow instance (`wfiID`). The synthetic workflow name `_conflict_resolution` uses an underscore prefix to distinguish from user workflows.
+
 ## Chain Runner
 
 `chain_runner.go` handles sequential chain execution:
@@ -97,6 +111,7 @@ Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `shouldSkipLayer()`, `cre
 |------|-------|
 | `orchestrator.go` | Layer-grouped concurrent phase execution, cancellation support |
 | `orchestrator_skip.go` | Layer-skip logic: tag matching, skipped session creation |
+| `orchestrator_merge_resolve.go` | Automatic merge conflict resolution via system agent |
 | `orchestrator_interactive.go` | Interactive start & plan mode pre-step logic |
 | `plan_reader.go` | Plan file reader for plan-before-execute mode |
 | `chain_runner.go` | Sequential chain execution runner |
@@ -108,7 +123,7 @@ Worktrees are only used for **ticket-scoped** workflows. Project-scoped workflow
 When a project has `use_git_worktrees=true` and `default_branch` configured, the orchestrator creates an isolated git worktree for each ticket-scoped workflow run:
 
 - **Setup** (`Start`/`retryFailed`): `setupWorktree()` returns early with `nil` worktree for project scope. For ticket scope, creates a branch (named after ticket ID) and worktree at `/tmp/nrworkflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
-- **Success** (`runLoop` completion): Removes the worktree first (commits live in `.git/refs/heads/`, not the worktree dir), then merges the branch into `default_branch` with retry (up to 5 attempts with stale `index.lock` removal), and deletes the branch. If merge fails (conflicts), logs error and preserves branch for manual resolution.
+- **Success** (`runLoop` completion): Removes the worktree first (commits live in `.git/refs/heads/`, not the worktree dir), then merges the branch into `default_branch` with retry (up to 5 attempts with stale `index.lock` removal), and deletes the branch. If merge fails (conflicts), attempts automatic conflict resolution via `attemptConflictResolution()`. Falls through to manual resolution if resolver is not configured or fails.
 - **Failure/Cancellation** (`runLoop` defer): Force-removes worktree and branch without merging.
 
 The `worktreeInfo` struct in `runLoop` tracks original project root, worktree path, branch name, and default branch. A `worktreeHandled` flag prevents the cleanup defer from running after a successful merge.

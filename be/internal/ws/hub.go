@@ -48,6 +48,9 @@ const (
 	EventAgentStallRestart           = "agent.stall_restart"
 	EventAgentInstantStallRestart    = "agent.instant_stall_restart"
 	EventSkipTagAdded                = "skip_tag.added"
+	EventMergeConflictResolving      = "merge.conflict_resolving"
+	EventMergeConflictResolved       = "merge.conflict_resolved"
+	EventMergeConflictFailed         = "merge.conflict_failed"
 	EventTestEcho                    = "test.echo"
 )
 

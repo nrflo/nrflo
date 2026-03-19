@@ -19,6 +19,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
 | `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, ChainOrderList, AppendToChainDialog) |
 | `src/components/git/` | Git commit detail dialog and diff viewer components |
+| `src/components/settings/` | Settings page sections: ProjectsSection (project CRUD), SystemAgentsSection (system agent definitions CRUD) |
 | `src/pages/DocumentationPage.tsx` | Agent documentation page — fetches and renders markdown from `/api/v1/docs/agent-manual` via `react-markdown` |
 | `src/pages/LogsPage.tsx` | Server logs page — displays BE/FE log files with sub-tab switching, fetched via `useLogs` hook with 5s polling |
 | `src/pages/` | Route page components (see [pages/CLAUDE.md](src/pages/CLAUDE.md)) |
@@ -246,7 +247,7 @@ Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.l
 - Findings display with workflow-level and agent findings separated
 - Create/edit/close tickets
 - Multi-project support via project selector
-- Settings page for project management (create/update/delete, Toggle for git worktrees, Toggle for docker isolation)
+- Settings page for project management (create/update/delete, Toggle for git worktrees, Toggle for docker isolation) and system agent definitions CRUD (global agents like conflict-resolver)
 - Documentation page with agent manual (rendered markdown from API)
 - Logs page with BE/FE sub-tabs, 5s polling via `useLogs` hook (`GET /api/v1/logs?type={be|fe}`)
 - Running agents indicator: `RunningAgentsIndicator` in header shows animated spinner with count badge when agents are running across any project. Hover popover lists agents grouped by project with clickable links. Data fetched via `useRunningAgents` hook (`GET /api/v1/agents/running`, not project-scoped). WS event `global.running_agents` invalidates the query for real-time updates. Types in `src/types/agents.ts`, API in `src/api/agents.ts`.

@@ -22,6 +22,7 @@ API client modules for communicating with the nrworkflow backend. Contains 10 fi
 | `agentDefs.ts` | Agent definition API client |
 | `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/append/runEpicWorkflow) |
 | `docs.ts` | Documentation API functions (getAgentManual) |
+| `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
 
 ## REST API Endpoints
 
@@ -97,6 +98,13 @@ GET    /api/v1/agents/recent?limit=10
 # Session messages (paginated)
 GET    /api/v1/sessions/:id/messages
 GET    /api/v1/sessions/:id/messages?limit=100&offset=0
+
+# System agent definitions (global, no X-Project header)
+GET    /api/v1/system-agents           # List all system agent definitions
+POST   /api/v1/system-agents           # Create system agent definition
+GET    /api/v1/system-agents/:id       # Get system agent definition
+PATCH  /api/v1/system-agents/:id       # Update system agent definition
+DELETE /api/v1/system-agents/:id       # Delete system agent definition
 
 # Documentation
 GET    /api/v1/docs/agent-manual    # Agent manual markdown content

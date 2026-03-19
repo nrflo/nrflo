@@ -16,7 +16,7 @@ Route page components for the nrworkflow web UI. Uses React Router v6 for routin
 | `/git-status` | `GitStatusPage.tsx` | Standalone git commit status page (conditional on `default_branch`) |
 | `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |
 | `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, 5s polling when running |
-| `/settings` | `SettingsPage.tsx` | Project management (create/update/delete) |
+| `/settings` | `SettingsPage.tsx` | Project management and system agent definitions (composes ProjectsSection + SystemAgentsSection) |
 
 Routes are defined in `src/App.tsx`.
 

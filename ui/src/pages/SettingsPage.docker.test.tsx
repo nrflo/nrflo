@@ -32,6 +32,13 @@ vi.mock('@/api/projects', async () => {
   }
 })
 
+vi.mock('@/api/systemAgentDefs', () => ({
+  listSystemAgentDefs: vi.fn().mockResolvedValue([]),
+  createSystemAgentDef: vi.fn(),
+  updateSystemAgentDef: vi.fn(),
+  deleteSystemAgentDef: vi.fn(),
+}))
+
 function makeProject(overrides: Partial<Project> = {}): Project {
   return {
     id: 'test-project',

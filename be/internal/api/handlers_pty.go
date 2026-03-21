@@ -149,6 +149,11 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 	case <-ptySess.Done():
 	}
 
+	exitCode := ptySess.ExitCode()
+	if exitCode != 0 {
+		logger.Warn(ctx, "pty process exited with error", "session_id", sessionID, "exit_code", exitCode)
+	}
+
 	// PTY process exited — trigger exit-interactive flow.
 	s.completePtyInteractive(session, workflowName)
 
@@ -179,18 +184,15 @@ func (s *Server) completePtyInteractive(session *model.AgentSession, workflowNam
 	s.wsHub.Broadcast(event)
 }
 
-// buildPtyEnv constructs a minimal environment for the PTY process.
+// buildPtyEnv constructs the environment for the PTY process.
+// Uses the full server env (matching the normal spawner) to avoid missing vars
+// that Claude needs to start, plus nrworkflow-specific vars and TERM override.
 func buildPtyEnv(session *model.AgentSession, project *model.Project) []string {
-	env := []string{
-		"TERM=xterm-256color",
-	}
+	// Start with full server env, filtering out CLAUDECODE
+	env := filterEnv(os.Environ(), "CLAUDECODE")
 
-	// Inherit essential vars from server env.
-	for _, key := range []string{"PATH", "HOME", "SHELL", "ANTHROPIC_API_KEY", "USER", "LANG"} {
-		if v := os.Getenv(key); v != "" {
-			env = append(env, key+"="+v)
-		}
-	}
+	// Ensure TERM is set for PTY
+	env = setEnv(env, "TERM", "xterm-256color")
 
 	// Set nrworkflow-specific vars.
 	env = append(env,
@@ -199,12 +201,29 @@ func buildPtyEnv(session *model.AgentSession, project *model.Project) []string {
 		fmt.Sprintf("NRWF_SESSION_ID=%s", session.ID),
 	)
 
-	// Forward any CLAUDE_ or ANTHROPIC_ env vars from server.
-	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "CLAUDE_") || (strings.HasPrefix(e, "ANTHROPIC_") && !strings.HasPrefix(e, "ANTHROPIC_API_KEY=")) {
-			env = append(env, e)
+	return env
+}
+
+// filterEnv returns a copy of env with the named variable removed.
+func filterEnv(env []string, name string) []string {
+	prefix := name + "="
+	out := make([]string, 0, len(env))
+	for _, e := range env {
+		if !strings.HasPrefix(e, prefix) {
+			out = append(out, e)
 		}
 	}
+	return out
+}
 
-	return env
+// setEnv sets or replaces a variable in the env slice.
+func setEnv(env []string, key, value string) []string {
+	prefix := key + "="
+	for i, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			env[i] = prefix + value
+			return env
+		}
+	}
+	return append(env, prefix+value)
 }

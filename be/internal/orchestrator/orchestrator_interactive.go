@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -162,11 +163,24 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 			"When the user is done, they will exit the session.\n\n" + tmpl
 	}
 
+	// Write prompt to a temp file so Claude can read it as initial context.
+	// We don't use -p (--print) because that makes Claude non-interactive.
+	promptFile, err := os.CreateTemp("", "nrwf-interactive-*.md")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create prompt file: %w", err)
+	}
+	if _, err := promptFile.WriteString(prompt); err != nil {
+		promptFile.Close()
+		os.Remove(promptFile.Name())
+		return nil, fmt.Errorf("failed to write prompt file: %w", err)
+	}
+	promptFile.Close()
+
 	args := []string{
 		"--dangerously-skip-permissions",
 		"--session-id", sessionID,
 		"--model", modelName,
-		"-p", prompt,
+		"--append-system-prompt-file", promptFile.Name(),
 	}
 
 	return args, nil

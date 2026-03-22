@@ -163,7 +163,8 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
 5c. INSTANT STALL DETECTION (post-completion, in monitorAll after handleCompletion)
    - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
    - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
-     message count <= 1 (queried from agent_messages via CountBySession)
+     message count <= 1 (queried from agent_messages via CountBySession),
+     no `no-op` finding on session (agents signal deliberate no-work exit via `nrworkflow findings add no-op:no-op`)
    - If stallRestartCount >= maxStallRestarts (6): marks session as failed with reason
      stall_budget_exhausted (instead of letting false pass through)
    - On match (budget available): override session result=continue reason=instant_stall, status=continued,

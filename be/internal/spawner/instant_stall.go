@@ -42,6 +42,16 @@ func (s *Spawner) checkInstantStall(ctx context.Context, proc *processInfo, req 
 		return
 	}
 
+	// Guard: no-op finding means agent deliberately exited (not a stall)
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+	session, err := sessionRepo.Get(proc.sessionID)
+	if err == nil {
+		findings := session.GetFindings()
+		if _, ok := findings["no-op"]; ok {
+			return
+		}
+	}
+
 	// Instant stall pattern confirmed — check if budget allows restart
 	if proc.stallRestartCount >= maxStallRestarts {
 		// Budget exhausted — mark as failed instead of letting false pass through
@@ -50,7 +60,6 @@ func (s *Spawner) checkInstantStall(ctx context.Context, proc *processInfo, req 
 	}
 
 	// Instant stall detected — override the already-registered pass result
-	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	sessionRepo.UpdateResult(proc.sessionID, "continue", "instant_stall")
 	sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
 

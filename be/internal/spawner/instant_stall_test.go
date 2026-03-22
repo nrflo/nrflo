@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -284,5 +285,54 @@ func TestCheckInstantStall_ElapsedJustUnderOneMinute(t *testing.T) {
 
 	if proc.finalStatus != "CONTINUE" {
 		t.Errorf("elapsed 59s finalStatus = %q, want CONTINUE (< 1min boundary)", proc.finalStatus)
+	}
+}
+
+// setSessionFindings sets findings JSON on an agent session.
+func setSessionFindings(t *testing.T, env *testEnv, findings map[string]interface{}) {
+	t.Helper()
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
+	data, _ := json.Marshal(findings)
+	if err := sessionRepo.UpdateFindings(env.sessionID, string(data)); err != nil {
+		t.Fatalf("setSessionFindings: %v", err)
+	}
+}
+
+// TestCheckInstantStall_NoOpFinding_SkipsStall verifies that an agent with a no-op finding
+// is not treated as an instant stall.
+func TestCheckInstantStall_NoOpFinding_SkipsStall(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.cleanup()
+
+	env.createSession(t, "claude:sonnet")
+	insertTestMessages(t, env, 1)
+	setSessionFindings(t, env, map[string]interface{}{"no-op": "no-op"})
+
+	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, 0)
+	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
+
+	if proc.finalStatus != "PASS" {
+		t.Errorf("finalStatus = %q, want PASS (no-op finding should skip stall)", proc.finalStatus)
+	}
+	if proc.stallRestartCount != 0 {
+		t.Errorf("stallRestartCount = %d, want 0 (unchanged)", proc.stallRestartCount)
+	}
+}
+
+// TestCheckInstantStall_NoOpFinding_BudgetExhausted_StillPasses verifies that no-op guard
+// fires before the budget check, so agent passes even when budget is exhausted.
+func TestCheckInstantStall_NoOpFinding_BudgetExhausted_StillPasses(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.cleanup()
+
+	env.createSession(t, "claude:sonnet")
+	insertTestMessages(t, env, 1)
+	setSessionFindings(t, env, map[string]interface{}{"no-op": "no-op"})
+
+	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, maxStallRestarts)
+	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
+
+	if proc.finalStatus != "PASS" {
+		t.Errorf("finalStatus = %q, want PASS (no-op should pass even with exhausted budget)", proc.finalStatus)
 	}
 }

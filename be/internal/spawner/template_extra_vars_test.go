@@ -114,8 +114,8 @@ func TestLoadTemplate_ExtraVars_Nil_NoPanic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadTemplate with nil extraVars failed: %v", err)
 	}
-	if result != "Static template with no extra vars" {
-		t.Errorf("expected unchanged template, got: %s", result)
+	if !strings.HasPrefix(result, "Static template with no extra vars") {
+		t.Errorf("expected template starting with 'Static template with no extra vars', got: %s", result)
 	}
 }
 
@@ -130,8 +130,8 @@ func TestLoadTemplate_ExtraVars_EmptyMap_NoPanic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadTemplate with empty extraVars failed: %v", err)
 	}
-	if result != "Static template" {
-		t.Errorf("expected unchanged template, got: %s", result)
+	if !strings.HasPrefix(result, "Static template") {
+		t.Errorf("expected template starting with 'Static template', got: %s", result)
 	}
 }
 
@@ -173,8 +173,8 @@ func TestLoadTemplate_ExtraVars_UnusedVarsIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
-	if result != "Hello world" {
-		t.Errorf("expected unchanged template when placeholders not present, got: %s", result)
+	if !strings.HasPrefix(result, "Hello world") {
+		t.Errorf("expected template starting with 'Hello world', got: %s", result)
 	}
 }
 

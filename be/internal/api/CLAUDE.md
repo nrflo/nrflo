@@ -26,6 +26,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/append |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
+| `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_logs.go` | Log file viewer (BE/FE logs) |
 
@@ -96,6 +97,10 @@ POST   /api/v1/system-agents           # Create system agent definition
 GET    /api/v1/system-agents/:id       # Get system agent definition
 PATCH  /api/v1/system-agents/:id       # Update system agent definition
 DELETE /api/v1/system-agents/:id       # Delete system agent definition
+
+# Global settings (no project scope)
+GET    /api/v1/settings           # Returns {"low_consumption_mode": bool}
+PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool}
 
 # Agent sessions
 GET /api/v1/tickets/:id/agents

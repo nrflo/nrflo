@@ -253,6 +253,12 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	findingsJSON, _ := json.Marshal(findings)
 	wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
 
+	// Read low consumption mode setting (once at workflow start)
+	lowConsumptionMode := false
+	if val, _ := pool.GetConfig("low_consumption_mode"); val == "true" {
+		lowConsumptionMode = true
+	}
+
 	// Set parent session
 	parentSession := uuid.New().String()
 	pool.Close()
@@ -320,7 +326,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode)
 
 	status := "started"
 	sessionID := ""
@@ -582,6 +588,12 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	// Build agent tag lookup map for layer-skip logic
 	agentTags := buildAgentTags(svcAgents)
 
+	// Read low consumption mode setting (once at workflow retry)
+	lowConsumptionMode := false
+	if val, _ := pool.GetConfig("low_consumption_mode"); val == "true" {
+		lowConsumptionMode = true
+	}
+
 	parentSession := uuid.New().String()
 
 	// Build run request
@@ -611,7 +623,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	dockerCfg := buildDockerConfig(project, wt)
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode)
 
 	return nil
 }
@@ -795,6 +807,7 @@ func (o *Orchestrator) runLoop(
 	dockerCfg *spawner.DockerConfig,
 	agentTags map[string]string,
 	pre *interactivePreStep,
+	lowConsumptionMode bool,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -941,14 +954,15 @@ func (o *Orchestrator) runLoop(
 			phase := phase // capture for goroutine
 			go func() {
 				sp := spawner.New(spawner.Config{
-					Workflows:    workflows,
-					Agents:       agents,
-					DataPath:     o.dataPath,
-					ProjectRoot:  projectRoot,
-					WSHub:        o.wsHub,
-					Pool:         pool,
-					Clock:        o.clock,
-					DockerConfig: dockerCfg,
+					Workflows:          workflows,
+					Agents:             agents,
+					DataPath:           o.dataPath,
+					ProjectRoot:        projectRoot,
+					WSHub:              o.wsHub,
+					Pool:               pool,
+					Clock:              o.clock,
+					DockerConfig:       dockerCfg,
+					LowConsumptionMode: lowConsumptionMode,
 				})
 
 				// Store spawner ref so RestartAgent can reach it

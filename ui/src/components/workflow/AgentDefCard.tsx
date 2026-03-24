@@ -13,10 +13,12 @@ export function AgentDefCard({
   def,
   workflowId,
   groups,
+  siblingAgentIds = [],
 }: {
   def: AgentDef
   workflowId: string
   groups: string[]
+  siblingAgentIds?: string[]
 }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -47,6 +49,7 @@ export function AgentDefCard({
         initial={def}
         isCreate={false}
         groups={groups}
+        siblingAgentIds={siblingAgentIds}
         onSubmit={(data) => updateMutation.mutate(data as AgentDefUpdateRequest)}
         onCancel={() => setEditing(false)}
       />
@@ -72,6 +75,11 @@ export function AgentDefCard({
           {def.tag && (
             <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">
               {def.tag}
+            </Badge>
+          )}
+          {def.low_consumption_agent && (
+            <Badge variant="outline" className="text-xs">
+              alt: {def.low_consumption_agent}
             </Badge>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { Settings } from 'lucide-react'
+import { GlobalSettingsSection } from '@/components/settings/GlobalSettingsSection'
 import { ProjectsSection } from '@/components/settings/ProjectsSection'
 import { SystemAgentsSection } from '@/components/settings/SystemAgentsSection'
 
@@ -12,6 +13,7 @@ export function SettingsPage() {
         </div>
       </div>
 
+      <GlobalSettingsSection />
       <ProjectsSection />
       <SystemAgentsSection />
     </div>

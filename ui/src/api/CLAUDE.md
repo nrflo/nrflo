@@ -1,6 +1,6 @@
 # API Client
 
-API client modules for communicating with the nrworkflow backend. Contains 10 files.
+API client modules for communicating with the nrworkflow backend. Contains 11 files.
 
 ## Architecture
 
@@ -22,6 +22,7 @@ API client modules for communicating with the nrworkflow backend. Contains 10 fi
 | `agentDefs.ts` | Agent definition API client |
 | `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/append/runEpicWorkflow) |
 | `docs.ts` | Documentation API functions (getAgentManual) |
+| `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode) |
 | `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
 
 ## REST API Endpoints
@@ -105,6 +106,10 @@ POST   /api/v1/system-agents           # Create system agent definition
 GET    /api/v1/system-agents/:id       # Get system agent definition
 PATCH  /api/v1/system-agents/:id       # Update system agent definition
 DELETE /api/v1/system-agents/:id       # Delete system agent definition
+
+# Global Settings
+GET    /api/v1/settings             # Get global settings (low_consumption_mode)
+PATCH  /api/v1/settings             # Update global settings
 
 # Documentation
 GET    /api/v1/docs/agent-manual    # Agent manual markdown content

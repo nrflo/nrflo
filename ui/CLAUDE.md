@@ -19,7 +19,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
 | `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, ChainOrderList, AppendToChainDialog) |
 | `src/components/git/` | Git commit detail dialog and diff viewer components |
-| `src/components/settings/` | Settings page sections: ProjectsSection (project CRUD), SystemAgentsSection (system agent definitions CRUD) |
+| `src/components/settings/` | Settings page sections: GlobalSettingsSection (low consumption mode toggle), ProjectsSection (project CRUD), SystemAgentsSection (system agent definitions CRUD) |
 | `src/pages/DocumentationPage.tsx` | Agent documentation page — fetches and renders markdown from `/api/v1/docs/agent-manual` via `react-markdown` |
 | `src/pages/LogsPage.tsx` | Server logs page — displays BE/FE log files with sub-tab switching, fetched via `useLogs` hook with 5s polling |
 | `src/pages/` | Route page components (see [pages/CLAUDE.md](src/pages/CLAUDE.md)) |

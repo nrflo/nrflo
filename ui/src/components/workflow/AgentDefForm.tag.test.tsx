@@ -40,7 +40,12 @@ async function selectDropdownOption(
   optionLabel: string
 ) {
   await user.click(triggerButton)
-  await user.click(screen.getByText(optionLabel))
+  // Scope to the dropdown panel (sibling of trigger button) to avoid matching other dropdowns
+  const dropdownContainer = triggerButton.closest('.relative')!
+  const option = Array.from(dropdownContainer.querySelectorAll('.cursor-pointer span')).find(
+    (el) => el.textContent === optionLabel
+  ) as HTMLElement
+  await user.click(option)
 }
 
 describe('AgentDefForm - tag dropdown', () => {

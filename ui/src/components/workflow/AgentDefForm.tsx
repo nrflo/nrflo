@@ -10,12 +10,14 @@ export function AgentDefForm({
   onCancel,
   isCreate,
   groups = [],
+  siblingAgentIds = [],
 }: {
   initial?: Partial<AgentDef>
   onSubmit: (data: AgentDefCreateRequest | AgentDefUpdateRequest) => void
   onCancel: () => void
   isCreate: boolean
   groups?: string[]
+  siblingAgentIds?: string[]
 }) {
   const [id, setId] = useState(initial?.id || '')
   const [model, setModel] = useState(initial?.model || 'sonnet')
@@ -23,6 +25,7 @@ export function AgentDefForm({
   const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
   const [maxFailRestarts, setMaxFailRestarts] = useState<number | ''>(initial?.max_fail_restarts ?? '')
   const [tag, setTag] = useState(initial?.tag || '')
+  const [lowConsumptionAgent, setLowConsumptionAgent] = useState(initial?.low_consumption_agent || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -31,10 +34,11 @@ export function AgentDefForm({
     const threshold = restartThreshold !== '' ? restartThreshold : undefined
     const failRestarts = maxFailRestarts !== '' ? maxFailRestarts : undefined
     const tagValue = tag || undefined
+    const lcAgent = lowConsumptionAgent || undefined
     if (isCreate) {
-      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue } as AgentDefCreateRequest)
+      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_agent: lcAgent } as AgentDefCreateRequest)
     } else {
-      onSubmit({ model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue } as AgentDefUpdateRequest)
+      onSubmit({ model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_agent: lcAgent } as AgentDefUpdateRequest)
     }
   }
 
@@ -125,6 +129,21 @@ export function AgentDefForm({
           </p>
         </div>
       )}
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Low consumption alternative</label>
+        <Dropdown
+          value={lowConsumptionAgent}
+          onChange={setLowConsumptionAgent}
+          options={[
+            { value: '', label: '(none)' },
+            ...siblingAgentIds.map((id) => ({ value: id, label: id })),
+          ]}
+          placeholder="(none)"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Agent to substitute when low consumption mode is enabled
+        </p>
+      </div>
       <div>
         <label className="block text-xs font-medium text-muted-foreground mb-1">Prompt Template</label>
         <MarkdownEditor

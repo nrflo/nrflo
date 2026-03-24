@@ -231,6 +231,7 @@ export interface AgentDef {
   restart_threshold?: number
   max_fail_restarts?: number
   tag?: string
+  low_consumption_agent?: string
   created_at: string
   updated_at: string
 }
@@ -243,6 +244,7 @@ export interface AgentDefCreateRequest {
   restart_threshold?: number
   max_fail_restarts?: number
   tag?: string
+  low_consumption_agent?: string
 }
 
 export interface AgentDefUpdateRequest {
@@ -252,6 +254,7 @@ export interface AgentDefUpdateRequest {
   restart_threshold?: number
   max_fail_restarts?: number
   tag?: string
+  low_consumption_agent?: string
 }
 
 // Orchestration types

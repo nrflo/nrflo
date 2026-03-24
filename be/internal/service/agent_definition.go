@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -52,6 +51,24 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
+	// Validate low_consumption_agent
+	lcAgent := strings.ToLower(req.LowConsumptionAgent)
+	if lcAgent != "" {
+		if lcAgent == strings.ToLower(req.ID) {
+			return nil, fmt.Errorf("low_consumption_agent cannot reference itself")
+		}
+		var count int
+		err = s.pool.QueryRow(
+			"SELECT COUNT(*) FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+			projectID, workflowID, lcAgent).Scan(&count)
+		if err != nil {
+			return nil, err
+		}
+		if count == 0 {
+			return nil, fmt.Errorf("low_consumption_agent '%s' not found in workflow '%s'", lcAgent, workflowID)
+		}
+	}
+
 	// Defaults
 	modelName := req.Model
 	if modelName == "" {
@@ -68,9 +85,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_agent, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcAgent, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -92,7 +109,8 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		StallStartTimeoutSec:   req.StallStartTimeoutSec,
 		StallRunningTimeoutSec: req.StallRunningTimeoutSec,
 		Tag:                    req.Tag,
-		CreatedAt:        ts,
+		LowConsumptionAgent:    lcAgent,
+		CreatedAt:              ts,
 		UpdatedAt:        ts,
 	}, nil
 }
@@ -104,13 +122,14 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout sql.NullInt64
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_agent, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
 		&def.ID, &def.ProjectID, &def.WorkflowID,
 		&def.Model, &def.Timeout, &def.Prompt,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
+		&def.LowConsumptionAgent,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -144,7 +163,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_agent, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY id`, projectID, workflowID)
@@ -163,6 +182,7 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 			&def.ID, &def.ProjectID, &def.WorkflowID,
 			&def.Model, &def.Timeout, &def.Prompt,
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
+			&def.LowConsumptionAgent,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -243,6 +263,26 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		updates = append(updates, "tag = ?")
 		args = append(args, *req.Tag)
 	}
+	if req.LowConsumptionAgent != nil {
+		lcAgent := strings.ToLower(*req.LowConsumptionAgent)
+		if lcAgent != "" {
+			if lcAgent == strings.ToLower(id) {
+				return fmt.Errorf("low_consumption_agent cannot reference itself")
+			}
+			var count int
+			err := s.pool.QueryRow(
+				"SELECT COUNT(*) FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+				projectID, workflowID, lcAgent).Scan(&count)
+			if err != nil {
+				return err
+			}
+			if count == 0 {
+				return fmt.Errorf("low_consumption_agent '%s' not found in workflow '%s'", lcAgent, workflowID)
+			}
+		}
+		updates = append(updates, "low_consumption_agent = ?")
+		args = append(args, lcAgent)
+	}
 
 	if len(updates) == 0 {
 		return nil
@@ -257,36 +297,6 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		" WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)"
 
 	result, err := s.pool.Exec(query, args...)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		return fmt.Errorf("agent definition not found: %s", id)
-	}
-	return nil
-}
-
-// validateTagInGroups checks that tag is present in the workflow's groups JSON string
-func validateTagInGroups(tag, groupsStr string) error {
-	var groups []string
-	if groupsStr != "" {
-		json.Unmarshal([]byte(groupsStr), &groups)
-	}
-	for _, g := range groups {
-		if g == tag {
-			return nil
-		}
-	}
-	return fmt.Errorf("tag '%s' is not in workflow groups %v", tag, groups)
-}
-
-// DeleteAgentDef deletes an agent definition
-func (s *AgentDefinitionService) DeleteAgentDef(projectID, workflowID, id string) error {
-	result, err := s.pool.Exec(
-		"DELETE FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-		projectID, workflowID, id)
 	if err != nil {
 		return err
 	}

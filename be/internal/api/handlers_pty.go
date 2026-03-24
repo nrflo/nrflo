@@ -194,12 +194,10 @@ func buildPtyEnv(session *model.AgentSession, project *model.Project) []string {
 	// Ensure TERM is set for PTY
 	env = setEnv(env, "TERM", "xterm-256color")
 
-	// Set nrworkflow-specific vars.
-	env = append(env,
-		fmt.Sprintf("NRWORKFLOW_PROJECT=%s", session.ProjectID),
-		fmt.Sprintf("NRWF_WORKFLOW_INSTANCE_ID=%s", session.WorkflowInstanceID),
-		fmt.Sprintf("NRWF_SESSION_ID=%s", session.ID),
-	)
+	// Set nrworkflow-specific vars (use setEnv to avoid duplicates).
+	env = setEnv(env, "NRWORKFLOW_PROJECT", session.ProjectID)
+	env = setEnv(env, "NRWF_WORKFLOW_INSTANCE_ID", session.WorkflowInstanceID)
+	env = setEnv(env, "NRWF_SESSION_ID", session.ID)
 
 	return env
 }

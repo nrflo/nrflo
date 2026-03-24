@@ -55,7 +55,7 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
       {/* Content */}
       <div
         className={cn(
-          'relative z-10 w-full max-w-2xl max-h-[85vh] m-4',
+          'relative z-10 w-full max-w-2xl max-h-[85vh] m-4 flex flex-col overflow-hidden',
           'bg-background border border-border rounded-xl shadow-2xl',
           'animate-in zoom-in-95 fade-in duration-200',
           className
@@ -97,7 +97,7 @@ interface DialogBodyProps {
 
 export function DialogBody({ children, className }: DialogBodyProps) {
   return (
-    <div className={cn('p-4 overflow-y-auto', className)}>
+    <div className={cn('p-4 overflow-y-auto flex-1 min-h-0', className)}>
       {children}
     </div>
   )

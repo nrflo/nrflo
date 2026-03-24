@@ -14,6 +14,7 @@ import { previewChain } from '@/api/chains'
 import { useCreateChain, useUpdateChain } from '@/hooks/useChains'
 import { useTicketList } from '@/hooks/useTickets'
 import { useProjectStore } from '@/stores/projectStore'
+import { cn } from '@/lib/utils'
 import type { ChainExecution } from '@/types/chain'
 
 interface CreateChainDialogProps {
@@ -196,7 +197,7 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
   const canSubmit = name.trim() && selectedWorkflow && ticketIds.length > 0 && !isPending
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={onClose} className="max-w-5xl">
       <DialogHeader onClose={onClose}>
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Link2 className="h-5 w-5" />
@@ -240,21 +241,26 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
 
             <div>
               <label className="block text-sm font-medium mb-1.5">Tickets</label>
-              <ChainTicketSelector
-                selectedIds={ticketIds}
-                onChange={setTicketIds}
-                onEpicIdsChange={setEpicIds}
-              />
+              <div className="flex gap-4">
+                <div className={cn('max-h-[50vh] overflow-y-auto', orderedIds.length > 0 ? 'flex-1' : 'w-full')}>
+                  <ChainTicketSelector
+                    selectedIds={ticketIds}
+                    onChange={setTicketIds}
+                    onEpicIdsChange={setEpicIds}
+                  />
+                </div>
+                {orderedIds.length > 0 && (
+                  <div className="flex-1 max-h-[50vh] overflow-y-auto">
+                    <ChainOrderList
+                      items={orderItems}
+                      deps={deps}
+                      addedByDeps={addedByDeps}
+                      onReorder={handleReorder}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-
-            {orderedIds.length > 0 && (
-              <ChainOrderList
-                items={orderItems}
-                deps={deps}
-                addedByDeps={addedByDeps}
-                onReorder={handleReorder}
-              />
-            )}
           </>
         )}
 

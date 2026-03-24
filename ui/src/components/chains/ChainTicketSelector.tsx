@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
@@ -93,6 +94,43 @@ export function ChainTicketSelector({ selectedIds, onChange, onEpicIdsChange, ex
     return visible
   }, [tickets, search, activeEpicChildIds, excludeIds])
 
+  const addAll = useCallback(() => {
+    const currentSelected = new Set(selectedIds)
+    const newSelected = [...selectedIds]
+    const newEpicIds = [...activeEpicIds]
+
+    for (const ticket of filtered) {
+      if (currentSelected.has(ticket.id)) continue
+
+      if (ticket.issue_type === 'epic') {
+        const children = epicChildMap.get(ticket.id) ?? []
+        newSelected.push(ticket.id)
+        currentSelected.add(ticket.id)
+        for (const childId of children) {
+          if (!currentSelected.has(childId)) {
+            newSelected.push(childId)
+            currentSelected.add(childId)
+          }
+        }
+        if (!newEpicIds.includes(ticket.id)) {
+          newEpicIds.push(ticket.id)
+        }
+      } else {
+        newSelected.push(ticket.id)
+        currentSelected.add(ticket.id)
+      }
+    }
+
+    onChange(newSelected)
+    updateEpicIds(newEpicIds)
+  }, [filtered, selectedIds, onChange, epicChildMap, activeEpicIds, updateEpicIds])
+
+  const clearAll = useCallback(() => {
+    onChange([])
+    updateEpicIds([])
+    setSearch('')
+  }, [onChange, updateEpicIds])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -108,12 +146,26 @@ export function ChainTicketSelector({ selectedIds, onChange, onEpicIdsChange, ex
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
-      {selectedIds.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {selectedIds.length} ticket{selectedIds.length !== 1 ? 's' : ''} selected
-        </p>
-      )}
-      <div className="max-h-60 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+      <div className="flex items-center gap-2">
+        {selectedIds.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {selectedIds.length} ticket{selectedIds.length !== 1 ? 's' : ''} selected
+          </p>
+        )}
+        <div className="flex gap-1 ml-auto">
+          {filtered.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={addAll}>
+              Add all
+            </Button>
+          )}
+          {selectedIds.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearAll}>
+              Clear all
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="overflow-y-auto border border-border rounded-lg divide-y divide-border flex-1 min-h-0">
         {filtered.length === 0 ? (
           <p className="p-3 text-sm text-muted-foreground text-center">
             No open tickets found

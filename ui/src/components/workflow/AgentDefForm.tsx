@@ -10,14 +10,12 @@ export function AgentDefForm({
   onCancel,
   isCreate,
   groups = [],
-  siblingAgentIds = [],
 }: {
   initial?: Partial<AgentDef>
   onSubmit: (data: AgentDefCreateRequest | AgentDefUpdateRequest) => void
   onCancel: () => void
   isCreate: boolean
   groups?: string[]
-  siblingAgentIds?: string[]
 }) {
   const [id, setId] = useState(initial?.id || '')
   const [model, setModel] = useState(initial?.model || 'sonnet')
@@ -25,7 +23,7 @@ export function AgentDefForm({
   const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
   const [maxFailRestarts, setMaxFailRestarts] = useState<number | ''>(initial?.max_fail_restarts ?? '')
   const [tag, setTag] = useState(initial?.tag || '')
-  const [lowConsumptionAgent, setLowConsumptionAgent] = useState(initial?.low_consumption_agent || '')
+  const [lowConsumptionModel, setLowConsumptionModel] = useState(initial?.low_consumption_model || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,11 +32,11 @@ export function AgentDefForm({
     const threshold = restartThreshold !== '' ? restartThreshold : undefined
     const failRestarts = maxFailRestarts !== '' ? maxFailRestarts : undefined
     const tagValue = tag || undefined
-    const lcAgent = lowConsumptionAgent || undefined
+    const lcModel = lowConsumptionModel || undefined
     if (isCreate) {
-      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_agent: lcAgent } as AgentDefCreateRequest)
+      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefCreateRequest)
     } else {
-      onSubmit({ model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_agent: lcAgent } as AgentDefUpdateRequest)
+      onSubmit({ model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefUpdateRequest)
     }
   }
 
@@ -130,18 +128,27 @@ export function AgentDefForm({
         </div>
       )}
       <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Low consumption alternative</label>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Low consumption model</label>
         <Dropdown
-          value={lowConsumptionAgent}
-          onChange={setLowConsumptionAgent}
+          value={lowConsumptionModel}
+          onChange={setLowConsumptionModel}
           options={[
             { value: '', label: '(none)' },
-            ...siblingAgentIds.map((id) => ({ value: id, label: id })),
+            { value: 'opus', label: 'opus' },
+            { value: 'opus_1m', label: 'opus_1m' },
+            { value: 'sonnet', label: 'sonnet' },
+            { value: 'haiku', label: 'haiku' },
+            { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },
+            { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
+            { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
+            { value: 'codex_gpt_high', label: 'codex_gpt_high' },
+            { value: 'codex_gpt54_normal', label: 'codex_gpt54_normal' },
+            { value: 'codex_gpt54_high', label: 'codex_gpt54_high' },
           ]}
           placeholder="(none)"
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Agent to substitute when low consumption mode is enabled
+          Model to use when low consumption mode is enabled
         </p>
       </div>
       <div>

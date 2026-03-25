@@ -126,13 +126,12 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Format as cli:model (e.g. claude:opus)
    - Each Spawn() call handles exactly one agent
 
-2b. LOW CONSUMPTION SUBSTITUTION (if Config.LowConsumptionMode is true)
+2b. LOW CONSUMPTION MODEL OVERRIDE (if Config.LowConsumptionMode is true)
    - Load agent definition for the original agent type
-   - If def.LowConsumptionAgent is set, substitute:
-     - EffectiveAgentType = def.LowConsumptionAgent
-     - Re-read model from Config.Agents[EffectiveAgentType]
-     - Recalculate cliName and modelID
-   - spawnSingle uses EffectiveAgentType for loadAgentDefinition, loadTemplate, timeout
+   - If def.LowConsumptionModel is set (a valid model name like "sonnet", "haiku"):
+     - Override model = def.LowConsumptionModel
+     - Recalculate cliName via DefaultCLIForModel(model) and modelID
+   - spawnSingle always uses req.AgentType for loadAgentDefinition, loadTemplate, timeout
    - Session records (registerStart) still use the original AgentType
 
 3. SPAWN

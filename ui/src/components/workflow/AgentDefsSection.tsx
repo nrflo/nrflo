@@ -45,7 +45,6 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
         <AgentDefForm
           isCreate
           groups={groups}
-          siblingAgentIds={defs?.map((d) => d.id) ?? []}
           onSubmit={(data) => createMutation.mutate(data as AgentDefCreateRequest)}
           onCancel={() => setCreating(false)}
         />
@@ -64,7 +63,6 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
             def={def}
             workflowId={workflowId}
             groups={groups}
-            siblingAgentIds={defs.filter((d) => d.id !== def.id).map((d) => d.id)}
           />
         ))}
       </div>

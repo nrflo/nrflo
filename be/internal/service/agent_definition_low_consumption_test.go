@@ -6,48 +6,31 @@ import (
 	"be/internal/types"
 )
 
-// --- CreateAgentDef low_consumption_agent ---
+// --- CreateAgentDef low_consumption_model ---
 
-func TestCreateAgentDef_WithLowConsumptionAgent(t *testing.T) {
+func TestCreateAgentDef_WithLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	// Create the referenced agent first
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "agent-a",
-		Prompt: "agent a",
-	})
-	if err != nil {
-		t.Fatalf("create agent-a: %v", err)
-	}
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:                  "agent-b",
 		Prompt:              "agent b",
-		LowConsumptionAgent: "agent-a",
+		LowConsumptionModel: "sonnet",
 	})
 	if err != nil {
-		t.Fatalf("CreateAgentDef with low_consumption_agent: %v", err)
+		t.Fatalf("CreateAgentDef with low_consumption_model: %v", err)
 	}
-	if def.LowConsumptionAgent != "agent-a" {
-		t.Errorf("LowConsumptionAgent = %q, want %q", def.LowConsumptionAgent, "agent-a")
+	if def.LowConsumptionModel != "sonnet" {
+		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
 	}
 }
 
-func TestGetAgentDef_ReturnsLowConsumptionAgent(t *testing.T) {
+func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "ref-agent",
-		Prompt: "ref",
-	})
-	if err != nil {
-		t.Fatalf("create ref-agent: %v", err)
-	}
-
-	_, err = svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:                  "main-agent",
 		Prompt:              "main",
-		LowConsumptionAgent: "ref-agent",
+		LowConsumptionModel: "haiku",
 	})
 	if err != nil {
 		t.Fatalf("create main-agent: %v", err)
@@ -57,12 +40,12 @@ func TestGetAgentDef_ReturnsLowConsumptionAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef: %v", err)
 	}
-	if got.LowConsumptionAgent != "ref-agent" {
-		t.Errorf("GetAgentDef LowConsumptionAgent = %q, want %q", got.LowConsumptionAgent, "ref-agent")
+	if got.LowConsumptionModel != "haiku" {
+		t.Errorf("GetAgentDef LowConsumptionModel = %q, want %q", got.LowConsumptionModel, "haiku")
 	}
 }
 
-func TestListAgentDefs_ReturnsLowConsumptionAgent(t *testing.T) {
+func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -76,7 +59,7 @@ func TestListAgentDefs_ReturnsLowConsumptionAgent(t *testing.T) {
 	_, err = svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:                  "la-main",
 		Prompt:              "main",
-		LowConsumptionAgent: "la-ref",
+		LowConsumptionModel: "sonnet",
 	})
 	if err != nil {
 		t.Fatalf("create la-main: %v", err)
@@ -91,29 +74,25 @@ func TestListAgentDefs_ReturnsLowConsumptionAgent(t *testing.T) {
 	}
 
 	// defs are ordered by id; la-main < la-ref
-	if defs[0].LowConsumptionAgent != "la-ref" {
-		t.Errorf("ListAgentDefs[0].LowConsumptionAgent = %q, want %q", defs[0].LowConsumptionAgent, "la-ref")
+	if defs[0].LowConsumptionModel != "sonnet" {
+		t.Errorf("ListAgentDefs[0].LowConsumptionModel = %q, want %q", defs[0].LowConsumptionModel, "sonnet")
 	}
-	if defs[1].LowConsumptionAgent != "" {
-		t.Errorf("ListAgentDefs[1].LowConsumptionAgent = %q, want empty", defs[1].LowConsumptionAgent)
+	if defs[1].LowConsumptionModel != "" {
+		t.Errorf("ListAgentDefs[1].LowConsumptionModel = %q, want empty", defs[1].LowConsumptionModel)
 	}
 }
 
-func TestUpdateAgentDef_UpdatesLowConsumptionAgent(t *testing.T) {
+func TestUpdateAgentDef_UpdatesLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "upd-ref", Prompt: "ref"})
-	if err != nil {
-		t.Fatalf("create upd-ref: %v", err)
-	}
-	_, err = svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "upd-main", Prompt: "main"})
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "upd-main", Prompt: "main"})
 	if err != nil {
 		t.Fatalf("create upd-main: %v", err)
 	}
 
-	lcAgent := "upd-ref"
+	lcModel := "haiku"
 	if err := svc.UpdateAgentDef("proj1", wfID, "upd-main", &types.AgentDefUpdateRequest{
-		LowConsumptionAgent: &lcAgent,
+		LowConsumptionModel: &lcModel,
 	}); err != nil {
 		t.Fatalf("UpdateAgentDef: %v", err)
 	}
@@ -122,22 +101,18 @@ func TestUpdateAgentDef_UpdatesLowConsumptionAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef after update: %v", err)
 	}
-	if def.LowConsumptionAgent != "upd-ref" {
-		t.Errorf("after update LowConsumptionAgent = %q, want %q", def.LowConsumptionAgent, "upd-ref")
+	if def.LowConsumptionModel != "haiku" {
+		t.Errorf("after update LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "haiku")
 	}
 }
 
-func TestUpdateAgentDef_ClearsLowConsumptionAgent(t *testing.T) {
+func TestUpdateAgentDef_ClearsLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "clr-ref", Prompt: "ref"})
-	if err != nil {
-		t.Fatalf("create clr-ref: %v", err)
-	}
-	_, err = svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:                  "clr-main",
 		Prompt:              "main",
-		LowConsumptionAgent: "clr-ref",
+		LowConsumptionModel: "sonnet",
 	})
 	if err != nil {
 		t.Fatalf("create clr-main: %v", err)
@@ -145,7 +120,7 @@ func TestUpdateAgentDef_ClearsLowConsumptionAgent(t *testing.T) {
 
 	empty := ""
 	if err := svc.UpdateAgentDef("proj1", wfID, "clr-main", &types.AgentDefUpdateRequest{
-		LowConsumptionAgent: &empty,
+		LowConsumptionModel: &empty,
 	}); err != nil {
 		t.Fatalf("UpdateAgentDef clear: %v", err)
 	}
@@ -154,120 +129,74 @@ func TestUpdateAgentDef_ClearsLowConsumptionAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef after clear: %v", err)
 	}
-	if def.LowConsumptionAgent != "" {
-		t.Errorf("after clear LowConsumptionAgent = %q, want empty", def.LowConsumptionAgent)
+	if def.LowConsumptionModel != "" {
+		t.Errorf("after clear LowConsumptionModel = %q, want empty", def.LowConsumptionModel)
 	}
 }
 
-// --- Validation: self-reference ---
+// --- Validation: invalid model ---
 
-func TestCreateAgentDef_SelfReferenceLowConsumption(t *testing.T) {
+func TestCreateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "self-ref",
-		Prompt:              "self",
-		LowConsumptionAgent: "self-ref",
+		ID:                  "bad-model",
+		Prompt:              "bad",
+		LowConsumptionModel: "invalid_model",
 	})
 	if err == nil {
-		t.Fatal("expected error for self-referential low_consumption_agent, got nil")
+		t.Fatal("expected error for invalid low_consumption_model, got nil")
 	}
 }
 
-func TestUpdateAgentDef_SelfReferenceLowConsumption(t *testing.T) {
+func TestUpdateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "upd-self",
-		Prompt: "self",
+		ID:     "upd-bad",
+		Prompt: "bad",
 	})
 	if err != nil {
-		t.Fatalf("create upd-self: %v", err)
+		t.Fatalf("create upd-bad: %v", err)
 	}
 
-	selfRef := "upd-self"
-	if err := svc.UpdateAgentDef("proj1", wfID, "upd-self", &types.AgentDefUpdateRequest{
-		LowConsumptionAgent: &selfRef,
+	invalid := "not_a_model"
+	if err := svc.UpdateAgentDef("proj1", wfID, "upd-bad", &types.AgentDefUpdateRequest{
+		LowConsumptionModel: &invalid,
 	}); err == nil {
-		t.Fatal("expected error for self-referential low_consumption_agent update, got nil")
-	}
-}
-
-// --- Validation: non-existent reference ---
-
-func TestCreateAgentDef_NonExistentLowConsumption(t *testing.T) {
-	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "orphan",
-		Prompt:              "orphan",
-		LowConsumptionAgent: "does-not-exist",
-	})
-	if err == nil {
-		t.Fatal("expected error for non-existent low_consumption_agent, got nil")
-	}
-}
-
-func TestUpdateAgentDef_NonExistentLowConsumption(t *testing.T) {
-	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "upd-orphan",
-		Prompt: "orphan",
-	})
-	if err != nil {
-		t.Fatalf("create upd-orphan: %v", err)
-	}
-
-	missing := "does-not-exist"
-	if err := svc.UpdateAgentDef("proj1", wfID, "upd-orphan", &types.AgentDefUpdateRequest{
-		LowConsumptionAgent: &missing,
-	}); err == nil {
-		t.Fatal("expected error for non-existent low_consumption_agent update, got nil")
+		t.Fatal("expected error for invalid low_consumption_model update, got nil")
 	}
 }
 
 // --- Casing: value is lowercased on create and update ---
 
-func TestCreateAgentDef_LowConsumptionAgentLowercased(t *testing.T) {
+func TestCreateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "lc-lower-ref",
-		Prompt: "ref",
-	})
-	if err != nil {
-		t.Fatalf("create lc-lower-ref: %v", err)
-	}
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:                  "lc-lower-main",
 		Prompt:              "main",
-		LowConsumptionAgent: "LC-LOWER-REF", // upper case
+		LowConsumptionModel: "SONNET", // upper case
 	})
 	if err != nil {
-		t.Fatalf("CreateAgentDef with mixed-case low_consumption_agent: %v", err)
+		t.Fatalf("CreateAgentDef with mixed-case low_consumption_model: %v", err)
 	}
-	if def.LowConsumptionAgent != "lc-lower-ref" {
-		t.Errorf("LowConsumptionAgent = %q, want %q", def.LowConsumptionAgent, "lc-lower-ref")
+	if def.LowConsumptionModel != "sonnet" {
+		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
 	}
 }
 
-func TestUpdateAgentDef_LowConsumptionAgentLowercased(t *testing.T) {
+func TestUpdateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "case-ref", Prompt: "ref"})
-	if err != nil {
-		t.Fatalf("create case-ref: %v", err)
-	}
-	_, err = svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "case-main", Prompt: "main"})
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "case-main", Prompt: "main"})
 	if err != nil {
 		t.Fatalf("create case-main: %v", err)
 	}
 
-	mixed := "CASE-REF"
+	mixed := "HAIKU"
 	if err := svc.UpdateAgentDef("proj1", wfID, "case-main", &types.AgentDefUpdateRequest{
-		LowConsumptionAgent: &mixed,
+		LowConsumptionModel: &mixed,
 	}); err != nil {
 		t.Fatalf("UpdateAgentDef: %v", err)
 	}
@@ -276,14 +205,14 @@ func TestUpdateAgentDef_LowConsumptionAgentLowercased(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef after update: %v", err)
 	}
-	if def.LowConsumptionAgent != "case-ref" {
-		t.Errorf("after update LowConsumptionAgent = %q, want %q", def.LowConsumptionAgent, "case-ref")
+	if def.LowConsumptionModel != "haiku" {
+		t.Errorf("after update LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "haiku")
 	}
 }
 
-// --- Default: empty low_consumption_agent ---
+// --- Default: empty low_consumption_model ---
 
-func TestCreateAgentDef_DefaultEmptyLowConsumptionAgent(t *testing.T) {
+func TestCreateAgentDef_DefaultEmptyLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -293,15 +222,16 @@ func TestCreateAgentDef_DefaultEmptyLowConsumptionAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAgentDef: %v", err)
 	}
-	if def.LowConsumptionAgent != "" {
-		t.Errorf("LowConsumptionAgent = %q, want empty", def.LowConsumptionAgent)
+	if def.LowConsumptionModel != "" {
+		t.Errorf("LowConsumptionModel = %q, want empty", def.LowConsumptionModel)
 	}
 
 	got, err := svc.GetAgentDef("proj1", wfID, "no-lc")
 	if err != nil {
 		t.Fatalf("GetAgentDef: %v", err)
 	}
-	if got.LowConsumptionAgent != "" {
-		t.Errorf("GetAgentDef LowConsumptionAgent = %q, want empty", got.LowConsumptionAgent)
+	if got.LowConsumptionModel != "" {
+		t.Errorf("GetAgentDef LowConsumptionModel = %q, want empty", got.LowConsumptionModel)
 	}
 }
+

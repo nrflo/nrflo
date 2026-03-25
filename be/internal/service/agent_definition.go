@@ -12,6 +12,17 @@ import (
 	"be/internal/types"
 )
 
+var validModels = map[string]bool{
+	"opus": true, "opus_1m": true, "sonnet": true, "haiku": true,
+	"opencode_gpt_normal": true, "opencode_gpt_high": true,
+	"codex_gpt_normal": true, "codex_gpt_high": true,
+	"codex_gpt54_normal": true, "codex_gpt54_high": true,
+}
+
+func isValidModel(m string) bool {
+	return validModels[m]
+}
+
 // AgentDefinitionService handles agent definition business logic
 type AgentDefinitionService struct {
 	clock clock.Clock
@@ -51,21 +62,11 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
-	// Validate low_consumption_agent
-	lcAgent := strings.ToLower(req.LowConsumptionAgent)
-	if lcAgent != "" {
-		if lcAgent == strings.ToLower(req.ID) {
-			return nil, fmt.Errorf("low_consumption_agent cannot reference itself")
-		}
-		var count int
-		err = s.pool.QueryRow(
-			"SELECT COUNT(*) FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-			projectID, workflowID, lcAgent).Scan(&count)
-		if err != nil {
-			return nil, err
-		}
-		if count == 0 {
-			return nil, fmt.Errorf("low_consumption_agent '%s' not found in workflow '%s'", lcAgent, workflowID)
+	// Validate low_consumption_model
+	lcModel := strings.ToLower(req.LowConsumptionModel)
+	if lcModel != "" {
+		if !isValidModel(lcModel) {
+			return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
 		}
 	}
 
@@ -85,9 +86,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_agent, created_at, updated_at)
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcAgent, now, now,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcModel, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -109,7 +110,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		StallStartTimeoutSec:   req.StallStartTimeoutSec,
 		StallRunningTimeoutSec: req.StallRunningTimeoutSec,
 		Tag:                    req.Tag,
-		LowConsumptionAgent:    lcAgent,
+		LowConsumptionModel:    lcModel,
 		CreatedAt:              ts,
 		UpdatedAt:        ts,
 	}, nil
@@ -122,14 +123,14 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout sql.NullInt64
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_agent, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
 		&def.ID, &def.ProjectID, &def.WorkflowID,
 		&def.Model, &def.Timeout, &def.Prompt,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
-		&def.LowConsumptionAgent,
+		&def.LowConsumptionModel,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -163,7 +164,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_agent, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY id`, projectID, workflowID)
@@ -182,7 +183,7 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 			&def.ID, &def.ProjectID, &def.WorkflowID,
 			&def.Model, &def.Timeout, &def.Prompt,
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
-			&def.LowConsumptionAgent,
+			&def.LowConsumptionModel,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -263,25 +264,15 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		updates = append(updates, "tag = ?")
 		args = append(args, *req.Tag)
 	}
-	if req.LowConsumptionAgent != nil {
-		lcAgent := strings.ToLower(*req.LowConsumptionAgent)
-		if lcAgent != "" {
-			if lcAgent == strings.ToLower(id) {
-				return fmt.Errorf("low_consumption_agent cannot reference itself")
-			}
-			var count int
-			err := s.pool.QueryRow(
-				"SELECT COUNT(*) FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-				projectID, workflowID, lcAgent).Scan(&count)
-			if err != nil {
-				return err
-			}
-			if count == 0 {
-				return fmt.Errorf("low_consumption_agent '%s' not found in workflow '%s'", lcAgent, workflowID)
+	if req.LowConsumptionModel != nil {
+		lcModel := strings.ToLower(*req.LowConsumptionModel)
+		if lcModel != "" {
+			if !isValidModel(lcModel) {
+				return fmt.Errorf("invalid low_consumption_model: %q", lcModel)
 			}
 		}
-		updates = append(updates, "low_consumption_agent = ?")
-		args = append(args, lcAgent)
+		updates = append(updates, "low_consumption_model = ?")
+		args = append(args, lcModel)
 	}
 
 	if len(updates) == 0 {

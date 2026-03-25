@@ -67,7 +67,7 @@ type Config struct {
 	Clock clock.Clock
 	// DockerConfig enables Docker isolation when non-nil
 	DockerConfig *DockerConfig
-	// LowConsumptionMode enables agent substitution via LowConsumptionAgent
+	// LowConsumptionMode enables model override via LowConsumptionModel
 	LowConsumptionMode bool
 }
 
@@ -151,7 +151,6 @@ type SpawnRequest struct {
 	ScopeType          string            // "ticket" (default) or "project"
 	WorkflowInstanceID string            // when set, used directly instead of DB lookup
 	ExtraVars          map[string]string  // Additional template variables (e.g., BRANCH_NAME, DEFAULT_BRANCH)
-	EffectiveAgentType string             // Substitute agent type for low consumption mode (empty = use AgentType)
 }
 
 // IsProjectScope returns true if this is a project-scoped spawn request
@@ -307,20 +306,14 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 
-	// Low consumption mode: substitute agent if configured
+	// Low consumption mode: override model if configured
 	if s.config.LowConsumptionMode {
 		def := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
-		if def != nil && def.LowConsumptionAgent != "" {
-			req.EffectiveAgentType = def.LowConsumptionAgent
-			if substCfg, ok := s.config.Agents[req.EffectiveAgentType]; ok && substCfg.Model != "" {
-				model = substCfg.Model
-			}
-			cliName = req.CLIName
-			if cliName == "" {
-				cliName = DefaultCLIForModel(model)
-			}
+		if def != nil && def.LowConsumptionModel != "" {
+			model = def.LowConsumptionModel
+			cliName = DefaultCLIForModel(model)
 			modelID = fmt.Sprintf("%s:%s", cliName, model)
-			logger.Info(ctx, "low consumption substitution", "original", req.AgentType, "substitute", req.EffectiveAgentType, "model", modelID)
+			logger.Info(ctx, "low consumption model override", "agent", req.AgentType, "model", modelID)
 		}
 	}
 
@@ -348,12 +341,6 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	agentID := "spawn-" + uuid.New().String()[:8]
 	sessionID := uuid.New().String()
 
-	// Determine effective agent type (substitute for low consumption mode)
-	effectiveType := req.EffectiveAgentType
-	if effectiveType == "" {
-		effectiveType = req.AgentType
-	}
-
 	// Parse modelID (cli:model format)
 	cliName, model := parseModelID(modelID)
 	if cliName == "" {
@@ -374,9 +361,9 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		adapter = dockerAdapter
 	}
 
-	// Get agent config (use effectiveType for timeout lookup)
+	// Get agent config for timeout lookup
 	timeout := 40 // minutes
-	if agentCfg, ok := s.config.Agents[effectiveType]; ok {
+	if agentCfg, ok := s.config.Agents[req.AgentType]; ok {
 		if agentCfg.Timeout > 0 {
 			timeout = agentCfg.Timeout
 		}
@@ -385,7 +372,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	// Load agent definition to get per-agent restart threshold and fail restart limit
 	effectiveThreshold := defaultContextThreshold
 	maxFailRestarts := 0
-	agentDef := s.loadAgentDefinition(effectiveType, req.ProjectID, req.WorkflowName)
+	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
 	if agentDef != nil && agentDef.RestartThreshold != nil {
 		effectiveThreshold = *agentDef.RestartThreshold
 	}
@@ -409,8 +396,8 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		}
 	}
 
-	// Load agent template (use effectiveType for substitute's prompt)
-	prompt, err := s.loadTemplate(effectiveType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars)
+	// Load agent template
+	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load template: %w", err)
 	}

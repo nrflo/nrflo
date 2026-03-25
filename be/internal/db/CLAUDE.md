@@ -148,7 +148,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    stall_start_timeout_sec INTEGER (NULL = 120s default, 0 = disabled)│
 │    stall_running_timeout_sec INTEGER (NULL = 480s default, 0 = disabled)│
 │    tag           TEXT NOT NULL DEFAULT '' (skip-tag assignment)      │
-│    low_consumption_agent TEXT NOT NULL DEFAULT '' (alt agent for low consumption mode) │
+│    low_consumption_model TEXT NOT NULL DEFAULT '' (model override for low consumption mode) │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, workflow_id, id)                         │

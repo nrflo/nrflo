@@ -1,0 +1,1 @@
+-- no-op: SQLite does not support undoing column renames easily

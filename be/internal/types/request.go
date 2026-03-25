@@ -224,7 +224,7 @@ type AgentDefCreateRequest struct {
 	StallStartTimeoutSec   *int   `json:"stall_start_timeout_sec,omitempty"`
 	StallRunningTimeoutSec *int   `json:"stall_running_timeout_sec,omitempty"`
 	Tag                    string `json:"tag,omitempty"`
-	LowConsumptionAgent    string `json:"low_consumption_agent,omitempty"`
+	LowConsumptionModel    string `json:"low_consumption_model,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -237,7 +237,7 @@ type AgentDefUpdateRequest struct {
 	StallStartTimeoutSec   *int    `json:"stall_start_timeout_sec,omitempty"`
 	StallRunningTimeoutSec *int    `json:"stall_running_timeout_sec,omitempty"`
 	Tag                    *string `json:"tag,omitempty"`
-	LowConsumptionAgent    *string `json:"low_consumption_agent,omitempty"`
+	LowConsumptionModel    *string `json:"low_consumption_model,omitempty"`
 }
 
 // SystemAgentDefCreateRequest is the request for creating a system agent definition

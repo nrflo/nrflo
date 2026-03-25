@@ -32,29 +32,29 @@ function renderCard(def: AgentDef) {
 }
 
 describe('AgentDefCard - low consumption badge', () => {
-  it('shows "alt: <id>" badge when low_consumption_agent is set', () => {
-    renderCard(makeAgentDef({ low_consumption_agent: 'haiku-agent' }))
-    expect(screen.getByText('alt: haiku-agent')).toBeInTheDocument()
+  it('shows "lc: <model>" badge when low_consumption_model is set', () => {
+    renderCard(makeAgentDef({ low_consumption_model: 'haiku' }))
+    expect(screen.getByText('lc: haiku')).toBeInTheDocument()
   })
 
-  it('does not show badge when low_consumption_agent is undefined', () => {
-    renderCard(makeAgentDef({ low_consumption_agent: undefined }))
-    expect(screen.queryByText(/^alt:/)).not.toBeInTheDocument()
+  it('does not show badge when low_consumption_model is undefined', () => {
+    renderCard(makeAgentDef({ low_consumption_model: undefined }))
+    expect(screen.queryByText(/^lc:/)).not.toBeInTheDocument()
   })
 
-  it('does not show badge when low_consumption_agent is empty string', () => {
-    renderCard(makeAgentDef({ low_consumption_agent: '' }))
-    expect(screen.queryByText(/^alt:/)).not.toBeInTheDocument()
+  it('does not show badge when low_consumption_model is empty string', () => {
+    renderCard(makeAgentDef({ low_consumption_model: '' }))
+    expect(screen.queryByText(/^lc:/)).not.toBeInTheDocument()
   })
 
-  it('badge text uses the actual agent id', () => {
-    renderCard(makeAgentDef({ low_consumption_agent: 'fast-haiku' }))
-    expect(screen.getByText('alt: fast-haiku')).toBeInTheDocument()
+  it('badge text uses the actual model name', () => {
+    renderCard(makeAgentDef({ low_consumption_model: 'sonnet' }))
+    expect(screen.getByText('lc: sonnet')).toBeInTheDocument()
   })
 
   it('badge appears alongside model badge', () => {
-    renderCard(makeAgentDef({ model: 'opus', low_consumption_agent: 'haiku-agent' }))
-    expect(screen.getByText('alt: haiku-agent')).toBeInTheDocument()
+    renderCard(makeAgentDef({ model: 'opus', low_consumption_model: 'haiku' }))
+    expect(screen.getByText('lc: haiku')).toBeInTheDocument()
     expect(screen.getByText('opus')).toBeInTheDocument()
   })
 })

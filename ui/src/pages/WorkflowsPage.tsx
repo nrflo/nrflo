@@ -215,7 +215,7 @@ export function WorkflowsPage() {
       </div>
 
       {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)}>
+      <Dialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)} className="max-w-[85vw]">
         <DialogHeader onClose={() => setShowCreateDialog(false)}>
           <h2 className="text-lg font-semibold">Create Workflow</h2>
         </DialogHeader>
@@ -230,7 +230,7 @@ export function WorkflowsPage() {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingWorkflow} onClose={() => setEditingWorkflow(null)}>
+      <Dialog open={!!editingWorkflow} onClose={() => setEditingWorkflow(null)} className="max-w-[85vw]">
         <DialogHeader onClose={() => setEditingWorkflow(null)}>
           <h2 className="text-lg font-semibold">
             Edit Workflow: {editingWorkflow?.id}

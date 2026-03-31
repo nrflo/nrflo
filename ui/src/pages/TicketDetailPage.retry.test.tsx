@@ -60,35 +60,37 @@ vi.mock('@/api/workflows', () => ({
 }))
 
 // Workflow with failed status and failed agent in history
+const failedState = {
+  workflow: 'feature',
+  instance_id: 'inst-fail-01',
+  version: 4,
+  current_phase: 'implementation',
+  status: 'failed',
+  phase_order: ['investigation', 'implementation', 'verification'],
+  phases: {
+    investigation: { status: 'completed' as const, result: 'pass' as const },
+    implementation: { status: 'error' as const, result: 'fail' as const },
+  },
+  active_agents: {},
+  agent_history: [
+    {
+      agent_id: 'a1',
+      agent_type: 'implementor',
+      phase: 'implementation',
+      model_id: 'claude-sonnet-4-5',
+      result: 'fail',
+      started_at: '2026-01-01T00:00:00Z',
+      ended_at: '2026-01-01T00:05:00Z',
+      session_id: 'sess-failed-123',
+    },
+  ],
+}
 const workflowWithFailedAgent: WorkflowResponse = {
   ticket_id: 'TICKET-1',
   has_workflow: true,
-  state: {
-    workflow: 'feature',
-    version: 4,
-    current_phase: 'implementation',
-    status: 'failed',
-    phase_order: ['investigation', 'implementation', 'verification'],
-    phases: {
-      investigation: { status: 'completed', result: 'pass' },
-      implementation: { status: 'error', result: 'fail' },
-    },
-    active_agents: {},
-    agent_history: [
-      {
-        agent_id: 'a1',
-        agent_type: 'implementor',
-        phase: 'implementation',
-        model_id: 'claude-sonnet-4-5',
-        result: 'fail',
-        started_at: '2026-01-01T00:00:00Z',
-        ended_at: '2026-01-01T00:05:00Z',
-        session_id: 'sess-failed-123',
-      },
-    ],
-  },
+  state: failedState,
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: { 'inst-fail-01': failedState },
 }
 
 const sessionsData: AgentSessionsResponse = {
@@ -160,7 +162,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     await waitFor(() => {
       expect(workflowsApi.retryFailedAgent).toHaveBeenCalledWith(
         'TICKET-1',
-        { workflow: 'feature', session_id: 'sess-failed-123' }
+        { workflow: 'feature', session_id: 'sess-failed-123', instance_id: 'inst-fail-01' }
       )
     })
   })
@@ -211,9 +213,11 @@ describe('TicketDetailPage - Retry failed agent', () => {
   })
 
   it('does not show retry button when workflow status is active', async () => {
+    const activeState = { ...failedState, status: 'active' }
     const activeWorkflow = {
       ...workflowWithFailedAgent,
-      state: { ...workflowWithFailedAgent.state, status: 'active' },
+      state: activeState,
+      all_workflows: { 'inst-fail-01': activeState },
     }
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(activeWorkflow)
@@ -226,9 +230,11 @@ describe('TicketDetailPage - Retry failed agent', () => {
   })
 
   it('does not show retry button when workflow status is completed', async () => {
+    const completedState = { ...failedState, status: 'completed' }
     const completedWorkflow = {
       ...workflowWithFailedAgent,
-      state: { ...workflowWithFailedAgent.state, status: 'completed' },
+      state: completedState,
+      all_workflows: { 'inst-fail-01': completedState },
     }
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(completedWorkflow)
@@ -241,12 +247,11 @@ describe('TicketDetailPage - Retry failed agent', () => {
   })
 
   it('does not show retry button when no failed agents in history', async () => {
+    const noFailedState = { ...failedState, agent_history: [] }
     const workflowNoFailedAgents = {
       ...workflowWithFailedAgent,
-      state: {
-        ...workflowWithFailedAgent.state,
-        agent_history: [],
-      },
+      state: noFailedState,
+      all_workflows: { 'inst-fail-01': noFailedState },
     }
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowNoFailedAgents)
@@ -272,25 +277,27 @@ describe('TicketDetailPage - Retry failed agent', () => {
   })
 
   it('uses first failed agent session_id when multiple failed agents', async () => {
+    const multiFailedState = {
+      ...failedState,
+      agent_history: [
+        {
+          agent_id: 'a1', agent_type: 'implementor', phase: 'implementation',
+          model_id: 'claude-sonnet-4-5', result: 'fail',
+          started_at: '2026-01-01T00:00:00Z', ended_at: '2026-01-01T00:05:00Z',
+          session_id: 'sess-first-failed',
+        },
+        {
+          agent_id: 'a2', agent_type: 'tester', phase: 'verification',
+          model_id: 'claude-opus-4-6', result: 'fail',
+          started_at: '2026-01-01T00:06:00Z', ended_at: '2026-01-01T00:10:00Z',
+          session_id: 'sess-second-failed',
+        },
+      ],
+    }
     const workflowMultipleFailed = {
       ...workflowWithFailedAgent,
-      state: {
-        ...workflowWithFailedAgent.state,
-        agent_history: [
-          {
-            agent_id: 'a1', agent_type: 'implementor', phase: 'implementation',
-            model_id: 'claude-sonnet-4-5', result: 'fail',
-            started_at: '2026-01-01T00:00:00Z', ended_at: '2026-01-01T00:05:00Z',
-            session_id: 'sess-first-failed',
-          },
-          {
-            agent_id: 'a2', agent_type: 'tester', phase: 'verification',
-            model_id: 'claude-opus-4-6', result: 'fail',
-            started_at: '2026-01-01T00:06:00Z', ended_at: '2026-01-01T00:10:00Z',
-            session_id: 'sess-second-failed',
-          },
-        ],
-      },
+      state: multiFailedState,
+      all_workflows: { 'inst-fail-01': multiFailedState },
     }
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowMultipleFailed)
@@ -311,7 +318,7 @@ describe('TicketDetailPage - Retry failed agent', () => {
     await waitFor(() => {
       expect(workflowsApi.retryFailedAgent).toHaveBeenCalledWith(
         'TICKET-1',
-        { workflow: 'feature', session_id: 'sess-first-failed' }
+        { workflow: 'feature', session_id: 'sess-first-failed', instance_id: 'inst-fail-01' }
       )
     })
   })

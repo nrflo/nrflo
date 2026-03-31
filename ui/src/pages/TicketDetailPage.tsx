@@ -10,7 +10,7 @@ import {
   Info,
   Network,
 } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -27,19 +27,11 @@ import {
   useCloseTicket,
   useReopenTicket,
   useDeleteTicket,
-  useStopWorkflow,
-  useRetryFailedAgent,
-  useTakeControl,
-  useExitInteractive,
-  useResumeSession,
 } from '@/hooks/useTickets'
 import { useWebSocketSubscription } from '@/hooks/useWebSocketSubscription'
-import type { WorkflowState } from '@/types/workflow'
-import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
 import { cn, statusColor } from '@/lib/utils'
-import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
-import { WorkflowTabContent } from './WorkflowTabContent'
+import { TicketWorkflowTab } from './TicketWorkflowTab'
 import { HierarchyTabContent } from './HierarchyTabContent'
 import { DescriptionTabContent } from './DescriptionTabContent'
 import { DetailsTabContent } from './DetailsTabContent'
@@ -51,16 +43,14 @@ export function TicketDetailPage() {
   const goBack = useGoBack('/tickets')
   const [closeReason, setCloseReason] = useState('')
   const [showCloseForm, setShowCloseForm] = useState(false)
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string>('')
   const tabParam = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>(
     tabParam === 'workflow' || tabParam === 'description' || tabParam === 'details' || tabParam === 'hierarchy' ? tabParam : 'workflow'
   )
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
-  const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
-  const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
   const [interactiveSession, setInteractiveSession] = useState<{ sessionId: string; agentType: string } | null>(null)
+  const [workflowExpanded, setWorkflowExpanded] = useState(false)
 
   // WebSocket subscription for this ticket's real-time updates
   useWebSocketSubscription(id)
@@ -70,44 +60,8 @@ export function TicketDetailPage() {
   // Fetch workflow state from workflow API (uses workflow_instances + agent_sessions tables)
   const { data: workflowData } = useWorkflow(id!, { enabled: !!id })
 
-  const workflows = workflowData?.workflows ?? []
-  const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
-  const hasWorkflow = workflowData?.has_workflow ?? false
-  const instanceIds = Object.keys(allWorkflows)
-  const hasMultipleWorkflows = instanceIds.length > 1
-
-  // Determine which workflow state to display (keyed by instance_id)
-  const defaultState = instanceIds.length > 0 ? allWorkflows[instanceIds[0]] : (workflowData?.state ?? null) as WorkflowState | null
-  const resolvedInstanceId = (selectedInstanceId && allWorkflows[selectedInstanceId])
-    ? selectedInstanceId
-    : instanceIds[0] || ''
-  const displayedState = (selectedInstanceId && allWorkflows[selectedInstanceId])
-    ? allWorkflows[selectedInstanceId]
-    : defaultState
-
-  // Build display labels: "workflow-name (#short-id)"
-  const { selectorLabels, displayedWorkflowName } = useMemo(() => {
-    const labels: Record<string, string> = {}
-    for (const iid of instanceIds) {
-      const name = allWorkflows[iid]?.workflow ?? iid
-      const shortId = iid.substring(0, 8)
-      labels[iid] = `${name} (#${shortId})`
-    }
-    return {
-      selectorLabels: labels,
-      displayedWorkflowName: displayedState?.workflow || workflows[0] || '',
-    }
-  }, [instanceIds, allWorkflows, displayedState?.workflow, workflows])
-
-  // Get active agents from displayed workflow state
-  const activeAgents = displayedState?.active_agents ?? {}
-
-  // Fetch agent sessions for the running agent log panel, filtered by instance
+  // Fetch agent sessions for the running agent log panel
   const { data: sessionsData } = useAgentSessions(id!, undefined, { enabled: !!id })
-  const sessions = useMemo(() => {
-    if (!sessionsData?.sessions || !resolvedInstanceId) return sessionsData?.sessions ?? []
-    return sessionsData.sessions.filter(s => s.workflow_instance_id === resolvedInstanceId)
-  }, [sessionsData?.sessions, resolvedInstanceId])
 
   // Query active chains for epic tickets
   const isEpic = ticket?.issue_type === 'epic'
@@ -122,22 +76,10 @@ export function TicketDetailPage() {
   const closeMutation = useCloseTicket()
   const reopenMutation = useReopenTicket()
   const deleteMutation = useDeleteTicket()
-  const stopMutation = useStopWorkflow()
-  const retryFailedMutation = useRetryFailedAgent()
-  const takeControlMutation = useTakeControl()
-  const resumeSessionMutation = useResumeSession()
-  const exitInteractiveMutation = useExitInteractive()
 
-  // Detect if orchestration is running (via _orchestration findings key)
-  const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
-    | { status?: string }
-    | undefined
-  const isOrchestrated = orchestrationStatus?.status === 'running'
-
-  // Detect if any phase is in_progress
-  const hasActivePhase = displayedState?.phases
-    ? Object.values(displayedState.phases).some((p) => p.status === 'in_progress')
-    : false
+  const handleExpandedChange = useCallback((expanded: boolean) => {
+    setWorkflowExpanded(expanded)
+  }, [])
 
   const handleClose = async () => {
     if (!id) return
@@ -176,7 +118,7 @@ export function TicketDetailPage() {
   return (
     <div className={cn(
       'mx-auto space-y-6',
-      activeTab === 'workflow' && (hasActivePhase || selectedPanelAgent) ? 'max-w-full px-4' : 'max-w-7xl'
+      activeTab === 'workflow' && workflowExpanded ? 'max-w-full px-4' : 'max-w-7xl'
     )}>
       {/* Header */}
       <div className="flex items-start gap-4">
@@ -325,60 +267,18 @@ export function TicketDetailPage() {
         )}
 
         {activeTab === 'workflow' && (
-          <WorkflowTabContent
+          <TicketWorkflowTab
             ticketId={id}
-            hasWorkflow={hasWorkflow}
-            displayedState={displayedState}
-            displayedWorkflowName={displayedWorkflowName}
-            hasMultipleWorkflows={hasMultipleWorkflows}
-            workflows={instanceIds}
-            workflowLabels={selectorLabels}
-            selectedWorkflow={resolvedInstanceId}
-            onSelectWorkflow={setSelectedInstanceId}
-            isOrchestrated={isOrchestrated}
-            hasActivePhase={hasActivePhase}
-            activeAgents={activeAgents}
-            sessions={sessions}
-            logPanelCollapsed={logPanelCollapsed}
-            onToggleLogPanel={() => setLogPanelCollapsed(p => !p)}
-            selectedPanelAgent={selectedPanelAgent}
-            onAgentSelect={setSelectedPanelAgent}
-            onStop={() =>
-              id && stopMutation.mutate({
-                ticketId: id,
-                workflow: displayedWorkflowName || undefined,
-                instance_id: resolvedInstanceId || undefined,
-              })
-            }
-            stopPending={stopMutation.isPending}
+            workflowData={workflowData}
+            sessionsData={sessionsData}
             issueType={ticket?.issue_type}
+            activeChainId={activeEpicChain?.id ?? null}
+            interactiveSession={interactiveSession}
+            onInteractiveStart={setInteractiveSession}
+            onInteractiveEnd={() => setInteractiveSession(null)}
             onShowRunDialog={() => setShowRunDialog(true)}
             onShowEpicRunDialog={() => setShowEpicRunDialog(true)}
-            activeChainId={activeEpicChain?.id ?? null}
-            onRetryFailed={(sessionId) =>
-              id && retryFailedMutation.mutate({
-                ticketId: id,
-                params: { workflow: displayedWorkflowName, session_id: sessionId, instance_id: resolvedInstanceId || undefined },
-              })
-            }
-            retryingSessionId={retryFailedMutation.isPending ? (retryFailedMutation.variables?.params.session_id ?? null) : null}
-            onTakeControl={(sessionId) => {
-              if (!id) return
-              const agent = Object.values(activeAgents).find((a) => a.session_id === sessionId)
-              takeControlMutation.mutate(
-                { ticketId: id, params: { workflow: displayedWorkflowName, session_id: sessionId, instance_id: resolvedInstanceId || undefined } },
-                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: agent?.agent_type ?? 'agent' }) }
-              )
-            }}
-            takeControlPending={takeControlMutation.isPending}
-            onResumeSession={(sessionId) => {
-              if (!id) return
-              resumeSessionMutation.mutate(
-                { ticketId: id, params: { session_id: sessionId } },
-                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
-              )
-            }}
-            resumeSessionPending={resumeSessionMutation.isPending}
+            onExpandedChange={handleExpandedChange}
           />
         )}
 
@@ -415,22 +315,6 @@ export function TicketDetailPage() {
         />
       )}
 
-      {/* Interactive Terminal Dialog */}
-      {interactiveSession && id && (
-        <AgentTerminalDialog
-          open={!!interactiveSession}
-          onClose={() => setInteractiveSession(null)}
-          onExitSession={() => {
-            exitInteractiveMutation.mutate(
-              { ticketId: id, params: { workflow: displayedWorkflowName, session_id: interactiveSession.sessionId, instance_id: resolvedInstanceId || undefined } },
-              { onSuccess: () => setInteractiveSession(null) }
-            )
-          }}
-          exitPending={exitInteractiveMutation.isPending}
-          sessionId={interactiveSession.sessionId}
-          agentType={interactiveSession.agentType}
-        />
-      )}
     </div>
   )
 }

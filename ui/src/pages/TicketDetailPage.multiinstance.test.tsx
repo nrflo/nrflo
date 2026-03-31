@@ -151,8 +151,7 @@ describe('TicketDetailPage - multi-instance: instance switching', () => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
     })
 
-    // Open dropdown and select second instance (bugfix, no active phase)
-    await user.click(screen.getByText('feature (#inst-mul)').closest('button[type="button"]')!)
+    // Click InstanceList chip for second instance (bugfix, no active phase)
     await user.click(screen.getByText('bugfix (#inst-mul)'))
 
     // Stop button should disappear — inst-multi-02 has no active phase and is not orchestrated
@@ -168,7 +167,7 @@ describe('TicketDetailPage - multi-instance: instance switching', () => {
     renderPage()
     await goToWorkflowTab()
 
-    // Dropdown trigger shows label for first instance (inst-multi-01 = feature)
+    // InstanceList chip shows label for first instance (inst-multi-01 = feature)
     await waitFor(() => {
       expect(screen.getByText('feature (#inst-mul)')).toBeInTheDocument()
     })

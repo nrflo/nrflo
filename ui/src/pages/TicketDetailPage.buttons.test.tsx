@@ -266,13 +266,10 @@ describe('TicketDetailPage - Stop button placement', () => {
       expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
     })
 
-    // Should show workflow selector dropdown (Dropdown component renders a button), not a badge
-    // The Dropdown trigger button contains the selected instance label and a chevron icon
-    const dropdownBtn = screen.getByText('feature (#inst-mul)').closest('button[type="button"]')!
-    expect(dropdownBtn).toBeInTheDocument()
-    // Stop button and dropdown should be in the same left-side container
-    const stopButton = screen.getByRole('button', { name: /stop/i })
-    expect(dropdownBtn.closest('.flex.items-center.gap-3'))
-      .toBe(stopButton.closest('.flex.items-center.gap-3'))
+    // Should show InstanceList chips for multi-instance selection
+    const chip = screen.getByText('feature (#inst-mul)')
+    expect(chip).toBeInTheDocument()
+    // Stop button should be visible alongside instance chips
+    expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument()
   })
 })

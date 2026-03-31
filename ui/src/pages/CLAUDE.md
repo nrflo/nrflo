@@ -1,6 +1,6 @@
 # Pages
 
-Route page components for the nrworkflow web UI. Uses React Router v6 for routing. This directory contains 37 files including page components and co-located tests.
+Route page components for the nrworkflow web UI. Uses React Router v6 for routing. This directory contains 57 files including page components and co-located tests.
 
 ## Routes
 
@@ -24,7 +24,7 @@ Routes are defined in `src/App.tsx`.
 
 The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
-- **Workflow tab** (default): Shows phase timeline with agent history
+- **Workflow tab** (default): Renders `TicketWorkflowTab` with Running/Completed sub-tabs, instance chips via `InstanceList`, and `CompletedAgentsTable` for completed instances
 - **Hierarchy tab**: Blockers (add/remove), blocks, epic hierarchy (parent + siblings/children)
 - **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
 - **Details tab**: Read-only dependency lists, description text, metadata
@@ -33,6 +33,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 | Component | Content |
 |-----------|---------|
+| `TicketWorkflowTab.tsx` | Workflow tab with Running/Completed sub-tabs, instance partitioning, `InstanceList` chips, `CompletedAgentsTable` for completed tab, `AgentTerminalDialog`. Manages workflow mutations. |
 | `HierarchyTabContent.tsx` | Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics) |
 | `DescriptionTabContent.tsx` | Ticket title as h2, metadata grid, description text |
 | `DetailsTabContent.tsx` | Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid |
@@ -53,6 +54,9 @@ Sub-components in `ProjectWorkflowComponents.tsx`:
 - `ProjectWorkflowTabBar` — tab bar component
 - `RunWorkflowForm` — inline workflow selector + instructions
 - `InstanceList` — instance selector chips (accepts `failed` tab type and optional `onDelete` callback)
+
+Shared sub-component in `WorkflowSubTabBar.tsx`:
+- `WorkflowSubTabBar` — Running/Completed sub-tab switcher with counts (used by `TicketWorkflowTab`)
 
 Supports multiple concurrent instances keyed by `instance_id`.
 

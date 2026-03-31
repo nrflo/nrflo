@@ -160,51 +160,55 @@ const sampleTicket: TicketWithDeps = {
   blocks: [],
 }
 
+const runningState = {
+  workflow: 'feature',
+  instance_id: 'inst-e2e-01',
+  version: 4,
+  current_phase: 'implementation',
+  phase_order: ['investigation', 'implementation', 'verification'],
+  phases: {
+    investigation: { status: 'completed' as const, result: 'pass' as const },
+    implementation: { status: 'in_progress' as const },
+  },
+  active_agents: {
+    'implementor:claude:sonnet': {
+      agent_id: 'a1',
+      agent_type: 'implementor',
+      phase: 'implementation',
+      model_id: 'claude-sonnet-4-5',
+      cli: 'claude',
+      pid: 12345,
+      started_at: '2026-01-01T00:00:00Z',
+    },
+  },
+}
 const workflowWithRunningAgent: WorkflowResponse = {
   ticket_id: 'TICKET-E2E',
   has_workflow: true,
-  state: {
-    workflow: 'feature',
-    version: 4,
-    current_phase: 'implementation',
-      phase_order: ['investigation', 'implementation', 'verification'],
-    phases: {
-      investigation: { status: 'completed', result: 'pass' },
-      implementation: { status: 'in_progress' },
-    },
-    active_agents: {
-      'implementor:claude:sonnet': {
-        agent_id: 'a1',
-        agent_type: 'implementor',
-        phase: 'implementation',
-        model_id: 'claude-sonnet-4-5',
-        cli: 'claude',
-        pid: 12345,
-        started_at: '2026-01-01T00:00:00Z',
-      },
-    },
-  },
+  state: runningState,
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: { 'inst-e2e-01': runningState },
 }
 
+const completedState = {
+  workflow: 'feature',
+  instance_id: 'inst-e2e-02',
+  version: 4,
+  current_phase: 'verification',
+  phase_order: ['investigation', 'implementation', 'verification'],
+  phases: {
+    investigation: { status: 'completed' as const, result: 'pass' as const },
+    implementation: { status: 'completed' as const, result: 'pass' as const },
+    verification: { status: 'completed' as const, result: 'pass' as const },
+  },
+  active_agents: {},
+}
 const workflowCompleted: WorkflowResponse = {
   ticket_id: 'TICKET-E2E',
   has_workflow: true,
-  state: {
-    workflow: 'feature',
-    version: 4,
-    current_phase: 'verification',
-    phase_order: ['investigation', 'implementation', 'verification'],
-    phases: {
-      investigation: { status: 'completed', result: 'pass' },
-      implementation: { status: 'completed', result: 'pass' },
-      verification: { status: 'completed', result: 'pass' },
-    },
-    active_agents: {},
-  },
+  state: completedState,
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: { 'inst-e2e-02': completedState },
 }
 
 const sessionsWithData: AgentSessionsResponse = {
@@ -214,7 +218,7 @@ const sessionsWithData: AgentSessionsResponse = {
       id: 'session-impl',
       project_id: 'test-project',
       ticket_id: 'TICKET-E2E',
-      workflow_instance_id: 'wi-1',
+      workflow_instance_id: 'inst-e2e-01',
       phase: 'implementation',
       workflow: 'feature',
       agent_type: 'implementor',

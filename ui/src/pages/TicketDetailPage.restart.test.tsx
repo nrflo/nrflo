@@ -79,33 +79,35 @@ vi.mock('@/api/workflows', () => ({
 }))
 
 // Workflow with a running agent that has a session_id
+const sessionState = {
+  workflow: 'feature',
+  instance_id: 'inst-sess-01',
+  version: 4,
+  current_phase: 'implementation',
+  phase_order: ['investigation', 'implementation', 'verification'],
+  phases: {
+    investigation: { status: 'completed' as const, result: 'pass' as const },
+    implementation: { status: 'in_progress' as const },
+  },
+  active_agents: {
+    'implementor:claude:sonnet': {
+      agent_id: 'a1',
+      agent_type: 'implementor',
+      phase: 'implementation',
+      model_id: 'claude-sonnet-4-5',
+      cli: 'claude',
+      pid: 12345,
+      session_id: 'sess-uuid-123',
+      started_at: '2026-01-01T00:00:00Z',
+    },
+  },
+}
 const workflowWithSessionId: WorkflowResponse = {
   ticket_id: 'TICKET-1',
   has_workflow: true,
-  state: {
-    workflow: 'feature',
-    version: 4,
-    current_phase: 'implementation',
-    phase_order: ['investigation', 'implementation', 'verification'],
-    phases: {
-      investigation: { status: 'completed', result: 'pass' },
-      implementation: { status: 'in_progress' },
-    },
-    active_agents: {
-      'implementor:claude:sonnet': {
-        agent_id: 'a1',
-        agent_type: 'implementor',
-        phase: 'implementation',
-        model_id: 'claude-sonnet-4-5',
-        cli: 'claude',
-        pid: 12345,
-        session_id: 'sess-uuid-123',
-        started_at: '2026-01-01T00:00:00Z',
-      },
-    },
-  },
+  state: sessionState,
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: { 'inst-sess-01': sessionState },
 }
 
 const sessionsData: AgentSessionsResponse = {
@@ -114,7 +116,7 @@ const sessionsData: AgentSessionsResponse = {
     id: 'sess-uuid-123',
     project_id: 'test-project',
     ticket_id: 'TICKET-1',
-    workflow_instance_id: 'wi-1',
+    workflow_instance_id: 'inst-sess-01',
     phase: 'implementation',
     workflow: 'feature',
     agent_type: 'implementor',
@@ -173,23 +175,25 @@ describe('TicketDetailPage - Restart agent', () => {
   })
 
   it('shows running agent without session_id in AgentLogPanel', async () => {
-    const workflowNoSession: WorkflowResponse = {
-      ...workflowWithSessionId,
-      state: {
-        ...workflowWithSessionId.state,
-        active_agents: {
-          'implementor:claude:sonnet': {
-            agent_id: 'a1',
-            agent_type: 'implementor',
-            phase: 'implementation',
-            model_id: 'claude-sonnet-4-5',
-            cli: 'claude',
-            pid: 12345,
-            started_at: '2026-01-01T00:00:00Z',
-            // no session_id
-          },
+    const noSessionState = {
+      ...sessionState,
+      active_agents: {
+        'implementor:claude:sonnet': {
+          agent_id: 'a1',
+          agent_type: 'implementor',
+          phase: 'implementation',
+          model_id: 'claude-sonnet-4-5',
+          cli: 'claude',
+          pid: 12345,
+          started_at: '2026-01-01T00:00:00Z',
+          // no session_id
         },
       },
+    }
+    const workflowNoSession: WorkflowResponse = {
+      ...workflowWithSessionId,
+      state: noSessionState,
+      all_workflows: { 'inst-sess-01': noSessionState },
     }
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowNoSession)

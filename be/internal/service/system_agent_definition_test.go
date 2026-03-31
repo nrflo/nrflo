@@ -34,6 +34,9 @@ func TestSystemAgentDef_CreateAndGet(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
+	// Remove seeded conflict-resolver from migration so we can test Create.
+	_ = svc.Delete("conflict-resolver")
+
 	rt := intPtr(25)
 	mfr := intPtr(3)
 	sst := intPtr(60)
@@ -196,6 +199,9 @@ func TestSystemAgentDef_GetNotFound(t *testing.T) {
 func TestSystemAgentDef_List(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
+
+	// Delete seeded data so test starts from a known empty state.
+	_ = svc.Delete("conflict-resolver")
 
 	// Initially empty.
 	defs, err := svc.List()

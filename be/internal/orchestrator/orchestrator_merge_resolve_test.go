@@ -15,9 +15,11 @@ import (
 )
 
 // seedConflictResolver seeds a "conflict-resolver" system agent definition.
+// Deletes any existing row first (e.g. from migration seed data).
 func seedConflictResolver(t *testing.T, env *testEnv) {
 	t.Helper()
 	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real())
+	_ = svc.Delete("conflict-resolver")
 	_, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:      "conflict-resolver",
 		Model:   "sonnet",
@@ -42,6 +44,10 @@ func ensureSpawnerTempDir(t *testing.T) {
 // and no merge-related WS events are broadcast.
 func TestAttemptConflictResolution_NoResolverConfigured(t *testing.T) {
 	env := newTestEnv(t)
+
+	// Remove seeded conflict-resolver from migration so we can test the missing-resolver path.
+	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real())
+	_ = svc.Delete("conflict-resolver")
 
 	ticketID := "ticket-no-resolver"
 	env.createTicket(t, ticketID, "No resolver ticket")

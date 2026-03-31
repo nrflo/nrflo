@@ -14,6 +14,7 @@ import (
 )
 
 // newSystemAgentServer creates a minimal Server for system agent definition handler tests.
+// Deletes migration-seeded data so tests start from a clean system_agent_definitions table.
 func newSystemAgentServer(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "sys_agent_handler_test.db")
@@ -22,6 +23,8 @@ func newSystemAgentServer(t *testing.T) *Server {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
+	// Remove seeded conflict-resolver from migration so tests start clean.
+	_, _ = pool.Exec("DELETE FROM system_agent_definitions")
 	return &Server{pool: pool, clock: clock.Real()}
 }
 

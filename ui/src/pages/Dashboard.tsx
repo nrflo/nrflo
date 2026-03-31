@@ -24,7 +24,7 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon, description, href }: StatCardProps) {
   const content = (
-    <Card className={href ? 'hover:border-primary/50 transition-colors' : ''}>
+    <Card className={`h-full ${href ? 'hover:border-primary/50 transition-colors' : ''}`}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}

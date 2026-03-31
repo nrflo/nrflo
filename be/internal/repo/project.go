@@ -129,7 +129,6 @@ func (r *ProjectRepo) List() ([]*model.Project, error) {
 type ProjectUpdateFields struct {
 	Name            *string
 	RootPath        *string
-	DefaultWorkflow *string
 	DefaultBranch   *string
 	UseGitWorktrees    *bool
 	UseDockerIsolation *bool
@@ -153,10 +152,6 @@ func (r *ProjectRepo) Update(id string, fields *ProjectUpdateFields) error {
 	if fields.RootPath != nil {
 		updates = append(updates, "root_path = ?")
 		args = append(args, *fields.RootPath)
-	}
-	if fields.DefaultWorkflow != nil {
-		updates = append(updates, "default_workflow = ?")
-		args = append(args, *fields.DefaultWorkflow)
 	}
 	if fields.DefaultBranch != nil {
 		updates = append(updates, "default_branch = ?")

@@ -44,7 +44,6 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     id: 'test-project',
     name: 'Test Project',
     root_path: '/test/path',
-    default_workflow: 'feature',
     default_branch: 'main',
     use_git_worktrees: false,
     use_docker_isolation: false,
@@ -175,10 +174,8 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           id: 'new-project',
           name: 'new-project',
           root_path: undefined,
-          default_workflow: undefined,
           default_branch: 'main',
           use_git_worktrees: true,
-          use_docker_isolation: false,
         })
       })
     })
@@ -213,10 +210,8 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           id: 'new-project',
           name: 'new-project',
           root_path: undefined,
-          default_workflow: undefined,
           default_branch: 'main',
           use_git_worktrees: false,
-          use_docker_isolation: false,
         })
       })
     })
@@ -320,10 +315,8 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
         expect(projectsApi.updateProject).toHaveBeenCalledWith('test-project', {
           name: 'Test Project',
           root_path: '/test/path',
-          default_workflow: 'feature',
           default_branch: 'main',
           use_git_worktrees: true,
-          use_docker_isolation: false,
         })
       })
     })
@@ -355,10 +348,8 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
         expect(projectsApi.updateProject).toHaveBeenCalledWith('test-project', {
           name: 'Test Project',
           root_path: '/test/path',
-          default_workflow: 'feature',
           default_branch: 'main',
           use_git_worktrees: false,
-          use_docker_isolation: false,
         })
       })
     })
@@ -388,7 +379,6 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
     it('shows worktrees alongside other metadata', async () => {
       const project = makeProject({
         root_path: '/custom/path',
-        default_workflow: 'bugfix',
         default_branch: 'develop',
         use_git_worktrees: true,
       })
@@ -398,7 +388,6 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
 
       await screen.findByText('Test Project')
       expect(screen.getByText('Path: /custom/path')).toBeInTheDocument()
-      expect(screen.getByText('Workflow: bugfix')).toBeInTheDocument()
       expect(screen.getByText('Branch: develop')).toBeInTheDocument()
       expect(screen.getByText('Worktrees: enabled')).toBeInTheDocument()
     })

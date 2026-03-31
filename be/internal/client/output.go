@@ -78,18 +78,14 @@ func FormatProjectList(projects []*model.Project, jsonOutput bool) (string, erro
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%-20s %-30s %-15s\n", "ID", "NAME", "WORKFLOW"))
-	sb.WriteString(strings.Repeat("-", 70) + "\n")
+	sb.WriteString(fmt.Sprintf("%-20s %-30s\n", "ID", "NAME"))
+	sb.WriteString(strings.Repeat("-", 55) + "\n")
 	for _, p := range projects {
-		workflow := "-"
-		if p.DefaultWorkflow.Valid {
-			workflow = p.DefaultWorkflow.String
-		}
 		name := p.Name
 		if len(name) > 28 {
 			name = name[:25] + "..."
 		}
-		sb.WriteString(fmt.Sprintf("%-20s %-30s %-15s\n", p.ID, name, workflow))
+		sb.WriteString(fmt.Sprintf("%-20s %-30s\n", p.ID, name))
 	}
 	return sb.String(), nil
 }
@@ -109,9 +105,6 @@ func FormatProjectShow(project *model.Project, jsonOutput bool) (string, error) 
 	sb.WriteString(fmt.Sprintf("Name:             %s\n", project.Name))
 	if project.RootPath.Valid {
 		sb.WriteString(fmt.Sprintf("Root Path:        %s\n", project.RootPath.String))
-	}
-	if project.DefaultWorkflow.Valid {
-		sb.WriteString(fmt.Sprintf("Default Workflow: %s\n", project.DefaultWorkflow.String))
 	}
 	sb.WriteString(fmt.Sprintf("Created:          %s\n", project.CreatedAt.Format("2006-01-02 15:04:05")))
 	sb.WriteString(fmt.Sprintf("Updated:          %s\n", project.UpdatedAt.Format("2006-01-02 15:04:05")))

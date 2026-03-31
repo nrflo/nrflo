@@ -8,20 +8,16 @@ export interface ProjectFormData {
   id: string
   name: string
   root_path: string
-  default_workflow: string
   default_branch: string
   use_git_worktrees: boolean
-  use_docker_isolation: boolean
 }
 
 export const emptyProjectForm: ProjectFormData = {
   id: '',
   name: '',
   root_path: '',
-  default_workflow: '',
   default_branch: '',
   use_git_worktrees: false,
-  use_docker_isolation: false,
 }
 
 export function ProjectForm({
@@ -78,16 +74,6 @@ export function ProjectForm({
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-muted-foreground">Default Workflow</label>
-          <Input
-            value={formData.default_workflow}
-            onChange={(e) => setFormData({ ...formData, default_workflow: e.target.value })}
-            placeholder="implementation"
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
           <label className="text-sm font-medium text-muted-foreground">Default Branch</label>
           <Input
             value={formData.default_branch}
@@ -115,15 +101,6 @@ export function ProjectForm({
               disabled={!formData.default_branch.trim()}
             />
           </Tooltip>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex items-end pb-1">
-          <Toggle
-            checked={formData.use_docker_isolation}
-            onChange={(checked) => setFormData({ ...formData, use_docker_isolation: checked })}
-            label="Use Docker Isolation"
-          />
         </div>
       </div>
       <div className="flex gap-2 justify-end">

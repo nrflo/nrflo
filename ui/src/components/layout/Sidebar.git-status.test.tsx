@@ -20,7 +20,7 @@ let mockProjects = [
     id: 'test-project',
     name: 'Test Project',
     root_path: '/test',
-    default_workflow: 'feature',
+
     default_branch: 'main',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -76,7 +76,7 @@ describe('Sidebar - Git Status Navigation', () => {
         id: 'test-project',
         name: 'Test Project',
         root_path: '/test',
-        default_workflow: 'feature',
+    
         default_branch: 'main',
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -98,7 +98,7 @@ describe('Sidebar - Git Status Navigation', () => {
         id: 'test-project',
         name: 'Test Project',
         root_path: '/test',
-        default_workflow: 'feature',
+    
         default_branch: null,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',

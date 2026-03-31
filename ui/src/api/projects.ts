@@ -4,7 +4,6 @@ export interface Project {
   id: string
   name: string
   root_path: string | null
-  default_workflow: string | null
   default_branch: string | null
   use_git_worktrees: boolean
   use_docker_isolation: boolean
@@ -20,7 +19,6 @@ export interface CreateProjectRequest {
   id: string
   name: string
   root_path?: string
-  default_workflow?: string
   default_branch?: string
   use_git_worktrees?: boolean
   use_docker_isolation?: boolean
@@ -29,7 +27,6 @@ export interface CreateProjectRequest {
 export interface UpdateProjectRequest {
   name?: string
   root_path?: string
-  default_workflow?: string
   default_branch?: string
   use_git_worktrees?: boolean
   use_docker_isolation?: boolean

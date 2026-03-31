@@ -32,7 +32,6 @@ type CreateProjectRequest struct {
 	ID              string `json:"id"`
 	Name            string `json:"name"`
 	RootPath        string `json:"root_path,omitempty"`
-	DefaultWorkflow string `json:"default_workflow,omitempty"`
 	DefaultBranch   string `json:"default_branch,omitempty"`
 	UseGitWorktrees    *bool  `json:"use_git_worktrees,omitempty"`
 	UseDockerIsolation *bool  `json:"use_docker_isolation,omitempty"`
@@ -63,9 +62,6 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 
 	if req.RootPath != "" {
 		project.RootPath = sql.NullString{String: req.RootPath, Valid: true}
-	}
-	if req.DefaultWorkflow != "" {
-		project.DefaultWorkflow = sql.NullString{String: req.DefaultWorkflow, Valid: true}
 	}
 	if req.DefaultBranch != "" {
 		project.DefaultBranch = sql.NullString{String: req.DefaultBranch, Valid: true}
@@ -122,7 +118,6 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 type UpdateProjectRequest struct {
 	Name            *string `json:"name,omitempty"`
 	RootPath        *string `json:"root_path,omitempty"`
-	DefaultWorkflow *string `json:"default_workflow,omitempty"`
 	DefaultBranch   *string `json:"default_branch,omitempty"`
 	UseGitWorktrees    *bool   `json:"use_git_worktrees,omitempty"`
 	UseDockerIsolation *bool   `json:"use_docker_isolation,omitempty"`
@@ -143,7 +138,6 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 	fields := &repo.ProjectUpdateFields{
 		Name:            req.Name,
 		RootPath:        req.RootPath,
-		DefaultWorkflow: req.DefaultWorkflow,
 		DefaultBranch:   req.DefaultBranch,
 		UseGitWorktrees:    req.UseGitWorktrees,
 		UseDockerIsolation: req.UseDockerIsolation,

@@ -55,10 +55,9 @@ func TestCreateProjectWithDefaultBranch(t *testing.T) {
 
 	var defaultBranch *string
 	var rootPath *string
-	var defaultWorkflow *string
 
-	err = database.QueryRow("SELECT default_branch, root_path, default_workflow FROM projects WHERE id = ?", "proj-with-branch").
-		Scan(&defaultBranch, &rootPath, &defaultWorkflow)
+	err = database.QueryRow("SELECT default_branch, root_path FROM projects WHERE id = ?", "proj-with-branch").
+		Scan(&defaultBranch, &rootPath)
 	if err != nil {
 		t.Fatalf("failed to query project: %v", err)
 	}
@@ -436,7 +435,7 @@ func TestUpdateProjectMultipleFields(t *testing.T) {
 	resp.Body.Close()
 
 	// Update multiple fields including default_branch
-	updateBody := `{"name":"Updated Multi","default_branch":"develop","default_workflow":"feature"}`
+	updateBody := `{"name":"Updated Multi","default_branch":"develop"}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/multi-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err = http.DefaultClient.Do(req)
@@ -460,9 +459,6 @@ func TestUpdateProjectMultipleFields(t *testing.T) {
 	}
 	if result["default_branch"] != "develop" {
 		t.Fatalf("expected default_branch 'develop', got %v", result["default_branch"])
-	}
-	if result["default_workflow"] != "feature" {
-		t.Fatalf("expected default_workflow 'feature', got %v", result["default_workflow"])
 	}
 }
 

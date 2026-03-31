@@ -11,7 +11,7 @@ let mockProjects = [
     id: 'test-project',
     name: 'Test Project',
     root_path: '/test',
-    default_workflow: 'feature',
+
     default_branch: 'main',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -69,7 +69,7 @@ describe('Header - Brand label', () => {
         id: 'test-project',
         name: 'Test Project',
         root_path: '/test',
-        default_workflow: 'feature',
+    
         default_branch: 'main',
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -105,7 +105,7 @@ describe('Header - Brand label', () => {
         id: 'project-a',
         name: 'Alpha Suite',
         root_path: '/a',
-        default_workflow: 'feature',
+    
         default_branch: null,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -114,7 +114,7 @@ describe('Header - Brand label', () => {
         id: 'project-b',
         name: 'Beta Tools',
         root_path: '/b',
-        default_workflow: 'feature',
+    
         default_branch: null,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -143,7 +143,7 @@ describe('Header - Git Status Link', () => {
         id: 'test-project',
         name: 'Test Project',
         root_path: '/test',
-        default_workflow: 'feature',
+    
         default_branch: 'main',
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -165,7 +165,7 @@ describe('Header - Git Status Link', () => {
         id: 'test-project',
         name: 'Test Project',
         root_path: '/test',
-        default_workflow: 'feature',
+    
         default_branch: null,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -222,7 +222,7 @@ describe('Header - Icon-only nav links', () => {
         id: 'test-project',
         name: 'Test Project',
         root_path: '/test',
-        default_workflow: 'feature',
+    
         default_branch: 'main',
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',

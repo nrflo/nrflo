@@ -9,7 +9,7 @@ vi.mock('@/stores/projectStore', () => ({
   useProjectStore: (selector: (s: { currentProject: string; projects: unknown[]; projectsLoaded: boolean }) => unknown) =>
     selector({
       currentProject: 'test-project',
-      projects: [{ id: 'test-project', name: 'Test Project', root_path: '/test', default_workflow: 'feature', default_branch: null, created_at: '', updated_at: '' }],
+      projects: [{ id: 'test-project', name: 'Test Project', root_path: '/test', default_branch: null, created_at: '', updated_at: '' }],
       projectsLoaded: true,
     }),
 }))

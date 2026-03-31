@@ -26,11 +26,6 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		rootPath = &p.RootPath.String
 	}
 
-	var defaultWorkflow *string
-	if p.DefaultWorkflow.Valid {
-		defaultWorkflow = &p.DefaultWorkflow.String
-	}
-
 	var defaultBranch *string
 	if p.DefaultBranch.Valid {
 		defaultBranch = &p.DefaultBranch.String
@@ -40,7 +35,6 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		ID              string    `json:"id"`
 		Name            string    `json:"name"`
 		RootPath        *string   `json:"root_path"`
-		DefaultWorkflow *string   `json:"default_workflow"`
 		DefaultBranch   *string   `json:"default_branch"`
 		UseGitWorktrees    bool      `json:"use_git_worktrees"`
 		UseDockerIsolation bool      `json:"use_docker_isolation"`
@@ -50,7 +44,6 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		ID:              p.ID,
 		Name:            p.Name,
 		RootPath:        rootPath,
-		DefaultWorkflow: defaultWorkflow,
 		DefaultBranch:   defaultBranch,
 		UseGitWorktrees:    p.UseGitWorktrees,
 		UseDockerIsolation: p.UseDockerIsolation,

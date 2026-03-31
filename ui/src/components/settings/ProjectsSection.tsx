@@ -85,10 +85,8 @@ export function ProjectsSection() {
       id: project.id,
       name: project.name,
       root_path: project.root_path || '',
-      default_workflow: project.default_workflow || '',
       default_branch: project.default_branch || '',
       use_git_worktrees: project.use_git_worktrees || false,
-      use_docker_isolation: project.use_docker_isolation || false,
     })
   }
 
@@ -104,10 +102,8 @@ export function ProjectsSection() {
       id: formData.id.trim(),
       name: formData.name.trim() || formData.id.trim(),
       root_path: formData.root_path.trim() || undefined,
-      default_workflow: formData.default_workflow.trim() || undefined,
       default_branch: formData.default_branch.trim() || undefined,
       use_git_worktrees: formData.use_git_worktrees,
-      use_docker_isolation: formData.use_docker_isolation,
     })
   }
 
@@ -118,10 +114,8 @@ export function ProjectsSection() {
       data: {
         name: formData.name.trim() || undefined,
         root_path: formData.root_path.trim() || undefined,
-        default_workflow: formData.default_workflow.trim() || undefined,
         default_branch: formData.default_branch.trim() || undefined,
         use_git_worktrees: formData.use_git_worktrees,
-        use_docker_isolation: formData.use_docker_isolation,
       },
     })
   }
@@ -230,10 +224,8 @@ export function ProjectsSection() {
                         <div className="text-sm text-muted-foreground">
                           {[
                             project.root_path && `Path: ${project.root_path}`,
-                            project.default_workflow && `Workflow: ${project.default_workflow}`,
                             project.default_branch && `Branch: ${project.default_branch}`,
                             project.use_git_worktrees && 'Worktrees: enabled',
-                            project.use_docker_isolation && 'Docker: enabled',
                           ]
                             .filter(Boolean)
                             .map((text, i, arr) => (

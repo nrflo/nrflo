@@ -52,9 +52,6 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 	if req.RootPath != "" {
 		project.RootPath = sql.NullString{String: req.RootPath, Valid: true}
 	}
-	if req.DefaultWorkflow != "" {
-		project.DefaultWorkflow = sql.NullString{String: req.DefaultWorkflow, Valid: true}
-	}
 	if req.DefaultBranch != "" {
 		project.DefaultBranch = sql.NullString{String: req.DefaultBranch, Valid: true}
 	}

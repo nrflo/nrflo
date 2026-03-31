@@ -2,6 +2,7 @@ import { X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Toggle } from '@/components/ui/Toggle'
+import { Tooltip } from '@/components/ui/Tooltip'
 
 export interface ProjectFormData {
   id: string
@@ -102,12 +103,18 @@ export function ProjectForm({
           />
         </div>
         <div className="flex items-end pb-1">
-          <Toggle
-            checked={formData.use_git_worktrees}
-            onChange={(checked) => setFormData({ ...formData, use_git_worktrees: checked })}
-            label="Use Git Worktrees"
-            disabled={!formData.default_branch.trim()}
-          />
+          <Tooltip
+            text="Git worktrees give each ticket workflow an isolated copy of the repo so agents don't interfere with each other or the main working directory.\n\nApplies to ticket-scoped workflows only. Requires default_branch to be configured.\n\nLifecycle: creates a feature branch + worktree at /tmp → agents work in isolation → on success, merges to default branch and cleans up → on failure, force-removes worktree and discards changes."
+            placement="top"
+            className="whitespace-normal max-w-sm"
+          >
+            <Toggle
+              checked={formData.use_git_worktrees}
+              onChange={(checked) => setFormData({ ...formData, use_git_worktrees: checked })}
+              label="Use Git Worktrees"
+              disabled={!formData.default_branch.trim()}
+            />
+          </Tooltip>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">

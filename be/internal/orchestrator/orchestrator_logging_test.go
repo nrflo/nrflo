@@ -154,6 +154,8 @@ func TestRestartAgent_LogsRestartRequest(t *testing.T) {
 	env.createTicket(t, "LOG-4", "Test restart logging")
 	wfiID := env.initWorkflow(t, "LOG-4")
 
+	insertRunningSession(t, env, wfiID, "LOG-4", "some-session-id")
+
 	logBuf := setupLogCapture(t)
 
 	err := env.orch.RestartAgent(env.project, "LOG-4", "test", "some-session-id")

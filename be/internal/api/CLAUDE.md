@@ -54,7 +54,7 @@ PATCH /api/v1/tickets/:id/workflow
 
 # Workflow orchestration (run/stop/restart from UI)
 POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run; body accepts `interactive` (bool) and `plan_mode` (bool), mutually exclusive (400 if both true). When set, response includes `session_id` and status `"interactive"` or `"planning"`
-POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration
+POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration (optional instance_id in body)
 POST /api/v1/tickets/:id/workflow/restart       # Restart agent (context save + relaunch)
 POST /api/v1/tickets/:id/workflow/retry-failed  # Retry failed workflow from failed layer
 POST /api/v1/tickets/:id/workflow/take-control     # Kill agent, return session ID for interactive use

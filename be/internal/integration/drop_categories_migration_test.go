@@ -291,11 +291,10 @@ func TestChainExecutionCRUDWithoutCategory(t *testing.T) {
 func TestWorkflowInstanceIndexesAfterMigration018(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Check for expected indexes (idx_wfi_unique dropped by migration 000019, replaced by idx_wfi_lookup + idx_wfi_ticket_unique)
+	// Check for expected indexes (idx_wfi_unique dropped by migration 000019, idx_wfi_ticket_unique dropped by migration 000040)
 	expectedIndexes := []string{
 		"idx_wfi_lookup",
 		"idx_wfi_ticket",
-		"idx_wfi_ticket_unique",
 	}
 
 	for _, idxName := range expectedIndexes {

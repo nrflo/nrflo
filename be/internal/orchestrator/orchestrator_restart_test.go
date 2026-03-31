@@ -13,7 +13,8 @@ func TestRestartAgent_NoRunningOrchestration(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "RST-1", "Restart test")
 	wfiID := env.initWorkflow(t, "RST-1")
-	_ = wfiID
+
+	insertRunningSession(t, env, wfiID, "RST-1", "some-session")
 
 	err := env.orch.RestartAgent(env.project, "RST-1", "test", "some-session")
 	if err == nil {
@@ -38,6 +39,8 @@ func TestRestartAgent_NoActiveSpawner(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "RST-3", "Restart test")
 	wfiID := env.initWorkflow(t, "RST-3")
+
+	insertRunningSession(t, env, wfiID, "RST-3", "some-session")
 
 	// Simulate a running orchestration with no spawner (between phases)
 	env.orch.mu.Lock()
@@ -66,6 +69,8 @@ func TestRestartAgent_ForwardsToSpawner(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "RST-4", "Restart test")
 	wfiID := env.initWorkflow(t, "RST-4")
+
+	insertRunningSession(t, env, wfiID, "RST-4", "target-session-123")
 
 	// Create a real spawner and register it
 	sp := spawner.New(spawner.Config{Clock: clock.Real()})
@@ -101,6 +106,8 @@ func TestRestartAgent_BroadcastsWSEvent(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "RST-5", "Restart test")
 	wfiID := env.initWorkflow(t, "RST-5")
+
+	insertRunningSession(t, env, wfiID, "RST-5", "sess-ws")
 
 	ch := env.subscribeWSClient(t, "ws-rst-5", "RST-5")
 
@@ -218,7 +225,7 @@ func TestStopByTicket_StillWorksWithRunState(t *testing.T) {
 	}
 	env.orch.mu.Unlock()
 
-	err := env.orch.StopByTicket(env.project, "RST-8", "test")
+	err := env.orch.StopByTicket(env.project, "RST-8", "test", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

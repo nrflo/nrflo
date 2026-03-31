@@ -216,7 +216,7 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	env.createTicket(t, "MC-7", "Workflow name in reason")
 
 	// Init the "feature" workflow
-	err = workflowSvc.Init(env.project, "MC-7", &types.WorkflowInitRequest{
+	_, err = workflowSvc.Init(env.project, "MC-7", &types.WorkflowInitRequest{
 		Workflow: "feature",
 	})
 	if err != nil {

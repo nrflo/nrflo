@@ -10,7 +10,7 @@ import {
   Info,
   Network,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -51,7 +51,7 @@ export function TicketDetailPage() {
   const goBack = useGoBack('/tickets')
   const [closeReason, setCloseReason] = useState('')
   const [showCloseForm, setShowCloseForm] = useState(false)
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string>('')
   const tabParam = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>(
     tabParam === 'workflow' || tabParam === 'description' || tabParam === 'details' || tabParam === 'hierarchy' ? tabParam : 'workflow'
@@ -73,21 +73,41 @@ export function TicketDetailPage() {
   const workflows = workflowData?.workflows ?? []
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
   const hasWorkflow = workflowData?.has_workflow ?? false
-  const hasMultipleWorkflows = workflows.length > 1
+  const instanceIds = Object.keys(allWorkflows)
+  const hasMultipleWorkflows = instanceIds.length > 1
 
-  // Determine which workflow state to display
-  const defaultState = (workflowData?.state ?? null) as WorkflowState | null
-  const displayedWorkflowName = selectedWorkflow || defaultState?.workflow || workflows[0] || ''
-  const displayedState = selectedWorkflow && allWorkflows[selectedWorkflow]
-    ? allWorkflows[selectedWorkflow]
+  // Determine which workflow state to display (keyed by instance_id)
+  const defaultState = instanceIds.length > 0 ? allWorkflows[instanceIds[0]] : (workflowData?.state ?? null) as WorkflowState | null
+  const resolvedInstanceId = (selectedInstanceId && allWorkflows[selectedInstanceId])
+    ? selectedInstanceId
+    : instanceIds[0] || ''
+  const displayedState = (selectedInstanceId && allWorkflows[selectedInstanceId])
+    ? allWorkflows[selectedInstanceId]
     : defaultState
+
+  // Build display labels: "workflow-name (#short-id)"
+  const { selectorLabels, displayedWorkflowName } = useMemo(() => {
+    const labels: Record<string, string> = {}
+    for (const iid of instanceIds) {
+      const name = allWorkflows[iid]?.workflow ?? iid
+      const shortId = iid.substring(0, 8)
+      labels[iid] = `${name} (#${shortId})`
+    }
+    return {
+      selectorLabels: labels,
+      displayedWorkflowName: displayedState?.workflow || workflows[0] || '',
+    }
+  }, [instanceIds, allWorkflows, displayedState?.workflow, workflows])
 
   // Get active agents from displayed workflow state
   const activeAgents = displayedState?.active_agents ?? {}
 
-  // Fetch agent sessions for the running agent log panel
+  // Fetch agent sessions for the running agent log panel, filtered by instance
   const { data: sessionsData } = useAgentSessions(id!, undefined, { enabled: !!id })
-  const sessions = sessionsData?.sessions ?? []
+  const sessions = useMemo(() => {
+    if (!sessionsData?.sessions || !resolvedInstanceId) return sessionsData?.sessions ?? []
+    return sessionsData.sessions.filter(s => s.workflow_instance_id === resolvedInstanceId)
+  }, [sessionsData?.sessions, resolvedInstanceId])
 
   // Query active chains for epic tickets
   const isEpic = ticket?.issue_type === 'epic'
@@ -311,9 +331,10 @@ export function TicketDetailPage() {
             displayedState={displayedState}
             displayedWorkflowName={displayedWorkflowName}
             hasMultipleWorkflows={hasMultipleWorkflows}
-            workflows={workflows}
-            selectedWorkflow={selectedWorkflow}
-            onSelectWorkflow={setSelectedWorkflow}
+            workflows={instanceIds}
+            workflowLabels={selectorLabels}
+            selectedWorkflow={resolvedInstanceId}
+            onSelectWorkflow={setSelectedInstanceId}
             isOrchestrated={isOrchestrated}
             hasActivePhase={hasActivePhase}
             activeAgents={activeAgents}
@@ -326,6 +347,7 @@ export function TicketDetailPage() {
               id && stopMutation.mutate({
                 ticketId: id,
                 workflow: displayedWorkflowName || undefined,
+                instance_id: resolvedInstanceId || undefined,
               })
             }
             stopPending={stopMutation.isPending}
@@ -336,7 +358,7 @@ export function TicketDetailPage() {
             onRetryFailed={(sessionId) =>
               id && retryFailedMutation.mutate({
                 ticketId: id,
-                params: { workflow: displayedWorkflowName, session_id: sessionId },
+                params: { workflow: displayedWorkflowName, session_id: sessionId, instance_id: resolvedInstanceId || undefined },
               })
             }
             retryingSessionId={retryFailedMutation.isPending ? (retryFailedMutation.variables?.params.session_id ?? null) : null}
@@ -344,7 +366,7 @@ export function TicketDetailPage() {
               if (!id) return
               const agent = Object.values(activeAgents).find((a) => a.session_id === sessionId)
               takeControlMutation.mutate(
-                { ticketId: id, params: { workflow: displayedWorkflowName, session_id: sessionId } },
+                { ticketId: id, params: { workflow: displayedWorkflowName, session_id: sessionId, instance_id: resolvedInstanceId || undefined } },
                 { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: agent?.agent_type ?? 'agent' }) }
               )
             }}
@@ -400,7 +422,7 @@ export function TicketDetailPage() {
           onClose={() => setInteractiveSession(null)}
           onExitSession={() => {
             exitInteractiveMutation.mutate(
-              { ticketId: id, params: { workflow: displayedWorkflowName, session_id: interactiveSession.sessionId } },
+              { ticketId: id, params: { workflow: displayedWorkflowName, session_id: interactiveSession.sessionId, instance_id: resolvedInstanceId || undefined } },
               { onSuccess: () => setInteractiveSession(null) }
             )
           }}

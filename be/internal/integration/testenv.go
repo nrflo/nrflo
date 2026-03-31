@@ -201,7 +201,7 @@ func (e *TestEnv) CreateTicket(t *testing.T, ticketID, title string) {
 // Auto-creates the ticket if it doesn't exist.
 func (e *TestEnv) InitWorkflow(t *testing.T, ticketID string) {
 	t.Helper()
-	err := e.WorkflowSvc.Init(e.ProjectID, ticketID, &types.WorkflowInitRequest{
+	_, err := e.WorkflowSvc.Init(e.ProjectID, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})
 	if err != nil {

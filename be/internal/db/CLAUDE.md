@@ -82,8 +82,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    updated_at      TEXT NOT NULL                                     │
 │    INDEX idx_wfi_lookup (project_id, ticket_id, workflow_id,         │
 │          scope_type) — non-unique, for query performance             │
-│    UNIQUE INDEX idx_wfi_ticket_unique (project_id, ticket_id,        │
-│          workflow_id) WHERE scope_type = 'ticket'                    │
+│    (idx_wfi_ticket_unique dropped by migration 000040 to allow       │
+│     multiple instances per ticket+workflow)                          │
 │    FK (project_id, workflow_id) → workflows(project_id, id)         │
 │    FK (project_id, ticket_id) → tickets(project_id, id) CASCADE     │
 │                                                                      │

@@ -345,12 +345,13 @@ func (s *Server) handleStopWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Workflow string `json:"workflow"`
+		Workflow   string `json:"workflow"`
+		InstanceID string `json:"instance_id"`
 	}
 	// Body is optional
 	readJSON(r, &body)
 
-	err := s.orchestrator.StopByTicket(projectID, ticketID, body.Workflow)
+	err := s.orchestrator.StopByTicket(projectID, ticketID, body.Workflow, body.InstanceID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return

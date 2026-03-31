@@ -51,7 +51,7 @@ Agents are grouped by `layer` number. All agents in the same layer run concurren
 ### 3. State is Stored in Database Tables
 
 Workflow runtime state is stored in normalized database tables:
-- **`workflow_instances`** — one row per ticket+workflow, stores workflow-level findings, retry count
+- **`workflow_instances`** — one row per workflow run (multiple per ticket+workflow allowed), stores workflow-level findings, retry count
 - **`agent_sessions`** — one row per agent execution, stores result, pid, findings, timestamps
 - Phase statuses, phase order, and current phase are derived from `agent_sessions` + workflow definition at read time
 - Active agents = `agent_sessions WHERE status = 'running'`
@@ -221,11 +221,11 @@ Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. Th
 
 ## State Storage
 
-Workflow runtime state is stored in two main tables: `workflow_instances` (one row per ticket+workflow, stores findings, retry count) and `agent_sessions` (one row per agent execution, stores result, pid, findings, context usage, timestamps). Phase statuses, phase order, and current phase are derived at read time from `agent_sessions` rows + workflow definition. Ticket-scoped workflows enforce one instance per ticket+workflow; project-scoped workflows allow multiple concurrent instances. Completion statistics (`completed_at`, `total_duration_sec`, `total_tokens_used`) are computed from agent session data. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md) for full schema.
+Workflow runtime state is stored in two main tables: `workflow_instances` (one row per workflow run, stores findings, retry count) and `agent_sessions` (one row per agent execution, stores result, pid, findings, context usage, timestamps). Phase statuses, phase order, and current phase are derived at read time from `agent_sessions` rows + workflow definition. Both ticket-scoped and project-scoped workflows allow multiple instances; concurrent runs of the same ticket+workflow are prevented by the orchestrator's `IsRunning` check (not DB constraint). Completion statistics (`completed_at`, `total_duration_sec`, `total_tokens_used`) are computed from agent session data. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md) for full schema.
 
 ## API Response Format
 
-`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with `ticket_id`, `has_workflow`, `workflows` list, and `all_workflows` map keyed by workflow name. Each workflow state includes version, status, current phase, phase order, phase layers (map of phase name to layer number for parallel layout), phases map, active agents, agent history, and findings. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full endpoint listing and [be/internal/service/CLAUDE.md](be/internal/service/CLAUDE.md) for response construction.
+`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with `ticket_id`, `has_workflow`, `workflows` list (deduplicated workflow names), and `all_workflows` map keyed by instance_id (same pattern as project workflows). Each workflow state includes version, status, instance_id, workflow name, current phase, phase order, phase layers, phases map, active agents, agent history, and findings. Supports `?instance_id=` and `?workflow=` query params for selection. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full endpoint listing and [be/internal/service/CLAUDE.md](be/internal/service/CLAUDE.md) for response construction.
 
 ## Chain Execution
 

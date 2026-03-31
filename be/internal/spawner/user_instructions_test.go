@@ -85,7 +85,7 @@ func (e *spawnerTestEnv) initWorkflow(t *testing.T, ticketID string) string {
 	}
 
 	workflowSvc := service.NewWorkflowService(e.pool, clock.Real())
-	err = workflowSvc.Init(e.project, ticketID, &types.WorkflowInitRequest{
+	_, err = workflowSvc.Init(e.project, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})
 	if err != nil {

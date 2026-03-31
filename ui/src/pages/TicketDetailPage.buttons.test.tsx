@@ -250,7 +250,7 @@ describe('TicketDetailPage - Stop button placement', () => {
     await waitFor(() => {
       expect(workflowsApi.stopWorkflow).toHaveBeenCalledWith(
         'TICKET-1',
-        { workflow: 'feature' }
+        { workflow: 'feature', instance_id: 'inst-active-01' }
       )
     })
   })
@@ -267,8 +267,8 @@ describe('TicketDetailPage - Stop button placement', () => {
     })
 
     // Should show workflow selector dropdown (Dropdown component renders a button), not a badge
-    // The Dropdown trigger button contains the selected workflow text and a chevron icon
-    const dropdownBtn = screen.getByText('feature').closest('button[type="button"]')!
+    // The Dropdown trigger button contains the selected instance label and a chevron icon
+    const dropdownBtn = screen.getByText('feature (#inst-mul)').closest('button[type="button"]')!
     expect(dropdownBtn).toBeInTheDocument()
     // Stop button and dropdown should be in the same left-side container
     const stopButton = screen.getByRole('button', { name: /stop/i })

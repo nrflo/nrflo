@@ -259,7 +259,7 @@ func seedTicketAndWorkflow(t *testing.T, dbPath, projectID, ticketID string) {
 	}
 
 	wfSvc := service.NewWorkflowService(pool, clock.Real())
-	err = wfSvc.Init(projectID, ticketID, &types.WorkflowInitRequest{
+	_, err = wfSvc.Init(projectID, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})
 	if err != nil {

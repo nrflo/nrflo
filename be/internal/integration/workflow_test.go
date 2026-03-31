@@ -183,18 +183,30 @@ func TestWorkflowSet(t *testing.T) {
 	}
 }
 
-func TestWorkflowDuplicateInit(t *testing.T) {
+func TestWorkflowMultipleInit(t *testing.T) {
 	env := NewTestEnv(t)
 
-	env.CreateTicket(t, "WF-4", "Duplicate init")
+	env.CreateTicket(t, "WF-4", "Multiple init")
 	env.InitWorkflow(t, "WF-4")
 
-	// Second init should fail
-	err := env.WorkflowSvc.Init(env.ProjectID, "WF-4", &types.WorkflowInitRequest{
+	// Second init should succeed (creates a new instance)
+	wi2, err := env.WorkflowSvc.Init(env.ProjectID, "WF-4", &types.WorkflowInitRequest{
 		Workflow: "test",
 	})
-	if err == nil {
-		t.Fatal("expected error for duplicate init")
+	if err != nil {
+		t.Fatalf("expected second init to succeed: %v", err)
+	}
+
+	// Both instances should exist
+	instances, err := env.WorkflowSvc.ListWorkflowInstances(env.ProjectID, "WF-4")
+	if err != nil {
+		t.Fatalf("failed to list instances: %v", err)
+	}
+	if len(instances) != 2 {
+		t.Fatalf("expected 2 instances, got %d", len(instances))
+	}
+	if instances[0].ID == wi2.ID {
+		t.Fatal("second instance should have different ID from first")
 	}
 }
 

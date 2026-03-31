@@ -93,7 +93,7 @@ func (e *handlerTestEnv) createTicketAndWorkflow(t *testing.T, ticketID string) 
 	}
 
 	workflowSvc := service.NewWorkflowService(e.pool, clock.Real())
-	err = workflowSvc.Init(e.project, ticketID, &types.WorkflowInitRequest{
+	_, err = workflowSvc.Init(e.project, ticketID, &types.WorkflowInitRequest{
 		Workflow: "test",
 	})
 	if err != nil {

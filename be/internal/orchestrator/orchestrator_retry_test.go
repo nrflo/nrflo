@@ -105,12 +105,14 @@ func TestRetryFailedAgent_SessionDoesNotBelongToWorkflow(t *testing.T) {
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	wfiRepo.UpdateStatus(wfiID_B, model.WorkflowInstanceFailed)
 
-	// Try to retry workflow B with session from workflow A
+	// Try to retry workflow B with session from workflow A.
+	// With session-based instance lookup, retryFailed resolves the instance from the session
+	// (which points to workflow A, status=active), so we get a different error than before.
 	err = env.orch.RetryFailedAgent(context.Background(), env.project, "RTR-4B", "test", "sess-4")
 	if err == nil {
 		t.Fatal("expected error when session doesn't belong to workflow")
 	}
-	if got := err.Error(); got != "session does not belong to this workflow instance" {
+	if got := err.Error(); got != "workflow is not in failed status (current: active)" {
 		t.Fatalf("unexpected error: %s", got)
 	}
 }

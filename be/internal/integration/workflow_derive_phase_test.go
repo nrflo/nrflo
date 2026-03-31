@@ -127,7 +127,7 @@ func TestParallelAgents_BothShowInProgress(t *testing.T) {
 	}
 
 	env.CreateTicket(t, "PARALLEL-1", "Parallel agents test")
-	err = env.WorkflowSvc.Init(env.ProjectID, "PARALLEL-1", &types.WorkflowInitRequest{
+	_, err = env.WorkflowSvc.Init(env.ProjectID, "PARALLEL-1", &types.WorkflowInitRequest{
 		Workflow: "parallel-test",
 	})
 	if err != nil {
@@ -182,7 +182,7 @@ func TestParallelAgents_OneCompletedOneRunning(t *testing.T) {
 	}
 
 	env.CreateTicket(t, "PARALLEL-2", "Parallel mixed test")
-	err = env.WorkflowSvc.Init(env.ProjectID, "PARALLEL-2", &types.WorkflowInitRequest{
+	_, err = env.WorkflowSvc.Init(env.ProjectID, "PARALLEL-2", &types.WorkflowInitRequest{
 		Workflow: "parallel-mixed",
 	})
 	if err != nil {

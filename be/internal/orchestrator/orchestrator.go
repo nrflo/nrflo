@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -212,35 +213,14 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			Workflow:     req.WorkflowName,
 			Instructions: req.Instructions,
 		})
-		if err != nil {
-			pool.Close()
-			return nil, fmt.Errorf("failed to init workflow: %w", err)
-		}
 	} else {
-		// Ticket scope: try to create, if already exists get existing and reset
-		initErr := wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{
+		wi, err = wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{
 			Workflow: req.WorkflowName,
 		})
-		if initErr == nil {
-			wi, err = wfService.GetWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
-		} else {
-			// Already exists — get existing instance and reset if completed/failed
-			wi, err = wfService.GetWorkflowInstance(req.ProjectID, req.TicketID, req.WorkflowName)
-			if err == nil && (wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceFailed) {
-				wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
-				wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceActive)
-				wfiRepo.UpdateFindings(wi.ID, "{}")
-				wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
-
-				// Update in-memory copy
-				wi.Status = model.WorkflowInstanceActive
-				wi.Findings = "{}"
-			}
-		}
-		if err != nil {
-			pool.Close()
-			return nil, fmt.Errorf("failed to init workflow: %w", err)
-		}
+	}
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to init workflow: %w", err)
 	}
 
 	// Store user instructions and orchestration status in findings
@@ -362,8 +342,15 @@ func (o *Orchestrator) Stop(instanceID string) error {
 	return nil
 }
 
-// StopByTicket stops any running orchestration for a ticket+workflow.
-func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName string) error {
+// StopByTicket stops a running orchestration for a ticket.
+// If instanceID is provided, stops that specific instance.
+// If workflowName is provided, stops the first running instance for that workflow.
+// Otherwise, stops the first running instance for the ticket.
+func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName, instanceID string) error {
+	if instanceID != "" {
+		return o.Stop(instanceID)
+	}
+
 	database, err := db.Open(o.dataPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
@@ -373,21 +360,16 @@ func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName string) er
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 
-	if workflowName != "" {
-		wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
-		if err != nil {
-			return fmt.Errorf("workflow not found: %w", err)
-		}
-		return o.Stop(wi.ID)
-	}
-
-	// Stop first running orchestration for this ticket
+	// Stop first running orchestration for this ticket (optionally filtered by workflow)
 	instances, err := wfiRepo.ListByTicket(projectID, ticketID)
 	if err != nil {
 		return err
 	}
 
 	for _, wi := range instances {
+		if workflowName != "" && !strings.EqualFold(wi.WorkflowID, workflowName) {
+			continue
+		}
 		o.mu.Lock()
 		_, running := o.runs[wi.ID]
 		o.mu.Unlock()
@@ -468,11 +450,14 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	var wi *model.WorkflowInstance
 	if instanceID != "" {
 		wi, err = wfiRepo.Get(instanceID)
-	} else if scopeType == "project" {
-		// Fallback: session lookup will validate the instance
-		return fmt.Errorf("instance_id is required for project-scoped workflow retry")
 	} else {
-		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+		// Look up instance from session's workflow_instance_id
+		asRepo := repo.NewAgentSessionRepo(database, o.clock)
+		session, sessErr := asRepo.Get(sessionID)
+		if sessErr != nil {
+			return fmt.Errorf("agent session not found: %w", sessErr)
+		}
+		wi, err = wfiRepo.Get(session.WorkflowInstanceID)
 	}
 	if err != nil {
 		return fmt.Errorf("workflow not found: %w", err)
@@ -632,6 +617,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 }
 
 // RestartAgent sends a manual restart signal to the active spawner for a workflow.
+// Looks up the instance from the session's workflow_instance_id.
 func (o *Orchestrator) RestartAgent(projectID, ticketID, workflowName, sessionID string) error {
 	database, err := db.Open(o.dataPath)
 	if err != nil {
@@ -639,14 +625,13 @@ func (o *Orchestrator) RestartAgent(projectID, ticketID, workflowName, sessionID
 	}
 	defer database.Close()
 
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
-	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	session, err := asRepo.Get(sessionID)
 	if err != nil {
-		return fmt.Errorf("workflow not found: %w", err)
+		return fmt.Errorf("agent session not found: %w", err)
 	}
 
-	return o.restartAgentByInstance(wi.ID, workflowName, ticketID, sessionID)
+	return o.restartAgentByInstance(session.WorkflowInstanceID, workflowName, ticketID, sessionID)
 }
 
 // RestartProjectAgent sends a restart signal for a project-scoped workflow agent.
@@ -679,6 +664,7 @@ func (o *Orchestrator) restartAgentByInstance(wfiID, workflowName, target, sessi
 }
 
 // TakeControl sends a take-control signal to the active spawner for a ticket-scoped workflow.
+// Looks up the instance from the session's workflow_instance_id.
 func (o *Orchestrator) TakeControl(projectID, ticketID, workflowName, sessionID string) (string, error) {
 	database, err := db.Open(o.dataPath)
 	if err != nil {
@@ -686,14 +672,13 @@ func (o *Orchestrator) TakeControl(projectID, ticketID, workflowName, sessionID 
 	}
 	defer database.Close()
 
-	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
-	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	session, err := asRepo.Get(sessionID)
 	if err != nil {
-		return "", fmt.Errorf("workflow not found: %w", err)
+		return "", fmt.Errorf("agent session not found: %w", err)
 	}
 
-	return o.takeControlByInstance(wi.ID, workflowName, ticketID, sessionID)
+	return o.takeControlByInstance(session.WorkflowInstanceID, workflowName, ticketID, sessionID)
 }
 
 // TakeControlProject sends a take-control signal for a project-scoped workflow.
@@ -753,7 +738,7 @@ func (o *Orchestrator) CompleteInteractive(sessionID string) error {
 	return nil
 }
 
-// IsRunning checks if an orchestration is running for a ticket+workflow.
+// IsRunning checks if any orchestration is running for a ticket+workflow.
 func (o *Orchestrator) IsRunning(projectID, ticketID, workflowName string) bool {
 	database, err := db.Open(o.dataPath)
 	if err != nil {
@@ -763,15 +748,21 @@ func (o *Orchestrator) IsRunning(projectID, ticketID, workflowName string) bool 
 
 	pool := db.WrapAsPool(database)
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
-	wi, err := wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
+	instances, err := wfiRepo.ListByTicket(projectID, ticketID)
 	if err != nil {
 		return false
 	}
 
 	o.mu.Lock()
-	_, running := o.runs[wi.ID]
-	o.mu.Unlock()
-	return running
+	defer o.mu.Unlock()
+	for _, wi := range instances {
+		if strings.EqualFold(wi.WorkflowID, workflowName) {
+			if _, running := o.runs[wi.ID]; running {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // IsInstanceRunning checks if a specific instance ID has an active orchestration.

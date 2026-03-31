@@ -35,8 +35,8 @@ func NewWorkflowService(pool *db.Pool, clk clock.Clock) *WorkflowService {
 
 // --- Workflow Runtime Methods ---
 
-// Init initializes a workflow on a ticket
-func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowInitRequest) error {
+// Init initializes a workflow on a ticket. Always creates a new instance.
+func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowInitRequest) (*model.WorkflowInstance, error) {
 	workflowName := req.Workflow
 	if workflowName == "" {
 		workflowName = "feature"
@@ -45,11 +45,11 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	// Load workflow definition from DB
 	wf, err := s.GetWorkflowDef(projectID, workflowName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if wf.ScopeType == "project" {
-		return fmt.Errorf("workflow '%s' is project-scoped; use project workflow API instead", workflowName)
+		return nil, fmt.Errorf("workflow '%s' is project-scoped; use project workflow API instead", workflowName)
 	}
 
 	// Ensure ticket exists (auto-create if not found)
@@ -59,7 +59,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	if err == sql.ErrNoRows {
 		currentUser, userErr := user.Current()
 		if userErr != nil {
-			return fmt.Errorf("failed to get current user: %w", userErr)
+			return nil, fmt.Errorf("failed to get current user: %w", userErr)
 		}
 		now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 		_, createErr := s.pool.Exec(`
@@ -76,17 +76,20 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 			currentUser.Username,
 		)
 		if createErr != nil {
-			return fmt.Errorf("failed to auto-create ticket: %w", createErr)
+			return nil, fmt.Errorf("failed to auto-create ticket: %w", createErr)
 		}
 	} else if err != nil {
-		return fmt.Errorf("failed to query ticket: %w", err)
+		return nil, fmt.Errorf("failed to query ticket: %w", err)
 	}
 
 	wi := s.buildWorkflowInstance(projectID, workflowName, wf)
 	wi.TicketID = ticketID
 	wi.ScopeType = "ticket"
 
-	return s.wfiRepo.Create(wi)
+	if err := s.wfiRepo.Create(wi); err != nil {
+		return nil, err
+	}
+	return wi, nil
 }
 
 // InitProjectWorkflow initializes a project-scoped workflow (no ticket required).

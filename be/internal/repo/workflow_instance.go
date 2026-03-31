@@ -60,13 +60,7 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
 		wi.Findings, wi.SkipTags, wi.RetryCount, wi.ParentSession, now, now,
 	)
-	if err != nil {
-		if wi.ScopeType == "ticket" && strings.Contains(err.Error(), "UNIQUE constraint") {
-			return fmt.Errorf("workflow '%s' already initialized on %s", wi.WorkflowID, wi.TicketID)
-		}
-		return err
-	}
-	return nil
+	return err
 }
 
 // Get retrieves a workflow instance by ID
@@ -79,11 +73,13 @@ func (r *WorkflowInstanceRepo) Get(id string) (*model.WorkflowInstance, error) {
 	return wi, err
 }
 
-// GetByTicketAndWorkflow retrieves a workflow instance by project, ticket, and workflow ID
+// GetByTicketAndWorkflow retrieves the most recent workflow instance by project, ticket, and workflow ID.
+// After dropping the unique index, multiple instances may exist; returns the latest by created_at.
 func (r *WorkflowInstanceRepo) GetByTicketAndWorkflow(projectID, ticketID, workflowID string) (*model.WorkflowInstance, error) {
 	row := r.pool.QueryRow(`
 		SELECT `+wfiCols+` FROM workflow_instances
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
+		ORDER BY created_at DESC LIMIT 1`,
 		projectID, ticketID, workflowID)
 	wi, err := scanWFI(row)
 	if err == sql.ErrNoRows {

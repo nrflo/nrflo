@@ -14,7 +14,9 @@ import (
 func TestTakeControl_NoRunningOrchestration(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "TC-1", "Take control test")
-	env.initWorkflow(t, "TC-1")
+	wfiID := env.initWorkflow(t, "TC-1")
+
+	insertRunningSession(t, env, wfiID, "TC-1", "some-session")
 
 	_, err := env.orch.TakeControl(env.project, "TC-1", "test", "some-session")
 	if err == nil {
@@ -45,6 +47,8 @@ func TestTakeControl_NoActiveSpawner(t *testing.T) {
 	env.createTicket(t, "TC-3", "Take control test")
 	wfiID := env.initWorkflow(t, "TC-3")
 
+	insertRunningSession(t, env, wfiID, "TC-3", "some-session")
+
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
 		cancel:  func() {},
@@ -73,6 +77,8 @@ func TestTakeControl_ForwardsToSpawner(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "TC-4", "Take control test")
 	wfiID := env.initWorkflow(t, "TC-4")
+
+	insertRunningSession(t, env, wfiID, "TC-4", "target-session-tc4")
 
 	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 
@@ -195,6 +201,9 @@ func TestTakeControl_ReturnsCorrectSessionID(t *testing.T) {
 	env.createTicket(t, "TC-5", "Session ID echo test")
 	wfiID := env.initWorkflow(t, "TC-5")
 
+	want := "the-exact-session-uuid-123"
+	insertRunningSession(t, env, wfiID, "TC-5", want)
+
 	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawner: sp}
@@ -205,7 +214,6 @@ func TestTakeControl_ReturnsCorrectSessionID(t *testing.T) {
 		env.orch.mu.Unlock()
 	})
 
-	want := "the-exact-session-uuid-123"
 	got, err := env.orch.TakeControl(env.project, "TC-5", "test", want)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

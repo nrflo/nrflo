@@ -239,7 +239,7 @@ func TestTicketWorkflowInitWrongScope(t *testing.T) {
 
 	// Try to init on a ticket
 	env.CreateTicket(t, "TICKET-1", "Test ticket")
-	err = env.WorkflowSvc.Init(env.ProjectID, "TICKET-1", &types.WorkflowInitRequest{
+	_, err = env.WorkflowSvc.Init(env.ProjectID, "TICKET-1", &types.WorkflowInitRequest{
 		Workflow: "proj-scope-def",
 	})
 	if err == nil {
@@ -456,7 +456,7 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 
 	// Init ticket workflow
 	env.CreateTicket(t, "MIXED-1", "Mixed test")
-	err = env.WorkflowSvc.Init(env.ProjectID, "MIXED-1", &types.WorkflowInitRequest{
+	_, err = env.WorkflowSvc.Init(env.ProjectID, "MIXED-1", &types.WorkflowInitRequest{
 		Workflow: "mixed-ticket",
 	})
 	if err != nil {

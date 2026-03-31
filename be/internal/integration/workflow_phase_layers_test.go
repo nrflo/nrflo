@@ -37,7 +37,7 @@ func TestBuildV4State_PhaseLayers_SequentialLayers(t *testing.T) {
 
 	// Init and get status
 	env.CreateTicket(t, "PL-1", "Phase layers sequential test")
-	err := env.WorkflowSvc.Init(env.ProjectID, "PL-1", &types.WorkflowInitRequest{Workflow: "sequential"})
+	_, err := env.WorkflowSvc.Init(env.ProjectID, "PL-1", &types.WorkflowInitRequest{Workflow: "sequential"})
 	if err != nil {
 		t.Fatalf("failed to init workflow: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestBuildV4State_PhaseLayers_ParallelPhases(t *testing.T) {
 	createWorkflowWithLayers(t, env, "parallel", phasesJSON)
 
 	env.CreateTicket(t, "PL-2", "Phase layers parallel test")
-	err := env.WorkflowSvc.Init(env.ProjectID, "PL-2", &types.WorkflowInitRequest{Workflow: "parallel"})
+	_, err := env.WorkflowSvc.Init(env.ProjectID, "PL-2", &types.WorkflowInitRequest{Workflow: "parallel"})
 	if err != nil {
 		t.Fatalf("failed to init workflow: %v", err)
 	}

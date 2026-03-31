@@ -34,7 +34,7 @@ func createWorkflowWithGroups(t *testing.T, env *handlerTestEnv, workflowID, tic
 		t.Fatalf("create ticket %s: %v", ticketID, err)
 	}
 
-	if err := workflowSvc.Init(env.project, ticketID, &types.WorkflowInitRequest{Workflow: workflowID}); err != nil {
+	if _, err := workflowSvc.Init(env.project, ticketID, &types.WorkflowInitRequest{Workflow: workflowID}); err != nil {
 		t.Fatalf("init workflow %s/%s: %v", ticketID, workflowID, err)
 	}
 

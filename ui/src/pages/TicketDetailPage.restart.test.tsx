@@ -157,10 +157,12 @@ describe('TicketDetailPage - Restart agent', () => {
   })
 
   it('does not show AgentLogPanel when no active agents', async () => {
+    const stateNoAgents = { ...workflowWithActivePhase.state, active_agents: {} }
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue({
       ...workflowWithActivePhase,
-      state: { ...workflowWithActivePhase.state, active_agents: {} },
+      state: stateNoAgents,
+      all_workflows: { 'inst-active-01': stateNoAgents },
     })
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
 

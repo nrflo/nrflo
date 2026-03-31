@@ -258,8 +258,8 @@ export function useRunWorkflow() {
 export function useStopWorkflow() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ ticketId, workflow }: { ticketId: string; workflow?: string }) =>
-      stopWorkflow(ticketId, workflow ? { workflow } : undefined),
+    mutationFn: ({ ticketId, workflow, instance_id }: { ticketId: string; workflow?: string; instance_id?: string }) =>
+      stopWorkflow(ticketId, (workflow || instance_id) ? { workflow, instance_id } : undefined),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
     },

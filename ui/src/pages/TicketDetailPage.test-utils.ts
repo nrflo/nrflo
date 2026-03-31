@@ -28,6 +28,7 @@ export const workflowWithActivePhase: WorkflowResponse = {
   has_workflow: true,
   state: {
     workflow: 'feature',
+    instance_id: 'inst-active-01',
     version: 4,
     current_phase: 'implementation',
     phase_order: ['investigation', 'implementation', 'verification'],
@@ -48,7 +49,30 @@ export const workflowWithActivePhase: WorkflowResponse = {
     },
   },
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: {
+    'inst-active-01': {
+      workflow: 'feature',
+      instance_id: 'inst-active-01',
+      version: 4,
+      current_phase: 'implementation',
+      phase_order: ['investigation', 'implementation', 'verification'],
+      phases: {
+        investigation: { status: 'completed', result: 'pass' },
+        implementation: { status: 'in_progress' },
+      },
+      active_agents: {
+        'implementor:claude:sonnet': {
+          agent_id: 'a1',
+          agent_type: 'implementor',
+          phase: 'implementation',
+          model_id: 'claude-sonnet-4-5',
+          cli: 'claude',
+          pid: 12345,
+          started_at: '2026-01-01T00:00:00Z',
+        },
+      },
+    },
+  },
 }
 
 // Workflow with no active phase
@@ -57,6 +81,7 @@ export const workflowNoActivePhase: WorkflowResponse = {
   has_workflow: true,
   state: {
     workflow: 'feature',
+    instance_id: 'inst-noactive-01',
     version: 4,
     current_phase: 'implementation',
     phase_order: ['investigation', 'implementation'],
@@ -67,7 +92,20 @@ export const workflowNoActivePhase: WorkflowResponse = {
     active_agents: {},
   },
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: {
+    'inst-noactive-01': {
+      workflow: 'feature',
+      instance_id: 'inst-noactive-01',
+      version: 4,
+      current_phase: 'implementation',
+      phase_order: ['investigation', 'implementation'],
+      phases: {
+        investigation: { status: 'completed', result: 'pass' },
+        implementation: { status: 'completed', result: 'pass' },
+      },
+      active_agents: {},
+    },
+  },
 }
 
 // Orchestrated workflow (running via Auto) with active phase
@@ -76,6 +114,7 @@ export const workflowOrchestrated: WorkflowResponse = {
   has_workflow: true,
   state: {
     workflow: 'feature',
+    instance_id: 'inst-orch-01',
     version: 4,
     current_phase: 'implementation',
     phase_order: ['investigation', 'implementation', 'verification'],
@@ -99,7 +138,33 @@ export const workflowOrchestrated: WorkflowResponse = {
     },
   },
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: {
+    'inst-orch-01': {
+      workflow: 'feature',
+      instance_id: 'inst-orch-01',
+      version: 4,
+      current_phase: 'implementation',
+      phase_order: ['investigation', 'implementation', 'verification'],
+      phases: {
+        investigation: { status: 'completed', result: 'pass' },
+        implementation: { status: 'in_progress' },
+      },
+      active_agents: {
+        'implementor:claude:sonnet': {
+          agent_id: 'a1',
+          agent_type: 'implementor',
+          phase: 'implementation',
+          model_id: 'claude-sonnet-4-5',
+          cli: 'claude',
+          pid: 12345,
+          started_at: '2026-01-01T00:00:00Z',
+        },
+      },
+      findings: {
+        _orchestration: { status: 'running' },
+      },
+    },
+  },
 }
 
 // Orchestrated workflow with no active agents yet (between phases)
@@ -108,6 +173,7 @@ export const workflowOrchestratedNoAgents: WorkflowResponse = {
   has_workflow: true,
   state: {
     workflow: 'feature',
+    instance_id: 'inst-orchna-01',
     version: 4,
     current_phase: 'implementation',
     phase_order: ['investigation', 'implementation', 'verification'],
@@ -120,15 +186,31 @@ export const workflowOrchestratedNoAgents: WorkflowResponse = {
     },
   },
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: {
+    'inst-orchna-01': {
+      workflow: 'feature',
+      instance_id: 'inst-orchna-01',
+      version: 4,
+      current_phase: 'implementation',
+      phase_order: ['investigation', 'implementation', 'verification'],
+      phases: {
+        investigation: { status: 'completed', result: 'pass' },
+      },
+      active_agents: {},
+      findings: {
+        _orchestration: { status: 'running' },
+      },
+    },
+  },
 }
 
-// Workflow with multiple workflows (dropdown selector visible)
+// Workflow with multiple instances (dropdown selector visible)
 export const workflowMultiple: WorkflowResponse = {
   ticket_id: 'TICKET-1',
   has_workflow: true,
   state: {
     workflow: 'feature',
+    instance_id: 'inst-multi-01',
     version: 4,
     current_phase: 'implementation',
     phase_order: ['investigation', 'implementation', 'verification'],
@@ -150,11 +232,12 @@ export const workflowMultiple: WorkflowResponse = {
   },
   workflows: ['feature', 'bugfix'],
   all_workflows: {
-    feature: {
+    'inst-multi-01': {
       workflow: 'feature',
+      instance_id: 'inst-multi-01',
       version: 4,
       current_phase: 'implementation',
-        phase_order: ['investigation', 'implementation', 'verification'],
+      phase_order: ['investigation', 'implementation', 'verification'],
       phases: {
         investigation: { status: 'completed', result: 'pass' },
         implementation: { status: 'in_progress' },
@@ -171,8 +254,9 @@ export const workflowMultiple: WorkflowResponse = {
         },
       },
     },
-    bugfix: {
+    'inst-multi-02': {
       workflow: 'bugfix',
+      instance_id: 'inst-multi-02',
       version: 4,
       current_phase: 'investigation',
       phase_order: ['investigation', 'implementation'],
@@ -188,6 +272,7 @@ export const workflowCompleted: WorkflowResponse = {
   has_workflow: true,
   state: {
     workflow: 'feature',
+    instance_id: 'inst-compl-01',
     version: 4,
     status: 'completed',
     completed_at: '2026-01-01T01:30:00Z',
@@ -203,7 +288,25 @@ export const workflowCompleted: WorkflowResponse = {
     active_agents: {},
   },
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: {
+    'inst-compl-01': {
+      workflow: 'feature',
+      instance_id: 'inst-compl-01',
+      version: 4,
+      status: 'completed',
+      completed_at: '2026-01-01T01:30:00Z',
+      total_duration_sec: 5400,
+      total_tokens_used: 230000,
+      current_phase: 'verification',
+      phase_order: ['investigation', 'implementation', 'verification'],
+      phases: {
+        investigation: { status: 'completed', result: 'pass' },
+        implementation: { status: 'completed', result: 'pass' },
+        verification: { status: 'completed', result: 'pass' },
+      },
+      active_agents: {},
+    },
+  },
 }
 
 // Completed workflow with zero tokens (no agents had context_left)
@@ -212,6 +315,7 @@ export const workflowCompletedZeroTokens: WorkflowResponse = {
   has_workflow: true,
   state: {
     workflow: 'feature',
+    instance_id: 'inst-complt-01',
     version: 4,
     status: 'completed',
     completed_at: '2026-01-01T00:05:00Z',
@@ -225,7 +329,23 @@ export const workflowCompletedZeroTokens: WorkflowResponse = {
     active_agents: {},
   },
   workflows: ['feature'],
-  all_workflows: {},
+  all_workflows: {
+    'inst-complt-01': {
+      workflow: 'feature',
+      instance_id: 'inst-complt-01',
+      version: 4,
+      status: 'completed',
+      completed_at: '2026-01-01T00:05:00Z',
+      total_duration_sec: 300,
+      total_tokens_used: 0,
+      current_phase: 'investigation',
+      phase_order: ['investigation'],
+      phases: {
+        investigation: { status: 'completed', result: 'pass' },
+      },
+      active_agents: {},
+    },
+  },
 }
 
 export const emptySessions: AgentSessionsResponse = {

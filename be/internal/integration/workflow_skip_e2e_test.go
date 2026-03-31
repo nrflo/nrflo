@@ -26,7 +26,7 @@ func TestWorkflowSkipSocket_HappyPath(t *testing.T) {
 
 	env.CreateTicket(t, "SKIP-E2E", "skip e2e test")
 
-	if err := env.WorkflowSvc.Init(env.ProjectID, "SKIP-E2E", &types.WorkflowInitRequest{
+	if _, err := env.WorkflowSvc.Init(env.ProjectID, "SKIP-E2E", &types.WorkflowInitRequest{
 		Workflow: "skip-wf",
 	}); err != nil {
 		t.Fatalf("Init workflow: %v", err)
@@ -126,7 +126,7 @@ func TestWorkflowSkipSocket_TagNotInGroups(t *testing.T) {
 	}
 
 	env.CreateTicket(t, "SKIP-INVALID", "invalid tag test")
-	if err := env.WorkflowSvc.Init(env.ProjectID, "SKIP-INVALID", &types.WorkflowInitRequest{Workflow: "wf-inv-tag"}); err != nil {
+	if _, err := env.WorkflowSvc.Init(env.ProjectID, "SKIP-INVALID", &types.WorkflowInitRequest{Workflow: "wf-inv-tag"}); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
 	wfiID := env.GetWorkflowInstanceID(t, "SKIP-INVALID", "wf-inv-tag")
@@ -150,7 +150,7 @@ func TestWorkflowSkipSocket_Idempotent(t *testing.T) {
 	}
 
 	env.CreateTicket(t, "SKIP-IDEM", "idempotent test")
-	if err := env.WorkflowSvc.Init(env.ProjectID, "SKIP-IDEM", &types.WorkflowInitRequest{Workflow: "wf-idem"}); err != nil {
+	if _, err := env.WorkflowSvc.Init(env.ProjectID, "SKIP-IDEM", &types.WorkflowInitRequest{Workflow: "wf-idem"}); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
 	wfiID := env.GetWorkflowInstanceID(t, "SKIP-IDEM", "wf-idem")

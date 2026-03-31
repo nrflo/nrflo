@@ -10,11 +10,11 @@ import (
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
-	"be/internal/types"
 	"be/internal/ws"
 )
 
-// handleGetWorkflow returns the workflow state for a ticket from workflow_instances + agent_sessions
+// handleGetWorkflow returns the workflow state for a ticket from workflow_instances + agent_sessions.
+// Keys all_workflows by instance_id (like project workflow handler).
 func (s *Server) handleGetWorkflow(w http.ResponseWriter, r *http.Request) {
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -37,26 +37,45 @@ func (s *Server) handleGetWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build state for each workflow
-	workflowNames := make([]string, 0, len(instances))
+	// Key all_workflows by instance_id. Build deduplicated workflow names list.
 	allWorkflows := make(map[string]interface{})
+	workflowNamesSet := make(map[string]bool)
+	var firstInstanceID string
 	for _, wi := range instances {
-		workflowNames = append(workflowNames, wi.WorkflowID)
-		state, err := workflowSvc.GetStatus(projectID, id, &types.WorkflowGetRequest{Workflow: wi.WorkflowID})
+		workflowNamesSet[wi.WorkflowID] = true
+		state, err := workflowSvc.GetStatusByInstance(wi)
 		if err != nil {
 			continue
 		}
-		allWorkflows[wi.WorkflowID] = state
+		allWorkflows[wi.ID] = state
+		if firstInstanceID == "" {
+			firstInstanceID = wi.ID
+		}
 	}
 
-	// Select the requested workflow or default to first
-	requestedWorkflow := r.URL.Query().Get("workflow")
-	var selectedState interface{}
-	if requestedWorkflow != "" {
-		selectedState = allWorkflows[requestedWorkflow]
+	workflowNames := make([]string, 0, len(workflowNamesSet))
+	for name := range workflowNamesSet {
+		workflowNames = append(workflowNames, name)
 	}
-	if selectedState == nil && len(workflowNames) > 0 {
-		selectedState = allWorkflows[workflowNames[0]]
+
+	// Select state for display
+	requestedWorkflow := r.URL.Query().Get("workflow")
+	requestedInstance := r.URL.Query().Get("instance_id")
+	var selectedState interface{}
+	if requestedInstance != "" {
+		selectedState = allWorkflows[requestedInstance]
+	}
+	if selectedState == nil && requestedWorkflow != "" {
+		// Find first instance matching the requested workflow
+		for _, wi := range instances {
+			if wi.WorkflowID == requestedWorkflow {
+				selectedState = allWorkflows[wi.ID]
+				break
+			}
+		}
+	}
+	if selectedState == nil && firstInstanceID != "" {
+		selectedState = allWorkflows[firstInstanceID]
 	}
 	if selectedState == nil {
 		selectedState = emptyWorkflowState()
@@ -110,7 +129,8 @@ func (s *Server) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 	s.handleGetWorkflow(w, r)
 }
 
-// handleGetAgentSessions returns agent sessions for a ticket with findings from DB
+// handleGetAgentSessions returns agent sessions for a ticket with findings from DB.
+// Accepts optional instance_id query param to filter sessions to a specific instance.
 func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) {
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -120,6 +140,7 @@ func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) 
 
 	id := extractID(r)
 	phase := r.URL.Query().Get("phase")
+	instanceID := r.URL.Query().Get("instance_id")
 
 	sessions, err := s.agentSessionRepo().GetByTicket(projectID, id, phase)
 	if err != nil {
@@ -131,16 +152,35 @@ func (s *Server) handleGetAgentSessions(w http.ResponseWriter, r *http.Request) 
 		sessions = []*model.AgentSession{}
 	}
 
+	// Filter sessions by instance_id if provided
+	if instanceID != "" {
+		filtered := make([]*model.AgentSession, 0)
+		for _, sess := range sessions {
+			if sess.WorkflowInstanceID == instanceID {
+				filtered = append(filtered, sess)
+			}
+		}
+		sessions = filtered
+	}
+
 	// Build findings from workflow_instances + agent_sessions
 	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 	findings := make(map[string]interface{})
 
-	instances, _ := wfiRepo.ListByTicket(projectID, id)
-	workflowSvc := s.workflowService()
-	for _, wi := range instances {
-		combined := workflowSvc.BuildCombinedFindings(wi)
-		for k, v := range combined {
-			findings[k] = v
+	if instanceID != "" {
+		// Only build findings for the specific instance
+		if wi, err := wfiRepo.Get(instanceID); err == nil {
+			workflowSvc := s.workflowService()
+			findings = workflowSvc.BuildCombinedFindings(wi)
+		}
+	} else {
+		instances, _ := wfiRepo.ListByTicket(projectID, id)
+		workflowSvc := s.workflowService()
+		for _, wi := range instances {
+			combined := workflowSvc.BuildCombinedFindings(wi)
+			for k, v := range combined {
+				findings[k] = v
+			}
 		}
 	}
 

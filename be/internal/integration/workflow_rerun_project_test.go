@@ -178,8 +178,8 @@ func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	}
 }
 
-// TestCompletedTicketWorkflowUnaffected tests that ticket-scoped workflows with
-// status=completed are not affected by the project_completed re-run logic.
+// TestCompletedTicketWorkflowUnaffected tests that re-running a completed ticket-scoped
+// workflow creates a new instance and leaves the old one unchanged.
 func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -195,32 +195,29 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get workflow instance: %v", err)
 	}
+	firstInstanceID := wi.ID
 
-	// Set it to completed (ticket-scoped workflows use "completed" not "project_completed")
+	// Set it to completed
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceCompleted)
 	wfiRepo.UpdateFindings(wi.ID, `{"ticket_finding": "ticket_value"}`)
-
-	// Verify status is completed
-	wi, _ = wfiRepo.Get(wi.ID)
-	if wi.Status != model.WorkflowInstanceCompleted {
-		t.Fatalf("expected status completed, got %v", wi.Status)
-	}
 
 	// Create orchestrator and try to start again
 	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
 	ctx := context.Background()
 
-	// Attempt to start the ticket workflow again
 	result, err := orch.Start(ctx, orchestrator.RunRequest{
 		ProjectID:    env.ProjectID,
 		TicketID:     "TICKET-1",
 		WorkflowName: "test",
 		ScopeType:    "ticket",
 	})
-
-	// Should succeed (orchestrator allows re-running completed ticket workflows)
 	if err != nil {
 		t.Fatalf("failed to start orchestrator for ticket workflow: %v", err)
+	}
+
+	// New instance should have a different ID
+	if result.InstanceID == firstInstanceID {
+		t.Fatalf("expected new instance ID, got same as first: %s", result.InstanceID)
 	}
 
 	// Stop immediately
@@ -229,16 +226,31 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 		return !orch.IsInstanceRunning(result.InstanceID)
 	})
 
-	// Verify the ticket workflow instance state
-	wi, err = wfiRepo.Get(wi.ID)
+	// Old instance should remain completed with its findings intact
+	oldInstance, err := wfiRepo.Get(firstInstanceID)
 	if err != nil {
-		t.Fatalf("failed to get workflow instance: %v", err)
+		t.Fatalf("failed to get old workflow instance: %v", err)
+	}
+	if oldInstance.Status != model.WorkflowInstanceCompleted {
+		t.Fatalf("expected old instance to remain completed, got %v", oldInstance.Status)
+	}
+	if oldInstance.Findings != `{"ticket_finding": "ticket_value"}` {
+		t.Fatalf("expected old instance findings preserved, got %s", oldInstance.Findings)
 	}
 
-	// For ticket workflows, the status might change since a new Start creates a new Init.
-	// The key test is that the workflow can be started again.
-	if wi.Status != model.WorkflowInstanceActive && wi.Status != model.WorkflowInstanceCompleted {
-		t.Logf("Note: ticket workflow status after rerun is %v", wi.Status)
+	// New instance should exist with retry_count = 0 (fresh instance)
+	newInstance, err := wfiRepo.Get(result.InstanceID)
+	if err != nil {
+		t.Fatalf("failed to get new workflow instance: %v", err)
+	}
+	if newInstance.RetryCount != 0 {
+		t.Fatalf("expected retry_count 0 for new instance, got %d", newInstance.RetryCount)
+	}
+
+	// Both instances should exist
+	instances, _ := wfiRepo.ListByTicket(env.ProjectID, "TICKET-1")
+	if len(instances) != 2 {
+		t.Fatalf("expected 2 instances after rerun, got %d", len(instances))
 	}
 }
 

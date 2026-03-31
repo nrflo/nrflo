@@ -69,6 +69,12 @@ type Config struct {
 	DockerConfig *DockerConfig
 	// LowConsumptionMode enables model override via LowConsumptionModel
 	LowConsumptionMode bool
+	// GlobalStallStartTimeout overrides the default stall start timeout when agent def has no value.
+	// nil = use hardcoded default, 0 = disabled, >0 = custom seconds.
+	GlobalStallStartTimeout *int
+	// GlobalStallRunningTimeout overrides the default stall running timeout when agent def has no value.
+	// nil = use hardcoded default, 0 = disabled, >0 = custom seconds.
+	GlobalStallRunningTimeout *int
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -387,12 +393,24 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		} else {
 			stallStartTimeout = time.Duration(*agentDef.StallStartTimeoutSec) * time.Second
 		}
+	} else if s.config.GlobalStallStartTimeout != nil {
+		if *s.config.GlobalStallStartTimeout == 0 {
+			stallStartTimeout = 0
+		} else {
+			stallStartTimeout = time.Duration(*s.config.GlobalStallStartTimeout) * time.Second
+		}
 	}
 	if agentDef != nil && agentDef.StallRunningTimeoutSec != nil {
 		if *agentDef.StallRunningTimeoutSec == 0 {
 			stallRunningTimeout = 0
 		} else {
 			stallRunningTimeout = time.Duration(*agentDef.StallRunningTimeoutSec) * time.Second
+		}
+	} else if s.config.GlobalStallRunningTimeout != nil {
+		if *s.config.GlobalStallRunningTimeout == 0 {
+			stallRunningTimeout = 0
+		} else {
+			stallRunningTimeout = time.Duration(*s.config.GlobalStallRunningTimeout) * time.Second
 		}
 	}
 

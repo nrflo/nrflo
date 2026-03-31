@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -246,6 +247,19 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		lowConsumptionMode = true
 	}
 
+	// Read global stall timeout settings (once at workflow start)
+	var globalStallStartTimeout, globalStallRunningTimeout *int
+	if val, _ := pool.GetConfig("stall_start_timeout_sec"); val != "" {
+		if parsed, parseErr := strconv.Atoi(val); parseErr == nil {
+			globalStallStartTimeout = &parsed
+		}
+	}
+	if val, _ := pool.GetConfig("stall_running_timeout_sec"); val != "" {
+		if parsed, parseErr := strconv.Atoi(val); parseErr == nil {
+			globalStallRunningTimeout = &parsed
+		}
+	}
+
 	// Set parent session
 	parentSession := uuid.New().String()
 	pool.Close()
@@ -313,7 +327,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout)
 
 	status := "started"
 	sessionID := ""
@@ -591,6 +605,19 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		lowConsumptionMode = true
 	}
 
+	// Read global stall timeout settings (once at workflow retry)
+	var globalStallStartTimeout, globalStallRunningTimeout *int
+	if val, _ := pool.GetConfig("stall_start_timeout_sec"); val != "" {
+		if parsed, parseErr := strconv.Atoi(val); parseErr == nil {
+			globalStallStartTimeout = &parsed
+		}
+	}
+	if val, _ := pool.GetConfig("stall_running_timeout_sec"); val != "" {
+		if parsed, parseErr := strconv.Atoi(val); parseErr == nil {
+			globalStallRunningTimeout = &parsed
+		}
+	}
+
 	parentSession := uuid.New().String()
 
 	// Build run request
@@ -621,7 +648,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	dockerCfg := buildDockerConfig(project, wt)
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout)
 
 	return nil
 }
@@ -812,6 +839,8 @@ func (o *Orchestrator) runLoop(
 	agentTags map[string]string,
 	pre *interactivePreStep,
 	lowConsumptionMode bool,
+	globalStallStartTimeout *int,
+	globalStallRunningTimeout *int,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -958,15 +987,17 @@ func (o *Orchestrator) runLoop(
 			phase := phase // capture for goroutine
 			go func() {
 				sp := spawner.New(spawner.Config{
-					Workflows:          workflows,
-					Agents:             agents,
-					DataPath:           o.dataPath,
-					ProjectRoot:        projectRoot,
-					WSHub:              o.wsHub,
-					Pool:               pool,
-					Clock:              o.clock,
-					DockerConfig:       dockerCfg,
-					LowConsumptionMode: lowConsumptionMode,
+					Workflows:                 workflows,
+					Agents:                    agents,
+					DataPath:                  o.dataPath,
+					ProjectRoot:               projectRoot,
+					WSHub:                     o.wsHub,
+					Pool:                      pool,
+					Clock:                     o.clock,
+					DockerConfig:              dockerCfg,
+					LowConsumptionMode:        lowConsumptionMode,
+					GlobalStallStartTimeout:   globalStallStartTimeout,
+					GlobalStallRunningTimeout: globalStallRunningTimeout,
 				})
 
 				// Store spawner ref so RestartAgent can reach it

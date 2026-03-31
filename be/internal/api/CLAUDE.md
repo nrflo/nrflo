@@ -101,8 +101,8 @@ PATCH  /api/v1/system-agents/:id       # Update system agent definition
 DELETE /api/v1/system-agents/:id       # Delete system agent definition
 
 # Global settings (no project scope)
-GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "session_retention_limit": int}
-PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "session_retention_limit": int (>= 10)}
+GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null}
+PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "session_retention_limit": int (>= 10), "stall_start_timeout_sec": int|null (>= 0), "stall_running_timeout_sec": int|null (>= 0)}
 
 # Agent sessions
 GET /api/v1/tickets/:id/agents

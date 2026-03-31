@@ -167,6 +167,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - 15s delay before retry (waitBeforeStallRetry, broadcasts agent.stall_waiting event)
    - Stall timeouts configurable per agent_definition: stall_start_timeout_sec, stall_running_timeout_sec
      (NULL = defaults, 0 = disabled)
+   - Global stall timeout override: when agent def has NULL, spawner checks Config.GlobalStallStartTimeout / GlobalStallRunningTimeout before falling back to hardcoded defaults. Priority: per-agent def > global config > hardcoded default.
 
 5c. INSTANT STALL DETECTION (post-completion, in monitorAll after handleCompletion)
    - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)

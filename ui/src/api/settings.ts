@@ -3,6 +3,8 @@ import { apiGet, apiPatch } from './client'
 export interface GlobalSettings {
   low_consumption_mode: boolean
   session_retention_limit: number
+  stall_start_timeout_sec: number | null
+  stall_running_timeout_sec: number | null
 }
 
 export const settingsKeys = {

@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
+import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
 import type { TicketWithDeps } from '@/types/ticket'
 import { cn, statusColor, formatDateTime, priorityLabel } from '@/lib/utils'
 
@@ -62,7 +63,7 @@ export function DescriptionTabContent({ ticket }: DescriptionTabContentProps) {
       <Card>
         <CardContent className="pt-6">
           {ticket.description ? (
-            <p className="whitespace-pre-wrap">{ticket.description}</p>
+            <RenderedMarkdown content={ticket.description} />
           ) : (
             <p className="text-muted-foreground italic">No description</p>
           )}

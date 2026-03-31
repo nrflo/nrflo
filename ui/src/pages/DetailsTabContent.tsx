@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
 import type { TicketWithDeps } from '@/types/ticket'
 import { cn, statusColor, formatDateTime, priorityLabel } from '@/lib/utils'
 
@@ -66,7 +67,7 @@ export function DetailsTabContent({ ticket }: DetailsTabContentProps) {
       <Card>
         <CardContent className="pt-6">
           {ticket.description ? (
-            <p className="whitespace-pre-wrap">{ticket.description}</p>
+            <RenderedMarkdown content={ticket.description} />
           ) : (
             <p className="text-muted-foreground italic">No description</p>
           )}

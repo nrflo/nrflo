@@ -39,6 +39,11 @@ describe('DescriptionTabContent', () => {
     expect(screen.getByText('Some description')).toBeInTheDocument()
   })
 
+  it('renders markdown description as formatted HTML', () => {
+    renderPage({ ...baseTicket, description: '# My Heading\n\nSome **bold** text.' })
+    expect(screen.getByRole('heading', { level: 1, name: 'My Heading' })).toBeInTheDocument()
+  })
+
   it('renders "No description" when description is null', () => {
     renderPage({ ...baseTicket, description: null })
     expect(screen.getByText('No description')).toBeInTheDocument()

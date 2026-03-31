@@ -45,6 +45,43 @@ function buildLayerEdges(nodes: Node<AgentFlowNodeData>[], existingEdges: Edge[]
   return syntheticEdges
 }
 
+/** Center each layer's nodes around the same horizontal midpoint. */
+function centerLayers(nodes: Node<AgentFlowNodeData>[], nodeWidth: number) {
+  // Group nodes by phaseIndex (layer)
+  const byLayer: Record<number, Node<AgentFlowNodeData>[]> = {}
+  for (const node of nodes) {
+    const layer = node.data.phaseIndex
+    if (!byLayer[layer]) byLayer[layer] = []
+    byLayer[layer].push(node)
+  }
+
+  // Find the widest layer's extent to use as the center reference
+  let globalCenter = 0
+  let maxExtent = 0
+  for (const layerNodes of Object.values(byLayer)) {
+    const minX = Math.min(...layerNodes.map(n => n.position.x))
+    const maxX = Math.max(...layerNodes.map(n => n.position.x)) + nodeWidth
+    const extent = maxX - minX
+    if (extent > maxExtent) {
+      maxExtent = extent
+      globalCenter = (minX + maxX) / 2
+    }
+  }
+
+  // Shift each layer so its center aligns with globalCenter
+  for (const layerNodes of Object.values(byLayer)) {
+    const minX = Math.min(...layerNodes.map(n => n.position.x))
+    const maxX = Math.max(...layerNodes.map(n => n.position.x)) + nodeWidth
+    const layerCenter = (minX + maxX) / 2
+    const shift = globalCenter - layerCenter
+    if (Math.abs(shift) > 0.5) {
+      for (const node of layerNodes) {
+        node.position.x += shift
+      }
+    }
+  }
+}
+
 export async function getLayoutedElements(
   nodes: Node<AgentFlowNodeData>[],
   edges: Edge[],
@@ -98,6 +135,7 @@ export async function getLayoutedElements(
     (layout.children ?? []).map(child => [child.id, child])
   )
 
+  // Apply ELK positions
   for (const node of nodes) {
     const elkNode = nodeMap.get(node.id)
     if (elkNode) {
@@ -109,6 +147,10 @@ export async function getLayoutedElements(
       }
     }
   }
+
+  // Center each layer horizontally around the widest layer's midpoint.
+  // ELK's NETWORK_SIMPLEX doesn't center 1→2→1 fan patterns well.
+  centerLayers(nodes, nodeWidth)
 
   return { nodes, edges }
 }

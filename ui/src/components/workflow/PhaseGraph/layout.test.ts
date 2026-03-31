@@ -253,6 +253,34 @@ describe('layout', () => {
       expect(layouted[3].position.y).toBeGreaterThan(layouted[0].position.y)
     })
 
+    it('centers single nodes over parallel layer in 1→2→1 pattern', async () => {
+      const nodes = [
+        makeNode('setup', 0),
+        makeNode('impl1', 1),
+        makeNode('impl2', 1),
+        makeNode('qa', 2),
+      ]
+      const edges: Edge[] = [
+        { id: 'e1', source: 'setup', target: 'impl1' },
+        { id: 'e2', source: 'setup', target: 'impl2' },
+        { id: 'e3', source: 'impl1', target: 'qa' },
+        { id: 'e4', source: 'impl2', target: 'qa' },
+      ]
+
+      const { nodes: layouted } = await getLayoutedElements(nodes, edges, null)
+
+      const nodeWidth = 320
+      const layer1 = [layouted[1], layouted[2]].sort((a, b) => a.position.x - b.position.x)
+      const layer1Center = (layer1[0].position.x + layer1[1].position.x + nodeWidth) / 2
+
+      // Single nodes (setup, qa) should be centered over the parallel pair
+      const setupCenter = layouted[0].position.x + nodeWidth / 2
+      const qaCenter = layouted[3].position.x + nodeWidth / 2
+
+      expect(Math.abs(setupCenter - layer1Center)).toBeLessThan(1)
+      expect(Math.abs(qaCenter - layer1Center)).toBeLessThan(1)
+    })
+
     it('handles complex multi-layer parallel execution', async () => {
       const nodes = [
         makeNode('setup', 0),

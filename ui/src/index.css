@@ -38,6 +38,25 @@
   --color-secondary-foreground: #f8fafc;
 }
 
+@property --spin-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: true;
+}
+
+@keyframes global-spin {
+  to { --spin-angle: 360deg; }
+}
+
+:root {
+  animation: global-spin 1s linear infinite;
+}
+
+.spin-sync {
+  transform: rotate(var(--spin-angle));
+  animation: none;
+}
+
 body {
   margin: 0;
   background-color: var(--color-background);

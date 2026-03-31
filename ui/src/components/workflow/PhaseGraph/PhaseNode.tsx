@@ -11,7 +11,7 @@ function StatusIcon({ status }: { status: PhaseStatus }) {
     case 'completed':
       return <Check className="h-4 w-4 text-green-500" />
     case 'in_progress':
-      return <Loader2 className="h-4 w-4 text-yellow-500 animate-spin" />
+      return <Loader2 className="h-4 w-4 text-yellow-500 spin-sync" />
     case 'error':
       return <AlertCircle className="h-4 w-4 text-red-500" />
     case 'skipped':

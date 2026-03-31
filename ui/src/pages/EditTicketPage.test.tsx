@@ -73,7 +73,7 @@ describe('EditTicketPage', () => {
   it('shows loading spinner while ticket is loading', () => {
     vi.mocked(ticketsApi.getTicket).mockReturnValue(new Promise(() => {}))
     renderPage()
-    expect(document.querySelector('.animate-spin')).toBeInTheDocument()
+    expect(document.querySelector('.spin-sync')).toBeInTheDocument()
   })
 
   it('shows error when ticket fails to load', async () => {

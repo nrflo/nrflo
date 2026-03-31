@@ -17,7 +17,7 @@ function StatusIcon({ result, isRunning, isPending, isSkipped }: { result?: stri
     return <Clock className="h-5 w-5 text-gray-400" />
   }
   if (isRunning) {
-    return <Loader2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400 animate-spin" />
+    return <Loader2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400 spin-sync" />
   }
   if (result === 'pass') {
     return <CheckCircle className="h-5 w-5 text-green-500" />

@@ -11,7 +11,7 @@ export function Spinner({ className, size = 'md' }: SpinnerProps) {
       role="status"
       aria-label="Loading"
       className={cn(
-        'animate-spin rounded-full border-2 border-muted border-t-primary',
+        'spin-sync rounded-full border-2 border-muted border-t-primary',
         {
           'h-4 w-4': size === 'sm',
           'h-6 w-6': size === 'md',

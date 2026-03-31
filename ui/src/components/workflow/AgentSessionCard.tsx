@@ -141,7 +141,7 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
           </div>
           {messagesLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2 className="h-4 w-4 spin-sync text-muted-foreground" />
               <span className="ml-2 text-xs text-muted-foreground">Loading messages...</span>
             </div>
           ) : (

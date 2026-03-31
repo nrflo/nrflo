@@ -8,7 +8,7 @@ function AgentStatusIcon({ result, isInteractive }: { result?: string; isInterac
     return <Terminal className="h-3.5 w-3.5 text-blue-500" />
   }
   if (!result) {
-    return <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin" />
+    return <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync" />
   }
   if (result === 'pass') {
     return <CheckCircle className="h-3.5 w-3.5 text-green-500" />

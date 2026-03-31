@@ -44,7 +44,7 @@ export function GitStatusTabContent({ projectId }: GitStatusTabContentProps) {
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'spin-sync' : ''}`} />
           Refresh
         </Button>
       </div>

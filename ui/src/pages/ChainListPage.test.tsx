@@ -85,7 +85,7 @@ describe('ChainListPage - Render States', () => {
 
     const { container } = renderChainListPage()
 
-    expect(container.querySelector('[class*="animate-spin"]')).toBeInTheDocument()
+    expect(container.querySelector('[class*="spin-sync"]')).toBeInTheDocument()
   })
 
   it('renders empty state when no chains exist', () => {

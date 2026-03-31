@@ -52,7 +52,7 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRetryFailed, retry
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAgentClick(agent, session) }}}
         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors cursor-pointer"
       >
-        {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin shrink-0" />}
+        {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync shrink-0" />}
         <span className="text-sm font-medium truncate">
           {agent.phase?.replace(/_/g, ' ')} — {modelName}
         </span>
@@ -271,7 +271,7 @@ export function AgentLogPanel({
       ) : (
         <div className="flex flex-col h-full">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
-            <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync" />
             <span className="text-sm font-medium">
               Running Agents ({runningCount})
             </span>

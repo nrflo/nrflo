@@ -23,9 +23,10 @@ interface RunWorkflowDialogProps {
   onClose: () => void
   ticketId: string
   onInteractiveStart?: (sessionId: string, agentType: string) => void
+  blockedReason?: string
 }
 
-export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart }: RunWorkflowDialogProps) {
+export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart, blockedReason }: RunWorkflowDialogProps) {
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
   const [instructions, setInstructions] = useState('')
   const [startMode, setStartMode] = useState<StartMode>('normal')
@@ -205,6 +206,12 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart 
           </>
         )}
 
+        {blockedReason && (
+          <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-300">
+            <span>{blockedReason}</span>
+          </div>
+        )}
+
         {runMutation.isError && (
           <p className="text-sm text-destructive">
             {runMutation.error instanceof Error
@@ -220,7 +227,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart 
         </Button>
         <Button
           onClick={handleRun}
-          disabled={!selectedWorkflow || runMutation.isPending}
+          disabled={!selectedWorkflow || runMutation.isPending || !!blockedReason}
         >
           {runMutation.isPending && <Spinner size="sm" className="mr-2" />}
           Run

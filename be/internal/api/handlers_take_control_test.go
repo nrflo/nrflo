@@ -31,7 +31,7 @@ func newTakeControlServer(t *testing.T) *Server {
 	t.Cleanup(hub.Stop)
 
 	orch := orchestrator.New(dbPath, hub, clock.Real())
-	return &Server{orchestrator: orch, clock: clock.Real()}
+	return &Server{orchestrator: orch, clock: clock.Real(), pool: pool}
 }
 
 // withProject returns a URL with ?project=<id> query param, which is how

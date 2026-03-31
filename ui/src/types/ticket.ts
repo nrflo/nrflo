@@ -43,6 +43,8 @@ export interface Dependency {
 export interface TicketWithDeps extends Ticket {
   blockers: Dependency[]
   blocks: Dependency[]
+  is_blocked?: boolean
+  blocked_by?: string[]
   children?: Ticket[]
   parent_ticket?: Ticket | null
   siblings?: Ticket[]

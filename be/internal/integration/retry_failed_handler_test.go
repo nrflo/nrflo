@@ -165,8 +165,9 @@ func TestRetryFailedHandler_WorkflowNotFound(t *testing.T) {
 		"session_id": "sess-1",
 	})
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d: %s", resp.StatusCode, string(body))
+	// Ticket TICK-1 doesn't exist, so ValidateRunnable returns 404
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", resp.StatusCode, string(body))
 	}
 }
 

@@ -60,6 +60,7 @@ interface WorkflowTabContentProps {
   onResumeSession?: (sessionId: string) => void
   resumeSessionPending?: boolean
   projectFindings?: Record<string, unknown>
+  blockedReason?: string
 }
 
 export function WorkflowTabContent({
@@ -93,6 +94,7 @@ export function WorkflowTabContent({
   onResumeSession,
   resumeSessionPending,
   projectFindings,
+  blockedReason,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
@@ -232,12 +234,12 @@ export function WorkflowTabContent({
                   <XCircle className="h-4 w-4" />
                   <span className="font-medium">Workflow Failed</span>
                 </div>
-                <Tooltip text="Retry the failed layer — all agents in that layer will be re-run" placement="top">
+                <Tooltip text={blockedReason || "Retry the failed layer — all agents in that layer will be re-run"} placement="top">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setBannerConfirmOpen(true)}
-                    disabled={!!retryingSessionId}
+                    disabled={!!retryingSessionId || !!blockedReason}
                     className="ml-auto text-red-600 hover:text-red-700 border-red-300 dark:border-red-700"
                   >
                     {retryingSessionId ? (

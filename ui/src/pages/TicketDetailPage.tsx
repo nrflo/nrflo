@@ -83,6 +83,14 @@ export function TicketDetailPage() {
   const reopenMutation = useReopenTicket()
   const deleteMutation = useDeleteTicket()
 
+  const blockedReason = ticket
+    ? ticket.status === 'closed'
+      ? 'Cannot run workflow on a closed ticket'
+      : ticket.is_blocked
+        ? `Cannot run workflow — blocked by: ${ticket.blocked_by?.join(', ') || 'open dependencies'}`
+        : undefined
+    : undefined
+
   const handleExpandedChange = useCallback((expanded: boolean) => {
     setWorkflowExpanded(expanded)
   }, [])
@@ -286,6 +294,7 @@ export function TicketDetailPage() {
             onShowEpicRunDialog={() => setShowEpicRunDialog(true)}
             onExpandedChange={handleExpandedChange}
             projectFindings={projectFindings}
+            blockedReason={blockedReason}
           />
         )}
 
@@ -305,6 +314,7 @@ export function TicketDetailPage() {
           open={showRunDialog}
           onClose={() => setShowRunDialog(false)}
           ticketId={id}
+          blockedReason={blockedReason}
           onInteractiveStart={(sessionId, agentType) => {
             setShowRunDialog(false)
             setInteractiveSession({ sessionId, agentType })

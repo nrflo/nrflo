@@ -201,6 +201,11 @@ func (s *Server) agentSessionRepo() *repo.AgentSessionRepo {
 	return repo.NewAgentSessionRepo(s.pool, s.clock)
 }
 
+// ticketService returns a ticket service backed by the connection pool
+func (s *Server) ticketService() *service.TicketService {
+	return service.NewTicketService(s.pool, s.clock)
+}
+
 // workflowService returns a workflow service backed by the connection pool
 func (s *Server) workflowService() *service.WorkflowService {
 	return service.NewWorkflowService(s.pool, s.clock)

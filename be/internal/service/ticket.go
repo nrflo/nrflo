@@ -254,6 +254,26 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 	return err
 }
 
+// ValidateRunnable checks that a ticket can have a workflow run on it.
+// Returns an error if the ticket is closed or blocked by open dependencies.
+func (s *TicketService) ValidateRunnable(projectID, ticketID string) error {
+	ticket, err := s.Get(projectID, ticketID)
+	if err != nil {
+		return err
+	}
+	if ticket.Status == model.StatusClosed {
+		return fmt.Errorf("cannot run workflow on closed ticket")
+	}
+	blockers, err := s.getOpenBlockers(projectID, ticketID)
+	if err != nil {
+		return fmt.Errorf("failed to check blockers: %w", err)
+	}
+	if len(blockers) > 0 {
+		return fmt.Errorf("cannot run workflow on blocked ticket — blocked by: %s", strings.Join(blockers, ", "))
+	}
+	return nil
+}
+
 // SetInProgress sets a ticket's status to in_progress, but only if currently open.
 func (s *TicketService) SetInProgress(projectID, ticketID string) error {
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)

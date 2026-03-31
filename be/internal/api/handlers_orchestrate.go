@@ -52,6 +52,15 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := s.ticketService().ValidateRunnable(projectID, ticketID); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+		} else {
+			writeError(w, http.StatusConflict, err.Error())
+		}
+		return
+	}
+
 	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
 		ProjectID:    projectID,
 		TicketID:     ticketID,
@@ -155,6 +164,15 @@ func (s *Server) handleRetryFailedAgent(w http.ResponseWriter, r *http.Request) 
 	}
 	if body.SessionID == "" {
 		writeError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+
+	if err := s.ticketService().ValidateRunnable(projectID, ticketID); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+		} else {
+			writeError(w, http.StatusConflict, err.Error())
+		}
 		return
 	}
 

@@ -30,6 +30,7 @@ interface TicketWorkflowTabProps {
   onShowEpicRunDialog: () => void
   onExpandedChange: (expanded: boolean) => void
   projectFindings?: Record<string, unknown>
+  blockedReason?: string
 }
 
 export function TicketWorkflowTab({
@@ -45,6 +46,7 @@ export function TicketWorkflowTab({
   onShowEpicRunDialog,
   onExpandedChange,
   projectFindings,
+  blockedReason,
 }: TicketWorkflowTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<WorkflowSubTab>('running')
   const [selectedInstanceId, setSelectedInstanceId] = useState('')
@@ -298,6 +300,7 @@ export function TicketWorkflowTab({
         }}
         resumeSessionPending={resumeSessionMutation.isPending}
         projectFindings={projectFindings}
+        blockedReason={blockedReason}
       />
       {renderTerminalDialog()}
     </>

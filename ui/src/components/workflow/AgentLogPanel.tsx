@@ -88,7 +88,7 @@ function AgentMessagesBlock({ agent, session, onAgentClick, onRetryFailed, retry
       </div>
       {displayMessages.length > 0 && (
         <div className="px-3 pb-2">
-          <table className="w-full text-xs font-mono border-collapse">
+          <table className="w-full table-fixed text-xs font-mono border-collapse">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
                 <th className="py-1 pr-2 font-medium w-[70px]">Time</th>
@@ -276,7 +276,7 @@ export function AgentLogPanel({
               Running Agents ({runningCount})
             </span>
           </div>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
             {runningAgents.map((agent) => {
               const key = `${agent.agent_type}-${agent.model_id}-${agent.phase}`
               const session = findSession(agent)

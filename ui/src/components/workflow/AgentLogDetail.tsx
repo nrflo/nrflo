@@ -146,7 +146,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2">
         {messagesLoading ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Loader2 className="h-6 w-6 mb-2 animate-spin opacity-50" />
@@ -188,7 +188,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                 </button>
               ))}
             </div>
-            <table className="w-full text-xs font-mono border-collapse">
+            <table className="w-full table-fixed text-xs font-mono border-collapse">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="py-1 pr-2 font-medium w-[70px]">Time</th>

@@ -173,7 +173,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart 
                   </Tooltip>
                 )}
                 {canPlan && (
-                  <Tooltip text="Spawns a planner agent in a live terminal. Collaborate with the planner to define the approach, then the full workflow executes automatically." placement="top" className="whitespace-normal max-w-xs">
+                  <Tooltip text="Spawns a planner agent in a live terminal. Collaborate with the planner to define the approach — the resulting plan is used as User Instructions for all downstream agents. Then the full workflow executes automatically." placement="top" className="whitespace-normal max-w-xs">
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
                       <input
                         type="checkbox"

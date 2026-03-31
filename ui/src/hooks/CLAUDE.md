@@ -102,6 +102,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useExitInteractiveProject()` | Project-scoped variant of useExitInteractive |
 | `useRunningAgents.ts` | TanStack Query hook for global running agents (`GET /api/v1/agents/running`), 30s polling fallback, 5s stale time. WS `global.running_agents` invalidates cache. |
 | `useIsMobile.ts` | Media query hook for mobile detection (`max-width: 639px`). Used by PhaseGraph for responsive layout and touch interactions. |
+| `useDeleteProjectWorkflowInstance()` | Mutation: delete a project workflow instance (failed or completed) |
 
 ## Testing
 

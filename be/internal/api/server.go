@@ -310,6 +310,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/take-control", s.handleTakeControlProject)
 	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/resume-session", s.handleResumeSessionProject)
 	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/exit-interactive", s.handleExitInteractiveProject)
+	mux.HandleFunc("DELETE /api/v1/projects/{id}/workflow/{instance_id}", s.handleDeleteProjectWorkflowInstance)
 	mux.HandleFunc("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)
 	mux.HandleFunc("GET /api/v1/projects/{id}/agents", s.handleGetProjectAgentSessions)
 

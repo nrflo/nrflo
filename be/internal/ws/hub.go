@@ -51,6 +51,7 @@ const (
 	EventMergeConflictResolving      = "merge.conflict_resolving"
 	EventMergeConflictResolved       = "merge.conflict_resolved"
 	EventMergeConflictFailed         = "merge.conflict_failed"
+	EventWorkflowInstanceDeleted     = "workflow_instance.deleted"
 	EventTestEcho                    = "test.echo"
 )
 

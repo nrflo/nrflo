@@ -15,6 +15,7 @@ import {
   takeControlProject,
   exitInteractiveProject,
   resumeSessionProject,
+  deleteProjectWorkflowInstance,
 } from '@/api/projectWorkflows'
 import {
   listTickets,
@@ -444,6 +445,18 @@ export function useExitInteractiveProject() {
   return useMutation({
     mutationFn: ({ projectId, params }: { projectId: string; params: ExitInteractiveRequest }) =>
       exitInteractiveProject(projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })
+    },
+  })
+}
+
+export function useDeleteProjectWorkflowInstance() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, instanceId }: { projectId: string; instanceId: string }) =>
+      deleteProjectWorkflowInstance(projectId, instanceId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })

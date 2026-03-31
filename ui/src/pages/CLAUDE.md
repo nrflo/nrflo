@@ -42,15 +42,17 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 ## ProjectWorkflowsPage
 
-3-tab layout for project-scoped workflows with multi-instance support:
+4-tab layout for project-scoped workflows with multi-instance support:
 
 - **Run Workflow**: Inline workflow selector + instructions form
 - **Running**: Instance list with status (uses `WorkflowTabContent`)
-- **Completed**: Unified pageable `CompletedAgentsTable` merging agents from all completed instances (bypasses `WorkflowTabContent`)
+- **Failed**: Instance list with delete button per instance (status === 'failed')
+- **Completed**: Unified pageable `CompletedAgentsTable` merging agents from all completed instances, plus `InstanceList` with delete buttons
 
 Sub-components in `ProjectWorkflowComponents.tsx`:
+- `ProjectWorkflowTabBar` — tab bar component
 - `RunWorkflowForm` — inline workflow selector + instructions
-- `InstanceList` — instance selector chips
+- `InstanceList` — instance selector chips (accepts `failed` tab type and optional `onDelete` callback)
 
 Supports multiple concurrent instances keyed by `instance_id`.
 

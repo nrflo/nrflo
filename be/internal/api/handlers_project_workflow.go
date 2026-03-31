@@ -314,6 +314,45 @@ func (s *Server) handleExitInteractiveProject(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, map[string]string{"status": "completed"})
 }
 
+// handleDeleteProjectWorkflowInstance deletes a completed or failed project-scoped workflow instance.
+// DELETE /api/v1/projects/{id}/workflow/{instance_id}
+func (s *Server) handleDeleteProjectWorkflowInstance(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	instanceID := r.PathValue("instance_id")
+	if instanceID == "" {
+		writeError(w, http.StatusBadRequest, "instance ID required")
+		return
+	}
+
+	workflowSvc := s.workflowService()
+	err := workflowSvc.DeleteProjectWorkflowInstance(projectID, instanceID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "active") {
+			writeError(w, http.StatusConflict, err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "workflow instance deleted"})
+
+	if s.wsHub != nil {
+		s.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowInstanceDeleted, projectID, "", "", map[string]interface{}{
+			"instance_id": instanceID,
+		}))
+	}
+}
+
 // handleGetProjectWorkflow returns the workflow state for a project-scoped workflow.
 // GET /api/v1/projects/{id}/workflow
 func (s *Server) handleGetProjectWorkflow(w http.ResponseWriter, r *http.Request) {

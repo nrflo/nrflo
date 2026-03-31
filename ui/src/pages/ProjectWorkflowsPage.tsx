@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle, Play } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import {
   useProjectWorkflow,
@@ -11,18 +10,21 @@ import {
   useTakeControlProject,
   useExitInteractiveProject,
   useResumeSessionProject,
+  useDeleteProjectWorkflowInstance,
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
 import { WorkflowTabContent } from './WorkflowTabContent'
-import { RunWorkflowForm, InstanceList } from './ProjectWorkflowComponents'
+import { RunWorkflowForm, InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
+import type { ProjectWorkflowTabId } from './ProjectWorkflowComponents'
 import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import type { WorkflowState, CompletedAgentRow } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 
-type TabId = 'run' | 'running' | 'completed'
+type TabId = ProjectWorkflowTabId
 
 export function ProjectWorkflowsPage() {
   const currentProject = useProjectStore((s) => s.currentProject)
@@ -33,6 +35,7 @@ export function ProjectWorkflowsPage() {
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
   const [interactiveSession, setInteractiveSession] = useState<{ sessionId: string; agentType: string } | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   // Run Workflow form state
   const [selectedWorkflowDef, setSelectedWorkflowDef] = useState('')
@@ -60,6 +63,7 @@ export function ProjectWorkflowsPage() {
   const takeControlMutation = useTakeControlProject()
   const resumeSessionMutation = useResumeSessionProject()
   const exitInteractiveMutation = useExitInteractiveProject()
+  const deleteMutation = useDeleteProjectWorkflowInstance()
 
   // Filter to project-scoped workflows only
   const projectWorkflows = workflowDefs
@@ -76,20 +80,25 @@ export function ProjectWorkflowsPage() {
   // all_workflows keyed by instance_id
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
 
-  const { runningInstances, completedInstances } = useMemo(() => {
+  const { runningInstances, failedInstances, completedInstances } = useMemo(() => {
     const running: Record<string, WorkflowState> = {}
+    const failed: Record<string, WorkflowState> = {}
     const completed: Record<string, WorkflowState> = {}
     for (const [instanceId, state] of Object.entries(allWorkflows)) {
       if (state.status === 'completed' || state.status === 'project_completed') {
         completed[instanceId] = state
+      } else if (state.status === 'failed') {
+        failed[instanceId] = state
       } else {
         running[instanceId] = state
       }
     }
-    return { runningInstances: running, completedInstances: completed }
+    return { runningInstances: running, failedInstances: failed, completedInstances: completed }
   }, [allWorkflows])
 
-  const tabInstances = activeTab === 'running' ? runningInstances : completedInstances
+  const tabInstances = activeTab === 'running' ? runningInstances
+    : activeTab === 'failed' ? failedInstances
+    : completedInstances
   const instanceIds = Object.keys(tabInstances)
   const hasWorkflow = instanceIds.length > 0
   const hasMultipleWorkflows = instanceIds.length > 1
@@ -151,6 +160,7 @@ export function ProjectWorkflowsPage() {
     : false
 
   const runningCount = Object.keys(runningInstances).length
+  const failedCount = Object.keys(failedInstances).length
   const completedCount = Object.keys(completedInstances).length
 
   const handleTabSwitch = (tab: TabId) => {
@@ -196,45 +206,13 @@ export function ProjectWorkflowsPage() {
         </p>
       </div>
 
-      <div className="border-b border-border">
-        <div className="flex gap-1">
-          <button
-            onClick={() => handleTabSwitch('run')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-              activeTab === 'run'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Play className="h-4 w-4" />
-            Run Workflow
-          </button>
-          <button
-            onClick={() => handleTabSwitch('running')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-              activeTab === 'running'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Running ({runningCount})
-          </button>
-          <button
-            onClick={() => handleTabSwitch('completed')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-              activeTab === 'completed'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CheckCircle className="h-4 w-4" />
-            Completed ({completedCount})
-          </button>
-        </div>
-      </div>
+      <ProjectWorkflowTabBar
+        activeTab={activeTab}
+        onTabSwitch={handleTabSwitch}
+        runningCount={runningCount}
+        failedCount={failedCount}
+        completedCount={completedCount}
+      />
 
       {activeTab === 'run' && (
         <RunWorkflowForm
@@ -256,6 +234,17 @@ export function ProjectWorkflowsPage() {
           selectedPanelAgent && 'min-h-[calc(100vh-280px)]'
         )}>
           <div className="flex-1 min-w-0 space-y-4">
+            {instanceIds.length > 0 && (
+              <InstanceList
+                instanceIds={instanceIds}
+                instances={tabInstances}
+                labels={selectorLabels}
+                selectedId={resolvedInstanceId}
+                onSelect={setSelectedInstanceId}
+                tab="completed"
+                onDelete={setDeleteTargetId}
+              />
+            )}
             {mergedCompletedAgents.length > 0 ? (
               <CompletedAgentsTable
                 agentHistory={mergedCompletedAgents}
@@ -288,6 +277,69 @@ export function ProjectWorkflowsPage() {
             />
           )}
         </div>
+      )}
+
+      {activeTab === 'failed' && (
+        <>
+          {instanceIds.length > 0 && (
+            <InstanceList
+              instanceIds={instanceIds}
+              instances={tabInstances}
+              labels={selectorLabels}
+              selectedId={resolvedInstanceId}
+              onSelect={setSelectedInstanceId}
+              tab="failed"
+              onDelete={setDeleteTargetId}
+            />
+          )}
+          <WorkflowTabContent
+            ticketId={undefined}
+            hasWorkflow={hasWorkflow}
+            displayedState={displayedState}
+            displayedWorkflowName={displayedWorkflowName}
+            hasMultipleWorkflows={hasMultipleWorkflows}
+            workflows={instanceIds}
+            workflowLabels={selectorLabels}
+            selectedWorkflow={selectedInstanceId}
+            onSelectWorkflow={setSelectedInstanceId}
+            isOrchestrated={false}
+            hasActivePhase={false}
+            activeAgents={{}}
+            sessions={filteredSessions}
+            logPanelCollapsed={logPanelCollapsed}
+            onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
+            selectedPanelAgent={selectedPanelAgent}
+            onAgentSelect={setSelectedPanelAgent}
+            onStop={() => {}}
+            stopPending={false}
+            onRetryFailed={(sessionId) =>
+              currentProject &&
+              retryFailedMutation.mutate({
+                projectId: currentProject,
+                params: {
+                  workflow: displayedState?.workflow ?? '',
+                  session_id: sessionId,
+                  instance_id: resolvedInstanceId || undefined,
+                },
+              })
+            }
+            retryingSessionId={
+              retryFailedMutation.isPending
+                ? (retryFailedMutation.variables?.params.session_id ?? null)
+                : null
+            }
+            onTakeControl={() => {}}
+            takeControlPending={false}
+            onResumeSession={(sessionId) => {
+              if (!currentProject) return
+              resumeSessionMutation.mutate(
+                { projectId: currentProject, params: { session_id: sessionId } },
+                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+              )
+            }}
+            resumeSessionPending={resumeSessionMutation.isPending}
+          />
+        </>
       )}
 
       {activeTab === 'running' && (
@@ -374,6 +426,21 @@ export function ProjectWorkflowsPage() {
           />
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!deleteTargetId}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={() => {
+          if (deleteTargetId && currentProject) {
+            deleteMutation.mutate({ projectId: currentProject, instanceId: deleteTargetId })
+          }
+        }}
+        title="Delete Workflow Instance"
+        message="Are you sure you want to delete this workflow instance? This will remove the instance and all associated agent sessions."
+        confirmLabel="Delete"
+        variant="destructive"
+      />
 
       {/* Interactive Terminal Dialog */}
       {interactiveSession && currentProject && (

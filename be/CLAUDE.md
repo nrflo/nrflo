@@ -43,7 +43,7 @@ be/
 │   │   ├── handlers_tickets_update.go # Ticket update/delete/close/reopen endpoints
 │   │   ├── handlers_workflow.go # Workflow state endpoints
 │   │   ├── handlers_orchestrate.go # Ticket-scoped orchestration run/stop/restart endpoints
-│   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/state
+│   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/delete/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_system_agent_def.go # System agent definition CRUD (global)

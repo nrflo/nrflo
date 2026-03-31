@@ -357,3 +357,27 @@ func (s *WorkflowService) AddSkipTag(instanceID, tag string) (string, string, st
 
 	return wi.ProjectID, wi.TicketID, wi.WorkflowID, nil
 }
+
+// DeleteProjectWorkflowInstance deletes a project-scoped workflow instance.
+// Returns an error if the instance is not found, not project-scoped, doesn't belong
+// to the given project, or is still active.
+func (s *WorkflowService) DeleteProjectWorkflowInstance(projectID, instanceID string) error {
+	wi, err := s.wfiRepo.Get(instanceID)
+	if err != nil {
+		return fmt.Errorf("not found: %s", instanceID)
+	}
+
+	if wi.ScopeType != "project" {
+		return fmt.Errorf("instance is not project-scoped")
+	}
+
+	if !strings.EqualFold(wi.ProjectID, projectID) {
+		return fmt.Errorf("not found: %s", instanceID)
+	}
+
+	if wi.Status == model.WorkflowInstanceActive {
+		return fmt.Errorf("cannot delete active workflow instance")
+	}
+
+	return s.wfiRepo.Delete(instanceID)
+}

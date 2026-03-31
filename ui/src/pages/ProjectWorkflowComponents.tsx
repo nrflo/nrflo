@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Play } from 'lucide-react'
+import { CheckCircle, Play, Trash2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -177,13 +177,15 @@ export function InstanceList({
   selectedId,
   onSelect,
   tab,
+  onDelete,
 }: {
   instanceIds: string[]
   instances: Record<string, WorkflowState>
   labels: Record<string, string>
   selectedId: string
   onSelect: (id: string) => void
-  tab: 'running' | 'completed'
+  tab: 'running' | 'completed' | 'failed'
+  onDelete?: (instanceId: string) => void
 }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -213,6 +215,9 @@ export function InstanceList({
             {tab === 'completed' && (
               <Badge variant="success" className="text-xs">completed</Badge>
             )}
+            {tab === 'failed' && (
+              <Badge variant="destructive" className="text-xs">failed</Badge>
+            )}
             {state?.current_phase && tab === 'running' && (
               <span className="text-xs text-muted-foreground">{state.current_phase}</span>
             )}
@@ -221,9 +226,65 @@ export function InstanceList({
                 {formatElapsedTime(state.completed_at)}
               </span>
             )}
+            {onDelete && (
+              <span
+                role="button"
+                onClick={(e) => { e.stopPropagation(); onDelete(id) }}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </span>
+            )}
           </button>
         )
       })}
+    </div>
+  )
+}
+
+// --- Tab Bar ---
+
+export type ProjectWorkflowTabId = 'run' | 'running' | 'failed' | 'completed'
+
+export function ProjectWorkflowTabBar({
+  activeTab,
+  onTabSwitch,
+  runningCount,
+  failedCount,
+  completedCount,
+}: {
+  activeTab: ProjectWorkflowTabId
+  onTabSwitch: (tab: ProjectWorkflowTabId) => void
+  runningCount: number
+  failedCount: number
+  completedCount: number
+}) {
+  const tabs: { id: ProjectWorkflowTabId; label: string; icon?: typeof Play; count?: number }[] = [
+    { id: 'run', label: 'Run Workflow', icon: Play },
+    { id: 'running', label: 'Running', count: runningCount },
+    { id: 'failed', label: 'Failed', icon: XCircle, count: failedCount },
+    { id: 'completed', label: 'Completed', icon: CheckCircle, count: completedCount },
+  ]
+
+  return (
+    <div className="border-b border-border">
+      <div className="flex gap-1">
+        {tabs.map(({ id, label, icon: Icon, count }) => (
+          <button
+            key={id}
+            onClick={() => onTabSwitch(id)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === id
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {Icon && <Icon className="h-4 w-4" />}
+            {count !== undefined ? `${label} (${count})` : label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

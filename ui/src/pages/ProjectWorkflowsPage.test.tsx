@@ -37,6 +37,7 @@ vi.mock('@/hooks/useTickets', async () => {
     useStopProjectWorkflow: vi.fn(),
     useRestartProjectAgent: vi.fn(),
     useRetryFailedProjectAgent: vi.fn(),
+    useDeleteProjectWorkflowInstance: vi.fn(),
   }
 })
 
@@ -212,6 +213,7 @@ describe('ProjectWorkflowsPage', () => {
   let useStopProjectWorkflow: any
   let useRestartProjectAgent: any
   let useRetryFailedProjectAgent: any
+  let useDeleteProjectWorkflowInstance: any
   let listWorkflowDefs: any
 
   beforeEach(async () => {
@@ -222,6 +224,7 @@ describe('ProjectWorkflowsPage', () => {
     useStopProjectWorkflow = hooks.useStopProjectWorkflow as any
     useRestartProjectAgent = hooks.useRestartProjectAgent as any
     useRetryFailedProjectAgent = hooks.useRetryFailedProjectAgent as any
+    useDeleteProjectWorkflowInstance = hooks.useDeleteProjectWorkflowInstance as any
 
     const workflows = await import('@/api/workflows')
     listWorkflowDefs = workflows.listWorkflowDefs as any
@@ -268,6 +271,11 @@ describe('ProjectWorkflowsPage', () => {
       mutate: vi.fn(),
       isPending: false,
     })
+
+    useDeleteProjectWorkflowInstance.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    })
   })
 
   it('renders project workflows page title and description', () => {
@@ -295,12 +303,13 @@ describe('ProjectWorkflowsPage', () => {
     )
   })
 
-  describe('3-Tab Layout', () => {
-    it('renders Run Workflow, Running, and Completed tab buttons', () => {
+  describe('4-Tab Layout', () => {
+    it('renders Run Workflow, Running, Failed, and Completed tab buttons', () => {
       renderPage()
 
       expect(screen.getByRole('button', { name: /Run Workflow/ })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Running/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Failed/ })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Completed/ })).toBeInTheDocument()
     })
 
@@ -365,6 +374,7 @@ describe('ProjectWorkflowsPage', () => {
       renderPage()
 
       expect(screen.getByRole('button', { name: /Running \(0\)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Failed \(0\)/ })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Completed \(0\)/ })).toBeInTheDocument()
     })
   })
@@ -433,7 +443,7 @@ describe('ProjectWorkflowsPage', () => {
       expect(screen.getByTestId('has-workflow').textContent).toBe('true')
     })
 
-    it('shows only active workflows on Running tab', async () => {
+    it('shows only active workflows on Running tab (failed go to Failed tab)', async () => {
       const user = userEvent.setup()
       const mixedWorkflowResponse: ProjectWorkflowResponse = {
         project_id: 'test-project',
@@ -456,12 +466,12 @@ describe('ProjectWorkflowsPage', () => {
 
       await user.click(screen.getByRole('button', { name: /Running/ }))
 
-      // Running tab should show 2 workflows (feature=active, hotfix=failed)
-      expect(screen.getByTestId('workflows-count').textContent).toBe('2')
+      // Running tab should show only 1 workflow (feature=active); failed goes to Failed tab
+      expect(screen.getByTestId('workflows-count').textContent).toBe('1')
       expect(screen.getByTestId('displayed-status').textContent).toBe('active')
     })
 
-    it('includes failed workflows in Running tab', async () => {
+    it('does not include failed workflows in Running tab', async () => {
       const user = userEvent.setup()
       const workflowResponse: ProjectWorkflowResponse = {
         project_id: 'test-project',
@@ -480,10 +490,9 @@ describe('ProjectWorkflowsPage', () => {
 
       renderPage()
 
-      await user.click(screen.getByRole('button', { name: /Running/ }))
-
-      expect(screen.getByTestId('workflows-count').textContent).toBe('1')
-      expect(screen.getByTestId('displayed-status').textContent).toBe('failed')
+      // Running tab should be empty, Failed tab should have the instance
+      expect(screen.getByRole('button', { name: /Running \(0\)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Failed \(1\)/ })).toBeInTheDocument()
     })
   })
 

@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './client'
+import { apiGet, apiPost, apiDelete } from './client'
 import type {
   ProjectWorkflowResponse,
   ProjectWorkflowRunRequest,
@@ -94,6 +94,16 @@ export async function resumeSessionProject(
   return apiPost<TakeControlResponse>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/resume-session`,
     params
+  )
+}
+
+/** Delete a completed/failed project workflow instance */
+export async function deleteProjectWorkflowInstance(
+  projectId: string,
+  instanceId: string
+): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/${encodeURIComponent(instanceId)}`
   )
 }
 

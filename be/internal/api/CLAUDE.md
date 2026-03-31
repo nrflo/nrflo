@@ -77,6 +77,7 @@ POST /api/v1/projects/:id/workflow/retry-failed  # Retry failed project workflow
 POST /api/v1/projects/:id/workflow/take-control     # Kill project agent, return session ID
 POST /api/v1/projects/:id/workflow/resume-session   # Resume finished project Claude session
 POST /api/v1/projects/:id/workflow/exit-interactive  # Signal project interactive session completed
+DELETE /api/v1/projects/:id/workflow/:instance_id  # Delete completed/failed project workflow instance (409 if active)
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
 GET  /api/v1/projects/:id/agents           # Get project agent sessions
 

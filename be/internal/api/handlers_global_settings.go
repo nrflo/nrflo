@@ -25,7 +25,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	retentionLimit := 100
+	retentionLimit := 1000
 	if retentionVal != "" {
 		if parsed, parseErr := strconv.Atoi(retentionVal); parseErr == nil {
 			retentionLimit = parsed

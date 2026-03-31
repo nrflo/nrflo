@@ -162,7 +162,7 @@ func TestHandlePatchGlobalSettings_NullFieldPreserves(t *testing.T) {
 	}
 }
 
-// TestHandleGetGlobalSettings_DefaultRetentionLimit verifies fresh DB returns session_retention_limit=100.
+// TestHandleGetGlobalSettings_DefaultRetentionLimit verifies fresh DB returns session_retention_limit=1000.
 func TestHandleGetGlobalSettings_DefaultRetentionLimit(t *testing.T) {
 	s := newGlobalSettingsServer(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
@@ -175,8 +175,8 @@ func TestHandleGetGlobalSettings_DefaultRetentionLimit(t *testing.T) {
 	// JSON numbers decode to float64 in map[string]interface{}
 	if v, ok := resp["session_retention_limit"]; !ok {
 		t.Fatal("response missing session_retention_limit field")
-	} else if v != float64(100) {
-		t.Errorf("session_retention_limit = %v, want 100", v)
+	} else if v != float64(1000) {
+		t.Errorf("session_retention_limit = %v, want 1000", v)
 	}
 }
 

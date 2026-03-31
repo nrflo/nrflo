@@ -10,7 +10,7 @@ import { Info } from 'lucide-react'
 
 export function GlobalSettingsSection() {
   const queryClient = useQueryClient()
-  const [retentionLimit, setRetentionLimit] = useState<number>(100)
+  const [retentionLimit, setRetentionLimit] = useState<number>(1000)
   const [stallStartTimeout, setStallStartTimeout] = useState<string>('')
   const [stallRunningTimeout, setStallRunningTimeout] = useState<string>('')
 
@@ -50,7 +50,7 @@ export function GlobalSettingsSection() {
     if (retentionLimit >= 10 && retentionLimit !== settings?.session_retention_limit) {
       retentionMutation.mutate(retentionLimit)
     } else if (retentionLimit < 10) {
-      setRetentionLimit(settings?.session_retention_limit ?? 100)
+      setRetentionLimit(settings?.session_retention_limit ?? 1000)
     }
   }
 
@@ -120,7 +120,7 @@ export function GlobalSettingsSection() {
                 <div className="text-sm font-medium">Session retention limit</div>
                 <Tooltip
                   placement="right"
-                  text="Maximum number of completed agent sessions to keep per cleanup cycle (every 20 min). Associated agent messages are automatically removed with their sessions. Minimum: 10, Default: 100."
+                  text="Maximum number of completed agent sessions to keep per cleanup cycle (every 20 min). Associated agent messages are automatically removed with their sessions. Minimum: 10, Default: 1000."
                 >
                   <Info className="h-3.5 w-3.5 text-muted-foreground" />
                 </Tooltip>

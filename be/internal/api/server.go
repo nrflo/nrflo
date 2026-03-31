@@ -143,11 +143,11 @@ func (s *Server) initEventLog() {
 
 // startRetentionCleanup trims workflow_instances and agent_sessions to keep
 // only the latest N non-active/non-running rows, every 20 minutes.
-// N is read from the session_retention_limit global setting (default 100).
+// N is read from the session_retention_limit global setting (default 1000).
 func (s *Server) startRetentionCleanup() {
 	cleanup := func() {
 		svc := service.NewGlobalSettingsService(s.pool, s.clock)
-		keep := 100
+		keep := 1000
 		if val, err := svc.Get("session_retention_limit"); err == nil && val != "" {
 			if parsed, parseErr := strconv.Atoi(val); parseErr == nil && parsed >= 10 {
 				keep = parsed

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { listAgentDefs } from '@/api/agentDefs'
 import { cn, formatElapsedTime } from '@/lib/utils'
 import type { WorkflowState, AgentDef, WorkflowDefSummary } from '@/types/workflow'
@@ -106,26 +107,30 @@ export function RunWorkflowForm({
       {(canInteractive || canPlan) && (
         <div className="flex gap-4">
           {canInteractive && (
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={startMode === 'interactive'}
-                onChange={(e) => setStartMode(e.target.checked ? 'interactive' : 'normal')}
-                className="rounded border-input"
-              />
-              Start Interactive
-            </label>
+            <Tooltip text="Launches only the first-layer agent in a live terminal session. You interact with the agent directly, then remaining layers run automatically after you exit." placement="top" className="whitespace-normal max-w-xs">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={startMode === 'interactive'}
+                  onChange={(e) => setStartMode(e.target.checked ? 'interactive' : 'normal')}
+                  className="rounded border-input"
+                />
+                Start Interactive
+              </label>
+            </Tooltip>
           )}
           {canPlan && (
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={startMode === 'plan'}
-                onChange={(e) => setStartMode(e.target.checked ? 'plan' : 'normal')}
-                className="rounded border-input"
-              />
-              Plan Before Execution
-            </label>
+            <Tooltip text="Spawns a planner agent in a live terminal. Collaborate with the planner to define the approach, then the full workflow executes automatically." placement="top" className="whitespace-normal max-w-xs">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={startMode === 'plan'}
+                  onChange={(e) => setStartMode(e.target.checked ? 'plan' : 'normal')}
+                  className="rounded border-input"
+                />
+                Plan Before Execution
+              </label>
+            </Tooltip>
           )}
         </div>
       )}

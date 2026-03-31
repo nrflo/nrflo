@@ -11,7 +11,8 @@ import (
 	"be/internal/repo"
 )
 
-// insertTestMessages inserts n text messages into agent_messages for the given session.
+// insertTestMessages inserts n actionable text messages into agent_messages for the given session.
+// These are "real" messages (not [init] or [thinking]) that count toward the stall threshold.
 func insertTestMessages(t *testing.T, env *testEnv, n int) {
 	t.Helper()
 	if n == 0 {
@@ -24,6 +25,19 @@ func insertTestMessages(t *testing.T, env *testEnv, n int) {
 	}
 	if err := msgRepo.InsertBatch(env.sessionID, 0, msgs); err != nil {
 		t.Fatalf("insertTestMessages(%d): %v", n, err)
+	}
+}
+
+// insertNonActionableMessages inserts init and thinking messages that are excluded from stall count.
+func insertNonActionableMessages(t *testing.T, env *testEnv, seqStart int) {
+	t.Helper()
+	msgRepo := repo.NewAgentMessageRepo(env.database, clock.Real())
+	msgs := []repo.MessageEntry{
+		{Content: "[init] v2.1.87 model=claude-opus-4-6", Category: "text"},
+		{Content: "[thinking] Let me analyze this...", Category: "text"},
+	}
+	if err := msgRepo.InsertBatch(env.sessionID, seqStart, msgs); err != nil {
+		t.Fatalf("insertNonActionableMessages: %v", err)
 	}
 }
 
@@ -60,20 +74,20 @@ func TestCheckInstantStall_GuardConditions(t *testing.T) {
 		name              string
 		modelID           string
 		elapsed           time.Duration
-		msgCount          int
+		msgCount          int // actionable messages (not [init] or [thinking])
 		stallRestartCount int
 		wantCONTINUE      bool
 	}{
+		{"claude_15s_0msg_triggers", "claude:sonnet", 15 * time.Second, 0, 0, true},
 		{"claude_15s_1msg_triggers", "claude:sonnet", 15 * time.Second, 1, 0, true},
-		{"claude_30s_1msg_triggers", "claude:opus", 30 * time.Second, 1, 0, true},
+		{"claude_15s_3msg_triggers", "claude:sonnet", 15 * time.Second, 3, 0, true},
+		{"claude_30s_2msg_triggers", "claude:opus", 30 * time.Second, 2, 0, true},
 		{"opencode_skipped", "opencode:opencode_gpt_normal", 15 * time.Second, 1, 0, false},
 		{"codex_skipped", "codex:codex_gpt_normal", 15 * time.Second, 1, 0, false},
 		{"elapsed_at_boundary_skipped", "claude:sonnet", 1 * time.Minute, 1, 0, false},
 		{"elapsed_above_boundary_skipped", "claude:sonnet", 90 * time.Second, 1, 0, false},
-		{"msg_count_2_skipped", "claude:sonnet", 15 * time.Second, 2, 0, false},
-		{"msg_count_3_skipped", "claude:sonnet", 15 * time.Second, 3, 0, false},
-		// 0 messages also triggers: production guard is msgCount > 1 (threshold <= 1 includes 0).
-		{"msg_count_0_triggers", "claude:sonnet", 15 * time.Second, 0, 0, true},
+		{"msg_count_4_skipped", "claude:sonnet", 15 * time.Second, 4, 0, false},
+		{"msg_count_5_skipped", "claude:sonnet", 15 * time.Second, 5, 0, false},
 		{"budget_at_limit_minus_1_triggers", "claude:sonnet", 15 * time.Second, 1, maxStallRestarts - 1, true},
 	}
 
@@ -295,6 +309,43 @@ func setSessionFindings(t *testing.T, env *testEnv, findings map[string]interfac
 	data, _ := json.Marshal(findings)
 	if err := sessionRepo.UpdateFindings(env.sessionID, string(data)); err != nil {
 		t.Fatalf("setSessionFindings: %v", err)
+	}
+}
+
+// TestCheckInstantStall_InitAndThinkingExcluded verifies that [init] and [thinking] messages
+// are excluded from the actionable message count. An agent with only these messages triggers stall.
+func TestCheckInstantStall_InitAndThinkingExcluded(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.cleanup()
+
+	env.createSession(t, "claude:sonnet")
+	// Insert only non-actionable messages (init + thinking)
+	insertNonActionableMessages(t, env, 0)
+
+	proc := makeInstantStallProc(env, "claude:sonnet", 25*time.Second, 0)
+	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
+
+	if proc.finalStatus != "CONTINUE" {
+		t.Errorf("finalStatus = %q, want CONTINUE (init+thinking should not count)", proc.finalStatus)
+	}
+}
+
+// TestCheckInstantStall_InitThinkingPlusActionable verifies that actionable messages beyond
+// the threshold still prevent stall detection, even when mixed with init/thinking.
+func TestCheckInstantStall_InitThinkingPlusActionable(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.cleanup()
+
+	env.createSession(t, "claude:sonnet")
+	// Insert init+thinking (non-actionable) + 4 actionable messages (exceeds threshold of 3)
+	insertNonActionableMessages(t, env, 0)
+	insertTestMessages(t, env, 4)
+
+	proc := makeInstantStallProc(env, "claude:sonnet", 25*time.Second, 0)
+	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
+
+	if proc.finalStatus != "PASS" {
+		t.Errorf("finalStatus = %q, want PASS (4 actionable msgs > 3 threshold)", proc.finalStatus)
 	}
 }
 

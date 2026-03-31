@@ -172,7 +172,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
 5c. INSTANT STALL DETECTION (post-completion, in monitorAll after handleCompletion)
    - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
    - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
-     message count <= 1 (queried from agent_messages via CountBySession),
+     actionable message count <= 3 (queried via CountBySessionActionable, excludes [init] and [thinking] prefixes),
      no `no-op` finding on session (agents signal deliberate no-work exit via `nrworkflow findings add no-op:no-op`)
    - If stallRestartCount >= maxStallRestarts (6): marks session as failed with reason
      stall_budget_exhausted (instead of letting false pass through)
@@ -433,6 +433,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 | `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
-| `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/msgCount>1, budget cap, budget-exhausted marks failed |
+| `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/actionableMsgCount>3, init/thinking exclusion, budget cap, budget-exhausted marks failed |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

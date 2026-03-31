@@ -203,6 +203,7 @@ func TestStopAll_LogsStopCount(t *testing.T) {
 		TicketID:     "LOG-5B",
 		WorkflowName: "test",
 		ScopeType:    "ticket",
+		Force:        true, // bypass concurrent ticket workflow guard
 	}
 	result2, _ := env.orch.Start(context.Background(), req2)
 

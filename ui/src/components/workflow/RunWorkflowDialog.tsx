@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Play } from 'lucide-react'
+import { AlertTriangle, Play } from 'lucide-react'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
+import { ApiError } from '@/api/client'
 import { listWorkflowDefs } from '@/api/workflows'
 import { listAgentDefs } from '@/api/agentDefs'
 import { useRunWorkflow } from '@/hooks/useTickets'
@@ -30,6 +31,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
   const [instructions, setInstructions] = useState('')
   const [startMode, setStartMode] = useState<StartMode>('normal')
+  const [showConcurrentWarning, setShowConcurrentWarning] = useState(false)
 
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
@@ -112,8 +114,40 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
 
       onClose()
       setInstructions('')
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409 && error.message.includes('concurrent ticket workflows')) {
+        setShowConcurrentWarning(true)
+        return
+      }
+      // Other errors handled by mutation state
+    }
+  }
+
+  const handleForceRun = async () => {
+    setShowConcurrentWarning(false)
+    try {
+      const result = await runMutation.mutateAsync({
+        ticketId,
+        params: {
+          workflow: selectedWorkflow,
+          instructions: instructions || undefined,
+          ...(startMode === 'interactive' && { interactive: true }),
+          ...(startMode === 'plan' && { plan_mode: true }),
+          force: true,
+        },
+      })
+
+      if ((startMode === 'interactive' || startMode === 'plan') && result.session_id && onInteractiveStart) {
+        onInteractiveStart(
+          result.session_id,
+          startMode === 'plan' ? 'planner' : l0AgentType,
+        )
+      }
+
+      onClose()
+      setInstructions('')
     } catch {
-      // Error is handled by mutation state
+      // Error handled by mutation state
     }
   }
 
@@ -123,6 +157,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
       setSelectedWorkflow('')
       setInstructions('')
       setStartMode('normal')
+      setShowConcurrentWarning(false)
     }
   }, [open])
 
@@ -212,7 +247,26 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
           </div>
         )}
 
-        {runMutation.isError && (
+        {showConcurrentWarning && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 dark:border-yellow-800 dark:bg-yellow-950/30">
+            <div className="flex items-center gap-2 text-sm font-medium text-yellow-800 dark:text-yellow-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Concurrent workflows without worktree isolation
+            </div>
+            <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-400">
+              Git worktrees are disabled. Running multiple ticket workflows concurrently without worktree isolation can cause file conflicts and git state corruption.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+              <Button variant="destructive" size="sm" onClick={handleForceRun}>
+                {runMutation.isPending && <Spinner size="sm" className="mr-2" />}
+                Proceed Anyway
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {runMutation.isError && !showConcurrentWarning && (
           <p className="text-sm text-destructive">
             {runMutation.error instanceof Error
               ? runMutation.error.message

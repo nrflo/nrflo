@@ -161,6 +161,15 @@ The orchestrator supports two pre-launch modes that create a `user_interactive` 
 
 The wait channel is registered in `Start()` before the `runLoop` goroutine launches to ensure the PTY handler can find it immediately, preventing a race between PTY connection and orchestrator startup.
 
+## Concurrent Ticket Workflow Guard
+
+When `use_git_worktrees=false` for a project, multiple ticket-scoped workflows operating in the same project root can cause file conflicts and git state corruption. The orchestrator guards against this:
+
+- `HasRunningTicketWorkflows(projectID)` checks the in-memory `o.runs` map cross-referenced with DB to find active ticket-scoped instances
+- In `Start()`, after loading the project, if `!project.UseGitWorktrees` and a ticket-scoped workflow is already running, returns error unless `RunRequest.Force=true`
+- The guard does NOT apply to project-scoped workflows or when worktrees are enabled
+- The HTTP handler maps this error to 409 Conflict; the frontend detects it and shows a warning with "Proceed Anyway" option
+
 ## Ticket Status Management
 
 The orchestrator manages ticket status transitions for ticket-scoped workflows:
@@ -179,6 +188,7 @@ Unit tests in-package:
 - `orchestrator_worktree_test.go` — worktree setup/merge/cleanup lifecycle, project scope skips worktree
 - `orchestrator_take_control_test.go` — TakeControl/TakeControlProject/CompleteInteractive methods
 - `orchestrator_skip_tag_test.go` — buildAgentTags, shouldSkipLayer, createSkippedSessions, WS events
+- `orchestrator_concurrent_ticket_test.go` — HasRunningTicketWorkflows, concurrent guard (block/force/worktrees/project-scope)
 
 Integration tests in `internal/integration/`:
 - `chain_epic_test.go` — chain epic auto-close

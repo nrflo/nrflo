@@ -71,7 +71,7 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 | `TemplatePickerDialog.tsx` | Dialog for selecting and applying a default template to an agent's prompt. Fetches from default-templates API, shows dropdown + preview, warns on non-empty prompt replacement. |
 | `AgentDefCard.tsx` | Agent definition card with edit/delete (shows tag badge) |
 | `AgentDefsSection.tsx` | Agent definitions list within a workflow (passes groups to children) |
-| `RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs. Supports "Start Interactive" and "Plan Before Execution" checkboxes (mutually exclusive). Queries agent defs to compute `canInteractive` (L0 has exactly 1 Claude-based agent). Props: `onInteractiveStart?(sessionId, agentType)` callback for opening PTY terminal. |
+| `RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs. Supports "Start Interactive" and "Plan Before Execution" checkboxes (mutually exclusive). Queries agent defs to compute `canInteractive` (L0 has exactly 1 Claude-based agent). Props: `onInteractiveStart?(sessionId, agentType)` callback for opening PTY terminal. Shows inline concurrent-workflow warning on 409 when worktrees disabled, with "Proceed Anyway" to re-submit with `force: true`. |
 | `RunEpicWorkflowDialog.tsx` | Dialog for epic workflow execution: two-step flow (create chain preview, then start) |
 | `AgentTerminalDialog.tsx` | Dialog wrapper for interactive agent terminal: non-dismissable backdrop, lazy-loads XTerminal, Exit Session footer button |
 | `XTerminal.tsx` | xterm.js terminal connected to PTY WebSocket (`/api/v1/pty/{sessionId}`). Relays keystrokes to WS, output to terminal. FitAddon for auto-resize, debounced resize events, dark theme |

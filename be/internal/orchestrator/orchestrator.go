@@ -37,6 +37,7 @@ type RunRequest struct {
 	Interactive           bool   `json:"interactive"`   // If true, start with interactive PTY session before layer execution
 	PlanMode              bool   `json:"plan_mode"`     // If true, start with planning PTY session, read plan file after
 	CloseTicketOnComplete bool   `json:"close_ticket_on_complete"`
+	Force                 bool   `json:"force"` // If true, bypass concurrent ticket workflow guard
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -148,6 +149,13 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, fmt.Errorf("project '%s' has no root_path configured", req.ProjectID)
 	}
 	projectRoot := project.RootPath.String
+
+	// Guard: prevent concurrent ticket workflows when worktrees are disabled
+	if !req.IsProjectScope() && !project.UseGitWorktrees && !req.Force {
+		if o.HasRunningTicketWorkflows(req.ProjectID) {
+			return nil, fmt.Errorf("concurrent ticket workflows without worktrees: use force to override")
+		}
+	}
 
 	// Setup git worktree if enabled
 	branchName := req.TicketID
@@ -797,6 +805,41 @@ func (o *Orchestrator) IsRunning(projectID, ticketID, workflowName string) bool 
 			if _, running := o.runs[wi.ID]; running {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// HasRunningTicketWorkflows checks if any ticket-scoped workflow is currently
+// running for the given project. Uses in-memory o.runs for accuracy.
+func (o *Orchestrator) HasRunningTicketWorkflows(projectID string) bool {
+	// Collect running instance IDs under lock
+	o.mu.Lock()
+	ids := make([]string, 0, len(o.runs))
+	for id := range o.runs {
+		ids = append(ids, id)
+	}
+	o.mu.Unlock()
+
+	if len(ids) == 0 {
+		return false
+	}
+
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return false
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
+	for _, id := range ids {
+		wi, err := wfiRepo.Get(id)
+		if err != nil {
+			continue
+		}
+		if wi.TicketID != "" && strings.EqualFold(wi.ProjectID, projectID) {
+			return true
 		}
 	}
 	return false

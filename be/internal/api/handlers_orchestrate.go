@@ -36,6 +36,7 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 		Instructions string `json:"instructions"`
 		Interactive  bool   `json:"interactive"`
 		PlanMode     bool   `json:"plan_mode"`
+		Force        bool   `json:"force"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -68,10 +69,12 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 		Instructions: body.Instructions,
 		Interactive:  body.Interactive,
 		PlanMode:     body.PlanMode,
+		Force:        body.Force,
 	})
 	if err != nil {
-		// Check if it's a "already running" error
-		if s.orchestrator.IsRunning(projectID, ticketID, body.Workflow) {
+		// Check if it's a "already running" or concurrent ticket workflow error
+		if s.orchestrator.IsRunning(projectID, ticketID, body.Workflow) ||
+			strings.Contains(err.Error(), "concurrent ticket workflows") {
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}

@@ -273,6 +273,7 @@ export interface RunWorkflowRequest {
   instructions?: string
   interactive?: boolean
   plan_mode?: boolean
+  force?: boolean
 }
 
 export interface RunWorkflowResponse {

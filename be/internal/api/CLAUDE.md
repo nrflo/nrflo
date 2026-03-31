@@ -56,7 +56,7 @@ GET /api/v1/tickets/:id/workflow
 PATCH /api/v1/tickets/:id/workflow
 
 # Workflow orchestration (run/stop/restart from UI)
-POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run; body accepts `interactive` (bool) and `plan_mode` (bool), mutually exclusive (400 if both true). When set, response includes `session_id` and status `"interactive"` or `"planning"`
+POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run; body accepts `interactive` (bool), `plan_mode` (bool), `force` (bool). interactive/plan_mode mutually exclusive (400 if both true). force bypasses concurrent ticket workflow guard (409 without it when worktrees disabled and another ticket workflow running). When interactive/plan_mode set, response includes `session_id` and status `"interactive"` or `"planning"`
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration (optional instance_id in body)
 POST /api/v1/tickets/:id/workflow/restart       # Restart agent (context save + relaunch)
 POST /api/v1/tickets/:id/workflow/retry-failed  # Retry failed workflow from failed layer

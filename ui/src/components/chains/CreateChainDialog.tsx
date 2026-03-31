@@ -197,7 +197,7 @@ export function CreateChainDialog({ open, onClose, editChain }: CreateChainDialo
   const canSubmit = name.trim() && selectedWorkflow && ticketIds.length > 0 && !isPending
 
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-5xl">
+    <Dialog open={open} onClose={onClose} className="max-w-screen-2xl">
       <DialogHeader onClose={onClose}>
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Link2 className="h-5 w-5" />

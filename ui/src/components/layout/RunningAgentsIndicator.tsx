@@ -105,7 +105,7 @@ export function RunningAgentsIndicator() {
           <div
             onMouseEnter={clearHideTimeout}
             onMouseLeave={scheduleHide}
-            className="fixed z-[100] -translate-x-1/2 min-w-64 max-w-80 rounded-lg bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 shadow-lg p-3 text-xs"
+            className="fixed z-[100] -translate-x-1/2 min-w-64 max-w-fit rounded-lg bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 shadow-lg p-3 text-xs"
             style={{ top: coords.top, left: coords.left }}
           >
             <div className="font-semibold mb-2">
@@ -128,7 +128,7 @@ export function RunningAgentsIndicator() {
                       e.preventDefault()
                       handleAgentClick(agent)
                     }}
-                    className="block pl-3 py-1 rounded hover:bg-white/10 dark:hover:bg-black/10 transition-colors"
+                    className="block pl-3 py-1 rounded hover:bg-white/10 dark:hover:bg-black/10 transition-colors whitespace-nowrap"
                   >
                     <span className="text-gray-200 dark:text-gray-700 mr-1">
                       └

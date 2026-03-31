@@ -90,7 +90,9 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 		}
 
 	case "result":
-		s.updateClaudeContext(proc, data)
+		// Skip context update — result usage is cumulative across all turns,
+		// which would overestimate context window usage. Per-turn assistant
+		// events already track context correctly.
 
 	case "user":
 		// Claude tool_result items arrive inside "user" events

@@ -162,51 +162,22 @@ func TestProcessOutput_Claude_AssistantUsage_ZeroTokens_NoUpdate(t *testing.T) {
 	}
 }
 
-// === result: context tracking via usage ===
+// === result: context tracking skipped (cumulative usage would overestimate) ===
 
-func TestProcessOutput_Claude_ResultUsage_Direct_UpdatesContextLeft(t *testing.T) {
+func TestProcessOutput_Claude_ResultUsage_DoesNotUpdateContextLeft(t *testing.T) {
 	s := noPoolSpawner()
 	proc := minProc("sess-res-1")
 	proc.maxContext = 100000
+	proc.contextLeft = 70 // set by prior assistant event
 
-	// 50000 tokens of 100000 → 100 - (50000*100/100000) = 50
+	// Result usage is cumulative across all turns — should NOT override per-turn value
 	processJSON(s, proc, map[string]interface{}{
 		"type":  "result",
-		"usage": map[string]interface{}{"input_tokens": 50000.0, "output_tokens": 0.0},
+		"usage": map[string]interface{}{"input_tokens": 90000.0, "output_tokens": 10000.0},
 	})
 
-	if proc.contextLeft != 50 {
-		t.Errorf("contextLeft = %d, want 50", proc.contextLeft)
-	}
-}
-
-func TestProcessOutput_Claude_ResultUsage_Nested_UpdatesContextLeft(t *testing.T) {
-	s := noPoolSpawner()
-	proc := minProc("sess-res-2")
-	proc.maxContext = 100000
-
-	// usage nested under message.usage → 20000 tokens → 100 - (20000*100/100000) = 80
-	processJSON(s, proc, map[string]interface{}{
-		"type": "result",
-		"message": map[string]interface{}{
-			"usage": map[string]interface{}{"input_tokens": 20000.0, "output_tokens": 0.0},
-		},
-	})
-
-	if proc.contextLeft != 80 {
-		t.Errorf("contextLeft = %d, want 80", proc.contextLeft)
-	}
-}
-
-func TestProcessOutput_Claude_ResultUsage_Missing_NoUpdate(t *testing.T) {
-	s := noPoolSpawner()
-	proc := minProc("sess-res-3")
-	proc.contextLeft = 55
-
-	processJSON(s, proc, map[string]interface{}{"type": "result"})
-
-	if proc.contextLeft != 55 {
-		t.Errorf("contextLeft = %d, want 55 (unchanged)", proc.contextLeft)
+	if proc.contextLeft != 70 {
+		t.Errorf("contextLeft = %d, want 70 (result should not update context)", proc.contextLeft)
 	}
 }
 

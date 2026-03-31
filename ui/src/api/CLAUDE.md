@@ -25,6 +25,7 @@ API client modules for communicating with the nrworkflow backend. Contains 11 fi
 | `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode, session retention limit, stall start/running timeouts) |
 | `agents.ts` | Agent API functions (fetchRecentAgents, fetchRunningAgents, fetchSessionMessages, fetchSessionPrompt) |
 | `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
+| `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |
 
 ## REST API Endpoints
 
@@ -112,6 +113,13 @@ POST   /api/v1/system-agents           # Create system agent definition
 GET    /api/v1/system-agents/:id       # Get system agent definition
 PATCH  /api/v1/system-agents/:id       # Update system agent definition
 DELETE /api/v1/system-agents/:id       # Delete system agent definition
+
+# Default templates (global, no X-Project header)
+GET    /api/v1/default-templates           # List all default templates
+POST   /api/v1/default-templates           # Create default template
+GET    /api/v1/default-templates/:id       # Get default template
+PATCH  /api/v1/default-templates/:id       # Update default template (non-readonly only)
+DELETE /api/v1/default-templates/:id       # Delete default template (non-readonly only)
 
 # Global Settings
 GET    /api/v1/settings             # Get global settings (low_consumption_mode)

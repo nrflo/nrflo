@@ -63,6 +63,10 @@ function renderPage() {
   )
 }
 
+async function goToProjectsTab() {
+  await userEvent.click(screen.getByRole('button', { name: 'Projects' }))
+}
+
 describe('SettingsPage — removed fields (default_workflow, use_docker_isolation)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -72,6 +76,7 @@ describe('SettingsPage — removed fields (default_workflow, use_docker_isolatio
     it('does not render Default Workflow input', async () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       await userEvent.click(screen.getByRole('button', { name: /new project/i }))
@@ -82,6 +87,7 @@ describe('SettingsPage — removed fields (default_workflow, use_docker_isolatio
     it('does not render Docker Isolation toggle', async () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       await userEvent.click(screen.getByRole('button', { name: /new project/i }))
@@ -95,6 +101,7 @@ describe('SettingsPage — removed fields (default_workflow, use_docker_isolatio
       const user = userEvent.setup()
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject()] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       await user.click(screen.getByRole('button', { name: '' }))
@@ -106,6 +113,7 @@ describe('SettingsPage — removed fields (default_workflow, use_docker_isolatio
       const user = userEvent.setup()
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject()] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       await user.click(screen.getByRole('button', { name: '' }))
@@ -120,6 +128,7 @@ describe('SettingsPage — removed fields (default_workflow, use_docker_isolatio
         projects: [makeProject({ use_docker_isolation: true })],
       })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       expect(screen.queryByText(/docker/i)).not.toBeInTheDocument()
@@ -130,6 +139,7 @@ describe('SettingsPage — removed fields (default_workflow, use_docker_isolatio
         projects: [makeProject()],
       })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       expect(screen.queryByText(/workflow/i)).not.toBeInTheDocument()

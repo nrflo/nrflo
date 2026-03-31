@@ -69,6 +69,10 @@ function renderPage() {
   )
 }
 
+async function goToProjectsTab() {
+  await userEvent.click(screen.getByRole('button', { name: 'Projects' }))
+}
+
 describe('SettingsPage - use_git_worktrees toggle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -78,6 +82,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
     it('toggle defaults to off', async () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       const newButton = screen.getByRole('button', { name: /new project/i })
@@ -90,6 +95,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
     it('toggle is disabled when default_branch is empty', async () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       const newButton = screen.getByRole('button', { name: /new project/i })
@@ -103,6 +109,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       const user = userEvent.setup()
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       const newButton = screen.getByRole('button', { name: /new project/i })
@@ -122,6 +129,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       const user = userEvent.setup()
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       const newButton = screen.getByRole('button', { name: /new project/i })
@@ -151,6 +159,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       )
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       const newButton = screen.getByRole('button', { name: /new project/i })
@@ -188,6 +197,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       )
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('No projects found. Create one to get started.')
       const newButton = screen.getByRole('button', { name: /new project/i })
@@ -224,6 +234,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       const editButton = screen.getByRole('button', { name: '' })
@@ -239,6 +250,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       const editButton = screen.getByRole('button', { name: '' })
@@ -254,6 +266,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       const editButton = screen.getByRole('button', { name: '' })
@@ -269,6 +282,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       const editButton = screen.getByRole('button', { name: '' })
@@ -297,6 +311,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       )
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       const editButton = screen.getByRole('button', { name: '' })
@@ -330,6 +345,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       )
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       const editButton = screen.getByRole('button', { name: '' })
@@ -361,6 +377,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       expect(screen.getByText('Worktrees: enabled')).toBeInTheDocument()
@@ -371,6 +388,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       expect(screen.queryByText(/worktrees/i)).not.toBeInTheDocument()
@@ -385,6 +403,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
 
       renderPage()
+      await goToProjectsTab()
 
       await screen.findByText('Test Project')
       expect(screen.getByText('Path: /custom/path')).toBeInTheDocument()

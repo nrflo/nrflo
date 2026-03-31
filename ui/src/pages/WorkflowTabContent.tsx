@@ -321,12 +321,8 @@ export function WorkflowTabContent({
           activeAgents={activeAgents}
           sessions={sessions}
           collapsed={logPanelCollapsed}
-          onToggleCollapse={onToggleLogPanel}
           selectedAgent={selectedPanelAgent}
           onAgentSelect={onAgentSelect}
-          onRetryFailed={onRetryFailed}
-          retryingSessionId={retryingSessionId}
-          workflowStatus={displayedState?.status}
           onResumeSession={onResumeSession}
           resumePending={resumeSessionPending}
         />

@@ -42,12 +42,13 @@ PhaseTimeline (PhaseTimeline.tsx)
 
 ## Agent Log Panel
 
-The right-side panel (`AgentLogPanel.tsx`) has two modes:
+The right-side panel (`AgentLogPanel.tsx`) always renders agents in full detail view via `AgentLogDetail`:
 
-- **Overview mode** (default): Shows running agents with compact messages. Visible when agents are running.
-- **Detail mode**: Shows a single agent's messages in a table (timestamp|tool|message columns). Activated when clicking an agent in the PhaseGraph or in the overview. Includes a back button to return to overview.
+- **Multi-agent view** (default, no selection): When running agents exist, each is shown in its own `AgentLogDetail` instance in a vertically-split layout (`flex-1 min-h-0 overflow-hidden` per agent, separated by `border-b`). No back button in this mode.
+- **Selected agent view**: When a specific agent is selected (e.g., clicking a completed agent in PhaseGraph), shows that single agent's `AgentLogDetail` with a back button that returns to the multi-agent view (`onAgentSelect(null)`).
+- **Auto-switch**: When a selected agent completes and other agents are still running, automatically returns to multi-agent view.
 
-The panel also shows when a completed agent is selected from PhaseGraph (even after all agents finish). Uses `AgentLogDetail.tsx` for the detail view. The panel collapses to a thin bar (w-10) with vertical label.
+The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShell` and `CollapsedBar` internal components for consistent layout.
 
 ## Key Components
 

@@ -354,17 +354,6 @@ describe('WorkflowTabContent - Panel Integration (nrworkflow-28182f)', () => {
       )
     })
 
-    it('onToggleLogPanel callback is passed to AgentLogPanel', () => {
-      const onToggleLogPanel = vi.fn()
-
-      render(<WorkflowTabContent {...defaultProps} onToggleLogPanel={onToggleLogPanel} />)
-
-      expect(mockAgentLogPanel).toHaveBeenCalledWith(
-        expect.objectContaining({
-          onToggleCollapse: onToggleLogPanel,
-        })
-      )
-    })
   })
 
   describe('edge cases', () => {

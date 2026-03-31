@@ -40,13 +40,11 @@ vi.mock('@/components/workflow/AgentLogPanel', () => ({
   AgentLogPanel: ({
     activeAgents,
     collapsed,
-    onToggleCollapse,
     selectedAgent,
     onAgentSelect,
   }: {
     activeAgents: Record<string, { agent_type: string; phase?: string; result?: string }>
     collapsed: boolean
-    onToggleCollapse: () => void
     selectedAgent: { phaseName: string } | null
     onAgentSelect: (data: { phaseName: string; agent?: { agent_type: string; phase?: string } } | null) => void
   }) => {
@@ -55,7 +53,6 @@ vi.mock('@/components/workflow/AgentLogPanel', () => ({
     return (
       <div data-testid="running-agent-log">
         <span>{collapsed ? 'collapsed' : 'expanded'}</span>
-        <button data-testid="toggle-collapse" onClick={onToggleCollapse}>Toggle</button>
         {running.map((agent, i) => (
           <button
             key={i}
@@ -159,26 +156,6 @@ describe('TicketDetailPage - RunningAgentLog integration', () => {
       expect(screen.getByTestId('agent-detail')).toBeInTheDocument()
     })
     expect(screen.getByText(/Detail: implementation/)).toBeInTheDocument()
-  })
-
-  it('toggles log panel collapse state', async () => {
-    vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
-    vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
-
-    renderPage()
-    const user = await goToWorkflowTab()
-
-    await waitFor(() => {
-      expect(screen.getByTestId('running-agent-log')).toBeInTheDocument()
-    })
-
-    // Initially expanded
-    expect(screen.getByText('expanded')).toBeInTheDocument()
-
-    // Toggle to collapsed
-    await user.click(screen.getByTestId('toggle-collapse'))
-
-    expect(screen.getByText('collapsed')).toBeInTheDocument()
   })
 
   it('does not show RunningAgentLog on description tab', async () => {

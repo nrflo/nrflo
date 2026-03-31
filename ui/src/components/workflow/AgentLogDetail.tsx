@@ -34,7 +34,7 @@ export function formatTime(dateStr: string): string {
 
 interface AgentLogDetailProps {
   selectedAgent: SelectedAgentData
-  onBack: () => void
+  onBack?: () => void
   onResumeSession?: (sessionId: string) => void
   resumePending?: boolean
 }
@@ -76,12 +76,14 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
     <div className="flex flex-col h-full">
       {/* Header with back button and agent info */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
-        <button
-          onClick={onBack}
-          className="flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors shrink-0"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-        </button>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors shrink-0"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+          </button>
+        )}
         <div className={cn(
           'flex items-center justify-center w-7 h-7 rounded-full shrink-0',
           isInteractive && 'bg-blue-100 dark:bg-blue-900/30',

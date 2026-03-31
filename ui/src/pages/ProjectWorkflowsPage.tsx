@@ -278,7 +278,6 @@ export function ProjectWorkflowsPage() {
                 activeAgents={{}}
                 sessions={allCompletedSessions}
                 collapsed={logPanelCollapsed}
-                onToggleCollapse={() => setLogPanelCollapsed((p) => !p)}
                 selectedAgent={selectedPanelAgent}
                 onAgentSelect={setSelectedPanelAgent}
                 onResumeSession={(sessionId) => {

@@ -63,7 +63,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -78,7 +77,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -93,7 +91,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -108,7 +105,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -126,7 +122,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -141,7 +136,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -156,7 +150,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -173,7 +166,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -188,7 +180,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -203,7 +194,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -223,7 +213,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -240,7 +229,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -256,7 +244,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -275,7 +262,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -290,7 +276,6 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />

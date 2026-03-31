@@ -268,7 +268,7 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     vi.clearAllMocks()
   })
 
-  it('covers all acceptance criteria: panel shows on agent click, detail view with messages/raw toggle, defaults to messages, no popup modal', async () => {
+  it('covers all acceptance criteria: running agents show directly in detail view, no popup modal', async () => {
     const user = userEvent.setup()
 
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
@@ -278,23 +278,12 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     renderPage()
     await goToWorkflowTab(user)
 
-    // --- Step 1: Panel appears with running agents (overview mode) ---
+    // --- Step 1: Panel appears with running agents directly in detail view ---
     await waitFor(() => {
       expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
     })
 
-    // The AgentLogPanel should be visible since we have an active phase
-    // Running agent's overview shows the implementor agent
-    await waitFor(() => {
-      expect(screen.getByText('Running Agents (1)')).toBeInTheDocument()
-    })
-
-    // --- Step 2: Click running agent in overview → transitions to detail mode ---
-    // (Criterion #3: clicking agent shows right side panel, NOT a popup)
-    const agentButton = screen.getByRole('button', { name: /implementation/i })
-    await user.click(agentButton)
-
-    // Detail view should appear (no modal/popup)
+    // Running agents are shown directly in detail view (no overview mode)
     await waitFor(() => {
       expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
     })
@@ -302,20 +291,12 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     // Verify it's NOT a modal (no dialog role, no overlay)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    // --- Step 3: Verify detail view shows correct agent info ---
+    // --- Step 2: Verify detail view shows correct agent info ---
     expect(screen.getByTestId('detail-phase')).toHaveTextContent('implementation')
     expect(screen.getByTestId('detail-agent-type')).toHaveTextContent('implementor')
 
-    // --- Step 4: Default content is Messages (criterion #4) ---
+    // --- Step 3: Default content is Messages ---
     expect(screen.getByTestId('messages-content')).toHaveTextContent('Messages view (default)')
-
-    // --- Step 5: Back button returns to overview ---
-    await user.click(screen.getByTestId('detail-back'))
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('agent-log-detail')).not.toBeInTheDocument()
-    })
-    expect(screen.getByText('Running Agents (1)')).toBeInTheDocument()
   })
 
   it('clicking agent in PhaseGraph shows detail in right panel (criterion #3)', async () => {
@@ -380,18 +361,17 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     await goToWorkflowTab(user)
 
     await waitFor(() => {
-      expect(screen.getByText('Running Agents (1)')).toBeInTheDocument()
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
     })
 
     // Switch to Description tab
     await user.click(screen.getByText('Description'))
 
     // Panel should disappear
-    expect(screen.queryByText('Running Agents (1)')).not.toBeInTheDocument()
     expect(screen.queryByTestId('agent-log-detail')).not.toBeInTheDocument()
   })
 
-  it('collapse toggle works in overview and detail modes', async () => {
+  it('collapse toggle works with running agents', async () => {
     const user = userEvent.setup()
 
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
@@ -402,14 +382,14 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     await goToWorkflowTab(user)
 
     await waitFor(() => {
-      expect(screen.getByText('Running Agents (1)')).toBeInTheDocument()
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
     })
 
-    // Collapse in overview mode
+    // Collapse panel
     const collapseButton = screen.getByTitle('Collapse agent log')
     await user.click(collapseButton)
 
-    // Should show collapsed state with count badge
+    // Should show collapsed state
     await waitFor(() => {
       expect(screen.getByText('Agent Log')).toBeInTheDocument()
     })
@@ -419,7 +399,7 @@ describe('Agent Log Panel Improvements — E2E acceptance criteria', () => {
     await user.click(expandButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Running Agents (1)')).toBeInTheDocument()
+      expect(screen.getByTestId('agent-log-detail')).toBeInTheDocument()
     })
   })
 })

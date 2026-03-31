@@ -201,7 +201,6 @@ export function TicketWorkflowTab({
               activeAgents={{}}
               sessions={allCompletedSessions}
               collapsed={logPanelCollapsed}
-              onToggleCollapse={() => setLogPanelCollapsed((p) => !p)}
               selectedAgent={selectedPanelAgent}
               onAgentSelect={setSelectedPanelAgent}
               onResumeSession={(sessionId) => {

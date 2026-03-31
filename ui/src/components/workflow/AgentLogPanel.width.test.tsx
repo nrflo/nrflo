@@ -65,7 +65,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -88,7 +87,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -108,7 +106,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -127,7 +124,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -151,7 +147,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -169,7 +164,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -196,7 +190,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -208,7 +201,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -238,7 +230,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -250,7 +241,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -277,7 +267,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -296,7 +285,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -319,7 +307,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -343,7 +330,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -361,7 +347,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -386,7 +371,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -407,7 +391,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />
@@ -433,7 +416,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={true}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -448,7 +430,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -473,7 +454,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{}}
           sessions={[]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={selectedAgent}
           onAgentSelect={vi.fn()}
         />
@@ -488,7 +468,6 @@ describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
           activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
           sessions={[makeSession()]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={vi.fn()}
         />

@@ -92,7 +92,6 @@ describe('AgentLogPanel auto-switch (nrworkflow-6c78e8)', () => {
       activeAgents: { 'a-selected': agentA, 'a-next': agentB },
       sessions: [sessionA, sessionB],
       collapsed: false,
-      onToggleCollapse: vi.fn(),
       selectedAgent: { phaseName: 'implementation', agent: agentA, session: sessionA },
       onAgentSelect,
     })
@@ -108,19 +107,14 @@ describe('AgentLogPanel auto-switch (nrworkflow-6c78e8)', () => {
           activeAgents={{ 'a-selected': completedA, 'a-next': agentB }}
           sessions={[sessionA, sessionB]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={{ phaseName: 'implementation', agent: agentA, session: sessionA }}
           onAgentSelect={onAgentSelect}
         />
       </QueryClientProvider>
     )
 
-    expect(onAgentSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        phaseName: 'verification',
-        agent: agentB,
-      })
-    )
+    // Should return to all-running view (null) instead of selecting next agent
+    expect(onAgentSelect).toHaveBeenCalledWith(null)
   })
 
   it('does not switch when selected agent completes but no running agents remain', () => {
@@ -138,7 +132,6 @@ describe('AgentLogPanel auto-switch (nrworkflow-6c78e8)', () => {
       activeAgents: { 'a-only': agentA },
       sessions: [sessionA],
       collapsed: false,
-      onToggleCollapse: vi.fn(),
       selectedAgent: { phaseName: 'implementation', agent: agentA, session: sessionA },
       onAgentSelect,
     })
@@ -151,7 +144,6 @@ describe('AgentLogPanel auto-switch (nrworkflow-6c78e8)', () => {
           activeAgents={{ 'a-only': completedA }}
           sessions={[sessionA]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={{ phaseName: 'implementation', agent: agentA, session: sessionA }}
           onAgentSelect={onAgentSelect}
         />
@@ -174,7 +166,6 @@ describe('AgentLogPanel auto-switch (nrworkflow-6c78e8)', () => {
       activeAgents: { 'a-running': agentA },
       sessions: [makeSession({ id: 'sess-a' })],
       collapsed: false,
-      onToggleCollapse: vi.fn(),
       selectedAgent: null,
       onAgentSelect,
     })
@@ -187,7 +178,6 @@ describe('AgentLogPanel auto-switch (nrworkflow-6c78e8)', () => {
           activeAgents={{ 'a-running': completedA }}
           sessions={[makeSession({ id: 'sess-a' })]}
           collapsed={false}
-          onToggleCollapse={vi.fn()}
           selectedAgent={null}
           onAgentSelect={onAgentSelect}
         />

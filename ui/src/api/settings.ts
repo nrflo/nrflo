@@ -2,6 +2,7 @@ import { apiGet, apiPatch } from './client'
 
 export interface GlobalSettings {
   low_consumption_mode: boolean
+  session_retention_limit: number
 }
 
 export const settingsKeys = {

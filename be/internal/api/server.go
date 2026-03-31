@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -141,11 +142,18 @@ func (s *Server) initEventLog() {
 }
 
 // startRetentionCleanup trims workflow_instances and agent_sessions to keep
-// only the latest 100 non-active/non-running rows, every 20 minutes.
+// only the latest N non-active/non-running rows, every 20 minutes.
+// N is read from the session_retention_limit global setting (default 100).
 func (s *Server) startRetentionCleanup() {
-	const keep = 100
-
 	cleanup := func() {
+		svc := service.NewGlobalSettingsService(s.pool, s.clock)
+		keep := 100
+		if val, err := svc.Get("session_retention_limit"); err == nil && val != "" {
+			if parsed, parseErr := strconv.Atoi(val); parseErr == nil && parsed >= 10 {
+				keep = parsed
+			}
+		}
+
 		wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 		asRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
 

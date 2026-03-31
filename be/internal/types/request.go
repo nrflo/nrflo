@@ -190,19 +190,21 @@ type AgentCallbackRequest struct {
 
 // WorkflowDefCreateRequest is the request for creating a workflow definition
 type WorkflowDefCreateRequest struct {
-	ID          string          `json:"id"`
-	Description string          `json:"description,omitempty"`
-	ScopeType   string          `json:"scope_type,omitempty"` // "ticket" (default) or "project"
-	Phases      json.RawMessage `json:"phases"`               // accepts both string and object entries
-	Groups      []string        `json:"groups,omitempty"`
+	ID                    string          `json:"id"`
+	Description           string          `json:"description,omitempty"`
+	ScopeType             string          `json:"scope_type,omitempty"` // "ticket" (default) or "project"
+	Phases                json.RawMessage `json:"phases"`               // accepts both string and object entries
+	Groups                []string        `json:"groups,omitempty"`
+	CloseTicketOnComplete *bool           `json:"close_ticket_on_complete,omitempty"`
 }
 
 // WorkflowDefUpdateRequest is the request for updating a workflow definition
 type WorkflowDefUpdateRequest struct {
-	Description *string          `json:"description,omitempty"`
-	ScopeType   *string          `json:"scope_type,omitempty"`
-	Phases      *json.RawMessage `json:"phases,omitempty"`
-	Groups      *[]string        `json:"groups,omitempty"`
+	Description           *string          `json:"description,omitempty"`
+	ScopeType             *string          `json:"scope_type,omitempty"`
+	Phases                *json.RawMessage `json:"phases,omitempty"`
+	Groups                *[]string        `json:"groups,omitempty"`
+	CloseTicketOnComplete *bool            `json:"close_ticket_on_complete,omitempty"`
 }
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow

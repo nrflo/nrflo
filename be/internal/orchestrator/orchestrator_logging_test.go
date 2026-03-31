@@ -369,10 +369,11 @@ func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 
 	// Call markCompleted which should try to close ticket and log error
 	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "NONEXISTENT",
-		WorkflowName: "test",
-		ScopeType:    "ticket",
+		ProjectID:             env.project,
+		TicketID:              "NONEXISTENT",
+		WorkflowName:          "test",
+		ScopeType:             "ticket",
+		CloseTicketOnComplete: true,
 	}
 
 	env.orch.markCompleted(wfiID, req)

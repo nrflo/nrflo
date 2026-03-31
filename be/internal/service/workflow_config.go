@@ -103,10 +103,11 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 			scopeType = "ticket"
 		}
 		workflows[wf.ID] = SpawnerWorkflowDef{
-			Description: wf.Description,
-			ScopeType:   scopeType,
-			Phases:      phases,
-			Groups:      wf.GetGroups(),
+			Description:           wf.Description,
+			ScopeType:             scopeType,
+			CloseTicketOnComplete: wf.CloseTicketOnComplete,
+			Phases:                phases,
+			Groups:                wf.GetGroups(),
 		}
 	}
 
@@ -124,10 +125,11 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 
 // SpawnerWorkflowDef mirrors spawner.WorkflowDef for shared config building
 type SpawnerWorkflowDef struct {
-	Description string            `json:"description"`
-	ScopeType   string            `json:"scope_type"`
-	Phases      []SpawnerPhaseDef `json:"phases"`
-	Groups      []string          `json:"groups"`
+	Description           string            `json:"description"`
+	ScopeType             string            `json:"scope_type"`
+	CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
+	Phases                []SpawnerPhaseDef `json:"phases"`
+	Groups                []string          `json:"groups"`
 }
 
 // SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building

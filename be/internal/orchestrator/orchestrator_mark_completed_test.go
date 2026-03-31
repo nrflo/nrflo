@@ -28,9 +28,10 @@ func TestMarkCompletedClosesTicket(t *testing.T) {
 
 	// Call markCompleted
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "MC-1",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "MC-1",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	// Verify ticket is now closed
@@ -113,9 +114,10 @@ func TestMarkCompletedTicketCloseFailureDoesNotBreakWorkflow(t *testing.T) {
 	ch := env.subscribeWSClient(t, "ws-mc4", "NONEXISTENT")
 
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "NONEXISTENT",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "NONEXISTENT",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	// Workflow instance should still be completed
@@ -145,9 +147,10 @@ func TestMarkCompletedAlreadyClosedTicket(t *testing.T) {
 	}
 
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "MC-5",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "MC-5",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	// Verify ticket is still closed
@@ -230,9 +233,10 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	}
 
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "MC-7",
-		WorkflowName: "feature",
+		ProjectID:             env.project,
+		TicketID:              "MC-7",
+		WorkflowName:          "feature",
+		CloseTicketOnComplete: true,
 	})
 
 	ticket := env.getTicket(t, "MC-7")
@@ -390,10 +394,11 @@ func TestMarkCompletedTicketScopeStillUsesCompleted(t *testing.T) {
 	}
 
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "MC-TICKET",
-		WorkflowName: "test",
-		ScopeType:    "ticket",
+		ProjectID:             env.project,
+		TicketID:              "MC-TICKET",
+		WorkflowName:          "test",
+		ScopeType:             "ticket",
+		CloseTicketOnComplete: true,
 	})
 
 	// Verify workflow instance status is completed (not project_completed)
@@ -423,9 +428,10 @@ func TestMarkCompletedBroadcastsTicketUpdatedEvent(t *testing.T) {
 	ch := env.subscribeWSClient(t, "ws-mcws1", "MC-WS1")
 
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "MC-WS1",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "MC-WS1",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	// Expect ticket.updated event with status=closed

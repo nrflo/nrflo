@@ -44,9 +44,10 @@ func TestMarkCompleted_AutoClosesParentEpic(t *testing.T) {
 
 	// Complete first child — epic should remain open
 	env.orch.markCompleted(wfiA, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "orch-mc1-a",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "orch-mc1-a",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	epicAfterFirst := env.getTicket(t, "orch-epic-mc1")
@@ -56,9 +57,10 @@ func TestMarkCompleted_AutoClosesParentEpic(t *testing.T) {
 
 	// Complete second (last) child — epic should auto-close
 	env.orch.markCompleted(wfiB, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "orch-mc1-b",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "orch-mc1-b",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	epicAfterAll := env.getTicket(t, "orch-epic-mc1")
@@ -83,9 +85,10 @@ func TestMarkCompleted_AutoClosesParentEpic_BroadcastsWSEvent(t *testing.T) {
 	ch := env.subscribeWSClient(t, "ws-epic-mc", "orch-epic-ws1")
 
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "orch-ws1-child",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "orch-ws1-child",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	// Expect ticket.updated for the epic with status=closed
@@ -109,9 +112,10 @@ func TestMarkCompleted_EpicWithOpenSiblings(t *testing.T) {
 
 	// Complete only sibling-A
 	env.orch.markCompleted(wfiA, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "orch-sib-a",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "orch-sib-a",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	// Epic must remain open (orch-sib-b is still open)
@@ -130,9 +134,10 @@ func TestMarkCompleted_NoParentEpic(t *testing.T) {
 
 	// Should not panic or error
 	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "orch-noparent-1",
-		WorkflowName: "test",
+		ProjectID:             env.project,
+		TicketID:              "orch-noparent-1",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
 	})
 
 	ticket := env.getTicket(t, "orch-noparent-1")

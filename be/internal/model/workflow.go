@@ -7,14 +7,15 @@ import (
 
 // Workflow represents a workflow definition stored in the database
 type Workflow struct {
-	ID          string    `json:"id"`
-	ProjectID   string    `json:"project_id"`
-	Description string    `json:"description"`
-	ScopeType   string    `json:"scope_type"` // "ticket" or "project"
-	Phases      string    `json:"-"`           // JSON array string
-	Groups      string    `json:"-"`           // JSON array of tag strings
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID                     string    `json:"id"`
+	ProjectID              string    `json:"project_id"`
+	Description            string    `json:"description"`
+	ScopeType              string    `json:"scope_type"` // "ticket" or "project"
+	CloseTicketOnComplete  bool      `json:"close_ticket_on_complete"`
+	Phases                 string    `json:"-"`           // JSON array string
+	Groups                 string    `json:"-"`           // JSON array of tag strings
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
 }
 
 // GetGroups returns the parsed groups as a string slice
@@ -56,22 +57,24 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
-		ID          string        `json:"id"`
-		ProjectID   string        `json:"project_id"`
-		Description string        `json:"description"`
-		ScopeType   string        `json:"scope_type"`
-		Phases      []interface{} `json:"phases"`
-		Groups      []string      `json:"groups"`
-		CreatedAt   time.Time     `json:"created_at"`
-		UpdatedAt   time.Time     `json:"updated_at"`
+		ID                    string        `json:"id"`
+		ProjectID             string        `json:"project_id"`
+		Description           string        `json:"description"`
+		ScopeType             string        `json:"scope_type"`
+		CloseTicketOnComplete bool          `json:"close_ticket_on_complete"`
+		Phases                []interface{} `json:"phases"`
+		Groups                []string      `json:"groups"`
+		CreatedAt             time.Time     `json:"created_at"`
+		UpdatedAt             time.Time     `json:"updated_at"`
 	}{
-		ID:          w.ID,
-		ProjectID:   w.ProjectID,
-		Description: w.Description,
-		ScopeType:   scopeType,
-		Phases:      phases,
-		Groups:      groups,
-		CreatedAt:   w.CreatedAt,
-		UpdatedAt:   w.UpdatedAt,
+		ID:                    w.ID,
+		ProjectID:             w.ProjectID,
+		Description:           w.Description,
+		ScopeType:             scopeType,
+		CloseTicketOnComplete: w.CloseTicketOnComplete,
+		Phases:                phases,
+		Groups:                groups,
+		CreatedAt:             w.CreatedAt,
+		UpdatedAt:             w.UpdatedAt,
 	})
 }

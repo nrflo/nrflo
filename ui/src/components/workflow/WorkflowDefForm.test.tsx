@@ -209,6 +209,7 @@ describe('WorkflowDefForm', () => {
         description: 'Full TDD workflow',
         scope_type: 'ticket',
         groups: [],
+        close_ticket_on_complete: true,
         phases: [
           {
             id: 'setup-analyzer',
@@ -243,6 +244,7 @@ describe('WorkflowDefForm', () => {
         description: 'New description',
         scope_type: 'ticket',
         groups: [],
+        close_ticket_on_complete: true,
         phases: [
           {
             id: 'setup-analyzer',

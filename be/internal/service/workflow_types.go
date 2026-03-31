@@ -34,20 +34,22 @@ type AgentConfig struct {
 
 // WorkflowDef represents a workflow definition (parsed from DB)
 type WorkflowDef struct {
-	Description string            `json:"description"`
-	ScopeType   string            `json:"scope_type"` // "ticket" or "project"
-	Groups      []string          `json:"groups"`
-	Phases      []PhaseDef        `json:"-"`
-	RawPhases   []json.RawMessage `json:"-"` // Internal, used during parsing
+	Description           string            `json:"description"`
+	ScopeType             string            `json:"scope_type"` // "ticket" or "project"
+	CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
+	Groups                []string          `json:"groups"`
+	Phases                []PhaseDef        `json:"-"`
+	RawPhases             []json.RawMessage `json:"-"` // Internal, used during parsing
 }
 
 // MarshalJSON serializes WorkflowDef with parsed phases
 func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 	type Alias struct {
-		Description string     `json:"description"`
-		ScopeType   string     `json:"scope_type"`
-		Groups      []string   `json:"groups"`
-		Phases      []PhaseDef `json:"phases"`
+		Description           string     `json:"description"`
+		ScopeType             string     `json:"scope_type"`
+		CloseTicketOnComplete bool       `json:"close_ticket_on_complete"`
+		Groups                []string   `json:"groups"`
+		Phases                []PhaseDef `json:"phases"`
 	}
 	phases := wf.Phases
 	if phases == nil {
@@ -62,25 +64,28 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		groups = []string{}
 	}
 	return json.Marshal(Alias{
-		Description: wf.Description,
-		ScopeType:   scopeType,
-		Groups:      groups,
-		Phases:      phases,
+		Description:           wf.Description,
+		ScopeType:             scopeType,
+		CloseTicketOnComplete: wf.CloseTicketOnComplete,
+		Groups:                groups,
+		Phases:                phases,
 	})
 }
 
 // UnmarshalJSON deserializes WorkflowDef, parsing mixed-format phases
 func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Description string            `json:"description"`
-		ScopeType   string            `json:"scope_type"`
-		Phases      []json.RawMessage `json:"phases"`
+		Description           string            `json:"description"`
+		ScopeType             string            `json:"scope_type"`
+		CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
+		Phases                []json.RawMessage `json:"phases"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	wf.Description = raw.Description
 	wf.ScopeType = raw.ScopeType
+	wf.CloseTicketOnComplete = raw.CloseTicketOnComplete
 	wf.RawPhases = raw.Phases
 
 	if len(raw.Phases) > 0 {

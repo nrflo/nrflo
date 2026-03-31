@@ -27,7 +27,7 @@ function formToPhases(entries: PhaseFormEntry[]): PhaseDef[] {
 const TAG_PATTERN = /^[a-zA-Z0-9-]+$/
 
 interface WorkflowDefFormProps {
-  initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; phases?: PhaseDef[] }
+  initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; close_ticket_on_complete?: boolean; phases?: PhaseDef[] }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
   onCancel: () => void
@@ -40,6 +40,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, onCancel, isPendi
   const [scopeType, setScopeType] = useState<ScopeType>(initial?.scope_type || 'ticket')
   const [groups, setGroups] = useState<string[]>(initial?.groups || [])
   const [groupInput, setGroupInput] = useState('')
+  const [closeTicketOnComplete, setCloseTicketOnComplete] = useState(initial?.close_ticket_on_complete ?? true)
   const [phases, setPhases] = useState<PhaseFormEntry[]>(phasesToForm(initial?.phases))
 
   const addGroup = (raw: string) => {
@@ -65,6 +66,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, onCancel, isPendi
         description: description.trim() || undefined,
         scope_type: scopeType,
         groups,
+        close_ticket_on_complete: closeTicketOnComplete,
         phases: apiPhases,
       } as WorkflowDefCreateRequest)
     } else {
@@ -72,6 +74,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, onCancel, isPendi
         description: description.trim() || undefined,
         scope_type: scopeType,
         groups,
+        close_ticket_on_complete: closeTicketOnComplete,
         phases: apiPhases.length ? apiPhases : undefined,
       } as WorkflowDefUpdateRequest)
     }
@@ -142,6 +145,18 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, onCancel, isPendi
           </p>
         )}
       </div>
+
+      {scopeType === 'ticket' && (
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={closeTicketOnComplete}
+            onChange={(e) => setCloseTicketOnComplete(e.target.checked)}
+            className="rounded border-border"
+          />
+          <span className="text-muted-foreground">Close ticket after workflow finished</span>
+        </label>
+      )}
 
       <div>
         <label className="block text-xs font-medium text-muted-foreground mb-1">

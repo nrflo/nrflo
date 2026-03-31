@@ -27,13 +27,14 @@ import (
 
 // RunRequest contains parameters for starting an orchestrated workflow run.
 type RunRequest struct {
-	ProjectID    string `json:"project_id"`
-	TicketID     string `json:"ticket_id"`
-	WorkflowName string `json:"workflow"`
-	Instructions string `json:"instructions"` // User-provided instructions
-	ScopeType    string `json:"scope_type"`   // "ticket" (default) or "project"
-	Interactive  bool   `json:"interactive"`   // If true, start with interactive PTY session before layer execution
-	PlanMode     bool   `json:"plan_mode"`     // If true, start with planning PTY session, read plan file after
+	ProjectID             string `json:"project_id"`
+	TicketID              string `json:"ticket_id"`
+	WorkflowName          string `json:"workflow"`
+	Instructions          string `json:"instructions"` // User-provided instructions
+	ScopeType             string `json:"scope_type"`   // "ticket" (default) or "project"
+	Interactive           bool   `json:"interactive"`   // If true, start with interactive PTY session before layer execution
+	PlanMode              bool   `json:"plan_mode"`     // If true, start with planning PTY session, read plan file after
+	CloseTicketOnComplete bool   `json:"close_ticket_on_complete"`
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -196,6 +197,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	if len(svcWf.Phases) == 0 {
 		return nil, fmt.Errorf("workflow '%s' has no phases", req.WorkflowName)
 	}
+	req.CloseTicketOnComplete = svcWf.CloseTicketOnComplete
 
 	// Init workflow instance — always creates a fresh instance
 	pool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig())
@@ -598,10 +600,11 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Build run request
 	req := RunRequest{
-		ProjectID:    projectID,
-		TicketID:     ticketID,
-		WorkflowName: workflowName,
-		ScopeType:    scopeType,
+		ProjectID:             projectID,
+		TicketID:              ticketID,
+		WorkflowName:          workflowName,
+		ScopeType:             scopeType,
+		CloseTicketOnComplete: svcWf.CloseTicketOnComplete,
 	}
 
 	// Create orchestration context detached from HTTP request context
@@ -1244,17 +1247,19 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 		asRepo.UpdateStatusByWorkflowInstance(wfiID, model.AgentSessionProjectCompleted)
 	} else {
 		wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted)
-		ticketService := service.NewTicketService(pool, o.clock)
-		reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
-		if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
-			logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
-		} else {
-			o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "closed"}))
-			// Best-effort: auto-close parent epic if all children are now closed
-			if epic, err := ticketService.TryCloseParentEpic(req.ProjectID, req.TicketID); err != nil {
-				logger.Error(context.Background(), "failed to auto-close parent epic", "ticket", req.TicketID, "err", err)
-			} else if epic != nil {
-				o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, epic.ID, "", map[string]interface{}{"status": "closed"}))
+		if req.CloseTicketOnComplete {
+			ticketService := service.NewTicketService(pool, o.clock)
+			reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
+			if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
+				logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
+			} else {
+				o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "closed"}))
+				// Best-effort: auto-close parent epic if all children are now closed
+				if epic, err := ticketService.TryCloseParentEpic(req.ProjectID, req.TicketID); err != nil {
+					logger.Error(context.Background(), "failed to auto-close parent epic", "ticket", req.TicketID, "err", err)
+				} else if epic != nil {
+					o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, epic.ID, "", map[string]interface{}{"status": "closed"}))
+				}
 			}
 		}
 	}

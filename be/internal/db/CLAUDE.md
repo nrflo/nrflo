@@ -132,6 +132,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                  CHECK (scope_type IN ('ticket', 'project'))         │
 │    phases        TEXT NOT NULL  (JSON array string)                  │
 │    groups        TEXT NOT NULL DEFAULT '[]' (JSON: tag groups)      │
+│    close_ticket_on_complete INTEGER NOT NULL DEFAULT 1               │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, id)                                      │

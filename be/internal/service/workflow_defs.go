@@ -46,22 +46,28 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		groupsJSON = []byte("[]")
 	}
 
+	closeTicketOnComplete := true
+	if req.CloseTicketOnComplete != nil {
+		closeTicketOnComplete = *req.CloseTicketOnComplete
+	}
+
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	wf := &model.Workflow{
-		ID:          strings.ToLower(req.ID),
-		ProjectID:   strings.ToLower(projectID),
-		Description: req.Description,
-		ScopeType:   scopeType,
-		Phases:      string(normalizedPhases),
-		Groups:      string(groupsJSON),
-		CreatedAt:   s.clock.Now().UTC(),
-		UpdatedAt:   s.clock.Now().UTC(),
+		ID:                    strings.ToLower(req.ID),
+		ProjectID:             strings.ToLower(projectID),
+		Description:           req.Description,
+		ScopeType:             scopeType,
+		CloseTicketOnComplete: closeTicketOnComplete,
+		Phases:                string(normalizedPhases),
+		Groups:                string(groupsJSON),
+		CreatedAt:             s.clock.Now().UTC(),
+		UpdatedAt:             s.clock.Now().UTC(),
 	}
 
 	_, err = s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, phases, groups, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Phases, wf.Groups, now, now)
+		INSERT INTO workflows (id, project_id, description, scope_type, phases, groups, close_ticket_on_complete, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Phases, wf.Groups, wf.CloseTicketOnComplete, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "PRIMARY KEY") {
 			return nil, fmt.Errorf("workflow '%s' already exists", req.ID)
@@ -76,11 +82,12 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*WorkflowDef, error) {
 	var description, scopeType, groupsStr string
 	var phasesStr string
+	var closeTicketOnComplete bool
 
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, phases, groups
+		SELECT description, scope_type, phases, groups, close_ticket_on_complete
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&description, &scopeType, &phasesStr, &groupsStr)
+		projectID, workflowID).Scan(&description, &scopeType, &phasesStr, &groupsStr, &closeTicketOnComplete)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -93,6 +100,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 		return nil, err
 	}
 	wf.ScopeType = scopeType
+	wf.CloseTicketOnComplete = closeTicketOnComplete
 	var groups []string
 	if groupsStr != "" {
 		json.Unmarshal([]byte(groupsStr), &groups)
@@ -107,7 +115,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, scope_type, phases, groups
+		SELECT id, description, scope_type, phases, groups, close_ticket_on_complete
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -118,8 +126,9 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 	result := make(map[string]WorkflowDef)
 	for rows.Next() {
 		var id, description, scopeType, phasesStr, groupsStr string
+		var closeTicketOnComplete bool
 
-		if err := rows.Scan(&id, &description, &scopeType, &phasesStr, &groupsStr); err != nil {
+		if err := rows.Scan(&id, &description, &scopeType, &phasesStr, &groupsStr, &closeTicketOnComplete); err != nil {
 			return nil, err
 		}
 
@@ -128,6 +137,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 			return nil, fmt.Errorf("workflow '%s': %w", id, err)
 		}
 		wf.ScopeType = scopeType
+		wf.CloseTicketOnComplete = closeTicketOnComplete
 		var groups []string
 		if groupsStr != "" {
 			json.Unmarshal([]byte(groupsStr), &groups)
@@ -173,6 +183,10 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 		groupsJSON, _ := json.Marshal(*req.Groups)
 		updates = append(updates, "groups = ?")
 		args = append(args, string(groupsJSON))
+	}
+	if req.CloseTicketOnComplete != nil {
+		updates = append(updates, "close_ticket_on_complete = ?")
+		args = append(args, *req.CloseTicketOnComplete)
 	}
 
 	if len(updates) == 0 {

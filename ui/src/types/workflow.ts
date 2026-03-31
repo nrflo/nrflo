@@ -189,6 +189,7 @@ export interface WorkflowDefSummary {
   description: string
   scope_type?: ScopeType
   groups?: string[]
+  close_ticket_on_complete?: boolean
   phases: PhaseDef[]
 }
 
@@ -199,6 +200,7 @@ export interface WorkflowDef {
   description: string
   scope_type?: ScopeType
   groups?: string[]
+  close_ticket_on_complete?: boolean
   phases: PhaseDef[]
   created_at: string
   updated_at: string
@@ -209,6 +211,7 @@ export interface WorkflowDefCreateRequest {
   description?: string
   scope_type?: ScopeType
   groups?: string[]
+  close_ticket_on_complete?: boolean
   phases: PhaseDef[]
 }
 
@@ -216,6 +219,7 @@ export interface WorkflowDefUpdateRequest {
   description?: string
   scope_type?: ScopeType
   groups?: string[]
+  close_ticket_on_complete?: boolean
   phases?: PhaseDef[]
 }
 

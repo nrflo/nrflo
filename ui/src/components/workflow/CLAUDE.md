@@ -67,7 +67,8 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 |-----------|---------|
 | `WorkflowDefForm.tsx` | Workflow definition create/edit form (includes groups chip input) |
 | `PhaseListEditor.tsx` | Layer-aware phase list editor with fan-in validation |
-| `AgentDefForm.tsx` | Agent definition create/edit form (includes tag dropdown when groups available) |
+| `AgentDefForm.tsx` | Agent definition create/edit form (includes tag dropdown when groups available, "Apply Template" button opens TemplatePickerDialog) |
+| `TemplatePickerDialog.tsx` | Dialog for selecting and applying a default template to an agent's prompt. Fetches from default-templates API, shows dropdown + preview, warns on non-empty prompt replacement. |
 | `AgentDefCard.tsx` | Agent definition card with edit/delete (shows tag badge) |
 | `AgentDefsSection.tsx` | Agent definitions list within a workflow (passes groups to children) |
 | `RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs. Supports "Start Interactive" and "Plan Before Execution" checkboxes (mutually exclusive). Queries agent defs to compute `canInteractive` (L0 has exactly 1 Claude-based agent). Props: `onInteractiveStart?(sessionId, agentType)` callback for opening PTY terminal. |

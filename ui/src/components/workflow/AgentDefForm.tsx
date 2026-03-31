@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { FileText } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
+import { TemplatePickerDialog } from './TemplatePickerDialog'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
 export function AgentDefForm({
@@ -25,6 +27,7 @@ export function AgentDefForm({
   const [tag, setTag] = useState(initial?.tag || '')
   const [lowConsumptionModel, setLowConsumptionModel] = useState(initial?.low_consumption_model || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -152,7 +155,13 @@ export function AgentDefForm({
         </p>
       </div>
       <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Prompt Template</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-medium text-muted-foreground">Prompt Template</label>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setShowTemplatePicker(true)}>
+            <FileText className="h-3.5 w-3.5 mr-1" />
+            Apply Template
+          </Button>
+        </div>
         <MarkdownEditor
           value={prompt}
           onChange={setPrompt}
@@ -169,6 +178,14 @@ export function AgentDefForm({
           {isCreate ? 'Create' : 'Save'}
         </Button>
       </div>
+      {showTemplatePicker && (
+        <TemplatePickerDialog
+          open={showTemplatePicker}
+          onClose={() => setShowTemplatePicker(false)}
+          onApply={setPrompt}
+          hasExistingPrompt={prompt.trim().length > 0}
+        />
+      )}
     </form>
   )
 }

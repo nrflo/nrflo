@@ -88,6 +88,14 @@ describe('AgentFlowNode', () => {
     expect(screen.queryByText(/%$/)).not.toBeInTheDocument()
   })
 
+  it('renders invisible layout placeholder (aria-hidden) when contextLeft is null', () => {
+    const data = makeData({ agent: makeAgent({ context_left: undefined }) })
+    const { container } = render(<AgentFlowNode data={data} />)
+    // Invisible spacer keeps row 1 width stable when there is no context value
+    const placeholder = container.querySelector('[aria-hidden="true"]')
+    expect(placeholder).toBeInTheDocument()
+  })
+
   it('shows context_left from history entry when no active agent', () => {
     const data = makeData({
       agent: undefined,

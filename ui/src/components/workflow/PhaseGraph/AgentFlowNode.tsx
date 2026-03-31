@@ -138,19 +138,31 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           !isRunning && !result && 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900'
         )}
       >
-        {/* Phase label */}
-        <div className="text-sm text-muted-foreground mb-2">
-          {phaseName.replace(/_/g, ' ')}
-        </div>
-
-        {/* Agent info: status icon, model, duration */}
-        <div className="flex items-center justify-center gap-3">
-          <StatusIcon result={result} isRunning={!!isRunning} />
-          <span className="font-semibold">{modelName}</span>
+        {/* Row 1: duration | phase name | context left */}
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Timer className="h-4 w-4" />
             <span>{duration}</span>
           </div>
+          <span className="text-sm text-muted-foreground flex-1 text-center truncate px-1">
+            {phaseName.replace(/_/g, ' ')}
+          </span>
+          {contextLeft != null ? (
+            <span className={cn(
+              'text-base font-mono px-1.5 py-0.5 rounded',
+              contextLeftColor(contextLeft)
+            )}>
+              {contextLeft}%
+            </span>
+          ) : (
+            <span className="text-base font-mono px-1.5 py-0.5 invisible" aria-hidden="true">{'\u00A0\u00A0\u00A0'}</span>
+          )}
+        </div>
+
+        {/* Row 2: status icon + model */}
+        <div className="flex items-center justify-center gap-3">
+          <StatusIcon result={result} isRunning={!!isRunning} />
+          <span className="font-semibold">{modelName}</span>
         </div>
 
         {/* Restart count badge - top left corner */}
@@ -164,15 +176,6 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           </span>
         )}
 
-        {/* Context left badge - top right corner */}
-        {contextLeft != null && (
-          <span className={cn(
-            'absolute top-1 right-1 text-base font-mono px-1.5 py-0.5 rounded',
-            contextLeftColor(contextLeft)
-          )}>
-            {contextLeft}%
-          </span>
-        )}
 
         {/* Threshold proximity warning */}
         {isRunning && contextLeft != null && isNearRestartThreshold(contextLeft, restartThreshold) && (

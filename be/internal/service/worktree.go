@@ -87,10 +87,8 @@ func (s *WorktreeService) MergeAndCleanup(projectRoot, defaultBranch, branchName
 	// not in the worktree dir, so this is safe and eliminates worktree-originated lock contention.
 	runGit(projectRoot, "worktree", "remove", worktreePath)
 
-	// Fetch remote updates and rebase feature branch before merge
-	if err := fetchAndRebase(projectRoot, defaultBranch, branchName); err != nil {
-		return err
-	}
+	// Fetch remote updates and rebase feature branch before merge (best-effort)
+	fetchAndRebase(projectRoot, defaultBranch, branchName)
 
 	// Checkout + merge with retry for transient index.lock
 	if err := s.checkoutAndMergeWithRetry(projectRoot, defaultBranch, branchName); err != nil {
@@ -144,8 +142,8 @@ func fetchRemote(projectRoot, defaultBranch string) {
 
 // fetchAndRebase fetches the default branch from origin, fast-forwards the local
 // default branch if behind, and rebases the feature branch onto it.
-// Returns an error if rebase fails (conflicts) — the branch is preserved for manual resolution.
-func fetchAndRebase(projectRoot, defaultBranch, branchName string) error {
+// Best-effort: if rebase fails, aborts and logs — merge path will handle conflicts.
+func fetchAndRebase(projectRoot, defaultBranch, branchName string) {
 	fetchRemote(projectRoot, defaultBranch)
 
 	// Clear stale index.lock before rebase (same pattern as checkoutAndMergeWithRetry)
@@ -168,10 +166,8 @@ func fetchAndRebase(projectRoot, defaultBranch, branchName string) error {
 	// Rebase feature branch onto updated defaultBranch
 	if _, err := runGit(projectRoot, "rebase", defaultBranch, branchName); err != nil {
 		runGit(projectRoot, "rebase", "--abort")
-		return fmt.Errorf("worktree merge: rebase failed for branch '%s' — resolve manually: %w", branchName, err)
+		log.Printf("worktree: rebase %s onto %s failed (falling back to merge): %v", branchName, defaultBranch, err)
 	}
-
-	return nil
 }
 
 // removeStaleLock removes .git/index.lock if the owning process is dead.

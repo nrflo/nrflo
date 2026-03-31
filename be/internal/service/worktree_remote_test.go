@@ -200,14 +200,14 @@ func TestMergeAndCleanup_RebaseConflict_RemoteAhead(t *testing.T) {
 	// Remote main also modifies file1.txt (conflicts with feature branch)
 	addRemoteCommit(t, barePath, "file1.txt", "remote change", "Remote: change file1")
 
-	// MergeAndCleanup should fail at rebase with a clear error
+	// MergeAndCleanup should fail at merge (rebase aborts silently, conflict surfaces at merge)
 	err = svc.MergeAndCleanup(repoPath, "main", "rebase-conflict-branch", worktreePath)
 	if err == nil {
-		t.Fatal("expected rebase conflict error, got nil")
+		t.Fatal("expected merge conflict error, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "rebase-conflict-branch") {
-		t.Errorf("error should contain branch name, got: %v", err)
+	if !strings.Contains(err.Error(), "merge failed") {
+		t.Errorf("error should contain 'merge failed', got: %v", err)
 	}
 
 	// Branch must be preserved for manual resolution

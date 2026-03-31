@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -30,6 +31,9 @@ func (s *WorktreeService) Setup(projectRoot, defaultBranch, branchName string) (
 	}
 
 	worktreePath := filepath.Join(worktreeBasePath, branchName)
+
+	// Fetch latest remote state before branching (best-effort)
+	fetchRemote(projectRoot, defaultBranch)
 
 	// Create branch from defaultBranch
 	_, err := runGit(projectRoot, "branch", branchName, defaultBranch)
@@ -83,6 +87,11 @@ func (s *WorktreeService) MergeAndCleanup(projectRoot, defaultBranch, branchName
 	// not in the worktree dir, so this is safe and eliminates worktree-originated lock contention.
 	runGit(projectRoot, "worktree", "remove", worktreePath)
 
+	// Fetch remote updates and rebase feature branch before merge
+	if err := fetchAndRebase(projectRoot, defaultBranch, branchName); err != nil {
+		return err
+	}
+
 	// Checkout + merge with retry for transient index.lock
 	if err := s.checkoutAndMergeWithRetry(projectRoot, defaultBranch, branchName); err != nil {
 		return err
@@ -122,6 +131,47 @@ func (s *WorktreeService) checkoutAndMergeWithRetry(projectRoot, defaultBranch, 
 	}
 
 	return lastErr
+}
+
+// fetchRemote attempts to fetch the default branch from origin.
+// Best-effort: if fetch fails (no network, no remote), logs a warning and continues.
+func fetchRemote(projectRoot, defaultBranch string) {
+	_, err := runGit(projectRoot, "fetch", "origin", defaultBranch)
+	if err != nil {
+		log.Printf("worktree: fetch origin/%s failed (proceeding with local state): %v", defaultBranch, err)
+	}
+}
+
+// fetchAndRebase fetches the default branch from origin, fast-forwards the local
+// default branch if behind, and rebases the feature branch onto it.
+// Returns an error if rebase fails (conflicts) — the branch is preserved for manual resolution.
+func fetchAndRebase(projectRoot, defaultBranch, branchName string) error {
+	fetchRemote(projectRoot, defaultBranch)
+
+	// Clear stale index.lock before rebase (same pattern as checkoutAndMergeWithRetry)
+	removeStaleLock(filepath.Join(projectRoot, ".git", "index.lock"))
+
+	// Check if local defaultBranch is behind origin
+	countOut, err := runGit(projectRoot, "rev-list", "--count", defaultBranch+"..origin/"+defaultBranch)
+	if err == nil {
+		if strings.TrimSpace(countOut) != "0" {
+			// Fast-forward local defaultBranch to match origin
+			if _, err := runGit(projectRoot, "checkout", defaultBranch); err == nil {
+				if _, err := runGit(projectRoot, "merge", "origin/"+defaultBranch, "--ff-only"); err != nil {
+					log.Printf("worktree: fast-forward %s failed (proceeding): %v", defaultBranch, err)
+				}
+			}
+		}
+	}
+	// If rev-list failed (no origin ref), proceed without fast-forward
+
+	// Rebase feature branch onto updated defaultBranch
+	if _, err := runGit(projectRoot, "rebase", defaultBranch, branchName); err != nil {
+		runGit(projectRoot, "rebase", "--abort")
+		return fmt.Errorf("worktree merge: rebase failed for branch '%s' — resolve manually: %w", branchName, err)
+	}
+
+	return nil
 }
 
 // removeStaleLock removes .git/index.lock if the owning process is dead.

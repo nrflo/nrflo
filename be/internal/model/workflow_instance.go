@@ -35,6 +35,8 @@ type WorkflowInstance struct {
 	SkipTags      string                 `json:"-"` // JSON array of skip tag strings
 	RetryCount    int                    `json:"retry_count"`
 	ParentSession sql.NullString         `json:"-"`
+	WorktreePath  sql.NullString         `json:"-"`
+	BranchName    sql.NullString         `json:"-"`
 	CreatedAt     time.Time              `json:"created_at"`
 	UpdatedAt     time.Time              `json:"updated_at"`
 }
@@ -96,6 +98,14 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 	if wi.ParentSession.Valid {
 		parentSession = &wi.ParentSession.String
 	}
+	var worktreePath *string
+	if wi.WorktreePath.Valid {
+		worktreePath = &wi.WorktreePath.String
+	}
+	var branchName *string
+	if wi.BranchName.Valid {
+		branchName = &wi.BranchName.String
+	}
 
 	var findings map[string]interface{}
 	json.Unmarshal([]byte(wi.Findings), &findings)
@@ -121,6 +131,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		SkipTags      []string               `json:"skip_tags"`
 		RetryCount    int                    `json:"retry_count"`
 		ParentSession *string                `json:"parent_session,omitempty"`
+		WorktreePath  *string                `json:"worktree_path,omitempty"`
+		BranchName    *string                `json:"branch_name,omitempty"`
 		CreatedAt     time.Time              `json:"created_at"`
 		UpdatedAt     time.Time              `json:"updated_at"`
 	}{
@@ -134,6 +146,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		SkipTags:      skipTags,
 		RetryCount:    wi.RetryCount,
 		ParentSession: parentSession,
+		WorktreePath:  worktreePath,
+		BranchName:    branchName,
 		CreatedAt:     wi.CreatedAt,
 		UpdatedAt:     wi.UpdatedAt,
 	})

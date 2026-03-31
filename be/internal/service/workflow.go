@@ -221,6 +221,12 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	if wi.ParentSession.Valid {
 		result["parent_session"] = wi.ParentSession.String
 	}
+	if wi.WorktreePath.Valid {
+		result["worktree_path"] = wi.WorktreePath.String
+	}
+	if wi.BranchName.Valid {
+		result["branch_name"] = wi.BranchName.String
+	}
 
 	// Completion stats
 	result["status"] = string(wi.Status)

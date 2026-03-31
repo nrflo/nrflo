@@ -56,6 +56,8 @@ export interface WorkflowState {
   instance_id?: string
   version?: number
   scope_type?: ScopeType
+  worktree_path?: string
+  branch_name?: string
   current_phase?: string
   status?: string
   completed_at?: string

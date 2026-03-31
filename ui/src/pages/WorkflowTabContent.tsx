@@ -13,6 +13,7 @@ import {
   Zap,
   XCircle,
   RefreshCw,
+  GitBranch,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -213,6 +214,14 @@ export function WorkflowTabContent({
                 )}
               </div>
             </div>
+            {displayedState.worktree_path && (
+              <Tooltip text={displayedState.branch_name ? `Branch: ${displayedState.branch_name}` : ''} placement="top">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <GitBranch className="h-3.5 w-3.5" />
+                  <span className="truncate" title={displayedState.worktree_path}>{displayedState.worktree_path}</span>
+                </div>
+              </Tooltip>
+            )}
             {displayedState.status === 'failed' && onRetryFailed && failedAgent?.session_id && (
               <div className="flex items-center gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm dark:border-red-800 dark:bg-red-950/30">
                 <div className="flex items-center gap-2 text-red-700 dark:text-red-400">

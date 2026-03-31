@@ -235,6 +235,11 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	findingsJSON, _ := json.Marshal(findings)
 	wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
 
+	// Persist worktree info if available
+	if wt != nil {
+		wfiRepo.UpdateWorktree(wi.ID, wt.worktreePath, wt.branchName)
+	}
+
 	// Read low consumption mode setting (once at workflow start)
 	lowConsumptionMode := false
 	if val, _ := pool.GetConfig("low_consumption_mode"); val == "true" {
@@ -567,6 +572,11 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}
 	findingsJSON, _ := json.Marshal(findings)
 	wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
+
+	// Persist worktree info if available
+	if wt != nil {
+		wfiRepo.UpdateWorktree(wi.ID, wt.worktreePath, wt.branchName)
+	}
 
 	// Build spawner config
 	spawnWorkflows := convertToSpawnerWorkflows(svcWorkflows)

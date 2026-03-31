@@ -40,7 +40,7 @@ func TestMigration028WorkflowInstancesColumnCount(t *testing.T) {
 		t.Fatalf("failed to count columns: %v", err)
 	}
 
-	const want = 12 // 11 original + skip_tags (migration 000030)
+	const want = 14 // 11 original + skip_tags (000030) + worktree_path + branch_name (000041)
 	if count != want {
 		t.Errorf("workflow_instances expected %d columns, got %d", want, count)
 	}

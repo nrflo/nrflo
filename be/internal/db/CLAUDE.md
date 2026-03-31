@@ -78,6 +78,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    skip_tags       TEXT NOT NULL DEFAULT '[]' (JSON: skipped tags)  │
 │    retry_count     INTEGER NOT NULL DEFAULT 0                        │
 │    parent_session  TEXT               (orchestrating session UUID)   │
+│    worktree_path   TEXT               (git worktree path, nullable)  │
+│    branch_name     TEXT               (git branch name, nullable)    │
 │    created_at      TEXT NOT NULL                                     │
 │    updated_at      TEXT NOT NULL                                     │
 │    INDEX idx_wfi_lookup (project_id, ticket_id, workflow_id,         │

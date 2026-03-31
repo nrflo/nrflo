@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   ExternalLink,
   Layers,
@@ -164,6 +166,18 @@ export function WorkflowTabContent({
                       </Tooltip>
                     )}
                   </>
+                )}
+                {(hasActivePhase || selectedPanelAgent) && (
+                  <Tooltip text={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'} placement="top">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onToggleLogPanel}
+                      title={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'}
+                    >
+                      {logPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                    </Button>
+                  </Tooltip>
                 )}
               </div>
               {!(isOrchestrated || hasActivePhase) && (

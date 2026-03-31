@@ -214,53 +214,7 @@ describe('AgentLogPanel - Mobile Layout (nrworkflow-395fca)', () => {
     })
   })
 
-  describe('collapse button positioning (mobile vs desktop)', () => {
-    it('detail mode: button has -top-5 for mobile top positioning', () => {
-      const { container } = render(
-        <AgentLogPanel
-          activeAgents={{}}
-          sessions={[]}
-          collapsed={false}
-          onToggleCollapse={vi.fn()}
-          selectedAgent={selectedAgent}
-          onAgentSelect={vi.fn()}
-        />
-      )
-      const button = container.querySelector('button') as HTMLElement
-      expect(button.className).toContain('-top-5')
-    })
-
-    it('detail mode: button has md:-left-5 for desktop left positioning', () => {
-      const { container } = render(
-        <AgentLogPanel
-          activeAgents={{}}
-          sessions={[]}
-          collapsed={false}
-          onToggleCollapse={vi.fn()}
-          selectedAgent={selectedAgent}
-          onAgentSelect={vi.fn()}
-        />
-      )
-      const button = container.querySelector('button') as HTMLElement
-      expect(button.className).toContain('md:-left-5')
-    })
-
-    it('overview mode: button has -top-5 and md:-left-5', () => {
-      const { container } = render(
-        <AgentLogPanel
-          activeAgents={{ 'implementor:claude:sonnet': runningAgent }}
-          sessions={[makeSession()]}
-          collapsed={false}
-          onToggleCollapse={vi.fn()}
-          selectedAgent={null}
-          onAgentSelect={vi.fn()}
-        />
-      )
-      const button = container.querySelector('button') as HTMLElement
-      expect(button.className).toContain('-top-5')
-      expect(button.className).toContain('md:-left-5')
-    })
-  })
+  // TODO(test-writer): collapse button positioning tests removed — button moved to WorkflowTabContent/ProjectWorkflowsPage headers
 
   describe('collapsed content layout (horizontal mobile, vertical desktop)', () => {
     it('detail mode collapsed: inner content has flex-row for mobile horizontal layout', () => {

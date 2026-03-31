@@ -20,6 +20,9 @@ import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Button } from '@/components/ui/Button'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { WorkflowState, CompletedAgentRow } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
@@ -229,54 +232,70 @@ export function ProjectWorkflowsPage() {
       )}
 
       {activeTab === 'completed' && (
-        <div className={cn(
-          'flex gap-0',
-          selectedPanelAgent && 'min-h-[calc(100vh-280px)]'
-        )}>
-          <div className="flex-1 min-w-0 space-y-4">
-            {instanceIds.length > 0 && (
-              <InstanceList
-                instanceIds={instanceIds}
-                instances={tabInstances}
-                labels={selectorLabels}
-                selectedId={resolvedInstanceId}
-                onSelect={setSelectedInstanceId}
-                tab="completed"
-                onDelete={setDeleteTargetId}
-              />
-            )}
-            {mergedCompletedAgents.length > 0 ? (
-              <CompletedAgentsTable
-                agentHistory={mergedCompletedAgents}
+        <>
+          {selectedPanelAgent && (
+            <div className="flex items-center">
+              <Tooltip text={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'} placement="top">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogPanelCollapsed((p) => !p)}
+                  title={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'}
+                >
+                  {logPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
+              </Tooltip>
+            </div>
+          )}
+          <div className={cn(
+            'flex gap-0',
+            selectedPanelAgent && 'min-h-[calc(100vh-280px)]'
+          )}>
+            <div className="flex-1 min-w-0 space-y-4">
+              {instanceIds.length > 0 && (
+                <InstanceList
+                  instanceIds={instanceIds}
+                  instances={tabInstances}
+                  labels={selectorLabels}
+                  selectedId={resolvedInstanceId}
+                  onSelect={setSelectedInstanceId}
+                  tab="completed"
+                  onDelete={setDeleteTargetId}
+                />
+              )}
+              {mergedCompletedAgents.length > 0 ? (
+                <CompletedAgentsTable
+                  agentHistory={mergedCompletedAgents}
+                  sessions={allCompletedSessions}
+                  onAgentSelect={setSelectedPanelAgent}
+                  showWorkflowColumn
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground text-sm">No completed workflows</p>
+                </div>
+              )}
+            </div>
+            {selectedPanelAgent && (
+              <AgentLogPanel
+                activeAgents={{}}
                 sessions={allCompletedSessions}
+                collapsed={logPanelCollapsed}
+                onToggleCollapse={() => setLogPanelCollapsed((p) => !p)}
+                selectedAgent={selectedPanelAgent}
                 onAgentSelect={setSelectedPanelAgent}
-                showWorkflowColumn
+                onResumeSession={(sessionId) => {
+                  if (!currentProject) return
+                  resumeSessionMutation.mutate(
+                    { projectId: currentProject, params: { session_id: sessionId } },
+                    { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+                  )
+                }}
+                resumePending={resumeSessionMutation.isPending}
               />
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground text-sm">No completed workflows</p>
-              </div>
             )}
           </div>
-          {selectedPanelAgent && (
-            <AgentLogPanel
-              activeAgents={{}}
-              sessions={allCompletedSessions}
-              collapsed={logPanelCollapsed}
-              onToggleCollapse={() => setLogPanelCollapsed((p) => !p)}
-              selectedAgent={selectedPanelAgent}
-              onAgentSelect={setSelectedPanelAgent}
-              onResumeSession={(sessionId) => {
-                if (!currentProject) return
-                resumeSessionMutation.mutate(
-                  { projectId: currentProject, params: { session_id: sessionId } },
-                  { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
-                )
-              }}
-              resumePending={resumeSessionMutation.isPending}
-            />
-          )}
-        </div>
+        </>
       )}
 
       {activeTab === 'failed' && (

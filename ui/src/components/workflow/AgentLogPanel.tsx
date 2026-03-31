@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
-import { ChevronRight, ChevronLeft, Loader2, MessageSquare, RefreshCw } from 'lucide-react'
+import { Loader2, MessageSquare, RefreshCw } from 'lucide-react'
 import { cn, contextLeftColor } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
 import { parseToolName, ToolBadge } from './LogMessage'
@@ -150,7 +150,6 @@ export function AgentLogPanel({
   activeAgents,
   sessions,
   collapsed,
-  onToggleCollapse,
   selectedAgent,
   onAgentSelect,
   onRetryFailed,
@@ -236,14 +235,6 @@ export function AgentLogPanel({
           collapsed ? 'h-10 md:h-auto md:w-10 shrink-0' : 'h-[50vh] md:h-auto md:flex-1 md:min-w-[280px]'
         )}
       >
-        <button
-          onClick={onToggleCollapse}
-          className="absolute -top-5 left-3 md:top-3 md:-left-5 md:left-auto z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
-          title={collapsed ? 'Expand agent log' : 'Collapse agent log'}
-        >
-          {collapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </button>
-
         {collapsed ? (
           <div className="flex flex-row items-center gap-2 justify-center md:flex-col md:pt-16">
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -268,14 +259,6 @@ export function AgentLogPanel({
         collapsed ? 'h-10 md:h-auto md:w-10 shrink-0' : 'h-[50vh] md:h-auto md:flex-1 md:min-w-[280px]'
       )}
     >
-      <button
-        onClick={onToggleCollapse}
-        className="absolute -top-5 left-3 md:top-3 md:-left-5 md:left-auto z-10 flex items-center justify-center w-6 h-6 rounded-full border bg-background shadow-sm hover:bg-muted transition-colors"
-        title={collapsed ? 'Expand agent log' : 'Collapse agent log'}
-      >
-        {collapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-      </button>
-
       {collapsed ? (
         <div className="flex flex-row items-center gap-2 justify-center md:flex-col md:pt-16">
           <div className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-xs font-medium text-yellow-700 dark:text-yellow-400">

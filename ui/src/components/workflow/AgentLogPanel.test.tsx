@@ -231,20 +231,7 @@ describe('AgentLogPanel', () => {
       expect(screen.queryByTestId('agent-log-detail')).not.toBeInTheDocument()
     })
 
-    it('toggle collapse button calls onToggleCollapse', async () => {
-      const user = userEvent.setup()
-      const onToggleCollapse = vi.fn()
-
-      renderPanel({
-        selectedAgent: { phaseName: 'implementation', agent: makeAgent() },
-        onToggleCollapse,
-        sessions: [makeSession()],
-      })
-
-      const toggleButton = screen.getByTitle('Collapse agent log')
-      await user.click(toggleButton)
-      expect(onToggleCollapse).toHaveBeenCalledTimes(1)
-    })
+    // TODO(test-writer): collapse toggle button moved to WorkflowTabContent header — test there
   })
 
   describe('session lookup', () => {

@@ -341,6 +341,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/agents/running", s.handleGetRunningAgents)
 	mux.HandleFunc("GET /api/v1/agents/recent", s.handleGetRecentAgents)
 	mux.HandleFunc("GET /api/v1/sessions/{id}/messages", s.handleGetSessionMessages)
+	mux.HandleFunc("GET /api/v1/sessions/{id}/prompt", s.handleGetSessionPrompt)
 
 	// Dependencies
 	mux.HandleFunc("GET /api/v1/tickets/{id}/dependencies", s.handleGetDependencies)

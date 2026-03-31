@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react'
-import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
+import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
 import { parseToolName, ToolBadge } from './LogMessage'
 import { cn } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
+import { useSessionPrompt } from '@/hooks/useSessionPrompt'
 import type { MessageCategory } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
@@ -50,11 +52,13 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
     : agent?.cli || historyEntry?.agent_type || 'agent'
   const duration = historyEntry?.duration_sec ? formatDuration(historyEntry.duration_sec) : null
 
+  const [activeTab, setActiveTab] = useState<'messages' | 'context'>('messages')
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | 'all'>('all')
   const sessionId = session?.id || agent?.session_id || historyEntry?.session_id
   const { data: messagesData, isLoading: messagesLoading } = useSessionMessages(sessionId, {
     isRunning: isRunning || false,
   })
+  const { data: promptData, isLoading: promptLoading } = useSessionPrompt(sessionId, activeTab === 'context')
 
   const messages = messagesData?.messages ?? []
 
@@ -147,9 +151,51 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
         )}
       </div>
 
+      {/* Top-level tab bar */}
+      <div className="flex items-center gap-1 px-3 py-1 border-b border-border shrink-0">
+        <button
+          onClick={() => setActiveTab('messages')}
+          className={cn(
+            'px-2.5 py-1 text-xs font-medium rounded transition-colors',
+            activeTab === 'messages'
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+          )}
+        >
+          <MessageSquare className="h-3 w-3 inline-block mr-1 -mt-0.5" />
+          Messages
+        </button>
+        <button
+          onClick={() => setActiveTab('context')}
+          className={cn(
+            'px-2.5 py-1 text-xs font-medium rounded transition-colors',
+            activeTab === 'context'
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+          )}
+        >
+          <FileText className="h-3 w-3 inline-block mr-1 -mt-0.5" />
+          Context
+        </button>
+      </div>
+
       {/* Content area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2">
-        {messagesLoading ? (
+        {activeTab === 'context' ? (
+          promptLoading ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
+              <p className="text-xs">Loading prompt context...</p>
+            </div>
+          ) : promptData?.prompt_context ? (
+            <RenderedMarkdown content={promptData.prompt_context} />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <FileText className="h-8 w-8 mb-2 opacity-30" />
+              <p className="text-xs">No prompt context available</p>
+            </div>
+          )
+        ) : messagesLoading ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
             <p className="text-xs">Loading messages...</p>

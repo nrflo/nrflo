@@ -56,7 +56,7 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 |-----------|---------|
 | `AgentSessionCard.tsx` | Reusable agent session card |
 | `AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
-| `AgentLogDetail.tsx` | Single-agent detail with message table (timestamp, tool, message columns) |
+| `AgentLogDetail.tsx` | Single-agent detail with top-level Messages/Context tabs; Messages tab shows message table (timestamp, tool, message columns), Context tab shows session prompt markdown |
 | `CompletedAgentsTable.tsx` | Unified pageable table of completed agents sorted by `ended_at` DESC. Supports optional Workflow column (`showWorkflowColumn` prop) and client-side pagination (20 rows/page). Duration uses `formatElapsedTime` from timestamps with `formatDuration` fallback. Used directly by `ProjectWorkflowsPage` for the completed tab (bypasses `WorkflowTabContent`). |
 | `LogMessage.tsx` | Log message with tool name color highlighting. Exports `parseToolName` and `ToolBadge` |
 | `ActiveAgentsPanel.tsx` | Active agents display panel |

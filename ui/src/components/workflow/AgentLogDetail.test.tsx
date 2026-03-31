@@ -291,13 +291,12 @@ describe('AgentLogDetail', () => {
       expect(within(fourthRowCells[1]).getByText('Bash')).toBeInTheDocument()
       expect(fourthRowCells[2].textContent).toBe('git status')
 
-      // --- Criterion 3: No messages/raw toggle ---
-      // There should be no toggle or button for switching between messages and raw
-      expect(screen.queryByText('Messages')).not.toBeInTheDocument()
+      // --- Criterion 3: No raw toggle ---
+      // There should be no toggle or button for switching to raw output
       expect(screen.queryByText('Raw')).not.toBeInTheDocument()
       expect(screen.queryByText('Raw Output')).not.toBeInTheDocument()
 
-      // Messages are always displayed directly (the table IS the default and only view)
+      // Messages are displayed by default (the table is visible in the Messages tab)
       expect(table).toBeVisible()
     })
   })

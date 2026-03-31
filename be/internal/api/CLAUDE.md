@@ -28,6 +28,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
 | `handlers_docs.go` | Documentation (agent manual) |
+| `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
 | `handlers_logs.go` | Log file viewer (BE/FE logs) |
 
 ## HTTP API Endpoints
@@ -119,6 +120,9 @@ GET /api/v1/agents/recent?limit=10
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
 GET /api/v1/sessions/:id/messages?category=subagent  # text|tool|subagent|skill
+
+# Session prompt context (returns generated prompt for an agent session)
+GET /api/v1/sessions/:id/prompt  # 200 with {prompt_context}, 204 if empty, 404 if not found
 
 # Dependencies
 GET /api/v1/tickets/:id/dependencies  # Get ticket dependencies

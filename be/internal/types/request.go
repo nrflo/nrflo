@@ -277,6 +277,24 @@ type DefaultTemplateUpdateRequest struct {
 	Template *string `json:"template,omitempty"`
 }
 
+// CLIModelCreateRequest is the request for creating a CLI model
+type CLIModelCreateRequest struct {
+	ID              string `json:"id"`
+	CLIType         string `json:"cli_type"`
+	DisplayName     string `json:"display_name"`
+	MappedModel     string `json:"mapped_model"`
+	ReasoningEffort string `json:"reasoning_effort"`
+	ContextLength   int    `json:"context_length"`
+}
+
+// CLIModelUpdateRequest is the request for updating a CLI model
+type CLIModelUpdateRequest struct {
+	DisplayName     *string `json:"display_name,omitempty"`
+	MappedModel     *string `json:"mapped_model,omitempty"`
+	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	ContextLength   *int    `json:"context_length,omitempty"`
+}
+
 // DependencyRequest is the request for adding/removing dependencies
 type DependencyRequest struct {
 	Child  string `json:"child"`

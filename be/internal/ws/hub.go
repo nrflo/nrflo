@@ -55,6 +55,9 @@ const (
 	EventDefaultTemplateCreated      = "default_template.created"
 	EventDefaultTemplateUpdated      = "default_template.updated"
 	EventDefaultTemplateDeleted      = "default_template.deleted"
+	EventCLIModelCreated             = "cli_model.created"
+	EventCLIModelUpdated             = "cli_model.updated"
+	EventCLIModelDeleted             = "cli_model.deleted"
 	EventTestEcho                    = "test.echo"
 )
 

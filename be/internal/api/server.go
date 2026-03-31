@@ -346,6 +346,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/system-agents/{id}", s.handleUpdateSystemAgentDef)
 	mux.HandleFunc("DELETE /api/v1/system-agents/{id}", s.handleDeleteSystemAgentDef)
 
+	// CLI models (global, no project scope)
+	mux.HandleFunc("GET /api/v1/cli-models", s.handleListCLIModels)
+	mux.HandleFunc("POST /api/v1/cli-models", s.handleCreateCLIModel)
+	mux.HandleFunc("GET /api/v1/cli-models/{id}", s.handleGetCLIModel)
+	mux.HandleFunc("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
+	mux.HandleFunc("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
+
 	// Default templates (global, no project scope)
 	mux.HandleFunc("GET /api/v1/default-templates", s.handleListDefaultTemplates)
 	mux.HandleFunc("POST /api/v1/default-templates", s.handleCreateDefaultTemplate)

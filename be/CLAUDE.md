@@ -48,6 +48,7 @@ be/
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_system_agent_def.go # System agent definition CRUD (global)
 │   │   ├── handlers_default_template.go # Default template CRUD (global)
+│   │   ├── handlers_cli_models.go # CLI model CRUD (global)
 │   │   ├── handlers_global_settings.go # Global settings GET/PATCH (no project scope)
 │   │   ├── handlers_pty.go      # PTY WebSocket handler (1:1 interactive terminal relay)
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
@@ -89,6 +90,7 @@ be/
 │   │   ├── agent_definition.go  # Agent definition CRUD
 │   │   ├── system_agent_definition.go # System agent definition CRUD (global)
 │   │   ├── default_template.go  # Default template CRUD (global, readonly enforcement)
+│   │   ├── cli_model.go         # CLI model CRUD (global, readonly delete enforcement)
 │   │   ├── global_settings.go   # Global settings key-value access (wraps pool.GetConfig/SetConfig)
 │   │   ├── findings.go          # Findings operations
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
@@ -110,6 +112,7 @@ be/
 │   │   ├── agent_definition.go
 │   │   ├── system_agent_definition.go
 │   │   ├── default_template.go
+│   │   ├── cli_model.go
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution, item, lock models

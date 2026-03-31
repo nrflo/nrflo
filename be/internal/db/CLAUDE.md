@@ -178,6 +178,19 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    updated_at    TEXT NOT NULL                                       │
 │    (6 readonly templates seeded by migration 000042)                 │
 │                                                                      │
+│  CLI_MODELS                                                          │
+│    id              TEXT PRIMARY KEY                                   │
+│    cli_type        TEXT NOT NULL                                      │
+│                    CHECK (cli_type IN ('claude','opencode','codex'))  │
+│    display_name    TEXT NOT NULL                                      │
+│    mapped_model    TEXT NOT NULL                                      │
+│    reasoning_effort TEXT NOT NULL DEFAULT ''                          │
+│    context_length  INTEGER NOT NULL DEFAULT 200000                   │
+│    read_only       INTEGER NOT NULL DEFAULT 0                        │
+│    created_at      TEXT NOT NULL                                     │
+│    updated_at      TEXT NOT NULL                                     │
+│    (10 readonly models seeded by migration 000043)                   │
+│                                                                      │
 │  CHAIN_EXECUTIONS                                                    │
 │    id            TEXT PRIMARY KEY   (UUID)                            │
 │    project_id    TEXT NOT NULL                                        │

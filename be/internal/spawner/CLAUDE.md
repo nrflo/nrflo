@@ -382,10 +382,17 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 │    ├── WebSearch: input.query                                       │
 │    └── Others: just [ToolName]                                      │
 │                                                                      │
-│  Task result tracking (Claude tool_result / content_block_stop):    │
+│  Task result tracking (Claude tool_result / user events):           │
 │    ├── tool_use items with name=Task are tracked in pendingTasks    │
-│    ├── tool_result/content_block_stop events correlate by tool_use_id│
+│    ├── tool_result and user (type=tool_result) correlate by id      │
 │    └── Matched: [TaskResult] subagent_type: description             │
+│                                                                      │
+│  Claude additional event types:                                      │
+│    ├── user: tool_result items → handleClaudeToolResult correlation  │
+│    ├── system (subtype=init): [init] v<ver> model=<model>           │
+│    ├── assistant thinking content: [thinking] prefix + text          │
+│    ├── assistant/result usage: context % tracking via tokens         │
+│    └── rate_limit_event: [rate_limit] type status (non-allowed only)│
 │                                                                      │
 │  Message categories:                                                 │
 │    ├── text: plain text messages                                    │
@@ -403,7 +410,7 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 │    item.completed type=agent_message → text message                 │
 │    item.completed type=command_execution → [Bash] tool use          │
 │    item.started type=command_execution → console log only           │
-│    turn.completed → usage tokens → contextLeft (200k window)        │
+│    turn.completed → usage tokens → contextLeft (proc.maxContext)     │
 │                                                                      │
 │  Stderr capture: [stderr] Error message from CLI                     │
 │  Scanner buffer: 10MB limit for large JSON outputs                  │
@@ -419,7 +426,7 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `docker_adapter_test.go` | Docker CLI adapter decorator tests |
 | `output_test.go` | General output parsing tests |
 | `output_claude_test.go` | Claude category assignment, pendingTasks tracking, tool_result correlation |
-| `output_claude_advanced_test.go` | Nested content, content_block_stop, multiple in-flight tasks, TaskResult formatting |
+| `output_claude_advanced_test.go` | Nested content, user tool_result correlation, multiple in-flight tasks, TaskResult formatting |
 | `output_codex_test.go` | Codex output parsing: thread.started, item types, turn.completed token counting |
 | `context_test.go` | Context left DB read/write tests |
 | `template_project_findings_test.go` | Project findings template expansion tests |

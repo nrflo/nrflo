@@ -50,11 +50,11 @@ func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesTask(t *testing.T)
 	}
 }
 
-// === content_block_stop triggers tool result correlation ===
+// === user type tool_result triggers tool result correlation ===
 
-func TestProcessOutput_Claude_ContentBlockStop_MatchesTask(t *testing.T) {
+func TestProcessOutput_Claude_UserToolResult_MatchesTask(t *testing.T) {
 	s := noPoolSpawner()
-	proc := minProc("sess-cbs-1")
+	proc := minProc("sess-utr-1")
 
 	processJSON(s, proc, map[string]interface{}{
 		"type": "assistant",
@@ -62,7 +62,7 @@ func TestProcessOutput_Claude_ContentBlockStop_MatchesTask(t *testing.T) {
 			"content": []interface{}{
 				map[string]interface{}{
 					"type": "tool_use",
-					"id":   "toolu_cbs001",
+					"id":   "toolu_utr001",
 					"name": "Task",
 					"input": map[string]interface{}{
 						"description":   "background task",
@@ -74,8 +74,15 @@ func TestProcessOutput_Claude_ContentBlockStop_MatchesTask(t *testing.T) {
 	})
 
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "content_block_stop",
-		"tool_use_id": "toolu_cbs001",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_utr001",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)
@@ -83,7 +90,7 @@ func TestProcessOutput_Claude_ContentBlockStop_MatchesTask(t *testing.T) {
 		t.Fatalf("expected 2 entries (Task + TaskResult), got %d", len(entries))
 	}
 	if !strings.HasPrefix(entries[1].Content, "[TaskResult]") {
-		t.Errorf("content_block_stop should generate [TaskResult], got: %q", entries[1].Content)
+		t.Errorf("user tool_result should generate [TaskResult], got: %q", entries[1].Content)
 	}
 	if entries[1].Category != "subagent" {
 		t.Errorf("category = %q, want subagent", entries[1].Category)
@@ -134,10 +141,10 @@ func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesAgent(t *testing.T
 	}
 }
 
-// TestProcessOutput_Claude_ContentBlockStop_MatchesAgent mirrors the Task version for Agent.
-func TestProcessOutput_Claude_ContentBlockStop_MatchesAgent(t *testing.T) {
+// TestProcessOutput_Claude_UserToolResult_MatchesAgent mirrors the Task version for Agent.
+func TestProcessOutput_Claude_UserToolResult_MatchesAgent(t *testing.T) {
 	s := noPoolSpawner()
-	proc := minProc("sess-agent-cbs-1")
+	proc := minProc("sess-agent-utr-1")
 
 	processJSON(s, proc, map[string]interface{}{
 		"type": "assistant",
@@ -145,7 +152,7 @@ func TestProcessOutput_Claude_ContentBlockStop_MatchesAgent(t *testing.T) {
 			"content": []interface{}{
 				map[string]interface{}{
 					"type": "tool_use",
-					"id":   "toolu_agent_cbs001",
+					"id":   "toolu_agent_utr001",
 					"name": "Agent",
 					"input": map[string]interface{}{
 						"description":   "background agent task",
@@ -157,8 +164,15 @@ func TestProcessOutput_Claude_ContentBlockStop_MatchesAgent(t *testing.T) {
 	})
 
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "content_block_stop",
-		"tool_use_id": "toolu_agent_cbs001",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_agent_utr001",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)
@@ -166,25 +180,32 @@ func TestProcessOutput_Claude_ContentBlockStop_MatchesAgent(t *testing.T) {
 		t.Fatalf("expected 2 entries (Agent + AgentResult), got %d", len(entries))
 	}
 	if !strings.HasPrefix(entries[1].Content, "[AgentResult]") {
-		t.Errorf("content_block_stop should generate [AgentResult] for Agent tool, got: %q", entries[1].Content)
+		t.Errorf("user tool_result should generate [AgentResult] for Agent tool, got: %q", entries[1].Content)
 	}
 	if entries[1].Category != "subagent" {
 		t.Errorf("category = %q, want subagent", entries[1].Category)
 	}
 }
 
-func TestProcessOutput_Claude_ContentBlockStop_UnknownID_Ignored(t *testing.T) {
+func TestProcessOutput_Claude_UserToolResult_UnknownID_Ignored(t *testing.T) {
 	s := noPoolSpawner()
-	proc := minProc("sess-cbs-2")
+	proc := minProc("sess-utr-2")
 
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "content_block_stop",
-		"tool_use_id": "toolu_unknown",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_unknown",
+				},
+			},
+		},
 	})
 
 	msgs := pendingMessages(proc)
 	if len(msgs) != 0 {
-		t.Errorf("expected no messages for unknown content_block_stop id, got %d", len(msgs))
+		t.Errorf("expected no messages for unknown user tool_result id, got %d", len(msgs))
 	}
 }
 

@@ -51,8 +51,41 @@ func readContextLeftFromDB(pool *db.Pool, procs []*processInfo) {
 	}
 }
 
+// updateClaudeContext extracts usage from a Claude assistant or result event and updates context %.
+func (s *Spawner) updateClaudeContext(proc *processInfo, data map[string]interface{}) {
+	usage, _ := data["usage"].(map[string]interface{})
+	if usage == nil {
+		if msg, ok := data["message"].(map[string]interface{}); ok {
+			usage, _ = msg["usage"].(map[string]interface{})
+		}
+	}
+	if usage == nil {
+		return
+	}
+	input, _ := usage["input_tokens"].(float64)
+	cacheRead, _ := usage["cache_read_input_tokens"].(float64)
+	cacheCreate, _ := usage["cache_creation_input_tokens"].(float64)
+	output, _ := usage["output_tokens"].(float64)
+	totalUsed := int(input + cacheRead + cacheCreate + output)
+	if totalUsed == 0 {
+		return
+	}
+	maxCtx := proc.maxContext
+	if maxCtx <= 0 {
+		maxCtx = 200000
+	}
+	pctLeft := 100 - (totalUsed * 100 / maxCtx)
+	if pctLeft < 0 {
+		pctLeft = 0
+	}
+	if pctLeft != proc.contextLeft {
+		proc.contextLeft = pctLeft
+		s.updateContextLeft(proc)
+	}
+}
+
 // updateContextLeft persists context_left to the database and broadcasts a WS event.
-// Called from processOutput when turn.completed provides token usage (e.g., codex).
+// Called from processOutput when turn.completed provides token usage (e.g., codex) or updateClaudeContext.
 func (s *Spawner) updateContextLeft(proc *processInfo) {
 	pool := s.pool()
 	if pool == nil {

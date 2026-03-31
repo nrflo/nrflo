@@ -55,6 +55,11 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 					if text != "" {
 						s.handleTextMessage(proc, text)
 					}
+				} else if itemType == "thinking" {
+					thinking, _ := itemMap["thinking"].(string)
+					if thinking != "" {
+						s.handleTextMessage(proc, "[thinking] "+thinking)
+					}
 				} else if itemType == "tool_use" {
 					toolName, _ := itemMap["name"].(string)
 					if toolName != "" {
@@ -80,13 +85,51 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 				}
 			}
 		}
+		if message != nil {
+			s.updateClaudeContext(proc, message)
+		}
 
 	case "result":
-		// Result subtype tracked via messages only
+		s.updateClaudeContext(proc, data)
 
-	case "content_block_stop":
-		// Claude tool_result arrives as content_block_stop with tool_use_id
-		s.handleClaudeToolResult(proc, data)
+	case "user":
+		// Claude tool_result items arrive inside "user" events
+		message, _ := data["message"].(map[string]interface{})
+		if message != nil {
+			content, _ := message["content"].([]interface{})
+			for _, item := range content {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					itemType, _ := itemMap["type"].(string)
+					if itemType == "tool_result" {
+						s.handleClaudeToolResult(proc, itemMap)
+					}
+				}
+			}
+		}
+
+	case "system":
+		subtype, _ := data["subtype"].(string)
+		if subtype == "init" {
+			version, _ := data["claude_code_version"].(string)
+			model, _ := data["model"].(string)
+			if version != "" || model != "" {
+				msg := fmt.Sprintf("[init] v%s model=%s", version, model)
+				s.trackMessage(proc, msg, "text")
+				fmt.Printf("  %s %s\n", s.formatPrefix(proc), msg)
+			}
+		}
+
+	case "rate_limit_event":
+		info, _ := data["rate_limit_info"].(map[string]interface{})
+		if info != nil {
+			status, _ := info["status"].(string)
+			limitType, _ := info["rateLimitType"].(string)
+			if status != "" && status != "allowed" {
+				msg := fmt.Sprintf("[rate_limit] %s %s", limitType, status)
+				s.trackMessage(proc, msg, "text")
+				fmt.Printf("  %s %s\n", s.formatPrefix(proc), msg)
+			}
+		}
 
 	// === Opencode format ===
 	case "text":
@@ -190,7 +233,10 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			inputTokens, _ := usage["input_tokens"].(float64)
 			outputTokens, _ := usage["output_tokens"].(float64)
 			totalUsed := int(inputTokens) + int(outputTokens)
-			maxContext := 200000
+			maxContext := proc.maxContext
+			if maxContext <= 0 {
+				maxContext = 200000
+			}
 			pctLeft := 100 - (totalUsed * 100 / maxContext)
 			if pctLeft < 0 {
 				pctLeft = 0

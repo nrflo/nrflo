@@ -109,6 +109,7 @@ type processInfo struct {
 	lastMessagesFlush time.Time
 	// Context tracking
 	contextLeft int
+	maxContext  int
 	// Spawn context (for debugging/replay)
 	spawnCommand  string
 	promptContext string
@@ -533,6 +534,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 
 	// Create process info
+	_, modelName := parseModelID(modelID)
 	proc := &processInfo{
 		cmd:            cmd,
 		agentID:        agentID,
@@ -557,6 +559,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		lastMessageTime:     s.config.Clock.Now(),
 		stallStartTimeout:   stallStartTimeout,
 		stallRunningTimeout: stallRunningTimeout,
+		maxContext:          maxContextForModel(modelName),
 	}
 
 	// Register agent start (create agent_sessions row)

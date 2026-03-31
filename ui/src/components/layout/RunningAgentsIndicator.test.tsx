@@ -141,6 +141,19 @@ describe('RunningAgentsIndicator', () => {
       expect(screen.getByText('(1h 1m)')).toBeInTheDocument()
     })
 
+    it('prepends ticket ID with middle dot for ticket-scoped agent', () => {
+      renderIndicator()
+      fireEvent.mouseEnter(getTrigger())
+      expect(screen.getByText(/ticket-1 · feature \/ implementor/)).toBeInTheDocument()
+    })
+
+    it('does not show ticket ID prefix or separator for project-scoped agent', () => {
+      renderIndicator()
+      fireEvent.mouseEnter(getTrigger())
+      // project-scoped agent (empty ticket_id) — no middle dot before workflow
+      expect(screen.queryByText(/·.*bugfix/)).not.toBeInTheDocument()
+    })
+
     it('ticket-scoped agent link points to /tickets/{id}', () => {
       renderIndicator()
       fireEvent.mouseEnter(getTrigger())

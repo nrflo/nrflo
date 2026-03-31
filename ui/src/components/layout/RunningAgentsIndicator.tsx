@@ -126,7 +126,7 @@ export function RunningAgentsIndicator() {
                     <span className="text-gray-200 dark:text-gray-700 mr-1">
                       └
                     </span>
-                    {agent.workflow_id} / {agent.agent_type}
+                    {agent.ticket_id && <>{agent.ticket_id} &middot; </>}{agent.workflow_id} / {agent.agent_type}
                     <span className="ml-1 text-gray-400 dark:text-gray-500">
                       ({formatElapsed(agent.elapsed_sec)})
                     </span>

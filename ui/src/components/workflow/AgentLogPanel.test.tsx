@@ -483,9 +483,9 @@ describe('AgentLogPanel', () => {
       const overviewHeaders = overviewTable.querySelectorAll('thead th')
 
       // Table format should match detail view structure:
-      // Time (70px) | Tool (70px) | Message
+      // Time (90px) | Tool (70px) | Message
       expect(overviewHeaders[0].textContent).toBe('Time')
-      expect(overviewHeaders[0].classList.contains('w-[70px]')).toBe(true)
+      expect(overviewHeaders[0].classList.contains('w-[90px]')).toBe(true)
       expect(overviewHeaders[1].textContent).toBe('Tool')
       expect(overviewHeaders[1].classList.contains('w-[70px]')).toBe(true)
       expect(overviewHeaders[2].textContent).toBe('Message')

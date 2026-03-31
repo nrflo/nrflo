@@ -191,7 +191,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
             <table className="w-full table-fixed text-xs font-mono border-collapse">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
-                  <th className="py-1 pr-2 font-medium w-[70px]">Time</th>
+                  <th className="py-1 pr-2 font-medium w-[90px]">Time</th>
                   <th className="py-1 pr-2 font-medium w-[70px]">Tool</th>
                   <th className="py-1 font-medium">Message</th>
                 </tr>
@@ -201,7 +201,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                   const { toolName, rest } = parseToolName(msg.content)
                   return (
                     <tr key={i} className="border-b border-border/50 align-top">
-                      <td className="py-1 pr-2 text-muted-foreground whitespace-nowrap">
+                      <td className="py-1 pr-2 text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                         {formatTime(msg.created_at)}
                       </td>
                       <td className="py-1 pr-2">

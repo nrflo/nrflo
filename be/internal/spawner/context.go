@@ -85,7 +85,7 @@ func (s *Spawner) updateClaudeContext(proc *processInfo, data map[string]interfa
 }
 
 // updateContextLeft persists context_left to the database and broadcasts a WS event.
-// Called from processOutput when turn.completed provides token usage (e.g., codex) or updateClaudeContext.
+// Called from updateClaudeContext when assistant/result events provide token usage.
 func (s *Spawner) updateContextLeft(proc *processInfo) {
 	pool := s.pool()
 	if pool == nil {

@@ -229,23 +229,6 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			}
 		}
 
-	case "turn.completed":
-		usage, _ := data["usage"].(map[string]interface{})
-		if usage != nil {
-			inputTokens, _ := usage["input_tokens"].(float64)
-			outputTokens, _ := usage["output_tokens"].(float64)
-			totalUsed := int(inputTokens) + int(outputTokens)
-			maxContext := proc.maxContext
-			if maxContext <= 0 {
-				maxContext = 200000
-			}
-			pctLeft := 100 - (totalUsed * 100 / maxContext)
-			if pctLeft < 0 {
-				pctLeft = 0
-			}
-			proc.contextLeft = pctLeft
-			s.updateContextLeft(proc)
-		}
 	}
 }
 

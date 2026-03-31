@@ -258,37 +258,3 @@ func TestProcessOutput_Claude_ContentBlockStop_Ignored(t *testing.T) {
 		t.Errorf("content_block_stop should produce no messages (dead code removed), got %d", len(pendingMessages(proc)))
 	}
 }
-
-// === codex turn.completed: proc.maxContext ===
-
-func TestProcessOutput_TurnCompleted_UsesMaxContext_WhenSet(t *testing.T) {
-	s := noPoolSpawner()
-	proc := minProc("sess-tc-max")
-	proc.maxContext = 100000
-
-	// 10000 of 100000 → 100 - (10000*100/100000) = 90
-	processJSON(s, proc, map[string]interface{}{
-		"type":  "turn.completed",
-		"usage": map[string]interface{}{"input_tokens": 10000.0, "output_tokens": 0.0},
-	})
-
-	if proc.contextLeft != 90 {
-		t.Errorf("contextLeft = %d, want 90 (using maxContext=100000)", proc.contextLeft)
-	}
-}
-
-func TestProcessOutput_TurnCompleted_FallsBackTo200k_WhenMaxContextZero(t *testing.T) {
-	s := noPoolSpawner()
-	proc := minProc("sess-tc-fallback")
-	// proc.maxContext = 0 (minProc default) → fallback to 200000
-
-	// 40000 of 200000 → 100 - (40000*100/200000) = 80
-	processJSON(s, proc, map[string]interface{}{
-		"type":  "turn.completed",
-		"usage": map[string]interface{}{"input_tokens": 40000.0, "output_tokens": 0.0},
-	})
-
-	if proc.contextLeft != 80 {
-		t.Errorf("contextLeft = %d, want 80 (fallback maxContext=200000)", proc.contextLeft)
-	}
-}

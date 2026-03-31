@@ -410,7 +410,7 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 │    item.completed type=agent_message → text message                 │
 │    item.completed type=command_execution → [Bash] tool use          │
 │    item.started type=command_execution → console log only           │
-│    turn.completed → usage tokens → contextLeft (proc.maxContext)     │
+│    turn.completed → ignored (context tracked via hook path)           │
 │                                                                      │
 │  Stderr capture: [stderr] Error message from CLI                     │
 │  Scanner buffer: 10MB limit for large JSON outputs                  │
@@ -427,8 +427,8 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `output_test.go` | General output parsing tests |
 | `output_claude_test.go` | Claude category assignment, pendingTasks tracking, tool_result correlation |
 | `output_claude_advanced_test.go` | Nested content, user tool_result correlation, multiple in-flight tasks, TaskResult formatting |
-| `output_codex_test.go` | Codex output parsing: thread.started, item types, turn.completed token counting |
-| `context_test.go` | Context left DB read/write tests |
+| `output_codex_test.go` | Codex output parsing: thread.started, item types, full sequence |
+| `context_test.go` | Context left DB read/write, updateContextLeft persistence and WS broadcast |
 | `template_project_findings_test.go` | Project findings template expansion tests |
 | `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |

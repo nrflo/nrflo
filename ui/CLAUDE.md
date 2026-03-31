@@ -11,7 +11,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/api/` | API client modules with X-Project header support (see [api/CLAUDE.md](src/api/CLAUDE.md)) |
 | `src/types/` | TypeScript types matching Go models (see [types/CLAUDE.md](src/types/CLAUDE.md)) |
 | `src/hooks/` | TanStack Query hooks, WebSocket hook, utility hooks (see [hooks/CLAUDE.md](src/hooks/CLAUDE.md)) |
-| `src/stores/` | Zustand store for project selection (`projectStore.ts`) |
+| `src/stores/` | Zustand stores: project selection (`projectStore.ts`), theme preference (`themeStore.ts`) |
 | `src/lib/` | Utility functions (`cn`, `formatDate`, `statusColor`, etc.) |
 | `src/components/workflow/` | Workflow visualization components (see [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)) |
 | `src/components/ui/` | Reusable UI components: Badge, Button, Card, ConfirmDialog (variant-based), Dialog (modal with backdrop/ESC/click-outside), Dropdown (generic custom dropdown with click-outside/Escape/Check icon), Input, MarkdownEditor (CodeMirror 6), codemirror-theme.ts, ProjectSelect (uses Dropdown internally), Spinner, Textarea, Toggle, Tooltip (portal-based positioning) |
@@ -64,7 +64,7 @@ npx tsc --noEmit   # TypeScript check only
 ### State Management
 
 - **Server state**: TanStack Query (useQuery, useMutation)
-- **Client state**: Zustand (project selection only)
+- **Client state**: Zustand (project selection via `projectStore.ts`, theme preference via `themeStore.ts`)
 - Query keys are in `src/hooks/useTickets.ts` — invalidate appropriately on mutations
 - Projects are loaded from API on startup (see `projectStore.ts`)
 
@@ -86,7 +86,7 @@ WebSocket-based, no REST polling. See [hooks/CLAUDE.md](src/hooks/CLAUDE.md) for
 
 ```
 Layout
-├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows/Git Status/Documentation/Logs, daily stats, settings link)
+├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows/Git Status/Documentation/Logs, daily stats, theme toggle, settings link)
 ├── Sidebar (navigation, status counts)
 └── Outlet (page content via React Router)
 ```
@@ -94,7 +94,8 @@ Layout
 ### Styling
 
 - Tailwind CSS v4 (uses `@theme` for CSS variables)
-- Dark mode support via `prefers-color-scheme`
+- Class-based dark mode via `@custom-variant dark (&:where(.dark, .dark *))` — `.dark` class on `<html>` controls all `dark:` utilities and CSS variable overrides in `.dark {}` selector
+- Three-state theme toggle (light/dark/system) in Header, persisted to `localStorage` key `nrwf_theme`, with FOUC prevention inline script in `index.html`
 - Custom utility `cn()` for conditional class merging
 
 ## UI Component Standards

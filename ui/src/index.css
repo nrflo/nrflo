@@ -2,6 +2,8 @@
 @import "@xyflow/react/dist/style.css";
 @import "@xterm/xterm/css/xterm.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: system-ui, Avenir, Helvetica, Arial, sans-serif;
 
@@ -24,18 +26,16 @@
   --radius-lg: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-background: #0f172a;
-    --color-foreground: #f8fafc;
-    --color-muted: #1e293b;
-    --color-muted-foreground: #94a3b8;
-    --color-border: #334155;
-    --color-primary: #60a5fa;
-    --color-primary-foreground: #0f172a;
-    --color-secondary: #1e293b;
-    --color-secondary-foreground: #f8fafc;
-  }
+.dark {
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+  --color-border: #334155;
+  --color-primary: #60a5fa;
+  --color-primary-foreground: #0f172a;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #f8fafc;
 }
 
 body {
@@ -63,15 +63,17 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.3);
-    }
-    50% {
-      box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
-    }
+@keyframes pulse-glow-dark {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.3);
   }
+  50% {
+    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+  }
+}
+
+.dark .animate-pulse-glow {
+  animation: pulse-glow-dark 2s ease-in-out infinite;
 }
 
 /* Animation for interactive agent cards */
@@ -88,15 +90,17 @@ body {
   animation: pulse-glow-blue 2s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  @keyframes pulse-glow-blue {
-    0%, 100% {
-      box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.3);
-    }
-    50% {
-      box-shadow: 0 0 0 8px rgba(96, 165, 250, 0);
-    }
+@keyframes pulse-glow-blue-dark {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.3);
   }
+  50% {
+    box-shadow: 0 0 0 8px rgba(96, 165, 250, 0);
+  }
+}
+
+.dark .animate-pulse-glow-blue {
+  animation: pulse-glow-blue-dark 2s ease-in-out infinite;
 }
 
 /* React Flow Controls styling */

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, Terminal } from 'lucide-react'
+import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, Terminal, Sun, Moon, Monitor } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
@@ -7,11 +7,19 @@ import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { DailyStats } from '@/components/layout/DailyStats'
 import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
 import { useProjectStore } from '@/stores/projectStore'
+import { useThemeStore } from '@/stores/themeStore'
 
 export function Header() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const { currentProject, setCurrentProject, projects } = useProjectStore()
+  const { theme, setTheme } = useThemeStore()
+
+  const cycleTheme = () => {
+    const next = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system'
+    setTheme(next)
+  }
+  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor
 
   const currentProjectObj = useMemo(
     () => projects.find((p) => p.id === currentProject),
@@ -95,6 +103,14 @@ export function Header() {
           }}
           projects={projects}
         />
+
+        <button
+          onClick={cycleTheme}
+          className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title={`Theme: ${theme}`}
+        >
+          <ThemeIcon className="h-5 w-5" />
+        </button>
 
         <Link
           to="/settings"

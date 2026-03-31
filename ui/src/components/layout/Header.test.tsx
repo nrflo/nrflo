@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Header } from './Header'
@@ -25,6 +26,16 @@ vi.mock('@/stores/projectStore', () => ({
     currentProject: mockCurrentProject,
     projects: mockProjects,
     setCurrentProject: mockSetCurrentProject,
+  })),
+}))
+
+let mockTheme = 'system'
+let mockSetTheme = vi.fn()
+
+vi.mock('@/stores/themeStore', () => ({
+  useThemeStore: vi.fn(() => ({
+    theme: mockTheme,
+    setTheme: mockSetTheme,
   })),
 }))
 
@@ -63,6 +74,8 @@ function renderHeader(initialRoute = '/') {
 describe('Header - Brand label', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockTheme = 'system'
+    mockSetTheme = vi.fn()
     mockCurrentProject = 'test-project'
     mockProjects = [
       {
@@ -251,5 +264,39 @@ describe('Header - Icon-only nav links', () => {
       expect(span).toBeInTheDocument()
       expect(span?.textContent).toBe(label)
     }
+  })
+})
+
+describe('Header - Theme toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockTheme = 'system'
+    mockSetTheme = vi.fn()
+    mockCurrentProject = 'test-project'
+    mockProjects = [
+      {
+        id: 'test-project',
+        name: 'Test Project',
+        root_path: '/test',
+        default_branch: 'main',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ]
+  })
+
+  it.each([
+    { theme: 'system', expectedTitle: 'Theme: system', nextTheme: 'light' },
+    { theme: 'light', expectedTitle: 'Theme: light', nextTheme: 'dark' },
+    { theme: 'dark', expectedTitle: 'Theme: dark', nextTheme: 'system' },
+  ])('$theme mode: button shows "$expectedTitle" and click calls setTheme("$nextTheme")', async ({ theme, expectedTitle, nextTheme }) => {
+    mockTheme = theme
+    const user = userEvent.setup()
+    renderHeader()
+
+    const btn = screen.getByTitle(expectedTitle)
+    expect(btn).toBeInTheDocument()
+    await user.click(btn)
+    expect(mockSetTheme).toHaveBeenCalledWith(nextTheme)
   })
 })

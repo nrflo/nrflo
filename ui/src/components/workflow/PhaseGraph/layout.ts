@@ -2,8 +2,8 @@ import ELK from 'elkjs/lib/elk.bundled.js'
 import type { Node, Edge } from '@xyflow/react'
 import type { AgentFlowNodeData } from './types'
 
-export const AGENT_NODE_WIDTH = 320
-export const MOBILE_NODE_WIDTH = 240
+export const AGENT_NODE_WIDTH = 352
+export const MOBILE_NODE_WIDTH = 264
 export const BASE_HEIGHT = 110
 export const EXPANDED_HEIGHT = 420  // Base + messages area
 

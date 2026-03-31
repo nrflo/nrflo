@@ -260,8 +260,8 @@ describe('AgentFlowNode', () => {
     })
   })
 
-  // Unified card sizing — all variants use w-[220px] sm:w-[300px] and min-h-[90px]
-  it('all card variants use w-[220px] (mobile base) and min-h-[90px]', () => {
+  // Unified card sizing — all variants use w-[242px] sm:w-[330px] and min-h-[90px]
+  it('all card variants use w-[242px] (mobile base) and min-h-[90px]', () => {
     const variants = [
       makeData({ agent: makeAgent({ result: undefined }) }),
       makeData({ agent: undefined, historyEntry: makeHistory({ result: 'pass' }) }),
@@ -272,7 +272,7 @@ describe('AgentFlowNode', () => {
     ]
     variants.forEach((data) => {
       const { unmount, container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[220px\\]')
+      const card = container.querySelector('.w-\\[242px\\]')
       expect(card).toBeInTheDocument()
       expect(card?.className).toContain('min-h-[90px]')
       expect(container.querySelector('[class*="min-w"]')).not.toBeInTheDocument()

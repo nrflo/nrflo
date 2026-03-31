@@ -55,13 +55,13 @@ describe('layout', () => {
       const sorted = [layouted[0], layouted[1]].sort((a, b) => a.position.x - b.position.x)
       const spacing = sorted[1].position.x - sorted[0].position.x
 
-      expect(spacing).toBe(380) // 320 + 60
+      expect(spacing).toBe(412) // 352 + 60
     })
 
-    it('maintains 20px edge padding (320 - 300)', () => {
-      const AGENT_NODE_WIDTH = 320
-      const VISUAL_CARD_WIDTH = 300
-      const EXPECTED_EDGE_PADDING = 20
+    it('maintains 22px edge padding (352 - 330)', () => {
+      const AGENT_NODE_WIDTH = 352
+      const VISUAL_CARD_WIDTH = 330
+      const EXPECTED_EDGE_PADDING = 22
 
       expect(AGENT_NODE_WIDTH - VISUAL_CARD_WIDTH).toBe(EXPECTED_EDGE_PADDING)
     })
@@ -94,7 +94,7 @@ describe('layout', () => {
       // Same layer: same Y, different X, no overlap
       expect(layouted[0].position.y).toBe(layouted[1].position.y)
       const spacing = Math.abs(layouted[1].position.x - layouted[0].position.x)
-      expect(spacing).toBeGreaterThanOrEqual(320)
+      expect(spacing).toBeGreaterThanOrEqual(352)
     })
 
     it('positions three parallel agents without overlap', async () => {
@@ -154,13 +154,13 @@ describe('layout', () => {
       expect(gap).toBeGreaterThanOrEqual(110 + 120)
     })
 
-    it('sets measured width to AGENT_NODE_WIDTH (320)', async () => {
+    it('sets measured width to AGENT_NODE_WIDTH (352)', async () => {
       const nodes = [makeNode('agent1', 0)]
       const edges: Edge[] = []
 
       const { nodes: layouted } = await getLayoutedElements(nodes, edges, null)
 
-      expect(layouted[0].measured?.width).toBe(320)
+      expect(layouted[0].measured?.width).toBe(352)
     })
 
     it('sets measured height to BASE_HEIGHT (110) for non-expanded nodes', async () => {
@@ -269,7 +269,7 @@ describe('layout', () => {
 
       const { nodes: layouted } = await getLayoutedElements(nodes, edges, null)
 
-      const nodeWidth = 320
+      const nodeWidth = 352
       const layer1 = [layouted[1], layouted[2]].sort((a, b) => a.position.x - b.position.x)
       const layer1Center = (layer1[0].position.x + layer1[1].position.x + nodeWidth) / 2
 
@@ -320,7 +320,7 @@ describe('layout', () => {
   })
 
   describe('horizontal gap proportions with wider cards', () => {
-    it('maintains 60px horizontal gap between 320px node widths', async () => {
+    it('maintains 60px horizontal gap between 352px node widths', async () => {
       const nodes = [
         makeNode('agent1', 0),
         makeNode('agent2', 0),
@@ -338,16 +338,16 @@ describe('layout', () => {
       const spacing = sorted[1].position.x - sorted[0].position.x
       const actualGap = spacing - nodeWidth
 
-      expect(nodeWidth).toBe(320)
+      expect(nodeWidth).toBe(352)
       expect(actualGap).toBe(60)
     })
 
-    it('gap-to-width ratio is 60:320 (18.75%)', () => {
+    it('gap-to-width ratio is 60:352 (17.05%)', () => {
       const HORIZONTAL_GAP = 60
-      const AGENT_NODE_WIDTH = 320
+      const AGENT_NODE_WIDTH = 352
       const ratio = HORIZONTAL_GAP / AGENT_NODE_WIDTH
 
-      expect(ratio).toBeCloseTo(0.1875, 4)
+      expect(ratio).toBeCloseTo(0.1705, 3)
       expect(ratio).toBeGreaterThan(0.15)
     })
   })

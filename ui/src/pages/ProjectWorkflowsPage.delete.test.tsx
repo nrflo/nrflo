@@ -146,20 +146,20 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
 
       renderPage()
 
-      // Running tab: 0 instances, no chip for the failed instance
+      // Running tab: 0 instances, no row for the failed instance
       await user.click(screen.getByRole('button', { name: /Running \(0\)/ }))
-      expect(screen.queryByRole('button', { name: /#failinst/ })).not.toBeInTheDocument()
+      expect(screen.queryByText('#failinst')).not.toBeInTheDocument()
 
-      // Failed tab: 1 instance chip visible
+      // Failed tab: 1 instance row visible
       await user.click(screen.getByRole('button', { name: /Failed \(1\)/ }))
-      expect(screen.getByRole('button', { name: /#failinst/ })).toBeInTheDocument()
+      expect(screen.getByText('#failinst')).toBeInTheDocument()
     })
   })
 
   // --- Delete button visibility ---
 
-  describe('Delete button in InstanceList', () => {
-    it('shows trash icon inside failed tab chip (onDelete prop provided)', async () => {
+  describe('Delete button in instance table', () => {
+    it('shows trash icon in failed tab table row', async () => {
       const user = userEvent.setup()
       useProjectWorkflow.mockReturnValue({
         data: { project_id: 'test-project', has_workflow: true, state: failedInstance, workflows: ['feature'], all_workflows: { failinst: failedInstance } },
@@ -169,12 +169,11 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      // The chip button contains a nested trash <span role="button">
-      const chip = screen.getByRole('button', { name: /#failinst/ })
-      expect(within(chip).getByRole('button')).toBeInTheDocument()
+      const row = screen.getByText('#failinst').closest('tr')!
+      expect(within(row).getByRole('button')).toBeInTheDocument()
     })
 
-    it('shows trash icon inside completed tab chip (onDelete prop provided)', async () => {
+    it('shows trash icon in completed tab table row', async () => {
       const user = userEvent.setup()
       useProjectWorkflow.mockReturnValue({
         data: { project_id: 'test-project', has_workflow: true, state: completedInstance, workflows: ['bugfix'], all_workflows: { compinst: completedInstance } },
@@ -184,8 +183,8 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
-      const chip = screen.getByRole('button', { name: /#compinst/ })
-      expect(within(chip).getByRole('button')).toBeInTheDocument()
+      const row = screen.getByText('#compinst').closest('tr')!
+      expect(within(row).getByRole('button')).toBeInTheDocument()
     })
 
     it('does NOT show trash icon in running tab chip (no onDelete prop)', async () => {
@@ -217,8 +216,8 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      const chip = screen.getByRole('button', { name: /#failinst/ })
-      await user.click(within(chip).getByRole('button'))
+      const row = screen.getByText('#failinst').closest('tr')!
+      await user.click(within(row).getByRole('button'))
 
       expect(await screen.findByText('Delete Workflow Instance')).toBeInTheDocument()
       expect(screen.getByText(/Are you sure you want to delete this workflow instance/)).toBeInTheDocument()
@@ -234,8 +233,8 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      const chip = screen.getByRole('button', { name: /#failinst/ })
-      await user.click(within(chip).getByRole('button'))
+      const row = screen.getByText('#failinst').closest('tr')!
+      await user.click(within(row).getByRole('button'))
       await user.click(await screen.findByRole('button', { name: /^Delete$/ }))
 
       expect(deleteMutate).toHaveBeenCalledOnce()
@@ -252,8 +251,8 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      const chip = screen.getByRole('button', { name: /#failinst/ })
-      await user.click(within(chip).getByRole('button'))
+      const row = screen.getByText('#failinst').closest('tr')!
+      await user.click(within(row).getByRole('button'))
       await user.click(await screen.findByRole('button', { name: /Cancel/ }))
 
       expect(deleteMutate).not.toHaveBeenCalled()
@@ -269,8 +268,8 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
-      const chip = screen.getByRole('button', { name: /#compinst/ })
-      await user.click(within(chip).getByRole('button'))
+      const row = screen.getByText('#compinst').closest('tr')!
+      await user.click(within(row).getByRole('button'))
       await user.click(await screen.findByRole('button', { name: /^Delete$/ }))
 
       expect(deleteMutate).toHaveBeenCalledWith({ projectId: 'test-project', instanceId: 'compinst' })

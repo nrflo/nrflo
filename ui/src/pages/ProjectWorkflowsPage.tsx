@@ -15,6 +15,7 @@ import {
 import { listWorkflowDefs } from '@/api/workflows'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import { RunWorkflowForm, InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
+import { WorkflowInstanceTable } from './WorkflowInstanceTable'
 import type { ProjectWorkflowTabId } from './ProjectWorkflowComponents'
 import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
@@ -252,17 +253,13 @@ export function ProjectWorkflowsPage() {
             selectedPanelAgent && 'min-h-[calc(100vh-280px)]'
           )}>
             <div className="flex-1 min-w-0 space-y-4">
-              {instanceIds.length > 0 && (
-                <InstanceList
-                  instanceIds={instanceIds}
-                  instances={tabInstances}
-                  labels={selectorLabels}
-                  selectedId={resolvedInstanceId}
-                  onSelect={setSelectedInstanceId}
-                  tab="completed"
-                  onDelete={setDeleteTargetId}
-                />
-              )}
+              <WorkflowInstanceTable
+                instanceIds={instanceIds}
+                instances={tabInstances}
+                selectedId={resolvedInstanceId}
+                onSelect={setSelectedInstanceId}
+                onDelete={setDeleteTargetId}
+              />
               {mergedCompletedAgents.length > 0 ? (
                 <CompletedAgentsTable
                   agentHistory={mergedCompletedAgents}
@@ -300,17 +297,13 @@ export function ProjectWorkflowsPage() {
 
       {activeTab === 'failed' && (
         <>
-          {instanceIds.length > 0 && (
-            <InstanceList
-              instanceIds={instanceIds}
-              instances={tabInstances}
-              labels={selectorLabels}
-              selectedId={resolvedInstanceId}
-              onSelect={setSelectedInstanceId}
-              tab="failed"
-              onDelete={setDeleteTargetId}
-            />
-          )}
+          <WorkflowInstanceTable
+            instanceIds={instanceIds}
+            instances={tabInstances}
+            selectedId={resolvedInstanceId}
+            onSelect={setSelectedInstanceId}
+            onDelete={setDeleteTargetId}
+          />
           <WorkflowTabContent
             ticketId={undefined}
             hasWorkflow={hasWorkflow}

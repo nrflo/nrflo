@@ -50,6 +50,15 @@ const (
 	maxStallRestarts           = 6
 )
 
+// ModelConfig holds DB-sourced model configuration for the spawner.
+// Zero values mean "not configured" — adapters fall back to their hardcoded methods.
+type ModelConfig struct {
+	CLIType         string // "claude", "opencode", "codex"
+	MappedModel     string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
+	ReasoningEffort string // "", "high", "medium"
+	ContextLength   int    // 200000, 1000000
+}
+
 // Config holds the spawner configuration
 type Config struct {
 	Workflows   map[string]WorkflowDef
@@ -75,6 +84,10 @@ type Config struct {
 	// GlobalStallRunningTimeout overrides the default stall running timeout when agent def has no value.
 	// nil = use hardcoded default, 0 = disabled, >0 = custom seconds.
 	GlobalStallRunningTimeout *int
+	// ModelConfigs maps model name to DB-sourced config. When populated, the spawner
+	// uses these for model mapping, reasoning effort, context length, and CLI type
+	// instead of hardcoded adapter methods. nil map is safe (lookup returns zero value).
+	ModelConfigs map[string]ModelConfig
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -309,7 +322,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 	cliName := req.CLIName
 	if cliName == "" {
-		cliName = DefaultCLIForModel(model)
+		cliName = s.cliForModel(model)
 	}
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 
@@ -318,7 +331,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 		def := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
 		if def != nil && def.LowConsumptionModel != "" {
 			model = def.LowConsumptionModel
-			cliName = DefaultCLIForModel(model)
+			cliName = s.cliForModel(model)
 			modelID = fmt.Sprintf("%s:%s", cliName, model)
 			logger.Info(ctx, "low consumption model override", "agent", req.AgentType, "model", modelID)
 		}
@@ -351,7 +364,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	// Parse modelID (cli:model format)
 	cliName, model := parseModelID(modelID)
 	if cliName == "" {
-		cliName = DefaultCLIForModel(model)
+		cliName = s.cliForModel(model)
 		modelID = fmt.Sprintf("%s:%s", cliName, model)
 	}
 
@@ -455,20 +468,29 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		workDir = ""
 	}
 
+	// Look up DB-sourced model config for mapped model and reasoning effort
+	var mappedModel, reasoningEffort string
+	if cfg, ok := s.config.ModelConfigs[model]; ok {
+		mappedModel = cfg.MappedModel
+		reasoningEffort = cfg.ReasoningEffort
+	}
+
 	opts := SpawnOptions{
-		Model:         model,
-		SessionID:     sessionID,
-		PromptFile:    promptFile.Name(),
-		Prompt:        prompt,
-		InitialPrompt: initialPrompt,
-		WorkDir:       workDir,
+		Model:           model,
+		SessionID:       sessionID,
+		PromptFile:      promptFile.Name(),
+		Prompt:          prompt,
+		InitialPrompt:   initialPrompt,
+		WorkDir:         workDir,
+		MappedModel:     mappedModel,
+		ReasoningEffort: reasoningEffort,
 		Env: append(filterEnv(os.Environ(), "CLAUDECODE"),
 			fmt.Sprintf("NRWORKFLOW_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRWF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 			fmt.Sprintf("NRWF_SESSION_ID=%s", sessionID),
 			"NRWF_SPAWNED=1",
 			fmt.Sprintf("NRWF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
-			fmt.Sprintf("NRWF_MAX_CONTEXT=%d", maxContextForModel(model)),
+			fmt.Sprintf("NRWF_MAX_CONTEXT=%d", s.maxContextForModel(model)),
 		),
 	}
 
@@ -559,7 +581,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		lastMessageTime:     s.config.Clock.Now(),
 		stallStartTimeout:   stallStartTimeout,
 		stallRunningTimeout: stallRunningTimeout,
-		maxContext:          maxContextForModel(modelName),
+		maxContext:          s.maxContextForModel(modelName),
 	}
 
 	// Register agent start (create agent_sessions row)
@@ -1014,11 +1036,22 @@ func filterEnv(env []string, name string) []string {
 	return out
 }
 
-func maxContextForModel(model string) int {
+func (s *Spawner) maxContextForModel(model string) int {
+	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.ContextLength > 0 {
+		return cfg.ContextLength
+	}
 	if model == "opus_1m" {
 		return 1000000
 	}
 	return 200000
+}
+
+// cliForModel returns the CLI name for a model, checking DB config first.
+func (s *Spawner) cliForModel(model string) string {
+	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.CLIType != "" {
+		return cfg.CLIType
+	}
+	return DefaultCLIForModel(model)
 }
 
 func parseModelID(modelID string) (cli, model string) {

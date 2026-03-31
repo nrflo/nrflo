@@ -106,6 +106,36 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 - `codex_gpt54_high` → `gpt-5.4` with reasoning effort "high"
 - Custom model names → passed as-is with reasoning effort "high"
 
+## Model Resolution (DB-First with Hardcoded Fallback)
+
+The `Config.ModelConfigs` field (`map[string]ModelConfig`) holds DB-sourced model configuration. When populated, the spawner uses it for model mapping, reasoning effort, context length, and CLI type before falling back to hardcoded adapter methods.
+
+**ModelConfig type** (spawner-internal, no DB metadata):
+```go
+type ModelConfig struct {
+    CLIType         string // "claude", "opencode", "codex"
+    MappedModel     string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
+    ReasoningEffort string // "", "high", "medium"
+    ContextLength   int    // 200000, 1000000
+}
+```
+
+**Resolution flow** (in `spawnSingle()`):
+1. Look up `s.config.ModelConfigs[model]` after `parseModelID`
+2. If found, set `opts.MappedModel` and `opts.ReasoningEffort` on `SpawnOptions`
+3. Adapter `BuildCommand()` methods check `opts.MappedModel`/`opts.ReasoningEffort` first
+4. If empty, adapters fall back to their own `MapModel()`/`GetReasoningEffort()` methods
+
+**Helper methods:**
+- `(s *Spawner) cliForModel(model) string` — checks `ModelConfigs[model].CLIType`, falls back to `DefaultCLIForModel()`
+- `(s *Spawner) maxContextForModel(model) int` — checks `ModelConfigs[model].ContextLength` (if > 0), falls back to hardcoded values
+
+**SpawnOptions fields** for DB-sourced overrides:
+- `MappedModel string` — if set, adapters skip their `MapModel()` call
+- `ReasoningEffort string` — if set, adapters skip their `GetReasoningEffort()` call
+
+`DefaultCLIForModel()` remains a public package-level function for external callers (e.g., `orchestrator_interactive.go`).
+
 ## Database Access
 
 The spawner uses a shared `*db.Pool` from `Config.Pool` for all database operations. The orchestrator creates one pool per workflow run and passes it to all spawners in that run. The `pool()` helper method provides access.
@@ -130,7 +160,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Load agent definition for the original agent type
    - If def.LowConsumptionModel is set (a valid model name like "sonnet", "haiku"):
      - Override model = def.LowConsumptionModel
-     - Recalculate cliName via DefaultCLIForModel(model) and modelID
+     - Recalculate cliName via cliForModel(model) and modelID
    - spawnSingle always uses req.AgentType for loadAgentDefinition, loadTemplate, timeout
    - Session records (registerStart) still use the original AgentType
 
@@ -434,5 +464,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 | `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
 | `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/actionableMsgCount>3, init/thinking exclusion, budget cap, budget-exhausted marks failed |
+| `model_config_test.go` | DB-sourced ModelConfig: cliForModel/maxContextForModel with DB priority and fallback, adapter BuildCommand with opts.MappedModel/ReasoningEffort override |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

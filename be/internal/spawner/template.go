@@ -25,7 +25,7 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 			model = agentCfg.Model
 		}
 	}
-	cliName := DefaultCLIForModel(model)
+	cliName := s.cliForModel(model)
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil)
 }

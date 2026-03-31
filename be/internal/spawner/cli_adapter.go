@@ -44,13 +44,15 @@ type ResumeOptions struct {
 
 // SpawnOptions contains parameters for building a spawn command
 type SpawnOptions struct {
-	Model         string
-	SessionID     string
-	PromptFile    string // Path to system prompt file
-	Prompt        string // Full prompt content (for CLIs without file support)
-	InitialPrompt string
-	WorkDir       string
-	Env           []string
+	Model           string
+	SessionID       string
+	PromptFile      string // Path to system prompt file
+	Prompt          string // Full prompt content (for CLIs without file support)
+	InitialPrompt   string
+	WorkDir         string
+	Env             []string
+	MappedModel     string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
+	ReasoningEffort string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.
@@ -91,7 +93,10 @@ func (a *ClaudeAdapter) Name() string {
 }
 
 func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	model := a.MapModel(opts.Model)
+	model := opts.MappedModel
+	if model == "" {
+		model = a.MapModel(opts.Model)
+	}
 	args := []string{
 		"--print",
 		"--verbose",
@@ -161,8 +166,14 @@ func (a *OpencodeAdapter) Name() string {
 
 func (a *OpencodeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 	// Opencode uses provider/model format
-	model := a.MapModel(opts.Model)
-	reasoningEffort := a.GetReasoningEffort(opts.Model)
+	model := opts.MappedModel
+	if model == "" {
+		model = a.MapModel(opts.Model)
+	}
+	reasoningEffort := opts.ReasoningEffort
+	if reasoningEffort == "" {
+		reasoningEffort = a.GetReasoningEffort(opts.Model)
+	}
 
 	args := []string{
 		"run",
@@ -245,8 +256,14 @@ func (a *CodexAdapter) Name() string {
 }
 
 func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	model := a.MapModel(opts.Model)
-	reasoningEffort := a.GetReasoningEffort(opts.Model)
+	model := opts.MappedModel
+	if model == "" {
+		model = a.MapModel(opts.Model)
+	}
+	reasoningEffort := opts.ReasoningEffort
+	if reasoningEffort == "" {
+		reasoningEffort = a.GetReasoningEffort(opts.Model)
+	}
 
 	args := []string{
 		"exec",

@@ -24,10 +24,10 @@ Routes are defined in `src/App.tsx`.
 
 The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
-- **Hierarchy tab** (default): Blockers (add/remove), blocks, epic hierarchy (parent + siblings/children)
+- **Workflow tab** (default): Shows phase timeline with agent history
+- **Hierarchy tab**: Blockers (add/remove), blocks, epic hierarchy (parent + siblings/children)
 - **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
 - **Details tab**: Read-only dependency lists, description text, metadata
-- **Workflow tab**: Shows phase timeline with agent history
 
 ### Tab Content Components
 

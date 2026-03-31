@@ -90,8 +90,20 @@ describe('TicketDetailPage - tab behavior', () => {
   })
 
   describe('default tab (no query param)', () => {
-    it('shows Hierarchy tab content by default', async () => {
+    it('shows Workflow tab content by default', async () => {
       renderPage()
+      await waitFor(() => expect(screen.getByText('Test ticket')).toBeInTheDocument())
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
+      })
+      expect(screen.queryByTestId('hierarchy-tab-content')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('?tab=hierarchy query param', () => {
+    it('shows Hierarchy tab content when ?tab=hierarchy', async () => {
+      renderPage('TICKET-1', '?tab=hierarchy')
       await waitFor(() => expect(screen.getByText('Test ticket')).toBeInTheDocument())
 
       await waitFor(() => {
@@ -114,14 +126,14 @@ describe('TicketDetailPage - tab behavior', () => {
   })
 
   describe('invalid tab param', () => {
-    it('falls back to Hierarchy for an unknown tab value', async () => {
+    it('falls back to Workflow for an unknown tab value', async () => {
       renderPage('TICKET-1', '?tab=bogus')
       await waitFor(() => expect(screen.getByText('Test ticket')).toBeInTheDocument())
 
       await waitFor(() => {
-        expect(screen.getByTestId('hierarchy-tab-content')).toBeInTheDocument()
+        expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
       })
-      expect(screen.queryByTestId('workflow-tab-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('hierarchy-tab-content')).not.toBeInTheDocument()
     })
   })
 })

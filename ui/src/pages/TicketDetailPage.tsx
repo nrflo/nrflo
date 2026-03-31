@@ -54,7 +54,7 @@ export function TicketDetailPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
   const tabParam = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>(
-    tabParam === 'workflow' || tabParam === 'description' || tabParam === 'details' || tabParam === 'hierarchy' ? tabParam : 'hierarchy'
+    tabParam === 'workflow' || tabParam === 'description' || tabParam === 'details' || tabParam === 'hierarchy' ? tabParam : 'workflow'
   )
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)

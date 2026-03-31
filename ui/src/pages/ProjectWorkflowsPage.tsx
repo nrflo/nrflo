@@ -234,7 +234,7 @@ export function ProjectWorkflowsPage() {
       {activeTab === 'completed' && (
         <>
           {selectedPanelAgent && (
-            <div className="flex items-center">
+            <div className="flex items-center ml-auto">
               <Tooltip text={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'} placement="top">
                 <Button
                   variant="outline"
@@ -242,7 +242,7 @@ export function ProjectWorkflowsPage() {
                   onClick={() => setLogPanelCollapsed((p) => !p)}
                   title={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'}
                 >
-                  {logPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  {logPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </Button>
               </Tooltip>
             </div>

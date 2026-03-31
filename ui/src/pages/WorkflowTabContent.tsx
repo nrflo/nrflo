@@ -167,6 +167,8 @@ export function WorkflowTabContent({
                     )}
                   </>
                 )}
+              </div>
+              <div className="flex items-center gap-3">
                 {(hasActivePhase || selectedPanelAgent) && (
                   <Tooltip text={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'} placement="top">
                     <Button
@@ -175,41 +177,41 @@ export function WorkflowTabContent({
                       onClick={onToggleLogPanel}
                       title={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'}
                     >
-                      {logPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                      {logPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </Button>
                   </Tooltip>
                 )}
-              </div>
-              {!(isOrchestrated || hasActivePhase) && (
-                <>
-                  {activeChainId ? (
-                    <Link to={`/chains/${encodeURIComponent(activeChainId)}`}>
-                      <Button variant="outline" size="sm">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Chain
+                {!(isOrchestrated || hasActivePhase) && (
+                  <>
+                    {activeChainId ? (
+                      <Link to={`/chains/${encodeURIComponent(activeChainId)}`}>
+                        <Button variant="outline" size="sm">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Chain
+                        </Button>
+                      </Link>
+                    ) : issueType === 'epic' && onShowEpicRunDialog ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onShowEpicRunDialog}
+                      >
+                        <Layers className="h-4 w-4 mr-2" />
+                        Run Epic Workflow
                       </Button>
-                    </Link>
-                  ) : issueType === 'epic' && onShowEpicRunDialog ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onShowEpicRunDialog}
-                    >
-                      <Layers className="h-4 w-4 mr-2" />
-                      Run Epic Workflow
-                    </Button>
-                  ) : onShowRunDialog ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onShowRunDialog}
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Run Workflow
-                    </Button>
-                  ) : null}
-                </>
-              )}
+                    ) : onShowRunDialog ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onShowRunDialog}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Run Workflow
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </div>
             {displayedState.status === 'failed' && onRetryFailed && failedAgent?.session_id && (
               <div className="flex items-center gap-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm dark:border-red-800 dark:bg-red-950/30">

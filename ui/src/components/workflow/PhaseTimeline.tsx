@@ -47,11 +47,6 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
     <div className="space-y-4">
       {/* Workflow metadata badges */}
       <div className="flex items-center gap-2 flex-wrap">
-        {workflow.version && (
-          <Badge variant="outline" className="text-xs">
-            v{workflow.version}
-          </Badge>
-        )}
         {workflow.current_phase && (
           <Badge variant="secondary" className="text-xs">
             <Clock className="h-3 w-3 mr-1" />

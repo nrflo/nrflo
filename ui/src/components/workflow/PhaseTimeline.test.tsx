@@ -64,11 +64,11 @@ describe('PhaseTimeline', () => {
       expect(screen.queryByTestId('phase-graph')).not.toBeInTheDocument()
     })
 
-    it('displays workflow version badge when version is present', () => {
+    it('does not display workflow version badge', () => {
       const workflow = makeWorkflow({ version: 4 })
       renderPhaseTimeline({ workflow })
 
-      expect(screen.getByText('v4')).toBeInTheDocument()
+      expect(screen.queryByText('v4')).not.toBeInTheDocument()
     })
 
     it('displays current phase badge when current_phase is present', () => {

@@ -67,7 +67,7 @@ export function RunningAgentsIndicator() {
         useProjectStore.getState().setCurrentProject(agent.project_id)
       }
       if (agent.ticket_id) {
-        navigate(`/tickets/${agent.ticket_id}`)
+        navigate(`/tickets/${agent.ticket_id}?tab=workflow`)
       } else {
         navigate('/project-workflows')
       }
@@ -114,7 +114,7 @@ export function RunningAgentsIndicator() {
                     key={agent.session_id}
                     to={
                       agent.ticket_id
-                        ? `/tickets/${agent.ticket_id}`
+                        ? `/tickets/${agent.ticket_id}?tab=workflow`
                         : '/project-workflows'
                     }
                     onClick={(e) => {

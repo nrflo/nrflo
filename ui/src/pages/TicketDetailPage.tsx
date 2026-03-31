@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
   Edit,
@@ -46,12 +46,16 @@ import { DetailsTabContent } from './DetailsTabContent'
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const goBack = useGoBack('/tickets')
   const [closeReason, setCloseReason] = useState('')
   const [showCloseForm, setShowCloseForm] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>('hierarchy')
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>(
+    tabParam === 'workflow' || tabParam === 'description' || tabParam === 'details' || tabParam === 'hierarchy' ? tabParam : 'hierarchy'
+  )
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
@@ -244,6 +248,18 @@ export function TicketDetailPage() {
       <div className="border-b border-border">
         <div className="flex gap-1">
           <button
+            onClick={() => setActiveTab('workflow')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'workflow'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <GitBranch className="h-4 w-4" />
+            Workflow
+          </button>
+          <button
             onClick={() => setActiveTab('hierarchy')}
             className={cn(
               'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
@@ -278,18 +294,6 @@ export function TicketDetailPage() {
           >
             <Info className="h-4 w-4" />
             Details
-          </button>
-          <button
-            onClick={() => setActiveTab('workflow')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-              activeTab === 'workflow'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <GitBranch className="h-4 w-4" />
-            Workflow
           </button>
         </div>
       </div>

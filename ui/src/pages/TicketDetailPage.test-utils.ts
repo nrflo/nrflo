@@ -233,7 +233,7 @@ export const emptySessions: AgentSessionsResponse = {
   sessions: [],
 }
 
-export function renderPage(ticketId = 'TICKET-1') {
+export function renderPage(ticketId = 'TICKET-1', search = '') {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -246,7 +246,7 @@ export function renderPage(ticketId = 'TICKET-1') {
       { client: queryClient },
       createElement(
         MemoryRouter,
-        { initialEntries: [`/tickets/${encodeURIComponent(ticketId)}`] },
+        { initialEntries: [`/tickets/${encodeURIComponent(ticketId)}${search}`] },
         createElement(
           Routes,
           null,

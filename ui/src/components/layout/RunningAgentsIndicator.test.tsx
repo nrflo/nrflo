@@ -145,7 +145,7 @@ describe('RunningAgentsIndicator', () => {
       renderIndicator()
       fireEvent.mouseEnter(getTrigger())
       const links = screen.getAllByRole('link')
-      expect(links.find((l) => l.getAttribute('href') === '/tickets/ticket-1')).toBeDefined()
+      expect(links.find((l) => l.getAttribute('href') === '/tickets/ticket-1?tab=workflow')).toBeDefined()
     })
 
     it('project-scoped agent link points to /project-workflows', () => {
@@ -176,7 +176,7 @@ describe('RunningAgentsIndicator', () => {
       renderIndicator()
       fireEvent.mouseEnter(getTrigger())
       fireEvent.click(screen.getByRole('link'))
-      expect(mockNavigate).toHaveBeenCalledWith('/tickets/ticket-42')
+      expect(mockNavigate).toHaveBeenCalledWith('/tickets/ticket-42?tab=workflow')
       expect(mockSetCurrentProject).not.toHaveBeenCalled()
     })
 
@@ -198,7 +198,7 @@ describe('RunningAgentsIndicator', () => {
       fireEvent.mouseEnter(getTrigger())
       fireEvent.click(screen.getByRole('link'))
       expect(mockSetCurrentProject).toHaveBeenCalledWith('proj-2')
-      expect(mockNavigate).toHaveBeenCalledWith('/tickets/ticket-5')
+      expect(mockNavigate).toHaveBeenCalledWith('/tickets/ticket-5?tab=workflow')
     })
   })
 

@@ -1,85 +1,42 @@
 # Agent Definition Manual
 
-> Last updated: 2026-03-01
+> Last updated: 2026-03-31
 
-Cheat-sheet for creating agent definitions. Agent definitions are stored in the `agent_definitions` table and managed via `/api/v1/workflows/{wid}/agents` API or the Workflows page in the web UI.
+Guide for creating and managing agent definitions in the nrworkflow web UI. Agent definitions configure how AI agents behave within workflows — their prompts, models, timeouts, and restart behavior.
 
----
-
-## 1. Quick Reference
-
-### Template Variables
-
-| Variable | Description | Scope | Default/Fallback |
-|----------|-------------|-------|------------------|
-| `${AGENT}` | Agent type ID (e.g., `implementor`) | Both | Always set |
-| `${TICKET_ID}` | Current ticket ID | Ticket | Empty for project scope |
-| `${TICKET_TITLE}` | Ticket title from DB | Ticket | Empty for project scope |
-| `${TICKET_DESCRIPTION}` | Ticket description from DB | Ticket | Empty for project scope |
-| `${PROJECT_ID}` | Project identifier | Both | Always set |
-| `${WORKFLOW}` | Workflow name (e.g., `feature`) | Both | Always set |
-| `${USER_INSTRUCTIONS}` | User instructions from workflow run | Both | `_No user instructions provided_` |
-| `${CALLBACK_INSTRUCTIONS}` | Callback context on re-run | Both | `_No callback instructions_` |
-| `${PREVIOUS_DATA}` | Saved progress from continued session | Both | Empty string |
-| `${PARENT_SESSION}` | Parent orchestration session UUID | Both | Always set |
-| `${CHILD_SESSION}` | This agent's session UUID | Both | Always set |
-| `${MODEL_ID}` | Full model ID (e.g., `claude:opus`) | Both | Always set |
-| `${MODEL}` | Model name (e.g., `opus`) | Both | `sonnet` if empty |
-| `${BRANCH_NAME}` | Git branch name | ExtraVars only | Empty if not provided |
-| `${DEFAULT_BRANCH}` | Default branch (e.g., `main`) | ExtraVars only | Empty if not provided |
-| `${MERGE_ERROR}` | Merge error message | ExtraVars only | Empty if not provided |
-
-> **Note:** `BRANCH_NAME`, `DEFAULT_BRANCH`, and `MERGE_ERROR` are only available for system agents spawned with `ExtraVars` on `SpawnRequest`. They are not available for regular workflow agents.
-
-### Findings Patterns
-
-| Pattern | Description |
-|---------|-------------|
-| `#{FINDINGS:agent}` | All findings from agent |
-| `#{FINDINGS:agent:key}` | Single key from agent |
-| `#{FINDINGS:agent:key1,key2}` | Multiple keys from agent |
-| `#{PROJECT_FINDINGS:key}` | Single project finding |
-| `#{PROJECT_FINDINGS:k1,k2}` | Multiple project findings |
+Agent definitions are created and edited on the **Workflows** page: expand a workflow card, then use the **Add Agent** button or the edit icon on an existing agent.
 
 ---
 
-## 2. Template Variables
+## 1. Template Variables
 
-### Simple Variables (always available)
+Template variables are placeholders you type directly into the agent's prompt template (the CodeMirror editor in the agent form). At runtime, the system substitutes them with actual values.
 
-```markdown
-You are the ${AGENT} agent running in workflow ${WORKFLOW}.
-Your session: ${CHILD_SESSION} (parent: ${PARENT_SESSION})
-Model: ${MODEL} (${MODEL_ID})
-Project: ${PROJECT_ID}
-```
+| Variable | Description | How to Use | Result |
+|----------|-------------|------------|--------|
+| `${AGENT}` | The agent's type identifier | `You are the ${AGENT} agent.` | `You are the implementor agent.` |
+| `${TICKET_ID}` | Current ticket ID (empty for project-scope) | `Working on ticket ${TICKET_ID}` | `Working on ticket PROJ-42` |
+| `${TICKET_TITLE}` | Ticket title (empty for project-scope) | `## Ticket: ${TICKET_TITLE}` | `## Ticket: Fix login bug` |
+| `${TICKET_DESCRIPTION}` | Ticket description (empty for project-scope) | `${TICKET_DESCRIPTION}` | The full ticket description text |
+| `${PROJECT_ID}` | Project identifier | `Project: ${PROJECT_ID}` | `Project: myapp` |
+| `${WORKFLOW}` | Workflow name | `Running in ${WORKFLOW} workflow` | `Running in feature workflow` |
+| `${USER_INSTRUCTIONS}` | User instructions from workflow run dialog | `## Instructions\n${USER_INSTRUCTIONS}` | The instructions text, or `_No user instructions provided_` |
+| `${CALLBACK_INSTRUCTIONS}` | Context when re-run via callback | `${CALLBACK_INSTRUCTIONS}` | Callback context block or `_No callback instructions_` |
+| `${PREVIOUS_DATA}` | Saved progress from a continued session | `## Previous Progress\n${PREVIOUS_DATA}` | Progress data or empty string |
+| `${PARENT_SESSION}` | Parent orchestration session UUID | `${PARENT_SESSION}` | UUID string |
+| `${CHILD_SESSION}` | This agent's session UUID | `${CHILD_SESSION}` | UUID string |
+| `${MODEL_ID}` | Full model identifier | `${MODEL_ID}` | `claude:opus` |
+| `${MODEL}` | Short model name | `${MODEL}` | `opus` (defaults to `sonnet`) |
 
-### Ticket Context (ticket-scoped workflows only)
+### Ticket Context
 
-```markdown
-## Ticket
-- **ID:** ${TICKET_ID}
-- **Title:** ${TICKET_TITLE}
-- **Description:** ${TICKET_DESCRIPTION}
-```
-
-For project-scoped workflows, `${TICKET_ID}` is empty, and `${TICKET_TITLE}`/`${TICKET_DESCRIPTION}` resolve to empty strings. Validation at workflow creation rejects project-scoped agent prompts that use these variables.
+For project-scoped workflows, `${TICKET_ID}`, `${TICKET_TITLE}`, and `${TICKET_DESCRIPTION}` resolve to empty strings. Validation at workflow creation rejects project-scoped agent prompts that use these variables.
 
 ### User Instructions
-
-```markdown
-## User Instructions
-${USER_INSTRUCTIONS}
-```
 
 Resolves to `_No user instructions provided_` when no instructions were given at workflow launch.
 
 ### Callback Instructions
-
-```markdown
-## Callback Context
-${CALLBACK_INSTRUCTIONS}
-```
 
 During normal execution: `_No callback instructions_`
 
@@ -97,11 +54,6 @@ Callback triggered by: qa-verifier
 
 ### Previous Data (Low-Context Continuation)
 
-```markdown
-## Previous Progress
-${PREVIOUS_DATA}
-```
-
 Empty on first run. On continuation, expands to:
 
 ```
@@ -111,11 +63,13 @@ This is a continuation of a previous run. Here is what was completed:
 
 ---
 
-## 3. Findings Patterns
+## 2. Findings Patterns
+
+Findings patterns pull data from other agents or project-level findings into an agent's prompt. They are expanded after variable substitution.
 
 ### Agent Findings (`#{FINDINGS:...}`)
 
-Pull prior agent findings into prompts. Expanded after variable substitution.
+Pull prior agent findings into prompts.
 
 **Syntax:**
 
@@ -158,7 +112,7 @@ _No findings yet available from setup-analyzer_
 
 ### Project Findings (`#{PROJECT_FINDINGS:...}`)
 
-Pull project-level findings (stored separately in the `project_findings` table).
+Pull project-level findings into prompts.
 
 **Syntax:**
 
@@ -186,9 +140,9 @@ For multiple keys, each missing key gets its own placeholder while found keys di
 
 ---
 
-## 4. Agent Lifecycle Commands
+## 3. Agent Lifecycle Commands
 
-Spawned agents report results via CLI over Unix socket. **Exiting with code 0 is an implicit pass** — no explicit completion call needed. Only call `agent fail` when the task cannot be completed.
+Spawned agents report results via CLI. **Exiting with code 0 is an implicit pass** — no explicit completion call needed. Only call `agent fail` when the task cannot be completed. Context is provided automatically by the system.
 
 ```bash
 # Mark agent as failed
@@ -200,11 +154,9 @@ nrworkflow agent continue
 # Callback to re-run an earlier layer
 nrworkflow agent callback --level <N>
 
-# Skip a workflow group tag (reads NRWF_WORKFLOW_INSTANCE_ID from env)
+# Skip a workflow group tag
 nrworkflow skip <tag>
 ```
-
-All context (project, ticket, workflow, agent_type) is derived server-side from `NRWF_SESSION_ID` and `NRWF_WORKFLOW_INSTANCE_ID` env vars set by the spawner. No positional args or `-w`/`-T` flags needed.
 
 | Command | When to use |
 |---------|------------|
@@ -217,7 +169,7 @@ All context (project, ticket, workflow, agent_type) is derived server-side from 
 
 ---
 
-## 5. Findings CLI Commands
+## 4. Findings CLI Commands
 
 ### Agent-Level Findings
 
@@ -246,11 +198,7 @@ nrworkflow findings get <agent-type> -k key1    # multiple keys
 nrworkflow findings delete <key1> [key2...]
 ```
 
-All context is derived from `NRWF_SESSION_ID` and `NRWF_WORKFLOW_INSTANCE_ID` env vars. Cross-agent reads require providing the target `<agent-type>` and use `NRWF_WORKFLOW_INSTANCE_ID` to scope the lookup.
-
 ### Project-Level Findings
-
-Project findings have no ticket or agent-type parameters.
 
 ```bash
 # Add
@@ -280,19 +228,22 @@ nrworkflow findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
 
 ---
 
-## 6. Agent Definition Fields
+## 5. Agent Definition Fields
+
+These fields are configured via the agent form on the **Workflows** page.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `id` | string | Required | Agent type identifier (e.g., `setup-analyzer`, `implementor`) |
 | `model` | string | `sonnet` | Model to use (see table below) |
 | `timeout` | int | `20` | Max execution time in minutes |
-| `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns |
-| `restart_threshold` | int (optional) | `25` | Percentage of context remaining that triggers low-context save (lower = more aggressive) |
-| `max_fail_restarts` | int (optional) | `0` | Max auto-restarts on agent failure (0 = disabled). Failed agent is relaunched fresh (no context save). |
-| `stall_start_timeout_sec` | int (optional) | `120` | Seconds with no output before start-stall restart. `0` = disabled. `NULL` = default (120s). |
-| `stall_running_timeout_sec` | int (optional) | `480` | Seconds of silence mid-execution before running-stall restart. `0` = disabled. `NULL` = default (480s). |
-| `tag` | string (optional) | `""` | Group tag for skip-tag feature; must be in parent workflow's `groups` |
+| `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns. Edited in the CodeMirror markdown editor. |
+| `restart_threshold` | int | `25` | Percentage of context remaining that triggers low-context save (lower = more aggressive) |
+| `max_fail_restarts` | int | `0` | Max auto-restarts on agent failure (0 = disabled). Failed agent is relaunched fresh (no context save). |
+| `stall_start_timeout_sec` | int | Configurable | Seconds with no output before start-stall restart. `0` = disabled. |
+| `stall_running_timeout_sec` | int | Configurable | Seconds of silence mid-execution before running-stall restart. `0` = disabled. |
+| `tag` | string | `""` | Group tag for skip-tag feature; must be in parent workflow's `groups` |
+| `low_consumption_model` | string | `""` | Model override when low consumption mode is enabled globally (e.g., `sonnet`, `haiku`). Empty = no override. |
 
 ### Supported Models by CLI Adapter
 
@@ -319,11 +270,9 @@ nrworkflow findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
 | `codex_gpt_normal` | `gpt-5.3-codex` reasoning effort "high" |
 | `codex_gpt_high` | `gpt-5.3-codex` reasoning effort "high" |
 
-> Check `be/internal/spawner/CLAUDE.md` for the latest model mapping if new adapters are added.
-
 ---
 
-## 7. Workflow & Phase Configuration
+## 6. Workflow & Phase Configuration
 
 ### Phase JSON Format
 
@@ -343,12 +292,12 @@ Each phase is a JSON object with `agent` (agent definition ID) and `layer` (inte
 - **Concurrent execution:** All agents in the same layer run concurrently
 - **Sequential layers:** Layers execute in ascending order (0, 1, 2, ...)
 - **Fan-in validation:** If layer N has >1 agent, layer N+1 must have exactly 1 agent
-- **Pass condition:** At least 1 agent in a layer must pass (`pass_count >= 1`) for the workflow to proceed
+- **Pass condition:** At least 1 agent in a layer must pass for the workflow to proceed
 - **All skipped:** If all agents in a layer are skipped, the workflow continues
 
 ### Workflow Groups (Skip Tags)
 
-Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs"]`). Agents can be assigned a `tag` from the workflow's groups. During execution, an agent can call `nrworkflow skip <tag>` to add a tag to the instance's `skip_tags`. The orchestrator reads `skip_tags` before each layer to skip agents whose tag is in the list.
+Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs"]`). Agents can be assigned a `tag` from the workflow's groups. During execution, an agent can call `nrworkflow skip <tag>` to add a tag to the instance's skip list. The orchestrator checks skip tags before each layer to skip agents whose tag is in the list.
 
 ### Scope Types
 
@@ -359,7 +308,7 @@ Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs
 
 ---
 
-## 8. Callback Mechanism
+## 7. Callback Mechanism
 
 Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an earlier layer.
 
@@ -374,9 +323,9 @@ Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an ear
    ```bash
    nrworkflow agent callback --level 2
    ```
-4. Orchestrator saves `_callback` metadata, resets phases/sessions from target layer forward
+4. The system resets phases/sessions from the target layer forward
 5. Target agent (implementor at layer 2) re-runs with `${CALLBACK_INSTRUCTIONS}` expanded
-6. After target layer completes successfully, `_callback` metadata is cleared
+6. After the target layer completes successfully, callback metadata is cleared
 
 ### Limits
 
@@ -385,18 +334,16 @@ Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an ear
 
 ---
 
-## 9. Low-Context Continuation
+## 8. Low-Context Continuation
 
-When an agent's remaining context drops below the threshold, the spawner automatically saves progress and relaunches.
+When an agent's remaining context drops below the threshold, the system automatically saves progress and relaunches with a fresh context window.
 
 ### How It Works
 
-1. Spawner detects context usage exceeds threshold (default: 75% used, i.e., 25% remaining)
-2. Kills the running agent (SIGTERM, then SIGKILL after 5s grace period)
-3. If CLI supports resume: resumes session with instructions to save progress to `to_resume` finding
-4. Agent calls `nrworkflow agent continue` after saving
-5. Spawner launches a fresh agent with `${PREVIOUS_DATA}` populated from the `to_resume` finding
-6. Old session gets `status='continued'` and `ancestor_session_id` links the chain
+1. System detects context usage exceeds threshold (default: 75% used, i.e., 25% remaining)
+2. Kills the running agent and resumes the session with instructions to save progress to the `to_resume` finding
+3. Agent calls `nrworkflow agent continue` after saving
+4. System launches a fresh agent with `${PREVIOUS_DATA}` populated from the `to_resume` finding
 
 ### Configuration
 
@@ -415,45 +362,43 @@ Continue implementation from where the previous session left off.
 
 ---
 
-## 10. Automatic Failure Restart
+## 9. Automatic Failure Restart
 
 When `max_fail_restarts > 0`, a failed agent (non-zero exit or explicit `agent fail`) is automatically restarted up to `max_fail_restarts` times before the failure is final. Unlike low-context continuation, the agent starts completely fresh (no `${PREVIOUS_DATA}`).
 
 ### How It Works
 
 1. Agent exits with non-zero code or calls `agent fail`
-2. Spawner checks `failRestartCount < max_fail_restarts`
-3. If restarts remain: marks old session as `continued` with `result_reason=fail_restart`, relaunches fresh
+2. System checks remaining restart budget
+3. If restarts remain: relaunches fresh
 4. If exhausted: failure propagates normally
 
-The `failRestartCount` is tracked independently from the low-context `restartCount`, so both mechanisms can coexist.
+Failure restarts are tracked independently from low-context restarts, so both mechanisms can coexist.
 
 ---
 
-## 11. Stall Detection & Auto-Restart
+## 10. Stall Detection & Auto-Restart
 
-The spawner monitors time since last agent message and automatically restarts frozen agents. Two stall types are detected:
+The system monitors agent output and automatically restarts frozen agents. Two stall types are detected:
 
-- **Start stall**: Agent produces no output at all within `stall_start_timeout_sec` (default 120s)
-- **Running stall**: Agent was active but stopped producing output for `stall_running_timeout_sec` (default 480s)
+- **Start stall**: Agent produces no output at all within the start timeout (configurable via `stall_start_timeout_sec`)
+- **Running stall**: Agent was active but stopped producing output for the running timeout (configurable via `stall_running_timeout_sec`)
 
 ### How It Works
 
-1. `lastMessageTime` is updated on every `trackMessage()` call (inside `messagesMutex`)
-2. `monitorAll()` checks elapsed time since last message each poll iteration
-3. On stall: kills agent immediately (no context save — agent is frozen), marks session as `continued` with `result_reason=stall_restart_start_stall` or `stall_restart_running_stall`, relaunches fresh
-4. Stall restarts are capped at `maxStallRestarts` (3) to prevent infinite loops
-5. Broadcasts `agent.stall_restart` WS event with stall type and count
+1. System monitors time since last agent output
+2. On stall: kills agent immediately (no context save — agent is frozen) and relaunches fresh
+3. Stall restarts are capped at a fixed budget to prevent infinite loops
 
 ### Configuration
 
-- `stall_start_timeout_sec`: NULL = 120s default, 0 = disabled, positive integer = custom seconds
-- `stall_running_timeout_sec`: NULL = 480s default, 0 = disabled, positive integer = custom seconds
-- `stallRestartCount` is independent of `failRestartCount` and `restartCount` (low-context)
+- `stall_start_timeout_sec`: `0` = disabled, positive integer = custom seconds
+- `stall_running_timeout_sec`: `0` = disabled, positive integer = custom seconds
+- Stall restarts are tracked independently from failure restarts and low-context restarts
 
 ---
 
-## 12. Common Patterns & Examples
+## 11. Common Patterns & Examples
 
 ### Example 1: Setup Analyzer Prompt
 
@@ -485,7 +430,7 @@ nrworkflow findings add summary:'...' files_to_modify:'[...]' implementation_pla
 ### Example 2: Implementor with Findings Injection and Callbacks
 
 ```markdown
-You are the ${AGENT} agent for ticket ${TICKET_ID}.
+Implement changes for ticket ${TICKET_ID} in the ${WORKFLOW} workflow.
 
 ## Previous Analysis
 #{FINDINGS:setup-analyzer}
@@ -544,3 +489,20 @@ nrworkflow deps list TICKET-1
 nrworkflow deps add TICKET-1 BLOCKER-1      # TICKET-1 is blocked by BLOCKER-1
 nrworkflow deps remove TICKET-1 BLOCKER-1
 ```
+
+---
+
+## 13. System Agents
+
+System agents are global agent definitions not tied to any specific project or workflow. They are managed on the **Settings** page. System agents are used for system-level tasks like automatic merge conflict resolution.
+
+---
+
+## 14. How to Update This Document
+
+- This file is `agent_manual.md` in the project root
+- Served by `GET /api/v1/docs/agent-manual`
+- Rendered via ReactMarkdown on the `/documentation` page in the web UI
+- Edit the markdown file directly — changes are picked up on next page load (no cache, read from filesystem)
+- Keep it user-focused: explain what things do, not how they're implemented internally
+- When backend changes affect user-visible behavior (new template variables, new CLI commands, new agent definition fields), update this doc

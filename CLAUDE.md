@@ -32,6 +32,8 @@ Update [ui/CLAUDE.md](ui/CLAUDE.md) when modifying:
 
 #### 1d. Agent Manual
 
+The agent manual (`agent_manual.md`) is **user-facing documentation** rendered in the web UI. Keep content focused on what users need to know — no DB table names, internal Go implementation details, session status values, or env var internals.
+
 Update [agent_manual.md](agent_manual.md) when modifying:
 - Template variables in `be/internal/spawner/template.go`
 - Findings patterns in `be/internal/spawner/template_findings.go` or `template_project_findings.go`
@@ -109,7 +111,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 | `stop.sh` | Stop running servers |
 | `rebuild-cli.sh` | Rebuild and re-symlink CLI binary (also rebuilds Docker image if it exists) |
 | `rebuild-docker.sh` | Nuclear-option Docker image rebuild: stops containers, removes image, rebuilds from scratch |
-| `agent_manual.md` | Agent definition cheat-sheet (template vars, findings, CLI) |
+| `agent_manual.md` | User-facing agent definition guide (template vars, findings, CLI) |
 
 ## Architecture Principles
 

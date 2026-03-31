@@ -226,7 +226,7 @@ Workflow runtime state is stored in two main tables: `workflow_instances` (one r
 
 ## API Response Format
 
-`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with `ticket_id`, `has_workflow`, `workflows` list (deduplicated workflow names), and `all_workflows` map keyed by instance_id (same pattern as project workflows). Each workflow state includes version, status, instance_id, workflow name, current phase, phase order, phase layers, phases map, active agents, agent history, and findings. Supports `?instance_id=` and `?workflow=` query params for selection. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full endpoint listing and [be/internal/service/CLAUDE.md](be/internal/service/CLAUDE.md) for response construction.
+`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with `ticket_id`, `has_workflow`, `workflows` list (deduplicated workflow names), and `all_workflows` map keyed by instance_id (same pattern as project workflows). Each workflow state includes version, status, instance_id, workflow name, current phase, phase order, phase layers, phases map, active agents, agent history, and findings. When any agent writes a `workflow_final_result` finding, the last-written value (by session `ended_at`) is included as a top-level `workflow_final_result` field. Supports `?instance_id=` and `?workflow=` query params for selection. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full endpoint listing and [be/internal/service/CLAUDE.md](be/internal/service/CLAUDE.md) for response construction.
 
 ## Chain Execution
 

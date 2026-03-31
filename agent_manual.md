@@ -228,7 +228,26 @@ nrworkflow findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
 
 ---
 
-## 5. Agent Definition Fields
+## 5. Workflow Result
+
+Any agent can write a `workflow_final_result` finding to surface a human-readable result summary after workflow completion.
+
+### How to Set It
+
+```bash
+nrworkflow findings add workflow_final_result:"Implementation complete: added auth middleware with JWT validation"
+```
+
+### Behavior
+
+- The value appears as a top-level field in the workflow state API response (`workflow_final_result`)
+- Displayed in the UI above the agent flow tree after workflow completion
+- **Last-writer-wins:** if multiple agents write `workflow_final_result`, the value from the session with the latest `ended_at` is used
+- If no agent writes this finding, no result is displayed
+
+---
+
+## 6. Agent Definition Fields
 
 These fields are configured via the agent form on the **Workflows** page.
 
@@ -272,7 +291,7 @@ These fields are configured via the agent form on the **Workflows** page.
 
 ---
 
-## 6. Workflow & Phase Configuration
+## 7. Workflow & Phase Configuration
 
 ### Phase JSON Format
 
@@ -308,7 +327,7 @@ Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs
 
 ---
 
-## 7. Callback Mechanism
+## 8. Callback Mechanism
 
 Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an earlier layer.
 
@@ -334,7 +353,7 @@ Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an ear
 
 ---
 
-## 8. Low-Context Continuation
+## 9. Low-Context Continuation
 
 When an agent's remaining context drops below the threshold, the system automatically saves progress and relaunches with a fresh context window.
 
@@ -362,7 +381,7 @@ Continue implementation from where the previous session left off.
 
 ---
 
-## 9. Automatic Failure Restart
+## 10. Automatic Failure Restart
 
 When `max_fail_restarts > 0`, a failed agent (non-zero exit or explicit `agent fail`) is automatically restarted up to `max_fail_restarts` times before the failure is final. Unlike low-context continuation, the agent starts completely fresh (no `${PREVIOUS_DATA}`).
 
@@ -377,7 +396,7 @@ Failure restarts are tracked independently from low-context restarts, so both me
 
 ---
 
-## 10. Stall Detection & Auto-Restart
+## 11. Stall Detection & Auto-Restart
 
 The system monitors agent output and automatically restarts frozen agents. Two stall types are detected:
 
@@ -398,7 +417,7 @@ The system monitors agent output and automatically restarts frozen agents. Two s
 
 ---
 
-## 11. Common Patterns & Examples
+## 12. Common Patterns & Examples
 
 ### Example 1: Setup Analyzer Prompt
 
@@ -457,7 +476,7 @@ nrworkflow agent fail --reason "..."
 
 ---
 
-## 12. Ticket Management CLI Commands
+## 13. Ticket Management CLI Commands
 
 Use the `nrworkflow tickets` CLI — **never use `curl` or direct HTTP API calls**.
 Requires `NRWORKFLOW_PROJECT` env var (already set in spawned sessions).
@@ -492,13 +511,13 @@ nrworkflow deps remove TICKET-1 BLOCKER-1
 
 ---
 
-## 13. System Agents
+## 14. System Agents
 
 System agents are global agent definitions not tied to any specific project or workflow. They are managed on the **Settings** page. System agents are used for system-level tasks like automatic merge conflict resolution.
 
 ---
 
-## 14. How to Update This Document
+## 15. How to Update This Document
 
 - This file is `agent_manual.md` in the project root
 - Served by `GET /api/v1/docs/agent-manual`

@@ -65,6 +65,7 @@ export interface WorkflowState {
   completed_at?: string
   total_duration_sec?: number
   total_tokens_used?: number
+  workflow_final_result?: string
   phases?: Record<string, PhaseState>
   phase_order?: string[]
   phase_layers?: Record<string, number>

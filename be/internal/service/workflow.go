@@ -263,6 +263,11 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	// Combined findings: workflow-level + per-session
 	result["findings"] = s.BuildCombinedFindings(wi)
 
+	// Extract workflow_final_result from agent session findings
+	if finalResult := s.ExtractWorkflowFinalResult(wi); finalResult != "" {
+		result["workflow_final_result"] = finalResult
+	}
+
 	return result
 }
 

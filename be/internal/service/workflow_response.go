@@ -326,3 +326,34 @@ func (s *WorkflowService) BuildCombinedFindings(wi *model.WorkflowInstance) map[
 	}
 	return combined
 }
+
+// ExtractWorkflowFinalResult scans agent sessions for the workflow_final_result finding,
+// returning the value from the session with the latest ended_at. Running sessions (NULL
+// ended_at) are deprioritized — completed sessions always take precedence.
+func (s *WorkflowService) ExtractWorkflowFinalResult(wi *model.WorkflowInstance) string {
+	rows, err := s.pool.Query(`
+		SELECT findings FROM agent_sessions
+		WHERE workflow_instance_id = ? AND findings IS NOT NULL AND findings != ''
+		ORDER BY ended_at IS NULL, ended_at DESC`, wi.ID)
+	if err != nil {
+		return ""
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var findingsStr string
+		rows.Scan(&findingsStr)
+
+		var sessionFindings map[string]interface{}
+		if json.Unmarshal([]byte(findingsStr), &sessionFindings) != nil {
+			continue
+		}
+		if val, ok := sessionFindings["workflow_final_result"]; ok {
+			if s, ok := val.(string); ok {
+				return s
+			}
+			return ""
+		}
+	}
+	return ""
+}

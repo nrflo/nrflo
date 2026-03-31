@@ -18,6 +18,13 @@ function formatElapsed(seconds: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+function formatAgentLabel(agent: RunningAgent): string {
+  if (agent.agent_type === 'conflict-resolver' && agent.workflow_id === '_conflict_resolution') {
+    return 'Merge Conflict Resolver'
+  }
+  return `${agent.workflow_id} / ${agent.agent_type}`
+}
+
 function groupByProject(agents: RunningAgent[]): Map<string, RunningAgent[]> {
   const map = new Map<string, RunningAgent[]>()
   for (const agent of agents) {
@@ -126,7 +133,7 @@ export function RunningAgentsIndicator() {
                     <span className="text-gray-200 dark:text-gray-700 mr-1">
                       └
                     </span>
-                    {agent.ticket_id && <>{agent.ticket_id} &middot; </>}{agent.workflow_id} / {agent.agent_type}
+                    {agent.ticket_id && <>{agent.ticket_id} &middot; </>}{formatAgentLabel(agent)}
                     <span className="ml-1 text-gray-400 dark:text-gray-500">
                       ({formatElapsed(agent.elapsed_sec)})
                     </span>

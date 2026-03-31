@@ -10,6 +10,9 @@ vi.mock('@/components/workflow/PhaseTimeline', () => ({
 vi.mock('@/components/workflow/AgentLogPanel', () => ({
   AgentLogPanel: () => <div data-testid="agent-log-panel">AgentLogPanel</div>,
 }))
+vi.mock('@/components/workflow/ConflictResolverBanner', () => ({
+  ConflictResolverBanner: () => null,
+}))
 
 function makeState(overrides: Partial<WorkflowState> = {}): WorkflowState {
   return {
@@ -144,6 +147,70 @@ describe('WorkflowTabContent', () => {
     const bannerContainer = screen.getByText('Completed').closest('.bg-green-50')
     expect(bannerContainer).toBeInTheDocument()
     expect(bannerContainer).toHaveClass('border-green-200')
+  })
+
+  // Completed banner suppressed while conflict-resolver is running
+  it('suppresses completed banner when conflict-resolver session is running in sessions', () => {
+    const state = makeState({
+      status: 'completed',
+      completed_at: '2026-01-01T05:00:00Z',
+      total_duration_sec: 3600,
+      total_tokens_used: 150000,
+    })
+    const conflictResolverSession = {
+      id: 'sess-cr',
+      project_id: 'proj-1',
+      ticket_id: '',
+      workflow_instance_id: 'inst-1',
+      phase: '_conflict_resolution',
+      workflow: '_conflict_resolution',
+      agent_type: 'conflict-resolver',
+      status: 'running' as const,
+      message_count: 0,
+      restart_count: 0,
+      created_at: '2026-01-01T05:01:00Z',
+      updated_at: '2026-01-01T05:01:00Z',
+    }
+    render(
+      <WorkflowTabContent
+        {...defaultProps}
+        displayedState={state}
+        sessions={[conflictResolverSession]}
+      />
+    )
+    expect(screen.queryByText('Completed')).not.toBeInTheDocument()
+  })
+
+  it('shows completed banner when conflict-resolver session is not running', () => {
+    const state = makeState({
+      status: 'completed',
+      completed_at: '2026-01-01T05:00:00Z',
+      total_duration_sec: 3600,
+      total_tokens_used: 150000,
+    })
+    const completedResolverSession = {
+      id: 'sess-cr',
+      project_id: 'proj-1',
+      ticket_id: '',
+      workflow_instance_id: 'inst-1',
+      phase: '_conflict_resolution',
+      workflow: '_conflict_resolution',
+      agent_type: 'conflict-resolver',
+      status: 'completed' as const,
+      result: 'pass',
+      message_count: 0,
+      restart_count: 0,
+      created_at: '2026-01-01T05:01:00Z',
+      updated_at: '2026-01-01T05:02:00Z',
+    }
+    render(
+      <WorkflowTabContent
+        {...defaultProps}
+        displayedState={state}
+        sessions={[completedResolverSession]}
+      />
+    )
+    expect(screen.getByText('Completed')).toBeInTheDocument()
   })
 
   // AgentLogPanel visibility

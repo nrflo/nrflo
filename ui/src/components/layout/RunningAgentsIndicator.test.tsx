@@ -215,6 +215,29 @@ describe('RunningAgentsIndicator', () => {
     })
   })
 
+  describe('formatAgentLabel', () => {
+    it('shows "Merge Conflict Resolver" for conflict-resolver agent type', () => {
+      mockRunningAgents = {
+        data: {
+          agents: [makeAgent({ agent_type: 'conflict-resolver', workflow_id: '_conflict_resolution' })],
+          count: 1,
+        },
+      }
+      renderIndicator()
+      fireEvent.mouseEnter(getTrigger())
+      expect(screen.getByText(/Merge Conflict Resolver/)).toBeInTheDocument()
+    })
+
+    it('shows workflow_id / agent_type for normal agents', () => {
+      mockRunningAgents = {
+        data: { agents: [makeAgent({ workflow_id: 'feature', agent_type: 'implementor' })], count: 1 },
+      }
+      renderIndicator()
+      fireEvent.mouseEnter(getTrigger())
+      expect(screen.getByText(/feature \/ implementor/)).toBeInTheDocument()
+    })
+  })
+
   describe('formatElapsed', () => {
     function renderAndHover(elapsed_sec: number) {
       mockRunningAgents = { data: { agents: [makeAgent({ elapsed_sec })], count: 1 } }

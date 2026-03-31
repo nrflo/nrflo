@@ -80,6 +80,9 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `agent.take_control` | session_id, agent_type | Agent entered interactive mode |
 | `orchestration.*` | instance_id | Orchestration lifecycle |
 | `layer.skipped` | instance_id, layer, skip_tag, agents | Layer skipped due to skip tag |
+| `merge.conflict_resolving` | instance_id, branch, merge_error | Merge conflict detected, resolver agent spawned |
+| `merge.conflict_resolved` | instance_id, branch | Conflict resolver succeeded |
+| `merge.conflict_failed` | instance_id, branch, error | Conflict resolver failed |
 | `chain.updated` | chain_id | Chain state changed |
 | `ticket.updated` | | Ticket state changed |
 | `global.running_agents` | | Running agents changed (global broadcast, no subscription scope) |

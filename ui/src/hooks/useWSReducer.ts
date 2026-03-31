@@ -3,6 +3,7 @@ import type { WSEventV2 } from './useWSProtocol'
 import { subscriptionKey } from './useWSProtocol'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
+import { runningAgentsKeys } from './useRunningAgents'
 import type { WSEventType } from './useWebSocket'
 
 // Seq tracking per subscription
@@ -278,6 +279,40 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
   },
 
   'layer.skipped': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    }
+  },
+
+  'merge.conflict_resolving': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    }
+    qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
+  },
+
+  'merge.conflict_resolved': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    }
+  },
+
+  'merge.conflict_failed': (event, qc, isProjectScope) => {
     if (isProjectScope) {
       qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
       qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })

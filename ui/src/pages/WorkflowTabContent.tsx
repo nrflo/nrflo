@@ -23,6 +23,7 @@ import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
+import { ConflictResolverBanner } from '@/components/workflow/ConflictResolverBanner'
 import type { WorkflowState, AgentSession, ActiveAgentV4 } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { cn, formatDateTime, formatDurationSec, formatTokenCount } from '@/lib/utils'
@@ -255,7 +256,7 @@ export function WorkflowTabContent({
                 />
               </div>
             )}
-            {(displayedState.status === 'completed' || displayedState.status === 'project_completed') && (
+            {(displayedState.status === 'completed' || displayedState.status === 'project_completed') && !sessions?.some(s => s.agent_type === 'conflict-resolver' && s.status === 'running') && !agentHistory?.some(a => a.agent_type === 'conflict-resolver' && !a.result) && (
               <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                   <CheckCircle className="h-4 w-4" />
@@ -280,6 +281,11 @@ export function WorkflowTabContent({
                 )}
               </div>
             )}
+            <ConflictResolverBanner
+              sessions={sessions ?? []}
+              agentHistory={agentHistory ?? []}
+              onAgentSelect={onAgentSelect}
+            />
             <PhaseTimeline
               workflow={displayedState}
               agentHistory={agentHistory}

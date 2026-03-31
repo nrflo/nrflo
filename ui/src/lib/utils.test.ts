@@ -2,69 +2,71 @@ import { describe, it, expect } from 'vitest'
 import { contextLeftColor, formatElapsedTime, formatTokenCount, formatDurationSec, restartReasonLabel, formatRestartReasons } from './utils'
 
 describe('contextLeftColor', () => {
-  it('returns red classes for context_left <= 25', () => {
+  it('returns red text classes for context_left <= 25', () => {
     const result = contextLeftColor(25)
-    expect(result).toContain('bg-red-100')
     expect(result).toContain('text-red-700')
+    expect(result).not.toContain('bg-')
   })
 
-  it('returns red classes for context_left = 0', () => {
+  it('returns red text classes for context_left = 0', () => {
     const result = contextLeftColor(0)
-    expect(result).toContain('bg-red-100')
     expect(result).toContain('text-red-700')
+    expect(result).not.toContain('bg-')
   })
 
-  it('returns red classes for context_left = 1', () => {
+  it('returns red text classes for context_left = 1', () => {
     const result = contextLeftColor(1)
-    expect(result).toContain('bg-red-100')
+    expect(result).toContain('text-red-700')
+    expect(result).not.toContain('bg-')
   })
 
-  it('returns yellow classes for context_left = 26', () => {
+  it('returns yellow text classes for context_left = 26', () => {
     const result = contextLeftColor(26)
-    expect(result).toContain('bg-yellow-100')
     expect(result).toContain('text-yellow-700')
+    expect(result).not.toContain('bg-')
   })
 
-  it('returns yellow classes for context_left = 50', () => {
+  it('returns yellow text classes for context_left = 50', () => {
     const result = contextLeftColor(50)
-    expect(result).toContain('bg-yellow-100')
     expect(result).toContain('text-yellow-700')
+    expect(result).not.toContain('bg-')
   })
 
-  it('returns green classes for context_left = 51', () => {
+  it('returns green text classes for context_left = 51', () => {
     const result = contextLeftColor(51)
-    expect(result).toContain('bg-green-100')
     expect(result).toContain('text-green-700')
+    expect(result).not.toContain('bg-')
   })
 
-  it('returns green classes for context_left = 100', () => {
+  it('returns green text classes for context_left = 100', () => {
     const result = contextLeftColor(100)
-    expect(result).toContain('bg-green-100')
     expect(result).toContain('text-green-700')
+    expect(result).not.toContain('bg-')
   })
 
-  it('returns green classes for context_left = 75', () => {
+  it('returns green text classes for context_left = 75', () => {
     const result = contextLeftColor(75)
-    expect(result).toContain('bg-green-100')
+    expect(result).toContain('text-green-700')
+    expect(result).not.toContain('bg-')
   })
 
   // Dark mode classes
-  it('includes dark mode red classes at threshold', () => {
+  it('includes dark mode red text classes at threshold', () => {
     const result = contextLeftColor(25)
-    expect(result).toContain('dark:bg-red-900/30')
     expect(result).toContain('dark:text-red-400')
+    expect(result).not.toContain('dark:bg-')
   })
 
-  it('includes dark mode yellow classes at threshold', () => {
+  it('includes dark mode yellow text classes at threshold', () => {
     const result = contextLeftColor(50)
-    expect(result).toContain('dark:bg-yellow-900/30')
     expect(result).toContain('dark:text-yellow-400')
+    expect(result).not.toContain('dark:bg-')
   })
 
-  it('includes dark mode green classes above threshold', () => {
+  it('includes dark mode green text classes above threshold', () => {
     const result = contextLeftColor(51)
-    expect(result).toContain('dark:bg-green-900/30')
     expect(result).toContain('dark:text-green-400')
+    expect(result).not.toContain('dark:bg-')
   })
 })
 

@@ -36,21 +36,24 @@ describe('AgentCard', () => {
     const agent = makeAgent({ context_left: 75 })
     render(<AgentCard agent={agent} />)
     const badge = screen.getByText('75%')
-    expect(badge.className).toContain('bg-green-100')
+    expect(badge.className).toContain('text-green-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows context_left with yellow styling for 26-50%', () => {
     const agent = makeAgent({ context_left: 40 })
     render(<AgentCard agent={agent} />)
     const badge = screen.getByText('40%')
-    expect(badge.className).toContain('bg-yellow-100')
+    expect(badge.className).toContain('text-yellow-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows context_left with red styling for <= 25%', () => {
     const agent = makeAgent({ context_left: 15 })
     render(<AgentCard agent={agent} />)
     const badge = screen.getByText('15%')
-    expect(badge.className).toContain('bg-red-100')
+    expect(badge.className).toContain('text-red-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('displays elapsed time from started_at for running agent', () => {
@@ -102,7 +105,8 @@ describe('AgentCard', () => {
     render(<AgentCard agent={agent} />)
     expect(screen.getByText('0%')).toBeInTheDocument()
     const badge = screen.getByText('0%')
-    expect(badge.className).toContain('bg-red-100')
+    expect(badge.className).toContain('text-red-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('calls onExpand when clicked', async () => {

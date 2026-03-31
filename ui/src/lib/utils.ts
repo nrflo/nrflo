@@ -145,9 +145,9 @@ export function isNearRestartThreshold(contextLeft: number, threshold: number): 
 }
 
 export function contextLeftColor(contextLeft: number): string {
-  if (contextLeft <= 25) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-  if (contextLeft <= 50) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-  return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+  if (contextLeft <= 25) return 'text-red-700 dark:text-red-400'
+  if (contextLeft <= 50) return 'text-yellow-700 dark:text-yellow-400'
+  return 'text-green-700 dark:text-green-400'
 }
 
 export function restartReasonLabel(reason: string): string {

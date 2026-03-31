@@ -80,7 +80,7 @@ export function HistoryAgentCard({ entry, session, isExpanded, onExpand, onRetry
           </span>
           {entry.context_left != null && (
             <span className={cn(
-              'text-[9px] font-mono px-0.5 rounded',
+              'text-[9px] font-mono px-0.5',
               contextLeftColor(entry.context_left)
             )}>
               {entry.context_left}%

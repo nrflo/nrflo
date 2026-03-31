@@ -116,21 +116,24 @@ describe('AgentFlowNode', () => {
     const data = makeData({ agent: makeAgent({ context_left: 75 }) })
     render(<AgentFlowNode data={data} />)
     const badge = screen.getByText('75%')
-    expect(badge.className).toContain('bg-green-100')
+    expect(badge.className).toContain('text-green-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows yellow styling for context_left 26-50%', () => {
     const data = makeData({ agent: makeAgent({ context_left: 40 }) })
     render(<AgentFlowNode data={data} />)
     const badge = screen.getByText('40%')
-    expect(badge.className).toContain('bg-yellow-100')
+    expect(badge.className).toContain('text-yellow-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows red styling for context_left <= 25%', () => {
     const data = makeData({ agent: makeAgent({ context_left: 15 }) })
     render(<AgentFlowNode data={data} />)
     const badge = screen.getByText('15%')
-    expect(badge.className).toContain('bg-red-100')
+    expect(badge.className).toContain('text-red-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   // Phase label display

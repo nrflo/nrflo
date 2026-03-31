@@ -77,7 +77,7 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
       {/* Context left badge - top right corner */}
       {agent.context_left != null && (
         <span className={cn(
-          'absolute top-1 right-1 text-lg font-mono px-1 rounded flex items-center gap-0.5',
+          'absolute top-1 right-1 text-lg font-mono px-1 flex items-center gap-0.5',
           contextLeftColor(agent.context_left)
         )}>
           {isRunning && isNearRestartThreshold(agent.context_left, agent.restart_threshold ?? 25) && (

@@ -95,35 +95,40 @@ describe('HistoryAgentCard', () => {
     const entry = makeEntry({ context_left: 80 })
     render(<HistoryAgentCard entry={entry} />)
     const badge = screen.getByText('80%')
-    expect(badge.className).toContain('bg-green-100')
+    expect(badge.className).toContain('text-green-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows context_left with yellow styling for 26-50%', () => {
     const entry = makeEntry({ context_left: 35 })
     render(<HistoryAgentCard entry={entry} />)
     const badge = screen.getByText('35%')
-    expect(badge.className).toContain('bg-yellow-100')
+    expect(badge.className).toContain('text-yellow-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows context_left with red styling for <= 25%', () => {
     const entry = makeEntry({ context_left: 10 })
     render(<HistoryAgentCard entry={entry} />)
     const badge = screen.getByText('10%')
-    expect(badge.className).toContain('bg-red-100')
+    expect(badge.className).toContain('text-red-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows context_left at boundary value 25 as red', () => {
     const entry = makeEntry({ context_left: 25 })
     render(<HistoryAgentCard entry={entry} />)
     const badge = screen.getByText('25%')
-    expect(badge.className).toContain('bg-red-100')
+    expect(badge.className).toContain('text-red-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   it('shows context_left at boundary value 50 as yellow', () => {
     const entry = makeEntry({ context_left: 50 })
     render(<HistoryAgentCard entry={entry} />)
     const badge = screen.getByText('50%')
-    expect(badge.className).toContain('bg-yellow-100')
+    expect(badge.className).toContain('text-yellow-700')
+    expect(badge.className).not.toContain('bg-')
   })
 
   // Status icon tests

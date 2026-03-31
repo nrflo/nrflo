@@ -153,7 +153,7 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
                 )}
                 {agent.context_left != null && (
                   <span className={cn(
-                    'text-xs font-mono px-1.5 py-0.5 rounded flex items-center gap-1',
+                    'text-xs font-mono px-1.5 py-0.5 flex items-center gap-1',
                     contextLeftColor(agent.context_left)
                   )}>
                     {!agent.result && isNearRestartThreshold(agent.context_left, agent.restart_threshold ?? 25) && (

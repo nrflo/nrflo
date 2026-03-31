@@ -113,7 +113,7 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
           </span>
           {session.context_left != null && (
             <span className={cn(
-              'text-xs font-mono px-1.5 py-0.5 rounded',
+              'text-xs font-mono px-1.5 py-0.5',
               contextLeftColor(session.context_left)
             )}>
               {session.context_left}% ctx

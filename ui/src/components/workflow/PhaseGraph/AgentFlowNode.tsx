@@ -149,7 +149,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           </span>
           {contextLeft != null ? (
             <span className={cn(
-              'text-base font-mono px-1.5 py-0.5 rounded',
+              'text-base font-mono px-1.5 py-0.5',
               contextLeftColor(contextLeft)
             )}>
               {contextLeft}%

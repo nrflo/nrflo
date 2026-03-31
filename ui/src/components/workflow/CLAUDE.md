@@ -56,7 +56,8 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 |-----------|---------|
 | `AgentSessionCard.tsx` | Reusable agent session card |
 | `AgentMessagesPanel.tsx` | Agent sessions panel for ticket view |
-| `AgentLogDetail.tsx` | Single-agent detail with top-level Messages/Context tabs; Messages tab shows message table (timestamp, tool, message columns), Context tab shows session prompt markdown |
+| `AgentLogDetail.tsx` | Single-agent detail with top-level Messages/Context/Findings tabs; Messages tab shows message table (timestamp, tool, message columns), Context tab shows session prompt markdown, Findings tab shows FindingsPanel filtered to selected agent |
+| `FindingsPanel.tsx` | Reusable findings display. Props: `projectFindings`, `agentFindings` (WorkflowFindings), `selectedAgentType`. Shows project findings first, then agent findings grouped by agent_type. Each finding key is collapsible (collapsed by default). Values displayed as pretty JSON or plain text. Filters out internal keys starting with `_`. |
 | `CompletedAgentsTable.tsx` | Unified pageable table of completed agents sorted by `ended_at` DESC. Supports optional Workflow column (`showWorkflowColumn` prop) and client-side pagination (20 rows/page). Duration uses `formatElapsedTime` from timestamps with `formatDuration` fallback. Used directly by `ProjectWorkflowsPage` for the completed tab (bypasses `WorkflowTabContent`). |
 | `LogMessage.tsx` | Log message with tool name color highlighting. Exports `parseToolName` and `ToolBadge` |
 | `ActiveAgentsPanel.tsx` | Active agents display panel |

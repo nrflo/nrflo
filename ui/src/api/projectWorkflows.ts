@@ -107,6 +107,15 @@ export async function deleteProjectWorkflowInstance(
   )
 }
 
+/** Get project findings */
+export async function getProjectFindings(
+  projectId: string
+): Promise<Record<string, unknown>> {
+  return apiGet<Record<string, unknown>>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/findings`
+  )
+}
+
 /** Exit interactive session (project-scoped) */
 export async function exitInteractiveProject(
   projectId: string,

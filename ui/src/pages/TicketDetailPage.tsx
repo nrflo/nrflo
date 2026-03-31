@@ -24,10 +24,12 @@ import {
   useTicket,
   useWorkflow,
   useAgentSessions,
+  useProjectFindings,
   useCloseTicket,
   useReopenTicket,
   useDeleteTicket,
 } from '@/hooks/useTickets'
+import { useProjectStore } from '@/stores/projectStore'
 import { useWebSocketSubscription } from '@/hooks/useWebSocketSubscription'
 import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
 import { cn, statusColor } from '@/lib/utils'
@@ -62,6 +64,10 @@ export function TicketDetailPage() {
 
   // Fetch agent sessions for the running agent log panel
   const { data: sessionsData } = useAgentSessions(id!, undefined, { enabled: !!id })
+
+  // Fetch project findings for the findings tab
+  const currentProject = useProjectStore((s) => s.currentProject)
+  const { data: projectFindings } = useProjectFindings(currentProject)
 
   // Query active chains for epic tickets
   const isEpic = ticket?.issue_type === 'epic'
@@ -279,6 +285,7 @@ export function TicketDetailPage() {
             onShowRunDialog={() => setShowRunDialog(true)}
             onShowEpicRunDialog={() => setShowEpicRunDialog(true)}
             onExpandedChange={handleExpandedChange}
+            projectFindings={projectFindings}
           />
         )}
 

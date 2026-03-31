@@ -29,6 +29,7 @@ interface TicketWorkflowTabProps {
   onShowRunDialog: () => void
   onShowEpicRunDialog: () => void
   onExpandedChange: (expanded: boolean) => void
+  projectFindings?: Record<string, unknown>
 }
 
 export function TicketWorkflowTab({
@@ -43,6 +44,7 @@ export function TicketWorkflowTab({
   onShowRunDialog,
   onShowEpicRunDialog,
   onExpandedChange,
+  projectFindings,
 }: TicketWorkflowTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<WorkflowSubTab>('running')
   const [selectedInstanceId, setSelectedInstanceId] = useState('')
@@ -211,6 +213,8 @@ export function TicketWorkflowTab({
                 )
               }}
               resumePending={resumeSessionMutation.isPending}
+              agentFindings={displayedState?.findings}
+              projectFindings={projectFindings}
             />
           )}
         </div>
@@ -293,6 +297,7 @@ export function TicketWorkflowTab({
           )
         }}
         resumeSessionPending={resumeSessionMutation.isPending}
+        projectFindings={projectFindings}
       />
       {renderTerminalDialog()}
     </>

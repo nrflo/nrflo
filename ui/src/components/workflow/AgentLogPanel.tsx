@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AgentLogDetail } from './AgentLogDetail'
-import type { ActiveAgentV4, AgentSession } from '@/types/workflow'
+import type { ActiveAgentV4, AgentSession, WorkflowFindings } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
 interface AgentLogPanelProps {
@@ -13,6 +13,8 @@ interface AgentLogPanelProps {
   onAgentSelect: (data: SelectedAgentData | null) => void
   onResumeSession?: (sessionId: string) => void
   resumePending?: boolean
+  agentFindings?: WorkflowFindings
+  projectFindings?: Record<string, unknown>
 }
 
 export function AgentLogPanel({
@@ -23,6 +25,8 @@ export function AgentLogPanel({
   onAgentSelect,
   onResumeSession,
   resumePending,
+  agentFindings,
+  projectFindings,
 }: AgentLogPanelProps) {
   const runningAgents = useMemo(() => {
     return Object.values(activeAgents).filter(a => !a.result)
@@ -72,7 +76,7 @@ export function AgentLogPanel({
         {collapsed ? (
           <CollapsedBar />
         ) : (
-          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} onResumeSession={onResumeSession} resumePending={resumePending} />
+          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} />
         )}
       </PanelShell>
     )
@@ -97,7 +101,7 @@ export function AgentLogPanel({
             }
             return (
               <div key={key} className="flex-1 min-h-0 overflow-hidden border-b border-border last:border-b-0">
-                <AgentLogDetail selectedAgent={agentData} onResumeSession={onResumeSession} resumePending={resumePending} />
+                <AgentLogDetail selectedAgent={agentData} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} />
               </div>
             )
           })}

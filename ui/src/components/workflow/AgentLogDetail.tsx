@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react'
-import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, FileText } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, FileText, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
+import { FindingsPanel } from './FindingsPanel'
 import { parseToolName, ToolBadge } from './LogMessage'
 import { cn } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
 import { useSessionPrompt } from '@/hooks/useSessionPrompt'
-import type { MessageCategory } from '@/types/workflow'
+import type { MessageCategory, WorkflowFindings } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
 const CATEGORY_TABS: { value: MessageCategory | 'all'; label: string }[] = [
@@ -39,9 +40,11 @@ interface AgentLogDetailProps {
   onBack?: () => void
   onResumeSession?: (sessionId: string) => void
   resumePending?: boolean
+  agentFindings?: WorkflowFindings
+  projectFindings?: Record<string, unknown>
 }
 
-export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending }: AgentLogDetailProps) {
+export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending, agentFindings, projectFindings }: AgentLogDetailProps) {
   const { agent, historyEntry, session, phaseName } = selectedAgent
   const isInteractive = session?.status === 'user_interactive'
   const isRunning = agent && !agent.result && !isInteractive
@@ -52,7 +55,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
     : agent?.cli || historyEntry?.agent_type || 'agent'
   const duration = historyEntry?.duration_sec ? formatDuration(historyEntry.duration_sec) : null
 
-  const [activeTab, setActiveTab] = useState<'messages' | 'context'>('messages')
+  const [activeTab, setActiveTab] = useState<'messages' | 'context' | 'findings'>('messages')
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | 'all'>('all')
   const sessionId = session?.id || agent?.session_id || historyEntry?.session_id
   const { data: messagesData, isLoading: messagesLoading } = useSessionMessages(sessionId, {
@@ -177,11 +180,29 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
           <FileText className="h-3 w-3 inline-block mr-1 -mt-0.5" />
           Context
         </button>
+        <button
+          onClick={() => setActiveTab('findings')}
+          className={cn(
+            'px-2.5 py-1 text-xs font-medium rounded transition-colors',
+            activeTab === 'findings'
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+          )}
+        >
+          <Tag className="h-3 w-3 inline-block mr-1 -mt-0.5" />
+          Findings
+        </button>
       </div>
 
       {/* Content area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2">
-        {activeTab === 'context' ? (
+        {activeTab === 'findings' ? (
+          <FindingsPanel
+            projectFindings={projectFindings}
+            agentFindings={agentFindings}
+            selectedAgentType={selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type || null}
+          />
+        ) : activeTab === 'context' ? (
           promptLoading ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />

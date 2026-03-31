@@ -8,6 +8,7 @@ import { runWorkflow, stopWorkflow, restartAgent, retryFailedAgent, takeControl,
 import {
   getProjectWorkflow,
   getProjectAgentSessions,
+  getProjectFindings,
   runProjectWorkflow,
   stopProjectWorkflow,
   restartProjectAgent,
@@ -344,6 +345,7 @@ export const projectWorkflowKeys = {
   all: ['project-workflows'] as const,
   workflow: (projectId: string) => [...projectWorkflowKeys.all, projectId] as const,
   agentSessions: (projectId: string) => [...projectWorkflowKeys.all, 'agents', projectId] as const,
+  findings: (projectId: string) => [...projectWorkflowKeys.all, 'findings', projectId] as const,
 }
 
 export function useProjectWorkflow(
@@ -369,6 +371,15 @@ export function useProjectAgentSessions(
     queryFn: () => getProjectAgentSessions(projectId),
     enabled: projectsLoaded && !!projectId && (options?.enabled ?? true),
     ...options,
+  })
+}
+
+export function useProjectFindings(projectId: string) {
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: projectWorkflowKeys.findings(projectId),
+    queryFn: () => getProjectFindings(projectId),
+    enabled: projectsLoaded && !!projectId,
   })
 }
 

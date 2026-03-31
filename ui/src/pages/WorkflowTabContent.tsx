@@ -59,6 +59,7 @@ interface WorkflowTabContentProps {
   takeControlPending?: boolean
   onResumeSession?: (sessionId: string) => void
   resumeSessionPending?: boolean
+  projectFindings?: Record<string, unknown>
 }
 
 export function WorkflowTabContent({
@@ -91,6 +92,7 @@ export function WorkflowTabContent({
   takeControlPending,
   onResumeSession,
   resumeSessionPending,
+  projectFindings,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
@@ -347,6 +349,8 @@ export function WorkflowTabContent({
           onAgentSelect={onAgentSelect}
           onResumeSession={onResumeSession}
           resumePending={resumeSessionPending}
+          agentFindings={displayedState?.findings}
+          projectFindings={projectFindings}
         />
       )}
     </div>

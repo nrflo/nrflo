@@ -29,6 +29,7 @@ export type WSEventType =
   | 'agent.retry_waiting'
   | 'agent.stall_restart'
   | 'findings.updated'
+  | 'project_findings.updated'
   | 'messages.updated'
   | 'workflow.updated'
   | 'workflow_def.created'

@@ -4,6 +4,7 @@ import { useProjectStore } from '@/stores/projectStore'
 import {
   useProjectWorkflow,
   useProjectAgentSessions,
+  useProjectFindings,
   useRunProjectWorkflow,
   useStopProjectWorkflow,
   useRetryFailedProjectAgent,
@@ -54,6 +55,8 @@ export function ProjectWorkflowsPage() {
   const { data: sessionsData } = useProjectAgentSessions(currentProject, {
     enabled: !!currentProject,
   })
+
+  const { data: projectFindings } = useProjectFindings(currentProject)
 
   const { data: workflowDefs, isLoading: defsLoading } = useQuery({
     queryKey: ['workflows', 'defs', currentProject],
@@ -288,6 +291,8 @@ export function ProjectWorkflowsPage() {
                   )
                 }}
                 resumePending={resumeSessionMutation.isPending}
+                agentFindings={displayedState?.findings}
+                projectFindings={projectFindings}
               />
             )}
           </div>
@@ -349,6 +354,7 @@ export function ProjectWorkflowsPage() {
               )
             }}
             resumeSessionPending={resumeSessionMutation.isPending}
+            projectFindings={projectFindings}
           />
         </>
       )}
@@ -434,6 +440,7 @@ export function ProjectWorkflowsPage() {
               )
             }}
             resumeSessionPending={resumeSessionMutation.isPending}
+            projectFindings={projectFindings}
           />
         </>
       )}

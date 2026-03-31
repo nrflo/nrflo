@@ -194,6 +194,11 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     invalidateWorkflow(event, qc, isProjectScope)
   },
 
+  'project_findings.updated': (event, qc) => {
+    qc.invalidateQueries({ queryKey: projectWorkflowKeys.findings(event.project_id) })
+    qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+  },
+
   'messages.updated': (event, qc, isProjectScope) => {
     if (event.data?.session_id) {
       qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })

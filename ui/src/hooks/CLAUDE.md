@@ -73,6 +73,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `agent.continued` | agent_id, model_id | Agent relaunched |
 | `agent.context_updated` | session_id, context_left | Context window updated |
 | `findings.updated` | agent_type, key, action | Findings changed |
+| `project_findings.updated` | | Project findings changed |
 | `messages.updated` | session_id, agent_type, model_id | Messages changed (~2s) |
 | `workflow.updated` | action (init, set) | Workflow state changed |
 | `workflow_def.*` | workflow_id | Workflow def CRUD |
@@ -107,6 +108,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useIsMobile.ts` | Media query hook for mobile detection (`max-width: 639px`). Used by PhaseGraph for responsive layout and touch interactions. |
 | `useDeleteProjectWorkflowInstance()` | Mutation: delete a project workflow instance (failed or completed) |
 | `useSessionPrompt.ts` | TanStack Query hook for fetching session prompt context (lazy, staleTime: Infinity) |
+| `useProjectFindings()` | TanStack Query hook for project findings (`GET /api/v1/projects/:id/findings`). Invalidated by `project_findings.updated` WS event. Defined in `useTickets.ts`. |
 
 ## Testing
 

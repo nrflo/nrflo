@@ -18,7 +18,7 @@ API client modules for communicating with the nrworkflow backend. Contains 11 fi
 | `projects.ts` | Project API functions |
 | `tickets.ts` | Ticket and workflow API functions |
 | `workflows.ts` | Workflow definition and orchestration API functions |
-| `projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart/delete/agent sessions) |
+| `projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart/delete/agent sessions/findings) |
 | `agentDefs.ts` | Agent definition API client |
 | `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/append/runEpicWorkflow) |
 | `docs.ts` | Documentation API functions (getAgentManual) |
@@ -65,6 +65,7 @@ POST   /api/v1/projects/:id/workflow/restart      # Restart agent in project wor
 POST   /api/v1/projects/:id/workflow/retry-failed # Retry project workflow
 GET    /api/v1/projects/:id/agents                # Get project agent sessions
 DELETE /api/v1/projects/:id/workflow/:instance_id # Delete project workflow instance
+GET    /api/v1/projects/:id/findings              # Get all project findings as JSON map
 
 # Workflow definitions (require X-Project header)
 GET    /api/v1/workflows

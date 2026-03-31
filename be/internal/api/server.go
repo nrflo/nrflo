@@ -321,6 +321,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/projects/{id}/workflow/{instance_id}", s.handleDeleteProjectWorkflowInstance)
 	mux.HandleFunc("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)
 	mux.HandleFunc("GET /api/v1/projects/{id}/agents", s.handleGetProjectAgentSessions)
+	mux.HandleFunc("GET /api/v1/projects/{id}/findings", s.handleGetProjectFindings)
 
 	// Git
 	mux.HandleFunc("GET /api/v1/projects/{id}/git/commits", s.handleListGitCommits)

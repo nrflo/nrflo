@@ -27,6 +27,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
+| `handlers_project_findings.go` | Project findings GET (project-scoped) |
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
 | `handlers_logs.go` | Log file viewer (BE/FE logs) |
@@ -81,6 +82,7 @@ POST /api/v1/projects/:id/workflow/exit-interactive  # Signal project interactiv
 DELETE /api/v1/projects/:id/workflow/:instance_id  # Delete completed/failed project workflow instance (409 if active)
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
 GET  /api/v1/projects/:id/agents           # Get project agent sessions
+GET  /api/v1/projects/:id/findings         # Get all project findings as JSON map
 
 # Git (project-scoped, reads from project root_path)
 GET  /api/v1/projects/:id/git/commits           # Paginated commit list (?page=&per_page=)

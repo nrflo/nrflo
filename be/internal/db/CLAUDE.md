@@ -169,6 +169,15 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │                                                                      │
+│  DEFAULT_TEMPLATES                                               │
+│    id            TEXT PRIMARY KEY                                    │
+│    name          TEXT NOT NULL                                       │
+│    template      TEXT NOT NULL                                       │
+│    readonly      INTEGER NOT NULL DEFAULT 0                          │
+│    created_at    TEXT NOT NULL                                       │
+│    updated_at    TEXT NOT NULL                                       │
+│    (6 readonly templates seeded by migration 000042)                 │
+│                                                                      │
 │  CHAIN_EXECUTIONS                                                    │
 │    id            TEXT PRIMARY KEY   (UUID)                            │
 │    project_id    TEXT NOT NULL                                        │

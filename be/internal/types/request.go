@@ -264,6 +264,19 @@ type SystemAgentDefUpdateRequest struct {
 	StallRunningTimeoutSec *int    `json:"stall_running_timeout_sec,omitempty"`
 }
 
+// DefaultTemplateCreateRequest is the request for creating a default template
+type DefaultTemplateCreateRequest struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Template string `json:"template"`
+}
+
+// DefaultTemplateUpdateRequest is the request for updating a default template
+type DefaultTemplateUpdateRequest struct {
+	Name     *string `json:"name,omitempty"`
+	Template *string `json:"template,omitempty"`
+}
+
 // DependencyRequest is the request for adding/removing dependencies
 type DependencyRequest struct {
 	Child  string `json:"child"`

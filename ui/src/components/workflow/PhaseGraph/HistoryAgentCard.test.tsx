@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { HistoryAgentCard } from './HistoryAgentCard'
 import type { AgentHistoryEntry, AgentSession } from '@/types/workflow'
 
@@ -173,5 +174,39 @@ describe('HistoryAgentCard', () => {
     render(<HistoryAgentCard entry={entry} />)
     expect(screen.getByText('5m')).toBeInTheDocument()
     expect(screen.getByText('42%')).toBeInTheDocument()
+  })
+})
+
+describe('HistoryAgentCard - restart badge and tooltip', () => {
+  it('does not render restart badge when restart_count is 0', () => {
+    render(<HistoryAgentCard entry={makeEntry({ restart_count: 0 })} />)
+    expect(screen.queryByText(/↻/)).not.toBeInTheDocument()
+  })
+
+  it('does not render restart badge when restart_count is undefined', () => {
+    render(<HistoryAgentCard entry={makeEntry({ restart_count: undefined })} />)
+    expect(screen.queryByText(/↻/)).not.toBeInTheDocument()
+  })
+
+  it('renders restart badge with count when restart_count > 0', () => {
+    render(<HistoryAgentCard entry={makeEntry({ restart_count: 1 })} />)
+    expect(screen.getByText('↻1')).toBeInTheDocument()
+  })
+
+  it('shows restart reasons in tooltip on hover', async () => {
+    const user = userEvent.setup()
+    const entry = makeEntry({ restart_count: 2, restart_reasons: ['stall_restart_start_stall', 'low_context'] })
+    render(<HistoryAgentCard entry={entry} />)
+    await user.hover(screen.getByText('↻2'))
+    expect(document.body).toHaveTextContent('1. Start stall')
+    expect(document.body).toHaveTextContent('2. Low context')
+  })
+
+  it('shows count fallback tooltip when restart_reasons is empty', async () => {
+    const user = userEvent.setup()
+    const entry = makeEntry({ restart_count: 2, restart_reasons: [] })
+    render(<HistoryAgentCard entry={entry} />)
+    await user.hover(screen.getByText('↻2'))
+    expect(document.body).toHaveTextContent('2 restarts')
   })
 })

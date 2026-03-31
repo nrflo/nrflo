@@ -235,11 +235,14 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 		result["total_duration_sec"] = wi.UpdatedAt.Sub(wi.CreatedAt).Seconds()
 	}
 
+	// Restart reasons (shared across active agents and history)
+	reasonsMap := s.loadRestartReasons(wi.ID)
+
 	// Active agents from agent_sessions
-	result["active_agents"] = s.buildActiveAgentsMap(wi.ID)
+	result["active_agents"] = s.buildActiveAgentsMap(wi.ID, reasonsMap)
 
 	// Agent history from completed sessions
-	agentHistory := s.buildAgentHistory(wi.ID)
+	agentHistory := s.buildAgentHistory(wi.ID, reasonsMap)
 	result["agent_history"] = agentHistory
 
 	// Total tokens used (200K context window per agent)

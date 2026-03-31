@@ -25,6 +25,7 @@ export interface ActiveAgentV4 {
   context_left?: number
   restart_count?: number
   restart_threshold?: number
+  restart_reasons?: string[]
 }
 
 export interface AgentHistoryEntry {
@@ -40,6 +41,7 @@ export interface AgentHistoryEntry {
   context_left?: number
   restart_count?: number
   restart_threshold?: number
+  restart_reasons?: string[]
 }
 
 export interface CompletedAgentRow extends AgentHistoryEntry {

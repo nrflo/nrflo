@@ -150,6 +150,29 @@ export function contextLeftColor(contextLeft: number): string {
   return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
 }
 
+export function restartReasonLabel(reason: string): string {
+  switch (reason) {
+    case 'low_context': return 'Low context'
+    case 'stall_restart_start_stall': return 'Start stall'
+    case 'stall_restart_running_stall': return 'Running stall'
+    case 'instant_stall': return 'Instant stall'
+    case 'fail_restart': return 'Fail restart'
+    case 'timeout_restart': return 'Timeout restart'
+    case 'explicit': return 'Manual continue'
+    default: return reason
+  }
+}
+
+export function formatRestartReasons(reasons?: string[], count?: number): string {
+  if (reasons && reasons.length > 0) {
+    return reasons.map((r, i) => `${i + 1}. ${restartReasonLabel(r)}`).join('\n')
+  }
+  if (count && count > 0) {
+    return `${count} restart${count !== 1 ? 's' : ''}`
+  }
+  return ''
+}
+
 export function issueTypeColor(type: string): string {
   switch (type) {
     case 'bug':

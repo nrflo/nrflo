@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward, AlertTriangle, RefreshCw } from 'lucide-react'
-import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
+import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold, formatRestartReasons } from '@/lib/utils'
 import { useTickingClock } from '@/hooks/useElapsedTime'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
@@ -155,8 +155,12 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
 
         {/* Restart count badge - top left corner */}
         {restartCount > 0 && (
-          <span className="absolute top-1 left-1 text-base font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-            ↻{restartCount}
+          <span className="absolute top-1 left-1">
+            <Tooltip text={formatRestartReasons(agent?.restart_reasons ?? historyEntry?.restart_reasons, restartCount)} placement="top">
+              <span className="text-base font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                ↻{restartCount}
+              </span>
+            </Tooltip>
           </span>
         )}
 

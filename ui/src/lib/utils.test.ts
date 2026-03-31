@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { contextLeftColor, formatElapsedTime, formatTokenCount, formatDurationSec } from './utils'
+import { contextLeftColor, formatElapsedTime, formatTokenCount, formatDurationSec, restartReasonLabel, formatRestartReasons } from './utils'
 
 describe('contextLeftColor', () => {
   it('returns red classes for context_left <= 25', () => {
@@ -161,6 +161,47 @@ describe('formatTokenCount', () => {
 
   it('handles exact 200K (fully consumed context)', () => {
     expect(formatTokenCount(200000)).toBe('200K')
+  })
+})
+
+describe('restartReasonLabel', () => {
+  it('maps all 7 known reason codes to human-readable labels', () => {
+    expect(restartReasonLabel('low_context')).toBe('Low context')
+    expect(restartReasonLabel('stall_restart_start_stall')).toBe('Start stall')
+    expect(restartReasonLabel('stall_restart_running_stall')).toBe('Running stall')
+    expect(restartReasonLabel('instant_stall')).toBe('Instant stall')
+    expect(restartReasonLabel('fail_restart')).toBe('Fail restart')
+    expect(restartReasonLabel('timeout_restart')).toBe('Timeout restart')
+    expect(restartReasonLabel('explicit')).toBe('Manual continue')
+  })
+
+  it('returns raw code for unknown reasons', () => {
+    expect(restartReasonLabel('some_unknown')).toBe('some_unknown')
+    expect(restartReasonLabel('')).toBe('')
+  })
+})
+
+describe('formatRestartReasons', () => {
+  it('returns numbered list from reasons array', () => {
+    expect(formatRestartReasons(['low_context', 'explicit'])).toBe('1. Low context\n2. Manual continue')
+  })
+
+  it('returns single-item list for one reason', () => {
+    expect(formatRestartReasons(['instant_stall'])).toBe('1. Instant stall')
+  })
+
+  it('returns count fallback when reasons array is empty', () => {
+    expect(formatRestartReasons([], 2)).toBe('2 restarts')
+  })
+
+  it('returns singular form for count=1 fallback', () => {
+    expect(formatRestartReasons(undefined, 1)).toBe('1 restart')
+  })
+
+  it('returns empty string when no reasons and no count', () => {
+    expect(formatRestartReasons()).toBe('')
+    expect(formatRestartReasons([])).toBe('')
+    expect(formatRestartReasons(undefined, 0)).toBe('')
   })
 })
 

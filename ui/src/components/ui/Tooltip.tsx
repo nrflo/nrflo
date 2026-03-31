@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 
 interface TooltipProps {
-  text: string
+  text: ReactNode
   children: ReactNode
   placement?: 'top' | 'bottom' | 'left' | 'right'
   className?: string
@@ -65,7 +65,7 @@ export function Tooltip({ text, children, placement = 'top', className }: Toolti
       {visible && createPortal(
         <div
           className={cn(
-            'fixed z-[100] px-2 py-1 text-xs rounded bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 shadow-lg pointer-events-none whitespace-nowrap',
+            'fixed z-[100] px-2 py-1 text-xs rounded bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 shadow-lg pointer-events-none whitespace-pre-line',
             placementStyles[placement],
             className
           )}

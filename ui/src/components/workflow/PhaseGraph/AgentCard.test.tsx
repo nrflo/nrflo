@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AgentCard } from './AgentCard'
 import type { ActiveAgentV4, AgentSession } from '@/types/workflow'
 
@@ -215,5 +216,39 @@ describe('AgentCard - user_interactive status', () => {
     // Verify % badge present but no alert (no way to query SVG by name easily,
     // but we can verify the component renders without error and shows Interactive)
     expect(screen.getByText('10%')).toBeInTheDocument()
+  })
+})
+
+describe('AgentCard - restart badge and tooltip', () => {
+  it('does not render restart badge when restart_count is 0', () => {
+    render(<AgentCard agent={makeAgent({ restart_count: 0 })} />)
+    expect(screen.queryByText(/↻/)).not.toBeInTheDocument()
+  })
+
+  it('does not render restart badge when restart_count is undefined', () => {
+    render(<AgentCard agent={makeAgent({ restart_count: undefined })} />)
+    expect(screen.queryByText(/↻/)).not.toBeInTheDocument()
+  })
+
+  it('renders restart badge with count when restart_count > 0', () => {
+    render(<AgentCard agent={makeAgent({ restart_count: 2 })} />)
+    expect(screen.getByText('↻2')).toBeInTheDocument()
+  })
+
+  it('shows restart reasons in tooltip on hover', async () => {
+    const user = userEvent.setup()
+    const agent = makeAgent({ restart_count: 2, restart_reasons: ['low_context', 'explicit'] })
+    render(<AgentCard agent={agent} />)
+    await user.hover(screen.getByText('↻2'))
+    expect(document.body).toHaveTextContent('1. Low context')
+    expect(document.body).toHaveTextContent('2. Manual continue')
+  })
+
+  it('shows count fallback tooltip when restart_reasons is undefined', async () => {
+    const user = userEvent.setup()
+    const agent = makeAgent({ restart_count: 3 })
+    render(<AgentCard agent={agent} />)
+    await user.hover(screen.getByText('↻3'))
+    expect(document.body).toHaveTextContent('3 restarts')
   })
 })

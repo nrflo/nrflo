@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CheckCircle, XCircle, Timer, RefreshCw } from 'lucide-react'
-import { cn, formatElapsedTime, contextLeftColor } from '@/lib/utils'
+import { cn, formatElapsedTime, contextLeftColor, formatRestartReasons } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
@@ -62,9 +62,11 @@ export function HistoryAgentCard({ entry, session, isExpanded, onExpand, onRetry
           {isFailed && <XCircle className="h-3 w-3 text-red-500" />}
           <span className="font-medium">{modelName}</span>
           {(entry.restart_count ?? 0) > 0 && (
-            <span className="text-[9px] font-mono px-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-              ↻{entry.restart_count}
-            </span>
+            <Tooltip text={formatRestartReasons(entry.restart_reasons, entry.restart_count)} placement="top">
+              <span className="text-[9px] font-mono px-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                ↻{entry.restart_count}
+              </span>
+            </Tooltip>
           )}
         </div>
 

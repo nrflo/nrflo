@@ -1,6 +1,7 @@
 import { Loader2, CheckCircle, XCircle, Timer, AlertTriangle, Terminal } from 'lucide-react'
-import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
+import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold, formatRestartReasons } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
+import { Tooltip } from '@/components/ui/Tooltip'
 import type { AgentCardProps } from './types'
 
 function AgentStatusIcon({ result, isInteractive }: { result?: string; isInteractive?: boolean }) {
@@ -52,8 +53,12 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
     >
       {/* Restart count badge - top left corner */}
       {(agent.restart_count ?? 0) > 0 && (
-        <span className="absolute top-1 left-1 text-xs font-mono px-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-          ↻{agent.restart_count}
+        <span className="absolute top-1 left-1">
+          <Tooltip text={formatRestartReasons(agent.restart_reasons, agent.restart_count)} placement="top">
+            <span className="text-xs font-mono px-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+              ↻{agent.restart_count}
+            </span>
+          </Tooltip>
         </span>
       )}
 

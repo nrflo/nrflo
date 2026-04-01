@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { WorkflowInstanceTable } from './WorkflowInstanceTable'
 import type { WorkflowState } from '@/types/workflow'
 
+const PAGE_SIZE = 10
+
 function makeState(overrides: Partial<WorkflowState> = {}): WorkflowState {
   return {
     workflow: 'feature',
@@ -154,5 +156,80 @@ describe('WorkflowInstanceTable', () => {
     expect(onDelete).toHaveBeenCalledOnce()
     expect(onDelete).toHaveBeenCalledWith(INST_ID)
     expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  describe('pagination', () => {
+    function makePageInstances(count: number) {
+      const instanceIds = Array.from({ length: count }, (_, i) => `${String(i).padStart(2, '0')}abcdef1234`)
+      const instances: Record<string, WorkflowState> = {}
+      for (const id of instanceIds) {
+        instances[id] = makeState({ instance_id: id, workflow: 'feature' })
+      }
+      return { instanceIds, instances }
+    }
+
+    it('hides pagination controls when items fit in one page', () => {
+      const { instanceIds, instances } = makePageInstances(PAGE_SIZE)
+      render(
+        <WorkflowInstanceTable
+          instanceIds={instanceIds}
+          instances={instances}
+          selectedId=""
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      )
+      expect(screen.queryByText(new RegExp(`of ${PAGE_SIZE}`))).not.toBeInTheDocument()
+    })
+
+    it('shows range text and Prev disabled on first page when items exceed page size', () => {
+      const total = PAGE_SIZE + 5
+      const { instanceIds, instances } = makePageInstances(total)
+      render(
+        <WorkflowInstanceTable
+          instanceIds={instanceIds}
+          instances={instances}
+          selectedId=""
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      )
+      expect(screen.getByText(`1–${PAGE_SIZE} of ${total}`)).toBeInTheDocument()
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(PAGE_SIZE)
+      const buttons = screen.getAllByRole('button')
+      expect(buttons[buttons.length - 2]).toBeDisabled()   // Prev
+      expect(buttons[buttons.length - 1]).not.toBeDisabled() // Next
+    })
+
+    it('navigates to next page and back with Prev/Next buttons', async () => {
+      const user = userEvent.setup()
+      const total = PAGE_SIZE + 5
+      const { instanceIds, instances } = makePageInstances(total)
+      render(
+        <WorkflowInstanceTable
+          instanceIds={instanceIds}
+          instances={instances}
+          selectedId=""
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      )
+
+      // Navigate to page 2
+      const buttons = screen.getAllByRole('button')
+      await user.click(buttons[buttons.length - 1]) // Next
+
+      expect(screen.getByText(`${PAGE_SIZE + 1}–${total} of ${total}`)).toBeInTheDocument()
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(5)
+
+      const page2Buttons = screen.getAllByRole('button')
+      expect(page2Buttons[page2Buttons.length - 1]).toBeDisabled()   // Next disabled on last page
+      expect(page2Buttons[page2Buttons.length - 2]).not.toBeDisabled() // Prev enabled
+
+      // Navigate back to page 1
+      await user.click(page2Buttons[page2Buttons.length - 2]) // Prev
+      expect(screen.getByText(`1–${PAGE_SIZE} of ${total}`)).toBeInTheDocument()
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(PAGE_SIZE)
+    })
   })
 })

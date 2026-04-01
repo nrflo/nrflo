@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/Button'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { WorkflowState, CompletedAgentRow } from '@/types/workflow'
+import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 
 type TabId = ProjectWorkflowTabId
@@ -137,24 +137,6 @@ export function ProjectWorkflowsPage() {
     return sessionsData.sessions.filter(s => s.workflow_instance_id === resolvedInstanceId)
   }, [sessionsData?.sessions, resolvedInstanceId])
 
-  // Merged data for completed tab: flat array of all completed agents + all their sessions
-  const mergedCompletedAgents = useMemo<CompletedAgentRow[]>(() => {
-    const rows: CompletedAgentRow[] = []
-    for (const [instanceId, state] of Object.entries(completedInstances)) {
-      const label = selectorLabels[instanceId] ?? instanceId.substring(0, 8)
-      for (const entry of state.agent_history ?? []) {
-        rows.push({ ...entry, workflow_label: label })
-      }
-    }
-    return rows
-  }, [completedInstances, selectorLabels])
-
-  const allCompletedSessions = useMemo(() => {
-    if (!sessionsData?.sessions) return []
-    const completedIds = new Set(Object.keys(completedInstances))
-    return sessionsData.sessions.filter(s => completedIds.has(s.workflow_instance_id))
-  }, [sessionsData?.sessions, completedInstances])
-
   const activeAgents = displayedState?.active_agents ?? {}
 
   const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
@@ -260,26 +242,25 @@ export function ProjectWorkflowsPage() {
                 instanceIds={instanceIds}
                 instances={tabInstances}
                 selectedId={resolvedInstanceId}
-                onSelect={setSelectedInstanceId}
+                onSelect={(id) => { setSelectedInstanceId(id); setSelectedPanelAgent(null) }}
                 onDelete={setDeleteTargetId}
               />
-              {mergedCompletedAgents.length > 0 ? (
+              {resolvedInstanceId && completedInstances[resolvedInstanceId] ? (
                 <CompletedAgentsTable
-                  agentHistory={mergedCompletedAgents}
-                  sessions={allCompletedSessions}
+                  agentHistory={completedInstances[resolvedInstanceId].agent_history ?? []}
+                  sessions={filteredSessions}
                   onAgentSelect={setSelectedPanelAgent}
-                  showWorkflowColumn
                 />
-              ) : (
+              ) : instanceIds.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground text-sm">No completed workflows</p>
                 </div>
-              )}
+              ) : null}
             </div>
             {selectedPanelAgent && (
               <AgentLogPanel
                 activeAgents={{}}
-                sessions={allCompletedSessions}
+                sessions={filteredSessions}
                 collapsed={logPanelCollapsed}
                 selectedAgent={selectedPanelAgent}
                 onAgentSelect={setSelectedPanelAgent}

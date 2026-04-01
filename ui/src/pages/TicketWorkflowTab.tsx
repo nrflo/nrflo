@@ -198,7 +198,6 @@ export function TicketWorkflowTab({
                 agentHistory={mergedCompletedAgents}
                 sessions={allCompletedSessions}
                 onAgentSelect={setSelectedPanelAgent}
-                showWorkflowColumn
               />
             ) : (
               <div className="text-center py-8">

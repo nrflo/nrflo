@@ -27,10 +27,9 @@ interface CompletedAgentsTableProps {
   agentHistory: AgentHistoryEntry[]
   sessions: AgentSession[]
   onAgentSelect: (data: SelectedAgentData) => void
-  showWorkflowColumn?: boolean
 }
 
-export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect, showWorkflowColumn }: CompletedAgentsTableProps) {
+export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect }: CompletedAgentsTableProps) {
   const [currentPage, setCurrentPage] = useState(0)
 
   const sortedAgents = useMemo(() => {
@@ -80,7 +79,6 @@ export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect, sh
       <table className="w-full text-xs font-mono border-collapse">
         <thead>
           <tr className="text-left text-muted-foreground border-b border-border">
-            {showWorkflowColumn && <th className="py-1.5 pr-3 font-medium">Workflow</th>}
             <th className="py-1.5 pr-3 font-medium">Agent</th>
             <th className="py-1.5 pr-3 font-medium">Phase</th>
             <th className="py-1.5 pr-3 font-medium">Model</th>
@@ -96,11 +94,6 @@ export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect, sh
               onClick={() => handleClick(entry)}
               className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
             >
-              {showWorkflowColumn && (
-                <td className="py-1.5 pr-3 text-muted-foreground">
-                  {(entry as AgentHistoryEntry & { workflow_label?: string }).workflow_label ?? '-'}
-                </td>
-              )}
               <td className="py-1.5 pr-3">{entry.agent_type}</td>
               <td className="py-1.5 pr-3">{entry.phase.replace(/_/g, ' ')}</td>
               <td className="py-1.5 pr-3 text-muted-foreground">{entry.model_id ?? '-'}</td>

@@ -143,6 +143,46 @@ func TestProcessOutput_Claude_AssistantUsage_UpdatesContextLeft(t *testing.T) {
 	}
 }
 
+func TestProcessOutput_Claude_AssistantUsage_DoesNotIncreaseContextLeft(t *testing.T) {
+	s := noPoolSpawner()
+	proc := minProc("sess-ctx-mono-1")
+	proc.maxContext = 200000
+
+	// First event: 60k/200k used → contextLeft = 70
+	processJSON(s, proc, map[string]interface{}{
+		"type": "assistant",
+		"message": map[string]interface{}{
+			"content": []interface{}{},
+			"usage": map[string]interface{}{
+				"input_tokens":                30000.0,
+				"cache_read_input_tokens":     10000.0,
+				"cache_creation_input_tokens": 10000.0,
+				"output_tokens":               10000.0,
+			},
+		},
+	})
+	if proc.contextLeft != 70 {
+		t.Fatalf("after first event contextLeft = %d, want 70", proc.contextLeft)
+	}
+
+	// Second event: only 20k/200k used (cache fields absent, simulating cache field inconsistency)
+	// pctLeft would be 90 — higher than 70, so it must be rejected
+	processJSON(s, proc, map[string]interface{}{
+		"type": "assistant",
+		"message": map[string]interface{}{
+			"content": []interface{}{},
+			"usage": map[string]interface{}{
+				"input_tokens":  15000.0,
+				"output_tokens": 5000.0,
+			},
+		},
+	})
+
+	if proc.contextLeft != 70 {
+		t.Errorf("contextLeft = %d after second event with higher pctLeft, want 70 (must not increase)", proc.contextLeft)
+	}
+}
+
 func TestProcessOutput_Claude_AssistantUsage_ZeroTokens_NoUpdate(t *testing.T) {
 	s := noPoolSpawner()
 	proc := minProc("sess-ctx-2")

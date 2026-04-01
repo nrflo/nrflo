@@ -43,10 +43,12 @@ func readContextLeftFromDB(pool *db.Pool, procs []*processInfo) {
 		}
 	}
 
-	// Update procs
+	// Update procs (only decrease — never overwrite a lower in-memory value with a higher DB value)
 	for _, p := range procs {
 		if cl, ok := contextMap[p.sessionID]; ok {
-			p.contextLeft = cl
+			if p.contextLeft == 0 || cl < p.contextLeft {
+				p.contextLeft = cl
+			}
 		}
 	}
 }
@@ -78,7 +80,7 @@ func (s *Spawner) updateClaudeContext(proc *processInfo, data map[string]interfa
 	if pctLeft < 0 {
 		pctLeft = 0
 	}
-	if pctLeft != proc.contextLeft {
+	if proc.contextLeft == 0 || pctLeft < proc.contextLeft {
 		proc.contextLeft = pctLeft
 		s.updateContextLeft(proc)
 	}

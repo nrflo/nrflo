@@ -91,6 +91,32 @@ func TestReadContextLeftFromDB_SessionNotInDB(t *testing.T) {
 	}
 }
 
+func TestReadContextLeftFromDB_HigherDBValueNotOverwritten(t *testing.T) {
+	pool := setupTestDB(t)
+	// DB holds contextLeft=80 (less context used), but proc already recorded 50 (more context used)
+	insertSession(t, pool, "sess-higher-db", 80)
+
+	proc := &processInfo{sessionID: "sess-higher-db", contextLeft: 50}
+	readContextLeftFromDB(pool, []*processInfo{proc})
+
+	if proc.contextLeft != 50 {
+		t.Errorf("contextLeft = %d, want 50 (higher DB value must not overwrite lower in-memory value)", proc.contextLeft)
+	}
+}
+
+func TestReadContextLeftFromDB_LowerDBValueUpdatesProc(t *testing.T) {
+	pool := setupTestDB(t)
+	// DB holds contextLeft=30 (more context used than in-memory 50) — should update
+	insertSession(t, pool, "sess-lower-db", 30)
+
+	proc := &processInfo{sessionID: "sess-lower-db", contextLeft: 50}
+	readContextLeftFromDB(pool, []*processInfo{proc})
+
+	if proc.contextLeft != 30 {
+		t.Errorf("contextLeft = %d, want 30 (lower DB value should update proc)", proc.contextLeft)
+	}
+}
+
 // === updateContextLeft: DB persistence and WS broadcast ===
 
 func TestUpdateContextLeft_PersistsToDB(t *testing.T) {

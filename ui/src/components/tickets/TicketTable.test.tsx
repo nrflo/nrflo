@@ -114,6 +114,16 @@ describe('TicketTable', () => {
       // Second cell should contain the ticket ID text
       expect(cells[1]).toHaveTextContent('TICKET-1')
     })
+
+    it('status and priority cells contain SVG icons', () => {
+      renderTable({ tickets: [makeTicket({ status: 'in_progress', priority: 1 })] })
+      const firstRow = document.querySelector('[data-testid="table-row"]')!
+      const cells = firstRow.querySelectorAll(':scope > td')
+      // cells[3] = status cell — StatusCell renders a lucide icon + status text
+      expect(cells[3].querySelector('svg')).toBeInTheDocument()
+      // cells[4] = priority cell — PriorityIcon renders a lucide icon + label text
+      expect(cells[4].querySelector('svg')).toBeInTheDocument()
+    })
   })
 
   describe('row data', () => {

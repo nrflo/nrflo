@@ -66,7 +66,7 @@ func TestAttemptConflictResolution_NoResolverConfigured(t *testing.T) {
 		WorkflowName: "test",
 	}
 
-	err := env.orch.attemptConflictResolution(context.Background(), "wfi-no-resolver", req, wt, env.pool, "merge error text")
+	err := env.orch.attemptConflictResolution(context.Background(), "wfi-no-resolver", req, wt, env.pool, "merge error text", nil)
 
 	if err == nil {
 		t.Fatal("expected error when no resolver configured")
@@ -125,7 +125,7 @@ func TestAttemptConflictResolution_ResolvingEventBroadcast(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- env.orch.attemptConflictResolution(ctx, wfiID, req, wt, env.pool, mergeErrMsg)
+		done <- env.orch.attemptConflictResolution(ctx, wfiID, req, wt, env.pool, mergeErrMsg, nil)
 	}()
 
 	// merge.conflict_resolving is sent before spawn — must arrive quickly
@@ -181,7 +181,7 @@ func TestAttemptConflictResolution_SpawnFails_FailedEvent(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- env.orch.attemptConflictResolution(ctx, wfiID, req, wt, env.pool, "auto-merge failed")
+		done <- env.orch.attemptConflictResolution(ctx, wfiID, req, wt, env.pool, "auto-merge failed", nil)
 	}()
 
 	// Wait for merge.conflict_failed, draining resolving events on the way
@@ -265,7 +265,7 @@ func TestAttemptConflictResolution_ExtraVarsInResolvingEvent(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		env.orch.attemptConflictResolution(ctx, wfiID, req, wt, env.pool, mergeErr)
+		env.orch.attemptConflictResolution(ctx, wfiID, req, wt, env.pool, mergeErr, nil)
 	}()
 
 	// The resolving event carries the same values as ExtraVars BRANCH_NAME and MERGE_ERROR

@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"be/internal/types"
@@ -46,10 +45,6 @@ func TestCreateAgentDef_LowConsumptionModel_InvalidModels(t *testing.T) {
 	for _, m := range invalidModels {
 		t.Run(m, func(t *testing.T) {
 			_, svc, wfID := setupAgentDefTestEnv(t, nil)
-			// Skip if lowercasing makes it valid
-			if isValidModel(strings.ToLower(m)) {
-				return
-			}
 			_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 				ID:                  "inv-" + m,
 				Prompt:              "p",
@@ -57,6 +52,35 @@ func TestCreateAgentDef_LowConsumptionModel_InvalidModels(t *testing.T) {
 			})
 			if err == nil {
 				t.Errorf("CreateAgentDef(low_consumption_model=%q) error = nil, want error", m)
+			}
+		})
+	}
+}
+
+func TestUpdateAgentDef_LowConsumptionModel_InvalidModels(t *testing.T) {
+	_, svc, wfID := setupAgentDefTestEnv(t, nil)
+
+	// Create a base agent without low_consumption_model
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID:     "upd-inv-lcm",
+		Prompt: "test",
+	})
+	if err != nil {
+		t.Fatalf("create base agent: %v", err)
+	}
+
+	invalidModels := []string{
+		"invalid_model", "gpt-4", "claude-3", "lite-implementor",
+		"opus3", "sonnet2", "unknown",
+	}
+
+	for _, m := range invalidModels {
+		t.Run(m, func(t *testing.T) {
+			lcm := m
+			if err := svc.UpdateAgentDef("proj1", wfID, "upd-inv-lcm", &types.AgentDefUpdateRequest{
+				LowConsumptionModel: &lcm,
+			}); err == nil {
+				t.Errorf("UpdateAgentDef(low_consumption_model=%q) = nil, want error", lcm)
 			}
 		})
 	}

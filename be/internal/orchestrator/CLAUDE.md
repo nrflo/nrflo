@@ -57,6 +57,10 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 
 The orchestrator's `runLoop` creates a shared `*db.Pool` for the entire workflow run and passes it to all spawners via `spawner.Config.Pool`. This avoids per-call `db.Open()`/`Close()` overhead in the spawner.
 
+## Model Config Loading
+
+CLI model configs are loaded from the `cli_models` DB table once at workflow start (in `Start()` and `retryFailed()`) via `loadModelConfigs()`. The result is a `map[string]spawner.ModelConfig` passed to all spawners in that run via `spawner.Config.ModelConfigs`. This allows the spawner to resolve CLI type, mapped model, reasoning effort, and context length from the DB instead of relying on hardcoded adapter methods. Interactive/plan mode sessions and merge conflict resolution also receive model configs. The helper `cliNameFromModelConfigs()` resolves CLI names from DB configs with fallback to `spawner.DefaultCLIForModel()`.
+
 ## Callback Flow
 
 A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer:

@@ -23,6 +23,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	wt *worktreeInfo,
 	pool *db.Pool,
 	mergeError string,
+	modelConfigs map[string]spawner.ModelConfig,
 ) error {
 	// Load conflict-resolver system agent definition
 	svc := service.NewSystemAgentDefinitionService(pool, o.clock)
@@ -48,11 +49,12 @@ func (o *Orchestrator) attemptConflictResolution(
 		Agents: map[string]spawner.AgentConfig{
 			"conflict-resolver": {Model: sysDef.Model, Timeout: sysDef.Timeout},
 		},
-		DataPath:    o.dataPath,
-		ProjectRoot: wt.projectRoot,
-		WSHub:       o.wsHub,
-		Pool:        pool,
-		Clock:       o.clock,
+		DataPath:     o.dataPath,
+		ProjectRoot:  wt.projectRoot,
+		WSHub:        o.wsHub,
+		Pool:         pool,
+		Clock:        o.clock,
+		ModelConfigs: modelConfigs,
 	})
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{

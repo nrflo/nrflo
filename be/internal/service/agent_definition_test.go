@@ -42,7 +42,8 @@ func setupAgentDefTestEnv(t *testing.T, groups []string) (*db.Pool, *AgentDefini
 		t.Fatalf("workflow create: %v", err)
 	}
 
-	svc := NewAgentDefinitionService(pool, clock.Real())
+	cliModelSvc := NewCLIModelService(pool, clock.Real())
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc)
 	return pool, svc, "wf1"
 }
 

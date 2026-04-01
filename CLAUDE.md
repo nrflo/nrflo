@@ -219,7 +219,7 @@ Workflow definitions support a `close_ticket_on_complete` boolean (default true)
 
 ### Phase Definition Format
 
-Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. The `layer` (integer >= 0) and `agent` (agent definition ID) fields are required. String-only entries and the `parallel` field are rejected. Supported models: `opus`, `opus_1m`, `sonnet`, `haiku`, `opencode_gpt_normal`, `opencode_gpt_high`, `codex_gpt_normal`, `codex_gpt_high`, `codex_gpt54_normal`, `codex_gpt54_high`. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for model mapping details.
+Each phase entry is a JSON object: `{"agent": "setup-analyzer", "layer": 0}`. The `layer` (integer >= 0) and `agent` (agent definition ID) fields are required. String-only entries and the `parallel` field are rejected. Supported models are loaded from the `cli_models` DB table (seeded with `opus`, `opus_1m`, `sonnet`, `haiku`, `opencode_gpt_normal`, `opencode_gpt_high`, `codex_gpt_normal`, `codex_gpt_high`, `codex_gpt54_normal`, `codex_gpt54_high`). Custom models can be added via `POST /api/v1/cli-models` and are immediately valid for agent definitions. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for model mapping details.
 
 ## State Storage
 

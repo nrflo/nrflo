@@ -12,26 +12,16 @@ import (
 	"be/internal/types"
 )
 
-var validModels = map[string]bool{
-	"opus": true, "opus_1m": true, "sonnet": true, "haiku": true,
-	"opencode_gpt_normal": true, "opencode_gpt_high": true,
-	"codex_gpt_normal": true, "codex_gpt_high": true,
-	"codex_gpt54_normal": true, "codex_gpt54_high": true,
-}
-
-func isValidModel(m string) bool {
-	return validModels[m]
-}
-
 // AgentDefinitionService handles agent definition business logic
 type AgentDefinitionService struct {
-	clock clock.Clock
-	pool  *db.Pool
+	clock       clock.Clock
+	pool        *db.Pool
+	cliModelSvc *CLIModelService
 }
 
 // NewAgentDefinitionService creates a new agent definition service
-func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock) *AgentDefinitionService {
-	return &AgentDefinitionService{pool: pool, clock: clk}
+func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService) *AgentDefinitionService {
+	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc}
 }
 
 // CreateAgentDef creates a new agent definition
@@ -62,10 +52,14 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
-	// Validate low_consumption_model
+	// Validate low_consumption_model against cli_models DB table
 	lcModel := strings.ToLower(req.LowConsumptionModel)
 	if lcModel != "" {
-		if !isValidModel(lcModel) {
+		valid, err := s.cliModelSvc.IsValidModel(lcModel)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
+		}
+		if !valid {
 			return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
 		}
 	}
@@ -267,7 +261,11 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.LowConsumptionModel != nil {
 		lcModel := strings.ToLower(*req.LowConsumptionModel)
 		if lcModel != "" {
-			if !isValidModel(lcModel) {
+			valid, err := s.cliModelSvc.IsValidModel(lcModel)
+			if err != nil {
+				return fmt.Errorf("failed to validate low_consumption_model: %w", err)
+			}
+			if !valid {
 				return fmt.Errorf("invalid low_consumption_model: %q", lcModel)
 			}
 		}

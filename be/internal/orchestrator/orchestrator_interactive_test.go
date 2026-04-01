@@ -205,7 +205,7 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 		PlanMode:     true,
 	}
 
-	pre, err := env.orch.setupInteractivePreStep(req, wi, svcWf, svcAgents, workflows, agents, t.TempDir())
+	pre, err := env.orch.setupInteractivePreStep(req, wi, svcWf, svcAgents, workflows, agents, t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("setupInteractivePreStep() error: %v", err)
 	}
@@ -281,6 +281,7 @@ func TestSetupInteractivePreStep_PlanMode_NoRegisterPtyCommand_OK(t *testing.T) 
 		map[string]spawner.WorkflowDef{},
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("setupInteractivePreStep() with nil callback error: %v", err)
@@ -305,6 +306,7 @@ func TestSetupInteractivePreStep_EmptyWorkflowReturnsError(t *testing.T) {
 		map[string]spawner.WorkflowDef{},
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
+		nil,
 	)
 	if err == nil {
 		t.Fatal("expected error for empty workflow phases in interactive mode")
@@ -316,7 +318,7 @@ func TestSetupInteractivePreStep_EmptyWorkflowReturnsError(t *testing.T) {
 // createAgentDefForWorkflow inserts an agent definition for agentType in the "test" workflow.
 func createAgentDefForWorkflow(t *testing.T, env *testEnv, agentType, prompt string) {
 	t.Helper()
-	agentSvc := service.NewAgentDefinitionService(env.pool, clock.Real())
+	agentSvc := service.NewAgentDefinitionService(env.pool, clock.Real(), service.NewCLIModelService(env.pool, clock.Real()))
 	_, err := agentSvc.CreateAgentDef(env.project, "test", &types.AgentDefCreateRequest{
 		ID:     agentType,
 		Prompt: prompt,
@@ -546,7 +548,7 @@ func TestRunLoop_PlanMode_StoresUserInstructions(t *testing.T) {
 // Verify NewAgentDefinitionService is importable and usable.
 func TestNewAgentDefinitionService_IsAvailable(t *testing.T) {
 	env := newTestEnv(t)
-	svc := service.NewAgentDefinitionService(env.pool, clock.Real())
+	svc := service.NewAgentDefinitionService(env.pool, clock.Real(), service.NewCLIModelService(env.pool, clock.Real()))
 	if svc == nil {
 		t.Fatal("NewAgentDefinitionService returned nil")
 	}

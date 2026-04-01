@@ -38,6 +38,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	workflows map[string]spawner.WorkflowDef,
 	agents map[string]spawner.AgentConfig,
 	projectRoot string,
+	modelConfigs map[string]spawner.ModelConfig,
 ) (*interactivePreStep, error) {
 	sessionID := uuid.New().String()
 
@@ -61,7 +62,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 		}
 	}
 
-	cliName := spawner.DefaultCLIForModel(modelName)
+	cliName := cliNameFromModelConfigs(modelConfigs, modelName)
 	modelID := fmt.Sprintf("%s:%s", cliName, modelName)
 
 	// Create agent session in DB with user_interactive status
@@ -89,7 +90,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	}
 
 	// Build PTY command args
-	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot)
+	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build interactive PTY args: %w", err)
 	}
@@ -101,11 +102,12 @@ func (o *Orchestrator) setupInteractivePreStep(
 
 	// Create a temp spawner just for the interactive wait mechanism
 	sp := spawner.New(spawner.Config{
-		Workflows: workflows,
-		Agents:    agents,
-		DataPath:  o.dataPath,
-		WSHub:     o.wsHub,
-		Clock:     o.clock,
+		Workflows:    workflows,
+		Agents:       agents,
+		DataPath:     o.dataPath,
+		WSHub:        o.wsHub,
+		Clock:        o.clock,
+		ModelConfigs: modelConfigs,
 	})
 	waitCh := sp.RegisterInteractiveWait(sessionID)
 
@@ -126,6 +128,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	agents map[string]spawner.AgentConfig,
 	pool *db.Pool,
 	projectRoot string,
+	modelConfigs map[string]spawner.ModelConfig,
 ) ([]string, error) {
 	var prompt string
 
@@ -142,16 +145,17 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		if cfg, ok := agents[l0Agent]; ok && cfg.Model != "" {
 			l0Model = cfg.Model
 		}
-		cliName := spawner.DefaultCLIForModel(l0Model)
+		cliName := cliNameFromModelConfigs(modelConfigs, l0Model)
 		modelID := fmt.Sprintf("%s:%s", cliName, l0Model)
 
 		sp := spawner.New(spawner.Config{
-			Workflows: workflows,
-			Agents:    agents,
-			DataPath:  o.dataPath,
-			WSHub:     o.wsHub,
-			Pool:      pool,
-			Clock:     o.clock,
+			Workflows:    workflows,
+			Agents:       agents,
+			DataPath:     o.dataPath,
+			WSHub:        o.wsHub,
+			Pool:         pool,
+			Clock:        o.clock,
+			ModelConfigs: modelConfigs,
 		})
 
 		tmpl, err := sp.LoadTemplate(l0Agent, req.TicketID, req.ProjectID, "", sessionID, req.WorkflowName, modelID, l0Agent, wi.ID, nil)

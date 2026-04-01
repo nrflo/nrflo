@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"be/internal/clock"
-	"be/internal/service"
 	"be/internal/types"
 )
 
@@ -379,10 +377,4 @@ func TestActiveAgentsRestartThresholdWithoutAgentDef(t *testing.T) {
 	if _, exists := agent["restart_threshold"]; exists {
 		t.Fatalf("expected restart_threshold to be absent when no agent def, but got %v", agent["restart_threshold"])
 	}
-}
-
-// getAgentDefService returns the AgentDefinitionService.
-func (e *TestEnv) getAgentDefService(t *testing.T) *service.AgentDefinitionService {
-	t.Helper()
-	return service.NewAgentDefinitionService(e.Pool, clock.Real())
 }

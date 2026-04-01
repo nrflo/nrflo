@@ -90,6 +90,35 @@ func New(dataPath string, wsHub *ws.Hub, clk clock.Clock) *Orchestrator {
 	}
 }
 
+// loadModelConfigs loads CLI model configs from the database and builds a map
+// suitable for spawner.Config.ModelConfigs. Called once at workflow start.
+func (o *Orchestrator) loadModelConfigs(pool *db.Pool) (map[string]spawner.ModelConfig, error) {
+	cliModelSvc := service.NewCLIModelService(pool, o.clock)
+	models, err := cliModelSvc.List()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load CLI model configs: %w", err)
+	}
+	configs := make(map[string]spawner.ModelConfig, len(models))
+	for _, m := range models {
+		configs[m.ID] = spawner.ModelConfig{
+			CLIType:         m.CLIType,
+			MappedModel:     m.MappedModel,
+			ReasoningEffort: m.ReasoningEffort,
+			ContextLength:   m.ContextLength,
+		}
+	}
+	return configs, nil
+}
+
+// cliNameFromModelConfigs resolves the CLI name for a model using DB configs,
+// falling back to spawner.DefaultCLIForModel if not found.
+func cliNameFromModelConfigs(modelConfigs map[string]spawner.ModelConfig, model string) string {
+	if mc, ok := modelConfigs[model]; ok && mc.CLIType != "" {
+		return mc.CLIType
+	}
+	return spawner.DefaultCLIForModel(model)
+}
+
 // setupWorktree creates a git worktree for a workflow run if the project has
 // worktrees enabled. Returns worktreeInfo (nil if disabled) and the effective
 // projectRoot (worktree path if enabled, original path if disabled).
@@ -268,6 +297,13 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		}
 	}
 
+	// Load CLI model configs from DB (once at workflow start)
+	modelConfigs, err := o.loadModelConfigs(pool)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+
 	// Set parent session
 	parentSession := uuid.New().String()
 	pool.Close()
@@ -319,7 +355,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Setup interactive/plan pre-step if requested
 	var pre *interactivePreStep
 	if req.Interactive || req.PlanMode {
-		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot)
+		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs)
 		if err != nil {
 			cancel()
 			o.mu.Lock()
@@ -335,7 +371,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs)
 
 	status := "started"
 	sessionID := ""
@@ -626,6 +662,12 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		}
 	}
 
+	// Load CLI model configs from DB (once at workflow retry)
+	modelConfigs, err := o.loadModelConfigs(pool)
+	if err != nil {
+		return err
+	}
+
 	parentSession := uuid.New().String()
 
 	// Build run request
@@ -656,7 +698,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	dockerCfg := buildDockerConfig(project, wt)
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs)
 
 	return nil
 }
@@ -884,6 +926,7 @@ func (o *Orchestrator) runLoop(
 	lowConsumptionMode bool,
 	globalStallStartTimeout *int,
 	globalStallRunningTimeout *int,
+	modelConfigs map[string]spawner.ModelConfig,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -1041,6 +1084,7 @@ func (o *Orchestrator) runLoop(
 					LowConsumptionMode:        lowConsumptionMode,
 					GlobalStallStartTimeout:   globalStallStartTimeout,
 					GlobalStallRunningTimeout: globalStallRunningTimeout,
+					ModelConfigs:              modelConfigs,
 				})
 
 				// Store spawner ref so RestartAgent can reach it
@@ -1157,7 +1201,7 @@ func (o *Orchestrator) runLoop(
 		wtService := &service.WorktreeService{}
 		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
 			// Attempt automatic conflict resolution
-			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error()); resolveErr != nil {
+			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs); resolveErr != nil {
 				// Resolution failed or no resolver configured — fall through to manual resolution
 				logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
 					"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)

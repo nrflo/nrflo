@@ -38,7 +38,9 @@ Key types in `workflow_types.go`:
 
 ## Constructor Pattern
 
-All service constructors take `(pool *db.Pool, clk clock.Clock)`. The clock is used for timestamps on DB records. In production, pass `clock.Real()`. In tests, pass `clock.NewTest(fixedTime)` for deterministic timestamps.
+Most service constructors take `(pool *db.Pool, clk clock.Clock)`. The clock is used for timestamps on DB records. In production, pass `clock.Real()`. In tests, pass `clock.NewTest(fixedTime)` for deterministic timestamps.
+
+**Exception:** `NewAgentDefinitionService(pool, clk, cliModelSvc)` additionally requires a `*CLIModelService` for validating `low_consumption_model` against the `cli_models` DB table instead of a hardcoded model list.
 
 ## Common Tasks
 

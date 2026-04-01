@@ -17,6 +17,7 @@ import (
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
+	"be/internal/static"
 	"be/internal/ws"
 )
 
@@ -392,6 +393,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Status/Dashboard
 	mux.HandleFunc("GET /api/v1/status", s.handleStatus)
 	mux.HandleFunc("GET /api/v1/daily-stats", s.handleGetDailyStats)
+
+	// Embedded UI (SPA catch-all — must be last)
+	if uiFS, err := static.DistFS(); err == nil {
+		if h := spaHandler(uiFS); h != nil {
+			mux.Handle("/", h)
+		}
+	}
 }
 
 // Helper functions for JSON responses

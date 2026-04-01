@@ -73,6 +73,9 @@ be/
 │   │   ├── client.go            # Unix socket client for agents
 │   │   ├── http.go              # HTTP client for ticket/deps CLI commands
 │   │   └── output.go            # Output formatting
+│   ├── static/                  # Embedded UI assets (//go:embed)
+│   │   ├── embed.go             # Embed directive and DistFS() accessor
+│   │   └── dist/                # UI build output (populated by `make build-ui`)
 │   ├── socket/                  # Unix socket server
 │   │   ├── server.go            # Socket listener
 │   │   ├── handler.go           # Request routing
@@ -172,12 +175,14 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 
 ```bash
 cd ~/projects/2026/nrworkflow/be
-make build                # Build both binaries (CLI + server)
+make build                # Build both binaries (CLI + server, includes UI)
 make build-cli            # Build CLI binary (nrworkflow)
-make build-server         # Build server binary (nrworkflow_server)
+make build-server         # Build server binary with embedded UI
+make build-server-only    # Go-only rebuild (skip UI build, use last-copied dist)
+make build-ui             # Build UI and copy dist to embed directory
 make build-release        # Optimized release build (both binaries)
 make build-cli-release    # Optimized release build (CLI only)
-make build-server-release # Optimized release build (server only)
+make build-server-release # Optimized release build (server only, includes UI)
 sudo make install         # Install both to /usr/local/bin
 make clean                # Clean build artifacts
 ```

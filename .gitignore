@@ -51,3 +51,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
+
+# Embedded UI build artifacts
+be/internal/static/dist/
+!be/internal/static/dist/.gitkeep

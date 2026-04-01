@@ -6,7 +6,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 
 `nrworkflow_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
-- **CORS** enabled for `http://localhost:5175`
+- **CORS** disabled by default (same-origin serving); configurable via `cors_origins` in config file
 - **WebSocket** at `/api/v1/ws` for real-time updates
 
 ## Handler File Mapping
@@ -33,6 +33,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
 | `handlers_logs.go` | Log file viewer (BE/FE logs) |
+| `static_handler.go` | SPA handler: serves embedded UI files with index.html fallback for client-side routing |
 
 ## HTTP API Endpoints
 

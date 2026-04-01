@@ -29,7 +29,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
 			Port:        DefaultPort,
-			CORSOrigins: []string{"http://localhost:5175"},
+			CORSOrigins: []string{},
 		},
 	}
 }
@@ -68,9 +68,8 @@ func Load() (*Config, error) {
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = DefaultPort
 	}
-	if len(cfg.Server.CORSOrigins) == 0 {
-		cfg.Server.CORSOrigins = []string{"http://localhost:5175"}
-	}
+	// CORSOrigins empty by default — same-origin serving needs no CORS.
+	// Developers using npm run dev can set cors_origins in config file.
 
 	return &cfg, nil
 }

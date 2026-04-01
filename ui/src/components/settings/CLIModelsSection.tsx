@@ -15,6 +15,24 @@ import {
 import { useCLIModels, cliModelKeys } from '@/hooks/useCLIModels'
 import { CLIModelForm, emptyCLIModelForm, type CLIModelFormData } from './CLIModelForm'
 
+const MODEL_GROUPS = [
+  { key: 'claude', label: 'Claude' },
+  { key: 'codex', label: 'Codex' },
+  { key: 'opencode', label: 'OpenCode' },
+] as const
+
+function groupModels(models: CLIModel[]) {
+  const knownKeys = new Set<string>(MODEL_GROUPS.map((g) => g.key))
+  const groups: { label: string; models: CLIModel[] }[] = []
+  for (const g of MODEL_GROUPS) {
+    const items = models.filter((m) => m.cli_type === g.key)
+    if (items.length > 0) groups.push({ label: g.label, models: items })
+  }
+  const other = models.filter((m) => !knownKeys.has(m.cli_type))
+  if (other.length > 0) groups.push({ label: 'Other', models: other })
+  return groups
+}
+
 function cliTypeBadgeColor(cliType: string): string {
   switch (cliType) {
     case 'claude': return 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
@@ -159,71 +177,76 @@ export function CLIModelsSection() {
             </div>
           )}
 
-          {models.map((m) => (
-            <div key={m.id} className="border rounded-lg p-4">
-              {editingId === m.id ? (
-                <CLIModelForm
-                  formData={formData}
-                  setFormData={setFormData}
-                  onCancel={handleCancel}
-                  onSave={handleSaveEdit}
-                  mutation={updateMutation}
-                />
-              ) : deleteConfirm === m.id ? (
-                <div className="flex items-center justify-between">
-                  <div className="text-sm">
-                    Are you sure you want to delete{' '}
-                    <span className="font-semibold">{m.id}</span>?
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => deleteMutation.mutate(m.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Cpu className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{m.id}</span>
-                        <Badge className={`text-xs ${cliTypeBadgeColor(m.cli_type)}`}>
-                          {m.cli_type}
-                        </Badge>
-                        {m.read_only && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Lock className="h-3 w-3 mr-1" />
-                            Built-in
-                          </Badge>
-                        )}
+          {groupModels(models).map((group) => (
+            <div key={group.label}>
+              <h3 className="text-sm font-semibold text-muted-foreground mt-4 mb-2">{group.label}</h3>
+              {group.models.map((m) => (
+                <div key={m.id} className="border rounded-lg p-4">
+                  {editingId === m.id ? (
+                    <CLIModelForm
+                      formData={formData}
+                      setFormData={setFormData}
+                      onCancel={handleCancel}
+                      onSave={handleSaveEdit}
+                      mutation={updateMutation}
+                    />
+                  ) : deleteConfirm === m.id ? (
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm">
+                        Are you sure you want to delete{' '}
+                        <span className="font-semibold">{m.id}</span>?
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {m.display_name} &middot; {m.mapped_model} &middot; {m.context_length.toLocaleString()} ctx
+                      <div className="flex gap-2">
+                        <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => deleteMutation.mutate(m.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    {!m.read_only && (
-                      <>
-                        <Button variant="ghost" size="icon" onClick={() => handleStartEdit(m)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(m.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Cpu className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{m.id}</span>
+                            <Badge className={`text-xs ${cliTypeBadgeColor(m.cli_type)}`}>
+                              {m.cli_type}
+                            </Badge>
+                            {m.read_only && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Lock className="h-3 w-3 mr-1" />
+                                Built-in
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {m.display_name} &middot; {m.mapped_model} &middot; {m.context_length.toLocaleString()} ctx
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        {!m.read_only && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => handleStartEdit(m)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(m.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           ))}
         </div>

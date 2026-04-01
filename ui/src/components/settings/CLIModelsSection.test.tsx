@@ -183,6 +183,52 @@ describe('CLIModelsSection', () => {
     })
   })
 
+  it('renders group headers for known cli_types', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'opus', cli_type: 'claude' }),
+      makeCLIModel({ id: 'gpt', cli_type: 'codex' }),
+      makeCLIModel({ id: 'oc', cli_type: 'opencode' }),
+    ])
+    renderWithQuery(<CLIModelsSection />)
+    expect(await screen.findByText('Claude')).toBeInTheDocument()
+    expect(screen.getByText('Codex')).toBeInTheDocument()
+    expect(screen.getByText('OpenCode')).toBeInTheDocument()
+  })
+
+  it('does not render headers for empty groups', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'opus', cli_type: 'claude' }),
+    ])
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('Claude')
+    expect(screen.queryByText('Codex')).not.toBeInTheDocument()
+    expect(screen.queryByText('OpenCode')).not.toBeInTheDocument()
+  })
+
+  it('groups models with unknown cli_type under Other', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'weird-model', cli_type: 'custom-provider' }),
+    ])
+    renderWithQuery(<CLIModelsSection />)
+    expect(await screen.findByText('Other')).toBeInTheDocument()
+    expect(screen.getByText('weird-model')).toBeInTheDocument()
+    expect(screen.queryByText('Claude')).not.toBeInTheDocument()
+  })
+
+  it('groups appear in correct order: Claude before Codex before OpenCode', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'oc-model', cli_type: 'opencode' }),
+      makeCLIModel({ id: 'codex-model', cli_type: 'codex' }),
+      makeCLIModel({ id: 'claude-model', cli_type: 'claude' }),
+    ])
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('Claude')
+    const headers = screen.getAllByRole('heading')
+    const headerTexts = headers.map((h) => h.textContent)
+    expect(headerTexts.indexOf('Claude')).toBeLessThan(headerTexts.indexOf('Codex'))
+    expect(headerTexts.indexOf('Codex')).toBeLessThan(headerTexts.indexOf('OpenCode'))
+  })
+
   it('delete: confirmation dialog, cancel dismisses, confirm calls API', async () => {
     vi.mocked(cliModelsApi.listCLIModels)
       .mockResolvedValueOnce([makeCLIModel({ id: 'custom-model', read_only: false })])

@@ -219,7 +219,7 @@ describe('AgentCard - user_interactive status', () => {
     const session = makeSession({ status: 'running' })
     render(<AgentCard agent={agent} session={session} />)
     const button = screen.getByRole('button')
-    expect(button.className).toContain('turbo-border')
+    expect(button.className).toContain('border-amber-400')
   })
 
   it('suppresses alert triangle for interactive session even when near restart threshold', () => {

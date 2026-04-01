@@ -227,7 +227,7 @@ describe('AgentFlowNode', () => {
     const data = makeData({ agent: makeAgent({ result: undefined }) })
     render(<AgentFlowNode data={data} />)
     const button = screen.getByRole('button')
-    expect(button.className).toContain('turbo-border')
+    expect(button.className).toContain('border-amber-400')
   })
 
   it('applies green border for passed agent', () => {

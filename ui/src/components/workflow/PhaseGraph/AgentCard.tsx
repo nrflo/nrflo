@@ -45,7 +45,7 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
         'relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg border transition-all',
         'hover:bg-muted/50 cursor-pointer w-full',
         isInteractive && 'border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 animate-pulse-glow-blue',
-        isRunning && 'border-transparent bg-yellow-50/50 dark:bg-yellow-900/20 turbo-border',
+        isRunning && 'border-amber-400 dark:border-amber-500 bg-amber-50/50 dark:bg-amber-900/20',
         !isRunning && !isInteractive && agent.result === 'pass' && 'border-green-400 bg-green-50/50 dark:bg-green-900/20',
         !isRunning && !isInteractive && agent.result === 'fail' && 'border-red-400 bg-red-50/50 dark:bg-red-900/20',
         isExpanded && 'ring-2 ring-primary ring-offset-1'

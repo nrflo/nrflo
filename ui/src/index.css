@@ -68,23 +68,6 @@ body {
   min-height: 100vh;
 }
 
-/* Turbo-flow rotating border for running agent cards */
-.turbo-border {
-  position: relative;
-}
-
-.turbo-border::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  z-index: -1;
-  background: conic-gradient(from var(--spin-angle), #facc15, #fbbf24, #f59e0b, #facc15);
-}
-
-.dark .turbo-border::before {
-  background: conic-gradient(from var(--spin-angle), #a16207, #ca8a04, #eab308, #a16207);
-}
 
 /* Animation for interactive agent cards */
 @keyframes pulse-glow-blue {

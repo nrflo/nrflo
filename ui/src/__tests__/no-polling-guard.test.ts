@@ -18,6 +18,8 @@ const ALLOWLIST = [
   'useLogs.ts',
   // Running agents uses 30s fallback polling in case global WS broadcast events are missed
   'useRunningAgents.ts',
+  // Chain detail page uses 10s polling fallback when chain is running, as WS safety net
+  'ChainDetailPage.tsx',
 ]
 
 function getAllFiles(dir: string, files: string[] = []): string[] {

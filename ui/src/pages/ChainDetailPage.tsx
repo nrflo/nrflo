@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Play, XCircle, Edit, ListPlus } from 'lucide-react'
 import { useGoBack } from '@/hooks/useGoBack'
+import { useTickingClock } from '@/hooks/useElapsedTime'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
@@ -149,7 +150,11 @@ export function ChainDetailPage() {
 
   const { data: displayChain, isLoading, error } = useChain(id!, {
     enabled: !!id,
+    refetchInterval: (query) =>
+      query.state.data?.status === 'running' ? 10_000 : false,
   })
+
+  useTickingClock(displayChain?.status === 'running')
 
   if (isLoading) {
     return (

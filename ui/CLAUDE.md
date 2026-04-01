@@ -211,33 +211,37 @@ The full test suite (`vitest run`) must complete in **≤15 seconds wall time**.
 ## Important Notes
 
 - The backend (`nrworkflow_server serve`) must be running for the UI to work
-- Default port is 6587 for API, 5175 for UI
+- Default port is 6587 (single-process serves API + embedded UI); port 5175 is used only for `npm run dev` hot-reload during development
 - Projects are loaded from `/api/v1/projects` endpoint
 - Multi-project support uses `X-Project` header
 - Database is at `~/projects/2026/nrworkflow/nrworkflow.data` (global)
 
 ## Starting Servers
 
+The server binary embeds the UI and serves everything on a single port (default 6587).
+
 ```bash
-# Quick start - restart both servers (kills existing, rebuilds, starts in background)
+# Quick start - rebuild and restart (kills existing, rebuilds, starts in background)
 ./restart.sh
 
 # Or start manually:
-nrworkflow_server serve       # Start API server (port 6587)
-cd ui && npm run dev          # Start UI dev server (port 5175)
+nrworkflow_server serve       # Start server (port 6587, serves API + embedded UI)
 
-# Stop servers
+# For UI hot-reload development (optional):
+cd ui && npm run dev          # Start Vite dev server (port 5175, proxies API to 6587)
+
+# Stop server
 ./stop.sh
 ```
 
 | Script | Purpose |
 |--------|---------|
-| `restart.sh` | Kill existing servers, rebuild both binaries, start both in background |
-| `stop.sh` | Stop running BE + UI servers |
+| `restart.sh` | Kill server, rebuild binary (including UI), start in background |
+| `stop.sh` | Stop running server |
 | `rebuild-cli.sh` | Rebuild and re-symlink CLI binary without restarting server |
-| `ui/start-server.sh` | Start both servers in foreground (uses `nrworkflow_server serve`) |
+| `ui/start-server.sh` | Start server in foreground (uses `nrworkflow_server serve`) |
 
-Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.log` when using `restart.sh`.
+Logs are written to `/tmp/nrworkflow/logs/be.log` when using `restart.sh`.
 
 ## Web UI Features
 

@@ -107,8 +107,8 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 | `ui/` | React web interface (see [ui/CLAUDE.md](ui/CLAUDE.md)) |
 | `guidelines/agent-protocol.md` | Agent conventions |
 | `nrworkflow.data` | SQLite database (tickets, projects, sessions) |
-| `restart.sh` | Rebuild and restart BE + UI servers (background) |
-| `stop.sh` | Stop running servers |
+| `restart.sh` | Kill server, rebuild binary (including UI), start in background |
+| `stop.sh` | Stop running server |
 | `rebuild-cli.sh` | Rebuild and re-symlink CLI binary (also rebuilds Docker image if it exists) |
 | `rebuild-docker.sh` | Nuclear-option Docker image rebuild: stops containers, removes image, rebuilds from scratch |
 | `agent_manual.md` | User-facing agent definition guide (template vars, findings, CLI) |
@@ -149,7 +149,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 ## Quick Start
 
-Web UI: `./restart.sh` then open `http://localhost:5175`
+Web UI: `./restart.sh` then open `http://localhost:6587`
 
 ## Agent CLI Commands
 
@@ -237,10 +237,10 @@ Chains allow sequential execution of multiple tickets with a single workflow. Ti
 
 | Script | Purpose |
 |--------|---------|
-| `restart.sh` | Kill existing servers, rebuild both binaries (`make build`), start `nrworkflow_server` + UI in background |
-| `stop.sh` | Stop running BE + UI servers |
+| `restart.sh` | Kill server, rebuild binary (including UI), start in background |
+| `stop.sh` | Stop running server |
 | `rebuild-cli.sh` | Rebuild and re-symlink the CLI binary (also rebuilds Docker image if it exists) |
 | `rebuild-docker.sh` | Nuclear-option Docker image rebuild: stops containers, removes image, rebuilds from scratch |
-| `ui/start-server.sh` | Start both servers in foreground (uses `nrworkflow_server serve`) |
+| `ui/start-server.sh` | Start server in foreground (uses `nrworkflow_server serve`) |
 
-Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.log` when using `restart.sh`.
+Logs are written to `/tmp/nrworkflow/logs/be.log` when using `restart.sh`.

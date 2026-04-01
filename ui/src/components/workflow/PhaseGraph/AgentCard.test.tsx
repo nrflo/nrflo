@@ -241,14 +241,17 @@ describe('AgentCard - restart badge and tooltip', () => {
 
   it('shows restart reasons in tooltip on hover', async () => {
     const user = userEvent.setup()
-    const agent = makeAgent({ restart_count: 2, restart_reasons: ['low_context', 'explicit'] })
+    const agent = makeAgent({ restart_count: 2, restart_details: [
+      { reason: 'low_context', duration_sec: 725, context_left: 12, message_count: 247 },
+      { reason: 'explicit', duration_sec: 42, context_left: 85, message_count: 3 },
+    ] })
     render(<AgentCard agent={agent} />)
     await user.hover(screen.getByText('↻2'))
     expect(document.body).toHaveTextContent('1. Low context')
     expect(document.body).toHaveTextContent('2. Manual continue')
   })
 
-  it('shows count fallback tooltip when restart_reasons is undefined', async () => {
+  it('shows count fallback tooltip when restart_details is undefined', async () => {
     const user = userEvent.setup()
     const agent = makeAgent({ restart_count: 3 })
     render(<AgentCard agent={agent} />)

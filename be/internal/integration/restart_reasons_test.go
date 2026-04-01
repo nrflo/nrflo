@@ -4,17 +4,19 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/service"
 	"be/internal/types"
 )
 
-// insertRRSession inserts an agent session for restart_reasons testing.
+// insertRRSession inserts an agent session for restart_details testing.
 // result, reasonCode, and ancestorID may be "" to store NULL.
-func insertRRSession(t *testing.T, env *TestEnv, id, ticketID, wfiID, agentType, status, result, reasonCode, ancestorID string, restartCount int, startedAt time.Time) {
+// endedAt is zero-value to store NULL. contextLeft is nil to store NULL.
+func insertRRSession(t *testing.T, env *TestEnv, id, ticketID, wfiID, agentType, status, result, reasonCode, ancestorID string, restartCount int, startedAt time.Time, endedAt time.Time, contextLeft *int64) {
 	t.Helper()
 	now := env.Clock.Now().UTC().Format(time.RFC3339Nano)
 	startedAtStr := startedAt.UTC().Format(time.RFC3339Nano)
 
-	var ancestorVal, reasonVal, resultVal interface{}
+	var ancestorVal, reasonVal, resultVal, endedAtVal, contextLeftVal interface{}
 	if ancestorID != "" {
 		ancestorVal = ancestorID
 	}
@@ -24,45 +26,110 @@ func insertRRSession(t *testing.T, env *TestEnv, id, ticketID, wfiID, agentType,
 	if result != "" {
 		resultVal = result
 	}
+	if !endedAt.IsZero() {
+		endedAtVal = endedAt.UTC().Format(time.RFC3339Nano)
+	}
+	if contextLeft != nil {
+		contextLeftVal = *contextLeft
+	}
 
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
 			context_left, ancestor_session_id, spawn_command, prompt_context,
 			restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?, NULL, NULL, ?, ?, NULL, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, NULL, NULL, ?, ?, ?, ?, ?)`,
 		id, env.ProjectID, ticketID, wfiID, agentType, agentType,
-		status, resultVal, reasonVal, ancestorVal, restartCount, startedAtStr, now, now,
+		status, resultVal, reasonVal, contextLeftVal, ancestorVal, restartCount, startedAtStr, endedAtVal, now, now,
 	)
 	if err != nil {
 		t.Fatalf("insertRRSession %s: %v", id, err)
 	}
 }
 
-// TestRestartReasonsInHistory_TwoRestarts verifies that agent_history entries
-// include restart_reasons when the agent has two continued sessions in its chain.
-func TestRestartReasonsInHistory_TwoRestarts(t *testing.T) {
+// assertRestartDetails extracts and validates restart_details from a response entry.
+func assertRestartDetails(t *testing.T, entry map[string]interface{}, wantReasons []string) {
+	t.Helper()
+	rawDetails, ok := entry["restart_details"].([]interface{})
+	if !ok {
+		t.Fatalf("expected restart_details array, got %T: %v", entry["restart_details"], entry["restart_details"])
+	}
+	if len(rawDetails) != len(wantReasons) {
+		t.Fatalf("expected %d restart_details, got %d: %v", len(wantReasons), len(rawDetails), rawDetails)
+	}
+	for i, want := range wantReasons {
+		detail := rawDetails[i]
+		// JSON round-tripped through map[string]interface{}, so check inner map
+		var d map[string]interface{}
+		switch v := detail.(type) {
+		case map[string]interface{}:
+			d = v
+		default:
+			// Might be a RestartDetail struct serialized via JSON
+			t.Fatalf("restart_details[%d]: unexpected type %T", i, detail)
+		}
+		if d["reason"] != want {
+			t.Errorf("restart_details[%d].reason = %v, want %s", i, d["reason"], want)
+		}
+		// duration_sec should be a number
+		if _, ok := d["duration_sec"]; !ok {
+			t.Errorf("restart_details[%d] missing duration_sec", i)
+		}
+		// message_count should be a number
+		if _, ok := d["message_count"]; !ok {
+			t.Errorf("restart_details[%d] missing message_count", i)
+		}
+	}
+}
+
+// toRestartDetails converts []interface{} to []service.RestartDetail for detailed assertions.
+func toRestartDetails(t *testing.T, raw []interface{}) []service.RestartDetail {
+	t.Helper()
+	var details []service.RestartDetail
+	for i, item := range raw {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			t.Fatalf("restart_details[%d]: expected map, got %T", i, item)
+		}
+		d := service.RestartDetail{
+			Reason:      m["reason"].(string),
+			DurationSec: m["duration_sec"].(float64),
+			MessageCount: int(m["message_count"].(float64)),
+		}
+		if cl, ok := m["context_left"]; ok && cl != nil {
+			v := int64(cl.(float64))
+			d.ContextLeft = &v
+		}
+		details = append(details, d)
+	}
+	return details
+}
+
+// TestRestartDetailsInHistory_TwoRestarts verifies that agent_history entries
+// include restart_details when the agent has two continued sessions in its chain.
+func TestRestartDetailsInHistory_TwoRestarts(t *testing.T) {
 	env := NewTestEnv(t)
-	env.CreateTicket(t, "RR-1", "Restart reasons history test")
+	env.CreateTicket(t, "RR-1", "Restart details history test")
 	env.InitWorkflow(t, "RR-1")
 	wfiID := env.GetWorkflowInstanceID(t, "RR-1", "test")
 
 	t0 := env.Clock.Now()
+	ctxLeft := int64(50000)
 	// Session A: first in chain, got low context and was continued
 	insertRRSession(t, env, "rr1-sess-a", "RR-1", wfiID, "analyzer",
-		"continued", "", "low_context", "", 0, t0)
+		"continued", "", "low_context", "", 0, t0, t0.Add(30*time.Second), &ctxLeft)
 
 	env.Clock.Advance(1 * time.Second)
 	t1 := env.Clock.Now()
 	// Session B: second in chain, stalled and was continued
 	insertRRSession(t, env, "rr1-sess-b", "RR-1", wfiID, "analyzer",
-		"continued", "", "instant_stall", "rr1-sess-a", 0, t1)
+		"continued", "", "instant_stall", "rr1-sess-a", 0, t1, t1.Add(42*time.Second), nil)
 
 	env.Clock.Advance(1 * time.Second)
 	t2 := env.Clock.Now()
 	// Session C: final completed session with restart_count=2 and ancestor=first session
 	insertRRSession(t, env, "rr1-sess-c", "RR-1", wfiID, "analyzer",
-		"completed", "pass", "", "rr1-sess-a", 2, t2)
+		"completed", "pass", "", "rr1-sess-a", 2, t2, t2.Add(60*time.Second), nil)
 
 	status, err := getWorkflowStatus(t, env, "RR-1", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -79,39 +146,43 @@ func TestRestartReasonsInHistory_TwoRestarts(t *testing.T) {
 		t.Errorf("restart_count = %v, want 2", rc)
 	}
 
-	reasons, ok := entry["restart_reasons"].([]interface{})
-	if !ok {
-		t.Fatalf("expected restart_reasons array, got %T: %v", entry["restart_reasons"], entry["restart_reasons"])
+	assertRestartDetails(t, entry, []string{"low_context", "instant_stall"})
+
+	// Verify detailed fields
+	rawDetails := entry["restart_details"].([]interface{})
+	details := toRestartDetails(t, rawDetails)
+	if details[0].DurationSec != 30 {
+		t.Errorf("details[0].DurationSec = %v, want 30", details[0].DurationSec)
 	}
-	if len(reasons) != 2 {
-		t.Fatalf("expected 2 restart_reasons, got %d: %v", len(reasons), reasons)
+	if details[0].ContextLeft == nil || *details[0].ContextLeft != 50000 {
+		t.Errorf("details[0].ContextLeft = %v, want 50000", details[0].ContextLeft)
 	}
-	if reasons[0] != "low_context" {
-		t.Errorf("restart_reasons[0] = %v, want low_context", reasons[0])
+	if details[1].DurationSec != 42 {
+		t.Errorf("details[1].DurationSec = %v, want 42", details[1].DurationSec)
 	}
-	if reasons[1] != "instant_stall" {
-		t.Errorf("restart_reasons[1] = %v, want instant_stall", reasons[1])
+	if details[1].ContextLeft != nil {
+		t.Errorf("details[1].ContextLeft = %v, want nil", details[1].ContextLeft)
 	}
 }
 
-// TestRestartReasonsInActiveAgent_OneRestart verifies that active (running) agents
-// include restart_reasons when they have a continued predecessor in their chain.
-func TestRestartReasonsInActiveAgent_OneRestart(t *testing.T) {
+// TestRestartDetailsInActiveAgent_OneRestart verifies that active (running) agents
+// include restart_details when they have a continued predecessor in their chain.
+func TestRestartDetailsInActiveAgent_OneRestart(t *testing.T) {
 	env := NewTestEnv(t)
-	env.CreateTicket(t, "RR-2", "Restart reasons active agent test")
+	env.CreateTicket(t, "RR-2", "Restart details active agent test")
 	env.InitWorkflow(t, "RR-2")
 	wfiID := env.GetWorkflowInstanceID(t, "RR-2", "test")
 
 	t0 := env.Clock.Now()
 	// Session A: original session, stalled and was continued
 	insertRRSession(t, env, "rr2-sess-a", "RR-2", wfiID, "analyzer",
-		"continued", "", "stall_restart_start_stall", "", 0, t0)
+		"continued", "", "stall_restart_start_stall", "", 0, t0, t0.Add(120*time.Second), nil)
 
 	env.Clock.Advance(1 * time.Second)
 	t1 := env.Clock.Now()
 	// Session B: currently running, ancestor is session A, restart_count=1
 	insertRRSession(t, env, "rr2-sess-b", "RR-2", wfiID, "analyzer",
-		"running", "", "", "rr2-sess-a", 1, t1)
+		"running", "", "", "rr2-sess-a", 1, t1, time.Time{}, nil)
 
 	status, err := getWorkflowStatus(t, env, "RR-2", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -130,18 +201,12 @@ func TestRestartReasonsInActiveAgent_OneRestart(t *testing.T) {
 	if rc := agent["restart_count"].(float64); rc != 1 {
 		t.Errorf("restart_count = %v, want 1", rc)
 	}
-	reasons, ok := agent["restart_reasons"].([]interface{})
-	if !ok {
-		t.Fatalf("expected restart_reasons array, got %T: %v", agent["restart_reasons"], agent["restart_reasons"])
-	}
-	if len(reasons) != 1 || reasons[0] != "stall_restart_start_stall" {
-		t.Errorf("restart_reasons = %v, want [stall_restart_start_stall]", reasons)
-	}
+	assertRestartDetails(t, agent, []string{"stall_restart_start_stall"})
 }
 
-// TestRestartReasonsAbsent_WhenNoRestarts verifies that restart_reasons is not
+// TestRestartDetailsAbsent_WhenNoRestarts verifies that restart_details is not
 // present in the response when restart_count is 0.
-func TestRestartReasonsAbsent_WhenNoRestarts(t *testing.T) {
+func TestRestartDetailsAbsent_WhenNoRestarts(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CreateTicket(t, "RR-3", "No restarts test")
 	env.InitWorkflow(t, "RR-3")
@@ -149,7 +214,7 @@ func TestRestartReasonsAbsent_WhenNoRestarts(t *testing.T) {
 
 	t0 := env.Clock.Now()
 	insertRRSession(t, env, "rr3-sess", "RR-3", wfiID, "analyzer",
-		"completed", "pass", "", "", 0, t0)
+		"completed", "pass", "", "", 0, t0, t0.Add(10*time.Second), nil)
 
 	status, err := getWorkflowStatus(t, env, "RR-3", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -162,17 +227,17 @@ func TestRestartReasonsAbsent_WhenNoRestarts(t *testing.T) {
 	}
 	entry, _ := history[0].(map[string]interface{})
 
-	if _, exists := entry["restart_reasons"]; exists {
-		t.Errorf("expected no restart_reasons when restart_count=0, got: %v", entry["restart_reasons"])
+	if _, exists := entry["restart_details"]; exists {
+		t.Errorf("expected no restart_details when restart_count=0, got: %v", entry["restart_details"])
 	}
 	if rc := entry["restart_count"].(float64); rc != 0 {
 		t.Errorf("restart_count = %v, want 0", rc)
 	}
 }
 
-// TestRestartReasonsMultipleAgents_IndependentChains verifies that two agents
-// with independent restart chains each receive their own correct restart_reasons.
-func TestRestartReasonsMultipleAgents_IndependentChains(t *testing.T) {
+// TestRestartDetailsMultipleAgents_IndependentChains verifies that two agents
+// with independent restart chains each receive their own correct restart_details.
+func TestRestartDetailsMultipleAgents_IndependentChains(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CreateTicket(t, "RR-4", "Multiple agents independent chains")
 	env.InitWorkflow(t, "RR-4")
@@ -181,21 +246,21 @@ func TestRestartReasonsMultipleAgents_IndependentChains(t *testing.T) {
 	t0 := env.Clock.Now()
 	// Analyzer chain: low_context restart
 	insertRRSession(t, env, "rr4-ana-a", "RR-4", wfiID, "analyzer",
-		"continued", "", "low_context", "", 0, t0)
+		"continued", "", "low_context", "", 0, t0, t0.Add(5*time.Minute), nil)
 	env.Clock.Advance(1 * time.Second)
 	t1 := env.Clock.Now()
 	insertRRSession(t, env, "rr4-ana-b", "RR-4", wfiID, "analyzer",
-		"completed", "pass", "", "rr4-ana-a", 1, t1)
+		"completed", "pass", "", "rr4-ana-a", 1, t1, t1.Add(3*time.Minute), nil)
 
 	env.Clock.Advance(1 * time.Second)
 	t2 := env.Clock.Now()
 	// Builder chain: explicit restart
 	insertRRSession(t, env, "rr4-bld-a", "RR-4", wfiID, "builder",
-		"continued", "", "explicit", "", 0, t2)
+		"continued", "", "explicit", "", 0, t2, t2.Add(2*time.Minute), nil)
 	env.Clock.Advance(1 * time.Second)
 	t3 := env.Clock.Now()
 	insertRRSession(t, env, "rr4-bld-b", "RR-4", wfiID, "builder",
-		"completed", "pass", "", "rr4-bld-a", 1, t3)
+		"completed", "pass", "", "rr4-bld-a", 1, t3, t3.Add(1*time.Minute), nil)
 
 	status, err := getWorkflowStatus(t, env, "RR-4", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -219,20 +284,13 @@ func TestRestartReasonsMultipleAgents_IndependentChains(t *testing.T) {
 		"builder":  "explicit",
 	} {
 		e := byType[agentType]
-		reasons, ok := e["restart_reasons"].([]interface{})
-		if !ok || len(reasons) != 1 {
-			t.Errorf("%s: expected restart_reasons=[%s], got %v", agentType, expectedReason, e["restart_reasons"])
-			continue
-		}
-		if reasons[0] != expectedReason {
-			t.Errorf("%s: restart_reasons[0] = %v, want %s", agentType, reasons[0], expectedReason)
-		}
+		assertRestartDetails(t, e, []string{expectedReason})
 	}
 }
 
-// TestRestartReasonsNullReason_Excluded verifies that continued sessions with
-// NULL result_reason are excluded from the restart_reasons list.
-func TestRestartReasonsNullReason_Excluded(t *testing.T) {
+// TestRestartDetailsNullReason_Excluded verifies that continued sessions with
+// NULL result_reason are excluded from the restart_details list.
+func TestRestartDetailsNullReason_Excluded(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CreateTicket(t, "RR-5", "Null reason excluded test")
 	env.InitWorkflow(t, "RR-5")
@@ -241,13 +299,13 @@ func TestRestartReasonsNullReason_Excluded(t *testing.T) {
 	t0 := env.Clock.Now()
 	// Continued session with NULL result_reason (reasonCode="")
 	insertRRSession(t, env, "rr5-sess-a", "RR-5", wfiID, "analyzer",
-		"continued", "", "", "", 0, t0)
+		"continued", "", "", "", 0, t0, t0.Add(10*time.Second), nil)
 
 	env.Clock.Advance(1 * time.Second)
 	t1 := env.Clock.Now()
 	// Final completed session with restart_count=1 but no known reason
 	insertRRSession(t, env, "rr5-sess-b", "RR-5", wfiID, "analyzer",
-		"completed", "pass", "", "rr5-sess-a", 1, t1)
+		"completed", "pass", "", "rr5-sess-a", 1, t1, t1.Add(10*time.Second), nil)
 
 	status, err := getWorkflowStatus(t, env, "RR-5", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -263,15 +321,15 @@ func TestRestartReasonsNullReason_Excluded(t *testing.T) {
 	if rc := entry["restart_count"].(float64); rc != 1 {
 		t.Errorf("restart_count = %v, want 1", rc)
 	}
-	// restart_reasons should be absent since the NULL reason was filtered out
-	if _, exists := entry["restart_reasons"]; exists {
-		t.Errorf("expected no restart_reasons when all reasons are NULL, got: %v", entry["restart_reasons"])
+	// restart_details should be absent since the NULL reason was filtered out
+	if _, exists := entry["restart_details"]; exists {
+		t.Errorf("expected no restart_details when all reasons are NULL, got: %v", entry["restart_details"])
 	}
 }
 
-// TestRestartReasonsOrder_Chronological verifies that restart_reasons are returned
+// TestRestartDetailsOrder_Chronological verifies that restart_details are returned
 // in chronological order (by started_at) regardless of insertion order.
-func TestRestartReasonsOrder_Chronological(t *testing.T) {
+func TestRestartDetailsOrder_Chronological(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CreateTicket(t, "RR-6", "Chronological order test")
 	env.InitWorkflow(t, "RR-6")
@@ -279,22 +337,22 @@ func TestRestartReasonsOrder_Chronological(t *testing.T) {
 
 	t0 := env.Clock.Now()
 	insertRRSession(t, env, "rr6-sess-a", "RR-6", wfiID, "analyzer",
-		"continued", "", "low_context", "", 0, t0)
+		"continued", "", "low_context", "", 0, t0, t0.Add(10*time.Second), nil)
 
 	env.Clock.Advance(2 * time.Second)
 	t1 := env.Clock.Now()
 	insertRRSession(t, env, "rr6-sess-b", "RR-6", wfiID, "analyzer",
-		"continued", "", "stall_restart_running_stall", "rr6-sess-a", 0, t1)
+		"continued", "", "stall_restart_running_stall", "rr6-sess-a", 0, t1, t1.Add(20*time.Second), nil)
 
 	env.Clock.Advance(2 * time.Second)
 	t2 := env.Clock.Now()
 	insertRRSession(t, env, "rr6-sess-c", "RR-6", wfiID, "analyzer",
-		"continued", "", "explicit", "rr6-sess-a", 0, t2)
+		"continued", "", "explicit", "rr6-sess-a", 0, t2, t2.Add(15*time.Second), nil)
 
 	env.Clock.Advance(2 * time.Second)
 	t3 := env.Clock.Now()
 	insertRRSession(t, env, "rr6-sess-d", "RR-6", wfiID, "analyzer",
-		"completed", "pass", "", "rr6-sess-a", 3, t3)
+		"completed", "pass", "", "rr6-sess-a", 3, t3, t3.Add(5*time.Second), nil)
 
 	status, err := getWorkflowStatus(t, env, "RR-6", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -307,15 +365,5 @@ func TestRestartReasonsOrder_Chronological(t *testing.T) {
 	}
 
 	entry, _ := history[0].(map[string]interface{})
-	reasons, ok := entry["restart_reasons"].([]interface{})
-	if !ok || len(reasons) != 3 {
-		t.Fatalf("expected 3 restart_reasons, got %v", entry["restart_reasons"])
-	}
-
-	want := []string{"low_context", "stall_restart_running_stall", "explicit"}
-	for i, w := range want {
-		if reasons[i] != w {
-			t.Errorf("restart_reasons[%d] = %v, want %s", i, reasons[i], w)
-		}
-	}
+	assertRestartDetails(t, entry, []string{"low_context", "stall_restart_running_stall", "explicit"})
 }

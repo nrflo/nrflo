@@ -163,9 +163,14 @@ export function restartReasonLabel(reason: string): string {
   }
 }
 
-export function formatRestartReasons(reasons?: string[], count?: number): string {
-  if (reasons && reasons.length > 0) {
-    return reasons.map((r, i) => `${i + 1}. ${restartReasonLabel(r)}`).join('\n')
+export function formatRestartReasons(details?: import('@/types/workflow').RestartDetail[], count?: number): string {
+  if (details && details.length > 0) {
+    return details.map((d, i) => {
+      const suffix = [formatDurationSec(d.duration_sec)]
+      if (d.context_left != null) suffix.push(`${d.context_left}% ctx`)
+      suffix.push(`${d.message_count} msgs`)
+      return `${i + 1}. ${restartReasonLabel(d.reason)} — ${suffix.join(', ')}`
+    }).join('\n')
   }
   if (count && count > 0) {
     return `${count} restart${count !== 1 ? 's' : ''}`

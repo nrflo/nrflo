@@ -98,6 +98,14 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// RestartDetail contains per-restart information for enriched tooltips.
+type RestartDetail struct {
+	Reason       string  `json:"reason"`
+	DurationSec  float64 `json:"duration_sec"`
+	ContextLeft  *int64  `json:"context_left,omitempty"`
+	MessageCount int     `json:"message_count"`
+}
+
 // PhaseDef represents a phase definition
 type PhaseDef struct {
 	ID    string `json:"id"`

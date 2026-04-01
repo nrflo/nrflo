@@ -184,15 +184,32 @@ describe('restartReasonLabel', () => {
 })
 
 describe('formatRestartReasons', () => {
-  it('returns numbered list from reasons array', () => {
-    expect(formatRestartReasons(['low_context', 'explicit'])).toBe('1. Low context\n2. Manual continue')
+  it('returns numbered list with details', () => {
+    expect(formatRestartReasons([
+      { reason: 'low_context', duration_sec: 725, context_left: 12, message_count: 247 },
+      { reason: 'explicit', duration_sec: 42, context_left: 85, message_count: 3 },
+    ])).toBe('1. Low context — 12m 5s, 12% ctx, 247 msgs\n2. Manual continue — 42s, 85% ctx, 3 msgs')
   })
 
-  it('returns single-item list for one reason', () => {
-    expect(formatRestartReasons(['instant_stall'])).toBe('1. Instant stall')
+  it('returns single-item list for one detail', () => {
+    expect(formatRestartReasons([
+      { reason: 'instant_stall', duration_sec: 42, context_left: 85, message_count: 3 },
+    ])).toBe('1. Instant stall — 42s, 85% ctx, 3 msgs')
   })
 
-  it('returns count fallback when reasons array is empty', () => {
+  it('omits context_left when undefined', () => {
+    expect(formatRestartReasons([
+      { reason: 'instant_stall', duration_sec: 42, message_count: 3 },
+    ])).toBe('1. Instant stall — 42s, 3 msgs')
+  })
+
+  it('shows 0% ctx when context_left is 0', () => {
+    expect(formatRestartReasons([
+      { reason: 'low_context', duration_sec: 60, context_left: 0, message_count: 100 },
+    ])).toBe('1. Low context — 1m, 0% ctx, 100 msgs')
+  })
+
+  it('returns count fallback when details array is empty', () => {
     expect(formatRestartReasons([], 2)).toBe('2 restarts')
   })
 
@@ -200,10 +217,22 @@ describe('formatRestartReasons', () => {
     expect(formatRestartReasons(undefined, 1)).toBe('1 restart')
   })
 
-  it('returns empty string when no reasons and no count', () => {
+  it('returns empty string when no details and no count', () => {
     expect(formatRestartReasons()).toBe('')
     expect(formatRestartReasons([])).toBe('')
     expect(formatRestartReasons(undefined, 0)).toBe('')
+  })
+
+  it('shows 0 msgs when message_count is 0', () => {
+    expect(formatRestartReasons([
+      { reason: 'low_context', duration_sec: 10, context_left: 50, message_count: 0 },
+    ])).toBe('1. Low context — 10s, 50% ctx, 0 msgs')
+  })
+
+  it('uses raw reason code as label for unknown reasons', () => {
+    expect(formatRestartReasons([
+      { reason: 'some_new_reason', duration_sec: 30, message_count: 5 },
+    ])).toBe('1. some_new_reason — 30s, 5 msgs')
   })
 })
 
@@ -236,3 +265,4 @@ describe('formatDurationSec', () => {
     expect(formatDurationSec(86400)).toBe('24h')
   })
 })
+

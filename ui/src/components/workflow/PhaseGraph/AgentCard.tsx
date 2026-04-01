@@ -54,7 +54,7 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
       {/* Restart count badge - top left corner */}
       {(agent.restart_count ?? 0) > 0 && (
         <span className="absolute top-1 left-1">
-          <Tooltip text={formatRestartReasons(agent.restart_reasons, agent.restart_count)} placement="top">
+          <Tooltip text={formatRestartReasons(agent.restart_details, agent.restart_count)} placement="top">
             <span className="text-xs font-mono px-1 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
               ↻{agent.restart_count}
             </span>

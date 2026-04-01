@@ -11,9 +11,10 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `workflow.go` | Workflow operations (ticket + project scope): init, start/complete phase, state queries |
 | `workflow_defs.go` | Workflow definitions CRUD |
 | `workflow_config.go` | Workflow config loading |
-| `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef` |
+| `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef`, `RestartDetail` |
 | `workflow_validation.go` | Validation: layer ordering, fan-in rules, project scope constraints |
 | `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status derivation from agent_sessions |
+| `workflow_restart_details.go` | Restart detail loading: queries continued sessions for per-restart enrichment (duration, context, message count) |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |
 | `agent_definition.go` | Agent definition CRUD |
 | `findings.go` | Findings add/append/get/delete operations |

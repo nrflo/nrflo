@@ -168,7 +168,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
         {/* Restart count badge - top left corner */}
         {restartCount > 0 && (
           <span className="absolute top-1 left-1">
-            <Tooltip text={formatRestartReasons(agent?.restart_reasons ?? historyEntry?.restart_reasons, restartCount)} placement="top">
+            <Tooltip text={formatRestartReasons(agent?.restart_details ?? historyEntry?.restart_details, restartCount)} placement="top">
               <span className="text-base font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
                 ↻{restartCount}
               </span>

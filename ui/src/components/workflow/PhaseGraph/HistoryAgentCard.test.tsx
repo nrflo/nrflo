@@ -200,16 +200,19 @@ describe('HistoryAgentCard - restart badge and tooltip', () => {
 
   it('shows restart reasons in tooltip on hover', async () => {
     const user = userEvent.setup()
-    const entry = makeEntry({ restart_count: 2, restart_reasons: ['stall_restart_start_stall', 'low_context'] })
+    const entry = makeEntry({ restart_count: 2, restart_details: [
+      { reason: 'stall_restart_start_stall', duration_sec: 120, context_left: 90, message_count: 5 },
+      { reason: 'low_context', duration_sec: 725, context_left: 12, message_count: 247 },
+    ] })
     render(<HistoryAgentCard entry={entry} />)
     await user.hover(screen.getByText('↻2'))
     expect(document.body).toHaveTextContent('1. Start stall')
     expect(document.body).toHaveTextContent('2. Low context')
   })
 
-  it('shows count fallback tooltip when restart_reasons is empty', async () => {
+  it('shows count fallback tooltip when restart_details is empty', async () => {
     const user = userEvent.setup()
-    const entry = makeEntry({ restart_count: 2, restart_reasons: [] })
+    const entry = makeEntry({ restart_count: 2, restart_details: [] })
     render(<HistoryAgentCard entry={entry} />)
     await user.hover(screen.getByText('↻2'))
     expect(document.body).toHaveTextContent('2 restarts')

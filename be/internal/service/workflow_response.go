@@ -10,29 +10,7 @@ import (
 	"be/internal/repo"
 )
 
-// loadRestartReasons queries continued sessions for a workflow instance and returns
-// a map of chain root session ID -> ordered list of result_reason values.
-func (s *WorkflowService) loadRestartReasons(wfiID string) map[string][]string {
-	reasons := make(map[string][]string)
-	rows, err := s.pool.Query(`
-		SELECT COALESCE(ancestor_session_id, id) as chain_root, result_reason
-		FROM agent_sessions
-		WHERE workflow_instance_id = ? AND status = 'continued' AND result_reason IS NOT NULL
-		ORDER BY started_at`, wfiID)
-	if err != nil {
-		return reasons
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var chainRoot, reason string
-		rows.Scan(&chainRoot, &reason)
-		reasons[chainRoot] = append(reasons[chainRoot], reason)
-	}
-	return reasons
-}
-
-func (s *WorkflowService) buildActiveAgentsMap(wfiID string, reasonsMap map[string][]string) map[string]interface{} {
+func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[string][]RestartDetail) map[string]interface{} {
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
 		SELECT s.id, s.phase, s.agent_type, s.model_id, s.pid, s.result, s.started_at, s.context_left, s.restart_count,
@@ -95,8 +73,8 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, reasonsMap map[stri
 			if ancestorSessionID.Valid {
 				chainRoot = ancestorSessionID.String
 			}
-			if reasons, ok := reasonsMap[chainRoot]; ok {
-				agent["restart_reasons"] = reasons
+			if dets, ok := detailsMap[chainRoot]; ok {
+				agent["restart_details"] = dets
 			}
 		}
 		agents[key] = agent
@@ -104,7 +82,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, reasonsMap map[stri
 	return agents
 }
 
-func (s *WorkflowService) buildAgentHistory(wfiID string, reasonsMap map[string][]string) []interface{} {
+func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string][]RestartDetail) []interface{} {
 	history := []interface{}{}
 	rows, err := s.pool.Query(`
 		SELECT id, phase, agent_type, model_id, status, result, result_reason, pid, started_at, ended_at, context_left, restart_count, ancestor_session_id
@@ -169,8 +147,8 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, reasonsMap map[string]
 			if ancestorSessionID.Valid {
 				chainRoot = ancestorSessionID.String
 			}
-			if reasons, ok := reasonsMap[chainRoot]; ok {
-				entry["restart_reasons"] = reasons
+			if dets, ok := detailsMap[chainRoot]; ok {
+				entry["restart_details"] = dets
 			}
 		}
 		history = append(history, entry)

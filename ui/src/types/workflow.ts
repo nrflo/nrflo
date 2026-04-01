@@ -9,6 +9,13 @@ export interface PhaseState {
   error?: string
 }
 
+export interface RestartDetail {
+  reason: string
+  duration_sec: number
+  context_left?: number
+  message_count: number
+}
+
 // Parallel agents (v4 format)
 export interface ActiveAgentV4 {
   agent_id?: string
@@ -25,7 +32,7 @@ export interface ActiveAgentV4 {
   context_left?: number
   restart_count?: number
   restart_threshold?: number
-  restart_reasons?: string[]
+  restart_details?: RestartDetail[]
 }
 
 export interface AgentHistoryEntry {
@@ -41,7 +48,7 @@ export interface AgentHistoryEntry {
   context_left?: number
   restart_count?: number
   restart_threshold?: number
-  restart_reasons?: string[]
+  restart_details?: RestartDetail[]
 }
 
 export interface CompletedAgentRow extends AgentHistoryEntry {

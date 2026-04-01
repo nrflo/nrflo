@@ -86,6 +86,7 @@ be/
 │   │   ├── workflow_types.go    # Workflow type definitions (WorkflowDef, PhaseDef)
 │   │   ├── workflow_validation.go # Validation (layer, fan-in, project scope)
 │   │   ├── workflow_response.go # V4 response building (active agents, history)
+│   │   ├── workflow_restart_details.go # Restart detail loading (duration, context, message count)
 │   │   ├── agent.go             # Agent operations
 │   │   ├── agent_definition.go  # Agent definition CRUD
 │   │   ├── system_agent_definition.go # System agent definition CRUD (global)

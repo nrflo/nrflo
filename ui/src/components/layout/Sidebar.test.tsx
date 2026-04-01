@@ -495,34 +495,75 @@ describe('Sidebar - Chain Execution Spinner', () => {
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
   })
 
-  it('shows spinner on Chain Executions nav item when chains are running', () => {
-    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running' }] })
+  it('shows spinner and remaining count on Chain Executions nav item when chains are running', () => {
+    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running', total_items: 3, completed_items: 1 }] })
 
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /chain executions/i })
     const spinner = link.querySelector('[class*="spin-sync"]')
     expect(spinner).toBeInTheDocument()
+    // remaining = 3 - 1 = 2
+    expect(link.textContent).toContain('2')
   })
 
-  it('hides spinner when no chains are running', () => {
+  it('shows summed remaining count across multiple running chains', () => {
+    mockUseChainList.mockReturnValue({
+      data: [
+        { id: 'c1', status: 'running', total_items: 5, completed_items: 2 },
+        { id: 'c2', status: 'running', total_items: 3, completed_items: 1 },
+      ],
+    })
+
+    renderSidebar()
+
+    const link = screen.getByRole('link', { name: /chain executions/i })
+    // remaining = (5-2) + (3-1) = 3 + 2 = 5
+    expect(link.textContent).toContain('5')
+    expect(link.querySelector('[class*="spin-sync"]')).toBeInTheDocument()
+  })
+
+  it('shows count of 0 when all chain items are completed but chain is still running', () => {
+    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running', total_items: 3, completed_items: 3 }] })
+
+    renderSidebar()
+
+    const link = screen.getByRole('link', { name: /chain executions/i })
+    expect(link.textContent).toContain('0')
+    expect(link.querySelector('[class*="spin-sync"]')).toBeInTheDocument()
+  })
+
+  it('hides spinner and count when no chains are running', () => {
     mockUseChainList.mockReturnValue({ data: [] })
 
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /chain executions/i })
-    const spinner = link.querySelector('[class*="spin-sync"]')
-    expect(spinner).not.toBeInTheDocument()
+    expect(link.querySelector('[class*="spin-sync"]')).not.toBeInTheDocument()
+    expect(link.textContent?.replace(/\D/g, '')).toBe('')
   })
 
-  it('hides spinner when chain data is undefined', () => {
+  it('hides spinner and count when chain data is undefined', () => {
     mockUseChainList.mockReturnValue({ data: undefined })
 
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /chain executions/i })
-    const spinner = link.querySelector('[class*="spin-sync"]')
-    expect(spinner).not.toBeInTheDocument()
+    expect(link.querySelector('[class*="spin-sync"]')).not.toBeInTheDocument()
+    expect(link.textContent?.replace(/\D/g, '')).toBe('')
+  })
+
+  it('count appears before spinner in DOM order', () => {
+    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running', total_items: 4, completed_items: 1 }] })
+
+    renderSidebar()
+
+    const link = screen.getByRole('link', { name: /chain executions/i })
+    const spinner = link.querySelector('[class*="spin-sync"]')!
+    const countSpan = link.querySelector('span.text-xs.text-muted-foreground')!
+    expect(countSpan).toBeInTheDocument()
+    // count span must precede spinner in DOM
+    expect(countSpan.compareDocumentPosition(spinner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('shows three spinners when in_progress tickets, active project workflow, and running chains all exist', () => {
@@ -534,7 +575,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     mockUseProjectWorkflow.mockReturnValue({
       data: { all_workflows: { 'inst-1': { status: 'active' } } },
     })
-    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running' }] })
+    mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running', total_items: 5, completed_items: 2 }] })
 
     const { container } = renderSidebar()
 

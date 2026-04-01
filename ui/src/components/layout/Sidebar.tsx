@@ -65,6 +65,9 @@ export function Sidebar() {
   )
 
   const { data: runningChains } = useChainList({ status: 'running' })
+  const remainingChainTickets = runningChains?.reduce(
+    (sum, c) => sum + (c.total_items - c.completed_items), 0
+  ) ?? 0
 
   const hasDefaultBranch = useMemo(() => {
     const project = projects.find((p) => p.id === currentProject)
@@ -118,7 +121,7 @@ export function Sidebar() {
           icon={<Link2 className="h-4 w-4" />}
           label="Chain Executions"
           active={isActive('/chains')}
-          indicator={runningChains?.length ? <Spinner size="sm" /> : undefined}
+          indicator={runningChains?.length ? <><span className="text-xs text-muted-foreground">{remainingChainTickets}</span><Spinner size="sm" /></> : undefined}
         />
         <NavItem
           to="/documentation"

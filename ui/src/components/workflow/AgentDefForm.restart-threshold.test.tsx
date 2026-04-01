@@ -6,8 +6,10 @@ import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/t
 
 vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [
-    { value: 'sonnet', label: 'sonnet' },
-    { value: 'opus', label: 'opus' },
+    { label: 'Claude', options: [
+      { value: 'opus', label: 'Claude: Opus' },
+      { value: 'sonnet', label: 'Claude: Sonnet' },
+    ]},
   ],
 }))
 

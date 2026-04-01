@@ -5,16 +5,22 @@ import { AgentDefForm } from './AgentDefForm'
 
 vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [
-    { value: 'opus', label: 'opus' },
-    { value: 'opus_1m', label: 'opus_1m' },
-    { value: 'sonnet', label: 'sonnet' },
-    { value: 'haiku', label: 'haiku' },
-    { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },
-    { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
-    { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
-    { value: 'codex_gpt_high', label: 'codex_gpt_high' },
-    { value: 'codex_gpt54_normal', label: 'codex_gpt54_normal' },
-    { value: 'codex_gpt54_high', label: 'codex_gpt54_high' },
+    { label: 'Claude', options: [
+      { value: 'haiku', label: 'Claude: Haiku' },
+      { value: 'opus', label: 'Claude: Opus' },
+      { value: 'opus_1m', label: 'Claude: Opus 1M' },
+      { value: 'sonnet', label: 'Claude: Sonnet' },
+    ]},
+    { label: 'Codex', options: [
+      { value: 'codex_gpt_high', label: 'Codex: GPT (High)' },
+      { value: 'codex_gpt_normal', label: 'Codex: GPT (Normal)' },
+      { value: 'codex_gpt54_high', label: 'Codex: GPT-54 (High)' },
+      { value: 'codex_gpt54_normal', label: 'Codex: GPT-54 (Normal)' },
+    ]},
+    { label: 'OpenCode', options: [
+      { value: 'opencode_gpt_high', label: 'OpenCode: GPT (High)' },
+      { value: 'opencode_gpt_normal', label: 'OpenCode: GPT (Normal)' },
+    ]},
   ],
 }))
 
@@ -92,14 +98,14 @@ describe('AgentDefForm', () => {
 
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
-      expect(optionTexts).toEqual(['opus', 'opus_1m', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high', 'codex_gpt54_normal', 'codex_gpt54_high'])
+      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)', 'OpenCode: GPT (High)', 'OpenCode: GPT (Normal)'])
     })
 
     it('defaults to sonnet', () => {
       renderForm({ isCreate: true })
 
       const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn.textContent).toContain('sonnet')
+      expect(dropdownBtn.textContent).toContain('Claude: Sonnet')
     })
 
     it('uses initial model value when provided', () => {
@@ -109,7 +115,7 @@ describe('AgentDefForm', () => {
       })
 
       const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn.textContent).toContain('opus')
+      expect(dropdownBtn.textContent).toContain('Claude: Opus')
     })
 
     it('allows changing model selection', async () => {
@@ -120,7 +126,7 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'opencode_gpt_high')
+      await selectDropdownOption(user, getModelDropdownButton(), 'OpenCode: GPT (High)')
 
       const submitButton = screen.getByRole('button', { name: /create/i })
       await user.click(submitButton)
@@ -151,7 +157,7 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'setup-analyzer')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'You are a setup analyzer...')
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'opus')
+      await selectDropdownOption(user, getModelDropdownButton(), 'Claude: Opus')
 
       const timeoutInput = getTimeoutInput()
       await user.clear(timeoutInput)
@@ -292,7 +298,7 @@ describe('AgentDefForm', () => {
         },
       })
 
-      expect(getModelDropdownButton().textContent).toContain('haiku')
+      expect(getModelDropdownButton().textContent).toContain('Claude: Haiku')
       expect(getTimeoutInput()).toHaveValue(45)
       expect(getRestartInput()).toHaveValue(30)
       expect(screen.getByPlaceholderText(/agent prompt template/i)).toHaveValue('Initial prompt')
@@ -325,34 +331,34 @@ describe('AgentDefForm', () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'opus')
+      await selectDropdownOption(user, getModelDropdownButton(), 'Claude: Opus')
 
-      expect(getModelDropdownButton().textContent).toContain('opus')
+      expect(getModelDropdownButton().textContent).toContain('Claude: Opus')
     })
 
     it('sonnet option exists and is selectable', () => {
       renderForm({ isCreate: true })
 
       // sonnet is the default, so it's already selected
-      expect(getModelDropdownButton().textContent).toContain('sonnet')
+      expect(getModelDropdownButton().textContent).toContain('Claude: Sonnet')
     })
 
     it('haiku option exists and is selectable', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'haiku')
+      await selectDropdownOption(user, getModelDropdownButton(), 'Claude: Haiku')
 
-      expect(getModelDropdownButton().textContent).toContain('haiku')
+      expect(getModelDropdownButton().textContent).toContain('Claude: Haiku')
     })
 
     it('opencode_gpt_high option exists and is selectable', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'opencode_gpt_high')
+      await selectDropdownOption(user, getModelDropdownButton(), 'OpenCode: GPT (High)')
 
-      expect(getModelDropdownButton().textContent).toContain('opencode_gpt_high')
+      expect(getModelDropdownButton().textContent).toContain('OpenCode: GPT (High)')
     })
 
     it('no extra model options exist', async () => {
@@ -366,7 +372,7 @@ describe('AgentDefForm', () => {
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
 
       expect(optionTexts).toHaveLength(10)
-      expect(optionTexts).toEqual(['opus', 'opus_1m', 'sonnet', 'haiku', 'opencode_gpt_normal', 'opencode_gpt_high', 'codex_gpt_normal', 'codex_gpt_high', 'codex_gpt54_normal', 'codex_gpt54_high'])
+      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)', 'OpenCode: GPT (High)', 'OpenCode: GPT (Normal)'])
     })
   })
 

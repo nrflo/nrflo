@@ -126,7 +126,7 @@ export function AgentDefForm({
         <Dropdown
           value={lowConsumptionModel}
           onChange={setLowConsumptionModel}
-          options={[{ value: '', label: '(none)' }, ...modelOptions]}
+          options={[{ label: '', options: [{ value: '', label: '(none)' }] }, ...modelOptions]}
           placeholder="(none)"
         />
         <p className="text-xs text-muted-foreground mt-1">

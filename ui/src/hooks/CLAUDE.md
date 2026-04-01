@@ -110,7 +110,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useSessionPrompt.ts` | TanStack Query hook for fetching session prompt context (lazy, staleTime: Infinity) |
 | `useProjectFindings()` | TanStack Query hook for project findings (`GET /api/v1/projects/:id/findings`). Invalidated by `project_findings.updated` WS event. Defined in `useTickets.ts`. |
 | `useCLIModels()` | TanStack Query hook for CLI models (`GET /api/v1/cli-models`). Defined in `useCLIModels.ts`. |
-| `useModelOptions()` | Derives `DropdownOption[]` (`{value: model.id, label: model.display_name}`) from `useCLIModels()` data, sorted by display_name. Used by AgentForm, AgentDefForm, and CLIModelsSection. Defined in `useCLIModels.ts`. |
+| `useModelOptions()` | Derives `DropdownOptionGroup[]` from `useCLIModels()` data, grouped by `cli_type` with provider-prefixed labels (e.g., "Claude: Opus"). Groups and options sorted alphabetically. Unknown `cli_type` values fall back to capitalized name. Used by AgentForm, AgentDefForm. Defined in `useCLIModels.ts`. |
 
 ## Testing
 

@@ -33,33 +33,52 @@ describe('useModelOptions', () => {
     await waitFor(() => expect(result.current).toEqual([]))
   })
 
-  it('maps models to {value: id, label: display_name} sorted by display_name', async () => {
+  it('groups models by cli_type with prefixed labels sorted alphabetically', async () => {
     vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
-      makeCLIModel({ id: 'sonnet', display_name: 'Sonnet' }),
-      makeCLIModel({ id: 'haiku', display_name: 'Haiku' }),
-      makeCLIModel({ id: 'opus', display_name: 'Opus' }),
-    ])
-    const { result } = renderHook(() => useModelOptions(), {
-      wrapper: createWrapper(createTestQueryClient()),
-    })
-    await waitFor(() => expect(result.current).toHaveLength(3))
-    expect(result.current).toEqual([
-      { value: 'haiku', label: 'Haiku' },
-      { value: 'opus', label: 'Opus' },
-      { value: 'sonnet', label: 'Sonnet' },
-    ])
-  })
-
-  it('sorts case-insensitively by display_name', async () => {
-    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
-      makeCLIModel({ id: 'z-model', display_name: 'z-model' }),
-      makeCLIModel({ id: 'a-model', display_name: 'A-model' }),
+      makeCLIModel({ id: 'sonnet', cli_type: 'claude', display_name: 'Sonnet' }),
+      makeCLIModel({ id: 'haiku', cli_type: 'claude', display_name: 'Haiku' }),
+      makeCLIModel({ id: 'codex_gpt', cli_type: 'codex', display_name: 'GPT' }),
     ])
     const { result } = renderHook(() => useModelOptions(), {
       wrapper: createWrapper(createTestQueryClient()),
     })
     await waitFor(() => expect(result.current).toHaveLength(2))
-    expect(result.current[0].value).toBe('a-model')
-    expect(result.current[1].value).toBe('z-model')
+    expect(result.current).toEqual([
+      { label: 'Claude', options: [
+        { value: 'haiku', label: 'Claude: Haiku' },
+        { value: 'sonnet', label: 'Claude: Sonnet' },
+      ]},
+      { label: 'Codex', options: [
+        { value: 'codex_gpt', label: 'Codex: GPT' },
+      ]},
+    ])
+  })
+
+  it('falls back to capitalized cli_type for unknown provider', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'custom1', cli_type: 'myprovider', display_name: 'CustomModel' }),
+    ])
+    const { result } = renderHook(() => useModelOptions(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(result.current).toHaveLength(1))
+    expect(result.current[0].label).toBe('Myprovider')
+    expect(result.current[0].options[0].label).toBe('Myprovider: CustomModel')
+  })
+
+  it('sorts groups and options within groups alphabetically', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'oc1', cli_type: 'opencode', display_name: 'Z-model' }),
+      makeCLIModel({ id: 'oc2', cli_type: 'opencode', display_name: 'A-model' }),
+      makeCLIModel({ id: 'c1', cli_type: 'claude', display_name: 'Opus' }),
+    ])
+    const { result } = renderHook(() => useModelOptions(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(result.current).toHaveLength(2))
+    expect(result.current[0].label).toBe('Claude')
+    expect(result.current[1].label).toBe('OpenCode')
+    expect(result.current[1].options[0].label).toBe('OpenCode: A-model')
+    expect(result.current[1].options[1].label).toBe('OpenCode: Z-model')
   })
 })

@@ -5,16 +5,22 @@ import { AgentDefForm } from './AgentDefForm'
 
 vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [
-    { value: 'opus', label: 'opus' },
-    { value: 'opus_1m', label: 'opus_1m' },
-    { value: 'sonnet', label: 'sonnet' },
-    { value: 'haiku', label: 'haiku' },
-    { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },
-    { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
-    { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
-    { value: 'codex_gpt_high', label: 'codex_gpt_high' },
-    { value: 'codex_gpt54_normal', label: 'codex_gpt54_normal' },
-    { value: 'codex_gpt54_high', label: 'codex_gpt54_high' },
+    { label: 'Claude', options: [
+      { value: 'haiku', label: 'Claude: Haiku' },
+      { value: 'opus', label: 'Claude: Opus' },
+      { value: 'opus_1m', label: 'Claude: Opus 1M' },
+      { value: 'sonnet', label: 'Claude: Sonnet' },
+    ]},
+    { label: 'Codex', options: [
+      { value: 'codex_gpt_high', label: 'Codex: GPT (High)' },
+      { value: 'codex_gpt_normal', label: 'Codex: GPT (Normal)' },
+      { value: 'codex_gpt54_high', label: 'Codex: GPT-54 (High)' },
+      { value: 'codex_gpt54_normal', label: 'Codex: GPT-54 (Normal)' },
+    ]},
+    { label: 'OpenCode', options: [
+      { value: 'opencode_gpt_high', label: 'OpenCode: GPT (High)' },
+      { value: 'opencode_gpt_normal', label: 'OpenCode: GPT (Normal)' },
+    ]},
   ],
 }))
 
@@ -74,9 +80,9 @@ describe('AgentDefForm - low consumption dropdown', () => {
       const container = btn.closest('.relative')!
       const options = Array.from(container.querySelectorAll('.cursor-pointer span')).map((el) => el.textContent)
       expect(options).toContain('(none)')
-      expect(options).toContain('sonnet')
-      expect(options).toContain('haiku')
-      expect(options).toContain('opus')
+      expect(options).toContain('Claude: Sonnet')
+      expect(options).toContain('Claude: Haiku')
+      expect(options).toContain('Claude: Opus')
     })
 
     it('defaults to (none) when no initial value', () => {
@@ -93,7 +99,7 @@ describe('AgentDefForm - low consumption dropdown', () => {
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
-      await selectDropdownOption(user, getLCDropdownButton(), 'sonnet')
+      await selectDropdownOption(user, getLCDropdownButton(), 'Claude: Sonnet')
       await user.click(screen.getByRole('button', { name: /^create$/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
@@ -120,7 +126,7 @@ describe('AgentDefForm - low consumption dropdown', () => {
         isCreate: false,
         initial: { low_consumption_model: 'haiku' },
       })
-      expect(getLCDropdownButton().textContent).toContain('haiku')
+      expect(getLCDropdownButton().textContent).toContain('Claude: Haiku')
     })
 
     it('allows clearing back to (none) in update mode', async () => {
@@ -132,7 +138,7 @@ describe('AgentDefForm - low consumption dropdown', () => {
         onSubmit,
       })
 
-      expect(getLCDropdownButton().textContent).toContain('haiku')
+      expect(getLCDropdownButton().textContent).toContain('Claude: Haiku')
       await selectDropdownOption(user, getLCDropdownButton(), '(none)')
       await user.click(screen.getByRole('button', { name: /^save$/i }))
 

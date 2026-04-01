@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { formatDateTime, formatElapsedTime } from '@/lib/utils'
 import type { AgentHistoryEntry, AgentSession } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
@@ -76,46 +77,48 @@ export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect }: 
 
   return (
     <div>
-      <div className="border border-border rounded-lg text-xs font-mono" data-testid="agent-table">
-        <div className="px-4 py-2 border-b border-border bg-muted/30">
-          <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider" data-testid="agent-table-header">
-            <span className="flex-1 shrink-0">Agent</span>
-            <span className="flex-1 shrink-0">Phase</span>
-            <span className="w-28 shrink-0">Model</span>
-            <span className="w-16 shrink-0">Result</span>
-            <span className="w-20 shrink-0">Duration</span>
-            <span className="flex-1 shrink-0">Completed At</span>
-          </div>
-        </div>
-        {pageItems.map((entry, i) => (
-          <div
-            key={`${entry.session_id || 'agent'}-${safePage}-${i}`}
-            onClick={() => handleClick(entry)}
-            className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors"
-            data-testid="agent-row"
-          >
-            <span className="flex-1 shrink-0">{entry.agent_type}</span>
-            <span className="flex-1 shrink-0">{entry.phase.replace(/_/g, ' ')}</span>
-            <span className="w-28 shrink-0 text-muted-foreground">{entry.model_id ?? '-'}</span>
-            <span className="w-16 shrink-0">
-              {entry.result && (
-                <Badge
-                  variant={entry.result === 'pass' ? 'success' : 'destructive'}
-                  className="text-[10px] px-1 py-0"
-                >
-                  {entry.result}
-                </Badge>
-              )}
-            </span>
-            <span className="w-20 shrink-0 text-muted-foreground">
-              {displayDuration(entry)}
-            </span>
-            <span className="flex-1 shrink-0 text-muted-foreground">
-              {entry.ended_at ? formatDateTime(entry.ended_at) : '-'}
-            </span>
-          </div>
-        ))}
-      </div>
+      <Table data-testid="agent-table">
+        <TableHeader>
+          <TableRow data-testid="agent-table-header">
+            <TableHead>Agent</TableHead>
+            <TableHead>Phase</TableHead>
+            <TableHead className="w-28">Model</TableHead>
+            <TableHead className="w-16">Result</TableHead>
+            <TableHead className="w-20">Duration</TableHead>
+            <TableHead>Completed At</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pageItems.map((entry, i) => (
+            <TableRow
+              key={`${entry.session_id || 'agent'}-${safePage}-${i}`}
+              onClick={() => handleClick(entry)}
+              className="cursor-pointer hover:bg-muted/50"
+              data-testid="agent-row"
+            >
+              <TableCell>{entry.agent_type}</TableCell>
+              <TableCell>{entry.phase.replace(/_/g, ' ')}</TableCell>
+              <TableCell className="text-muted-foreground">{entry.model_id ?? '-'}</TableCell>
+              <TableCell>
+                {entry.result && (
+                  <Badge
+                    variant={entry.result === 'pass' ? 'success' : 'destructive'}
+                    className="text-[10px] px-1 py-0"
+                  >
+                    {entry.result}
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {displayDuration(entry)}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {entry.ended_at ? formatDateTime(entry.ended_at) : '-'}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       {pageCount > 1 && (
         <div className="flex items-center justify-between pt-3 text-xs text-muted-foreground">
           <span>

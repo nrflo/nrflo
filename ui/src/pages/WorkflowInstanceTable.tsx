@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { cn, formatDateTime, formatDurationSec } from '@/lib/utils'
 import type { WorkflowState } from '@/types/workflow'
 
@@ -32,61 +33,63 @@ export function WorkflowInstanceTable({
 
   return (
     <div>
-      <div className="border border-border rounded-lg text-xs font-mono">
-        <div className="px-4 py-2 border-b border-border bg-muted/30">
-          <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            <span className="flex-1 shrink-0">Workflow</span>
-            <span className="w-24 shrink-0">Instance</span>
-            <span className="w-16 shrink-0">Status</span>
-            <span className="w-24 shrink-0">Duration</span>
-            <span className="flex-1 shrink-0">Completed At</span>
-            <span className="w-10 shrink-0"></span>
-          </div>
-        </div>
-        {pageItems.map((id) => {
-          const state = instances[id]
-          const isSelected = id === selectedId
-          const status = state?.status
-          const isFailed = status === 'failed'
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Workflow</TableHead>
+            <TableHead className="w-24">Instance</TableHead>
+            <TableHead className="w-16">Status</TableHead>
+            <TableHead className="w-24">Duration</TableHead>
+            <TableHead>Completed At</TableHead>
+            <TableHead className="w-10"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pageItems.map((id) => {
+            const state = instances[id]
+            const isSelected = id === selectedId
+            const status = state?.status
+            const isFailed = status === 'failed'
 
-          return (
-            <div
-              key={id}
-              onClick={() => onSelect(id)}
-              className={cn(
-                'flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors',
-                isSelected && 'bg-primary/10'
-              )}
-              data-testid="instance-row"
-            >
-              <span className="flex-1 shrink-0">{state?.workflow ?? '-'}</span>
-              <span className="w-24 shrink-0 text-muted-foreground">#{id.substring(0, 8)}</span>
-              <span className="w-16 shrink-0">
-                <Badge
-                  variant={isFailed ? 'destructive' : 'success'}
-                  className="text-[10px] px-1 py-0"
-                >
-                  {isFailed ? 'fail' : 'pass'}
-                </Badge>
-              </span>
-              <span className="w-24 shrink-0 text-muted-foreground">
-                {state?.total_duration_sec ? formatDurationSec(state.total_duration_sec) : '-'}
-              </span>
-              <span className="flex-1 shrink-0 text-muted-foreground">
-                {state?.completed_at ? formatDateTime(state.completed_at) : '-'}
-              </span>
-              <span className="w-10 shrink-0">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDelete(id) }}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </span>
-            </div>
-          )
-        })}
-      </div>
+            return (
+              <TableRow
+                key={id}
+                onClick={() => onSelect(id)}
+                className={cn(
+                  'cursor-pointer hover:bg-muted/50',
+                  isSelected && 'bg-primary/10'
+                )}
+                data-testid="instance-row"
+              >
+                <TableCell>{state?.workflow ?? '-'}</TableCell>
+                <TableCell className="text-muted-foreground">#{id.substring(0, 8)}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={isFailed ? 'destructive' : 'success'}
+                    className="text-[10px] px-1 py-0"
+                  >
+                    {isFailed ? 'fail' : 'pass'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {state?.total_duration_sec ? formatDurationSec(state.total_duration_sec) : '-'}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {state?.completed_at ? formatDateTime(state.completed_at) : '-'}
+                </TableCell>
+                <TableCell className="w-10">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(id) }}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
       {pageCount > 1 && (
         <div className="flex items-center justify-between pt-3 text-xs text-muted-foreground">
           <span>

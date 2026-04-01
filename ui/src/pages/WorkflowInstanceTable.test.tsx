@@ -85,7 +85,7 @@ describe('WorkflowInstanceTable', () => {
       />
     )
     const row = screen.getByText(SHORT_ID).closest('[data-testid="instance-row"]')!
-    const cells = row.querySelectorAll(':scope > span')
+    const cells = row.querySelectorAll(':scope > td')
     // Duration cell (index 3) and Completed At cell (index 4) should show dash
     expect(cells[3].textContent).toBe('-')
     expect(cells[4].textContent).toBe('-')

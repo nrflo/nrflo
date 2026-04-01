@@ -8,7 +8,7 @@ interface FindingsPanelProps {
   selectedAgentType: string | null
 }
 
-function formatValue(value: unknown): { text: string; isJson: boolean } {
+export function formatValue(value: unknown): { text: string; isJson: boolean } {
   if (value === null || value === undefined) return { text: String(value), isJson: false }
   if (typeof value === 'object') {
     return { text: JSON.stringify(value, null, 2), isJson: true }
@@ -26,7 +26,7 @@ function formatValue(value: unknown): { text: string; isJson: boolean } {
   return { text: str, isJson: false }
 }
 
-function FindingRow({ findingKey, value }: { findingKey: string; value: unknown }) {
+export function FindingRow({ findingKey, value }: { findingKey: string; value: unknown }) {
   const [expanded, setExpanded] = useState(false)
   const { text, isJson } = formatValue(value)
   const isLong = text.length > 80 || text.includes('\n')
@@ -60,7 +60,7 @@ function FindingRow({ findingKey, value }: { findingKey: string; value: unknown 
   )
 }
 
-function isInternalKey(key: string): boolean {
+export function isInternalKey(key: string): boolean {
   return key.startsWith('_')
 }
 

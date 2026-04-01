@@ -37,6 +37,8 @@ function renderDetail(
   selectedAgent: SelectedAgentData,
   agentFindings?: WorkflowFindings,
   projectFindings?: Record<string, unknown>,
+  phaseLayers?: Record<string, number>,
+  workflowFindings?: Record<string, unknown>,
 ) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -45,6 +47,8 @@ function renderDetail(
         selectedAgent={selectedAgent}
         agentFindings={agentFindings}
         projectFindings={projectFindings}
+        phaseLayers={phaseLayers}
+        workflowFindings={workflowFindings}
       />
     </QueryClientProvider>
   )
@@ -59,11 +63,12 @@ describe('AgentLogDetail - Findings tab', () => {
     })
   })
 
-  it('renders Messages, Context, and Findings tab buttons', async () => {
+  it('renders Messages, Context, Findings, and All Findings tab buttons', async () => {
     renderDetail(makeSelectedAgent())
     expect(screen.getByText('Messages')).toBeInTheDocument()
     expect(screen.getByText('Context')).toBeInTheDocument()
     expect(screen.getByText('Findings')).toBeInTheDocument()
+    expect(screen.getByText('All Findings')).toBeInTheDocument()
   })
 
   it('Messages is the active tab by default', async () => {
@@ -129,5 +134,90 @@ describe('AgentLogDetail - Findings tab', () => {
 
     await user.click(screen.getByText('Messages'))
     expect(screen.queryByText('Project Findings')).not.toBeInTheDocument()
+  })
+})
+
+describe('AgentLogDetail - All Findings tab', () => {
+  beforeEach(() => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+      session_id: 'session-1',
+      messages: [],
+      total: 0,
+    })
+  })
+
+  it('clicking All Findings tab renders AllFindingsPanel empty state', async () => {
+    const user = userEvent.setup()
+    renderDetail(makeSelectedAgent())
+
+    await user.click(screen.getByText('All Findings'))
+
+    expect(screen.getByText('No findings available')).toBeInTheDocument()
+  })
+
+  it('All Findings tab shows workflow findings', async () => {
+    const user = userEvent.setup()
+    renderDetail(
+      makeSelectedAgent(),
+      undefined,
+      undefined,
+      undefined,
+      { final_result: 'success' },
+    )
+
+    await user.click(screen.getByText('All Findings'))
+
+    expect(screen.getByText('Workflow Findings')).toBeInTheDocument()
+    expect(screen.getByText('final_result')).toBeInTheDocument()
+  })
+
+  it('All Findings tab shows ALL agent findings (not filtered to selected)', async () => {
+    const user = userEvent.setup()
+    renderDetail(
+      makeSelectedAgent({ agent: makeAgent({ agent_type: 'implementor' }) }),
+      {
+        implementor: { result: 'done' },
+        'qa-verifier': { tests: 10 },
+      },
+    )
+
+    await user.click(screen.getByText('All Findings'))
+
+    expect(screen.getByText('implementor')).toBeInTheDocument()
+    expect(screen.getByText('qa-verifier')).toBeInTheDocument()
+  })
+
+  it('All Findings tab shows agent sections with layer labels when phaseLayers provided', async () => {
+    const user = userEvent.setup()
+    renderDetail(
+      makeSelectedAgent(),
+      { implementor: { result: 'done' } },
+      undefined,
+      { implementor: 2 },
+    )
+
+    await user.click(screen.getByText('All Findings'))
+
+    expect(screen.getByText('implementor (L2)')).toBeInTheDocument()
+  })
+
+  it('switching from All Findings back to Findings shows filtered agent view', async () => {
+    const user = userEvent.setup()
+    renderDetail(
+      makeSelectedAgent({ agent: makeAgent({ agent_type: 'implementor' }) }),
+      {
+        implementor: { result: 'done' },
+        'qa-verifier': { tests: 10 },
+      },
+    )
+
+    await user.click(screen.getByText('All Findings'))
+    // Both agents visible in All Findings
+    expect(screen.getByText('qa-verifier')).toBeInTheDocument()
+
+    await user.click(screen.getByText('Findings'))
+    // Back to filtered: only implementor
+    expect(screen.queryByText('qa-verifier')).not.toBeInTheDocument()
+    expect(screen.getByText('implementor')).toBeInTheDocument()
   })
 })

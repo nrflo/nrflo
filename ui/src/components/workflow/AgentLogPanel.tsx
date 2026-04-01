@@ -15,6 +15,8 @@ interface AgentLogPanelProps {
   resumePending?: boolean
   agentFindings?: WorkflowFindings
   projectFindings?: Record<string, unknown>
+  phaseLayers?: Record<string, number>
+  workflowFindings?: Record<string, unknown>
 }
 
 export function AgentLogPanel({
@@ -27,6 +29,8 @@ export function AgentLogPanel({
   resumePending,
   agentFindings,
   projectFindings,
+  phaseLayers,
+  workflowFindings,
 }: AgentLogPanelProps) {
   const runningAgents = useMemo(() => {
     return Object.values(activeAgents).filter(a => !a.result)
@@ -76,7 +80,7 @@ export function AgentLogPanel({
         {collapsed ? (
           <CollapsedBar />
         ) : (
-          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} />
+          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} />
         )}
       </PanelShell>
     )
@@ -101,7 +105,7 @@ export function AgentLogPanel({
             }
             return (
               <div key={key} className="flex-1 min-h-0 overflow-hidden border-b border-border last:border-b-0">
-                <AgentLogDetail selectedAgent={agentData} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} />
+                <AgentLogDetail selectedAgent={agentData} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} />
               </div>
             )
           })}

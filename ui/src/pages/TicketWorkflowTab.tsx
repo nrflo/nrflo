@@ -217,6 +217,8 @@ export function TicketWorkflowTab({
               resumePending={resumeSessionMutation.isPending}
               agentFindings={displayedState?.findings}
               projectFindings={projectFindings}
+              phaseLayers={displayedState?.phase_layers}
+              workflowFindings={displayedState?.workflow_findings}
             />
           )}
         </div>

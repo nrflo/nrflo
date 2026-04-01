@@ -71,6 +71,7 @@ export interface WorkflowState {
   phase_layers?: Record<string, number>
   active_agents?: Record<string, ActiveAgentV4>  // key is "agent_type:cli:model"
   findings?: WorkflowFindings
+  workflow_findings?: Record<string, unknown>
   agent_history?: AgentHistoryEntry[]
 }
 

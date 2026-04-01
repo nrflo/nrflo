@@ -353,6 +353,8 @@ export function WorkflowTabContent({
           resumePending={resumeSessionPending}
           agentFindings={displayedState?.findings}
           projectFindings={projectFindings}
+          phaseLayers={displayedState?.phase_layers}
+          workflowFindings={displayedState?.workflow_findings}
         />
       )}
     </div>

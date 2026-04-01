@@ -263,6 +263,19 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	// Combined findings: workflow-level + per-session
 	result["findings"] = s.BuildCombinedFindings(wi)
 
+	// Workflow-level findings (excluding internal keys starting with _)
+	if wfFindings := wi.GetFindings(); len(wfFindings) > 0 {
+		filtered := make(map[string]interface{})
+		for k, v := range wfFindings {
+			if !strings.HasPrefix(k, "_") {
+				filtered[k] = v
+			}
+		}
+		if len(filtered) > 0 {
+			result["workflow_findings"] = filtered
+		}
+	}
+
 	// Extract workflow_final_result from agent session findings
 	if finalResult := s.ExtractWorkflowFinalResult(wi); finalResult != "" {
 		result["workflow_final_result"] = finalResult

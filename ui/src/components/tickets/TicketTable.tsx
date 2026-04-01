@@ -28,7 +28,7 @@ const COLUMNS: SortableColumn[] = [
   { key: 'title', label: 'Title' },
   { key: 'status', label: 'Status', className: 'w-24' },
   { key: 'priority', label: 'Priority', className: 'w-20' },
-  { key: 'created_by', label: 'Created By', className: 'w-24' },
+  { key: 'created_by', label: 'Created By', className: 'w-28' },
   { key: 'updated_at', label: 'Updated', className: 'w-24' },
 ]
 
@@ -127,7 +127,7 @@ export function TicketTable({
                   </Badge>
                 </td>
                 <td className="py-1.5 pr-3 w-20">{priorityLabel(ticket.priority)}</td>
-                <td className="py-1.5 pr-3 w-24 text-muted-foreground truncate max-w-[6rem]">
+                <td className="py-1.5 pr-3 w-28 text-muted-foreground truncate max-w-[7rem]">
                   {ticket.created_by || '-'}
                 </td>
                 <td className="py-1.5 pr-3 w-24 text-muted-foreground">

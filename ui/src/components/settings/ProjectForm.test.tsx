@@ -48,14 +48,15 @@ describe('ProjectForm — worktree tooltip', () => {
     expect(screen.queryByText(/Git worktrees give each ticket/)).not.toBeInTheDocument()
   })
 
-  it('tooltip applies whitespace-normal max-w-sm classes', async () => {
+  it('tooltip applies max-w-sm class without whitespace-normal', async () => {
     const user = userEvent.setup()
     render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
 
     await user.hover(screen.getByText('Use Git Worktrees'))
 
-    const tooltip = document.body.querySelector('.whitespace-normal.max-w-sm')
+    const tooltip = document.body.querySelector('.max-w-sm')
     expect(tooltip).toBeInTheDocument()
+    expect(tooltip).not.toHaveClass('whitespace-normal')
   })
 })
 

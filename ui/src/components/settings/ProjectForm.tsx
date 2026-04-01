@@ -159,7 +159,7 @@ export function ProjectForm({
           <Tooltip
             text="Git worktrees give each ticket workflow an isolated copy of the repo so agents don't interfere with each other or the main working directory.\n\nApplies to ticket-scoped workflows only. Requires default_branch to be configured.\n\nLifecycle: creates a feature branch + worktree at /tmp → agents work in isolation → on success, merges to default branch and cleans up → on failure, force-removes worktree and discards changes."
             placement="top"
-            className="whitespace-normal max-w-sm"
+            className="max-w-sm"
           >
             <Toggle
               checked={formData.use_git_worktrees}

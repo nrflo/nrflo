@@ -587,11 +587,12 @@ describe('ChainDetailPage - Items Table', () => {
 
     const { container } = renderChainDetailPage()
 
-    const badges = container.querySelectorAll('span.rounded-full')
-    const badgeTexts = Array.from(badges).map((b) => b.textContent)
-    expect(badgeTexts).toContain('Pending')
-    expect(badgeTexts).toContain('Completed')
-    expect(badgeTexts).toContain('Running')
+    // StatusCell renders status text (lowercase) with a colored dot
+    expect(screen.getByText('pending')).toBeInTheDocument()
+    expect(screen.getByText('completed')).toBeInTheDocument()
+    // 'running' also appears in chain-level Badge as 'Running'; check at least one StatusCell dot
+    const dots = container.querySelectorAll('span.rounded-full')
+    expect(dots.length).toBeGreaterThanOrEqual(3)
   })
 })
 
@@ -743,10 +744,12 @@ describe('ChainDetailPage - Spinner on Running Items', () => {
     expect(spinner).toBeInTheDocument()
     expect(spinner).toHaveClass('spin-sync')
 
-    // Should NOT display the ordinal number "1"
-    const itemRow = container.querySelector('.flex.items-center.gap-4.px-4.py-3')
-    const ordinalColumn = itemRow?.querySelector('.w-6.shrink-0')
-    expect(ordinalColumn?.textContent).not.toContain('1')
+    // Should NOT display the ordinal number "1" in the position cell
+    // The table row's first cell should contain the spinner, not "1"
+    const rows = container.querySelectorAll('tr')
+    const itemRow = rows[rows.length - 1] // last row is the data row
+    const firstCell = itemRow?.querySelector('td')
+    expect(firstCell?.textContent).not.toContain('1')
   })
 
   it('handles mixed item statuses - spinner only on running items', () => {

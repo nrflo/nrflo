@@ -6,6 +6,8 @@ import { useTickingClock } from '@/hooks/useElapsedTime'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
+import { StatusCell } from '@/components/ui/StatusCell'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
 import { AppendToChainDialog } from '@/components/chains/AppendToChainDialog'
 import { useChain, useStartChain, useCancelChain } from '@/hooks/useChains'
@@ -18,51 +20,40 @@ import {
 } from '@/lib/utils'
 import type { ChainExecution, ChainExecutionItem } from '@/types/chain'
 
-function ItemStatusBadge({ status }: { status: string }) {
-  return (
-    <Badge className={statusColor(status)}>
-      {capitalize(status)}
-    </Badge>
-  )
-}
-
 function ItemRow({ item }: { item: ChainExecutionItem }) {
   const duration = item.started_at
     ? formatElapsedTime(item.started_at, item.ended_at)
     : null
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0">
-      <span className="flex items-center justify-end text-xs font-mono text-muted-foreground w-6 shrink-0">
+    <TableRow>
+      <TableCell className="w-8 text-center font-mono text-xs text-muted-foreground">
         {item.status === 'running' ? <Spinner size="sm" /> : item.position + 1}
-      </span>
-      <Link
-        to={`/tickets/${item.ticket_id}`}
-        className="text-sm font-mono text-primary hover:underline shrink-0"
-      >
-        {item.ticket_id}
-      </Link>
-      {item.ticket_title && (
-        <span className="text-sm text-muted-foreground truncate min-w-0">
-          {item.ticket_title}
-        </span>
-      )}
-      <div className="flex-1" />
-      <ItemStatusBadge status={item.status} />
-      {item.started_at && (
-        <span className="text-xs text-muted-foreground w-16 shrink-0">
-          {formatRelativeTime(item.started_at)}
-        </span>
-      )}
-      {duration && (
-        <span className="text-xs text-muted-foreground w-16 shrink-0">
-          {duration}
-        </span>
-      )}
-      <span className="text-xs font-mono text-muted-foreground shrink-0 w-20">
+      </TableCell>
+      <TableCell>
+        <Link
+          to={`/tickets/${item.ticket_id}`}
+          className="text-sm font-mono text-primary hover:underline"
+        >
+          {item.ticket_id}
+        </Link>
+        {item.ticket_title && (
+          <span className="ml-2 text-sm text-muted-foreground truncate">
+            {item.ticket_title}
+          </span>
+        )}
+      </TableCell>
+      <TableCell><StatusCell status={item.status} /></TableCell>
+      <TableCell className="text-xs text-muted-foreground">
+        {item.started_at ? formatRelativeTime(item.started_at) : '—'}
+      </TableCell>
+      <TableCell className="text-xs text-muted-foreground">
+        {duration ?? '—'}
+      </TableCell>
+      <TableCell className="text-xs font-mono text-muted-foreground text-right">
         {item.total_tokens_used ? `${formatTokenCount(item.total_tokens_used)} tokens` : '—'}
-      </span>
-    </div>
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -209,28 +200,31 @@ export function ChainDetailPage() {
         <ChainActions chain={displayChain} onEdit={() => setShowEdit(true)} onAppend={() => setShowAppend(true)} />
       </div>
 
-      <div className="border border-border rounded-lg">
-        <div className="px-4 py-2 border-b border-border bg-muted/30">
-          <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            <span className="w-6 shrink-0 text-right">#</span>
-            <span className="shrink-0">Ticket</span>
-            <span className="flex-1" />
-            <span className="shrink-0">Status</span>
-            <span className="w-16 shrink-0">Started</span>
-            <span className="w-16 shrink-0">Duration</span>
-            <span className="w-20 shrink-0">Tokens</span>
-          </div>
-        </div>
-        {items.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            No items in this chain
-          </div>
-        ) : (
-          [...items]
-            .sort((a, b) => a.position - b.position)
-            .map((item) => <ItemRow key={item.id} item={item} />)
-        )}
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-8 text-center">#</TableHead>
+            <TableHead>Ticket</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Started</TableHead>
+            <TableHead>Duration</TableHead>
+            <TableHead className="text-right">Tokens</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center text-muted-foreground text-sm">
+                No items in this chain
+              </TableCell>
+            </TableRow>
+          ) : (
+            [...items]
+              .sort((a, b) => a.position - b.position)
+              .map((item) => <ItemRow key={item.id} item={item} />)
+          )}
+        </TableBody>
+      </Table>
 
       <CreateChainDialog
         open={showEdit}

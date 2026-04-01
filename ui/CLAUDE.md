@@ -19,7 +19,7 @@ This is the web UI for the nrworkflow ticket management system. It's a React + T
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
 | `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, ChainOrderList, AppendToChainDialog) |
 | `src/components/git/` | Git commit detail dialog and diff viewer components |
-| `src/components/settings/` | Settings page sections (tab layout): GlobalSettingsSection (low consumption mode toggle, session retention limit number input with tooltip, stall start/running timeout inputs), ProjectsSection (project CRUD), SystemAgentsSection (system agent definitions CRUD), DefaultTemplatesSection (default template CRUD with readonly/built-in support), DefaultTemplateForm (template form with MarkdownEditor) |
+| `src/components/settings/` | Settings page sections (tab layout): GlobalSettingsSection (low consumption mode toggle, session retention limit number input with tooltip, stall start/running timeout inputs), ProjectsSection (project CRUD), SystemAgentsSection (system agent definitions CRUD), DefaultTemplatesSection (default template CRUD with readonly/built-in support), DefaultTemplateForm (template form with MarkdownEditor), CLIModelsSection (CLI model CRUD with readonly/built-in support), CLIModelForm (CLI model form with cli_type warnings) |
 | `src/pages/DocumentationPage.tsx` | Agent documentation page — fetches and renders markdown from `/api/v1/docs/agent-manual` via `react-markdown` |
 | `src/pages/LogsPage.tsx` | Server logs page — displays BE/FE log files with sub-tab switching, fetched via `useLogs` hook with 5s polling |
 | `src/pages/` | Route page components (see [pages/CLAUDE.md](src/pages/CLAUDE.md)) |
@@ -248,7 +248,7 @@ Logs are written to `/tmp/nrworkflow/logs/be.log` and `/tmp/nrworkflow/logs/fe.l
 - Findings display with workflow-level and agent findings separated
 - Create/edit/close tickets
 - Multi-project support via project selector
-- Settings page with tabbed layout (General, Projects, System Agents, Default Templates): project management (create/update/delete, Toggle for git worktrees), system agent definitions CRUD (global agents like conflict-resolver), default template CRUD (readonly built-in templates + user-created templates with MarkdownEditor)
+- Settings page with tabbed layout (General, Projects, System Agents, Default Templates, CLI Models): project management (create/update/delete, Toggle for git worktrees), system agent definitions CRUD (global agents like conflict-resolver), default template CRUD (readonly built-in templates + user-created templates with MarkdownEditor), CLI model CRUD (readonly built-in models + user-created models with cli_type badges and warnings)
 - Documentation page with agent manual (rendered markdown from API)
 - Logs page with BE/FE sub-tabs, 5s polling via `useLogs` hook (`GET /api/v1/logs?type={be|fe}`)
 - Running agents indicator: `RunningAgentsIndicator` in header shows animated spinner with count badge when agents are running across any project. Hover popover lists agents grouped by project with clickable links. Data fetched via `useRunningAgents` hook (`GET /api/v1/agents/running`, not project-scoped). WS event `global.running_agents` invalidates the query for real-time updates. Types in `src/types/agents.ts`, API in `src/api/agents.ts`.

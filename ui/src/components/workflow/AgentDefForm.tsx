@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
+import { useModelOptions } from '@/hooks/useCLIModels'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
 export function AgentDefForm({
@@ -28,6 +29,7 @@ export function AgentDefForm({
   const [lowConsumptionModel, setLowConsumptionModel] = useState(initial?.low_consumption_model || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const modelOptions = useModelOptions()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,18 +66,7 @@ export function AgentDefForm({
           <Dropdown
             value={model}
             onChange={setModel}
-            options={[
-              { value: 'opus', label: 'opus' },
-              { value: 'opus_1m', label: 'opus_1m' },
-              { value: 'sonnet', label: 'sonnet' },
-              { value: 'haiku', label: 'haiku' },
-              { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },
-              { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
-              { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
-              { value: 'codex_gpt_high', label: 'codex_gpt_high' },
-              { value: 'codex_gpt54_normal', label: 'codex_gpt54_normal' },
-              { value: 'codex_gpt54_high', label: 'codex_gpt54_high' },
-            ]}
+            options={modelOptions}
           />
         </div>
         <div className="w-32">
@@ -135,19 +126,7 @@ export function AgentDefForm({
         <Dropdown
           value={lowConsumptionModel}
           onChange={setLowConsumptionModel}
-          options={[
-            { value: '', label: '(none)' },
-            { value: 'opus', label: 'opus' },
-            { value: 'opus_1m', label: 'opus_1m' },
-            { value: 'sonnet', label: 'sonnet' },
-            { value: 'haiku', label: 'haiku' },
-            { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },
-            { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
-            { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
-            { value: 'codex_gpt_high', label: 'codex_gpt_high' },
-            { value: 'codex_gpt54_normal', label: 'codex_gpt54_normal' },
-            { value: 'codex_gpt54_high', label: 'codex_gpt54_high' },
-          ]}
+          options={[{ value: '', label: '(none)' }, ...modelOptions]}
           placeholder="(none)"
         />
         <p className="text-xs text-muted-foreground mt-1">

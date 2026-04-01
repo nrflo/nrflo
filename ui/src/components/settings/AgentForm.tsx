@@ -1,21 +1,9 @@
 import { X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Textarea } from '@/components/ui/Textarea'
-
-export const MODEL_OPTIONS: DropdownOption[] = [
-  { value: 'sonnet', label: 'Sonnet' },
-  { value: 'opus', label: 'Opus' },
-  { value: 'opus_1m', label: 'Opus (1M)' },
-  { value: 'haiku', label: 'Haiku' },
-  { value: 'opencode_gpt_normal', label: 'OpenCode GPT (Normal)' },
-  { value: 'opencode_gpt_high', label: 'OpenCode GPT (High)' },
-  { value: 'codex_gpt_normal', label: 'Codex GPT (Normal)' },
-  { value: 'codex_gpt_high', label: 'Codex GPT (High)' },
-  { value: 'codex_gpt54_normal', label: 'Codex GPT-54 (Normal)' },
-  { value: 'codex_gpt54_high', label: 'Codex GPT-54 (High)' },
-]
+import { useModelOptions } from '@/hooks/useCLIModels'
 
 export interface AgentFormData {
   id: string
@@ -62,6 +50,8 @@ export function AgentForm({
   mutation: { isPending: boolean; isError: boolean; error: any }
   isCreate?: boolean
 }) {
+  const modelOptions = useModelOptions()
+
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
       <div className="grid grid-cols-3 gap-3">
@@ -84,7 +74,7 @@ export function AgentForm({
           <Dropdown
             value={formData.model}
             onChange={(val) => setFormData({ ...formData, model: val })}
-            options={MODEL_OPTIONS}
+            options={modelOptions}
           />
         </div>
         <div>

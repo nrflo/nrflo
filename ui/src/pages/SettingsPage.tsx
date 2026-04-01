@@ -5,14 +5,16 @@ import { GlobalSettingsSection } from '@/components/settings/GlobalSettingsSecti
 import { ProjectsSection } from '@/components/settings/ProjectsSection'
 import { SystemAgentsSection } from '@/components/settings/SystemAgentsSection'
 import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesSection'
+import { CLIModelsSection } from '@/components/settings/CLIModelsSection'
 
-type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates'
+type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models'
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'projects', label: 'Projects' },
   { id: 'system-agents', label: 'System Agents' },
   { id: 'default-templates', label: 'Default Templates' },
+  { id: 'cli-models', label: 'CLI Models' },
 ]
 
 export function SettingsPage() {
@@ -50,6 +52,7 @@ export function SettingsPage() {
       {activeTab === 'projects' && <ProjectsSection />}
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
+      {activeTab === 'cli-models' && <CLIModelsSection />}
     </div>
   )
 }

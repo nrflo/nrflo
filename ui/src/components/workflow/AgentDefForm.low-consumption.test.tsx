@@ -3,6 +3,21 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
+vi.mock('@/hooks/useCLIModels', () => ({
+  useModelOptions: () => [
+    { value: 'opus', label: 'opus' },
+    { value: 'opus_1m', label: 'opus_1m' },
+    { value: 'sonnet', label: 'sonnet' },
+    { value: 'haiku', label: 'haiku' },
+    { value: 'opencode_gpt_normal', label: 'opencode_gpt_normal' },
+    { value: 'opencode_gpt_high', label: 'opencode_gpt_high' },
+    { value: 'codex_gpt_normal', label: 'codex_gpt_normal' },
+    { value: 'codex_gpt_high', label: 'codex_gpt_high' },
+    { value: 'codex_gpt54_normal', label: 'codex_gpt54_normal' },
+    { value: 'codex_gpt54_high', label: 'codex_gpt54_high' },
+  ],
+}))
+
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: any) => (
     <textarea

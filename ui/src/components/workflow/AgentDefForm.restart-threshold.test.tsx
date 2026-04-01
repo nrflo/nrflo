@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
+vi.mock('@/hooks/useCLIModels', () => ({
+  useModelOptions: () => [
+    { value: 'sonnet', label: 'sonnet' },
+    { value: 'opus', label: 'opus' },
+  ],
+}))
+
 function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
   return {
     id: 'test-agent',

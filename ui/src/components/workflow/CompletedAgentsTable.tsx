@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { ResultIcon } from '@/components/ui/ResultIcon'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { formatDateTime, formatElapsedTime } from '@/lib/utils'
 import type { AgentHistoryEntry, AgentSession } from '@/types/workflow'
@@ -93,7 +93,7 @@ export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect }: 
             <TableRow
               key={`${entry.session_id || 'agent'}-${safePage}-${i}`}
               onClick={() => handleClick(entry)}
-              className="cursor-pointer hover:bg-muted/50"
+              className="cursor-pointer"
               data-testid="agent-row"
             >
               <TableCell>{entry.agent_type}</TableCell>
@@ -101,12 +101,7 @@ export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect }: 
               <TableCell className="text-muted-foreground">{entry.model_id ?? '-'}</TableCell>
               <TableCell>
                 {entry.result && (
-                  <Badge
-                    variant={entry.result === 'pass' ? 'success' : 'destructive'}
-                    className="text-[10px] px-1 py-0"
-                  >
-                    {entry.result}
-                  </Badge>
+                  <ResultIcon result={entry.result} className="text-[10px]" />
                 )}
               </TableCell>
               <TableCell className="text-muted-foreground">

@@ -4,7 +4,8 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { StatusCell } from '@/components/ui/StatusCell'
 import { IssueTypeIcon } from '@/components/tickets/IssueTypeIcon'
-import { cn, formatRelativeTime, priorityLabel } from '@/lib/utils'
+import { PriorityIcon } from '@/components/ui/PriorityIcon'
+import { cn, formatRelativeTime } from '@/lib/utils'
 import type { Ticket, PendingTicket } from '@/types/ticket'
 
 interface TicketTableProps {
@@ -105,7 +106,7 @@ export function TicketTable({
             <TableRow
               key={ticket.id}
               onClick={() => navigate(`/tickets/${encodeURIComponent(ticket.id)}`)}
-              className="hover:bg-muted/50 cursor-pointer"
+              className="cursor-pointer"
               data-testid="table-row"
             >
               <TableCell className="w-10">
@@ -125,7 +126,7 @@ export function TicketTable({
               <TableCell className="w-24">
                 <StatusCell status={ticket.status} />
               </TableCell>
-              <TableCell className="w-20">{priorityLabel(ticket.priority)}</TableCell>
+              <TableCell className="w-20"><PriorityIcon priority={ticket.priority} /></TableCell>
               <TableCell className="w-28 text-muted-foreground truncate">
                 {ticket.created_by || '-'}
               </TableCell>

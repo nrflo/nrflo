@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, FileText, Tag, Layers } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { ResultIcon } from '@/components/ui/ResultIcon'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
@@ -140,9 +141,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
             {result && (
               <>
                 <span>·</span>
-                <Badge variant={result === 'pass' ? 'success' : 'destructive'} className="text-[10px] px-1 py-0">
-                  {result}
-                </Badge>
+                <ResultIcon result={result} className="text-[10px]" />
               </>
             )}
           </div>

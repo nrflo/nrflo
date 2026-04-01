@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { ResultIcon } from '@/components/ui/ResultIcon'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { cn, formatDateTime, formatDurationSec } from '@/lib/utils'
 import type { WorkflowState } from '@/types/workflow'
@@ -56,7 +56,7 @@ export function WorkflowInstanceTable({
                 key={id}
                 onClick={() => onSelect(id)}
                 className={cn(
-                  'cursor-pointer hover:bg-muted/50',
+                  'cursor-pointer',
                   isSelected && 'bg-primary/10'
                 )}
                 data-testid="instance-row"
@@ -64,12 +64,7 @@ export function WorkflowInstanceTable({
                 <TableCell>{state?.workflow ?? '-'}</TableCell>
                 <TableCell className="text-muted-foreground">#{id.substring(0, 8)}</TableCell>
                 <TableCell>
-                  <Badge
-                    variant={isFailed ? 'destructive' : 'success'}
-                    className="text-[10px] px-1 py-0"
-                  >
-                    {isFailed ? 'fail' : 'pass'}
-                  </Badge>
+                  <ResultIcon result={isFailed ? 'fail' : 'pass'} className="text-[10px]" />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {state?.total_duration_sec ? formatDurationSec(state.total_duration_sec) : '-'}

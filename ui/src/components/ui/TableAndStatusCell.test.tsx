@@ -112,34 +112,34 @@ describe('StatusCell', () => {
   })
 
   it.each([
-    ['open', 'bg-blue-500', false],
-    ['in_progress', 'bg-yellow-500', true],
-    ['running', 'bg-yellow-500', true],
-    ['closed', 'bg-green-500', false],
-    ['completed', 'bg-green-500', false],
-    ['failed', 'bg-red-500', false],
-    ['error', 'bg-red-500', false],
-    ['pending', 'bg-gray-400', false],
-    ['canceled', 'bg-orange-500', false],
-    ['skipped', 'bg-gray-400', false],
-    ['unknown_xyz', 'bg-gray-400', false],
-  ] as const)('status=%s → dot=%s animate-pulse=%s', (status, expectedColor, pulsed) => {
+    ['open', 'text-blue-500', false],
+    ['in_progress', 'text-yellow-500', true],
+    ['running', 'text-yellow-500', true],
+    ['closed', 'text-green-500', false],
+    ['completed', 'text-green-500', false],
+    ['failed', 'text-red-500', false],
+    ['error', 'text-red-500', false],
+    ['pending', 'text-gray-400', false],
+    ['canceled', 'text-orange-500', false],
+    ['skipped', 'text-gray-400', false],
+    ['unknown_xyz', 'text-gray-400', false],
+  ] as const)('status=%s → icon color=%s animate-pulse=%s', (status, expectedColor, pulsed) => {
     const { container } = render(<StatusCell status={status} />)
-    const dot = container.querySelector('span > span') as HTMLElement
-    expect(dot.className).toContain(expectedColor)
+    const svg = container.querySelector('svg') as SVGElement
+    expect(svg).toBeInTheDocument()
+    expect(svg.getAttribute('class')).toContain(expectedColor)
     if (pulsed) {
-      expect(dot.className).toContain('animate-pulse')
+      expect(svg.getAttribute('class')).toContain('animate-pulse')
     } else {
-      expect(dot.className).not.toContain('animate-pulse')
+      expect(svg.getAttribute('class')).not.toContain('animate-pulse')
     }
   })
 
-  it('dot has shape classes h-1.5 w-1.5 rounded-full', () => {
+  it('icon has size classes h-4 w-4', () => {
     const { container } = render(<StatusCell status="pending" />)
-    const dot = container.querySelector('span > span') as HTMLElement
-    expect(dot.className).toContain('h-1.5')
-    expect(dot.className).toContain('w-1.5')
-    expect(dot.className).toContain('rounded-full')
+    const svg = container.querySelector('svg') as SVGElement
+    expect(svg.getAttribute('class')).toContain('h-4')
+    expect(svg.getAttribute('class')).toContain('w-4')
   })
 
   it('merges className onto wrapper span', () => {

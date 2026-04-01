@@ -1,7 +1,7 @@
 import { Handle, Position } from '@xyflow/react'
 import { Check, Circle, AlertCircle, SkipForward, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/Badge'
+import { ResultIcon } from '@/components/ui/ResultIcon'
 import { AgentCard } from './AgentCard'
 import { HistoryAgentCard } from './HistoryAgentCard'
 import { AgentSessionCard } from '../AgentSessionCard'
@@ -40,37 +40,6 @@ function getNodeStyles(status: PhaseStatus) {
     default:
       return cn(base, 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900')
   }
-}
-
-function getResultBadge(result?: string | null) {
-  if (!result) return null
-
-  if (result === 'pass') {
-    return (
-      <Badge className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-        pass
-      </Badge>
-    )
-  }
-  if (result === 'fail') {
-    return (
-      <Badge className="text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-        fail
-      </Badge>
-    )
-  }
-  if (result === 'skipped') {
-    return (
-      <Badge className="text-xs bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-        skipped
-      </Badge>
-    )
-  }
-  return (
-    <Badge variant="secondary" className="text-xs">
-      {result}
-    </Badge>
-  )
 }
 
 export interface PhaseFlowNodeData extends PhaseNodeData {
@@ -161,7 +130,7 @@ export function PhaseFlowNode({ data }: PhaseFlowNodeProps) {
           )}>
             {name.replace(/_/g, ' ')}
           </span>
-          {getResultBadge(result)}
+          {result && <ResultIcon result={result} className="text-xs" />}
         </div>
 
         {/* Active agents row - grid layout for full-width distribution */}

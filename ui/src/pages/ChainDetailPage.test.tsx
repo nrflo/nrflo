@@ -587,12 +587,12 @@ describe('ChainDetailPage - Items Table', () => {
 
     const { container } = renderChainDetailPage()
 
-    // StatusCell renders status text (lowercase) with a colored dot
+    // StatusCell renders status text with an SVG icon
     expect(screen.getByText('pending')).toBeInTheDocument()
     expect(screen.getByText('completed')).toBeInTheDocument()
-    // 'running' also appears in chain-level Badge as 'Running'; check at least one StatusCell dot
-    const dots = container.querySelectorAll('span.rounded-full')
-    expect(dots.length).toBeGreaterThanOrEqual(3)
+    // Each StatusCell renders an SVG icon; check at least 3 are present
+    const icons = container.querySelectorAll('svg')
+    expect(icons.length).toBeGreaterThanOrEqual(3)
   })
 })
 

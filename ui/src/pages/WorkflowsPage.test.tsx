@@ -413,9 +413,6 @@ describe('WorkflowsPage', () => {
       mockWorkflowDefs(defs)
       vi.mocked(workflowsApi.deleteWorkflowDef).mockResolvedValue({ status: 'ok' })
 
-      // Mock window.confirm
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
       renderPage()
 
       await waitFor(() => {
@@ -425,14 +422,12 @@ describe('WorkflowsPage', () => {
       const deleteButton = screen.getByTitle('Delete workflow')
       await user.click(deleteButton)
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Delete workflow 'feature'")
-      )
+      const confirmButton = await screen.findByRole('button', { name: 'Delete' })
+      await user.click(confirmButton)
+
       await waitFor(() => {
         expect(workflowsApi.deleteWorkflowDef).toHaveBeenCalledWith('feature')
       })
-
-      confirmSpy.mockRestore()
     })
 
     it('does not delete when confirmation is cancelled', async () => {
@@ -445,8 +440,6 @@ describe('WorkflowsPage', () => {
       }
       mockWorkflowDefs(defs)
 
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-
       renderPage()
 
       await waitFor(() => {
@@ -456,10 +449,10 @@ describe('WorkflowsPage', () => {
       const deleteButton = screen.getByTitle('Delete workflow')
       await user.click(deleteButton)
 
-      expect(confirmSpy).toHaveBeenCalled()
-      expect(workflowsApi.deleteWorkflowDef).not.toHaveBeenCalled()
+      const cancelButton = await screen.findByRole('button', { name: 'Cancel' })
+      await user.click(cancelButton)
 
-      confirmSpy.mockRestore()
+      expect(workflowsApi.deleteWorkflowDef).not.toHaveBeenCalled()
     })
   })
 

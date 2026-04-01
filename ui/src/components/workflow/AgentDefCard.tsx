@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Pencil, Trash2, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { AgentDefForm } from '@/components/workflow/AgentDefForm'
 import { updateAgentDef, deleteAgentDef } from '@/api/agentDefs'
@@ -20,6 +21,7 @@ export function AgentDefCard({
 }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const queryClient = useQueryClient()
   const currentProject = useProjectStore((s) => s.currentProject)
 
@@ -103,11 +105,7 @@ export function AgentDefCard({
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-            onClick={() => {
-              if (confirm(`Delete agent definition '${def.id}'?`)) {
-                deleteMutation.mutate()
-              }
-            }}
+            onClick={() => setShowDeleteConfirm(true)}
             title="Delete"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -129,6 +127,15 @@ export function AgentDefCard({
           />
         </div>
       )}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => deleteMutation.mutate()}
+        title="Delete Agent Definition"
+        message={`Delete agent definition '${def.id}'?`}
+        confirmLabel="Delete"
+        variant="destructive"
+      />
     </div>
   )
 }

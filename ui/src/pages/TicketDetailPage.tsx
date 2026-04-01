@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { RunWorkflowDialog } from '@/components/workflow/RunWorkflowDialog'
 import { RunEpicWorkflowDialog } from '@/components/workflow/RunEpicWorkflowDialog'
 import { useGoBack } from '@/hooks/useGoBack'
@@ -49,6 +50,7 @@ export function TicketDetailPage() {
   const [activeTab, setActiveTab] = useState<'hierarchy' | 'workflow' | 'description' | 'details'>(
     tabParam === 'workflow' || tabParam === 'description' || tabParam === 'details' || tabParam === 'hierarchy' ? tabParam : 'workflow'
   )
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
   const [interactiveSession, setInteractiveSession] = useState<{ sessionId: string; agentType: string } | null>(null)
@@ -102,8 +104,12 @@ export function TicketDetailPage() {
     setCloseReason('')
   }
 
-  const handleDelete = async () => {
-    if (!id || !confirm('Are you sure you want to delete this ticket?')) return
+  const handleDelete = () => {
+    setShowDeleteConfirm(true)
+  }
+
+  const doDelete = async () => {
+    if (!id) return
     await deleteMutation.mutateAsync(id)
     navigate('/tickets')
   }
@@ -307,6 +313,17 @@ export function TicketDetailPage() {
         )}
 
       </div>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={doDelete}
+        title="Delete Ticket"
+        message="Are you sure you want to delete this ticket?"
+        confirmLabel="Delete"
+        variant="destructive"
+      />
 
       {/* Run Workflow Dialog */}
       {id && (

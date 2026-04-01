@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Dialog, DialogHeader, DialogBody } from '@/components/ui/Dialog'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AgentDefsSection } from '@/components/workflow/AgentDefsSection'
 import { WorkflowDefForm } from '@/components/workflow/WorkflowDefForm'
 import { listWorkflowDefs, createWorkflowDef, updateWorkflowDef, deleteWorkflowDef } from '@/api/workflows'
@@ -139,6 +140,7 @@ export function WorkflowsPage() {
   const currentProject = useProjectStore((s) => s.currentProject)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingWorkflow, setEditingWorkflow] = useState<EditingWorkflow | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const queryKey = ['workflow-defs', currentProject] as const
 
@@ -172,9 +174,7 @@ export function WorkflowsPage() {
   })
 
   const handleDelete = (id: string) => {
-    if (confirm(`Delete workflow '${id}'? This cannot be undone.`)) {
-      deleteMutation.mutate(id)
-    }
+    setDeleteTarget(id)
   }
 
   return (
@@ -228,6 +228,17 @@ export function WorkflowsPage() {
           />
         </DialogBody>
       </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
+        title="Delete Workflow"
+        message={`Delete workflow '${deleteTarget}'? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+      />
 
       {/* Edit Dialog */}
       <Dialog open={!!editingWorkflow} onClose={() => setEditingWorkflow(null)} className="max-w-[85vw]">

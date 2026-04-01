@@ -62,10 +62,15 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
         </span>
       )}
 
-      {/* Status + Model */}
+      {/* Status + Model + Tag */}
       <div className="flex items-center gap-1.5">
         <AgentStatusIcon result={agent.result} isInteractive={isInteractive} />
         <span className="text-xs font-medium">{isInteractive ? 'Interactive' : modelName}</span>
+        {agent.tag && (
+          <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">
+            {agent.tag}
+          </Badge>
+        )}
       </div>
 
       {/* Elapsed time + context */}

@@ -271,6 +271,29 @@ describe('AgentFlowNode', () => {
     })
   })
 
+  // Tag badge
+  it('renders emerald tag badge when agent.tag is set', () => {
+    const data = makeData({ agent: makeAgent({ tag: 'backend' }) })
+    render(<AgentFlowNode data={data} />)
+    expect(screen.getByText('backend')).toBeInTheDocument()
+  })
+
+  it('does not render tag badge when agent.tag is absent', () => {
+    const data = makeData({ agent: makeAgent({ tag: undefined }) })
+    render(<AgentFlowNode data={data} />)
+    // No element with a tag-like text that would be a badge
+    expect(screen.queryByText('backend')).not.toBeInTheDocument()
+  })
+
+  it('renders tag badge from historyEntry.tag when no active agent', () => {
+    const data = makeData({
+      agent: undefined,
+      historyEntry: makeHistory({ tag: 'frontend' }),
+    })
+    render(<AgentFlowNode data={data} />)
+    expect(screen.getByText('frontend')).toBeInTheDocument()
+  })
+
   // Unified card sizing — all variants use w-[242px] sm:w-[330px] and min-h-[90px]
   it('all card variants use w-[242px] (mobile base) and min-h-[90px]', () => {
     const variants = [

@@ -48,6 +48,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
   const isRunning = agent && !agent.result
   useTickingClock(!!isRunning)
   const result = agent?.result || historyEntry?.result
+  const tag = agent?.tag || historyEntry?.tag
   const hasMessages = session && session.message_count > 0
 
   // Get model name
@@ -159,10 +160,15 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           )}
         </div>
 
-        {/* Row 2: status icon + model */}
+        {/* Row 2: status icon + model + tag */}
         <div className="flex items-center justify-center gap-3">
           <StatusIcon result={result} isRunning={!!isRunning} />
           <span className="font-semibold">{modelName}</span>
+          {tag && (
+            <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">
+              {tag}
+            </Badge>
+          )}
         </div>
 
         {/* Restart count badge - top left corner */}

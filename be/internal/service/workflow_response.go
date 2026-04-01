@@ -14,7 +14,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
 		SELECT s.id, s.phase, s.agent_type, s.model_id, s.pid, s.result, s.started_at, s.context_left, s.restart_count,
-		       ad.restart_threshold, s.ancestor_session_id
+		       ad.restart_threshold, s.ancestor_session_id, ad.tag
 		FROM agent_sessions s
 		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
@@ -28,10 +28,10 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 
 	for rows.Next() {
 		var id, agentType string
-		var phase, modelID, agentResult, startedAt, ancestorSessionID sql.NullString
+		var phase, modelID, agentResult, startedAt, ancestorSessionID, tag sql.NullString
 		var pid, contextLeft, restartThreshold sql.NullInt64
 		var restartCount int
-		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID)
+		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID, &tag)
 
 		key := agentType
 		agent := map[string]interface{}{
@@ -68,6 +68,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 		if restartThreshold.Valid {
 			agent["restart_threshold"] = restartThreshold.Int64
 		}
+		if tag.Valid && tag.String != "" {
+			agent["tag"] = tag.String
+		}
 		if restartCount > 0 {
 			chainRoot := id
 			if ancestorSessionID.Valid {
@@ -85,10 +88,14 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string][]RestartDetail) []interface{} {
 	history := []interface{}{}
 	rows, err := s.pool.Query(`
-		SELECT id, phase, agent_type, model_id, status, result, result_reason, pid, started_at, ended_at, context_left, restart_count, ancestor_session_id
-		FROM agent_sessions
-		WHERE workflow_instance_id = ? AND status NOT IN ('running', 'continued')
-		ORDER BY created_at`, wfiID)
+		SELECT s.id, s.phase, s.agent_type, s.model_id, s.status, s.result, s.result_reason, s.pid, s.started_at, s.ended_at, s.context_left, s.restart_count, s.ancestor_session_id, ad.tag
+		FROM agent_sessions s
+		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
+		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
+			AND LOWER(ad.workflow_id) = LOWER(wi.workflow_id)
+			AND LOWER(ad.id) = LOWER(s.agent_type)
+		WHERE s.workflow_instance_id = ? AND s.status NOT IN ('running', 'continued')
+		ORDER BY s.created_at`, wfiID)
 	if err != nil {
 		return history
 	}
@@ -96,10 +103,10 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 
 	for rows.Next() {
 		var id, agentType string
-		var phase, modelID, status, agentResult, resultReason, startedAt, endedAt, ancestorSessionID sql.NullString
+		var phase, modelID, status, agentResult, resultReason, startedAt, endedAt, ancestorSessionID, tag sql.NullString
 		var pid, contextLeft sql.NullInt64
 		var restartCount int
-		rows.Scan(&id, &phase, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft, &restartCount, &ancestorSessionID)
+		rows.Scan(&id, &phase, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft, &restartCount, &ancestorSessionID, &tag)
 
 		entry := map[string]interface{}{
 			"agent_id":   id,
@@ -140,6 +147,9 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 		}
 		if contextLeft.Valid {
 			entry["context_left"] = contextLeft.Int64
+		}
+		if tag.Valid && tag.String != "" {
+			entry["tag"] = tag.String
 		}
 		entry["restart_count"] = restartCount
 		if restartCount > 0 {

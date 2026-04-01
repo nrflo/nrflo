@@ -33,6 +33,7 @@ export interface ActiveAgentV4 {
   restart_count?: number
   restart_threshold?: number
   restart_details?: RestartDetail[]
+  tag?: string
 }
 
 export interface AgentHistoryEntry {
@@ -49,6 +50,7 @@ export interface AgentHistoryEntry {
   restart_count?: number
   restart_threshold?: number
   restart_details?: RestartDetail[]
+  tag?: string
 }
 
 export interface CompletedAgentRow extends AgentHistoryEntry {

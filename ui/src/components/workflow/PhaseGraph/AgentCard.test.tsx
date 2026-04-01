@@ -148,6 +148,19 @@ describe('AgentCard', () => {
     const button = screen.getByRole('button')
     expect(button.className).toContain('relative')
   })
+
+  // Tag badge
+  it('renders emerald tag badge when agent.tag is set', () => {
+    const agent = makeAgent({ tag: 'backend' })
+    render(<AgentCard agent={agent} />)
+    expect(screen.getByText('backend')).toBeInTheDocument()
+  })
+
+  it('does not render tag badge when agent.tag is absent', () => {
+    const agent = makeAgent({ tag: undefined })
+    render(<AgentCard agent={agent} />)
+    expect(screen.queryByText('backend')).not.toBeInTheDocument()
+  })
 })
 
 describe('AgentCard - user_interactive status', () => {

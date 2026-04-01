@@ -6,8 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TicketListPage } from './TicketListPage'
 import type { TicketListResponse } from '@/types/ticket'
 
-vi.mock('@/components/tickets/TicketList', () => ({
-  TicketList: () => <div data-testid="ticket-list" />,
+vi.mock('@/components/tickets/TicketTable', () => ({
+  TicketTable: () => <div data-testid="ticket-table" />,
 }))
 
 const mockUseTicketList = vi.fn()
@@ -166,6 +166,24 @@ describe('TicketListPage', () => {
         sort_by: 'updated_at',
         sort_order: 'desc',
       })
+    })
+  })
+
+  describe('filter changes', () => {
+    it('resets page to 1 when status filter changes', async () => {
+      const user = userEvent.setup()
+      mockUseTicketList.mockReturnValue({
+        ...idle,
+        data: makeListResponse({ total_count: 90, total_pages: 3 }),
+      })
+      renderPage('/tickets?status=open&page=2')
+
+      // Open the status dropdown (button showing "Open") and select "All Statuses"
+      await user.click(screen.getByRole('button', { name: 'Open' }))
+      await user.click(screen.getByText('All Statuses'))
+
+      const calls = mockUseTicketList.mock.calls
+      expect(calls[calls.length - 1][0]).toMatchObject({ page: 1 })
     })
   })
 

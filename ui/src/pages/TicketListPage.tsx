@@ -2,16 +2,8 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { TicketList } from '@/components/tickets/TicketList'
+import { TicketTable } from '@/components/tickets/TicketTable'
 import { useTicketList, useTicketSearch } from '@/hooks/useTickets'
-
-const SORT_OPTIONS = [
-  { value: 'updated_at', label: 'Updated' },
-  { value: 'created_at', label: 'Created' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'title', label: 'Title' },
-  { value: 'status', label: 'Status' },
-]
 
 const PER_PAGE = 30
 
@@ -52,13 +44,18 @@ export function TicketListPage() {
     setSearchParams(newParams)
   }
 
-  const handleSortChange = (key: string, value: string) => {
+  const handleSortColumnClick = (column: string) => {
     const newParams = new URLSearchParams(searchParams)
-    const defaultValue = key === 'sort_by' ? 'updated_at' : 'desc'
-    if (value && value !== defaultValue) {
-      newParams.set(key, value)
+    const newOrder = column === sortBy ? (sortOrder === 'desc' ? 'asc' : 'desc') : 'desc'
+    if (column !== 'updated_at') {
+      newParams.set('sort_by', column)
     } else {
-      newParams.delete(key)
+      newParams.delete('sort_by')
+    }
+    if (newOrder !== 'desc') {
+      newParams.set('sort_order', newOrder)
+    } else {
+      newParams.delete('sort_order')
     }
     newParams.delete('page')
     setSearchParams(newParams)
@@ -126,23 +123,6 @@ export function TicketListPage() {
             ]}
           />
 
-          <Dropdown
-            value={sortBy}
-            onChange={(v) => handleSortChange('sort_by', v)}
-            className="w-36"
-            options={SORT_OPTIONS}
-          />
-
-          <Dropdown
-            value={sortOrder}
-            onChange={(v) => handleSortChange('sort_order', v)}
-            className="w-32"
-            options={[
-              { value: 'desc', label: 'Newest' },
-              { value: 'asc', label: 'Oldest' },
-            ]}
-          />
-
           {(statusFilter || typeFilter) && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               Clear filters
@@ -157,7 +137,7 @@ export function TicketListPage() {
         </Button>
       )}
 
-      <TicketList
+      <TicketTable
         tickets={tickets}
         isLoading={isLoading}
         error={error as Error | null}
@@ -166,6 +146,9 @@ export function TicketListPage() {
             ? 'No tickets match your search'
             : 'No tickets found. Create one to get started!'
         }
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortColumnClick}
       />
 
       {!isSearching && totalPages > 1 && (

@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Loader2, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AgentLogDetail } from './AgentLogDetail'
 import type { ActiveAgentV4, AgentSession, WorkflowFindings } from '@/types/workflow'
@@ -66,6 +66,21 @@ export function AgentLogPanel({
     onAgentSelect(null)
   }, [liveAgentResult, runningAgents]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Tab state for multi-agent view (hooks must be before early returns)
+  const [activeTabKey, setActiveTabKey] = useState<string | null>(null)
+
+  const agentTabKeys = useMemo(() =>
+    runningAgents.map(a => `${a.agent_type}-${a.model_id}-${a.phase}`),
+    [runningAgents]
+  )
+
+  // Auto-select first tab when current selection is stale or missing
+  useEffect(() => {
+    if (agentTabKeys.length === 0) return
+    if (activeTabKey && agentTabKeys.includes(activeTabKey)) return
+    setActiveTabKey(agentTabKeys[0])
+  }, [agentTabKeys, activeTabKey])
+
   // Detail mode: show explicitly selected agent (from PhaseGraph click on history agent)
   if (selectedAgent) {
     const resolvedSelected = { ...selectedAgent, agent: liveAgent }
@@ -89,26 +104,49 @@ export function AgentLogPanel({
   // No selected agent — show all running agents in detail view
   if (runningAgents.length === 0) return null
 
+  const selectedTabAgent = runningAgents.find((_, i) => agentTabKeys[i] === activeTabKey)
+
   return (
     <PanelShell collapsed={collapsed}>
       {collapsed ? (
         <CollapsedBar />
       ) : (
         <div className="flex flex-col h-full">
-          {runningAgents.map((agent) => {
-            const key = `${agent.agent_type}-${agent.model_id}-${agent.phase}`
-            const session = findSession(agent)
+          <div className="flex items-center gap-1 px-3 py-1 border-b border-border shrink-0">
+            {runningAgents.map((agent, i) => {
+              const key = agentTabKeys[i]
+              const label = (agent.phase || agent.agent_type || '').replace(/_/g, ' ')
+              return (
+                <button
+                  key={key}
+                  data-testid="agent-tab"
+                  onClick={() => setActiveTabKey(key)}
+                  className={cn(
+                    'px-2.5 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1.5',
+                    activeTabKey === key
+                      ? 'bg-muted text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
+                >
+                  <Loader2 className="h-3 w-3 spin-sync text-yellow-500" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          {selectedTabAgent && (() => {
+            const session = findSession(selectedTabAgent)
             const agentData: SelectedAgentData = {
-              phaseName: agent.phase || agent.agent_type || '',
-              agent,
+              phaseName: selectedTabAgent.phase || selectedTabAgent.agent_type || '',
+              agent: selectedTabAgent,
               session,
             }
             return (
-              <div key={key} className="flex-1 min-h-0 overflow-hidden border-b border-border last:border-b-0">
+              <div className="flex-1 min-h-0 overflow-hidden">
                 <AgentLogDetail selectedAgent={agentData} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} />
               </div>
             )
-          })}
+          })()}
         </div>
       )}
     </PanelShell>

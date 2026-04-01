@@ -121,7 +121,7 @@ describe('AgentLogPanel', () => {
       expect(container.innerHTML).toBe('')
     })
 
-    it('renders all running agents in detail view when no selection', () => {
+    it('renders one AgentLogDetail with tabs when multiple agents running', () => {
       const agents = {
         'implementor:claude:sonnet': makeAgent(),
         'tester:claude:sonnet': makeAgent({
@@ -131,8 +131,8 @@ describe('AgentLogPanel', () => {
         }),
       }
       renderPanel({ activeAgents: agents, sessions: [makeSession()] })
-      const details = screen.getAllByTestId('agent-log-detail')
-      expect(details).toHaveLength(2)
+      expect(screen.getAllByTestId('agent-log-detail')).toHaveLength(1)
+      expect(screen.getAllByTestId('agent-tab')).toHaveLength(2)
     })
 
     it('shows collapsed bar when collapsed with running agents', () => {

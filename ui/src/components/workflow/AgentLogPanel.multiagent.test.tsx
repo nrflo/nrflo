@@ -9,6 +9,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AgentLogPanel } from './AgentLogPanel'
 import type { ActiveAgentV4, AgentSession } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
@@ -93,7 +94,7 @@ describe('AgentLogPanel - multi-agent detail view', () => {
       expect(screen.getAllByTestId('agent-log-detail')).toHaveLength(1)
     })
 
-    it('renders one AgentLogDetail per running agent (three agents)', () => {
+    it('renders one AgentLogDetail with tabs for three running agents', () => {
       renderPanel({
         activeAgents: {
           'a1': makeAgent({ agent_id: 'a1', agent_type: 'implementor', phase: 'implementation' }),
@@ -102,7 +103,8 @@ describe('AgentLogPanel - multi-agent detail view', () => {
         },
         sessions: [],
       })
-      expect(screen.getAllByTestId('agent-log-detail')).toHaveLength(3)
+      expect(screen.getAllByTestId('agent-log-detail')).toHaveLength(1)
+      expect(screen.getAllByTestId('agent-tab')).toHaveLength(3)
     })
 
     it('excludes completed agents (with result) from multi-agent view', () => {
@@ -173,6 +175,43 @@ describe('AgentLogPanel - multi-agent detail view', () => {
         sessions: [],
       })
       expect(screen.getByTestId('detail-phase')).toHaveTextContent('setup-analyzer')
+    })
+  })
+
+  describe('tab interaction', () => {
+    it('clicking a second tab switches the displayed agent', async () => {
+      const user = userEvent.setup()
+      renderPanel({
+        activeAgents: {
+          'a1': makeAgent({ agent_id: 'a1', agent_type: 'implementor', phase: 'implementation' }),
+          'a2': makeAgent({ agent_id: 'a2', agent_type: 'tester', phase: 'verification' }),
+        },
+        sessions: [],
+      })
+      expect(screen.getByTestId('detail-agent-type')).toHaveTextContent('implementor')
+      const tabs = screen.getAllByTestId('agent-tab')
+      await user.click(tabs[1])
+      expect(screen.getByTestId('detail-agent-type')).toHaveTextContent('tester')
+    })
+
+    it('auto-selects next tab when current active tab agent completes', () => {
+      const a1 = makeAgent({ agent_id: 'a1', agent_type: 'implementor', phase: 'implementation' })
+      const a2 = makeAgent({ agent_id: 'a2', agent_type: 'tester', phase: 'verification' })
+      const onAgentSelect = vi.fn()
+
+      const { rerender } = renderPanel({ activeAgents: { 'a1': a1, 'a2': a2 }, sessions: [] })
+      expect(screen.getByTestId('detail-agent-type')).toHaveTextContent('implementor')
+
+      rerender(
+        <AgentLogPanel
+          activeAgents={{ 'a1': { ...a1, result: 'pass' }, 'a2': a2 }}
+          sessions={[]}
+          collapsed={false}
+          selectedAgent={null}
+          onAgentSelect={onAgentSelect}
+        />
+      )
+      expect(screen.getByTestId('detail-agent-type')).toHaveTextContent('tester')
     })
   })
 

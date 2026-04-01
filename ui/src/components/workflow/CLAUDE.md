@@ -44,7 +44,7 @@ PhaseTimeline (PhaseTimeline.tsx)
 
 The right-side panel (`AgentLogPanel.tsx`) always renders agents in full detail view via `AgentLogDetail`:
 
-- **Multi-agent view** (default, no selection): When running agents exist, each is shown in its own `AgentLogDetail` instance in a vertically-split layout (`flex-1 min-h-0 overflow-hidden` per agent, separated by `border-b`). No back button in this mode.
+- **Multi-agent tabbed view** (default, no selection): When running agents exist, a horizontal tab bar appears at the top with one tab per running agent (phase name with underscore→space, Loader2 spinner). Only the selected tab's `AgentLogDetail` is rendered at a time. Tab auto-selects the first available agent when the current tab's agent completes. No back button in this mode.
 - **Selected agent view**: When a specific agent is selected (e.g., clicking a completed agent in PhaseGraph), shows that single agent's `AgentLogDetail` with a back button that returns to the multi-agent view (`onAgentSelect(null)`).
 - **Auto-switch**: When a selected agent completes and other agents are still running, automatically returns to multi-agent view.
 

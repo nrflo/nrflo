@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { FindingsPanel } from './FindingsPanel'
 import { AllFindingsPanel } from './AllFindingsPanel'
 import { parseToolName, ToolBadge } from './LogMessage'
@@ -255,31 +256,33 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                 </button>
               ))}
             </div>
-            <div className="border border-border rounded-lg text-xs font-mono" data-testid="message-table">
-              <div className="px-4 py-2 border-b border-border bg-muted/30">
-                <div className="flex items-start gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider" data-testid="message-table-header">
-                  <span className="w-[90px] shrink-0">Time</span>
-                  <span className="w-[100px] shrink-0">Tool</span>
-                  <span className="flex-1 min-w-0">Message</span>
-                </div>
-              </div>
-              {[...filteredMessages].reverse().map((msg, i) => {
-                const { toolName, rest } = parseToolName(msg.content)
-                return (
-                  <div key={i} className={cn("flex items-start gap-4 px-4 py-1 border-b border-border last:border-b-0", toolName === 'rate_limit' && "bg-orange-50 dark:bg-orange-950/20")} data-testid="message-row">
-                    <span className="w-[90px] shrink-0 text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                      {formatTime(msg.created_at)}
-                    </span>
-                    <span className="w-[100px] shrink-0 overflow-hidden">
-                      {toolName && <ToolBadge name={toolName} />}
-                    </span>
-                    <span className="flex-1 min-w-0 whitespace-pre-wrap break-words text-foreground/90">
-                      {rest}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
+            <Table className="[&>table]:text-xs" data-testid="message-table">
+              <TableHeader>
+                <TableRow data-testid="message-table-header">
+                  <TableHead className="w-[90px]">Time</TableHead>
+                  <TableHead className="w-[100px]">Tool</TableHead>
+                  <TableHead>Message</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...filteredMessages].reverse().map((msg, i) => {
+                  const { toolName, rest } = parseToolName(msg.content)
+                  return (
+                    <TableRow key={i} className={cn(toolName === 'rate_limit' && "bg-orange-50 dark:bg-orange-950/20")} data-testid="message-row">
+                      <TableCell className="py-1 w-[90px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                        {formatTime(msg.created_at)}
+                      </TableCell>
+                      <TableCell className="py-1 w-[100px] overflow-hidden">
+                        {toolName && <ToolBadge name={toolName} />}
+                      </TableCell>
+                      <TableCell className="py-1 whitespace-pre-wrap break-words text-foreground/90 align-top">
+                        {rest}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

@@ -101,14 +101,14 @@ describe('TicketTable', () => {
     it('Type column is the first header', () => {
       renderTable({ tickets: [makeTicket()] })
       const header = document.querySelector('[data-testid="table-header"]')!
-      const headers = header.querySelectorAll(':scope > span')
+      const headers = header.querySelectorAll(':scope > th')
       expect(headers[0]).toHaveTextContent('Type')
     })
 
     it('type icon cell is the first cell in each row', () => {
       renderTable({ tickets: [makeTicket()] })
       const firstRow = document.querySelector('[data-testid="table-row"]')!
-      const cells = firstRow.querySelectorAll(':scope > span')
+      const cells = firstRow.querySelectorAll(':scope > td')
       // First cell should contain an SVG (the IssueTypeIcon), not text like an ID
       expect(cells[0].querySelector('svg')).toBeInTheDocument()
       // Second cell should contain the ticket ID text
@@ -123,7 +123,7 @@ describe('TicketTable', () => {
       })
       expect(screen.getByText('PROJ-42')).toBeInTheDocument()
       expect(screen.getByText('My ticket')).toBeInTheDocument()
-      expect(screen.getByText('in progress')).toBeInTheDocument()
+      expect(screen.getByText('in_progress')).toBeInTheDocument()
       expect(screen.getByText('Critical')).toBeInTheDocument()  // priorityLabel(1) = 'Critical'
       expect(screen.getByText('bob')).toBeInTheDocument()
     })

@@ -251,7 +251,7 @@ describe('AgentLogDetail', () => {
 
       // Verify header structure
       const header = document.querySelector('[data-testid="message-table-header"]')!
-      const headerCells = header.querySelectorAll(':scope > span')
+      const headerCells = header.querySelectorAll(':scope > th')
       expect(headerCells).toHaveLength(3)
       expect(headerCells[0].textContent).toBe('Time')
       expect(headerCells[1].textContent).toBe('Tool')
@@ -263,7 +263,7 @@ describe('AgentLogDetail', () => {
 
       // Messages are reversed (newest first), so last message in data is first row
       const firstRow = rows[0]
-      const firstRowCells = firstRow.querySelectorAll(':scope > span')
+      const firstRowCells = firstRow.querySelectorAll(':scope > td')
       expect(firstRowCells).toHaveLength(3)
       // Timestamp column has time text
       expect(firstRowCells[0].textContent).toBeTruthy()
@@ -274,19 +274,19 @@ describe('AgentLogDetail', () => {
 
       // Second row (third message in reversed order) should have [Edit] tool badge
       const secondRow = rows[1]
-      const secondRowCells = secondRow.querySelectorAll(':scope > span')
+      const secondRowCells = secondRow.querySelectorAll(':scope > td')
       expect(within(secondRowCells[1]).getByText('Edit')).toBeInTheDocument()
       expect(secondRowCells[2].textContent).toBe('src/utils.ts')
 
       // Third row should have [Read] tool badge
       const thirdRow = rows[2]
-      const thirdRowCells = thirdRow.querySelectorAll(':scope > span')
+      const thirdRowCells = thirdRow.querySelectorAll(':scope > td')
       expect(within(thirdRowCells[1]).getByText('Read')).toBeInTheDocument()
       expect(thirdRowCells[2].textContent).toBe('src/main.ts')
 
       // Fourth row (first message) should have [Bash] tool badge
       const fourthRow = rows[3]
-      const fourthRowCells = fourthRow.querySelectorAll(':scope > span')
+      const fourthRowCells = fourthRow.querySelectorAll(':scope > td')
       expect(within(fourthRowCells[1]).getByText('Bash')).toBeInTheDocument()
       expect(fourthRowCells[2].textContent).toBe('git status')
 
@@ -376,7 +376,7 @@ describe('AgentLogDetail', () => {
       })
 
       const row = document.querySelector('[data-testid="message-row"]')!
-      const toolCell = row.querySelectorAll(':scope > span')[1]!
+      const toolCell = row.querySelectorAll(':scope > td')[1]!
       // Tool cell should have no badge child
       expect(toolCell.children).toHaveLength(0)
     })
@@ -404,7 +404,7 @@ describe('AgentLogDetail', () => {
 
       // The time cell should contain a formatted HH:MM:SS timestamp
       const row = document.querySelector('[data-testid="message-row"]')!
-      const timeCell = row.querySelector(':scope > span:first-child')!
+      const timeCell = row.querySelector(':scope > td:first-child')!
       // formatTime produces locale-dependent output, but it should be non-empty
       expect(timeCell.textContent).toBeTruthy()
       // Should contain at least digits and colons (HH:MM:SS pattern)
@@ -432,7 +432,7 @@ describe('AgentLogDetail', () => {
 
       // Should not crash, time cell should be empty
       const row = document.querySelector('[data-testid="message-row"]')!
-      const timeCell = row.querySelector(':scope > span:first-child')!
+      const timeCell = row.querySelector(':scope > td:first-child')!
       expect(timeCell.textContent).toBe('')
     })
   })
@@ -460,7 +460,7 @@ describe('AgentLogDetail', () => {
       })
 
       const rows = document.querySelectorAll('[data-testid="message-row"]')
-      const msgCells = Array.from(rows).map(r => r.querySelectorAll(':scope > span')[2]!.textContent)
+      const msgCells = Array.from(rows).map(r => r.querySelectorAll(':scope > td')[2]!.textContent)
 
       // Reversed: newest first
       expect(msgCells[0]).toBe('third message')

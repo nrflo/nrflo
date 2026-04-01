@@ -205,7 +205,7 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 		PlanMode:     true,
 	}
 
-	pre, err := env.orch.setupInteractivePreStep(req, wi, svcWf, svcAgents, workflows, agents, t.TempDir(), nil)
+	pre, err := env.orch.setupInteractivePreStep(req, wi, svcWf, svcAgents, workflows, agents, t.TempDir(), nil, "")
 	if err != nil {
 		t.Fatalf("setupInteractivePreStep() error: %v", err)
 	}
@@ -282,6 +282,7 @@ func TestSetupInteractivePreStep_PlanMode_NoRegisterPtyCommand_OK(t *testing.T) 
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
 		nil,
+		"",
 	)
 	if err != nil {
 		t.Fatalf("setupInteractivePreStep() with nil callback error: %v", err)
@@ -307,6 +308,7 @@ func TestSetupInteractivePreStep_EmptyWorkflowReturnsError(t *testing.T) {
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
 		nil,
+		"",
 	)
 	if err == nil {
 		t.Fatal("expected error for empty workflow phases in interactive mode")

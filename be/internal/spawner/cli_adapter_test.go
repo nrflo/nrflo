@@ -339,6 +339,119 @@ func TestClaudeAdapter_BuildCommand_MapsModel(t *testing.T) {
 	}
 }
 
+func TestClaudeAdapter_BuildCommand_SettingsJSON(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+	settingsJSON := `{"hooks":{"PreToolUse":[]}}`
+
+	opts := SpawnOptions{
+		Model:        "sonnet",
+		SessionID:    "sess-1",
+		WorkDir:      "/tmp",
+		SettingsJSON: settingsJSON,
+	}
+
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if !strings.Contains(args, "--settings") {
+		t.Errorf("BuildCommand with SettingsJSON missing --settings flag: %s", args)
+	}
+	if !strings.Contains(args, settingsJSON) {
+		t.Errorf("BuildCommand args missing settings JSON value: %s", args)
+	}
+}
+
+func TestClaudeAdapter_BuildCommand_EmptySettingsJSON(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := SpawnOptions{
+		Model:        "sonnet",
+		SessionID:    "sess-1",
+		WorkDir:      "/tmp",
+		SettingsJSON: "",
+	}
+
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if strings.Contains(args, "--settings") {
+		t.Errorf("BuildCommand with empty SettingsJSON should not contain --settings: %s", args)
+	}
+}
+
+func TestClaudeAdapter_BuildResumeCommand_SettingsJSON(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+	settingsJSON := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[]}]}}`
+
+	opts := ResumeOptions{
+		SessionID:    "sess-resume",
+		Prompt:       "Continue",
+		WorkDir:      "/tmp",
+		SettingsJSON: settingsJSON,
+	}
+
+	cmd := adapter.BuildResumeCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if !strings.Contains(args, "--settings") {
+		t.Errorf("BuildResumeCommand with SettingsJSON missing --settings flag: %s", args)
+	}
+	if !strings.Contains(args, settingsJSON) {
+		t.Errorf("BuildResumeCommand args missing settings JSON value: %s", args)
+	}
+}
+
+func TestClaudeAdapter_BuildResumeCommand_EmptySettingsJSON(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := ResumeOptions{
+		SessionID:    "sess-resume",
+		WorkDir:      "/tmp",
+		SettingsJSON: "",
+	}
+
+	cmd := adapter.BuildResumeCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if strings.Contains(args, "--settings") {
+		t.Errorf("BuildResumeCommand with empty SettingsJSON should not contain --settings: %s", args)
+	}
+}
+
+func TestOpencodeAdapter_BuildCommand_IgnoresSettingsJSON(t *testing.T) {
+	adapter := &OpencodeAdapter{}
+
+	opts := SpawnOptions{
+		Model:        "sonnet",
+		WorkDir:      "/tmp",
+		SettingsJSON: `{"hooks":{"PreToolUse":[]}}`,
+	}
+
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if strings.Contains(args, "--settings") {
+		t.Errorf("OpencodeAdapter.BuildCommand should ignore SettingsJSON (no --settings): %s", args)
+	}
+}
+
+func TestCodexAdapter_BuildCommand_IgnoresSettingsJSON(t *testing.T) {
+	adapter := &CodexAdapter{}
+
+	opts := SpawnOptions{
+		Model:        "codex_gpt_high",
+		WorkDir:      "/tmp",
+		SettingsJSON: `{"hooks":{"PreToolUse":[]}}`,
+	}
+
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if strings.Contains(args, "--settings") {
+		t.Errorf("CodexAdapter.BuildCommand should ignore SettingsJSON (no --settings): %s", args)
+	}
+}
+
 func TestUsesStdinPrompt(t *testing.T) {
 	tests := []struct {
 		cli  string

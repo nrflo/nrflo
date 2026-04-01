@@ -63,10 +63,11 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	logger.Info(ctx, "context save prompt", "prompt", savePrompt, "session_id", proc.sessionID)
 
 	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
-		SessionID: proc.sessionID,
-		Prompt:    savePrompt,
-		WorkDir:   s.config.ProjectRoot,
-		Env:       proc.cmd.Env,
+		SessionID:    proc.sessionID,
+		Prompt:       savePrompt,
+		WorkDir:      s.config.ProjectRoot,
+		Env:          proc.cmd.Env,
+		SettingsJSON: s.config.ClaudeSettingsJSON,
 	})
 
 	// Pipe prompt via stdin (same as normal spawn)

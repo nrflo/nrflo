@@ -34,6 +34,7 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		AncestorSessionID:  sql.NullString{String: ancestorSessionID, Valid: ancestorSessionID != ""},
 		RestartCount:       restartCount,
 		StartedAt:          sql.NullString{String: now, Valid: true},
+		Config:             s.config.ClaudeSettingsJSON,
 	}
 	sessionRepo.Create(session)
 

@@ -61,6 +61,10 @@ The orchestrator's `runLoop` creates a shared `*db.Pool` for the entire workflow
 
 CLI model configs are loaded from the `cli_models` DB table once at workflow start (in `Start()` and `retryFailed()`) via `loadModelConfigs()`. The result is a `map[string]spawner.ModelConfig` passed to all spawners in that run via `spawner.Config.ModelConfigs`. This allows the spawner to resolve CLI type, mapped model, reasoning effort, and context length from the DB instead of relying on hardcoded adapter methods. Interactive/plan mode sessions and merge conflict resolution also receive model configs. The helper `cliNameFromModelConfigs()` resolves CLI names from DB configs with fallback to `spawner.DefaultCLIForModel()`.
 
+## Safety Hook Threading
+
+The orchestrator reads `claude_safety_hook` from project config at workflow start and passes it through `spawner.BuildSafetySettingsJSON()` to generate `--settings` JSON for Claude CLI agents. The `claudeSettingsJSON` string is threaded through `Start()`, `retryFailed()`, `runLoop()`, `setupInteractivePreStep()`, `buildInteractivePtyArgs()`, and `attemptConflictResolution()`. Read once at start — mid-workflow config changes have no effect (same pattern as `lowConsumptionMode`).
+
 ## Callback Flow
 
 A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer:

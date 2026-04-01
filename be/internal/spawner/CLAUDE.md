@@ -134,6 +134,23 @@ type ModelConfig struct {
 - `MappedModel string` — if set, adapters skip their `MapModel()` call
 - `ReasoningEffort string` — if set, adapters skip their `GetReasoningEffort()` call
 
+## Safety Hook (Claude --settings)
+
+The spawner supports injecting a `--settings` JSON flag into Claude CLI commands via `Config.ClaudeSettingsJSON`. This is used for project-scoped safety hooks that block dangerous commands.
+
+**Config flow:** The orchestrator reads `claude_safety_hook` from project config at workflow start, passes it through `BuildSafetySettingsJSON()` to generate the `--settings` JSON, and sets it on `Config.ClaudeSettingsJSON`. Read once at start — mid-workflow config changes have no effect.
+
+**Files:**
+- `safety_hook.go` — `SafetyHookConfig` type, `BuildSafetySettingsJSON()` (public), `buildSafetyCommand()` (generates inline bash PreToolUse hook)
+- `safety_hook_test.go` — Unit tests for config parsing, bash generation, pattern matching
+
+**Wiring:**
+- `SpawnOptions.SettingsJSON` / `ResumeOptions.SettingsJSON` — passed to adapter `BuildCommand`/`BuildResumeCommand`
+- `ClaudeAdapter` appends `--settings <json>` when non-empty; other adapters ignore it
+- `spawnSingle()` sets `opts.SettingsJSON = s.config.ClaudeSettingsJSON`
+- `context_save.go` passes `SettingsJSON` on resume
+- `database.go` stores `ClaudeSettingsJSON` in `agent_sessions.config` column
+
 `DefaultCLIForModel()` remains a public package-level function for external callers (e.g., `orchestrator_interactive.go`).
 
 ## Database Access
@@ -465,5 +482,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
 | `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/actionableMsgCount>3, init/thinking exclusion, budget cap, budget-exhausted marks failed |
 | `model_config_test.go` | DB-sourced ModelConfig: cliForModel/maxContextForModel with DB priority and fallback, adapter BuildCommand with opts.MappedModel/ReasoningEffort override |
+| `safety_hook_test.go` | Safety hook: config parsing (empty/invalid/disabled), bash generation (hardcoded rm patterns, user patterns, allowed paths, git ops), settings JSON structure |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

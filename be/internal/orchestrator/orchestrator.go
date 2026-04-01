@@ -304,6 +304,12 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, err
 	}
 
+	// Read claude safety hook config (once at workflow start)
+	claudeSettingsJSON := ""
+	if raw, _ := pool.GetProjectConfig(req.ProjectID, "claude_safety_hook"); raw != "" {
+		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
+	}
+
 	// Set parent session
 	parentSession := uuid.New().String()
 	pool.Close()
@@ -355,7 +361,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Setup interactive/plan pre-step if requested
 	var pre *interactivePreStep
 	if req.Interactive || req.PlanMode {
-		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs)
+		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs, claudeSettingsJSON)
 		if err != nil {
 			cancel()
 			o.mu.Lock()
@@ -371,7 +377,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
 
 	status := "started"
 	sessionID := ""
@@ -668,6 +674,12 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		return err
 	}
 
+	// Read claude safety hook config (once at workflow retry)
+	claudeSettingsJSON := ""
+	if raw, _ := pool.GetProjectConfig(projectID, "claude_safety_hook"); raw != "" {
+		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
+	}
+
 	parentSession := uuid.New().String()
 
 	// Build run request
@@ -698,7 +710,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	dockerCfg := buildDockerConfig(project, wt)
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
 
 	return nil
 }
@@ -927,6 +939,7 @@ func (o *Orchestrator) runLoop(
 	globalStallStartTimeout *int,
 	globalStallRunningTimeout *int,
 	modelConfigs map[string]spawner.ModelConfig,
+	claudeSettingsJSON string,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -1084,6 +1097,7 @@ func (o *Orchestrator) runLoop(
 					LowConsumptionMode:        lowConsumptionMode,
 					GlobalStallStartTimeout:   globalStallStartTimeout,
 					GlobalStallRunningTimeout: globalStallRunningTimeout,
+					ClaudeSettingsJSON:        claudeSettingsJSON,
 					ModelConfigs:              modelConfigs,
 				})
 
@@ -1201,7 +1215,7 @@ func (o *Orchestrator) runLoop(
 		wtService := &service.WorktreeService{}
 		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
 			// Attempt automatic conflict resolution
-			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs); resolveErr != nil {
+			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs, claudeSettingsJSON); resolveErr != nil {
 				// Resolution failed or no resolver configured — fall through to manual resolution
 				logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
 					"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)

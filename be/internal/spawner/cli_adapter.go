@@ -36,10 +36,11 @@ type CLIAdapter interface {
 
 // ResumeOptions contains parameters for resuming a CLI session
 type ResumeOptions struct {
-	SessionID string
-	Prompt    string
-	WorkDir   string
-	Env       []string
+	SessionID    string
+	Prompt       string
+	WorkDir      string
+	Env          []string
+	SettingsJSON string // Claude --settings JSON (ignored by non-Claude adapters)
 }
 
 // SpawnOptions contains parameters for building a spawn command
@@ -53,6 +54,7 @@ type SpawnOptions struct {
 	Env             []string
 	MappedModel     string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
 	ReasoningEffort string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
+	SettingsJSON    string // Claude --settings JSON (ignored by non-Claude adapters)
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.
@@ -107,6 +109,9 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		"--session-id", opts.SessionID,
 		// prompt piped via stdin — no PromptFile arg, no InitialPrompt
 	}
+	if opts.SettingsJSON != "" {
+		args = append(args, "--settings", opts.SettingsJSON)
+	}
 
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = opts.WorkDir
@@ -146,6 +151,9 @@ func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 		"--output-format", "stream-json",
 		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
 		// prompt piped via stdin (same as BuildCommand)
+	}
+	if opts.SettingsJSON != "" {
+		args = append(args, "--settings", opts.SettingsJSON)
 	}
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = opts.WorkDir

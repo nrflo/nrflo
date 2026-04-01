@@ -84,6 +84,9 @@ type Config struct {
 	// GlobalStallRunningTimeout overrides the default stall running timeout when agent def has no value.
 	// nil = use hardcoded default, 0 = disabled, >0 = custom seconds.
 	GlobalStallRunningTimeout *int
+	// ClaudeSettingsJSON is the --settings JSON for Claude CLI agents (safety hooks).
+	// Empty string means no settings. Read once at workflow start from project config.
+	ClaudeSettingsJSON string
 	// ModelConfigs maps model name to DB-sourced config. When populated, the spawner
 	// uses these for model mapping, reasoning effort, context length, and CLI type
 	// instead of hardcoded adapter methods. nil map is safe (lookup returns zero value).
@@ -484,6 +487,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		WorkDir:         workDir,
 		MappedModel:     mappedModel,
 		ReasoningEffort: reasoningEffort,
+		SettingsJSON:    s.config.ClaudeSettingsJSON,
 		Env: append(filterEnv(os.Environ(), "CLAUDECODE"),
 			fmt.Sprintf("NRWORKFLOW_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRWF_WORKFLOW_INSTANCE_ID=%s", wfiID),

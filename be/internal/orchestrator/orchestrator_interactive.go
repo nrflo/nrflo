@@ -39,6 +39,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	agents map[string]spawner.AgentConfig,
 	projectRoot string,
 	modelConfigs map[string]spawner.ModelConfig,
+	claudeSettingsJSON string,
 ) (*interactivePreStep, error) {
 	sessionID := uuid.New().String()
 
@@ -90,7 +91,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	}
 
 	// Build PTY command args
-	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs)
+	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, claudeSettingsJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build interactive PTY args: %w", err)
 	}
@@ -129,6 +130,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	pool *db.Pool,
 	projectRoot string,
 	modelConfigs map[string]spawner.ModelConfig,
+	claudeSettingsJSON string,
 ) ([]string, error) {
 	var prompt string
 
@@ -185,6 +187,9 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		"--session-id", sessionID,
 		"--model", modelName,
 		"--append-system-prompt-file", promptFile.Name(),
+	}
+	if claudeSettingsJSON != "" {
+		args = append(args, "--settings", claudeSettingsJSON)
 	}
 
 	return args, nil

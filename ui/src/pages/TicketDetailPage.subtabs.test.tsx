@@ -158,6 +158,7 @@ describe('TicketDetailPage - Running/Completed sub-tabs visibility', () => {
       expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
     })
     expect(screen.queryByText(/Running \(\d+\)/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Failed \(\d+\)/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Completed \(\d+\)/)).not.toBeInTheDocument()
   })
 
@@ -172,10 +173,11 @@ describe('TicketDetailPage - Running/Completed sub-tabs visibility', () => {
       expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
     })
     expect(screen.queryByText(/Running \(\d+\)/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Failed \(\d+\)/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Completed \(\d+\)/)).not.toBeInTheDocument()
   })
 
-  it('shows Running/Completed sub-tabs for mixed running+completed instances', async () => {
+  it('shows Running/Failed/Completed sub-tabs for mixed running+completed instances', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowMixed)
 
@@ -184,11 +186,12 @@ describe('TicketDetailPage - Running/Completed sub-tabs visibility', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Running (1)')).toBeInTheDocument()
+      expect(screen.getByText('Failed (0)')).toBeInTheDocument()
       expect(screen.getByText('Completed (1)')).toBeInTheDocument()
     })
   })
 
-  it('shows Running/Completed sub-tabs for multiple running instances', async () => {
+  it('shows Running/Failed/Completed sub-tabs for multiple running instances', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowMultiple)
 
@@ -197,6 +200,7 @@ describe('TicketDetailPage - Running/Completed sub-tabs visibility', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Running (2)')).toBeInTheDocument()
+      expect(screen.getByText('Failed (0)')).toBeInTheDocument()
       expect(screen.getByText('Completed (0)')).toBeInTheDocument()
     })
   })

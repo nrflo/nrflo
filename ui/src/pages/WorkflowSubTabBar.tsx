@@ -1,20 +1,23 @@
 import { cn } from '@/lib/utils'
 
-export type WorkflowSubTab = 'running' | 'completed'
+export type WorkflowSubTab = 'running' | 'failed' | 'completed'
 
 export function WorkflowSubTabBar({
   activeSubTab,
   onSwitch,
   runningCount,
+  failedCount,
   completedCount,
 }: {
   activeSubTab: WorkflowSubTab
   onSwitch: (tab: WorkflowSubTab) => void
   runningCount: number
+  failedCount: number
   completedCount: number
 }) {
   const tabs: { id: WorkflowSubTab; label: string }[] = [
     { id: 'running', label: `Running (${runningCount})` },
+    { id: 'failed', label: `Failed (${failedCount})` },
     { id: 'completed', label: `Completed (${completedCount})` },
   ]
 

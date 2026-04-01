@@ -24,7 +24,7 @@ Routes are defined in `src/App.tsx`.
 
 The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
-- **Workflow tab** (default): Renders `TicketWorkflowTab` with Running/Completed sub-tabs, instance chips via `InstanceList`, and `CompletedAgentsTable` for completed instances
+- **Workflow tab** (default): Renders `TicketWorkflowTab` with Running/Failed/Completed sub-tabs (three-way partition matching `ProjectWorkflowsPage`), instance chips via `InstanceList`, and `CompletedAgentsTable` for completed instances
 - **Hierarchy tab**: Blockers (add/remove), blocks, epic hierarchy (parent + siblings/children)
 - **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
 - **Details tab**: Read-only dependency lists, description text, metadata
@@ -33,7 +33,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 | Component | Content |
 |-----------|---------|
-| `TicketWorkflowTab.tsx` | Workflow tab with Running/Completed sub-tabs, instance partitioning, `InstanceList` chips, `CompletedAgentsTable` for completed tab, `AgentTerminalDialog`. Manages workflow mutations. |
+| `TicketWorkflowTab.tsx` | Workflow tab with Running/Failed/Completed sub-tabs, three-way instance partitioning, `InstanceList` chips, `CompletedAgentsTable` for completed tab, `AgentTerminalDialog`. Manages workflow mutations. |
 | `HierarchyTabContent.tsx` | Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics) |
 | `DescriptionTabContent.tsx` | Ticket title as h2, metadata grid, description text |
 | `DetailsTabContent.tsx` | Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid |
@@ -59,7 +59,7 @@ Instance table in `WorkflowInstanceTable.tsx`:
 - `WorkflowInstanceTable` — table with Workflow, Instance, Status, Duration, Completed At, Delete columns (used by Completed and Failed tabs)
 
 Shared sub-component in `WorkflowSubTabBar.tsx`:
-- `WorkflowSubTabBar` — Running/Completed sub-tab switcher with counts (used by `TicketWorkflowTab`)
+- `WorkflowSubTabBar` — Running/Failed/Completed sub-tab switcher with counts (used by `TicketWorkflowTab`)
 
 Supports multiple concurrent instances keyed by `instance_id`.
 

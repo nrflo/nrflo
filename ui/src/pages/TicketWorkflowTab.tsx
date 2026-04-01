@@ -63,34 +63,39 @@ export function TicketWorkflowTab({
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
   const hasWorkflow = workflowData?.has_workflow ?? false
 
-  // Partition instances by status
-  const { runningInstances, completedInstances } = useMemo(() => {
+  // Partition instances by status (three-way: running/failed/completed)
+  const { runningInstances, failedInstances, completedInstances } = useMemo(() => {
     const running: Record<string, WorkflowState> = {}
+    const failed: Record<string, WorkflowState> = {}
     const completed: Record<string, WorkflowState> = {}
     for (const [instanceId, state] of Object.entries(allWorkflows)) {
       if (state.status === 'completed' || state.status === 'project_completed') {
         completed[instanceId] = state
+      } else if (state.status === 'failed') {
+        failed[instanceId] = state
       } else {
-        // undefined status, 'failed', or any active status → running bucket
         running[instanceId] = state
       }
     }
-    return { runningInstances: running, completedInstances: completed }
+    return { runningInstances: running, failedInstances: failed, completedInstances: completed }
   }, [allWorkflows])
 
   const totalInstances = Object.keys(allWorkflows).length
   const completedCount = Object.keys(completedInstances).length
+  const failedCount = Object.keys(failedInstances).length
   const runningCount = Object.keys(runningInstances).length
 
-  // Show sub-tabs when multiple instances or any completed
-  const showSubTabs = totalInstances > 1 || completedCount > 0
-  // Single completed instance optimization: skip sub-tabs
-  const singleCompletedOnly = totalInstances === 1 && completedCount === 1
+  // Show sub-tabs when multiple instances or any completed/failed
+  const showSubTabs = totalInstances > 1 || completedCount > 0 || failedCount > 0
+  // Single non-running instance optimization: skip sub-tabs when there's exactly one instance
+  const singleNonRunningOnly = totalInstances === 1 && runningCount === 0
 
   // Determine which instances to show based on sub-tab
-  const tabInstances = (!showSubTabs || singleCompletedOnly)
+  const tabInstances = (!showSubTabs || singleNonRunningOnly)
     ? allWorkflows
-    : activeSubTab === 'running' ? runningInstances : completedInstances
+    : activeSubTab === 'running' ? runningInstances
+    : activeSubTab === 'failed' ? failedInstances
+    : completedInstances
 
   const instanceIds = Object.keys(tabInstances)
   const hasMultipleInTab = instanceIds.length > 1
@@ -161,7 +166,7 @@ export function TicketWorkflowTab({
   }
 
   // --- Completed sub-tab rendering ---
-  const isCompletedTab = showSubTabs && !singleCompletedOnly && activeSubTab === 'completed'
+  const isCompletedTab = showSubTabs && !singleNonRunningOnly && activeSubTab === 'completed'
 
   if (isCompletedTab) {
     return (
@@ -170,6 +175,7 @@ export function TicketWorkflowTab({
           activeSubTab={activeSubTab}
           onSwitch={handleSubTabSwitch}
           runningCount={runningCount}
+          failedCount={failedCount}
           completedCount={completedCount}
         />
         <div className={cn(
@@ -227,14 +233,16 @@ export function TicketWorkflowTab({
     )
   }
 
-  // --- Running sub-tab (or single-instance view) ---
+  // --- Running or Failed sub-tab (or single-instance view) ---
+  const isFailedTab = activeSubTab === 'failed'
   return (
     <>
-      {showSubTabs && !singleCompletedOnly && (
+      {showSubTabs && !singleNonRunningOnly && (
         <WorkflowSubTabBar
           activeSubTab={activeSubTab}
           onSwitch={handleSubTabSwitch}
           runningCount={runningCount}
+          failedCount={failedCount}
           completedCount={completedCount}
         />
       )}
@@ -257,22 +265,22 @@ export function TicketWorkflowTab({
         workflows={[]}
         selectedWorkflow=""
         onSelectWorkflow={() => {}}
-        isOrchestrated={isOrchestrated}
-        hasActivePhase={hasActivePhase}
-        activeAgents={activeAgents}
+        isOrchestrated={isFailedTab ? false : isOrchestrated}
+        hasActivePhase={isFailedTab ? false : hasActivePhase}
+        activeAgents={isFailedTab ? {} : activeAgents}
         sessions={sessions}
         logPanelCollapsed={logPanelCollapsed}
         onToggleLogPanel={() => setLogPanelCollapsed(p => !p)}
         selectedPanelAgent={selectedPanelAgent}
         onAgentSelect={setSelectedPanelAgent}
-        onStop={() =>
+        onStop={isFailedTab ? () => {} : () =>
           ticketId && stopMutation.mutate({
             ticketId,
             workflow: displayedWorkflowName || undefined,
             instance_id: resolvedInstanceId || undefined,
           })
         }
-        stopPending={stopMutation.isPending}
+        stopPending={isFailedTab ? false : stopMutation.isPending}
         issueType={issueType}
         onShowRunDialog={onShowRunDialog}
         onShowEpicRunDialog={onShowEpicRunDialog}
@@ -284,7 +292,7 @@ export function TicketWorkflowTab({
           })
         }
         retryingSessionId={retryFailedMutation.isPending ? (retryFailedMutation.variables?.params.session_id ?? null) : null}
-        onTakeControl={(sessionId) => {
+        onTakeControl={isFailedTab ? () => {} : (sessionId) => {
           if (!ticketId) return
           const agent = Object.values(activeAgents).find((a) => a.session_id === sessionId)
           takeControlMutation.mutate(
@@ -292,7 +300,7 @@ export function TicketWorkflowTab({
             { onSuccess: (data) => onInteractiveStart({ sessionId: data.session_id, agentType: agent?.agent_type ?? 'agent' }) }
           )
         }}
-        takeControlPending={takeControlMutation.isPending}
+        takeControlPending={isFailedTab ? false : takeControlMutation.isPending}
         onResumeSession={(sessionId) => {
           if (!ticketId) return
           resumeSessionMutation.mutate(

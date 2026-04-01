@@ -309,6 +309,41 @@ export const workflowCompleted: WorkflowResponse = {
   },
 }
 
+// Failed workflow
+export const workflowFailed: WorkflowResponse = {
+  ticket_id: 'TICKET-1',
+  has_workflow: true,
+  state: {
+    workflow: 'feature',
+    instance_id: 'inst-failed-01',
+    version: 4,
+    status: 'failed',
+    current_phase: 'implementation',
+    phase_order: ['investigation', 'implementation', 'verification'],
+    phases: {
+      investigation: { status: 'completed', result: 'pass' },
+      implementation: { status: 'completed', result: 'fail' },
+    },
+    active_agents: {},
+  },
+  workflows: ['feature'],
+  all_workflows: {
+    'inst-failed-01': {
+      workflow: 'feature',
+      instance_id: 'inst-failed-01',
+      version: 4,
+      status: 'failed',
+      current_phase: 'implementation',
+      phase_order: ['investigation', 'implementation', 'verification'],
+      phases: {
+        investigation: { status: 'completed', result: 'pass' },
+        implementation: { status: 'completed', result: 'fail' },
+      },
+      active_agents: {},
+    },
+  },
+}
+
 // Completed workflow with zero tokens (no agents had context_left)
 export const workflowCompletedZeroTokens: WorkflowResponse = {
   ticket_id: 'TICKET-1',

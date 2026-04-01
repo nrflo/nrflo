@@ -12,7 +12,7 @@ const nodeTypes: NodeTypes = {
 }
 
 /** Calls fitView() whenever the node set changes (e.g. workflow start, phase transitions, panel toggle). */
-function FitViewOnChange({ nodeKey, logPanelCollapsed }: { nodeKey: string; logPanelCollapsed?: boolean }) {
+function FitViewOnChange({ nodeKey, logPanelCollapsed, selectedAgent }: { nodeKey: string; logPanelCollapsed?: boolean; selectedAgent?: string | null }) {
   const { fitView } = useReactFlow()
   useEffect(() => {
     // Small delay to let React Flow finish internal layout before fitting
@@ -26,6 +26,12 @@ function FitViewOnChange({ nodeKey, logPanelCollapsed }: { nodeKey: string; logP
     return () => clearTimeout(timer)
   }, [logPanelCollapsed, fitView])
 
+  // Re-fit when selected agent changes (panel mounts/unmounts for completed workflows)
+  useEffect(() => {
+    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
+    return () => clearTimeout(timer)
+  }, [selectedAgent, fitView])
+
   return null
 }
 
@@ -38,6 +44,7 @@ export function PhaseGraph({
   sessions,
   onAgentSelect,
   logPanelCollapsed,
+  selectedAgent,
   onRetryFailed,
   retryingSessionId,
   workflowStatus,
@@ -344,7 +351,7 @@ export function PhaseGraph({
         preventScrolling={false}
         proOptions={{ hideAttribution: true }}
       >
-        <FitViewOnChange nodeKey={nodeKey} logPanelCollapsed={logPanelCollapsed} />
+        <FitViewOnChange nodeKey={nodeKey} logPanelCollapsed={logPanelCollapsed} selectedAgent={selectedAgent} />
         <Background color="transparent" />
         <Controls showInteractive={false} position="top-left" />
       </ReactFlow>

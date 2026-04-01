@@ -60,29 +60,18 @@ function makeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
 function makeProps(overrides: Partial<PhaseGraphProps> = {}): PhaseGraphProps {
   return {
     phases: {
-      investigation: makePhaseState(),
-      implementation: makePhaseState(),
+      investigation: makePhaseState({ status: 'completed' }),
+      implementation: makePhaseState({ status: 'completed' }),
     },
     phaseOrder: ['investigation', 'implementation'],
     activeAgents: {},
-    agentHistory: [],
+    agentHistory: [
+      makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation', session_id: 'sess-1' }) as any,
+      makeAgent({ agent_type: 'implementor', phase: 'implementation', session_id: 'sess-2' }) as any,
+    ],
     sessions: [],
     ...overrides,
   }
-}
-
-function propsWithAgent(logPanelCollapsed?: boolean): PhaseGraphProps {
-  return makeProps({
-    phases: { investigation: makePhaseState({ status: 'in_progress' }) },
-    phaseOrder: ['investigation'],
-    activeAgents: {
-      'setup-analyzer:claude:sonnet': makeAgent({
-        agent_type: 'setup-analyzer',
-        phase: 'investigation',
-      }),
-    },
-    logPanelCollapsed,
-  })
 }
 
 /** Flush pending microtasks (async layout Promise) */
@@ -90,7 +79,7 @@ async function flushLayout() {
   await act(async () => {})
 }
 
-describe('PhaseGraph - Panel Toggle', () => {
+describe('PhaseGraph - selectedAgent fitView', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
@@ -100,96 +89,87 @@ describe('PhaseGraph - Panel Toggle', () => {
     vi.useRealTimers()
   })
 
-  it('calls fitView with correct options after 350ms delay on collapse', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+  it('fires fitView at 350ms when selectedAgent changes from null to a value', async () => {
+    const { rerender } = render(<PhaseGraph {...makeProps({ selectedAgent: null })} />)
     await flushLayout()
 
-    // Flush all mount timers (50ms nodeKey + 350ms panel/selectedAgent)
+    // Flush all mount timers (nodeKey 50ms + logPanelCollapsed 350ms + selectedAgent 350ms)
     act(() => { vi.advanceTimersByTime(350) })
     vi.clearAllMocks()
 
-    // Collapse panel
-    rerender(<PhaseGraph {...propsWithAgent(true)} />)
+    // Agent selected: null → 'sess-1'
+    rerender(<PhaseGraph {...makeProps({ selectedAgent: 'sess-1' })} />)
     await flushLayout()
 
-    // Not called before 350ms
+    // Not yet at 350ms
     act(() => { vi.advanceTimersByTime(349) })
     expect(mockFitView).not.toHaveBeenCalled()
 
-    // Called at 350ms with correct options
+    // Fires exactly at 350ms with correct options
     act(() => { vi.advanceTimersByTime(1) })
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     expect(mockFitView).toHaveBeenCalledTimes(1)
   })
 
-  it('calls fitView after 350ms delay on expand', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(true)} />)
+  it('fires fitView at 350ms when selectedAgent changes back to null (panel unmounts)', async () => {
+    const { rerender } = render(<PhaseGraph {...makeProps({ selectedAgent: 'sess-1' })} />)
     await flushLayout()
     act(() => { vi.advanceTimersByTime(350) })
     vi.clearAllMocks()
 
-    rerender(<PhaseGraph {...propsWithAgent(false)} />)
+    // Deselect: 'sess-1' → null
+    rerender(<PhaseGraph {...makeProps({ selectedAgent: null })} />)
     await flushLayout()
 
     act(() => { vi.advanceTimersByTime(350) })
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
-  })
-
-  it('handles multiple rapid toggles (each creates a timer)', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
-    await flushLayout()
-    act(() => { vi.advanceTimersByTime(350) })
-    vi.clearAllMocks()
-
-    rerender(<PhaseGraph {...propsWithAgent(true)} />)
-    await flushLayout()
-    rerender(<PhaseGraph {...propsWithAgent(false)} />)
-    await flushLayout()
-    rerender(<PhaseGraph {...propsWithAgent(true)} />)
-    await flushLayout()
-
-    act(() => { vi.advanceTimersByTime(350) })
-    expect(mockFitView.mock.calls.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('fires fitView independently for node changes and panel toggle', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
-    await flushLayout()
-    act(() => { vi.advanceTimersByTime(350) })
-    vi.clearAllMocks()
-
-    // Change nodes AND toggle panel simultaneously
-    rerender(<PhaseGraph {...makeProps({
-      phases: { investigation: makePhaseState({ status: 'in_progress' }) },
-      phaseOrder: ['investigation'],
-      activeAgents: {
-        'setup-analyzer:claude:sonnet': makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation' }),
-        'setup-analyzer:claude:haiku': makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation', model_id: 'claude-haiku-4-5' }),
-      },
-      logPanelCollapsed: true,
-    })} />)
-    await flushLayout()
-
-    // Node change fires at 50ms
-    act(() => { vi.advanceTimersByTime(50) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
-
-    // Panel toggle fires at 350ms
-    act(() => { vi.advanceTimersByTime(300) })
-    expect(mockFitView).toHaveBeenCalledTimes(2)
   })
 
-  it('does not fire fitView on panel toggle when no nodes exist', async () => {
-    const props = makeProps({ phases: {}, phaseOrder: [], logPanelCollapsed: false })
+  it('fires fitView when switching between two selected agents', async () => {
+    const { rerender } = render(<PhaseGraph {...makeProps({ selectedAgent: 'sess-1' })} />)
+    await flushLayout()
+    act(() => { vi.advanceTimersByTime(350) })
+    vi.clearAllMocks()
+
+    rerender(<PhaseGraph {...makeProps({ selectedAgent: 'sess-2' })} />)
+    await flushLayout()
+
+    act(() => { vi.advanceTimersByTime(350) })
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+    expect(mockFitView).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not fire extra fitView when selectedAgent is unchanged across rerenders', async () => {
+    const props = makeProps({ selectedAgent: 'sess-1' })
     const { rerender } = render(<PhaseGraph {...props} />)
     await flushLayout()
     act(() => { vi.advanceTimersByTime(350) })
     vi.clearAllMocks()
 
-    rerender(<PhaseGraph {...props} logPanelCollapsed={true} />)
+    // Rerender with same selectedAgent value (e.g., parent re-renders with identical derived key)
+    rerender(<PhaseGraph {...props} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(400) })
 
+    act(() => { vi.advanceTimersByTime(400) })
     expect(mockFitView).not.toHaveBeenCalled()
+  })
+
+  it('selectedAgent and logPanelCollapsed effects fire independently', async () => {
+    const { rerender } = render(
+      <PhaseGraph {...makeProps({ selectedAgent: null, logPanelCollapsed: false })} />
+    )
+    await flushLayout()
+    act(() => { vi.advanceTimersByTime(350) })
+    vi.clearAllMocks()
+
+    // Change both simultaneously
+    rerender(<PhaseGraph {...makeProps({ selectedAgent: 'sess-1', logPanelCollapsed: true })} />)
+    await flushLayout()
+
+    act(() => { vi.advanceTimersByTime(350) })
+    // Both effects fire — expect at least 2 calls (logPanelCollapsed + selectedAgent)
+    expect(mockFitView.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
   })
 })

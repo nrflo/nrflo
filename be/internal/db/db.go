@@ -129,19 +129,38 @@ func WrapAsPool(database *DB) *Pool {
 	return &Pool{DB: database.DB, Path: database.Path}
 }
 
-// SetConfig sets a configuration value
+// SetConfig sets a global configuration value (project_id='')
 func (db *DB) SetConfig(key, value string) error {
 	_, err := db.Exec(
-		"INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+		"INSERT OR REPLACE INTO config (project_id, key, value) VALUES ('', ?, ?)",
 		key, value,
 	)
 	return err
 }
 
-// GetConfig gets a configuration value
+// GetConfig gets a global configuration value (project_id='')
 func (db *DB) GetConfig(key string) (string, error) {
 	var value string
-	err := db.QueryRow("SELECT value FROM config WHERE key = ?", key).Scan(&value)
+	err := db.QueryRow("SELECT value FROM config WHERE project_id = '' AND key = ?", key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return value, err
+}
+
+// SetProjectConfig sets a project-scoped configuration value
+func (db *DB) SetProjectConfig(projectID, key, value string) error {
+	_, err := db.Exec(
+		"INSERT OR REPLACE INTO config (project_id, key, value) VALUES (?, ?, ?)",
+		projectID, key, value,
+	)
+	return err
+}
+
+// GetProjectConfig gets a project-scoped configuration value
+func (db *DB) GetProjectConfig(projectID, key string) (string, error) {
+	var value string
+	err := db.QueryRow("SELECT value FROM config WHERE project_id = ? AND key = ?", projectID, key).Scan(&value)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}

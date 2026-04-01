@@ -75,19 +75,38 @@ func (p *Pool) applyConfig(config PoolConfig) {
 	p.SetConnMaxLifetime(config.ConnMaxLifetime)
 }
 
-// SetConfig sets a configuration value
+// SetConfig sets a global configuration value (project_id='')
 func (p *Pool) SetConfig(key, value string) error {
 	_, err := p.Exec(
-		"INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+		"INSERT OR REPLACE INTO config (project_id, key, value) VALUES ('', ?, ?)",
 		key, value,
 	)
 	return err
 }
 
-// GetConfig gets a configuration value
+// GetConfig gets a global configuration value (project_id='')
 func (p *Pool) GetConfig(key string) (string, error) {
 	var value string
-	err := p.QueryRow("SELECT value FROM config WHERE key = ?", key).Scan(&value)
+	err := p.QueryRow("SELECT value FROM config WHERE project_id = '' AND key = ?", key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return value, err
+}
+
+// SetProjectConfig sets a project-scoped configuration value
+func (p *Pool) SetProjectConfig(projectID, key, value string) error {
+	_, err := p.Exec(
+		"INSERT OR REPLACE INTO config (project_id, key, value) VALUES (?, ?, ?)",
+		projectID, key, value,
+	)
+	return err
+}
+
+// GetProjectConfig gets a project-scoped configuration value
+func (p *Pool) GetProjectConfig(projectID, key string) (string, error) {
+	var value string
+	err := p.QueryRow("SELECT value FROM config WHERE project_id = ? AND key = ?", projectID, key).Scan(&value)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}

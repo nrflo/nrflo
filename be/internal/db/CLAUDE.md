@@ -25,8 +25,10 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  CONFIG                                                              │
-│    key           TEXT PRIMARY KEY                                    │
+│    project_id    TEXT NOT NULL DEFAULT ''                            │
+│    key           TEXT NOT NULL                                       │
 │    value         TEXT NOT NULL                                       │
+│    PRIMARY KEY (project_id, key)                                     │
 │                                                                      │
 │  PROJECTS                                                            │
 │    id            TEXT PRIMARY KEY                                    │
@@ -109,6 +111,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    spawn_command TEXT                (Full CLI command for replay)   │
 │    prompt_context TEXT               (System prompt file contents)   │
 │    restart_count INTEGER NOT NULL DEFAULT 0  (low-context restarts) │
+│    config        TEXT NOT NULL DEFAULT '' (safety settings JSON)     │
 │    started_at    TEXT                (when agent started running)    │
 │    ended_at      TEXT                (when agent finished)           │
 │    created_at    TEXT NOT NULL                                       │

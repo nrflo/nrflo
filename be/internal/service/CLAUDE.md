@@ -26,7 +26,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `system_agent_definition.go` | System agent definition CRUD (global) |
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
 | `cli_model.go` | CLI model CRUD (global, readonly delete enforcement) |
-| `global_settings.go` | Global settings key-value access (wraps `pool.GetConfig`/`SetConfig`) |
+| `global_settings.go` | Global and project-scoped settings key-value access (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
 | `snapshot.go` | WS snapshot provider (builds chunks from workflow state) |
 
 ## Workflow Types

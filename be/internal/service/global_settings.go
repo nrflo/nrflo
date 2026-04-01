@@ -25,3 +25,13 @@ func (s *GlobalSettingsService) Get(key string) (string, error) {
 func (s *GlobalSettingsService) Set(key, value string) error {
 	return s.pool.SetConfig(key, value)
 }
+
+// GetProjectConfig returns the value for a project-scoped config key. Returns "" if not found.
+func (s *GlobalSettingsService) GetProjectConfig(projectID, key string) (string, error) {
+	return s.pool.GetProjectConfig(projectID, key)
+}
+
+// SetProjectConfig upserts a project-scoped config key-value pair.
+func (s *GlobalSettingsService) SetProjectConfig(projectID, key, value string) error {
+	return s.pool.SetProjectConfig(projectID, key, value)
+}

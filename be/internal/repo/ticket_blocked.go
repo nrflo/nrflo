@@ -2,10 +2,31 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"be/internal/model"
 )
+
+// PaginatedTickets holds a page of tickets with pagination metadata.
+type PaginatedTickets struct {
+	Tickets    []*PendingTicket `json:"tickets"`
+	TotalCount int              `json:"total_count"`
+	Page       int              `json:"page"`
+	PerPage    int              `json:"per_page"`
+}
+
+// allowedSortColumns maps user-facing sort_by values to SQL column expressions.
+var allowedSortColumns = map[string]string{
+	"id":         "t.id",
+	"title":      "t.title",
+	"status":     "t.status",
+	"priority":   "t.priority",
+	"issue_type": "t.issue_type",
+	"created_at": "t.created_at",
+	"updated_at": "t.updated_at",
+	"created_by": "t.created_by",
+}
 
 // WorkflowProgress holds completion data for a ticket's active workflow
 type WorkflowProgress struct {
@@ -74,29 +95,53 @@ func (pt *PendingTicket) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ListWithBlockedInfo returns tickets with computed blocked status info
-func (r *TicketRepo) ListWithBlockedInfo(filter *ListFilter) ([]*PendingTicket, error) {
-	query := "SELECT " + ticketSelectColsPrefixed + " FROM tickets t WHERE LOWER(t.project_id) = LOWER(?)"
+// ListWithBlockedInfo returns tickets with computed blocked status info and pagination.
+func (r *TicketRepo) ListWithBlockedInfo(filter *ListFilter) (*PaginatedTickets, error) {
+	whereClause := "WHERE LOWER(t.project_id) = LOWER(?)"
 	args := []interface{}{filter.ProjectID}
 
 	if filter.BlockedOnly {
-		query += " AND t.status != 'closed' AND EXISTS ("
-		query += "SELECT 1 FROM dependencies d "
-		query += "INNER JOIN tickets blocker ON d.project_id = blocker.project_id AND d.depends_on_id = blocker.id "
-		query += "WHERE d.project_id = t.project_id AND d.issue_id = t.id AND blocker.status != 'closed')"
+		whereClause += " AND t.status != 'closed' AND EXISTS ("
+		whereClause += "SELECT 1 FROM dependencies d "
+		whereClause += "INNER JOIN tickets blocker ON d.project_id = blocker.project_id AND d.depends_on_id = blocker.id "
+		whereClause += "WHERE d.project_id = t.project_id AND d.issue_id = t.id AND blocker.status != 'closed')"
 	} else if filter.Status != "" {
-		query += " AND t.status = ?"
+		whereClause += " AND t.status = ?"
 		args = append(args, filter.Status)
 	}
 
 	if filter.IssueType != "" {
-		query += " AND t.issue_type = ?"
+		whereClause += " AND t.issue_type = ?"
 		args = append(args, filter.IssueType)
 	}
 
-	query += " ORDER BY t.updated_at DESC, t.created_at DESC"
+	// Count total matching rows
+	countQuery := "SELECT COUNT(*) FROM tickets t " + whereClause
+	var totalCount int
+	if err := r.db.QueryRow(countQuery, args...).Scan(&totalCount); err != nil {
+		return nil, err
+	}
 
-	rows, err := r.db.Query(query, args...)
+	// Build ORDER BY
+	orderBy := r.buildOrderBy(filter.SortBy, filter.SortOrder)
+
+	// Defaults for pagination
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	perPage := filter.PerPage
+	if perPage < 1 {
+		perPage = 30
+	}
+
+	offset := (page - 1) * perPage
+
+	query := fmt.Sprintf("SELECT %s FROM tickets t %s %s LIMIT ? OFFSET ?",
+		ticketSelectColsPrefixed, whereClause, orderBy)
+	queryArgs := append(args, perPage, offset)
+
+	rows, err := r.db.Query(query, queryArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +156,42 @@ func (r *TicketRepo) ListWithBlockedInfo(filter *ListFilter) ([]*PendingTicket, 
 		tickets = append(tickets, ticket)
 	}
 
-	return r.attachBlockedInfo(tickets)
+	pending, err := r.attachBlockedInfo(tickets)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PaginatedTickets{
+		Tickets:    pending,
+		TotalCount: totalCount,
+		Page:       page,
+		PerPage:    perPage,
+	}, nil
+}
+
+// buildOrderBy returns a safe ORDER BY clause from user-provided sort params.
+func (r *TicketRepo) buildOrderBy(sortBy, sortOrder string) string {
+	sortCol, ok := allowedSortColumns[sortBy]
+	if !ok {
+		// Default: updated_at DESC, created_at DESC
+		return "ORDER BY t.updated_at DESC, t.created_at DESC"
+	}
+
+	dir := "DESC"
+	if strings.EqualFold(sortOrder, "asc") {
+		dir = "ASC"
+	}
+
+	orderBy := fmt.Sprintf("ORDER BY %s %s", sortCol, dir)
+
+	// Add secondary sort for stability
+	if sortBy == "updated_at" {
+		orderBy += ", t.created_at " + dir
+	} else {
+		orderBy += ", t.updated_at DESC, t.created_at DESC"
+	}
+
+	return orderBy
 }
 
 // GetPendingWithBlockedInfo returns non-closed tickets with their blocked status

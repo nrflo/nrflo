@@ -21,6 +21,10 @@ import type {
 export interface ListTicketsParams {
   status?: string
   type?: string
+  page?: number
+  per_page?: number
+  sort_by?: string
+  sort_order?: string
 }
 
 export async function listTickets(
@@ -29,6 +33,10 @@ export async function listTickets(
   const searchParams = new URLSearchParams()
   if (params?.status) searchParams.set('status', params.status)
   if (params?.type) searchParams.set('type', params.type)
+  if (params?.page) searchParams.set('page', String(params.page))
+  if (params?.per_page) searchParams.set('per_page', String(params.per_page))
+  if (params?.sort_by) searchParams.set('sort_by', params.sort_by)
+  if (params?.sort_order) searchParams.set('sort_order', params.sort_order)
   const query = searchParams.toString()
   return apiGet<TicketListResponse>(`/api/v1/tickets${query ? `?${query}` : ''}`)
 }

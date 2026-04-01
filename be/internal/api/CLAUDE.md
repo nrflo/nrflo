@@ -45,7 +45,7 @@ PATCH /api/v1/projects/:id
 DELETE /api/v1/projects/:id
 
 # Tickets (require X-Project header or ?project= param)
-GET /api/v1/tickets
+GET /api/v1/tickets                          # Paginated: ?page=&per_page=&sort_by=&sort_order=
 GET /api/v1/tickets/:id       # Returns enriched ticket with blockers, blocks, children, parent_ticket, siblings
 POST /api/v1/tickets
 PATCH /api/v1/tickets/:id

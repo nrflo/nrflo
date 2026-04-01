@@ -74,10 +74,11 @@ func TestListWithBlockedInfo_SortsByUpdatedThenCreated(t *testing.T) {
 		Status:    "open",
 	}
 
-	results, err := ticketRepo.ListWithBlockedInfo(filter)
+	paginated, err := ticketRepo.ListWithBlockedInfo(filter)
 	if err != nil {
 		t.Fatalf("ListWithBlockedInfo failed: %v", err)
 	}
+	results := paginated.Tickets
 
 	if len(results) != 4 {
 		t.Fatalf("expected 4 tickets, got %d", len(results))
@@ -145,10 +146,11 @@ func TestListWithBlockedInfo_TypeFilter(t *testing.T) {
 		IssueType: "bug",
 	}
 
-	results, err := ticketRepo.ListWithBlockedInfo(filter)
+	paginated, err := ticketRepo.ListWithBlockedInfo(filter)
 	if err != nil {
 		t.Fatalf("ListWithBlockedInfo failed: %v", err)
 	}
+	results := paginated.Tickets
 
 	if len(results) != 3 {
 		t.Fatalf("expected 3 bug tickets, got %d", len(results))
@@ -218,10 +220,11 @@ func TestListWithBlockedInfo_NullUpdatedAt(t *testing.T) {
 		Status:    "open",
 	}
 
-	results, err := ticketRepo.ListWithBlockedInfo(filter)
+	paginated, err := ticketRepo.ListWithBlockedInfo(filter)
 	if err != nil {
 		t.Fatalf("ListWithBlockedInfo failed: %v", err)
 	}
+	results := paginated.Tickets
 
 	if len(results) != 3 {
 		t.Fatalf("expected 3 tickets, got %d", len(results))
@@ -288,10 +291,11 @@ func TestListWithBlockedInfo_StatusFilterSorting(t *testing.T) {
 		Status:    "open",
 	}
 
-	results, err := ticketRepo.ListWithBlockedInfo(filter)
+	paginated, err := ticketRepo.ListWithBlockedInfo(filter)
 	if err != nil {
 		t.Fatalf("ListWithBlockedInfo failed: %v", err)
 	}
+	results := paginated.Tickets
 
 	if len(results) != 3 {
 		t.Fatalf("expected 3 open tickets, got %d", len(results))
@@ -371,7 +375,11 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 	}
 
 	var apiResp struct {
-		Tickets []*repo.PendingTicket `json:"tickets"`
+		Tickets    []*repo.PendingTicket `json:"tickets"`
+		TotalCount int                   `json:"total_count"`
+		Page       int                   `json:"page"`
+		PerPage    int                   `json:"per_page"`
+		TotalPages int                   `json:"total_pages"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
@@ -442,10 +450,11 @@ func TestListWithBlockedInfo_SameTimestamps(t *testing.T) {
 		Status:    "open",
 	}
 
-	results, err := ticketRepo.ListWithBlockedInfo(filter)
+	paginated, err := ticketRepo.ListWithBlockedInfo(filter)
 	if err != nil {
 		t.Fatalf("ListWithBlockedInfo failed: %v", err)
 	}
+	results := paginated.Tickets
 
 	if len(results) != 3 {
 		t.Fatalf("expected 3 tickets, got %d", len(results))

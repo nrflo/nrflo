@@ -129,7 +129,7 @@ export function useTicketSearch(
     queryKey: [...ticketKeys.search(query), project],
     queryFn: async () => {
       const result = await searchTickets(query)
-      return { tickets: result.tickets }
+      return { tickets: result.tickets, total_count: result.tickets.length, page: 1, per_page: result.tickets.length, total_pages: 1 }
     },
     enabled: projectsLoaded && query.length >= 2 && (options?.enabled ?? true),
     ...options,

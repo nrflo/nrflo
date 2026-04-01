@@ -71,6 +71,10 @@ export interface UpdateTicketRequest {
 
 export interface TicketListResponse {
   tickets: PendingTicket[]
+  total_count: number
+  page: number
+  per_page: number
+  total_pages: number
 }
 
 export interface SearchResponse {

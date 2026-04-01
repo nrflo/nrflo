@@ -3,7 +3,9 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"be/internal/id"
@@ -28,20 +30,39 @@ func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 		ProjectID: projectID,
 		Status:    status,
 		IssueType: r.URL.Query().Get("type"),
+		SortBy:    r.URL.Query().Get("sort_by"),
+		SortOrder: r.URL.Query().Get("sort_order"),
 	}
 	if status == "blocked" {
 		filter.BlockedOnly = true
 		filter.Status = ""
 	}
 
-	tickets, err := ticketRepo.ListWithBlockedInfo(filter)
+	// Parse pagination params
+	filter.Page = 1
+	if v := r.URL.Query().Get("page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			filter.Page = p
+		}
+	}
+	filter.PerPage = 30
+	if v := r.URL.Query().Get("per_page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			if p > 100 {
+				p = 100
+			}
+			filter.PerPage = p
+		}
+	}
+
+	result, err := ticketRepo.ListWithBlockedInfo(filter)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if tickets == nil {
-		tickets = []*repo.PendingTicket{}
+	if result.Tickets == nil {
+		result.Tickets = []*repo.PendingTicket{}
 	}
 
 	// Enrich with workflow progress (derived from agent_sessions + workflow definition)
@@ -50,11 +71,17 @@ func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		wfService := service.NewWorkflowService(s.pool, s.clock)
 		progress := wfService.DeriveWorkflowProgress(instances)
-		repo.AttachWorkflowProgress(tickets, progress)
+		repo.AttachWorkflowProgress(result.Tickets, progress)
 	}
 
+	totalPages := int(math.Ceil(float64(result.TotalCount) / float64(result.PerPage)))
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"tickets": tickets,
+		"tickets":     result.Tickets,
+		"total_count": result.TotalCount,
+		"page":        result.Page,
+		"per_page":    result.PerPage,
+		"total_pages": totalPages,
 	})
 }
 

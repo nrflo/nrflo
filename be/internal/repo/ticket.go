@@ -102,6 +102,10 @@ type ListFilter struct {
 	Status      string
 	IssueType   string
 	BlockedOnly bool
+	SortBy      string
+	SortOrder   string
+	Page        int
+	PerPage     int
 }
 
 // List retrieves tickets with optional filters

@@ -8,7 +8,7 @@ TypeScript type definitions matching Go API models. Contains 3 files.
 |------|-------------|
 | `Ticket` | Base ticket with `parent_ticket_id?: string \| null` |
 | `PendingTicket` | Extends `Ticket` with `is_blocked` and `blocked_by` fields |
-| `TicketListResponse` | `{ tickets: PendingTicket[] }` — list endpoint returns PendingTicket |
+| `TicketListResponse` | `{ tickets: PendingTicket[], total_count, page, per_page, total_pages }` — paginated list endpoint |
 | `SearchResponse` | `{ tickets: PendingTicket[], query: string }` — search also returns PendingTicket |
 | `StatusResponse` | Includes `counts.blocked` for sidebar badge |
 

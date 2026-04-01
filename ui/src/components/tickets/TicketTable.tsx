@@ -23,9 +23,9 @@ interface SortableColumn {
 }
 
 const COLUMNS: SortableColumn[] = [
+  { key: 'issue_type', label: 'Type', className: 'w-10' },
   { key: 'id', label: 'ID', className: 'w-32' },
   { key: 'title', label: 'Title' },
-  { key: 'issue_type', label: 'Type', className: 'w-16' },
   { key: 'status', label: 'Status', className: 'w-24' },
   { key: 'priority', label: 'Priority', className: 'w-20' },
   { key: 'created_by', label: 'Created By', className: 'w-24' },
@@ -80,7 +80,7 @@ export function TicketTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs font-mono border-collapse">
+      <table className="w-full text-sm font-mono border-collapse">
         <thead>
           <tr className="text-left text-muted-foreground border-b border-border">
             {COLUMNS.map((col) => (
@@ -107,7 +107,10 @@ export function TicketTable({
                 onClick={() => navigate(`/tickets/${encodeURIComponent(ticket.id)}`)}
                 className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
               >
-                <td className="py-1.5 pr-3">
+                <td className="py-1.5 pr-3 w-10">
+                  <IssueTypeIcon type={ticket.issue_type} />
+                </td>
+                <td className="py-1.5 pr-3 w-32">
                   <span className="flex items-center gap-1">
                     {ticket.id}
                     {isBlocked && (
@@ -118,22 +121,19 @@ export function TicketTable({
                   </span>
                 </td>
                 <td className="py-1.5 pr-3 max-w-xs truncate">{ticket.title}</td>
-                <td className="py-1.5 pr-3">
-                  <IssueTypeIcon type={ticket.issue_type} />
-                </td>
-                <td className="py-1.5 pr-3">
-                  <Badge className={cn('text-[10px] px-1 py-0', statusColor(ticket.status))}>
+                <td className="py-1.5 pr-3 w-24">
+                  <Badge className={cn('text-xs px-1 py-0', statusColor(ticket.status))}>
                     {ticket.status.replace('_', ' ')}
                   </Badge>
                 </td>
-                <td className="py-1.5 pr-3">{priorityLabel(ticket.priority)}</td>
-                <td className="py-1.5 pr-3 text-muted-foreground truncate max-w-[6rem]">
+                <td className="py-1.5 pr-3 w-20">{priorityLabel(ticket.priority)}</td>
+                <td className="py-1.5 pr-3 w-24 text-muted-foreground truncate max-w-[6rem]">
                   {ticket.created_by || '-'}
                 </td>
-                <td className="py-1.5 pr-3 text-muted-foreground">
+                <td className="py-1.5 pr-3 w-24 text-muted-foreground">
                   {formatRelativeTime(ticket.updated_at)}
                 </td>
-                <td className="py-1.5">
+                <td className="py-1.5 w-16">
                   {progress && progress.total_phases > 0 ? (
                     <div className="flex items-center gap-1">
                       <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden w-12">

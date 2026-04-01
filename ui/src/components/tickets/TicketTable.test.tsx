@@ -97,6 +97,22 @@ describe('TicketTable', () => {
         expect(screen.getByText(header)).toBeInTheDocument()
       }
     })
+
+    it('Type column is the first header', () => {
+      const { container } = renderTable({ tickets: [makeTicket()] })
+      const headers = container.querySelectorAll('thead th')
+      expect(headers[0]).toHaveTextContent('Type')
+    })
+
+    it('type icon cell is the first cell in each row', () => {
+      const { container } = renderTable({ tickets: [makeTicket()] })
+      const firstRow = container.querySelector('tbody tr')!
+      const cells = firstRow.querySelectorAll('td')
+      // First cell should contain an SVG (the IssueTypeIcon), not text like an ID
+      expect(cells[0].querySelector('svg')).toBeInTheDocument()
+      // Second cell should contain the ticket ID text
+      expect(cells[1]).toHaveTextContent('TICKET-1')
+    })
   })
 
   describe('row data', () => {

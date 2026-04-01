@@ -1,6 +1,7 @@
 import { X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
 import { Toggle } from '@/components/ui/Toggle'
 import { Tooltip } from '@/components/ui/Tooltip'
 
@@ -10,7 +11,16 @@ export interface ProjectFormData {
   root_path: string
   default_branch: string
   use_git_worktrees: boolean
+  safety_hook_enabled: boolean
+  safety_hook_allow_git: boolean
+  safety_hook_allowed_rm_paths: string
+  safety_hook_dangerous_patterns: string
 }
+
+const DEFAULT_RM_PATHS = [
+  'node_modules', 'target', 'build', 'dist', '.cache',
+  '__pycache__', 'coverage', '.next', 'vendor', '/tmp', '/var/tmp',
+].join('\n')
 
 export const emptyProjectForm: ProjectFormData = {
   id: '',
@@ -18,6 +28,63 @@ export const emptyProjectForm: ProjectFormData = {
   root_path: '',
   default_branch: '',
   use_git_worktrees: false,
+  safety_hook_enabled: false,
+  safety_hook_allow_git: true,
+  safety_hook_allowed_rm_paths: '',
+  safety_hook_dangerous_patterns: '',
+}
+
+interface SafetyHookConfig {
+  enabled: boolean
+  allow_git: boolean
+  rm_rf_allowed_paths: string[]
+  dangerous_patterns: string[]
+}
+
+type SafetyHookFields = Pick<ProjectFormData, 'safety_hook_enabled' | 'safety_hook_allow_git' | 'safety_hook_allowed_rm_paths' | 'safety_hook_dangerous_patterns'>
+
+export function parseSafetyHookConfig(json: string | null): SafetyHookFields {
+  if (!json) {
+    return {
+      safety_hook_enabled: false,
+      safety_hook_allow_git: true,
+      safety_hook_allowed_rm_paths: '',
+      safety_hook_dangerous_patterns: '',
+    }
+  }
+  try {
+    const config: SafetyHookConfig = JSON.parse(json)
+    return {
+      safety_hook_enabled: config.enabled ?? false,
+      safety_hook_allow_git: config.allow_git ?? true,
+      safety_hook_allowed_rm_paths: (config.rm_rf_allowed_paths || []).join('\n'),
+      safety_hook_dangerous_patterns: (config.dangerous_patterns || []).join('\n'),
+    }
+  } catch {
+    return {
+      safety_hook_enabled: false,
+      safety_hook_allow_git: true,
+      safety_hook_allowed_rm_paths: '',
+      safety_hook_dangerous_patterns: '',
+    }
+  }
+}
+
+export function buildSafetyHookJSON(formData: ProjectFormData): string {
+  if (!formData.safety_hook_enabled) return ''
+  const config: SafetyHookConfig = {
+    enabled: true,
+    allow_git: formData.safety_hook_allow_git,
+    rm_rf_allowed_paths: formData.safety_hook_allowed_rm_paths
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+    dangerous_patterns: formData.safety_hook_dangerous_patterns
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+  }
+  return JSON.stringify(config)
 }
 
 export function ProjectForm({
@@ -102,6 +169,49 @@ export function ProjectForm({
             />
           </Tooltip>
         </div>
+      </div>
+      <div className="border-t border-border pt-3 space-y-3">
+        <div className="text-sm font-medium text-muted-foreground">Safety Hook</div>
+        <Toggle
+          checked={formData.safety_hook_enabled}
+          onChange={(checked) =>
+            setFormData({
+              ...formData,
+              safety_hook_enabled: checked,
+              safety_hook_allowed_rm_paths: checked && !formData.safety_hook_allowed_rm_paths
+                ? DEFAULT_RM_PATHS
+                : formData.safety_hook_allowed_rm_paths,
+            })
+          }
+          label="Enable safety hook"
+        />
+        {formData.safety_hook_enabled && (
+          <div className="space-y-3 pl-4 border-l-2 border-border">
+            <Toggle
+              checked={formData.safety_hook_allow_git}
+              onChange={(checked) => setFormData({ ...formData, safety_hook_allow_git: checked })}
+              label="Allow git operations"
+            />
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Allowed rm paths (one per line)</label>
+              <Textarea
+                value={formData.safety_hook_allowed_rm_paths}
+                onChange={(e) => setFormData({ ...formData, safety_hook_allowed_rm_paths: e.target.value })}
+                rows={4}
+                placeholder="node_modules&#10;dist&#10;build"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Dangerous patterns (one per line)</label>
+              <Textarea
+                value={formData.safety_hook_dangerous_patterns}
+                onChange={(e) => setFormData({ ...formData, safety_hook_dangerous_patterns: e.target.value })}
+                rows={3}
+                placeholder="rm -rf /&#10;DROP TABLE"
+              />
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>

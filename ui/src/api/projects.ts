@@ -7,6 +7,7 @@ export interface Project {
   default_branch: string | null
   use_git_worktrees: boolean
   use_docker_isolation: boolean
+  claude_safety_hook: string | null
   created_at: string
   updated_at: string
 }
@@ -30,6 +31,7 @@ export interface UpdateProjectRequest {
   default_branch?: string
   use_git_worktrees?: boolean
   use_docker_isolation?: boolean
+  claude_safety_hook?: string
 }
 
 export async function listProjects(): Promise<ProjectsResponse> {

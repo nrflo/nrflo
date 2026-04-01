@@ -13,7 +13,13 @@ import {
   type CreateProjectRequest,
   type UpdateProjectRequest,
 } from '@/api/projects'
-import { ProjectForm, emptyProjectForm, type ProjectFormData } from './ProjectForm'
+import {
+  ProjectForm,
+  emptyProjectForm,
+  parseSafetyHookConfig,
+  buildSafetyHookJSON,
+  type ProjectFormData,
+} from './ProjectForm'
 
 const projectKeys = {
   all: ['projects'] as const,
@@ -87,6 +93,7 @@ export function ProjectsSection() {
       root_path: project.root_path || '',
       default_branch: project.default_branch || '',
       use_git_worktrees: project.use_git_worktrees || false,
+      ...parseSafetyHookConfig(project.claude_safety_hook),
     })
   }
 
@@ -109,6 +116,7 @@ export function ProjectsSection() {
 
   const handleSaveEdit = () => {
     if (!editingId) return
+    const safetyHook = buildSafetyHookJSON(formData)
     updateMutation.mutate({
       id: editingId,
       data: {
@@ -116,6 +124,7 @@ export function ProjectsSection() {
         root_path: formData.root_path.trim() || undefined,
         default_branch: formData.default_branch.trim() || undefined,
         use_git_worktrees: formData.use_git_worktrees,
+        claude_safety_hook: safetyHook,
       },
     })
   }
@@ -226,6 +235,7 @@ export function ProjectsSection() {
                             project.root_path && `Path: ${project.root_path}`,
                             project.default_branch && `Branch: ${project.default_branch}`,
                             project.use_git_worktrees && 'Worktrees: enabled',
+                            project.claude_safety_hook && 'Safety hook: enabled',
                           ]
                             .filter(Boolean)
                             .map((text, i, arr) => (

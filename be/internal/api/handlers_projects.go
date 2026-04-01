@@ -2,11 +2,21 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"net/http"
 
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/spawner"
 )
+
+// loadSafetyHook loads the claude_safety_hook config for a project and sets it on the model.
+func (s *Server) loadSafetyHook(p *model.Project) {
+	val, err := s.pool.GetProjectConfig(p.ID, "claude_safety_hook")
+	if err == nil {
+		p.ClaudeSafetyHook = val
+	}
+}
 
 // handleListProjects returns all projects
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +30,10 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 
 	if projects == nil {
 		projects = []*model.Project{}
+	}
+
+	for _, p := range projects {
+		s.loadSafetyHook(p)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -98,6 +112,8 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.loadSafetyHook(project)
+
 	writeJSON(w, http.StatusOK, project)
 }
 
@@ -121,6 +137,7 @@ type UpdateProjectRequest struct {
 	DefaultBranch   *string `json:"default_branch,omitempty"`
 	UseGitWorktrees    *bool   `json:"use_git_worktrees,omitempty"`
 	UseDockerIsolation *bool   `json:"use_docker_isolation,omitempty"`
+	ClaudeSafetyHook   *string `json:"claude_safety_hook,omitempty"`
 }
 
 // handleUpdateProject updates a project
@@ -148,11 +165,29 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle safety hook config (stored in config table, not projects table)
+	if req.ClaudeSafetyHook != nil {
+		hookVal := *req.ClaudeSafetyHook
+		if hookVal != "" {
+			var cfg spawner.SafetyHookConfig
+			if err := json.Unmarshal([]byte(hookVal), &cfg); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid claude_safety_hook JSON: "+err.Error())
+				return
+			}
+		}
+		if err := s.pool.SetProjectConfig(id, "claude_safety_hook", hookVal); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to save safety hook config: "+err.Error())
+			return
+		}
+	}
+
 	updated, err := projectRepo.Get(id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	s.loadSafetyHook(updated)
 
 	writeJSON(w, http.StatusOK, updated)
 }

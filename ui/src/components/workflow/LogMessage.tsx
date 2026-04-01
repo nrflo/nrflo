@@ -13,6 +13,7 @@ const TOOL_COLORS: Record<string, string> = {
   AgentResult: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
   WebFetch: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   WebSearch: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+  rate_limit: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   TodoWrite: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
   Skill: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
 }

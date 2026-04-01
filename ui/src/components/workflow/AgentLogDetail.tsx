@@ -267,7 +267,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                 {[...filteredMessages].reverse().map((msg, i) => {
                   const { toolName, rest } = parseToolName(msg.content)
                   return (
-                    <tr key={i} className="border-b border-border/50 align-top">
+                    <tr key={i} className={cn("border-b border-border/50 align-top", toolName === 'rate_limit' && "bg-orange-50 dark:bg-orange-950/20")}>
                       <td className="py-1 pr-2 text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                         {formatTime(msg.created_at)}
                       </td>

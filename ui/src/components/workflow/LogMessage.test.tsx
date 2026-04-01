@@ -141,6 +141,10 @@ describe('parseToolName', () => {
   it('does not match brackets in the middle of the string', () => {
     expect(parseToolName('some [Bash] in middle')).toEqual({ toolName: null, rest: 'some [Bash] in middle' })
   })
+
+  it('extracts underscore tool name rate_limit', () => {
+    expect(parseToolName('[rate_limit] output_tokens throttled')).toEqual({ toolName: 'rate_limit', rest: 'output_tokens throttled' })
+  })
 })
 
 describe('ToolBadge', () => {
@@ -230,5 +234,13 @@ describe('ToolBadge', () => {
 
     expect(agentResultClass).toContain('bg-emerald-100')
     expect(taskResultClass).toContain('bg-emerald-100')
+  })
+
+  it('renders rate_limit badge with orange styling', () => {
+    render(<ToolBadge name="rate_limit" />)
+    const badge = screen.getByText('rate_limit')
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('bg-orange-100')
+    expect(badge.className).not.toContain('bg-gray-100')
   })
 })

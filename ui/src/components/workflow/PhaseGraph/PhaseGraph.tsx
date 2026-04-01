@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
-import { ReactFlow, Background, Controls, useReactFlow, type Node, type Edge, type NodeTypes } from '@xyflow/react'
+import { ReactFlow, Background, Controls, useReactFlow, MarkerType, type Node, type Edge, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
 import { getLayoutedElements, BASE_HEIGHT } from './layout'
@@ -278,9 +278,10 @@ export function PhaseGraph({
             id: `${fromNode.id}-${toNode.id}`,
             source: fromNode.id,
             target: toNode.id,
-            type: 'smoothstep',
+            type: 'default',
             animated: isTargetRunning,
             style: { stroke, strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 20, height: 20 },
           })
         })
       })

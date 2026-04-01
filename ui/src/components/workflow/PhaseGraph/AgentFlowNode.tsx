@@ -133,7 +133,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           'nopan nodrag relative',
           'w-[242px] sm:w-[330px] min-h-[90px] rounded-xl border-2 px-3 sm:px-5 py-4 transition-all',
           'hover:bg-muted/50 hover:scale-[1.02] cursor-pointer',
-          isRunning && 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30 animate-pulse-glow',
+          isRunning && 'border-transparent bg-yellow-50 dark:bg-yellow-950/30 turbo-border',
           !isRunning && result === 'pass' && 'border-green-500 bg-green-50 dark:bg-green-950/30',
           !isRunning && result === 'fail' && 'border-red-500 bg-red-50 dark:bg-red-950/30',
           !isRunning && !result && 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900'

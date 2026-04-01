@@ -68,31 +68,22 @@ body {
   min-height: 100vh;
 }
 
-/* Animation for running agent cards */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(234, 179, 8, 0);
-  }
+/* Turbo-flow rotating border for running agent cards */
+.turbo-border {
+  position: relative;
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+.turbo-border::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  z-index: -1;
+  background: conic-gradient(from var(--spin-angle), #facc15, #fbbf24, #f59e0b, #facc15);
 }
 
-@keyframes pulse-glow-dark {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
-  }
-}
-
-.dark .animate-pulse-glow {
-  animation: pulse-glow-dark 2s ease-in-out infinite;
+.dark .turbo-border::before {
+  background: conic-gradient(from var(--spin-angle), #a16207, #ca8a04, #eab308, #a16207);
 }
 
 /* Animation for interactive agent cards */

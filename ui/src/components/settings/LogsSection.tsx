@@ -7,22 +7,20 @@ import { useLogs } from '@/hooks/useLogs'
 
 type LogType = 'be' | 'fe'
 
-const tabs: { key: LogType; label: string; icon: React.ReactNode }[] = [
+const logTabs: { key: LogType; label: string; icon: React.ReactNode }[] = [
   { key: 'be', label: 'BE', icon: <Terminal className="h-4 w-4" /> },
   { key: 'fe', label: 'FE', icon: <Monitor className="h-4 w-4" /> },
 ]
 
-export function LogsPage() {
+export function LogsSection() {
   const [activeTab, setActiveTab] = useState<LogType>('be')
   const { data, isLoading, error, refetch } = useLogs(activeTab)
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Logs</h1>
-
+    <div className="space-y-6">
       <div className="border-b border-border">
         <div className="flex gap-1">
-          {tabs.map((tab) => (
+          {logTabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}

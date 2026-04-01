@@ -12,7 +12,6 @@ import {
   GitCommitHorizontal,
   Link2,
   BookOpen,
-  Terminal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
@@ -126,12 +125,6 @@ export function Sidebar() {
           icon={<BookOpen className="h-4 w-4" />}
           label="Documentation"
           active={isActive('/documentation')}
-        />
-        <NavItem
-          to="/logs"
-          icon={<Terminal className="h-4 w-4" />}
-          label="Logs"
-          active={isActive('/logs')}
         />
         <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           By Status

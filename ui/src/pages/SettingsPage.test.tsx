@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SettingsPage } from './SettingsPage'
 import * as projectsApi from '@/api/projects'
 import type { Project } from '@/api/projects'
+import * as logsHook from '@/hooks/useLogs'
 
 const mockSetCurrentProject = vi.fn()
 const mockLoadProjects = vi.fn()
@@ -38,6 +39,8 @@ vi.mock('@/api/systemAgentDefs', () => ({
   updateSystemAgentDef: vi.fn(),
   deleteSystemAgentDef: vi.fn(),
 }))
+
+vi.mock('@/hooks/useLogs')
 
 function makeProject(overrides: Partial<Project> = {}): Project {
   return {
@@ -413,5 +416,36 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       expect(screen.getByText('Branch: develop')).toBeInTheDocument()
       expect(screen.getByText('Worktrees: enabled')).toBeInTheDocument()
     })
+  })
+})
+
+describe('SettingsPage - Logs tab', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
+    vi.mocked(logsHook.useLogs).mockReturnValue({
+      data: { lines: [], type: 'be' },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof logsHook.useLogs>)
+  })
+
+  it('Logs tab button is present as the last tab', () => {
+    renderPage()
+    const logsTab = screen.getByRole('button', { name: 'Logs' })
+    expect(logsTab).toBeInTheDocument()
+    const allTabs = screen.getAllByRole('button').filter((b) =>
+      ['General', 'Projects', 'System Agents', 'Default Templates', 'CLI Models', 'Logs'].includes(b.textContent ?? '')
+    )
+    expect(allTabs[allTabs.length - 1]).toHaveTextContent('Logs')
+  })
+
+  it('clicking Logs tab renders BE/FE sub-tab buttons', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Logs' }))
+    expect(screen.getByRole('button', { name: /BE/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /FE/ })).toBeInTheDocument()
   })
 })

@@ -243,7 +243,7 @@ describe('Header - Icon-only nav links', () => {
     ]
   })
 
-  it('all 6 nav links render with correct titles, hrefs, and responsive text labels', () => {
+  it('all 5 nav links render with correct titles, hrefs, and responsive text labels', () => {
     renderHeader()
 
     const expectedLinks = [
@@ -252,7 +252,6 @@ describe('Header - Icon-only nav links', () => {
       { title: 'Workflows', href: '/workflows', label: 'Workflows' },
       { title: 'Git Status', href: '/git-status', label: 'Git Status' },
       { title: 'Documentation', href: '/documentation', label: 'Docs' },
-      { title: 'Logs', href: '/logs', label: 'Logs' },
     ]
 
     for (const { title, href, label } of expectedLinks) {

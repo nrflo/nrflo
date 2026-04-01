@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, Terminal, Sun, Moon, Monitor } from 'lucide-react'
+import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, Sun, Moon, Monitor } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
@@ -67,10 +67,6 @@ export function Header() {
           <Link to="/documentation" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Documentation">
             <BookOpen className="h-5 w-5" />
             <span className="hidden md:inline ml-1 text-xs">Docs</span>
-          </Link>
-          <Link to="/logs" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Logs">
-            <Terminal className="h-5 w-5" />
-            <span className="hidden md:inline ml-1 text-xs">Logs</span>
           </Link>
         </nav>
 

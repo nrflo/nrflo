@@ -164,10 +164,13 @@ func (s *Server) startRetentionCleanup() {
 			logger.Info(context.Background(), "retention cleanup: workflow_instances", "deleted", deleted)
 		}
 
-		if deleted, err := asRepo.CleanupKeepLatest(keep); err != nil {
-			logger.Info(context.Background(), "retention cleanup: agent_sessions error", "error", err)
+		// Clean up orphaned messages (sessions removed by CASCADE).
+		// Agent sessions are NOT cleaned independently — CASCADE from
+		// workflow_instances deletion handles them.
+		if deleted, err := asRepo.CleanupOrphanedMessages(); err != nil {
+			logger.Info(context.Background(), "retention cleanup: orphaned messages error", "error", err)
 		} else if deleted > 0 {
-			logger.Info(context.Background(), "retention cleanup: agent_sessions", "deleted", deleted)
+			logger.Info(context.Background(), "retention cleanup: orphaned messages", "deleted", deleted)
 		}
 	}
 

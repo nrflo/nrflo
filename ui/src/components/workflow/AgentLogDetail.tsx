@@ -259,7 +259,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="py-1 pr-2 font-medium w-[90px]">Time</th>
-                  <th className="py-1 pr-2 font-medium w-[70px]">Tool</th>
+                  <th className="py-1 pr-2 font-medium w-[100px]">Tool</th>
                   <th className="py-1 font-medium">Message</th>
                 </tr>
               </thead>
@@ -271,7 +271,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                       <td className="py-1 pr-2 text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                         {formatTime(msg.created_at)}
                       </td>
-                      <td className="py-1 pr-2">
+                      <td className="py-1 pr-2 overflow-hidden">
                         {toolName && <ToolBadge name={toolName} />}
                       </td>
                       <td className="py-1 whitespace-pre-wrap break-words text-foreground/90">

@@ -50,12 +50,12 @@ function ItemRow({ item }: { item: ChainExecutionItem }) {
       <div className="flex-1" />
       <ItemStatusBadge status={item.status} />
       {item.started_at && (
-        <span className="text-xs text-muted-foreground shrink-0">
+        <span className="text-xs text-muted-foreground w-16 shrink-0">
           {formatRelativeTime(item.started_at)}
         </span>
       )}
       {duration && (
-        <span className="text-xs text-muted-foreground shrink-0">
+        <span className="text-xs text-muted-foreground w-16 shrink-0">
           {duration}
         </span>
       )}
@@ -212,13 +212,13 @@ export function ChainDetailPage() {
       <div className="border border-border rounded-lg">
         <div className="px-4 py-2 border-b border-border bg-muted/30">
           <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            <span className="w-6 text-right">#</span>
-            <span>Ticket</span>
+            <span className="w-6 shrink-0 text-right">#</span>
+            <span className="shrink-0">Ticket</span>
             <span className="flex-1" />
-            <span>Status</span>
-            <span className="w-16">Started</span>
-            <span className="w-16">Duration</span>
-            <span className="w-20">Tokens</span>
+            <span className="shrink-0">Status</span>
+            <span className="w-16 shrink-0">Started</span>
+            <span className="w-16 shrink-0">Duration</span>
+            <span className="w-20 shrink-0">Tokens</span>
           </div>
         </div>
         {items.length === 0 ? (

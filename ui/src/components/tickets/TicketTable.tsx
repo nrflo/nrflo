@@ -80,81 +80,81 @@ export function TicketTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm font-mono border-collapse">
-        <thead>
-          <tr className="text-left text-muted-foreground border-b border-border">
+      <div className="border border-border rounded-lg text-sm font-mono">
+        <div className="px-4 py-2 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider" data-testid="table-header">
             {COLUMNS.map((col) => (
-              <th
+              <span
                 key={col.key}
-                className={cn('py-1.5 pr-3 font-medium cursor-pointer select-none hover:text-foreground', col.className)}
+                className={cn(
+                  'cursor-pointer select-none hover:text-foreground shrink-0',
+                  col.key === 'title' ? 'flex-1 min-w-0' : col.className,
+                )}
                 onClick={() => onSortChange(col.key)}
               >
                 {col.label}
                 <SortIndicator column={col.key} sortBy={sortBy} sortOrder={sortOrder} />
-              </th>
+              </span>
             ))}
-            <th className="py-1.5 font-medium w-16">Progress</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tickets.map((ticket) => {
-            const isBlocked = isPendingTicket(ticket) && ticket.is_blocked
-            const progress = isPendingTicket(ticket) ? ticket.workflow_progress : undefined
+            <span className="w-16 shrink-0">Progress</span>
+          </div>
+        </div>
+        {tickets.map((ticket) => {
+          const isBlocked = isPendingTicket(ticket) && ticket.is_blocked
+          const progress = isPendingTicket(ticket) ? ticket.workflow_progress : undefined
 
-            return (
-              <tr
-                key={ticket.id}
-                onClick={() => navigate(`/tickets/${encodeURIComponent(ticket.id)}`)}
-                className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
-              >
-                <td className="py-1.5 pr-3 w-10">
-                  <IssueTypeIcon type={ticket.issue_type} />
-                </td>
-                <td className="py-1.5 pr-3 w-32">
-                  <span className="flex items-center gap-1">
-                    {ticket.id}
-                    {isBlocked && (
-                      <span title="Blocked">
-                        <Lock className="h-3 w-3 text-orange-500" />
-                      </span>
-                    )}
+          return (
+            <div
+              key={ticket.id}
+              onClick={() => navigate(`/tickets/${encodeURIComponent(ticket.id)}`)}
+              className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors"
+              data-testid="table-row"
+            >
+              <span className="w-10 shrink-0">
+                <IssueTypeIcon type={ticket.issue_type} />
+              </span>
+              <span className="w-32 shrink-0 flex items-center gap-1">
+                {ticket.id}
+                {isBlocked && (
+                  <span title="Blocked">
+                    <Lock className="h-3 w-3 text-orange-500" />
                   </span>
-                </td>
-                <td className="py-1.5 pr-3 max-w-xs truncate">{ticket.title}</td>
-                <td className="py-1.5 pr-3 w-24">
-                  <Badge className={cn('text-xs px-1 py-0', statusColor(ticket.status))}>
-                    {ticket.status.replace('_', ' ')}
-                  </Badge>
-                </td>
-                <td className="py-1.5 pr-3 w-20">{priorityLabel(ticket.priority)}</td>
-                <td className="py-1.5 pr-3 w-28 text-muted-foreground truncate max-w-[7rem]">
-                  {ticket.created_by || '-'}
-                </td>
-                <td className="py-1.5 pr-3 w-24 text-muted-foreground">
-                  {formatRelativeTime(ticket.updated_at)}
-                </td>
-                <td className="py-1.5 w-16">
-                  {progress && progress.total_phases > 0 ? (
-                    <div className="flex items-center gap-1">
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden w-12">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{
-                            width: `${Math.round((progress.completed_phases / progress.total_phases) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-muted-foreground whitespace-nowrap">
-                        {progress.completed_phases}/{progress.total_phases}
-                      </span>
+                )}
+              </span>
+              <span className="flex-1 min-w-0 truncate">{ticket.title}</span>
+              <span className="w-24 shrink-0">
+                <Badge className={cn('text-xs px-1 py-0', statusColor(ticket.status))}>
+                  {ticket.status.replace('_', ' ')}
+                </Badge>
+              </span>
+              <span className="w-20 shrink-0">{priorityLabel(ticket.priority)}</span>
+              <span className="w-28 shrink-0 text-muted-foreground truncate">
+                {ticket.created_by || '-'}
+              </span>
+              <span className="w-24 shrink-0 text-muted-foreground">
+                {formatRelativeTime(ticket.updated_at)}
+              </span>
+              <span className="w-16 shrink-0">
+                {progress && progress.total_phases > 0 ? (
+                  <div className="flex items-center gap-1">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden w-12">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{
+                          width: `${Math.round((progress.completed_phases / progress.total_phases) * 100)}%`,
+                        }}
+                      />
                     </div>
-                  ) : null}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      {progress.completed_phases}/{progress.total_phases}
+                    </span>
+                  </div>
+                ) : null}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -168,16 +168,16 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('3 messages')).toBeInTheDocument()
       })
 
-      // Table should exist
-      const table = document.querySelector('table')
+      // Message table should exist
+      const table = document.querySelector('[data-testid="message-table"]')
       expect(table).toBeInTheDocument()
 
       // Table headers
-      const thead = table!.querySelector('thead')!
-      expect(thead).toBeInTheDocument()
-      expect(thead.textContent).toContain('Time')
-      expect(thead.textContent).toContain('Tool')
-      expect(thead.textContent).toContain('Message')
+      const header = document.querySelector('[data-testid="message-table-header"]')!
+      expect(header).toBeInTheDocument()
+      expect(header.textContent).toContain('Time')
+      expect(header.textContent).toContain('Tool')
+      expect(header.textContent).toContain('Message')
 
       // Messages content
       expect(screen.getByText('Setting up project...')).toBeInTheDocument()
@@ -246,27 +246,26 @@ describe('AgentLogDetail', () => {
       expect(container.querySelector('[data-tooltip]')).toBeNull()
 
       // --- Criterion 2: Table with timestamp|tool|message structure ---
-      const table = document.querySelector('table')!
+      const table = document.querySelector('[data-testid="message-table"]')!
       expect(table).toBeInTheDocument()
 
-      // Verify table header structure
-      const thead = table.querySelector('thead')!
-      const headerCells = thead.querySelectorAll('th')
+      // Verify header structure
+      const header = document.querySelector('[data-testid="message-table-header"]')!
+      const headerCells = header.querySelectorAll(':scope > span')
       expect(headerCells).toHaveLength(3)
       expect(headerCells[0].textContent).toBe('Time')
       expect(headerCells[1].textContent).toBe('Tool')
       expect(headerCells[2].textContent).toBe('Message')
 
-      // Verify table body has correct number of rows
-      const tbody = table.querySelector('tbody')!
-      const rows = tbody.querySelectorAll('tr')
+      // Verify correct number of message rows
+      const rows = document.querySelectorAll('[data-testid="message-row"]')
       expect(rows).toHaveLength(4)
 
       // Messages are reversed (newest first), so last message in data is first row
       const firstRow = rows[0]
-      const firstRowCells = firstRow.querySelectorAll('td')
+      const firstRowCells = firstRow.querySelectorAll(':scope > span')
       expect(firstRowCells).toHaveLength(3)
-      // Timestamp column (td[0]) has time text
+      // Timestamp column has time text
       expect(firstRowCells[0].textContent).toBeTruthy()
       // No tool for plain text message
       expect(firstRowCells[1].querySelector('span')).toBeNull()
@@ -275,19 +274,19 @@ describe('AgentLogDetail', () => {
 
       // Second row (third message in reversed order) should have [Edit] tool badge
       const secondRow = rows[1]
-      const secondRowCells = secondRow.querySelectorAll('td')
+      const secondRowCells = secondRow.querySelectorAll(':scope > span')
       expect(within(secondRowCells[1]).getByText('Edit')).toBeInTheDocument()
       expect(secondRowCells[2].textContent).toBe('src/utils.ts')
 
       // Third row should have [Read] tool badge
       const thirdRow = rows[2]
-      const thirdRowCells = thirdRow.querySelectorAll('td')
+      const thirdRowCells = thirdRow.querySelectorAll(':scope > span')
       expect(within(thirdRowCells[1]).getByText('Read')).toBeInTheDocument()
       expect(thirdRowCells[2].textContent).toBe('src/main.ts')
 
       // Fourth row (first message) should have [Bash] tool badge
       const fourthRow = rows[3]
-      const fourthRowCells = fourthRow.querySelectorAll('td')
+      const fourthRowCells = fourthRow.querySelectorAll(':scope > span')
       expect(within(fourthRowCells[1]).getByText('Bash')).toBeInTheDocument()
       expect(fourthRowCells[2].textContent).toBe('git status')
 
@@ -296,7 +295,7 @@ describe('AgentLogDetail', () => {
       expect(screen.queryByText('Raw')).not.toBeInTheDocument()
       expect(screen.queryByText('Raw Output')).not.toBeInTheDocument()
 
-      // Messages are displayed by default (the table is visible in the Messages tab)
+      // Messages are displayed by default (the message table is visible in the Messages tab)
       expect(table).toBeVisible()
     })
   })
@@ -326,9 +325,35 @@ describe('AgentLogDetail', () => {
       expect(screen.getByText('WebFetch')).toBeInTheDocument()
       expect(screen.getByText('Task')).toBeInTheDocument()
 
-      // Verify the tool badges are in td elements (table cells)
+      // Verify the tool badges are in message row cells
       const grepBadge = screen.getByText('Grep')
-      expect(grepBadge.closest('td')).toBeInTheDocument()
+      expect(grepBadge.closest('[data-testid="message-row"]')).toBeInTheDocument()
+    })
+
+    it('applies orange highlight to rate_limit messages', async () => {
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: '[rate_limit] rate limited', created_at: '2026-01-01T00:00:01Z' },
+          { content: '[Bash] normal command', created_at: '2026-01-01T00:00:02Z' },
+        ],
+        total: 2,
+      })
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('2 messages')).toBeInTheDocument()
+      })
+
+      const rows = document.querySelectorAll('[data-testid="message-row"]')
+      // Reversed: Bash row first (index 0), rate_limit row second (index 1)
+      expect(rows[0].className).not.toContain('bg-orange-50')
+      expect(rows[1].className).toContain('bg-orange-50')
     })
 
     it('leaves tool column empty for messages without tool prefix', async () => {
@@ -350,8 +375,8 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('no tool prefix here')).toBeInTheDocument()
       })
 
-      const tbody = document.querySelector('tbody')!
-      const toolCell = tbody.querySelector('tr td:nth-child(2)')!
+      const row = document.querySelector('[data-testid="message-row"]')!
+      const toolCell = row.querySelectorAll(':scope > span')[1]!
       // Tool cell should have no badge child
       expect(toolCell.children).toHaveLength(0)
     })
@@ -378,8 +403,8 @@ describe('AgentLogDetail', () => {
       })
 
       // The time cell should contain a formatted HH:MM:SS timestamp
-      const tbody = document.querySelector('tbody')!
-      const timeCell = tbody.querySelector('tr td:first-child')!
+      const row = document.querySelector('[data-testid="message-row"]')!
+      const timeCell = row.querySelector(':scope > span:first-child')!
       // formatTime produces locale-dependent output, but it should be non-empty
       expect(timeCell.textContent).toBeTruthy()
       // Should contain at least digits and colons (HH:MM:SS pattern)
@@ -406,8 +431,8 @@ describe('AgentLogDetail', () => {
       })
 
       // Should not crash, time cell should be empty
-      const tbody = document.querySelector('tbody')!
-      const timeCell = tbody.querySelector('tr td:first-child')!
+      const row = document.querySelector('[data-testid="message-row"]')!
+      const timeCell = row.querySelector(':scope > span:first-child')!
       expect(timeCell.textContent).toBe('')
     })
   })
@@ -434,9 +459,8 @@ describe('AgentLogDetail', () => {
         expect(screen.getByText('3 messages')).toBeInTheDocument()
       })
 
-      const tbody = document.querySelector('tbody')!
-      const rows = tbody.querySelectorAll('tr')
-      const msgCells = Array.from(rows).map(r => r.querySelector('td:nth-child(3)')!.textContent)
+      const rows = document.querySelectorAll('[data-testid="message-row"]')
+      const msgCells = Array.from(rows).map(r => r.querySelectorAll(':scope > span')[2]!.textContent)
 
       // Reversed: newest first
       expect(msgCells[0]).toBe('third message')
@@ -528,10 +552,10 @@ describe('AgentLogDetail', () => {
       // There should be no empty div with a ref right before the message count
       const messageCountContainer = screen.getByText('1 messages').closest('div')
       const previousSibling = messageCountContainer?.previousElementSibling
-      // The previous sibling should NOT be an empty div (it should be the table or nothing)
+      // The previous sibling should NOT be an empty div (it should be the message table or nothing)
       if (previousSibling) {
-        // If there is a previous sibling, it should have content (be the table)
-        expect(previousSibling.tagName.toLowerCase()).toBe('table')
+        // If there is a previous sibling, it should have content (be the message table)
+        expect(previousSibling.getAttribute('data-testid')).toBe('message-table')
       }
     })
   })

@@ -76,47 +76,46 @@ export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect }: 
 
   return (
     <div>
-      <table className="w-full text-xs font-mono border-collapse">
-        <thead>
-          <tr className="text-left text-muted-foreground border-b border-border">
-            <th className="py-1.5 pr-3 font-medium">Agent</th>
-            <th className="py-1.5 pr-3 font-medium">Phase</th>
-            <th className="py-1.5 pr-3 font-medium">Model</th>
-            <th className="py-1.5 pr-3 font-medium">Result</th>
-            <th className="py-1.5 pr-3 font-medium">Duration</th>
-            <th className="py-1.5 font-medium">Completed At</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pageItems.map((entry, i) => (
-            <tr
-              key={`${entry.session_id || 'agent'}-${safePage}-${i}`}
-              onClick={() => handleClick(entry)}
-              className="border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
-            >
-              <td className="py-1.5 pr-3">{entry.agent_type}</td>
-              <td className="py-1.5 pr-3">{entry.phase.replace(/_/g, ' ')}</td>
-              <td className="py-1.5 pr-3 text-muted-foreground">{entry.model_id ?? '-'}</td>
-              <td className="py-1.5 pr-3">
-                {entry.result && (
-                  <Badge
-                    variant={entry.result === 'pass' ? 'success' : 'destructive'}
-                    className="text-[10px] px-1 py-0"
-                  >
-                    {entry.result}
-                  </Badge>
-                )}
-              </td>
-              <td className="py-1.5 pr-3 text-muted-foreground">
-                {displayDuration(entry)}
-              </td>
-              <td className="py-1.5 text-muted-foreground">
-                {entry.ended_at ? formatDateTime(entry.ended_at) : '-'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="border border-border rounded-lg text-xs font-mono" data-testid="agent-table">
+        <div className="px-4 py-2 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground uppercase tracking-wider" data-testid="agent-table-header">
+            <span className="flex-1 shrink-0">Agent</span>
+            <span className="flex-1 shrink-0">Phase</span>
+            <span className="w-28 shrink-0">Model</span>
+            <span className="w-16 shrink-0">Result</span>
+            <span className="w-20 shrink-0">Duration</span>
+            <span className="flex-1 shrink-0">Completed At</span>
+          </div>
+        </div>
+        {pageItems.map((entry, i) => (
+          <div
+            key={`${entry.session_id || 'agent'}-${safePage}-${i}`}
+            onClick={() => handleClick(entry)}
+            className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors"
+            data-testid="agent-row"
+          >
+            <span className="flex-1 shrink-0">{entry.agent_type}</span>
+            <span className="flex-1 shrink-0">{entry.phase.replace(/_/g, ' ')}</span>
+            <span className="w-28 shrink-0 text-muted-foreground">{entry.model_id ?? '-'}</span>
+            <span className="w-16 shrink-0">
+              {entry.result && (
+                <Badge
+                  variant={entry.result === 'pass' ? 'success' : 'destructive'}
+                  className="text-[10px] px-1 py-0"
+                >
+                  {entry.result}
+                </Badge>
+              )}
+            </span>
+            <span className="w-20 shrink-0 text-muted-foreground">
+              {displayDuration(entry)}
+            </span>
+            <span className="flex-1 shrink-0 text-muted-foreground">
+              {entry.ended_at ? formatDateTime(entry.ended_at) : '-'}
+            </span>
+          </div>
+        ))}
+      </div>
       {pageCount > 1 && (
         <div className="flex items-center justify-between pt-3 text-xs text-muted-foreground">
           <span>

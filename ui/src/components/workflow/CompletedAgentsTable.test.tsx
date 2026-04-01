@@ -56,10 +56,11 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const table = document.querySelector('table')
+      const table = document.querySelector('[data-testid="agent-table"]')
       expect(table).toBeInTheDocument()
 
-      const headers = table!.querySelectorAll('thead th')
+      const header = document.querySelector('[data-testid="agent-table-header"]')!
+      const headers = header.querySelectorAll(':scope > span')
       expect(headers).toHaveLength(6)
       expect(headers[0].textContent).toBe('Agent')
       expect(headers[1].textContent).toBe('Phase')
@@ -111,7 +112,7 @@ describe('CompletedAgentsTable', () => {
       )
 
       expect(screen.getByText('No completed agents')).toBeInTheDocument()
-      expect(document.querySelector('table')).not.toBeInTheDocument()
+      expect(document.querySelector('[data-testid="agent-table"]')).not.toBeInTheDocument()
     })
 
     it('replaces underscores with spaces in phase names', () => {
@@ -151,9 +152,9 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const cells = document.querySelectorAll('td')
-      const modelCell = cells[2]
-      expect(modelCell.textContent).toBe('-')
+      const row = document.querySelector('[data-testid="agent-row"]')!
+      const cells = row.querySelectorAll(':scope > span')
+      expect(cells[2].textContent).toBe('-')
     })
 
     it('displays "-" for missing ended_at', () => {
@@ -173,9 +174,9 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const cells = document.querySelectorAll('td')
-      const completedAtCell = cells[5]
-      expect(completedAtCell.textContent).toBe('-')
+      const row = document.querySelector('[data-testid="agent-row"]')!
+      const cells = row.querySelectorAll(':scope > span')
+      expect(cells[5].textContent).toBe('-')
     })
   })
 
@@ -209,10 +210,10 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const rows = document.querySelectorAll('tbody tr')
-      const firstRowAgentCell = rows[0].querySelector('td:first-child')
-      const secondRowAgentCell = rows[1].querySelector('td:first-child')
-      const thirdRowAgentCell = rows[2].querySelector('td:first-child')
+      const rows = document.querySelectorAll('[data-testid="agent-row"]')
+      const firstRowAgentCell = rows[0].querySelector(':scope > span:first-child')
+      const secondRowAgentCell = rows[1].querySelector(':scope > span:first-child')
+      const thirdRowAgentCell = rows[2].querySelector(':scope > span:first-child')
 
       // Latest first (DESC order)
       expect(firstRowAgentCell?.textContent).toBe('implementor')
@@ -249,8 +250,8 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const rows = document.querySelectorAll('tbody tr')
-      const lastRowAgentCell = rows[2].querySelector('td:first-child')
+      const rows = document.querySelectorAll('[data-testid="agent-row"]')
+      const lastRowAgentCell = rows[2].querySelector(':scope > span:first-child')
 
       expect(lastRowAgentCell?.textContent).toBe('timeout-agent')
     })
@@ -284,15 +285,15 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const rows = document.querySelectorAll('tbody tr')
+      const rows = document.querySelectorAll('[data-testid="agent-row"]')
 
       // First row should be the completed one
-      expect(rows[0].querySelector('td:first-child')?.textContent).toBe('completed')
+      expect(rows[0].querySelector(':scope > span:first-child')?.textContent).toBe('completed')
 
       // Last two rows should be the timeout ones (order between them doesn't matter)
       const lastTwoAgents = [
-        rows[1].querySelector('td:first-child')?.textContent,
-        rows[2].querySelector('td:first-child')?.textContent,
+        rows[1].querySelector(':scope > span:first-child')?.textContent,
+        rows[2].querySelector(':scope > span:first-child')?.textContent,
       ]
       expect(lastTwoAgents).toContain('timeout-1')
       expect(lastTwoAgents).toContain('timeout-2')
@@ -368,7 +369,8 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const resultCell = document.querySelectorAll('td')[3]
+      const row = document.querySelector('[data-testid="agent-row"]')!
+      const resultCell = row.querySelectorAll(':scope > span')[3]
       expect(resultCell.textContent).toBe('')
     })
   })
@@ -511,7 +513,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const row = screen.getByText('implementor').closest('tr')!
+      const row = screen.getByText('implementor').closest('[data-testid="agent-row"]')!
       await user.click(row)
 
       expect(onAgentSelect).toHaveBeenCalledWith({
@@ -554,7 +556,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const row = screen.getByText('implementor').closest('tr')!
+      const row = screen.getByText('implementor').closest('[data-testid="agent-row"]')!
       await user.click(row)
 
       expect(onAgentSelect).toHaveBeenCalledWith(
@@ -589,7 +591,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const row = screen.getByText('implementor').closest('tr')!
+      const row = screen.getByText('implementor').closest('[data-testid="agent-row"]')!
       await user.click(row)
 
       expect(onAgentSelect).toHaveBeenCalledWith(
@@ -624,7 +626,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const row = screen.getByText('setup-analyzer').closest('tr')!
+      const row = screen.getByText('setup-analyzer').closest('[data-testid="agent-row"]')!
       await user.click(row)
 
       expect(onAgentSelect).toHaveBeenCalledWith(
@@ -656,7 +658,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const row = screen.getByText('implementor').closest('tr')!
+      const row = screen.getByText('implementor').closest('[data-testid="agent-row"]')!
       await user.click(row)
 
       expect(onAgentSelect).toHaveBeenCalledWith(
@@ -691,7 +693,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const row = screen.getByText('implementor').closest('tr')!
+      const row = screen.getByText('implementor').closest('[data-testid="agent-row"]')!
       await user.click(row)
 
       expect(onAgentSelect).toHaveBeenCalledWith(
@@ -701,7 +703,7 @@ describe('CompletedAgentsTable', () => {
   })
 
   describe('table styling', () => {
-    it('applies correct table classes matching message table pattern', () => {
+    it('applies correct table classes matching card pattern', () => {
       const history = [makeHistoryEntry()]
       const sessions = [makeSession()]
       const onAgentSelect = vi.fn()
@@ -714,11 +716,11 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const table = document.querySelector('table')!
-      expect(table.className).toContain('w-full')
+      const table = document.querySelector('[data-testid="agent-table"]')!
       expect(table.className).toContain('text-xs')
       expect(table.className).toContain('font-mono')
-      expect(table.className).toContain('border-collapse')
+      expect(table.className).toContain('border')
+      expect(table.className).toContain('rounded-lg')
     })
 
     it('applies hover effect to table rows', () => {
@@ -734,7 +736,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const row = document.querySelector('tbody tr')!
+      const row = document.querySelector('[data-testid="agent-row"]')!
       expect(row.className).toContain('hover:bg-muted/50')
       expect(row.className).toContain('cursor-pointer')
       expect(row.className).toContain('transition-colors')
@@ -753,11 +755,10 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const headerRow = document.querySelector('thead tr')!
-      expect(headerRow.className).toContain('text-left')
-      expect(headerRow.className).toContain('text-muted-foreground')
-      expect(headerRow.className).toContain('border-b')
-      expect(headerRow.className).toContain('border-border')
+      const header = document.querySelector('[data-testid="agent-table-header"]')!
+      expect(header.className).toContain('text-muted-foreground')
+      expect(header.className).toContain('uppercase')
+      expect(header.className).toContain('tracking-wider')
     })
   })
 
@@ -811,7 +812,7 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const rows = document.querySelectorAll('tbody tr')
+      const rows = document.querySelectorAll('[data-testid="agent-row"]')
       expect(rows).toHaveLength(20)
     })
 
@@ -844,7 +845,7 @@ describe('CompletedAgentsTable', () => {
       await user.click(nextButton)
 
       expect(screen.getByText(/21–25 of 25/)).toBeInTheDocument()
-      const rows = document.querySelectorAll('tbody tr')
+      const rows = document.querySelectorAll('[data-testid="agent-row"]')
       expect(rows).toHaveLength(5)
     })
 
@@ -996,13 +997,13 @@ describe('CompletedAgentsTable', () => {
         />
       )
 
-      const rows = document.querySelectorAll('tbody tr')
+      const rows = document.querySelectorAll('[data-testid="agent-row"]')
       expect(rows).toHaveLength(3)
 
       // Latest first
-      expect(rows[0].querySelector('td:first-child')?.textContent).toBe('qa-verifier')
-      expect(rows[1].querySelector('td:first-child')?.textContent).toBe('implementor')
-      expect(rows[2].querySelector('td:first-child')?.textContent).toBe('setup-analyzer')
+      expect(rows[0].querySelector(':scope > span:first-child')?.textContent).toBe('qa-verifier')
+      expect(rows[1].querySelector(':scope > span:first-child')?.textContent).toBe('implementor')
+      expect(rows[2].querySelector(':scope > span:first-child')?.textContent).toBe('setup-analyzer')
     })
 
     it('each row is clickable and selects correct agent', async () => {
@@ -1034,7 +1035,7 @@ describe('CompletedAgentsTable', () => {
       )
 
       // Click second row (setup-analyzer, because sorted DESC by ended_at which are equal)
-      const rows = document.querySelectorAll('tbody tr')
+      const rows = document.querySelectorAll('[data-testid="agent-row"]')
       await user.click(rows[0])
 
       expect(onAgentSelect).toHaveBeenCalledWith(

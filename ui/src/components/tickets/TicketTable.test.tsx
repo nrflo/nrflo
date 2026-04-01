@@ -65,13 +65,13 @@ describe('TicketTable', () => {
   describe('non-table states', () => {
     it('shows no table while loading', () => {
       renderTable({ isLoading: true })
-      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      expect(document.querySelector('[data-testid="table-header"]')).not.toBeInTheDocument()
     })
 
     it('shows error message when error is set', () => {
       renderTable({ error: new Error('fetch failed') })
       expect(screen.getByText(/Error loading tickets: fetch failed/)).toBeInTheDocument()
-      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      expect(document.querySelector('[data-testid="table-header"]')).not.toBeInTheDocument()
     })
 
     it('shows default empty message for empty tickets array', () => {
@@ -99,15 +99,16 @@ describe('TicketTable', () => {
     })
 
     it('Type column is the first header', () => {
-      const { container } = renderTable({ tickets: [makeTicket()] })
-      const headers = container.querySelectorAll('thead th')
+      renderTable({ tickets: [makeTicket()] })
+      const header = document.querySelector('[data-testid="table-header"]')!
+      const headers = header.querySelectorAll(':scope > span')
       expect(headers[0]).toHaveTextContent('Type')
     })
 
     it('type icon cell is the first cell in each row', () => {
-      const { container } = renderTable({ tickets: [makeTicket()] })
-      const firstRow = container.querySelector('tbody tr')!
-      const cells = firstRow.querySelectorAll('td')
+      renderTable({ tickets: [makeTicket()] })
+      const firstRow = document.querySelector('[data-testid="table-row"]')!
+      const cells = firstRow.querySelectorAll(':scope > span')
       // First cell should contain an SVG (the IssueTypeIcon), not text like an ID
       expect(cells[0].querySelector('svg')).toBeInTheDocument()
       // Second cell should contain the ticket ID text

@@ -169,7 +169,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      const row = screen.getByText('#failinst').closest('tr')!
+      const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
       expect(within(row).getByRole('button')).toBeInTheDocument()
     })
 
@@ -183,7 +183,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
-      const row = screen.getByText('#compinst').closest('tr')!
+      const row = screen.getByText('#compinst').closest('[data-testid="instance-row"]')!
       expect(within(row).getByRole('button')).toBeInTheDocument()
     })
 
@@ -216,7 +216,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      const row = screen.getByText('#failinst').closest('tr')!
+      const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
       await user.click(within(row).getByRole('button'))
 
       expect(await screen.findByText('Delete Workflow Instance')).toBeInTheDocument()
@@ -233,7 +233,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      const row = screen.getByText('#failinst').closest('tr')!
+      const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
       await user.click(within(row).getByRole('button'))
       await user.click(await screen.findByRole('button', { name: /^Delete$/ }))
 
@@ -251,7 +251,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
-      const row = screen.getByText('#failinst').closest('tr')!
+      const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
       await user.click(within(row).getByRole('button'))
       await user.click(await screen.findByRole('button', { name: /Cancel/ }))
 
@@ -268,7 +268,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
-      const row = screen.getByText('#compinst').closest('tr')!
+      const row = screen.getByText('#compinst').closest('[data-testid="instance-row"]')!
       await user.click(within(row).getByRole('button'))
       await user.click(await screen.findByRole('button', { name: /^Delete$/ }))
 

@@ -59,24 +59,17 @@ export function LogsPage() {
 
       {!isLoading && !error && (
         <div className="rounded-lg border border-border overflow-auto max-h-[calc(100vh-16rem)]">
-          <table className="min-w-full">
-            <tbody>
-              {data?.lines.length === 0 && (
-                <tr>
-                  <td className="px-4 py-8 text-center text-sm text-muted-foreground">
-                    No log lines available.
-                  </td>
-                </tr>
-              )}
-              {data?.lines.map((line, i) => (
-                <tr key={i} className="border-b border-border last:border-b-0">
-                  <td className="px-4 py-1 font-mono text-sm whitespace-pre">
-                    {line}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {data?.lines.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No log lines available.
+            </div>
+          ) : (
+            data?.lines.map((line, i) => (
+              <div key={i} className="px-4 py-1 font-mono text-sm whitespace-pre border-b border-border last:border-b-0">
+                {line}
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>

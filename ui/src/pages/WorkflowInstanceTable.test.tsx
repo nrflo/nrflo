@@ -84,8 +84,8 @@ describe('WorkflowInstanceTable', () => {
         onDelete={vi.fn()}
       />
     )
-    const row = screen.getByText(SHORT_ID).closest('tr')!
-    const cells = within(row).getAllByRole('cell')
+    const row = screen.getByText(SHORT_ID).closest('[data-testid="instance-row"]')!
+    const cells = row.querySelectorAll(':scope > span')
     // Duration cell (index 3) and Completed At cell (index 4) should show dash
     expect(cells[3].textContent).toBe('-')
     expect(cells[4].textContent).toBe('-')
@@ -117,6 +117,36 @@ describe('WorkflowInstanceTable', () => {
       />
     )
     expect(screen.getByText('pass')).toBeInTheDocument()
+  })
+
+  it('applies bg-primary/10 to the selected row', () => {
+    const state = makeState()
+    render(
+      <WorkflowInstanceTable
+        instanceIds={[INST_ID]}
+        instances={{ [INST_ID]: state }}
+        selectedId={INST_ID}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    )
+    const row = screen.getByText(SHORT_ID).closest('[data-testid="instance-row"]')!
+    expect(row.className).toContain('bg-primary/10')
+  })
+
+  it('does not apply bg-primary/10 to unselected rows', () => {
+    const state = makeState()
+    render(
+      <WorkflowInstanceTable
+        instanceIds={[INST_ID]}
+        instances={{ [INST_ID]: state }}
+        selectedId="other-id"
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    )
+    const row = screen.getByText(SHORT_ID).closest('[data-testid="instance-row"]')!
+    expect(row.className).not.toContain('bg-primary/10')
   })
 
   it('calls onSelect with instance id when row is clicked', async () => {
@@ -151,7 +181,7 @@ describe('WorkflowInstanceTable', () => {
         onDelete={onDelete}
       />
     )
-    const row = screen.getByText(SHORT_ID).closest('tr')!
+    const row = screen.getByText(SHORT_ID).closest('[data-testid="instance-row"]')!
     await user.click(within(row).getByRole('button'))
     expect(onDelete).toHaveBeenCalledOnce()
     expect(onDelete).toHaveBeenCalledWith(INST_ID)
@@ -195,7 +225,7 @@ describe('WorkflowInstanceTable', () => {
         />
       )
       expect(screen.getByText(`1–${PAGE_SIZE} of ${total}`)).toBeInTheDocument()
-      expect(document.querySelectorAll('tbody tr')).toHaveLength(PAGE_SIZE)
+      expect(document.querySelectorAll('[data-testid="instance-row"]')).toHaveLength(PAGE_SIZE)
       const buttons = screen.getAllByRole('button')
       expect(buttons[buttons.length - 2]).toBeDisabled()   // Prev
       expect(buttons[buttons.length - 1]).not.toBeDisabled() // Next
@@ -220,7 +250,7 @@ describe('WorkflowInstanceTable', () => {
       await user.click(buttons[buttons.length - 1]) // Next
 
       expect(screen.getByText(`${PAGE_SIZE + 1}–${total} of ${total}`)).toBeInTheDocument()
-      expect(document.querySelectorAll('tbody tr')).toHaveLength(5)
+      expect(document.querySelectorAll('[data-testid="instance-row"]')).toHaveLength(5)
 
       const page2Buttons = screen.getAllByRole('button')
       expect(page2Buttons[page2Buttons.length - 1]).toBeDisabled()   // Next disabled on last page
@@ -229,7 +259,7 @@ describe('WorkflowInstanceTable', () => {
       // Navigate back to page 1
       await user.click(page2Buttons[page2Buttons.length - 2]) // Prev
       expect(screen.getByText(`1–${PAGE_SIZE} of ${total}`)).toBeInTheDocument()
-      expect(document.querySelectorAll('tbody tr')).toHaveLength(PAGE_SIZE)
+      expect(document.querySelectorAll('[data-testid="instance-row"]')).toHaveLength(PAGE_SIZE)
     })
   })
 })

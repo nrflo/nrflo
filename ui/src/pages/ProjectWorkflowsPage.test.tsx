@@ -74,14 +74,6 @@ vi.mock('./WorkflowTabContent', () => ({
   ),
 }))
 
-vi.mock('@/components/workflow/CompletedAgentsTable', () => ({
-  CompletedAgentsTable: (props: any) => (
-    <div data-testid="completed-agents-table">
-      <div data-testid="completed-agents-count">{props.agentHistory?.length ?? 0}</div>
-      <div data-testid="completed-sessions-count">{props.sessions?.length ?? 0}</div>
-    </div>
-  ),
-}))
 
 vi.mock('@/components/workflow/AgentLogPanel', () => ({
   AgentLogPanel: () => <div data-testid="agent-log-panel" />,
@@ -520,10 +512,8 @@ describe('ProjectWorkflowsPage', () => {
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       await waitFor(() => {
-        // Completed tab renders CompletedAgentsTable scoped to the auto-selected instance
-        expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
-        // First completed instance (instance-2) has 1 agent_history entry
-        expect(screen.getByTestId('completed-agents-count').textContent).toBe('1')
+        // Completed tab now renders WorkflowTabContent (same as Failed tab pattern)
+        expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
       })
     })
 
@@ -559,9 +549,8 @@ describe('ProjectWorkflowsPage', () => {
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       await waitFor(() => {
-        // Completed tab renders CompletedAgentsTable for the selected instance
-        expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
-        expect(screen.getByTestId('completed-agents-count').textContent).toBe('1')
+        // Completed tab now renders WorkflowTabContent (same as Failed tab pattern)
+        expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
       })
     })
   })
@@ -591,13 +580,11 @@ describe('ProjectWorkflowsPage', () => {
       await user.click(screen.getByRole('button', { name: /Running/ }))
       expect(screen.getByTestId('displayed-workflow').textContent).toBe('feature')
 
-      // Switch to Completed tab — now renders CompletedAgentsTable directly
+      // Switch to Completed tab — now renders WorkflowTabContent (same as Failed tab)
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('completed-agents-table')).toBeInTheDocument()
-        // WorkflowTabContent should no longer be rendered
-        expect(screen.queryByTestId('workflow-tab-content')).not.toBeInTheDocument()
+        expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
       })
     })
   })

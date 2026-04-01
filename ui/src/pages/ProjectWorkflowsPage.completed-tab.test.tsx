@@ -40,21 +40,11 @@ vi.mock('@/api/agentDefs', () => ({
 }))
 
 vi.mock('./WorkflowTabContent', () => ({
-  WorkflowTabContent: () => <div data-testid="workflow-tab-content" />,
-}))
-
-vi.mock('@/components/workflow/CompletedAgentsTable', () => ({
-  CompletedAgentsTable: (props: any) => (
-    <div data-testid="completed-agents-table">
-      <div data-testid="completed-agents-count">{props.agentHistory?.length ?? 0}</div>
-      <div data-testid="completed-sessions-count">{props.sessions?.length ?? 0}</div>
-    </div>
+  WorkflowTabContent: ({ selectedWorkflow }: any) => (
+    <div data-testid="workflow-tab-content" data-selected={selectedWorkflow ?? ''} />
   ),
 }))
 
-vi.mock('@/components/workflow/AgentLogPanel', () => ({
-  AgentLogPanel: () => <div data-testid="agent-log-panel" />,
-}))
 
 // IDs exactly 8 chars so shortId === full ID (e.g. '#compins1')
 const makeCompleted = (id: string, workflow: string, agentCount: number): WorkflowState => ({
@@ -117,7 +107,7 @@ describe('ProjectWorkflowsPage — Completed tab instance selection', () => {
     useDeleteProjectWorkflowInstance.mockReturnValue({ mutate: vi.fn(), isPending: false })
   })
 
-  it('clicking a different row in WorkflowInstanceTable shows that instances agents', async () => {
+  it('renders WorkflowTabContent when completed instances exist', async () => {
     const user = userEvent.setup()
 
     const inst1 = makeCompleted('compins1', 'feature', 1)
@@ -135,25 +125,16 @@ describe('ProjectWorkflowsPage — Completed tab instance selection', () => {
     renderPage()
     await user.click(screen.getByRole('button', { name: /Completed/ }))
 
-    // Auto-selects first instance (1 agent)
     await waitFor(() => {
-      expect(screen.getByTestId('completed-agents-count').textContent).toBe('1')
-    })
-
-    // Click the second row via its short ID text
-    await user.click(screen.getByText('#compins2'))
-
-    // Now shows second instance's 3 agents
-    await waitFor(() => {
-      expect(screen.getByTestId('completed-agents-count').textContent).toBe('3')
+      expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
     })
   })
 
-  it('sessions are filtered to the selected completed instance', async () => {
+  it('shows WorkflowInstanceTable rows alongside WorkflowTabContent', async () => {
     const user = userEvent.setup()
 
     const inst1 = makeCompleted('compins1', 'feature', 1)
-    const inst2 = makeCompleted('compins2', 'bugfix', 1)
+    const inst2 = makeCompleted('compins2', 'bugfix', 3)
 
     useProjectWorkflow.mockReturnValue({
       data: {
@@ -164,27 +145,27 @@ describe('ProjectWorkflowsPage — Completed tab instance selection', () => {
       isLoading: false,
     })
 
-    useProjectAgentSessions.mockReturnValue({
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /Completed/ }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
+      expect(screen.getByText('#compins1')).toBeInTheDocument()
+      expect(screen.getByText('#compins2')).toBeInTheDocument()
+    })
+  })
+
+  it('clicking a WorkflowInstanceTable row updates the selected instance', async () => {
+    const user = userEvent.setup()
+
+    const inst1 = makeCompleted('compins1', 'feature', 1)
+    const inst2 = makeCompleted('compins2', 'bugfix', 3)
+
+    useProjectWorkflow.mockReturnValue({
       data: {
-        project_id: 'test-project',
-        sessions: [
-          {
-            id: 'compins1-s0', project_id: 'test-project', ticket_id: '',
-            workflow_instance_id: 'compins1', phase: 'verification', workflow: 'feature',
-            agent_type: 'setup-analyzer', model_id: 'claude-sonnet-4-5', status: 'completed',
-            result: 'pass', message_count: 5, restart_count: 0,
-            created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T01:00:00Z',
-            started_at: '2026-01-01T00:00:00Z', ended_at: '2026-01-01T01:00:00Z',
-          },
-          {
-            id: 'compins2-s0', project_id: 'test-project', ticket_id: '',
-            workflow_instance_id: 'compins2', phase: 'verification', workflow: 'bugfix',
-            agent_type: 'setup-analyzer', model_id: 'claude-sonnet-4-5', status: 'completed',
-            result: 'pass', message_count: 3, restart_count: 0,
-            created_at: '2026-01-01T02:00:00Z', updated_at: '2026-01-01T03:00:00Z',
-            started_at: '2026-01-01T02:00:00Z', ended_at: '2026-01-01T03:00:00Z',
-          },
-        ],
+        project_id: 'test-project', has_workflow: true, state: inst1,
+        workflows: ['feature', 'bugfix'],
+        all_workflows: { compins1: inst1, compins2: inst2 },
       },
       isLoading: false,
     })
@@ -192,21 +173,21 @@ describe('ProjectWorkflowsPage — Completed tab instance selection', () => {
     renderPage()
     await user.click(screen.getByRole('button', { name: /Completed/ }))
 
-    // First instance selected: 1 session (compins1-s0)
+    // Initially no explicit selection (page resolves to first instance internally)
     await waitFor(() => {
-      expect(screen.getByTestId('completed-sessions-count').textContent).toBe('1')
+      expect(screen.getByTestId('workflow-tab-content')).toHaveAttribute('data-selected', '')
     })
 
-    // Switch to second instance
+    // Click second instance row
     await user.click(screen.getByText('#compins2'))
 
-    // Second instance session shown
+    // WorkflowTabContent now receives compins2 as selectedWorkflow
     await waitFor(() => {
-      expect(screen.getByTestId('completed-sessions-count').textContent).toBe('1')
+      expect(screen.getByTestId('workflow-tab-content')).toHaveAttribute('data-selected', 'compins2')
     })
   })
 
-  it('shows No completed workflows message when completed tab is empty', async () => {
+  it('shows empty state when completed tab has no instances', async () => {
     const user = userEvent.setup()
 
     useProjectWorkflow.mockReturnValue({
@@ -220,7 +201,6 @@ describe('ProjectWorkflowsPage — Completed tab instance selection', () => {
     renderPage()
     await user.click(screen.getByRole('button', { name: /Completed/ }))
 
-    expect(screen.getByText('No completed workflows')).toBeInTheDocument()
-    expect(screen.queryByTestId('completed-agents-table')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
   })
 })

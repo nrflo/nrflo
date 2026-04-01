@@ -48,7 +48,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 - **Run Workflow**: Inline workflow selector + instructions form
 - **Running**: Instance list chips with status (uses `InstanceList` + `WorkflowTabContent`)
 - **Failed**: `WorkflowInstanceTable` with delete column, plus `WorkflowTabContent` for phase timeline
-- **Completed**: Paginated `WorkflowInstanceTable` with delete column; selecting an instance shows per-instance `CompletedAgentsTable` + `AgentLogPanel`
+- **Completed**: `WorkflowInstanceTable` with delete column, plus `WorkflowTabContent` for phase timeline (same pattern as Failed tab)
 
 Sub-components in `ProjectWorkflowComponents.tsx`:
 - `ProjectWorkflowTabBar` — tab bar component

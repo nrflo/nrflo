@@ -2,7 +2,6 @@ package tray
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -20,32 +19,24 @@ var boldFace font.Face
 func init() {
 	tt, err := opentype.Parse(gomonobold.TTF)
 	if err != nil {
-		panic(fmt.Sprintf("tray: parse gomonobold: %v", err))
+		panic("tray: parse gomonobold: " + err.Error())
 	}
 	boldFace, err = opentype.NewFace(tt, &opentype.FaceOptions{
-		Size:    32,
+		Size:    44,
 		DPI:     72,
 		Hinting: font.HintingFull,
 	})
 	if err != nil {
-		panic(fmt.Sprintf("tray: new face: %v", err))
+		panic("tray: new face: " + err.Error())
 	}
 }
 
 // renderIcon returns PNG bytes for the tray icon.
-// count == 0: "NRF" centered. count > 0: "NRF" on top, count on bottom.
+// Shows "NRF" centered. Agent count is displayed via systray.SetTitle().
 // Black text on transparent background — macOS template icon handles light/dark.
-func renderIcon(count int) []byte {
+func renderIcon() []byte {
 	img := image.NewRGBA(image.Rect(0, 0, iconSize, iconSize))
-
-	col := color.Black
-
-	if count == 0 {
-		drawCentered(img, boldFace, col, "NRF", iconSize/2+16)
-	} else {
-		drawCentered(img, boldFace, col, "NRF", 36)
-		drawCentered(img, boldFace, col, fmt.Sprintf("%d", count), 72)
-	}
+	drawCentered(img, boldFace, color.Black, "NRF", iconSize/2+16)
 
 	var buf bytes.Buffer
 	_ = png.Encode(&buf, img)

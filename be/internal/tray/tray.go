@@ -23,7 +23,7 @@ type AgentCountFn func() (int, error)
 // with the running agent count. This function blocks until the tray exits.
 func Run(port int, agentCount AgentCountFn, onServerStart func(), onQuit func()) {
 	systray.Run(func() {
-		initialIcon := renderIcon(0)
+		initialIcon := renderIcon()
 		systray.SetTemplateIcon(initialIcon, initialIcon)
 		systray.SetTooltip(fmt.Sprintf("nrflow server — port %d", port))
 
@@ -38,7 +38,7 @@ func Run(port int, agentCount AgentCountFn, onServerStart func(), onQuit func())
 		done := make(chan struct{})
 		lastCount := 0
 
-		// Poll agent count every 3s and update icon on change
+		// Poll agent count every 3s and update title on change
 		go func() {
 			ticker := time.NewTicker(3 * time.Second)
 			defer ticker.Stop()
@@ -51,8 +51,11 @@ func Run(port int, agentCount AgentCountFn, onServerStart func(), onQuit func())
 					}
 					if count != lastCount {
 						lastCount = count
-						icon := renderIcon(count)
-						systray.SetTemplateIcon(icon, icon)
+						if count == 0 {
+							systray.SetTitle("")
+						} else {
+							systray.SetTitle(fmt.Sprintf(" %d", count))
+						}
 					}
 				case <-done:
 					return

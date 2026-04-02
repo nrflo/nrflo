@@ -85,7 +85,7 @@ describe('AgentTerminalDialog', () => {
   })
 
   describe('plan mode hint', () => {
-    const HINT_TEXT = 'On exit, the plan file will be used as instructions for workflow agents.'
+    const HINT_TEXT = 'On exit, the plan file will be used as instructions for workflow agents. Use \'/plan\' to show the plan.'
 
     it('shows hint text when agentType is planner', () => {
       renderDialog({ agentType: 'planner' })

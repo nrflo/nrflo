@@ -58,7 +58,7 @@ export function AgentTerminalDialog({
       <DialogFooter className={agentType === 'planner' ? 'justify-between' : undefined}>
         {agentType === 'planner' && (
           <span className="text-sm text-muted-foreground">
-            On exit, the plan file will be used as instructions for workflow agents.
+            On exit, the plan file will be used as instructions for workflow agents. Use '/plan' to show the plan.
           </span>
         )}
         <Button

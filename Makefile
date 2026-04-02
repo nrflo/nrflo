@@ -9,7 +9,8 @@ GO         ?= go
 NPM        ?= npm
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS    := -s -w -X be/internal/cli.version=$(VERSION)
-CGO_ENABLED ?= 0
+CGO_CLI     ?= 0
+CGO_SERVER  ?= 1
 GOOS       ?= $(shell $(GO) env GOOS)
 GOARCH     ?= $(shell $(GO) env GOARCH)
 
@@ -25,9 +26,9 @@ all: build
 ## build: Build both binaries (dev, includes UI)
 build: build-cli build-server
 
-## build-cli: Build CLI binary only
+## build-cli: Build CLI binary only (no CGO, no tray)
 build-cli:
-	cd $(BE_DIR) && $(GO) build -o nrflow ./cmd/nrflow
+	cd $(BE_DIR) && CGO_ENABLED=0 $(GO) build -o nrflow ./cmd/nrflow
 
 ## build-ui: Build UI and copy dist to embed directory
 build-ui:
@@ -36,28 +37,28 @@ build-ui:
 	cp -r $(UI_DIR)/dist $(STATIC_DIR)
 	cp agent_manual.md $(BE_DIR)/internal/static/agent_manual.md
 
-## build-server: Build server binary (includes UI build)
+## build-server: Build server binary with tray (includes UI build)
 build-server: build-ui
-	cd $(BE_DIR) && $(GO) build -o nrflow_server ./cmd/server
+	cd $(BE_DIR) && $(GO) build -tags tray -o nrflow_server ./cmd/server
 
 ## build-server-only: Go-only server rebuild (skip UI build)
 build-server-only:
-	cd $(BE_DIR) && $(GO) build -o nrflow_server ./cmd/server
+	cd $(BE_DIR) && $(GO) build -tags tray -o nrflow_server ./cmd/server
 
 # --- Release builds ---
 
 ## build-release: Optimized release build (both binaries, includes UI)
 build-release: build-release-cli build-release-server
 
-## build-release-cli: Release build CLI only
+## build-release-cli: Release build CLI only (pure Go, no CGO)
 build-release-cli:
-	cd $(BE_DIR) && CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
+	cd $(BE_DIR) && CGO_ENABLED=$(CGO_CLI) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		$(GO) build -ldflags="$(LDFLAGS)" -o nrflow ./cmd/nrflow
 
-## build-release-server: Release build server only (includes UI)
+## build-release-server: Release build server only (CGO for systray)
 build-release-server: build-ui
-	cd $(BE_DIR) && CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		$(GO) build -ldflags="$(LDFLAGS)" -o nrflow_server ./cmd/server
+	cd $(BE_DIR) && CGO_ENABLED=$(CGO_SERVER) GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		$(GO) build -tags tray -ldflags="$(LDFLAGS)" -o nrflow_server ./cmd/server
 
 # --- Install ---
 

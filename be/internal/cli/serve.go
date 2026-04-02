@@ -21,7 +21,16 @@ import (
 
 var (
 	servePort int
+	noTray    bool
 )
+
+// serverComponents holds initialized server components for startup/shutdown.
+type serverComponents struct {
+	cfg          *config.Config
+	pool         *db.Pool
+	httpServer   *api.Server
+	socketServer *socket.Server
+}
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -31,103 +40,130 @@ var serveCmd = &cobra.Command{
 The server provides:
   - HTTP API on port 6587 (for web UI and REST clients)
   - Unix socket for agent communication (findings, completion)
+  - macOS menu bar tray icon (disable with --no-tray)
 
 Database migrations are applied automatically on startup.
 
 Example usage:
-  nrflow_server serve              # Start on default port (6587)
-  nrflow_server serve --port=8080  # Start HTTP on custom port`,
+  nrflow_server serve              # Start with tray icon
+  nrflow_server serve --no-tray    # Start headless
+  nrflow_server serve --port=8080  # Custom port`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Load configuration
-		cfg, err := config.Load()
+		sc, err := setupServer()
 		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
+			return err
+		}
+		defer sc.pool.Close()
+
+		if noTray || !trayAvailable {
+			return runServer(sc)
 		}
 
-		// Initialize logger (logs live next to the database)
-		dataDir := db.DefaultDataDir()
-		if DataPath != "" {
-			dataDir = filepath.Dir(DataPath)
-		}
-		logsDir := filepath.Join(dataDir, "logs")
-		if err := logger.Init(filepath.Join(logsDir, "be.log")); err != nil {
-			return fmt.Errorf("failed to init logger: %w", err)
-		}
-
-		// Override port if specified via flag
-		if servePort != 0 {
-			cfg.Server.Port = servePort
-		}
-
-		// Auto-migrate database
-		migrateDB, err := db.Open(DataPath)
-		if err != nil {
-			return fmt.Errorf("failed to open database for migration: %w", err)
-		}
-		if err := db.RunMigrations(migrateDB.DB); err != nil {
-			migrateDB.Close()
-			return fmt.Errorf("failed to run migrations: %w", err)
-		}
-		migrateDB.Close()
-
-		// Create database connection pool
-		pool, err := db.NewPool(DataPath, db.DefaultPoolConfig())
-		if err != nil {
-			return fmt.Errorf("failed to create database pool: %w", err)
-		}
-		defer pool.Close()
-
-		// Create HTTP server (creates WebSocket hub)
-		httpServer := api.NewServer(cfg, DataPath, logsDir, pool)
-
-		// Create and start Unix socket server with shared WebSocket hub
-		clk := clock.Real()
-		socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk)
-		if err := socketServer.Start(); err != nil {
-			return fmt.Errorf("failed to start socket server: %w", err)
-		}
-
-		// Handle graceful shutdown
-		shutdown := make(chan os.Signal, 1)
-		signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
-
-		// Start HTTP server in a goroutine
-		serverError := make(chan error, 1)
-		go func() {
-			serverError <- httpServer.Start(cfg.Server.Port)
-		}()
-
-		ctx := context.Background()
-		logger.Info(ctx, "nrflow server started", "port", cfg.Server.Port, "db", pool.Path)
-
-		// Wait for shutdown signal or server error
-		select {
-		case err := <-serverError:
-			if err != nil {
-				return fmt.Errorf("HTTP server error: %w", err)
+		// Tray mode: systray.Run() blocks the main thread (macOS requirement)
+		var serverErr error
+		runWithTray(sc.cfg.Server.Port, func() {
+			serverErr = runServer(sc)
+			if serverErr != nil {
+				os.Exit(1)
 			}
-		case sig := <-shutdown:
-			logger.Info(ctx, "received signal, shutting down", "signal", sig)
-		}
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		// Stop socket server
-		if err := socketServer.Stop(shutdownCtx); err != nil {
-			logger.Error(ctx, "socket server shutdown error", "error", err)
-		}
-
-		// Stop HTTP server
-		if err := httpServer.Stop(shutdownCtx); err != nil {
-			return fmt.Errorf("HTTP server shutdown error: %w", err)
-		}
-
-		logger.Info(ctx, "server stopped gracefully")
-		return nil
+		}, func() {
+			shutdownServer(sc)
+		})
+		return serverErr
 	},
+}
+
+func setupServer() (*serverComponents, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	dataDir := db.DefaultDataDir()
+	if DataPath != "" {
+		dataDir = filepath.Dir(DataPath)
+	}
+	logsDir := filepath.Join(dataDir, "logs")
+	if err := logger.Init(filepath.Join(logsDir, "be.log")); err != nil {
+		return nil, fmt.Errorf("failed to init logger: %w", err)
+	}
+
+	if servePort != 0 {
+		cfg.Server.Port = servePort
+	}
+
+	migrateDB, err := db.Open(DataPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database for migration: %w", err)
+	}
+	if err := db.RunMigrations(migrateDB.DB); err != nil {
+		migrateDB.Close()
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+	migrateDB.Close()
+
+	pool, err := db.NewPool(DataPath, db.DefaultPoolConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create database pool: %w", err)
+	}
+
+	httpServer := api.NewServer(cfg, DataPath, logsDir, pool)
+
+	clk := clock.Real()
+	socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk)
+	if err := socketServer.Start(); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to start socket server: %w", err)
+	}
+
+	return &serverComponents{
+		cfg:          cfg,
+		pool:         pool,
+		httpServer:   httpServer,
+		socketServer: socketServer,
+	}, nil
+}
+
+func runServer(sc *serverComponents) error {
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	serverError := make(chan error, 1)
+	go func() {
+		serverError <- sc.httpServer.Start(sc.cfg.Server.Port)
+	}()
+
+	ctx := context.Background()
+	logger.Info(ctx, "nrflow server started", "port", sc.cfg.Server.Port, "db", sc.pool.Path)
+
+	select {
+	case err := <-serverError:
+		if err != nil {
+			return fmt.Errorf("HTTP server error: %w", err)
+		}
+	case sig := <-shutdown:
+		logger.Info(ctx, "received signal, shutting down", "signal", sig)
+	}
+
+	shutdownServer(sc)
+	return nil
+}
+
+func shutdownServer(sc *serverComponents) {
+	ctx := context.Background()
+	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if err := sc.socketServer.Stop(shutdownCtx); err != nil {
+		logger.Error(ctx, "socket server shutdown error", "error", err)
+	}
+	if err := sc.httpServer.Stop(shutdownCtx); err != nil {
+		logger.Error(ctx, "HTTP server shutdown error", "error", err)
+	}
+	logger.Info(ctx, "server stopped gracefully")
 }
 
 func init() {
 	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP port to listen on (default: 6587 or from config)")
+	serveCmd.Flags().BoolVar(&noTray, "no-tray", false, "Disable macOS menu bar tray icon")
 }

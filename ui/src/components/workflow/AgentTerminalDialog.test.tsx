@@ -84,6 +84,30 @@ describe('AgentTerminalDialog', () => {
     })
   })
 
+  describe('plan mode hint', () => {
+    const HINT_TEXT = 'On exit, the plan file will be used as instructions for workflow agents.'
+
+    it('shows hint text when agentType is planner', () => {
+      renderDialog({ agentType: 'planner' })
+      expect(screen.getByText(HINT_TEXT)).toBeInTheDocument()
+    })
+
+    it('does not show hint text when agentType is agent', () => {
+      renderDialog({ agentType: 'agent' })
+      expect(screen.queryByText(HINT_TEXT)).not.toBeInTheDocument()
+    })
+
+    it('does not show hint text for workflow-name agentType', () => {
+      renderDialog({ agentType: 'feature' })
+      expect(screen.queryByText(HINT_TEXT)).not.toBeInTheDocument()
+    })
+
+    it('Exit Session button is present regardless of agentType', () => {
+      renderDialog({ agentType: 'planner' })
+      expect(screen.getByRole('button', { name: /exit session/i })).toBeInTheDocument()
+    })
+  })
+
   describe('non-dismissable behavior', () => {
     it('renders a header close button (X icon)', () => {
       const onClose = vi.fn()

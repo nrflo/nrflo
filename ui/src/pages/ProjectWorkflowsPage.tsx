@@ -185,7 +185,7 @@ export function ProjectWorkflowsPage() {
       <div>
         <h1 className="text-2xl font-bold">Project Workflows</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Workflows that run at project level without a ticket.
+          Workflows that run at project level without a ticket. Typically used for ticket management and project-wide tasks. Changes are made directly in the project root (no worktree or auto-merge).
         </p>
       </div>
 

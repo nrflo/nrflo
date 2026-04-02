@@ -273,7 +273,7 @@ describe('ProjectWorkflowsPage', () => {
     renderPage()
 
     expect(screen.getByText('Project Workflows')).toBeInTheDocument()
-    expect(screen.getByText('Workflows that run at project level without a ticket.')).toBeInTheDocument()
+    expect(screen.getByText('Workflows that run at project level without a ticket. Typically used for ticket management and project-wide tasks. Changes are made directly in the project root (no worktree or auto-merge).')).toBeInTheDocument()
   })
 
   it('fetches project workflow data with correct projectId', () => {

@@ -325,6 +325,8 @@ Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs
 | `ticket` | Yes | Yes | One per ticket+workflow |
 | `project` | No | No (runs in project root) | Multiple allowed |
 
+**Project workflow notes:** Project-level workflows are typically used for tasks that don't modify project files — for example, ticket management, project analysis, or cross-cutting coordination. Because they run directly in the project root (not a git worktree), the automatic merge-on-completion behavior does not apply. If a project workflow agent does modify files, those changes remain as uncommitted changes in the project directory.
+
 ---
 
 ## 8. Callback Mechanism

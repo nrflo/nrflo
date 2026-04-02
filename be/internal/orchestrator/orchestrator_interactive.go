@@ -183,14 +183,16 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	promptFile.Close()
 
 	args := []string{
-		"--dangerously-skip-permissions",
 		"--session-id", sessionID,
 		"--model", modelName,
 		"--append-system-prompt-file", promptFile.Name(),
 	}
 	if req.PlanMode {
-		// Start directly in plan mode and prevent switching to act mode.
+		// Plan mode: --permission-mode plan handles permissions on its own.
+		// Do NOT use --dangerously-skip-permissions — it overrides plan mode.
 		args = append(args, "--permission-mode", "plan", "--disallowed-tools", "ExitPlanMode")
+	} else {
+		args = append(args, "--dangerously-skip-permissions")
 	}
 	if claudeSettingsJSON != "" {
 		args = append(args, "--settings", claudeSettingsJSON)

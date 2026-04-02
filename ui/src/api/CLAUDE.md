@@ -26,7 +26,7 @@ API client modules for communicating with the nrflow backend. Contains 11 files.
 | `agents.ts` | Agent API functions (fetchRecentAgents, fetchRunningAgents, fetchSessionMessages, fetchSessionPrompt) |
 | `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
 | `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |
-| `cliModels.ts` | CLI model CRUD (global, no X-Project header) |
+| `cliModels.ts` | CLI model CRUD + health check test (global, no X-Project header) |
 
 ## REST API Endpoints
 
@@ -128,6 +128,7 @@ POST   /api/v1/cli-models           # Create CLI model
 GET    /api/v1/cli-models/:id       # Get CLI model
 PATCH  /api/v1/cli-models/:id       # Update CLI model (non-readonly only)
 DELETE /api/v1/cli-models/:id       # Delete CLI model (non-readonly only)
+POST   /api/v1/cli-models/:id/test  # Health check: spawn minimal agent, return success/error/duration
 
 # Global Settings
 GET    /api/v1/settings             # Get global settings (low_consumption_mode)

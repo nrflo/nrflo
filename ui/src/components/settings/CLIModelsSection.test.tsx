@@ -57,8 +57,8 @@ describe('CLIModelsSection', () => {
     ])
     renderWithQuery(<CLIModelsSection />)
     expect(await screen.findByText('Built-in')).toBeInTheDocument()
-    // Only "New Model" button — no edit or delete
-    expect(screen.getAllByRole('button')).toHaveLength(1)
+    // "New Model" + Check = 2 buttons (no edit or delete)
+    expect(screen.getAllByRole('button')).toHaveLength(2)
   })
 
   it('shows edit and delete buttons for non-readonly models', async () => {
@@ -67,8 +67,8 @@ describe('CLIModelsSection', () => {
     ])
     renderWithQuery(<CLIModelsSection />)
     await screen.findByText('my-model')
-    // "New Model" + edit pencil + trash = 3 buttons
-    expect(screen.getAllByRole('button')).toHaveLength(3)
+    // "New Model" + Check + edit pencil + trash = 4 buttons
+    expect(screen.getAllByRole('button')).toHaveLength(4)
   })
 
   it('create form: opens, validates required fields, submits correct request', async () => {
@@ -165,9 +165,9 @@ describe('CLIModelsSection', () => {
     await screen.findByText('my-model')
 
     const user = userEvent.setup()
-    // buttons: [0]="New Model", [1]=edit pencil, [2]=trash
+    // buttons: [0]="New Model", [1]=check, [2]=edit pencil, [3]=trash
     const buttons = screen.getAllByRole('button')
-    await user.click(buttons[1])
+    await user.click(buttons[2])
 
     const idInput = screen.getByDisplayValue('my-model')
     expect(idInput).toBeDisabled()
@@ -240,7 +240,7 @@ describe('CLIModelsSection', () => {
 
     const user = userEvent.setup()
     let buttons = screen.getAllByRole('button')
-    await user.click(buttons[2]) // trash
+    await user.click(buttons[3]) // trash
 
     expect(screen.getByText(/Are you sure you want to delete/)).toBeInTheDocument()
 
@@ -251,7 +251,7 @@ describe('CLIModelsSection', () => {
 
     // Re-open and confirm
     buttons = screen.getAllByRole('button')
-    await user.click(buttons[2])
+    await user.click(buttons[3])
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     await waitFor(() => {
       expect(cliModelsApi.deleteCLIModel).toHaveBeenCalledWith('custom-model')

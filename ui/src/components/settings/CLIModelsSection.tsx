@@ -14,6 +14,7 @@ import {
 } from '@/api/cliModels'
 import { useCLIModels, cliModelKeys } from '@/hooks/useCLIModels'
 import { CLIModelForm, emptyCLIModelForm, type CLIModelFormData } from './CLIModelForm'
+import { CLIModelCheckButton } from './CLIModelCheckButton'
 
 const MODEL_GROUPS = [
   { key: 'claude', label: 'Claude' },
@@ -231,7 +232,11 @@ export function CLIModelsSection() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-1 shrink-0">
+                      <div className="flex gap-1 shrink-0 items-center relative">
+                        <CLIModelCheckButton
+                          modelId={m.id}
+                          disabled={editingId !== null || deleteConfirm !== null}
+                        />
                         {!m.read_only && (
                           <>
                             <Button variant="ghost" size="icon" onClick={() => handleStartEdit(m)}>

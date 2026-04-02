@@ -358,6 +358,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/cli-models/{id}", s.handleGetCLIModel)
 	mux.HandleFunc("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
 	mux.HandleFunc("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
+	mux.HandleFunc("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
 
 	// Default templates (global, no project scope)
 	mux.HandleFunc("GET /api/v1/default-templates", s.handleListDefaultTemplates)

@@ -24,6 +24,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_agent_def.go` | Agent definition CRUD |
 | `handlers_system_agent_def.go` | System agent definition CRUD (global, no project scope) |
 | `handlers_cli_models.go` | CLI model CRUD (global, no project scope, readonly delete enforcement) |
+| `handlers_cli_model_check.go` | CLI model health check (POST /api/v1/cli-models/{id}/test) |
 | `handlers_default_template.go` | Default template CRUD (global, no project scope, readonly enforcement) |
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/append |
 | `handlers_git.go` | Git commit history list/detail |
@@ -118,6 +119,7 @@ POST   /api/v1/cli-models           # Create CLI model (always non-readonly)
 GET    /api/v1/cli-models/:id       # Get CLI model
 PATCH  /api/v1/cli-models/:id       # Update CLI model
 DELETE /api/v1/cli-models/:id       # Delete CLI model (400 if readonly system model)
+POST   /api/v1/cli-models/:id/test  # Health check: spawn minimal agent, return success/error/duration_ms
 
 # Global settings (no project scope)
 GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null}

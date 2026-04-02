@@ -1,0 +1,108 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, act, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { CLIModelCheckButton } from './CLIModelCheckButton'
+import * as cliModelsApi from '@/api/cliModels'
+
+vi.mock('@/api/cliModels')
+
+describe('CLIModelCheckButton', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('renders idle Zap button with title and not disabled', () => {
+    render(<CLIModelCheckButton modelId="sonnet" />)
+    const btn = screen.getByRole('button', { name: /check model/i })
+    expect(btn).toBeInTheDocument()
+    expect(btn).not.toBeDisabled()
+  })
+
+  it('calls testCLIModel with the provided modelId on click', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: true, duration_ms: 100 })
+    render(<CLIModelCheckButton modelId="my-custom-model" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+
+    expect(cliModelsApi.testCLIModel).toHaveBeenCalledWith('my-custom-model')
+  })
+
+  it('shows spinner and disables button during testing', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockReturnValue(new Promise(() => {}))
+    render(<CLIModelCheckButton modelId="sonnet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+
+    expect(screen.getByRole('status', { name: /loading/i })).toBeInTheDocument()
+    expect(screen.getByRole('button')).toBeDisabled()
+  })
+
+  it('shows duration text on success', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: true, duration_ms: 1234 })
+    render(<CLIModelCheckButton modelId="sonnet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+
+    expect(await screen.findByText('1234ms')).toBeInTheDocument()
+  })
+
+  it('auto-fades success indicator back to idle after 3s', async () => {
+    vi.useFakeTimers()
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: true, duration_ms: 500 })
+
+    render(<CLIModelCheckButton modelId="sonnet" />)
+
+    // Use fireEvent to avoid userEvent's internal timer dependencies
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'))
+    })
+
+    expect(screen.getByText('500ms')).toBeInTheDocument()
+
+    act(() => { vi.advanceTimersByTime(3000) })
+
+    expect(screen.queryByText('500ms')).not.toBeInTheDocument()
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  it('shows error message from result.error on failure', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+      success: false,
+      error: 'binary not found',
+      duration_ms: 0,
+    })
+    render(<CLIModelCheckButton modelId="sonnet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+
+    expect(await screen.findByText('binary not found')).toBeInTheDocument()
+  })
+
+  it('shows "Unknown error" when error field is absent', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: false, duration_ms: 0 })
+    render(<CLIModelCheckButton modelId="sonnet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+
+    expect(await screen.findByText('Unknown error')).toBeInTheDocument()
+  })
+
+  it('shows error message when testCLIModel throws', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockRejectedValue(new Error('network failure'))
+    render(<CLIModelCheckButton modelId="sonnet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+
+    expect(await screen.findByText('network failure')).toBeInTheDocument()
+  })
+
+  it('button is disabled when disabled prop is true', () => {
+    render(<CLIModelCheckButton modelId="sonnet" disabled />)
+    expect(screen.getByRole('button')).toBeDisabled()
+  })
+})

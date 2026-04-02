@@ -47,3 +47,13 @@ export async function updateCLIModel(id: string, req: UpdateCLIModelRequest): Pr
 export async function deleteCLIModel(id: string): Promise<{ status: string }> {
   return apiDelete<{ status: string }>(`/api/v1/cli-models/${encodeURIComponent(id)}`)
 }
+
+export interface TestCLIModelResult {
+  success: boolean
+  error?: string
+  duration_ms: number
+}
+
+export async function testCLIModel(id: string): Promise<TestCLIModelResult> {
+  return apiPost<TestCLIModelResult>(`/api/v1/cli-models/${encodeURIComponent(id)}/test`, {})
+}

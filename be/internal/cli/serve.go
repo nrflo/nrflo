@@ -62,12 +62,11 @@ Example usage:
 
 		// Tray mode: systray.Run() blocks the main thread (macOS requirement).
 		// Signal handling is done by the tray, not runServer.
-		hasRunningAgents := func() bool {
-			sessions, err := repo.NewAgentSessionRepo(sc.pool, clock.Real()).GetRunning(1)
-			return err == nil && len(sessions) > 0
+		agentCount := func() (int, error) {
+			return repo.NewAgentSessionRepo(sc.pool, clock.Real()).CountRunning()
 		}
 		var serverErr error
-		runWithTray(sc.cfg.Server.Port, func() {
+		runWithTray(sc.cfg.Server.Port, agentCount, func() {
 			serverError := make(chan error, 1)
 			go func() {
 				serverError <- sc.httpServer.Start(sc.cfg.Server.Port)
@@ -79,7 +78,7 @@ Example usage:
 			}
 		}, func() {
 			shutdownServer(sc)
-		}, hasRunningAgents)
+		})
 		return serverErr
 	},
 }

@@ -358,6 +358,13 @@ func (r *AgentSessionRepo) UpdateStatusToInteractiveCompleted(id string) error {
 	return nil
 }
 
+// CountRunning returns the number of currently running agent sessions across all projects.
+func (r *AgentSessionRepo) CountRunning() (int, error) {
+	var count int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM agent_sessions WHERE status = 'running'`).Scan(&count)
+	return count, err
+}
+
 // GetRunning retrieves currently running agent sessions across all projects
 func (r *AgentSessionRepo) GetRunning(limit int) ([]*model.AgentSession, error) {
 	rows, err := r.db.Query(`

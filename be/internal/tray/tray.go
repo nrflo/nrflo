@@ -7,20 +7,24 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"be/internal/logger"
 
 	"fyne.io/systray"
 )
 
+// AgentCountFn returns the number of running agents across all projects.
+type AgentCountFn func() (int, error)
+
 // Run starts the systray on the main thread. onServerStart is called in a
 // goroutine once the tray is ready. onQuit is called when the user quits
-// (via menu or Ctrl+C). hasRunningAgents is checked before quit; if true,
-// a native macOS confirmation dialog is shown. This function blocks until
-// the tray exits.
-func Run(port int, onServerStart func(), onQuit func(), hasRunningAgents func() bool) {
+// (via menu or Ctrl+C). agentCount is polled every 3s to update the icon
+// with the running agent count. This function blocks until the tray exits.
+func Run(port int, agentCount AgentCountFn, onServerStart func(), onQuit func()) {
 	systray.Run(func() {
-		systray.SetTemplateIcon(iconBytes, iconBytes)
+		initialIcon := renderIcon(0)
+		systray.SetTemplateIcon(initialIcon, initialIcon)
 		systray.SetTooltip(fmt.Sprintf("nrflow server — port %d", port))
 
 		mOpen := systray.AddMenuItem("Open nrflow", "Open web UI in browser")
@@ -31,19 +35,47 @@ func Run(port int, onServerStart func(), onQuit func(), hasRunningAgents func() 
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
+		done := make(chan struct{})
+		lastCount := 0
+
+		// Poll agent count every 3s and update icon on change
+		go func() {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					count, err := agentCount()
+					if err != nil {
+						continue
+					}
+					if count != lastCount {
+						lastCount = count
+						icon := renderIcon(count)
+						systray.SetTemplateIcon(icon, icon)
+					}
+				case <-done:
+					return
+				}
+			}
+		}()
+
 		go func() {
 			for {
 				select {
 				case <-mOpen.ClickedCh:
 					_ = exec.Command("open", fmt.Sprintf("http://localhost:%d", port)).Start()
 				case <-mQuit.ClickedCh:
-					if hasRunningAgents() && !confirmQuit() {
+					count, _ := agentCount()
+					if count > 0 && !confirmQuit() {
 						continue
 					}
+					close(done)
 					onQuit()
 					systray.Quit()
 					return
 				case <-sigCh:
+					close(done)
 					onQuit()
 					systray.Quit()
 					return

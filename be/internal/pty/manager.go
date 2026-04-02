@@ -47,7 +47,7 @@ func (m *Manager) Create(sessionID, workDir string, env []string) (*Session, err
 	}
 
 	command := "claude"
-	args := []string{"--resume", sessionID}
+	args := []string{"--resume", sessionID, "--dangerously-skip-permissions"}
 	if pc, ok := m.pending[sessionID]; ok {
 		command = pc.Command
 		args = pc.Args

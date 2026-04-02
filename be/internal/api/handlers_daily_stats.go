@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"be/internal/db"
 	"be/internal/service"
 )
 
@@ -16,14 +15,7 @@ func (s *Server) handleGetDailyStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := db.NewPool(s.dataPath, db.DefaultPoolConfig())
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer pool.Close()
-
-	svc := service.NewDailyStatsService(pool, s.clock)
+	svc := service.NewDailyStatsService(s.pool, s.clock)
 	stats, err := svc.GetToday(projectID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

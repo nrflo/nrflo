@@ -72,14 +72,7 @@ func (s *DailyStatsService) ComputeAndStore(projectID, date string) (model.Daily
 		return stats, fmt.Errorf("sum agent time: %w", err)
 	}
 
-	// Upsert via repo (needs *db.DB)
-	database, err := db.Open(s.pool.Path)
-	if err != nil {
-		return stats, fmt.Errorf("open db for upsert: %w", err)
-	}
-	defer database.Close()
-
-	dailyRepo := repo.NewDailyStatsRepo(database, s.clock)
+	dailyRepo := repo.NewDailyStatsRepo(s.pool, s.clock)
 	if err := dailyRepo.Upsert(projectID, date, stats); err != nil {
 		return stats, fmt.Errorf("upsert daily stats: %w", err)
 	}

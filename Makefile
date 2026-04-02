@@ -34,6 +34,7 @@ build-ui:
 	cd $(UI_DIR) && $(NPM) run build
 	rm -rf $(STATIC_DIR)
 	cp -r $(UI_DIR)/dist $(STATIC_DIR)
+	cp agent_manual.md $(BE_DIR)/internal/static/agent_manual.md
 
 ## build-server: Build server binary (includes UI build)
 build-server: build-ui
@@ -98,6 +99,7 @@ tidy:
 clean:
 	rm -f $(BE_DIR)/nrflow $(BE_DIR)/nrflow_server
 	rm -rf $(STATIC_DIR)
+	rm -f $(BE_DIR)/internal/static/agent_manual.md
 	mkdir -p $(STATIC_DIR) && touch $(STATIC_DIR)/.gitkeep
 
 ## help: Show available targets

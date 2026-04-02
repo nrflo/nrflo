@@ -30,8 +30,7 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 
 	logger.Warn(ctx, "low context detected", "context_left", proc.contextLeft, "session_id", proc.sessionID)
 
-	// 1. Kill the running agent: stop container (if Docker) → SIGTERM → wait → SIGKILL
-	StopContainer(proc.containerName)
+	// 1. Kill the running agent: SIGTERM → wait → SIGKILL
 	if proc.cmd.Process != nil {
 		proc.cmd.Process.Signal(syscall.SIGTERM)
 	}

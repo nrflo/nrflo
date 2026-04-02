@@ -1,4 +1,4 @@
-.PHONY: build build-cli build-server build-server-only build-ui build-release build-cli-release build-server-release build-cli-linux docker-build clean test test-integration test-pkg test-verbose install tidy
+.PHONY: build build-cli build-server build-server-only build-ui build-release build-cli-release build-server-release clean test test-integration test-pkg test-verbose install tidy
 
 GO := /opt/homebrew/bin/go
 
@@ -33,15 +33,6 @@ build-cli-release:
 # Release build for server (Apple Silicon, no CGO, stripped)
 build-server-release: build-ui
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="-s -w" -o nrflow_server ./cmd/server
-
-# Cross-compile CLI for linux/arm64 (Docker image)
-build-cli-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build -ldflags="-s -w" -o ../docker/nrflow ./cmd/nrflow
-
-# Build Docker image (cross-compiles CLI first)
-docker-build: build-cli-linux
-	docker build --platform linux/arm64 -t nrflow-agent ../docker/
-	rm -f ../docker/nrflow
 
 # Clean build artifacts
 clean:

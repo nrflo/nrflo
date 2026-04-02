@@ -14,14 +14,14 @@ import (
 	"be/internal/socket"
 )
 
-// Client is a socket client for nrflow server (Unix or TCP)
+// Client is a socket client for nrflow server (Unix socket)
 type Client struct {
 	network   string
 	address   string
 	projectID string
 }
 
-// New creates a new client using auto-detected connection (TCP if NRFLOW_AGENT_HOST set, else Unix)
+// New creates a new client using the Unix socket connection
 func New(projectID string) *Client {
 	network, address := socket.GetServerAddr()
 	return &Client{

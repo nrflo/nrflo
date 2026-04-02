@@ -1,13 +1,12 @@
 # Socket Package
 
-Socket server for agent communication (Unix + optional TCP). Handles agent-facing methods only — all other operations go through the HTTP API.
+Socket server for agent communication (Unix). Handles agent-facing methods only — all other operations go through the HTTP API.
 
 ## Transport
 
-- **Unix socket** at `/tmp/nrflow/nrflow.sock` — used by native (non-Docker) agents
-- **TCP listener** on `127.0.0.1:6588` — used by Docker agents via `host.docker.internal:6588`. Always started. Both listeners share the same handler and connection tracking.
+- **Unix socket** at `/tmp/nrflow/nrflow.sock` — used by agents
 
-Clients auto-detect transport: if `NRFLOW_AGENT_HOST` env var is set, connect via TCP; otherwise use Unix socket.
+Clients connect via Unix socket.
 
 ## Protocol
 

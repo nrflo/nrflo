@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN use_docker_isolation INTEGER NOT NULL DEFAULT 0;

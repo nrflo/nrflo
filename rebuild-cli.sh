@@ -25,12 +25,4 @@ fi
 sudo ln -sf "$SCRIPT_DIR/be/nrflow" /usr/local/bin/nrflow
 echo -e "${GREEN}Symlinked to /usr/local/bin/nrflow${NC}"
 
-# Rebuild Docker image if it exists
-if docker image inspect nrflow-agent >/dev/null 2>&1; then
-    echo -e "${YELLOW}Rebuilding Docker image with updated CLI...${NC}"
-    cd "$SCRIPT_DIR/be"
-    make docker-build
-    echo -e "${GREEN}Docker image rebuilt${NC}"
-fi
-
 echo "Done."

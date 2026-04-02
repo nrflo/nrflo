@@ -1,6 +1,6 @@
 # Claude Code Instructions for nrflow Backend
 
-Go backend for nrflow. Two binaries: `nrflow_server` (server) and `nrflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket (and optional TCP socket for Docker agents) for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
+Go backend for nrflow. Two binaries: `nrflow_server` (server) and `nrflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
 
 ## Project Structure
 
@@ -22,7 +22,6 @@ be/
 │   ├── spawner/                 # Agent spawner
 │   │   ├── spawner.go           # Spawn and monitor agents
 │   │   ├── cli_adapter.go       # CLI adapter pattern (Claude, Opencode, Codex)
-│   │   ├── docker_adapter.go    # Docker isolation wrapper (DockerCLIAdapter)
 │   │   ├── cli_adapter_test.go  # Adapter tests
 │   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution, detected by orchestrator)
 │   │   ├── completion.go        # Completion handling, continuation relaunch
@@ -194,7 +193,6 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 `nrflow_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
 - **Unix socket** at `/tmp/nrflow/nrflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
-- **TCP socket** on `127.0.0.1:6588` — for Docker agents via `host.docker.internal:6588`, always started
 - **Auto-migration** — database schema is automatically migrated on startup
 
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.

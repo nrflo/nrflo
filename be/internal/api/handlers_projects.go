@@ -47,8 +47,7 @@ type CreateProjectRequest struct {
 	Name            string `json:"name"`
 	RootPath        string `json:"root_path,omitempty"`
 	DefaultBranch   string `json:"default_branch,omitempty"`
-	UseGitWorktrees    *bool  `json:"use_git_worktrees,omitempty"`
-	UseDockerIsolation *bool  `json:"use_docker_isolation,omitempty"`
+	UseGitWorktrees *bool `json:"use_git_worktrees,omitempty"`
 }
 
 // handleCreateProject creates a new project
@@ -82,9 +81,6 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.UseGitWorktrees != nil && *req.UseGitWorktrees {
 		project.UseGitWorktrees = true
-	}
-	if req.UseDockerIsolation != nil && *req.UseDockerIsolation {
-		project.UseDockerIsolation = true
 	}
 
 	if err := projectRepo.Create(project); err != nil {
@@ -135,9 +131,8 @@ type UpdateProjectRequest struct {
 	Name            *string `json:"name,omitempty"`
 	RootPath        *string `json:"root_path,omitempty"`
 	DefaultBranch   *string `json:"default_branch,omitempty"`
-	UseGitWorktrees    *bool   `json:"use_git_worktrees,omitempty"`
-	UseDockerIsolation *bool   `json:"use_docker_isolation,omitempty"`
-	ClaudeSafetyHook   *string `json:"claude_safety_hook,omitempty"`
+	UseGitWorktrees  *bool   `json:"use_git_worktrees,omitempty"`
+	ClaudeSafetyHook *string `json:"claude_safety_hook,omitempty"`
 }
 
 // handleUpdateProject updates a project
@@ -156,8 +151,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		Name:            req.Name,
 		RootPath:        req.RootPath,
 		DefaultBranch:   req.DefaultBranch,
-		UseGitWorktrees:    req.UseGitWorktrees,
-		UseDockerIsolation: req.UseDockerIsolation,
+		UseGitWorktrees: req.UseGitWorktrees,
 	}
 
 	if err := projectRepo.Update(id, fields); err != nil {

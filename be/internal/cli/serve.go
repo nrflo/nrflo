@@ -14,7 +14,6 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/socket"
-	"be/internal/spawner"
 
 	"github.com/spf13/cobra"
 )
@@ -49,9 +48,6 @@ Example usage:
 			return fmt.Errorf("failed to init logger: %w", err)
 		}
 
-		// Clean up any stale Docker containers from previous runs
-		spawner.CleanupStaleContainers()
-
 		// Override port if specified via flag
 		if servePort != 0 {
 			cfg.Server.Port = servePort
@@ -83,11 +79,6 @@ Example usage:
 		socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk)
 		if err := socketServer.Start(); err != nil {
 			return fmt.Errorf("failed to start socket server: %w", err)
-		}
-
-		// Start TCP listener for Docker agent communication
-		if err := socketServer.StartTCP(socket.DefaultTCPPort); err != nil {
-			return fmt.Errorf("failed to start TCP socket listener: %w", err)
 		}
 
 		// Handle graceful shutdown

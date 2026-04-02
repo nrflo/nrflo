@@ -37,7 +37,6 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    default_workflow TEXT                                             │
 │    default_branch TEXT                                               │
 │    use_git_worktrees INTEGER NOT NULL DEFAULT 0                      │
-│    use_docker_isolation INTEGER NOT NULL DEFAULT 0                   │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │                                                                      │

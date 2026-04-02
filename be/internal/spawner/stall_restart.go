@@ -68,7 +68,6 @@ func (s *Spawner) handleStallRestart(ctx context.Context, proc *processInfo, req
 	})
 
 	// Kill agent: SIGTERM → grace → SIGKILL
-	StopContainer(proc.containerName)
 	if proc.cmd.Process != nil {
 		proc.cmd.Process.Signal(syscall.SIGTERM)
 	}

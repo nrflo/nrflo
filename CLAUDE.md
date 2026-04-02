@@ -4,7 +4,7 @@
 
 nrflow is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents. Supports multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), and real-time WebSocket updates.
 
-The server runs as `nrflow_server serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket (and optional TCP socket for Docker agents) for agent communication. Spawned agents use the `nrflow` CLI binary (`agent fail/continue`, `findings add/append/get/delete`) to report results.
+The server runs as `nrflow_server serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use the `nrflow` CLI binary (`agent fail/continue`, `findings add/append/get/delete`) to report results.
 
 ## New features
 Do not keep old / deprecated / backward compat / legacy code
@@ -109,8 +109,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 | `nrflow.data` | SQLite database (tickets, projects, sessions) |
 | `restart.sh` | Kill server, rebuild binary (including UI), start in background |
 | `stop.sh` | Stop running server |
-| `rebuild-cli.sh` | Rebuild and re-symlink CLI binary (also rebuilds Docker image if it exists) |
-| `rebuild-docker.sh` | Nuclear-option Docker image rebuild: stops containers, removes image, rebuilds from scratch |
+| `rebuild-cli.sh` | Rebuild and re-symlink CLI binary |
 | `agent_manual.md` | User-facing agent definition guide (template vars, findings, CLI) |
 
 ## Architecture Principles
@@ -140,7 +139,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 23. **PTY WebSocket endpoint**: `GET /api/v1/pty/{session_id}` upgrades to a 1:1 WebSocket and spawns `claude --resume <session_id>` in a pseudo-terminal. Relays stdin/stdout bidirectionally between browser and PTY. Handles terminal resize via JSON `{"type":"resize","rows":N,"cols":N}` text messages. On process exit, triggers exit-interactive flow (status → `interactive_completed`, unblocks spawner). Separate from the broadcast WS at `/api/v1/ws`. Session must be in `user_interactive` status.
 24. **Stall detection and auto-restart**: The spawner monitors time since last agent message. If an agent produces no output within `stall_start_timeout_sec` (default 120s) or stops producing output for `stall_running_timeout_sec` (default 480s), it is killed and relaunched via the continuation mechanism after a 15s delay. No context save is attempted (agent is frozen). Stall restarts are capped at 6 per agent. Timeouts are configurable per agent_definition (NULL = defaults, 0 = disabled). `agent.stall_restart` and `agent.stall_waiting` WS events are broadcast. Additionally, **instant stall detection** catches Claude agents that exit with status 0 in under 1 minute with <=3 actionable messages (excluding `[init]` and `[thinking]` which are auto-generated) — these are overridden to continued/instant_stall and relaunched after a 15s delay, sharing the same stall restart budget. Agents that deliberately have no work should run `nrflow findings add no-op:no-op` before exiting — the `no-op` finding suppresses instant stall detection. Every agent prompt includes this instruction automatically. When the stall budget is exhausted and an instant stall is detected, the session is marked as failed (`stall_budget_exhausted`) instead of passing. `agent.instant_stall_restart` WS event is broadcast. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for details.
 25. **Interactive start & plan mode**: The workflow run API accepts optional `interactive` and `plan_mode` boolean flags. When `interactive: true`, the orchestrator spawns only the L0 agent in interactive mode and returns its `session_id` in `RunWorkflowResponse`. When `plan_mode: true`, a planner agent is spawned interactively. The web UI `RunWorkflowDialog` and `RunWorkflowForm` expose these as mutually exclusive checkboxes; on success the `onInteractiveStart` callback opens the PTY terminal via `AgentTerminalDialog`.
-26. **Spawner env vars for direct targeting**: The spawner sets `NRF_WORKFLOW_INSTANCE_ID` and `NRF_SESSION_ID` env vars on every spawned agent. The CLI reads these and passes them in all socket requests (`instance_id`, `session_id` fields). The service uses them directly — no ambiguous DB lookup by `(project, ticket, workflow)`. This is required; agents without these env vars cannot use findings or agent commands. Docker agents also get `NRFLOW_AGENT_HOST=host.docker.internal:<port>` to connect via TCP instead of Unix socket. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for the full env var list.
+26. **Spawner env vars for direct targeting**: The spawner sets `NRF_WORKFLOW_INSTANCE_ID` and `NRF_SESSION_ID` env vars on every spawned agent. The CLI reads these and passes them in all socket requests (`instance_id`, `session_id` fields). The service uses them directly — no ambiguous DB lookup by `(project, ticket, workflow)`. This is required; agents without these env vars cannot use findings or agent commands. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for the full env var list.
 27. **System agent definitions**: Global agent definitions not tied to any project or workflow, stored in `system_agent_definitions` table. Managed via `/api/v1/system-agents` CRUD endpoints (no `X-Project` header required). Used for system-level agents like conflict-resolver.
 28. **Automatic merge conflict resolution**: When `MergeAndCleanup()` fails after workflow completion, the orchestrator attempts automatic resolution by spawning a `conflict-resolver` system agent. The agent receives `${BRANCH_NAME}`, `${DEFAULT_BRANCH}`, and `${MERGE_ERROR}` via `ExtraVars`. On success, the feature branch is deleted; on failure or missing resolver, falls through to manual resolution. See [be/internal/orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) for details.
 29. **Low consumption mode**: Global setting (`GET/PATCH /api/v1/settings`) stored in the `config` table. When enabled, the spawner overrides the model for agents that have a `low_consumption_model` configured in their agent definition (e.g., `"sonnet"`, `"haiku"`). Only the model is swapped — the agent's own prompt template, timeout, and settings are kept. Session records (agent_type, phase tracking) retain the original agent type. The setting is read once at workflow start — toggling mid-workflow has no effect until the next run. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for details.
@@ -239,8 +238,7 @@ Chains allow sequential execution of multiple tickets with a single workflow. Ti
 |--------|---------|
 | `restart.sh` | Kill server, rebuild binary (including UI), start in background |
 | `stop.sh` | Stop running server |
-| `rebuild-cli.sh` | Rebuild and re-symlink the CLI binary (also rebuilds Docker image if it exists) |
-| `rebuild-docker.sh` | Nuclear-option Docker image rebuild: stops containers, removes image, rebuilds from scratch |
+| `rebuild-cli.sh` | Rebuild and re-symlink the CLI binary |
 | `ui/start-server.sh` | Start server in foreground (uses `nrflow_server serve`) |
 
 Logs are written to `/tmp/nrflow/logs/be.log` when using `restart.sh`.

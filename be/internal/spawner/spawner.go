@@ -74,8 +74,6 @@ type Config struct {
 	Pool *db.Pool
 	// Clock for timestamp generation (required)
 	Clock clock.Clock
-	// DockerConfig enables Docker isolation when non-nil
-	DockerConfig *DockerConfig
 	// LowConsumptionMode enables model override via LowConsumptionModel
 	LowConsumptionMode bool
 	// GlobalStallStartTimeout overrides the default stall start timeout when agent def has no value.
@@ -148,8 +146,6 @@ type processInfo struct {
 	stallStartTimeout   time.Duration // from agent_definition or default 120s
 	stallRunningTimeout time.Duration // from agent_definition or default 480s
 	stallRestartCount   int           // incremented on each stall restart
-	// Docker container name (empty when not using Docker isolation)
-	containerName string
 	// External session ID (e.g., codex thread_id) — for logging only
 	externalSessionID string
 }
@@ -377,13 +373,6 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		return nil, err
 	}
 
-	// Wrap with Docker adapter when Docker isolation is enabled
-	var dockerAdapter *DockerCLIAdapter
-	if s.config.DockerConfig != nil {
-		dockerAdapter = NewDockerCLIAdapter(adapter, *s.config.DockerConfig)
-		adapter = dockerAdapter
-	}
-
 	// Get agent config for timeout lookup
 	timeout := 40 // minutes
 	if agentCfg, ok := s.config.Agents[req.AgentType]; ok {
@@ -553,12 +542,6 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		stdinFile.Close()
 	}
 
-	// Resolve Docker container name (if applicable)
-	var ctrName string
-	if dockerAdapter != nil {
-		ctrName = dockerAdapter.ContainerName(sessionID)
-	}
-
 	// Create process info
 	_, modelName := parseModelID(modelID)
 	proc := &processInfo{
@@ -581,7 +564,6 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		workflowInstanceID: wfiID,
 		restartThreshold:    effectiveThreshold,
 		maxFailRestarts:     maxFailRestarts,
-		containerName:       ctrName,
 		lastMessageTime:     s.config.Clock.Now(),
 		stallStartTimeout:   stallStartTimeout,
 		stallRunningTimeout: stallRunningTimeout,
@@ -632,7 +614,6 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			// Kill all running processes
 			logger.Warn(ctx, "agents cancelled", "count", len(running))
 			for _, proc := range running {
-				StopContainer(proc.containerName)
 				if proc.cmd.Process != nil {
 					proc.cmd.Process.Signal(syscall.SIGTERM)
 				}
@@ -685,7 +666,6 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				logger.Info(ctx, "take-control: killing agent", "session_id", takeControlSessionID)
 
 				// Kill process: SIGTERM → grace → SIGKILL
-				StopContainer(proc.containerName)
 				if proc.cmd.Process != nil {
 					proc.cmd.Process.Signal(syscall.SIGTERM)
 				}

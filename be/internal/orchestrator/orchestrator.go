@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -355,9 +354,6 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		"instance_id": wi.ID,
 	}))
 
-	// Build Docker config if isolation is enabled
-	dockerCfg := buildDockerConfig(project, wt)
-
 	// Setup interactive/plan pre-step if requested
 	var pre *interactivePreStep
 	if req.Interactive || req.PlanMode {
@@ -377,7 +373,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, dockerCfg, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
 
 	status := "started"
 	sessionID := ""
@@ -755,11 +751,8 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		"failed_session_id": sessionID,
 	}))
 
-	// Build Docker config if isolation is enabled
-	dockerCfg := buildDockerConfig(project, wt)
-
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, dockerCfg, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
 
 	return nil
 }
@@ -981,7 +974,6 @@ func (o *Orchestrator) runLoop(
 	svcWf service.SpawnerWorkflowDef,
 	startLayerIdx int,
 	wt *worktreeInfo,
-	dockerCfg *spawner.DockerConfig,
 	agentTags map[string]string,
 	pre *interactivePreStep,
 	lowConsumptionMode bool,
@@ -1142,7 +1134,6 @@ func (o *Orchestrator) runLoop(
 					WSHub:                     o.wsHub,
 					Pool:                      pool,
 					Clock:                     o.clock,
-					DockerConfig:              dockerCfg,
 					LowConsumptionMode:        lowConsumptionMode,
 					GlobalStallStartTimeout:   globalStallStartTimeout,
 					GlobalStallRunningTimeout: globalStallRunningTimeout,
@@ -1501,26 +1492,6 @@ func (o *Orchestrator) updateOrchestrationStatus(wfiID, status string) {
 	}
 	findingsJSON, _ := json.Marshal(findings)
 	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
-}
-
-// buildDockerConfig constructs a DockerConfig when Docker isolation is enabled.
-// Returns nil when the project does not have Docker isolation enabled.
-func buildDockerConfig(project *model.Project, wt *worktreeInfo) *spawner.DockerConfig {
-	if !project.UseDockerIsolation {
-		return nil
-	}
-	originalRoot := project.RootPath.String
-	wtPath := ""
-	if wt != nil {
-		wtPath = wt.worktreePath
-	}
-	return &spawner.DockerConfig{
-		ProjectRoot:  originalRoot,
-		WorktreePath: wtPath,
-		HomeDir:      os.Getenv("HOME"),
-		UID:          os.Getuid(),
-		GID:          os.Getgid(),
-	}
 }
 
 // convertToSpawnerWorkflows converts service types to spawner types.

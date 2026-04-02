@@ -13,9 +13,8 @@ type Project struct {
 	RootPath        sql.NullString `json:"-"`
 	DefaultWorkflow sql.NullString `json:"-"`
 	DefaultBranch   sql.NullString `json:"-"`
-	UseGitWorktrees    bool           `json:"use_git_worktrees"`
-	UseDockerIsolation bool           `json:"use_docker_isolation"`
-	ClaudeSafetyHook   string         `json:"-"` // Loaded from config table, not projects table
+	UseGitWorktrees  bool   `json:"use_git_worktrees"`
+	ClaudeSafetyHook string `json:"-"` // Loaded from config table, not projects table
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 }
@@ -42,9 +41,8 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		Name            string    `json:"name"`
 		RootPath        *string   `json:"root_path"`
 		DefaultBranch   *string   `json:"default_branch"`
-		UseGitWorktrees    bool      `json:"use_git_worktrees"`
-		UseDockerIsolation bool      `json:"use_docker_isolation"`
-		ClaudeSafetyHook   *string   `json:"claude_safety_hook"`
+		UseGitWorktrees  bool      `json:"use_git_worktrees"`
+		ClaudeSafetyHook *string   `json:"claude_safety_hook"`
 		CreatedAt       time.Time `json:"created_at"`
 		UpdatedAt       time.Time `json:"updated_at"`
 	}{
@@ -52,9 +50,8 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		Name:            p.Name,
 		RootPath:        rootPath,
 		DefaultBranch:   defaultBranch,
-		UseGitWorktrees:    p.UseGitWorktrees,
-		UseDockerIsolation: p.UseDockerIsolation,
-		ClaudeSafetyHook:   claudeSafetyHook,
+		UseGitWorktrees:  p.UseGitWorktrees,
+		ClaudeSafetyHook: claudeSafetyHook,
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
 	})

@@ -39,7 +39,8 @@ type Server struct {
 func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
-	orch := orchestrator.New(dataPath, hub, clk)
+	errorSvc := service.NewErrorService(pool, clk, hub)
+	orch := orchestrator.New(dataPath, hub, clk, errorSvc)
 	ptyMgr := ptyPkg.NewManager()
 	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
 		ptyMgr.RegisterCommand(sessionID, cmd, args)
@@ -392,6 +393,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/chains/{id}/start", s.handleStartChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/cancel", s.handleCancelChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
+
+	// Errors
+	mux.HandleFunc("GET /api/v1/errors", s.handleListErrors)
 
 	// Search
 	mux.HandleFunc("GET /api/v1/search", s.handleSearch)

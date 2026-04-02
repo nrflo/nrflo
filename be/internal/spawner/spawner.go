@@ -41,6 +41,11 @@ type AgentConfig struct {
 	Timeout int    `json:"timeout"`
 }
 
+// ErrorRecorder records error events. Implemented by service.ErrorService.
+type ErrorRecorder interface {
+	RecordError(projectID, errorType, instanceID, message string) error
+}
+
 const (
 	defaultMaxContinuations    = 10
 	defaultContextThreshold    = 25
@@ -89,6 +94,8 @@ type Config struct {
 	// uses these for model mapping, reasoning effort, context length, and CLI type
 	// instead of hardcoded adapter methods. nil map is safe (lookup returns zero value).
 	ModelConfigs map[string]ModelConfig
+	// ErrorSvc records agent errors (optional, nil-safe).
+	ErrorSvc ErrorRecorder
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation

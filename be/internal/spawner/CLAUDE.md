@@ -131,6 +131,13 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 
 `DefaultCLIForModel()` remains a public package-level function for external callers (e.g., `orchestrator_interactive.go`).
 
+## Error Capture
+
+The spawner records errors to the `errors` table via `Config.ErrorSvc` (implements `ErrorRecorder` interface). Nil-safe — no-op when not configured. Errors are recorded for:
+- **Agent timeout** (`completion.go:handleGracefulTimeout`): type=agent, message=`"<agent_type>: timeout after Ns"`
+- **Agent fail** (`completion.go:handleCompletion`): type=agent, message=`"<agent_type>: <result_reason>"`
+- **Stall budget exhausted** (`instant_stall.go:markInstantStallFailed`): type=agent, message=`"<agent_type>: stall_budget_exhausted"`
+
 ## Database Access
 
 The spawner uses a shared `*db.Pool` from `Config.Pool` for all database operations. The orchestrator creates one pool per workflow run and passes it to all spawners in that run. The `pool()` helper method provides access.

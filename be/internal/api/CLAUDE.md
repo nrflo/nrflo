@@ -33,6 +33,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_project_findings.go` | Project findings GET (project-scoped) |
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
+| `handlers_errors.go` | Error log list (paginated, type filter) |
 | `handlers_logs.go` | Log file viewer (BE/FE logs) |
 | `static_handler.go` | SPA handler: serves embedded UI files with index.html fallback for client-side routing |
 
@@ -165,6 +166,9 @@ GET /api/v1/docs/agent-manual      # Agent manual markdown content
 
 # Logs
 GET /api/v1/logs                   # Log file contents (?type=be|fe, default be)
+
+# Errors (require X-Project header or ?project= param)
+GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)
 
 # Other
 GET /api/v1/search?q=              # Full-text search

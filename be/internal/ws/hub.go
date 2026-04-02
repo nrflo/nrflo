@@ -58,6 +58,7 @@ const (
 	EventCLIModelCreated             = "cli_model.created"
 	EventCLIModelUpdated             = "cli_model.updated"
 	EventCLIModelDeleted             = "cli_model.deleted"
+	EventErrorCreated                = "error.created"
 	EventTestEcho                    = "test.echo"
 )
 

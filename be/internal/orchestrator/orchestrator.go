@@ -73,6 +73,7 @@ type Orchestrator struct {
 	dataPath string
 	wsHub    *ws.Hub
 	clock    clock.Clock
+	errorSvc spawner.ErrorRecorder
 
 	// OnRegisterPtyCommand is called when interactive/plan mode needs to register
 	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.
@@ -80,12 +81,13 @@ type Orchestrator struct {
 }
 
 // New creates a new Orchestrator.
-func New(dataPath string, wsHub *ws.Hub, clk clock.Clock) *Orchestrator {
+func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder) *Orchestrator {
 	return &Orchestrator{
 		runs:     make(map[string]*runState),
 		dataPath: dataPath,
 		wsHub:    wsHub,
 		clock:    clk,
+		errorSvc: errorSvc,
 	}
 }
 
@@ -1139,6 +1141,7 @@ func (o *Orchestrator) runLoop(
 					GlobalStallRunningTimeout: globalStallRunningTimeout,
 					ClaudeSettingsJSON:        claudeSettingsJSON,
 					ModelConfigs:              modelConfigs,
+					ErrorSvc:                  o.errorSvc,
 				})
 
 				// Store spawner ref so RestartAgent can reach it
@@ -1463,6 +1466,10 @@ func (o *Orchestrator) markFailed(wfiID string, req RunRequest, reason string) {
 		} else {
 			o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "open"}))
 		}
+	}
+
+	if o.errorSvc != nil {
+		o.errorSvc.RecordError(req.ProjectID, "workflow", wfiID, reason)
 	}
 
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationFailed, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{

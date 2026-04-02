@@ -258,6 +258,17 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    updated_at  TEXT NOT NULL                                         │
 │    PRIMARY KEY (project_id, key)                                     │
 │                                                                      │
+│  ERRORS                                                              │
+│    id            TEXT PRIMARY KEY                                    │
+│    project_id    TEXT NOT NULL (FK → projects.id)                   │
+│    error_type    TEXT NOT NULL (agent|workflow|system)               │
+│    instance_id   TEXT NOT NULL (agent_session.id or wfi.id)         │
+│    message       TEXT NOT NULL                                       │
+│    created_at    TEXT NOT NULL                                       │
+│    INDEX idx_errors_project_id (project_id)                          │
+│    INDEX idx_errors_created_at (created_at)                          │
+│    INDEX idx_errors_error_type (error_type)                          │
+│                                                                      │
 │  PREFERENCES                                                         │
 │    name        TEXT PRIMARY KEY                                      │
 │    value       TEXT NOT NULL DEFAULT ''                               │

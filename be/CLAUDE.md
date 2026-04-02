@@ -53,6 +53,7 @@ be/
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
 │   │   ├── handlers_git.go        # Git commit history endpoints
 │   │   ├── handlers_daily_stats.go # Daily stats endpoint
+│   │   ├── handlers_errors.go     # Error log list endpoint (paginated)
 │   │   └── handlers_logs.go       # Log file viewer (BE/FE logs)
 │   ├── ws/                      # WebSocket support (protocol v2)
 │   │   ├── hub.go               # Client management, event log integration, broadcasting
@@ -95,6 +96,7 @@ be/
 │   │   ├── default_template.go  # Default template CRUD (global, readonly enforcement)
 │   │   ├── cli_model.go         # CLI model CRUD (global, readonly delete enforcement)
 │   │   ├── global_settings.go   # Global and project-scoped settings (wraps pool.GetConfig/SetConfig/GetProjectConfig/SetProjectConfig)
+│   │   ├── error_service.go     # Error tracking (RecordError + ListErrors)
 │   │   ├── findings.go          # Findings operations
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
 │   │   ├── chain_append.go      # AppendToChain for running chains
@@ -119,6 +121,7 @@ be/
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution, item, lock models
+│   │   ├── error_log.go         # ErrorLog struct + ErrorType enum
 │   │   └── daily_stats.go
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
@@ -132,6 +135,7 @@ be/
 │   │   ├── chain.go             # Chain execution CRUD
 │   │   ├── chain_items.go       # Chain item operations (GetMaxPosition, GetTicketIDsByChain)
 │   │   ├── chain_locks.go       # Chain lock operations
+│   │   ├── error_log.go         # Error log CRUD (Insert, List, Count)
 │   │   ├── daily_stats.go
 │   │   └── event_log.go         # WS event log persistence (append, query, cleanup)
 │   ├── types/                   # Shared request/response types

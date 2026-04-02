@@ -63,7 +63,7 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	}
 
 	// Create orchestrator to re-run the workflow
-	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil)
 
 	// Start the workflow again — should create a NEW instance
 	ctx := context.Background()
@@ -136,7 +136,7 @@ func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	}
 
 	// Create orchestrator and start first workflow
-	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil)
 	ctx := context.Background()
 
 	result1, err := orch.Start(ctx, orchestrator.RunRequest{
@@ -202,7 +202,7 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 	wfiRepo.UpdateFindings(wi.ID, `{"ticket_finding": "ticket_value"}`)
 
 	// Create orchestrator and try to start again
-	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real())
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil)
 	ctx := context.Background()
 
 	result, err := orch.Start(ctx, orchestrator.RunRequest{

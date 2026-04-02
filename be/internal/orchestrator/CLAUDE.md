@@ -53,6 +53,12 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 - All agents skipped → layer passes
 - `pass_count == 0` → workflow fails
 
+## Error Capture
+
+The orchestrator records errors to the `errors` table via `errorSvc` (implements `spawner.ErrorRecorder`). Passed through the constructor and threaded to all spawners via `Config.ErrorSvc`. Errors are recorded for:
+- **Workflow failure** (`markFailed`): type=workflow, instance_id=wfi_id, message=failure reason
+- **Merge conflict resolution failure** (`attemptConflictResolution`): type=system, instance_id=wfi_id, message includes branch name and spawn error
+
 ## Connection Pool
 
 The orchestrator's `runLoop` creates a shared `*db.Pool` for the entire workflow run and passes it to all spawners via `spawner.Config.Pool`. This avoids per-call `db.Open()`/`Close()` overhead in the spawner.

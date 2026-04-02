@@ -39,7 +39,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 
-	orch := New(dbPath, hub, clock.Real())
+	orch := New(dbPath, hub, clock.Real(), nil)
 
 	projectID := "test-project"
 

@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"context"
+	"fmt"
 	"syscall"
 	"time"
 
@@ -44,6 +45,10 @@ func (s *Spawner) handleGracefulTimeout(ctx context.Context, proc *processInfo, 
 
 	// Register agent stop with timeout reason (also updates status to failed + sets ended_at)
 	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName, proc.sessionID, proc.agentID, "fail", "timeout", proc.modelID)
+
+	if s.config.ErrorSvc != nil {
+		s.config.ErrorSvc.RecordError(req.ProjectID, "agent", proc.sessionID, fmt.Sprintf("%s: timeout after %ds", proc.agentType, int(proc.timeout.Seconds())))
+	}
 }
 
 // handleCompletion handles a completed agent process with hybrid completion semantics
@@ -87,6 +92,10 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 
 	// Register agent stop with reason
 	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName, proc.sessionID, proc.agentID, result, resultReason, proc.modelID)
+
+	if result == "fail" && s.config.ErrorSvc != nil {
+		s.config.ErrorSvc.RecordError(req.ProjectID, "agent", proc.sessionID, fmt.Sprintf("%s: %s", proc.agentType, resultReason))
+	}
 
 	logger.Info(ctx, "agent completed", "model", proc.modelID, "status", proc.finalStatus, "exit_code", exitCode, "reason", resultReason, "duration", proc.elapsed.Round(time.Second))
 }

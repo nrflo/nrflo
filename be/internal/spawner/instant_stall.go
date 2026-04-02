@@ -96,6 +96,10 @@ func (s *Spawner) markInstantStallFailed(ctx context.Context, proc *processInfo,
 		"reason":     "stall_budget_exhausted",
 	})
 
+	if s.config.ErrorSvc != nil {
+		s.config.ErrorSvc.RecordError(req.ProjectID, "agent", proc.sessionID, fmt.Sprintf("%s: stall_budget_exhausted", proc.agentType))
+	}
+
 	logger.Error(ctx, "instant stall with budget exhausted: marking agent failed",
 		"agent_type", proc.agentType, "session_id", proc.sessionID,
 		"elapsed", proc.elapsed, "message_count", msgCount,

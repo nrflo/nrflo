@@ -57,6 +57,7 @@ func (o *Orchestrator) attemptConflictResolution(
 		Clock:              o.clock,
 		ClaudeSettingsJSON: claudeSettingsJSON,
 		ModelConfigs:       modelConfigs,
+		ErrorSvc:           o.errorSvc,
 	})
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{
@@ -75,6 +76,9 @@ func (o *Orchestrator) attemptConflictResolution(
 	sp.Close()
 
 	if spawnErr != nil {
+		if o.errorSvc != nil {
+			o.errorSvc.RecordError(req.ProjectID, "system", wfiID, fmt.Sprintf("merge conflict resolution failed for branch %s: %s", wt.branchName, spawnErr.Error()))
+		}
 		o.wsHub.Broadcast(ws.NewEvent(ws.EventMergeConflictFailed, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 			"instance_id": wfiID,
 			"branch":      wt.branchName,

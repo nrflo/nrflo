@@ -17,6 +17,15 @@ function getPtyWebSocketUrl(sessionId: string): string {
   return `${protocol}//${window.location.host}/api/v1/pty/${encodeURIComponent(sessionId)}`
 }
 
+/** Encode a binary string (each char is one byte) into a Uint8Array. */
+function binaryStringToBytes(data: string): Uint8Array {
+  const buf = new Uint8Array(data.length)
+  for (let i = 0; i < data.length; i++) {
+    buf[i] = data.charCodeAt(i) & 0xff
+  }
+  return buf
+}
+
 export function XTerminal({ sessionId, onExit }: XTerminalProps) {
   const termRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
@@ -39,11 +48,22 @@ export function XTerminal({ sessionId, onExit }: XTerminalProps) {
       cursorBlink: true,
       fontSize: 14,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      macOptionIsMeta: true,
+      allowProposedApi: true,
       theme: {
         background: '#1a1a2e',
         foreground: '#e0e0e0',
         cursor: '#f0f0f0',
       },
+    })
+
+    // Intercept browser shortcuts (Ctrl+O, Ctrl+W, etc.) so they reach the PTY.
+    terminal.attachCustomKeyEventHandler((ev: KeyboardEvent) => {
+      if (ev.ctrlKey && ['o', 'w', 'n', 't'].includes(ev.key)) {
+        ev.preventDefault()
+        return true
+      }
+      return true
     })
 
     const fitAddon = new FitAddon()
@@ -61,7 +81,6 @@ export function XTerminal({ sessionId, onExit }: XTerminalProps) {
     wsRef.current = ws
 
     ws.onopen = () => {
-      // Send initial resize
       sendResize(terminal.cols, terminal.rows)
     }
 
@@ -82,10 +101,17 @@ export function XTerminal({ sessionId, onExit }: XTerminalProps) {
       terminal.write('\r\n\x1b[31m[Connection error]\x1b[0m\r\n')
     }
 
-    // User keystrokes → WebSocket
+    // User keystrokes → WebSocket (UTF-8 text input)
     const dataDisposable = terminal.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(new TextEncoder().encode(data))
+      }
+    })
+
+    // Binary data → WebSocket (legacy mouse reports, non-UTF-8 sequences)
+    const binaryDisposable = terminal.onBinary((data) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(binaryStringToBytes(data))
       }
     })
 
@@ -114,6 +140,7 @@ export function XTerminal({ sessionId, onExit }: XTerminalProps) {
     return () => {
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current)
       dataDisposable.dispose()
+      binaryDisposable.dispose()
       resizeDisposable.dispose()
       window.removeEventListener('resize', handleWindowResize)
       observer.disconnect()

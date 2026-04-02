@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -43,8 +44,13 @@ Example usage:
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		// Initialize logger
-		if err := logger.Init("/tmp/nrflow/logs/be.log"); err != nil {
+		// Initialize logger (logs live next to the database)
+		dataDir := db.DefaultDataDir()
+		if DataPath != "" {
+			dataDir = filepath.Dir(DataPath)
+		}
+		logsDir := filepath.Join(dataDir, "logs")
+		if err := logger.Init(filepath.Join(logsDir, "be.log")); err != nil {
 			return fmt.Errorf("failed to init logger: %w", err)
 		}
 
@@ -72,7 +78,7 @@ Example usage:
 		defer pool.Close()
 
 		// Create HTTP server (creates WebSocket hub)
-		httpServer := api.NewServer(cfg, DataPath, pool)
+		httpServer := api.NewServer(cfg, DataPath, logsDir, pool)
 
 		// Create and start Unix socket server with shared WebSocket hub
 		clk := clock.Real()

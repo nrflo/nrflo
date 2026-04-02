@@ -12,21 +12,31 @@ import (
 
 const DBFileName = "nrflow.data"
 
-// DefaultDBPath returns the default database path in the nrflow installation directory.
-// Uses NRFLOW_HOME env var if set, otherwise defaults to ~/projects/2026/nrflow.
+// DefaultDBPath returns the default database path.
+// Uses NRFLOW_HOME env var if set, otherwise defaults to ~/.nrflow.
 // This is a single centralized database for all projects.
 func DefaultDBPath() string {
-	// Check for NRFLOW_HOME environment variable
 	if nrHome := os.Getenv("NRFLOW_HOME"); nrHome != "" {
 		return filepath.Join(nrHome, DBFileName)
 	}
 
-	// Default to ~/projects/2026/nrflow
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return DBFileName
 	}
-	return filepath.Join(home, "projects", "2026", "nrflow", DBFileName)
+	return filepath.Join(home, ".nrflow", DBFileName)
+}
+
+// DefaultDataDir returns the directory containing the database.
+func DefaultDataDir() string {
+	if nrHome := os.Getenv("NRFLOW_HOME"); nrHome != "" {
+		return nrHome
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "."
+	}
+	return filepath.Join(home, ".nrflow")
 }
 
 // Querier is the common interface satisfied by both *DB and *Pool.

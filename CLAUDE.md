@@ -106,10 +106,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 | `be/` | Go backend source code (see [be/CLAUDE.md](be/CLAUDE.md)) |
 | `ui/` | React web interface (see [ui/CLAUDE.md](ui/CLAUDE.md)) |
 | `guidelines/agent-protocol.md` | Agent conventions |
-| `nrflow.data` | SQLite database (tickets, projects, sessions) |
-| `restart.sh` | Kill server, rebuild binary (including UI), start in background |
-| `stop.sh` | Stop running server |
-| `rebuild-cli.sh` | Rebuild and re-symlink CLI binary |
+| `Makefile` | Build, install, test targets (`make help`) |
 | `agent_manual.md` | User-facing agent definition guide (template vars, findings, CLI) |
 
 ## Architecture Principles
@@ -119,7 +116,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 3. **Auto-migrate**: Database migrations run automatically on server startup
 4. **Two Go binaries**: `nrflow_server` (serve command only) and `nrflow` (agent/findings/tickets/deps CLI)
 5. **Project-scoped**: Project discovered from `NRFLOW_PROJECT` env variable
-6. **Single database**: `~/projects/2026/nrflow/nrflow.data` (SQLite, global for all projects)
+6. **Single database**: `~/.nrflow/nrflow.data` (SQLite, global for all projects; override with `NRFLOW_HOME`)
 7. **Connection Pool**: DB uses connection pooling (10 max, 5 idle)
 8. **Versioned migrations**: Schema managed by golang-migrate with embedded SQL files in `db/migrations/`
 9. **Service Layer**: Business logic separated from HTTP handlers and socket handlers
@@ -148,7 +145,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 ## Quick Start
 
-Web UI: `./restart.sh` then open `http://localhost:6587`
+Build: `make build && make install`, then `nrflow_server serve` and open `http://localhost:6587`
 
 ## Agent CLI Commands
 
@@ -232,13 +229,14 @@ Workflow runtime state is stored in two main tables: `workflow_instances` (one r
 
 Chains allow sequential execution of multiple tickets with a single workflow. Tickets are expanded with transitive dependency blockers, topologically sorted, and locked to prevent overlapping runs. Items execute one at a time via the orchestrator. Zombie running chains are marked failed on server startup (crash recovery). See [be/internal/orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) for chain runner details and [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for chain API endpoints.
 
-## Server Scripts
+## Building & Installing
 
-| Script | Purpose |
-|--------|---------|
-| `restart.sh` | Kill server, rebuild binary (including UI), start in background |
-| `stop.sh` | Stop running server |
-| `rebuild-cli.sh` | Rebuild and re-symlink the CLI binary |
-| `ui/start-server.sh` | Start server in foreground (uses `nrflow_server serve`) |
+```bash
+make build          # Build both binaries (dev, includes UI)
+make build-release  # Optimized release build
+make install        # Install to /usr/local/bin (or PREFIX=...)
+make test           # Run backend tests
+make help           # Show all targets
+```
 
-Logs are written to `/tmp/nrflow/logs/be.log` when using `restart.sh`.
+Logs are written to `~/.nrflow/logs/be.log` (or `$NRFLOW_HOME/logs/be.log`).

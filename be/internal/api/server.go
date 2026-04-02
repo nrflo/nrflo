@@ -25,6 +25,7 @@ import (
 type Server struct {
 	config           *config.Config
 	dataPath         string
+	logsDir          string
 	pool             *db.Pool
 	httpServer       *http.Server
 	wsHub            *ws.Hub
@@ -35,7 +36,7 @@ type Server struct {
 }
 
 // NewServer creates a new API server
-func NewServer(cfg *config.Config, dataPath string, pool *db.Pool) *Server {
+func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	orch := orchestrator.New(dataPath, hub, clk)
@@ -47,6 +48,7 @@ func NewServer(cfg *config.Config, dataPath string, pool *db.Pool) *Server {
 	return &Server{
 		config:       cfg,
 		dataPath:     dataPath,
+		logsDir:      logsDir,
 		pool:         pool,
 		wsHub:        hub,
 		orchestrator: orch,

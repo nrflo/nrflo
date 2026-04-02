@@ -6,51 +6,30 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// logsTestDir is the hardcoded path used by handleGetLogs.
-const logsTestDir = "/tmp/nrflow/logs"
-
-// setupLogFile writes content to the log file and registers cleanup to restore
-// the original state. The hardcoded logsDir constant in the handler forces
-// tests to write directly to /tmp/nrflow/logs/.
-func setupLogFile(t *testing.T, logType string, content string) {
+func setupLogFile(t *testing.T, dir string, logType string, content string) {
 	t.Helper()
-	if err := os.MkdirAll(logsTestDir, 0755); err != nil {
-		t.Fatalf("MkdirAll(%s): %v", logsTestDir, err)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("MkdirAll(%s): %v", dir, err)
 	}
-	path := fmt.Sprintf("%s/%s.log", logsTestDir, logType)
-
-	original, readErr := os.ReadFile(path)
+	path := filepath.Join(dir, logType+".log")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("WriteFile(%s): %v", path, err)
 	}
-	t.Cleanup(func() {
-		if readErr != nil {
-			os.Remove(path)
-		} else {
-			os.WriteFile(path, original, 0644) //nolint:errcheck
-		}
-	})
 }
 
-// removeLogFile ensures the log file does not exist for the test and restores it afterward.
-func removeLogFile(t *testing.T, logType string) {
+func removeLogFile(t *testing.T, dir string, logType string) {
 	t.Helper()
-	path := fmt.Sprintf("%s/%s.log", logsTestDir, logType)
-	original, readErr := os.ReadFile(path)
+	path := filepath.Join(dir, logType+".log")
 	os.Remove(path)
-	t.Cleanup(func() {
-		if readErr == nil {
-			os.WriteFile(path, original, 0644) //nolint:errcheck
-		}
-	})
 }
 
-func newLogsServer() *Server {
-	return &Server{}
+func newLogsServer(logsDir string) *Server {
+	return &Server{logsDir: logsDir}
 }
 
 func decodeLogsResponse(t *testing.T, rr *httptest.ResponseRecorder) map[string]interface{} {
@@ -69,7 +48,6 @@ func getLines(t *testing.T, resp map[string]interface{}) []interface{} {
 		t.Fatal("response missing 'lines' key")
 	}
 	if raw == nil {
-		// nil slice in Go marshals to JSON null; treat as empty.
 		return nil
 	}
 	lines, ok := raw.([]interface{})
@@ -79,11 +57,11 @@ func getLines(t *testing.T, resp map[string]interface{}) []interface{} {
 	return lines
 }
 
-// TestHandleGetLogs_DefaultTypeBe verifies that omitting ?type= defaults to be.log.
 func TestHandleGetLogs_DefaultTypeBe(t *testing.T) {
-	setupLogFile(t, "be", "line1\nline2\nline3\n")
+	dir := t.TempDir()
+	setupLogFile(t, dir, "be", "line1\nline2\nline3\n")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -104,11 +82,11 @@ func TestHandleGetLogs_DefaultTypeBe(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_TypeBe verifies explicit type=be reads be.log.
 func TestHandleGetLogs_TypeBe(t *testing.T) {
-	setupLogFile(t, "be", "alpha\nbeta\ngamma\n")
+	dir := t.TempDir()
+	setupLogFile(t, dir, "be", "alpha\nbeta\ngamma\n")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -123,11 +101,11 @@ func TestHandleGetLogs_TypeBe(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_TypeFe verifies type=fe reads fe.log.
 func TestHandleGetLogs_TypeFe(t *testing.T) {
-	setupLogFile(t, "fe", "fe-line1\nfe-line2\n")
+	dir := t.TempDir()
+	setupLogFile(t, dir, "fe", "fe-line1\nfe-line2\n")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -147,11 +125,11 @@ func TestHandleGetLogs_TypeFe(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_ReverseOrder verifies lines are returned latest-first.
 func TestHandleGetLogs_ReverseOrder(t *testing.T) {
-	setupLogFile(t, "be", "first\nsecond\nthird\n")
+	dir := t.TempDir()
+	setupLogFile(t, dir, "be", "first\nsecond\nthird\n")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -171,11 +149,11 @@ func TestHandleGetLogs_ReverseOrder(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_MissingFile verifies 200 with empty lines when be.log absent.
 func TestHandleGetLogs_MissingFile(t *testing.T) {
-	removeLogFile(t, "be")
+	dir := t.TempDir()
+	removeLogFile(t, dir, "be")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -191,11 +169,11 @@ func TestHandleGetLogs_MissingFile(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_MissingFileFe verifies 200 with empty lines when fe.log absent.
 func TestHandleGetLogs_MissingFileFe(t *testing.T) {
-	removeLogFile(t, "fe")
+	dir := t.TempDir()
+	removeLogFile(t, dir, "fe")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -214,11 +192,11 @@ func TestHandleGetLogs_MissingFileFe(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_EmptyFile verifies 200 with empty lines for an empty file.
 func TestHandleGetLogs_EmptyFile(t *testing.T) {
-	setupLogFile(t, "be", "")
+	dir := t.TempDir()
+	setupLogFile(t, dir, "be", "")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -234,12 +212,10 @@ func TestHandleGetLogs_EmptyFile(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_InvalidType verifies 400 for unsupported type values.
-// Empty string defaults to "be" (valid), so it is excluded.
 func TestHandleGetLogs_InvalidType(t *testing.T) {
 	cases := []struct {
-		name     string
-		typeVal  string
+		name    string
+		typeVal string
 	}{
 		{"all", "all"},
 		{"server", "server"},
@@ -251,7 +227,7 @@ func TestHandleGetLogs_InvalidType(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := newLogsServer()
+			s := newLogsServer(t.TempDir())
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/logs", nil)
 			q := req.URL.Query()
 			q.Set("type", tc.typeVal)
@@ -274,15 +250,15 @@ func TestHandleGetLogs_InvalidType(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_CapAt1000 verifies that >1000 lines are capped to 1000 (latest first).
 func TestHandleGetLogs_CapAt1000(t *testing.T) {
+	dir := t.TempDir()
 	var sb strings.Builder
 	for i := 1; i <= 1500; i++ {
 		fmt.Fprintf(&sb, "line%d\n", i)
 	}
-	setupLogFile(t, "be", sb.String())
+	setupLogFile(t, dir, "be", sb.String())
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -298,27 +274,25 @@ func TestHandleGetLogs_CapAt1000(t *testing.T) {
 		t.Errorf("len(lines) = %d, want 1000", len(lines))
 	}
 
-	// After reverse + cap, the first element is the last file line ("line1500").
 	first, _ := lines[0].(string)
 	if first != "line1500" {
 		t.Errorf("lines[0] = %q, want %q (latest line first)", first, "line1500")
 	}
-	// The 1000th element (index 999) should be "line501" (1500 - 999 = 501).
 	last, _ := lines[999].(string)
 	if last != "line501" {
 		t.Errorf("lines[999] = %q, want %q", last, "line501")
 	}
 }
 
-// TestHandleGetLogs_ExactlyAtCap verifies exactly 1000 lines are returned untruncated.
 func TestHandleGetLogs_ExactlyAtCap(t *testing.T) {
+	dir := t.TempDir()
 	var sb strings.Builder
 	for i := 1; i <= 1000; i++ {
 		fmt.Fprintf(&sb, "line%d\n", i)
 	}
-	setupLogFile(t, "be", sb.String())
+	setupLogFile(t, dir, "be", sb.String())
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -331,11 +305,11 @@ func TestHandleGetLogs_ExactlyAtCap(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_ContentType verifies response Content-Type is application/json.
 func TestHandleGetLogs_ContentType(t *testing.T) {
-	setupLogFile(t, "be", "some log line\n")
+	dir := t.TempDir()
+	setupLogFile(t, dir, "be", "some log line\n")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
@@ -346,11 +320,11 @@ func TestHandleGetLogs_ContentType(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_ResponseShape verifies both "lines" and "type" fields are present.
 func TestHandleGetLogs_ResponseShape(t *testing.T) {
-	setupLogFile(t, "fe", "log line\n")
+	dir := t.TempDir()
+	setupLogFile(t, dir, "fe", "log line\n")
 
-	s := newLogsServer()
+	s := newLogsServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)

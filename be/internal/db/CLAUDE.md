@@ -21,7 +21,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     DATABASE TABLES                                  │
-│              (~/projects/2026/nrflow/nrflow.data)           │
+│              (~/.nrflow/nrflow.data)                         │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  CONFIG                                                              │

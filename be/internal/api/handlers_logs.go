@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 )
 
-const logsDir = "/tmp/nrflow/logs"
 const maxLogLines = 1000
 
 // handleGetLogs serves log file contents as JSON.
@@ -23,7 +22,7 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filePath := filepath.Join(logsDir, logType+".log")
+	filePath := filepath.Join(s.logsDir, logType+".log")
 	f, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {

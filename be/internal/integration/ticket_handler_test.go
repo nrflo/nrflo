@@ -40,7 +40,7 @@ func startAPIServer(t *testing.T, dbPath string) string {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	srv := api.NewServer(cfg, dbPath, pool)
+	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool)
 
 	// Start in background
 	go func() {

@@ -213,34 +213,16 @@ The full test suite (`vitest run`) must complete in **≤15 seconds wall time**.
 - Default port is 6587 (single-process serves API + embedded UI); port 5175 is used only for `npm run dev` hot-reload during development
 - Projects are loaded from `/api/v1/projects` endpoint
 - Multi-project support uses `X-Project` header
-- Database is at `~/projects/2026/nrflow/nrflow.data` (global)
+- Database is at `~/.nrflow/nrflow.data` (global; override with `NRFLOW_HOME`)
 
 ## Starting Servers
 
 The server binary embeds the UI and serves everything on a single port (default 6587).
 
 ```bash
-# Quick start - rebuild and restart (kills existing, rebuilds, starts in background)
-./restart.sh
-
-# Or start manually:
-nrflow_server serve       # Start server (port 6587, serves API + embedded UI)
-
-# For UI hot-reload development (optional):
-cd ui && npm run dev          # Start Vite dev server (port 5175, proxies API to 6587)
-
-# Stop server
-./stop.sh
+nrflow_server serve              # Start server (port 6587, serves API + embedded UI)
+cd ui && npm run dev             # Optional: Vite dev server with hot-reload (port 5175)
 ```
-
-| Script | Purpose |
-|--------|---------|
-| `restart.sh` | Kill server, rebuild binary (including UI), start in background |
-| `stop.sh` | Stop running server |
-| `rebuild-cli.sh` | Rebuild and re-symlink CLI binary without restarting server |
-| `ui/start-server.sh` | Start server in foreground (uses `nrflow_server serve`) |
-
-Logs are written to `/tmp/nrflow/logs/be.log` when using `restart.sh`.
 
 ## Web UI Features
 

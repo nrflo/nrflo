@@ -150,10 +150,8 @@ be/
 ├── scripts/
 │   ├── test.sh                  # Test runner (flags: -i -v -c -r)
 │   └── context-check.sh         # Context usage hook
-├── install.sh                  # Installation script
 ├── go.mod
-├── go.sum
-└── Makefile
+└── go.sum
 ```
 
 ## Source File Size Limit
@@ -172,18 +170,19 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 
 ## Building from Source
 
+All build targets are in the **root** `Makefile` (not `be/`):
+
 ```bash
-cd ~/projects/2026/nrflow/be
+cd ~/projects/2026/nrflow
 make build                # Build both binaries (CLI + server, includes UI)
 make build-cli            # Build CLI binary (nrflow)
 make build-server         # Build server binary with embedded UI
-make build-server-only    # Go-only rebuild (skip UI build, use last-copied dist)
+make build-server-only    # Go-only rebuild (skip UI build)
 make build-ui             # Build UI and copy dist to embed directory
 make build-release        # Optimized release build (both binaries)
-make build-cli-release    # Optimized release build (CLI only)
-make build-server-release # Optimized release build (server only, includes UI)
-sudo make install         # Install both to /usr/local/bin
+make install              # Install to PREFIX (default /usr/local)
 make clean                # Clean build artifacts
+make help                 # Show all targets
 ```
 
 No CGO required (pure Go SQLite via modernc.org/sqlite).
@@ -214,11 +213,11 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 ## Running Tests
 
 ```bash
-cd be
-make test                    # all tests
+make test                    # all tests (from project root)
 make test-integration        # integration only (verbose)
-./scripts/test.sh -c         # with coverage
-./scripts/test.sh -r         # with race detector
+make test-pkg PKG=orchestrator  # single package
+cd be && ./scripts/test.sh -c   # with coverage
+cd be && ./scripts/test.sh -r   # with race detector
 ```
 
 See [integration/CLAUDE.md](internal/integration/CLAUDE.md) for test harness details and helper methods.

@@ -4,6 +4,7 @@ import { getProject } from '../api/client'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
 import { runningAgentsKeys } from './useRunningAgents'
+import { errorKeys } from './useErrors'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
 import { isControlEvent, subscriptionKey } from './useWSProtocol'
 import {
@@ -51,6 +52,7 @@ export type WSEventType =
   | 'merge.conflict_failed'
   | 'ticket.updated'
   | 'global.running_agents'
+  | 'error.created'
   | 'test.echo'
 
 export interface WSEvent {
@@ -212,6 +214,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     qc.invalidateQueries({ queryKey: ['agent-defs'] })
     qc.invalidateQueries({ queryKey: ['session-messages'] })
     qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
+    qc.invalidateQueries({ queryKey: errorKeys.all })
   }, [])
 
   // Build subscribe message with cursor for v2 resume

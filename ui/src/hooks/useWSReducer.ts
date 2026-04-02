@@ -4,6 +4,7 @@ import { subscriptionKey } from './useWSProtocol'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
 import { runningAgentsKeys } from './useRunningAgents'
+import { errorKeys } from './useErrors'
 import type { WSEventType } from './useWebSocket'
 
 // Seq tracking per subscription
@@ -342,5 +343,9 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     qc.invalidateQueries({ queryKey: ticketKeys.lists() })
     qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
     qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
+  },
+
+  'error.created': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: errorKeys.all })
   },
 }

@@ -1,6 +1,6 @@
 # Pages
 
-Route page components for the nrflow web UI. Uses React Router v6 for routing. This directory contains 57 files including page components and co-located tests.
+Route page components for the nrflow web UI. Uses React Router v6 for routing. This directory contains 59 files including page components and co-located tests.
 
 ## Routes
 
@@ -16,6 +16,7 @@ Route page components for the nrflow web UI. Uses React Router v6 for routing. T
 | `/git-status` | `GitStatusPage.tsx` | Standalone git commit status page (conditional on `default_branch`) |
 | `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |
 | `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, useTickingClock for 1s elapsed time updates + 10s refetchInterval fallback when running |
+| `/errors` | `ErrorsPage.tsx` | Paginated error log table with type filter tabs (All/Agent/Workflow/System), server-side pagination, WS auto-refresh |
 | `/settings` | `SettingsPage.tsx` | Tabbed settings page (General, Projects, System Agents, Default Templates, CLI Models, Logs) composing GlobalSettingsSection + ProjectsSection + SystemAgentsSection + DefaultTemplatesSection + CLIModelsSection + LogsSection |
 
 Routes are defined in `src/App.tsx`.

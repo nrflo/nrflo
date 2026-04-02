@@ -1,6 +1,6 @@
 # Types
 
-TypeScript type definitions matching Go API models. Contains 3 files.
+TypeScript type definitions matching Go API models. Contains 4 files.
 
 ## Key Ticket Types (`ticket.ts`)
 
@@ -34,6 +34,13 @@ TypeScript type definitions matching Go API models. Contains 3 files.
 | `ChainExecution` | Chain execution record |
 | `ChainExecutionItem` | Individual chain item |
 | `ChainStatus` | Chain lifecycle status |
+
+## Error Types (`errors.ts`)
+
+| Type | Description |
+|------|-------------|
+| `ErrorLog` | Error record with `id`, `project_id`, `error_type` (agent/workflow/system), `instance_id`, `message`, `created_at` |
+| `ErrorsResponse` | `{ errors: ErrorLog[], total, page, per_page, total_pages }` — paginated error list |
 
 ## Type Safety
 

@@ -12,6 +12,7 @@ import {
   GitCommitHorizontal,
   Link2,
   BookOpen,
+  AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
@@ -122,6 +123,12 @@ export function Sidebar() {
           label="Chain Executions"
           active={isActive('/chains')}
           indicator={runningChains?.length ? <><span className="text-xs text-muted-foreground">{remainingChainTickets}</span><Spinner size="sm" /></> : undefined}
+        />
+        <NavItem
+          to="/errors"
+          icon={<AlertTriangle className="h-4 w-4" />}
+          label="Errors"
+          active={isActive('/errors')}
         />
         <NavItem
           to="/documentation"

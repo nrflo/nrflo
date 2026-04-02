@@ -1,6 +1,6 @@
 # API Client
 
-API client modules for communicating with the nrflow backend. Contains 11 files.
+API client modules for communicating with the nrflow backend. Contains 12 files.
 
 ## Architecture
 
@@ -27,6 +27,7 @@ API client modules for communicating with the nrflow backend. Contains 11 files.
 | `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
 | `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |
 | `cliModels.ts` | CLI model CRUD + health check test (global, no X-Project header) |
+| `errors.ts` | Paginated error log list (`GET /api/v1/errors?page=&per_page=&type=`) |
 
 ## REST API Endpoints
 

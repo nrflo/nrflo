@@ -87,6 +87,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `chain.updated` | chain_id | Chain state changed |
 | `ticket.updated` | | Ticket state changed |
 | `global.running_agents` | | Running agents changed (global broadcast, no subscription scope) |
+| `error.created` | | New error recorded, invalidates error query cache |
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`
 **Exception:** `global.running_agents` is a global broadcast with no project_id/ticket_id/seq. Handled as early return before `dispatchV2Event`.
@@ -111,6 +112,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useProjectFindings()` | TanStack Query hook for project findings (`GET /api/v1/projects/:id/findings`). Invalidated by `project_findings.updated` WS event. Defined in `useTickets.ts`. |
 | `useCLIModels()` | TanStack Query hook for CLI models (`GET /api/v1/cli-models`). Defined in `useCLIModels.ts`. |
 | `useModelOptions()` | Derives `DropdownOptionGroup[]` from `useCLIModels()` data, grouped by `cli_type` with provider-prefixed labels (e.g., "Claude: Opus"). Groups and options sorted alphabetically. Unknown `cli_type` values fall back to capitalized name. Used by AgentForm, AgentDefForm. Defined in `useCLIModels.ts`. |
+| `useErrors.ts` | TanStack Query hook for paginated error logs (`GET /api/v1/errors`). Key factory: `errorKeys`. Invalidated by `error.created` WS event. |
 
 ## Testing
 

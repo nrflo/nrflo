@@ -1,9 +1,12 @@
 package cli
 
 // RegisterServerCommands adds server-side commands to the root command.
+// The serve command runs by default when no subcommand is given.
 func RegisterServerCommands() {
 	rootCmd.Use = "nrflow_server"
 	rootCmd.Short = "nrflow server"
+	rootCmd.RunE = serveCmd.RunE
+	rootCmd.Flags().AddFlagSet(serveCmd.Flags())
 	rootCmd.AddCommand(serveCmd)
 }
 

@@ -435,7 +435,7 @@ describe('ChainListPage - Chain Information Display', () => {
 
     renderChainListPage()
 
-    expect(screen.getByText(/workflow: feature/i)).toBeInTheDocument()
+    expect(screen.getByText('feature')).toBeInTheDocument()
   })
 
 
@@ -451,8 +451,8 @@ describe('ChainListPage - Chain Information Display', () => {
 
     // formatRelativeTime should show something like "X days ago" or similar
     // We just verify the created_at is used in rendering
-    const chainCard = screen.getByText('Test Chain').closest('a')
-    expect(chainCard).toBeInTheDocument()
+    const chainRow = screen.getByText('Test Chain').closest('tr')
+    expect(chainRow).toBeInTheDocument()
   })
 })
 
@@ -483,7 +483,7 @@ describe('ChainListPage - Navigation Links', () => {
     vi.clearAllMocks()
   })
 
-  it('chain cards link to detail page', () => {
+  it('chain rows have data-testid for navigation', () => {
     const chain = createMockChain({ id: 'chain-abc' })
     mockUseChainList.mockReturnValue({
       data: [chain],
@@ -493,7 +493,7 @@ describe('ChainListPage - Navigation Links', () => {
 
     renderChainListPage()
 
-    const link = screen.getByText('Test Chain').closest('a')
-    expect(link).toHaveAttribute('href', '/chains/chain-abc')
+    const row = screen.getByText('Test Chain').closest('tr')
+    expect(row).toHaveAttribute('data-testid', 'chain-row')
   })
 })

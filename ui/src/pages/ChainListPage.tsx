@@ -1,41 +1,33 @@
-import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
 import { useChainList } from '@/hooks/useChains'
 import { cn, statusColor, formatRelativeTime, capitalize } from '@/lib/utils'
-import type { ChainExecution } from '@/types/chain'
 
-function ChainProgress({ chain }: { chain: ChainExecution }) {
-  if (chain.total_items === 0) return null
-  const pct = Math.round((chain.completed_items / chain.total_items) * 100)
-  return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all',
-            chain.status === 'failed' ? 'bg-red-500' : 'bg-green-500'
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span>{chain.completed_items}/{chain.total_items}</span>
-    </div>
-  )
-}
+const PAGE_SIZE = 20
 
 export function ChainListPage() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showCreate, setShowCreate] = useState(false)
+  const [currentPage, setCurrentPage] = useState(0)
   const statusFilter = searchParams.get('status') || ''
 
   const { data: chains, isLoading, error } = useChainList(
     statusFilter ? { status: statusFilter } : undefined,
+  )
+
+  const pageCount = useMemo(() => Math.max(1, Math.ceil((chains?.length ?? 0) / PAGE_SIZE)), [chains?.length])
+  const safePage = Math.min(currentPage, pageCount - 1)
+  const pageItems = useMemo(
+    () => chains?.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE) ?? [],
+    [chains, safePage],
   )
 
   const handleStatusChange = (value: string) => {
@@ -46,6 +38,7 @@ export function ChainListPage() {
       newParams.delete('status')
     }
     setSearchParams(newParams)
+    setCurrentPage(0)
   }
 
   return (
@@ -97,30 +90,87 @@ export function ChainListPage() {
           <p>No chains found. Create one to get started!</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {chains.map((chain) => (
-            <Link
-              key={chain.id}
-              to={`/chains/${chain.id}`}
-              className="block border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{chain.name}</span>
-                    <Badge className={statusColor(chain.status)}>
-                      {capitalize(chain.status)}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>Workflow: {chain.workflow_name}</span>
-                    <span>{formatRelativeTime(chain.created_at)}</span>
-                  </div>
-                </div>
-                <ChainProgress chain={chain} />
+        <div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead className="w-32">Workflow</TableHead>
+                <TableHead className="w-24">Status</TableHead>
+                <TableHead className="w-40">Progress</TableHead>
+                <TableHead className="w-28">Created By</TableHead>
+                <TableHead className="w-24">Created</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageItems.map((chain) => {
+                const pct = chain.total_items > 0
+                  ? Math.round((chain.completed_items / chain.total_items) * 100)
+                  : 0
+                return (
+                  <TableRow
+                    key={chain.id}
+                    onClick={() => navigate(`/chains/${chain.id}`)}
+                    className="cursor-pointer"
+                    data-testid="chain-row"
+                  >
+                    <TableCell className="font-medium">{chain.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{chain.workflow_name}</TableCell>
+                    <TableCell>
+                      <Badge className={statusColor(chain.status)}>
+                        {capitalize(chain.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {chain.total_items > 0 && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full transition-all',
+                                chain.status === 'failed' ? 'bg-red-500' : 'bg-green-500'
+                              )}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span>{chain.completed_items}/{chain.total_items}</span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{chain.created_by || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatRelativeTime(chain.created_at)}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between pt-3 text-xs text-muted-foreground">
+              <span>
+                {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, chains.length)} of {chains.length}
+              </span>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage === 0}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage >= pageCount - 1}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-            </Link>
-          ))}
+            </div>
+          )}
         </div>
       )}
 

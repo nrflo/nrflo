@@ -147,9 +147,6 @@ be/
 │   │   └── logger.go            # Init, Info/Warn/Error, NewTrx, WithTrx/TrxFromContext
 │   └── id/                      # ID generation
 │       └── generator.go
-├── scripts/
-│   ├── test.sh                  # Test runner (flags: -i -v -c -r)
-│   └── context-check.sh         # Context usage hook
 ├── go.mod
 └── go.sum
 ```
@@ -216,8 +213,8 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 make test                    # all tests (from project root)
 make test-integration        # integration only (verbose)
 make test-pkg PKG=orchestrator  # single package
-cd be && ./scripts/test.sh -c   # with coverage
-cd be && ./scripts/test.sh -r   # with race detector
+make test-coverage           # with coverage report
+make test-race               # with race detector
 ```
 
 See [integration/CLAUDE.md](internal/integration/CLAUDE.md) for test harness details and helper methods.

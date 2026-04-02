@@ -1,6 +1,7 @@
 .PHONY: all build build-cli build-server build-server-only build-ui \
        build-release build-release-cli build-release-server \
-       install clean test test-ui test-integration test-pkg test-verbose tidy help
+       install clean test test-ui test-integration test-pkg test-verbose \
+       test-coverage test-race tidy help
 
 # --- Configurable variables ---
 PREFIX     ?= /usr/local
@@ -89,6 +90,16 @@ test-pkg:
 ## test-verbose: Run all backend tests (verbose)
 test-verbose:
 	cd $(BE_DIR) && $(GO) test -v ./internal/... -count=1
+
+## test-coverage: Run backend tests with coverage report
+test-coverage:
+	cd $(BE_DIR) && $(GO) test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/... ./internal/... -count=1
+	@cd $(BE_DIR) && $(GO) tool cover -func=coverage.out | tail -1
+	@echo "Full report: cd be && go tool cover -html=coverage.out"
+
+## test-race: Run backend tests with race detector
+test-race:
+	cd $(BE_DIR) && $(GO) test -race ./internal/... -count=1
 
 # --- Housekeeping ---
 

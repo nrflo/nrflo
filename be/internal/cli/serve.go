@@ -59,12 +59,18 @@ Example usage:
 			return runServer(sc)
 		}
 
-		// Tray mode: systray.Run() blocks the main thread (macOS requirement)
+		// Tray mode: systray.Run() blocks the main thread (macOS requirement).
+		// Signal handling is done by the tray, not runServer.
 		var serverErr error
 		runWithTray(sc.cfg.Server.Port, func() {
-			serverErr = runServer(sc)
-			if serverErr != nil {
-				os.Exit(1)
+			serverError := make(chan error, 1)
+			go func() {
+				serverError <- sc.httpServer.Start(sc.cfg.Server.Port)
+			}()
+			ctx := context.Background()
+			logger.Info(ctx, "nrflow server started", "port", sc.cfg.Server.Port, "db", sc.pool.Path)
+			if err := <-serverError; err != nil {
+				serverErr = err
 			}
 		}, func() {
 			shutdownServer(sc)

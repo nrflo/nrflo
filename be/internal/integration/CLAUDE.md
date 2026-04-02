@@ -61,12 +61,10 @@ Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.Wo
 ## Running Tests
 
 ```bash
-cd be
-make test                    # all tests
+make test                    # all tests (from project root)
 make test-integration        # integration only (verbose)
-./scripts/test.sh -c         # with coverage
-./scripts/test.sh -r         # with race detector
-./scripts/test.sh -i -v -r   # combine flags
+make test-coverage           # with coverage report
+make test-race               # with race detector
 ```
 
 ## Test Files

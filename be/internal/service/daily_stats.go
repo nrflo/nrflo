@@ -72,9 +72,14 @@ func (s *DailyStatsService) ComputeAndStore(projectID, date string) (model.Daily
 		return stats, fmt.Errorf("sum agent time: %w", err)
 	}
 
-	dailyRepo := repo.NewDailyStatsRepo(s.pool, s.clock)
-	if err := dailyRepo.Upsert(projectID, date, stats); err != nil {
-		return stats, fmt.Errorf("upsert daily stats: %w", err)
+	// Only persist if the project exists (avoids FK violation on fresh installs)
+	var projectExists int
+	_ = s.pool.QueryRow(`SELECT 1 FROM projects WHERE id = ?`, projectID).Scan(&projectExists)
+	if projectExists == 1 {
+		dailyRepo := repo.NewDailyStatsRepo(s.pool, s.clock)
+		if err := dailyRepo.Upsert(projectID, date, stats); err != nil {
+			return stats, fmt.Errorf("upsert daily stats: %w", err)
+		}
 	}
 
 	return stats, nil

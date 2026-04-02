@@ -115,7 +115,12 @@ export function AgentLogPanel({
           <div className="flex items-center gap-1 px-3 py-1 border-b border-border shrink-0">
             {runningAgents.map((agent, i) => {
               const key = agentTabKeys[i]
-              const label = (agent.phase || agent.agent_type || '').replace(/_/g, ' ')
+              const phaseName = (agent.phase || agent.agent_type || '').replace(/_/g, ' ')
+              const mid = agent.model_id
+              const modelName = mid
+                ? mid.split('-').slice(-2).join('-') || mid
+                : agent.cli || ''
+              const label = modelName ? `${phaseName} : ${modelName}` : phaseName
               return (
                 <button
                   key={key}
@@ -143,7 +148,7 @@ export function AgentLogPanel({
             }
             return (
               <div className="flex-1 min-h-0 overflow-hidden">
-                <AgentLogDetail selectedAgent={agentData} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} />
+                <AgentLogDetail selectedAgent={agentData} hideHeader onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} />
               </div>
             )
           })()}

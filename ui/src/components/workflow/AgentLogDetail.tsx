@@ -56,9 +56,10 @@ interface AgentLogDetailProps {
   projectFindings?: Record<string, unknown>
   phaseLayers?: Record<string, number>
   workflowFindings?: Record<string, unknown>
+  hideHeader?: boolean
 }
 
-export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending, agentFindings, projectFindings, phaseLayers, workflowFindings }: AgentLogDetailProps) {
+export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending, agentFindings, projectFindings, phaseLayers, workflowFindings, hideHeader }: AgentLogDetailProps) {
   const { agent, historyEntry, session, phaseName } = selectedAgent
   const isInteractive = session?.status === 'user_interactive'
   const isRunning = agent && !agent.result && !isInteractive
@@ -96,75 +97,77 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   return (
     <div className="flex flex-col h-full">
       {/* Header with back button and agent info */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors shrink-0"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-          </button>
-        )}
-        <div className={cn(
-          'flex items-center justify-center w-7 h-7 rounded-full shrink-0',
-          isInteractive && 'bg-blue-100 dark:bg-blue-900/30',
-          isRunning && 'bg-yellow-100 dark:bg-yellow-900/30',
-          result === 'pass' && 'bg-green-100 dark:bg-green-900/30',
-          result === 'fail' && 'bg-red-100 dark:bg-red-900/30',
-          !result && !isRunning && !isInteractive && 'bg-gray-100 dark:bg-gray-800'
-        )}>
-          {isInteractive && <Terminal className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
-          {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync" />}
-          {result === 'pass' && <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />}
-          {result === 'fail' && <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
-          {!result && !isRunning && !isInteractive && <Cpu className="h-3.5 w-3.5 text-muted-foreground" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{phaseName.replace(/_/g, ' ')}</div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span>{modelName}</span>
-            {isInteractive && (
-              <>
-                <span>·</span>
-                <Badge className="text-[10px] px-1 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                  User controlling
-                </Badge>
-              </>
-            )}
-            {duration && (
-              <>
-                <span>·</span>
-                <Timer className="h-3 w-3" />
-                <span>{duration}</span>
-              </>
-            )}
-            {result && (
-              <>
-                <span>·</span>
-                <ResultIcon result={result} className="text-[10px]" />
-              </>
-            )}
-          </div>
-        </div>
-        {onResumeSession && sessionId && (result === 'pass' || result === 'fail') && modelId?.startsWith('claude:') && session?.status !== 'user_interactive' && (
-          <Tooltip text="Resume this session in an interactive terminal" placement="top">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onResumeSession(sessionId)}
-              disabled={resumePending}
-              className="text-blue-600 hover:text-blue-700 shrink-0"
+      {!hideHeader && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors shrink-0"
             >
-              {resumePending ? (
-                <Spinner size="sm" className="mr-1.5" />
-              ) : (
-                <Terminal className="h-3.5 w-3.5 mr-1.5" />
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <div className={cn(
+            'flex items-center justify-center w-7 h-7 rounded-full shrink-0',
+            isInteractive && 'bg-blue-100 dark:bg-blue-900/30',
+            isRunning && 'bg-yellow-100 dark:bg-yellow-900/30',
+            result === 'pass' && 'bg-green-100 dark:bg-green-900/30',
+            result === 'fail' && 'bg-red-100 dark:bg-red-900/30',
+            !result && !isRunning && !isInteractive && 'bg-gray-100 dark:bg-gray-800'
+          )}>
+            {isInteractive && <Terminal className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
+            {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync" />}
+            {result === 'pass' && <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />}
+            {result === 'fail' && <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
+            {!result && !isRunning && !isInteractive && <Cpu className="h-3.5 w-3.5 text-muted-foreground" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium truncate">{phaseName.replace(/_/g, ' ')}</div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span>{modelName}</span>
+              {isInteractive && (
+                <>
+                  <span>·</span>
+                  <Badge className="text-[10px] px-1 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    User controlling
+                  </Badge>
+                </>
               )}
-              Resume
-            </Button>
-          </Tooltip>
-        )}
-      </div>
+              {duration && (
+                <>
+                  <span>·</span>
+                  <Timer className="h-3 w-3" />
+                  <span>{duration}</span>
+                </>
+              )}
+              {result && (
+                <>
+                  <span>·</span>
+                  <ResultIcon result={result} className="text-[10px]" />
+                </>
+              )}
+            </div>
+          </div>
+          {onResumeSession && sessionId && (result === 'pass' || result === 'fail') && modelId?.startsWith('claude:') && session?.status !== 'user_interactive' && (
+            <Tooltip text="Resume this session in an interactive terminal" placement="top">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onResumeSession(sessionId)}
+                disabled={resumePending}
+                className="text-blue-600 hover:text-blue-700 shrink-0"
+              >
+                {resumePending ? (
+                  <Spinner size="sm" className="mr-1.5" />
+                ) : (
+                  <Terminal className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Resume
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      )}
 
       {/* Top-level tab bar */}
       <div className="flex items-center gap-1 px-3 py-1 border-b border-border shrink-0">

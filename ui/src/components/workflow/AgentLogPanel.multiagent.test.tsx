@@ -18,15 +18,16 @@ vi.mock('@/hooks/useTickets', () => ({
   useSessionMessages: vi.fn(() => ({ data: { messages: [] } })),
 }))
 
-// Mock with optional onBack — renders back button ONLY when provided.
-// This lets us assert onBack is absent in multi-agent view.
+// Mock with optional onBack and hideHeader — renders indicators so tests can assert on them.
 vi.mock('./AgentLogDetail', () => ({
   AgentLogDetail: ({
     selectedAgent,
     onBack,
+    hideHeader,
   }: {
     selectedAgent: SelectedAgentData
     onBack?: () => void
+    hideHeader?: boolean
   }) => (
     <div data-testid="agent-log-detail">
       <span data-testid="detail-phase">{selectedAgent.phaseName}</span>
@@ -34,6 +35,7 @@ vi.mock('./AgentLogDetail', () => ({
         {selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type}
       </span>
       <span data-testid="detail-session-id">{selectedAgent.session?.id ?? 'none'}</span>
+      {hideHeader && <span data-testid="detail-hide-header">true</span>}
       {onBack && <button data-testid="back-button" onClick={onBack}>Back</button>}
     </div>
   ),
@@ -266,6 +268,76 @@ describe('AgentLogPanel - multi-agent detail view', () => {
         sessions: [correctSession, fallbackSession],
       })
       expect(screen.getByTestId('detail-session-id')).toHaveTextContent('sess-by-id')
+    })
+  })
+
+  describe('tab label includes model name', () => {
+    it('shows "phase : model" format for hyphen-separated model_id', () => {
+      // model_id 'claude-sonnet-4-5' → slice(-2).join('-') = '4-5'
+      renderPanel({
+        activeAgents: { 'a1': makeAgent({ phase: 'implementation', model_id: 'claude-sonnet-4-5' }) },
+        sessions: [],
+      })
+      const tab = screen.getByTestId('agent-tab')
+      expect(tab).toHaveTextContent('implementation : 4-5')
+    })
+
+    it('passes through colon-separated model_id unchanged', () => {
+      // 'claude:opus'.split('-') = ['claude:opus'] → slice(-2) = ['claude:opus'] → join = 'claude:opus'
+      renderPanel({
+        activeAgents: { 'a1': makeAgent({ phase: 'ticket-creator', model_id: 'claude:opus' }) },
+        sessions: [],
+      })
+      const tab = screen.getByTestId('agent-tab')
+      expect(tab).toHaveTextContent('ticket-creator : claude:opus')
+    })
+
+    it('falls back to agent.cli when model_id is undefined', () => {
+      renderPanel({
+        activeAgents: { 'a1': makeAgent({ phase: 'implementation', model_id: undefined, cli: 'claude' }) },
+        sessions: [],
+      })
+      const tab = screen.getByTestId('agent-tab')
+      expect(tab).toHaveTextContent('implementation : claude')
+    })
+
+    it('shows only phase name when both model_id and cli are absent', () => {
+      renderPanel({
+        activeAgents: { 'a1': makeAgent({ phase: 'implementation', model_id: undefined, cli: undefined }) },
+        sessions: [],
+      })
+      const tab = screen.getByTestId('agent-tab')
+      expect(tab.textContent?.trim()).toBe('implementation')
+    })
+
+    it('replaces underscores with spaces in phase portion of label', () => {
+      renderPanel({
+        activeAgents: { 'a1': makeAgent({ phase: 'setup_analyzer', model_id: 'claude:sonnet' }) },
+        sessions: [],
+      })
+      const tab = screen.getByTestId('agent-tab')
+      expect(tab).toHaveTextContent('setup analyzer : claude:sonnet')
+    })
+  })
+
+  describe('hideHeader prop on AgentLogDetail', () => {
+    it('passes hideHeader=true to AgentLogDetail in multi-agent tabbed view', () => {
+      renderPanel({
+        activeAgents: { 'a1': makeAgent() },
+        sessions: [],
+      })
+      expect(screen.getByTestId('detail-hide-header')).toBeInTheDocument()
+    })
+
+    it('does NOT pass hideHeader to AgentLogDetail in selected-agent view', () => {
+      const agent = makeAgent()
+      const session = makeSession()
+      renderPanel({
+        activeAgents: {},
+        selectedAgent: { phaseName: 'implementation', agent, session },
+        sessions: [session],
+      })
+      expect(screen.queryByTestId('detail-hide-header')).not.toBeInTheDocument()
     })
   })
 })

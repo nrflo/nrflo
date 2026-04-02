@@ -85,7 +85,7 @@ export function XTerminal({ sessionId, onExit }: XTerminalProps) {
     // User keystrokes → WebSocket
     const dataDisposable = terminal.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(data)
+        ws.send(new TextEncoder().encode(data))
       }
     })
 

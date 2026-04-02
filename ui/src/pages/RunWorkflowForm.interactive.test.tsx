@@ -24,7 +24,10 @@ const makeAgentDef = (overrides: Partial<AgentDef> = {}): AgentDef => ({
 
 type PhaseEntry = WorkflowDefSummary['phases'][number]
 
-const featurePhases: PhaseEntry[] = [{ id: 'setup', agent: 'setup', layer: 0 }]
+const featurePhases: PhaseEntry[] = [
+  { id: 'setup', agent: 'setup', layer: 0 },
+  { id: 'impl', agent: 'impl', layer: 1 },
+]
 const featureWorkflows: [string, { description: string; scope_type?: string; phases: PhaseEntry[] }][] = [
   ['feature', { description: 'Feature workflow', scope_type: 'project', phases: featurePhases }],
 ]
@@ -37,7 +40,7 @@ describe('RunWorkflowForm — interactive/plan mode', () => {
   const renderForm = (
     onRun = vi.fn(),
     workflows = featureWorkflows,
-    agentDefs: AgentDef[] = [makeAgentDef()],
+    agentDefs: AgentDef[] = [makeAgentDef(), makeAgentDef({ id: 'impl', workflow_id: 'feature' })],
   ) => {
     vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue(agentDefs)
     return renderWithQuery(
@@ -77,6 +80,42 @@ describe('RunWorkflowForm — interactive/plan mode', () => {
 
     it('hides Plan Before Execution checkbox when L0 agent is non-Claude', async () => {
       renderForm(vi.fn(), featureWorkflows, [makeAgentDef({ model: 'codex_gpt_high' })])
+
+      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
+      await waitFor(() =>
+        expect(screen.queryByLabelText(/plan before execution/i)).not.toBeInTheDocument()
+      )
+    })
+
+    it('hides Start Interactive when workflow has only 1 layer', async () => {
+      const singleLayerWorkflows: typeof featureWorkflows = [
+        ['feature', { description: 'Single layer', scope_type: 'project', phases: [{ id: 'setup', agent: 'setup', layer: 0 }] }],
+      ]
+      renderForm(vi.fn(), singleLayerWorkflows, [makeAgentDef()])
+
+      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
+      await waitFor(() =>
+        expect(screen.queryByLabelText(/start interactive/i)).not.toBeInTheDocument()
+      )
+    })
+
+    it('shows Plan Before Execution for single-layer Claude workflow', async () => {
+      const singleLayerWorkflows: typeof featureWorkflows = [
+        ['feature', { description: 'Single layer', scope_type: 'project', phases: [{ id: 'setup', agent: 'setup', layer: 0 }] }],
+      ]
+      renderForm(vi.fn(), singleLayerWorkflows, [makeAgentDef()])
+
+      expect(await screen.findByLabelText(/plan before execution/i)).toBeInTheDocument()
+    })
+
+    it('hides Plan Before Execution when L0 has multiple agents', async () => {
+      const multiL0: typeof featureWorkflows = [
+        ['feature', { description: 'Multi-L0', scope_type: 'project', phases: [
+          { id: 'agent-a', agent: 'agent-a', layer: 0 },
+          { id: 'agent-b', agent: 'agent-b', layer: 0 },
+        ]}],
+      ]
+      renderForm(vi.fn(), multiL0, [makeAgentDef({ id: 'agent-a' }), makeAgentDef({ id: 'agent-b' })])
 
       await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
       await waitFor(() =>

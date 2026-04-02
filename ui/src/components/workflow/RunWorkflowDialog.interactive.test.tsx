@@ -47,7 +47,10 @@ const makeAgentDef = (overrides: Partial<AgentDef> = {}): AgentDef => ({
 const featureWorkflow: WorkflowDefSummary = {
   description: 'Feature workflow',
   scope_type: 'ticket',
-  phases: [{ id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 }],
+  phases: [
+    { id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 },
+    { id: 'implementor', agent: 'implementor', layer: 1 },
+  ],
 }
 
 describe('RunWorkflowDialog — interactive/plan mode', () => {
@@ -63,14 +66,14 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
 
   describe('checkbox visibility', () => {
     it('shows Start Interactive checkbox when L0 has exactly 1 Claude agent', async () => {
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       expect(await screen.findByLabelText(/start interactive/i)).toBeInTheDocument()
     })
 
     it('shows Plan Before Execution checkbox when L0 has a Claude agent', async () => {
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       expect(await screen.findByLabelText(/plan before execution/i)).toBeInTheDocument()
@@ -96,6 +99,38 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
       renderDialog()
 
       await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
+      await waitFor(() =>
+        expect(screen.queryByLabelText(/plan before execution/i)).not.toBeInTheDocument()
+      )
+    })
+
+    it('hides Start Interactive when workflow has only 1 layer', async () => {
+      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue({
+        feature: { description: 'Single layer', scope_type: 'ticket', phases: [{ id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 }] },
+      })
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      renderDialog()
+
+      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalled())
+      await waitFor(() =>
+        expect(screen.queryByLabelText(/start interactive/i)).not.toBeInTheDocument()
+      )
+    })
+
+    it('hides Plan Before Execution when L0 has multiple agents', async () => {
+      vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue({
+        'multi-agent': { description: 'Multi-agent', scope_type: 'ticket', phases: [
+          { id: 'agent-a', agent: 'agent-a', layer: 0 },
+          { id: 'agent-b', agent: 'agent-b', layer: 0 },
+        ]},
+      })
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([
+        makeAgentDef({ id: 'agent-a', workflow_id: 'multi-agent' }),
+        makeAgentDef({ id: 'agent-b', workflow_id: 'multi-agent' }),
+      ])
+      renderDialog()
+
+      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalled())
       await waitFor(() =>
         expect(screen.queryByLabelText(/plan before execution/i)).not.toBeInTheDocument()
       )
@@ -129,7 +164,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
   describe('mutual exclusion', () => {
     it('selecting interactive unchecks plan', async () => {
       const user = userEvent.setup()
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       const plan = await screen.findByLabelText(/plan before execution/i)
@@ -145,7 +180,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
 
     it('selecting plan unchecks interactive', async () => {
       const user = userEvent.setup()
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       const interactive = await screen.findByLabelText(/start interactive/i)
@@ -162,7 +197,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
 
   describe('plan mode hides instructions textarea', () => {
     it('shows instructions by default', async () => {
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       expect(await screen.findByPlaceholderText(/additional context/i)).toBeInTheDocument()
@@ -170,7 +205,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
 
     it('hides instructions when plan mode is selected', async () => {
       const user = userEvent.setup()
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       await user.click(await screen.findByLabelText(/plan before execution/i))
@@ -182,7 +217,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
     it('sends interactive:true when interactive mode selected', async () => {
       const user = userEvent.setup()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active', session_id: 's1' })
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       await user.click(await screen.findByLabelText(/start interactive/i))
@@ -200,7 +235,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
     it('sends plan_mode:true when plan mode selected', async () => {
       const user = userEvent.setup()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active', session_id: 's1' })
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog()
 
       await user.click(await screen.findByLabelText(/plan before execution/i))
@@ -219,7 +254,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
       const user = userEvent.setup()
       const onInteractiveStart = vi.fn()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active', session_id: 'sess-123' })
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog({ onInteractiveStart })
 
       await user.click(await screen.findByLabelText(/start interactive/i))
@@ -234,7 +269,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
       const user = userEvent.setup()
       const onInteractiveStart = vi.fn()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active', session_id: 'sess-456' })
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog({ onInteractiveStart })
 
       await user.click(await screen.findByLabelText(/plan before execution/i))
@@ -249,7 +284,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
       const user = userEvent.setup()
       const onInteractiveStart = vi.fn()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active' })
-      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef()])
+      vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
       renderDialog({ onInteractiveStart })
 
       // Wait for workflows to load (Run button becomes enabled)

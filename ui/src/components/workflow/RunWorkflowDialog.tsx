@@ -70,6 +70,9 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
     const l0Phases = def.phases.filter((p) => p.layer === 0)
     if (l0Phases.length !== 1) return { canInteractive: false, l0AgentType: '' }
 
+    const hasMultipleLayers = def.phases.some((p) => p.layer > 0)
+    if (!hasMultipleLayers) return { canInteractive: false, l0AgentType: '' }
+
     const l0AgentId = l0Phases[0].agent
     const agentDef = agents.find((a: AgentDef) => a.id === l0AgentId)
     if (!agentDef || !isClaudeModel(agentDef.model)) {
@@ -86,6 +89,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
     if (!def) return false
 
     const l0Phases = def.phases.filter((p) => p.layer === 0)
+    if (l0Phases.length !== 1) return false
     return l0Phases.some((p) => {
       const agentDef = agents.find((a: AgentDef) => a.id === p.agent)
       return agentDef && isClaudeModel(agentDef.model)

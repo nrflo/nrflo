@@ -4,7 +4,7 @@ import { Dialog, DialogHeader, DialogBody } from '@/components/ui/Dialog'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { useGitCommitDetail } from '@/hooks/useGitCommits'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, formatDateTime } from '@/lib/utils'
 import { DiffViewer } from './DiffViewer'
 import type { GitChangedFile } from '@/types/git'
 
@@ -129,7 +129,7 @@ export function CommitDetailDialog({ projectId, hash, onClose }: CommitDetailDia
                 <span className="text-muted-foreground">Date: </span>
                 <span>{formatRelativeTime(commit.date)}</span>
                 <span className="text-muted-foreground ml-2">
-                  ({new Date(commit.date).toLocaleString()})
+                  ({formatDateTime(commit.date)})
                 </span>
               </div>
               {(totalAdditions > 0 || totalDeletions > 0) && (

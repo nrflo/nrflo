@@ -194,6 +194,23 @@ describe('CommitDetailDialog - Commit Header', () => {
     })
   })
 
+  it('renders commit date in 24-hour format without AM/PM', async () => {
+    // date: '2026-01-15T14:30:00Z' — a 2:30 PM time; formatDateTime must not add AM/PM
+    mockGetGitCommitDetail.mockResolvedValue(
+      createMockCommitDetail({ date: '2026-01-15T14:30:00Z' })
+    )
+
+    renderCommitDialog()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Date:/)).toBeInTheDocument()
+    })
+
+    // The parenthetical absolute date must not contain AM or PM
+    const dateRow = screen.getByText(/Date:/).closest('div')!
+    expect(dateRow.textContent).not.toMatch(/AM|PM/i)
+  })
+
   it('renders full commit message including multiline', async () => {
     mockGetGitCommitDetail.mockResolvedValue(createMockCommitDetail())
 

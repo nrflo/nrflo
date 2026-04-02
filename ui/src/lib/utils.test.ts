@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { contextLeftColor, formatElapsedTime, formatTokenCount, formatDurationSec, restartReasonLabel, formatRestartReasons } from './utils'
+import { contextLeftColor, formatElapsedTime, formatTokenCount, formatDurationSec, restartReasonLabel, formatRestartReasons, formatDateTime } from './utils'
 
 describe('contextLeftColor', () => {
   it('returns red text classes for context_left <= 25', () => {
@@ -263,6 +263,36 @@ describe('formatDurationSec', () => {
 
   it('handles large durations', () => {
     expect(formatDurationSec(86400)).toBe('24h')
+  })
+})
+
+describe('formatDateTime', () => {
+  it('does not include AM/PM for afternoon dates', () => {
+    // 2:30 PM UTC — should display in 24-hour format
+    const result = formatDateTime('2026-01-15T14:30:00Z')
+    expect(result).not.toMatch(/AM|PM/i)
+  })
+
+  it('does not include AM/PM for morning dates', () => {
+    const result = formatDateTime('2026-01-15T09:05:00Z')
+    expect(result).not.toMatch(/AM|PM/i)
+  })
+
+  it('includes year, month name, and day', () => {
+    const result = formatDateTime('2026-01-15T14:30:00Z')
+    expect(result).toMatch(/2026/)
+    expect(result).toMatch(/Jan/)
+    expect(result).toMatch(/15/)
+  })
+
+  it('includes HH:MM time portion', () => {
+    const result = formatDateTime('2026-01-15T14:30:00Z')
+    expect(result).toMatch(/\d{2}:\d{2}/)
+  })
+
+  it('accepts a Date object', () => {
+    const result = formatDateTime(new Date('2026-06-15T22:00:00Z'))
+    expect(result).not.toMatch(/AM|PM/i)
   })
 })
 

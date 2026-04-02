@@ -139,6 +139,7 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
     }
   },
 
@@ -291,6 +292,7 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
     }
   },
 

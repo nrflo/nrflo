@@ -54,6 +54,13 @@ describe('useWSReducer — layer.skipped handler', () => {
       // projectWorkflowKeys.all = ['project-workflows'], should not appear without ticket context
       expect(keys.some(k => k.includes('project-workflows') && !k.includes('tick1'))).toBe(false)
     })
+
+    it('invalidates ticketKeys.lists() for ticket-scoped event', () => {
+      const spy = vi.spyOn(qc, 'invalidateQueries')
+      dispatchV2Event(makeEvent(), qc)
+      const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0].queryKey))
+      expect(keys.some(k => k.includes('tickets') && k.includes('list'))).toBe(true)
+    })
   })
 
   describe('project-scoped (empty ticket_id)', () => {
@@ -76,6 +83,13 @@ describe('useWSReducer — layer.skipped handler', () => {
       dispatchV2Event(makeEvent({ ticket_id: '', sequence: 12 }), qc)
       const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0].queryKey))
       expect(keys.some(k => k.includes('detail'))).toBe(false)
+    })
+
+    it('does NOT invalidate ticketKeys.lists() for project-scoped event', () => {
+      const spy = vi.spyOn(qc, 'invalidateQueries')
+      dispatchV2Event(makeEvent({ ticket_id: '', sequence: 13 }), qc)
+      const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0].queryKey))
+      expect(keys.some(k => k.includes('tickets') && k.includes('list'))).toBe(false)
     })
   })
 

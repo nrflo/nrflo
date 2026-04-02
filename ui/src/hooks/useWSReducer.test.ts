@@ -298,6 +298,44 @@ describe('useWSReducer', () => {
       expect(queryClient.invalidateQueries).toHaveBeenCalled()
     })
 
+    it('agent.completed (ticket scope) invalidates ticketKeys.lists()', () => {
+      const localQC = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQC, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.completed',
+        project_id: 'proj1',
+        ticket_id: 'tick1',
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 200,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, localQC)
+
+      const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0].queryKey))
+      expect(keys.some(k => k.includes('tickets') && k.includes('list'))).toBe(true)
+    })
+
+    it('agent.completed (project scope) does NOT invalidate ticketKeys.lists()', () => {
+      const localQC = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const spy = vi.spyOn(localQC, 'invalidateQueries')
+
+      const event: WSEventV2 = {
+        type: 'agent.completed',
+        project_id: 'proj1',
+        ticket_id: '',
+        timestamp: '2026-02-14T00:00:00Z',
+        sequence: 201,
+        protocol_version: 2,
+      }
+
+      dispatchV2Event(event, localQC)
+
+      const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0].queryKey))
+      expect(keys.some(k => k.includes('tickets') && k.includes('list'))).toBe(false)
+    })
+
     it('routes agent.continued event', () => {
       const event: WSEventV2 = {
         type: 'agent.continued',

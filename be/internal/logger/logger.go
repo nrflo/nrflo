@@ -15,24 +15,29 @@ import (
 type ctxKey struct{}
 
 var (
-	mu     sync.Mutex
-	writer io.Writer = os.Stderr
+	mu         sync.Mutex
+	writer     io.Writer = os.Stderr
+	logFile    *os.File
+	logPath    string
+	maxLogSize int64 = 10 * 1024 * 1024 // 10MB
 )
 
 // Init sets up the logger to write to both the given file path and stderr.
 // Creates parent directories if needed.
-func Init(logPath string) error {
-	dir := filepath.Dir(logPath)
+func Init(path string) error {
+	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create log directory: %w", err)
 	}
 
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
 
 	mu.Lock()
+	logFile = f
+	logPath = path
 	writer = io.MultiWriter(f, os.Stderr)
 	mu.Unlock()
 	return nil
@@ -102,5 +107,48 @@ func log(level string, ctx context.Context, msg string, args ...any) {
 
 	mu.Lock()
 	fmt.Fprint(writer, line)
+	if logFile != nil {
+		rotate()
+	}
 	mu.Unlock()
+}
+
+// rotate checks if the current log file exceeds maxLogSize and rotates it.
+// Must be called while mu is held.
+func rotate() {
+	info, err := logFile.Stat()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "logger: stat log file: %v\n", err)
+		return
+	}
+	if info.Size() < maxLogSize {
+		return
+	}
+
+	logFile.Close()
+
+	dir := filepath.Dir(logPath)
+	archiveName := time.Now().Format("20060102_150405") + ".log"
+	archivePath := filepath.Join(dir, archiveName)
+
+	if err := os.Rename(logPath, archivePath); err != nil {
+		fmt.Fprintf(os.Stderr, "logger: rename log file: %v\n", err)
+		// Try to reopen the original path
+		f, openErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if openErr != nil {
+			fmt.Fprintf(os.Stderr, "logger: reopen log file after failed rename: %v\n", openErr)
+			return
+		}
+		logFile = f
+		writer = io.MultiWriter(f, os.Stderr)
+		return
+	}
+
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "logger: open new log file: %v\n", err)
+		return
+	}
+	logFile = f
+	writer = io.MultiWriter(f, os.Stderr)
 }

@@ -143,8 +143,8 @@ be/
 │   ├── integration/             # Integration tests
 │   │   ├── testenv.go           # NewTestEnv shared harness
 │   │   └── testdata/            # Test config, agent templates
-│   ├── logger/                  # Structured logging with trx propagation
-│   │   └── logger.go            # Init, Info/Warn/Error, NewTrx, WithTrx/TrxFromContext
+│   ├── logger/                  # Structured logging with trx propagation and size-based rotation
+│   │   └── logger.go            # Init, Info/Warn/Error, NewTrx, WithTrx/TrxFromContext, rotate (10MB)
 │   └── id/                      # ID generation
 │       └── generator.go
 ├── go.mod

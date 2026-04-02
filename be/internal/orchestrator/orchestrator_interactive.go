@@ -183,15 +183,15 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	promptFile.Close()
 
 	args := []string{
-		"--dangerously-skip-permissions",
 		"--session-id", sessionID,
 		"--model", modelName,
 		"--append-system-prompt-file", promptFile.Name(),
 	}
 	if req.PlanMode {
-		// Lock Claude in plan mode: disallow ExitPlanMode so neither the AI
-		// nor the keyboard shortcut can switch to act mode.
-		args = append(args, "--disallowed-tools", "ExitPlanMode")
+		// Start directly in plan mode and prevent switching to act mode.
+		args = append(args, "--permission-mode", "plan", "--disallowed-tools", "ExitPlanMode")
+	} else {
+		args = append(args, "--dangerously-skip-permissions")
 	}
 	if claudeSettingsJSON != "" {
 		args = append(args, "--settings", claudeSettingsJSON)
@@ -202,9 +202,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 
 // buildPlanPrompt creates the prompt for plan mode PTY sessions.
 func buildPlanPrompt(req RunRequest) string {
-	prompt := "IMPORTANT: You MUST immediately enter plan mode by calling EnterPlanMode before doing anything else.\n\n"
-	prompt += "You are in a planning session. Create a detailed implementation plan.\n"
-	prompt += "You are restricted to plan mode only — you cannot switch to act mode.\n\n"
+	prompt := "You are in a planning session. Create a detailed implementation plan.\n\n"
 
 	if req.TicketID != "" {
 		prompt += fmt.Sprintf("Ticket: %s\n", req.TicketID)

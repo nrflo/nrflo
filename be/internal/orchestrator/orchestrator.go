@@ -397,17 +397,58 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	}, nil
 }
 
-// Stop cancels a running orchestration.
+// Stop cancels a running orchestration. If no in-memory orchestration exists
+// (e.g. after server restart), falls back to cleaning up DB state directly.
 func (o *Orchestrator) Stop(instanceID string) error {
 	o.mu.Lock()
 	rs, ok := o.runs[instanceID]
 	o.mu.Unlock()
 
-	if !ok {
-		return fmt.Errorf("no running orchestration for instance %s", instanceID)
+	if ok {
+		rs.cancel()
+		return nil
 	}
 
-	rs.cancel()
+	// No in-memory orchestration — clean up orphaned DB state.
+	return o.forceStopInstance(instanceID)
+}
+
+// forceStopInstance marks an orphaned workflow instance and its running sessions
+// as failed directly in the DB. Used when the orchestration is no longer in memory
+// (e.g. after server restart).
+func (o *Orchestrator) forceStopInstance(instanceID string) error {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
+
+	wi, err := wfiRepo.Get(instanceID)
+	if err != nil {
+		return fmt.Errorf("no running orchestration for instance %s", instanceID)
+	}
+	if wi.Status != model.WorkflowInstanceActive {
+		return fmt.Errorf("instance %s is not active (status: %s)", instanceID, wi.Status)
+	}
+
+	// Mark running sessions as failed.
+	asRepo := repo.NewAgentSessionRepo(pool, o.clock)
+	asRepo.FailRunningByInstance(instanceID)
+
+	// Mark workflow instance as failed.
+	wfiRepo.UpdateStatus(instanceID, model.WorkflowInstanceFailed)
+	o.updateOrchestrationStatus(instanceID, "failed")
+
+	logger.Info(context.Background(), "force-stopped orphaned instance", "instance_id", instanceID)
+
+	// Broadcast so UI updates.
+	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationFailed, wi.ProjectID, wi.TicketID, wi.WorkflowID, map[string]interface{}{
+		"instance_id": instanceID,
+		"reason":      "force_stopped",
+	}))
 	return nil
 }
 
@@ -444,6 +485,10 @@ func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName, instanceI
 		o.mu.Unlock()
 		if running {
 			return o.Stop(wi.ID)
+		}
+		// Fallback: active instance with no in-memory orchestration (orphaned after restart).
+		if wi.Status == model.WorkflowInstanceActive {
+			return o.forceStopInstance(wi.ID)
 		}
 	}
 
@@ -483,6 +528,10 @@ func (o *Orchestrator) StopByProject(projectID, workflowName, instanceID string)
 		o.mu.Unlock()
 		if running {
 			if err := o.Stop(wi.ID); err == nil {
+				stopped++
+			}
+		} else if wi.Status == model.WorkflowInstanceActive {
+			if err := o.forceStopInstance(wi.ID); err == nil {
 				stopped++
 			}
 		}

@@ -200,6 +200,20 @@ func (r *AgentSessionRepo) UpdateStatusByWorkflowInstance(wfiID string, toStatus
 	return result.RowsAffected()
 }
 
+// FailRunningByInstance marks all running sessions for a workflow instance as failed.
+// Used to clean up orphaned sessions after server restart.
+func (r *AgentSessionRepo) FailRunningByInstance(wfiID string) (int64, error) {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.Exec(
+		`UPDATE agent_sessions SET status = 'failed', result = 'fail', result_reason = 'server_restart', ended_at = ?, updated_at = ?
+		WHERE workflow_instance_id = ? AND status = 'running'`,
+		now, now, wfiID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // UpdateResult updates the result and result_reason fields
 func (r *AgentSessionRepo) UpdateResult(id, resultVal, reason string) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)

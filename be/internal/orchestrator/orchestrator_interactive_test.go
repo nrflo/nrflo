@@ -230,8 +230,11 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 		t.Errorf("registered cmd = %q, want 'claude'", registeredCmd)
 	}
 	argsStr := strings.Join(registeredArgs, " ")
-	if !strings.Contains(argsStr, "--dangerously-skip-permissions") {
-		t.Errorf("args missing --dangerously-skip-permissions: %v", registeredArgs)
+	if !strings.Contains(argsStr, "--permission-mode plan") {
+		t.Errorf("args missing --permission-mode plan: %v", registeredArgs)
+	}
+	if !strings.Contains(argsStr, "--disallowed-tools ExitPlanMode") {
+		t.Errorf("args missing --disallowed-tools ExitPlanMode: %v", registeredArgs)
 	}
 	if !strings.Contains(argsStr, pre.sessionID) {
 		t.Errorf("args missing session ID: %v", registeredArgs)

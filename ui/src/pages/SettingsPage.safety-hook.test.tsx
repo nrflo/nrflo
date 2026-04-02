@@ -11,11 +11,13 @@ const mockSetCurrentProject = vi.fn()
 const mockLoadProjects = vi.fn()
 
 vi.mock('@/stores/projectStore', () => ({
-  useProjectStore: (selector?: (s: { currentProject: string; setCurrentProject: (id: string) => void; loadProjects: () => void }) => unknown) => {
+  useProjectStore: (selector?: (s: { currentProject: string; setCurrentProject: (id: string) => void; loadProjects: () => void; projects: unknown[]; projectsLoaded: boolean }) => unknown) => {
     const store = {
       currentProject: 'test-project',
       setCurrentProject: mockSetCurrentProject,
       loadProjects: mockLoadProjects,
+      projects: [{ id: 'test-project' }],
+      projectsLoaded: true,
     }
     return selector ? selector(store) : store
   },

@@ -14,6 +14,7 @@ import (
 	"be/internal/config"
 	"be/internal/db"
 	"be/internal/logger"
+	"be/internal/repo"
 	"be/internal/socket"
 
 	"github.com/spf13/cobra"
@@ -61,6 +62,10 @@ Example usage:
 
 		// Tray mode: systray.Run() blocks the main thread (macOS requirement).
 		// Signal handling is done by the tray, not runServer.
+		hasRunningAgents := func() bool {
+			sessions, err := repo.NewAgentSessionRepo(sc.pool, clock.Real()).GetRunning(1)
+			return err == nil && len(sessions) > 0
+		}
 		var serverErr error
 		runWithTray(sc.cfg.Server.Port, func() {
 			serverError := make(chan error, 1)
@@ -74,7 +79,7 @@ Example usage:
 			}
 		}, func() {
 			shutdownServer(sc)
-		})
+		}, hasRunningAgents)
 		return serverErr
 	},
 }

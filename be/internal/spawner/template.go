@@ -75,7 +75,7 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 	}
 
 	// Both lookups failed — return original project-scoped error
-	return "", fmt.Errorf("agent definition not found: %s (workflow=%s). Create via 'nrworkflow agent def create %s -w %s --prompt-file=<path>'", agentType, workflowName, agentType, workflowName)
+	return "", fmt.Errorf("agent definition not found: %s (workflow=%s). Create via 'nrflow agent def create %s -w %s --prompt-file=<path>'", agentType, workflowName, agentType, workflowName)
 }
 
 // fetchTicketInfo returns the ticket title and description for template expansion.
@@ -262,7 +262,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		fmt.Fprintf(os.Stderr, "Warning: project findings expansion: %v\n", err)
 	}
 
-	template += "\n#No changes needed signal: If no changes needed execute - nrworkflow findings add no-op:no-op"
+	template += "\n#No changes needed signal: If no changes needed execute - nrflow findings add no-op:no-op"
 
 	return template, nil
 }

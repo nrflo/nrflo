@@ -10,23 +10,23 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const DBFileName = "nrworkflow.data"
+const DBFileName = "nrflow.data"
 
-// DefaultDBPath returns the default database path in the nrworkflow installation directory.
-// Uses NRWORKFLOW_HOME env var if set, otherwise defaults to ~/projects/2026/nrworkflow.
+// DefaultDBPath returns the default database path in the nrflow installation directory.
+// Uses NRFLOW_HOME env var if set, otherwise defaults to ~/projects/2026/nrflow.
 // This is a single centralized database for all projects.
 func DefaultDBPath() string {
-	// Check for NRWORKFLOW_HOME environment variable
-	if nrHome := os.Getenv("NRWORKFLOW_HOME"); nrHome != "" {
+	// Check for NRFLOW_HOME environment variable
+	if nrHome := os.Getenv("NRFLOW_HOME"); nrHome != "" {
 		return filepath.Join(nrHome, DBFileName)
 	}
 
-	// Default to ~/projects/2026/nrworkflow
+	// Default to ~/projects/2026/nrflow
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return DBFileName
 	}
-	return filepath.Join(home, "projects", "2026", "nrworkflow", DBFileName)
+	return filepath.Join(home, "projects", "2026", "nrflow", DBFileName)
 }
 
 // Querier is the common interface satisfied by both *DB and *Pool.

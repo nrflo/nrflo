@@ -21,8 +21,8 @@ Two syntax modes:
   2. Multiple findings: key:value pairs
 
 Examples:
-  nrworkflow findings project-add mykey myvalue
-  nrworkflow findings project-add k1:v1 k2:v2`,
+  nrflow findings project-add mykey myvalue
+  nrflow findings project-add k1:v1 k2:v2`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -81,9 +81,9 @@ If no key is specified, returns all project findings.
 Use -k/--key to fetch specific keys (can be repeated).
 
 Examples:
-  nrworkflow findings project-get
-  nrworkflow findings project-get mykey
-  nrworkflow findings project-get -k k1 -k k2`,
+  nrflow findings project-get
+  nrflow findings project-get mykey
+  nrflow findings project-get -k k1 -k k2`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -129,8 +129,8 @@ Two syntax modes:
   2. Multiple appends: key:value pairs
 
 Examples:
-  nrworkflow findings project-append mykey newval
-  nrworkflow findings project-append k1:v1 k2:v2`,
+  nrflow findings project-append mykey newval
+  nrflow findings project-append k1:v1 k2:v2`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -186,8 +186,8 @@ var projFindingsDeleteCmd = &cobra.Command{
 	Long: `Delete one or more project-level finding keys.
 
 Examples:
-  nrworkflow findings project-delete mykey
-  nrworkflow findings project-delete k1 k2 k3`,
+  nrflow findings project-delete mykey
+  nrflow findings project-delete k1 k2 k3`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {

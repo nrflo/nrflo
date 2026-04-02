@@ -118,7 +118,7 @@ describe('AgentCard', () => {
     expect(onExpand).toHaveBeenCalledTimes(1)
   })
 
-  // Context-left badge positioning and sizing (ticket nrworkflow-30efa6)
+  // Context-left badge positioning and sizing (ticket nrflow-30efa6)
   it('positions context_left badge at top-right corner', () => {
     const agent = makeAgent({ context_left: 60 })
     render(<AgentCard agent={agent} />)

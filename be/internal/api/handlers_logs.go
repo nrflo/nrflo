@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-const logsDir = "/tmp/nrworkflow/logs"
+const logsDir = "/tmp/nrflow/logs"
 const maxLogLines = 1000
 
 // handleGetLogs serves log file contents as JSON.

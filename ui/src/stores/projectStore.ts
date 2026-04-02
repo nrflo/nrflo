@@ -26,7 +26,7 @@ export const useProjectStore = create<ProjectState>()((set) => ({
   projectsLoaded: false,
   setCurrentProject: (projectId: string) => {
     setProject(projectId)
-    setCookie('nrwf_project', projectId)
+    setCookie('nrf_project', projectId)
     set({ currentProject: projectId })
   },
   setProjects: (projects: Project[]) => {
@@ -37,10 +37,10 @@ export const useProjectStore = create<ProjectState>()((set) => ({
       const response = await listProjects()
       const projects = response.projects || []
       if (projects.length > 0) {
-        const saved = getCookie('nrwf_project')
+        const saved = getCookie('nrf_project')
         const resolved = saved && projects.some((p) => p.id === saved) ? saved : projects[0].id
         setProject(resolved)
-        setCookie('nrwf_project', resolved)
+        setCookie('nrf_project', resolved)
         set({ projects, currentProject: resolved, projectsLoaded: true })
       } else {
         set({ projects, projectsLoaded: true })

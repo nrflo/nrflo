@@ -25,8 +25,8 @@ var agentFailCmd = &cobra.Command{
 	Long: `Mark the current agent session as failed.
 
 Context is read from environment variables set by the spawner:
-  NRWF_SESSION_ID          — current agent session ID (required)
-  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID
 
 Use --reason to provide a failure description.`,
 	Args: cobra.NoArgs,
@@ -40,7 +40,7 @@ Use --reason to provide a failure description.`,
 
 		sessionID := GetSessionID()
 		if sessionID == "" {
-			return fmt.Errorf("NRWF_SESSION_ID env var is required")
+			return fmt.Errorf("NRF_SESSION_ID env var is required")
 		}
 
 		c := GetClient()
@@ -69,8 +69,8 @@ relaunched with fresh context to continue the task. Save progress to the
 'to_resume' finding before calling this.
 
 Context is read from environment variables set by the spawner:
-  NRWF_SESSION_ID          — current agent session ID (required)
-  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -82,7 +82,7 @@ Context is read from environment variables set by the spawner:
 
 		sessionID := GetSessionID()
 		if sessionID == "" {
-			return fmt.Errorf("NRWF_SESSION_ID env var is required")
+			return fmt.Errorf("NRF_SESSION_ID env var is required")
 		}
 
 		c := GetClient()
@@ -108,8 +108,8 @@ The --level flag specifies the target layer index (0-based) to callback to.
 Save callback_instructions as a finding before calling this.
 
 Context is read from environment variables set by the spawner:
-  NRWF_SESSION_ID          — current agent session ID (required)
-  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -121,7 +121,7 @@ Context is read from environment variables set by the spawner:
 
 		sessionID := GetSessionID()
 		if sessionID == "" {
-			return fmt.Errorf("NRWF_SESSION_ID env var is required")
+			return fmt.Errorf("NRF_SESSION_ID env var is required")
 		}
 
 		if !cmd.Flags().Changed("level") {

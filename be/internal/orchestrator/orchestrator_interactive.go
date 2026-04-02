@@ -171,7 +171,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 
 	// Write prompt to a temp file so Claude can read it as initial context.
 	// We don't use -p (--print) because that makes Claude non-interactive.
-	promptFile, err := os.CreateTemp("", "nrwf-interactive-*.md")
+	promptFile, err := os.CreateTemp("", "nrf-interactive-*.md")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prompt file: %w", err)
 	}

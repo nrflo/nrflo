@@ -190,8 +190,8 @@ func TestSavePromptStructure(t *testing.T) {
 		want     bool // true = must contain, false = must NOT contain
 	}{
 		{"has to_resume key", "to_resume", true},
-		{"has findings add command", "nrworkflow findings add to_resume", true},
-		{"has agent continue command", "nrworkflow agent continue", true},
+		{"has findings add command", "nrflow findings add to_resume", true},
+		{"has agent continue command", "nrflow agent continue", true},
 		{"no -w flag", "-w ", false},
 		{"no --model flag", "--model ", false},
 	}

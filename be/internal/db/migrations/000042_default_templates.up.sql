@@ -26,7 +26,7 @@ You are an investigation agent. Your job is to analyze a ticket and gather all c
 
 1. **Read Ticket Details**
    ```bash
-   nrworkflow ticket show ${TICKET_ID}
+   nrflow ticket show ${TICKET_ID}
    ```
    - Extract acceptance criteria
    - Understand the scope and requirements
@@ -39,21 +39,21 @@ You are an investigation agent. Your job is to analyze a ticket and gather all c
 
 3. **Store Findings**
    ```bash
-   nrworkflow findings add summary ''<summary>''
-   nrworkflow findings add acceptance_criteria ''<json-array>''
-   nrworkflow findings add files_to_modify ''<json-array>''
-   nrworkflow findings add patterns ''<json-array>''
-   nrworkflow findings add existing_tests ''<json-array>''
+   nrflow findings add summary ''<summary>''
+   nrflow findings add acceptance_criteria ''<json-array>''
+   nrflow findings add files_to_modify ''<json-array>''
+   nrflow findings add patterns ''<json-array>''
+   nrflow findings add existing_tests ''<json-array>''
    ```
 
 4. **Signal Completion** (MANDATORY)
    Exit 0 = pass. If you cannot complete:
    ```bash
-   nrworkflow agent fail --reason="<explanation>"
+   nrflow agent fail --reason="<explanation>"
    ```
    If running out of context but task is not done (store `continuation_notes` finding first):
    ```bash
-   nrworkflow agent continue
+   nrflow agent continue
    ```
 
 ## Findings Schema
@@ -128,7 +128,7 @@ cd be && ./scripts/test.sh -c     # with coverage report
 
 1. **Read Context**
    ```bash
-   nrworkflow findings get setup-analyzer
+   nrflow findings get setup-analyzer
    ```
 
 2. **Understand Acceptance Criteria**
@@ -147,9 +147,9 @@ cd be && ./scripts/test.sh -c     # with coverage report
 
 5. **Store Findings**
    ```bash
-   nrworkflow findings add test_files ''<json-array>''
-   nrworkflow findings add test_cases ''<json-array>''
-   nrworkflow findings add coverage_plan ''<string>''
+   nrflow findings add test_files ''<json-array>''
+   nrflow findings add test_cases ''<json-array>''
+   nrflow findings add coverage_plan ''<string>''
    ```
 
 ## Findings Schema
@@ -172,12 +172,12 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can''t find patterns, unclear criteria):
 ```bash
-nrworkflow agent fail --reason="<explanation>"
+nrflow agent fail --reason="<explanation>"
 ```
 
 If running out of context but task is not done (store `continuation_notes` finding first):
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z');
@@ -207,8 +207,8 @@ You are an implementation agent. Your job is to implement the ticket based on in
 
 1. **Read Context**
    ```bash
-   nrworkflow findings get setup-analyzer
-   nrworkflow findings get test-writer  # May be empty for simple/docs
+   nrflow findings get setup-analyzer
+   nrflow findings get test-writer  # May be empty for simple/docs
    ```
 
 2. **Understand Scope**
@@ -229,11 +229,11 @@ You are an implementation agent. Your job is to implement the ticket based on in
 
 5. **Store Findings**
    ```bash
-   nrworkflow findings add files_created ''<json-array>''
-   nrworkflow findings add files_modified ''<json-array>''
-   nrworkflow findings add build_result ''pass''
-   nrworkflow findings add test_result ''pass''
-   nrworkflow findings add summary ''<summary>''
+   nrflow findings add files_created ''<json-array>''
+   nrflow findings add files_modified ''<json-array>''
+   nrflow findings add build_result ''pass''
+   nrflow findings add test_result ''pass''
+   nrflow findings add summary ''<summary>''
    ```
 
 ## Findings Schema
@@ -264,12 +264,12 @@ The spawner will relaunch you with fresh context, preserving your findings and p
 1. Store ALL your progress as findings (files modified, current state, what''s left to do)
 2. Add a `continuation_notes` finding with what the next session should do:
    ```bash
-   nrworkflow findings add continuation_notes ''Describe remaining work here''
+   nrflow findings add continuation_notes ''Describe remaining work here''
    ```
 
 **To request continuation:**
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 ---
@@ -282,12 +282,12 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (build fails, tests fail, blocked):
 ```bash
-nrworkflow agent fail --reason="<explanation>"
+nrflow agent fail --reason="<explanation>"
 ```
 
 If running out of context but task is not done:
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z');
@@ -317,9 +317,9 @@ You are a verification agent. Your job is to verify that the implementation corr
 
 1. **Read ALL Findings**
    ```bash
-   nrworkflow findings get setup-analyzer
-   nrworkflow findings get test-writer
-   nrworkflow findings get implementor
+   nrflow findings get setup-analyzer
+   nrflow findings get test-writer
+   nrflow findings get implementor
    ```
 
 2. **Verify Approach**
@@ -345,10 +345,10 @@ You are a verification agent. Your job is to verify that the implementation corr
 
 6. **Store Findings**
    ```bash
-   nrworkflow findings add verdict ''<pass|fail>''
-   nrworkflow findings add criteria_status ''<json-object>''
-   nrworkflow findings add issues ''<json-array>''
-   nrworkflow findings add test_result ''<pass|fail>''
+   nrflow findings add verdict ''<pass|fail>''
+   nrflow findings add criteria_status ''<json-object>''
+   nrflow findings add issues ''<json-array>''
+   nrflow findings add test_result ''<pass|fail>''
    ```
 
 ## Findings Schema
@@ -387,12 +387,12 @@ If ALL criteria pass, just exit cleanly (exit 0 = pass).
 
 If ANY criterion fails:
 ```bash
-nrworkflow agent fail --reason="<specific issues that need fixing>"
+nrflow agent fail --reason="<specific issues that need fixing>"
 ```
 
 If running out of context but verification is not done (store `continuation_notes` finding first):
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z');
@@ -422,7 +422,7 @@ You are a documentation agent. Your job is to update project documentation to re
 
 1. **Read Implementation Findings**
    ```bash
-   nrworkflow findings get implementor
+   nrflow findings get implementor
    ```
 
 2. **Identify What Changed**
@@ -443,8 +443,8 @@ You are a documentation agent. Your job is to update project documentation to re
 
 5. **Store Findings**
    ```bash
-   nrworkflow findings add docs_updated ''<json-array>''
-   nrworkflow findings add summary ''<string>''
+   nrflow findings add docs_updated ''<json-array>''
+   nrflow findings add summary ''<string>''
    ```
 
 ## Common Documentation Files
@@ -478,18 +478,18 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can''t find docs to update, unclear changes):
 ```bash
-nrworkflow agent fail --reason="<explanation>"
+nrflow agent fail --reason="<explanation>"
 ```
 
 Note: It''s valid to complete with no docs updated if the implementation doesn''t require documentation changes. In that case:
 ```bash
-nrworkflow findings add docs_updated ''[]''
-nrworkflow findings add summary ''No documentation updates needed''
+nrflow findings add docs_updated ''[]''
+nrflow findings add summary ''No documentation updates needed''
 ```
 
 If running out of context but task is not done (store `continuation_notes` finding first):
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z');
@@ -515,7 +515,7 @@ This is a **project-scoped agent** — you operate at the project level, not on 
 
 1. **Read Project Context**
    ```bash
-   nrworkflow findings project-get
+   nrflow findings project-get
    ```
    - Check for any instructions or focus areas stored in project findings
    - Understand what the project needs
@@ -523,7 +523,7 @@ This is a **project-scoped agent** — you operate at the project level, not on 
 2. **Analyze Current State**
    - Review existing tickets to avoid duplicates:
      ```bash
-     nrworkflow tickets list --json
+     nrflow tickets list --json
      ```
    - Explore the codebase to understand current architecture
    - Identify gaps, missing features, technical debt, or bugs
@@ -536,21 +536,21 @@ This is a **project-scoped agent** — you operate at the project level, not on 
 
 4. **Create Tickets**
    ```bash
-   nrworkflow tickets create --title ''<title>'' --description ''<description>'' --type <type> --priority <priority> --json
+   nrflow tickets create --title ''<title>'' --description ''<description>'' --type <type> --priority <priority> --json
    ```
    - Write clear, actionable titles
    - Include detailed descriptions with acceptance criteria
    - Set appropriate type and priority
    - Add dependencies where needed:
      ```bash
-     nrworkflow deps add <ticket-id> <blocker-id>
+     nrflow deps add <ticket-id> <blocker-id>
      ```
 
 5. **Store Findings**
    ```bash
-   nrworkflow findings project-add tickets_created ''<json-array-of-ticket-ids>''
-   nrworkflow findings project-add summary ''<description-of-tickets-created>''
-   nrworkflow findings project-add ticket_count ''<number>''
+   nrflow findings project-add tickets_created ''<json-array-of-ticket-ids>''
+   nrflow findings project-add summary ''<description-of-tickets-created>''
+   nrflow findings project-add ticket_count ''<number>''
    ```
 
 ## Ticket Quality Guidelines
@@ -595,12 +595,12 @@ The spawner will relaunch you with fresh context, preserving your findings and p
 1. Store ALL your progress as findings (tickets created so far, what''s left to plan)
 2. Add a `continuation_notes` finding with what the next session should do:
    ```bash
-   nrworkflow findings add continuation_notes ''Describe remaining work here''
+   nrflow findings add continuation_notes ''Describe remaining work here''
    ```
 
 **To request continuation:**
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 ---
@@ -613,12 +613,12 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (unclear project context, blocked):
 ```bash
-nrworkflow agent fail --reason="<explanation>"
+nrflow agent fail --reason="<explanation>"
 ```
 
 If running out of context but task is not done:
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z');

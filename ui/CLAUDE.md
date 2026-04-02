@@ -1,8 +1,8 @@
-# Claude Code Instructions for nrworkflow UI
+# Claude Code Instructions for nrflow UI
 
 ## Overview
 
-This is the web UI for the nrworkflow ticket management system. It's a React + TypeScript application that communicates with the `nrworkflow_server serve` API.
+This is the web UI for the nrflow ticket management system. It's a React + TypeScript application that communicates with the `nrflow_server serve` API.
 
 ## Key Directories
 
@@ -94,7 +94,7 @@ Layout
 
 - Tailwind CSS v4 (uses `@theme` for CSS variables)
 - Class-based dark mode via `@custom-variant dark (&:where(.dark, .dark *))` — `.dark` class on `<html>` controls all `dark:` utilities and CSS variable overrides in `.dark {}` selector
-- Three-state theme toggle (light/dark/system) in Header, persisted to `localStorage` key `nrwf_theme`, with FOUC prevention inline script in `index.html`
+- Three-state theme toggle (light/dark/system) in Header, persisted to `localStorage` key `nrf_theme`, with FOUC prevention inline script in `index.html`
 - Custom utility `cn()` for conditional class merging
 
 ## UI Component Standards
@@ -209,11 +209,11 @@ The full test suite (`vitest run`) must complete in **≤15 seconds wall time**.
 
 ## Important Notes
 
-- The backend (`nrworkflow_server serve`) must be running for the UI to work
+- The backend (`nrflow_server serve`) must be running for the UI to work
 - Default port is 6587 (single-process serves API + embedded UI); port 5175 is used only for `npm run dev` hot-reload during development
 - Projects are loaded from `/api/v1/projects` endpoint
 - Multi-project support uses `X-Project` header
-- Database is at `~/projects/2026/nrworkflow/nrworkflow.data` (global)
+- Database is at `~/projects/2026/nrflow/nrflow.data` (global)
 
 ## Starting Servers
 
@@ -224,7 +224,7 @@ The server binary embeds the UI and serves everything on a single port (default 
 ./restart.sh
 
 # Or start manually:
-nrworkflow_server serve       # Start server (port 6587, serves API + embedded UI)
+nrflow_server serve       # Start server (port 6587, serves API + embedded UI)
 
 # For UI hot-reload development (optional):
 cd ui && npm run dev          # Start Vite dev server (port 5175, proxies API to 6587)
@@ -238,9 +238,9 @@ cd ui && npm run dev          # Start Vite dev server (port 5175, proxies API to
 | `restart.sh` | Kill server, rebuild binary (including UI), start in background |
 | `stop.sh` | Stop running server |
 | `rebuild-cli.sh` | Rebuild and re-symlink CLI binary without restarting server |
-| `ui/start-server.sh` | Start server in foreground (uses `nrworkflow_server serve`) |
+| `ui/start-server.sh` | Start server in foreground (uses `nrflow_server serve`) |
 
-Logs are written to `/tmp/nrworkflow/logs/be.log` when using `restart.sh`.
+Logs are written to `/tmp/nrflow/logs/be.log` when using `restart.sh`.
 
 ## Web UI Features
 

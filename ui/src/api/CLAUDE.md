@@ -1,6 +1,6 @@
 # API Client
 
-API client modules for communicating with the nrworkflow backend. Contains 11 files.
+API client modules for communicating with the nrflow backend. Contains 11 files.
 
 ## Architecture
 

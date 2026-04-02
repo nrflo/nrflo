@@ -9,7 +9,7 @@ import (
 // TestE2E_ServerRegistration tests the complete server command registration flow
 func TestE2E_ServerRegistration(t *testing.T) {
 	// Simulate what happens in the server binary (cmd/server/main.go)
-	testRootCmd := &cobra.Command{Use: "nrworkflow"}
+	testRootCmd := &cobra.Command{Use: "nrflow"}
 	testRootCmd.AddCommand(versionCmd)
 
 	originalRootCmd := rootCmd
@@ -20,11 +20,11 @@ func TestE2E_ServerRegistration(t *testing.T) {
 	RegisterServerCommands()
 
 	// Verify server metadata
-	if rootCmd.Use != "nrworkflow_server" {
-		t.Errorf("server binary: Use = %q, want 'nrworkflow_server'", rootCmd.Use)
+	if rootCmd.Use != "nrflow_server" {
+		t.Errorf("server binary: Use = %q, want 'nrflow_server'", rootCmd.Use)
 	}
-	if rootCmd.Short != "nrworkflow server" {
-		t.Errorf("server binary: Short = %q, want 'nrworkflow server'", rootCmd.Short)
+	if rootCmd.Short != "nrflow server" {
+		t.Errorf("server binary: Short = %q, want 'nrflow server'", rootCmd.Short)
 	}
 
 	// Verify only server commands are registered
@@ -54,7 +54,7 @@ func TestE2E_ServerRegistration(t *testing.T) {
 
 // TestE2E_CLIRegistration tests the complete CLI command registration flow
 func TestE2E_CLIRegistration(t *testing.T) {
-	// Simulate what happens in a CLI binary (cmd/nrworkflow/main.go when used for CLI-only)
+	// Simulate what happens in a CLI binary (cmd/nrflow/main.go when used for CLI-only)
 	// Note: This test would work if we had a separate CLI binary, but since we use the same binary,
 	// we're just verifying the registration function behavior.
 

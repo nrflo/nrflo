@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 type Theme = 'light' | 'dark' | 'system'
 
-const STORAGE_KEY = 'nrwf_theme'
+const STORAGE_KEY = 'nrf_theme'
 
 function getEffectiveDark(theme: Theme): boolean {
   if (theme === 'dark') return true

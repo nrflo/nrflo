@@ -302,12 +302,12 @@ func TestSavePromptFormat(t *testing.T) {
 	savePrompt := buildSavePrompt()
 
 	// Verify it contains the correct CLI commands
-	if !contains(savePrompt, "nrworkflow findings add to_resume") {
-		t.Errorf("savePrompt should contain 'nrworkflow findings add to_resume', got: %s", savePrompt)
+	if !contains(savePrompt, "nrflow findings add to_resume") {
+		t.Errorf("savePrompt should contain 'nrflow findings add to_resume', got: %s", savePrompt)
 	}
 
-	if !contains(savePrompt, "nrworkflow agent continue") {
-		t.Errorf("savePrompt should contain 'nrworkflow agent continue', got: %s", savePrompt)
+	if !contains(savePrompt, "nrflow agent continue") {
+		t.Errorf("savePrompt should contain 'nrflow agent continue', got: %s", savePrompt)
 	}
 
 	// Verify it does NOT contain obsolete flags

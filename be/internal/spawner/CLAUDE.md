@@ -56,11 +56,11 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │ DockerCLIAdapter                                              │    │
 │  │   ├── Wraps any CLIAdapter, transforms into docker run       │    │
-│  │   ├── Container name: nrwf-<sessionID[:12]> (-rsm for resume)│    │
-│  │   ├── Image: nrworkflow-agent (--platform linux/arm64)       │    │
-│  │   ├── Volume mounts: project dir, ~/.claude, /tmp/nrworkflow │    │
+│  │   ├── Container name: nrf-<sessionID[:12]> (-rsm for resume)│    │
+│  │   ├── Image: nrflow-agent (--platform linux/arm64)       │    │
+│  │   ├── Volume mounts: project dir, ~/.claude, /tmp/nrflow │    │
 │  │   ├── Env: HOST_UID, HOST_GID + all inner env vars           │    │
-│  │   ├── TCP socket: always sets NRWORKFLOW_AGENT_HOST           │    │
+│  │   ├── TCP socket: always sets NRFLOW_AGENT_HOST           │    │
 │  │   │   (host.docker.internal:6588)                            │    │
 │  │   └── All other methods delegated to inner adapter           │    │
 │  └─────────────────────────────────────────────────────────────┘    │
@@ -220,7 +220,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
    - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
      actionable message count <= 3 (queried via CountBySessionActionable, excludes [init] and [thinking] prefixes),
-     no `no-op` finding on session (agents signal deliberate no-work exit via `nrworkflow findings add no-op:no-op`)
+     no `no-op` finding on session (agents signal deliberate no-work exit via `nrflow findings add no-op:no-op`)
    - If stallRestartCount >= maxStallRestarts (6): marks session as failed with reason
      stall_budget_exhausted (instead of letting false pass through)
    - On match (budget available): override session result=continue reason=instant_stall, status=continued,
@@ -299,19 +299,19 @@ Agent definitions store model, timeout, and prompt template per agent type per w
 
 ## Agent Environment Variables
 
-The spawner sets these env vars on every spawned agent process. Child processes (e.g., `nrworkflow` CLI calls) inherit them.
+The spawner sets these env vars on every spawned agent process. Child processes (e.g., `nrflow` CLI calls) inherit them.
 
 | Variable | Purpose |
 |----------|---------|
-| `NRWORKFLOW_PROJECT` | Project ID |
-| `NRWF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID — used by CLI to target the correct instance directly (required for findings/agent commands) |
-| `NRWF_SESSION_ID` | Agent session UUID — used by CLI to target the correct session directly (required for findings/agent commands) |
-| `NRWF_SPAWNED` | Set to `1` to indicate agent was spawned by the orchestrator |
-| `NRWF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
-| `NRWF_MAX_CONTEXT` | Max context window size in tokens (e.g., 200000 or 1000000 for opus_1m). Used by hooks to calculate context % |
-| `NRWORKFLOW_AGENT_HOST` | TCP host:port for agent communication (Docker only, set by DockerCLIAdapter) |
+| `NRFLOW_PROJECT` | Project ID |
+| `NRF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID — used by CLI to target the correct instance directly (required for findings/agent commands) |
+| `NRF_SESSION_ID` | Agent session UUID — used by CLI to target the correct session directly (required for findings/agent commands) |
+| `NRF_SPAWNED` | Set to `1` to indicate agent was spawned by the orchestrator |
+| `NRF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
+| `NRF_MAX_CONTEXT` | Max context window size in tokens (e.g., 200000 or 1000000 for opus_1m). Used by hooks to calculate context % |
+| `NRFLOW_AGENT_HOST` | TCP host:port for agent communication (Docker only, set by DockerCLIAdapter) |
 
-On relaunch (continuation), `spawnSingle` is called again, so `NRWF_SESSION_ID` gets the new session's UUID. `NRWF_WORKFLOW_INSTANCE_ID` stays the same. The resume flow (`context_save.go`) reuses `proc.cmd.Env`, preserving the old session ID for the save step, then the fresh spawn gets the new one.
+On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` gets the new session's UUID. `NRF_WORKFLOW_INSTANCE_ID` stays the same. The resume flow (`context_save.go`) reuses `proc.cmd.Env`, preserving the old session ID for the save step, then the fresh spawn gets the new one.
 
 ## Template Variables
 

@@ -9,45 +9,45 @@ import (
 	"time"
 )
 
-// TestBinaryBuild_NrworkflowCLI verifies that the CLI binary compiles successfully
-func TestBinaryBuild_NrworkflowCLI(t *testing.T) {
+// TestBinaryBuild_NrflowCLI verifies that the CLI binary compiles successfully
+func TestBinaryBuild_NrflowCLI(t *testing.T) {
 	// Build to a temp location
 	tmpDir := t.TempDir()
-	binaryPath := filepath.Join(tmpDir, "nrworkflow")
+	binaryPath := filepath.Join(tmpDir, "nrflow")
 
-	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/nrworkflow")
+	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/nrflow")
 	cmd.Dir = getBeDir(t)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow binary failed to compile: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow binary failed to compile: %v\nOutput: %s", err, output)
 	}
 
 	// Verify binary exists
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		t.Fatalf("nrworkflow binary was not created at %s", binaryPath)
+		t.Fatalf("nrflow binary was not created at %s", binaryPath)
 	}
 }
 
-// TestBinaryBuild_NrworkflowServer verifies that the server binary compiles successfully
-func TestBinaryBuild_NrworkflowServer(t *testing.T) {
+// TestBinaryBuild_NrflowServer verifies that the server binary compiles successfully
+func TestBinaryBuild_NrflowServer(t *testing.T) {
 	// Build to a temp location
 	tmpDir := t.TempDir()
-	binaryPath := filepath.Join(tmpDir, "nrworkflow_server")
+	binaryPath := filepath.Join(tmpDir, "nrflow_server")
 
 	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/server")
 	cmd.Dir = getBeDir(t)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow_server binary failed to compile: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow_server binary failed to compile: %v\nOutput: %s", err, output)
 	}
 
 	// Verify binary exists
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		t.Fatalf("nrworkflow_server binary was not created at %s", binaryPath)
+		t.Fatalf("nrflow_server binary was not created at %s", binaryPath)
 	}
 }
 
-// TestCLIBinary_Help verifies nrworkflow --help shows only CLI commands
+// TestCLIBinary_Help verifies nrflow --help shows only CLI commands
 func TestCLIBinary_Help(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildCLIBinary(t, tmpDir)
@@ -55,7 +55,7 @@ func TestCLIBinary_Help(t *testing.T) {
 	cmd := exec.Command(binaryPath, "--help")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow --help failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow --help failed: %v\nOutput: %s", err, output)
 	}
 
 	helpText := string(output)
@@ -63,7 +63,7 @@ func TestCLIBinary_Help(t *testing.T) {
 	// Extract the Available Commands section to avoid false positives from usage description
 	availableCommandsStart := strings.Index(helpText, "Available Commands:")
 	if availableCommandsStart == -1 {
-		t.Fatal("nrworkflow --help missing 'Available Commands:' section")
+		t.Fatal("nrflow --help missing 'Available Commands:' section")
 	}
 	availableCommandsSection := helpText[availableCommandsStart:]
 
@@ -71,17 +71,17 @@ func TestCLIBinary_Help(t *testing.T) {
 	requiredCommands := []string{"agent ", "findings ", "tickets ", "deps ", "version "}
 	for _, cmdName := range requiredCommands {
 		if !strings.Contains(availableCommandsSection, cmdName) {
-			t.Errorf("nrworkflow Available Commands missing expected command %q\nOutput:\n%s", strings.TrimSpace(cmdName), helpText)
+			t.Errorf("nrflow Available Commands missing expected command %q\nOutput:\n%s", strings.TrimSpace(cmdName), helpText)
 		}
 	}
 
 	// Verify serve command is NOT present in Available Commands
 	if strings.Contains(availableCommandsSection, "serve ") {
-		t.Errorf("nrworkflow Available Commands should NOT show 'serve' command\nOutput:\n%s", helpText)
+		t.Errorf("nrflow Available Commands should NOT show 'serve' command\nOutput:\n%s", helpText)
 	}
 }
 
-// TestCLIBinary_ServeCommandNotAvailable verifies nrworkflow serve returns unknown command error
+// TestCLIBinary_ServeCommandNotAvailable verifies nrflow serve returns unknown command error
 func TestCLIBinary_ServeCommandNotAvailable(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildCLIBinary(t, tmpDir)
@@ -91,17 +91,17 @@ func TestCLIBinary_ServeCommandNotAvailable(t *testing.T) {
 
 	// Should fail with unknown command error
 	if err == nil {
-		t.Errorf("nrworkflow serve should fail with unknown command error, but succeeded\nOutput: %s", output)
+		t.Errorf("nrflow serve should fail with unknown command error, but succeeded\nOutput: %s", output)
 	}
 
 	outputText := string(output)
 	// Check for unknown command error message
 	if !strings.Contains(outputText, "unknown command") && !strings.Contains(outputText, "Unknown command") {
-		t.Errorf("nrworkflow serve should return 'unknown command' error\nOutput: %s", outputText)
+		t.Errorf("nrflow serve should return 'unknown command' error\nOutput: %s", outputText)
 	}
 }
 
-// TestServerBinary_Help verifies nrworkflow_server --help shows only server commands
+// TestServerBinary_Help verifies nrflow_server --help shows only server commands
 func TestServerBinary_Help(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildServerBinary(t, tmpDir)
@@ -109,36 +109,36 @@ func TestServerBinary_Help(t *testing.T) {
 	cmd := exec.Command(binaryPath, "--help")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow_server --help failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow_server --help failed: %v\nOutput: %s", err, output)
 	}
 
 	helpText := string(output)
 
 	// Verify serve and version commands are present in Available Commands section
 	if !strings.Contains(helpText, "serve") {
-		t.Errorf("nrworkflow_server --help missing 'serve' command\nOutput:\n%s", helpText)
+		t.Errorf("nrflow_server --help missing 'serve' command\nOutput:\n%s", helpText)
 	}
 	if !strings.Contains(helpText, "version") {
-		t.Errorf("nrworkflow_server --help missing 'version' command\nOutput:\n%s", helpText)
+		t.Errorf("nrflow_server --help missing 'version' command\nOutput:\n%s", helpText)
 	}
 
 	// Verify CLI-only commands are NOT present in Available Commands section
 	// Extract the Available Commands section to avoid false positives from usage description
 	availableCommandsStart := strings.Index(helpText, "Available Commands:")
 	if availableCommandsStart == -1 {
-		t.Fatal("nrworkflow_server --help missing 'Available Commands:' section")
+		t.Fatal("nrflow_server --help missing 'Available Commands:' section")
 	}
 	availableCommandsSection := helpText[availableCommandsStart:]
 
 	forbiddenCommands := []string{"agent ", "findings ", "tickets ", "deps "}
 	for _, cmdName := range forbiddenCommands {
 		if strings.Contains(availableCommandsSection, cmdName) {
-			t.Errorf("nrworkflow_server Available Commands should NOT show %q command\nOutput:\n%s", strings.TrimSpace(cmdName), helpText)
+			t.Errorf("nrflow_server Available Commands should NOT show %q command\nOutput:\n%s", strings.TrimSpace(cmdName), helpText)
 		}
 	}
 }
 
-// TestServerBinary_TicketsCommandNotAvailable verifies nrworkflow_server tickets returns unknown command error
+// TestServerBinary_TicketsCommandNotAvailable verifies nrflow_server tickets returns unknown command error
 func TestServerBinary_TicketsCommandNotAvailable(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildServerBinary(t, tmpDir)
@@ -148,17 +148,17 @@ func TestServerBinary_TicketsCommandNotAvailable(t *testing.T) {
 
 	// Should fail with unknown command error
 	if err == nil {
-		t.Errorf("nrworkflow_server tickets should fail with unknown command error, but succeeded\nOutput: %s", output)
+		t.Errorf("nrflow_server tickets should fail with unknown command error, but succeeded\nOutput: %s", output)
 	}
 
 	outputText := string(output)
 	// Check for unknown command error message
 	if !strings.Contains(outputText, "unknown command") && !strings.Contains(outputText, "Unknown command") {
-		t.Errorf("nrworkflow_server tickets should return 'unknown command' error\nOutput: %s", outputText)
+		t.Errorf("nrflow_server tickets should return 'unknown command' error\nOutput: %s", outputText)
 	}
 }
 
-// TestServerBinary_AgentCommandNotAvailable verifies nrworkflow_server agent returns unknown command error
+// TestServerBinary_AgentCommandNotAvailable verifies nrflow_server agent returns unknown command error
 func TestServerBinary_AgentCommandNotAvailable(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildServerBinary(t, tmpDir)
@@ -168,17 +168,17 @@ func TestServerBinary_AgentCommandNotAvailable(t *testing.T) {
 
 	// Should fail with unknown command error
 	if err == nil {
-		t.Errorf("nrworkflow_server agent should fail with unknown command error, but succeeded\nOutput: %s", output)
+		t.Errorf("nrflow_server agent should fail with unknown command error, but succeeded\nOutput: %s", output)
 	}
 
 	outputText := string(output)
 	// Check for unknown command error message
 	if !strings.Contains(outputText, "unknown command") && !strings.Contains(outputText, "Unknown command") {
-		t.Errorf("nrworkflow_server agent should return 'unknown command' error\nOutput: %s", outputText)
+		t.Errorf("nrflow_server agent should return 'unknown command' error\nOutput: %s", outputText)
 	}
 }
 
-// TestCLIBinary_VersionCommand verifies nrworkflow version works
+// TestCLIBinary_VersionCommand verifies nrflow version works
 func TestCLIBinary_VersionCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildCLIBinary(t, tmpDir)
@@ -186,17 +186,17 @@ func TestCLIBinary_VersionCommand(t *testing.T) {
 	cmd := exec.Command(binaryPath, "version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow version failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow version failed: %v\nOutput: %s", err, output)
 	}
 
 	// Should output version information (exact format may vary)
 	outputText := string(output)
 	if len(outputText) == 0 {
-		t.Error("nrworkflow version returned empty output")
+		t.Error("nrflow version returned empty output")
 	}
 }
 
-// TestServerBinary_VersionCommand verifies nrworkflow_server version works
+// TestServerBinary_VersionCommand verifies nrflow_server version works
 func TestServerBinary_VersionCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildServerBinary(t, tmpDir)
@@ -204,17 +204,17 @@ func TestServerBinary_VersionCommand(t *testing.T) {
 	cmd := exec.Command(binaryPath, "version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow_server version failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow_server version failed: %v\nOutput: %s", err, output)
 	}
 
 	// Should output version information
 	outputText := string(output)
 	if len(outputText) == 0 {
-		t.Error("nrworkflow_server version returned empty output")
+		t.Error("nrflow_server version returned empty output")
 	}
 }
 
-// TestCLIBinary_AgentSubcommands verifies nrworkflow agent subcommands exist
+// TestCLIBinary_AgentSubcommands verifies nrflow agent subcommands exist
 func TestCLIBinary_AgentSubcommands(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildCLIBinary(t, tmpDir)
@@ -222,19 +222,19 @@ func TestCLIBinary_AgentSubcommands(t *testing.T) {
 	cmd := exec.Command(binaryPath, "agent", "--help")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow agent --help failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow agent --help failed: %v\nOutput: %s", err, output)
 	}
 
 	helpText := string(output)
 	expectedSubcommands := []string{"fail", "continue", "callback"}
 	for _, subcmd := range expectedSubcommands {
 		if !strings.Contains(helpText, subcmd) {
-			t.Errorf("nrworkflow agent --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
+			t.Errorf("nrflow agent --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
 		}
 	}
 }
 
-// TestCLIBinary_FindingsSubcommands verifies nrworkflow findings subcommands exist
+// TestCLIBinary_FindingsSubcommands verifies nrflow findings subcommands exist
 func TestCLIBinary_FindingsSubcommands(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildCLIBinary(t, tmpDir)
@@ -242,19 +242,19 @@ func TestCLIBinary_FindingsSubcommands(t *testing.T) {
 	cmd := exec.Command(binaryPath, "findings", "--help")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow findings --help failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow findings --help failed: %v\nOutput: %s", err, output)
 	}
 
 	helpText := string(output)
 	expectedSubcommands := []string{"add", "get", "append", "delete"}
 	for _, subcmd := range expectedSubcommands {
 		if !strings.Contains(helpText, subcmd) {
-			t.Errorf("nrworkflow findings --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
+			t.Errorf("nrflow findings --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
 		}
 	}
 }
 
-// TestCLIBinary_TicketsSubcommands verifies nrworkflow tickets subcommands exist
+// TestCLIBinary_TicketsSubcommands verifies nrflow tickets subcommands exist
 func TestCLIBinary_TicketsSubcommands(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildCLIBinary(t, tmpDir)
@@ -262,19 +262,19 @@ func TestCLIBinary_TicketsSubcommands(t *testing.T) {
 	cmd := exec.Command(binaryPath, "tickets", "--help")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow tickets --help failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow tickets --help failed: %v\nOutput: %s", err, output)
 	}
 
 	helpText := string(output)
 	expectedSubcommands := []string{"list", "get", "create", "update", "close", "reopen", "delete"}
 	for _, subcmd := range expectedSubcommands {
 		if !strings.Contains(helpText, subcmd) {
-			t.Errorf("nrworkflow tickets --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
+			t.Errorf("nrflow tickets --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
 		}
 	}
 }
 
-// TestCLIBinary_DepsSubcommands verifies nrworkflow deps subcommands exist
+// TestCLIBinary_DepsSubcommands verifies nrflow deps subcommands exist
 func TestCLIBinary_DepsSubcommands(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildCLIBinary(t, tmpDir)
@@ -282,19 +282,19 @@ func TestCLIBinary_DepsSubcommands(t *testing.T) {
 	cmd := exec.Command(binaryPath, "deps", "--help")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow deps --help failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow deps --help failed: %v\nOutput: %s", err, output)
 	}
 
 	helpText := string(output)
 	expectedSubcommands := []string{"list", "add", "remove"}
 	for _, subcmd := range expectedSubcommands {
 		if !strings.Contains(helpText, subcmd) {
-			t.Errorf("nrworkflow deps --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
+			t.Errorf("nrflow deps --help missing subcommand %q\nOutput:\n%s", subcmd, helpText)
 		}
 	}
 }
 
-// TestServerBinary_ServeCommandExists verifies nrworkflow_server serve command exists (but don't start server)
+// TestServerBinary_ServeCommandExists verifies nrflow_server serve command exists (but don't start server)
 func TestServerBinary_ServeCommandExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	binaryPath := buildServerBinary(t, tmpDir)
@@ -302,13 +302,13 @@ func TestServerBinary_ServeCommandExists(t *testing.T) {
 	cmd := exec.Command(binaryPath, "serve", "--help")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("nrworkflow_server serve --help failed: %v\nOutput: %s", err, output)
+		t.Fatalf("nrflow_server serve --help failed: %v\nOutput: %s", err, output)
 	}
 
 	helpText := string(output)
 	// Verify serve command help is shown
-	if !strings.Contains(helpText, "serve") && !strings.Contains(helpText, "Start the nrworkflow server") {
-		t.Errorf("nrworkflow_server serve --help did not show serve command help\nOutput:\n%s", helpText)
+	if !strings.Contains(helpText, "serve") && !strings.Contains(helpText, "Start the nrflow server") {
+		t.Errorf("nrflow_server serve --help did not show serve command help\nOutput:\n%s", helpText)
 	}
 }
 
@@ -318,8 +318,8 @@ func TestBinaryIndependence(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Build CLI binary only
-	cliBinaryPath := filepath.Join(tmpDir, "nrworkflow")
-	cliCmd := exec.Command("go", "build", "-o", cliBinaryPath, "./cmd/nrworkflow")
+	cliBinaryPath := filepath.Join(tmpDir, "nrflow")
+	cliCmd := exec.Command("go", "build", "-o", cliBinaryPath, "./cmd/nrflow")
 	cliCmd.Dir = beDir
 	if output, err := cliCmd.CombinedOutput(); err != nil {
 		t.Fatalf("CLI binary build failed independently: %v\nOutput: %s", err, output)
@@ -327,7 +327,7 @@ func TestBinaryIndependence(t *testing.T) {
 
 	// Build server binary only (in separate temp dir to ensure independence)
 	tmpDir2 := t.TempDir()
-	serverBinaryPath := filepath.Join(tmpDir2, "nrworkflow_server")
+	serverBinaryPath := filepath.Join(tmpDir2, "nrflow_server")
 	serverCmd := exec.Command("go", "build", "-o", serverBinaryPath, "./cmd/server")
 	serverCmd.Dir = beDir
 	if output, err := serverCmd.CombinedOutput(); err != nil {
@@ -370,14 +370,14 @@ func TestMakefileTargets_Build(t *testing.T) {
 	}
 
 	// Verify both binaries exist
-	cliBinary := filepath.Join(beDir, "nrworkflow")
-	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+	cliBinary := filepath.Join(beDir, "nrflow")
+	serverBinary := filepath.Join(beDir, "nrflow_server")
 
 	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
-		t.Errorf("make build did not create nrworkflow binary")
+		t.Errorf("make build did not create nrflow binary")
 	}
 	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
-		t.Errorf("make build did not create nrworkflow_server binary")
+		t.Errorf("make build did not create nrflow_server binary")
 	}
 
 	// Clean up
@@ -390,17 +390,17 @@ func TestMakefileTargets_Build(t *testing.T) {
 
 // TestBinaryNaming verifies binary names match conventions
 func TestBinaryNaming(t *testing.T) {
-	// CLI binary should be named "nrworkflow"
+	// CLI binary should be named "nrflow"
 	tmpDir := t.TempDir()
 	cliBinary := buildCLIBinary(t, tmpDir)
-	if !strings.HasSuffix(cliBinary, "nrworkflow") {
-		t.Errorf("CLI binary name should be 'nrworkflow', got %s", filepath.Base(cliBinary))
+	if !strings.HasSuffix(cliBinary, "nrflow") {
+		t.Errorf("CLI binary name should be 'nrflow', got %s", filepath.Base(cliBinary))
 	}
 
-	// Server binary should be named "nrworkflow_server" (underscore, not hyphen)
+	// Server binary should be named "nrflow_server" (underscore, not hyphen)
 	serverBinary := buildServerBinary(t, tmpDir)
-	if !strings.HasSuffix(serverBinary, "nrworkflow_server") {
-		t.Errorf("Server binary name should be 'nrworkflow_server', got %s", filepath.Base(serverBinary))
+	if !strings.HasSuffix(serverBinary, "nrflow_server") {
+		t.Errorf("Server binary name should be 'nrflow_server', got %s", filepath.Base(serverBinary))
 	}
 }
 
@@ -424,9 +424,9 @@ func TestMakefileTargets_BuildCLI(t *testing.T) {
 	}
 
 	// Verify CLI binary exists
-	cliBinary := filepath.Join(beDir, "nrworkflow")
+	cliBinary := filepath.Join(beDir, "nrflow")
 	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
-		t.Errorf("make build-cli did not create nrworkflow binary")
+		t.Errorf("make build-cli did not create nrflow binary")
 	}
 
 	// Clean up
@@ -457,9 +457,9 @@ func TestMakefileTargets_BuildServer(t *testing.T) {
 	}
 
 	// Verify server binary exists
-	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+	serverBinary := filepath.Join(beDir, "nrflow_server")
 	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
-		t.Errorf("make build-server did not create nrworkflow_server binary")
+		t.Errorf("make build-server did not create nrflow_server binary")
 	}
 
 	// Clean up
@@ -490,25 +490,25 @@ func TestMakefileTargets_BuildRelease(t *testing.T) {
 	}
 
 	// Verify both binaries exist
-	cliBinary := filepath.Join(beDir, "nrworkflow")
-	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+	cliBinary := filepath.Join(beDir, "nrflow")
+	serverBinary := filepath.Join(beDir, "nrflow_server")
 
 	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
-		t.Errorf("make build-release did not create nrworkflow binary")
+		t.Errorf("make build-release did not create nrflow binary")
 	}
 	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
-		t.Errorf("make build-release did not create nrworkflow_server binary")
+		t.Errorf("make build-release did not create nrflow_server binary")
 	}
 
 	// Verify binaries are executable
 	if info, err := os.Stat(cliBinary); err == nil {
 		if info.Mode()&0111 == 0 {
-			t.Errorf("nrworkflow binary is not executable")
+			t.Errorf("nrflow binary is not executable")
 		}
 	}
 	if info, err := os.Stat(serverBinary); err == nil {
 		if info.Mode()&0111 == 0 {
-			t.Errorf("nrworkflow_server binary is not executable")
+			t.Errorf("nrflow_server binary is not executable")
 		}
 	}
 
@@ -540,16 +540,16 @@ func TestMakefileTargets_BuildCLIRelease(t *testing.T) {
 	}
 
 	// Verify CLI binary exists
-	cliBinary := filepath.Join(beDir, "nrworkflow")
+	cliBinary := filepath.Join(beDir, "nrflow")
 	cliInfo, err := os.Stat(cliBinary)
 	if os.IsNotExist(err) {
-		t.Fatalf("make build-cli-release did not create nrworkflow binary")
+		t.Fatalf("make build-cli-release did not create nrflow binary")
 	}
 
 	// Build a debug version for size comparison
 	tmpDir := t.TempDir()
-	debugBinary := filepath.Join(tmpDir, "nrworkflow_debug")
-	debugCmd := exec.Command("go", "build", "-o", debugBinary, "./cmd/nrworkflow")
+	debugBinary := filepath.Join(tmpDir, "nrflow_debug")
+	debugCmd := exec.Command("go", "build", "-o", debugBinary, "./cmd/nrflow")
 	debugCmd.Dir = beDir
 	if debugOutput, debugErr := debugCmd.CombinedOutput(); debugErr != nil {
 		t.Logf("Debug build warning: %v\nOutput: %s", debugErr, debugOutput)
@@ -591,15 +591,15 @@ func TestMakefileTargets_BuildServerRelease(t *testing.T) {
 	}
 
 	// Verify server binary exists
-	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+	serverBinary := filepath.Join(beDir, "nrflow_server")
 	serverInfo, err := os.Stat(serverBinary)
 	if os.IsNotExist(err) {
-		t.Fatalf("make build-server-release did not create nrworkflow_server binary")
+		t.Fatalf("make build-server-release did not create nrflow_server binary")
 	}
 
 	// Build a debug version for size comparison
 	tmpDir := t.TempDir()
-	debugBinary := filepath.Join(tmpDir, "nrworkflow_server_debug")
+	debugBinary := filepath.Join(tmpDir, "nrflow_server_debug")
 	debugCmd := exec.Command("go", "build", "-o", debugBinary, "./cmd/server")
 	debugCmd.Dir = beDir
 	if debugOutput, debugErr := debugCmd.CombinedOutput(); debugErr != nil {
@@ -633,15 +633,15 @@ func TestMakefileTargets_Clean(t *testing.T) {
 		t.Fatalf("make build failed: %v\nOutput: %s", err, output)
 	}
 
-	cliBinary := filepath.Join(beDir, "nrworkflow")
-	serverBinary := filepath.Join(beDir, "nrworkflow_server")
+	cliBinary := filepath.Join(beDir, "nrflow")
+	serverBinary := filepath.Join(beDir, "nrflow_server")
 
 	// Verify binaries exist before clean
 	if _, err := os.Stat(cliBinary); os.IsNotExist(err) {
-		t.Fatalf("nrworkflow binary should exist before clean")
+		t.Fatalf("nrflow binary should exist before clean")
 	}
 	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
-		t.Fatalf("nrworkflow_server binary should exist before clean")
+		t.Fatalf("nrflow_server binary should exist before clean")
 	}
 
 	// Run clean
@@ -654,10 +654,10 @@ func TestMakefileTargets_Clean(t *testing.T) {
 
 	// Verify both binaries are removed
 	if _, err := os.Stat(cliBinary); err == nil {
-		t.Errorf("nrworkflow binary should be removed by make clean")
+		t.Errorf("nrflow binary should be removed by make clean")
 	}
 	if _, err := os.Stat(serverBinary); err == nil {
-		t.Errorf("nrworkflow_server binary should be removed by make clean")
+		t.Errorf("nrflow_server binary should be removed by make clean")
 	}
 }
 
@@ -722,7 +722,7 @@ func getBeDir(t *testing.T) string {
 	}
 
 	// If we're already in be/cmd, go up one level
-	if strings.HasSuffix(wd, "/be/cmd") || strings.HasSuffix(wd, "/be/cmd/nrworkflow") || strings.HasSuffix(wd, "/be/cmd/server") {
+	if strings.HasSuffix(wd, "/be/cmd") || strings.HasSuffix(wd, "/be/cmd/nrflow") || strings.HasSuffix(wd, "/be/cmd/server") {
 		return filepath.Join(wd, "..")
 	}
 
@@ -742,8 +742,8 @@ func getBeDir(t *testing.T) string {
 // buildCLIBinary builds the CLI binary to tmpDir and returns the path
 func buildCLIBinary(t *testing.T, tmpDir string) string {
 	t.Helper()
-	binaryPath := filepath.Join(tmpDir, "nrworkflow")
-	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/nrworkflow")
+	binaryPath := filepath.Join(tmpDir, "nrflow")
+	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/nrflow")
 	cmd.Dir = getBeDir(t)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -755,7 +755,7 @@ func buildCLIBinary(t *testing.T, tmpDir string) string {
 // buildServerBinary builds the server binary to tmpDir and returns the path
 func buildServerBinary(t *testing.T, tmpDir string) string {
 	t.Helper()
-	binaryPath := filepath.Join(tmpDir, "nrworkflow_server")
+	binaryPath := filepath.Join(tmpDir, "nrflow_server")
 	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/server")
 	cmd.Dir = getBeDir(t)
 	output, err := cmd.CombinedOutput()

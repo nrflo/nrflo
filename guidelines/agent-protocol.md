@@ -4,18 +4,18 @@ Guidelines for prompt authors writing agent definition prompts.
 
 ## Agent Communication
 
-Agents communicate with the nrworkflow server via CLI commands over Unix socket:
+Agents communicate with the nrflow server via CLI commands over Unix socket:
 
 ```bash
 # Report results (exit 0 = pass, no explicit call needed)
-nrworkflow agent fail <ticket> <agent-type> -w <workflow> [--reason <text>]
-nrworkflow agent continue <ticket> <agent-type> -w <workflow>
+nrflow agent fail <ticket> <agent-type> -w <workflow> [--reason <text>]
+nrflow agent continue <ticket> <agent-type> -w <workflow>
 
 # Store findings for downstream agents
-nrworkflow findings add <ticket> <agent-type> key:value -w <workflow>
-nrworkflow findings append <ticket> <agent-type> key:value -w <workflow>
-nrworkflow findings get <ticket> <agent-type> [key] -w <workflow>
-nrworkflow findings delete <ticket> <agent-type> <keys...> -w <workflow>
+nrflow findings add <ticket> <agent-type> key:value -w <workflow>
+nrflow findings append <ticket> <agent-type> key:value -w <workflow>
+nrflow findings get <ticket> <agent-type> [key] -w <workflow>
+nrflow findings delete <ticket> <agent-type> <keys...> -w <workflow>
 ```
 
 ## Template Variables
@@ -56,10 +56,10 @@ Callbacks allow a later-layer agent to request re-execution of an earlier layer 
 
 ```bash
 # 1. Save what needs to be fixed as a finding
-nrworkflow findings add <ticket> <agent-type> callback_instructions:"The auth middleware is not checking token expiry. Fix the validateToken function in middleware/auth.go." -w <workflow>
+nrflow findings add <ticket> <agent-type> callback_instructions:"The auth middleware is not checking token expiry. Fix the validateToken function in middleware/auth.go." -w <workflow>
 
 # 2. Trigger callback to an earlier layer
-nrworkflow agent callback <ticket> <agent-type> -w <workflow> --level <N>
+nrflow agent callback <ticket> <agent-type> -w <workflow> --level <N>
 ```
 
 Where `--level <N>` is the layer number to jump back to (e.g., `--level 2` for the implementor layer).

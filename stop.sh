@@ -1,14 +1,14 @@
 #!/bin/bash
-# Stop nrworkflow server
+# Stop nrflow server
 
-PORT=${NRWORKFLOW_PORT:-6587}
+PORT=${NRFLOW_PORT:-6587}
 
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${YELLOW}Stopping nrworkflow server...${NC}"
+echo -e "${YELLOW}Stopping nrflow server...${NC}"
 
 if lsof -i :$PORT > /dev/null 2>&1; then
     echo "  Stopping server on port $PORT..."

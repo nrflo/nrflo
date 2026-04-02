@@ -69,7 +69,7 @@ The orchestrator reads `claude_safety_hook` from project config at workflow star
 
 A later-layer agent (e.g., qa-verifier) can trigger a callback to re-run an earlier layer:
 
-1. Agent calls `nrworkflow agent callback` with `--level <N>`
+1. Agent calls `nrflow agent callback` with `--level <N>`
 2. Orchestrator saves `_callback` metadata to workflow instance findings
 3. Phases/sessions from the target layer forward are reset
 4. Execution loop jumps back to the target layer
@@ -130,7 +130,7 @@ Worktrees are only used for **ticket-scoped** workflows. Project-scoped workflow
 
 When a project has `use_git_worktrees=true` and `default_branch` configured, the orchestrator creates an isolated git worktree for each ticket-scoped workflow run:
 
-- **Setup** (`Start`/`retryFailed`): `setupWorktree()` returns early with `nil` worktree for project scope. For ticket scope, creates a branch (named after ticket ID) and worktree at `/tmp/nrworkflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
+- **Setup** (`Start`/`retryFailed`): `setupWorktree()` returns early with `nil` worktree for project scope. For ticket scope, creates a branch (named after ticket ID) and worktree at `/tmp/nrflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
 - **Success** (`runLoop` completion): Removes the worktree first (commits live in `.git/refs/heads/`, not the worktree dir), then merges the branch into `default_branch` with retry (up to 5 attempts with stale `index.lock` removal), and deletes the branch. If merge fails (conflicts), attempts automatic conflict resolution via `attemptConflictResolution()`. Falls through to manual resolution if resolver is not configured or fails.
 - **Failure/Cancellation** (`runLoop` defer): Force-removes worktree and branch without merging.
 

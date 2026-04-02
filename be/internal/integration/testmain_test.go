@@ -15,7 +15,7 @@ var templateDBPath string
 
 func TestMain(m *testing.M) {
 	// Create template DB with all migrations applied once.
-	tmpDir, err := os.MkdirTemp("", "nrwf-template-*")
+	tmpDir, err := os.MkdirTemp("", "nrf-template-*")
 	if err != nil {
 		panic("failed to create template dir: " + err.Error())
 	}

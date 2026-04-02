@@ -76,7 +76,7 @@ func (a *DockerCLIAdapter) buildDockerArgs(sessionID string, env []string, isRes
 	args = append(args, "-e", fmt.Sprintf("HOST_UID=%d", a.config.UID))
 	args = append(args, "-e", fmt.Sprintf("HOST_GID=%d", a.config.GID))
 	args = append(args, "-e", "TMPDIR=/tmp")
-	args = append(args, "-e", fmt.Sprintf("NRWORKFLOW_AGENT_HOST=host.docker.internal:%d", socket.DefaultTCPPort))
+	args = append(args, "-e", fmt.Sprintf("NRFLOW_AGENT_HOST=host.docker.internal:%d", socket.DefaultTCPPort))
 	for _, e := range env {
 		args = append(args, "-e", e)
 	}
@@ -90,7 +90,7 @@ func (a *DockerCLIAdapter) buildDockerArgs(sessionID string, env []string, isRes
 	args = append(args, "-w", a.config.ProjectRoot)
 
 	// Image
-	args = append(args, "nrworkflow-agent")
+	args = append(args, "nrflow-agent")
 
 	return args
 }
@@ -116,7 +116,7 @@ func (a *DockerCLIAdapter) volumeMounts() []string {
 		fmt.Sprintf("%s/.local/share/opencode:%s/.local/share/opencode", home, home),
 
 		// Shared temp (prompt files)
-		"/tmp/nrworkflow:/tmp/nrworkflow",
+		"/tmp/nrflow:/tmp/nrflow",
 
 		// Safety config
 		fmt.Sprintf("%s/.ai_common/safety.json:%s/.ai_common/safety.json:ro", home, home),
@@ -140,9 +140,9 @@ func (a *DockerCLIAdapter) containerName(sessionID string, isResume bool) string
 		id = id[:12]
 	}
 	if isResume {
-		return "nrwf-" + id + "-rsm"
+		return "nrf-" + id + "-rsm"
 	}
-	return "nrwf-" + id
+	return "nrf-" + id
 }
 
 // hostDir returns the host-side working directory.
@@ -166,7 +166,7 @@ func StopContainer(name string) {
 	exec.Command("docker", "rm", "-f", name).Run()
 }
 
-// CleanupStaleContainers removes any leftover containers with the nrwf- name prefix.
+// CleanupStaleContainers removes any leftover containers with the nrf- name prefix.
 func CleanupStaleContainers() {
-	exec.Command("sh", "-c", "docker ps -a --filter name=nrwf- -q | xargs -r docker rm -f").Run()
+	exec.Command("sh", "-c", "docker ps -a --filter name=nrf- -q | xargs -r docker rm -f").Run()
 }

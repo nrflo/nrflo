@@ -4,10 +4,10 @@ Socket server for agent communication (Unix + optional TCP). Handles agent-facin
 
 ## Transport
 
-- **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — used by native (non-Docker) agents
+- **Unix socket** at `/tmp/nrflow/nrflow.sock` — used by native (non-Docker) agents
 - **TCP listener** on `127.0.0.1:6588` — used by Docker agents via `host.docker.internal:6588`. Always started. Both listeners share the same handler and connection tracking.
 
-Clients auto-detect transport: if `NRWORKFLOW_AGENT_HOST` env var is set, connect via TCP; otherwise use Unix socket.
+Clients auto-detect transport: if `NRFLOW_AGENT_HOST` env var is set, connect via TCP; otherwise use Unix socket.
 
 ## Protocol
 
@@ -15,7 +15,7 @@ The socket uses a **JSON-RPC style protocol** (line-delimited JSON).
 
 ### Request Format
 
-All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set automatically from `NRWF_WORKFLOW_INSTANCE_ID` and `NRWF_SESSION_ID` env vars by the CLI). The service derives ticket, workflow, and agent_type from the session row — callers do not send them.
+All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set automatically from `NRF_WORKFLOW_INSTANCE_ID` and `NRF_SESSION_ID` env vars by the CLI). The service derives ticket, workflow, and agent_type from the session row — callers do not send them.
 
 ```json
 {"method": "findings.add", "params": {"instance_id": "uuid", "session_id": "uuid", "key": "summary", "value": "..."}}

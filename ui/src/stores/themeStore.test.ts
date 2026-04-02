@@ -32,9 +32,9 @@ function setupMatchMedia(matches: boolean) {
 // Fresh store import after resetting modules + localStorage state
 async function getStore(storedTheme?: string) {
   vi.resetModules()
-  delete localStorageData['nrwf_theme']
+  delete localStorageData['nrf_theme']
   if (storedTheme !== undefined) {
-    localStorageData['nrwf_theme'] = storedTheme
+    localStorageData['nrf_theme'] = storedTheme
   }
   document.documentElement.classList.remove('dark')
   const { useThemeStore } = await import('@/stores/themeStore')
@@ -59,14 +59,14 @@ describe('themeStore — setTheme', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 
-  it('persists theme to localStorage under nrwf_theme', async () => {
+  it('persists theme to localStorage under nrf_theme', async () => {
     const useThemeStore = await getStore()
     useThemeStore.getState().setTheme('dark')
-    expect(localStorageData['nrwf_theme']).toBe('dark')
+    expect(localStorageData['nrf_theme']).toBe('dark')
     useThemeStore.getState().setTheme('light')
-    expect(localStorageData['nrwf_theme']).toBe('light')
+    expect(localStorageData['nrf_theme']).toBe('light')
     useThemeStore.getState().setTheme('system')
-    expect(localStorageData['nrwf_theme']).toBe('system')
+    expect(localStorageData['nrf_theme']).toBe('system')
   })
 
   it('updates store state', async () => {

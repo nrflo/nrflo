@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-// HTTPClient is a lightweight HTTP client for the nrworkflow API
+// HTTPClient is a lightweight HTTP client for the nrflow API
 type HTTPClient struct {
 	BaseURL   string
 	ProjectID string

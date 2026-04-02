@@ -19,8 +19,8 @@ RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path \
     && cp /root/.opencode/bin/opencode /usr/local/bin/opencode \
     && rm -rf /root/.opencode
 
-# nrworkflow CLI — pre-cross-compiled for linux/arm64
-COPY nrworkflow /usr/local/bin/nrworkflow
+# nrflow CLI — pre-cross-compiled for linux/arm64
+COPY nrflow /usr/local/bin/nrflow
 
 # Mirror host home path so agent file references match
 RUN mkdir -p /Users/anderfred/.local/bin

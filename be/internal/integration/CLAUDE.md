@@ -54,7 +54,7 @@ Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.Wo
 
 ## Key Gotchas
 
-- **Socket path limit**: macOS has 104-char limit. `NewTestEnv` uses `/tmp/nrwf-it-*.sock`
+- **Socket path limit**: macOS has 104-char limit. `NewTestEnv` uses `/tmp/nrf-it-*.sock`
 - **Server stop hangs**: Cleanup uses 2-sec timeout context to avoid blocking
 - **No config file needed**: Agent config comes from DB agent_definitions, not file-based config
 

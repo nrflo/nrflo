@@ -10,7 +10,7 @@ var skipCmd = &cobra.Command{
 	Use:   "skip <tag>",
 	Short: "Add a skip tag to the current workflow instance",
 	Long: `Add a skip tag to the running workflow instance. The tag must be one of the
-workflow's defined groups. The instance is identified by NRWF_WORKFLOW_INSTANCE_ID
+workflow's defined groups. The instance is identified by NRF_WORKFLOW_INSTANCE_ID
 env var (set automatically by the spawner).`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -20,7 +20,7 @@ env var (set automatically by the spawner).`,
 
 		instanceID := GetWorkflowInstanceID()
 		if instanceID == "" {
-			return fmt.Errorf("NRWF_WORKFLOW_INSTANCE_ID is required (set by spawner)")
+			return fmt.Errorf("NRF_WORKFLOW_INSTANCE_ID is required (set by spawner)")
 		}
 
 		tag := args[0]

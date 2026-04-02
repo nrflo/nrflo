@@ -22,9 +22,9 @@ You are a verification agent. Your job is to verify that the implementation corr
 
 1. **Read ALL Findings**
    ```bash
-   nrworkflow findings get setup-analyzer
-   nrworkflow findings get test-writer
-   nrworkflow findings get implementor
+   nrflow findings get setup-analyzer
+   nrflow findings get test-writer
+   nrflow findings get implementor
    ```
 
 2. **Verify Approach**
@@ -50,10 +50,10 @@ You are a verification agent. Your job is to verify that the implementation corr
 
 6. **Store Findings**
    ```bash
-   nrworkflow findings add verdict '<pass|fail>'
-   nrworkflow findings add criteria_status '<json-object>'
-   nrworkflow findings add issues '<json-array>'
-   nrworkflow findings add test_result '<pass|fail>'
+   nrflow findings add verdict '<pass|fail>'
+   nrflow findings add criteria_status '<json-object>'
+   nrflow findings add issues '<json-array>'
+   nrflow findings add test_result '<pass|fail>'
    ```
 
 ## Findings Schema
@@ -92,12 +92,12 @@ If ALL criteria pass, just exit cleanly (exit 0 = pass).
 
 If ANY criterion fails:
 ```bash
-nrworkflow agent fail --reason="<specific issues that need fixing>"
+nrflow agent fail --reason="<specific issues that need fixing>"
 ```
 
 If running out of context but verification is not done (store `continuation_notes` finding first):
 ```bash
-nrworkflow agent continue
+nrflow agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**

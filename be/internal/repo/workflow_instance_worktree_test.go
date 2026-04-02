@@ -61,7 +61,7 @@ func TestUpdateWorktree_SetsFields(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	const path = "/tmp/nrworkflow/worktrees/tkt-wt1"
+	const path = "/tmp/nrflow/worktrees/tkt-wt1"
 	const branch = "tkt-wt1"
 	if err := r.UpdateWorktree(wi.ID, path, branch); err != nil {
 		t.Fatalf("UpdateWorktree: %v", err)
@@ -94,7 +94,7 @@ func TestUpdateWorktree_EmptyStrings_StoresNull(t *testing.T) {
 	}
 
 	// First set real values, then clear them with empty strings.
-	r.UpdateWorktree(wi.ID, "/tmp/nrworkflow/worktrees/tkt-wt2", "tkt-wt2")
+	r.UpdateWorktree(wi.ID, "/tmp/nrflow/worktrees/tkt-wt2", "tkt-wt2")
 	if err := r.UpdateWorktree(wi.ID, "", ""); err != nil {
 		t.Fatalf("UpdateWorktree with empty strings: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestCreate_NullWorktreeFields(t *testing.T) {
 func TestCreate_WithWorktreeFields_Roundtrip(t *testing.T) {
 	r, _ := makeWorktreeTestDB(t, "wt5")
 	wi := makeTicketWFI("wt5")
-	wi.WorktreePath = sql.NullString{String: "/tmp/nrworkflow/worktrees/tkt-wt5", Valid: true}
+	wi.WorktreePath = sql.NullString{String: "/tmp/nrflow/worktrees/tkt-wt5", Valid: true}
 	wi.BranchName = sql.NullString{String: "tkt-wt5", Valid: true}
 
 	if err := r.Create(wi); err != nil {
@@ -157,8 +157,8 @@ func TestCreate_WithWorktreeFields_Roundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if !got.WorktreePath.Valid || got.WorktreePath.String != "/tmp/nrworkflow/worktrees/tkt-wt5" {
-		t.Errorf("WorktreePath = %v, want {String:/tmp/nrworkflow/worktrees/tkt-wt5, Valid:true}", got.WorktreePath)
+	if !got.WorktreePath.Valid || got.WorktreePath.String != "/tmp/nrflow/worktrees/tkt-wt5" {
+		t.Errorf("WorktreePath = %v, want {String:/tmp/nrflow/worktrees/tkt-wt5, Valid:true}", got.WorktreePath)
 	}
 	if !got.BranchName.Valid || got.BranchName.String != "tkt-wt5" {
 		t.Errorf("BranchName = %v, want {String:tkt-wt5, Valid:true}", got.BranchName)

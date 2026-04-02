@@ -30,13 +30,13 @@ You are resolving a merge conflict in a git repository.
 
 - Do NOT modify any code beyond what is necessary to resolve conflicts
 - Do NOT reformat, refactor, or "improve" code while resolving
-- If the conflict is too complex to resolve confidently, call `nrworkflow agent fail --reason "description of why"`
-- If there is nothing to do, run `nrworkflow findings add no-op:no-op` before exiting
+- If the conflict is too complex to resolve confidently, call `nrflow agent fail --reason "description of why"`
+- If there is nothing to do, run `nrflow findings add no-op:no-op` before exiting
 
 ## Exit
 
 - Exit 0 on successful merge (the branch will be deleted automatically after)
-- Call `nrworkflow agent fail --reason "..."` if resolution is not possible',
+- Call `nrflow agent fail --reason "..."` if resolution is not possible',
   datetime('now'),
   datetime('now')
 );

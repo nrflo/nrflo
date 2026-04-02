@@ -307,7 +307,7 @@ func (s *AgentService) Callback(req *types.AgentCallbackRequest) (BroadcastCtx, 
 
 func (s *AgentService) setAgentResult(sessionID, result string) (BroadcastCtx, error) {
 	if sessionID == "" {
-		return BroadcastCtx{}, fmt.Errorf("session_id is required (NRWF_SESSION_ID env var)")
+		return BroadcastCtx{}, fmt.Errorf("session_id is required (NRF_SESSION_ID env var)")
 	}
 
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)

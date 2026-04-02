@@ -4,7 +4,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 
 ## Server Architecture
 
-`nrworkflow_server serve` provides:
+`nrflow_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
 - **CORS** disabled by default (same-origin serving); configurable via `cors_origins` in config file
 - **WebSocket** at `/api/v1/ws` for real-time updates

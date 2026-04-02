@@ -23,16 +23,16 @@ var findingsAddCmd = &cobra.Command{
 	Long: `Add one or more findings to the current agent session.
 
 Context is read from environment variables set by the spawner:
-  NRWF_SESSION_ID          — current agent session ID (required)
-  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID
 
 Two syntax modes:
   1. Single finding: <key> <value> as separate arguments
   2. Multiple findings: key:'value' pairs (use quotes for values with spaces)
 
 Examples:
-  nrworkflow findings add summary "Initial analysis complete"
-  nrworkflow findings add summary:'Done' status:'passed'`,
+  nrflow findings add summary "Initial analysis complete"
+  nrflow findings add summary:'Done' status:'passed'`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -44,7 +44,7 @@ Examples:
 
 		sessionID := GetSessionID()
 		if sessionID == "" {
-			return fmt.Errorf("NRWF_SESSION_ID env var is required")
+			return fmt.Errorf("NRF_SESSION_ID env var is required")
 		}
 
 		c := GetClient()
@@ -132,22 +132,22 @@ var findingsGetCmd = &cobra.Command{
 	Short: "Get findings for an agent or the current session",
 	Long: `Get findings stored by an agent.
 
-If no agent-type is given, returns findings from the current session (env NRWF_SESSION_ID).
-If agent-type is given, reads cross-agent findings (env NRWF_WORKFLOW_INSTANCE_ID required).
+If no agent-type is given, returns findings from the current session (env NRF_SESSION_ID).
+If agent-type is given, reads cross-agent findings (env NRF_WORKFLOW_INSTANCE_ID required).
 Use -k/--key to filter specific keys (can be repeated).
 
 Examples:
   # Own session — all findings
-  nrworkflow findings get
+  nrflow findings get
 
   # Own session — specific key
-  nrworkflow findings get -k summary
+  nrflow findings get -k summary
 
   # Cross-agent — all findings from setup-analyzer
-  nrworkflow findings get setup-analyzer
+  nrflow findings get setup-analyzer
 
   # Cross-agent — specific key
-  nrworkflow findings get setup-analyzer summary`,
+  nrflow findings get setup-analyzer summary`,
 	Args: cobra.RangeArgs(0, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -203,12 +203,12 @@ var findingsAppendCmd = &cobra.Command{
 	Long: `Append one or more values to existing findings (creating arrays if needed).
 
 Context is read from environment variables set by the spawner:
-  NRWF_SESSION_ID          — current agent session ID (required)
-  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID
 
 Examples:
-  nrworkflow findings append files:'src/main.go'
-  nrworkflow findings append files:'src/main.go' tests:'src/main_test.go'`,
+  nrflow findings append files:'src/main.go'
+  nrflow findings append files:'src/main.go' tests:'src/main_test.go'`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -220,7 +220,7 @@ Examples:
 
 		sessionID := GetSessionID()
 		if sessionID == "" {
-			return fmt.Errorf("NRWF_SESSION_ID env var is required")
+			return fmt.Errorf("NRF_SESSION_ID env var is required")
 		}
 
 		c := GetClient()
@@ -280,12 +280,12 @@ var findingsDeleteCmd = &cobra.Command{
 	Long: `Delete one or more finding keys from the current agent session.
 
 Context is read from environment variables set by the spawner:
-  NRWF_SESSION_ID          — current agent session ID (required)
-  NRWF_WORKFLOW_INSTANCE_ID — workflow instance ID
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID
 
 Examples:
-  nrworkflow findings delete summary
-  nrworkflow findings delete temp_notes draft_output`,
+  nrflow findings delete summary
+  nrflow findings delete temp_notes draft_output`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -297,7 +297,7 @@ Examples:
 
 		sessionID := GetSessionID()
 		if sessionID == "" {
-			return fmt.Errorf("NRWF_SESSION_ID env var is required")
+			return fmt.Errorf("NRF_SESSION_ID env var is required")
 		}
 
 		c := GetClient()

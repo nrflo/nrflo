@@ -14,14 +14,14 @@ import (
 	"be/internal/socket"
 )
 
-// Client is a socket client for nrworkflow server (Unix or TCP)
+// Client is a socket client for nrflow server (Unix or TCP)
 type Client struct {
 	network   string
 	address   string
 	projectID string
 }
 
-// New creates a new client using auto-detected connection (TCP if NRWORKFLOW_AGENT_HOST set, else Unix)
+// New creates a new client using auto-detected connection (TCP if NRFLOW_AGENT_HOST set, else Unix)
 func New(projectID string) *Client {
 	network, address := socket.GetServerAddr()
 	return &Client{
@@ -52,7 +52,7 @@ func (c *Client) IsServerRunning() bool {
 
 // ServerNotRunningError returns the error message when server is not running
 func ServerNotRunningError() error {
-	return fmt.Errorf("nrworkflow server is not running. If you are a spawned agent: DO NOT start the server - call 'nrworkflow agent fail <ticket> <agent> --reason=\"server not running\"' and exit")
+	return fmt.Errorf("nrflow server is not running. If you are a spawned agent: DO NOT start the server - call 'nrflow agent fail <ticket> <agent> --reason=\"server not running\"' and exit")
 }
 
 // Execute sends a request and returns the response

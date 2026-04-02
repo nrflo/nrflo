@@ -20,26 +20,26 @@ import (
 
 const (
 	// DefaultSocketDir is the default directory for the socket file
-	DefaultSocketDir = "/tmp/nrworkflow"
+	DefaultSocketDir = "/tmp/nrflow"
 	// DefaultSocketName is the default socket file name
-	DefaultSocketName = "nrworkflow.sock"
+	DefaultSocketName = "nrflow.sock"
 	// DefaultTCPPort is the TCP port for Docker agent communication
 	DefaultTCPPort = 6588
 )
 
 // GetSocketPath returns the socket path from env or default
 func GetSocketPath() string {
-	if path := os.Getenv("NRWORKFLOW_SOCKET"); path != "" {
+	if path := os.Getenv("NRFLOW_SOCKET"); path != "" {
 		return path
 	}
 	return filepath.Join(DefaultSocketDir, DefaultSocketName)
 }
 
 // GetServerAddr returns the network and address for connecting to the server.
-// If NRWORKFLOW_AGENT_HOST is set (e.g. "host.docker.internal:6588"), returns ("tcp", host).
+// If NRFLOW_AGENT_HOST is set (e.g. "host.docker.internal:6588"), returns ("tcp", host).
 // Otherwise falls back to ("unix", socketPath).
 func GetServerAddr() (network, address string) {
-	if host := os.Getenv("NRWORKFLOW_AGENT_HOST"); host != "" {
+	if host := os.Getenv("NRFLOW_AGENT_HOST"); host != "" {
 		return "tcp", host
 	}
 	return "unix", GetSocketPath()

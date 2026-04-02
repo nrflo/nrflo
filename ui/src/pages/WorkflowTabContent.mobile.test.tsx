@@ -50,7 +50,7 @@ function getFlexContainer() {
   return phaseTimeline.parentElement!.parentElement!
 }
 
-describe('WorkflowTabContent - Mobile Layout (nrworkflow-395fca)', () => {
+describe('WorkflowTabContent - Mobile Layout (nrflow-395fca)', () => {
   describe('responsive flex direction', () => {
     it('container has flex-col for mobile stacking', () => {
       render(<WorkflowTabContent {...defaultProps} />)

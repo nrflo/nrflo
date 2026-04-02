@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rebuild and re-symlink the nrworkflow CLI binary
+# Rebuild and re-symlink the nrflow CLI binary
 # Use this after code changes to update the CLI without restarting the server
 
 set -e
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${YELLOW}Building nrworkflow CLI...${NC}"
+echo -e "${YELLOW}Building nrflow CLI...${NC}"
 
 cd "$SCRIPT_DIR/be"
 if make build-cli; then
@@ -22,11 +22,11 @@ else
     exit 1
 fi
 
-sudo ln -sf "$SCRIPT_DIR/be/nrworkflow" /usr/local/bin/nrworkflow
-echo -e "${GREEN}Symlinked to /usr/local/bin/nrworkflow${NC}"
+sudo ln -sf "$SCRIPT_DIR/be/nrflow" /usr/local/bin/nrflow
+echo -e "${GREEN}Symlinked to /usr/local/bin/nrflow${NC}"
 
 # Rebuild Docker image if it exists
-if docker image inspect nrworkflow-agent >/dev/null 2>&1; then
+if docker image inspect nrflow-agent >/dev/null 2>&1; then
     echo -e "${YELLOW}Rebuilding Docker image with updated CLI...${NC}"
     cd "$SCRIPT_DIR/be"
     make docker-build

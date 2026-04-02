@@ -7,7 +7,7 @@ build: build-cli build-server
 
 # Development build (CLI binary)
 build-cli:
-	$(GO) build -o nrworkflow ./cmd/nrworkflow
+	$(GO) build -o nrflow ./cmd/nrflow
 
 # Build UI and copy dist to embed directory
 build-ui:
@@ -17,36 +17,36 @@ build-ui:
 
 # Development build (server binary, includes UI build)
 build-server: build-ui
-	$(GO) build -o nrworkflow_server ./cmd/server
+	$(GO) build -o nrflow_server ./cmd/server
 
 # Fast Go-only rebuild (skips UI build, uses last-copied dist)
 build-server-only:
-	$(GO) build -o nrworkflow_server ./cmd/server
+	$(GO) build -o nrflow_server ./cmd/server
 
 # Release builds (both binaries)
 build-release: build-cli-release build-server-release
 
 # Release build for CLI (Apple Silicon, no CGO, stripped)
 build-cli-release:
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="-s -w" -o nrworkflow ./cmd/nrworkflow
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="-s -w" -o nrflow ./cmd/nrflow
 
 # Release build for server (Apple Silicon, no CGO, stripped)
 build-server-release: build-ui
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="-s -w" -o nrworkflow_server ./cmd/server
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -ldflags="-s -w" -o nrflow_server ./cmd/server
 
 # Cross-compile CLI for linux/arm64 (Docker image)
 build-cli-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build -ldflags="-s -w" -o ../docker/nrworkflow ./cmd/nrworkflow
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build -ldflags="-s -w" -o ../docker/nrflow ./cmd/nrflow
 
 # Build Docker image (cross-compiles CLI first)
 docker-build: build-cli-linux
-	docker build --platform linux/arm64 -t nrworkflow-agent ../docker/
-	rm -f ../docker/nrworkflow
+	docker build --platform linux/arm64 -t nrflow-agent ../docker/
+	rm -f ../docker/nrflow
 
 # Clean build artifacts
 clean:
-	rm -f nrworkflow nrworkflow_server
-	rm -f nrworkflow.data
+	rm -f nrflow nrflow_server
+	rm -f nrflow.data
 	rm -rf internal/static/dist
 	mkdir -p internal/static/dist && touch internal/static/dist/.gitkeep
 
@@ -68,8 +68,8 @@ test-verbose:
 
 # Install both to /usr/local/bin
 install: build-release
-	sudo cp nrworkflow /usr/local/bin/
-	sudo cp nrworkflow_server /usr/local/bin/
+	sudo cp nrflow /usr/local/bin/
+	sudo cp nrflow_server /usr/local/bin/
 
 # Tidy dependencies
 tidy:

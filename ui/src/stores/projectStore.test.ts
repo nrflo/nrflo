@@ -54,13 +54,13 @@ describe('projectStore', () => {
   })
 
   describe('setCurrentProject', () => {
-    it('writes project ID to nrwf_project cookie', async () => {
+    it('writes project ID to nrf_project cookie', async () => {
       const useProjectStore = await getStore()
       const { setCurrentProject } = useProjectStore.getState()
 
       setCurrentProject('my-project')
 
-      expect(getCookieValue('nrwf_project')).toBe('my-project')
+      expect(getCookieValue('nrf_project')).toBe('my-project')
     })
 
     it('updates currentProject in store state', async () => {
@@ -88,7 +88,7 @@ describe('projectStore', () => {
       setCurrentProject('first')
       setCurrentProject('second')
 
-      expect(getCookieValue('nrwf_project')).toBe('second')
+      expect(getCookieValue('nrf_project')).toBe('second')
       expect(useProjectStore.getState().currentProject).toBe('second')
     })
   })
@@ -113,7 +113,7 @@ describe('projectStore', () => {
       const useProjectStore = await getStore()
       await useProjectStore.getState().loadProjects()
 
-      expect(getCookieValue('nrwf_project')).toBe('proj-a')
+      expect(getCookieValue('nrf_project')).toBe('proj-a')
     })
 
     it('sets projectsLoaded to true', async () => {
@@ -130,7 +130,7 @@ describe('projectStore', () => {
 
   describe('loadProjects — valid cookie', () => {
     it('restores saved project when cookie matches a valid project ID', async () => {
-      document.cookie = 'nrwf_project=proj-b; path=/'
+      document.cookie = 'nrf_project=proj-b; path=/'
 
       vi.mocked(projectsApi.listProjects).mockResolvedValue({
         projects: [makeProject('proj-a'), makeProject('proj-b'), makeProject('proj-c')],
@@ -143,7 +143,7 @@ describe('projectStore', () => {
     })
 
     it('calls setProject with the cookie value when it is valid', async () => {
-      document.cookie = 'nrwf_project=proj-b; path=/'
+      document.cookie = 'nrf_project=proj-b; path=/'
 
       vi.mocked(projectsApi.listProjects).mockResolvedValue({
         projects: [makeProject('proj-a'), makeProject('proj-b')],
@@ -158,7 +158,7 @@ describe('projectStore', () => {
 
   describe('loadProjects — stale/invalid cookie', () => {
     it('falls back to first project when cookie references a deleted project', async () => {
-      document.cookie = 'nrwf_project=deleted-project; path=/'
+      document.cookie = 'nrf_project=deleted-project; path=/'
 
       vi.mocked(projectsApi.listProjects).mockResolvedValue({
         projects: [makeProject('proj-a'), makeProject('proj-b')],
@@ -171,7 +171,7 @@ describe('projectStore', () => {
     })
 
     it('overwrites cookie with first project when stale cookie is found', async () => {
-      document.cookie = 'nrwf_project=deleted-project; path=/'
+      document.cookie = 'nrf_project=deleted-project; path=/'
 
       vi.mocked(projectsApi.listProjects).mockResolvedValue({
         projects: [makeProject('proj-a')],
@@ -180,7 +180,7 @@ describe('projectStore', () => {
       const useProjectStore = await getStore()
       await useProjectStore.getState().loadProjects()
 
-      expect(getCookieValue('nrwf_project')).toBe('proj-a')
+      expect(getCookieValue('nrf_project')).toBe('proj-a')
     })
   })
 

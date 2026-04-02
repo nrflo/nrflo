@@ -141,8 +141,8 @@ func TestDockerCLIAdapter_ContainerName_Short(t *testing.T) {
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "short"})
 	args := strings.Join(cmd.Args, " ")
 
-	if !strings.Contains(args, "--name nrwf-short") {
-		t.Errorf("args missing container name 'nrwf-short': %s", args)
+	if !strings.Contains(args, "--name nrf-short") {
+		t.Errorf("args missing container name 'nrf-short': %s", args)
 	}
 }
 
@@ -152,13 +152,13 @@ func TestDockerCLIAdapter_ContainerName_TruncateTo12(t *testing.T) {
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: sessionID})
 	args := strings.Join(cmd.Args, " ")
 
-	expected := "--name nrwf-abcdefghijkl" // first 12 chars
+	expected := "--name nrf-abcdefghijkl" // first 12 chars
 	if !strings.Contains(args, expected) {
 		t.Errorf("args missing truncated container name %q: %s", expected, args)
 	}
 
 	// Ensure full session ID is NOT in name
-	if strings.Contains(args, "--name nrwf-"+sessionID) {
+	if strings.Contains(args, "--name nrf-"+sessionID) {
 		t.Errorf("container name should be truncated to 12 chars but got full ID: %s", args)
 	}
 }
@@ -169,7 +169,7 @@ func TestDockerCLIAdapter_ContainerName_ExactlyTwelve(t *testing.T) {
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: sessionID})
 	args := strings.Join(cmd.Args, " ")
 
-	if !strings.Contains(args, "--name nrwf-123456789012") {
+	if !strings.Contains(args, "--name nrf-123456789012") {
 		t.Errorf("args missing container name: %s", args)
 	}
 }
@@ -184,7 +184,7 @@ func TestDockerCLIAdapter_BuildResumeCommand_ContainerNameSuffix(t *testing.T) {
 	}
 	args := strings.Join(cmd.Args, " ")
 
-	if !strings.Contains(args, "--name nrwf-sess1-rsm") {
+	if !strings.Contains(args, "--name nrf-sess1-rsm") {
 		t.Errorf("resume container name should end in -rsm: %s", args)
 	}
 }
@@ -198,7 +198,7 @@ func TestDockerCLIAdapter_BuildResumeCommand_TruncatesSessionID(t *testing.T) {
 	}
 	args := strings.Join(cmd.Args, " ")
 
-	expected := "--name nrwf-abcdefghijkl-rsm"
+	expected := "--name nrf-abcdefghijkl-rsm"
 	if !strings.Contains(args, expected) {
 		t.Errorf("args missing truncated resume container name %q: %s", expected, args)
 	}
@@ -237,9 +237,9 @@ func TestDockerCLIAdapter_BuildCommand_HostUIDGID(t *testing.T) {
 
 func TestDockerCLIAdapter_BuildCommand_ForwardsEnvVars(t *testing.T) {
 	envVars := []string{
-		"NRWORKFLOW_PROJECT=myproj",
-		"NRWF_SPAWNED=1",
-		"NRWF_CONTEXT_THRESHOLD=25",
+		"NRFLOW_PROJECT=myproj",
+		"NRF_SPAWNED=1",
+		"NRF_CONTEXT_THRESHOLD=25",
 	}
 	adapter := NewDockerCLIAdapter(defaultMock(), defaultConfig())
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s", Env: envVars})
@@ -309,7 +309,7 @@ func TestDockerCLIAdapter_VolumeMounts_SharedTmp(t *testing.T) {
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
 	args := strings.Join(cmd.Args, " ")
 
-	assertMount(t, args, "/tmp/nrworkflow:/tmp/nrworkflow")
+	assertMount(t, args, "/tmp/nrflow:/tmp/nrflow")
 }
 
 func TestDockerCLIAdapter_VolumeMounts_DirectProjectMount(t *testing.T) {
@@ -329,7 +329,7 @@ func TestDockerCLIAdapter_VolumeMounts_DirectProjectMount(t *testing.T) {
 func TestDockerCLIAdapter_VolumeMounts_WorktreeMount(t *testing.T) {
 	cfg := DockerConfig{
 		ProjectRoot:  "/projects/app",
-		WorktreePath: "/tmp/nrworkflow/worktrees/ticket-123",
+		WorktreePath: "/tmp/nrflow/worktrees/ticket-123",
 		HomeDir:      "/home/user",
 	}
 	adapter := NewDockerCLIAdapter(defaultMock(), cfg)
@@ -337,7 +337,7 @@ func TestDockerCLIAdapter_VolumeMounts_WorktreeMount(t *testing.T) {
 	args := strings.Join(cmd.Args, " ")
 
 	// With worktree: worktree is mounted AT the original project root path
-	assertMount(t, args, "/tmp/nrworkflow/worktrees/ticket-123:/projects/app")
+	assertMount(t, args, "/tmp/nrflow/worktrees/ticket-123:/projects/app")
 
 	// Ensure the direct project mount is NOT used
 	if strings.Contains(args, "-v /projects/app:/projects/app") {
@@ -364,14 +364,14 @@ func TestDockerCLIAdapter_WorkingDir_WithoutWorktree(t *testing.T) {
 func TestDockerCLIAdapter_WorkingDir_WithWorktree(t *testing.T) {
 	cfg := DockerConfig{
 		ProjectRoot:  "/projects/app",
-		WorktreePath: "/tmp/nrworkflow/worktrees/ticket-123",
+		WorktreePath: "/tmp/nrflow/worktrees/ticket-123",
 		HomeDir:      "/home/user",
 	}
 	adapter := NewDockerCLIAdapter(defaultMock(), cfg)
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
 
-	if cmd.Dir != "/tmp/nrworkflow/worktrees/ticket-123" {
-		t.Errorf("cmd.Dir = %q, want /tmp/nrworkflow/worktrees/ticket-123", cmd.Dir)
+	if cmd.Dir != "/tmp/nrflow/worktrees/ticket-123" {
+		t.Errorf("cmd.Dir = %q, want /tmp/nrflow/worktrees/ticket-123", cmd.Dir)
 	}
 }
 
@@ -398,8 +398,8 @@ func TestDockerCLIAdapter_ImageName(t *testing.T) {
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
 	args := strings.Join(cmd.Args, " ")
 
-	if !strings.Contains(args, "nrworkflow-agent") {
-		t.Errorf("args missing image name 'nrworkflow-agent': %s", args)
+	if !strings.Contains(args, "nrflow-agent") {
+		t.Errorf("args missing image name 'nrflow-agent': %s", args)
 	}
 }
 
@@ -409,16 +409,16 @@ func TestDockerCLIAdapter_InnerCommandAppenedAfterImage(t *testing.T) {
 	adapter := NewDockerCLIAdapter(defaultMock(), defaultConfig())
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
 
-	// Locate "nrworkflow-agent" in args, then confirm inner binary follows
+	// Locate "nrflow-agent" in args, then confirm inner binary follows
 	imageIdx := -1
 	for i, a := range cmd.Args {
-		if a == "nrworkflow-agent" {
+		if a == "nrflow-agent" {
 			imageIdx = i
 			break
 		}
 	}
 	if imageIdx < 0 {
-		t.Fatalf("'nrworkflow-agent' not found in args: %v", cmd.Args)
+		t.Fatalf("'nrflow-agent' not found in args: %v", cmd.Args)
 	}
 	if imageIdx+1 >= len(cmd.Args) {
 		t.Fatalf("no args after image name; expected inner command")
@@ -441,13 +441,13 @@ func TestDockerCLIAdapter_BuildResumeCommand_PropagatesInnerArgs(t *testing.T) {
 	// Inner command has args: [/usr/local/bin/claude, rsm-arg1]
 	imageIdx := -1
 	for i, a := range cmd.Args {
-		if a == "nrworkflow-agent" {
+		if a == "nrflow-agent" {
 			imageIdx = i
 			break
 		}
 	}
 	if imageIdx < 0 {
-		t.Fatalf("'nrworkflow-agent' not found in args: %v", cmd.Args)
+		t.Fatalf("'nrflow-agent' not found in args: %v", cmd.Args)
 	}
 	if imageIdx+1 >= len(cmd.Args) {
 		t.Fatalf("no args after image name in resume command")
@@ -466,13 +466,13 @@ func TestDockerCLIAdapter_ContainerNameTable(t *testing.T) {
 		isResume  bool
 		want      string
 	}{
-		{"short id, spawn", "abc", false, "nrwf-abc"},
-		{"short id, resume", "abc", true, "nrwf-abc-rsm"},
-		{"exactly 12, spawn", "123456789012", false, "nrwf-123456789012"},
-		{"exactly 12, resume", "123456789012", true, "nrwf-123456789012-rsm"},
-		{"long id truncated, spawn", "abcdefghijklmnop", false, "nrwf-abcdefghijkl"},
-		{"long id truncated, resume", "abcdefghijklmnop", true, "nrwf-abcdefghijkl-rsm"},
-		{"empty id", "", false, "nrwf-"},
+		{"short id, spawn", "abc", false, "nrf-abc"},
+		{"short id, resume", "abc", true, "nrf-abc-rsm"},
+		{"exactly 12, spawn", "123456789012", false, "nrf-123456789012"},
+		{"exactly 12, resume", "123456789012", true, "nrf-123456789012-rsm"},
+		{"long id truncated, spawn", "abcdefghijklmnop", false, "nrf-abcdefghijkl"},
+		{"long id truncated, resume", "abcdefghijklmnop", true, "nrf-abcdefghijkl-rsm"},
+		{"empty id", "", false, "nrf-"},
 	}
 
 	adapter := NewDockerCLIAdapter(defaultMock(), defaultConfig())
@@ -528,8 +528,8 @@ func TestDockerCLIAdapter_SetsAgentHostEnv(t *testing.T) {
 	cmd := adapter.BuildCommand(SpawnOptions{SessionID: "s"})
 	args := strings.Join(cmd.Args, " ")
 
-	if !strings.Contains(args, "-e NRWORKFLOW_AGENT_HOST=host.docker.internal:6588") {
-		t.Errorf("args missing NRWORKFLOW_AGENT_HOST: %s", args)
+	if !strings.Contains(args, "-e NRFLOW_AGENT_HOST=host.docker.internal:6588") {
+		t.Errorf("args missing NRFLOW_AGENT_HOST: %s", args)
 	}
 }
 

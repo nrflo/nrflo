@@ -186,14 +186,14 @@ describe('EditTicketPage', () => {
   it('properly decodes URL-encoded ticket IDs', async () => {
     const encodedTicket: TicketWithDeps = {
       ...sampleTicket,
-      id: 'nrworkflow-05a95b',
+      id: 'nrflow-05a95b',
     }
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(encodedTicket)
 
-    renderPage('nrworkflow-05a95b')
+    renderPage('nrflow-05a95b')
 
     await waitFor(() => {
-      expect(ticketsApi.getTicket).toHaveBeenCalledWith('nrworkflow-05a95b')
+      expect(ticketsApi.getTicket).toHaveBeenCalledWith('nrflow-05a95b')
     })
   })
 

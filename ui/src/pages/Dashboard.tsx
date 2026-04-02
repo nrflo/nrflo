@@ -65,7 +65,7 @@ export function Dashboard() {
         <h2 className="text-lg font-semibold">Failed to load dashboard</h2>
         <p className="text-muted-foreground mt-2">{error.message}</p>
         <p className="text-sm text-muted-foreground mt-4">
-          Make sure the nrworkflow server is running: <code>nrworkflow_server serve</code>
+          Make sure the nrflow server is running: <code>nrflow_server serve</code>
         </p>
       </div>
     )

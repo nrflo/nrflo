@@ -215,9 +215,9 @@ func TestBuildPtyEnv_ContainsRequiredKeys(t *testing.T) {
 
 	requiredKeys := []string{
 		"TERM",
-		"NRWORKFLOW_PROJECT",
-		"NRWF_WORKFLOW_INSTANCE_ID",
-		"NRWF_SESSION_ID",
+		"NRFLOW_PROJECT",
+		"NRF_WORKFLOW_INSTANCE_ID",
+		"NRF_SESSION_ID",
 	}
 	for _, key := range requiredKeys {
 		if _, ok := envMap[key]; !ok {
@@ -228,14 +228,14 @@ func TestBuildPtyEnv_ContainsRequiredKeys(t *testing.T) {
 	if envMap["TERM"] != "xterm-256color" {
 		t.Errorf("TERM = %q, want xterm-256color", envMap["TERM"])
 	}
-	if envMap["NRWORKFLOW_PROJECT"] != "my-project" {
-		t.Errorf("NRWORKFLOW_PROJECT = %q, want my-project", envMap["NRWORKFLOW_PROJECT"])
+	if envMap["NRFLOW_PROJECT"] != "my-project" {
+		t.Errorf("NRFLOW_PROJECT = %q, want my-project", envMap["NRFLOW_PROJECT"])
 	}
-	if envMap["NRWF_WORKFLOW_INSTANCE_ID"] != "wfi-env-1" {
-		t.Errorf("NRWF_WORKFLOW_INSTANCE_ID = %q, want wfi-env-1", envMap["NRWF_WORKFLOW_INSTANCE_ID"])
+	if envMap["NRF_WORKFLOW_INSTANCE_ID"] != "wfi-env-1" {
+		t.Errorf("NRF_WORKFLOW_INSTANCE_ID = %q, want wfi-env-1", envMap["NRF_WORKFLOW_INSTANCE_ID"])
 	}
-	if envMap["NRWF_SESSION_ID"] != "env-sess-1" {
-		t.Errorf("NRWF_SESSION_ID = %q, want env-sess-1", envMap["NRWF_SESSION_ID"])
+	if envMap["NRF_SESSION_ID"] != "env-sess-1" {
+		t.Errorf("NRF_SESSION_ID = %q, want env-sess-1", envMap["NRF_SESSION_ID"])
 	}
 }
 

@@ -48,9 +48,9 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	dbPath := filepath.Join(dbDir, "test.db")
 
 	// 2. Short socket path (macOS 104-char limit)
-	socketPath := fmt.Sprintf("/tmp/nrwf-it-%d-%d.sock", os.Getpid(), time.Now().UnixNano()%100000)
+	socketPath := fmt.Sprintf("/tmp/nrf-it-%d-%d.sock", os.Getpid(), time.Now().UnixNano()%100000)
 	t.Cleanup(func() { os.Remove(socketPath) })
-	t.Setenv("NRWORKFLOW_SOCKET", socketPath)
+	t.Setenv("NRFLOW_SOCKET", socketPath)
 
 	// 3. DB pool — copy pre-migrated template instead of running migrations each time
 	if err := copyTemplateDB(dbPath); err != nil {

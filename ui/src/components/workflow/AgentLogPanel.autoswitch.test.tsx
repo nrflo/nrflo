@@ -66,7 +66,7 @@ function renderWithPanel(
   )
 }
 
-describe('AgentLogPanel auto-switch (nrworkflow-6c78e8)', () => {
+describe('AgentLogPanel auto-switch (nrflow-6c78e8)', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('switches to next running agent when selected agent completes and runners remain', () => {

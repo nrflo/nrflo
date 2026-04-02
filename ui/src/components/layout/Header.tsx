@@ -42,7 +42,7 @@ export function Header() {
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
             {currentProjectObj?.name?.[0]?.toUpperCase() ?? 'N'}
           </div>
-          <span className="hidden sm:inline-block">{currentProjectObj?.name ?? 'nrworkflow'}</span>
+          <span className="hidden sm:inline-block">{currentProjectObj?.name ?? 'nrflow'}</span>
         </Link>
 
         <nav className="flex items-center gap-1 ml-4">

@@ -1,12 +1,12 @@
 #!/bin/bash
-# Restart nrworkflow server (single-process, serves API + embedded UI)
+# Restart nrflow server (single-process, serves API + embedded UI)
 # Kills existing process, rebuilds, and starts as background task
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PORT=${NRWORKFLOW_PORT:-6587}
-LOG_DIR="/tmp/nrworkflow/logs"
+PORT=${NRFLOW_PORT:-6587}
+LOG_DIR="/tmp/nrflow/logs"
 BE_LOG="$LOG_DIR/be.log"
 
 # Colors
@@ -17,7 +17,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
-echo -e "${BLUE}    nrworkflow Server Restart Script    ${NC}"
+echo -e "${BLUE}    nrflow Server Restart Script    ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
 echo ""
 
@@ -53,8 +53,8 @@ else
     exit 1
 fi
 
-sudo ln -sf "$SCRIPT_DIR/be/nrworkflow" /usr/local/bin/nrworkflow
-echo -e "${GREEN}  CLI symlinked to /usr/local/bin/nrworkflow${NC}"
+sudo ln -sf "$SCRIPT_DIR/be/nrflow" /usr/local/bin/nrflow
+echo -e "${GREEN}  CLI symlinked to /usr/local/bin/nrflow${NC}"
 echo ""
 
 # ─────────────────────────────────────────
@@ -64,7 +64,7 @@ echo -e "${YELLOW}[3/3] Starting server...${NC}"
 
 cd "$SCRIPT_DIR"
 echo "  Starting server on port $PORT..."
-nohup "$SCRIPT_DIR/be/nrworkflow_server" serve --port=$PORT > "$BE_LOG" 2>&1 &
+nohup "$SCRIPT_DIR/be/nrflow_server" serve --port=$PORT > "$BE_LOG" 2>&1 &
 BE_PID=$!
 echo "  Server PID: $BE_PID"
 

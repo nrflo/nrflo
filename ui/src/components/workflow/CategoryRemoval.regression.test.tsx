@@ -1,5 +1,5 @@
 /**
- * Regression tests for category/skip_for removal (ticket nrworkflow-b129f1)
+ * Regression tests for category/skip_for removal (ticket nrflow-b129f1)
  *
  * These tests ensure that categories and skip_for fields are not present in:
  * - Type definitions

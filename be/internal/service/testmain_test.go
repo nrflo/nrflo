@@ -14,7 +14,7 @@ import (
 var svcTemplateDBPath string
 
 func TestMain(m *testing.M) {
-	tmpDir, err := os.MkdirTemp("", "nrwf-svc-template-*")
+	tmpDir, err := os.MkdirTemp("", "nrf-svc-template-*")
 	if err != nil {
 		panic("failed to create template dir: " + err.Error())
 	}

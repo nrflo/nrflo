@@ -101,15 +101,15 @@ describe('Header - Brand label', () => {
     expect(brandLink).toHaveTextContent('Test Project')
   })
 
-  it('falls back to N icon and nrworkflow text when no project is selected', () => {
+  it('falls back to N icon and nrflow text when no project is selected', () => {
     mockCurrentProject = ''
 
     renderHeader()
 
-    const brandLink = screen.getByRole('link', { name: /nrworkflow/i })
+    const brandLink = screen.getByRole('link', { name: /nrflow/i })
     expect(brandLink).toBeInTheDocument()
     expect(brandLink).toHaveTextContent('N')
-    expect(brandLink).toHaveTextContent('nrworkflow')
+    expect(brandLink).toHaveTextContent('nrflow')
   })
 
   it('updates brand label when a different project is selected', () => {

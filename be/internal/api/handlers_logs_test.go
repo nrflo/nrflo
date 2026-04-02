@@ -11,11 +11,11 @@ import (
 )
 
 // logsTestDir is the hardcoded path used by handleGetLogs.
-const logsTestDir = "/tmp/nrworkflow/logs"
+const logsTestDir = "/tmp/nrflow/logs"
 
 // setupLogFile writes content to the log file and registers cleanup to restore
 // the original state. The hardcoded logsDir constant in the handler forces
-// tests to write directly to /tmp/nrworkflow/logs/.
+// tests to write directly to /tmp/nrflow/logs/.
 func setupLogFile(t *testing.T, logType string, content string) {
 	t.Helper()
 	if err := os.MkdirAll(logsTestDir, 0755); err != nil {

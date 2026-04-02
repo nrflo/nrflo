@@ -51,7 +51,7 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
   }
 }
 
-describe('AgentLogPanel - Width (nrworkflow-1d2d98)', () => {
+describe('AgentLogPanel - Width (nrflow-1d2d98)', () => {
   describe('expanded panel width (detail mode)', () => {
     it('uses flex-1 min-w-[280px] for expanded detail mode', () => {
       const selectedAgent = {

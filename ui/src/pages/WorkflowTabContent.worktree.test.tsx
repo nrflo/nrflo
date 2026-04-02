@@ -48,7 +48,7 @@ const defaultProps = {
 describe('WorkflowTabContent — worktree display', () => {
   it('does not render worktree path line when worktree_path is absent', () => {
     render(<WorkflowTabContent {...defaultProps} displayedState={makeState()} />)
-    expect(screen.queryByText(/\/tmp\/nrworkflow\/worktrees/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\/tmp\/nrflow\/worktrees/)).not.toBeInTheDocument()
   })
 
   it('does not render worktree path line when worktree_path is empty string', () => {
@@ -59,7 +59,7 @@ describe('WorkflowTabContent — worktree display', () => {
   })
 
   it('renders worktree path text when worktree_path is present', () => {
-    const path = '/tmp/nrworkflow/worktrees/T-1'
+    const path = '/tmp/nrflow/worktrees/T-1'
     render(
       <WorkflowTabContent
         {...defaultProps}
@@ -70,7 +70,7 @@ describe('WorkflowTabContent — worktree display', () => {
   })
 
   it('sets title attribute on path span for overflow hint', () => {
-    const path = '/tmp/nrworkflow/worktrees/some-very-long-branch-name'
+    const path = '/tmp/nrflow/worktrees/some-very-long-branch-name'
     render(
       <WorkflowTabContent
         {...defaultProps}
@@ -84,7 +84,7 @@ describe('WorkflowTabContent — worktree display', () => {
 
   it('shows branch name in tooltip on hover when branch_name is present', async () => {
     const user = userEvent.setup()
-    const path = '/tmp/nrworkflow/worktrees/T-1'
+    const path = '/tmp/nrflow/worktrees/T-1'
     const branch = 'T-1'
     render(
       <WorkflowTabContent
@@ -100,7 +100,7 @@ describe('WorkflowTabContent — worktree display', () => {
 
   it('does not show branch tooltip text when branch_name is absent', async () => {
     const user = userEvent.setup()
-    const path = '/tmp/nrworkflow/worktrees/T-1'
+    const path = '/tmp/nrflow/worktrees/T-1'
     render(
       <WorkflowTabContent
         {...defaultProps}
@@ -114,7 +114,7 @@ describe('WorkflowTabContent — worktree display', () => {
   })
 
   it('still renders worktree path for completed workflows', () => {
-    const path = '/tmp/nrworkflow/worktrees/T-99'
+    const path = '/tmp/nrflow/worktrees/T-99'
     render(
       <WorkflowTabContent
         {...defaultProps}

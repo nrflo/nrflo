@@ -23,19 +23,19 @@ func NewFindingsService(pool *db.Pool, clk clock.Clock) *FindingsService {
 }
 
 // resolveWorkflowInstance returns the workflow instance ID.
-// Requires instanceID from NRWF_WORKFLOW_INSTANCE_ID env var (set by spawner).
+// Requires instanceID from NRF_WORKFLOW_INSTANCE_ID env var (set by spawner).
 func (s *FindingsService) resolveWorkflowInstance(instanceID string) (string, error) {
 	if instanceID == "" {
-		return "", fmt.Errorf("instance_id is required (NRWF_WORKFLOW_INSTANCE_ID env var)")
+		return "", fmt.Errorf("instance_id is required (NRF_WORKFLOW_INSTANCE_ID env var)")
 	}
 	return instanceID, nil
 }
 
 // loadSession loads broadcast context and current findings for a session in one query.
-// Used by write operations — requires session_id (NRWF_SESSION_ID env var).
+// Used by write operations — requires session_id (NRF_SESSION_ID env var).
 func (s *FindingsService) loadSession(sessionID string) (BroadcastCtx, sql.NullString, error) {
 	if sessionID == "" {
-		return BroadcastCtx{}, sql.NullString{}, fmt.Errorf("session_id is required (NRWF_SESSION_ID env var)")
+		return BroadcastCtx{}, sql.NullString{}, fmt.Errorf("session_id is required (NRF_SESSION_ID env var)")
 	}
 	var bctx BroadcastCtx
 	var findings sql.NullString

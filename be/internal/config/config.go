@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	DefaultConfigDir  = ".nrworkflow"
+	DefaultConfigDir  = ".nrflow"
 	DefaultConfigFile = "config.json"
 	DefaultPort       = 6587
 )
 
-// Config represents the global nrworkflow configuration
+// Config represents the global nrflow configuration
 type Config struct {
 	Server ServerConfig `json:"server"`
 }

@@ -39,7 +39,7 @@ func TestMigration039_SeedsConflictResolver(t *testing.T) {
 		"${BRANCH_NAME}",
 		"${DEFAULT_BRANCH}",
 		"${MERGE_ERROR}",
-		"nrworkflow agent fail",
+		"nrflow agent fail",
 		"git merge",
 	} {
 		if !strings.Contains(prompt, want) {

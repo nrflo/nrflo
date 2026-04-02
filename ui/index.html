@@ -7,7 +7,7 @@
     <title>ui</title>
     <script>
       (function() {
-        var t = localStorage.getItem('nrwf_theme');
+        var t = localStorage.getItem('nrf_theme');
         var d = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (d) document.documentElement.classList.add('dark');
       })();

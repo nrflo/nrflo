@@ -36,7 +36,7 @@ vi.mock('@/hooks/useChains', () => ({
   useChainList: () => ({ data: [] }),
 }))
 
-// AgentLogPanel no longer accepts onRestart/restartingSessionId (ticket nrworkflow-9ada6f).
+// AgentLogPanel no longer accepts onRestart/restartingSessionId (ticket nrflow-9ada6f).
 // Restart for running agents is handled by ActiveAgentsPanel.
 vi.mock('@/components/workflow/AgentLogPanel', () => ({
   AgentLogPanel: ({

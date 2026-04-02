@@ -1,18 +1,18 @@
-# Claude Code Instructions for nrworkflow Backend
+# Claude Code Instructions for nrflow Backend
 
-Go backend for nrworkflow. Two binaries: `nrworkflow_server` (server) and `nrworkflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket (and optional TCP socket for Docker agents) for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
+Go backend for nrflow. Two binaries: `nrflow_server` (server) and `nrflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket (and optional TCP socket for Docker agents) for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
 
 ## Project Structure
 
 ```
 be/
-├── cmd/nrworkflow/main.go       # CLI binary entry point (agent, findings, tickets, deps)
+├── cmd/nrflow/main.go       # CLI binary entry point (agent, findings, tickets, deps)
 ├── cmd/server/main.go           # Server binary entry point (serve)
 ├── internal/
 │   ├── cli/                     # Cobra commands
 │   │   ├── root.go              # Root command, global flags, project discovery
 │   │   ├── serve.go             # HTTP API server (auto-migrates DB)
-│   │   ├── agent.go             # agent fail/continue/callback (context from NRWF_SESSION_ID + NRWF_WORKFLOW_INSTANCE_ID env vars)
+│   │   ├── agent.go             # agent fail/continue/callback (context from NRF_SESSION_ID + NRF_WORKFLOW_INSTANCE_ID env vars)
 │   │   ├── findings.go          # findings add/append/get/delete (own-session writes; cross-agent reads via agent-type arg)
 │   │   ├── findings_project.go  # project-level findings (project-add/get/append/delete)
 │   │   ├── skip.go              # skip <tag> command (adds skip tag to running workflow instance)
@@ -174,9 +174,9 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 ## Building from Source
 
 ```bash
-cd ~/projects/2026/nrworkflow/be
+cd ~/projects/2026/nrflow/be
 make build                # Build both binaries (CLI + server, includes UI)
-make build-cli            # Build CLI binary (nrworkflow)
+make build-cli            # Build CLI binary (nrflow)
 make build-server         # Build server binary with embedded UI
 make build-server-only    # Go-only rebuild (skip UI build, use last-copied dist)
 make build-ui             # Build UI and copy dist to embed directory
@@ -191,9 +191,9 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 ## Server Architecture
 
-`nrworkflow_server serve` provides:
+`nrflow_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
-- **Unix socket** at `/tmp/nrworkflow/nrworkflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
+- **Unix socket** at `/tmp/nrflow/nrflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **TCP socket** on `127.0.0.1:6588` — for Docker agents via `host.docker.internal:6588`, always started
 - **Auto-migration** — database schema is automatically migrated on startup
 

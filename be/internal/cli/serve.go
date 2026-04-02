@@ -25,8 +25,8 @@ var (
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start the nrworkflow server",
-	Long: `Start the nrworkflow server for the ticket management system.
+	Short: "Start the nrflow server",
+	Long: `Start the nrflow server for the ticket management system.
 
 The server provides:
   - HTTP API on port 6587 (for web UI and REST clients)
@@ -35,8 +35,8 @@ The server provides:
 Database migrations are applied automatically on startup.
 
 Example usage:
-  nrworkflow_server serve              # Start on default port (6587)
-  nrworkflow_server serve --port=8080  # Start HTTP on custom port`,
+  nrflow_server serve              # Start on default port (6587)
+  nrflow_server serve --port=8080  # Start HTTP on custom port`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load configuration
 		cfg, err := config.Load()
@@ -45,7 +45,7 @@ Example usage:
 		}
 
 		// Initialize logger
-		if err := logger.Init("/tmp/nrworkflow/logs/be.log"); err != nil {
+		if err := logger.Init("/tmp/nrflow/logs/be.log"); err != nil {
 			return fmt.Errorf("failed to init logger: %w", err)
 		}
 
@@ -101,7 +101,7 @@ Example usage:
 		}()
 
 		ctx := context.Background()
-		logger.Info(ctx, "nrworkflow server started", "port", cfg.Server.Port, "db", pool.Path)
+		logger.Info(ctx, "nrflow server started", "port", cfg.Server.Port, "db", pool.Path)
 
 		// Wait for shutdown signal or server error
 		select {

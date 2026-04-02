@@ -67,7 +67,7 @@ describe('layout', () => {
     })
   })
 
-  describe('card width integration (ticket nrworkflow-eacb3a)', () => {
+  describe('card width integration (ticket nrflow-eacb3a)', () => {
     it('positions single agent at a defined position', async () => {
       const nodes = [makeNode('agent1', 0)]
       const edges: Edge[] = []

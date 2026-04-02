@@ -214,11 +214,11 @@ func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) 
 }
 
 // buildSavePrompt constructs the prompt sent to a resumed agent to save its progress.
-// The CLI reads NRWF_SESSION_ID and NRWF_WORKFLOW_INSTANCE_ID from env vars (inherited from the original process).
+// The CLI reads NRF_SESSION_ID and NRF_WORKFLOW_INSTANCE_ID from env vars (inherited from the original process).
 func buildSavePrompt() string {
 	return "URGENT: Save a summary of ALL your current work progress immediately. " +
 		"Run these two commands in order:\n\n" +
-		"1. nrworkflow findings add to_resume \"<detailed summary of all progress, findings, files changed, and remaining work>\"\n" +
-		"2. nrworkflow agent continue\n\n" +
+		"1. nrflow findings add to_resume \"<detailed summary of all progress, findings, files changed, and remaining work>\"\n" +
+		"2. nrflow agent continue\n\n" +
 		"The session and workflow context are provided via environment variables. Do NOT add any extra flags."
 }

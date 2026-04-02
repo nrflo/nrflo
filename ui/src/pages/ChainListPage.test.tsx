@@ -497,3 +497,47 @@ describe('ChainListPage - Navigation Links', () => {
     expect(row).toHaveAttribute('data-testid', 'chain-row')
   })
 })
+
+describe('ChainListPage - Duration Column', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('shows em-dash when chain has no started_at', () => {
+    const chain = createMockChain({ status: 'pending' }) // no started_at
+    mockUseChainList.mockReturnValue({ data: [chain], isLoading: false, error: null })
+
+    renderChainListPage()
+
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('shows formatted duration for completed chain with both timestamps', () => {
+    const chain = createMockChain({
+      status: 'completed',
+      started_at: '2026-01-01T00:00:00Z',
+      completed_at: '2026-01-01T01:30:00Z',
+    })
+    mockUseChainList.mockReturnValue({ data: [chain], isLoading: false, error: null })
+
+    renderChainListPage()
+
+    expect(screen.getByText('1h 30m')).toBeInTheDocument()
+  })
+
+  it('shows elapsed time for running chain when only started_at is set', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:05:00Z'))
+
+    const chain = createMockChain({
+      status: 'running',
+      started_at: '2026-01-01T00:00:00Z',
+    })
+    mockUseChainList.mockReturnValue({ data: [chain], isLoading: false, error: null })
+
+    renderChainListPage()
+
+    expect(screen.getByText('5m')).toBeInTheDocument()
+  })
+})

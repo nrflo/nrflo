@@ -22,25 +22,33 @@ func NewChainRepo(pool *db.Pool, clk clock.Clock) *ChainRepo {
 	return &ChainRepo{pool: pool, clock: clk}
 }
 
-const chainCols = `id, project_id, name, status, workflow_name, epic_ticket_id, created_by, created_at, updated_at`
+const chainCols = `id, project_id, name, status, workflow_name, epic_ticket_id, created_by, created_at, updated_at, started_at, completed_at`
 
 func scanChain(scanner interface{ Scan(...interface{}) error }) (*model.ChainExecution, error) {
 	c := &model.ChainExecution{}
 	var createdAt, updatedAt string
-	var epicTicketID sql.NullString
+	var epicTicketID, startedAtStr, completedAtStr sql.NullString
 	err := scanner.Scan(
 		&c.ID, &c.ProjectID, &c.Name, &c.Status,
 		&c.WorkflowName, &epicTicketID, &c.CreatedBy,
-		&createdAt, &updatedAt,
+		&createdAt, &updatedAt, &startedAtStr, &completedAtStr,
 	)
-	if epicTicketID.Valid {
-		c.EpicTicketID = epicTicketID.String
-	}
 	if err != nil {
 		return nil, err
 	}
+	if epicTicketID.Valid {
+		c.EpicTicketID = epicTicketID.String
+	}
 	c.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	c.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+	if startedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339Nano, startedAtStr.String)
+		c.StartedAt = &t
+	}
+	if completedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339Nano, completedAtStr.String)
+		c.CompletedAt = &t
+	}
 	return c, nil
 }
 
@@ -56,10 +64,10 @@ func (r *ChainRepo) Create(c *model.ChainExecution) error {
 	}
 	_, err := r.pool.Exec(`
 		INSERT INTO chain_executions (`+chainCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.ID, strings.ToLower(c.ProjectID), c.Name, c.Status,
 		c.WorkflowName, epicTicketID, c.CreatedBy,
-		now, now,
+		now, now, nil, nil,
 	)
 	return err
 }
@@ -81,21 +89,29 @@ const chainListCols = chainCols + `,
 func scanChainWithCounts(scanner interface{ Scan(...interface{}) error }) (*model.ChainExecution, error) {
 	c := &model.ChainExecution{}
 	var createdAt, updatedAt string
-	var epicTicketID sql.NullString
+	var epicTicketID, startedAtStr, completedAtStr sql.NullString
 	err := scanner.Scan(
 		&c.ID, &c.ProjectID, &c.Name, &c.Status,
 		&c.WorkflowName, &epicTicketID, &c.CreatedBy,
-		&createdAt, &updatedAt,
+		&createdAt, &updatedAt, &startedAtStr, &completedAtStr,
 		&c.TotalItems, &c.CompletedItems,
 	)
-	if epicTicketID.Valid {
-		c.EpicTicketID = epicTicketID.String
-	}
 	if err != nil {
 		return nil, err
 	}
+	if epicTicketID.Valid {
+		c.EpicTicketID = epicTicketID.String
+	}
 	c.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	c.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+	if startedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339Nano, startedAtStr.String)
+		c.StartedAt = &t
+	}
+	if completedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339Nano, completedAtStr.String)
+		c.CompletedAt = &t
+	}
 	return c, nil
 }
 
@@ -138,9 +154,23 @@ func (r *ChainRepo) List(projectID, status, epicTicketID string) ([]*model.Chain
 // UpdateStatus updates the chain execution status
 func (r *ChainRepo) UpdateStatus(id string, status model.ChainStatus) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	result, err := r.pool.Exec(
-		`UPDATE chain_executions SET status = ?, updated_at = ? WHERE id = ?`,
-		status, now, id)
+	var result sql.Result
+	var err error
+
+	switch status {
+	case model.ChainStatusRunning:
+		result, err = r.pool.Exec(
+			`UPDATE chain_executions SET status = ?, started_at = COALESCE(started_at, ?), updated_at = ? WHERE id = ?`,
+			status, now, now, id)
+	case model.ChainStatusCompleted, model.ChainStatusFailed, model.ChainStatusCanceled:
+		result, err = r.pool.Exec(
+			`UPDATE chain_executions SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?`,
+			status, now, now, id)
+	default:
+		result, err = r.pool.Exec(
+			`UPDATE chain_executions SET status = ?, updated_at = ? WHERE id = ?`,
+			status, now, id)
+	}
 	if err != nil {
 		return err
 	}

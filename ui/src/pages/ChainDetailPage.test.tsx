@@ -909,3 +909,56 @@ describe('ChainDetailPage - Tokens Used Column', () => {
   })
 
 })
+
+describe('ChainDetailPage - Duration Metadata', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStartChain.mockReturnValue({
+      mutateAsync: vi.fn(), isPending: false, isError: false, error: null,
+    })
+    mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(), isPending: false, isError: false, error: null,
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('hides duration span when chain has no started_at', () => {
+    const chain = createMockChain({ status: 'pending' }) // no started_at
+    mockUseChain.mockReturnValue({ data: chain, isLoading: false, error: null })
+
+    renderChainDetailPage()
+
+    expect(screen.queryByText(/duration:/i)).not.toBeInTheDocument()
+  })
+
+  it('shows duration in metadata for completed chain with both timestamps', () => {
+    const chain = createMockChain({
+      status: 'completed',
+      started_at: '2026-01-01T00:00:00Z',
+      completed_at: '2026-01-01T02:00:00Z',
+    })
+    mockUseChain.mockReturnValue({ data: chain, isLoading: false, error: null })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('Duration: 2h')).toBeInTheDocument()
+  })
+
+  it('shows elapsed time in metadata for running chain', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:10:00Z'))
+
+    const chain = createMockChain({
+      status: 'running',
+      started_at: '2026-01-01T00:00:00Z',
+    })
+    mockUseChain.mockReturnValue({ data: chain, isLoading: false, error: null })
+
+    renderChainDetailPage()
+
+    expect(screen.getByText('Duration: 10m')).toBeInTheDocument()
+  })
+})

@@ -195,6 +195,9 @@ export function ChainDetailPage() {
             <span>
               {completedCount}/{items.length} items completed
             </span>
+            {displayChain.started_at && (
+              <span>Duration: {formatElapsedTime(displayChain.started_at, displayChain.completed_at)}</span>
+            )}
           </div>
         </div>
         <ChainActions chain={displayChain} onEdit={() => setShowEdit(true)} onAppend={() => setShowAppend(true)} />

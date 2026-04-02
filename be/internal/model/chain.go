@@ -40,6 +40,8 @@ type ChainExecution struct {
 	CreatedBy     string      `json:"created_by"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
+	StartedAt    *time.Time  `json:"started_at,omitempty"`
+	CompletedAt  *time.Time  `json:"completed_at,omitempty"`
 
 	// Computed fields (from subqueries in list)
 	TotalItems     int `json:"total_items"`

@@ -205,6 +205,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    created_by    TEXT NOT NULL DEFAULT ''                             │
 │    created_at    TEXT NOT NULL                                        │
 │    updated_at    TEXT NOT NULL                                        │
+│    started_at    TEXT           (set on first running transition)     │
+│    completed_at  TEXT           (set on terminal status transition)   │
 │    INDEX (project_id, status)                                        │
 │    INDEX (project_id, epic_ticket_id)                                │
 │                                                                      │

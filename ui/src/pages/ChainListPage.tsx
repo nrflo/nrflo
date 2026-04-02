@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
 import { useChainList } from '@/hooks/useChains'
-import { cn, statusColor, formatRelativeTime, capitalize } from '@/lib/utils'
+import { cn, statusColor, formatRelativeTime, formatElapsedTime, capitalize } from '@/lib/utils'
 
 const PAGE_SIZE = 20
 
@@ -98,6 +98,7 @@ export function ChainListPage() {
                 <TableHead className="w-32">Workflow</TableHead>
                 <TableHead className="w-24">Status</TableHead>
                 <TableHead className="w-40">Progress</TableHead>
+                <TableHead className="w-28">Duration</TableHead>
                 <TableHead className="w-28">Created By</TableHead>
                 <TableHead className="w-24">Created</TableHead>
               </TableRow>
@@ -136,6 +137,9 @@ export function ChainListPage() {
                           <span>{chain.completed_items}/{chain.total_items}</span>
                         </div>
                       )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {chain.started_at ? formatElapsedTime(chain.started_at, chain.completed_at) : '—'}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{chain.created_by || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{formatRelativeTime(chain.created_at)}</TableCell>

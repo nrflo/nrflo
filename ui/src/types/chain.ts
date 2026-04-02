@@ -15,6 +15,8 @@ export interface ChainExecution {
   completed_items: number
   created_at: string
   updated_at: string
+  started_at?: string
+  completed_at?: string
   items?: ChainExecutionItem[]
   deps?: Record<string, string[]>
 }

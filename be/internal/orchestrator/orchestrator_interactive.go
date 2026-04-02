@@ -212,6 +212,8 @@ func buildPlanPrompt(req RunRequest) string {
 		prompt += fmt.Sprintf("\nInstructions:\n%s\n", req.Instructions)
 	}
 
+	prompt += "\nIMPORTANT: This session runs inside an embedded terminal where the scrollable plan viewer is not available. " +
+		"After creating your plan file, print the full plan content as text in the terminal so the user can read it.\n"
 	prompt += "\nWhen your plan is complete, exit the session."
 	return prompt
 }

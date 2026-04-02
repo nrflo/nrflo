@@ -261,7 +261,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
             <Table className="[&>table]:text-xs [&>table]:table-fixed" data-testid="message-table">
               <TableHeader>
                 <TableRow data-testid="message-table-header">
-                  <TableHead className="w-[90px]">Time</TableHead>
+                  <TableHead className="w-[110px]">Time</TableHead>
                   <TableHead className="w-[100px]">Tool</TableHead>
                   <TableHead>Message</TableHead>
                 </TableRow>
@@ -271,7 +271,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                   const { toolName, rest } = parseToolName(msg.content)
                   return (
                     <TableRow key={i} className={cn(toolName === 'rate_limit' && "bg-orange-50 dark:bg-orange-950/20")} data-testid="message-row">
-                      <TableCell className="py-1 w-[90px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                      <TableCell className="py-1 w-[110px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                         {formatTime(msg.created_at)}
                       </TableCell>
                       <TableCell className="py-1 w-[100px] overflow-hidden">

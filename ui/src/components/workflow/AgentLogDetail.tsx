@@ -258,7 +258,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                 </button>
               ))}
             </div>
-            <Table className="[&>table]:text-xs" data-testid="message-table">
+            <Table className="[&>table]:text-xs [&>table]:table-fixed" data-testid="message-table">
               <TableHeader>
                 <TableRow data-testid="message-table-header">
                   <TableHead className="w-[90px]">Time</TableHead>

@@ -8,11 +8,29 @@ import (
 	"image/png"
 
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/inconsolata"
+	"golang.org/x/image/font/gofont/gomonobold"
+	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 )
 
-const iconSize = 44
+const iconSize = 88
+
+var boldFace font.Face
+
+func init() {
+	tt, err := opentype.Parse(gomonobold.TTF)
+	if err != nil {
+		panic(fmt.Sprintf("tray: parse gomonobold: %v", err))
+	}
+	boldFace, err = opentype.NewFace(tt, &opentype.FaceOptions{
+		Size:    32,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("tray: new face: %v", err))
+	}
+}
 
 // renderIcon returns PNG bytes for the tray icon.
 // count == 0: "NRF" centered. count > 0: "NRF" on top, count on bottom.
@@ -20,14 +38,13 @@ const iconSize = 44
 func renderIcon(count int) []byte {
 	img := image.NewRGBA(image.Rect(0, 0, iconSize, iconSize))
 
-	face := inconsolata.Bold8x16
 	col := color.Black
 
 	if count == 0 {
-		drawCentered(img, face, col, "NRF", iconSize/2+8)
+		drawCentered(img, boldFace, col, "NRF", iconSize/2+16)
 	} else {
-		drawCentered(img, face, col, "NRF", 18)
-		drawCentered(img, face, col, fmt.Sprintf("%d", count), 36)
+		drawCentered(img, boldFace, col, "NRF", 36)
+		drawCentered(img, boldFace, col, fmt.Sprintf("%d", count), 72)
 	}
 
 	var buf bytes.Buffer

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -172,35 +173,6 @@ func TestHandleGetLogs_FilterEmptyStringPreservesCap(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_FilterOnFeLogs verifies filter works for fe.log, not just be.log.
-func TestHandleGetLogs_FilterOnFeLogs(t *testing.T) {
-	dir := t.TempDir()
-	setupLogFile(t, dir, "fe",
-		"[error] TypeError: cannot read property 'foo'\n"+
-			"[warn] slow render detected\n"+
-			"[error] Network request failed\n",
-	)
-
-	s := newLogsServer(dir)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe&filter=error", nil)
-	rr := httptest.NewRecorder()
-	s.handleGetLogs(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rr.Code)
-	}
-
-	resp := decodeLogsResponse(t, rr)
-	if resp["type"] != "fe" {
-		t.Errorf("type = %v, want %q", resp["type"], "fe")
-	}
-
-	lines := getLines(t, resp)
-	if len(lines) != 2 {
-		t.Errorf("len(lines) = %d, want 2", len(lines))
-	}
-}
-
 // TestHandleGetLogs_FilterMissingFileReturnsEmpty verifies that a filter on a missing
 // log file still returns an empty lines array (not an error).
 func TestHandleGetLogs_FilterMissingFileReturnsEmpty(t *testing.T) {
@@ -220,5 +192,27 @@ func TestHandleGetLogs_FilterMissingFileReturnsEmpty(t *testing.T) {
 	lines := getLines(t, resp)
 	if len(lines) != 0 {
 		t.Errorf("len(lines) = %d, want 0 for missing file with filter", len(lines))
+	}
+}
+
+// TestHandleGetLogs_FeErrorMessage verifies that type=fe returns 400 with the exact
+// error message "type must be 'be'" (acceptance criterion).
+func TestHandleGetLogs_FeErrorMessage(t *testing.T) {
+	s := newLogsServer(t.TempDir())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe", nil)
+	rr := httptest.NewRecorder()
+	s.handleGetLogs(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("type=fe: status = %d, want 400", rr.Code)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("type=fe: failed to decode error response: %v", err)
+	}
+	errMsg, _ := resp["error"].(string)
+	if errMsg != "type must be 'be'" {
+		t.Errorf("type=fe: error = %q, want %q", errMsg, "type must be 'be'")
 	}
 }

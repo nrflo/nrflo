@@ -54,7 +54,7 @@ be/
 │   │   ├── handlers_git.go        # Git commit history endpoints
 │   │   ├── handlers_daily_stats.go # Daily stats endpoint
 │   │   ├── handlers_errors.go     # Error log list endpoint (paginated)
-│   │   └── handlers_logs.go       # Log file viewer (BE/FE logs)
+│   │   └── handlers_logs.go       # Backend log file viewer
 │   ├── ws/                      # WebSocket support (protocol v2)
 │   │   ├── hub.go               # Client management, event log integration, broadcasting
 │   │   ├── client.go            # Connection handling, subscriptions, cursor support

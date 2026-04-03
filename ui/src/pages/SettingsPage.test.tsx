@@ -445,11 +445,12 @@ describe('SettingsPage - Logs tab', () => {
     expect(allTabs[allTabs.length - 1]).toHaveTextContent('Logs')
   })
 
-  it('clicking Logs tab renders BE/FE sub-tab buttons', async () => {
+  it('clicking Logs tab shows filter input with no BE/FE sub-tab buttons', async () => {
     const user = userEvent.setup()
     renderPage()
     await user.click(screen.getByRole('button', { name: 'Logs' }))
-    expect(screen.getByRole('button', { name: /BE/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /FE/ })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Filter logs...')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /BE/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /FE/ })).not.toBeInTheDocument()
   })
 })

@@ -3,10 +3,10 @@ import { getLogs } from '@/api/logs'
 
 export const logsKeys = {
   all: ['logs'] as const,
-  byType: (type: 'be' | 'fe', filter?: string) => [...logsKeys.all, type, filter] as const,
+  byType: (type: 'be', filter?: string) => [...logsKeys.all, type, filter] as const,
 }
 
-export function useLogs(type: 'be' | 'fe', filter?: string) {
+export function useLogs(type: 'be', filter?: string) {
   return useQuery({
     queryKey: logsKeys.byType(type, filter),
     queryFn: () => getLogs(type, filter),

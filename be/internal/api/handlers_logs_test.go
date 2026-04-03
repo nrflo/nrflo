@@ -101,30 +101,6 @@ func TestHandleGetLogs_TypeBe(t *testing.T) {
 	}
 }
 
-func TestHandleGetLogs_TypeFe(t *testing.T) {
-	dir := t.TempDir()
-	setupLogFile(t, dir, "fe", "fe-line1\nfe-line2\n")
-
-	s := newLogsServer(dir)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe", nil)
-	rr := httptest.NewRecorder()
-	s.handleGetLogs(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rr.Code)
-	}
-
-	resp := decodeLogsResponse(t, rr)
-	if resp["type"] != "fe" {
-		t.Errorf("type = %v, want %q", resp["type"], "fe")
-	}
-
-	lines := getLines(t, resp)
-	if len(lines) != 2 {
-		t.Errorf("len(lines) = %d, want 2", len(lines))
-	}
-}
-
 func TestHandleGetLogs_ReverseOrder(t *testing.T) {
 	dir := t.TempDir()
 	setupLogFile(t, dir, "be", "first\nsecond\nthird\n")
@@ -169,29 +145,6 @@ func TestHandleGetLogs_MissingFile(t *testing.T) {
 	}
 }
 
-func TestHandleGetLogs_MissingFileFe(t *testing.T) {
-	dir := t.TempDir()
-	removeLogFile(t, dir, "fe")
-
-	s := newLogsServer(dir)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe", nil)
-	rr := httptest.NewRecorder()
-	s.handleGetLogs(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 for missing fe.log", rr.Code)
-	}
-
-	resp := decodeLogsResponse(t, rr)
-	lines := getLines(t, resp)
-	if len(lines) != 0 {
-		t.Errorf("len(lines) = %d, want 0", len(lines))
-	}
-	if resp["type"] != "fe" {
-		t.Errorf("type = %v, want %q", resp["type"], "fe")
-	}
-}
-
 func TestHandleGetLogs_EmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	setupLogFile(t, dir, "be", "")
@@ -218,6 +171,7 @@ func TestHandleGetLogs_InvalidType(t *testing.T) {
 		typeVal string
 	}{
 		{"all", "all"},
+		{"fe", "fe"},
 		{"server", "server"},
 		{"uppercase_BE", "BE"},
 		{"uppercase_FE", "FE"},
@@ -322,10 +276,10 @@ func TestHandleGetLogs_ContentType(t *testing.T) {
 
 func TestHandleGetLogs_ResponseShape(t *testing.T) {
 	dir := t.TempDir()
-	setupLogFile(t, dir, "fe", "log line\n")
+	setupLogFile(t, dir, "be", "log line\n")
 
 	s := newLogsServer(dir)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=fe", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?type=be", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetLogs(rr, req)
 

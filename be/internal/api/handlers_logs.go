@@ -11,7 +11,7 @@ import (
 const maxLogLines = 1000
 
 // handleGetLogs serves log file contents as JSON.
-// Query param "type" selects be.log or fe.log (default: "be").
+// Query param "type" selects be.log (default: "be").
 // Query param "filter" searches the full file for matching lines (case-insensitive).
 // Without filter: returns lines in reverse order (latest first), capped at 1000 lines.
 // With filter: returns all matching lines in reverse order (no cap).
@@ -20,8 +20,8 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 	if logType == "" {
 		logType = "be"
 	}
-	if logType != "be" && logType != "fe" {
-		writeError(w, http.StatusBadRequest, "type must be 'be' or 'fe'")
+	if logType != "be" {
+		writeError(w, http.StatusBadRequest, "type must be 'be'")
 		return
 	}
 

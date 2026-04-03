@@ -1,24 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Terminal, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
-import { cn } from '@/lib/utils'
 import { useLogs } from '@/hooks/useLogs'
-
-type LogType = 'be' | 'fe'
-
-const logTabs: { key: LogType; label: string; icon: React.ReactNode }[] = [
-  { key: 'be', label: 'BE', icon: <Terminal className="h-4 w-4" /> },
-  { key: 'fe', label: 'FE', icon: <Monitor className="h-4 w-4" /> },
-]
 
 interface LogsSectionProps {
   initialFilter?: string
 }
 
 export function LogsSection({ initialFilter }: LogsSectionProps) {
-  const [activeTab, setActiveTab] = useState<LogType>('be')
   const [filterInput, setFilterInput] = useState(initialFilter ?? '')
   const [debouncedFilter, setDebouncedFilter] = useState(initialFilter ?? '')
 
@@ -27,34 +17,10 @@ export function LogsSection({ initialFilter }: LogsSectionProps) {
     return () => clearTimeout(timer)
   }, [filterInput])
 
-  useEffect(() => {
-    if (initialFilter && activeTab !== 'be') setActiveTab('be')
-  }, [initialFilter]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { data, isLoading, error, refetch } = useLogs(activeTab, debouncedFilter || undefined)
+  const { data, isLoading, error, refetch } = useLogs('be', debouncedFilter || undefined)
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-border">
-        <div className="flex gap-1">
-          {logTabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-                activeTab === tab.key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="flex items-center gap-3">
         <Input
           placeholder="Filter logs..."

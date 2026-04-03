@@ -29,25 +29,14 @@ function makeLogsResult(
 describe('LogsSection', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('renders BE and FE tab buttons, calls useLogs("be") by default', () => {
+  it('calls useLogs("be") by default with no tab buttons', () => {
     vi.mocked(logsHook.useLogs).mockReturnValue(
       makeLogsResult({ data: { lines: [], type: 'be' } })
     )
     renderWithQuery(<LogsSection />)
-    expect(screen.getByRole('button', { name: /BE/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /FE/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /BE/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /FE/ })).not.toBeInTheDocument()
     expect(logsHook.useLogs).toHaveBeenCalledWith('be', undefined)
-  })
-
-  it('switches to FE tab on click and calls useLogs("fe")', async () => {
-    vi.mocked(logsHook.useLogs).mockReturnValue(
-      makeLogsResult({ data: { lines: [], type: 'be' } })
-    )
-    renderWithQuery(<LogsSection />)
-
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /FE/ }))
-    expect(logsHook.useLogs).toHaveBeenCalledWith('fe', undefined)
   })
 
   it('shows loading spinner when isLoading', () => {

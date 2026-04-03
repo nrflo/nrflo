@@ -104,7 +104,7 @@ describe('PhaseGraph - Panel Toggle', () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
     await flushLayout()
 
-    // Flush all mount timers (50ms nodeKey + 350ms panel/selectedAgent)
+    // Flush all mount timers (200ms nodeKey + 350ms panel/selectedAgent)
     act(() => { vi.advanceTimersByTime(350) })
     vi.clearAllMocks()
 
@@ -170,12 +170,12 @@ describe('PhaseGraph - Panel Toggle', () => {
     })} />)
     await flushLayout()
 
-    // Node change fires at 50ms
-    act(() => { vi.advanceTimersByTime(50) })
+    // Node change fires at 200ms
+    act(() => { vi.advanceTimersByTime(200) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
 
     // Panel toggle fires at 350ms
-    act(() => { vi.advanceTimersByTime(300) })
+    act(() => { vi.advanceTimersByTime(150) })
     expect(mockFitView).toHaveBeenCalledTimes(2)
   })
 

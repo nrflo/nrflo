@@ -94,7 +94,7 @@ describe('PhaseGraph mobile behavior (isMobile=true)', () => {
   it('enables panOnDrag on mobile', async () => {
     render(<PhaseGraph {...makeProps()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(50) })
+    act(() => { vi.advanceTimersByTime(200) })
 
     expect(capturedReactFlowProps.current.panOnDrag).toBe(true)
   })
@@ -102,7 +102,7 @@ describe('PhaseGraph mobile behavior (isMobile=true)', () => {
   it('enables zoomOnPinch on mobile', async () => {
     render(<PhaseGraph {...makeProps()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(50) })
+    act(() => { vi.advanceTimersByTime(200) })
 
     expect(capturedReactFlowProps.current.zoomOnPinch).toBe(true)
   })
@@ -110,7 +110,7 @@ describe('PhaseGraph mobile behavior (isMobile=true)', () => {
   it('sets minZoom=0.3 for more zoom-out on mobile', async () => {
     render(<PhaseGraph {...makeProps()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(50) })
+    act(() => { vi.advanceTimersByTime(200) })
 
     expect(capturedReactFlowProps.current.minZoom).toBe(0.3)
   })
@@ -118,7 +118,7 @@ describe('PhaseGraph mobile behavior (isMobile=true)', () => {
   it('still disables zoomOnScroll on mobile (would conflict with page scroll)', async () => {
     render(<PhaseGraph {...makeProps()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(50) })
+    act(() => { vi.advanceTimersByTime(200) })
 
     expect(capturedReactFlowProps.current.zoomOnScroll).toBe(false)
   })
@@ -142,7 +142,7 @@ describe('PhaseGraph mobile behavior (isMobile=true)', () => {
       phaseOrder: ['investigation'],
     })} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(50) })
+    act(() => { vi.advanceTimersByTime(200) })
 
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
   })

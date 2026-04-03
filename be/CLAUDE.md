@@ -148,7 +148,7 @@ be/
 │   │   ├── testenv.go           # NewTestEnv shared harness
 │   │   └── testdata/            # Test config, agent templates
 │   ├── logger/                  # Structured logging with trx propagation and size-based rotation
-│   │   └── logger.go            # Init, Info/Warn/Error, NewTrx, WithTrx/TrxFromContext, rotate (10MB)
+│   │   └── logger.go            # Init, Info/Warn/Error, NewTrx, WithTrx/TrxFromContext, rotate (10MB). HTTP requests get trx injected via requestIDMiddleware
 │   └── id/                      # ID generation
 │       └── generator.go
 ├── go.mod

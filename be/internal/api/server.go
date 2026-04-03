@@ -85,7 +85,7 @@ func (s *Server) Start(host string, port int) error {
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
 
-	handler := s.corsMiddleware(s.projectMiddleware(mux))
+	handler := s.corsMiddleware(s.requestIDMiddleware(s.projectMiddleware(mux)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", host, port),
@@ -236,7 +236,8 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Project")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Project, X-Request-ID")
+		w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		if r.Method == "OPTIONS" {
@@ -245,6 +246,17 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+// requestIDMiddleware generates a unique trx per request, injects it into the
+// context, and sets the X-Request-ID response header.
+func (s *Server) requestIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		trx := logger.NewTrx()
+		ctx := logger.WithTrx(r.Context(), trx)
+		w.Header().Set("X-Request-ID", trx)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

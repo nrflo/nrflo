@@ -65,7 +65,7 @@ describe('CLIModelCheckButton', () => {
     expect(screen.queryByText('500ms')).not.toBeInTheDocument()
   })
 
-  it('shows inline timeout error after 45s if server does not respond', async () => {
+  it('shows timeout error in dialog after 45s if server does not respond', async () => {
     // Only fake setTimeout/clearTimeout — leave setImmediate/nextTick real so Radix can render
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 
@@ -89,12 +89,17 @@ describe('CLIModelCheckButton', () => {
       vi.advanceTimersByTime(45_000)
     })
 
+    // Error is not inline — click the error icon to open the dialog
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /show error details/i }))
+    })
+
     expect(screen.getByText('Timeout — server did not respond')).toBeInTheDocument()
   })
 
   afterEach(() => vi.useRealTimers())
 
-  it('shows inline error text from result.error on failure', async () => {
+  it('shows error in popup dialog from result.error on failure', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
       success: false,
       error: 'binary not found',
@@ -105,30 +110,40 @@ describe('CLIModelCheckButton', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(await screen.findByText('binary not found')).toBeInTheDocument()
+    // Error icon appears; click it to open dialog
+    const errorBtn = await screen.findByRole('button', { name: /show error details/i })
+    await user.click(errorBtn)
+
+    expect(screen.getByText('binary not found')).toBeInTheDocument()
   })
 
-  it('shows inline "Unknown error" when error field is absent', async () => {
+  it('shows "Unknown error" in popup dialog when error field is absent', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: false, duration_ms: 0 })
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(await screen.findByText('Unknown error')).toBeInTheDocument()
+    const errorBtn = await screen.findByRole('button', { name: /show error details/i })
+    await user.click(errorBtn)
+
+    expect(screen.getByText('Unknown error')).toBeInTheDocument()
   })
 
-  it('shows inline error text when testCLIModel throws', async () => {
+  it('shows error in popup dialog when testCLIModel throws', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockRejectedValue(new Error('network failure'))
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(await screen.findByText('network failure')).toBeInTheDocument()
+    const errorBtn = await screen.findByRole('button', { name: /show error details/i })
+    await user.click(errorBtn)
+
+    expect(screen.getByText('network failure')).toBeInTheDocument()
   })
 
-  it('clears inline error text when re-testing', async () => {
+  it('closes error dialog when re-testing', async () => {
     const user = userEvent.setup()
     vi.mocked(cliModelsApi.testCLIModel)
       .mockResolvedValueOnce({ success: false, error: 'connection refused', duration_ms: 0 })
@@ -137,10 +152,79 @@ describe('CLIModelCheckButton', () => {
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     await user.click(screen.getByRole('button', { name: /check model/i }))
-    expect(await screen.findByText('connection refused')).toBeInTheDocument()
 
+    // Open dialog
+    const errorBtn = await screen.findByRole('button', { name: /show error details/i })
+    await user.click(errorBtn)
+    expect(screen.getByText('connection refused')).toBeInTheDocument()
+
+    // Re-test closes dialog
     await user.click(screen.getByRole('button', { name: /check model/i }))
     expect(screen.queryByText('connection refused')).not.toBeInTheDocument()
+  })
+
+  it('does not show error text inline — only visible in dialog after clicking icon', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+      success: false,
+      error: 'unique-inline-check-error',
+      duration_ms: 0,
+    })
+    render(<CLIModelCheckButton modelId="sonnet" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+
+    // Error icon appears — but error text must NOT be inline
+    await screen.findByRole('button', { name: /show error details/i })
+    expect(screen.queryByText('unique-inline-check-error')).not.toBeInTheDocument()
+
+    // Only visible after clicking the error icon
+    await user.click(screen.getByRole('button', { name: /show error details/i }))
+    expect(screen.getByText('unique-inline-check-error')).toBeInTheDocument()
+  })
+
+  it('dialog header includes modelId for context', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+      success: false,
+      error: 'oops',
+      duration_ms: 0,
+    })
+    render(<CLIModelCheckButton modelId="my-custom-model" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+    await user.click(await screen.findByRole('button', { name: /show error details/i }))
+    expect(screen.getByText(/Model Check Error.*my-custom-model/)).toBeInTheDocument()
+  })
+
+  it('dialog closes when Close button is clicked', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+      success: false,
+      error: 'close-button-test-error',
+      duration_ms: 0,
+    })
+    render(<CLIModelCheckButton modelId="sonnet" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+    await user.click(await screen.findByRole('button', { name: /show error details/i }))
+    expect(screen.getByText('close-button-test-error')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByText('close-button-test-error')).not.toBeInTheDocument()
+  })
+
+  it('dialog closes when Escape key is pressed', async () => {
+    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+      success: false,
+      error: 'escape-key-test-error',
+      duration_ms: 0,
+    })
+    render(<CLIModelCheckButton modelId="sonnet" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+    await user.click(await screen.findByRole('button', { name: /show error details/i }))
+    expect(screen.getByText('escape-key-test-error')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByText('escape-key-test-error')).not.toBeInTheDocument()
   })
 
   it('button is disabled when disabled prop is true', () => {

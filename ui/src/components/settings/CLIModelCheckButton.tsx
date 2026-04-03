@@ -46,6 +46,7 @@ export function CLIModelCheckButton({ modelId, disabled }: CLIModelCheckButtonPr
       } else {
         setStatus('error')
         setError(result.error || 'Unknown error')
+        setShowErrorDialog(true)
       }
     } catch (err) {
       setStatus('error')
@@ -54,6 +55,7 @@ export function CLIModelCheckButton({ modelId, disabled }: CLIModelCheckButtonPr
       } else {
         setError((err as Error).message)
       }
+      setShowErrorDialog(true)
     } finally {
       clearTimeout(timeoutId)
     }

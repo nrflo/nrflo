@@ -8,6 +8,7 @@ export interface CLIModel {
   reasoning_effort: string
   context_length: number
   read_only: boolean
+  enabled: boolean
   created_at: string
   updated_at: string
 }
@@ -26,6 +27,7 @@ export interface UpdateCLIModelRequest {
   mapped_model?: string
   reasoning_effort?: string
   context_length?: number
+  enabled?: boolean
 }
 
 export async function listCLIModels(): Promise<CLIModel[]> {

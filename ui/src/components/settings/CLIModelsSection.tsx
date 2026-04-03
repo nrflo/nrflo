@@ -13,6 +13,7 @@ import {
   type UpdateCLIModelRequest,
 } from '@/api/cliModels'
 import { useCLIModels, cliModelKeys } from '@/hooks/useCLIModels'
+import { Toggle } from '@/components/ui/Toggle'
 import { CLIModelForm, emptyCLIModelForm, type CLIModelFormData } from './CLIModelForm'
 import { CLIModelCheckButton } from './CLIModelCheckButton'
 
@@ -61,6 +62,7 @@ export function CLIModelsSection() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<CLIModelFormData>(emptyCLIModelForm)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [toggleErrors, setToggleErrors] = useState<Record<string, string>>({})
 
   const { data: models = [], isLoading, error } = useCLIModels()
 
@@ -88,6 +90,18 @@ export function CLIModelsSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cliModelKeys.list() })
       setDeleteConfirm(null)
+    },
+  })
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      updateCLIModel(id, { enabled }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: cliModelKeys.list() })
+      setToggleErrors((prev) => { const next = { ...prev }; delete next[vars.id]; return next })
+    },
+    onError: (err, vars) => {
+      setToggleErrors((prev) => ({ ...prev, [vars.id]: (err as Error).message }))
     },
   })
 
@@ -222,43 +236,55 @@ export function CLIModelsSection() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Cpu className="h-5 w-5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{m.id}</span>
-                            <Badge className={`text-xs ${cliTypeBadgeColor(m.cli_type)}`}>
-                              {m.cli_type}
-                            </Badge>
-                            {m.read_only && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Lock className="h-3 w-3 mr-1" />
-                                Built-in
+                    <div>
+                      <div className={`flex items-center justify-between${!m.enabled ? ' opacity-50' : ''}`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Cpu className="h-5 w-5 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{m.id}</span>
+                              <Badge className={`text-xs ${cliTypeBadgeColor(m.cli_type)}`}>
+                                {m.cli_type}
                               </Badge>
-                            )}
+                              {m.read_only && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  Built-in
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {m.display_name} &middot; {m.mapped_model} &middot; {m.context_length.toLocaleString()} ctx
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {m.display_name} &middot; {m.mapped_model} &middot; {m.context_length.toLocaleString()} ctx
+                        </div>
+                        <div className="flex gap-2 shrink-0 items-center">
+                          <Toggle
+                            checked={m.enabled}
+                            disabled={m.read_only || toggleMutation.isPending}
+                            onChange={() => toggleMutation.mutate({ id: m.id, enabled: !m.enabled })}
+                          />
+                          <div className="flex gap-1 items-center relative">
+                            <CLIModelCheckButton
+                              modelId={m.id}
+                              disabled={editingId !== null || deleteConfirm !== null}
+                            />
+                            {!m.read_only && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleStartEdit(m)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(m.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-1 shrink-0 items-center relative">
-                        <CLIModelCheckButton
-                          modelId={m.id}
-                          disabled={editingId !== null || deleteConfirm !== null}
-                        />
-                        {!m.read_only && (
-                          <>
-                            <Button variant="ghost" size="icon" onClick={() => handleStartEdit(m)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(m.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                      {toggleErrors[m.id] && (
+                        <p className="text-sm text-destructive mt-1">{toggleErrors[m.id]}</p>
+                      )}
                     </div>
                   )}
                 </div>

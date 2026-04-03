@@ -16,6 +16,7 @@ function makeCLIModel(overrides: Partial<CLIModel> = {}): CLIModel {
     reasoning_effort: '',
     context_length: 200000,
     read_only: true,
+    enabled: true,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -64,6 +65,22 @@ describe('useModelOptions', () => {
     await waitFor(() => expect(result.current).toHaveLength(1))
     expect(result.current[0].label).toBe('Myprovider')
     expect(result.current[0].options[0].label).toBe('Myprovider: CustomModel')
+  })
+
+  it('excludes disabled models from returned options', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'sonnet', cli_type: 'claude', display_name: 'Sonnet', enabled: true }),
+      makeCLIModel({ id: 'haiku', cli_type: 'claude', display_name: 'Haiku', enabled: false }),
+      makeCLIModel({ id: 'opus', cli_type: 'claude', display_name: 'Opus', enabled: true }),
+    ])
+    const { result } = renderHook(() => useModelOptions(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(result.current).toHaveLength(1))
+    const labels = result.current[0].options.map((o) => o.label)
+    expect(labels).toContain('Claude: Sonnet')
+    expect(labels).toContain('Claude: Opus')
+    expect(labels).not.toContain('Claude: Haiku')
   })
 
   it('sorts groups and options within groups alphabetically', async () => {

@@ -25,7 +25,7 @@ export function useModelOptions(): DropdownOptionGroup[] {
   if (models.length === 0) return []
 
   const grouped = new Map<string, { label: string; options: { value: string; label: string }[] }>()
-  for (const m of models) {
+  for (const m of models.filter(m => m.enabled)) {
     const groupLabel = CLI_TYPE_LABELS[m.cli_type] ?? m.cli_type.charAt(0).toUpperCase() + m.cli_type.slice(1)
     if (!grouped.has(m.cli_type)) {
       grouped.set(m.cli_type, { label: groupLabel, options: [] })

@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CLIModelsSection } from './CLIModelsSection'
 import * as cliModelsApi from '@/api/cliModels'
+import { ApiError } from '@/api/client'
 import { renderWithQuery } from '@/test/utils'
 import type { CLIModel } from '@/api/cliModels'
 
@@ -17,6 +18,7 @@ function makeCLIModel(overrides: Partial<CLIModel> = {}): CLIModel {
     reasoning_effort: '',
     context_length: 200000,
     read_only: false,
+    enabled: true,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -227,6 +229,70 @@ describe('CLIModelsSection', () => {
     const headerTexts = headers.map((h) => h.textContent)
     expect(headerTexts.indexOf('Claude')).toBeLessThan(headerTexts.indexOf('Codex'))
     expect(headerTexts.indexOf('Codex')).toBeLessThan(headerTexts.indexOf('OpenCode'))
+  })
+
+  it('toggle renders checked and disabled for read_only models', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'opus', read_only: true, enabled: true }),
+    ])
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('opus')
+    const toggle = screen.getByRole('switch')
+    expect(toggle).toBeChecked()
+    expect(toggle).toBeDisabled()
+  })
+
+  it('toggle calls updateCLIModel with enabled:false when disabling a custom model', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'my-model', read_only: false, enabled: true }),
+    ])
+    vi.mocked(cliModelsApi.updateCLIModel).mockResolvedValue({ status: 'ok' })
+
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('my-model')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('switch'))
+
+    await waitFor(() => {
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('my-model', { enabled: false })
+    })
+  })
+
+  it('toggle calls updateCLIModel with enabled:true when enabling a disabled custom model', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'my-model', read_only: false, enabled: false }),
+    ])
+    vi.mocked(cliModelsApi.updateCLIModel).mockResolvedValue({ status: 'ok' })
+
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('my-model')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('switch'))
+
+    await waitFor(() => {
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('my-model', { enabled: true })
+    })
+  })
+
+  it('displays inline error when toggle API returns 409', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'my-model', read_only: false, enabled: true }),
+    ])
+    vi.mocked(cliModelsApi.updateCLIModel).mockRejectedValue(
+      new ApiError(409, 'model is in use by: myproject/feature/implementor')
+    )
+
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('my-model')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('switch'))
+
+    expect(
+      await screen.findByText('model is in use by: myproject/feature/implementor')
+    ).toBeInTheDocument()
   })
 
   it('delete: confirmation dialog, cancel dismisses, confirm calls API', async () => {

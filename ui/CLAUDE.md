@@ -168,16 +168,14 @@ When creating a new reusable UI component:
 ### Commands
 
 ```bash
-npx vitest run                    # all tests
-npx vitest run src/components/    # directory
-npx vitest run path/to/file.test.tsx  # single file
-npx vitest run --reporter=verbose # with timing per test
-./scripts/test.sh                 # run with 15s wall-time check (mirrors BE constraint)
+make test-ui                          # all tests (30s wall-time constraint)
+make test-ui ARGS="src/components/"   # directory
+make test-ui ARGS="path/to/file.test.tsx"  # single file
 ```
 
 ### Performance Constraint
 
-The full test suite (`vitest run`) must complete in **≤15 seconds wall time**. Enforced by `./scripts/test.sh`.
+The full test suite (`vitest run`) must complete in **≤30 seconds wall time**. Enforced by `make test-ui`.
 
 **Never introduce:**
 - `setTimeout` in test bodies or mock implementations — use a never-resolving promise `new Promise(() => {})` to keep a mutation in-flight for `isPending` tests

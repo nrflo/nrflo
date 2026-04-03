@@ -48,11 +48,11 @@ You are a test design agent. Your job is to create TDD-style tests that define t
 ### Test Execution Commands
 
 ```bash
-cd be && make test                # all tests
-cd be && make test-integration    # integration only (verbose)
-cd be && go test -v ./internal/<package>/...  # specific package
-cd be && ./scripts/test.sh -r     # with race detector
-cd be && ./scripts/test.sh -c     # with coverage report
+make test                            # all tests
+make test-integration                # integration only (verbose)
+make test-pkg PKG=<package>          # specific package
+make test-race                       # with race detector
+make test-coverage                   # with coverage report
 ```
 
 ## Workflow

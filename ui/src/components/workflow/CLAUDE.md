@@ -83,4 +83,4 @@ Tests are co-located with source files using the naming convention `ComponentNam
 - `AgentLogPanel.width.test.tsx` — width/resize behavior
 - `CategoryRemoval.regression.test.tsx` — regression tests
 
-Run tests: `npx vitest run src/components/workflow/`
+Run tests: `make test-ui ARGS="src/components/workflow/"`

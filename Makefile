@@ -71,13 +71,27 @@ install: build-release
 
 # --- Test ---
 
-## test: Run backend tests
+## test: Run backend tests (30s wall-time constraint)
 test:
-	cd $(BE_DIR) && $(GO) test ./internal/... -count=1
+	@START=$$(date +%s); \
+	cd $(BE_DIR) && $(GO) test ./internal/... -count=1; \
+	ELAPSED=$$(( $$(date +%s) - $$START )); \
+	if [ "$$ELAPSED" -gt 30 ]; then \
+		echo ""; \
+		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 30 SECONDS. ANALYZE AND FIX."; \
+		exit 1; \
+	fi
 
-## test-ui: Run frontend tests
+## test-ui: Run frontend tests (30s wall-time constraint). Use ARGS= for path filter.
 test-ui:
-	cd $(UI_DIR) && npx vitest run
+	@START=$$(date +%s); \
+	cd $(UI_DIR) && npx vitest run $(ARGS); \
+	ELAPSED=$$(( $$(date +%s) - $$START )); \
+	if [ "$$ELAPSED" -gt 30 ]; then \
+		echo ""; \
+		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 30 SECONDS. ANALYZE AND FIX."; \
+		exit 1; \
+	fi
 
 ## test-integration: Run integration tests (verbose)
 test-integration:

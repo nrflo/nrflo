@@ -116,4 +116,4 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 
 ## Testing
 
-Tests co-located with hook files using `.test.ts` suffix. Run: `npx vitest run src/hooks/`
+Tests co-located with hook files using `.test.ts` suffix. Run: `make test-ui ARGS="src/hooks/"`

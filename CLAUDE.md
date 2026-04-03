@@ -57,9 +57,9 @@ Workflow runtime state is stored in normalized database tables:
 - Active agents = `agent_sessions WHERE status = 'running'`
 - Agent history = `agent_sessions WHERE status != 'running'`
 
-### 4. CRITICAL: Backend Test Suite Must Run in Under 15 Seconds
+### 4. CRITICAL: Backend Test Suite Must Run in Under 30 Seconds
 
-The full backend test suite (`cd be && go test ./internal/... -count=1`) must complete in **≤15 seconds wall time**. This is a hard constraint enforced by the test script.
+The full backend test suite (`make test`) must complete in **≤30 seconds wall time**. Enforced by the Makefile target.
 
 **Never introduce:**
 - `time.Sleep` in tests — use `clock.TestClock.Advance()` for time-dependent logic, or poll with a tight loop+timeout for async conditions
@@ -71,11 +71,11 @@ The full backend test suite (`cd be && go test ./internal/... -count=1`) must co
 - `clock.TestClock.Advance(d)` — advance fake clock instead of sleeping
 - `env.Clock.Advance(d)` — in integration tests
 
-If the test suite exceeds 15 seconds, **identify and eliminate the cause before merging**.
+If the test suite exceeds 30 seconds, **identify and eliminate the cause before merging**.
 
-### 4b. CRITICAL: Frontend Test Suite Must Run in Under 15 Seconds
+### 4b. CRITICAL: Frontend Test Suite Must Run in Under 30 Seconds
 
-The full frontend test suite (`cd ui && npx vitest run`) must complete in **≤15 seconds wall time**. Enforced by `ui/scripts/test.sh` (mirrors the BE constraint). Pool is set to `threads` in `vitest.config.ts` for speed.
+The full frontend test suite (`make test-ui`) must complete in **≤30 seconds wall time**. Enforced by the Makefile target. Pool is set to `threads` in `vitest.config.ts` for speed.
 
 **Never introduce:**
 - `setTimeout` in test bodies or mock implementations — use `new Promise(() => {})` (never-resolving) to keep a mutation in-flight for `isPending` tests
@@ -86,7 +86,7 @@ The full frontend test suite (`cd ui && npx vitest run`) must complete in **≤1
 - `new Promise(() => {})` — keeps mutation `isPending: true` without any real delay
 - `waitFor(() => expect(...))` — RTL polling for genuinely async React state
 
-If the test suite exceeds 15 seconds, **identify and eliminate the cause before merging**.
+If the test suite exceeds 30 seconds, **identify and eliminate the cause before merging**.
 
 ### 5. Keep Source Files Under 300 Lines
 

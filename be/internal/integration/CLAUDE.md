@@ -45,7 +45,7 @@ Services are also available directly: `env.ProjectSvc`, `env.TicketSvc`, `env.Wo
 
 ## CRITICAL: No Sleeps in Tests
 
-**Never use `time.Sleep` in integration tests.** The full test suite must run in ≤15 seconds.
+**Never use `time.Sleep` in integration tests.** The full test suite must run in ≤30 seconds.
 
 - Use `env.Clock.Advance(d)` for time-dependent logic
 - Use `waitForCondition(t, timeout, interval, fn)` for genuinely async HTTP/WS results

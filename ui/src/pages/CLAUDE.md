@@ -76,4 +76,4 @@ Pages receive real-time updates via WebSocket (no REST polling):
 
 Tests are co-located with page components using `.test.tsx` suffix. Some pages use a `__tests__/` subdirectory for additional test organization.
 
-Run tests: `npx vitest run src/pages/`
+Run tests: `make test-ui ARGS="src/pages/"`

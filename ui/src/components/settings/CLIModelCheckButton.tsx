@@ -81,6 +81,9 @@ export function CLIModelCheckButton({ modelId, disabled }: CLIModelCheckButtonPr
       {status === 'success' && (
         <span className="text-xs text-green-600 dark:text-green-400">{durationMs}ms</span>
       )}
+      {status === 'error' && (
+        <span className="text-sm text-destructive">{error}</span>
+      )}
     </>
   )
 }

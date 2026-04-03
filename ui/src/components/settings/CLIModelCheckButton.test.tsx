@@ -65,7 +65,7 @@ describe('CLIModelCheckButton', () => {
     expect(screen.queryByText('500ms')).not.toBeInTheDocument()
   })
 
-  it('shows timeout error after 45s if server does not respond', async () => {
+  it('shows inline timeout error after 45s if server does not respond', async () => {
     // Only fake setTimeout/clearTimeout — leave setImmediate/nextTick real so Radix can render
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 
@@ -89,20 +89,12 @@ describe('CLIModelCheckButton', () => {
       vi.advanceTimersByTime(45_000)
     })
 
-    // Component is in error state — open tooltip via pointerMove + advance Radix's 200ms open delay
-    // Radix Tooltip listens to onPointerMove (not onPointerEnter) to trigger opening
-    const tooltipTrigger = screen.getByRole('button').querySelector('[data-state]') as HTMLElement
-    await act(async () => {
-      fireEvent.pointerMove(tooltipTrigger)
-      vi.advanceTimersByTime(300)
-    })
-
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Timeout — server did not respond')
+    expect(screen.getByText('Timeout — server did not respond')).toBeInTheDocument()
   })
 
   afterEach(() => vi.useRealTimers())
 
-  it('shows error message from result.error on failure via tooltip', async () => {
+  it('shows inline error text from result.error on failure', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
       success: false,
       error: 'binary not found',
@@ -113,42 +105,42 @@ describe('CLIModelCheckButton', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    const btn = screen.getByRole('button')
-    const tooltipTrigger = btn.querySelector('[data-state]') as HTMLElement
-    await user.hover(tooltipTrigger)
-
-    const tooltip = await screen.findByRole('tooltip')
-    expect(tooltip).toHaveTextContent('binary not found')
+    expect(await screen.findByText('binary not found')).toBeInTheDocument()
   })
 
-  it('shows "Unknown error" when error field is absent via tooltip', async () => {
+  it('shows inline "Unknown error" when error field is absent', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: false, duration_ms: 0 })
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    const btn = screen.getByRole('button')
-    const tooltipTrigger = btn.querySelector('[data-state]') as HTMLElement
-    await user.hover(tooltipTrigger)
-
-    const tooltip = await screen.findByRole('tooltip')
-    expect(tooltip).toHaveTextContent('Unknown error')
+    expect(await screen.findByText('Unknown error')).toBeInTheDocument()
   })
 
-  it('shows error message when testCLIModel throws via tooltip', async () => {
+  it('shows inline error text when testCLIModel throws', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockRejectedValue(new Error('network failure'))
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    const btn = screen.getByRole('button')
-    const tooltipTrigger = btn.querySelector('[data-state]') as HTMLElement
-    await user.hover(tooltipTrigger)
+    expect(await screen.findByText('network failure')).toBeInTheDocument()
+  })
 
-    const tooltip = await screen.findByRole('tooltip')
-    expect(tooltip).toHaveTextContent('network failure')
+  it('clears inline error text when re-testing', async () => {
+    const user = userEvent.setup()
+    vi.mocked(cliModelsApi.testCLIModel)
+      .mockResolvedValueOnce({ success: false, error: 'connection refused', duration_ms: 0 })
+      .mockReturnValueOnce(new Promise(() => {}))
+
+    render(<CLIModelCheckButton modelId="sonnet" />)
+
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+    expect(await screen.findByText('connection refused')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /check model/i }))
+    expect(screen.queryByText('connection refused')).not.toBeInTheDocument()
   })
 
   it('button is disabled when disabled prop is true', () => {

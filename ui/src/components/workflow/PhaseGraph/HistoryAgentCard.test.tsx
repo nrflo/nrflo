@@ -206,8 +206,9 @@ describe('HistoryAgentCard - restart badge and tooltip', () => {
     ] })
     render(<HistoryAgentCard entry={entry} />)
     await user.hover(screen.getByText('↻2'))
-    expect(document.body).toHaveTextContent('1. Start stall')
-    expect(document.body).toHaveTextContent('2. Low context')
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('1. Start stall')
+    expect(tooltip).toHaveTextContent('2. Low context')
   })
 
   it('shows count fallback tooltip when restart_details is empty', async () => {
@@ -215,6 +216,7 @@ describe('HistoryAgentCard - restart badge and tooltip', () => {
     const entry = makeEntry({ restart_count: 2, restart_details: [] })
     render(<HistoryAgentCard entry={entry} />)
     await user.hover(screen.getByText('↻2'))
-    expect(document.body).toHaveTextContent('2 restarts')
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('2 restarts')
   })
 })

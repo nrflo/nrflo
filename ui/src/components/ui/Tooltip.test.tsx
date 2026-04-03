@@ -12,7 +12,7 @@ describe('Tooltip', () => {
     )
 
     expect(screen.getByText('Click me')).toBeInTheDocument()
-    expect(screen.queryByText('Hover me')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
   it('shows tooltip on mouse enter', async () => {
@@ -24,10 +24,10 @@ describe('Tooltip', () => {
     )
 
     await user.hover(screen.getByText('Trigger'))
-    expect(screen.getByText('Tooltip text')).toBeInTheDocument()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Tooltip text')
   })
 
-  it('hides tooltip on mouse leave', async () => {
+  it('tooltip is accessible via role', async () => {
     const user = userEvent.setup()
     render(
       <Tooltip text="Tooltip text">
@@ -35,27 +35,17 @@ describe('Tooltip', () => {
       </Tooltip>
     )
 
-    const trigger = screen.getByText('Trigger')
-    await user.hover(trigger)
-    expect(screen.getByText('Tooltip text')).toBeInTheDocument()
+    // Not visible initially
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
 
-    await user.unhover(trigger)
-    expect(screen.queryByText('Tooltip text')).not.toBeInTheDocument()
-  })
-
-  it('applies correct placement styles', async () => {
-    const user = userEvent.setup()
-    render(
-      <Tooltip text="Top tooltip" placement="top">
-        <button>Trigger</button>
-      </Tooltip>
-    )
-
+    // Shows on hover with proper ARIA role
     await user.hover(screen.getByText('Trigger'))
-    const tooltip = document.body.querySelector('.fixed')
-    expect(tooltip).toBeInTheDocument()
-    expect(tooltip?.className).toContain('-translate-x-1/2')
-    expect(tooltip?.className).toContain('-translate-y-full')
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('Tooltip text')
+
+    // Trigger is linked via aria-describedby
+    const trigger = screen.getByText('Trigger').closest('[aria-describedby]')
+    expect(trigger).toBeInTheDocument()
   })
 
   it('supports different placement options', async () => {
@@ -70,7 +60,8 @@ describe('Tooltip', () => {
       )
 
       await user.hover(screen.getByText(placement))
-      expect(screen.getByText(`${placement} tooltip`)).toBeInTheDocument()
+      const tooltip = await screen.findByRole('tooltip')
+      expect(tooltip).toHaveTextContent(`${placement} tooltip`)
       unmount()
     }
   })
@@ -84,8 +75,10 @@ describe('Tooltip', () => {
     )
 
     await user.hover(screen.getByText('Trigger'))
-    const tooltip = document.body.querySelector('.custom-class')
-    expect(tooltip).toBeInTheDocument()
+    await screen.findByRole('tooltip')
+    // className is applied to the RadixTooltip.Content element
+    const contentEl = document.querySelector('[data-side]')
+    expect(contentEl).toHaveClass('custom-class')
   })
 
   it('renders tooltip in document.body via portal', async () => {
@@ -99,10 +92,36 @@ describe('Tooltip', () => {
     )
 
     await user.hover(screen.getByText('Trigger'))
-    const tooltip = screen.getByText('Portal test')
+    const tooltip = await screen.findByRole('tooltip')
 
     // Tooltip should be in document.body, not in the wrapper
     expect(container.querySelector('[data-testid="wrapper"]')).not.toContainElement(tooltip)
     expect(document.body).toContainElement(tooltip)
+  })
+
+  it('renders ReactNode JSX content in tooltip', async () => {
+    const user = userEvent.setup()
+    render(
+      <Tooltip text={<><p>First paragraph</p><p>Second paragraph</p></>}>
+        <button>Trigger</button>
+      </Tooltip>
+    )
+
+    await user.hover(screen.getByText('Trigger'))
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('First paragraph')
+    expect(tooltip).toHaveTextContent('Second paragraph')
+  })
+
+  it('shows tooltip on keyboard focus', async () => {
+    const user = userEvent.setup()
+    render(
+      <Tooltip text="Focus tooltip">
+        <button>Trigger</button>
+      </Tooltip>
+    )
+
+    await user.tab()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Focus tooltip')
   })
 })

@@ -138,13 +138,15 @@ describe('GlobalSettingsSection', () => {
 
     await screen.findByRole('spinbutton')
     const retentionLabel = screen.getByText('Session retention limit')
-    const tooltipTrigger = retentionLabel.parentElement?.lastElementChild as HTMLElement
+    // Radix Tooltip.Trigger renders with data-state; find the trigger span near the label
+    const tooltipTrigger = retentionLabel.closest('.flex')?.querySelector('[data-state]') as HTMLElement
 
     const user = userEvent.setup()
     await user.hover(tooltipTrigger)
 
-    expect(screen.getByText(/Maximum number of completed agent sessions/)).toBeInTheDocument()
-    expect(screen.getByText(/Associated agent messages are automatically removed/)).toBeInTheDocument()
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent(/Maximum number of completed agent sessions/)
+    expect(tooltip).toHaveTextContent(/Associated agent messages are automatically removed/)
   })
 
   it('renders stall start input empty when server returns null', async () => {

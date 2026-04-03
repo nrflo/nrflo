@@ -260,8 +260,9 @@ describe('AgentCard - restart badge and tooltip', () => {
     ] })
     render(<AgentCard agent={agent} />)
     await user.hover(screen.getByText('↻2'))
-    expect(document.body).toHaveTextContent('1. Low context')
-    expect(document.body).toHaveTextContent('2. Manual continue')
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('1. Low context')
+    expect(tooltip).toHaveTextContent('2. Manual continue')
   })
 
   it('shows count fallback tooltip when restart_details is undefined', async () => {
@@ -269,6 +270,7 @@ describe('AgentCard - restart badge and tooltip', () => {
     const agent = makeAgent({ restart_count: 3 })
     render(<AgentCard agent={agent} />)
     await user.hover(screen.getByText('↻3'))
-    expect(document.body).toHaveTextContent('3 restarts')
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('3 restarts')
   })
 })

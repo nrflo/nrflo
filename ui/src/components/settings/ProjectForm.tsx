@@ -1,4 +1,4 @@
-import { X, Check } from 'lucide-react'
+import { X, Check, Info } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -141,7 +141,15 @@ export function ProjectForm({
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-muted-foreground">Default Branch</label>
+          <div className="flex items-center gap-1.5">
+            <label className="text-sm font-medium text-muted-foreground">Default Branch</label>
+            <Tooltip
+              placement="right"
+              text="Branch displayed on the Git Status page. When worktrees are enabled, feature branches are created from this branch."
+            >
+              <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            </Tooltip>
+          </div>
           <Input
             value={formData.default_branch}
             onChange={(e) => {
@@ -157,7 +165,13 @@ export function ProjectForm({
         </div>
         <div className="flex items-end pb-1">
           <Tooltip
-            text="Git worktrees give each ticket workflow an isolated copy of the repo so agents don't interfere with each other or the main working directory.\n\nApplies to ticket-scoped workflows only. Requires default_branch to be configured.\n\nLifecycle: creates a feature branch + worktree at /tmp → agents work in isolation → on success, merges to default branch and cleans up → on failure, force-removes worktree and discards changes."
+            text={
+              <div className="space-y-2">
+                <p>Git worktrees give each ticket workflow an isolated copy of the repo so agents don't interfere with each other or the main working directory.</p>
+                <p>Applies to ticket-scoped workflows only. Requires default_branch to be configured.</p>
+                <p>Lifecycle: creates a feature branch + worktree at /tmp → agents work in isolation → on success, merges to default branch and cleans up → on failure, force-removes worktree and discards changes.</p>
+              </div>
+            }
             placement="top"
             className="max-w-sm"
           >

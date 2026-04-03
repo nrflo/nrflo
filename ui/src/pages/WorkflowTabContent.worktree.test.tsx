@@ -93,9 +93,10 @@ describe('WorkflowTabContent — worktree display', () => {
       />
     )
     const pathSpan = screen.getByText(path)
-    // Hover the tooltip trigger (the wrapping inline-flex div)
+    // Hover the tooltip trigger (the wrapping inline-flex span)
     await user.hover(pathSpan)
-    expect(screen.getByText(`Branch: ${branch}`)).toBeInTheDocument()
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent(`Branch: ${branch}`)
   })
 
   it('does not show branch tooltip text when branch_name is absent', async () => {

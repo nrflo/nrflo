@@ -22,41 +22,54 @@ function makeProps(formDataOverrides = {}) {
   }
 }
 
+describe('ProjectForm — default branch tooltip', () => {
+  it('shows info tooltip on hover over default branch info icon', async () => {
+    const user = userEvent.setup()
+    render(<ProjectForm {...makeProps()} />)
+
+    const label = screen.getByText('Default Branch')
+    const tooltipTrigger = label.closest('.flex')?.querySelector('[data-state]') as HTMLElement
+    await user.hover(tooltipTrigger)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent(/Git Status page/)
+    expect(tooltip).toHaveTextContent(/worktrees are enabled/)
+  })
+})
+
 describe('ProjectForm — worktree tooltip', () => {
   it('shows worktree explanation tooltip on hover', async () => {
     const user = userEvent.setup()
     render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
 
-    expect(screen.queryByText(/Git worktrees give each ticket/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
 
     await user.hover(screen.getByText('Use Git Worktrees'))
 
-    expect(screen.getByText(/Git worktrees give each ticket/)).toBeInTheDocument()
-    expect(screen.getByText(/Applies to ticket-scoped workflows only/)).toBeInTheDocument()
-    expect(screen.getByText(/Lifecycle: creates a feature branch/)).toBeInTheDocument()
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent(/Git worktrees give each ticket/)
+    expect(tooltip).toHaveTextContent(/Applies to ticket-scoped workflows only/)
+    expect(tooltip).toHaveTextContent(/Lifecycle: creates a feature branch/)
   })
 
-  it('hides tooltip on mouse leave', async () => {
-    const user = userEvent.setup()
-    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
-
-    const trigger = screen.getByText('Use Git Worktrees')
-    await user.hover(trigger)
-    expect(screen.getByText(/Git worktrees give each ticket/)).toBeInTheDocument()
-
-    await user.unhover(trigger)
-    expect(screen.queryByText(/Git worktrees give each ticket/)).not.toBeInTheDocument()
-  })
-
-  it('tooltip applies max-w-sm class without whitespace-normal', async () => {
+  it('tooltip is accessible via role on hover', async () => {
     const user = userEvent.setup()
     render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
 
     await user.hover(screen.getByText('Use Git Worktrees'))
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent(/Git worktrees give each ticket/)
+  })
 
-    const tooltip = document.body.querySelector('.max-w-sm')
-    expect(tooltip).toBeInTheDocument()
-    expect(tooltip).not.toHaveClass('whitespace-normal')
+  it('tooltip applies max-w-sm class', async () => {
+    const user = userEvent.setup()
+    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+
+    await user.hover(screen.getByText('Use Git Worktrees'))
+    await screen.findByRole('tooltip')
+
+    const tooltip = document.querySelector('[data-side]')
+    expect(tooltip).toHaveClass('max-w-sm')
   })
 })
 

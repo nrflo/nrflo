@@ -149,6 +149,17 @@ export function CLIModelsSection() {
             New Model
           </Button>
         </div>
+        <div className="text-sm text-muted-foreground mt-3 space-y-2">
+          <p>
+            <span className="font-medium">Model Check (⚡):</span> Spawns a minimal agent with a test prompt to verify the CLI binary and model config work. Fixed 60-second timeout. Returns success with duration or an error message.
+          </p>
+          <p>
+            <span className="font-medium">Model Resolution:</span> Each model defines <code className="text-xs">cli_type</code>, <code className="text-xs">mapped_model</code>, <code className="text-xs">reasoning_effort</code>, and <code className="text-xs">context_length</code>. At workflow start, the spawner loads all cli_models into a config map and uses <code className="text-xs">mapped_model</code> + <code className="text-xs">reasoning_effort</code> from DB, falling back to adapter defaults. The <code className="text-xs">model</code> field on agent definitions is not validated against this table — only <code className="text-xs">low_consumption_model</code> is.
+          </p>
+          <p>
+            <span className="font-medium">Timeouts:</span> Agent wall-clock timeout defaults to 40 min (per agent definition). Stall detection: start 120s, running 480s — configurable per agent and globally in General settings (per-agent &gt; global &gt; hardcoded default; 0 = disabled). Model check timeout is fixed at 60s.
+          </p>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">

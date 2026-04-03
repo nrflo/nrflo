@@ -148,6 +148,14 @@ export async function getLayoutedElements(
     }
   }
 
+  // Normalize Y so topmost node starts at 0
+  const minY = Math.min(...nodes.map(n => n.position.y))
+  if (minY > 0) {
+    for (const node of nodes) {
+      node.position.y -= minY
+    }
+  }
+
   // Center each layer horizontally around the widest layer's midpoint.
   // ELK's NETWORK_SIMPLEX doesn't center 1→2→1 fan patterns well.
   centerLayers(nodes, nodeWidth)

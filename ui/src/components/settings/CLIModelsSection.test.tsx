@@ -217,6 +217,27 @@ describe('CLIModelsSection', () => {
     expect(screen.queryByText('Claude')).not.toBeInTheDocument()
   })
 
+  it('shows timeout tooltip for OpenCode group header only', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'claude-model', cli_type: 'claude' }),
+      makeCLIModel({ id: 'codex-model', cli_type: 'codex' }),
+      makeCLIModel({ id: 'oc-model', cli_type: 'opencode' }),
+    ])
+    renderWithQuery(<CLIModelsSection />)
+    const user = userEvent.setup()
+
+    // OpenCode heading has Info icon (SVG) → tooltip on hover
+    const openCodeHeading = await screen.findByText('OpenCode')
+    const infoSvg = openCodeHeading.querySelector('svg')
+    expect(infoSvg).toBeInTheDocument()
+    await user.hover(infoSvg!)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('OpenAI models will timeout on failure')
+
+    // Claude and Codex headings have no Info icon
+    expect(screen.getByText('Claude').querySelector('svg')).not.toBeInTheDocument()
+    expect(screen.getByText('Codex').querySelector('svg')).not.toBeInTheDocument()
+  })
+
   it('groups appear in correct order: Claude before Codex before OpenCode', async () => {
     vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
       makeCLIModel({ id: 'oc-model', cli_type: 'opencode' }),

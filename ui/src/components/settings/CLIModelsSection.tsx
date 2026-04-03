@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Cpu, Lock } from 'lucide-react'
+import { Plus, Pencil, Trash2, Cpu, Lock, Info } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -14,6 +14,7 @@ import {
 } from '@/api/cliModels'
 import { useCLIModels, cliModelKeys } from '@/hooks/useCLIModels'
 import { Toggle } from '@/components/ui/Toggle'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { CLIModelForm, emptyCLIModelForm, type CLIModelFormData } from './CLIModelForm'
 import { CLIModelCheckButton } from './CLIModelCheckButton'
 
@@ -205,7 +206,17 @@ export function CLIModelsSection() {
 
           {groupModels(models).map((group) => (
             <div key={group.label}>
-              <h3 className="text-sm font-semibold text-muted-foreground mt-4 mb-2">{group.label}</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground mt-4 mb-2 flex items-center gap-1.5">
+                {group.label}
+                {group.models[0]?.cli_type === 'opencode' && (
+                  <Tooltip
+                    placement="right"
+                    text="OpenAI models will timeout on failure — OpenCode does not report errors, the agent hangs until the wall-clock timeout kills it"
+                  >
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </Tooltip>
+                )}
+              </h3>
               {group.models.map((m) => (
                 <div key={m.id} className="border rounded-lg p-4">
                   {editingId === m.id ? (

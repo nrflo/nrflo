@@ -54,6 +54,44 @@ func TestCustomCLIModel_ImmediatelyValidForAgentDef(t *testing.T) {
 	}
 }
 
+// TestDisabledCLIModel_RejectedForAgentDef verifies that creating an agent definition
+// with a disabled custom model as low_consumption_model is rejected by IsValidModel.
+func TestDisabledCLIModel_RejectedForAgentDef(t *testing.T) {
+	env := NewTestEnv(t)
+	svc := env.getAgentDefService(t)
+	cliModelSvc := service.NewCLIModelService(env.Pool, env.Clock)
+
+	customModelID := "disabled-for-agentdef"
+
+	// Add the custom model (not yet referenced by any agent def)
+	_, err := cliModelSvc.Create(types.CLIModelCreateRequest{
+		ID:          customModelID,
+		CLIType:     "claude",
+		DisplayName: "Disabled For AgentDef",
+		MappedModel: "claude-custom",
+	})
+	if err != nil {
+		t.Fatalf("CLIModelService.Create: %v", err)
+	}
+
+	// Disable the model while it has no agent def references
+	falseVal := false
+	_, err = cliModelSvc.Update(customModelID, types.CLIModelUpdateRequest{Enabled: &falseVal})
+	if err != nil {
+		t.Fatalf("CLIModelService.Update (disable): %v", err)
+	}
+
+	// Creating an agent def with the disabled model should be rejected
+	_, err = svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
+		ID:                  "disabled-model-agent",
+		Prompt:              "test",
+		LowConsumptionModel: customModelID,
+	})
+	if err == nil {
+		t.Fatal("expected error when creating agent def with disabled model, got nil")
+	}
+}
+
 // TestCustomCLIModel_UpdateImmediatelyValid verifies that UpdateAgentDef also
 // accepts the new model immediately after it is added.
 func TestCustomCLIModel_UpdateImmediatelyValid(t *testing.T) {

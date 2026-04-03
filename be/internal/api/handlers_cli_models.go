@@ -93,6 +93,14 @@ func (s *Server) handleUpdateCLIModel(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "cannot disable system model") {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "model is in use") {
+			writeError(w, http.StatusConflict, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

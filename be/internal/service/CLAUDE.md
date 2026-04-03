@@ -26,7 +26,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `worktree.go` | Git worktree lifecycle: Setup (branch+worktree creation), MergeAndCleanup, Cleanup (os/exec, no DB) |
 | `system_agent_definition.go` | System agent definition CRUD (global) |
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
-| `cli_model.go` | CLI model CRUD (global, readonly delete enforcement) |
+| `cli_model.go` | CLI model CRUD (global, readonly delete enforcement, enabled toggle with in-use check) |
 | `global_settings.go` | Global and project-scoped settings key-value access (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
 | `error_service.go` | Error tracking: `RecordError` (UUID gen, clock timestamp, DB insert, WS broadcast), `ListErrors` (paginated) |
 | `snapshot.go` | WS snapshot provider (builds chunks from workflow state) |

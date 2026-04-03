@@ -24,7 +24,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_workflow_def.go` | Workflow definition CRUD |
 | `handlers_agent_def.go` | Agent definition CRUD |
 | `handlers_system_agent_def.go` | System agent definition CRUD (global, no project scope) |
-| `handlers_cli_models.go` | CLI model CRUD (global, no project scope, readonly delete enforcement) |
+| `handlers_cli_models.go` | CLI model CRUD (global, no project scope, readonly delete enforcement, enabled toggle: 400 on system model, 409 on in-use) |
 | `handlers_cli_model_check.go` | CLI model health check (POST /api/v1/cli-models/{id}/test) |
 | `handlers_default_template.go` | Default template CRUD (global, no project scope, readonly enforcement) |
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/append |

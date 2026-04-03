@@ -32,8 +32,31 @@ func NewCLIModelService(pool *db.Pool, clk clock.Clock) *CLIModelService {
 // List retrieves all CLI models ordered by id
 func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
+		ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	models := []*model.CLIModel{}
+	for rows.Next() {
+		m, err := scanCLIModel(rows)
+		if err != nil {
+			return nil, err
+		}
+		models = append(models, m)
+	}
+	return models, nil
+}
+
+// ListEnabled retrieves only enabled CLI models ordered by id
+func (s *CLIModelService) ListEnabled() ([]*model.CLIModel, error) {
+	rows, err := s.pool.Query(`
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
+		FROM cli_models
+		WHERE enabled = 1
 		ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -54,15 +77,15 @@ func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 // Get retrieves a single CLI model by id (case-insensitive)
 func (s *CLIModelService) Get(id string) (*model.CLIModel, error) {
 	var createdAt, updatedAt string
-	var readOnly int
+	var readOnly, enabled int
 	m := &model.CLIModel{}
 
 	err := s.pool.QueryRow(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		WHERE LOWER(id) = LOWER(?)`, id).Scan(
 		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly,
+		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -73,6 +96,7 @@ func (s *CLIModelService) Get(id string) (*model.CLIModel, error) {
 	}
 
 	m.ReadOnly = readOnly == 1
+	m.Enabled = enabled == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return m, nil
@@ -122,6 +146,7 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 		ReasoningEffort: req.ReasoningEffort,
 		ContextLength:   contextLength,
 		ReadOnly:        false,
+		Enabled:         true,
 		CreatedAt:       ts,
 		UpdatedAt:       ts,
 	}, nil
@@ -147,6 +172,34 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 	if req.ContextLength != nil {
 		updates = append(updates, "context_length = ?")
 		args = append(args, *req.ContextLength)
+	}
+	if req.Enabled != nil {
+		if !*req.Enabled {
+			// Check if model is read_only — cannot disable system models
+			var readOnly int
+			err := s.pool.QueryRow(
+				"SELECT read_only FROM cli_models WHERE LOWER(id) = LOWER(?)", id,
+			).Scan(&readOnly)
+			if err == sql.ErrNoRows {
+				return nil, fmt.Errorf("cli model not found: %s", id)
+			}
+			if err != nil {
+				return nil, err
+			}
+			if readOnly == 1 {
+				return nil, fmt.Errorf("cannot disable system model: %s", id)
+			}
+			// Check if model is in use by any agent definitions
+			if err := s.ModelInUseCheck(id); err != nil {
+				return nil, err
+			}
+		}
+		enabledInt := 0
+		if *req.Enabled {
+			enabledInt = 1
+		}
+		updates = append(updates, "enabled = ?")
+		args = append(args, enabledInt)
 	}
 
 	if len(updates) == 0 {
@@ -194,11 +247,11 @@ func (s *CLIModelService) Delete(id string) error {
 	return err
 }
 
-// IsValidModel checks if a model ID exists (case-insensitive)
+// IsValidModel checks if an enabled model ID exists (case-insensitive)
 func (s *CLIModelService) IsValidModel(id string) (bool, error) {
 	var exists int
 	err := s.pool.QueryRow(
-		"SELECT 1 FROM cli_models WHERE LOWER(id) = LOWER(?)", id,
+		"SELECT 1 FROM cli_models WHERE LOWER(id) = LOWER(?) AND enabled = 1", id,
 	).Scan(&exists)
 	if err == sql.ErrNoRows {
 		return false, nil
@@ -209,15 +262,73 @@ func (s *CLIModelService) IsValidModel(id string) (bool, error) {
 	return true, nil
 }
 
+// ModelInUseCheck checks if a model is referenced by any agent or system agent definitions.
+// Returns an error describing which agents use it, or nil if unused.
+func (s *CLIModelService) ModelInUseCheck(id string) error {
+	type usage struct {
+		ProjectID  string
+		WorkflowID string
+		AgentID    string
+	}
+	var usages []usage
+
+	// Check agent_definitions (model and low_consumption_model)
+	rows, err := s.pool.Query(`
+		SELECT project_id, workflow_id, id FROM agent_definitions
+		WHERE LOWER(model) = LOWER(?) OR LOWER(low_consumption_model) = LOWER(?)`,
+		id, id)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var u usage
+		if err := rows.Scan(&u.ProjectID, &u.WorkflowID, &u.AgentID); err != nil {
+			return err
+		}
+		usages = append(usages, u)
+	}
+
+	// Check system_agent_definitions (model only, no low_consumption_model column)
+	sysRows, err := s.pool.Query(`
+		SELECT id FROM system_agent_definitions
+		WHERE LOWER(model) = LOWER(?)`, id)
+	if err != nil {
+		return err
+	}
+	defer sysRows.Close()
+	for sysRows.Next() {
+		var agentID string
+		if err := sysRows.Scan(&agentID); err != nil {
+			return err
+		}
+		usages = append(usages, usage{ProjectID: "system", AgentID: agentID})
+	}
+
+	if len(usages) == 0 {
+		return nil
+	}
+
+	parts := make([]string, len(usages))
+	for i, u := range usages {
+		if u.WorkflowID != "" {
+			parts[i] = u.ProjectID + "/" + u.WorkflowID + "/" + u.AgentID
+		} else {
+			parts[i] = u.ProjectID + "/" + u.AgentID
+		}
+	}
+	return fmt.Errorf("model is in use by: %s", strings.Join(parts, ", "))
+}
+
 // scanCLIModel scans a row into a CLIModel
 func scanCLIModel(rows *sql.Rows) (*model.CLIModel, error) {
 	m := &model.CLIModel{}
 	var createdAt, updatedAt string
-	var readOnly int
+	var readOnly, enabled int
 
 	err := rows.Scan(
 		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly,
+		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err != nil {
@@ -225,6 +336,7 @@ func scanCLIModel(rows *sql.Rows) (*model.CLIModel, error) {
 	}
 
 	m.ReadOnly = readOnly == 1
+	m.Enabled = enabled == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return m, nil

@@ -95,7 +95,7 @@ func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.Error
 // suitable for spawner.Config.ModelConfigs. Called once at workflow start.
 func (o *Orchestrator) loadModelConfigs(pool *db.Pool) (map[string]spawner.ModelConfig, error) {
 	cliModelSvc := service.NewCLIModelService(pool, o.clock)
-	models, err := cliModelSvc.List()
+	models, err := cliModelSvc.ListEnabled()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CLI model configs: %w", err)
 	}

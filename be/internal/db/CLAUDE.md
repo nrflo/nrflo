@@ -189,6 +189,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    reasoning_effort TEXT NOT NULL DEFAULT ''                          │
 │    context_length  INTEGER NOT NULL DEFAULT 200000                   │
 │    read_only       INTEGER NOT NULL DEFAULT 0                        │
+│    enabled         INTEGER NOT NULL DEFAULT 1                        │
 │    created_at      TEXT NOT NULL                                     │
 │    updated_at      TEXT NOT NULL                                     │
 │    (10 readonly models seeded by migration 000043)                   │

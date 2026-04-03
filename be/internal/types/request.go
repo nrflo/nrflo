@@ -293,6 +293,7 @@ type CLIModelUpdateRequest struct {
 	MappedModel     *string `json:"mapped_model,omitempty"`
 	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
 	ContextLength   *int    `json:"context_length,omitempty"`
+	Enabled         *bool   `json:"enabled,omitempty"`
 }
 
 // DependencyRequest is the request for adding/removing dependencies

@@ -11,6 +11,7 @@ type CLIModel struct {
 	ReasoningEffort string    `json:"reasoning_effort"`
 	ContextLength   int       `json:"context_length"`
 	ReadOnly        bool      `json:"read_only"`
+	Enabled         bool      `json:"enabled"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }

@@ -125,16 +125,16 @@ export function Sidebar() {
           indicator={runningChains?.length ? <><span className="text-xs text-muted-foreground">{remainingChainTickets}</span><Spinner size="sm" /></> : undefined}
         />
         <NavItem
-          to="/errors"
-          icon={<AlertTriangle className="h-4 w-4" />}
-          label="Errors"
-          active={isActive('/errors')}
-        />
-        <NavItem
           to="/documentation"
           icon={<BookOpen className="h-4 w-4" />}
           label="Documentation"
           active={isActive('/documentation')}
+        />
+        <NavItem
+          to="/errors"
+          icon={<AlertTriangle className="h-4 w-4" />}
+          label="Errors"
+          active={isActive('/errors')}
         />
         <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           By Status

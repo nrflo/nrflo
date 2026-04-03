@@ -194,7 +194,10 @@ func (a *OpencodeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		args = append(args, "--variant", reasoningEffort)
 	}
 
-	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
+	// Opencode reads message from positional args, not stdin
+	if opts.Prompt != "" {
+		args = append(args, opts.Prompt)
+	}
 
 	cmd := exec.Command("opencode", args...)
 	cmd.Dir = opts.WorkDir
@@ -245,7 +248,7 @@ func (a *OpencodeAdapter) SupportsResume() bool {
 }
 
 func (a *OpencodeAdapter) UsesStdinPrompt() bool {
-	return true
+	return false // opencode reads message from positional args
 }
 
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {

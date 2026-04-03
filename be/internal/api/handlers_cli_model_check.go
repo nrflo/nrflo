@@ -82,7 +82,7 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Info(r.Context(), "cli model check started", "model", id, "cli_type", m.CLIType)
+	logger.Info(r.Context(), "cli model check started", "model", id, "cli_type", m.CLIType, "cmd", strings.Join(cmd.Args, " "))
 
 	// BuildCommand uses exec.Command (no context), so we manually kill on timeout.
 	done := make(chan error, 1)
@@ -97,10 +97,10 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 	elapsed := time.Since(start).Milliseconds()
 
 	if ctx.Err() != nil {
-		logger.Warn(r.Context(), "cli model check timeout", "model", id, "cli_type", m.CLIType, "elapsed_ms", elapsed)
+		logger.Warn(r.Context(), "cli model check timeout", "model", id, "cli_type", m.CLIType, "elapsed_ms", elapsed, "output", strings.TrimSpace(output.String()))
 		writeJSON(w, http.StatusOK, &service.TestCLIModelResult{
 			Success:    false,
-			Error:      fmt.Sprintf("timeout after 40s waiting for %s to respond", m.CLIType),
+			Error:      fmt.Sprintf("$ %s\ntimeout after 40s waiting for %s to respond", strings.Join(cmd.Args, " "), m.CLIType),
 			DurationMs: elapsed,
 		})
 		return
@@ -114,7 +114,7 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 		logger.Warn(r.Context(), "cli model check failed", "model", id, "elapsed_ms", elapsed, "error", errMsg)
 		writeJSON(w, http.StatusOK, &service.TestCLIModelResult{
 			Success:    false,
-			Error:      errMsg,
+			Error:      fmt.Sprintf("$ %s\n%s", strings.Join(cmd.Args, " "), errMsg),
 			DurationMs: elapsed,
 		})
 		return

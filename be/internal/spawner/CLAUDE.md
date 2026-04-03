@@ -38,7 +38,7 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  │   ├── Reasoning: --variant high (both models)               │    │
 │  │   ├── SessionID: ✗ (generates own)                          │    │
 │  │   ├── SystemPromptFile: ✗                                   │    │
-│  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
+│  │   ├── StdinPrompt: ✗ (prompt as positional arg)             │    │
 │  │   └── Resume: ✗                                             │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────────────────────────────┐    │

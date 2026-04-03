@@ -256,9 +256,13 @@ func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
 		}
 	}
 
-	// Prompt must NOT appear in args — it's piped via stdin
-	if strings.Contains(args, "System prompt") || strings.Contains(args, "Do the task") {
-		t.Errorf("Command args should not contain prompt text (stdin adapter): %s", args)
+	// Prompt must appear as positional arg (opencode reads from args, not stdin)
+	if !strings.Contains(args, "System prompt") {
+		t.Errorf("Command args should contain prompt as positional arg: %s", args)
+	}
+	// InitialPrompt must NOT appear in args
+	if strings.Contains(args, "Do the task") {
+		t.Errorf("Command args should not contain InitialPrompt text: %s", args)
 	}
 
 	// Check working directory
@@ -291,9 +295,9 @@ func TestOpencodeAdapter_BuildCommand_WithoutVariant(t *testing.T) {
 		t.Errorf("Command args missing anthropic/sonnet: %s", args)
 	}
 
-	// Prompt must NOT appear in args
-	if strings.Contains(args, "System prompt") || strings.Contains(args, "Do the task") {
-		t.Errorf("Command args should not contain prompt text (stdin adapter): %s", args)
+	// Prompt must appear as positional arg
+	if !strings.Contains(args, "System prompt") {
+		t.Errorf("Command args should contain prompt as positional arg: %s", args)
 	}
 }
 
@@ -458,7 +462,7 @@ func TestUsesStdinPrompt(t *testing.T) {
 		want bool
 	}{
 		{"claude", true},
-		{"opencode", true},
+		{"opencode", false},
 		{"codex", true},
 	}
 

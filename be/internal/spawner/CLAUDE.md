@@ -375,6 +375,28 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 
 ## Message Output Format
 
+All agent output is routed through the structured logger (`logger.Info`/`logger.Warn`/`logger.Error`). The trx from the orchestrator context is threaded into `processInfo.trx` and used to create per-message contexts via `logger.WithTrx(context.Background(), proc.trx)`.
+
+**Log format:** `timestamp LEVEL [trx] [agent:model] message`
+
+Example:
+```
+2026-04-03 11:46:22 INFO [39592b1d] [ticket-creator:opus] [Grep] pattern in /path
+2026-04-03 11:46:23 WARN [39592b1d] [ticket-creator:opus] [stderr] some warning
+```
+
+**Helper methods on Spawner:**
+- `logAgent(proc, msg)` — INFO level with `[agent:model]` prefix
+- `warnAgent(proc, msg)` — WARN level (stderr, rate limits, scanner errors)
+- `errorAgent(proc, msg)` — ERROR level
+
+**Log levels by event type:**
+- INFO: tool use, text messages, init, codex thread, status updates
+- WARN: rate limits, stderr capture, template warnings (no trx)
+- ERROR: scanner errors
+
+Template warnings (`template.go`) use `context.Background()` without trx since they run at template-expansion time, not request-scoped.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    TOOL OUTPUT FORMATTING                            │
@@ -433,7 +455,7 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 │                                                                      │
 │  Text message handling:                                              │
 │    ├── Short (≤500 chars): Displayed in full                        │
-│    └── Long (>500 chars): Truncated as START...END                  │
+│    └── Long (>500 chars): Truncated as START...END (single line)    │
 │                                                                      │
 │  Codex CLI format (type: "thread.started", "item.*", "turn.*"):    │
 │    thread.started → extracts thread_id as externalSessionID        │
@@ -443,7 +465,7 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 │    item.started type=command_execution → console log only           │
 │    turn.completed → ignored (context tracked via hook path)           │
 │                                                                      │
-│  Stderr capture: [stderr] Error message from CLI                     │
+│  Stderr capture: [stderr] Error message from CLI (WARN level)       │
 │  Scanner buffer: 10MB limit for large JSON outputs                  │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -466,5 +488,6 @@ Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pat
 | `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/actionableMsgCount>3, init/thinking exclusion, budget cap, budget-exhausted marks failed |
 | `model_config_test.go` | DB-sourced ModelConfig: cliForModel/maxContextForModel with DB priority and fallback, adapter BuildCommand with opts.MappedModel/ReasoningEffort override |
 | `safety_hook_test.go` | Safety hook: config parsing (empty/invalid/disabled), bash generation (hardcoded rm patterns, user patterns, allowed paths, git ops), settings JSON structure |
+| `logging_structured_test.go` | Structured logging: logAgent/warnAgent/errorAgent with trx+prefix, empty trx, trx isolation, printStatus per-agent lines |
 
 Additional spawner behavior is covered by integration tests in `internal/integration/`.

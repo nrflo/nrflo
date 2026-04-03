@@ -1,11 +1,12 @@
 package spawner
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -82,14 +83,14 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, description string) {
 	pool := s.pool()
 	if pool == nil {
-		fmt.Fprintf(os.Stderr, "Warning: no database pool for ticket info\n")
+		logger.Warn(context.Background(), "no database pool for ticket info")
 		return ticketID, "_No description available_"
 	}
 
 	ticketRepo := repo.NewTicketRepo(pool, s.config.Clock)
 	ticket, err := ticketRepo.Get(projectID, ticketID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to fetch ticket %s: %v\n", ticketID, err)
+		logger.Warn(context.Background(), "failed to fetch ticket", "ticket_id", ticketID, "error", err)
 		return ticketID, "_No description available_"
 	}
 	title = ticket.Title
@@ -106,7 +107,7 @@ func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, descriptio
 func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID string) string {
 	pool := s.pool()
 	if pool == nil {
-		fmt.Fprintf(os.Stderr, "Warning: no database pool for user instructions\n")
+		logger.Warn(context.Background(), "no database pool for user instructions")
 		return "_No user instructions provided_"
 	}
 
@@ -142,7 +143,7 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID
 func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, wfiID string) string {
 	pool := s.pool()
 	if pool == nil {
-		fmt.Fprintf(os.Stderr, "Warning: no database pool for callback instructions\n")
+		logger.Warn(context.Background(), "no database pool for callback instructions")
 		return "_No callback instructions_"
 	}
 
@@ -253,13 +254,13 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	// Expand findings patterns (after variable substitution)
 	template, err = s.expandFindings(template, projectID, ticketID, workflowName, wfiID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: findings expansion: %v\n", err)
+		logger.Warn(context.Background(), "findings expansion failed", "error", err)
 	}
 
 	// Expand project findings patterns
 	template, err = s.expandProjectFindings(template, projectID)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: project findings expansion: %v\n", err)
+		logger.Warn(context.Background(), "project findings expansion failed", "error", err)
 	}
 
 	template += "\n#No changes needed signal: If no changes needed execute - nrflow findings add no-op:no-op"

@@ -25,7 +25,7 @@ func (s *Spawner) monitorOutput(proc *processInfo, stdout io.ReadCloser) {
 		s.processOutput(proc, line)
 	}
 	if err := scanner.Err(); err != nil {
-		fmt.Printf("  [ERROR] Scanner error: %v\n", err)
+		s.errorAgent(proc, fmt.Sprintf("scanner error: %v", err))
 	}
 }
 
@@ -117,7 +117,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			if version != "" || model != "" {
 				msg := fmt.Sprintf("[init] v%s model=%s", version, model)
 				s.trackMessage(proc, msg, "text")
-				fmt.Printf("  %s %s\n", s.formatPrefix(proc), msg)
+				s.logAgent(proc, msg)
 			}
 		}
 
@@ -129,7 +129,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			if status != "" && status != "allowed" {
 				msg := fmt.Sprintf("[rate_limit] %s %s", limitType, status)
 				s.trackMessage(proc, msg, "text")
-				fmt.Printf("  %s %s\n", s.formatPrefix(proc), msg)
+				s.warnAgent(proc, msg)
 			}
 		}
 
@@ -178,7 +178,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 	case "thread.started":
 		if threadID, ok := data["thread_id"].(string); ok && threadID != "" {
 			proc.externalSessionID = threadID
-			fmt.Printf("  %s Codex thread: %s\n", s.formatPrefix(proc), threadID)
+			s.logAgent(proc, "Codex thread: "+threadID)
 		}
 
 	case "turn.started":
@@ -192,7 +192,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			if itemType == "command_execution" {
 				command, _ := item["command"].(string)
 				if command != "" {
-					fmt.Printf("  %s [executing] %s\n", s.formatPrefix(proc), command)
+					s.logAgent(proc, "[executing] "+command)
 				}
 			}
 		}
@@ -237,16 +237,15 @@ func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	// Track full message content
 	s.trackMessage(proc, text, "text")
 
-	// Print to console with truncation for long messages
-	prefix := s.formatPrefix(proc)
+	// Log with truncation for long messages
 	maxLen := 500
 	if len(text) <= maxLen {
-		fmt.Printf("  %s %s\n", prefix, text)
+		s.logAgent(proc, text)
 	} else {
-		// Show start + ... + end for context
 		startLen := 300
 		endLen := 150
-		fmt.Printf("  %s %s\n  ... [%d chars truncated] ...\n  %s\n", prefix, text[:startLen], len(text)-startLen-endLen, text[len(text)-endLen:])
+		truncated := fmt.Sprintf("%s ... [%d chars truncated] ... %s", text[:startLen], len(text)-startLen-endLen, text[len(text)-endLen:])
+		s.logAgent(proc, truncated)
 	}
 }
 
@@ -270,9 +269,8 @@ func (s *Spawner) handleToolUse(proc *processInfo, toolName string, input map[st
 	// Track message
 	s.trackMessage(proc, toolDetail, category)
 
-	// Print to console with prefix
-	prefix := s.formatPrefix(proc)
-	fmt.Printf("  %s %s\n", prefix, toolDetail)
+	// Log with prefix
+	s.logAgent(proc, toolDetail)
 }
 
 // handleClaudeToolResult processes a Claude tool_result event and generates
@@ -328,8 +326,7 @@ func (s *Spawner) handleClaudeToolResult(proc *processInfo, data map[string]inte
 
 	s.trackMessage(proc, msg, "subagent")
 
-	prefix := s.formatPrefix(proc)
-	fmt.Printf("  %s %s\n", prefix, msg)
+	s.logAgent(proc, msg)
 }
 
 // trackMessage adds a message to the pending queue for DB insertion

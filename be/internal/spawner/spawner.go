@@ -155,6 +155,8 @@ type processInfo struct {
 	stallRestartCount   int           // incremented on each stall restart
 	// External session ID (e.g., codex thread_id) — for logging only
 	externalSessionID string
+	// Transaction ID for structured logging (from orchestrator context)
+	trx string
 }
 
 // Spawner manages agent lifecycle
@@ -254,11 +256,29 @@ func (s *Spawner) pool() *db.Pool {
 // broadcast sends a WebSocket event via the in-process hub
 func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, data map[string]interface{}) {
 	if s.config.WSHub == nil {
-		fmt.Fprintf(os.Stderr, "[ws] broadcast skipped: no WebSocket hub configured\n")
+		logger.Warn(context.Background(), "broadcast skipped: no WebSocket hub configured")
 		return
 	}
 	event := ws.NewEvent(eventType, projectID, ticketID, workflow, data)
 	s.config.WSHub.Broadcast(event)
+}
+
+// logAgent logs an INFO-level agent message with the agent's trx and prefix.
+func (s *Spawner) logAgent(proc *processInfo, msg string) {
+	ctx := logger.WithTrx(context.Background(), proc.trx)
+	logger.Info(ctx, s.formatPrefix(proc)+" "+msg)
+}
+
+// warnAgent logs a WARN-level agent message with the agent's trx and prefix.
+func (s *Spawner) warnAgent(proc *processInfo, msg string) {
+	ctx := logger.WithTrx(context.Background(), proc.trx)
+	logger.Warn(ctx, s.formatPrefix(proc)+" "+msg)
+}
+
+// errorAgent logs an ERROR-level agent message with the agent's trx and prefix.
+func (s *Spawner) errorAgent(proc *processInfo, msg string) {
+	ctx := logger.WithTrx(context.Background(), proc.trx)
+	logger.Error(ctx, s.formatPrefix(proc)+" "+msg)
 }
 
 // waitBeforeRetry waits for defaultFailRetryDelay before retrying a failed/timed-out agent.
@@ -355,6 +375,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	if err != nil {
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
+	proc.trx = logger.TrxFromContext(ctx)
 	logger.Info(ctx, "agent process started", "model", modelID, "pid", proc.cmd.Process.Pid, "session_id", proc.sessionID)
 	processes := []*processInfo{proc}
 
@@ -584,11 +605,9 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	go s.monitorOutput(proc, stdout)
 	go func() {
 		scanner := bufio.NewScanner(stderr)
-		prefix := s.formatPrefix(proc)
 		for scanner.Scan() {
 			line := scanner.Text()
-			// Display and track stderr for debugging
-			fmt.Printf("  %s [stderr] %s\n", prefix, line)
+			s.warnAgent(proc, "[stderr] "+line)
 			s.trackMessage(proc, "[stderr] "+line, "text")
 		}
 	}()
@@ -894,10 +913,8 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 	return s.finalizePhase(ctx, completed, req, phase)
 }
 
-// printStatus prints status for all running/completed agents
+// printStatus logs status for all running/completed agents
 func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
-	fmt.Printf("[%s] %d agent(s) running:\n", phase, len(running))
-
 	for _, proc := range running {
 		elapsed := time.Since(proc.startTime).Round(time.Second)
 
@@ -908,17 +925,16 @@ func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
 			if len(lastMsg) > 80 {
 				lastMsg = lastMsg[:77] + "..."
 			}
-			lastMsg = " | " + lastMsg
 		}
 
-		fmt.Printf("  %s: %v%s\n", proc.modelID, elapsed, lastMsg)
+		ctx := logger.WithTrx(context.Background(), proc.trx)
+		logger.Info(ctx, "agent status", "phase", phase, "model", proc.modelID, "elapsed", elapsed, "last_msg", lastMsg)
 	}
 
 	for _, proc := range completed {
-		fmt.Printf("  (%s completed - %s, %v)\n", proc.modelID, proc.finalStatus, proc.elapsed.Round(time.Second))
+		ctx := logger.WithTrx(context.Background(), proc.trx)
+		logger.Info(ctx, "agent status", "phase", phase, "model", proc.modelID, "status", proc.finalStatus, "duration", proc.elapsed.Round(time.Second))
 	}
-
-	fmt.Println()
 }
 
 // finalizePhase completes the phase after all agents finish.

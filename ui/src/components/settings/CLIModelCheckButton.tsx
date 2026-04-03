@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Zap, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { testCLIModel } from '@/api/cliModels'
 
 type TestStatus = 'idle' | 'testing' | 'success' | 'error'
@@ -59,18 +60,15 @@ export function CLIModelCheckButton({ modelId, disabled }: CLIModelCheckButtonPr
         ) : status === 'success' ? (
           <Check className="h-4 w-4 text-green-500" />
         ) : status === 'error' ? (
-          <Zap className="h-4 w-4 text-red-500" />
+          <Tooltip text={error} placement="bottom" className="max-w-sm">
+            <Zap className="h-4 w-4 text-red-500" />
+          </Tooltip>
         ) : (
           <Zap className="h-4 w-4" />
         )}
       </Button>
       {status === 'success' && (
         <span className="text-xs text-green-600 dark:text-green-400">{durationMs}ms</span>
-      )}
-      {status === 'error' && (
-        <div className="absolute left-0 right-0 top-full mt-1 text-sm text-red-600 dark:text-red-400 bg-red-500/10 rounded p-2 break-words z-10">
-          {error}
-        </div>
       )}
     </>
   )

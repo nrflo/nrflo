@@ -67,7 +67,7 @@ describe('CLIModelCheckButton', () => {
 
   afterEach(() => vi.useRealTimers())
 
-  it('shows error message from result.error on failure', async () => {
+  it('shows error message from result.error on failure via tooltip', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
       success: false,
       error: 'binary not found',
@@ -78,27 +78,42 @@ describe('CLIModelCheckButton', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(await screen.findByText('binary not found')).toBeInTheDocument()
+    const btn = screen.getByRole('button')
+    const tooltipTrigger = btn.querySelector('[data-state]') as HTMLElement
+    await user.hover(tooltipTrigger)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('binary not found')
   })
 
-  it('shows "Unknown error" when error field is absent', async () => {
+  it('shows "Unknown error" when error field is absent via tooltip', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: false, duration_ms: 0 })
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(await screen.findByText('Unknown error')).toBeInTheDocument()
+    const btn = screen.getByRole('button')
+    const tooltipTrigger = btn.querySelector('[data-state]') as HTMLElement
+    await user.hover(tooltipTrigger)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('Unknown error')
   })
 
-  it('shows error message when testCLIModel throws', async () => {
+  it('shows error message when testCLIModel throws via tooltip', async () => {
     vi.mocked(cliModelsApi.testCLIModel).mockRejectedValue(new Error('network failure'))
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(await screen.findByText('network failure')).toBeInTheDocument()
+    const btn = screen.getByRole('button')
+    const tooltipTrigger = btn.querySelector('[data-state]') as HTMLElement
+    await user.hover(tooltipTrigger)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('network failure')
   })
 
   it('button is disabled when disabled prop is true', () => {

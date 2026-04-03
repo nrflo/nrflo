@@ -1,12 +1,15 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -207,3 +210,53 @@ func (a *failStartAdapter) SupportsSystemPromptFile() bool                  { re
 func (a *failStartAdapter) SupportsResume() bool                            { return false }
 func (a *failStartAdapter) UsesStdinPrompt() bool                           { return false }
 func (a *failStartAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd { return nil }
+
+// hangingAdapter returns a command that runs indefinitely (sleep 999).
+// Used to test the timeout/kill path without waiting 40s: caller provides a
+// short-lived request context so the handler's derived context expires quickly.
+type hangingAdapter struct{ name string }
+
+func (a *hangingAdapter) Name() string                                    { return a.name }
+func (a *hangingAdapter) BuildCommand(_ spawner.SpawnOptions) *exec.Cmd   { return exec.Command("sleep", "999") }
+func (a *hangingAdapter) MapModel(model string) string                    { return model }
+func (a *hangingAdapter) SupportsSessionID() bool                         { return false }
+func (a *hangingAdapter) SupportsSystemPromptFile() bool                  { return false }
+func (a *hangingAdapter) SupportsResume() bool                            { return false }
+func (a *hangingAdapter) UsesStdinPrompt() bool                           { return false }
+func (a *hangingAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd { return nil }
+
+// TestHandleTestCLIModel_TimeoutMessage exercises the timeout code path:
+// the response must be success=false with an error containing "40s", and the
+// process-group kill must unblock cmd.Wait() so the handler returns promptly.
+func TestHandleTestCLIModel_TimeoutMessage(t *testing.T) {
+	s := newCLIModelCheckServer(t)
+	s.cliAdapterFunc = func(cliType string) (spawner.CLIAdapter, error) {
+		return &hangingAdapter{name: cliType}, nil
+	}
+
+	// A 100ms parent context expires long before the 40s handler timeout, but
+	// gives cmd.Start() enough time to fork sleep(1).  SIGKILL then terminates
+	// the process group immediately so cmd.Wait() unblocks and the test stays
+	// well under the 5s single-test budget.
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cli-models/sonnet/test", nil).WithContext(ctx)
+	req.SetPathValue("id", "sonnet")
+	rr := httptest.NewRecorder()
+	s.handleTestCLIModel(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+	result := decodeCLIModelCheckResult(t, rr)
+	if result.Success {
+		t.Error("expected success=false for timeout, got success=true")
+	}
+	if !strings.Contains(result.Error, "40s") {
+		t.Errorf("timeout error %q does not mention '40s'", result.Error)
+	}
+	if result.DurationMs < 0 {
+		t.Errorf("duration_ms = %d, want >= 0", result.DurationMs)
+	}
+}

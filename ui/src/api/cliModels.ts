@@ -54,6 +54,6 @@ export interface TestCLIModelResult {
   duration_ms: number
 }
 
-export async function testCLIModel(id: string): Promise<TestCLIModelResult> {
-  return apiPost<TestCLIModelResult>(`/api/v1/cli-models/${encodeURIComponent(id)}/test`, {})
+export async function testCLIModel(id: string, signal?: AbortSignal): Promise<TestCLIModelResult> {
+  return apiPost<TestCLIModelResult>(`/api/v1/cli-models/${encodeURIComponent(id)}/test`, {}, { signal })
 }

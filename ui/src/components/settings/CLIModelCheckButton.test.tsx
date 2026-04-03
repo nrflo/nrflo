@@ -23,7 +23,7 @@ describe('CLIModelCheckButton', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(cliModelsApi.testCLIModel).toHaveBeenCalledWith('my-custom-model')
+    expect(cliModelsApi.testCLIModel).toHaveBeenCalledWith('my-custom-model', expect.any(AbortSignal))
   })
 
   it('shows spinner and disables button during testing', async () => {
@@ -63,6 +63,41 @@ describe('CLIModelCheckButton', () => {
     act(() => { vi.advanceTimersByTime(3000) })
 
     expect(screen.queryByText('500ms')).not.toBeInTheDocument()
+  })
+
+  it('shows timeout error after 45s if server does not respond', async () => {
+    // Only fake setTimeout/clearTimeout — leave setImmediate/nextTick real so Radix can render
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    // Mock that stays pending until the abort signal fires
+    vi.mocked(cliModelsApi.testCLIModel).mockImplementation((_id, signal) =>
+      new Promise<never>((_, reject) => {
+        signal?.addEventListener('abort', () =>
+          reject(new DOMException('The operation was aborted.', 'AbortError'))
+        )
+      })
+    )
+
+    render(<CLIModelCheckButton modelId="opencode-model" />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'))
+    })
+
+    // Fire the 45s client-side timeout → controller.abort() → mock rejects with AbortError
+    await act(async () => {
+      vi.advanceTimersByTime(45_000)
+    })
+
+    // Component is in error state — open tooltip via pointerMove + advance Radix's 200ms open delay
+    // Radix Tooltip listens to onPointerMove (not onPointerEnter) to trigger opening
+    const tooltipTrigger = screen.getByRole('button').querySelector('[data-state]') as HTMLElement
+    await act(async () => {
+      fireEvent.pointerMove(tooltipTrigger)
+      vi.advanceTimersByTime(300)
+    })
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Timeout — server did not respond')
   })
 
   afterEach(() => vi.useRealTimers())

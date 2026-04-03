@@ -10,14 +10,14 @@ describe('testCLIModel', () => {
   it('calls POST /api/v1/cli-models/:id/test with empty body', async () => {
     vi.mocked(client.apiPost).mockResolvedValue({ success: true, duration_ms: 500 })
     const result = await testCLIModel('sonnet')
-    expect(client.apiPost).toHaveBeenCalledWith('/api/v1/cli-models/sonnet/test', {})
+    expect(client.apiPost).toHaveBeenCalledWith('/api/v1/cli-models/sonnet/test', {}, { signal: undefined })
     expect(result).toEqual({ success: true, duration_ms: 500 })
   })
 
   it('encodes special characters in model id', async () => {
     vi.mocked(client.apiPost).mockResolvedValue({ success: false, error: 'err', duration_ms: 0 })
     await testCLIModel('model/with/slashes')
-    expect(client.apiPost).toHaveBeenCalledWith('/api/v1/cli-models/model%2Fwith%2Fslashes/test', {})
+    expect(client.apiPost).toHaveBeenCalledWith('/api/v1/cli-models/model%2Fwith%2Fslashes/test', {}, { signal: undefined })
   })
 
   it('propagates errors', async () => {

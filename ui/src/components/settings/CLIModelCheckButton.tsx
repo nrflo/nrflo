@@ -17,18 +17,23 @@ export function CLIModelCheckButton({ modelId, disabled }: CLIModelCheckButtonPr
   const [error, setError] = useState('')
   const [durationMs, setDurationMs] = useState(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
+      abortRef.current?.abort()
     }
   }, [])
 
   const handleTest = useCallback(async () => {
     setStatus('testing')
     setError('')
+    const controller = new AbortController()
+    abortRef.current = controller
+    const timeoutId = setTimeout(() => controller.abort(), 45_000)
     try {
-      const result = await testCLIModel(modelId)
+      const result = await testCLIModel(modelId, controller.signal)
       if (result.success) {
         setStatus('success')
         setDurationMs(result.duration_ms)
@@ -42,7 +47,13 @@ export function CLIModelCheckButton({ modelId, disabled }: CLIModelCheckButtonPr
       }
     } catch (err) {
       setStatus('error')
-      setError((err as Error).message)
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Timeout — server did not respond')
+      } else {
+        setError((err as Error).message)
+      }
+    } finally {
+      clearTimeout(timeoutId)
     }
   }, [modelId])
 

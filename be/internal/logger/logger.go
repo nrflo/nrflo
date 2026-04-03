@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -99,14 +100,22 @@ func log(level string, ctx context.Context, msg string, args ...any) {
 	trx := TrxFromContext(ctx)
 	ts := time.Now().Format("2006-01-02 15:04:05")
 
-	line := fmt.Sprintf("%s %s [%s] %s", ts, level, trx, msg)
+	prefix := fmt.Sprintf("%s %s [%s] ", ts, level, trx)
+
+	var suffix string
 	for i := 0; i+1 < len(args); i += 2 {
-		line += fmt.Sprintf(" %v=%v", args[i], args[i+1])
+		suffix += fmt.Sprintf(" %v=%v", args[i], args[i+1])
 	}
-	line += "\n"
+
+	// Split multi-line messages so each line gets the full prefix
+	lines := strings.Split(msg, "\n")
+	var out string
+	for _, l := range lines {
+		out += prefix + l + suffix + "\n"
+	}
 
 	mu.Lock()
-	fmt.Fprint(writer, line)
+	fmt.Fprint(writer, out)
 	if logFile != nil {
 		rotate()
 	}

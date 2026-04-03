@@ -233,6 +233,70 @@ func TestLog_NoKeyValuePairs(t *testing.T) {
 	}
 }
 
+func TestLog_MultilineMessage(t *testing.T) {
+	var buf bytes.Buffer
+	mu.Lock()
+	writer = &buf
+	mu.Unlock()
+
+	ctx := WithTrx(context.Background(), "multi123")
+
+	Info(ctx, "line one\nline two\nline three")
+
+	output := buf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+
+	if len(lines) != 3 {
+		t.Fatalf("expected 3 lines, got %d: %q", len(lines), output)
+	}
+
+	for i, line := range lines {
+		if !strings.Contains(line, "INFO") {
+			t.Errorf("line %d missing INFO: %s", i, line)
+		}
+		if !strings.Contains(line, "[multi123]") {
+			t.Errorf("line %d missing trx: %s", i, line)
+		}
+	}
+
+	if !strings.Contains(lines[0], "line one") {
+		t.Errorf("line 0 missing content: %s", lines[0])
+	}
+	if !strings.Contains(lines[1], "line two") {
+		t.Errorf("line 1 missing content: %s", lines[1])
+	}
+	if !strings.Contains(lines[2], "line three") {
+		t.Errorf("line 2 missing content: %s", lines[2])
+	}
+}
+
+func TestLog_MultilineMessageWithArgs(t *testing.T) {
+	var buf bytes.Buffer
+	mu.Lock()
+	writer = &buf
+	mu.Unlock()
+
+	ctx := WithTrx(context.Background(), "mlarg123")
+
+	Info(ctx, "first\nsecond", "key", "val")
+
+	output := buf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d: %q", len(lines), output)
+	}
+
+	for i, line := range lines {
+		if !strings.Contains(line, "key=val") {
+			t.Errorf("line %d missing key=val: %s", i, line)
+		}
+		if !strings.Contains(line, "[mlarg123]") {
+			t.Errorf("line %d missing trx: %s", i, line)
+		}
+	}
+}
+
 func TestInit_CreatesDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 	logPath := filepath.Join(tempDir, "logs", "subdir", "test.log")

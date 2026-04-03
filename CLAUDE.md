@@ -153,6 +153,8 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 Build: `make build && make install`, then `nrflow_server serve` and open `http://localhost:6587`
 
+By default the server binds to `127.0.0.1` (localhost only). To make it accessible on the local network: `nrflow_server serve --host 0.0.0.0`
+
 ## Agent CLI Commands
 
 Spawned agents use these commands to report results (via Unix socket to the server). Exit 0 = pass (no explicit call needed). Only call `agent fail` for explicit failure.

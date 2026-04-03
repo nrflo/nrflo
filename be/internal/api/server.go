@@ -67,7 +67,7 @@ func (s *Server) GetWSHub() *ws.Hub {
 }
 
 // Start starts the HTTP server
-func (s *Server) Start(port int) error {
+func (s *Server) Start(host string, port int) error {
 	// Recover zombie chains from previous crash
 	if s.chainRunner != nil {
 		s.chainRunner.RecoverZombieChains()
@@ -88,14 +88,14 @@ func (s *Server) Start(port int) error {
 	handler := s.corsMiddleware(s.projectMiddleware(mux))
 
 	s.httpServer = &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    fmt.Sprintf("%s:%d", host, port),
 		Handler: handler,
 	}
 
 	ctx := context.Background()
-	logger.Info(ctx, "server starting", "port", port)
+	logger.Info(ctx, "server starting", "host", host, "port", port)
 	logger.Info(ctx, "database path", "path", db.GetDBPath(s.dataPath))
-	logger.Info(ctx, "websocket endpoint", "url", fmt.Sprintf("ws://localhost:%d/api/v1/ws", port))
+	logger.Info(ctx, "websocket endpoint", "url", fmt.Sprintf("ws://%s:%d/api/v1/ws", host, port))
 	return s.httpServer.ListenAndServe()
 }
 

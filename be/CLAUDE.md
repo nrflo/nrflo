@@ -191,7 +191,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 ## Server Architecture
 
 `nrflow_server serve` provides:
-- **HTTP API** on port 6587 — web UI, REST API, WebSocket
+- **HTTP API** on `127.0.0.1:6587` by default — web UI, REST API, WebSocket. Use `--host 0.0.0.0` for LAN access
 - **Unix socket** at `/tmp/nrflow/nrflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **Auto-migration** — database schema is automatically migrated on startup
 

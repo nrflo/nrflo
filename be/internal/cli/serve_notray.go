@@ -2,7 +2,7 @@
 
 package cli
 
-func runWithTray(port int, _ func() (int, error), onStart func(), _ func()) {
+func runWithTray(_ string, port int, _ func() (int, error), onStart func(), _ func()) {
 	// no-op: tray not available, call onStart directly
 	onStart()
 }

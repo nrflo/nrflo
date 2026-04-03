@@ -21,6 +21,7 @@ import (
 )
 
 var (
+	serveHost string
 	servePort int
 	noTray    bool
 )
@@ -46,9 +47,11 @@ The server provides:
 Database migrations are applied automatically on startup.
 
 Example usage:
-  nrflow_server serve              # Start with tray icon
-  nrflow_server serve --no-tray    # Start headless
-  nrflow_server serve --port=8080  # Custom port`,
+  nrflow_server serve                       # Start with tray icon (localhost only)
+  nrflow_server serve --no-tray             # Start headless
+  nrflow_server serve --port=8080           # Custom port
+  nrflow_server serve --host 0.0.0.0        # Listen on all interfaces (LAN access)
+  nrflow_server serve --host 192.168.1.50   # Bind to specific IP`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sc, err := setupServer()
 		if err != nil {
@@ -66,13 +69,13 @@ Example usage:
 			return repo.NewAgentSessionRepo(sc.pool, clock.Real()).CountRunning()
 		}
 		var serverErr error
-		runWithTray(sc.cfg.Server.Port, agentCount, func() {
+		runWithTray(sc.cfg.Server.Host, sc.cfg.Server.Port, agentCount, func() {
 			serverError := make(chan error, 1)
 			go func() {
-				serverError <- sc.httpServer.Start(sc.cfg.Server.Port)
+				serverError <- sc.httpServer.Start(sc.cfg.Server.Host, sc.cfg.Server.Port)
 			}()
 			ctx := context.Background()
-			logger.Info(ctx, "nrflow server started", "port", sc.cfg.Server.Port, "db", sc.pool.Path)
+			logger.Info(ctx, "nrflow server started", "host", sc.cfg.Server.Host, "port", sc.cfg.Server.Port, "db", sc.pool.Path)
 			if err := <-serverError; err != nil {
 				serverErr = err
 			}
@@ -98,6 +101,9 @@ func setupServer() (*serverComponents, error) {
 		return nil, fmt.Errorf("failed to init logger: %w", err)
 	}
 
+	if serveHost != "" {
+		cfg.Server.Host = serveHost
+	}
 	if servePort != 0 {
 		cfg.Server.Port = servePort
 	}
@@ -140,11 +146,11 @@ func runServer(sc *serverComponents) error {
 
 	serverError := make(chan error, 1)
 	go func() {
-		serverError <- sc.httpServer.Start(sc.cfg.Server.Port)
+		serverError <- sc.httpServer.Start(sc.cfg.Server.Host, sc.cfg.Server.Port)
 	}()
 
 	ctx := context.Background()
-	logger.Info(ctx, "nrflow server started", "port", sc.cfg.Server.Port, "db", sc.pool.Path)
+	logger.Info(ctx, "nrflow server started", "host", sc.cfg.Server.Host, "port", sc.cfg.Server.Port, "db", sc.pool.Path)
 
 	select {
 	case err := <-serverError:
@@ -174,6 +180,7 @@ func shutdownServer(sc *serverComponents) {
 }
 
 func init() {
+	serveCmd.Flags().StringVar(&serveHost, "host", "", "Host/IP to bind to (default: 127.0.0.1 or from config)")
 	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP port to listen on (default: 6587 or from config)")
 	serveCmd.Flags().BoolVar(&noTray, "no-tray", false, "Disable macOS menu bar tray icon")
 }

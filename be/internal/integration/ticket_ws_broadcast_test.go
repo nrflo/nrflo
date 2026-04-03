@@ -47,7 +47,7 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 
 	// Start in background
 	go func() {
-		_ = srv.Start(port)
+		_ = srv.Start("127.0.0.1", port)
 	}()
 
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)
@@ -493,7 +493,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	hub := srv.GetWSHub()
 
 	go func() {
-		_ = srv.Start(port)
+		_ = srv.Start("127.0.0.1", port)
 	}()
 
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)

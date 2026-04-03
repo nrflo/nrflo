@@ -21,11 +21,11 @@ type AgentCountFn func() (int, error)
 // goroutine once the tray is ready. onQuit is called when the user quits
 // (via menu or Ctrl+C). agentCount is polled every 3s to update the icon
 // with the running agent count. This function blocks until the tray exits.
-func Run(port int, agentCount AgentCountFn, onServerStart func(), onQuit func()) {
+func Run(host string, port int, agentCount AgentCountFn, onServerStart func(), onQuit func()) {
 	systray.Run(func() {
 		initialIcon := renderIcon()
 		systray.SetTemplateIcon(initialIcon, initialIcon)
-		systray.SetTooltip(fmt.Sprintf("nrflow server — port %d", port))
+		systray.SetTooltip(fmt.Sprintf("nrflow server — %s:%d", host, port))
 
 		mOpen := systray.AddMenuItem("Open nrflow", "Open web UI in browser")
 		systray.AddSeparator()
@@ -67,7 +67,11 @@ func Run(port int, agentCount AgentCountFn, onServerStart func(), onQuit func())
 			for {
 				select {
 				case <-mOpen.ClickedCh:
-					_ = exec.Command("open", fmt.Sprintf("http://localhost:%d", port)).Start()
+					openHost := host
+					if openHost == "0.0.0.0" || openHost == "" {
+						openHost = "localhost"
+					}
+					_ = exec.Command("open", fmt.Sprintf("http://%s:%d", openHost, port)).Start()
 				case <-mQuit.ClickedCh:
 					count, _ := agentCount()
 					if count > 0 && !confirmQuit() {

@@ -11,6 +11,7 @@ const (
 	DefaultConfigDir  = ".nrflow"
 	DefaultConfigFile = "config.json"
 	DefaultPort       = 6587
+	DefaultHost       = "127.0.0.1"
 )
 
 // Config represents the global nrflow configuration
@@ -20,6 +21,7 @@ type Config struct {
 
 // ServerConfig contains server-specific settings
 type ServerConfig struct {
+	Host        string   `json:"host"`
 	Port        int      `json:"port"`
 	CORSOrigins []string `json:"cors_origins"`
 }
@@ -28,6 +30,7 @@ type ServerConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
+			Host:        DefaultHost,
 			Port:        DefaultPort,
 			CORSOrigins: []string{},
 		},
@@ -65,6 +68,9 @@ func Load() (*Config, error) {
 	}
 
 	// Apply defaults for missing fields
+	if cfg.Server.Host == "" {
+		cfg.Server.Host = DefaultHost
+	}
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = DefaultPort
 	}

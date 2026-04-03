@@ -217,7 +217,7 @@ describe('CLIModelsSection', () => {
     expect(screen.queryByText('Claude')).not.toBeInTheDocument()
   })
 
-  it('shows timeout tooltip for OpenCode group header only', async () => {
+  it('shows warning tooltips for Codex and OpenCode group headers', async () => {
     vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
       makeCLIModel({ id: 'claude-model', cli_type: 'claude' }),
       makeCLIModel({ id: 'codex-model', cli_type: 'codex' }),
@@ -226,16 +226,38 @@ describe('CLIModelsSection', () => {
     renderWithQuery(<CLIModelsSection />)
     const user = userEvent.setup()
 
-    // OpenCode heading has Info icon (SVG) → tooltip on hover
-    const openCodeHeading = await screen.findByText('OpenCode')
-    const infoSvg = openCodeHeading.querySelector('svg')
-    expect(infoSvg).toBeInTheDocument()
-    await user.hover(infoSvg!)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('OpenAI models will timeout on failure')
+    // Codex heading has AlertTriangle icon → tooltip on hover
+    const codexHeading = await screen.findByText('Codex')
+    const codexSvg = codexHeading.querySelector('svg')
+    expect(codexSvg).toBeInTheDocument()
+    await user.hover(codexSvg!)
+    const codexTooltip = await screen.findByRole('tooltip')
+    expect(codexTooltip).toHaveTextContent('experimental')
+    expect(codexTooltip).toHaveTextContent('read-only')
 
-    // Claude and Codex headings have no Info icon
+    // OpenCode heading has AlertTriangle icon
+    const openCodeHeading = screen.getByText('OpenCode')
+    const openCodeSvg = openCodeHeading.querySelector('svg')
+    expect(openCodeSvg).toBeInTheDocument()
+
+    // Claude heading has no warning icon
     expect(screen.getByText('Claude').querySelector('svg')).not.toBeInTheDocument()
-    expect(screen.getByText('Codex').querySelector('svg')).not.toBeInTheDocument()
+  })
+
+  it('shows experimental tooltip for OpenCode group header', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'oc-model', cli_type: 'opencode' }),
+    ])
+    renderWithQuery(<CLIModelsSection />)
+    const user = userEvent.setup()
+
+    const openCodeHeading = await screen.findByText('OpenCode')
+    const openCodeSvg = openCodeHeading.querySelector('svg')
+    expect(openCodeSvg).toBeInTheDocument()
+    await user.hover(openCodeSvg!)
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('experimental')
+    expect(tooltip).toHaveTextContent('OpenAI models will timeout on failure')
   })
 
   it('groups appear in correct order: Claude before Codex before OpenCode', async () => {

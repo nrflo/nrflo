@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Cpu, Lock, Info } from 'lucide-react'
+import { Plus, Pencil, Trash2, Cpu, Lock, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -208,12 +208,20 @@ export function CLIModelsSection() {
             <div key={group.label}>
               <h3 className="text-sm font-semibold text-muted-foreground mt-4 mb-2 flex items-center gap-1.5">
                 {group.label}
+                {group.models[0]?.cli_type === 'codex' && (
+                  <Tooltip
+                    placement="right"
+                    text="Codex models are experimental and run in read-only sandboxed environments"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 cursor-help" />
+                  </Tooltip>
+                )}
                 {group.models[0]?.cli_type === 'opencode' && (
                   <Tooltip
                     placement="right"
-                    text="OpenAI models will timeout on failure — OpenCode does not report errors, the agent hangs until the wall-clock timeout kills it"
+                    text="OpenCode support is experimental. OpenAI models will timeout on failure — OpenCode does not report errors, the agent hangs until the wall-clock timeout kills it"
                   >
-                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 cursor-help" />
                   </Tooltip>
                 )}
               </h3>

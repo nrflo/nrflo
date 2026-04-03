@@ -166,7 +166,7 @@ POST   /api/v1/chains/:id/append   # Append tickets to running chain
 GET /api/v1/docs/agent-manual      # Agent manual markdown content
 
 # Logs
-GET /api/v1/logs                   # Log file contents (?type=be|fe, default be)
+GET /api/v1/logs                   # Log file contents (?type=be|fe, default be; ?filter=<string> searches full file case-insensitive, no 1000-line cap)
 
 # Errors (require X-Project header or ?project= param)
 GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)

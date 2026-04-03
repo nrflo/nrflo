@@ -48,6 +48,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     root_path: '/test/path',
     default_branch: 'main',
     use_git_worktrees: false,
+    push_after_merge: false,
     claude_safety_hook: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -183,6 +184,39 @@ describe('SettingsPage — safety hook edit form', () => {
       expect(parsed.enabled).toBe(true)
       expect(parsed.allow_git).toBe(true)
       expect(parsed.rm_rf_allowed_paths).toContain('node_modules')
+      expect(parsed.dangerous_patterns).toContain('rm -rf /')
+      expect(parsed.dangerous_patterns).toContain('DROP TABLE')
+    })
+  })
+
+  it('does not overwrite existing dangerous patterns when toggling hook off then on', async () => {
+    const user = userEvent.setup()
+    const hookJson = JSON.stringify({
+      enabled: true,
+      allow_git: true,
+      rm_rf_allowed_paths: [],
+      dangerous_patterns: ['my-custom-pattern'],
+    })
+    const project = makeProject({ claude_safety_hook: hookJson })
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [project] })
+    vi.mocked(projectsApi.updateProject).mockResolvedValue(project)
+
+    renderPage()
+    await goToProjectsTab()
+    await screen.findByText('Test Project')
+    await user.click(screen.getByRole('button', { name: '' }))
+
+    const hookToggle = screen.getByRole('switch', { name: /enable safety hook/i })
+    await user.click(hookToggle) // disable
+    await user.click(hookToggle) // re-enable
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      const parsed = JSON.parse(
+        vi.mocked(projectsApi.updateProject).mock.calls[0][1].claude_safety_hook!
+      )
+      expect(parsed.dangerous_patterns).toContain('my-custom-pattern')
+      expect(parsed.dangerous_patterns).not.toContain('rm -rf /')
     })
   })
 
@@ -205,6 +239,47 @@ describe('SettingsPage — safety hook edit form', () => {
         'test-project',
         expect.objectContaining({ claude_safety_hook: '' })
       )
+    })
+  })
+})
+
+describe('SettingsPage — create project safety hook defaults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject()] })
+  })
+
+  it('shows safety hook enabled by default in create form', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await goToProjectsTab()
+    await screen.findByText('Test Project')
+    await user.click(screen.getByRole('button', { name: /new project/i }))
+
+    expect(screen.getByRole('switch', { name: /enable safety hook/i })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: /allow git operations/i })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('create mutation includes claude_safety_hook with default dangerous patterns', async () => {
+    const user = userEvent.setup()
+    vi.mocked(projectsApi.createProject).mockResolvedValue(makeProject({ id: 'new-proj' }))
+
+    renderPage()
+    await goToProjectsTab()
+    await screen.findByText('Test Project')
+    await user.click(screen.getByRole('button', { name: /new project/i }))
+    await user.type(screen.getByPlaceholderText('project-id'), 'new-proj')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      const createData = vi.mocked(projectsApi.createProject).mock.calls[0][0]
+      expect(createData.claude_safety_hook).toBeTruthy()
+      const parsed = JSON.parse(createData.claude_safety_hook!)
+      expect(parsed.enabled).toBe(true)
+      expect(parsed.allow_git).toBe(true)
+      expect(parsed.dangerous_patterns).toContain('rm -rf /')
+      expect(parsed.dangerous_patterns).toContain('DROP TABLE')
+      expect(parsed.rm_rf_allowed_paths).toContain('node_modules')
     })
   })
 })

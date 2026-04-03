@@ -96,7 +96,7 @@ endef
 test:
 	$(acquire_be_lock)
 	@START=$$(date +%s); \
-	cd $(BE_DIR) && $(GO) test -p 4 ./internal/... -count=1; \
+	cd $(BE_DIR) && $(GO) test -p 6 ./internal/... -count=1; \
 	RC=$$?; \
 	rmdir $(BE_LOCK) 2>/dev/null || true; \
 	ELAPSED=$$(( $$(date +%s) - $$START )); \

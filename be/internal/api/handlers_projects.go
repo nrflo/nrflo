@@ -52,11 +52,12 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 
 // CreateProjectRequest represents the request body for creating a project
 type CreateProjectRequest struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	RootPath        string `json:"root_path,omitempty"`
-	DefaultBranch   string `json:"default_branch,omitempty"`
-	UseGitWorktrees *bool `json:"use_git_worktrees,omitempty"`
+	ID               string  `json:"id"`
+	Name             string  `json:"name"`
+	RootPath         string  `json:"root_path,omitempty"`
+	DefaultBranch    string  `json:"default_branch,omitempty"`
+	UseGitWorktrees  *bool   `json:"use_git_worktrees,omitempty"`
+	ClaudeSafetyHook *string `json:"claude_safety_hook,omitempty"`
 }
 
 // handleCreateProject creates a new project
@@ -97,11 +98,27 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Persist safety hook config if provided (stored in config table, not projects table)
+	if req.ClaudeSafetyHook != nil && *req.ClaudeSafetyHook != "" {
+		var cfg spawner.SafetyHookConfig
+		if err := json.Unmarshal([]byte(*req.ClaudeSafetyHook), &cfg); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid claude_safety_hook JSON: "+err.Error())
+			return
+		}
+		if err := s.pool.SetProjectConfig(req.ID, "claude_safety_hook", *req.ClaudeSafetyHook); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to save safety hook config: "+err.Error())
+			return
+		}
+	}
+
 	created, err := projectRepo.Get(req.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	s.loadSafetyHook(created)
+	s.loadPushAfterMerge(created)
 
 	writeJSON(w, http.StatusCreated, created)
 }

@@ -185,13 +185,14 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       await user.click(createButton)
 
       await waitFor(() => {
-        expect(projectsApi.createProject).toHaveBeenCalledWith({
-          id: 'new-project',
-          name: 'new-project',
-          root_path: undefined,
-          default_branch: 'main',
-          use_git_worktrees: true,
-        })
+        expect(projectsApi.createProject).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 'new-project',
+            name: 'new-project',
+            default_branch: 'main',
+            use_git_worktrees: true,
+          })
+        )
       })
     })
 
@@ -222,13 +223,14 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       await user.click(createButton)
 
       await waitFor(() => {
-        expect(projectsApi.createProject).toHaveBeenCalledWith({
-          id: 'new-project',
-          name: 'new-project',
-          root_path: undefined,
-          default_branch: 'main',
-          use_git_worktrees: false,
-        })
+        expect(projectsApi.createProject).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 'new-project',
+            name: 'new-project',
+            default_branch: 'main',
+            use_git_worktrees: false,
+          })
+        )
       })
     })
   })

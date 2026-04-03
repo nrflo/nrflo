@@ -22,6 +22,7 @@ export interface CreateProjectRequest {
   root_path?: string
   default_branch?: string
   use_git_worktrees?: boolean
+  claude_safety_hook?: string
 }
 
 export interface UpdateProjectRequest {

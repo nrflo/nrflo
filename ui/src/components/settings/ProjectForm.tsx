@@ -23,6 +23,13 @@ const DEFAULT_RM_PATHS = [
   '__pycache__', 'coverage', '.next', 'vendor', '/tmp', '/var/tmp',
 ].join('\n')
 
+const DEFAULT_DANGEROUS_PATTERNS = [
+  'DROP DATABASE', 'DROP TABLE', 'TRUNCATE TABLE',
+  '> /dev/sda', 'mkfs', 'dd if=',
+  ':(){:|:&};:', 'chmod -R 777 /',
+  'sudo rm', '--hard', 'rm -rf /',
+].join('\n')
+
 export const emptyProjectForm: ProjectFormData = {
   id: '',
   name: '',
@@ -30,10 +37,10 @@ export const emptyProjectForm: ProjectFormData = {
   default_branch: '',
   use_git_worktrees: false,
   push_after_merge: false,
-  safety_hook_enabled: false,
+  safety_hook_enabled: true,
   safety_hook_allow_git: true,
-  safety_hook_allowed_rm_paths: '',
-  safety_hook_dangerous_patterns: '',
+  safety_hook_allowed_rm_paths: DEFAULT_RM_PATHS,
+  safety_hook_dangerous_patterns: DEFAULT_DANGEROUS_PATTERNS,
 }
 
 interface SafetyHookConfig {
@@ -211,6 +218,9 @@ export function ProjectForm({
               safety_hook_allowed_rm_paths: checked && !formData.safety_hook_allowed_rm_paths
                 ? DEFAULT_RM_PATHS
                 : formData.safety_hook_allowed_rm_paths,
+              safety_hook_dangerous_patterns: checked && !formData.safety_hook_dangerous_patterns
+                ? DEFAULT_DANGEROUS_PATTERNS
+                : formData.safety_hook_dangerous_patterns,
             })
           }
           label="Enable safety hook"

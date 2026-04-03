@@ -106,12 +106,14 @@ export function ProjectsSection() {
 
   const handleSaveCreate = () => {
     if (!formData.id.trim()) return
+    const safetyHook = buildSafetyHookJSON(formData)
     createMutation.mutate({
       id: formData.id.trim(),
       name: formData.name.trim() || formData.id.trim(),
       root_path: formData.root_path.trim() || undefined,
       default_branch: formData.default_branch.trim() || undefined,
       use_git_worktrees: formData.use_git_worktrees,
+      claude_safety_hook: safetyHook || undefined,
     })
   }
 

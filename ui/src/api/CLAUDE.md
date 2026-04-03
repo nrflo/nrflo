@@ -120,8 +120,9 @@ DELETE /api/v1/system-agents/:id       # Delete system agent definition
 GET    /api/v1/default-templates           # List all default templates
 POST   /api/v1/default-templates           # Create default template
 GET    /api/v1/default-templates/:id       # Get default template
-PATCH  /api/v1/default-templates/:id       # Update default template (non-readonly only)
-DELETE /api/v1/default-templates/:id       # Delete default template (non-readonly only)
+PATCH  /api/v1/default-templates/:id       # Update default template (readonly: template-only, 400 if name provided)
+DELETE /api/v1/default-templates/:id       # Delete default template (403 if readonly)
+POST   /api/v1/default-templates/:id/restore  # Restore readonly template to original text (400 if non-readonly)
 
 # CLI Models (global, no X-Project header)
 GET    /api/v1/cli-models           # List all CLI models

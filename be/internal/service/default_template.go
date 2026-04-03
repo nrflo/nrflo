@@ -26,7 +26,7 @@ func NewDefaultTemplateService(pool *db.Pool, clk clock.Clock) *DefaultTemplateS
 // List returns all default templates ordered by name
 func (s *DefaultTemplateService) List() ([]*model.DefaultTemplate, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, name, template, readonly, created_at, updated_at
+		SELECT id, name, template, readonly, created_at, updated_at, default_template
 		FROM default_templates
 		ORDER BY name`)
 	if err != nil {
@@ -39,13 +39,18 @@ func (s *DefaultTemplateService) List() ([]*model.DefaultTemplate, error) {
 		tmpl := &model.DefaultTemplate{}
 		var createdAt, updatedAt string
 		var readonly int
+		var defaultTmpl sql.NullString
 
-		err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Template, &readonly, &createdAt, &updatedAt)
+		err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Template, &readonly, &createdAt, &updatedAt, &defaultTmpl)
 		if err != nil {
 			return nil, err
 		}
 
 		tmpl.Readonly = readonly != 0
+		if defaultTmpl.Valid {
+			s := defaultTmpl.String
+			tmpl.DefaultTemplate = &s
+		}
 		tmpl.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 		tmpl.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 		templates = append(templates, tmpl)
@@ -60,11 +65,12 @@ func (s *DefaultTemplateService) Get(id string) (*model.DefaultTemplate, error) 
 	var createdAt, updatedAt string
 	var readonly int
 
+	var defaultTmpl sql.NullString
 	err := s.pool.QueryRow(`
-		SELECT id, name, template, readonly, created_at, updated_at
+		SELECT id, name, template, readonly, created_at, updated_at, default_template
 		FROM default_templates
 		WHERE id = ?`, id).Scan(
-		&tmpl.ID, &tmpl.Name, &tmpl.Template, &readonly, &createdAt, &updatedAt,
+		&tmpl.ID, &tmpl.Name, &tmpl.Template, &readonly, &createdAt, &updatedAt, &defaultTmpl,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("default template not found: %s", id)
@@ -74,6 +80,10 @@ func (s *DefaultTemplateService) Get(id string) (*model.DefaultTemplate, error) 
 	}
 
 	tmpl.Readonly = readonly != 0
+	if defaultTmpl.Valid {
+		s := defaultTmpl.String
+		tmpl.DefaultTemplate = &s
+	}
 	tmpl.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	tmpl.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return tmpl, nil
@@ -116,15 +126,14 @@ func (s *DefaultTemplateService) Create(req *types.DefaultTemplateCreateRequest)
 	}, nil
 }
 
-// Update updates a default template (rejects readonly templates)
+// Update updates a default template. Readonly templates allow only template text changes.
 func (s *DefaultTemplateService) Update(id string, req *types.DefaultTemplateUpdateRequest) error {
-	// Check if template exists and is not readonly
 	tmpl, err := s.Get(id)
 	if err != nil {
 		return err
 	}
-	if tmpl.Readonly {
-		return fmt.Errorf("cannot modify readonly template: %s", id)
+	if tmpl.Readonly && req.Name != nil {
+		return fmt.Errorf("cannot modify name of readonly template")
 	}
 
 	updates := []string{}
@@ -150,6 +159,27 @@ func (s *DefaultTemplateService) Update(id string, req *types.DefaultTemplateUpd
 
 	query := "UPDATE default_templates SET " + strings.Join(updates, ", ") + " WHERE id = ?"
 	_, err = s.pool.Exec(query, args...)
+	return err
+}
+
+// Restore resets a readonly template's text back to the original default_template value
+func (s *DefaultTemplateService) Restore(id string) error {
+	tmpl, err := s.Get(id)
+	if err != nil {
+		return err
+	}
+	if !tmpl.Readonly {
+		return fmt.Errorf("cannot restore non-readonly template: %s", id)
+	}
+	if tmpl.DefaultTemplate == nil {
+		return fmt.Errorf("template has no default to restore: %s", id)
+	}
+
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err = s.pool.Exec(
+		"UPDATE default_templates SET template = default_template, updated_at = ? WHERE id = ?",
+		now, id,
+	)
 	return err
 }
 

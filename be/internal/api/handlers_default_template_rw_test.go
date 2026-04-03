@@ -128,8 +128,8 @@ func TestHandleUpdateDefaultTemplate_Readonly(t *testing.T) {
 	rr := httptest.NewRecorder()
 	s.handleUpdateDefaultTemplate(rr, req)
 
-	if rr.Code != http.StatusForbidden {
-		t.Errorf("status = %d, want 403 for readonly template update", rr.Code)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for readonly template name update", rr.Code)
 	}
 }
 
@@ -265,8 +265,8 @@ func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 	roReq.SetPathValue("id", "qa-verifier")
 	roRR := httptest.NewRecorder()
 	s.handleUpdateDefaultTemplate(roRR, roReq)
-	if roRR.Code != http.StatusForbidden {
-		t.Errorf("readonly update status = %d, want 403", roRR.Code)
+	if roRR.Code != http.StatusBadRequest {
+		t.Errorf("readonly name update status = %d, want 400", roRR.Code)
 	}
 
 	// 7. Delete user template.

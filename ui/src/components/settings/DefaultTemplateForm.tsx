@@ -23,6 +23,9 @@ export function DefaultTemplateForm({
   mutation,
   isCreate,
   isReadonly,
+  isModified,
+  onRestore,
+  isRestoring,
 }: {
   formData: TemplateFormData
   setFormData: (data: TemplateFormData) => void
@@ -32,14 +35,12 @@ export function DefaultTemplateForm({
   mutation: { isPending: boolean; isError: boolean; error: any }
   isCreate?: boolean
   isReadonly?: boolean
+  isModified?: boolean
+  onRestore?: () => void
+  isRestoring?: boolean
 }) {
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
-      {isReadonly && (
-        <p className="text-sm text-muted-foreground italic">
-          This is a built-in template and cannot be modified.
-        </p>
-      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">
@@ -75,7 +76,7 @@ export function DefaultTemplateForm({
           value={formData.template}
           onChange={(val) => setFormData({ ...formData, template: val })}
           placeholder="Agent prompt template..."
-          readOnly={isReadonly}
+          readOnly={false}
           minHeight="200px"
           maxHeight="400px"
         />
@@ -84,22 +85,25 @@ export function DefaultTemplateForm({
         <Button variant="ghost" onClick={onCancel}>
           {isCreate ? 'Cancel' : <><X className="h-4 w-4 mr-1" />Cancel</>}
         </Button>
-        {!isReadonly && (
-          <Button
-            onClick={onSave}
-            disabled={
-              isCreate
-                ? !formData.id.trim() || !formData.name.trim() || !formData.template.trim() || mutation.isPending
-                : mutation.isPending
-            }
-          >
-            {isCreate ? (
-              mutation.isPending ? 'Creating...' : 'Create'
-            ) : (
-              <>{mutation.isPending ? 'Saving...' : <><Check className="h-4 w-4 mr-1" />Save</>}</>
-            )}
+        {isModified && onRestore && (
+          <Button variant="outline" onClick={onRestore} disabled={isRestoring}>
+            {isRestoring ? 'Restoring...' : 'Restore Default'}
           </Button>
         )}
+        <Button
+          onClick={onSave}
+          disabled={
+            isCreate
+              ? !formData.id.trim() || !formData.name.trim() || !formData.template.trim() || mutation.isPending
+              : mutation.isPending
+          }
+        >
+          {isCreate ? (
+            mutation.isPending ? 'Creating...' : 'Create'
+          ) : (
+            <>{mutation.isPending ? 'Saving...' : <><Check className="h-4 w-4 mr-1" />Save</>}</>
+          )}
+        </Button>
       </div>
       {mutation.isError && (
         <p className="text-sm text-destructive">

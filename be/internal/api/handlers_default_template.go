@@ -101,8 +101,8 @@ func (s *Server) handleUpdateDefaultTemplate(w http.ResponseWriter, r *http.Requ
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "readonly") {
-			writeError(w, http.StatusForbidden, err.Error())
+		if strings.Contains(err.Error(), "cannot modify name") {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -146,4 +146,33 @@ func (s *Server) handleDeleteDefaultTemplate(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// handleRestoreDefaultTemplate restores a readonly template to its original text
+func (s *Server) handleRestoreDefaultTemplate(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	svc := service.NewDefaultTemplateService(s.pool, s.clock)
+
+	if err := svc.Restore(id); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "non-readonly") || strings.Contains(err.Error(), "no default") {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if s.wsHub != nil {
+		event := ws.NewEvent(ws.EventDefaultTemplateUpdated, "", "", "", map[string]interface{}{
+			"template_id": id,
+		})
+		s.wsHub.Broadcast(event)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "restored"})
 }

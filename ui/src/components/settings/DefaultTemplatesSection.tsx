@@ -9,6 +9,7 @@ import {
   createDefaultTemplate,
   updateDefaultTemplate,
   deleteDefaultTemplate,
+  restoreDefaultTemplate,
   type DefaultTemplate,
   type CreateDefaultTemplateRequest,
   type UpdateDefaultTemplateRequest,
@@ -64,6 +65,15 @@ export function DefaultTemplatesSection() {
     },
   })
 
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => restoreDefaultTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: templateKeys.list() })
+      setEditingId(null)
+      setFormData(emptyTemplateForm)
+    },
+  })
+
   const handleStartCreate = () => {
     setIsCreating(true)
     setEditingId(null)
@@ -93,10 +103,11 @@ export function DefaultTemplatesSection() {
 
   const handleSaveEdit = () => {
     if (!editingId) return
-    updateMutation.mutate({
-      id: editingId,
-      data: { name: formData.name.trim(), template: formData.template },
-    })
+    const editingTemplate = templates.find((t) => t.id === editingId)
+    const data: UpdateDefaultTemplateRequest = editingTemplate?.readonly
+      ? { template: formData.template }
+      : { name: formData.name.trim(), template: formData.template }
+    updateMutation.mutate({ id: editingId, data })
   }
 
   return (
@@ -151,6 +162,9 @@ export function DefaultTemplatesSection() {
                   onSave={handleSaveEdit}
                   mutation={updateMutation}
                   isReadonly={t.readonly}
+                  isModified={t.readonly && t.default_template != null && t.template !== t.default_template}
+                  onRestore={t.readonly && t.default_template != null && t.template !== t.default_template ? () => restoreMutation.mutate(t.id) : undefined}
+                  isRestoring={restoreMutation.isPending}
                 />
               ) : deleteConfirm === t.id ? (
                 <div className="flex items-center justify-between">
@@ -182,6 +196,11 @@ export function DefaultTemplatesSection() {
                           <Badge variant="secondary" className="text-xs">
                             <Lock className="h-3 w-3 mr-1" />
                             Built-in
+                          </Badge>
+                        )}
+                        {t.readonly && t.default_template != null && t.template !== t.default_template && (
+                          <Badge variant="outline" className="text-xs">
+                            Modified
                           </Badge>
                         )}
                       </div>

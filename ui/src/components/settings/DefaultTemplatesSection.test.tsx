@@ -86,7 +86,7 @@ describe('DefaultTemplatesSection', () => {
     expect(buttons).toHaveLength(2)
   })
 
-  it('opens edit form for readonly template with built-in note and no Save button', async () => {
+  it('opens edit form for readonly template with Save button and name disabled', async () => {
     vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([
       makeTemplate({ id: 'qa-verifier', name: 'QA Verifier', readonly: true }),
     ])
@@ -98,14 +98,15 @@ describe('DefaultTemplatesSection', () => {
     const buttons = screen.getAllByRole('button')
     await user.click(buttons[1])
 
+    // No "cannot be modified" message
     expect(
-      screen.getByText('This is a built-in template and cannot be modified.')
-    ).toBeInTheDocument()
+      screen.queryByText('This is a built-in template and cannot be modified.')
+    ).not.toBeInTheDocument()
     // ID field disabled with value
     const idInput = screen.getByDisplayValue('qa-verifier')
     expect(idInput).toBeDisabled()
-    // No Save button for readonly
-    expect(screen.queryByRole('button', { name: /Save/i })).not.toBeInTheDocument()
+    // Save button present for readonly templates
+    expect(screen.getByRole('button', { name: /Save/i })).toBeInTheDocument()
     // Cancel button present
     expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument()
   })

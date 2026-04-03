@@ -5,6 +5,7 @@ export interface DefaultTemplate {
   name: string
   template: string
   readonly: boolean
+  default_template?: string
   created_at: string
   updated_at: string
 }
@@ -38,4 +39,8 @@ export async function updateDefaultTemplate(id: string, req: UpdateDefaultTempla
 
 export async function deleteDefaultTemplate(id: string): Promise<{ status: string }> {
   return apiDelete<{ status: string }>(`/api/v1/default-templates/${encodeURIComponent(id)}`)
+}
+
+export async function restoreDefaultTemplate(id: string): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(`/api/v1/default-templates/${encodeURIComponent(id)}/restore`)
 }

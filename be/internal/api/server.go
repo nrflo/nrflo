@@ -381,6 +381,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/default-templates/{id}", s.handleGetDefaultTemplate)
 	mux.HandleFunc("PATCH /api/v1/default-templates/{id}", s.handleUpdateDefaultTemplate)
 	mux.HandleFunc("DELETE /api/v1/default-templates/{id}", s.handleDeleteDefaultTemplate)
+	mux.HandleFunc("POST /api/v1/default-templates/{id}/restore", s.handleRestoreDefaultTemplate)
 
 	// Global settings (no project scope)
 	mux.HandleFunc("GET /api/v1/settings", s.handleGetGlobalSettings)

@@ -70,50 +70,88 @@ install: build-release
 	install -m 755 $(BE_DIR)/nrflow_server $(DESTDIR)$(BINDIR)/nrflow_server
 
 # --- Test ---
+# Separate locks for BE/FE prevent concurrent runs within the same toolchain.
+# Per-worktree via path hash so parallel worktrees don't block each other.
+_LOCK_PFX := /tmp/nrflow-test-$(shell echo "$(CURDIR)" | shasum | cut -c1-8)
+BE_LOCK := $(_LOCK_PFX)-be.lock
+UI_LOCK := $(_LOCK_PFX)-ui.lock
 
-## test: Run backend tests (30s wall-time constraint)
+define acquire_be_lock
+	@if ! mkdir $(BE_LOCK) 2>/dev/null; then \
+		echo "ERROR: Another BE test run is in progress ($(BE_LOCK))."; \
+		echo "If stale, remove with: rmdir $(BE_LOCK)"; \
+		exit 1; \
+	fi
+endef
+
+define acquire_ui_lock
+	@if ! mkdir $(UI_LOCK) 2>/dev/null; then \
+		echo "ERROR: Another UI test run is in progress ($(UI_LOCK))."; \
+		echo "If stale, remove with: rmdir $(UI_LOCK)"; \
+		exit 1; \
+	fi
+endef
+
+## test: Run backend tests (30s wall-time constraint, -p 4 avoids build cache contention)
 test:
+	$(acquire_be_lock)
 	@START=$$(date +%s); \
-	cd $(BE_DIR) && $(GO) test ./internal/... -count=1; \
+	cd $(BE_DIR) && $(GO) test -p 4 ./internal/... -count=1; \
+	RC=$$?; \
+	rmdir $(BE_LOCK) 2>/dev/null || true; \
 	ELAPSED=$$(( $$(date +%s) - $$START )); \
 	if [ "$$ELAPSED" -gt 30 ]; then \
 		echo ""; \
 		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 30 SECONDS. ANALYZE AND FIX."; \
 		exit 1; \
-	fi
+	fi; \
+	exit $$RC
 
 ## test-ui: Run frontend tests (30s wall-time constraint). Use ARGS= for path filter.
 test-ui:
+	$(acquire_ui_lock)
 	@START=$$(date +%s); \
 	cd $(UI_DIR) && npx vitest run $(ARGS); \
+	RC=$$?; \
+	rmdir $(UI_LOCK) 2>/dev/null || true; \
 	ELAPSED=$$(( $$(date +%s) - $$START )); \
 	if [ "$$ELAPSED" -gt 30 ]; then \
 		echo ""; \
 		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 30 SECONDS. ANALYZE AND FIX."; \
 		exit 1; \
-	fi
+	fi; \
+	exit $$RC
 
 ## test-integration: Run integration tests (verbose)
 test-integration:
-	cd $(BE_DIR) && $(GO) test -v ./internal/integration/...
+	$(acquire_be_lock)
+	@cd $(BE_DIR) && $(GO) test -v ./internal/integration/...; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-pkg: Run tests for a specific package (usage: make test-pkg PKG=orchestrator)
 test-pkg:
-	cd $(BE_DIR) && $(GO) test -v ./internal/$(PKG)/...
+	$(acquire_be_lock)
+	@cd $(BE_DIR) && $(GO) test -v ./internal/$(PKG)/...; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-verbose: Run all backend tests (verbose)
 test-verbose:
-	cd $(BE_DIR) && $(GO) test -v ./internal/... -count=1
+	$(acquire_be_lock)
+	@cd $(BE_DIR) && $(GO) test -v ./internal/... -count=1; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-coverage: Run backend tests with coverage report
 test-coverage:
-	cd $(BE_DIR) && $(GO) test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/... ./internal/... -count=1
-	@cd $(BE_DIR) && $(GO) tool cover -func=coverage.out | tail -1
-	@echo "Full report: cd be && go tool cover -html=coverage.out"
+	$(acquire_be_lock)
+	@cd $(BE_DIR) && $(GO) test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/... ./internal/... -count=1; \
+	RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; \
+	if [ $$RC -eq 0 ]; then \
+		cd $(BE_DIR) && $(GO) tool cover -func=coverage.out | tail -1; \
+		echo "Full report: cd be && go tool cover -html=coverage.out"; \
+	fi; \
+	exit $$RC
 
 ## test-race: Run backend tests with race detector
 test-race:
-	cd $(BE_DIR) && $(GO) test -race ./internal/... -count=1
+	$(acquire_be_lock)
+	@cd $(BE_DIR) && $(GO) test -race ./internal/... -count=1; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 # --- Housekeeping ---
 

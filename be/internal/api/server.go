@@ -17,6 +17,7 @@ import (
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
+	"be/internal/spawner"
 	"be/internal/static"
 	"be/internal/ws"
 )
@@ -31,8 +32,9 @@ type Server struct {
 	wsHub            *ws.Hub
 	orchestrator     *orchestrator.Orchestrator
 	chainRunner      *orchestrator.ChainRunner
-	ptyManager *ptyPkg.Manager
-	clock      clock.Clock
+	ptyManager       *ptyPkg.Manager
+	clock            clock.Clock
+	cliAdapterFunc   func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
 }
 
 // NewServer creates a new API server

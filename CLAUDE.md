@@ -65,6 +65,7 @@ The full backend test suite (`make test`) must complete in **≤30 seconds wall 
 - `time.Sleep` in tests — use `clock.TestClock.Advance()` for time-dependent logic, or poll with a tight loop+timeout for async conditions
 - Unnecessary waits after hub `Register`/`Subscribe` — these are synchronous via mutex
 - Sleeps waiting for log output — logging before goroutine launch is synchronous
+- Real CLI binary execution in tests — always mock adapters/commands (e.g., `exec.Command("echo", "ok")` via injectable functions). Real binaries may hang waiting for input and stall the entire suite
 
 **Patterns that are allowed:**
 - `waitForCondition(t, 2*time.Second, 5*time.Millisecond, fn)` — tight polling with short timeout for genuinely async operations

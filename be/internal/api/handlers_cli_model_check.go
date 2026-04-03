@@ -31,7 +31,11 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	adapter, err := spawner.GetCLIAdapter(m.CLIType)
+	getAdapter := s.cliAdapterFunc
+	if getAdapter == nil {
+		getAdapter = spawner.GetCLIAdapter
+	}
+	adapter, err := getAdapter(m.CLIType)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("cli binary not found: %s", m.CLIType))
 		return

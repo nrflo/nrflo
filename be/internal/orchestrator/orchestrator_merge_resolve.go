@@ -119,6 +119,9 @@ func (o *Orchestrator) pushIfEnabled(ctx context.Context, pushAfterMerge bool, w
 			"branch":      wt.defaultBranch,
 			"error":       strings.TrimSpace(string(out)),
 		}))
+		if o.errorSvc != nil {
+			o.errorSvc.RecordError(req.ProjectID, "system", wfiID, fmt.Sprintf("git push failed for branch %s: %s", wt.defaultBranch, strings.TrimSpace(string(out))))
+		}
 	} else {
 		logger.Info(ctx, "pushed default branch to origin", "branch", wt.defaultBranch)
 		o.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowPushed, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{

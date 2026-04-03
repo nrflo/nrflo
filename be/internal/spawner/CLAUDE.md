@@ -136,6 +136,7 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 The spawner records errors to the `errors` table via `Config.ErrorSvc` (implements `ErrorRecorder` interface). Nil-safe — no-op when not configured. Errors are recorded for:
 - **Agent timeout** (`completion.go:handleGracefulTimeout`): type=agent, message=`"<agent_type>: timeout after Ns"`
 - **Agent fail** (`completion.go:handleCompletion`): type=agent, message=`"<agent_type>: <result_reason>"`
+- **Instant stall restart** (`instant_stall.go:checkInstantStall`): type=agent, message=`"<agent_type>: instant_stall (restart N/6)"`
 - **Stall budget exhausted** (`instant_stall.go:markInstantStallFailed`): type=agent, message=`"<agent_type>: stall_budget_exhausted"`
 
 ## Database Access

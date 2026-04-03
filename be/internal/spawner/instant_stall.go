@@ -75,6 +75,10 @@ func (s *Spawner) checkInstantStall(ctx context.Context, proc *processInfo, req 
 		"stall_count":   proc.stallRestartCount,
 	})
 
+	if s.config.ErrorSvc != nil {
+		s.config.ErrorSvc.RecordError(req.ProjectID, "agent", proc.sessionID, fmt.Sprintf("%s: instant_stall (restart %d/%d)", proc.agentType, proc.stallRestartCount, maxStallRestarts))
+	}
+
 	logger.Warn(ctx, "instant stall detected: agent exited too fast with minimal output",
 		"agent_type", proc.agentType, "session_id", proc.sessionID,
 		"elapsed", proc.elapsed, "message_count", msgCount,

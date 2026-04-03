@@ -71,6 +71,8 @@ The full backend test suite (`make test`) must complete in **≤30 seconds wall 
 - `clock.TestClock.Advance(d)` — advance fake clock instead of sleeping
 - `env.Clock.Advance(d)` — in integration tests
 
+**After editing or creating a test**, run that single test file immediately (`make test-pkg PKG=<package>` for BE, `make test-ui ARGS="path/to/file.test.tsx"` for FE) and verify it completes quickly (under 5s for a single test). If it stalls or is slow, fix it before proceeding.
+
 If the test suite exceeds 30 seconds, **identify and eliminate the cause before merging**.
 
 ### 4b. CRITICAL: Frontend Test Suite Must Run in Under 30 Seconds
@@ -85,6 +87,8 @@ The full frontend test suite (`make test-ui`) must complete in **≤30 seconds w
 - `vi.useFakeTimers()` + `vi.advanceTimersByTime(ms)` — for timer-dependent components
 - `new Promise(() => {})` — keeps mutation `isPending: true` without any real delay
 - `waitFor(() => expect(...))` — RTL polling for genuinely async React state
+
+**After editing or creating a test**, run that single test file immediately (`make test-ui ARGS="path/to/file.test.tsx"`) and verify it completes quickly (under 5s for a single test). If it stalls or is slow, fix it before proceeding.
 
 If the test suite exceeds 30 seconds, **identify and eliminate the cause before merging**.
 

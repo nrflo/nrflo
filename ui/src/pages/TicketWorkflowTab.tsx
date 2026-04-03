@@ -179,7 +179,7 @@ export function TicketWorkflowTab({
           completedCount={completedCount}
         />
         <div className={cn(
-          'flex gap-0',
+          'flex flex-col md:flex-row gap-0',
           selectedPanelAgent && 'min-h-[calc(100vh-280px)]'
         )}>
           <div className="flex-1 min-w-0 space-y-4">

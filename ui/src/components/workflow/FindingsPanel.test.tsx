@@ -197,6 +197,25 @@ describe('FindingsPanel', () => {
       expect(p).toBeInTheDocument()
       expect(p!.textContent).toBe(longText)
     })
+
+    it('renders multiline user_instructions as single text block, not per-character', async () => {
+      const user = userEvent.setup()
+      // Simulate user_instructions: a multiline plain string (triggers isLong via \n check)
+      const instructions = 'Implement the new auth flow.\nUse JWT tokens.\nFollow existing patterns.'
+      render(
+        <FindingsPanel
+          projectFindings={undefined}
+          agentFindings={{ implementor: { user_instructions: instructions } }}
+          selectedAgentType={null}
+        />
+      )
+      const keyButton = screen.getByText('user_instructions').closest('button')!
+      await user.click(keyButton)
+      const p = document.querySelector('p.text-xs.font-mono')
+      expect(p).toBeInTheDocument()
+      // Full text is present in one element — not split into individual characters
+      expect(p!.textContent).toBe(instructions)
+    })
   })
 
   describe('collapsible toggle', () => {

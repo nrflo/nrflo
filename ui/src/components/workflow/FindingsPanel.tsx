@@ -32,7 +32,7 @@ export function FindingRow({ findingKey, value }: { findingKey: string; value: u
   const isLong = text.length > 80 || text.includes('\n')
 
   return (
-    <div className="border-b border-border/50 last:border-b-0">
+    <div className="border-b border-border/50 last:border-b-0 min-w-0">
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-1.5 w-full px-2 py-1.5 text-left hover:bg-muted/50 transition-colors"
@@ -48,7 +48,7 @@ export function FindingRow({ findingKey, value }: { findingKey: string; value: u
         )}
       </button>
       {expanded && (
-        <div className="px-2 pb-2 pl-7">
+        <div className="px-2 pb-2 pl-7 overflow-hidden">
           {isJson ? (
             <pre className="text-xs font-mono text-foreground/80 whitespace-pre-wrap break-words bg-muted/30 rounded p-2">{text}</pre>
           ) : (

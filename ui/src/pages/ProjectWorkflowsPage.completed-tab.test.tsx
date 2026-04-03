@@ -47,14 +47,14 @@ vi.mock('./WorkflowTabContent', () => ({
 
 
 // IDs exactly 8 chars so shortId === full ID (e.g. '#compins1')
-const makeCompleted = (id: string, workflow: string, agentCount: number): WorkflowState => ({
+const makeCompleted = (id: string, workflow: string, agentCount: number, completedAt: string | undefined = '2026-01-01T05:00:00Z'): WorkflowState => ({
   workflow,
   instance_id: id,
   version: 4,
   scope_type: 'project',
   current_phase: 'verification',
   status: 'completed',
-  completed_at: '2026-01-01T05:00:00Z',
+  completed_at: completedAt,
   total_duration_sec: 3600,
   phases: { verification: { status: 'completed', result: 'pass' } },
   phase_order: ['verification'],
@@ -202,5 +202,43 @@ describe('ProjectWorkflowsPage — Completed tab instance selection', () => {
     await user.click(screen.getByRole('button', { name: /Completed/ }))
 
     expect(screen.getByTestId('workflow-tab-content')).toBeInTheDocument()
+  })
+
+  it('renders completed instances sorted by completed_at descending, no-date last', async () => {
+    const user = userEvent.setup()
+
+    // Supply instances out of chronological order to verify sorting
+    const newest = makeCompleted('newinst1', 'feature', 1, '2026-03-01T00:00:00Z')
+    const middle = makeCompleted('midinst1', 'feature', 1, '2026-02-01T00:00:00Z')
+    const oldest = makeCompleted('oldinst1', 'feature', 1, '2026-01-01T00:00:00Z')
+    // Spread-override to set completed_at to undefined (default param trick bypassed)
+    const noDate = { ...makeCompleted('nodatei1', 'feature', 1), completed_at: undefined } as WorkflowState
+
+    useProjectWorkflow.mockReturnValue({
+      data: {
+        project_id: 'test-project', has_workflow: true, state: newest,
+        workflows: ['feature'],
+        // Deliberately unsorted: oldest → middle → newest → noDate
+        all_workflows: {
+          oldinst1: oldest,
+          midinst1: middle,
+          newinst1: newest,
+          nodatei1: noDate,
+        },
+      },
+      isLoading: false,
+    })
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /Completed/ }))
+
+    const rows = await screen.findAllByTestId('instance-row')
+    expect(rows).toHaveLength(4)
+
+    // Newest first, then middle, then oldest, no-completed_at last
+    expect(rows[0]).toHaveTextContent('#newinst1')
+    expect(rows[1]).toHaveTextContent('#midinst1')
+    expect(rows[2]).toHaveTextContent('#oldinst1')
+    expect(rows[3]).toHaveTextContent('#nodatei1')
   })
 })

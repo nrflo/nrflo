@@ -92,6 +92,7 @@ export function ErrorsPage() {
             <TableHeader>
               <TableRow className="bg-muted/30">
                 <TableHead className="w-24">Type</TableHead>
+                <TableHead className="w-24">SID</TableHead>
                 <TableHead className="w-28">Instance</TableHead>
                 <TableHead>Message</TableHead>
                 <TableHead className="w-40">Date/Time</TableHead>
@@ -108,6 +109,21 @@ export function ErrorsPage() {
                     <Badge className={typeBadgeClass(error.error_type)}>
                       {error.error_type}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {error.error_type === 'agent' ? (
+                      <button
+                        className="text-primary hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/settings?tab=logs&filter=${encodeURIComponent(error.instance_id)}`)
+                        }}
+                      >
+                        {error.instance_id.substring(0, 8)}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">{'\u2014'}</span>
+                    )}
                   </TableCell>
                   <TableCell
                     className="text-muted-foreground"

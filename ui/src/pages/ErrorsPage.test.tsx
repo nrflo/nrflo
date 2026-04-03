@@ -76,7 +76,7 @@ describe('ErrorsPage', () => {
     })
     renderPage()
     expect(screen.getByText('agent')).toBeInTheDocument()
-    expect(screen.getByText('abcdef12')).toBeInTheDocument()
+    expect(screen.getAllByText('abcdef12').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Agent timeout')).toBeInTheDocument()
   })
 
@@ -86,7 +86,7 @@ describe('ErrorsPage', () => {
       isLoading: false,
     })
     renderPage()
-    expect(screen.getByText('abcdef12')).toBeInTheDocument()
+    expect(screen.getAllByText('abcdef12').length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('abcdef1234567890')).not.toBeInTheDocument()
   })
 
@@ -206,5 +206,58 @@ describe('ErrorsPage', () => {
     renderPage()
     await user.click(screen.getByText('click me error'))
     expect(mockNavigate).toHaveBeenCalledWith('/project-workflows')
+  })
+
+  describe('SID column', () => {
+    it('renders SID header and shows truncated session ID as link for agent errors, em-dash for others', async () => {
+      const user = userEvent.setup()
+      mockUseErrors.mockReturnValue({
+        data: makeResponse({
+          errors: [
+            makeErrorLog({ id: '1', error_type: 'agent',    instance_id: 'aabbccdd11223344' }),
+            makeErrorLog({ id: '2', error_type: 'workflow', instance_id: 'wfwfwfwf11223344' }),
+            makeErrorLog({ id: '3', error_type: 'system',   instance_id: 'syssyssys1223344' }),
+          ],
+          total: 3,
+        }),
+        isLoading: false,
+      })
+      renderPage()
+
+      expect(screen.getByRole('columnheader', { name: 'SID' })).toBeInTheDocument()
+
+      // Agent row: SID is a clickable button showing first 8 chars
+      const sidLink = screen.getByRole('button', { name: 'aabbccdd' })
+      expect(sidLink).toBeInTheDocument()
+
+      // Non-agent rows: SID is em-dash (×2: workflow + system)
+      const emDashes = screen.getAllByText('\u2014')
+      expect(emDashes).toHaveLength(2)
+
+      // Clicking SID navigates to logs with full instance_id as filter
+      await user.click(sidLink)
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/settings?tab=logs&filter=aabbccdd11223344'
+      )
+    })
+
+    it('SID click does not trigger row navigation (stopPropagation)', async () => {
+      const user = userEvent.setup()
+      mockUseErrors.mockReturnValue({
+        data: makeResponse({
+          errors: [makeErrorLog({ error_type: 'agent', instance_id: 'aabbccdd11223344' })],
+          total: 1,
+        }),
+        isLoading: false,
+      })
+      renderPage()
+
+      mockNavigate.mockClear()
+      await user.click(screen.getByRole('button', { name: 'aabbccdd' }))
+
+      // Only the SID navigate call, not the row click /project-workflows
+      expect(mockNavigate).toHaveBeenCalledTimes(1)
+      expect(mockNavigate).toHaveBeenCalledWith('/settings?tab=logs&filter=aabbccdd11223344')
+    })
   })
 })

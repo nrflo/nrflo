@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Terminal, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
 import { useLogs } from '@/hooks/useLogs'
@@ -12,9 +13,25 @@ const logTabs: { key: LogType; label: string; icon: React.ReactNode }[] = [
   { key: 'fe', label: 'FE', icon: <Monitor className="h-4 w-4" /> },
 ]
 
-export function LogsSection() {
+interface LogsSectionProps {
+  initialFilter?: string
+}
+
+export function LogsSection({ initialFilter }: LogsSectionProps) {
   const [activeTab, setActiveTab] = useState<LogType>('be')
-  const { data, isLoading, error, refetch } = useLogs(activeTab)
+  const [filterInput, setFilterInput] = useState(initialFilter ?? '')
+  const [debouncedFilter, setDebouncedFilter] = useState(initialFilter ?? '')
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedFilter(filterInput), 300)
+    return () => clearTimeout(timer)
+  }, [filterInput])
+
+  useEffect(() => {
+    if (initialFilter && activeTab !== 'be') setActiveTab('be')
+  }, [initialFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { data, isLoading, error, refetch } = useLogs(activeTab, debouncedFilter || undefined)
 
   return (
     <div className="space-y-6">
@@ -36,6 +53,18 @@ export function LogsSection() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Input
+          placeholder="Filter logs..."
+          value={filterInput}
+          onChange={(e) => setFilterInput(e.target.value)}
+          className="max-w-sm h-8 text-sm"
+        />
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {debouncedFilter ? 'Showing all matching lines' : 'Showing last 1000 lines'}
+        </span>
       </div>
 
       {isLoading && (

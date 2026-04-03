@@ -88,7 +88,7 @@ export function SettingsPage() {
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'cli-models' && <CLIModelsSection />}
-      {activeTab === 'logs' && <LogsSection />}
+      {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
     </div>
   )
 }

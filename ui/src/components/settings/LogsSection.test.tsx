@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LogsSection } from './LogsSection'
 import * as logsHook from '@/hooks/useLogs'
@@ -36,7 +36,7 @@ describe('LogsSection', () => {
     renderWithQuery(<LogsSection />)
     expect(screen.getByRole('button', { name: /BE/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /FE/ })).toBeInTheDocument()
-    expect(logsHook.useLogs).toHaveBeenCalledWith('be')
+    expect(logsHook.useLogs).toHaveBeenCalledWith('be', undefined)
   })
 
   it('switches to FE tab on click and calls useLogs("fe")', async () => {
@@ -47,7 +47,7 @@ describe('LogsSection', () => {
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /FE/ }))
-    expect(logsHook.useLogs).toHaveBeenCalledWith('fe')
+    expect(logsHook.useLogs).toHaveBeenCalledWith('fe', undefined)
   })
 
   it('shows loading spinner when isLoading', () => {
@@ -91,5 +91,41 @@ describe('LogsSection', () => {
     renderWithQuery(<LogsSection />)
     expect(screen.getByText('INFO server started')).toBeInTheDocument()
     expect(screen.getByText('DEBUG processing request')).toBeInTheDocument()
+  })
+
+  describe('filter input', () => {
+    it('renders filter input with placeholder and default indicator', () => {
+      vi.mocked(logsHook.useLogs).mockReturnValue(makeLogsResult({ data: { lines: [], type: 'be' } }))
+      renderWithQuery(<LogsSection />)
+      expect(screen.getByPlaceholderText('Filter logs...')).toBeInTheDocument()
+      expect(screen.getByText('Showing last 1000 lines')).toBeInTheDocument()
+    })
+
+    it('initialFilter pre-populates input, shows matching indicator, passes filter to useLogs', () => {
+      vi.mocked(logsHook.useLogs).mockReturnValue(makeLogsResult({ data: { lines: [], type: 'be' } }))
+      renderWithQuery(<LogsSection initialFilter="abc12345" />)
+      expect(screen.getByDisplayValue('abc12345')).toBeInTheDocument()
+      expect(screen.getByText('Showing all matching lines')).toBeInTheDocument()
+      expect(logsHook.useLogs).toHaveBeenCalledWith('be', 'abc12345')
+    })
+
+    it('debounces filter input 300ms before passing to useLogs', async () => {
+      vi.useFakeTimers()
+      vi.mocked(logsHook.useLogs).mockReturnValue(makeLogsResult({ data: { lines: [], type: 'be' } }))
+      renderWithQuery(<LogsSection />)
+
+      const input = screen.getByPlaceholderText('Filter logs...')
+      fireEvent.change(input, { target: { value: 'abc' } })
+
+      // Before debounce fires: filter not yet passed to useLogs
+      expect(vi.mocked(logsHook.useLogs).mock.calls.every((c) => c[1] !== 'abc')).toBe(true)
+
+      await act(async () => { vi.advanceTimersByTime(300) })
+      expect(logsHook.useLogs).toHaveBeenCalledWith('be', 'abc')
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
   })
 })

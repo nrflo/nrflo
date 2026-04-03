@@ -18,6 +18,14 @@ func (s *Server) loadSafetyHook(p *model.Project) {
 	}
 }
 
+// loadPushAfterMerge loads the push_after_merge config for a project and sets it on the model.
+func (s *Server) loadPushAfterMerge(p *model.Project) {
+	val, err := s.pool.GetProjectConfig(p.ID, "push_after_merge")
+	if err == nil && val == "true" {
+		p.PushAfterMerge = true
+	}
+}
+
 // handleListProjects returns all projects
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	projectRepo := s.projectRepo()
@@ -34,6 +42,7 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 
 	for _, p := range projects {
 		s.loadSafetyHook(p)
+		s.loadPushAfterMerge(p)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -109,6 +118,7 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.loadSafetyHook(project)
+	s.loadPushAfterMerge(project)
 
 	writeJSON(w, http.StatusOK, project)
 }
@@ -132,6 +142,7 @@ type UpdateProjectRequest struct {
 	RootPath        *string `json:"root_path,omitempty"`
 	DefaultBranch   *string `json:"default_branch,omitempty"`
 	UseGitWorktrees  *bool   `json:"use_git_worktrees,omitempty"`
+	PushAfterMerge   *bool   `json:"push_after_merge,omitempty"`
 	ClaudeSafetyHook *string `json:"claude_safety_hook,omitempty"`
 }
 
@@ -175,6 +186,18 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Handle push_after_merge config (stored in config table, not projects table)
+	if req.PushAfterMerge != nil {
+		val := ""
+		if *req.PushAfterMerge {
+			val = "true"
+		}
+		if err := s.pool.SetProjectConfig(id, "push_after_merge", val); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to save push_after_merge config: "+err.Error())
+			return
+		}
+	}
+
 	updated, err := projectRepo.Get(id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -182,6 +205,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.loadSafetyHook(updated)
+	s.loadPushAfterMerge(updated)
 
 	writeJSON(w, http.StatusOK, updated)
 }

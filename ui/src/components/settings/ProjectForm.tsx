@@ -11,6 +11,7 @@ export interface ProjectFormData {
   root_path: string
   default_branch: string
   use_git_worktrees: boolean
+  push_after_merge: boolean
   safety_hook_enabled: boolean
   safety_hook_allow_git: boolean
   safety_hook_allowed_rm_paths: string
@@ -28,6 +29,7 @@ export const emptyProjectForm: ProjectFormData = {
   root_path: '',
   default_branch: '',
   use_git_worktrees: false,
+  push_after_merge: false,
   safety_hook_enabled: false,
   safety_hook_allow_git: true,
   safety_hook_allowed_rm_paths: '',
@@ -179,6 +181,20 @@ export function ProjectForm({
               checked={formData.use_git_worktrees}
               onChange={(checked) => setFormData({ ...formData, use_git_worktrees: checked })}
               label="Use Git Worktrees"
+              disabled={!formData.default_branch.trim()}
+            />
+          </Tooltip>
+        </div>
+        <div className="flex items-end pb-1">
+          <Tooltip
+            text="Automatically push default branch to remote after successful worktree merge"
+            placement="top"
+            className="max-w-sm"
+          >
+            <Toggle
+              checked={formData.push_after_merge}
+              onChange={(checked) => setFormData({ ...formData, push_after_merge: checked })}
+              label="Push after merge"
               disabled={!formData.default_branch.trim()}
             />
           </Tooltip>

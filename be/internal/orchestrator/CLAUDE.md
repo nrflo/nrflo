@@ -125,7 +125,7 @@ The resolver agent's session is tracked under the existing workflow instance (`w
 |------|-------|
 | `orchestrator.go` | Layer-grouped concurrent phase execution, cancellation support |
 | `orchestrator_skip.go` | Layer-skip logic: tag matching, skipped session creation |
-| `orchestrator_merge_resolve.go` | Automatic merge conflict resolution via system agent |
+| `orchestrator_merge_resolve.go` | Automatic merge conflict resolution via system agent, push-after-merge |
 | `orchestrator_interactive.go` | Interactive start & plan mode pre-step logic |
 | `plan_reader.go` | Plan file reader for plan-before-execute mode |
 | `chain_runner.go` | Sequential chain execution runner |
@@ -138,6 +138,7 @@ When a project has `use_git_worktrees=true` and `default_branch` configured, the
 
 - **Setup** (`Start`/`retryFailed`): `setupWorktree()` returns early with `nil` worktree for project scope. For ticket scope, creates a branch (named after ticket ID) and worktree at `/tmp/nrflow/worktrees/<branchName>`. Overrides `projectRoot` so all agents work in the worktree.
 - **Success** (`runLoop` completion): Removes the worktree first (commits live in `.git/refs/heads/`, not the worktree dir), then merges the branch into `default_branch` with retry (up to 5 attempts with stale `index.lock` removal), and deletes the branch. If merge fails (conflicts), attempts automatic conflict resolution via `attemptConflictResolution()`. Falls through to manual resolution if resolver is not configured or fails.
+- **Push after merge**: When `push_after_merge` project config is enabled, `pushIfEnabled()` pushes the default branch to origin after a successful merge or conflict resolution. Failure is logged and broadcast (`workflow.push_failed` WS event) but does not fail the workflow.
 - **Failure/Cancellation** (`runLoop` defer): Force-removes worktree and branch without merging.
 
 The `worktreeInfo` struct in `runLoop` tracks original project root, worktree path, branch name, and default branch. A `worktreeHandled` flag prevents the cleanup defer from running after a successful merge.

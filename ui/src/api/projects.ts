@@ -6,6 +6,7 @@ export interface Project {
   root_path: string | null
   default_branch: string | null
   use_git_worktrees: boolean
+  push_after_merge: boolean
   claude_safety_hook: string | null
   created_at: string
   updated_at: string
@@ -28,6 +29,7 @@ export interface UpdateProjectRequest {
   root_path?: string
   default_branch?: string
   use_git_worktrees?: boolean
+  push_after_merge?: boolean
   claude_safety_hook?: string
 }
 

@@ -59,6 +59,8 @@ const (
 	EventCLIModelUpdated             = "cli_model.updated"
 	EventCLIModelDeleted             = "cli_model.deleted"
 	EventErrorCreated                = "error.created"
+	EventWorkflowPushed              = "workflow.pushed"
+	EventWorkflowPushFailed          = "workflow.push_failed"
 	EventTestEcho                    = "test.echo"
 )
 

@@ -89,6 +89,44 @@ describe('ProjectForm — worktree toggle state', () => {
   })
 })
 
+describe('ProjectForm — push after merge toggle', () => {
+  it('disables toggle when default_branch is empty', () => {
+    render(<ProjectForm {...makeProps({ default_branch: '' })} />)
+    expect(screen.getByRole('switch', { name: /push after merge/i })).toBeDisabled()
+  })
+
+  it('enables toggle when default_branch is set', () => {
+    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    expect(screen.getByRole('switch', { name: /push after merge/i })).not.toBeDisabled()
+  })
+
+  it('reflects checked state true from formData', () => {
+    render(<ProjectForm {...makeProps({ default_branch: 'main', push_after_merge: true })} />)
+    expect(screen.getByRole('switch', { name: /push after merge/i })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('reflects checked state false from formData', () => {
+    render(<ProjectForm {...makeProps({ default_branch: 'main', push_after_merge: false })} />)
+    expect(screen.getByRole('switch', { name: /push after merge/i })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('calls setFormData with push_after_merge toggled on click', async () => {
+    const user = userEvent.setup()
+    const props = makeProps({ default_branch: 'main', push_after_merge: false })
+    render(<ProjectForm {...props} />)
+    await user.click(screen.getByRole('switch', { name: /push after merge/i }))
+    expect(props.setFormData).toHaveBeenCalledWith(expect.objectContaining({ push_after_merge: true }))
+  })
+
+  it('shows tooltip on hover', async () => {
+    const user = userEvent.setup()
+    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    await user.hover(screen.getByText('Push after merge'))
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent(/Automatically push default branch/)
+  })
+})
+
 describe('parseSafetyHookConfig', () => {
   it('returns disabled defaults for null', () => {
     expect(parseSafetyHookConfig(null)).toEqual({

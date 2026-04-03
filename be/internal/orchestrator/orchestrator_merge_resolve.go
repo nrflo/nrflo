@@ -101,3 +101,29 @@ func (o *Orchestrator) attemptConflictResolution(
 
 	return nil
 }
+
+// pushIfEnabled pushes the default branch to origin after a successful merge,
+// if the push_after_merge project setting is enabled. Push failure is logged
+// and broadcast but does NOT fail the workflow.
+func (o *Orchestrator) pushIfEnabled(ctx context.Context, pushAfterMerge bool, wt *worktreeInfo, wfiID string, req RunRequest) {
+	if !pushAfterMerge {
+		return
+	}
+
+	cmd := exec.Command("git", "push", "origin", wt.defaultBranch)
+	cmd.Dir = wt.projectRoot
+	if out, err := cmd.CombinedOutput(); err != nil {
+		logger.Error(ctx, "git push failed after merge", "branch", wt.defaultBranch, "err", err, "output", strings.TrimSpace(string(out)))
+		o.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowPushFailed, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+			"instance_id": wfiID,
+			"branch":      wt.defaultBranch,
+			"error":       strings.TrimSpace(string(out)),
+		}))
+	} else {
+		logger.Info(ctx, "pushed default branch to origin", "branch", wt.defaultBranch)
+		o.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowPushed, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+			"instance_id": wfiID,
+			"branch":      wt.defaultBranch,
+		}))
+	}
+}

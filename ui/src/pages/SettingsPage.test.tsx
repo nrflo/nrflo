@@ -51,6 +51,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     root_path: '/test/path',
     default_branch: 'main',
     use_git_worktrees: false,
+    push_after_merge: false,
     claude_safety_hook: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -337,6 +338,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           root_path: '/test/path',
           default_branch: 'main',
           use_git_worktrees: true,
+          push_after_merge: false,
           claude_safety_hook: '',
         })
       })
@@ -372,6 +374,7 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
           root_path: '/test/path',
           default_branch: 'main',
           use_git_worktrees: false,
+          push_after_merge: false,
           claude_safety_hook: '',
         })
       })

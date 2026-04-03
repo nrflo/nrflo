@@ -311,6 +311,12 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
 	}
 
+	// Read push after merge setting (once at workflow start)
+	pushAfterMerge := false
+	if val, _ := pool.GetProjectConfig(req.ProjectID, "push_after_merge"); val == "true" {
+		pushAfterMerge = true
+	}
+
 	// Set parent session
 	parentSession := uuid.New().String()
 	pool.Close()
@@ -375,7 +381,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge)
 
 	status := "started"
 	sessionID := ""
@@ -727,6 +733,12 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
 	}
 
+	// Read push after merge setting (once at workflow retry)
+	pushAfterMerge := false
+	if val, _ := pool.GetProjectConfig(projectID, "push_after_merge"); val == "true" {
+		pushAfterMerge = true
+	}
+
 	parentSession := uuid.New().String()
 
 	// Build run request
@@ -754,7 +766,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}))
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge)
 
 	return nil
 }
@@ -983,6 +995,7 @@ func (o *Orchestrator) runLoop(
 	globalStallRunningTimeout *int,
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
+	pushAfterMerge bool,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -1270,9 +1283,11 @@ func (o *Orchestrator) runLoop(
 				}))
 			} else {
 				logger.Info(ctx, "merge conflict resolved automatically", "branch", wt.branchName)
+				o.pushIfEnabled(ctx, pushAfterMerge, wt, wfiID, req)
 			}
 		} else {
 			logger.Info(ctx, "worktree merged and cleaned up", "branch", wt.branchName)
+			o.pushIfEnabled(ctx, pushAfterMerge, wt, wfiID, req)
 		}
 		worktreeHandled = true
 	}

@@ -1,8 +1,104 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 @import "@xterm/xterm/css/xterm.css";
+@import "github-markdown-css/github-markdown.css";
+@import "highlight.js/styles/github.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* GitHub Markdown light theme overrides (class-based, not prefers-color-scheme) */
+html:not(.dark) .markdown-body {
+  color-scheme: light;
+  --fgColor-default: #1f2328;
+  --fgColor-accent: #0969da;
+  --fgColor-muted: #59636e;
+  --fgColor-attention: #9a6700;
+  --fgColor-danger: #d1242f;
+  --fgColor-done: #8250df;
+  --fgColor-success: #1a7f37;
+  --bgColor-default: transparent;
+  --bgColor-muted: #f6f8fa;
+  --bgColor-neutral-muted: #818b981f;
+  --bgColor-attention-muted: #fff8c5;
+  --borderColor-default: #d1d9e0;
+  --borderColor-muted: #d1d9e0b3;
+  --borderColor-neutral-muted: #d1d9e0b3;
+  --borderColor-accent-emphasis: #0969da;
+  --borderColor-attention-emphasis: #9a6700;
+  --borderColor-danger-emphasis: #cf222e;
+  --borderColor-done-emphasis: #8250df;
+  --borderColor-success-emphasis: #1a7f37;
+}
+
+/* GitHub Markdown dark theme overrides */
+.dark .markdown-body {
+  color-scheme: dark;
+  --fgColor-default: #f0f6fc;
+  --fgColor-accent: #4493f8;
+  --fgColor-muted: #9198a1;
+  --fgColor-attention: #d29922;
+  --fgColor-danger: #f85149;
+  --fgColor-done: #ab7df8;
+  --fgColor-success: #3fb950;
+  --bgColor-default: transparent;
+  --bgColor-muted: #151b23;
+  --bgColor-neutral-muted: #656c7633;
+  --bgColor-attention-muted: #bb800926;
+  --borderColor-default: #3d444d;
+  --borderColor-muted: #3d444db3;
+  --borderColor-neutral-muted: #3d444db3;
+  --borderColor-accent-emphasis: #1f6feb;
+  --borderColor-attention-emphasis: #9e6a03;
+  --borderColor-danger-emphasis: #da3633;
+  --borderColor-done-emphasis: #8957e5;
+  --borderColor-success-emphasis: #238636;
+}
+
+/* highlight.js dark theme overrides */
+.dark .hljs {
+  color: #c9d1d9;
+  background: #151b23;
+}
+.dark .hljs-doctag,
+.dark .hljs-keyword,
+.dark .hljs-meta .hljs-keyword,
+.dark .hljs-template-tag,
+.dark .hljs-template-variable,
+.dark .hljs-type,
+.dark .hljs-variable.language_ { color: #ff7b72; }
+.dark .hljs-title,
+.dark .hljs-title.class_,
+.dark .hljs-title.class_.inherited__,
+.dark .hljs-title.function_ { color: #d2a8ff; }
+.dark .hljs-attr,
+.dark .hljs-attribute,
+.dark .hljs-literal,
+.dark .hljs-meta,
+.dark .hljs-number,
+.dark .hljs-operator,
+.dark .hljs-variable,
+.dark .hljs-selector-attr,
+.dark .hljs-selector-class,
+.dark .hljs-selector-id { color: #79c0ff; }
+.dark .hljs-regexp,
+.dark .hljs-string,
+.dark .hljs-meta .hljs-string { color: #a5d6ff; }
+.dark .hljs-built_in,
+.dark .hljs-symbol { color: #ffa657; }
+.dark .hljs-comment,
+.dark .hljs-code,
+.dark .hljs-formula { color: #8b949e; }
+.dark .hljs-name,
+.dark .hljs-quote,
+.dark .hljs-selector-tag,
+.dark .hljs-selector-pseudo { color: #7ee787; }
+.dark .hljs-subst { color: #c9d1d9; }
+.dark .hljs-section { color: #1f6feb; font-weight: bold; }
+.dark .hljs-bullet { color: #f2cc60; }
+.dark .hljs-emphasis { color: #c9d1d9; font-style: italic; }
+.dark .hljs-strong { color: #c9d1d9; font-weight: bold; }
+.dark .hljs-addition { color: #aff5b4; background-color: #033a16; }
+.dark .hljs-deletion { color: #ffdcd7; background-color: #67060c; }
 
 @theme {
   --font-sans: system-ui, Avenir, Helvetica, Arial, sans-serif;

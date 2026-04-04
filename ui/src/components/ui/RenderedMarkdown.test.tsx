@@ -69,11 +69,11 @@ describe('RenderedMarkdown', () => {
 
   it('renders empty content without error', () => {
     const { container } = render(<RenderedMarkdown content="" />)
-    expect(container.querySelector('.markdown-content')).toBeInTheDocument()
+    expect(container.querySelector('.markdown-body')).toBeInTheDocument()
   })
 
-  it('wraps output in markdown-content div', () => {
+  it('wraps output in markdown-body div', () => {
     const { container } = render(<RenderedMarkdown content="Hello" />)
-    expect(container.querySelector('.markdown-content')).toBeInTheDocument()
+    expect(container.querySelector('.markdown-body')).toBeInTheDocument()
   })
 })

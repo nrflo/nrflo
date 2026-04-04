@@ -63,7 +63,6 @@ The socket only handles agent-facing methods:
 3. Update service in `be/internal/service/`
 4. Rebuild: `cd be && make build`
 5. **Documentation updates:**
-   - `guidelines/agent-protocol.md` — if agent-facing commands change
 
 ## Files
 

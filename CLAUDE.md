@@ -110,7 +110,6 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 |------|---------|
 | `be/` | Go backend source code (see [be/CLAUDE.md](be/CLAUDE.md)) |
 | `ui/` | React web interface (see [ui/CLAUDE.md](ui/CLAUDE.md)) |
-| `guidelines/agent-protocol.md` | Agent conventions |
 | `Makefile` | Build, install, test targets (`make help`) |
 | `agent_manual.md` | User-facing agent definition guide (template vars, findings, CLI) |
 

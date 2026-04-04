@@ -18,8 +18,9 @@ vi.mock('@/hooks/useCLIModels', () => ({
       { value: 'codex_gpt54_normal', label: 'Codex: GPT-54 (Normal)' },
     ]},
     { label: 'OpenCode', options: [
-      { value: 'opencode_gpt_high', label: 'OpenCode: GPT (High)' },
-      { value: 'opencode_gpt_normal', label: 'OpenCode: GPT (Normal)' },
+      { value: 'opencode_gpt54', label: 'OpenCode: GPT 5.4' },
+      { value: 'opencode_minimax_m25_free', label: 'OpenCode: Minimax M2.5 Free' },
+      { value: 'opencode_qwen36_plus_free', label: 'OpenCode: Qwen 3.6 Plus Free' },
     ]},
   ],
 }))

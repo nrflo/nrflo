@@ -195,7 +195,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    enabled         INTEGER NOT NULL DEFAULT 1                        │
 │    created_at      TEXT NOT NULL                                     │
 │    updated_at      TEXT NOT NULL                                     │
-│    (10 readonly models seeded by migration 000043)                   │
+│    (11 readonly models seeded by migrations 000043 + 000051)                   │
 │                                                                      │
 │  CHAIN_EXECUTIONS                                                    │
 │    id            TEXT PRIMARY KEY   (UUID)                            │

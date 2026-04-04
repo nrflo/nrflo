@@ -12,7 +12,7 @@ import (
 func TestCreateAgentDef_LowConsumptionModel_ValidModels(t *testing.T) {
 	validModels := []string{
 		"opus", "opus_1m", "sonnet", "haiku",
-		"opencode_gpt_normal", "opencode_gpt_high",
+		"opencode_minimax_m25_free", "opencode_qwen36_plus_free", "opencode_gpt54",
 		"codex_gpt_normal", "codex_gpt_high",
 		"codex_gpt54_normal", "codex_gpt54_high",
 	}
@@ -89,7 +89,7 @@ func TestUpdateAgentDef_LowConsumptionModel_InvalidModels(t *testing.T) {
 func TestUpdateAgentDef_LowConsumptionModel_ValidModels(t *testing.T) {
 	validModels := []string{
 		"opus", "opus_1m", "haiku", "sonnet",
-		"opencode_gpt_normal", "opencode_gpt_high",
+		"opencode_minimax_m25_free", "opencode_qwen36_plus_free", "opencode_gpt54",
 		"codex_gpt_normal", "codex_gpt_high",
 		"codex_gpt54_normal", "codex_gpt54_high",
 	}

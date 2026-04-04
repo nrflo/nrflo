@@ -58,9 +58,9 @@ type SpawnOptions struct {
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.
-// opencode_gpt_* → opencode, codex_gpt* → codex, everything else → claude.
+// opencode_* → opencode, codex_gpt* → codex, everything else → claude.
 func DefaultCLIForModel(model string) string {
-	if strings.HasPrefix(model, "opencode_gpt_") {
+	if strings.HasPrefix(model, "opencode_") {
 		return "opencode"
 	}
 	if strings.HasPrefix(model, "codex_gpt") {
@@ -212,8 +212,9 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 	}
 
 	modelMap := map[string]string{
-		"opencode_gpt_normal": "openai/gpt-5.3-codex",
-		"opencode_gpt_high":   "openai/gpt-5.3-codex",
+		"opencode_minimax_m25_free": "opencode/minimax-m2.5-free",
+		"opencode_qwen36_plus_free": "opencode/qwen3.6-plus-free",
+		"opencode_gpt54":            "openai/gpt-5.4",
 	}
 
 	if mapped, ok := modelMap[model]; ok {
@@ -228,7 +229,7 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 // Opencode uses --variant flag with values: max, high, medium, low, minimal
 func (a *OpencodeAdapter) GetReasoningEffort(model string) string {
 	switch model {
-	case "opencode_gpt_normal", "opencode_gpt_high":
+	case "opencode_gpt54":
 		return "high"
 	default:
 		return ""

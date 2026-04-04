@@ -34,9 +34,9 @@ func TestCLIForModel_DBConfigTakesPriority(t *testing.T) {
 		},
 		{
 			name:  "DB claude type for opencode-prefixed model overrides default",
-			model: "opencode_gpt_normal",
+			model: "opencode_minimax_m25_free",
 			configs: map[string]ModelConfig{
-				"opencode_gpt_normal": {CLIType: "claude"},
+				"opencode_minimax_m25_free": {CLIType: "claude"},
 			},
 			want: "claude",
 		},
@@ -64,8 +64,9 @@ func TestCLIForModel_FallbackWhenNilMap(t *testing.T) {
 		{"opus", "claude"},
 		{"opus_1m", "claude"},
 		{"sonnet", "claude"},
-		{"opencode_gpt_normal", "opencode"},
-		{"opencode_gpt_high", "opencode"},
+		{"opencode_minimax_m25_free", "opencode"},
+		{"opencode_qwen36_plus_free", "opencode"},
+		{"opencode_gpt54", "opencode"},
 		{"codex_gpt_normal", "codex"},
 		{"codex_gpt54_high", "codex"},
 	}
@@ -185,7 +186,7 @@ func TestMaxContextForModel_HardcodedFallback(t *testing.T) {
 		{"opus", 200000},
 		{"sonnet", 200000},
 		{"haiku", 200000},
-		{"opencode_gpt_normal", 200000},
+		{"opencode_minimax_m25_free", 200000},
 		{"codex_gpt_high", 200000},
 		{"unknown-model", 200000},
 	}
@@ -262,7 +263,7 @@ func TestOpencodeAdapter_BuildCommand_UsesMappedModelAndEffortFromOpts(t *testin
 
 	t.Run("opts.MappedModel and opts.ReasoningEffort override adapter methods", func(t *testing.T) {
 		opts := SpawnOptions{
-			Model:           "opencode_gpt_high",
+			Model:           "opencode_gpt54",
 			MappedModel:     "openai/gpt-custom",
 			ReasoningEffort: "medium",
 			WorkDir:         "/tmp",
@@ -283,24 +284,24 @@ func TestOpencodeAdapter_BuildCommand_UsesMappedModelAndEffortFromOpts(t *testin
 
 	t.Run("empty opts fields fall back to adapter methods", func(t *testing.T) {
 		opts := SpawnOptions{
-			Model:   "opencode_gpt_normal",
+			Model:   "opencode_minimax_m25_free",
 			WorkDir: "/tmp",
 		}
 		cmd := adapter.BuildCommand(opts)
 		args := strings.Join(cmd.Args, " ")
 
-		// Fallback: MapModel → openai/gpt-5.3-codex, GetReasoningEffort → high
-		if !strings.Contains(args, "--model openai/gpt-5.3-codex") {
-			t.Errorf("expected --model openai/gpt-5.3-codex from MapModel fallback, got: %s", args)
+		// Fallback: MapModel → opencode/minimax-m2.5-free, GetReasoningEffort → "" (no variant)
+		if !strings.Contains(args, "--model opencode/minimax-m2.5-free") {
+			t.Errorf("expected --model opencode/minimax-m2.5-free from MapModel fallback, got: %s", args)
 		}
-		if !strings.Contains(args, "--variant high") {
-			t.Errorf("expected --variant high from GetReasoningEffort fallback, got: %s", args)
+		if strings.Contains(args, "--variant") {
+			t.Errorf("expected no --variant for minimax free model, got: %s", args)
 		}
 	})
 
 	t.Run("MappedModel set but ReasoningEffort empty uses adapter GetReasoningEffort", func(t *testing.T) {
 		opts := SpawnOptions{
-			Model:       "opencode_gpt_high",
+			Model:       "opencode_gpt54",
 			MappedModel: "openai/gpt-custom",
 			WorkDir:     "/tmp",
 		}
@@ -310,7 +311,7 @@ func TestOpencodeAdapter_BuildCommand_UsesMappedModelAndEffortFromOpts(t *testin
 		if !strings.Contains(args, "--model openai/gpt-custom") {
 			t.Errorf("expected --model openai/gpt-custom, got: %s", args)
 		}
-		// GetReasoningEffort("opencode_gpt_high") returns "high"
+		// GetReasoningEffort("opencode_gpt54") returns "high"
 		if !strings.Contains(args, "--variant high") {
 			t.Errorf("expected --variant high from GetReasoningEffort, got: %s", args)
 		}

@@ -31,8 +31,8 @@ func TestCLINameFromModelConfigs_UsesDBCLIType(t *testing.T) {
 		},
 		{
 			name:    "DB claude type overrides opencode-prefix default",
-			model:   "opencode_gpt_normal",
-			configs: map[string]spawner.ModelConfig{"opencode_gpt_normal": {CLIType: "claude"}},
+			model:   "opencode_minimax_m25_free",
+			configs: map[string]spawner.ModelConfig{"opencode_minimax_m25_free": {CLIType: "claude"}},
 			want:    "claude",
 		},
 		{
@@ -68,7 +68,7 @@ func TestCLINameFromModelConfigs_FallsBackToDefault(t *testing.T) {
 		},
 		{
 			name:    "empty configs falls back for opencode model",
-			model:   "opencode_gpt_normal",
+			model:   "opencode_minimax_m25_free",
 			configs: map[string]spawner.ModelConfig{},
 			want:    "opencode",
 		},
@@ -118,8 +118,9 @@ func TestLoadModelConfigs_ContainsSeedModels(t *testing.T) {
 		"opus_1m":            "claude",
 		"sonnet":             "claude",
 		"haiku":              "claude",
-		"opencode_gpt_normal": "opencode",
-		"opencode_gpt_high":   "opencode",
+		"opencode_minimax_m25_free": "opencode",
+		"opencode_qwen36_plus_free": "opencode",
+		"opencode_gpt54":            "opencode",
 		"codex_gpt_normal":    "codex",
 		"codex_gpt_high":      "codex",
 		"codex_gpt54_normal":  "codex",

@@ -187,8 +187,9 @@ func TestOpencodeAdapter_GetReasoningEffort(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"opencode_gpt_normal", "high"},
-		{"opencode_gpt_high", "high"},
+		{"opencode_gpt54", "high"},
+		{"opencode_minimax_m25_free", ""},
+		{"opencode_qwen36_plus_free", ""},
 		{"opus", ""},   // Anthropic models don't use variant
 		{"sonnet", ""}, // Anthropic models don't use variant
 		{"haiku", ""},  // Anthropic models don't use variant
@@ -210,8 +211,9 @@ func TestOpencodeAdapter_MapModel(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"opencode_gpt_normal", "openai/gpt-5.3-codex"},
-		{"opencode_gpt_high", "openai/gpt-5.3-codex"},
+		{"opencode_minimax_m25_free", "opencode/minimax-m2.5-free"},
+		{"opencode_qwen36_plus_free", "opencode/qwen3.6-plus-free"},
+		{"opencode_gpt54", "openai/gpt-5.4"},
 		{"openai/gpt-4o", "openai/gpt-4o"}, // Already in provider/model format
 		{"custom", "anthropic/custom"},       // Unknown defaults to anthropic
 	}
@@ -228,7 +230,7 @@ func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
 	adapter := &OpencodeAdapter{}
 
 	opts := SpawnOptions{
-		Model:         "opencode_gpt_high",
+		Model:         "opencode_gpt54",
 		Prompt:        "System prompt",
 		InitialPrompt: "Do the task",
 		WorkDir:       "/tmp",
@@ -246,7 +248,7 @@ func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
 	requiredArgs := []string{
 		"run",
 		"--format", "json",
-		"--model", "openai/gpt-5.3-codex",
+		"--model", "openai/gpt-5.4",
 		"--variant", "high",
 	}
 

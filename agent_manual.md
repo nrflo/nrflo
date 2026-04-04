@@ -279,8 +279,9 @@ These fields are configured via the agent form on the **Workflows** page.
 
 | Model value | Maps to |
 |-------------|---------|
-| `opencode_gpt_normal` | `openai/gpt-5.3-codex` with `--variant high` |
-| `opencode_gpt_high` | `openai/gpt-5.3-codex` with `--variant high` |
+| `opencode_minimax_m25_free` | `opencode/minimax-m2.5-free` |
+| `opencode_qwen36_plus_free` | `opencode/qwen3.6-plus-free` |
+| `opencode_gpt54` | `openai/gpt-5.4` with `--variant high` |
 
 **Codex (`codex` CLI):**
 

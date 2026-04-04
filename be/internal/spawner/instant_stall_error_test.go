@@ -140,7 +140,7 @@ func TestCheckInstantStall_NoErrorWhenGuardSkips(t *testing.T) {
 		msgCount int
 		noOp     bool
 	}{
-		{"non_claude_opencode", "opencode:opencode_gpt_normal", 15 * time.Second, 1, false},
+		{"non_claude_opencode", "opencode:opencode_gpt54", 15 * time.Second, 1, false},
 		{"non_claude_codex", "codex:codex_gpt_normal", 15 * time.Second, 1, false},
 		{"elapsed_at_boundary", "claude:sonnet", 1 * time.Minute, 1, false},
 		{"elapsed_above_boundary", "claude:sonnet", 2 * time.Minute, 1, false},

@@ -33,9 +33,10 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  │ OpencodeAdapter                                              │    │
 │  │   ├── Name: "opencode"                                      │    │
 │  │   ├── Model: provider/model format                          │    │
-│  │   │   ├── opencode_gpt_normal → openai/gpt-5.3-codex        │    │
-│  │   │   └── opencode_gpt_high → openai/gpt-5.3-codex          │    │
-│  │   ├── Reasoning: --variant high (both models)               │    │
+│  │   │   ├── opencode_minimax_m25_free → opencode/minimax-m2.5-free │  │
+│  │   │   ├── opencode_qwen36_plus_free → opencode/qwen3.6-plus-free│  │
+│  │   │   └── opencode_gpt54 → openai/gpt-5.4                   │    │
+│  │   ├── Reasoning: --variant high (opencode_gpt54 only)       │    │
 │  │   ├── SessionID: ✗ (generates own)                          │    │
 │  │   ├── SystemPromptFile: ✗                                   │    │
 │  │   ├── StdinPrompt: ✗ (prompt as positional arg)             │    │
@@ -73,9 +74,10 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 - `sonnet`, `haiku` → passed as-is (200k context)
 
 **Model mapping for opencode:**
-- `opencode_gpt_normal` → `openai/gpt-5.3-codex` with `--variant high`
-- `opencode_gpt_high` → `openai/gpt-5.3-codex` with `--variant high`
-- Full format (`openai/gpt-5.3-codex`) → passed as-is (no variant)
+- `opencode_minimax_m25_free` → `opencode/minimax-m2.5-free` (no variant)
+- `opencode_qwen36_plus_free` → `opencode/qwen3.6-plus-free` (no variant)
+- `opencode_gpt54` → `openai/gpt-5.4` with `--variant high`
+- Full format (`openai/gpt-5.4`) → passed as-is (no variant)
 
 **Model mapping for codex:**
 - `codex_gpt_normal` → `gpt-5.3-codex` with reasoning effort "high"

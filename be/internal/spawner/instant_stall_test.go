@@ -82,7 +82,7 @@ func TestCheckInstantStall_GuardConditions(t *testing.T) {
 		{"claude_15s_1msg_triggers", "claude:sonnet", 15 * time.Second, 1, 0, true},
 		{"claude_15s_3msg_triggers", "claude:sonnet", 15 * time.Second, 3, 0, true},
 		{"claude_30s_2msg_triggers", "claude:opus", 30 * time.Second, 2, 0, true},
-		{"opencode_skipped", "opencode:opencode_gpt_normal", 15 * time.Second, 1, 0, false},
+		{"opencode_skipped", "opencode:opencode_gpt54", 15 * time.Second, 1, 0, false},
 		{"codex_skipped", "codex:codex_gpt_normal", 15 * time.Second, 1, 0, false},
 		{"elapsed_at_boundary_skipped", "claude:sonnet", 1 * time.Minute, 1, 0, false},
 		{"elapsed_above_boundary_skipped", "claude:sonnet", 90 * time.Second, 1, 0, false},

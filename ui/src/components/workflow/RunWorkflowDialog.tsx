@@ -16,7 +16,7 @@ import type { AgentDef } from '@/types/workflow'
 type StartMode = 'normal' | 'interactive' | 'plan'
 
 function isClaudeModel(model: string): boolean {
-  return !model.startsWith('opencode_gpt_') && !model.startsWith('codex_gpt_')
+  return !model.startsWith('opencode_') && !model.startsWith('codex_gpt_')
 }
 
 interface RunWorkflowDialogProps {

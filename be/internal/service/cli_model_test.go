@@ -38,16 +38,16 @@ func TestCLIModel_List(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(models) != 10 {
-		t.Fatalf("List len = %d, want 10", len(models))
+	if len(models) != 11 {
+		t.Fatalf("List len = %d, want 11", len(models))
 	}
 
 	// Verify ORDER BY id ascending — first and last entries.
 	if models[0].ID != "codex_gpt54_high" {
 		t.Errorf("List[0].ID = %q, want %q", models[0].ID, "codex_gpt54_high")
 	}
-	if models[9].ID != "sonnet" {
-		t.Errorf("List[9].ID = %q, want %q", models[9].ID, "sonnet")
+	if models[10].ID != "sonnet" {
+		t.Errorf("List[10].ID = %q, want %q", models[10].ID, "sonnet")
 	}
 
 	// All seeded models are read-only.

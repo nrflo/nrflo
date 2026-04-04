@@ -13,8 +13,9 @@ func TestOpencodeAdapterModelMapping(t *testing.T) {
 		expected string
 	}{
 		// New predefined opencode models
-		{"opencode_gpt_normal", "openai/gpt-5.3-codex"},
-		{"opencode_gpt_high", "openai/gpt-5.3-codex"},
+		{"opencode_minimax_m25_free", "opencode/minimax-m2.5-free"},
+		{"opencode_qwen36_plus_free", "opencode/qwen3.6-plus-free"},
+		{"opencode_gpt54", "openai/gpt-5.4"},
 
 		// Already provider/model format (pass-through)
 		{"anthropic/claude-opus-4-5", "anthropic/claude-opus-4-5"},
@@ -99,8 +100,9 @@ func TestOpencodeReasoningEffort(t *testing.T) {
 		model    string
 		expected string
 	}{
-		{"opencode_gpt_normal", "high"},
-		{"opencode_gpt_high", "high"},
+		{"opencode_gpt54", "high"},
+		{"opencode_minimax_m25_free", ""},
+		{"opencode_qwen36_plus_free", ""},
 		{"opus", ""},
 		{"sonnet", ""},
 		{"haiku", ""},
@@ -155,8 +157,9 @@ func TestModelMappingRoundTrip(t *testing.T) {
 		{"opus_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opencode_gpt_normal", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_gpt_high", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_qwen36_plus_free", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_gpt54", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
@@ -221,8 +224,9 @@ func TestDefaultCLIForModel(t *testing.T) {
 		{"opus_1m", "claude"},
 		{"sonnet", "claude"},
 		{"haiku", "claude"},
-		{"opencode_gpt_normal", "opencode"},
-		{"opencode_gpt_high", "opencode"},
+		{"opencode_minimax_m25_free", "opencode"},
+		{"opencode_qwen36_plus_free", "opencode"},
+		{"opencode_gpt54", "opencode"},
 		{"codex_gpt_normal", "codex"},
 		{"codex_gpt_high", "codex"},
 		{"codex_gpt54_normal", "codex"},
@@ -252,8 +256,9 @@ func TestAllSupportedModelsAreValid(t *testing.T) {
 		{"opus_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opencode_gpt_normal", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_gpt_high", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_qwen36_plus_free", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_gpt54", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},

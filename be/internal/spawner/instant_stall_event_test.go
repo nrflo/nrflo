@@ -63,10 +63,10 @@ func TestCheckInstantStall_EventNotBroadcastWhenSkipped(t *testing.T) {
 	hub.Register(client)
 	hub.Subscribe(client, env.projectID, env.ticketID)
 
-	env.createSession(t, "opencode:opencode_gpt_normal")
+	env.createSession(t, "opencode:opencode_gpt54")
 	insertTestMessages(t, env, 1)
 
-	proc := makeInstantStallProc(env, "opencode:opencode_gpt_normal", 15*time.Second, 0)
+	proc := makeInstantStallProc(env, "opencode:opencode_gpt54", 15*time.Second, 0)
 	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
 
 	// No event should be received.

@@ -8,7 +8,7 @@ export function DocumentationPage() {
   const { data, isLoading, error, refetch, isFetching } = useAgentManual()
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="w-[85%] mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Agent Documentation</h1>
         <Button

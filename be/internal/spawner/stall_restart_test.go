@@ -16,8 +16,8 @@ func TestStall_Constants(t *testing.T) {
 	if defaultStallRunningTimeout != 8*time.Minute {
 		t.Errorf("defaultStallRunningTimeout = %v, want 8m", defaultStallRunningTimeout)
 	}
-	if maxStallRestarts != 6 {
-		t.Errorf("maxStallRestarts = %d, want 6", maxStallRestarts)
+	if maxStallRestarts != 15 {
+		t.Errorf("maxStallRestarts = %d, want 15", maxStallRestarts)
 	}
 }
 

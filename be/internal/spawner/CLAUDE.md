@@ -192,7 +192,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
 
 5b. STALL DETECTION (in monitorAll poll loop)
    - Checked for still-running procs before timeout check
-   - Skipped if lowContextSaving or stallRestartCount >= maxStallRestarts (6)
+   - Skipped if lowContextSaving or stallRestartCount >= maxStallRestarts (15)
    - Start stall: no messages received && stallStartTimeout > 0 && sinceLastMsg > stallStartTimeout (default 2min)
    - Running stall: has messages && stallRunningTimeout > 0 && sinceLastMsg > stallRunningTimeout (default 8min)
    - On stall: broadcast agent.stall_restart event, kill process (SIGTERM→grace→SIGKILL), flush messages,
@@ -209,12 +209,12 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
      actionable message count <= 3 (queried via CountBySessionActionable, excludes [init] and [thinking] prefixes),
      no `no-op` finding on session (agents signal deliberate no-work exit via `nrflow findings add no-op:no-op`)
-   - If stallRestartCount >= maxStallRestarts (6): marks session as failed with reason
+   - If stallRestartCount >= maxStallRestarts (15): marks session as failed with reason
      stall_budget_exhausted (instead of letting false pass through)
    - On match (budget available): override session result=continue reason=instant_stall, status=continued,
      increment stallRestartCount, set finalStatus=CONTINUE → 15s delay → relaunchForContinuation
    - Broadcasts agent.instant_stall_restart event with session_id, agent_type, elapsed, message_count
-   - Shares stall restart budget with regular stall detection (both increment stallRestartCount, capped at 6)
+   - Shares stall restart budget with regular stall detection (both increment stallRestartCount, capped at 15)
    - Messages are already flushed by handleCompletion before this check runs
 
 6. FINALIZE PHASE

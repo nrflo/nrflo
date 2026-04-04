@@ -52,7 +52,7 @@ const (
 	defaultFailRetryDelay      = 15 * time.Second
 	defaultStallStartTimeout   = 2 * time.Minute
 	defaultStallRunningTimeout = 8 * time.Minute
-	maxStallRestarts           = 6
+	maxStallRestarts           = 15
 )
 
 // ModelConfig holds DB-sourced model configuration for the spawner.

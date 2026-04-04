@@ -62,6 +62,30 @@ export function SettingsPage() {
         </div>
       </div>
 
+      <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        <h2 className="text-xl font-semibold">New Reality Flow</h2>
+        <p className="text-muted-foreground text-sm">
+          The main supported CLI is <strong>Claude Code</strong>. The security hook configured in
+          Project Settings enforces only Claude CLI tool calls. Claude CLI runs in YOLO mode — if
+          that concerns you, add a per-project safety hook to your Claude settings.
+        </p>
+        <p className="text-muted-foreground text-sm">
+          Codex runs in a sandboxed environment (bypasses permissions but sandboxed) — it can do
+          research and save findings for later processing by Claude CLI agents. OpenCode support is
+          experimental.
+        </p>
+        <pre className="bg-muted rounded p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`Claude Code
+  claude --print --verbose --dangerously-skip-permissions --output-format stream-json --disallowed-tools "AskUserQuestion,EnterPlanMode,ExitPlanMode" --model <model> --session-id <uuid> [--settings <json>]
+
+OpenCode
+  opencode run --format json --model <model> [--variant <effort>] "<prompt>"
+
+Codex
+  codex exec --json --model <model> -c 'model_reasoning_effort="<effort>"' --dangerously-bypass-approvals-and-sandbox`}
+        </pre>
+      </div>
+
       <NoProjectsBanner />
 
       <div className="border-b border-border">

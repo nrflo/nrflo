@@ -98,7 +98,7 @@ describe('SettingsPage — safety hook display', () => {
     renderPage()
     await goToProjectsTab()
     await screen.findByText('Test Project')
-    expect(screen.queryByText(/safety hook/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Safety hook: enabled')).not.toBeInTheDocument()
   })
 
   it('shows safety hook alongside other metadata', async () => {

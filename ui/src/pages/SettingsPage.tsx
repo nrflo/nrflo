@@ -74,7 +74,7 @@ export function SettingsPage() {
           research and save findings for later processing by Claude CLI agents. OpenCode support is
           experimental.
         </p>
-        <pre className="bg-muted rounded p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+        <pre className="bg-muted rounded p-3 text-xs font-mono whitespace-pre-wrap">
 {`Claude Code
   claude --print --verbose --dangerously-skip-permissions --output-format stream-json --disallowed-tools "AskUserQuestion,EnterPlanMode,ExitPlanMode" --model <model> --session-id <uuid> [--settings <json>]
 

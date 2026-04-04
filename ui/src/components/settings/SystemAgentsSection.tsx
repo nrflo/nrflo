@@ -193,9 +193,9 @@ export function SystemAgentsSection() {
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Bot className="h-5 w-5 text-muted-foreground" />
-                    <div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Bot className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
                       <div className="font-medium">{agent.id}</div>
                       <div className="text-sm text-muted-foreground">
                         {[

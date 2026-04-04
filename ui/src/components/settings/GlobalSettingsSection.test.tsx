@@ -238,6 +238,23 @@ describe('GlobalSettingsSection', () => {
     })
   })
 
+  it('shows stall start tooltip with two paragraphs including Claude CLI bug note', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    renderWithQuery(<GlobalSettingsSection />)
+
+    await screen.findByPlaceholderText('120')
+    const stallStartLabel = screen.getByText('Stall start timeout (sec)')
+    const tooltipTrigger = stallStartLabel.closest('.flex')?.querySelector('[data-state]') as HTMLElement
+
+    const user = userEvent.setup()
+    await user.hover(tooltipTrigger)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent(/Time before first agent message/)
+    expect(tooltip).toHaveTextContent(/drops tool_use blocks from streaming API responses/)
+    expect(tooltip).toHaveTextContent(/anthropics\/claude-code#25979/)
+  })
+
   it('renders stall running input with server value and submits on blur', async () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: 300 })
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)

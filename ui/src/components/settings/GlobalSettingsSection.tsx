@@ -142,7 +142,13 @@ export function GlobalSettingsSection() {
                 <div className="text-sm font-medium">Stall start timeout (sec)</div>
                 <Tooltip
                   placement="right"
-                  text="Time before first agent message before triggering stall restart. 0 = disabled, empty = default (120s). Per-agent values take precedence."
+                  className="max-w-sm"
+                  text={
+                    <div className="space-y-2">
+                      <p>Time before first agent message before triggering stall restart. 0 = disabled, empty = default (120s). Per-agent values take precedence.</p>
+                      <p>Note: Claude CLI intermittently drops tool_use blocks from streaming API responses — the API generates the full response (and bills for it), but the CLI only receives the thinking block, has nothing to execute, and exits with code 0 immediately. This is a known open issue (anthropics/claude-code#25979) in the SSE streaming pipeline with no fix or read-timeout mechanism, affecting all versions.</p>
+                    </div>
+                  }
                 >
                   <Info className="h-3.5 w-3.5 text-muted-foreground" />
                 </Tooltip>

@@ -53,3 +53,17 @@ export async function updateProject(id: string, data: UpdateProjectRequest): Pro
 export async function deleteProject(id: string): Promise<{ message: string }> {
   return apiDelete<{ message: string }>(`/api/v1/projects/${encodeURIComponent(id)}`)
 }
+
+export interface SafetyHookCheckRequest {
+  config: { enabled: boolean; allow_git: boolean; rm_rf_allowed_paths: string[]; dangerous_patterns: string[] }
+  command: string
+}
+
+export interface SafetyHookCheckResponse {
+  allowed: boolean
+  reason: string
+}
+
+export async function checkSafetyHook(data: SafetyHookCheckRequest): Promise<SafetyHookCheckResponse> {
+  return apiPost<SafetyHookCheckResponse>('/api/v1/safety-hook/check', data)
+}

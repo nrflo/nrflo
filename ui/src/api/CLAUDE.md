@@ -28,6 +28,7 @@ API client modules for communicating with the nrflow backend. Contains 12 files.
 | `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |
 | `cliModels.ts` | CLI model CRUD + health check test (global, no X-Project header) |
 | `errors.ts` | Paginated error log list (`GET /api/v1/errors?page=&per_page=&type=`) |
+| `projects.ts` | Also exports `checkSafetyHook()` for dry-run safety hook check (no X-Project header) |
 
 ## REST API Endpoints
 
@@ -138,6 +139,9 @@ PATCH  /api/v1/settings             # Update global settings
 
 # Documentation
 GET    /api/v1/docs/agent-manual    # Agent manual markdown content
+
+# Safety Hook
+POST   /api/v1/safety-hook/check    # Dry-run check command against safety hook config (no X-Project header)
 
 # Other
 GET    /api/v1/search?q=            # Full-text search

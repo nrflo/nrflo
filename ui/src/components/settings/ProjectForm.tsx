@@ -1,9 +1,11 @@
-import { X, Check, Info } from 'lucide-react'
+import { useState } from 'react'
+import { X, Check, Info, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Toggle } from '@/components/ui/Toggle'
 import { Tooltip } from '@/components/ui/Tooltip'
+import { SafetyHookCheckDialog } from './SafetyHookCheckDialog'
 
 export interface ProjectFormData {
   id: string
@@ -114,6 +116,7 @@ export function ProjectForm({
   isCreate?: boolean
   disabledId?: string
 }) {
+  const [checkDialogOpen, setCheckDialogOpen] = useState(false)
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
       <div className="grid grid-cols-2 gap-3">
@@ -250,6 +253,14 @@ export function ProjectForm({
                 placeholder="rm -rf /&#10;DROP TABLE"
               />
             </div>
+            <Button variant="outline" size="sm" onClick={() => setCheckDialogOpen(true)}>
+              <ShieldCheck className="h-4 w-4 mr-1" />Check
+            </Button>
+            <SafetyHookCheckDialog
+              open={checkDialogOpen}
+              onClose={() => setCheckDialogOpen(false)}
+              formData={formData}
+            />
           </div>
         )}
       </div>

@@ -49,6 +49,7 @@ be/
 │   │   ├── handlers_default_template.go # Default template CRUD (global)
 │   │   ├── handlers_cli_models.go # CLI model CRUD (global)
 │   │   ├── handlers_global_settings.go # Global settings GET/PATCH (no project scope)
+│   │   ├── handlers_safety_hook_check.go # Safety hook dry-run check (POST /api/v1/safety-hook/check, global)
 │   │   ├── handlers_pty.go      # PTY WebSocket handler (1:1 interactive terminal relay)
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
 │   │   ├── handlers_git.go        # Git commit history endpoints

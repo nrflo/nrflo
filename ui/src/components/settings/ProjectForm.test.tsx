@@ -240,6 +240,16 @@ describe('ProjectForm — safety hook section', () => {
     expect(screen.getByPlaceholderText(/rm -rf/i)).toBeInTheDocument()
   })
 
+  it('shows Check button when safety hook is enabled', () => {
+    render(<ProjectForm {...makeProps({ safety_hook_enabled: true })} />)
+    expect(screen.getByRole('button', { name: /check/i })).toBeInTheDocument()
+  })
+
+  it('hides Check button when safety hook is disabled', () => {
+    render(<ProjectForm {...makeProps({ safety_hook_enabled: false })} />)
+    expect(screen.queryByRole('button', { name: /check/i })).not.toBeInTheDocument()
+  })
+
   it('enabling toggle populates default rm paths when empty', async () => {
     const user = userEvent.setup()
     const setFormData = vi.fn()

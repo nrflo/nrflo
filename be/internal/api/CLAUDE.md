@@ -31,6 +31,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
+| `handlers_safety_hook_check.go` | Safety hook dry-run check (POST /api/v1/safety-hook/check, global) |
 | `handlers_project_findings.go` | Project findings GET (project-scoped) |
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
@@ -127,6 +128,9 @@ POST   /api/v1/cli-models/:id/test  # Health check: spawn minimal agent, return 
 # Global settings (no project scope)
 GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null}
 PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "session_retention_limit": int (>= 10), "stall_start_timeout_sec": int|null (>= 0), "stall_running_timeout_sec": int|null (>= 0)}
+
+# Safety hook check (global, no project scope)
+POST   /api/v1/safety-hook/check  # Dry-run command against safety hook config. Body: {config: SafetyHookConfig, command: string}. Returns {allowed: bool, reason: string}
 
 # Agent sessions
 GET /api/v1/tickets/:id/agents

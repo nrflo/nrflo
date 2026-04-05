@@ -113,7 +113,7 @@ describe('PhaseGraph', () => {
       await flushLayout()
 
       expect(mockFitView).not.toHaveBeenCalled()
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     })
 
@@ -125,7 +125,7 @@ describe('PhaseGraph', () => {
 
       const { rerender } = render(<PhaseGraph {...props} />)
       await flushLayout()
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       vi.clearAllMocks()
 
       rerender(<PhaseGraph {...makeProps({
@@ -137,7 +137,7 @@ describe('PhaseGraph', () => {
       })} />)
       await flushLayout()
 
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     })
 
@@ -155,7 +155,7 @@ describe('PhaseGraph', () => {
 
       const { rerender } = render(<PhaseGraph {...props} />)
       await flushLayout()
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       vi.clearAllMocks()
 
       rerender(<PhaseGraph {...makeProps({
@@ -171,7 +171,7 @@ describe('PhaseGraph', () => {
       })} />)
       await flushLayout()
 
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     })
 
@@ -188,7 +188,7 @@ describe('PhaseGraph', () => {
 
       const { rerender } = render(<PhaseGraph {...props} />)
       await flushLayout()
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       const initialCallCount = mockFitView.mock.calls.length
 
       // Update context_left (doesn't change nodeKey)
@@ -220,7 +220,7 @@ describe('PhaseGraph', () => {
 
       const { rerender } = render(<PhaseGraph {...props} />)
       await flushLayout()
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       vi.clearAllMocks()
 
       rerender(<PhaseGraph {...makeProps({
@@ -235,7 +235,7 @@ describe('PhaseGraph', () => {
       })} />)
       await flushLayout()
 
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalled()
     })
   })
@@ -258,7 +258,7 @@ describe('PhaseGraph', () => {
       })} />)
       await flushLayout()
 
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalled()
       expect(screen.getByTestId('react-flow')).toBeInTheDocument()
     })
@@ -275,7 +275,7 @@ describe('PhaseGraph', () => {
       })} />)
       await flushLayout()
 
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalled()
     })
 
@@ -292,7 +292,7 @@ describe('PhaseGraph', () => {
       })} />)
       await flushLayout()
 
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
       expect(screen.getByTestId('react-flow')).toBeInTheDocument()
     })
@@ -345,7 +345,7 @@ describe('PhaseGraph', () => {
       })} />)
       await flushLayout()
 
-      act(() => { vi.advanceTimersByTime(200) })
+      act(() => { vi.advanceTimersByTime(500) })
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
     })
   })

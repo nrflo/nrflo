@@ -16,7 +16,7 @@ function FitViewOnChange({ nodeKey, logPanelCollapsed, selectedAgent }: { nodeKe
   const { fitView } = useReactFlow()
   useEffect(() => {
     // Small delay to let React Flow finish internal layout before fitting
-    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 200)
+    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 500)
     return () => clearTimeout(timer)
   }, [nodeKey, fitView])
 

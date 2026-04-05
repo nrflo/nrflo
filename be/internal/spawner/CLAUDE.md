@@ -208,7 +208,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
    - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
      actionable message count <= 3 (queried via CountBySessionActionable, excludes [init] and [thinking] prefixes),
-     no `no-op` or `callback_instructions` finding on session (agents signal deliberate no-work exit via `nrflow findings add no-op:no-op`; callback agents save `callback_instructions` before exiting)
+     session has no findings at all (any finding = agent did real work; agents with no work signal via `nrflow findings add no-op:no-op`)
    - If stallRestartCount >= maxStallRestarts (15): marks session as failed with reason
      stall_budget_exhausted (instead of letting false pass through)
    - On match (budget available): override session result=continue reason=instant_stall, status=continued,

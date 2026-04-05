@@ -349,80 +349,42 @@ func TestCheckInstantStall_InitThinkingPlusActionable(t *testing.T) {
 	}
 }
 
-// TestCheckInstantStall_NoOpFinding_SkipsStall verifies that an agent with a no-op finding
+// TestCheckInstantStall_AnyFinding_SkipsStall verifies that an agent with any finding
 // is not treated as an instant stall.
-func TestCheckInstantStall_NoOpFinding_SkipsStall(t *testing.T) {
+func TestCheckInstantStall_AnyFinding_SkipsStall(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
 	env.createSession(t, "claude:sonnet")
 	insertTestMessages(t, env, 1)
-	setSessionFindings(t, env, map[string]interface{}{"no-op": "no-op"})
+	setSessionFindings(t, env, map[string]interface{}{"summary": "analyzed 3 files"})
 
 	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, 0)
 	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
 
 	if proc.finalStatus != "PASS" {
-		t.Errorf("finalStatus = %q, want PASS (no-op finding should skip stall)", proc.finalStatus)
+		t.Errorf("finalStatus = %q, want PASS (any finding should skip stall)", proc.finalStatus)
 	}
 	if proc.stallRestartCount != 0 {
 		t.Errorf("stallRestartCount = %d, want 0 (unchanged)", proc.stallRestartCount)
 	}
 }
 
-// TestCheckInstantStall_NoOpFinding_BudgetExhausted_StillPasses verifies that no-op guard
+// TestCheckInstantStall_AnyFinding_BudgetExhausted_StillPasses verifies that the findings guard
 // fires before the budget check, so agent passes even when budget is exhausted.
-func TestCheckInstantStall_NoOpFinding_BudgetExhausted_StillPasses(t *testing.T) {
+func TestCheckInstantStall_AnyFinding_BudgetExhausted_StillPasses(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
 	env.createSession(t, "claude:sonnet")
 	insertTestMessages(t, env, 1)
-	setSessionFindings(t, env, map[string]interface{}{"no-op": "no-op"})
+	setSessionFindings(t, env, map[string]interface{}{"summary": "analyzed 3 files"})
 
 	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, maxStallRestarts)
 	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
 
 	if proc.finalStatus != "PASS" {
-		t.Errorf("finalStatus = %q, want PASS (no-op should pass even with exhausted budget)", proc.finalStatus)
+		t.Errorf("finalStatus = %q, want PASS (any finding should pass even with exhausted budget)", proc.finalStatus)
 	}
 }
 
-// TestCheckInstantStall_CallbackInstructionsFinding_SkipsStall verifies that an agent with
-// a callback_instructions finding is not treated as an instant stall.
-func TestCheckInstantStall_CallbackInstructionsFinding_SkipsStall(t *testing.T) {
-	env := setupTestEnv(t)
-	defer env.cleanup()
-
-	env.createSession(t, "claude:sonnet")
-	insertTestMessages(t, env, 1)
-	setSessionFindings(t, env, map[string]interface{}{"callback_instructions": "Fix the bug"})
-
-	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, 0)
-	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
-
-	if proc.finalStatus != "PASS" {
-		t.Errorf("finalStatus = %q, want PASS (callback_instructions finding should skip stall)", proc.finalStatus)
-	}
-	if proc.stallRestartCount != 0 {
-		t.Errorf("stallRestartCount = %d, want 0 (unchanged)", proc.stallRestartCount)
-	}
-}
-
-// TestCheckInstantStall_CallbackInstructionsFinding_BudgetExhausted_StillPasses verifies that the
-// callback_instructions guard fires before the budget check, so agent passes even when budget is exhausted.
-func TestCheckInstantStall_CallbackInstructionsFinding_BudgetExhausted_StillPasses(t *testing.T) {
-	env := setupTestEnv(t)
-	defer env.cleanup()
-
-	env.createSession(t, "claude:sonnet")
-	insertTestMessages(t, env, 1)
-	setSessionFindings(t, env, map[string]interface{}{"callback_instructions": "Fix the bug"})
-
-	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, maxStallRestarts)
-	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
-
-	if proc.finalStatus != "PASS" {
-		t.Errorf("finalStatus = %q, want PASS (callback_instructions should pass even with exhausted budget)", proc.finalStatus)
-	}
-}

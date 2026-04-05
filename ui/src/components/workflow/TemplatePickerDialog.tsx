@@ -42,7 +42,7 @@ export function TemplatePickerDialog({ open, onClose, onApply, hasExistingPrompt
       <DialogHeader onClose={handleClose}>
         <h3 className="text-lg font-semibold">Apply Default Template</h3>
       </DialogHeader>
-      <DialogBody className="overflow-visible">
+      <DialogBody className="overflow-visible min-h-[24rem]">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Spinner />

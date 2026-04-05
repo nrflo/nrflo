@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -37,6 +38,34 @@ func (r *ChainLockRepo) InsertLocks(projectID, chainID string, ticketIDs []strin
 // DeleteLocksByChain removes all locks for a chain
 func (r *ChainLockRepo) DeleteLocksByChain(chainID string) error {
 	_, err := r.pool.Exec(`DELETE FROM chain_execution_locks WHERE chain_id = ?`, chainID)
+	return err
+}
+
+// DeleteLocksByTicketIDs removes locks for specific tickets in a chain
+func (r *ChainLockRepo) DeleteLocksByTicketIDs(chainID string, ticketIDs []string) error {
+	return r.DeleteLocksByTicketIDsTx(r.pool, chainID, ticketIDs)
+}
+
+// DeleteLocksByTicketIDsTx is the transactional variant of DeleteLocksByTicketIDs.
+func (r *ChainLockRepo) DeleteLocksByTicketIDsTx(exec interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}, chainID string, ticketIDs []string) error {
+	if len(ticketIDs) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(ticketIDs))
+	args := make([]interface{}, 0, len(ticketIDs)+1)
+	args = append(args, chainID)
+	for i, tid := range ticketIDs {
+		placeholders[i] = "?"
+		args = append(args, strings.ToLower(tid))
+	}
+
+	_, err := exec.Exec(`
+		DELETE FROM chain_execution_locks
+		WHERE chain_id = ? AND LOWER(ticket_id) IN (`+strings.Join(placeholders, ",")+`)`,
+		args...)
 	return err
 }
 

@@ -13,6 +13,7 @@ import {
   cancelChain,
   deleteChain,
   appendToChain,
+  removeFromChain,
   runEpicWorkflow,
   type ListChainsParams,
   type RunEpicWorkflowParams,
@@ -22,6 +23,7 @@ import type {
   ChainCreateRequest,
   ChainUpdateRequest,
   ChainAppendRequest,
+  ChainRemoveRequest,
 } from '@/types/chain'
 import { useProjectStore } from '@/stores/projectStore'
 
@@ -121,6 +123,18 @@ export function useAppendToChain() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: ChainAppendRequest }) =>
       appendToChain(id, data),
+    onSuccess: (chain: ChainExecution) => {
+      queryClient.invalidateQueries({ queryKey: chainKeys.detail(chain.id) })
+      queryClient.invalidateQueries({ queryKey: chainKeys.lists() })
+    },
+  })
+}
+
+export function useRemoveFromChain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ChainRemoveRequest }) =>
+      removeFromChain(id, data),
     onSuccess: (chain: ChainExecution) => {
       queryClient.invalidateQueries({ queryKey: chainKeys.detail(chain.id) })
       queryClient.invalidateQueries({ queryKey: chainKeys.lists() })

@@ -27,7 +27,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_cli_models.go` | CLI model CRUD (global, no project scope, readonly delete enforcement, enabled toggle: 400 on system model, 409 on in-use) |
 | `handlers_cli_model_check.go` | CLI model health check (POST /api/v1/cli-models/{id}/test) |
 | `handlers_default_template.go` | Default template CRUD (global, no project scope, readonly enforcement) |
-| `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/delete/append |
+| `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/delete/append/remove-items |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
@@ -165,8 +165,9 @@ GET    /api/v1/chains/:id          # Get chain with items + deps map
 PATCH  /api/v1/chains/:id          # Update pending chain; optional ordered_ticket_ids
 POST   /api/v1/chains/:id/start    # Start sequential execution
 POST   /api/v1/chains/:id/cancel   # Cancel chain and release locks
-DELETE /api/v1/chains/:id          # Delete chain (409 if running, cascades items+locks)
-POST   /api/v1/chains/:id/append   # Append tickets to running chain
+DELETE /api/v1/chains/:id              # Delete chain (409 if running, cascades items+locks)
+POST   /api/v1/chains/:id/append       # Append tickets to running chain
+POST   /api/v1/chains/:id/remove-items # Remove pending items from running chain
 
 # Documentation
 GET /api/v1/docs/agent-manual      # Agent manual markdown content

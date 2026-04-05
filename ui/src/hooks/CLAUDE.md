@@ -98,7 +98,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 |------|---------|
 | `useTickets.ts` | TanStack Query hooks for ticket data, query key factory |
 | `useProjects.ts` | TanStack Query hook for projects |
-| `useChains.ts` | TanStack Query hooks for chain executions. `useChain` supports optional `refetchInterval` for running chain polling fallback. |
+| `useChains.ts` | TanStack Query hooks for chain executions. `useChain` supports optional `refetchInterval` for running chain polling fallback. `useRemoveFromChain` mutation for removing pending items. |
 | `useElapsedTime.ts` | Elapsed time hooks |
 | `useGoBack.ts` | History-aware back navigation |
 | `useTakeControl()` | Mutation: take interactive control of running Claude agent (ticket-scoped) |

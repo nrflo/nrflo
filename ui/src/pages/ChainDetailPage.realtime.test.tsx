@@ -14,6 +14,12 @@ vi.mock('@/hooks/useChains', () => ({
   useChain: (id: string, options?: unknown) => mockUseChain(id, options),
   useStartChain: () => mockUseStartChain(),
   useCancelChain: () => mockUseCancelChain(),
+  useRemoveFromChain: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
 }))
 
 vi.mock('@/hooks/useElapsedTime', () => ({

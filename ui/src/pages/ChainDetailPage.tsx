@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Play, XCircle, Edit, ListPlus } from 'lucide-react'
+import { ArrowLeft, Play, XCircle, Edit, ListPlus, Trash2 } from 'lucide-react'
 import { useGoBack } from '@/hooks/useGoBack'
 import { useTickingClock } from '@/hooks/useElapsedTime'
 import { Button } from '@/components/ui/Button'
@@ -10,7 +10,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { StatusCell } from '@/components/ui/StatusCell'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
 import { AppendToChainDialog } from '@/components/chains/AppendToChainDialog'
-import { useChain, useStartChain, useCancelChain } from '@/hooks/useChains'
+import { useChain, useStartChain, useCancelChain, useRemoveFromChain } from '@/hooks/useChains'
 import {
   statusColor,
   capitalize,
@@ -18,12 +18,51 @@ import {
   formatElapsedTime,
   formatTokenCount,
 } from '@/lib/utils'
-import type { ChainExecution, ChainExecutionItem } from '@/types/chain'
+import type { ChainExecution, ChainExecutionItem, ChainStatus } from '@/types/chain'
 
-function ItemRow({ item }: { item: ChainExecutionItem }) {
+function ItemRow({ item, chainStatus }: { item: ChainExecutionItem; chainStatus: ChainStatus }) {
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null)
+  const removeMutation = useRemoveFromChain()
   const duration = item.started_at
     ? formatElapsedTime(item.started_at, item.ended_at)
     : null
+  const canRemove = chainStatus === 'running' && item.status === 'pending'
+
+  const handleRemove = async () => {
+    try {
+      await removeMutation.mutateAsync({ id: item.chain_id, data: { ticket_ids: [item.ticket_id] } })
+      setRemoveConfirm(null)
+    } catch {
+      // Error handled by mutation state
+    }
+  }
+
+  if (removeConfirm === item.ticket_id) {
+    return (
+      <TableRow>
+        <TableCell colSpan={7}>
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              Remove <span className="font-semibold">{item.ticket_id}</span> from chain?
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setRemoveConfirm(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleRemove}
+                disabled={removeMutation.isPending}
+              >
+                {removeMutation.isPending ? 'Removing...' : 'Remove'}
+              </Button>
+            </div>
+          </div>
+        </TableCell>
+      </TableRow>
+    )
+  }
 
   return (
     <TableRow>
@@ -52,6 +91,18 @@ function ItemRow({ item }: { item: ChainExecutionItem }) {
       </TableCell>
       <TableCell className="text-xs font-mono text-muted-foreground text-right">
         {item.total_tokens_used ? `${formatTokenCount(item.total_tokens_used)} tokens` : '—'}
+      </TableCell>
+      <TableCell className="w-10">
+        {canRemove && (
+          <Button variant="ghost" size="icon" onClick={() => setRemoveConfirm(item.ticket_id)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+        {removeMutation.isError && (
+          <span className="text-xs text-destructive">
+            {(removeMutation.error as Error)?.message ?? 'Remove failed'}
+          </span>
+        )}
       </TableCell>
     </TableRow>
   )
@@ -212,19 +263,20 @@ export function ChainDetailPage() {
             <TableHead>Started</TableHead>
             <TableHead>Duration</TableHead>
             <TableHead className="text-right">Tokens</TableHead>
+            <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground text-sm">
+              <TableCell colSpan={7} className="text-center text-muted-foreground text-sm">
                 No items in this chain
               </TableCell>
             </TableRow>
           ) : (
             [...items]
               .sort((a, b) => a.position - b.position)
-              .map((item) => <ItemRow key={item.id} item={item} />)
+              .map((item) => <ItemRow key={item.id} item={item} chainStatus={displayChain.status} />)
           )}
         </TableBody>
       </Table>

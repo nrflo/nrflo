@@ -21,6 +21,11 @@ type ChainAppendRequest struct {
 	TicketIDs []string `json:"ticket_ids"`
 }
 
+// ChainRemoveRequest is the request for removing pending tickets from a running chain
+type ChainRemoveRequest struct {
+	TicketIDs []string `json:"ticket_ids"`
+}
+
 // ChainPreviewRequest is the request for previewing a chain's expanded tickets and dependencies
 type ChainPreviewRequest struct {
 	TicketIDs []string `json:"ticket_ids"`

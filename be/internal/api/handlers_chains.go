@@ -255,6 +255,49 @@ func (s *Server) handleAppendToChain(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, chain)
 }
 
+// handleRemoveFromChain removes pending items from a running chain.
+// POST /api/v1/chains/{id}/remove-items
+func (s *Server) handleRemoveFromChain(w http.ResponseWriter, r *http.Request) {
+	chainID := extractID(r)
+	if chainID == "" {
+		writeError(w, http.StatusBadRequest, "chain ID required")
+		return
+	}
+
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	var req types.ChainRemoveRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if len(req.TicketIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "ticket_ids must not be empty")
+		return
+	}
+
+	chainSvc := service.NewChainService(s.pool, s.clock)
+	chain, err := chainSvc.RemoveFromChain(chainID, req.TicketIDs)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if s.wsHub != nil {
+		event := ws.NewEvent("chain.updated", projectID, "", "", map[string]interface{}{
+			"chain_id": chainID,
+			"action":   "remove",
+		})
+		s.wsHub.Broadcast(event)
+	}
+
+	writeJSON(w, http.StatusOK, chain)
+}
+
 // handleRunEpicWorkflow creates a chain from an epic's child tickets and optionally starts it.
 // POST /api/v1/tickets/{id}/workflow/run-epic
 func (s *Server) handleRunEpicWorkflow(w http.ResponseWriter, r *http.Request) {

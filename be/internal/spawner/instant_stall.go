@@ -43,12 +43,15 @@ func (s *Spawner) checkInstantStall(ctx context.Context, proc *processInfo, req 
 		return
 	}
 
-	// Guard: no-op finding means agent deliberately exited (not a stall)
+	// Guard: no-op or callback_instructions finding means agent deliberately exited (not a stall)
 	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	session, err := sessionRepo.Get(proc.sessionID)
 	if err == nil {
 		findings := session.GetFindings()
 		if _, ok := findings["no-op"]; ok {
+			return
+		}
+		if _, ok := findings["callback_instructions"]; ok {
 			return
 		}
 	}

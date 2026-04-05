@@ -387,3 +387,42 @@ func TestCheckInstantStall_NoOpFinding_BudgetExhausted_StillPasses(t *testing.T)
 		t.Errorf("finalStatus = %q, want PASS (no-op should pass even with exhausted budget)", proc.finalStatus)
 	}
 }
+
+// TestCheckInstantStall_CallbackInstructionsFinding_SkipsStall verifies that an agent with
+// a callback_instructions finding is not treated as an instant stall.
+func TestCheckInstantStall_CallbackInstructionsFinding_SkipsStall(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.cleanup()
+
+	env.createSession(t, "claude:sonnet")
+	insertTestMessages(t, env, 1)
+	setSessionFindings(t, env, map[string]interface{}{"callback_instructions": "Fix the bug"})
+
+	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, 0)
+	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
+
+	if proc.finalStatus != "PASS" {
+		t.Errorf("finalStatus = %q, want PASS (callback_instructions finding should skip stall)", proc.finalStatus)
+	}
+	if proc.stallRestartCount != 0 {
+		t.Errorf("stallRestartCount = %d, want 0 (unchanged)", proc.stallRestartCount)
+	}
+}
+
+// TestCheckInstantStall_CallbackInstructionsFinding_BudgetExhausted_StillPasses verifies that the
+// callback_instructions guard fires before the budget check, so agent passes even when budget is exhausted.
+func TestCheckInstantStall_CallbackInstructionsFinding_BudgetExhausted_StillPasses(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.cleanup()
+
+	env.createSession(t, "claude:sonnet")
+	insertTestMessages(t, env, 1)
+	setSessionFindings(t, env, map[string]interface{}{"callback_instructions": "Fix the bug"})
+
+	proc := makeInstantStallProc(env, "claude:sonnet", 15*time.Second, maxStallRestarts)
+	env.spawner.checkInstantStall(context.Background(), proc, makeInstantStallReq(env))
+
+	if proc.finalStatus != "PASS" {
+		t.Errorf("finalStatus = %q, want PASS (callback_instructions should pass even with exhausted budget)", proc.finalStatus)
+	}
+}

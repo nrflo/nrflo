@@ -137,19 +137,21 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
       const onSubmit = vi.fn()
 
       render(
-        <WorkflowDefForm
-          isCreate={true}
-          onSubmit={onSubmit}
-          onCancel={vi.fn()}
-          isPending={false}
-        />
+        <>
+          <WorkflowDefForm
+            isCreate={true}
+            onSubmit={onSubmit}
+            formId="test-form"
+          />
+          <button type="submit" form="test-form">Submit</button>
+        </>
       )
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test-workflow')
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[0], 'implementor')
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -175,19 +177,21 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
       const onSubmit = vi.fn()
 
       render(
-        <WorkflowDefForm
-          isCreate={true}
-          onSubmit={onSubmit}
-          onCancel={vi.fn()}
-          isPending={false}
-        />
+        <>
+          <WorkflowDefForm
+            isCreate={true}
+            onSubmit={onSubmit}
+            formId="test-form"
+          />
+          <button type="submit" form="test-form">Submit</button>
+        </>
       )
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test-workflow')
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[0], 'implementor')
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       const payload = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
@@ -214,8 +218,7 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
           isCreate={false}
           initial={{ id: 'feature', phases }}
           onSubmit={vi.fn()}
-          onCancel={vi.fn()}
-          isPending={false}
+          formId="test-form"
         />
       )
 

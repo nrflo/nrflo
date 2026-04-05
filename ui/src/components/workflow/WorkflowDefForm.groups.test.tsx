@@ -9,12 +9,16 @@ function renderForm(
   const defaultProps = {
     isCreate: true,
     onSubmit: vi.fn(),
-    onCancel: vi.fn(),
-    isPending: false,
+    formId: 'test-form',
     ...props,
   }
   return {
-    ...render(<WorkflowDefForm {...defaultProps} />),
+    ...render(
+      <>
+        <WorkflowDefForm {...defaultProps} />
+        <button type="submit" form="test-form">Submit</button>
+      </>
+    ),
     props: defaultProps,
   }
 }
@@ -192,7 +196,7 @@ describe('WorkflowDefForm - groups chip input', () => {
 
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[0], 'analyzer')
-      await user.click(screen.getByRole('button', { name: /create workflow/i }))
+      await user.click(screen.getByRole('button', { name: /submit/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ groups: ['be', 'fe'] })
@@ -223,7 +227,7 @@ describe('WorkflowDefForm - groups chip input', () => {
         onSubmit,
       })
 
-      await user.click(screen.getByRole('button', { name: /save changes/i }))
+      await user.click(screen.getByRole('button', { name: /submit/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ groups: ['be', 'fe'] })

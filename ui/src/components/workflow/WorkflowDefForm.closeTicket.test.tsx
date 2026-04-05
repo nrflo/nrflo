@@ -10,11 +10,18 @@ function renderForm(
   const defaultProps = {
     isCreate: true,
     onSubmit: vi.fn(),
-    onCancel: vi.fn(),
-    isPending: false,
+    formId: 'test-form',
     ...props,
   }
-  return { ...render(<WorkflowDefForm {...defaultProps} />), props: defaultProps }
+  return {
+    ...render(
+      <>
+        <WorkflowDefForm {...defaultProps} />
+        <button type="submit" form="test-form">Submit</button>
+      </>
+    ),
+    props: defaultProps,
+  }
 }
 
 describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
@@ -93,7 +100,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
       await user.type(screen.getAllByPlaceholderText(/agent type/i)[0], 'implementor')
       await user.click(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i }))
 
-      await user.click(screen.getByRole('button', { name: /create workflow/i }))
+      await user.click(screen.getByRole('button', { name: /submit/i }))
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
       expect(call.close_ticket_on_complete).toBe(false)
@@ -108,7 +115,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
         onSubmit,
       })
 
-      await user.click(screen.getByRole('button', { name: /save changes/i }))
+      await user.click(screen.getByRole('button', { name: /submit/i }))
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefUpdateRequest
       expect(call.close_ticket_on_complete).toBe(false)

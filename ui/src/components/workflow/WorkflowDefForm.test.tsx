@@ -10,12 +10,16 @@ function renderForm(
   const defaultProps = {
     isCreate: true,
     onSubmit: vi.fn(),
-    onCancel: vi.fn(),
-    isPending: false,
+    formId: 'test-form',
     ...props,
   }
   return {
-    ...render(<WorkflowDefForm {...defaultProps} />),
+    ...render(
+      <>
+        <WorkflowDefForm {...defaultProps} />
+        <button type="submit" form="test-form">Submit</button>
+      </>
+    ),
     props: defaultProps,
   }
 }
@@ -35,7 +39,7 @@ describe('WorkflowDefForm', () => {
       await user.type(agentInputs[0], 'setup-analyzer')
 
       // Submit
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith(
@@ -69,7 +73,7 @@ describe('WorkflowDefForm', () => {
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[1], 'implementor')
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
@@ -94,7 +98,7 @@ describe('WorkflowDefForm', () => {
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[0], 'implementor')
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
@@ -127,7 +131,7 @@ describe('WorkflowDefForm', () => {
       const removeButtons = screen.getAllByTitle(/remove agent/i)
       await user.click(removeButtons[1])
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
@@ -201,7 +205,7 @@ describe('WorkflowDefForm', () => {
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[0], 'setup-analyzer')
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith({
@@ -237,7 +241,7 @@ describe('WorkflowDefForm', () => {
       await user.clear(descInput)
       await user.type(descInput, 'New description')
 
-      const submitButton = screen.getByRole('button', { name: /save changes/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith({
@@ -255,18 +259,7 @@ describe('WorkflowDefForm', () => {
       })
     })
 
-    it('does not submit when isPending is true', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit, isPending: true })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test')
-
-      const submitButton = screen.getByRole('button', { name: /saving/i })
-      expect(submitButton).toBeDisabled()
-    })
   })
-
 
   describe('form validation and UI', () => {
     it('requires workflow ID in create mode', () => {
@@ -285,24 +278,6 @@ describe('WorkflowDefForm', () => {
       expect(screen.queryByPlaceholderText(/e.g., feature/i)).not.toBeInTheDocument()
     })
 
-    it('shows correct button text based on mode', () => {
-      const { rerender } = renderForm({ isCreate: true })
-      expect(screen.getByRole('button', { name: /create workflow/i })).toBeInTheDocument()
-
-      rerender(<WorkflowDefForm isCreate={false} onSubmit={vi.fn()} onCancel={vi.fn()} />)
-      expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument()
-    })
-
-    it('calls onCancel when cancel button clicked', async () => {
-      const user = userEvent.setup()
-      const onCancel = vi.fn()
-      renderForm({ onCancel })
-
-      const cancelButton = screen.getByRole('button', { name: /cancel/i })
-      await user.click(cancelButton)
-
-      expect(onCancel).toHaveBeenCalledTimes(1)
-    })
   })
 
   describe('scope_type toggle', () => {
@@ -337,7 +312,7 @@ describe('WorkflowDefForm', () => {
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[0], 'analyzer')
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith(
@@ -363,7 +338,7 @@ describe('WorkflowDefForm', () => {
       const projectButton = screen.getByRole('button', { name: /^project$/i })
       await user.click(projectButton)
 
-      const submitButton = screen.getByRole('button', { name: /save changes/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith(
@@ -414,7 +389,7 @@ describe('WorkflowDefForm', () => {
       const removeButton = screen.getByTitle(/remove agent/i)
       await user.click(removeButton)
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
@@ -431,7 +406,7 @@ describe('WorkflowDefForm', () => {
       const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
       await user.type(agentInputs[0], '  setup-analyzer  ')
 
-      const submitButton = screen.getByRole('button', { name: /create workflow/i })
+      const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest

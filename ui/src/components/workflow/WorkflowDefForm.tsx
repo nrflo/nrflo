@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { PhaseListEditor, type PhaseFormEntry } from '@/components/workflow/PhaseListEditor'
 import type { PhaseDef, ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
 
@@ -30,11 +29,10 @@ interface WorkflowDefFormProps {
   initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; close_ticket_on_complete?: boolean; phases?: PhaseDef[] }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
-  onCancel: () => void
-  isPending?: boolean
+  formId?: string
 }
 
-export function WorkflowDefForm({ initial, isCreate, onSubmit, onCancel, isPending }: WorkflowDefFormProps) {
+export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: WorkflowDefFormProps) {
   const [id, setId] = useState(initial?.id || '')
   const [description, setDescription] = useState(initial?.description || '')
   const [scopeType, setScopeType] = useState<ScopeType>(initial?.scope_type || 'ticket')
@@ -81,7 +79,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, onCancel, isPendi
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-4">
       {isCreate && (
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
@@ -200,14 +198,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, onCancel, isPendi
         <PhaseListEditor value={phases} onChange={setPhases} />
       </div>
 
-      <div className="flex gap-2 justify-end pt-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" size="sm" disabled={isPending}>
-          {isPending ? 'Saving...' : isCreate ? 'Create Workflow' : 'Save Changes'}
-        </Button>
-      </div>
     </form>
   )
 }

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Dialog, DialogHeader, DialogBody } from '@/components/ui/Dialog'
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AgentDefsSection } from '@/components/workflow/AgentDefsSection'
 import { WorkflowDefForm } from '@/components/workflow/WorkflowDefForm'
@@ -221,12 +221,17 @@ export function WorkflowsPage() {
         </DialogHeader>
         <DialogBody>
           <WorkflowDefForm
+            formId="create-workflow-form"
             isCreate
             onSubmit={(data) => createMutation.mutate(data as WorkflowDefCreateRequest)}
-            onCancel={() => setShowCreateDialog(false)}
-            isPending={createMutation.isPending}
           />
         </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+          <Button type="submit" form="create-workflow-form" size="sm" disabled={createMutation.isPending}>
+            {createMutation.isPending ? 'Saving...' : 'Create Workflow'}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Delete Confirm Dialog */}
@@ -250,6 +255,7 @@ export function WorkflowsPage() {
         <DialogBody>
           {editingWorkflow && (
             <WorkflowDefForm
+              formId="edit-workflow-form"
               key={editingWorkflow.id}
               initial={editingWorkflow}
               isCreate={false}
@@ -259,11 +265,15 @@ export function WorkflowsPage() {
                   data: data as WorkflowDefUpdateRequest,
                 })
               }
-              onCancel={() => setEditingWorkflow(null)}
-              isPending={updateMutation.isPending}
             />
           )}
         </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={() => setEditingWorkflow(null)}>Cancel</Button>
+          <Button type="submit" form="edit-workflow-form" size="sm" disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

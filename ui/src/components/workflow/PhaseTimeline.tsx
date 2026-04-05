@@ -77,6 +77,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
         onRetryFailed={onRetryFailed}
         retryingSessionId={retryingSessionId}
         workflowStatus={workflow.status}
+        callbackInfo={workflow.callback}
       />
 
     </div>

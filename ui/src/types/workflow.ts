@@ -60,6 +60,13 @@ export interface CompletedAgentRow extends AgentHistoryEntry {
 // Findings structure: agent_type -> findings (field -> value)
 export type WorkflowFindings = Record<string, Record<string, unknown>>
 
+export interface CallbackInfo {
+  level: number
+  instructions: string
+  from_layer: number
+  from_agent: string
+}
+
 export type ScopeType = 'ticket' | 'project'
 
 export interface WorkflowState {
@@ -81,6 +88,7 @@ export interface WorkflowState {
   active_agents?: Record<string, ActiveAgentV4>  // key is "agent_type:cli:model"
   findings?: WorkflowFindings
   workflow_findings?: Record<string, unknown>
+  callback?: CallbackInfo
   agent_history?: AgentHistoryEntry[]
 }
 

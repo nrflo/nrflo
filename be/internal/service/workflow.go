@@ -263,7 +263,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	// Combined findings: workflow-level + per-session
 	result["findings"] = s.BuildCombinedFindings(wi)
 
-	// Workflow-level findings (excluding internal keys starting with _)
+	// Workflow-level findings (excluding internal keys starting with _) + callback extraction
 	if wfFindings := wi.GetFindings(); len(wfFindings) > 0 {
 		filtered := make(map[string]interface{})
 		for k, v := range wfFindings {
@@ -273,6 +273,15 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 		}
 		if len(filtered) > 0 {
 			result["workflow_findings"] = filtered
+		}
+		// Extract _callback as top-level field for frontend visualization
+		if cb, ok := wfFindings["_callback"].(map[string]interface{}); ok {
+			result["callback"] = map[string]interface{}{
+				"level":        cb["level"],
+				"instructions": cb["instructions"],
+				"from_layer":   cb["from_layer"],
+				"from_agent":   cb["from_agent"],
+			}
 		}
 	}
 

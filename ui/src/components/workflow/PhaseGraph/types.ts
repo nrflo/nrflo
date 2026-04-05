@@ -1,4 +1,4 @@
-import type { PhaseStatus, PhaseState, ActiveAgentV4, AgentHistoryEntry, AgentSession } from '@/types/workflow'
+import type { PhaseStatus, PhaseState, ActiveAgentV4, AgentHistoryEntry, AgentSession, CallbackInfo } from '@/types/workflow'
 
 export interface PhaseNodeData {
   name: string
@@ -40,6 +40,7 @@ export interface PhaseGraphProps {
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
   workflowStatus?: string
+  callbackInfo?: CallbackInfo
 }
 
 export interface AgentCardProps {

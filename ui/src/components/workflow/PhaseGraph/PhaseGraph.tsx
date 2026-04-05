@@ -48,6 +48,7 @@ export function PhaseGraph({
   onRetryFailed,
   retryingSessionId,
   workflowStatus,
+  callbackInfo,
 }: PhaseGraphProps) {
 
   const isMobile = useIsMobile()
@@ -294,8 +295,61 @@ export function PhaseGraph({
       })
     }
 
+    // Callback edge: blue animated arrow from callback source to target layer
+    if (callbackInfo) {
+      // Find source node: match from_agent at from_layer
+      let sourceNode: Node<AgentFlowNodeData> | undefined
+      for (const nodes of Object.values(nodesByPhase)) {
+        for (const node of nodes) {
+          if (node.data.phaseIndex === callbackInfo.from_layer) {
+            const agentType = node.data.agent?.agent_type || node.data.historyEntry?.agent_type
+            if (agentType === callbackInfo.from_agent) {
+              sourceNode = node
+              break
+            }
+            // Track as fallback (any node at from_layer)
+            if (!sourceNode) sourceNode = node
+          }
+        }
+        if (sourceNode) {
+          const agentType = sourceNode.data.agent?.agent_type || sourceNode.data.historyEntry?.agent_type
+          if (agentType === callbackInfo.from_agent) break
+        }
+      }
+
+      // Find target node: last node (rightmost proxy) at target layer
+      let targetNode: Node<AgentFlowNodeData> | undefined
+      for (const nodes of Object.values(nodesByPhase)) {
+        for (const node of nodes) {
+          if (node.data.phaseIndex === callbackInfo.level) {
+            targetNode = node // last one wins = rightmost proxy
+          }
+        }
+      }
+
+      if (sourceNode && targetNode) {
+        const label = callbackInfo.instructions.length > 60
+          ? callbackInfo.instructions.slice(0, 57) + '...'
+          : callbackInfo.instructions
+        edges.push({
+          id: 'callback-edge',
+          source: sourceNode.id,
+          target: targetNode.id,
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '6 4' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 20, height: 20 },
+          label,
+          labelStyle: { fill: '#3b82f6', fontSize: 11, fontWeight: 500 },
+          labelBgStyle: { fill: '#eff6ff', stroke: '#3b82f6', strokeWidth: 0.5 },
+          labelBgPadding: [6, 4] as [number, number],
+          labelBgBorderRadius: 4,
+        })
+      }
+    }
+
     return edges
-  }, [initialNodes])
+  }, [initialNodes, callbackInfo])
 
   // Apply async ELK layout
   const [layoutedNodes, setLayoutedNodes] = useState<Node<AgentFlowNodeData>[]>([])

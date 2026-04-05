@@ -5,6 +5,7 @@ import type {
   ChainCreateRequest,
   ChainUpdateRequest,
   ChainAppendRequest,
+  ChainRemoveRequest,
 } from '@/types/chain'
 
 export interface ListChainsParams {
@@ -77,6 +78,16 @@ export async function appendToChain(
 ): Promise<ChainExecution> {
   return apiPost<ChainExecution>(
     `/api/v1/chains/${encodeURIComponent(id)}/append`,
+    data
+  )
+}
+
+export async function removeFromChain(
+  id: string,
+  data: ChainRemoveRequest
+): Promise<ChainExecution> {
+  return apiPost<ChainExecution>(
+    `/api/v1/chains/${encodeURIComponent(id)}/remove-items`,
     data
   )
 }

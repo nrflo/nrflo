@@ -51,7 +51,7 @@ be/
 │   │   ├── handlers_global_settings.go # Global settings GET/PATCH (no project scope)
 │   │   ├── handlers_safety_hook_check.go # Safety hook dry-run check (POST /api/v1/safety-hook/check, global)
 │   │   ├── handlers_pty.go      # PTY WebSocket handler (1:1 interactive terminal relay)
-│   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel + run-epic
+│   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel/append/remove-items + run-epic
 │   │   ├── handlers_git.go        # Git commit history endpoints
 │   │   ├── handlers_daily_stats.go # Daily stats endpoint
 │   │   ├── handlers_errors.go     # Error log list endpoint (paginated)
@@ -101,6 +101,7 @@ be/
 │   │   ├── findings.go          # Findings operations
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
 │   │   ├── chain_append.go      # AppendToChain for running chains
+│   │   ├── chain_remove.go     # RemoveFromChain for running chains
 │   │   ├── daily_stats.go       # Daily stats computation from source tables
 │   │   ├── git.go               # Git operations (commit listing, detail via os/exec)
 │   │   └── snapshot.go          # WS snapshot provider (builds chunks from workflow state)

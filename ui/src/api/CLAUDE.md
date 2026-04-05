@@ -20,7 +20,7 @@ API client modules for communicating with the nrflow backend. Contains 12 files.
 | `workflows.ts` | Workflow definition and orchestration API functions |
 | `projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart/delete/agent sessions/findings) |
 | `agentDefs.ts` | Agent definition API client |
-| `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/append/runEpicWorkflow) |
+| `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/append/removeFromChain/runEpicWorkflow) |
 | `docs.ts` | Documentation API functions (getAgentManual) |
 | `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode, session retention limit, stall start/running timeouts) |
 | `agents.ts` | Agent API functions (fetchRecentAgents, fetchRunningAgents, fetchSessionMessages, fetchSessionPrompt) |
@@ -93,6 +93,7 @@ PATCH  /api/v1/chains/:id                         # Update pending chain
 POST   /api/v1/chains/:id/start                   # Start execution
 POST   /api/v1/chains/:id/cancel                  # Cancel + release locks
 POST   /api/v1/chains/:id/append                  # Append tickets
+POST   /api/v1/chains/:id/remove-items             # Remove pending items
 POST   /api/v1/tickets/:id/workflow/run-epic       # Create chain from epic children
 
 # Agent sessions

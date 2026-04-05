@@ -411,6 +411,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/chains/{id}/start", s.handleStartChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/cancel", s.handleCancelChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
+	mux.HandleFunc("POST /api/v1/chains/{id}/remove-items", s.handleRemoveFromChain)
 
 	// Errors
 	mux.HandleFunc("GET /api/v1/errors", s.handleListErrors)

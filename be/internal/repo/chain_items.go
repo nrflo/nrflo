@@ -3,6 +3,7 @@ package repo
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"be/internal/clock"
@@ -183,6 +184,38 @@ func (r *ChainItemRepo) GetTicketIDsByChain(chainID string) ([]string, error) {
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// DeletePendingByTicketIDs deletes pending items matching the given ticket IDs.
+// Returns the number of rows actually deleted.
+func (r *ChainItemRepo) DeletePendingByTicketIDs(chainID string, ticketIDs []string) (int64, error) {
+	return r.DeletePendingByTicketIDsTx(r.pool, chainID, ticketIDs)
+}
+
+// DeletePendingByTicketIDsTx is the transactional variant of DeletePendingByTicketIDs.
+func (r *ChainItemRepo) DeletePendingByTicketIDsTx(exec interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}, chainID string, ticketIDs []string) (int64, error) {
+	if len(ticketIDs) == 0 {
+		return 0, nil
+	}
+
+	placeholders := make([]string, len(ticketIDs))
+	args := make([]interface{}, 0, len(ticketIDs)+1)
+	args = append(args, chainID)
+	for i, tid := range ticketIDs {
+		placeholders[i] = "?"
+		args = append(args, strings.ToLower(tid))
+	}
+
+	result, err := exec.Exec(`
+		DELETE FROM chain_execution_items
+		WHERE chain_id = ? AND LOWER(ticket_id) IN (`+strings.Join(placeholders, ",")+`) AND status = 'pending'`,
+		args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 // DeleteByChain deletes all items for a chain

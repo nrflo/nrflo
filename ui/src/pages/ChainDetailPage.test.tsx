@@ -10,11 +10,13 @@ import type { ChainExecution, ChainExecutionItem } from '@/types/chain'
 const mockUseChain = vi.fn()
 const mockUseStartChain = vi.fn()
 const mockUseCancelChain = vi.fn()
+const mockUseRemoveFromChain = vi.fn()
 
 vi.mock('@/hooks/useChains', () => ({
   useChain: (id: string, options?: any) => mockUseChain(id, options),
   useStartChain: () => mockUseStartChain(),
   useCancelChain: () => mockUseCancelChain(),
+  useRemoveFromChain: () => mockUseRemoveFromChain(),
 }))
 
 vi.mock('@/stores/projectStore', () => ({
@@ -94,6 +96,12 @@ describe('ChainDetailPage - Render States', () => {
       isError: false,
       error: null,
     })
+    mockUseRemoveFromChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
   })
 
   it('renders loading state', () => {
@@ -146,6 +154,12 @@ describe('ChainDetailPage - Chain Header', () => {
       error: null,
     })
     mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseRemoveFromChain.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
@@ -237,6 +251,12 @@ describe('ChainDetailPage - Action Buttons', () => {
       isError: false,
       error: null,
     })
+    mockUseRemoveFromChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
 
     renderChainDetailPage()
 
@@ -258,6 +278,12 @@ describe('ChainDetailPage - Action Buttons', () => {
       error: null,
     })
     mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseRemoveFromChain.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
@@ -286,6 +312,12 @@ describe('ChainDetailPage - Action Buttons', () => {
       error: null,
     })
     mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseRemoveFromChain.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
@@ -329,6 +361,12 @@ describe('ChainDetailPage - Start Chain Action', () => {
       isError: false,
       error: null,
     })
+    mockUseRemoveFromChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
 
     renderChainDetailPage()
 
@@ -358,6 +396,12 @@ describe('ChainDetailPage - Start Chain Action', () => {
       isError: false,
       error: null,
     })
+    mockUseRemoveFromChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
 
     renderChainDetailPage()
 
@@ -380,6 +424,12 @@ describe('ChainDetailPage - Start Chain Action', () => {
       error: new Error('Failed to start chain'),
     })
     mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseRemoveFromChain.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
@@ -492,6 +542,12 @@ describe('ChainDetailPage - Items Table', () => {
       error: null,
     })
     mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseRemoveFromChain.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
@@ -611,6 +667,12 @@ describe('ChainDetailPage - Ticket Title Display', () => {
       isError: false,
       error: null,
     })
+    mockUseRemoveFromChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
   })
 
   it('displays ticket title when ticket_title is provided', () => {
@@ -717,6 +779,12 @@ describe('ChainDetailPage - Spinner on Running Items', () => {
       isError: false,
       error: null,
     })
+    mockUseRemoveFromChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
   })
 
   it('displays spinner instead of ordinal number when item status is running', () => {
@@ -805,6 +873,12 @@ describe('ChainDetailPage - Tokens Used Column', () => {
       error: null,
     })
     mockUseCancelChain.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    })
+    mockUseRemoveFromChain.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,

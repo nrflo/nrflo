@@ -60,3 +60,7 @@ export interface ChainUpdateRequest {
 export interface ChainAppendRequest {
   ticket_ids: string[]
 }
+
+export interface ChainRemoveRequest {
+  ticket_ids: string[]
+}

@@ -16,20 +16,24 @@ function FitViewOnChange({ nodeKey, logPanelCollapsed, selectedAgent }: { nodeKe
   const { fitView } = useReactFlow()
   useEffect(() => {
     // Small delay to let React Flow finish internal layout before fitting
-    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 500)
-    return () => clearTimeout(timer)
+    const timer1 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 500)
+    // Second pass to catch layouts that settle after the first fitView
+    const timer2 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 1000)
+    return () => { clearTimeout(timer1); clearTimeout(timer2) }
   }, [nodeKey, fitView])
 
   // Re-fit after panel toggle with longer delay to wait for CSS transition (300ms)
   useEffect(() => {
-    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
-    return () => clearTimeout(timer)
+    const timer1 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
+    const timer2 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 850)
+    return () => { clearTimeout(timer1); clearTimeout(timer2) }
   }, [logPanelCollapsed, fitView])
 
   // Re-fit when selected agent changes (panel mounts/unmounts for completed workflows)
   useEffect(() => {
-    const timer = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
-    return () => clearTimeout(timer)
+    const timer1 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
+    const timer2 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 850)
+    return () => { clearTimeout(timer1); clearTimeout(timer2) }
   }, [selectedAgent, fitView])
 
   return null

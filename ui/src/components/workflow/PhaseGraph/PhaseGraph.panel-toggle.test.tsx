@@ -104,8 +104,8 @@ describe('PhaseGraph - Panel Toggle', () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
     await flushLayout()
 
-    // Flush all mount timers (500ms nodeKey + 350ms panel/selectedAgent)
-    act(() => { vi.advanceTimersByTime(500) })
+    // Flush all mount timers including second-pass (nodeKey@1000ms, panel/selectedAgent@850ms)
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     // Collapse panel
@@ -125,7 +125,7 @@ describe('PhaseGraph - Panel Toggle', () => {
   it('calls fitView after 350ms delay on expand', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(true)} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     rerender(<PhaseGraph {...propsWithAgent(false)} />)
@@ -138,7 +138,7 @@ describe('PhaseGraph - Panel Toggle', () => {
   it('handles multiple rapid toggles (each creates a timer)', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     rerender(<PhaseGraph {...propsWithAgent(true)} />)
@@ -155,7 +155,7 @@ describe('PhaseGraph - Panel Toggle', () => {
   it('fires fitView independently for node changes and panel toggle', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     // Change nodes AND toggle panel simultaneously
@@ -183,7 +183,7 @@ describe('PhaseGraph - Panel Toggle', () => {
     const props = makeProps({ phases: {}, phaseOrder: [], logPanelCollapsed: false })
     const { rerender } = render(<PhaseGraph {...props} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     rerender(<PhaseGraph {...props} logPanelCollapsed={true} />)
@@ -191,5 +191,24 @@ describe('PhaseGraph - Panel Toggle', () => {
     act(() => { vi.advanceTimersByTime(400) })
 
     expect(mockFitView).not.toHaveBeenCalled()
+  })
+
+  it('fires a second fitView at 850ms after panel toggle (two-pass strategy)', async () => {
+    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+    await flushLayout()
+    act(() => { vi.advanceTimersByTime(1000) })
+    vi.clearAllMocks()
+
+    rerender(<PhaseGraph {...propsWithAgent(true)} />)
+    await flushLayout()
+
+    // First pass fires at 350ms
+    act(() => { vi.advanceTimersByTime(350) })
+    expect(mockFitView).toHaveBeenCalledTimes(1)
+
+    // Second pass fires 500ms later (850ms total)
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(mockFitView).toHaveBeenCalledTimes(2)
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
   })
 })

@@ -94,7 +94,7 @@ describe('PhaseGraph - selectedAgent fitView', () => {
     await flushLayout()
 
     // Flush all mount timers (nodeKey 500ms + logPanelCollapsed 350ms + selectedAgent 350ms)
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     // Agent selected: null → 'sess-1'
@@ -114,7 +114,7 @@ describe('PhaseGraph - selectedAgent fitView', () => {
   it('fires fitView at 350ms when selectedAgent changes back to null (panel unmounts)', async () => {
     const { rerender } = render(<PhaseGraph {...makeProps({ selectedAgent: 'sess-1' })} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     // Deselect: 'sess-1' → null
@@ -129,7 +129,7 @@ describe('PhaseGraph - selectedAgent fitView', () => {
   it('fires fitView when switching between two selected agents', async () => {
     const { rerender } = render(<PhaseGraph {...makeProps({ selectedAgent: 'sess-1' })} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     rerender(<PhaseGraph {...makeProps({ selectedAgent: 'sess-2' })} />)
@@ -144,14 +144,14 @@ describe('PhaseGraph - selectedAgent fitView', () => {
     const props = makeProps({ selectedAgent: 'sess-1' })
     const { rerender } = render(<PhaseGraph {...props} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     // Rerender with same selectedAgent value (e.g., parent re-renders with identical derived key)
     rerender(<PhaseGraph {...props} />)
     await flushLayout()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     expect(mockFitView).not.toHaveBeenCalled()
   })
 
@@ -160,7 +160,7 @@ describe('PhaseGraph - selectedAgent fitView', () => {
       <PhaseGraph {...makeProps({ selectedAgent: null, logPanelCollapsed: false })} />
     )
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => { vi.advanceTimersByTime(1000) })
     vi.clearAllMocks()
 
     // Change both simultaneously
@@ -170,6 +170,25 @@ describe('PhaseGraph - selectedAgent fitView', () => {
     act(() => { vi.advanceTimersByTime(350) })
     // Both effects fire — expect at least 2 calls (logPanelCollapsed + selectedAgent)
     expect(mockFitView.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+  })
+
+  it('fires a second fitView at 850ms when selectedAgent changes (two-pass strategy)', async () => {
+    const { rerender } = render(<PhaseGraph {...makeProps({ selectedAgent: null })} />)
+    await flushLayout()
+    act(() => { vi.advanceTimersByTime(1000) })
+    vi.clearAllMocks()
+
+    rerender(<PhaseGraph {...makeProps({ selectedAgent: 'sess-1' })} />)
+    await flushLayout()
+
+    // First pass fires at 350ms
+    act(() => { vi.advanceTimersByTime(350) })
+    expect(mockFitView).toHaveBeenCalledTimes(1)
+
+    // Second pass fires 500ms later (850ms total)
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(mockFitView).toHaveBeenCalledTimes(2)
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
   })
 })

@@ -59,9 +59,9 @@ export function Header() {
             <span className="hidden md:inline ml-1 text-xs">Workflows</span>
           </Link>
           {hasDefaultBranch && (
-            <Link to="/git-status" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Git Status">
+            <Link to="/git-status" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Git">
               <GitCommitHorizontal className="h-5 w-5" />
-              <span className="hidden md:inline ml-1 text-xs">Git Status</span>
+              <span className="hidden md:inline ml-1 text-xs">Git</span>
             </Link>
           )}
           <Link to="/documentation" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Documentation">

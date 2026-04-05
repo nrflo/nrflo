@@ -32,7 +32,7 @@ describe('ProjectForm — default branch tooltip', () => {
     await user.hover(tooltipTrigger)
 
     const tooltip = await screen.findByRole('tooltip')
-    expect(tooltip).toHaveTextContent(/Git Status page/)
+    expect(tooltip).toHaveTextContent(/Git page/)
     expect(tooltip).toHaveTextContent(/worktrees are enabled/)
   })
 })

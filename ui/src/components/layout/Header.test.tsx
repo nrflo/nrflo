@@ -146,7 +146,7 @@ describe('Header - Brand label', () => {
   })
 })
 
-describe('Header - Git Status Link', () => {
+describe('Header - Git Link', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset to project with default_branch
@@ -164,15 +164,15 @@ describe('Header - Git Status Link', () => {
     ]
   })
 
-  it('shows Git Status link when project has default_branch', () => {
+  it('shows Git link when project has default_branch', () => {
     renderHeader()
 
-    const gitStatusLink = screen.getByRole('link', { name: /git status/i })
-    expect(gitStatusLink).toBeInTheDocument()
-    expect(gitStatusLink).toHaveAttribute('href', '/git-status')
+    const gitLink = screen.getByRole('link', { name: /^git$/i })
+    expect(gitLink).toBeInTheDocument()
+    expect(gitLink).toHaveAttribute('href', '/git-status')
   })
 
-  it('hides Git Status link when project has no default_branch', () => {
+  it('hides Git link when project has no default_branch', () => {
     mockProjects = [
       {
         id: 'test-project',
@@ -187,33 +187,33 @@ describe('Header - Git Status Link', () => {
 
     renderHeader()
 
-    const gitStatusLink = screen.queryByRole('link', { name: /git status/i })
-    expect(gitStatusLink).not.toBeInTheDocument()
+    const gitLink = screen.queryByRole('link', { name: /^git$/i })
+    expect(gitLink).not.toBeInTheDocument()
   })
 
-  it('hides Git Status link when no project is selected', () => {
+  it('hides Git link when no project is selected', () => {
     mockCurrentProject = ''
 
     renderHeader()
 
-    const gitStatusLink = screen.queryByRole('link', { name: /git status/i })
-    expect(gitStatusLink).not.toBeInTheDocument()
+    const gitLink = screen.queryByRole('link', { name: /^git$/i })
+    expect(gitLink).not.toBeInTheDocument()
   })
 
-  it('shows Git Status link after Workflows link', () => {
+  it('shows Git link after Workflows link', () => {
     renderHeader()
 
     const allLinks = screen.getAllByRole('link')
     const workflowsIndex = allLinks.findIndex((link) =>
       link.getAttribute('title') === 'Workflows'
     )
-    const gitStatusIndex = allLinks.findIndex((link) =>
-      link.getAttribute('title') === 'Git Status'
+    const gitIndex = allLinks.findIndex((link) =>
+      link.getAttribute('title') === 'Git'
     )
 
     expect(workflowsIndex).toBeGreaterThan(-1)
-    expect(gitStatusIndex).toBeGreaterThan(-1)
-    expect(gitStatusIndex).toBeGreaterThan(workflowsIndex)
+    expect(gitIndex).toBeGreaterThan(-1)
+    expect(gitIndex).toBeGreaterThan(workflowsIndex)
   })
 
   it('renders all main navigation links', () => {
@@ -222,7 +222,7 @@ describe('Header - Git Status Link', () => {
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /tickets/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /workflows/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /git status/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^git$/i })).toBeInTheDocument()
   })
 })
 
@@ -250,7 +250,7 @@ describe('Header - Icon-only nav links', () => {
       { title: 'Dashboard', href: '/', label: 'Dashboard' },
       { title: 'Tickets', href: '/tickets', label: 'Tickets' },
       { title: 'Workflows', href: '/workflows', label: 'Workflows' },
-      { title: 'Git Status', href: '/git-status', label: 'Git Status' },
+      { title: 'Git', href: '/git-status', label: 'Git' },
       { title: 'Documentation', href: '/documentation', label: 'Docs' },
     ]
 

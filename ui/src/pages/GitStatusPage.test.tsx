@@ -69,7 +69,7 @@ describe('GitStatusPage', () => {
   it('renders GitStatusTabContent when project has default_branch', () => {
     renderPage()
 
-    expect(screen.getByText('Git Status')).toBeInTheDocument()
+    expect(screen.getByText('Git')).toBeInTheDocument()
     expect(screen.getByTestId('git-status-tab-content')).toBeInTheDocument()
     expect(screen.getByText(/GitStatusTabContent for project: test-project/)).toBeInTheDocument()
   })
@@ -79,7 +79,7 @@ describe('GitStatusPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Git Status')).toBeInTheDocument()
+    expect(screen.getByText('Git')).toBeInTheDocument()
     expect(screen.getByText('No project selected')).toBeInTheDocument()
     expect(screen.queryByTestId('git-status-tab-content')).not.toBeInTheDocument()
   })
@@ -99,7 +99,7 @@ describe('GitStatusPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Git Status')).toBeInTheDocument()
+    expect(screen.getByText('Git')).toBeInTheDocument()
     expect(screen.getByText('No default branch configured for this project')).toBeInTheDocument()
     expect(screen.queryByTestId('git-status-tab-content')).not.toBeInTheDocument()
   })

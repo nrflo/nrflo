@@ -157,7 +157,7 @@ export function ProjectForm({
             <label className="text-sm font-medium text-muted-foreground">Default Branch</label>
             <Tooltip
               placement="right"
-              text="Branch displayed on the Git Status page. When worktrees are enabled, feature branches are created from this branch."
+              text="Branch displayed on the Git page. When worktrees are enabled, feature branches are created from this branch."
             >
               <Info className="h-3.5 w-3.5 text-muted-foreground" />
             </Tooltip>

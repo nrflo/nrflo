@@ -113,7 +113,7 @@ export function Sidebar() {
           <NavItem
             to="/git-status"
             icon={<GitCommitHorizontal className="h-4 w-4" />}
-            label="Git Status"
+            label="Git"
             active={isActive('/git-status')}
           />
         )}

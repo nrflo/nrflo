@@ -64,7 +64,7 @@ function renderSidebar(initialRoute = '/') {
   )
 }
 
-describe('Sidebar - Git Status Navigation', () => {
+describe('Sidebar - Git Navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
@@ -84,15 +84,15 @@ describe('Sidebar - Git Status Navigation', () => {
     ]
   })
 
-  it('shows Git Status nav item when project has default_branch', () => {
+  it('shows Git nav item when project has default_branch', () => {
     renderSidebar()
 
-    const gitStatusLink = screen.getByRole('link', { name: /git status/i })
-    expect(gitStatusLink).toBeInTheDocument()
-    expect(gitStatusLink).toHaveAttribute('href', '/git-status')
+    const gitLink = screen.getByRole('link', { name: /^git$/i })
+    expect(gitLink).toBeInTheDocument()
+    expect(gitLink).toHaveAttribute('href', '/git-status')
   })
 
-  it('hides Git Status nav item when project has no default_branch', () => {
+  it('hides Git nav item when project has no default_branch', () => {
     mockProjects = [
       {
         id: 'test-project',
@@ -107,39 +107,39 @@ describe('Sidebar - Git Status Navigation', () => {
 
     renderSidebar()
 
-    const gitStatusLink = screen.queryByRole('link', { name: /git status/i })
-    expect(gitStatusLink).not.toBeInTheDocument()
+    const gitLink = screen.queryByRole('link', { name: /^git$/i })
+    expect(gitLink).not.toBeInTheDocument()
   })
 
-  it('hides Git Status nav item when no project is selected', () => {
+  it('hides Git nav item when no project is selected', () => {
     mockCurrentProject = ''
 
     renderSidebar()
 
-    const gitStatusLink = screen.queryByRole('link', { name: /git status/i })
-    expect(gitStatusLink).not.toBeInTheDocument()
+    const gitLink = screen.queryByRole('link', { name: /^git$/i })
+    expect(gitLink).not.toBeInTheDocument()
   })
 
-  it('highlights Git Status nav item when on /git-status route', () => {
+  it('highlights Git nav item when on /git-status route', () => {
     renderSidebar('/git-status')
 
-    const gitStatusLink = screen.getByRole('link', { name: /git status/i })
-    expect(gitStatusLink).toHaveClass('bg-muted', 'text-foreground')
+    const gitLink = screen.getByRole('link', { name: /^git$/i })
+    expect(gitLink).toHaveClass('bg-muted', 'text-foreground')
   })
 
-  it('shows Git Status nav item after Project Workflows', () => {
+  it('shows Git nav item after Project Workflows', () => {
     renderSidebar()
 
     const allLinks = screen.getAllByRole('link')
     const projectWorkflowsIndex = allLinks.findIndex((link) =>
       link.textContent?.includes('Project Workflows')
     )
-    const gitStatusIndex = allLinks.findIndex((link) =>
-      link.textContent?.includes('Git Status')
+    const gitIndex = allLinks.findIndex((link) =>
+      link.textContent?.includes('Git')
     )
 
     expect(projectWorkflowsIndex).toBeGreaterThan(-1)
-    expect(gitStatusIndex).toBeGreaterThan(-1)
-    expect(gitStatusIndex).toBeGreaterThan(projectWorkflowsIndex)
+    expect(gitIndex).toBeGreaterThan(-1)
+    expect(gitIndex).toBeGreaterThan(projectWorkflowsIndex)
   })
 })

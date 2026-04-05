@@ -153,7 +153,7 @@ func (s *FindingsService) Get(req *types.FindingsGetRequest) (interface{}, error
 		var findingsNS sql.NullString
 		err := s.pool.QueryRow(`
 			SELECT id, findings FROM agent_sessions
-			WHERE workflow_instance_id = ? AND agent_type = ? AND model_id = ?
+			WHERE workflow_instance_id = ? AND agent_type = ? AND model_id = ? AND status != 'callback'
 			ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END, created_at DESC LIMIT 1`,
 			wfiID, req.AgentType, req.Model).Scan(&sid, &findingsNS)
 		if err != nil {
@@ -165,7 +165,8 @@ func (s *FindingsService) Get(req *types.FindingsGetRequest) (interface{}, error
 	// No model specified — collect findings from ALL sessions for this agent type
 	rows, err := s.pool.Query(`
 		SELECT model_id, findings FROM agent_sessions
-		WHERE workflow_instance_id = ? AND agent_type = ? AND findings IS NOT NULL AND findings != ''
+		WHERE workflow_instance_id = ? AND agent_type = ? AND status != 'callback'
+		  AND findings IS NOT NULL AND findings != ''
 		ORDER BY created_at DESC`, wfiID, req.AgentType)
 	if err != nil {
 		return map[string]interface{}{}, nil

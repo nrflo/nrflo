@@ -211,29 +211,24 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 	wfRepo := repo.NewWorkflowRepo(database, o.clock)
-	dbWorkflows, err := wfRepo.List(req.ProjectID)
+	dbWorkflow, err := wfRepo.Get(req.ProjectID, req.WorkflowName)
 	if err != nil {
 		database.Close()
-		return nil, fmt.Errorf("failed to load workflows: %w", err)
+		return nil, fmt.Errorf("workflow definition '%s' not found: %w", req.WorkflowName, err)
 	}
-	var dbAgentDefs []*model.AgentDefinition
 	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
-	for _, wf := range dbWorkflows {
-		defs, loadErr := adRepo.List(req.ProjectID, wf.ID)
-		if loadErr == nil {
-			dbAgentDefs = append(dbAgentDefs, defs...)
-		}
+	dbAgentDefs, err := adRepo.List(req.ProjectID, dbWorkflow.ID)
+	if err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to load agent definitions: %w", err)
 	}
 	database.Close()
 
 	// Convert to spawner types
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig(dbWorkflows, dbAgentDefs)
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
 
 	// Find the requested workflow
-	svcWf, ok := svcWorkflows[req.WorkflowName]
-	if !ok {
-		return nil, fmt.Errorf("workflow definition '%s' not found", req.WorkflowName)
-	}
+	svcWf := svcWorkflows[req.WorkflowName]
 	if len(svcWf.Phases) == 0 {
 		return nil, fmt.Errorf("workflow '%s' has no phases", req.WorkflowName)
 	}
@@ -639,24 +634,18 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Load workflow/agent definitions
 	wfRepo := repo.NewWorkflowRepo(database, o.clock)
-	dbWorkflows, err := wfRepo.List(projectID)
+	dbWorkflow, err := wfRepo.Get(projectID, workflowName)
 	if err != nil {
-		return fmt.Errorf("failed to load workflows: %w", err)
+		return fmt.Errorf("workflow definition '%s' not found: %w", workflowName, err)
 	}
-	var dbAgentDefs []*model.AgentDefinition
 	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
-	for _, wf := range dbWorkflows {
-		defs, loadErr := adRepo.List(projectID, wf.ID)
-		if loadErr == nil {
-			dbAgentDefs = append(dbAgentDefs, defs...)
-		}
+	dbAgentDefs, err := adRepo.List(projectID, dbWorkflow.ID)
+	if err != nil {
+		return fmt.Errorf("failed to load agent definitions: %w", err)
 	}
 
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig(dbWorkflows, dbAgentDefs)
-	svcWf, ok := svcWorkflows[workflowName]
-	if !ok {
-		return fmt.Errorf("workflow definition '%s' not found", workflowName)
-	}
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
+	svcWf := svcWorkflows[workflowName]
 
 	// Determine which layer the failed phase belongs to
 	layerGroups := groupPhasesByLayer(svcWf.Phases)

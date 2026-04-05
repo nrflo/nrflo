@@ -1,25 +1,36 @@
 # nrflow
 
-A self-hosted workflow orchestration system that spawns AI agents to implement tickets and project tasks. Agents run in isolated git worktrees, execute in configurable layer-based phases, and report back through real-time WebSocket updates — all managed from a web UI.
+A self-hosted control plane for AI engineering workflows. nrflow orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
 
 ## Features
 
-- **Multi-workflow support** — feature, bugfix, hotfix, docs, refactor workflows, all customizable via the web UI
-- **Layer-based phase execution** — agents in the same layer run concurrently; layers execute sequentially
-- **Multiple AI backends** — Claude CLI, Opencode, Codex
-- **Real-time monitoring** — WebSocket-driven workflow visualization and agent output streaming
-- **Interactive PTY sessions** — take control of a running agent directly from the browser
-- **Ticket management** — dependencies, priorities, parent tickets, and execution chains
-- **Project-scoped workflows** — run workflows at the project level without a ticket
-- **Automatic context management** — low-context detection triggers save/resume with findings carry-over
-- **Stall detection and auto-restart** — frozen agents are detected and relaunched automatically
-- **Agent callbacks** — later-layer agents can re-trigger earlier layers for iterative refinement
-- **Automatic merge conflict resolution** — spawns a resolver agent when worktree merge fails
-- **Git worktree isolation** — each ticket workflow runs in its own worktree
-- **Template variables and findings expansion** — agent prompts support `${VAR}` substitution and `#{FINDINGS:agent}` patterns
-- **Low consumption mode** — swap to cheaper models globally with one toggle
-- **Error tracking** — browse agent failures, timeouts, and workflow errors in the UI
-- **Dark mode UI**
+- **Vendor-agnostic orchestration** — run workflows across Claude CLI, Opencode, and Codex
+- **Layered execution model** — fan out parallel agents in the same layer, then fan in to the next validated stage
+- **Structured findings handoff** — agents write findings that later agents can pull directly into prompts
+- **Ticket and project workflows** — run isolated ticket-scoped worktree jobs or project-scoped workflows without a ticket
+- **Human takeover when needed** — start interactively, enter plan mode, take control of a running agent, or resume a finished session from the browser
+- **Recovery built in** — low-context continuation, stall restart, manual restart, and retry from the failed layer
+- **Verifier callbacks** — later stages can re-run earlier layers with explicit callback instructions
+- **Sequential ticket chains** — execute dependency-aware ticket sequences with crash recovery
+- **Automatic merge handling** — merge back from worktrees, invoke a conflict-resolver agent on failure, and optionally push after merge
+- **Real-time visibility** — WebSocket-driven workflow graphs, logs, findings, final results, and error tracking
+- **Prompt and model controls** — template variables, findings expansion, default templates, CLI model registry, and low consumption mode
+
+## Why nrflow
+
+- **Built for repeatability** — define workflows once, then run the same implementation process across tickets and projects
+- **Built for supervision** — keep the orchestration state even when a human needs to step in and drive the agent directly
+- **Built for self-hosting** — keep execution, prompts, runtime state, and project access under your own control
+- **Built for mixed-agent teams** — use different agent backends and models without changing the workflow model
+
+## How It Works
+
+1. Pick a ticket-scoped or project-scoped workflow from the web UI.
+2. nrflow starts agents by layer, running same-layer agents concurrently.
+3. Agents write findings that downstream agents can consume in their prompts.
+4. If a verifier finds a problem, it can callback an earlier layer and re-run the workflow from that point.
+5. If automation gets stuck or needs direction, you can switch to interactive control in the browser.
+6. On success, nrflow merges worktree changes, can invoke a conflict resolver, and reports the final workflow result.
 
 ## Tech Stack
 

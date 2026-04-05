@@ -73,12 +73,19 @@ func TestUserInstructionsEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get workflow status: %v", err)
 	}
-	apiFindings, ok := status["findings"].(map[string]interface{})
-	if !ok {
-		t.Fatalf("findings not in status response, got %T", status["findings"])
+	// user_instructions should NOT appear in combined findings (agent findings only)
+	if apiFindings, ok := status["findings"].(map[string]interface{}); ok {
+		if _, exists := apiFindings["user_instructions"]; exists {
+			t.Fatalf("user_instructions should not be in combined findings, got %v", apiFindings["user_instructions"])
+		}
 	}
-	if apiFindings["user_instructions"] != "Build the login page with OAuth support" {
-		t.Fatalf("API returned wrong instructions: %v", apiFindings["user_instructions"])
+	// user_instructions should appear in workflow_findings
+	wfFindings, ok := status["workflow_findings"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("workflow_findings not in status response, got %T", status["workflow_findings"])
+	}
+	if wfFindings["user_instructions"] != "Build the login page with OAuth support" {
+		t.Fatalf("workflow_findings returned wrong instructions: %v", wfFindings["user_instructions"])
 	}
 }
 

@@ -280,9 +280,10 @@ func (s *WorkflowService) DeriveWorkflowProgress(instances map[string]*model.Wor
 	return result
 }
 
-// BuildCombinedFindings merges workflow-level and per-session findings
+// BuildCombinedFindings aggregates per-session findings into a single map.
+// Workflow-level findings are served separately via the workflow_findings response field.
 func (s *WorkflowService) BuildCombinedFindings(wi *model.WorkflowInstance) map[string]interface{} {
-	combined := wi.GetFindings()
+	combined := make(map[string]interface{})
 
 	rows, err := s.pool.Query(`
 		SELECT agent_type, model_id, findings

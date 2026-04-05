@@ -34,7 +34,7 @@ export function AllFindingsPanel({ workflowFindings, agentFindings, projectFindi
       findings,
       layer: getLayerForAgent(key, phaseLayers),
     }))
-    .filter(({ findings }) => Object.keys(findings).filter(k => !isInternalKey(k)).length > 0)
+    .filter(({ findings }) => typeof findings === 'object' && findings !== null && Object.keys(findings).filter(k => !isInternalKey(k)).length > 0)
     .sort((a, b) => {
       if (a.layer === undefined && b.layer === undefined) return 0
       if (a.layer === undefined) return 1

@@ -170,17 +170,16 @@ func TestWorkflowFindings_SeparateFromCombinedFindings(t *testing.T) {
 		t.Errorf("workflow_findings should not contain agent type key 'analyzer'")
 	}
 
-	// combined findings include workflow-level entries merged at top level, and
-	// agent session findings nested under their agent type key.
+	// combined findings should only contain agent session findings, not workflow-level entries.
 	combined, ok := status["findings"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected findings map, got %T: %v", status["findings"], status["findings"])
 	}
-	// workflow-level key appears at top level in combined
-	if combined["wf_key"] != "wf_value" {
-		t.Errorf("findings[wf_key] = %v, want %q", combined["wf_key"], "wf_value")
+	// workflow-level key should NOT appear in combined findings
+	if _, exists := combined["wf_key"]; exists {
+		t.Errorf("findings should not contain workflow-level key wf_key")
 	}
-	// agent session findings are nested under the agent type key
+	// agent session findings are nested under their agent type key
 	agentFindings, ok := combined["analyzer"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("findings[analyzer] should be a map, got %T: %v", combined["analyzer"], combined["analyzer"])

@@ -245,6 +245,42 @@ describe('AllFindingsPanel', () => {
     })
   })
 
+  describe('string value regression (char-per-line bug)', () => {
+    it('does not render character indices when agent findings entry is a plain string', () => {
+      // Simulates a buggy backend response where a workflow-level string value (e.g.
+      // user_instructions) leaks into agentFindings. Object.keys() on a string returns
+      // character indices ["0","1","2",...] which would render one char per row.
+      render(
+        <AllFindingsPanel
+          agentFindings={{
+            user_instructions: 'follow these rules' as unknown as Record<string, unknown>,
+          }}
+        />
+      )
+      expect(screen.queryByText('0')).not.toBeInTheDocument()
+      expect(screen.queryByText('1')).not.toBeInTheDocument()
+      expect(screen.queryByText('2')).not.toBeInTheDocument()
+      // The agent section itself should be suppressed (no valid object keys)
+      expect(screen.queryByText('user_instructions')).not.toBeInTheDocument()
+      expect(screen.getByText('No findings available')).toBeInTheDocument()
+    })
+
+    it('still renders agent sections when other agents have valid object findings', () => {
+      render(
+        <AllFindingsPanel
+          agentFindings={{
+            user_instructions: 'some text' as unknown as Record<string, unknown>,
+            implementor: { result: 'pass' },
+          }}
+        />
+      )
+      expect(screen.getByText('implementor')).toBeInTheDocument()
+      expect(screen.getByText('result')).toBeInTheDocument()
+      expect(screen.queryByText('0')).not.toBeInTheDocument()
+      expect(screen.queryByText('user_instructions')).not.toBeInTheDocument()
+    })
+  })
+
   describe('FindingRow integration', () => {
     it('expands a long finding value on click', async () => {
       const user = userEvent.setup()

@@ -64,15 +64,15 @@ export const ticketKeys = {
 
 export const dailyStatsKeys = {
   all: ['daily-stats'] as const,
-  current: (project: string) => [...dailyStatsKeys.all, project] as const,
+  current: (project: string, range: string) => [...dailyStatsKeys.all, project, range] as const,
 }
 
-export function useDailyStats() {
+export function useDailyStats(range: string = 'today') {
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
   return useQuery<DailyStats>({
-    queryKey: dailyStatsKeys.current(project),
-    queryFn: () => getDailyStats(),
+    queryKey: dailyStatsKeys.current(project, range),
+    queryFn: () => getDailyStats(range),
     enabled: projectsLoaded,
   })
 }

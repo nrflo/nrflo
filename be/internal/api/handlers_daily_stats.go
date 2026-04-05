@@ -7,7 +7,7 @@ import (
 )
 
 // handleGetDailyStats computes and returns daily stats for the current project.
-// GET /api/v1/daily-stats
+// GET /api/v1/daily-stats?range=today|week|month|all
 func (s *Server) handleGetDailyStats(w http.ResponseWriter, r *http.Request) {
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -15,8 +15,17 @@ func (s *Server) handleGetDailyStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rangeParam := r.URL.Query().Get("range")
+	if rangeParam == "" {
+		rangeParam = "today"
+	}
+	if !service.ValidRange(rangeParam) {
+		writeError(w, http.StatusBadRequest, "invalid range: "+rangeParam)
+		return
+	}
+
 	svc := service.NewDailyStatsService(s.pool, s.clock)
-	stats, err := svc.GetToday(projectID)
+	stats, err := svc.GetRange(projectID, rangeParam)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

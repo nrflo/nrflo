@@ -179,7 +179,7 @@ GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|wo
 # Other
 GET /api/v1/search?q=              # Full-text search
 GET /api/v1/status                 # Dashboard summary
-GET /api/v1/daily-stats            # Daily stats (tickets, tokens, agent time) per project
+GET /api/v1/daily-stats            # Daily stats (tickets, tokens, agent time) per project; ?range=today|week|month|all (default: today)
 GET /api/v1/ws                     # WebSocket for real-time updates (broadcast)
 GET /api/v1/pty/:session_id        # PTY WebSocket (1:1 interactive terminal relay)
 ```

@@ -91,8 +91,9 @@ export async function getStatus(limit?: number): Promise<StatusResponse> {
   return apiGet<StatusResponse>(`/api/v1/status${query}`)
 }
 
-export async function getDailyStats(): Promise<DailyStats> {
-  return apiGet<DailyStats>('/api/v1/daily-stats')
+export async function getDailyStats(range?: string): Promise<DailyStats> {
+  const url = range && range !== 'today' ? `/api/v1/daily-stats?range=${range}` : '/api/v1/daily-stats'
+  return apiGet<DailyStats>(url)
 }
 
 // Workflow endpoints

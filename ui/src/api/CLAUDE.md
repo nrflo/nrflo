@@ -148,7 +148,7 @@ GET    /api/v1/search?q=            # Full-text search
 POST   /api/v1/dependencies         # Add dependency
 DELETE /api/v1/dependencies         # Remove dependency
 GET    /api/v1/status               # Dashboard summary
-GET    /api/v1/daily-stats          # Daily stats
+GET    /api/v1/daily-stats          # Daily stats; ?range=today|week|month|all (default: today)
 GET    /api/v1/ws                   # WebSocket
 ```
 

@@ -1,27 +1,32 @@
 package spawner
 
 import (
-	"bufio"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"syscall"
 	"time"
 
 	"be/internal/logger"
+	"be/internal/repo"
+	"be/internal/service"
+	"be/internal/ws"
 )
 
 const (
-	resumeSaveTimeout = 3 * time.Minute
-	killGracePeriod   = 5 * time.Second
+	contextSaveTimeout = 3 * time.Minute
+	killGracePeriod    = 5 * time.Second
+	maxMessageChars    = 120000
 )
 
 // initiateContextSave handles the low-context save flow:
 // 1. Kill the running agent
-// 2. Resume with save instructions (if CLI supports it)
-// 3. Wait for the resumed agent to call `agent continue`
-// 4. Register stop and set finalStatus = "CONTINUE" to trigger relaunch
+// 2. Broadcast context_saving WS event
+// 3. Spawn a context-saver system agent to summarize message history
+// 4. Check to_resume findings on the original session
+// 5. Register stop and set finalStatus = "CONTINUE" to trigger relaunch
 //
 // processDoneCh is the original process's done channel (closed by the wait goroutine).
 // completeCh is the replacement channel; closed when the full flow finishes, signaling monitorAll.
@@ -47,118 +52,21 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	// 2. Flush messages from the killed process
 	s.saveMessages(proc)
 
-	// 3. Resume with save instructions (only for CLIs that support it)
-	cliName, _ := parseModelID(proc.modelID)
-	adapter, err := GetCLIAdapter(cliName)
-	if err != nil || !adapter.SupportsResume() {
-		logger.Warn(ctx, "CLI does not support resume, relaunching without save", "cli", cliName, "session_id", proc.sessionID)
-		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
-		proc.finalStatus = "CONTINUE"
-		return
+	// 3. Broadcast context_saving event
+	if s.config.WSHub != nil {
+		s.config.WSHub.Broadcast(ws.NewEvent(ws.EventAgentContextSaving, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+			"session_id": proc.sessionID,
+			"agent_type": proc.agentType,
+		}))
 	}
 
-	savePrompt := buildSavePrompt()
-	logger.Info(ctx, "context save prompt", "prompt", savePrompt, "session_id", proc.sessionID)
-
-	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
-		SessionID:    proc.sessionID,
-		Prompt:       savePrompt,
-		WorkDir:      s.config.ProjectRoot,
-		Env:          proc.cmd.Env,
-		SettingsJSON: s.config.ClaudeSettingsJSON,
-	})
-
-	// Pipe prompt via stdin (same as normal spawn)
-	resumeCmd.Stdin = strings.NewReader(savePrompt)
-
-	// Capture stdout/stderr for monitoring
-	stdout, err := resumeCmd.StdoutPipe()
-	if err != nil {
-		logger.Error(ctx, "context save failed to create stdout pipe", "err", err, "session_id", proc.sessionID)
-		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
-		proc.finalStatus = "CONTINUE"
-		return
-	}
-	stderr, stderrErr := resumeCmd.StderrPipe()
-	if stderrErr != nil {
-		logger.Error(ctx, "context save failed to create stderr pipe", "err", stderrErr, "session_id", proc.sessionID)
-	}
-
-	if err := resumeCmd.Start(); err != nil {
-		logger.Error(ctx, "context save failed to start resume", "err", err, "session_id", proc.sessionID)
-		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
-		proc.finalStatus = "CONTINUE"
-		return
-	}
-	logger.Info(ctx, "context save resume started", "pid", resumeCmd.Process.Pid, "cmd", resumeCmd.Args, "session_id", proc.sessionID)
-
-	// Capture and log resume stdout
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		buf := make([]byte, 0, 1024*1024)
-		scanner.Buffer(buf, 10*1024*1024)
-		lineCount := 0
-		for scanner.Scan() {
-			lineCount++
-			line := scanner.Text()
-			if len(line) > 500 {
-				line = line[:250] + "..." + line[len(line)-250:]
-			}
-			logger.Info(ctx, "context save output", "line", lineCount, "content", line, "session_id", proc.sessionID)
-		}
-		logger.Info(ctx, "context save output finished", "total_lines", lineCount, "session_id", proc.sessionID)
-	}()
-
-	// Capture and log resume stderr
-	if stderrErr == nil {
-		go func() {
-			scanner := bufio.NewScanner(stderr)
-			scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-			for scanner.Scan() {
-				logger.Warn(ctx, "context save stderr", "content", scanner.Text(), "session_id", proc.sessionID)
-			}
-		}()
-	}
-
-	// 4. Wait for resume process to finish (with timeout)
-	resumeDone := make(chan struct{})
-	go func() {
-		resumeCmd.Wait()
-		close(resumeDone)
-	}()
-
-	startTime := time.Now()
-	resumeSucceeded := false
-	select {
-	case <-resumeDone:
-		exitCode := 0
-		if resumeCmd.ProcessState != nil {
-			exitCode = resumeCmd.ProcessState.ExitCode()
-		}
-		resumeSucceeded = exitCode == 0
-		if !resumeSucceeded {
-			logger.Error(ctx, "context save resume exited with error", "exit_code", exitCode, "duration", time.Since(startTime).Round(time.Millisecond), "session_id", proc.sessionID)
-		} else {
-			logger.Info(ctx, "context save completed", "exit_code", exitCode, "duration", time.Since(startTime).Round(time.Millisecond), "session_id", proc.sessionID)
-		}
-	case <-time.After(resumeSaveTimeout):
-		logger.Error(ctx, "context save timed out", "timeout", resumeSaveTimeout, "session_id", proc.sessionID)
-		if resumeCmd.Process != nil {
-			resumeCmd.Process.Kill()
-		}
-		<-resumeDone
-	}
+	// 4. Spawn context-saver system agent
+	saved := s.spawnContextSaver(ctx, proc, req)
 
 	// 5. Check if to_resume findings were actually saved
 	findingsSaved := s.checkToResumeFindings(ctx, proc)
-	if resumeSucceeded && !findingsSaved {
-		logger.Warn(ctx, "resume succeeded but to_resume findings not saved, previous data will be empty on relaunch", "session_id", proc.sessionID)
-	}
-	if !resumeSucceeded && !findingsSaved {
-		logger.Warn(ctx, "resume failed and no findings saved, relaunching without previous data", "session_id", proc.sessionID)
+	if saved && !findingsSaved {
+		logger.Warn(ctx, "context-saver completed but to_resume findings not saved, previous data will be empty on relaunch", "session_id", proc.sessionID)
 	}
 
 	// 6. Register stop
@@ -169,7 +77,87 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	logger.Info(ctx, "context save flow complete, relaunching", "findings_saved", findingsSaved, "session_id", proc.sessionID)
 }
 
-// checkToResumeFindings checks whether the session has to_resume findings after resume-save.
+// spawnContextSaver loads the context-saver system agent and spawns it to save
+// the original agent's message history. Returns true if the saver ran (regardless
+// of whether it actually wrote findings). On any error, logs a warning and returns false.
+func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req SpawnRequest) bool {
+	pool := s.pool()
+	if pool == nil {
+		logger.Warn(ctx, "no database pool for context saver", "session_id", proc.sessionID)
+		return false
+	}
+
+	// Load system agent definition
+	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock)
+	sysDef, err := svc.Get("context-saver")
+	if err != nil {
+		logger.Warn(ctx, "context-saver system agent not found, relaunching without save", "err", err, "session_id", proc.sessionID)
+		return false
+	}
+
+	// Fetch message history
+	msgRepo := repo.NewAgentMessageRepo(pool, s.config.Clock)
+	messages, err := msgRepo.GetBySession(proc.sessionID)
+	if err != nil {
+		logger.Warn(ctx, "failed to fetch agent messages for context save", "err", err, "session_id", proc.sessionID)
+		return false
+	}
+	if len(messages) == 0 {
+		logger.Warn(ctx, "no messages to save for context saver", "session_id", proc.sessionID)
+		return false
+	}
+
+	formatted := formatMessagesForSave(messages, maxMessageChars)
+
+	// Construct one-off spawner (conflict-resolver pattern)
+	sp := New(Config{
+		Workflows: map[string]WorkflowDef{
+			"_context_save": {
+				Phases: []PhaseDef{{ID: "context-saver", Agent: "context-saver", Layer: 0}},
+			},
+		},
+		Agents: map[string]AgentConfig{
+			"context-saver": {Model: sysDef.Model, Timeout: sysDef.Timeout},
+		},
+		DataPath:           s.config.DataPath,
+		ProjectRoot:        s.config.ProjectRoot,
+		WSHub:              s.config.WSHub,
+		Pool:               pool,
+		Clock:              s.config.Clock,
+		ClaudeSettingsJSON: s.config.ClaudeSettingsJSON,
+		ModelConfigs:       s.config.ModelConfigs,
+		ErrorSvc:           s.config.ErrorSvc,
+	})
+
+	saveCtx, cancel := context.WithTimeout(ctx, contextSaveTimeout)
+	defer cancel()
+
+	spawnErr := sp.Spawn(saveCtx, SpawnRequest{
+		AgentType:          "context-saver",
+		TicketID:           req.TicketID,
+		ProjectID:          req.ProjectID,
+		WorkflowName:       "_context_save",
+		WorkflowInstanceID: req.WorkflowInstanceID,
+		ScopeType:          req.ScopeType,
+		ExtraVars: map[string]string{
+			"AGENT_TYPE":        proc.agentType,
+			"AGENT_MESSAGES":    formatted,
+			"TARGET_SESSION_ID": proc.sessionID,
+			"WORKFLOW":          req.WorkflowName,
+			"TICKET_ID":        req.TicketID,
+		},
+	})
+	sp.Close()
+
+	if spawnErr != nil {
+		logger.Warn(ctx, "context-saver agent failed", "err", spawnErr, "session_id", proc.sessionID)
+		return false
+	}
+
+	return true
+}
+
+// checkToResumeFindings checks whether the session has to_resume findings after context save.
 // Returns true if the to_resume key was found in the session's findings.
 func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) bool {
 	pool := s.pool()
@@ -186,7 +174,7 @@ func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) 
 	}
 
 	if !findingsRaw.Valid || findingsRaw.String == "" || findingsRaw.String == "{}" {
-		logger.Warn(ctx, "no findings saved by resume agent", "session_id", proc.sessionID)
+		logger.Warn(ctx, "no findings saved by context-saver agent", "session_id", proc.sessionID)
 		return false
 	}
 
@@ -212,12 +200,35 @@ func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) 
 	return true
 }
 
-// buildSavePrompt constructs the prompt sent to a resumed agent to save its progress.
-// The CLI reads NRF_SESSION_ID and NRF_WORKFLOW_INSTANCE_ID from env vars (inherited from the original process).
-func buildSavePrompt() string {
-	return "URGENT: Save a summary of ALL your current work progress immediately. " +
-		"Run these two commands in order:\n\n" +
-		"1. nrflow findings add to_resume \"<detailed summary of all progress, findings, files changed, and remaining work>\"\n" +
-		"2. nrflow agent continue\n\n" +
-		"The session and workflow context are provided via environment variables. Do NOT add any extra flags."
+// formatMessagesForSave joins messages with newlines. If total length exceeds
+// maxChars, keeps the LAST N messages (most recent work is most relevant) and
+// prepends a truncation header.
+func formatMessagesForSave(messages []string, maxChars int) string {
+	joined := strings.Join(messages, "\n")
+	if len(joined) <= maxChars {
+		return joined
+	}
+
+	// Keep tail messages that fit within maxChars
+	var kept []string
+	total := 0
+	for i := len(messages) - 1; i >= 0; i-- {
+		msgLen := len(messages[i])
+		if total > 0 {
+			msgLen++ // account for newline separator
+		}
+		if total+msgLen > maxChars {
+			break
+		}
+		total += msgLen
+		kept = append(kept, messages[i])
+	}
+
+	// Reverse to restore original order
+	for i, j := 0, len(kept)-1; i < j; i, j = i+1, j-1 {
+		kept[i], kept[j] = kept[j], kept[i]
+	}
+
+	header := fmt.Sprintf("[truncated: showing last %d of %d messages]", len(kept), len(messages))
+	return header + "\n" + strings.Join(kept, "\n")
 }

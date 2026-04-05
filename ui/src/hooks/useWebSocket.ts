@@ -28,6 +28,7 @@ export type WSEventType =
   | 'agent.continued'
   | 'agent.context_updated'
   | 'agent.retry_waiting'
+  | 'agent.context_saving'
   | 'agent.stall_restart'
   | 'findings.updated'
   | 'project_findings.updated'

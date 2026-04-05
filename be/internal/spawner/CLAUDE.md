@@ -128,7 +128,7 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 - `SpawnOptions.SettingsJSON` / `ResumeOptions.SettingsJSON` — passed to adapter `BuildCommand`/`BuildResumeCommand`
 - `ClaudeAdapter` appends `--settings <json>` when non-empty; other adapters ignore it
 - `spawnSingle()` sets `opts.SettingsJSON = s.config.ClaudeSettingsJSON`
-- `context_save.go` passes `SettingsJSON` on resume
+- `context_save.go` passes `ClaudeSettingsJSON` to context-saver spawner config
 - `database.go` stores `ClaudeSettingsJSON` in `agent_sessions.config` column
 
 `DefaultCLIForModel()` remains a public package-level function for external callers (e.g., `orchestrator_interactive.go`).
@@ -298,7 +298,7 @@ The spawner sets these env vars on every spawned agent process. Child processes 
 | `NRF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
 | `NRF_MAX_CONTEXT` | Max context window size in tokens (e.g., 200000 or 1000000 for opus_1m). Used by hooks to calculate context % |
 
-On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` gets the new session's UUID. `NRF_WORKFLOW_INSTANCE_ID` stays the same. The resume flow (`context_save.go`) reuses `proc.cmd.Env`, preserving the old session ID for the save step, then the fresh spawn gets the new one.
+On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` gets the new session's UUID. `NRF_WORKFLOW_INSTANCE_ID` stays the same. The context-saver system agent writes findings to the original session via `NRF_SESSION_ID=${TARGET_SESSION_ID}` override in its CLI command, then the fresh spawn gets the new session ID.
 
 ## Template Variables
 

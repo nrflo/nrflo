@@ -202,6 +202,7 @@ func TestSystemAgentDef_List(t *testing.T) {
 
 	// Delete seeded data so test starts from a known empty state.
 	_ = svc.Delete("conflict-resolver")
+	_ = svc.Delete("context-saver")
 
 	// Initially empty.
 	defs, err := svc.List()

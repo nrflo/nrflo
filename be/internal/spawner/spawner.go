@@ -766,18 +766,14 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		for _, proc := range running {
 			elapsed := time.Since(proc.startTime)
 
-			// Detect low context and initiate save (only for CLIs that support resume)
+			// Detect low context and initiate save (works for all CLI types)
 			if !proc.lowContextSaving && proc.contextLeft > 0 && proc.contextLeft <= proc.restartThreshold {
-				cliName, _ := parseModelID(proc.modelID)
-				adapter, _ := GetCLIAdapter(cliName)
-				if adapter != nil && adapter.SupportsResume() {
-					proc.lowContextSaving = true
-					// Replace doneCh — initiateContextSave will close the new one when the full flow completes
-					oldDoneCh := proc.doneCh
-					newDoneCh := make(chan struct{})
-					proc.doneCh = newDoneCh
-					go s.initiateContextSave(ctx, proc, req, oldDoneCh, newDoneCh)
-				}
+				proc.lowContextSaving = true
+				// Replace doneCh — initiateContextSave will close the new one when the full flow completes
+				oldDoneCh := proc.doneCh
+				newDoneCh := make(chan struct{})
+				proc.doneCh = newDoneCh
+				go s.initiateContextSave(ctx, proc, req, oldDoneCh, newDoneCh)
 			}
 
 			select {

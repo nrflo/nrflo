@@ -297,28 +297,6 @@ func TestFetchPreviousData_ProjectScope(t *testing.T) {
 	}
 }
 
-// TestSavePromptFormat tests that the save prompt uses env-var-based CLI commands
-func TestSavePromptFormat(t *testing.T) {
-	savePrompt := buildSavePrompt()
-
-	// Verify it contains the correct CLI commands
-	if !contains(savePrompt, "nrflow findings add to_resume") {
-		t.Errorf("savePrompt should contain 'nrflow findings add to_resume', got: %s", savePrompt)
-	}
-
-	if !contains(savePrompt, "nrflow agent continue") {
-		t.Errorf("savePrompt should contain 'nrflow agent continue', got: %s", savePrompt)
-	}
-
-	// Verify it does NOT contain obsolete flags
-	if contains(savePrompt, "-w ") {
-		t.Errorf("savePrompt should NOT contain '-w' flag (obsolete), got: %s", savePrompt)
-	}
-	if contains(savePrompt, "--model ") {
-		t.Errorf("savePrompt should NOT contain '--model' flag (obsolete), got: %s", savePrompt)
-	}
-}
-
 // Test helper functions
 
 // toResumeTestEnv holds the test environment for to_resume tests

@@ -25,7 +25,7 @@ be/
 │   │   ├── cli_adapter_test.go  # Adapter tests
 │   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution, detected by orchestrator)
 │   │   ├── completion.go        # Completion handling, continuation relaunch
-│   │   ├── context_save.go      # Low-context save: kill, resume, save findings, relaunch
+│   │   ├── context_save.go      # Low-context save: kill, spawn context-saver system agent, relaunch
 │   │   ├── context.go           # Context tracking (reads context_left from DB)
 │   │   ├── database.go          # DB operations: register start/stop, phase management
 │   │   ├── output.go            # Output monitoring, message formatting

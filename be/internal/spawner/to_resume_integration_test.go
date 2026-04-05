@@ -179,36 +179,6 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 	}
 }
 
-// TestSavePromptStructure tests the structure of the save prompt uses env-var-based CLI
-func TestSavePromptStructure(t *testing.T) {
-	prompt := buildSavePrompt()
-
-	// Verify the prompt has the correct structure (env-var-based, no positional args)
-	tests := []struct {
-		name     string
-		contains string
-		want     bool // true = must contain, false = must NOT contain
-	}{
-		{"has to_resume key", "to_resume", true},
-		{"has findings add command", "nrflow findings add to_resume", true},
-		{"has agent continue command", "nrflow agent continue", true},
-		{"no -w flag", "-w ", false},
-		{"no --model flag", "--model ", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			found := containsHelper(prompt, tt.contains)
-			if tt.want && !found {
-				t.Errorf("prompt should contain %q, got: %s", tt.contains, prompt)
-			}
-			if !tt.want && found {
-				t.Errorf("prompt should NOT contain %q (obsolete), got: %s", tt.contains, prompt)
-			}
-		})
-	}
-}
-
 // Test environment helpers for end-to-end tests
 
 type e2eTestEnv struct {

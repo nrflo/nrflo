@@ -229,36 +229,6 @@ func TestCheckToResumeFindings_InvalidJSON(t *testing.T) {
 	}
 }
 
-// TestBuildSavePrompt_CorrectFormat tests that buildSavePrompt produces
-// the correct format with env-var-based CLI commands (no positional ticket/agent/workflow args)
-func TestBuildSavePrompt_CorrectFormat(t *testing.T) {
-	prompt := buildSavePrompt()
-
-	// Verify it contains the correct env-var-based CLI commands
-	if !containsHelper(prompt, "nrflow findings add to_resume") {
-		t.Errorf("prompt should contain 'nrflow findings add to_resume'")
-	}
-
-	if !containsHelper(prompt, "nrflow agent continue") {
-		t.Errorf("prompt should contain 'nrflow agent continue'")
-	}
-
-	// Verify it does NOT contain obsolete flags
-	if containsHelper(prompt, "-w ") {
-		t.Errorf("prompt should NOT contain '-w' flag (obsolete)")
-	}
-	if containsHelper(prompt, "--model ") {
-		t.Errorf("prompt should NOT contain '--model' flag (obsolete)")
-	}
-
-	// Verify the order: findings add should come before agent continue
-	addIdx := indexOfSubstring(prompt, "nrflow findings add")
-	continueIdx := indexOfSubstring(prompt, "nrflow agent continue")
-	if addIdx == -1 || continueIdx == -1 || addIdx >= continueIdx {
-		t.Errorf("'findings add' should appear before 'agent continue'")
-	}
-}
-
 // Test environment helpers
 
 type contextSaveTestEnv struct {
@@ -409,13 +379,3 @@ func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string
 	return sessionID
 }
 
-// indexOfSubstring returns the index of the first occurrence of substr in s,
-// or -1 if not found
-func indexOfSubstring(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
-}

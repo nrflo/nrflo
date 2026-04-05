@@ -161,6 +161,8 @@ describe('PhaseGraph callback edge', () => {
     expect(callbackEdge.type).toBe('smoothstep')
     expect(callbackEdge.animated).toBe(true)
     expect(callbackEdge.style.stroke).toBe('#3b82f6')
+    expect(callbackEdge.sourceHandle).toBe('callback-source')
+    expect(callbackEdge.targetHandle).toBe('callback-target')
   })
 
   it('callback edge label shows instructions when short', async () => {

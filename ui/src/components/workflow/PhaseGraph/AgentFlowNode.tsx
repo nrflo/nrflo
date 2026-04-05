@@ -111,6 +111,18 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
           position={Position.Bottom}
           className="!bg-transparent !border-0 !w-0 !h-0"
         />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="callback-source"
+          className="!bg-transparent !border-0 !w-0 !h-0"
+        />
+        <Handle
+          type="target"
+          position={Position.Right}
+          id="callback-target"
+          className="!bg-transparent !border-0 !w-0 !h-0"
+        />
       </div>
     )
   }
@@ -232,6 +244,18 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
+        className="!bg-transparent !border-0 !w-0 !h-0"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="callback-source"
+        className="!bg-transparent !border-0 !w-0 !h-0"
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="callback-target"
         className="!bg-transparent !border-0 !w-0 !h-0"
       />
     </div>

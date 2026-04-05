@@ -339,6 +339,8 @@ export function PhaseGraph({
           id: 'callback-edge',
           source: sourceNode.id,
           target: targetNode.id,
+          sourceHandle: 'callback-source',
+          targetHandle: 'callback-target',
           type: 'smoothstep',
           animated: true,
           style: { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '6 4' },

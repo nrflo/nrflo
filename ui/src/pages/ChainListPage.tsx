@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { CreateChainDialog } from '@/components/chains/CreateChainDialog'
-import { useChainList } from '@/hooks/useChains'
+import { useChainList, useDeleteChain } from '@/hooks/useChains'
 import { cn, statusColor, formatRelativeTime, formatElapsedTime, capitalize } from '@/lib/utils'
 
 const PAGE_SIZE = 20
@@ -17,8 +18,10 @@ export function ChainListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [showCreate, setShowCreate] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const statusFilter = searchParams.get('status') || ''
 
+  const deleteChain = useDeleteChain()
   const { data: chains, isLoading, error } = useChainList(
     statusFilter ? { status: statusFilter } : undefined,
   )
@@ -101,6 +104,7 @@ export function ChainListPage() {
                 <TableHead className="w-28">Duration</TableHead>
                 <TableHead className="w-28">Created By</TableHead>
                 <TableHead className="w-24">Created</TableHead>
+                <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -143,6 +147,18 @@ export function ChainListPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{chain.created_by || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{formatRelativeTime(chain.created_at)}</TableCell>
+                    <TableCell>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteTargetId(chain.id) }}
+                        disabled={chain.status === 'running'}
+                        className={cn(
+                          'text-muted-foreground hover:text-destructive transition-colors',
+                          chain.status === 'running' && 'opacity-50 cursor-not-allowed'
+                        )}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </TableCell>
                   </TableRow>
                 )
               })}
@@ -179,6 +195,19 @@ export function ChainListPage() {
       )}
 
       <CreateChainDialog open={showCreate} onClose={() => setShowCreate(false)} />
+      <ConfirmDialog
+        open={!!deleteTargetId}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={() => {
+          if (deleteTargetId) {
+            deleteChain.mutate(deleteTargetId, { onSettled: () => setDeleteTargetId(null) })
+          }
+        }}
+        title="Delete Chain"
+        message={`Are you sure you want to delete this chain? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+      />
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
   updateChain,
   startChain,
   cancelChain,
+  deleteChain,
   appendToChain,
   runEpicWorkflow,
   type ListChainsParams,
@@ -100,6 +101,16 @@ export function useCancelChain() {
     mutationFn: (id: string) => cancelChain(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: chainKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: chainKeys.lists() })
+    },
+  })
+}
+
+export function useDeleteChain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteChain(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chainKeys.lists() })
     },
   })

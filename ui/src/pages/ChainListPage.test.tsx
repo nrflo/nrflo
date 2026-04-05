@@ -19,10 +19,16 @@ const mockUseUpdateChain = vi.fn(() => ({
   error: null,
 }))
 
+const mockUseDeleteChain = vi.fn(() => ({
+  mutate: vi.fn(),
+  isPending: false,
+}))
+
 vi.mock('@/hooks/useChains', () => ({
   useChainList: (params?: any, options?: any) => mockUseChainList(params, options),
   useCreateChain: () => mockUseCreateChain(),
   useUpdateChain: () => mockUseUpdateChain(),
+  useDeleteChain: () => mockUseDeleteChain(),
 }))
 
 // Mock useProjectStore

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch } from './client'
+import { apiGet, apiPost, apiPatch, apiDelete } from './client'
 import type {
   ChainExecution,
   ChainPreviewResponse,
@@ -79,6 +79,10 @@ export async function appendToChain(
     `/api/v1/chains/${encodeURIComponent(id)}/append`,
     data
   )
+}
+
+export async function deleteChain(id: string): Promise<void> {
+  await apiDelete(`/api/v1/chains/${encodeURIComponent(id)}`)
 }
 
 export async function runEpicWorkflow(

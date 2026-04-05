@@ -18,6 +18,7 @@ vi.mock('@/hooks/useChains', () => ({
   useChainList: (params?: unknown) => mockUseChainList(params),
   useCreateChain: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
   useUpdateChain: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
+  useDeleteChain: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/stores/projectStore', () => ({

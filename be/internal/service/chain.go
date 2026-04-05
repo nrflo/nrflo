@@ -234,6 +234,22 @@ func (s *ChainService) UpdateChain(chainID string, req *types.ChainUpdateRequest
 	return chain, nil
 }
 
+// DeleteChain deletes a chain execution if it's not running.
+func (s *ChainService) DeleteChain(projectID, chainID string) error {
+	chainRepo := repo.NewChainRepo(s.pool, s.clock)
+	chain, err := chainRepo.Get(chainID)
+	if err != nil {
+		return err
+	}
+	if chain.ProjectID != projectID {
+		return fmt.Errorf("chain not found: %s", chainID)
+	}
+	if chain.Status == model.ChainStatusRunning {
+		return fmt.Errorf("cannot delete running chain")
+	}
+	return chainRepo.Delete(chainID)
+}
+
 // GetChainWithItems returns a chain with its items loaded
 func (s *ChainService) GetChainWithItems(chainID string) (*model.ChainExecution, error) {
 	chainRepo := repo.NewChainRepo(s.pool, s.clock)

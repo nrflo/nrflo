@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"be/internal/model"
 	"be/internal/repo"
@@ -174,6 +175,45 @@ func (s *Server) handleCancelChain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "canceled", "chain_id": chainID})
+}
+
+// handleDeleteChain deletes a chain execution.
+// DELETE /api/v1/chains/{id}
+func (s *Server) handleDeleteChain(w http.ResponseWriter, r *http.Request) {
+	chainID := extractID(r)
+	if chainID == "" {
+		writeError(w, http.StatusBadRequest, "chain ID required")
+		return
+	}
+
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "X-Project header or project query param required")
+		return
+	}
+
+	chainSvc := service.NewChainService(s.pool, s.clock)
+	err := chainSvc.DeleteChain(projectID, chainID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "running") {
+			writeError(w, http.StatusConflict, err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if s.wsHub != nil {
+		s.wsHub.Broadcast(ws.NewEvent("chain.deleted", projectID, "", "", map[string]interface{}{
+			"chain_id": chainID,
+		}))
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "chain deleted"})
 }
 
 // handleAppendToChain appends tickets to a running chain.

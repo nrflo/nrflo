@@ -6,6 +6,7 @@ import {
   updateChain,
   startChain,
   cancelChain,
+  deleteChain,
 } from './chains'
 import * as client from './client'
 import type { ChainExecution, ChainCreateRequest, ChainUpdateRequest } from '@/types/chain'
@@ -323,6 +324,34 @@ describe('cancelChain', () => {
     vi.mocked(client.apiPost).mockRejectedValue(error)
 
     await expect(cancelChain('chain-123')).rejects.toThrow('Cannot cancel chain')
+  })
+})
+
+describe('deleteChain', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls apiDelete with correct endpoint', async () => {
+    vi.mocked(client.apiDelete).mockResolvedValue(undefined)
+
+    await deleteChain('chain-123')
+
+    expect(client.apiDelete).toHaveBeenCalledWith('/api/v1/chains/chain-123')
+  })
+
+  it('encodes special characters in chain ID', async () => {
+    vi.mocked(client.apiDelete).mockResolvedValue(undefined)
+
+    await deleteChain('chain/special')
+
+    expect(client.apiDelete).toHaveBeenCalledWith('/api/v1/chains/chain%2Fspecial')
+  })
+
+  it('propagates errors from apiDelete', async () => {
+    vi.mocked(client.apiDelete).mockRejectedValue(new Error('Cannot delete running chain'))
+
+    await expect(deleteChain('chain-123')).rejects.toThrow('Cannot delete running chain')
   })
 })
 

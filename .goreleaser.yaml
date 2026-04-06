@@ -1,0 +1,92 @@
+version: 2
+
+project_name: nrflow
+
+before:
+  hooks:
+    - rm -rf ui/dist
+    - sh -c "cd ui && npm ci && npm run build"
+    - rm -rf be/internal/static/dist
+    - cp -r ui/dist be/internal/static/dist
+    - cp agent_manual.md be/internal/static/agent_manual.md
+
+builds:
+  - id: nrflow
+    binary: nrflow
+    dir: be
+    main: ./cmd/nrflow
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X be/internal/cli.version={{ .Version }}
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: nrflow_server
+    binary: nrflow_server
+    dir: be
+    main: ./cmd/server
+    tags:
+      - tray
+    env:
+      - CGO_ENABLED=1
+    ldflags:
+      - -s -w -X be/internal/cli.version={{ .Version }}
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    overrides:
+      - goos: darwin
+        goarch: amd64
+        env:
+          - CGO_ENABLED=1
+          - CC=clang -arch x86_64
+          - CGO_CFLAGS=-arch x86_64
+          - CGO_LDFLAGS=-arch x86_64
+
+archives:
+  - id: default
+    ids:
+      - nrflow
+      - nrflow_server
+    name_template: "nrflow_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+release:
+  github:
+    owner: nrflow
+    name: nrflow
+
+homebrew_casks:
+  - name: nrflow
+    ids:
+      - default
+    binaries:
+      - nrflow
+      - nrflow_server
+    repository:
+      owner: nrflow
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/nrflow/nrflow
+    description: Multi-workflow agent orchestration system
+    caveats: |
+      Database is stored at ~/.nrflow/nrflow.data by default.
+      Override with NRFLOW_HOME environment variable.
+
+      To start the server: nrflow_server serve

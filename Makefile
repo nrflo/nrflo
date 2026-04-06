@@ -1,7 +1,7 @@
 .PHONY: all build build-cli build-server build-server-only build-ui \
        build-release build-release-cli build-release-server \
        install clean test test-ui test-integration test-pkg test-verbose \
-       test-coverage test-race tidy help
+       test-coverage test-race tidy release-check release-dry-run help
 
 # --- Configurable variables ---
 PREFIX     ?= /usr/local
@@ -165,6 +165,14 @@ clean:
 	rm -rf $(STATIC_DIR)
 	rm -f $(BE_DIR)/internal/static/agent_manual.md
 	mkdir -p $(STATIC_DIR) && touch $(STATIC_DIR)/.gitkeep
+
+## release-check: Validate GoReleaser config
+release-check:
+	goreleaser check
+
+## release-dry-run: Test GoReleaser locally (no publish)
+release-dry-run:
+	goreleaser release --snapshot --clean
 
 ## help: Show available targets
 help:

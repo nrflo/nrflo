@@ -1,3 +1,5 @@
+# Source build formula (includes systray support).
+# For pre-built binaries: brew install nrflow/tap/nrflow
 class Nrflow < Formula
   desc "Multi-workflow agent orchestration system"
   homepage "https://github.com/anderfredx/nrflow"

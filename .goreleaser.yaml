@@ -85,6 +85,10 @@ homebrew_casks:
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/nrflow/nrflow
     description: Multi-workflow agent orchestration system
+    hooks:
+      post:
+        install: |
+          system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}"]
     caveats: |
       Database is stored at ~/.nrflow/nrflow.data by default.
       Override with NRFLOW_HOME environment variable.

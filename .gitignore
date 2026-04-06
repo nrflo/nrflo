@@ -17,6 +17,9 @@ be/nrworkflow_server
 go.work
 go.work.sum
 
+# GoReleaser
+dist/
+
 # SQLite database files
 *.data
 *.data-shm

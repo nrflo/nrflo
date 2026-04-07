@@ -42,8 +42,28 @@ A self-hosted control plane for AI engineering workflows. nrflow orchestrates co
 
 ## Quick Start
 
+### Install via Homebrew (macOS)
+
+```bash
+brew tap nrflow/tap
+brew install nrflow
+```
+
+To upgrade:
+
+```bash
+brew update && brew upgrade nrflow
+```
+
+### Build from source
+
 ```bash
 make build && make install
+```
+
+### Run
+
+```bash
 nrflow_server serve
 # Open http://localhost:6587
 ```

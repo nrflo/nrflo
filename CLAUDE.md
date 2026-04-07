@@ -151,7 +151,11 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 ## Quick Start
 
-Build: `make build && make install`, then `nrflow_server serve` and open `http://localhost:6587`
+Install via Homebrew: `brew tap nrflow/tap && brew install nrflow`. Upgrade: `brew update && brew upgrade nrflow`.
+
+Or build from source: `make build && make install`.
+
+Then `nrflow_server serve` and open `http://localhost:6587`.
 
 By default the server binds to `127.0.0.1` (localhost only). To make it accessible on the local network: `nrflow_server serve --host 0.0.0.0`
 

@@ -32,6 +32,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	contextSaveViaAgentVal, err := svc.Get("context_save_via_agent")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	stallStartVal, err := svc.Get("stall_start_timeout_sec")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -45,6 +51,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 
 	resp := map[string]interface{}{
 		"low_consumption_mode":    val == "true",
+		"context_save_via_agent":  contextSaveViaAgentVal == "true",
 		"session_retention_limit": retentionLimit,
 	}
 	if stallStartVal != "" {
@@ -70,6 +77,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		LowConsumptionMode     *bool           `json:"low_consumption_mode"`
+		ContextSaveViaAgent    *bool           `json:"context_save_via_agent"`
 		SessionRetentionLimit  *int            `json:"session_retention_limit"`
 		StallStartTimeoutSec   json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec json.RawMessage `json:"stall_running_timeout_sec"`
@@ -87,6 +95,17 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			val = "true"
 		}
 		if err := svc.Set("low_consumption_mode", val); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	if req.ContextSaveViaAgent != nil {
+		val := "false"
+		if *req.ContextSaveViaAgent {
+			val = "true"
+		}
+		if err := svc.Set("context_save_via_agent", val); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

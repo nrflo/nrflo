@@ -280,6 +280,12 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		lowConsumptionMode = true
 	}
 
+	// Read context save via agent setting (once at workflow start)
+	contextSaveViaAgent := false
+	if val, _ := pool.GetConfig("context_save_via_agent"); val == "true" {
+		contextSaveViaAgent = true
+	}
+
 	// Read global stall timeout settings (once at workflow start)
 	var globalStallStartTimeout, globalStallRunningTimeout *int
 	if val, _ := pool.GetConfig("stall_start_timeout_sec"); val != "" {
@@ -376,7 +382,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge)
 
 	status := "started"
 	sessionID := ""
@@ -697,6 +703,12 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		lowConsumptionMode = true
 	}
 
+	// Read context save via agent setting (once at workflow retry)
+	contextSaveViaAgent := false
+	if val, _ := pool.GetConfig("context_save_via_agent"); val == "true" {
+		contextSaveViaAgent = true
+	}
+
 	// Read global stall timeout settings (once at workflow retry)
 	var globalStallStartTimeout, globalStallRunningTimeout *int
 	if val, _ := pool.GetConfig("stall_start_timeout_sec"); val != "" {
@@ -755,7 +767,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}))
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge)
 
 	return nil
 }
@@ -980,6 +992,7 @@ func (o *Orchestrator) runLoop(
 	agentTags map[string]string,
 	pre *interactivePreStep,
 	lowConsumptionMode bool,
+	contextSaveViaAgent bool,
 	globalStallStartTimeout *int,
 	globalStallRunningTimeout *int,
 	modelConfigs map[string]spawner.ModelConfig,
@@ -1139,6 +1152,7 @@ func (o *Orchestrator) runLoop(
 					Pool:                      pool,
 					Clock:                     o.clock,
 					LowConsumptionMode:        lowConsumptionMode,
+					ContextSaveViaAgent:       contextSaveViaAgent,
 					GlobalStallStartTimeout:   globalStallStartTimeout,
 					GlobalStallRunningTimeout: globalStallRunningTimeout,
 					ClaudeSettingsJSON:        claudeSettingsJSON,

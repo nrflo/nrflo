@@ -22,7 +22,7 @@ API client modules for communicating with the nrflow backend. Contains 12 files.
 | `agentDefs.ts` | Agent definition API client |
 | `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/delete/append/removeFromChain/runEpicWorkflow) |
 | `docs.ts` | Documentation API functions (getAgentManual) |
-| `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode, session retention limit, stall start/running timeouts) |
+| `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode, context save via agent, session retention limit, stall start/running timeouts) |
 | `agents.ts` | Agent API functions (fetchRecentAgents, fetchRunningAgents, fetchSessionMessages, fetchSessionPrompt) |
 | `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
 | `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |

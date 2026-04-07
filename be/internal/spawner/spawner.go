@@ -81,6 +81,10 @@ type Config struct {
 	Clock clock.Clock
 	// LowConsumptionMode enables model override via LowConsumptionModel
 	LowConsumptionMode bool
+	// ContextSaveViaAgent enables the system-agent context saver instead of resume-based save.
+	// false (default) = resume-based save (Claude CLI only, other CLIs skip save)
+	// true = spawn context-saver system agent (works for all CLI types)
+	ContextSaveViaAgent bool
 	// GlobalStallStartTimeout overrides the default stall start timeout when agent def has no value.
 	// nil = use hardcoded default, 0 = disabled, >0 = custom seconds.
 	GlobalStallStartTimeout *int

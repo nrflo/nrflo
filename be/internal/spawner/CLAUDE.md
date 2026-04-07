@@ -298,7 +298,14 @@ The spawner sets these env vars on every spawned agent process. Child processes 
 | `NRF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
 | `NRF_MAX_CONTEXT` | Max context window size in tokens (e.g., 200000 or 1000000 for opus_1m). Used by hooks to calculate context % |
 
-On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` gets the new session's UUID. `NRF_WORKFLOW_INSTANCE_ID` stays the same. The context-saver system agent writes findings to the original session via `NRF_SESSION_ID=${TARGET_SESSION_ID}` override in its CLI command, then the fresh spawn gets the new session ID.
+On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` gets the new session's UUID. `NRF_WORKFLOW_INSTANCE_ID` stays the same. When using the system agent context saver, it writes findings to the original session via `NRF_SESSION_ID=${TARGET_SESSION_ID}` override in its CLI command, then the fresh spawn gets the new session ID.
+
+## Context Save Methods
+
+Controlled by `Config.ContextSaveViaAgent` (from `context_save_via_agent` global setting, default false):
+
+- **Resume-based (default, `false`)**: Resumes the same Claude session with a save prompt. The agent writes `to_resume` findings itself. Only works for Claude CLI (`SupportsResume()`); other CLIs skip context save and relaunch without previous data. Code in `context_save_resume.go`.
+- **System agent (`true`)**: Spawns a fresh `context-saver` system agent (haiku) that reads the killed agent's message history (120k char tail truncation) and writes a summary to `to_resume` findings. Works for all CLI types. Broadcasts `EventAgentContextSaving` WS event. Code in `context_save.go`.
 
 ## Template Variables
 

@@ -126,8 +126,8 @@ DELETE /api/v1/cli-models/:id       # Delete CLI model (400 if readonly system m
 POST   /api/v1/cli-models/:id/test  # Health check: spawn minimal agent, return success/error/duration_ms
 
 # Global settings (no project scope)
-GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null}
-PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "session_retention_limit": int (>= 10), "stall_start_timeout_sec": int|null (>= 0), "stall_running_timeout_sec": int|null (>= 0)}
+GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "context_save_via_agent": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null}
+PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "context_save_via_agent": bool, "session_retention_limit": int (>= 10), "stall_start_timeout_sec": int|null (>= 0), "stall_running_timeout_sec": int|null (>= 0)}
 
 # Safety hook check (global, no project scope)
 POST   /api/v1/safety-hook/check  # Dry-run command against safety hook config. Body: {config: SafetyHookConfig, command: string}. Returns {allowed: bool, reason: string}

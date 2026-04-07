@@ -23,10 +23,8 @@ const (
 
 // initiateContextSave handles the low-context save flow:
 // 1. Kill the running agent
-// 2. Broadcast context_saving WS event
-// 3. Spawn a context-saver system agent to summarize message history
-// 4. Check to_resume findings on the original session
-// 5. Register stop and set finalStatus = "CONTINUE" to trigger relaunch
+// 2. Flush messages
+// 3. Delegate to either system-agent or resume-based save depending on config
 //
 // processDoneCh is the original process's done channel (closed by the wait goroutine).
 // completeCh is the replacement channel; closed when the full flow finishes, signaling monitorAll.
@@ -52,7 +50,18 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	// 2. Flush messages from the killed process
 	s.saveMessages(proc)
 
-	// 3. Broadcast context_saving event
+	// 3. Save context via configured method
+	if s.config.ContextSaveViaAgent {
+		s.contextSaveViaAgent(ctx, proc, req)
+	} else {
+		s.contextSaveViaResume(ctx, proc, req)
+	}
+}
+
+// contextSaveViaAgent uses a system agent (haiku) to summarize the killed agent's
+// message history and save to_resume findings. Works for all CLI types.
+func (s *Spawner) contextSaveViaAgent(ctx context.Context, proc *processInfo, req SpawnRequest) {
+	// Broadcast context_saving event
 	if s.config.WSHub != nil {
 		s.config.WSHub.Broadcast(ws.NewEvent(ws.EventAgentContextSaving, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 			"session_id": proc.sessionID,
@@ -60,16 +69,16 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 		}))
 	}
 
-	// 4. Spawn context-saver system agent
+	// Spawn context-saver system agent
 	saved := s.spawnContextSaver(ctx, proc, req)
 
-	// 5. Check if to_resume findings were actually saved
+	// Check if to_resume findings were actually saved
 	findingsSaved := s.checkToResumeFindings(ctx, proc)
 	if saved && !findingsSaved {
 		logger.Warn(ctx, "context-saver completed but to_resume findings not saved, previous data will be empty on relaunch", "session_id", proc.sessionID)
 	}
 
-	// 6. Register stop
+	// Register stop
 	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 		proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
 

@@ -39,6 +39,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const contextSaveMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ context_save_via_agent: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   const retentionMutation = useMutation({
     mutationFn: (val: number) => updateGlobalSettings({ session_retention_limit: val }),
     onSuccess: () => {
@@ -112,6 +119,29 @@ export function GlobalSettingsSection() {
                 checked={settings.low_consumption_mode}
                 onChange={(val) => toggleMutation.mutate(val)}
                 disabled={toggleMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div>
+                  <div className="text-sm font-medium">Save context via agent</div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Use a system agent to summarize context on low-context restarts
+                  </p>
+                </div>
+                <Tooltip
+                  placement="right"
+                  className="max-w-sm"
+                  text="When enabled, a dedicated system agent (haiku) summarizes the message history during low-context restarts. Works for all CLI types. When disabled, the original Claude session is resumed with a save prompt (Claude CLI only; other CLIs skip context save)."
+                >
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </Tooltip>
+              </div>
+              <Toggle
+                checked={settings.context_save_via_agent}
+                onChange={(val) => contextSaveMutation.mutate(val)}
+                disabled={contextSaveMutation.isPending}
               />
             </div>
             <div className="border-t border-border" />

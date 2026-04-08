@@ -67,8 +67,7 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 | Component | Purpose |
 |-----------|---------|
 | `WorkflowDefForm.tsx` | Workflow definition create/edit form (includes groups chip input) |
-| `PhaseListEditor.tsx` | Layer-aware phase list editor with fan-in validation |
-| `AgentDefForm.tsx` | Agent definition create/edit form (includes tag dropdown when groups available, "Apply Template" button opens TemplatePickerDialog) |
+| `AgentDefForm.tsx` | Agent definition create/edit form (includes layer input, tag dropdown when groups available, "Apply Template" button opens TemplatePickerDialog) |
 | `TemplatePickerDialog.tsx` | Dialog for selecting and applying a default template to an agent's prompt. Fetches from default-templates API, shows dropdown + preview, warns on non-empty prompt replacement. |
 | `AgentDefCard.tsx` | Agent definition card with edit/delete (shows tag badge) |
 | `AgentDefsSection.tsx` | Agent definitions list within a workflow (passes groups to children) |

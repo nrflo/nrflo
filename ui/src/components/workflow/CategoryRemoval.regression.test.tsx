@@ -148,8 +148,6 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
       )
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test-workflow')
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'implementor')
 
       const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
@@ -157,22 +155,16 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
       expect(onSubmit).toHaveBeenCalledTimes(1)
       const payload = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
 
-      // Ensure categories field is not in payload
+      // Ensure categories and phases fields are not in payload (phases now managed per-agent)
       expect(payload).not.toHaveProperty('categories')
+      expect(payload).not.toHaveProperty('phases')
       expect(payload).toMatchObject({
         id: 'test-workflow',
         scope_type: 'ticket',
-        phases: [
-          {
-            id: 'implementor',
-            agent: 'implementor',
-            layer: 0,
-          },
-        ],
       })
     })
 
-    it('phases do not include skip_for field', async () => {
+    it('workflow create request does not include skip_for or phases', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
@@ -188,43 +180,30 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
       )
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test-workflow')
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'implementor')
 
       const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
       const payload = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      const phase = payload.phases[0]
 
-      // Ensure skip_for field is not in phase definition
-      expect(phase).not.toHaveProperty('skip_for')
-      expect(phase).toMatchObject({
-        id: 'implementor',
-        agent: 'implementor',
-        layer: 0,
-      })
+      // Ensure skip_for and phases fields are not in payload
+      expect(payload).not.toHaveProperty('skip_for')
+      expect(payload).not.toHaveProperty('phases')
     })
 
     it('handles loading existing workflow data without categories gracefully', () => {
-      const phases: PhaseDef[] = [
-        { id: 'setup', agent: 'setup', layer: 0 },
-        { id: 'implementor', agent: 'implementor', layer: 1 },
-      ]
-
-      // Should render without errors even if old DB data had categories
+      // Should render without errors — form no longer manages phases
       render(
         <WorkflowDefForm
           isCreate={false}
-          initial={{ id: 'feature', phases }}
+          initial={{ id: 'feature' }}
           onSubmit={vi.fn()}
           formId="test-form"
         />
       )
 
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      expect(agentInputs[0]).toHaveValue('setup')
-      expect(agentInputs[1]).toHaveValue('implementor')
+      // Form should render with the description input
+      expect(screen.getByPlaceholderText(/short description/i)).toBeInTheDocument()
     })
   })
 
@@ -316,7 +295,6 @@ describe('Category/Skip_for Removal - Regression Tests', () => {
         id: 'test-workflow',
         description: 'Test',
         scope_type: 'ticket',
-        phases: [],
       }
 
       expect(validRequest).toBeDefined()

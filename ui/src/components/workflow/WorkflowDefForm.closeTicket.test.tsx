@@ -97,7 +97,6 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
       renderForm({ isCreate: true, onSubmit })
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'my-workflow')
-      await user.type(screen.getAllByPlaceholderText(/agent type/i)[0], 'implementor')
       await user.click(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i }))
 
       await user.click(screen.getByRole('button', { name: /submit/i }))
@@ -111,7 +110,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
       const onSubmit = vi.fn()
       renderForm({
         isCreate: false,
-        initial: { id: 'feature', close_ticket_on_complete: false, phases: [{ id: 'analyzer', agent: 'analyzer', layer: 0 }] },
+        initial: { id: 'feature', close_ticket_on_complete: false },
         onSubmit,
       })
 

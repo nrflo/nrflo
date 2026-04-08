@@ -21,6 +21,7 @@ export function AgentDefForm({
   groups?: string[]
 }) {
   const [id, setId] = useState(initial?.id || '')
+  const [layer, setLayer] = useState(initial?.layer ?? 0)
   const [model, setModel] = useState(initial?.model || 'sonnet')
   const [timeout, setTimeout] = useState(initial?.timeout || 20)
   const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
@@ -39,9 +40,9 @@ export function AgentDefForm({
     const tagValue = tag || undefined
     const lcModel = lowConsumptionModel || undefined
     if (isCreate) {
-      onSubmit({ id, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefCreateRequest)
+      onSubmit({ id, layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefCreateRequest)
     } else {
-      onSubmit({ model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefUpdateRequest)
+      onSubmit({ layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefUpdateRequest)
     }
   }
 
@@ -60,6 +61,19 @@ export function AgentDefForm({
           />
         </div>
       )}
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Layer</label>
+        <input
+          type="number"
+          value={layer}
+          onChange={(e) => setLayer(Number(e.target.value))}
+          min={0}
+          className="w-32 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Execution order. Layer 0 runs first. Same-layer agents run concurrently.
+        </p>
+      </div>
       <div className="flex gap-3">
         <div className="flex-1">
           <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>

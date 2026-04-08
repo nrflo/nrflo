@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowDefForm } from './WorkflowDefForm'
-import type { PhaseDef, WorkflowDefCreateRequest } from '@/types/workflow'
 
 function renderForm(
   props: Partial<React.ComponentProps<typeof WorkflowDefForm>> = {}
@@ -25,174 +24,6 @@ function renderForm(
 }
 
 describe('WorkflowDefForm', () => {
-  describe('formToPhases conversion', () => {
-    it('emits object format with layer field', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      // Fill in the form
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test-workflow')
-
-      // The form starts with one default empty agent — fill that one
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'setup-analyzer')
-
-      // Submit
-      const submitButton = screen.getByRole('button', { name: /submit/i })
-      await user.click(submitButton)
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'test-workflow',
-          phases: [
-            {
-              id: 'setup-analyzer',
-              agent: 'setup-analyzer',
-              layer: 0,
-            },
-          ],
-        })
-      )
-    })
-
-    it('never emits string-only phase entries', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'bugfix')
-
-      // Fill the default agent, then add one more
-      const defaultInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(defaultInputs[0], 'analyzer')
-
-      const addButton = screen.getByRole('button', { name: /add agent/i })
-      await user.click(addButton)
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[1], 'implementor')
-
-      const submitButton = screen.getByRole('button', { name: /submit/i })
-      await user.click(submitButton)
-
-      const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      // Verify all phases are objects with required fields
-      expect(call.phases).toHaveLength(2)
-      call.phases.forEach((phase) => {
-        expect(typeof phase).toBe('object')
-        expect(phase).toHaveProperty('id')
-        expect(phase).toHaveProperty('agent')
-        expect(phase).toHaveProperty('layer')
-        expect(typeof phase.layer).toBe('number')
-      })
-    })
-
-    it('phases do not include skip_for field (category removal)', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'hotfix')
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'implementor')
-
-      const submitButton = screen.getByRole('button', { name: /submit/i })
-      await user.click(submitButton)
-
-      const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      expect(call.phases[0]).toMatchObject({
-        id: 'implementor',
-        agent: 'implementor',
-        layer: 0,
-      })
-      expect(call.phases[0]).not.toHaveProperty('skip_for')
-    })
-
-    it('filters out empty agent entries', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'feature')
-
-      // Fill the default (index 0), add 2 more, fill only index 2
-      const defaultInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(defaultInputs[0], 'setup-analyzer')
-
-      await user.click(screen.getByRole('button', { name: /add agent/i }))
-      await user.click(screen.getByRole('button', { name: /add agent/i }))
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[2], 'implementor')
-
-      // Remove the empty agent (index 1) so form validation passes
-      const removeButtons = screen.getAllByTitle(/remove agent/i)
-      await user.click(removeButtons[1])
-
-      const submitButton = screen.getByRole('button', { name: /submit/i })
-      await user.click(submitButton)
-
-      const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      expect(call.phases).toHaveLength(2)
-      expect(call.phases.map((p) => p.agent)).toEqual(['setup-analyzer', 'implementor'])
-    })
-  })
-
-  describe('phasesToForm conversion', () => {
-    it('handles missing layer field gracefully (defaults to 0)', () => {
-      const phases: PhaseDef[] = [
-        { id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 },
-        // Simulate old data without layer
-        { id: 'implementor', agent: 'implementor' } as PhaseDef,
-      ]
-
-      renderForm({
-        isCreate: false,
-        initial: { id: 'feature', phases },
-      })
-
-      const layerInputs = screen.getAllByRole('spinbutton')
-      expect(layerInputs[0]).toHaveValue(0)
-      expect(layerInputs[1]).toHaveValue(0) // Defaults to 0
-    })
-
-    it('populates form with existing phase data', () => {
-      const phases: PhaseDef[] = [
-        { id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 },
-        { id: 'implementor', agent: 'implementor', layer: 1 },
-      ]
-
-      renderForm({
-        isCreate: false,
-        initial: { id: 'feature', phases },
-      })
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      expect(agentInputs[0]).toHaveValue('setup-analyzer')
-      expect(agentInputs[1]).toHaveValue('implementor')
-
-      const layerInputs = screen.getAllByRole('spinbutton')
-      expect(layerInputs[0]).toHaveValue(0)
-      expect(layerInputs[1]).toHaveValue(1)
-    })
-
-    it('defaults to single empty agent when no phases provided', () => {
-      renderForm({
-        isCreate: true,
-        initial: { id: 'new-workflow' },
-      })
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      expect(agentInputs).toHaveLength(1)
-      expect(agentInputs[0]).toHaveValue('')
-
-      const layerInputs = screen.getAllByRole('spinbutton')
-      expect(layerInputs[0]).toHaveValue(0)
-    })
-  })
-
   describe('form submission', () => {
     it('submits WorkflowDefCreateRequest in create mode', async () => {
       const user = userEvent.setup()
@@ -201,9 +32,6 @@ describe('WorkflowDefForm', () => {
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'feature')
       await user.type(screen.getByPlaceholderText(/short description/i), 'Full TDD workflow')
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'setup-analyzer')
 
       const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
@@ -214,26 +42,16 @@ describe('WorkflowDefForm', () => {
         scope_type: 'ticket',
         groups: [],
         close_ticket_on_complete: true,
-        phases: [
-          {
-            id: 'setup-analyzer',
-            agent: 'setup-analyzer',
-            layer: 0,
-          },
-        ],
       })
     })
 
     it('submits WorkflowDefUpdateRequest in update mode', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      const phases: PhaseDef[] = [
-        { id: 'setup-analyzer', agent: 'setup-analyzer', layer: 0 },
-      ]
 
       renderForm({
         isCreate: false,
-        initial: { id: 'feature', description: 'Old desc', phases },
+        initial: { id: 'feature', description: 'Old desc' },
         onSubmit,
       })
 
@@ -249,13 +67,6 @@ describe('WorkflowDefForm', () => {
         scope_type: 'ticket',
         groups: [],
         close_ticket_on_complete: true,
-        phases: [
-          {
-            id: 'setup-analyzer',
-            agent: 'setup-analyzer',
-            layer: 0,
-          },
-        ],
       })
     })
 
@@ -309,9 +120,6 @@ describe('WorkflowDefForm', () => {
       const projectButton = screen.getByRole('button', { name: /^project$/i })
       await user.click(projectButton)
 
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'analyzer')
-
       const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
 
@@ -326,12 +134,9 @@ describe('WorkflowDefForm', () => {
     it('includes scope_type in update request', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      const phases: PhaseDef[] = [
-        { id: 'analyzer', agent: 'analyzer', layer: 0 },
-      ]
       renderForm({
         isCreate: false,
-        initial: { id: 'test', scope_type: 'ticket', phases },
+        initial: { id: 'test', scope_type: 'ticket' },
         onSubmit,
       })
 
@@ -374,43 +179,6 @@ describe('WorkflowDefForm', () => {
       const projectButton = screen.getByRole('button', { name: /^project$/i })
       expect(projectButton).toHaveClass('border-primary')
       expect(screen.getByText(/project workflows run without a ticket/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('edge cases', () => {
-    it('handles empty phases array submission', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'empty-workflow')
-
-      // Remove the default empty agent so form validation passes
-      const removeButton = screen.getByTitle(/remove agent/i)
-      await user.click(removeButton)
-
-      const submitButton = screen.getByRole('button', { name: /submit/i })
-      await user.click(submitButton)
-
-      const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      expect(call.phases).toHaveLength(0)
-    })
-
-    it('trims whitespace from agent names', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test')
-
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], '  setup-analyzer  ')
-
-      const submitButton = screen.getByRole('button', { name: /submit/i })
-      await user.click(submitButton)
-
-      const call = onSubmit.mock.calls[0][0] as WorkflowDefCreateRequest
-      expect(call.phases[0].agent).toBe('setup-analyzer')
     })
   })
 })

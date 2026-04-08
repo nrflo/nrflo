@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AgentDefsSection } from '@/components/workflow/AgentDefsSection'
 import { WorkflowDefForm } from '@/components/workflow/WorkflowDefForm'
 import { listWorkflowDefs, createWorkflowDef, updateWorkflowDef, deleteWorkflowDef } from '@/api/workflows'
-import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateRequest, PhaseDef, ScopeType } from '@/types/workflow'
+import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateRequest, ScopeType } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
 import { cn } from '@/lib/utils'
 
@@ -132,7 +132,6 @@ interface EditingWorkflow {
   description?: string
   scope_type?: ScopeType
   groups?: string[]
-  phases?: PhaseDef[]
 }
 
 export function WorkflowsPage() {

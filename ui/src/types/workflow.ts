@@ -235,7 +235,6 @@ export interface WorkflowDefCreateRequest {
   scope_type?: ScopeType
   groups?: string[]
   close_ticket_on_complete?: boolean
-  phases: PhaseDef[]
 }
 
 export interface WorkflowDefUpdateRequest {
@@ -243,7 +242,6 @@ export interface WorkflowDefUpdateRequest {
   scope_type?: ScopeType
   groups?: string[]
   close_ticket_on_complete?: boolean
-  phases?: PhaseDef[]
 }
 
 // Agent definition types (DB-stored)
@@ -252,6 +250,7 @@ export interface AgentDef {
   id: string
   project_id: string
   workflow_id: string
+  layer: number
   model: string
   timeout: number
   prompt: string
@@ -265,6 +264,7 @@ export interface AgentDef {
 
 export interface AgentDefCreateRequest {
   id: string
+  layer: number
   model?: string
   timeout?: number
   prompt: string
@@ -275,6 +275,7 @@ export interface AgentDefCreateRequest {
 }
 
 export interface AgentDefUpdateRequest {
+  layer?: number
   model?: string
   timeout?: number
   prompt?: string

@@ -25,7 +25,7 @@ function renderForm(
 
 const groupInput = () => screen.getByPlaceholderText(/type a tag and press enter/i)
 
-/** Chip remove buttons use aria-label; PhaseListEditor uses title. This distinguishes them. */
+/** Chip remove buttons use aria-label */
 const chipRemoveButtons = () =>
   Array.from(document.querySelectorAll('button[aria-label^="Remove "]'))
 
@@ -194,8 +194,6 @@ describe('WorkflowDefForm - groups chip input', () => {
       await user.type(groupInput(), 'fe')
       await user.keyboard('{Enter}')
 
-      const agentInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs[0], 'analyzer')
       await user.click(screen.getByRole('button', { name: /submit/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
@@ -222,7 +220,6 @@ describe('WorkflowDefForm - groups chip input', () => {
         initial: {
           id: 'feature',
           groups: ['be', 'fe'],
-          phases: [{ id: 'analyzer', agent: 'analyzer', layer: 0 }],
         },
         onSubmit,
       })

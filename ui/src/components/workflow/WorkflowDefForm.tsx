@@ -1,32 +1,11 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { PhaseListEditor, type PhaseFormEntry } from '@/components/workflow/PhaseListEditor'
-import type { PhaseDef, ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
-
-/** Convert API phase format to form entries */
-function phasesToForm(phases?: PhaseDef[]): PhaseFormEntry[] {
-  if (!phases?.length) return [{ agent: '', layer: 0 }]
-  return phases.map((p) => ({
-    agent: p.agent || p.id,
-    layer: p.layer ?? 0,
-  }))
-}
-
-/** Convert form entries to API format (always object with layer) */
-function formToPhases(entries: PhaseFormEntry[]): PhaseDef[] {
-  return entries
-    .filter((e) => e.agent.trim())
-    .map((e) => ({
-      id: e.agent.trim(),
-      agent: e.agent.trim(),
-      layer: e.layer,
-    }))
-}
+import type { ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
 
 const TAG_PATTERN = /^[a-zA-Z0-9-]+$/
 
 interface WorkflowDefFormProps {
-  initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; close_ticket_on_complete?: boolean; phases?: PhaseDef[] }
+  initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; close_ticket_on_complete?: boolean }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
   formId?: string
@@ -39,7 +18,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   const [groups, setGroups] = useState<string[]>(initial?.groups || [])
   const [groupInput, setGroupInput] = useState('')
   const [closeTicketOnComplete, setCloseTicketOnComplete] = useState(initial?.close_ticket_on_complete ?? true)
-  const [phases, setPhases] = useState<PhaseFormEntry[]>(phasesToForm(initial?.phases))
 
   const addGroup = (raw: string) => {
     const tag = raw.trim().toLowerCase()
@@ -57,7 +35,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const apiPhases = formToPhases(phases)
     if (isCreate) {
       onSubmit({
         id: id.trim(),
@@ -65,7 +42,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         scope_type: scopeType,
         groups,
         close_ticket_on_complete: closeTicketOnComplete,
-        phases: apiPhases,
       } as WorkflowDefCreateRequest)
     } else {
       onSubmit({
@@ -73,7 +49,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         scope_type: scopeType,
         groups,
         close_ticket_on_complete: closeTicketOnComplete,
-        phases: apiPhases.length ? apiPhases : undefined,
       } as WorkflowDefUpdateRequest)
     }
   }
@@ -189,13 +164,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         <p className="text-xs text-muted-foreground mt-1">
           Define tag groups for skip logic (e.g., be, fe, docs). Press Enter or comma to add.
         </p>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">
-          Agents
-        </label>
-        <PhaseListEditor value={phases} onChange={setPhases} />
       </div>
 
     </form>

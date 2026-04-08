@@ -86,7 +86,6 @@ describe('WorkflowsPage – DialogFooter buttons', () => {
       await screen.findByRole('heading', { name: /create workflow/i })
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'new-flow')
-      await user.type(screen.getAllByPlaceholderText(/agent type/i)[0], 'setup-analyzer')
 
       // The footer submit button is the SECOND "Create Workflow" button
       const createButtons = screen.getAllByRole('button', { name: /create workflow/i })
@@ -109,7 +108,6 @@ describe('WorkflowsPage – DialogFooter buttons', () => {
       await screen.findByRole('heading', { name: /create workflow/i })
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'slow-flow')
-      await user.type(screen.getAllByPlaceholderText(/agent type/i)[0], 'setup-analyzer')
 
       const createButtons = screen.getAllByRole('button', { name: /create workflow/i })
       await user.click(createButtons[1])

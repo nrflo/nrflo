@@ -65,6 +65,10 @@ async function selectDropdownOption(user: ReturnType<typeof userEvent.setup>, tr
   await user.click(screen.getByText(optionLabel))
 }
 
+function getLayerInput() {
+  return screen.getAllByRole('spinbutton').find(el => (el as HTMLInputElement).min === '0' && !((el as HTMLInputElement).max)) as HTMLInputElement
+}
+
 function getTimeoutInput() {
   return screen.getAllByRole('spinbutton').find(el => (el as HTMLInputElement).min === '1' && !((el as HTMLInputElement).max)) as HTMLInputElement
 }
@@ -172,11 +176,14 @@ describe('AgentDefForm', () => {
 
       expect(onSubmit).toHaveBeenCalledWith({
         id: 'setup-analyzer',
+        layer: 0,
         model: 'opus',
         timeout: 30,
         prompt: 'You are a setup analyzer...',
         restart_threshold: 20,
+        max_fail_restarts: undefined,
         tag: undefined,
+        low_consumption_model: undefined,
       })
     })
 
@@ -197,11 +204,14 @@ describe('AgentDefForm', () => {
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith({
+        layer: 0,
         model: 'sonnet',
         timeout: 20,
         prompt: 'New prompt',
         restart_threshold: undefined,
+        max_fail_restarts: undefined,
         tag: undefined,
+        low_consumption_model: undefined,
       })
     })
 
@@ -374,6 +384,72 @@ describe('AgentDefForm', () => {
 
       expect(optionTexts).toHaveLength(11)
       expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)', 'OpenCode: GPT 5.4', 'OpenCode: Minimax M2.5 Free', 'OpenCode: Qwen 3.6 Plus Free'])
+    })
+  })
+
+  describe('layer field', () => {
+    it('renders with default value 0 in create mode', () => {
+      renderForm({ isCreate: true })
+      const layerInput = getLayerInput()
+      expect(layerInput).toBeInTheDocument()
+      expect(layerInput).toHaveValue(0)
+      expect(layerInput.type).toBe('number')
+    })
+
+    it('populates from initial layer value in edit mode', () => {
+      renderForm({
+        isCreate: false,
+        initial: { layer: 3, prompt: 'Test' },
+      })
+      expect(getLayerInput()).toHaveValue(3)
+    })
+
+    it('includes changed layer in create payload', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderForm({ isCreate: true, onSubmit })
+
+      await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
+      await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Prompt')
+
+      const layerInput = getLayerInput()
+      await user.clear(layerInput)
+      await user.type(layerInput, '2')
+
+      await user.click(screen.getByRole('button', { name: /create/i }))
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'test-agent', layer: 2 })
+      )
+    })
+
+    it('includes changed layer in update payload', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderForm({
+        isCreate: false,
+        initial: { layer: 1, prompt: 'Test' },
+        onSubmit,
+      })
+
+      const layerInput = getLayerInput()
+      await user.clear(layerInput)
+      await user.type(layerInput, '5')
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ layer: 5 })
+      )
+      // Update payload should not include id
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.not.objectContaining({ id: expect.anything() })
+      )
+    })
+
+    it('shows help text about execution order', () => {
+      renderForm({ isCreate: true })
+      expect(screen.getByText(/layer 0 runs first/i)).toBeInTheDocument()
     })
   })
 

@@ -470,18 +470,14 @@ describe('WorkflowsPage', () => {
   })
 
   describe('full user flow', () => {
-    it('creates a workflow with layer-based agents', async () => {
+    it('creates a workflow without phases (layers managed per-agent)', async () => {
       const user = userEvent.setup()
       mockWorkflowDefs({})
       vi.mocked(workflowsApi.createWorkflowDef).mockResolvedValue({
         id: 'test-workflow',
         project_id: 'test-project',
         description: 'Test workflow',
-        phases: [
-          { id: 'analyzer-a', agent: 'analyzer-a', layer: 0 },
-          { id: 'analyzer-b', agent: 'analyzer-b', layer: 0 },
-          { id: 'implementor', agent: 'implementor', layer: 1 },
-        ],
+        phases: [],
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
       })
@@ -499,29 +495,6 @@ describe('WorkflowsPage', () => {
       // Fill in workflow ID
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'test-workflow')
 
-      // Fill the default agent (index 0)
-      const defaultInputs = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(defaultInputs[0], 'analyzer-a')
-
-      // Add second agent
-      await user.click(screen.getByRole('button', { name: /add agent/i }))
-      const agentInputs2 = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs2[1], 'analyzer-b')
-
-      // Default agent is layer 0, added agent auto-increments to layer 1
-      const layerInputs = screen.getAllByRole('spinbutton')
-      expect(layerInputs[0]).toHaveValue(0)
-      expect(layerInputs[1]).toHaveValue(1)
-
-      // Set second agent to layer 0 (same as first)
-      await user.clear(layerInputs[1])
-      await user.type(layerInputs[1], '0')
-
-      // Add third agent (auto-increments to layer 1)
-      await user.click(screen.getByRole('button', { name: /add agent/i }))
-      const agentInputs3 = screen.getAllByPlaceholderText(/agent type/i)
-      await user.type(agentInputs3[2], 'implementor')
-
       // Submit — the form has a submit button with text "Create Workflow"
       // which is different from the page button (now behind the dialog)
       const submitButton = screen.getAllByRole('button', { name: /create workflow/i })[1]
@@ -531,14 +504,13 @@ describe('WorkflowsPage', () => {
         expect(workflowsApi.createWorkflowDef).toHaveBeenCalledWith(
           expect.objectContaining({
             id: 'test-workflow',
-            phases: expect.arrayContaining([
-              expect.objectContaining({ agent: 'analyzer-a', layer: 0 }),
-              expect.objectContaining({ agent: 'analyzer-b', layer: 0 }),
-              expect.objectContaining({ agent: 'implementor', layer: 1 }),
-            ]),
           })
         )
       })
+
+      // Verify no phases field in the create request
+      const callArgs = vi.mocked(workflowsApi.createWorkflowDef).mock.calls[0][0]
+      expect(callArgs).not.toHaveProperty('phases')
     })
   })
 })

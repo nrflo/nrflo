@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
-import { ReactFlow, Background, Controls, useReactFlow, MarkerType, type Node, type Edge, type NodeTypes } from '@xyflow/react'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import { ReactFlow, Background, Controls, useReactFlow, useStore, MarkerType, type Node, type Edge, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
 import { getLayoutedElements, BASE_HEIGHT } from './layout'
@@ -11,30 +11,25 @@ const nodeTypes: NodeTypes = {
   agent: AgentFlowNode,
 }
 
-/** Calls fitView() whenever the node set changes (e.g. workflow start, phase transitions, panel toggle). */
-function FitViewOnChange({ nodeKey, logPanelCollapsed, selectedAgent }: { nodeKey: string; logPanelCollapsed?: boolean; selectedAgent?: string | null }) {
+const FIT_VIEW_OPTIONS = { padding: 0.3 }
+
+/** Calls fitView() when container dimensions change (via ResizeObserver) or node layout changes. */
+function FitViewOnChange({ nodeKey }: { nodeKey: string }) {
   const { fitView } = useReactFlow()
+  const containerWidth = useStore((s) => s.width)
+  const containerHeight = useStore((s) => s.height)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
-    // Small delay to let React Flow finish internal layout before fitting
-    const timer1 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 500)
-    // Second pass to catch layouts that settle after the first fitView
-    const timer2 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 1000)
-    return () => { clearTimeout(timer1); clearTimeout(timer2) }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => fitView(FIT_VIEW_OPTIONS), 150)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [containerWidth, containerHeight, fitView])
+
+  useEffect(() => {
+    const timer = setTimeout(() => fitView(FIT_VIEW_OPTIONS), 100)
+    return () => clearTimeout(timer)
   }, [nodeKey, fitView])
-
-  // Re-fit after panel toggle with longer delay to wait for CSS transition (300ms)
-  useEffect(() => {
-    const timer1 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
-    const timer2 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 850)
-    return () => { clearTimeout(timer1); clearTimeout(timer2) }
-  }, [logPanelCollapsed, fitView])
-
-  // Re-fit when selected agent changes (panel mounts/unmounts for completed workflows)
-  useEffect(() => {
-    const timer1 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 350)
-    const timer2 = setTimeout(() => fitView({ padding: 0.3, duration: 200 }), 850)
-    return () => { clearTimeout(timer1); clearTimeout(timer2) }
-  }, [selectedAgent, fitView])
 
   return null
 }
@@ -47,8 +42,6 @@ export function PhaseGraph({
   phaseLayers,
   sessions,
   onAgentSelect,
-  logPanelCollapsed,
-  selectedAgent,
   onRetryFailed,
   retryingSessionId,
   workflowStatus,
@@ -398,7 +391,7 @@ export function PhaseGraph({
         edges={layoutedEdges}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.3 }}
+        fitViewOptions={FIT_VIEW_OPTIONS}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
@@ -411,7 +404,7 @@ export function PhaseGraph({
         preventScrolling={false}
         proOptions={{ hideAttribution: true }}
       >
-        <FitViewOnChange nodeKey={nodeKey} logPanelCollapsed={logPanelCollapsed} selectedAgent={selectedAgent} />
+        <FitViewOnChange nodeKey={nodeKey} />
         <Background color="transparent" />
         <Controls showInteractive={false} position="top-left" />
       </ReactFlow>

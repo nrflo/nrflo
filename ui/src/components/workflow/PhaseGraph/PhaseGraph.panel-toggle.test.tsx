@@ -5,6 +5,7 @@ import type { PhaseGraphProps } from './types'
 import type { PhaseState, ActiveAgentV4 } from '@/types/workflow'
 
 const mockFitView = vi.fn()
+let mockStoreState = { width: 800, height: 600 }
 
 vi.mock('@xyflow/react', async () => {
   const actual = await vi.importActual('@xyflow/react')
@@ -16,6 +17,7 @@ vi.mock('@xyflow/react', async () => {
     Background: () => <div data-testid="background" />,
     Controls: () => <div data-testid="controls" />,
     useReactFlow: () => ({ fitView: mockFitView }),
+    useStore: (selector: (s: Record<string, unknown>) => unknown) => selector(mockStoreState),
   }
 })
 
@@ -71,7 +73,7 @@ function makeProps(overrides: Partial<PhaseGraphProps> = {}): PhaseGraphProps {
   }
 }
 
-function propsWithAgent(logPanelCollapsed?: boolean): PhaseGraphProps {
+function propsWithAgent(): PhaseGraphProps {
   return makeProps({
     phases: { investigation: makePhaseState({ status: 'in_progress' }) },
     phaseOrder: ['investigation'],
@@ -81,7 +83,6 @@ function propsWithAgent(logPanelCollapsed?: boolean): PhaseGraphProps {
         phase: 'investigation',
       }),
     },
-    logPanelCollapsed,
   })
 }
 
@@ -90,75 +91,103 @@ async function flushLayout() {
   await act(async () => {})
 }
 
-describe('PhaseGraph - Panel Toggle', () => {
+describe('PhaseGraph - Container Resize', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    mockStoreState = { width: 800, height: 600 }
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('calls fitView with correct options after 350ms delay on collapse', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+  it('calls fitView 150ms after container dimensions change', async () => {
+    const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    // Flush all mount timers including second-pass (nodeKey@1000ms, panel/selectedAgent@850ms)
-    act(() => { vi.advanceTimersByTime(1000) })
+    // Flush mount timers (nodeKey@100ms, container@150ms)
+    act(() => { vi.advanceTimersByTime(150) })
     vi.clearAllMocks()
 
-    // Collapse panel
-    rerender(<PhaseGraph {...propsWithAgent(true)} />)
+    // Simulate container resize (e.g., panel collapse)
+    mockStoreState = { width: 600, height: 600 }
+    rerender(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    // Not called before 350ms
-    act(() => { vi.advanceTimersByTime(349) })
+    // Not called before 150ms
+    act(() => { vi.advanceTimersByTime(149) })
     expect(mockFitView).not.toHaveBeenCalled()
 
-    // Called at 350ms with correct options
+    // Called at 150ms
     act(() => { vi.advanceTimersByTime(1) })
-    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
     expect(mockFitView).toHaveBeenCalledTimes(1)
   })
 
-  it('calls fitView after 350ms delay on expand', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(true)} />)
+  it('calls fitView after container width expands', async () => {
+    const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => { vi.advanceTimersByTime(150) })
     vi.clearAllMocks()
 
-    rerender(<PhaseGraph {...propsWithAgent(false)} />)
+    // Simulate expand
+    mockStoreState = { width: 1000, height: 600 }
+    rerender(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    act(() => { vi.advanceTimersByTime(350) })
-    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+    act(() => { vi.advanceTimersByTime(150) })
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
   })
 
-  it('handles multiple rapid toggles (each creates a timer)', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+  it('debounces rapid dimension changes to single fitView call', async () => {
+    const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => { vi.advanceTimersByTime(150) })
     vi.clearAllMocks()
 
-    rerender(<PhaseGraph {...propsWithAgent(true)} />)
-    await flushLayout()
-    rerender(<PhaseGraph {...propsWithAgent(false)} />)
-    await flushLayout()
-    rerender(<PhaseGraph {...propsWithAgent(true)} />)
+    // Rapid resizes (simulating CSS transition frames)
+    mockStoreState = { width: 750, height: 600 }
+    rerender(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    act(() => { vi.advanceTimersByTime(350) })
-    expect(mockFitView.mock.calls.length).toBeGreaterThanOrEqual(1)
+    mockStoreState = { width: 700, height: 600 }
+    rerender(<PhaseGraph {...propsWithAgent()} />)
+    await flushLayout()
+
+    mockStoreState = { width: 650, height: 600 }
+    rerender(<PhaseGraph {...propsWithAgent()} />)
+    await flushLayout()
+
+    // Only one fitView call after 150ms from the last change
+    act(() => { vi.advanceTimersByTime(150) })
+    expect(mockFitView).toHaveBeenCalledTimes(1)
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
   })
 
-  it('fires fitView independently for node changes and panel toggle', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
+  it('does not fire fitView on container resize when no nodes exist', async () => {
+    const props = makeProps({ phases: {}, phaseOrder: [] })
+    const { rerender } = render(<PhaseGraph {...props} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => { vi.advanceTimersByTime(150) })
     vi.clearAllMocks()
 
-    // Change nodes AND toggle panel simultaneously
+    mockStoreState = { width: 600, height: 600 }
+    rerender(<PhaseGraph {...props} />)
+    await flushLayout()
+    act(() => { vi.advanceTimersByTime(200) })
+
+    expect(mockFitView).not.toHaveBeenCalled()
+  })
+
+  it('fires fitView independently for node changes and container resize', async () => {
+    const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
+    await flushLayout()
+    act(() => { vi.advanceTimersByTime(150) })
+    vi.clearAllMocks()
+
+    // Change nodes AND container dimensions simultaneously
+    mockStoreState = { width: 600, height: 600 }
     rerender(<PhaseGraph {...makeProps({
       phases: { investigation: makePhaseState({ status: 'in_progress' }) },
       phaseOrder: ['investigation'],
@@ -166,49 +195,15 @@ describe('PhaseGraph - Panel Toggle', () => {
         'setup-analyzer:claude:sonnet': makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation' }),
         'setup-analyzer:claude:haiku': makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation', model_id: 'claude-haiku-4-5' }),
       },
-      logPanelCollapsed: true,
     })} />)
     await flushLayout()
 
-    // Panel toggle fires at 350ms
-    act(() => { vi.advanceTimersByTime(350) })
+    // Node change fires at 100ms
+    act(() => { vi.advanceTimersByTime(100) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
 
-    // Node change fires at 500ms
-    act(() => { vi.advanceTimersByTime(150) })
+    // Container resize fires at 150ms
+    act(() => { vi.advanceTimersByTime(50) })
     expect(mockFitView).toHaveBeenCalledTimes(2)
-  })
-
-  it('does not fire fitView on panel toggle when no nodes exist', async () => {
-    const props = makeProps({ phases: {}, phaseOrder: [], logPanelCollapsed: false })
-    const { rerender } = render(<PhaseGraph {...props} />)
-    await flushLayout()
-    act(() => { vi.advanceTimersByTime(1000) })
-    vi.clearAllMocks()
-
-    rerender(<PhaseGraph {...props} logPanelCollapsed={true} />)
-    await flushLayout()
-    act(() => { vi.advanceTimersByTime(400) })
-
-    expect(mockFitView).not.toHaveBeenCalled()
-  })
-
-  it('fires a second fitView at 850ms after panel toggle (two-pass strategy)', async () => {
-    const { rerender } = render(<PhaseGraph {...propsWithAgent(false)} />)
-    await flushLayout()
-    act(() => { vi.advanceTimersByTime(1000) })
-    vi.clearAllMocks()
-
-    rerender(<PhaseGraph {...propsWithAgent(true)} />)
-    await flushLayout()
-
-    // First pass fires at 350ms
-    act(() => { vi.advanceTimersByTime(350) })
-    expect(mockFitView).toHaveBeenCalledTimes(1)
-
-    // Second pass fires 500ms later (850ms total)
-    act(() => { vi.advanceTimersByTime(500) })
-    expect(mockFitView).toHaveBeenCalledTimes(2)
-    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
   })
 })

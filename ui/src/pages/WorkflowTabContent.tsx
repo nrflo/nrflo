@@ -303,8 +303,6 @@ export function WorkflowTabContent({
               ticketId={ticketId}
               sessions={!ticketId ? sessions : undefined}
               onAgentSelect={onAgentSelect}
-              logPanelCollapsed={logPanelCollapsed}
-              selectedAgent={selectedPanelAgent?.session?.id ?? selectedPanelAgent?.historyEntry?.session_id ?? null}
               onRetryFailed={onRetryFailed}
               retryingSessionId={retryingSessionId}
             />

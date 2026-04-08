@@ -16,6 +16,7 @@ vi.mock('@xyflow/react', async () => {
     Background: () => <div data-testid="background" />,
     Controls: () => <div data-testid="controls" />,
     useReactFlow: () => ({ fitView: mockFitView }),
+    useStore: (selector: (s: Record<string, unknown>) => unknown) => selector({ width: 800, height: 600 }),
   }
 })
 
@@ -100,7 +101,7 @@ describe('PhaseGraph', () => {
   })
 
   describe('FitViewOnChange', () => {
-    it('calls fitView with correct options after 200ms on mount', async () => {
+    it('calls fitView with correct options on mount', async () => {
       const props = makeProps({
         phases: { investigation: makePhaseState({ status: 'in_progress' }) },
         phaseOrder: ['investigation'],
@@ -114,7 +115,7 @@ describe('PhaseGraph', () => {
 
       expect(mockFitView).not.toHaveBeenCalled()
       act(() => { vi.advanceTimersByTime(500) })
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
     })
 
     it('calls fitView again when nodes change (workflow starts)', async () => {
@@ -138,7 +139,7 @@ describe('PhaseGraph', () => {
       await flushLayout()
 
       act(() => { vi.advanceTimersByTime(500) })
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
     })
 
     it('calls fitView when phase transitions to next phase', async () => {
@@ -172,7 +173,7 @@ describe('PhaseGraph', () => {
       await flushLayout()
 
       act(() => { vi.advanceTimersByTime(500) })
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
     })
 
     it('does not call fitView when nodes remain the same', async () => {
@@ -293,7 +294,7 @@ describe('PhaseGraph', () => {
       await flushLayout()
 
       act(() => { vi.advanceTimersByTime(500) })
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
       expect(screen.getByTestId('react-flow')).toBeInTheDocument()
     })
   })
@@ -346,7 +347,7 @@ describe('PhaseGraph', () => {
       await flushLayout()
 
       act(() => { vi.advanceTimersByTime(500) })
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
     })
   })
 })

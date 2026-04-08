@@ -83,41 +83,38 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
     vi.clearAllMocks()
   })
 
-  describe('logPanelCollapsed prop threading', () => {
-    it('threads logPanelCollapsed to PhaseTimeline', () => {
+  describe('logPanelCollapsed is NOT threaded to PhaseTimeline (container resize handles it)', () => {
+    it('does not pass logPanelCollapsed to PhaseTimeline', () => {
       render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       expect(mockPhaseTimeline).toHaveBeenCalledWith(
-        expect.objectContaining({
-          logPanelCollapsed: false,
+        expect.not.objectContaining({
+          logPanelCollapsed: expect.anything(),
         })
       )
     })
 
-    it('threads logPanelCollapsed=true to PhaseTimeline', () => {
+    it('PhaseTimeline does not receive logPanelCollapsed when collapsed', () => {
       render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
 
       expect(mockPhaseTimeline).toHaveBeenCalledWith(
-        expect.objectContaining({
-          logPanelCollapsed: true,
+        expect.not.objectContaining({
+          logPanelCollapsed: expect.anything(),
         })
       )
     })
 
-    it('updates logPanelCollapsed when prop changes', () => {
+    it('PhaseTimeline props unchanged when logPanelCollapsed toggles', () => {
       const { rerender } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
-
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          logPanelCollapsed: false,
-        })
-      )
+      vi.clearAllMocks()
 
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
 
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          logPanelCollapsed: true,
+      // PhaseTimeline still renders — it just doesn't get logPanelCollapsed
+      expect(mockPhaseTimeline).toHaveBeenCalled()
+      expect(mockPhaseTimeline).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          logPanelCollapsed: expect.anything(),
         })
       )
     })
@@ -154,13 +151,10 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
   })
 
   describe('full flow: panel toggle + graph re-center + width change', () => {
-    it('full flow: toggling panel passes correct state to both PhaseTimeline and AgentLogPanel', () => {
+    it('full flow: toggling panel passes correct state to AgentLogPanel', () => {
       const { rerender } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       // Initial state: expanded
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({ logPanelCollapsed: false })
-      )
       expect(mockAgentLogPanel).toHaveBeenLastCalledWith(
         expect.objectContaining({ collapsed: false })
       )
@@ -170,9 +164,6 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       // Toggle to collapsed
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
 
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({ logPanelCollapsed: true })
-      )
       expect(mockAgentLogPanel).toHaveBeenLastCalledWith(
         expect.objectContaining({ collapsed: true })
       )
@@ -182,9 +173,6 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       // Toggle back to expanded
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({ logPanelCollapsed: false })
-      )
       expect(mockAgentLogPanel).toHaveBeenLastCalledWith(
         expect.objectContaining({ collapsed: false })
       )
@@ -192,12 +180,10 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       expect(panelExpandedAgain.className).toContain('flex-1')
     })
 
-    it('full flow: panel state controls both graph fitView trigger and panel width simultaneously', async () => {
+    it('full flow: panel state controls panel width', async () => {
       const { rerender } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       // Verify initial state
-      const phaseTimeline = screen.getByTestId('phase-timeline')
-      expect(phaseTimeline.getAttribute('data-collapsed')).toBe('false')
       const panel = screen.getByTestId('agent-log-panel')
       expect(panel.getAttribute('data-collapsed')).toBe('false')
       expect(panel.className).toContain('flex-1')
@@ -205,9 +191,6 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       // Simulate user toggling panel
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
 
-      // Both components should update simultaneously
-      const phaseTimelineAfterToggle = screen.getByTestId('phase-timeline')
-      expect(phaseTimelineAfterToggle.getAttribute('data-collapsed')).toBe('true')
       const panelAfterToggle = screen.getByTestId('agent-log-panel')
       expect(panelAfterToggle.getAttribute('data-collapsed')).toBe('true')
       expect(panelAfterToggle.className).toContain('w-10')
@@ -234,7 +217,7 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       expect(panel.className).toContain('flex-1')
     })
 
-    it('threads logPanelCollapsed to PhaseTimeline when agent is selected', () => {
+    it('does not thread logPanelCollapsed to PhaseTimeline when agent is selected', () => {
       const selectedAgent = {
         phaseName: 'implementation',
         agent: makeAgent(),
@@ -249,8 +232,8 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       )
 
       expect(mockPhaseTimeline).toHaveBeenCalledWith(
-        expect.objectContaining({
-          logPanelCollapsed: true,
+        expect.not.objectContaining({
+          logPanelCollapsed: expect.anything(),
         })
       )
     })
@@ -270,7 +253,7 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       expect(screen.queryByTestId('agent-log-panel')).not.toBeInTheDocument()
     })
 
-    it('still threads logPanelCollapsed to PhaseTimeline even when panel is hidden', () => {
+    it('does not thread logPanelCollapsed to PhaseTimeline when panel is hidden', () => {
       render(
         <WorkflowTabContent
           {...defaultProps}
@@ -282,8 +265,8 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       )
 
       expect(mockPhaseTimeline).toHaveBeenCalledWith(
-        expect.objectContaining({
-          logPanelCollapsed: true,
+        expect.not.objectContaining({
+          logPanelCollapsed: expect.anything(),
         })
       )
     })
@@ -367,9 +350,6 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       // Final state should be consistent
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({ logPanelCollapsed: false })
-      )
       expect(mockAgentLogPanel).toHaveBeenLastCalledWith(
         expect.objectContaining({ collapsed: false })
       )
@@ -395,9 +375,6 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       )
 
       // Panel state should remain consistent
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({ logPanelCollapsed: true })
-      )
       expect(mockAgentLogPanel).toHaveBeenLastCalledWith(
         expect.objectContaining({ collapsed: true })
       )
@@ -405,7 +382,7 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
   })
 
   describe('acceptance criteria verification', () => {
-    it('AC1: toggling panel changes logPanelCollapsed prop to PhaseTimeline (triggers graph re-center)', () => {
+    it('AC1: toggling panel updates AgentLogPanel collapsed state (graph re-centers via ResizeObserver)', () => {
       const { rerender } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       vi.clearAllMocks()
@@ -413,10 +390,9 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       // Simulate user clicking toggle
       rerender(<WorkflowTabContent {...defaultProps} logPanelCollapsed={true} />)
 
-      // PhaseTimeline should receive new logPanelCollapsed value
-      // This triggers FitViewOnChange useEffect in PhaseGraph
-      expect(mockPhaseTimeline).toHaveBeenCalledWith(
-        expect.objectContaining({ logPanelCollapsed: true })
+      // AgentLogPanel receives collapsed=true; container resize triggers fitView in PhaseGraph
+      expect(mockAgentLogPanel).toHaveBeenCalledWith(
+        expect.objectContaining({ collapsed: true })
       )
     })
 
@@ -432,15 +408,12 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       expect(panel.className).not.toContain('min-w-[300px]')
     })
 
-    it('full acceptance: toggle panel → PhaseTimeline gets new prop → panel width changes', () => {
+    it('full acceptance: toggle panel → panel width changes → ResizeObserver triggers fitView', () => {
       const { rerender } = render(<WorkflowTabContent {...defaultProps} logPanelCollapsed={false} />)
 
       // Initial: expanded panel with flex-1
       let panel = screen.getByTestId('agent-log-panel')
       expect(panel.className).toContain('flex-1')
-      expect(mockPhaseTimeline).toHaveBeenLastCalledWith(
-        expect.objectContaining({ logPanelCollapsed: false })
-      )
 
       vi.clearAllMocks()
 
@@ -451,13 +424,13 @@ describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
       panel = screen.getByTestId('agent-log-panel')
       expect(panel.className).toContain('w-10')
 
-      // 2. PhaseTimeline receives logPanelCollapsed=true
-      expect(mockPhaseTimeline).toHaveBeenCalledWith(
-        expect.objectContaining({ logPanelCollapsed: true })
+      // 2. AgentLogPanel receives collapsed=true
+      expect(mockAgentLogPanel).toHaveBeenCalledWith(
+        expect.objectContaining({ collapsed: true })
       )
 
-      // 3. PhaseTimeline → PhaseGraph → FitViewOnChange useEffect fires (tested in PhaseGraph.panel-toggle.test.tsx)
-      // This completes the flow: toggle → re-center graph + panel width change
+      // 3. Container resize detected by React Flow's ResizeObserver → useStore → fitView
+      // (tested in PhaseGraph.panel-toggle.test.tsx)
     })
   })
 })

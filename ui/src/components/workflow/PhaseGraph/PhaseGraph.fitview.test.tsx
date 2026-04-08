@@ -1,12 +1,5 @@
 /**
- * Two-pass fitView strategy tests for FitViewOnChange (nodeKey trigger).
- *
- * Each trigger fires fitView twice:
- * - nodeKey: 500ms (first pass) + 1000ms (second pass)
- *
- * Panel/selectedAgent second-pass tests live in their respective test files.
- * Pattern: flush all mount timers to 1000ms, clearAllMocks, then trigger a
- * nodeKey-only change (same logPanelCollapsed/selectedAgent) to isolate the effect.
+ * FitViewOnChange tests for nodeKey trigger (single 100ms timer).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act } from '@testing-library/react'
@@ -26,6 +19,7 @@ vi.mock('@xyflow/react', async () => {
     Background: () => <div data-testid="background" />,
     Controls: () => <div data-testid="controls" />,
     useReactFlow: () => ({ fitView: mockFitView }),
+    useStore: (selector: (s: Record<string, unknown>) => unknown) => selector({ width: 800, height: 600 }),
   }
 })
 
@@ -88,7 +82,7 @@ async function flushLayout() {
   await act(async () => {})
 }
 
-describe('FitViewOnChange - nodeKey two-pass', () => {
+describe('FitViewOnChange - nodeKey', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
@@ -98,50 +92,40 @@ describe('FitViewOnChange - nodeKey two-pass', () => {
     vi.useRealTimers()
   })
 
-  it('fires fitView twice on nodeKey change: at 500ms then again at 1000ms', async () => {
+  it('fires fitView at 100ms on nodeKey change', async () => {
     const { rerender } = render(<PhaseGraph {...baseProps()} />)
     await flushLayout()
-    // Flush all mount timers (logPanelCollapsed@350ms, selectedAgent@350ms, nodeKey@500ms,
-    // logPanelCollapsed@850ms, selectedAgent@850ms, nodeKey@1000ms)
-    act(() => { vi.advanceTimersByTime(1000) })
+    // Flush all mount timers (nodeKey@100ms, container@150ms)
+    act(() => { vi.advanceTimersByTime(150) })
     vi.clearAllMocks()
 
-    // Add second agent — nodeKey changes; logPanelCollapsed/selectedAgent unchanged so only nodeKey fires
+    // Add second agent — nodeKey changes
     rerender(<PhaseGraph {...propsWithTwoAgents()} />)
     await flushLayout()
 
-    // First pass fires at 500ms
-    act(() => { vi.advanceTimersByTime(500) })
+    // Fires at 100ms
+    act(() => { vi.advanceTimersByTime(100) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
-    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
-
-    // Second pass fires 500ms later (1000ms total since the change)
-    act(() => { vi.advanceTimersByTime(500) })
-    expect(mockFitView).toHaveBeenCalledTimes(2)
-    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
   })
 
-  it('nodeKey cleanup clears both timers — second pass does not fire after unmount', async () => {
+  it('nodeKey cleanup clears timer — fitView does not fire after unmount', async () => {
     const { rerender, unmount } = render(<PhaseGraph {...baseProps()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => { vi.advanceTimersByTime(150) })
     vi.clearAllMocks()
 
     // Trigger nodeKey change
     rerender(<PhaseGraph {...propsWithTwoAgents()} />)
     await flushLayout()
 
-    // First pass fires at 500ms
-    act(() => { vi.advanceTimersByTime(500) })
-    expect(mockFitView).toHaveBeenCalledTimes(1)
-
-    // Unmount before second timer (1000ms) fires
+    // Unmount before timer fires
     unmount()
 
-    // Advance past second timer deadline
-    act(() => { vi.advanceTimersByTime(600) })
+    // Advance past timer deadline
+    act(() => { vi.advanceTimersByTime(200) })
 
-    // Second pass must NOT fire — cleanup cleared the timer
-    expect(mockFitView).toHaveBeenCalledTimes(1)
+    // Timer must NOT fire — cleanup cleared it
+    expect(mockFitView).not.toHaveBeenCalled()
   })
 })

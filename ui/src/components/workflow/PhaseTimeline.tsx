@@ -12,13 +12,11 @@ interface PhaseTimelineProps {
   ticketId?: string
   sessions?: AgentSession[]
   onAgentSelect?: (data: SelectedAgentData) => void
-  logPanelCollapsed?: boolean
-  selectedAgent?: string | null
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
 }
 
-export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect, logPanelCollapsed, selectedAgent, onRetryFailed, retryingSessionId }: PhaseTimelineProps) {
+export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sessionsProp, onAgentSelect, onRetryFailed, retryingSessionId }: PhaseTimelineProps) {
   const phases = workflow.phases || {}
   const activeAgents = useMemo(() => workflow.active_agents || {}, [workflow.active_agents])
 
@@ -72,8 +70,6 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
         phaseLayers={workflow.phase_layers}
         sessions={sessions}
         onAgentSelect={onAgentSelect}
-        logPanelCollapsed={logPanelCollapsed}
-        selectedAgent={selectedAgent}
         onRetryFailed={onRetryFailed}
         retryingSessionId={retryingSessionId}
         workflowStatus={workflow.status}

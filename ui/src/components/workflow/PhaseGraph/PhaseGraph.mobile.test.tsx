@@ -27,6 +27,7 @@ vi.mock('@xyflow/react', async () => {
     Background: () => null,
     Controls: () => null,
     useReactFlow: () => ({ fitView: mockFitView }),
+    useStore: (selector: (s: Record<string, unknown>) => unknown) => selector({ width: 800, height: 600 }),
   }
 })
 
@@ -144,6 +145,6 @@ describe('PhaseGraph mobile behavior (isMobile=true)', () => {
     await flushLayout()
     act(() => { vi.advanceTimersByTime(500) })
 
-    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3, duration: 200 })
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
   })
 })

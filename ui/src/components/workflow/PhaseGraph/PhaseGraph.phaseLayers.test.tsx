@@ -22,6 +22,7 @@ vi.mock('@xyflow/react', async () => {
     Background: () => <div />,
     Controls: () => <div />,
     useReactFlow: () => ({ fitView: vi.fn() }),
+    useStore: (selector: (s: Record<string, unknown>) => unknown) => selector({ width: 800, height: 600 }),
   }
 })
 

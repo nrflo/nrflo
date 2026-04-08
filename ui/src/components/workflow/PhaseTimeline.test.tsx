@@ -299,10 +299,10 @@ describe('PhaseTimeline', () => {
       expect(screen.getByTestId('phase-graph')).toBeInTheDocument()
     })
 
-    it('passes logPanelCollapsed prop to PhaseGraph', () => {
+    it('passes onRetryFailed callback to PhaseGraph', () => {
       renderPhaseTimeline({
         workflow: makeWorkflow(),
-        logPanelCollapsed: true,
+        onRetryFailed: vi.fn(),
       })
 
       expect(screen.getByTestId('phase-graph')).toBeInTheDocument()

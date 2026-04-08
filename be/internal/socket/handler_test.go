@@ -53,13 +53,9 @@ func newHandlerTestEnv(t *testing.T) *handlerTestEnv {
 
 	// Seed test workflow definition
 	workflowSvc := service.NewWorkflowService(pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-	})
 	_, err = workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",
-		Phases:      phasesJSON,
 	})
 	if err != nil {
 		t.Fatalf("failed to seed workflow: %v", err)

@@ -21,7 +21,10 @@ import (
 func newResumeTestServer(t *testing.T) (*Server, string) {
 	t.Helper()
 	dbPath := t.TempDir() + "/resume_handler_test.db"
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("newResumeTestServer: create pool: %v", err)
 	}
@@ -61,8 +64,8 @@ func insertResumeTestSession(t *testing.T, dbPath, sessionID, projectID string, 
 	}
 
 	wfID := "test-wf-rs-" + projectID
-	_, err = database.Exec(`INSERT OR IGNORE INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
-		VALUES (?, ?, 'Resume Test WF', 'ticket', '[]', ?, ?)`, projectID, wfID, now, now)
+	_, err = database.Exec(`INSERT OR IGNORE INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
+		VALUES (?, ?, 'Resume Test WF', 'ticket', ?, ?)`, projectID, wfID, now, now)
 	if err != nil {
 		t.Fatalf("insertResumeTestSession: insert workflow: %v", err)
 	}

@@ -134,12 +134,13 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    description   TEXT                                                │
 │    scope_type    TEXT NOT NULL DEFAULT 'ticket'                      │
 │                  CHECK (scope_type IN ('ticket', 'project'))         │
-│    phases        TEXT NOT NULL  (JSON array string)                  │
 │    groups        TEXT NOT NULL DEFAULT '[]' (JSON: tag groups)      │
 │    close_ticket_on_complete INTEGER NOT NULL DEFAULT 1               │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, id)                                      │
+│    (phases column dropped by migration 000053; phases are now       │
+│     derived from agent_definitions.layer at read time)               │
 │                                                                      │
 │  AGENT_DEFINITIONS                                                   │
 │    id            TEXT NOT NULL                                       │
@@ -154,6 +155,9 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    stall_running_timeout_sec INTEGER (NULL = 480s default, 0 = disabled)│
 │    tag           TEXT NOT NULL DEFAULT '' (skip-tag assignment)      │
 │    low_consumption_model TEXT NOT NULL DEFAULT '' (model override for low consumption mode) │
+│    layer         INTEGER NOT NULL DEFAULT 0 (phase execution layer;  │
+│                  added by migration 000053, migrated from            │
+│                  workflows.phases JSON)                              │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, workflow_id, id)                         │

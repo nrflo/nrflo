@@ -1,7 +1,5 @@
 package types
 
-import "encoding/json"
-
 // TicketCreateRequest is the request for creating a ticket
 type TicketCreateRequest struct {
 	ID          string `json:"id,omitempty"`
@@ -189,21 +187,19 @@ type AgentCallbackRequest struct {
 
 // WorkflowDefCreateRequest is the request for creating a workflow definition
 type WorkflowDefCreateRequest struct {
-	ID                    string          `json:"id"`
-	Description           string          `json:"description,omitempty"`
-	ScopeType             string          `json:"scope_type,omitempty"` // "ticket" (default) or "project"
-	Phases                json.RawMessage `json:"phases"`               // accepts both string and object entries
-	Groups                []string        `json:"groups,omitempty"`
-	CloseTicketOnComplete *bool           `json:"close_ticket_on_complete,omitempty"`
+	ID                    string   `json:"id"`
+	Description           string   `json:"description,omitempty"`
+	ScopeType             string   `json:"scope_type,omitempty"` // "ticket" (default) or "project"
+	Groups                []string `json:"groups,omitempty"`
+	CloseTicketOnComplete *bool    `json:"close_ticket_on_complete,omitempty"`
 }
 
 // WorkflowDefUpdateRequest is the request for updating a workflow definition
 type WorkflowDefUpdateRequest struct {
-	Description           *string          `json:"description,omitempty"`
-	ScopeType             *string          `json:"scope_type,omitempty"`
-	Phases                *json.RawMessage `json:"phases,omitempty"`
-	Groups                *[]string        `json:"groups,omitempty"`
-	CloseTicketOnComplete *bool            `json:"close_ticket_on_complete,omitempty"`
+	Description           *string   `json:"description,omitempty"`
+	ScopeType             *string   `json:"scope_type,omitempty"`
+	Groups                *[]string `json:"groups,omitempty"`
+	CloseTicketOnComplete *bool     `json:"close_ticket_on_complete,omitempty"`
 }
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow
@@ -220,6 +216,7 @@ type AgentDefCreateRequest struct {
 	Model            string `json:"model,omitempty"`
 	Timeout          int    `json:"timeout,omitempty"`
 	Prompt           string `json:"prompt"`
+	Layer            int    `json:"layer"`
 	RestartThreshold *int   `json:"restart_threshold,omitempty"`
 	MaxFailRestarts        *int   `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int   `json:"stall_start_timeout_sec,omitempty"`
@@ -233,6 +230,7 @@ type AgentDefUpdateRequest struct {
 	Model                  *string `json:"model,omitempty"`
 	Timeout                *int    `json:"timeout,omitempty"`
 	Prompt                 *string `json:"prompt,omitempty"`
+	Layer                  *int    `json:"layer,omitempty"`
 	RestartThreshold       *int    `json:"restart_threshold,omitempty"`
 	MaxFailRestarts        *int    `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int    `json:"stall_start_timeout_sec,omitempty"`

@@ -29,13 +29,10 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 	}
 
 	// Create workflows
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-agent", "layer": 0},
-	})
 	for i := 1; i <= 5; i++ {
 		wfID := "test-workflow-" + string(rune(i+'0'))
-		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-			wfID, "test-project", "Test Workflow", "ticket", string(phasesJSON))
+		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+			wfID, "test-project", "Test Workflow", "ticket")
 		if err != nil {
 			t.Fatalf("failed to create workflow %s: %v", wfID, err)
 		}
@@ -145,13 +142,10 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 	}
 
 	// Create workflows
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-agent", "layer": 0},
-	})
 	for i := 1; i <= 3; i++ {
 		wfID := "test-workflow-" + string(rune(i+'0'))
-		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-			wfID, "test-project", "Test Workflow", "ticket", string(phasesJSON))
+		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+			wfID, "test-project", "Test Workflow", "ticket")
 		if err != nil {
 			t.Fatalf("failed to create workflow %s: %v", wfID, err)
 		}
@@ -219,11 +213,8 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 	}
 
 	// Create workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-agent", "layer": 0},
-	})
-	_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		"test-workflow", "test-project", "Test Workflow", "ticket", string(phasesJSON))
+	_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		"test-workflow", "test-project", "Test Workflow", "ticket")
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
 	}
@@ -314,13 +305,10 @@ func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
 	}
 
 	// Create workflows
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-agent", "layer": 0},
-	})
 	for i := 1; i <= 3; i++ {
 		wfID := "test-workflow-" + string(rune(i+'0'))
-		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-			wfID, "test-project", "Test Workflow", "ticket", string(phasesJSON))
+		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+			wfID, "test-project", "Test Workflow", "ticket")
 		if err != nil {
 			t.Fatalf("failed to create workflow %s: %v", wfID, err)
 		}

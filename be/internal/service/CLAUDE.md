@@ -9,14 +9,14 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `project.go` | Project CRUD operations |
 | `ticket.go` | Ticket CRUD, close/reopen, search, `ValidateRunnable` (rejects closed/blocked tickets) |
 | `workflow.go` | Workflow operations (ticket + project scope): init, start/complete phase, state queries |
-| `workflow_defs.go` | Workflow definitions CRUD |
-| `workflow_config.go` | Workflow config loading |
+| `workflow_defs.go` | Workflow definitions CRUD (no phases in create/update; phases derived from agent_definitions at read time) |
+| `workflow_config.go` | Workflow config loading: `BuildSpawnerConfig` and `parseWorkflowDefFromDB` derive phases from agent_definitions (layer field), sorted by layer ASC, id ASC |
 | `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef`, `RestartDetail` |
-| `workflow_validation.go` | Validation: layer ordering, fan-in rules, project scope constraints |
+| `workflow_validation.go` | Validation: `validateLayerConfig` (layer ordering, fan-in rules), `ValidateProjectScope`, `ValidateScopeType`, `ValidateGroups` |
 | `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status derivation from agent_sessions |
 | `workflow_restart_details.go` | Restart detail loading: queries continued sessions for per-restart enrichment (duration, context, message count) |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |
-| `agent_definition.go` | Agent definition CRUD |
+| `agent_definition.go` | Agent definition CRUD (includes `layer` field; create/update validates fan-in rules via `validateLayerConfigForWorkflow` in `agent_definition_helpers.go`) |
 | `findings.go` | Findings add/append/get/delete operations |
 | `chain.go` | Chain build, delete, dependency expansion, topological sort, cycle detection |
 | `chain_preview.go` | Chain preview, custom order validation (validateCustomOrder, validateSameSet, computeDeps, PreviewChain) |
@@ -36,8 +36,8 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 
 Key types in `workflow_types.go`:
 
-- **`WorkflowDef`** — workflow definition with ID, phases, description, scope_type
-- **`PhaseDef`** — phase definition with agent name and layer number
+- **`WorkflowDef`** — workflow definition with description, scope_type, groups, phases (derived from agent_definitions at read time)
+- **`PhaseDef`** — phase definition with id, agent name, and layer number (built from agent_definitions)
 
 ## Constructor Pattern
 
@@ -49,15 +49,14 @@ Most service constructors take `(pool *db.Pool, clk clock.Clock)`. The clock is 
 
 ### Adding a New Agent Type
 
-1. Create agent definition via API: `POST /api/v1/workflows/:wid/agents` with model, timeout, and prompt template
-2. Add to workflow phases via API: `PATCH /api/v1/workflows/:id` (or create a new workflow)
+1. Create agent definition via API: `POST /api/v1/workflows/:wid/agents` with model, timeout, prompt template, and `layer` (determines phase execution order)
 3. **Documentation updates:**
    - Root `CLAUDE.md` — update agent references
 
 ### Adding a New Workflow
 
-1. Create workflow definition via API: `POST /api/v1/workflows` with phases and description
-2. Ensure all referenced agents have definitions created via `POST /api/v1/workflows/:wid/agents`
+1. Create workflow definition via API: `POST /api/v1/workflows` with description and scope_type
+2. Create agent definitions via `POST /api/v1/workflows/:wid/agents` with `layer` field to define phase execution order
 3. **Documentation updates:**
    - Root `CLAUDE.md` — update Workflows table
 

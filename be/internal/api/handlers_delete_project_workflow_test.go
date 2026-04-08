@@ -17,7 +17,10 @@ import (
 func newDeleteProjWFServer(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "del_proj_wf_handler_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -38,8 +41,8 @@ func seedProjWFInstance(t *testing.T, s *Server, projectID, instanceID, status, 
 	}
 
 	if _, err := s.pool.Exec(
-		`INSERT INTO workflows (id, project_id, description, scope_type, phases, groups, created_at, updated_at)
-		 VALUES ('wf-test', ?, '', ?, '[{"agent":"test","layer":0}]', '[]', ?, ?)`,
+		`INSERT INTO workflows (id, project_id, description, scope_type, groups, created_at, updated_at)
+		 VALUES ('wf-test', ?, '', ?, '[]', ?, ?)`,
 		projectID, scopeType, now, now,
 	); err != nil {
 		t.Fatalf("seed workflow for project %q: %v", projectID, err)
@@ -189,7 +192,10 @@ func TestHandleDeleteProjectWorkflowInstance_ResponseBody(t *testing.T) {
 // TestHandleDeleteProjectWorkflowInstance_WSEvent verifies WS event is broadcast on successful delete.
 func TestHandleDeleteProjectWorkflowInstance_WSEvent(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "del_proj_wf_ws_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

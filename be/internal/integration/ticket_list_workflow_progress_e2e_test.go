@@ -56,12 +56,17 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
-	// Update "feature" workflow def to have 4 phases matching what the test expects
-	_, err = database.Exec(`UPDATE workflows SET phases = ? WHERE project_id = 'testproj' AND id = 'feature'`,
-		`[{"agent":"investigation","layer":0},{"agent":"test-design","layer":1},{"agent":"implementation","layer":2},{"agent":"verification","layer":3}]`)
-	if err != nil {
-		database.Close()
-		t.Fatalf("failed to update feature workflow phases: %v", err)
+	// Create agent definitions for the "feature" workflow (4 phases across 4 layers)
+	for _, ad := range []struct{ id string; layer int }{
+		{"investigation", 0}, {"test-design", 1}, {"implementation", 2}, {"verification", 3},
+	} {
+		_, err = database.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
+			VALUES (?, 'testproj', 'feature', 'sonnet', 20, '', ?, ?, ?)`,
+			ad.id, ad.layer, now, now)
+		if err != nil {
+			database.Close()
+			t.Fatalf("failed to create agent definition %s: %v", ad.id, err)
+		}
 	}
 
 	// Create active workflow for TESTPROJ-001
@@ -220,12 +225,17 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
-	// Update "feature" workflow def to have 5 phases
-	_, err = database.Exec(`UPDATE workflows SET phases = ? WHERE project_id = 'testproj2' AND id = 'feature'`,
-		`[{"agent":"phase1","layer":0},{"agent":"phase2","layer":1},{"agent":"phase3","layer":2},{"agent":"phase4","layer":3},{"agent":"phase5","layer":4}]`)
-	if err != nil {
-		database.Close()
-		t.Fatalf("failed to update feature workflow: %v", err)
+	// Create agent definitions for the "feature" workflow (5 phases across 5 layers)
+	for _, ad := range []struct{ id string; layer int }{
+		{"phase1", 0}, {"phase2", 1}, {"phase3", 2}, {"phase4", 3}, {"phase5", 4},
+	} {
+		_, err = database.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
+			VALUES (?, 'testproj2', 'feature', 'sonnet', 20, '', ?, ?, ?)`,
+			ad.id, ad.layer, now, now)
+		if err != nil {
+			database.Close()
+			t.Fatalf("failed to create agent definition %s: %v", ad.id, err)
+		}
 	}
 
 	// Create active workflow for PROJ2-001
@@ -370,15 +380,10 @@ func seedWorkflow(t *testing.T, dbPath, projectID, workflowID, description strin
 	defer database.Close()
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "phase1", "layer": 0},
-		{"agent": "phase2", "layer": 1},
-		{"agent": "phase3", "layer": 2},
-	})
 	_, err = database.Exec(`
-		INSERT INTO workflows (project_id, id, description, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		projectID, workflowID, description, string(phasesJSON), now, now)
+		INSERT INTO workflows (project_id, id, description, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)`,
+		projectID, workflowID, description, now, now)
 	if err != nil {
 		t.Fatalf("failed to seed workflow: %v", err)
 	}

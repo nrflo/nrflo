@@ -23,9 +23,12 @@ func TestWorktreePersistence_FieldsPopulatedOnInstance(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -87,9 +90,9 @@ func TestWorktreePersistence_FieldsPopulatedOnInstance(t *testing.T) {
 
 	// Insert project and workflow records needed for FK constraints.
 	_, err = pool.Exec(`INSERT OR IGNORE INTO workflows
-		(id, project_id, description, scope_type, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		"test-workflow", projectID, "Test Workflow", "ticket", `[{"agent":"a","layer":0}]`)
+		(id, project_id, description, scope_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		"test-workflow", projectID, "Test Workflow", "ticket")
 	if err != nil {
 		t.Fatalf("failed to insert workflow: %v", err)
 	}
@@ -134,9 +137,12 @@ func TestWorktreePersistence_ProjectScopeHasNullFields(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -179,9 +185,9 @@ func TestWorktreePersistence_ProjectScopeHasNullFields(t *testing.T) {
 	// Create workflow instance without worktree info (wt == nil, so orchestrator skips UpdateWorktree).
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clock.Real())
 	_, err = pool.Exec(`INSERT OR IGNORE INTO workflows
-		(id, project_id, description, scope_type, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		"proj-workflow", projectID, "Proj Workflow", "project", `[{"agent":"a","layer":0}]`)
+		(id, project_id, description, scope_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		"proj-workflow", projectID, "Proj Workflow", "project")
 	if err != nil {
 		t.Fatalf("failed to insert workflow: %v", err)
 	}

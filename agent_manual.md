@@ -254,6 +254,7 @@ These fields are configured via the agent form on the **Workflows** page.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `id` | string | Required | Agent type identifier (e.g., `setup-analyzer`, `implementor`) |
+| `layer` | int | `0` | Phase execution layer (integer >= 0). Agents with the same layer run concurrently; layers execute in ascending order. |
 | `model` | string | `sonnet` | Model to use (see table below) |
 | `timeout` | int | `20` | Max execution time in minutes |
 | `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns. Edited in the CodeMirror markdown editor. |
@@ -294,18 +295,18 @@ These fields are configured via the agent form on the **Workflows** page.
 
 ## 7. Workflow & Phase Configuration
 
-### Phase JSON Format
+### Phase Configuration
 
-Each phase is a JSON object with `agent` (agent definition ID) and `layer` (integer >= 0):
+Phases are defined by agent definitions. Each agent definition has an `id` and a `layer` field (integer >= 0). The workflow's phases are derived from its agent definitions at read time, ordered by `layer ASC, id ASC`. For example, a workflow with these agent definitions:
 
-```json
-[
-  {"agent": "setup-analyzer", "layer": 0},
-  {"agent": "test-writer", "layer": 1},
-  {"agent": "implementor", "layer": 2},
-  {"agent": "qa-verifier", "layer": 3}
-]
-```
+| Agent ID | Layer |
+|----------|-------|
+| setup-analyzer | 0 |
+| test-writer | 1 |
+| implementor | 2 |
+| qa-verifier | 3 |
+
+produces the phase order: setup-analyzer -> test-writer -> implementor -> qa-verifier.
 
 ### Layer Execution Rules
 

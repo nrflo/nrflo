@@ -34,10 +34,8 @@ func setupSkipTestEnv(t *testing.T) (*db.Pool, *WorkflowService, string) {
 	svc := NewWorkflowService(pool, clock.Real())
 
 	// Create workflow with groups
-	phasesJSON := makePhases(t)
 	_, err = svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf1",
-		Phases: phasesJSON,
 		Groups: []string{"be", "fe", "docs"},
 	})
 	if err != nil {
@@ -166,10 +164,8 @@ func TestAddSkipTag_WorkflowNoGroups(t *testing.T) {
 	}
 
 	svc := NewWorkflowService(pool, clock.Real())
-	phasesJSON := makePhases(t)
 	if _, err = svc.CreateWorkflowDef("proj2", &types.WorkflowDefCreateRequest{
-		ID:     "wf-nogroups",
-		Phases: phasesJSON,
+		ID: "wf-nogroups",
 		// No groups
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)

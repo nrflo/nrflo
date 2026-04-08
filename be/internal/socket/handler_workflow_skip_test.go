@@ -17,10 +17,8 @@ func createWorkflowWithGroups(t *testing.T, env *handlerTestEnv, workflowID, tic
 	t.Helper()
 
 	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{{"agent": "analyzer", "layer": 0}})
 	if _, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:     workflowID,
-		Phases: phasesJSON,
 		Groups: groups,
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef(%s): %v", workflowID, err)

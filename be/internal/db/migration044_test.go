@@ -96,7 +96,7 @@ func TestMigration044_AgentSessionsConfigColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
-	_, err = pool.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at) VALUES ('p1', 'wf1', 'W', 'ticket', '[]', datetime('now'), datetime('now'))`)
+	_, err = pool.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('p1', 'wf1', 'W', 'ticket', datetime('now'), datetime('now'))`)
 	if err != nil {
 		t.Fatalf("insert workflow: %v", err)
 	}

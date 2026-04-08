@@ -2,23 +2,12 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"testing"
 
 	"be/internal/model"
 	"be/internal/service"
 )
-
-// collisionPhases returns a Phases JSON string for a single-agent workflow.
-func collisionPhases(t *testing.T, agentID string, layer int) string {
-	t.Helper()
-	b, err := json.Marshal([]map[string]interface{}{{"agent": agentID, "layer": layer}})
-	if err != nil {
-		t.Fatalf("collisionPhases: %v", err)
-	}
-	return string(b)
-}
 
 // TestBuildSpawnerConfigAgentCollision documents the cross-workflow agent ID collision
 // that occurred when Start()/retryFailed() loaded ALL project workflows into a flat
@@ -28,12 +17,10 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 	featureWf := &model.Workflow{
 		ID:        "feature",
 		ProjectID: "proj",
-		Phases:    collisionPhases(t, "implementor", 0),
 	}
 	bugfixWf := &model.Workflow{
 		ID:        "bugfix",
 		ProjectID: "proj",
-		Phases:    collisionPhases(t, "implementor", 0),
 	}
 
 	featureDef := &model.AgentDefinition{
@@ -42,6 +29,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 		WorkflowID: "feature",
 		Model:      "opus",
 		Timeout:    3600,
+		Layer:      0,
 	}
 	bugfixDef := &model.AgentDefinition{
 		ID:         "implementor",
@@ -49,6 +37,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 		WorkflowID: "bugfix",
 		Model:      "sonnet",
 		Timeout:    1200,
+		Layer:      0,
 	}
 
 	// Mixed input (both workflows): documents the pre-fix last-write-wins collision.
@@ -106,17 +95,12 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 // TestBuildSpawnerConfigMultiAgentSingleWorkflow verifies all agents in a single
 // workflow are loaded with correct config and no collision when IDs are distinct.
 func TestBuildSpawnerConfigMultiAgentSingleWorkflow(t *testing.T) {
-	phases, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "implementor", "layer": 0},
-		{"agent": "verifier", "layer": 1},
-		{"agent": "doc-updater", "layer": 2},
-	})
-	wf := &model.Workflow{ID: "feature", ProjectID: "proj", Phases: string(phases)}
+	wf := &model.Workflow{ID: "feature", ProjectID: "proj"}
 
 	defs := []*model.AgentDefinition{
-		{ID: "implementor", ProjectID: "proj", WorkflowID: "feature", Model: "opus", Timeout: 3600},
-		{ID: "verifier", ProjectID: "proj", WorkflowID: "feature", Model: "sonnet", Timeout: 1800, Tag: "qa"},
-		{ID: "doc-updater", ProjectID: "proj", WorkflowID: "feature", Model: "haiku", Timeout: 900},
+		{ID: "implementor", ProjectID: "proj", WorkflowID: "feature", Model: "opus", Timeout: 3600, Layer: 0},
+		{ID: "verifier", ProjectID: "proj", WorkflowID: "feature", Model: "sonnet", Timeout: 1800, Tag: "qa", Layer: 1},
+		{ID: "doc-updater", ProjectID: "proj", WorkflowID: "feature", Model: "haiku", Timeout: 900, Layer: 2},
 	}
 
 	_, agents := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
@@ -156,14 +140,14 @@ func TestBuildSpawnerConfigMultiAgentSingleWorkflow(t *testing.T) {
 // workflow in isolation always returns the correct model.
 func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 	workflows := []*model.Workflow{
-		{ID: "wf-a", ProjectID: "proj", Phases: collisionPhases(t, "implementor", 0)},
-		{ID: "wf-b", ProjectID: "proj", Phases: collisionPhases(t, "implementor", 0)},
-		{ID: "wf-c", ProjectID: "proj", Phases: collisionPhases(t, "implementor", 0)},
+		{ID: "wf-a", ProjectID: "proj"},
+		{ID: "wf-b", ProjectID: "proj"},
+		{ID: "wf-c", ProjectID: "proj"},
 	}
 	defs := []*model.AgentDefinition{
-		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-a", Model: "opus"},
-		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-b", Model: "sonnet"},
-		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-c", Model: "haiku"},
+		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-a", Model: "opus", Layer: 0},
+		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-b", Model: "sonnet", Layer: 0},
+		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-c", Model: "haiku", Layer: 0},
 	}
 
 	// Mixed: only the last entry survives.

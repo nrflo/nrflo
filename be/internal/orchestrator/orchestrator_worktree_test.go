@@ -75,9 +75,12 @@ func TestWorktreeSetup_EnabledWithDefaultBranch(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -183,9 +186,12 @@ func TestWorktreeSetup_DisabledWhenFlagFalse(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -238,9 +244,12 @@ func TestWorktreeSetup_DisabledWhenNoDefaultBranch(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -303,9 +312,12 @@ func TestWorktreeSetup_ProjectScope(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -365,9 +377,12 @@ func TestRunLoop_WorktreeCleanupOnFailure(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -446,9 +461,12 @@ func TestRunLoop_WorktreeMergeOnSuccess(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -549,9 +567,12 @@ func TestRunLoop_WorktreeMergeConflict(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 
@@ -662,9 +683,12 @@ func TestWorktreeCleanup_Idempotent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	defer pool.Close()
 

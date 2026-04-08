@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -112,18 +111,22 @@ func TestGetStatus_NoCurrent_WhenNoRunningSession(t *testing.T) {
 func TestParallelAgents_BothShowInProgress(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesRaw, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "agent-a", "layer": 0},
-		{"agent": "agent-b", "layer": 0},
-		{"agent": "finalizer", "layer": 1},
-	})
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "parallel-test",
 		Description: "Two agents in layer 0",
-		Phases:      phasesRaw,
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	for _, ad := range []types.AgentDefCreateRequest{
+		{ID: "agent-a", Prompt: "a", Layer: 0},
+		{ID: "agent-b", Prompt: "b", Layer: 0},
+		{ID: "finalizer", Prompt: "f", Layer: 1},
+	} {
+		if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "parallel-test", &ad); err != nil {
+			t.Fatalf("failed to create agent def %s: %v", ad.ID, err)
+		}
 	}
 
 	env.CreateTicket(t, "PARALLEL-1", "Parallel agents test")
@@ -168,17 +171,21 @@ func TestParallelAgents_BothShowInProgress(t *testing.T) {
 func TestParallelAgents_OneCompletedOneRunning(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesRaw, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "agent-a", "layer": 0},
-		{"agent": "agent-b", "layer": 0},
-	})
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "parallel-mixed",
 		Description: "Parallel mixed test",
-		Phases:      phasesRaw,
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	for _, ad := range []types.AgentDefCreateRequest{
+		{ID: "agent-a", Prompt: "a", Layer: 0},
+		{ID: "agent-b", Prompt: "b", Layer: 0},
+	} {
+		if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "parallel-mixed", &ad); err != nil {
+			t.Fatalf("failed to create agent def %s: %v", ad.ID, err)
+		}
 	}
 
 	env.CreateTicket(t, "PARALLEL-2", "Parallel mixed test")

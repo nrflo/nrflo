@@ -24,13 +24,12 @@ func TestActiveAgentsIncludesTag(t *testing.T) {
 	}
 
 	svc := env.getAgentDefService(t)
-	_, err := svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
-		ID:     "analyzer",
-		Prompt: "Test",
-		Tag:    "be-team",
+	tag := "be-team"
+	err := svc.UpdateAgentDef(env.ProjectID, "test", "analyzer", &types.AgentDefUpdateRequest{
+		Tag: &tag,
 	})
 	if err != nil {
-		t.Fatalf("failed to create agent def: %v", err)
+		t.Fatalf("failed to update agent def: %v", err)
 	}
 
 	env.InsertAgentSession(t, "sess-at-1", "AT-1", wfiID, "analyzer", "analyzer", "claude:sonnet")
@@ -50,11 +49,11 @@ func TestActiveAgentsIncludesTag(t *testing.T) {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
 
-	tag, ok := agent["tag"].(string)
+	tagVal, ok := agent["tag"].(string)
 	if !ok {
 		t.Fatalf("expected tag to be string, got %T (value: %v)", agent["tag"], agent["tag"])
 	}
-	if tag != "be-team" {
+	if tagVal != "be-team" {
 		t.Fatalf("expected tag %q, got %q", "be-team", tag)
 	}
 }
@@ -68,15 +67,7 @@ func TestActiveAgentsOmitsTagWhenEmpty(t *testing.T) {
 	env.InitWorkflow(t, "AT-2")
 	wfiID := env.GetWorkflowInstanceID(t, "AT-2", "test")
 
-	svc := env.getAgentDefService(t)
-	_, err := svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
-		ID:     "analyzer",
-		Prompt: "Test",
-		// No Tag field
-	})
-	if err != nil {
-		t.Fatalf("failed to create agent def: %v", err)
-	}
+	// "analyzer" already exists from testenv seeding — no update needed (tag is empty by default)
 
 	env.InsertAgentSession(t, "sess-at-2", "AT-2", wfiID, "analyzer", "analyzer", "claude:sonnet")
 
@@ -150,13 +141,12 @@ func TestAgentHistoryIncludesTag(t *testing.T) {
 	}
 
 	svc := env.getAgentDefService(t)
-	_, err := svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
-		ID:     "analyzer",
-		Prompt: "Test",
-		Tag:    "fe-team",
+	tag := "fe-team"
+	err := svc.UpdateAgentDef(env.ProjectID, "test", "analyzer", &types.AgentDefUpdateRequest{
+		Tag: &tag,
 	})
 	if err != nil {
-		t.Fatalf("failed to create agent def: %v", err)
+		t.Fatalf("failed to update agent def: %v", err)
 	}
 
 	insertCompletedSession(t, env, "sess-at-4", "AT-4", wfiID, "analyzer", "analyzer", "claude:sonnet", "completed", "pass")
@@ -179,11 +169,11 @@ func TestAgentHistoryIncludesTag(t *testing.T) {
 		t.Fatalf("expected history entry map, got %T", history[0])
 	}
 
-	tag, ok := entry["tag"].(string)
+	tagVal, ok := entry["tag"].(string)
 	if !ok {
 		t.Fatalf("expected tag to be string, got %T (value: %v)", entry["tag"], entry["tag"])
 	}
-	if tag != "fe-team" {
+	if tagVal != "fe-team" {
 		t.Fatalf("expected tag %q, got %q", "fe-team", tag)
 	}
 }
@@ -197,15 +187,7 @@ func TestAgentHistoryOmitsTagWhenEmpty(t *testing.T) {
 	env.InitWorkflow(t, "AT-5")
 	wfiID := env.GetWorkflowInstanceID(t, "AT-5", "test")
 
-	svc := env.getAgentDefService(t)
-	_, err := svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
-		ID:     "analyzer",
-		Prompt: "Test",
-		// No Tag
-	})
-	if err != nil {
-		t.Fatalf("failed to create agent def: %v", err)
-	}
+	// "analyzer" already exists from testenv seeding — tag is empty by default
 
 	insertCompletedSession(t, env, "sess-at-5", "AT-5", wfiID, "analyzer", "analyzer", "claude:sonnet", "completed", "pass")
 

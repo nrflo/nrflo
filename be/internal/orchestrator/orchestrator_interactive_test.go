@@ -14,7 +14,6 @@ import (
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
-	"be/internal/types"
 )
 
 // ── buildPlanPrompt ───────────────────────────────────────────────────────────
@@ -320,20 +319,6 @@ func TestSetupInteractivePreStep_EmptyWorkflowReturnsError(t *testing.T) {
 
 // ── Start() with PlanMode ─────────────────────────────────────────────────────
 
-// createAgentDefForWorkflow inserts an agent definition for agentType in the "test" workflow.
-func createAgentDefForWorkflow(t *testing.T, env *testEnv, agentType, prompt string) {
-	t.Helper()
-	agentSvc := service.NewAgentDefinitionService(env.pool, clock.Real(), service.NewCLIModelService(env.pool, clock.Real()))
-	_, err := agentSvc.CreateAgentDef(env.project, "test", &types.AgentDefCreateRequest{
-		ID:     agentType,
-		Prompt: prompt,
-		Model:  "sonnet",
-	})
-	if err != nil {
-		t.Fatalf("failed to create agent definition for %s: %v", agentType, err)
-	}
-}
-
 func TestStart_PlanMode_ReturnsSessionIDAndPlanningStatus(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "TKT-START-PM", "Start plan mode test")
@@ -386,9 +371,6 @@ func TestStart_Interactive_ReturnsSessionIDAndInteractiveStatus(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "TKT-START-INT", "Start interactive mode test")
 
-	// Create agent definition for L0 agent "analyzer"
-	createAgentDefForWorkflow(t, env, "analyzer", "You are an analyzer. Ticket: ${TICKET_ID}")
-
 	var registeredSessionID string
 	env.orch.OnRegisterPtyCommand = func(sid, cmd string, args []string) {
 		registeredSessionID = sid
@@ -430,7 +412,6 @@ func TestStart_Interactive_ReturnsSessionIDAndInteractiveStatus(t *testing.T) {
 func TestStart_NormalMode_NoSessionID(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "TKT-START-NORM", "Normal start test")
-	createAgentDefForWorkflow(t, env, "analyzer", "Analyze: ${TICKET_ID}")
 
 	result, err := env.orch.Start(context.Background(), RunRequest{
 		ProjectID:    env.project,

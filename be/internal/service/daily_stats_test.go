@@ -74,8 +74,8 @@ func TestComputeAndStore_WithKnownData(t *testing.T) {
 	// Create workflow instance for agent sessions
 	wfID := "test-workflow-instance"
 	_, err := pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, created_at, updated_at)
-		VALUES ('feature', ?, 'Test workflow', '[]', ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, created_at, updated_at)
+		VALUES ('feature', ?, 'Test workflow', ?, ?)`,
 		strings.ToLower(projectID), createdToday, createdToday)
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -169,8 +169,8 @@ func TestComputeAndStore_ExcludesRunningAndContinuedSessions(t *testing.T) {
 	// Create workflow instance
 	wfID := "test-workflow-instance"
 	_, err := pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, created_at, updated_at)
-		VALUES ('feature', ?, 'Test workflow', '[]', ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, created_at, updated_at)
+		VALUES ('feature', ?, 'Test workflow', ?, ?)`,
 		strings.ToLower(projectID), createdToday, createdToday)
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -242,8 +242,8 @@ func TestComputeAndStore_ExcludesNullTimestamps(t *testing.T) {
 	// Create workflow instance
 	wfID := "test-workflow-instance"
 	_, err := pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, created_at, updated_at)
-		VALUES ('feature', ?, 'Test workflow', '[]', ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, created_at, updated_at)
+		VALUES ('feature', ?, 'Test workflow', ?, ?)`,
 		strings.ToLower(projectID), createdToday, createdToday)
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -472,8 +472,8 @@ func TestComputeAndStore_TokensCalculation(t *testing.T) {
 	// Create workflow instance
 	wfID := "test-workflow-instance"
 	_, err := pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, created_at, updated_at)
-		VALUES ('feature', ?, 'Test workflow', '[]', ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, created_at, updated_at)
+		VALUES ('feature', ?, 'Test workflow', ?, ?)`,
 		strings.ToLower(projectID), createdToday, createdToday)
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
@@ -538,8 +538,8 @@ func TestComputeAndStore_AgentTimeCalculation(t *testing.T) {
 	// Create workflow instance
 	wfID := "test-workflow-instance"
 	_, err := pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, created_at, updated_at)
-		VALUES ('feature', ?, 'Test workflow', '[]', ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, created_at, updated_at)
+		VALUES ('feature', ?, 'Test workflow', ?, ?)`,
 		strings.ToLower(projectID), createdToday, createdToday)
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)

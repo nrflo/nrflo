@@ -1,49 +1,27 @@
 package orchestrator
 
 import (
-	"encoding/json"
 	"sync"
 	"testing"
 	"time"
 
-	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/service"
-	"be/internal/types"
 )
 
 // TestLayerGroupingAndSequencing tests that phases are correctly grouped by layer
 // and layers execute in ascending order.
 func TestLayerGroupingAndSequencing(t *testing.T) {
-	env := newTestEnv(t)
-
-	// Create workflow with multiple layers
-	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup-a", "layer": 0},
-		{"agent": "setup-b", "layer": 0},
-		{"agent": "analyzer", "layer": 1},
-		{"agent": "impl-a", "layer": 2},
-		{"agent": "impl-b", "layer": 2},
-		{"agent": "verifier", "layer": 3},
-	})
-	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
-		ID:          "layered",
-		Description: "Layered workflow",
-		Phases:      phasesJSON,
-	})
-	if err != nil {
-		t.Fatalf("failed to create layered workflow: %v", err)
+	wf := &model.Workflow{ID: "layered", ProjectID: "proj"}
+	defs := []*model.AgentDefinition{
+		{ID: "setup-a", WorkflowID: "layered", Layer: 0},
+		{ID: "setup-b", WorkflowID: "layered", Layer: 0},
+		{ID: "analyzer", WorkflowID: "layered", Layer: 1},
+		{ID: "impl-a", WorkflowID: "layered", Layer: 2},
+		{ID: "impl-b", WorkflowID: "layered", Layer: 2},
+		{ID: "verifier", WorkflowID: "layered", Layer: 3},
 	}
-
-	// Verify groupPhasesByLayer produces correct groups
-	workflow, _ := workflowSvc.GetWorkflowDef(env.project, "layered")
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{{
-		ID:          "layered",
-		ProjectID:   env.project,
-		Description: workflow.Description,
-		Phases:      string(phasesJSON),
-	}}, nil)
+	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["layered"].Phases)
 
@@ -88,30 +66,13 @@ func TestLayerGroupingAndSequencing(t *testing.T) {
 
 // TestNonContiguousLayers tests that non-contiguous layer numbers are handled correctly
 func TestNonContiguousLayers(t *testing.T) {
-	env := newTestEnv(t)
-
-	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "impl", "layer": 5},
-		{"agent": "verify", "layer": 10},
-	})
-	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
-		ID:          "sparse",
-		Description: "Sparse layer workflow",
-		Phases:      phasesJSON,
-	})
-	if err != nil {
-		t.Fatalf("failed to create sparse workflow: %v", err)
+	wf := &model.Workflow{ID: "sparse", ProjectID: "proj"}
+	defs := []*model.AgentDefinition{
+		{ID: "setup", WorkflowID: "sparse", Layer: 0},
+		{ID: "impl", WorkflowID: "sparse", Layer: 5},
+		{ID: "verify", WorkflowID: "sparse", Layer: 10},
 	}
-
-	workflow, _ := workflowSvc.GetWorkflowDef(env.project, "sparse")
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{{
-		ID:          "sparse",
-		ProjectID:   env.project,
-		Description: workflow.Description,
-		Phases:      string(phasesJSON),
-	}}, nil)
+	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["sparse"].Phases)
 
@@ -255,28 +216,11 @@ func TestAllFailLayerStopsWorkflow(t *testing.T) {
 
 // TestSingleAgentLayer tests that a layer with a single agent works correctly.
 func TestSingleAgentLayer(t *testing.T) {
-	env := newTestEnv(t)
-
-	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "hotfix", "layer": 0},
-	})
-	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
-		ID:          "single",
-		Description: "Single agent workflow",
-		Phases:      phasesJSON,
-	})
-	if err != nil {
-		t.Fatalf("failed to create single-agent workflow: %v", err)
+	wf := &model.Workflow{ID: "single", ProjectID: "proj"}
+	defs := []*model.AgentDefinition{
+		{ID: "hotfix", WorkflowID: "single", Layer: 0},
 	}
-
-	workflow, _ := workflowSvc.GetWorkflowDef(env.project, "single")
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{{
-		ID:          "single",
-		ProjectID:   env.project,
-		Description: workflow.Description,
-		Phases:      string(phasesJSON),
-	}}, nil)
+	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["single"].Phases)
 
@@ -292,32 +236,15 @@ func TestSingleAgentLayer(t *testing.T) {
 // TestLayerOrderPreserved tests that layer groups are returned in ascending order
 // regardless of the order phases appear in the definition.
 func TestLayerOrderPreserved(t *testing.T) {
-	env := newTestEnv(t)
-
-	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
-	// Phases in reverse layer order
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "verify", "layer": 3},
-		{"agent": "impl", "layer": 2},
-		{"agent": "analyze", "layer": 1},
-		{"agent": "setup", "layer": 0},
-	})
-	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
-		ID:          "unordered",
-		Description: "Unordered phases",
-		Phases:      phasesJSON,
-	})
-	if err != nil {
-		t.Fatalf("failed to create unordered workflow: %v", err)
+	// Agent defs in reverse layer order to verify sorting
+	wf := &model.Workflow{ID: "unordered", ProjectID: "proj"}
+	defs := []*model.AgentDefinition{
+		{ID: "verify", WorkflowID: "unordered", Layer: 3},
+		{ID: "impl", WorkflowID: "unordered", Layer: 2},
+		{ID: "analyze", WorkflowID: "unordered", Layer: 1},
+		{ID: "setup", WorkflowID: "unordered", Layer: 0},
 	}
-
-	workflow, _ := workflowSvc.GetWorkflowDef(env.project, "unordered")
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{{
-		ID:          "unordered",
-		ProjectID:   env.project,
-		Description: workflow.Description,
-		Phases:      string(phasesJSON),
-	}}, nil)
+	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["unordered"].Phases)
 

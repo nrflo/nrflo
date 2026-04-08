@@ -67,6 +67,10 @@ func (s *Server) handleCreateAgentDef(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
+		if isLayerValidationError(err) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -130,6 +134,10 @@ func (s *Server) handleUpdateAgentDef(w http.ResponseWriter, r *http.Request) {
 	if err := svc.UpdateAgentDef(projectID, workflowID, id, &req); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		if isLayerValidationError(err) {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err.Error())

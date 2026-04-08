@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"testing"
 
 	"be/internal/types"
@@ -12,15 +11,9 @@ func TestGetProjectAgentSessions_HappyPath(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "impl", "layer": 1},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-agents-test",
 		Description: "Project workflow for agent sessions",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -96,15 +89,9 @@ func TestGetProjectAgentSessions_PhaseFilter(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "impl", "layer": 1},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-phase-filter",
 		Description: "Test phase filtering",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -163,14 +150,9 @@ func TestGetProjectAgentSessions_ExcludesTicketScoped(t *testing.T) {
 	ticketWFI := env.GetWorkflowInstanceID(t, "TICKET-1", "test")
 
 	// Create project-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-exclude-test",
 		Description: "Test exclusion",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -228,14 +210,9 @@ func TestGetProjectAgentSessions_FindingsAggregation(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-findings",
 		Description: "Test findings",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -283,16 +260,11 @@ func TestGetProjectAgentSessions_FindingsAggregation(t *testing.T) {
 func TestGetProjectAgentSessions_MultipleWorkflows(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	// Create two project workflows
 	for _, wf := range []string{"proj-wf-1", "proj-wf-2"} {
 		_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 			ID:          wf,
 			Description: "Test workflow " + wf,
-			Phases:      phasesJSON,
 			ScopeType:   "project",
 		})
 		if err != nil {
@@ -341,14 +313,9 @@ func TestGetProjectAgentSessions_CaseInsensitiveProjectID(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "case-test",
 		Description: "Case test",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -387,14 +354,9 @@ func TestGetProjectAgentSessions_EmptyStringTicketID(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "empty-test",
 		Description: "Empty string test",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {

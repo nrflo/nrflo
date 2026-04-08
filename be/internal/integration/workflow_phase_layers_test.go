@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -9,16 +8,21 @@ import (
 	"be/internal/types"
 )
 
-// createWorkflowWithLayers creates a workflow definition with the given phases JSON and returns its ID.
-func createWorkflowWithLayers(t *testing.T, env *TestEnv, wfID string, phasesJSON []byte) {
+// createWorkflowWithAgents creates a workflow definition and agent definitions with specified layers.
+func createWorkflowWithAgents(t *testing.T, env *TestEnv, wfID string, agents []types.AgentDefCreateRequest) {
 	t.Helper()
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          wfID,
 		Description: "Test workflow with layers",
-		Phases:      phasesJSON,
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def %q: %v", wfID, err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	for _, ad := range agents {
+		if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, wfID, &ad); err != nil {
+			t.Fatalf("failed to create agent def %s: %v", ad.ID, err)
+		}
 	}
 }
 
@@ -28,12 +32,11 @@ func TestBuildV4State_PhaseLayers_SequentialLayers(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a workflow with three sequential layers (0, 1, 2)
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "build", "layer": 1},
-		{"agent": "verify", "layer": 2},
+	createWorkflowWithAgents(t, env, "sequential", []types.AgentDefCreateRequest{
+		{ID: "setup", Prompt: "s", Layer: 0},
+		{ID: "build", Prompt: "b", Layer: 1},
+		{ID: "verify", Prompt: "v", Layer: 2},
 	})
-	createWorkflowWithLayers(t, env, "sequential", phasesJSON)
 
 	// Init and get status
 	env.CreateTicket(t, "PL-1", "Phase layers sequential test")
@@ -86,13 +89,12 @@ func TestBuildV4State_PhaseLayers_ParallelPhases(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a workflow with two agents at layer 1 (parallel)
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "test-be", "layer": 1},
-		{"agent": "test-fe", "layer": 1},
-		{"agent": "merge", "layer": 2},
+	createWorkflowWithAgents(t, env, "parallel", []types.AgentDefCreateRequest{
+		{ID: "setup", Prompt: "s", Layer: 0},
+		{ID: "test-be", Prompt: "t", Layer: 1},
+		{ID: "test-fe", Prompt: "t", Layer: 1},
+		{ID: "merge", Prompt: "m", Layer: 2},
 	})
-	createWorkflowWithLayers(t, env, "parallel", phasesJSON)
 
 	env.CreateTicket(t, "PL-2", "Phase layers parallel test")
 	_, err := env.WorkflowSvc.Init(env.ProjectID, "PL-2", &types.WorkflowInitRequest{Workflow: "parallel"})
@@ -182,18 +184,22 @@ func TestBuildV4State_PhaseLayers_ViaGetStatusByInstance(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a project-scoped workflow with parallel phases
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "writer", "layer": 0},
-		{"agent": "reviewer", "layer": 1},
-	})
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-wf",
 		Description: "Project workflow",
 		ScopeType:   "project",
-		Phases:      phasesJSON,
 	})
 	if err != nil {
 		t.Fatalf("failed to create project workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	for _, ad := range []types.AgentDefCreateRequest{
+		{ID: "writer", Prompt: "w", Layer: 0},
+		{ID: "reviewer", Prompt: "r", Layer: 1},
+	} {
+		if _, createErr := agentDefSvc.CreateAgentDef(env.ProjectID, "proj-wf", &ad); createErr != nil {
+			t.Fatalf("failed to create agent def %s: %v", ad.ID, createErr)
+		}
 	}
 
 	wi, err := env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{

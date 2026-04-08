@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -21,24 +20,15 @@ func TestHandleCallback_SingleAgentCallback(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create 3-layer workflow: layer 0 (analyzer), layer 1 (builder), layer 2 (verifier)
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-		{"agent": "verifier", "layer": 2},
+	env.createWorkflowWithAgents(t, "callback-test", "Callback test workflow", "", []struct{ ID string; Layer int }{
+		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
-	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
-		VALUES ('callback-test', ?, 'Callback test workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
-		env.project, string(phasesJSON))
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	env.createTicket(t, "CB-1", "Callback test")
 
 	// Init workflow
 	var wfiID string
-	err = env.pool.QueryRow(`
+	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-cb-1', ?, 'CB-1', 'callback-test', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
@@ -158,24 +148,14 @@ func TestHandleCallback_MultiAgentLayerUsesLowestLevel(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create workflow with multi-agent layer 1
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "impl-a", "layer": 1},
-		{"agent": "impl-b", "layer": 1},
-		{"agent": "verifier", "layer": 2},
+	env.createWorkflowWithAgents(t, "multi-callback", "Multi callback workflow", "", []struct{ ID string; Layer int }{
+		{"analyzer", 0}, {"impl-a", 1}, {"impl-b", 1}, {"verifier", 2},
 	})
-	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
-		VALUES ('multi-callback', ?, 'Multi callback workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
-		env.project, string(phasesJSON))
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	env.createTicket(t, "CB-MULTI", "Multi callback test")
 
 	var wfiID string
-	err = env.pool.QueryRow(`
+	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-cb-multi', ?, 'CB-MULTI', 'multi-callback', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))

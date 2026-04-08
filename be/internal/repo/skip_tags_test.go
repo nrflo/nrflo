@@ -60,8 +60,8 @@ func seedProjectPool(t *testing.T, pool *db.Pool, projectID string) {
 // seedWorkflowPool seeds a workflow into a Pool.
 func seedWorkflowPool(t *testing.T, pool *db.Pool, projectID, workflowID string) {
 	t.Helper()
-	_, err := pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		workflowID, projectID, "Test Workflow", "ticket", "[]")
+	_, err := pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		workflowID, projectID, "Test Workflow", "ticket")
 	if err != nil {
 		t.Fatalf("seed workflow: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestWorkflowGroupsCreateAndGet(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			wf := &model.Workflow{ID: tc.wfID, ProjectID: "proj", ScopeType: "ticket", Phases: "[]"}
+			wf := &model.Workflow{ID: tc.wfID, ProjectID: "proj", ScopeType: "ticket"}
 			wf.SetGroups(tc.groups)
 
 			if err := repo.Create(wf); err != nil {
@@ -115,7 +115,7 @@ func TestWorkflowGroupsUpdate(t *testing.T) {
 	seedProjectDB(t, database, "proj")
 	repo := NewWorkflowRepo(database, clock.Real())
 
-	wf := &model.Workflow{ID: "wf-grp-upd", ProjectID: "proj", ScopeType: "ticket", Phases: "[]"}
+	wf := &model.Workflow{ID: "wf-grp-upd", ProjectID: "proj", ScopeType: "ticket"}
 	wf.SetGroups([]string{"be"})
 	if err := repo.Create(wf); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -139,8 +139,8 @@ func TestWorkflowGroupsDefaultEmpty(t *testing.T) {
 	database := newSkipTagsDB(t)
 	seedProjectDB(t, database, "proj")
 
-	_, err := database.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		"wf-no-groups", "proj", "No groups", "ticket", "[]")
+	_, err := database.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		"wf-no-groups", "proj", "No groups", "ticket")
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
@@ -159,9 +159,9 @@ func TestWorkflowGroupsList(t *testing.T) {
 	seedProjectDB(t, database, "proj")
 	repo := NewWorkflowRepo(database, clock.Real())
 
-	wf1 := &model.Workflow{ID: "wf-list-1", ProjectID: "proj", ScopeType: "ticket", Phases: "[]"}
+	wf1 := &model.Workflow{ID: "wf-list-1", ProjectID: "proj", ScopeType: "ticket"}
 	wf1.SetGroups([]string{"be", "fe"})
-	wf2 := &model.Workflow{ID: "wf-list-2", ProjectID: "proj", ScopeType: "ticket", Phases: "[]"}
+	wf2 := &model.Workflow{ID: "wf-list-2", ProjectID: "proj", ScopeType: "ticket"}
 	wf2.SetGroups([]string{"docs"})
 
 	for _, wf := range []*model.Workflow{wf1, wf2} {

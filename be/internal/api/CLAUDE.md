@@ -21,8 +21,8 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_orchestrate.go` | Ticket-scoped run/stop/restart/retry-failed/take-control/resume-session/exit-interactive/run-epic. Run and retry-failed validate ticket is not closed or blocked (409 Conflict) |
 | `handlers_project_workflow.go` | Project-scoped run/stop/restart/retry-failed/take-control/resume-session/exit-interactive/state/agents |
 | `handlers_pty.go` | PTY WebSocket handler: upgrade, validate session, spawn/relay PTY, handle resize, exit-interactive on process exit |
-| `handlers_workflow_def.go` | Workflow definition CRUD |
-| `handlers_agent_def.go` | Agent definition CRUD |
+| `handlers_workflow_def.go` | Workflow definition CRUD (no `phases` field; phases derived from agent_definitions) |
+| `handlers_agent_def.go` | Agent definition CRUD (accepts `layer` field for phase execution order) |
 | `handlers_system_agent_def.go` | System agent definition CRUD (global, no project scope) |
 | `handlers_cli_models.go` | CLI model CRUD (global, no project scope, readonly delete enforcement, enabled toggle: 400 on system model, 409 on in-use) |
 | `handlers_cli_model_check.go` | CLI model health check (POST /api/v1/cli-models/{id}/test) |
@@ -72,10 +72,11 @@ POST /api/v1/tickets/:id/workflow/exit-interactive  # Signal interactive session
 POST /api/v1/tickets/:id/workflow/run-epic    # Create chain from epic children, optionally start
 
 # Workflow definitions (project-scoped, require X-Project header)
-GET    /api/v1/workflows              # List all
-POST   /api/v1/workflows              # Create
-GET    /api/v1/workflows/:id          # Get one
-PATCH  /api/v1/workflows/:id          # Update
+# Note: no `phases` field — phases are derived from agent_definitions at read time
+GET    /api/v1/workflows              # List all (response includes phases derived from agent_definitions)
+POST   /api/v1/workflows              # Create (accepts id, description, scope_type, groups, close_ticket_on_complete; no phases)
+GET    /api/v1/workflows/:id          # Get one (response includes phases derived from agent_definitions)
+PATCH  /api/v1/workflows/:id          # Update (accepts description, scope_type, groups, close_ticket_on_complete; no phases)
 DELETE /api/v1/workflows/:id          # Delete
 
 # Project-scoped workflow operations
@@ -96,10 +97,11 @@ GET  /api/v1/projects/:id/git/commits           # Paginated commit list (?page=&
 GET  /api/v1/projects/:id/git/commits/:hash     # Single commit detail with diff
 
 # Agent definitions (nested under workflows)
-GET    /api/v1/workflows/:wid/agents           # List agents for workflow
-POST   /api/v1/workflows/:wid/agents           # Create agent definition
+# Each agent definition includes a `layer` field that determines phase execution order
+GET    /api/v1/workflows/:wid/agents           # List agents for workflow (ordered by layer ASC, id ASC)
+POST   /api/v1/workflows/:wid/agents           # Create agent definition (accepts `layer` field; validates fan-in rules)
 GET    /api/v1/workflows/:wid/agents/:id       # Get agent definition
-PATCH  /api/v1/workflows/:wid/agents/:id       # Update agent definition
+PATCH  /api/v1/workflows/:wid/agents/:id       # Update agent definition (accepts `layer` field; validates fan-in rules)
 DELETE /api/v1/workflows/:wid/agents/:id       # Delete agent definition
 
 # System agent definitions (global, no project scope)

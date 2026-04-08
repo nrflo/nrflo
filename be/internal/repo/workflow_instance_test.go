@@ -28,11 +28,8 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 	}
 
 	// Create workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-agent", "layer": 0},
-	})
-	_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		"test-workflow", "test-project", "Test Workflow", "project", string(phasesJSON))
+	_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		"test-workflow", "test-project", "Test Workflow", "project")
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
 	}
@@ -108,13 +105,10 @@ func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 	}
 
 	findings, _ := json.Marshal(map[string]interface{}{})
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-agent", "layer": 0},
-	})
 
 	for _, inst := range instances {
-		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-			inst.workflowID, projectID, "Test Workflow", "project", string(phasesJSON))
+		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+			inst.workflowID, projectID, "Test Workflow", "project")
 		if err != nil {
 			t.Fatalf("failed to create workflow %s: %v", inst.workflowID, err)
 		}

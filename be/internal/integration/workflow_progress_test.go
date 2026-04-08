@@ -136,19 +136,11 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a second workflow definition for testing multiple workflows per ticket
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "investigation", "layer": 0},
-		{"agent": "implementation", "layer": 1},
-		{"agent": "verification", "layer": 2},
+	createWorkflowWithAgents(t, env, "bugfix", []types.AgentDefCreateRequest{
+		{ID: "investigation", Prompt: "investigate", Layer: 0},
+		{ID: "implementation", Prompt: "implement", Layer: 1},
+		{ID: "verification", Prompt: "verify", Layer: 2},
 	})
-	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-		ID:          "bugfix",
-		Description: "Bugfix workflow",
-		Phases:      phasesJSON,
-	})
-	if err != nil {
-		t.Fatalf("failed to create bugfix workflow: %v", err)
-	}
 
 	env.CreateTicket(t, "test-4", "Test ticket with multiple workflows")
 

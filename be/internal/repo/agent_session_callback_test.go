@@ -28,8 +28,8 @@ func setupTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	_, err = database.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
-		VALUES ('proj', 'test-workflow', 'Test Workflow', 'ticket', '[]', datetime('now'), datetime('now'))`)
+	_, err = database.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
+		VALUES ('proj', 'test-workflow', 'Test Workflow', 'ticket', datetime('now'), datetime('now'))`)
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
 	}

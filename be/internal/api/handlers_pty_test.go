@@ -23,7 +23,10 @@ import (
 func newPtyTestServer(t *testing.T) (*Server, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "pty_handler_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -62,8 +65,8 @@ func insertPtyTestSession(t *testing.T, dbPath, sessionID string, status model.A
 		t.Fatalf("insertPtyTestSession: insert project: %v", err)
 	}
 
-	_, err = database.Exec(`INSERT OR IGNORE INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
-		VALUES ('proj-pty', 'test-wf', 'PTY Test WF', 'ticket', '[]', ?, ?)`, now, now)
+	_, err = database.Exec(`INSERT OR IGNORE INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
+		VALUES ('proj-pty', 'test-wf', 'PTY Test WF', 'ticket', ?, ?)`, now, now)
 	if err != nil {
 		t.Fatalf("insertPtyTestSession: insert workflow: %v", err)
 	}

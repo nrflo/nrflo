@@ -86,8 +86,8 @@ be/
 │   │   ├── project.go           # Project operations
 │   │   ├── ticket.go            # Ticket operations
 │   │   ├── workflow.go          # Workflow operations (ticket + project scope)
-│   │   ├── workflow_defs.go     # Workflow definitions CRUD
-│   │   ├── workflow_config.go   # Workflow config loading
+│   │   ├── workflow_defs.go     # Workflow definitions CRUD (phases derived from agent_definitions)
+│   │   ├── workflow_config.go   # Workflow config loading (phases built from agent_definitions layer field)
 │   │   ├── workflow_types.go    # Workflow type definitions (WorkflowDef, PhaseDef)
 │   │   ├── workflow_validation.go # Validation (layer, fan-in, project scope)
 │   │   ├── workflow_response.go # V4 response building (active agents, history)

@@ -32,12 +32,11 @@ func (r *WorkflowRepo) Create(wf *model.Workflow) error {
 	}
 
 	_, err := r.db.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, groups, close_ticket_on_complete, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(wf.ID),
 		strings.ToLower(wf.ProjectID),
 		wf.Description,
-		wf.Phases,
 		wf.ScopeType,
 		wf.Groups,
 		wf.CloseTicketOnComplete,
@@ -53,13 +52,12 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, project_id, description, phases, scope_type, groups, close_ticket_on_complete, created_at, updated_at
+		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, id).Scan(
 		&wf.ID,
 		&wf.ProjectID,
 		&wf.Description,
-		&wf.Phases,
 		&wf.ScopeType,
 		&wf.Groups,
 		&wf.CloseTicketOnComplete,
@@ -82,7 +80,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 // List retrieves all workflow definitions for a project
 func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, description, phases, scope_type, groups, close_ticket_on_complete, created_at, updated_at
+		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -99,7 +97,6 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 			&wf.ID,
 			&wf.ProjectID,
 			&wf.Description,
-			&wf.Phases,
 			&wf.ScopeType,
 			&wf.Groups,
 			&wf.CloseTicketOnComplete,
@@ -122,7 +119,6 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 // WorkflowUpdateFields contains fields that can be updated
 type WorkflowUpdateFields struct {
 	Description           *string
-	Phases                *string
 	Groups                *string
 	CloseTicketOnComplete *bool
 }
@@ -135,10 +131,6 @@ func (r *WorkflowRepo) Update(projectID, id string, fields *WorkflowUpdateFields
 	if fields.Description != nil {
 		updates = append(updates, "description = ?")
 		args = append(args, *fields.Description)
-	}
-	if fields.Phases != nil {
-		updates = append(updates, "phases = ?")
-		args = append(args, *fields.Phases)
 	}
 	if fields.Groups != nil {
 		updates = append(updates, "groups = ?")

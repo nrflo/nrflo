@@ -16,15 +16,15 @@ describe('GlobalSettingsSection', () => {
   it('renders toggle reflecting server state (false)', async () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
     renderWithQuery(<GlobalSettingsSection />)
-    const toggle = await screen.findByRole('switch')
-    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[0]).toHaveAttribute('aria-checked', 'false')
   })
 
   it('renders toggle reflecting server state (true)', async () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: true, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
     renderWithQuery(<GlobalSettingsSection />)
-    const toggle = await screen.findByRole('switch')
-    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[0]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('shows loading state while fetching', () => {
@@ -42,7 +42,7 @@ describe('GlobalSettingsSection', () => {
   it('renders section title and field label', async () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
     renderWithQuery(<GlobalSettingsSection />)
-    await screen.findByRole('switch')
+    await screen.findAllByRole('switch')
     expect(screen.getByText('Global Settings')).toBeInTheDocument()
     expect(screen.getByText('Low consumption mode')).toBeInTheDocument()
     expect(screen.getByText(/when enabled, agents with a configured alternative/i)).toBeInTheDocument()
@@ -54,8 +54,8 @@ describe('GlobalSettingsSection', () => {
     renderWithQuery(<GlobalSettingsSection />)
 
     const user = userEvent.setup()
-    const toggle = await screen.findByRole('switch')
-    await user.click(toggle)
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[0])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: true })
@@ -68,8 +68,8 @@ describe('GlobalSettingsSection', () => {
     renderWithQuery(<GlobalSettingsSection />)
 
     const user = userEvent.setup()
-    const toggle = await screen.findByRole('switch')
-    await user.click(toggle)
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[0])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: false })

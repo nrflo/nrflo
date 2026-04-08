@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -18,20 +17,20 @@ import (
 func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "impl", "layer": 1},
-	})
-
+	// Create project-scoped workflow definition with agent defs
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "rerun-test",
 		Description: "Test rerun workflow",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	adSvc := env.getAgentDefService(t)
+	if _, adErr := adSvc.CreateAgentDef(env.ProjectID, "rerun-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); adErr != nil {
+		t.Fatalf("failed to create agent def: %v", adErr)
 	}
 
 	// Initialize project workflow
@@ -87,7 +86,7 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 
 	// Stop right away to avoid spawning actual agents
 	orch.Stop(result.InstanceID)
-	waitForCondition(t, time.Second, func() bool {
+	waitForCondition(t, 5*time.Second, func() bool {
 		return !orch.IsInstanceRunning(result.InstanceID)
 	})
 
@@ -120,19 +119,20 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
+	// Create project-scoped workflow definition with agent defs
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "concurrent-test",
 		Description: "Test concurrent workflows",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	adSvc := env.getAgentDefService(t)
+	if _, adErr := adSvc.CreateAgentDef(env.ProjectID, "concurrent-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); adErr != nil {
+		t.Fatalf("failed to create agent def: %v", adErr)
 	}
 
 	// Create orchestrator and start first workflow
@@ -166,7 +166,7 @@ func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 	// Stop both
 	orch.Stop(result1.InstanceID)
 	orch.Stop(result2.InstanceID)
-	waitForCondition(t, time.Second, func() bool {
+	waitForCondition(t, 5*time.Second, func() bool {
 		return !orch.IsInstanceRunning(result1.InstanceID) && !orch.IsInstanceRunning(result2.InstanceID)
 	})
 
@@ -222,7 +222,7 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 
 	// Stop immediately
 	orch.Stop(result.InstanceID)
-	waitForCondition(t, time.Second, func() bool {
+	waitForCondition(t, 5*time.Second, func() bool {
 		return !orch.IsInstanceRunning(result.InstanceID)
 	})
 
@@ -269,10 +269,6 @@ func TestMultipleProjectWorkflowsListed(t *testing.T) {
 		{"wf-proj-completed", model.WorkflowInstanceProjectCompleted},
 	}
 
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "test-agent", "layer": 0},
-	})
-
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	for _, wf := range workflows {
@@ -280,7 +276,6 @@ func TestMultipleProjectWorkflowsListed(t *testing.T) {
 		_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 			ID:          wf.id,
 			Description: "Test workflow",
-			Phases:      phasesJSON,
 			ScopeType:   "project",
 		})
 		if err != nil {

@@ -69,9 +69,9 @@ func TestMigration018DropsCategoryFromChainExecutions(t *testing.T) {
 func TestWorkflowsTableSchemaAfterMigration018(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Expected columns (no categories)
+	// Expected columns (no categories, no phases after migration 000053)
 	expectedColumns := []string{
-		"id", "project_id", "description", "phases", "scope_type", "created_at", "updated_at",
+		"id", "project_id", "description", "scope_type", "created_at", "updated_at",
 	}
 
 	for _, colName := range expectedColumns {
@@ -145,15 +145,9 @@ func TestWorkflowCRUDWithoutCategories(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "test-no-cats",
 		Description: "Test workflow without categories",
-		Phases:      phasesJSON,
 		ScopeType:   "ticket",
 	})
 	if err != nil {
@@ -523,14 +517,9 @@ func TestProjectWorkflowWithoutCategory(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-nocats",
 		Description: "Project workflow without categories",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {

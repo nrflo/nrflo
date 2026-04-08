@@ -19,24 +19,15 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create 3-layer workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-		{"agent": "verifier", "layer": 2},
+	env.createWorkflowWithAgents(t, "callback-e2e", "Callback E2E workflow", "", []struct{ ID string; Layer int }{
+		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
-	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
-		VALUES ('callback-e2e', ?, 'Callback E2E workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
-		env.project, string(phasesJSON))
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	env.createTicket(t, "CB-E2E", "End-to-end callback test")
 
 	// Create workflow instance: layer 0 and 1 completed, layer 2 active
 	var wfiID string
-	err = env.pool.QueryRow(`
+	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-e2e', ?, 'CB-E2E', 'callback-e2e', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
@@ -123,24 +114,14 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create 4-layer workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-		{"agent": "tester", "layer": 2},
-		{"agent": "verifier", "layer": 3},
+	env.createWorkflowWithAgents(t, "multi-cb", "Multiple callback workflow", "", []struct{ ID string; Layer int }{
+		{"analyzer", 0}, {"builder", 1}, {"tester", 2}, {"verifier", 3},
 	})
-	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
-		VALUES ('multi-cb', ?, 'Multiple callback workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
-		env.project, string(phasesJSON))
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	env.createTicket(t, "CB-MULTI", "Multiple callback cycles")
 
 	var wfiID string
-	err = env.pool.QueryRow(`
+	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-multi', ?, 'CB-MULTI', 'multi-cb', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
@@ -214,24 +195,14 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create 4-layer workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-		{"agent": "tester", "layer": 2},
-		{"agent": "deployer", "layer": 3},
+	env.createWorkflowWithAgents(t, "leak-test", "Leak test workflow", "", []struct{ ID string; Layer int }{
+		{"analyzer", 0}, {"builder", 1}, {"tester", 2}, {"deployer", 3},
 	})
-	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
-		VALUES ('leak-test', ?, 'Leak test workflow', ?, 'ticket', datetime('now'), datetime('now'))`,
-		env.project, string(phasesJSON))
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	env.createTicket(t, "CB-LEAK", "No leak test")
 
 	var wfiID string
-	err = env.pool.QueryRow(`
+	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-leak', ?, 'CB-LEAK', 'leak-test', 'active',
 		        '{}', 0, datetime('now'), datetime('now'))
@@ -287,20 +258,12 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Create project-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
+	env.createWorkflowWithAgents(t, "proj-cb", "Project callback workflow", "project", []struct{ ID string; Layer int }{
+		{"analyzer", 0}, {"builder", 1},
 	})
-	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
-		VALUES ('proj-cb', ?, 'Project callback workflow', ?, 'project', datetime('now'), datetime('now'))`,
-		env.project, string(phasesJSON))
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	var wfiID string
-	err = env.pool.QueryRow(`
+	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-proj', ?, '', 'proj-cb', 'active', 'project',
 		        '{}', 0, datetime('now'), datetime('now'))

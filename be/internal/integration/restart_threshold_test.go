@@ -137,8 +137,8 @@ func TestAgentDefListRestartThreshold(t *testing.T) {
 		t.Fatalf("failed to list agent defs: %v", err)
 	}
 
-	if len(defs) != 2 {
-		t.Fatalf("expected 2 defs, got %d", len(defs))
+	if len(defs) != 4 {
+		t.Fatalf("expected 4 defs, got %d", len(defs))
 	}
 
 	// Find each and verify

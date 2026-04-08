@@ -2,7 +2,6 @@ package repo
 
 import (
 	"database/sql"
-	"encoding/json"
 	"path/filepath"
 	"testing"
 
@@ -29,10 +28,9 @@ func makeWorktreeTestDB(t *testing.T, suffix string) (*WorkflowInstanceRepo, *db
 	if err != nil {
 		t.Fatalf("failed to insert project: %v", err)
 	}
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{{"agent": "test-agent", "layer": 0}})
-	_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		workflowID, projectID, "Test Workflow", "ticket", string(phasesJSON))
+	_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		workflowID, projectID, "Test Workflow", "ticket")
 	if err != nil {
 		t.Fatalf("failed to insert workflow: %v", err)
 	}

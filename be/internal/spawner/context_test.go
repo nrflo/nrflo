@@ -23,7 +23,7 @@ func setupTestDB(t *testing.T) *db.Pool {
 	// Seed parent rows for FK constraints
 	now := "2025-01-01T00:00:00Z"
 	mustExec(t, pool, `INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj', 'Test', ?, ?)`, now, now)
-	mustExec(t, pool, `INSERT INTO workflows (id, project_id, phases, created_at, updated_at) VALUES ('feature', 'proj', '[]', ?, ?)`, now, now)
+	mustExec(t, pool, `INSERT INTO workflows (id, project_id, created_at, updated_at) VALUES ('feature', 'proj', ?, ?)`, now, now)
 	mustExec(t, pool, `INSERT INTO tickets (id, project_id, title, created_at, updated_at, created_by) VALUES ('T-1', 'proj', 'Test', ?, ?, 'test')`, now, now)
 	mustExec(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-1', 'proj', 'T-1', 'feature', 'active', '{}', 0, ?, ?)`, now, now)

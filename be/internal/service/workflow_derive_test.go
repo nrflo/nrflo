@@ -34,11 +34,19 @@ func setupDeriveTestEnv(t *testing.T) (*db.Pool, *WorkflowService, string) {
 		t.Fatalf("project insert: %v", err)
 	}
 
-	phasesJSON := `[{"agent":"analyzer","layer":0},{"agent":"builder","layer":1}]`
 	if _, err = pool.Exec(
-		`INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at) VALUES (?, ?, '', ?, 'ticket', ?, ?)`,
-		"test-wf", projectID, phasesJSON, now, now); err != nil {
+		`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, '', 'ticket', ?, ?)`,
+		"test-wf", projectID, now, now); err != nil {
 		t.Fatalf("workflow insert: %v", err)
+	}
+
+	// Insert agent definitions with layers (phases are derived from agent_definitions)
+	for _, ad := range []struct{ id string; layer int }{{"analyzer", 0}, {"builder", 1}} {
+		if _, err = pool.Exec(
+			`INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, created_at, updated_at) VALUES (?, ?, 'test-wf', '', ?, ?, ?)`,
+			ad.id, projectID, ad.layer, now, now); err != nil {
+			t.Fatalf("agent_definition insert %s: %v", ad.id, err)
+		}
 	}
 
 	wfiID := "wfi-test"
@@ -377,11 +385,10 @@ func TestDerivePhaseStatuses_ThreeLayerSkipInference(t *testing.T) {
 
 	// Add extra workflow with 3 layers
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	phasesJSON3 := `[{"agent":"p1","layer":0},{"agent":"p2","layer":1},{"agent":"p3","layer":2}]`
 	wfID := "test-wf-3"
 	_, err := pool.Exec(
-		`INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at) VALUES (?, 'test-proj', '', ?, 'ticket', ?, ?)`,
-		wfID, phasesJSON3, now, now)
+		`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, 'test-proj', '', 'ticket', ?, ?)`,
+		wfID, now, now)
 	if err != nil {
 		t.Fatalf("workflow insert: %v", err)
 	}
@@ -432,10 +439,9 @@ func TestDerivePhaseStatuses_SessionForDifferentWFI(t *testing.T) {
 
 	// Insert a second workflow def so the FK constraint passes
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	phasesJSON := `[{"agent":"analyzer","layer":0},{"agent":"builder","layer":1}]`
 	_, err := pool.Exec(
-		`INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at) VALUES (?, 'test-proj', '', ?, 'ticket', ?, ?)`,
-		"test-wf-other", phasesJSON, now, now)
+		`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, 'test-proj', '', 'ticket', ?, ?)`,
+		"test-wf-other", now, now)
 	if err != nil {
 		t.Fatalf("workflow insert: %v", err)
 	}
@@ -522,7 +528,7 @@ func setupDeriveTestEnvBench(b *testing.B) (*db.Pool, *WorkflowService, string) 
 	projectID := "test-proj"
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, 'Test', '/tmp', ?, ?)`, projectID, now, now)
-	pool.Exec(`INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at) VALUES ('test-wf', ?, '', '[{"agent":"analyzer","layer":0},{"agent":"builder","layer":1}]', 'ticket', ?, ?)`, projectID, now, now)
+	pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES ('test-wf', ?, '', 'ticket', ?, ?)`, projectID, now, now)
 	wfiID := "bench-wfi"
 	pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at) VALUES (?, ?, '', 'test-wf', 'ticket', 'active', '{}', 0, ?, ?)`, wfiID, projectID, now, now)
 

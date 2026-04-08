@@ -12,7 +12,6 @@ type Workflow struct {
 	Description            string    `json:"description"`
 	ScopeType              string    `json:"scope_type"` // "ticket" or "project"
 	CloseTicketOnComplete  bool      `json:"close_ticket_on_complete"`
-	Phases                 string    `json:"-"`           // JSON array string
 	Groups                 string    `json:"-"`           // JSON array of tag strings
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
@@ -41,14 +40,6 @@ func (w *Workflow) SetGroups(groups []string) {
 
 // MarshalJSON implements custom JSON marshaling for Workflow
 func (w Workflow) MarshalJSON() ([]byte, error) {
-	var phases []interface{}
-	if w.Phases != "" {
-		_ = json.Unmarshal([]byte(w.Phases), &phases)
-	}
-	if phases == nil {
-		phases = []interface{}{}
-	}
-
 	groups := w.GetGroups()
 
 	scopeType := w.ScopeType
@@ -57,22 +48,20 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
-		ID                    string        `json:"id"`
-		ProjectID             string        `json:"project_id"`
-		Description           string        `json:"description"`
-		ScopeType             string        `json:"scope_type"`
-		CloseTicketOnComplete bool          `json:"close_ticket_on_complete"`
-		Phases                []interface{} `json:"phases"`
-		Groups                []string      `json:"groups"`
-		CreatedAt             time.Time     `json:"created_at"`
-		UpdatedAt             time.Time     `json:"updated_at"`
+		ID                    string   `json:"id"`
+		ProjectID             string   `json:"project_id"`
+		Description           string   `json:"description"`
+		ScopeType             string   `json:"scope_type"`
+		CloseTicketOnComplete bool     `json:"close_ticket_on_complete"`
+		Groups                []string `json:"groups"`
+		CreatedAt             time.Time `json:"created_at"`
+		UpdatedAt             time.Time `json:"updated_at"`
 	}{
 		ID:                    w.ID,
 		ProjectID:             w.ProjectID,
 		Description:           w.Description,
 		ScopeType:             scopeType,
 		CloseTicketOnComplete: w.CloseTicketOnComplete,
-		Phases:                phases,
 		Groups:                groups,
 		CreatedAt:             w.CreatedAt,
 		UpdatedAt:             w.UpdatedAt,

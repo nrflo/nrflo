@@ -105,7 +105,6 @@ func TestMigration030RepoRoundTrips(t *testing.T) {
 			ID:        "wf-grp-it",
 			ProjectID: env.ProjectID,
 			ScopeType: "ticket",
-			Phases:    `[{"agent":"analyzer","layer":0}]`,
 		}
 		wf.SetGroups([]string{"be", "fe", "docs"})
 
@@ -127,7 +126,6 @@ func TestMigration030RepoRoundTrips(t *testing.T) {
 			ID:        "wf-grp-upd-it",
 			ProjectID: env.ProjectID,
 			ScopeType: "ticket",
-			Phases:    `[{"agent":"analyzer","layer":0}]`,
 		}
 		wf.SetGroups([]string{"be"})
 		if err := wfRepo.Create(wf); err != nil {

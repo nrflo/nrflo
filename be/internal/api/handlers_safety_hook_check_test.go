@@ -25,7 +25,10 @@ func skipIfJqMissingAPI(t *testing.T) {
 func newSafetyHookCheckServer(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "safety_hook_check_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

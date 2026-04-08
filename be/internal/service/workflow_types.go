@@ -1,8 +1,6 @@
 package service
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 // WorkflowState represents the state of a workflow (v4 format)
 type WorkflowState struct {
@@ -34,12 +32,11 @@ type AgentConfig struct {
 
 // WorkflowDef represents a workflow definition (parsed from DB)
 type WorkflowDef struct {
-	Description           string            `json:"description"`
-	ScopeType             string            `json:"scope_type"` // "ticket" or "project"
-	CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
-	Groups                []string          `json:"groups"`
-	Phases                []PhaseDef        `json:"-"`
-	RawPhases             []json.RawMessage `json:"-"` // Internal, used during parsing
+	Description           string     `json:"description"`
+	ScopeType             string     `json:"scope_type"` // "ticket" or "project"
+	CloseTicketOnComplete bool       `json:"close_ticket_on_complete"`
+	Groups                []string   `json:"groups"`
+	Phases                []PhaseDef `json:"-"`
 }
 
 // MarshalJSON serializes WorkflowDef with parsed phases
@@ -72,13 +69,13 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON deserializes WorkflowDef, parsing mixed-format phases
+// UnmarshalJSON deserializes WorkflowDef
 func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Description           string            `json:"description"`
-		ScopeType             string            `json:"scope_type"`
-		CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
-		Phases                []json.RawMessage `json:"phases"`
+		Description           string     `json:"description"`
+		ScopeType             string     `json:"scope_type"`
+		CloseTicketOnComplete bool       `json:"close_ticket_on_complete"`
+		Phases                []PhaseDef `json:"phases"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -86,15 +83,7 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	wf.Description = raw.Description
 	wf.ScopeType = raw.ScopeType
 	wf.CloseTicketOnComplete = raw.CloseTicketOnComplete
-	wf.RawPhases = raw.Phases
-
-	if len(raw.Phases) > 0 {
-		phases, err := parsePhaseDefs(raw.Phases)
-		if err != nil {
-			return err
-		}
-		wf.Phases = phases
-	}
+	wf.Phases = raw.Phases
 	return nil
 }
 

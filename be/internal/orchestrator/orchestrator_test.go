@@ -31,9 +31,12 @@ func newTestEnv(t *testing.T) *testEnv {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := orchCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("failed to copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 
 	hub := ws.NewHub(clock.Real())
@@ -55,17 +58,26 @@ func newTestEnv(t *testing.T) *testEnv {
 
 	// Seed test workflow definition
 	workflowSvc := service.NewWorkflowService(pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-	})
 	_, err = workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",
-		Phases:      phasesJSON,
 	})
 	if err != nil {
 		t.Fatalf("failed to seed workflow: %v", err)
+	}
+
+	// Seed agent definitions (layer info now lives on agent_definitions)
+	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+	for _, ad := range []struct{ id string; layer int }{
+		{"analyzer", 0},
+		{"builder", 1},
+	} {
+		_, err = pool.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
+			VALUES (?, ?, ?, 'sonnet', 20, 'test prompt', ?, ?, ?)`,
+			ad.id, projectID, "test", ad.layer, now, now)
+		if err != nil {
+			t.Fatalf("failed to seed agent definition %s: %v", ad.id, err)
+		}
 	}
 
 	t.Cleanup(func() {
@@ -93,6 +105,33 @@ func newTestEnv(t *testing.T) *testEnv {
 		orch:    orch,
 		dbPath:  dbPath,
 		project: projectID,
+	}
+}
+
+// createWorkflowWithAgents creates a workflow and its agent definitions in the DB.
+// agents is a list of (agentID, layer) pairs.
+func (e *testEnv) createWorkflowWithAgents(t *testing.T, workflowID, description, scopeType string, agents []struct{ ID string; Layer int }) {
+	t.Helper()
+	if scopeType == "" {
+		scopeType = "ticket"
+	}
+	workflowSvc := service.NewWorkflowService(e.pool, clock.Real())
+	_, err := workflowSvc.CreateWorkflowDef(e.project, &types.WorkflowDefCreateRequest{
+		ID:          workflowID,
+		Description: description,
+		ScopeType:   scopeType,
+	})
+	if err != nil {
+		t.Fatalf("failed to create workflow %s: %v", workflowID, err)
+	}
+	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+	for _, a := range agents {
+		_, err = e.pool.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
+			VALUES (?, ?, ?, 'sonnet', 20, 'test prompt', ?, ?, ?)`,
+			a.ID, e.project, workflowID, a.Layer, now, now)
+		if err != nil {
+			t.Fatalf("failed to create agent def %s for workflow %s: %v", a.ID, workflowID, err)
+		}
 	}
 }
 

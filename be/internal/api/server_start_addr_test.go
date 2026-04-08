@@ -28,7 +28,10 @@ func findFreePort(t *testing.T) int {
 func newStartTestServer(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "srv_start_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("newStartTestServer: pool: %v", err)
 	}

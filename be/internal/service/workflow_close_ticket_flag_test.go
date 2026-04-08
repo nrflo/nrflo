@@ -15,12 +15,10 @@ func boolPtr(b bool) *bool { return &b }
 
 func TestCreateWorkflowDef_CloseTicketOnComplete_DefaultsToTrue(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	// Omit close_ticket_on_complete entirely → should default to true
 	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:     "wf-ctoc-default",
-		Phases: phases,
+		ID: "wf-ctoc-default",
 	})
 	if err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)
@@ -32,11 +30,9 @@ func TestCreateWorkflowDef_CloseTicketOnComplete_DefaultsToTrue(t *testing.T) {
 
 func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitFalse(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:                    "wf-ctoc-false",
-		Phases:                phases,
 		CloseTicketOnComplete: boolPtr(false),
 	})
 	if err != nil {
@@ -49,11 +45,9 @@ func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitFalse(t *testing.T) {
 
 func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitTrue(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:                    "wf-ctoc-true",
-		Phases:                phases,
 		CloseTicketOnComplete: boolPtr(true),
 	})
 	if err != nil {
@@ -68,7 +62,6 @@ func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitTrue(t *testing.T) {
 
 func TestGetWorkflowDef_CloseTicketOnComplete_Persisted(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	cases := []struct {
 		id   string
@@ -84,7 +77,6 @@ func TestGetWorkflowDef_CloseTicketOnComplete_Persisted(t *testing.T) {
 		t.Run(tc.id, func(t *testing.T) {
 			_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 				ID:                    tc.id,
-				Phases:                phases,
 				CloseTicketOnComplete: tc.req,
 			})
 			if err != nil {
@@ -104,11 +96,9 @@ func TestGetWorkflowDef_CloseTicketOnComplete_Persisted(t *testing.T) {
 
 func TestListWorkflowDefs_CloseTicketOnComplete_Persisted(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:                    "wf-list-ctoc",
-		Phases:                phases,
 		CloseTicketOnComplete: boolPtr(false),
 	})
 	if err != nil {
@@ -132,12 +122,10 @@ func TestListWorkflowDefs_CloseTicketOnComplete_Persisted(t *testing.T) {
 
 func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToFalse(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	// Create with default (true)
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:     "wf-upd-ctoc",
-		Phases: phases,
+		ID: "wf-upd-ctoc",
 	})
 	if err != nil {
 		t.Fatalf("setup create: %v", err)
@@ -161,12 +149,10 @@ func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToFalse(t *testing.T) {
 
 func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToTrue(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	// Create with explicit false
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:                    "wf-upd-ctoc-tot",
-		Phases:                phases,
 		CloseTicketOnComplete: boolPtr(false),
 	})
 	if err != nil {
@@ -191,11 +177,9 @@ func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToTrue(t *testing.T) {
 
 func TestUpdateWorkflowDef_CloseTicketOnComplete_NilPreservesValue(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:                    "wf-upd-nil-ctoc",
-		Phases:                phases,
 		CloseTicketOnComplete: boolPtr(false),
 	})
 	if err != nil {
@@ -222,8 +206,6 @@ func TestUpdateWorkflowDef_CloseTicketOnComplete_NilPreservesValue(t *testing.T)
 // --- BuildSpawnerConfig: propagates close_ticket_on_complete ---
 
 func TestBuildSpawnerConfig_CloseTicketOnComplete_Propagated(t *testing.T) {
-	phasesJSON := `[{"agent":"analyzer","layer":0}]`
-
 	cases := []struct {
 		name  string
 		value bool
@@ -239,7 +221,6 @@ func TestBuildSpawnerConfig_CloseTicketOnComplete_Propagated(t *testing.T) {
 				ProjectID:             "proj",
 				ScopeType:             "ticket",
 				CloseTicketOnComplete: tc.value,
-				Phases:                phasesJSON,
 				Groups:                "[]",
 			}
 

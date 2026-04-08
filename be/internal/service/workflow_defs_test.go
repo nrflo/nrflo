@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -32,13 +31,6 @@ func setupWorkflowDefsTestEnv(t *testing.T) (*db.Pool, *WorkflowService) {
 
 	svc := NewWorkflowService(pool, clock.Real())
 	return pool, svc
-}
-
-// makePhases returns a valid single-phase JSON for use in tests.
-func makePhases(t *testing.T) json.RawMessage {
-	t.Helper()
-	b, _ := json.Marshal([]map[string]interface{}{{"agent": "analyzer", "layer": 0}})
-	return b
 }
 
 // --- ValidateGroups unit tests ---
@@ -76,11 +68,9 @@ func TestValidateGroups(t *testing.T) {
 
 func TestCreateWorkflowDef_WithGroups(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf1",
-		Phases: phases,
 		Groups: []string{"be", "fe", "docs"},
 	})
 	if err != nil {
@@ -93,11 +83,9 @@ func TestCreateWorkflowDef_WithGroups(t *testing.T) {
 
 func TestCreateWorkflowDef_NoGroups(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:     "wf-nogroup",
-		Phases: phases,
+		ID: "wf-nogroup",
 		// Groups omitted (nil)
 	})
 	if err != nil {
@@ -107,11 +95,9 @@ func TestCreateWorkflowDef_NoGroups(t *testing.T) {
 
 func TestCreateWorkflowDef_EmptyGroupEntry(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf-badgroup",
-		Phases: phases,
 		Groups: []string{"be", ""},
 	})
 	if err == nil {
@@ -121,11 +107,9 @@ func TestCreateWorkflowDef_EmptyGroupEntry(t *testing.T) {
 
 func TestCreateWorkflowDef_DuplicateGroup(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf-dupgroup",
-		Phases: phases,
 		Groups: []string{"be", "be"},
 	})
 	if err == nil {
@@ -137,12 +121,10 @@ func TestCreateWorkflowDef_DuplicateGroup(t *testing.T) {
 
 func TestGetWorkflowDef_ReturnsGroups(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 	groups := []string{"be", "fe"}
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf-get",
-		Phases: phases,
 		Groups: groups,
 	})
 	if err != nil {
@@ -163,11 +145,9 @@ func TestGetWorkflowDef_ReturnsGroups(t *testing.T) {
 
 func TestGetWorkflowDef_EmptyGroupsReturnsSlice(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:     "wf-nogroup2",
-		Phases: phases,
+		ID: "wf-nogroup2",
 	})
 	if err != nil {
 		t.Fatalf("setup: %v", err)
@@ -189,11 +169,9 @@ func TestGetWorkflowDef_EmptyGroupsReturnsSlice(t *testing.T) {
 
 func TestListWorkflowDefs_ReturnsGroups(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf-list",
-		Phases: phases,
 		Groups: []string{"be", "fe"},
 	})
 	if err != nil {
@@ -217,11 +195,9 @@ func TestListWorkflowDefs_ReturnsGroups(t *testing.T) {
 
 func TestUpdateWorkflowDef_UpdatesGroups(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf-upd",
-		Phases: phases,
 		Groups: []string{"be"},
 	})
 	if err != nil {
@@ -246,11 +222,9 @@ func TestUpdateWorkflowDef_UpdatesGroups(t *testing.T) {
 
 func TestUpdateWorkflowDef_InvalidGroups(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
-	phases := makePhases(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:     "wf-inv",
-		Phases: phases,
+		ID: "wf-inv",
 	})
 	if err != nil {
 		t.Fatalf("setup: %v", err)

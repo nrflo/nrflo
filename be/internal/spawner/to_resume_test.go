@@ -352,10 +352,10 @@ func setupToResumeTestEnvInternal(t *testing.T, scopeType string) *toResumeTestE
 
 	// Create workflow
 	_, err = database.Exec(`
-		INSERT INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
 		projectID, workflowID, "Test workflow", scopeType,
-		"[]", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
+		time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
 	}

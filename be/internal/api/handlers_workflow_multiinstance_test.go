@@ -16,7 +16,10 @@ import (
 func newWorkflowMIServer(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "wf_mi_handler_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -47,8 +50,8 @@ func seedTicketTwoInstances(t *testing.T, s *Server, projectID, ticketID string)
 	}
 
 	if _, err := s.pool.Exec(
-		`INSERT INTO workflows (id, project_id, description, scope_type, phases, groups, created_at, updated_at)
-		 VALUES ('wf-mi', ?, '', 'ticket', '[{"agent":"agent1","layer":0}]', '[]', ?, ?)`,
+		`INSERT INTO workflows (id, project_id, description, scope_type, groups, created_at, updated_at)
+		 VALUES ('wf-mi', ?, '', 'ticket', '[]', ?, ?)`,
 		projectID, now, now,
 	); err != nil {
 		t.Fatalf("seed workflow def: %v", err)

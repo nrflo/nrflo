@@ -34,8 +34,8 @@ func seedCategoryMessages(t *testing.T, dbPath, projectID, sessionID string) {
 		t.Fatalf("seed ticket: %v", err)
 	}
 	if _, err := database.Exec(
-		`INSERT OR IGNORE INTO workflows (id, project_id, description, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		"feature", projectID, "Feature", `["implementation"]`, now, now,
+		`INSERT OR IGNORE INTO workflows (id, project_id, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"feature", projectID, "Feature", now, now,
 	); err != nil {
 		t.Fatalf("seed workflow: %v", err)
 	}

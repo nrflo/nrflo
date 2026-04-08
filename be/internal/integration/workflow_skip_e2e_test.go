@@ -15,13 +15,17 @@ func TestWorkflowSkipSocket_HappyPath(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a workflow with groups (env seeds "test" without groups)
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{{"agent": "analyzer", "layer": 0}})
 	if _, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:     "skip-wf",
-		Phases: phasesJSON,
 		Groups: []string{"be", "fe", "docs"},
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)
+	}
+	adSvc := env.getAgentDefService(t)
+	if _, err := adSvc.CreateAgentDef(env.ProjectID, "skip-wf", &types.AgentDefCreateRequest{
+		ID: "analyzer", Prompt: "a", Layer: 0,
+	}); err != nil {
+		t.Fatalf("CreateAgentDef: %v", err)
 	}
 
 	env.CreateTicket(t, "SKIP-E2E", "skip e2e test")
@@ -116,13 +120,17 @@ func TestWorkflowSkipSocket_ValidationErrors(t *testing.T) {
 func TestWorkflowSkipSocket_TagNotInGroups(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{{"agent": "analyzer", "layer": 0}})
 	if _, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:     "wf-inv-tag",
-		Phases: phasesJSON,
 		Groups: []string{"be"},
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)
+	}
+	adSvc := env.getAgentDefService(t)
+	if _, err := adSvc.CreateAgentDef(env.ProjectID, "wf-inv-tag", &types.AgentDefCreateRequest{
+		ID: "analyzer", Prompt: "a", Layer: 0,
+	}); err != nil {
+		t.Fatalf("CreateAgentDef: %v", err)
 	}
 
 	env.CreateTicket(t, "SKIP-INVALID", "invalid tag test")
@@ -140,13 +148,17 @@ func TestWorkflowSkipSocket_TagNotInGroups(t *testing.T) {
 func TestWorkflowSkipSocket_Idempotent(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{{"agent": "analyzer", "layer": 0}})
 	if _, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:     "wf-idem",
-		Phases: phasesJSON,
 		Groups: []string{"be", "fe"},
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)
+	}
+	adSvc := env.getAgentDefService(t)
+	if _, err := adSvc.CreateAgentDef(env.ProjectID, "wf-idem", &types.AgentDefCreateRequest{
+		ID: "analyzer", Prompt: "a", Layer: 0,
+	}); err != nil {
+		t.Fatalf("CreateAgentDef: %v", err)
 	}
 
 	env.CreateTicket(t, "SKIP-IDEM", "idempotent test")

@@ -34,8 +34,8 @@ func seedSessionAndMessages(t *testing.T, dbPath string) {
 	}
 
 	// Workflow definition (FK: projects)
-	if _, err := database.Exec(`INSERT OR IGNORE INTO workflows (id, project_id, description, phases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		"feature", "e2eproj", "Feature workflow", `["implementation","verification"]`, now, now); err != nil {
+	if _, err := database.Exec(`INSERT OR IGNORE INTO workflows (id, project_id, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"feature", "e2eproj", "Feature workflow", now, now); err != nil {
 		t.Fatalf("failed to seed workflow def: %v", err)
 	}
 

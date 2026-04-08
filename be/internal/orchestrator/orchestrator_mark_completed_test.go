@@ -201,16 +201,20 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 
 	// Create a second workflow definition for this test
 	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-	})
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
 		ID:          "feature",
 		Description: "Feature workflow",
-		Phases:      phasesJSON,
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
+	}
+	// Create agent definition with layer info
+	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+	_, err = env.pool.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
+		VALUES (?, ?, ?, 'sonnet', 20, 'test prompt', 0, ?, ?)`,
+		"analyzer", env.project, "feature", now, now)
+	if err != nil {
+		t.Fatalf("failed to create agent definition: %v", err)
 	}
 
 	env.createTicket(t, "MC-7", "Workflow name in reason")

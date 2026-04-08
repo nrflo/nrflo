@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -42,19 +41,18 @@ func TestAgentSessionNullTicketID(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project workflow instance
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
+	createWorkflowWithAgents(t, env, "session-null-test", []types.AgentDefCreateRequest{
+		{ID: "setup", Prompt: "s", Layer: 0},
 	})
-
-	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-		ID:          "session-null-test",
-		Description: "Test null ticket_id",
-		Phases:      phasesJSON,
-		ScopeType:   "project",
-	})
-	if err != nil {
-		t.Fatalf("failed to create workflow def: %v", err)
+	// Update scope to project
+	projectScope := "project"
+	if err := env.WorkflowSvc.UpdateWorkflowDef(env.ProjectID, "session-null-test", &types.WorkflowDefUpdateRequest{
+		ScopeType: &projectScope,
+	}); err != nil {
+		t.Fatalf("failed to update scope: %v", err)
 	}
+
+	var err error
 
 	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
 		Workflow: "session-null-test",
@@ -107,18 +105,19 @@ func TestWorkflowInstanceScopeTypeColumn(t *testing.T) {
 	}
 
 	// Check project-scoped instance
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err = env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "scope-col-test",
 		Description: "Test scope column",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	adSvc := env.getAgentDefService(t)
+	if _, adErr := adSvc.CreateAgentDef(env.ProjectID, "scope-col-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); adErr != nil {
+		t.Fatalf("failed to create agent def: %v", adErr)
 	}
 
 	_, err = env.WorkflowSvc.InitProjectWorkflow(env.ProjectID, &types.ProjectWorkflowRunRequest{
@@ -159,18 +158,19 @@ func TestWorkflowScopeTypeColumn(t *testing.T) {
 	}
 
 	// Create project-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err = env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-wf-scope",
 		Description: "Project workflow",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
+	}
+	adSvc := env.getAgentDefService(t)
+	if _, adErr := adSvc.CreateAgentDef(env.ProjectID, "proj-wf-scope", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); adErr != nil {
+		t.Fatalf("failed to create agent def: %v", adErr)
 	}
 
 	projWorkflow, err := env.WorkflowSvc.GetWorkflowDef(env.ProjectID, "proj-wf-scope")
@@ -218,23 +218,13 @@ func TestProjectWorkflowUpdateScopeType(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create ticket-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
+	createWorkflowWithAgents(t, env, "update-scope", []types.AgentDefCreateRequest{
+		{ID: "setup", Prompt: "s", Layer: 0},
 	})
-
-	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-		ID:          "update-scope",
-		Description: "Test scope update",
-		Phases:      phasesJSON,
-		ScopeType:   "ticket",
-	})
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	// Update to project scope
 	projectScope := "project"
-	err = env.WorkflowSvc.UpdateWorkflowDef(env.ProjectID, "update-scope", &types.WorkflowDefUpdateRequest{
+	err := env.WorkflowSvc.UpdateWorkflowDef(env.ProjectID, "update-scope", &types.WorkflowDefUpdateRequest{
 		ScopeType: &projectScope,
 	})
 	if err != nil {
@@ -275,23 +265,13 @@ func TestProjectWorkflowInvalidScopeTypeUpdate(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
+	createWorkflowWithAgents(t, env, "invalid-update", []types.AgentDefCreateRequest{
+		{ID: "setup", Prompt: "s", Layer: 0},
 	})
-
-	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-		ID:          "invalid-update",
-		Description: "Test invalid update",
-		Phases:      phasesJSON,
-		ScopeType:   "ticket",
-	})
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	// Try to update with invalid scope_type
 	invalidScope := "invalid"
-	err = env.WorkflowSvc.UpdateWorkflowDef(env.ProjectID, "invalid-update", &types.WorkflowDefUpdateRequest{
+	err := env.WorkflowSvc.UpdateWorkflowDef(env.ProjectID, "invalid-update", &types.WorkflowDefUpdateRequest{
 		ScopeType: &invalidScope,
 	})
 	if err == nil {

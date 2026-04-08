@@ -45,10 +45,6 @@ func (s *Server) handleCreateWorkflowDef(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusBadRequest, "id is required")
 		return
 	}
-	if len(req.Phases) == 0 {
-		writeError(w, http.StatusBadRequest, "phases are required")
-		return
-	}
 
 	svc := s.workflowService()
 
@@ -56,10 +52,6 @@ func (s *Server) handleCreateWorkflowDef(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			writeError(w, http.StatusConflict, err.Error())
-			return
-		}
-		if isPhaseValidationError(err) {
-			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -124,10 +116,6 @@ func (s *Server) handleUpdateWorkflowDef(w http.ResponseWriter, r *http.Request)
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		if isPhaseValidationError(err) {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -173,13 +161,9 @@ func (s *Server) handleDeleteWorkflowDef(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
-// isPhaseValidationError checks if an error is a phase validation error
-// (parallel rejected, fan-in violation, missing layer, string entry rejected).
-func isPhaseValidationError(err error) bool {
+// isLayerValidationError checks if an error is a layer validation error (fan-in violation, invalid layer).
+func isLayerValidationError(err error) bool {
 	msg := err.Error()
-	return strings.Contains(msg, "parallel") ||
-		strings.Contains(msg, "fan-in") ||
-		strings.Contains(msg, "layer") ||
-		strings.Contains(msg, "no longer supported") ||
-		strings.Contains(msg, "invalid phases")
+	return strings.Contains(msg, "fan-in") ||
+		strings.Contains(msg, "layer must be")
 }

@@ -101,17 +101,23 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	}
 
 	// 11. Seed test workflow definition via service
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-	})
 	_, err = workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",
-		Phases:      phasesJSON,
 	})
 	if err != nil {
 		t.Fatalf("failed to seed workflow: %v", err)
+	}
+
+	// 11b. Seed agent definitions for the test workflow
+	agentDefSvc := service.NewAgentDefinitionService(pool, clk, service.NewCLIModelService(pool, clk))
+	for _, ad := range []types.AgentDefCreateRequest{
+		{ID: "analyzer", Prompt: "analyze", Layer: 0},
+		{ID: "builder", Prompt: "build", Layer: 1},
+	} {
+		if _, err := agentDefSvc.CreateAgentDef(projectID, "test", &ad); err != nil {
+			t.Fatalf("failed to seed agent def %s: %v", ad.ID, err)
+		}
 	}
 
 	env := &TestEnv{

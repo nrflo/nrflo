@@ -17,7 +17,10 @@ import (
 func newDeleteChainServer(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "del_chain_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -159,7 +162,10 @@ func TestHandleDeleteChain_Idempotent(t *testing.T) {
 // TestHandleDeleteChain_WSBroadcast verifies chain.deleted WS event is broadcast on success.
 func TestHandleDeleteChain_WSBroadcast(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "del_chain_ws_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

@@ -20,7 +20,10 @@ func setupGitHandlerTestDB(t *testing.T) (*db.Pool, string, string) {
 	t.Helper()
 
 	dbPath := filepath.Join(t.TempDir(), "git_handler_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -209,7 +212,10 @@ func TestHandleListGitCommits_PerPageCappedAt100(t *testing.T) {
 // TestHandleListGitCommits_MissingRootPath verifies 400 error for missing root_path.
 func TestHandleListGitCommits_MissingRootPath(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -246,7 +252,10 @@ func TestHandleListGitCommits_MissingRootPath(t *testing.T) {
 // TestHandleListGitCommits_ProjectNotFound verifies 404 for nonexistent project.
 func TestHandleListGitCommits_ProjectNotFound(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -267,7 +276,10 @@ func TestHandleListGitCommits_ProjectNotFound(t *testing.T) {
 // TestHandleListGitCommits_UsesDefaultBranch verifies default_branch is used if set.
 func TestHandleListGitCommits_UsesDefaultBranch(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -450,7 +462,10 @@ func TestHandleGetGitCommitDetail_InvalidHashFormat(t *testing.T) {
 // TestHandleGetGitCommitDetail_MissingRootPath verifies 400 for missing root_path.
 func TestHandleGetGitCommitDetail_MissingRootPath(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -487,7 +502,10 @@ func TestHandleGetGitCommitDetail_MissingRootPath(t *testing.T) {
 // TestHandleGetGitCommitDetail_ProjectNotFound verifies 404 for nonexistent project.
 func TestHandleGetGitCommitDetail_ProjectNotFound(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -592,7 +610,10 @@ func TestGitEndToEnd_FullFlow(t *testing.T) {
 // TestHandleListGitCommits_NullDefaultBranch verifies main is used when default_branch is null.
 func TestHandleListGitCommits_NullDefaultBranch(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

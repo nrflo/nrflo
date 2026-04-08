@@ -64,6 +64,11 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
+	// Validate layer config (fan-in) with existing agents + new agent
+	if err := s.validateLayerConfigForWorkflow(projectID, workflowID, req.ID, req.Layer); err != nil {
+		return nil, err
+	}
+
 	// Defaults
 	modelName := req.Model
 	if modelName == "" {
@@ -80,9 +85,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcModel, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -105,8 +110,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		StallRunningTimeoutSec: req.StallRunningTimeoutSec,
 		Tag:                    req.Tag,
 		LowConsumptionModel:    lcModel,
+		Layer:                  req.Layer,
 		CreatedAt:              ts,
-		UpdatedAt:        ts,
+		UpdatedAt:              ts,
 	}, nil
 }
 
@@ -117,14 +123,14 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout sql.NullInt64
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
 		&def.ID, &def.ProjectID, &def.WorkflowID,
 		&def.Model, &def.Timeout, &def.Prompt,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
-		&def.LowConsumptionModel,
+		&def.LowConsumptionModel, &def.Layer,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -158,10 +164,10 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
-		ORDER BY id`, projectID, workflowID)
+		ORDER BY layer ASC, id ASC`, projectID, workflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +183,7 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 			&def.ID, &def.ProjectID, &def.WorkflowID,
 			&def.Model, &def.Timeout, &def.Prompt,
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
-			&def.LowConsumptionModel,
+			&def.LowConsumptionModel, &def.Layer,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -224,6 +230,14 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.Prompt != nil {
 		updates = append(updates, "prompt = ?")
 		args = append(args, *req.Prompt)
+	}
+	if req.Layer != nil {
+		// Validate layer config (fan-in) with updated layer value
+		if err := s.validateLayerConfigForWorkflow(projectID, workflowID, id, *req.Layer); err != nil {
+			return err
+		}
+		updates = append(updates, "layer = ?")
+		args = append(args, *req.Layer)
 	}
 	if req.RestartThreshold != nil {
 		updates = append(updates, "restart_threshold = ?")

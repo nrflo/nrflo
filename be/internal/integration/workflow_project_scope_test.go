@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -12,15 +11,11 @@ import (
 func TestProjectWorkflowDefCreate(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "impl", "layer": 1},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "project-workflow",
 		Description: "Project-scoped workflow",
-		Phases:      phasesJSON,
+
 		ScopeType:   "project",
 	})
 
@@ -43,14 +38,11 @@ func TestProjectWorkflowDefCreate(t *testing.T) {
 func TestProjectWorkflowDefDefaultScopeType(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "default-scope",
 		Description: "Default scope workflow",
-		Phases:      phasesJSON,
+
 		// ScopeType omitted - should default to "ticket"
 	})
 
@@ -73,14 +65,11 @@ func TestProjectWorkflowDefDefaultScopeType(t *testing.T) {
 func TestProjectWorkflowDefInvalidScopeType(t *testing.T) {
 	env := NewTestEnv(t)
 
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "invalid-scope",
 		Description: "Invalid scope workflow",
-		Phases:      phasesJSON,
+
 		ScopeType:   "invalid",
 	})
 
@@ -98,15 +87,11 @@ func TestProjectWorkflowInit(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "impl", "layer": 1},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-init-test",
 		Description: "Test project workflow",
-		Phases:      phasesJSON,
+
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -151,14 +136,11 @@ func TestProjectWorkflowInitMultipleAllowed(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-dup-test",
 		Description: "Test multi-instance",
-		Phases:      phasesJSON,
+
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -191,14 +173,11 @@ func TestProjectWorkflowInitWrongScope(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create ticket-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "ticket-scope-def",
 		Description: "Ticket-scoped workflow",
-		Phases:      phasesJSON,
+
 		ScopeType:   "ticket",
 	})
 	if err != nil {
@@ -223,14 +202,11 @@ func TestTicketWorkflowInitWrongScope(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-scope-def",
 		Description: "Project-scoped workflow",
-		Phases:      phasesJSON,
+
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -256,14 +232,11 @@ func TestProjectWorkflowStateRetrieval(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create and init project workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "proj-state-test",
 		Description: "Test state retrieval",
-		Phases:      phasesJSON,
+
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -331,14 +304,11 @@ func TestProjectWorkflowMultiInstance(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "multi-test",
 		Description: "Test multi-instance",
-		Phases:      phasesJSON,
+
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -421,14 +391,11 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "mixed-project",
 		Description: "Project workflow",
-		Phases:      phasesJSON,
+
 		ScopeType:   "project",
 	})
 	if err != nil {
@@ -439,7 +406,7 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 	_, err = env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "mixed-ticket",
 		Description: "Ticket workflow",
-		Phases:      phasesJSON,
+
 		ScopeType:   "ticket",
 	})
 	if err != nil {

@@ -20,7 +20,10 @@ func newSessionPromptServer(t *testing.T) (*Server, *db.DB) {
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

@@ -16,6 +16,7 @@ type AgentDefinition struct {
 	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
 	Tag                    string    `json:"tag"`
 	LowConsumptionModel    string    `json:"low_consumption_model,omitempty"`
+	Layer                  int       `json:"layer"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

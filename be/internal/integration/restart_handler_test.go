@@ -214,7 +214,7 @@ func TestRestartHandler_EmptyBody(t *testing.T) {
 	}
 }
 
-// seedWorkflowDef creates a "test" workflow definition in the DB.
+// seedWorkflowDef creates a "test" workflow definition with agent definitions in the DB.
 func seedWorkflowDef(t *testing.T, dbPath, projectID string) {
 	t.Helper()
 	database, err := db.Open(dbPath)
@@ -225,17 +225,22 @@ func seedWorkflowDef(t *testing.T, dbPath, projectID string) {
 
 	pool := db.WrapAsPool(database)
 	wfSvc := service.NewWorkflowService(pool, clock.Real())
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "analyzer", "layer": 0},
-		{"agent": "builder", "layer": 1},
-	})
 	_, err = wfSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:          "test",
 		Description: "Test workflow",
-		Phases:      phasesJSON,
 	})
 	if err != nil {
 		t.Fatalf("failed to seed workflow def: %v", err)
+	}
+
+	adSvc := service.NewAgentDefinitionService(pool, clock.Real(), service.NewCLIModelService(pool, clock.Real()))
+	for _, ad := range []types.AgentDefCreateRequest{
+		{ID: "analyzer", Prompt: "analyze", Layer: 0},
+		{ID: "builder", Prompt: "build", Layer: 1},
+	} {
+		if _, err := adSvc.CreateAgentDef(projectID, "test", &ad); err != nil {
+			t.Fatalf("failed to seed agent def %s: %v", ad.ID, err)
+		}
 	}
 }
 

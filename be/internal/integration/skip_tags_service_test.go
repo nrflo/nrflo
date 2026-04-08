@@ -16,7 +16,6 @@ func TestMigration030MarshalJSON(t *testing.T) {
 			ID:        "test-wf",
 			ProjectID: "proj",
 			ScopeType: "ticket",
-			Phases:    `[{"agent":"analyzer","layer":0}]`,
 		}
 		wf.SetGroups([]string{"be", "fe"})
 
@@ -40,7 +39,7 @@ func TestMigration030MarshalJSON(t *testing.T) {
 	})
 
 	t.Run("Workflow empty groups is array not null", func(t *testing.T) {
-		wf := &model.Workflow{ID: "wf-empty", ProjectID: "proj", ScopeType: "ticket", Phases: "[]", Groups: ""}
+		wf := &model.Workflow{ID: "wf-empty", ProjectID: "proj", ScopeType: "ticket", Groups: ""}
 		data, _ := json.Marshal(wf)
 
 		var result map[string]interface{}
@@ -92,7 +91,6 @@ func TestMigration030BuildSpawnerConfig(t *testing.T) {
 			ID:        "test-wf",
 			ProjectID: "proj",
 			ScopeType: "ticket",
-			Phases:    `[{"agent":"analyzer","layer":0}]`,
 		}
 		wf.SetGroups([]string{"be", "fe"})
 
@@ -130,7 +128,6 @@ func TestMigration030BuildSpawnerConfig(t *testing.T) {
 			ID:        "wf-empty",
 			ProjectID: "proj",
 			ScopeType: "ticket",
-			Phases:    `[{"agent":"builder","layer":0}]`,
 			Groups:    "[]",
 		}
 		agentDef := &model.AgentDefinition{

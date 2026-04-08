@@ -26,7 +26,7 @@ func insertTestWorkflow(t *testing.T, svc *CLIModelService, projectID, workflowI
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := svc.pool.Exec(
-		`INSERT INTO workflows (id, project_id, phases, created_at, updated_at) VALUES (?, ?, '[]', ?, ?)`,
+		`INSERT INTO workflows (id, project_id, created_at, updated_at) VALUES (?, ?, ?, ?)`,
 		workflowID, projectID, now, now,
 	)
 	if err != nil {

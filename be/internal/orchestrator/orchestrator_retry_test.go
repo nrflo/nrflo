@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -301,22 +300,13 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	env.createTicket(t, "RTR-8", "Retry test")
 
 	// Create a three-layer workflow
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "phase1", "layer": 0},
-		{"agent": "phase2", "layer": 1},
-		{"agent": "phase3", "layer": 2},
+	env.createWorkflowWithAgents(t, "test-3layer", "Three layer test", "", []struct{ ID string; Layer int }{
+		{"phase1", 0}, {"phase2", 1}, {"phase3", 2},
 	})
-	_, err := env.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, phases, scope_type, created_at, updated_at)
-		VALUES ('test-3layer', ?, 'Three layer test', ?, 'ticket', datetime('now'), datetime('now'))`,
-		env.project, string(phasesJSON))
-	if err != nil {
-		t.Fatalf("failed to create workflow: %v", err)
-	}
 
 	// Init workflow
 	var wfiID string
-	err = env.pool.QueryRow(`
+	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
 		VALUES ('wfi-8', ?, 'RTR-8', 'test-3layer', 'failed', '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)

@@ -32,10 +32,8 @@ func setupAgentDefTestEnv(t *testing.T, groups []string) (*db.Pool, *AgentDefini
 
 	// Build groups JSON for the workflow
 	wfSvc := NewWorkflowService(pool, clock.Real())
-	phasesJSON := makePhases(t)
 	_, err = wfSvc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
 		ID:     "wf1",
-		Phases: phasesJSON,
 		Groups: groups,
 	})
 	if err != nil {

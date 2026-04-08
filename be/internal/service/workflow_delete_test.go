@@ -35,10 +35,8 @@ func setupDeleteProjWFEnv(t *testing.T, projectID, instanceID, status, scopeType
 
 	svc := NewWorkflowService(pool, clock.Real())
 
-	phases := makePhases(t)
 	if _, err = svc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID:        "wf-delete-test",
-		Phases:    phases,
 		ScopeType: scopeType,
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)

@@ -313,13 +313,9 @@ func TestMigration028InsertWithoutPhaseColumns(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a project-scoped workflow for this test
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "wf-028-proj",
 		Description: "Proj workflow 028",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {

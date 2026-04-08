@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -34,18 +33,19 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "stop-test",
 		Description: "Test stop by instance",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "stop-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); err != nil {
+		t.Fatalf("failed to create agent def: %v", err)
 	}
 
 	// Create orchestrator and start two instances
@@ -70,9 +70,9 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 		t.Fatalf("failed to start second instance: %v", err)
 	}
 
-	// Stop only the first instance by instance_id (may already have failed quickly due to missing agent defs)
+	// Stop only the first instance by instance_id
 	orch.StopByProject(env.ProjectID, "stop-test", result1.InstanceID)
-	waitForCondition(t, time.Second, func() bool {
+	waitForCondition(t, 5*time.Second, func() bool {
 		return !orch.IsInstanceRunning(result1.InstanceID)
 	})
 
@@ -98,7 +98,7 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 
 	// Clean up second instance
 	orch.Stop(result2.InstanceID)
-	waitForCondition(t, time.Second, func() bool {
+	waitForCondition(t, 5*time.Second, func() bool {
 		return !orch.IsInstanceRunning(result2.InstanceID)
 	})
 
@@ -115,18 +115,19 @@ func TestStopAllProjectWorkflowInstances(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "stop-all-test",
 		Description: "Test stop all instances",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "stop-all-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); err != nil {
+		t.Fatalf("failed to create agent def: %v", err)
 	}
 
 	// Create orchestrator and start three instances
@@ -146,9 +147,9 @@ func TestStopAllProjectWorkflowInstances(t *testing.T) {
 		instanceIDs = append(instanceIDs, result.InstanceID)
 	}
 
-	// Stop all instances by NOT providing instance_id (some may have already failed due to missing agent defs)
+	// Stop all instances by NOT providing instance_id
 	orch.StopByProject(env.ProjectID, "stop-all-test", "")
-	waitForCondition(t, time.Second, func() bool {
+	waitForCondition(t, 5*time.Second, func() bool {
 		for _, id := range instanceIDs {
 			if orch.IsInstanceRunning(id) {
 				return false
@@ -171,18 +172,19 @@ func TestRestartProjectAgentWithInstanceID(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "restart-test",
 		Description: "Test restart with instance_id",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "restart-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); err != nil {
+		t.Fatalf("failed to create agent def: %v", err)
 	}
 
 	// Initialize workflow
@@ -254,19 +256,22 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow with two layers
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-		{"agent": "impl", "layer": 1},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "retry-test",
 		Description: "Test retry with instance_id",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	for _, ad := range []types.AgentDefCreateRequest{
+		{ID: "setup", Prompt: "s", Layer: 0},
+		{ID: "impl", Prompt: "i", Layer: 1},
+	} {
+		if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "retry-test", &ad); err != nil {
+			t.Fatalf("failed to create agent def %s: %v", ad.ID, err)
+		}
 	}
 
 	// Initialize workflow
@@ -337,18 +342,19 @@ func TestListActiveByProjectAndWorkflow(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "list-active-test",
 		Description: "Test list active",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "list-active-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); err != nil {
+		t.Fatalf("failed to create agent def: %v", err)
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -401,18 +407,19 @@ func TestProjectWorkflowGetResponseStructure(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create project-scoped workflow definition
-	phasesJSON, _ := json.Marshal([]map[string]interface{}{
-		{"agent": "setup", "layer": 0},
-	})
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "response-test",
 		Description: "Test response structure",
-		Phases:      phasesJSON,
 		ScopeType:   "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
+	}
+	agentDefSvc := env.getAgentDefService(t)
+	if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "response-test", &types.AgentDefCreateRequest{
+		ID: "setup", Prompt: "s", Layer: 0,
+	}); err != nil {
+		t.Fatalf("failed to create agent def: %v", err)
 	}
 
 	// Create two instances

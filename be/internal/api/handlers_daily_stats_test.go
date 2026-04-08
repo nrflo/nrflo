@@ -16,7 +16,10 @@ import (
 func newDailyStatsServer(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "daily_stats_handler_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("newDailyStatsServer: new pool: %v", err)
 	}
@@ -100,7 +103,10 @@ func TestHandleGetDailyStats_ResponseJSON(t *testing.T) {
 	// Use a TestClock with a fixed date so inserted data matches the "today" query.
 	fixedNow := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
 	dbPath := filepath.Join(t.TempDir(), "daily_stats_resp_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("new pool: %v", err)
 	}
@@ -169,7 +175,10 @@ func TestHandleGetDailyStats_ResponseJSON(t *testing.T) {
 func TestHandleGetDailyStats_WeekAggregatesMultipleDays(t *testing.T) {
 	fixedNow := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
 	dbPath := filepath.Join(t.TempDir(), "daily_stats_week_test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("new pool: %v", err)
 	}

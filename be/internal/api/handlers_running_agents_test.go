@@ -21,7 +21,10 @@ func newRunningAgentsServer(t *testing.T) (*Server, *db.DB) {
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -52,8 +55,8 @@ func seedProject(t *testing.T, database *db.DB, projectID, projectName string) s
 	if err != nil {
 		t.Fatalf("seedProject(%s): %v", projectID, err)
 	}
-	_, err = database.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, phases, created_at, updated_at)
-		VALUES (?, 'wf-1', 'WF', 'ticket', '[]', datetime('now'), datetime('now'))`, projectID)
+	_, err = database.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
+		VALUES (?, 'wf-1', 'WF', 'ticket', datetime('now'), datetime('now'))`, projectID)
 	if err != nil {
 		t.Fatalf("seedProject workflow(%s): %v", projectID, err)
 	}
@@ -163,7 +166,10 @@ func TestHandleGetRunningAgents_ElapsedSec(t *testing.T) {
 	}
 	defer database.Close()
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

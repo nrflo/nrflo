@@ -33,7 +33,7 @@ func insertRangeClosedTicket(t *testing.T, pool *db.Pool, projectID, id, created
 func setupRangeWorkflow(t *testing.T, pool *db.Pool, projectID, wfInstanceID, ts string) {
 	t.Helper()
 	pid := strings.ToLower(projectID)
-	_, _ = pool.Exec(`INSERT OR IGNORE INTO workflows (id, project_id, description, phases, created_at, updated_at) VALUES ('range-wf', ?, 'Range test', '[]', ?, ?)`, pid, ts, ts)
+	_, _ = pool.Exec(`INSERT OR IGNORE INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('range-wf', ?, 'Range test', ?, ?)`, pid, ts, ts)
 	_, err := pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, created_at, updated_at) VALUES (?, ?, 'TICKET-R', 'range-wf', 'active', ?, ?)`, wfInstanceID, pid, ts, ts)
 	if err != nil {
 		t.Fatalf("setupRangeWorkflow: %v", err)

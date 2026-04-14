@@ -36,11 +36,10 @@ The following blocks are automatically prepended to the agent prompt when condit
 | Block | When Prepended | Inner Placeholders |
 |-------|---------------|-------------------|
 | **User Instructions** | User provided instructions at workflow launch | `${USER_INSTRUCTIONS}` |
-| **Continuation** | Agent was interrupted (stall/fail/timeout) without saving state | (none) |
 | **Low-Context Restart** | Agent saved `to_resume` data before restart | `${PREVIOUS_DATA}` |
 | **Callback** | A later-layer agent triggered a callback | `${CALLBACK_INSTRUCTIONS}`, `${CALLBACK_FROM_AGENT}` |
 
-**Prepend order:** user-instructions → continuation/low-context → callback.
+**Prepend order:** user-instructions → low-context → callback.
 
 Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}` placeholders in agent prompts are stripped to empty.
 

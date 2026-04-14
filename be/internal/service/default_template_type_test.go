@@ -34,11 +34,10 @@ func TestDefaultTemplate_List_FilterByTypeInjectable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(templates) != 4 {
-		t.Fatalf("List(injectable) len = %d, want 4", len(templates))
+	if len(templates) != 3 {
+		t.Fatalf("List(injectable) len = %d, want 3", len(templates))
 	}
 	wantIDs := map[string]bool{
-		"continuation":      true,
 		"low-context":       true,
 		"callback":          true,
 		"user-instructions": true,
@@ -74,8 +73,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(templates) != 10 {
-		t.Fatalf("List() len = %d, want 10", len(templates))
+	if len(templates) != 9 {
+		t.Fatalf("List() len = %d, want 9", len(templates))
 	}
 	agentCount, injectableCount := 0, 0
 	for _, tmpl := range templates {
@@ -91,8 +90,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if agentCount != 6 {
 		t.Errorf("agent count = %d, want 6", agentCount)
 	}
-	if injectableCount != 4 {
-		t.Errorf("injectable count = %d, want 4", injectableCount)
+	if injectableCount != 3 {
+		t.Errorf("injectable count = %d, want 3", injectableCount)
 	}
 }
 
@@ -234,7 +233,6 @@ func TestDefaultTemplate_SeededInjectables(t *testing.T) {
 		name     string
 		readonly bool
 	}{
-		{"continuation", "Continuation (stall/fail restart)", true},
 		{"low-context", "Low-context restart", true},
 		{"callback", "Callback instructions", true},
 		{"user-instructions", "User instructions", true},
@@ -270,30 +268,30 @@ func TestDefaultTemplate_Restore_InjectableReadonly(t *testing.T) {
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
-	original, err := svc.Get("continuation")
+	original, err := svc.Get("callback")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	originalText := original.Template
 
-	newText := "modified continuation text"
-	if err := svc.Update("continuation", &types.DefaultTemplateUpdateRequest{Template: &newText}); err != nil {
+	newText := "modified callback text"
+	if err := svc.Update("callback", &types.DefaultTemplateUpdateRequest{Template: &newText}); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
-	after, err := svc.Get("continuation")
+	after, err := svc.Get("callback")
 	if err != nil {
 		t.Fatalf("Get after update: %v", err)
 	}
-	if after.Template != "modified continuation text" {
-		t.Fatalf("Template after update = %q, want %q", after.Template, "modified continuation text")
+	if after.Template != "modified callback text" {
+		t.Fatalf("Template after update = %q, want %q", after.Template, "modified callback text")
 	}
 
-	if err := svc.Restore("continuation"); err != nil {
+	if err := svc.Restore("callback"); err != nil {
 		t.Fatalf("Restore: %v", err)
 	}
 
-	restored, err := svc.Get("continuation")
+	restored, err := svc.Get("callback")
 	if err != nil {
 		t.Fatalf("Get after restore: %v", err)
 	}
@@ -334,15 +332,15 @@ func TestDefaultTemplate_List_FilterAfterCreatingMixed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(injectables) != 5 {
-		t.Errorf("List(injectable) len = %d, want 5 (4 seeded + 1 created)", len(injectables))
+	if len(injectables) != 4 {
+		t.Errorf("List(injectable) len = %d, want 4 (3 seeded + 1 created)", len(injectables))
 	}
 
 	all, err := svc.List("")
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(all) != 12 {
-		t.Errorf("List() len = %d, want 12 (10 seeded + 2 created)", len(all))
+	if len(all) != 11 {
+		t.Errorf("List() len = %d, want 11 (9 seeded + 2 created)", len(all))
 	}
 }

@@ -40,11 +40,10 @@ func TestHandleListDefaultTemplates_FilterByTypeInjectable(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 4 {
-		t.Fatalf("len = %d, want 4 (injectable-type templates)", len(list))
+	if len(list) != 3 {
+		t.Fatalf("len = %d, want 3 (injectable-type templates)", len(list))
 	}
 	wantIDs := map[string]bool{
-		"continuation":      true,
 		"low-context":       true,
 		"callback":          true,
 		"user-instructions": true,
@@ -233,8 +232,8 @@ func TestHandleGetDefaultTemplate_JSONIncludesTypeField(t *testing.T) {
 
 func TestHandleGetDefaultTemplate_InjectableTypeInJSON(t *testing.T) {
 	s := newDefaultTemplateServer(t)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/default-templates/continuation", nil)
-	req.SetPathValue("id", "continuation")
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/default-templates/callback", nil)
+	req.SetPathValue("id", "callback")
 	rr := httptest.NewRecorder()
 	s.handleGetDefaultTemplate(rr, req)
 
@@ -317,8 +316,8 @@ func TestHandleListDefaultTemplates_FilterAfterCRUD(t *testing.T) {
 	listRR := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR, listReq)
 	list := decodeDefaultTemplateList(t, listRR)
-	if len(list) != 5 {
-		t.Errorf("injectable count = %d, want 5 (4 seeded + 1 created)", len(list))
+	if len(list) != 4 {
+		t.Errorf("injectable count = %d, want 4 (3 seeded + 1 created)", len(list))
 	}
 
 	agentReq := httptest.NewRequest(http.MethodGet, "/api/v1/default-templates?type=agent", nil)

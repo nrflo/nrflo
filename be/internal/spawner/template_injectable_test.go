@@ -14,32 +14,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestIsContinuationReason(t *testing.T) {
-	tests := []struct {
-		reason string
-		want   bool
-	}{
-		{"stall_restart_start_stall", true},
-		{"stall_restart_running_stall", true},
-		{"instant_stall", true},
-		{"fail_restart", true},
-		{"timeout_restart", true},
-		{"low_context", false},
-		{"explicit", false},
-		{"implicit", false},
-		{"", false},
-		{"stall_budget_exhausted", false},
-		{"pass", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.reason, func(t *testing.T) {
-			if got := isContinuationReason(tt.reason); got != tt.want {
-				t.Errorf("isContinuationReason(%q) = %v, want %v", tt.reason, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestExpandInjectable_BasicExpansion(t *testing.T) {
 	env := newSpawnerTestEnv(t)
 	sp := env.newSpawner()
@@ -77,19 +51,6 @@ func TestExpandInjectable_StripsUnusedPlaceholders(t *testing.T) {
 	}
 	if !strings.Contains(body, "Fix auth") {
 		t.Errorf("expected expanded instructions, got %q", body)
-	}
-}
-
-func TestExpandInjectable_NilVars(t *testing.T) {
-	env := newSpawnerTestEnv(t)
-	sp := env.newSpawner()
-
-	body := sp.expandInjectable("continuation", nil)
-	if body == "" {
-		t.Error("expected non-empty continuation body")
-	}
-	if strings.Contains(body, "${") {
-		t.Error("body should not contain ${...} placeholders")
 	}
 }
 

@@ -48,7 +48,7 @@ describe('DefaultTemplatesSection — type features', () => {
 
   it('shows Injectable badge for injectable-type templates', async () => {
     vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([
-      makeTemplate({ id: 'continuation', name: 'Continuation', type: 'injectable', readonly: true }),
+      makeTemplate({ id: 'user-instructions', name: 'User Instructions', type: 'injectable', readonly: true }),
     ])
     renderWithQuery(<DefaultTemplatesSection />)
     expect(await screen.findByText('Injectable')).toBeInTheDocument()

@@ -34,13 +34,3 @@ func (s *Spawner) expandInjectable(id string, vars map[string]string) string {
 
 	return body
 }
-
-// isContinuationReason returns true for result_reason values that indicate the agent
-// was interrupted without saving state (stall, fail, timeout restarts).
-func isContinuationReason(reason string) bool {
-	switch reason {
-	case "stall_restart_start_stall", "stall_restart_running_stall", "instant_stall", "fail_restart", "timeout_restart":
-		return true
-	}
-	return false
-}

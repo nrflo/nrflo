@@ -338,15 +338,12 @@ Instead of inline `${VAR}` substitution for user instructions, callbacks, and co
 | Injectable | Trigger | Inner Placeholders |
 |------------|---------|-------------------|
 | `user-instructions` | `workflow_instances.findings["user_instructions"]` is non-empty | `${USER_INSTRUCTIONS}` |
-| `continuation` | Continued session exists with stall/fail/timeout reason but no `to_resume` data | (none) |
 | `low-context` | Continued session exists with `to_resume` data | `${PREVIOUS_DATA}` |
 | `callback` | `workflow_instances.findings["_callback"]` has non-empty instructions | `${CALLBACK_INSTRUCTIONS}`, `${CALLBACK_FROM_AGENT}` |
 
-**Prepend order:** user-instructions → continuation/low-context (mutually exclusive) → callback. Most actionable information closest to the agent prompt.
+**Prepend order:** user-instructions → low-context → callback. Most actionable information closest to the agent prompt.
 
 **Expansion:** `expandInjectable(id, vars)` loads the template body, replaces `${VAR}` placeholders from the vars map, strips any remaining `${...}` placeholders, and returns the expanded body. Returns `""` with a warning if the template is missing.
-
-**`isContinuationReason(reason)`** returns true for: `stall_restart_start_stall`, `stall_restart_running_stall`, `instant_stall`, `fail_restart`, `timeout_restart`. These indicate the agent was interrupted without saving state.
 
 ## Findings Auto-Population
 

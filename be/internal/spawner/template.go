@@ -233,17 +233,14 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	template = strings.ReplaceAll(template, "${CALLBACK_INSTRUCTIONS}", "")
 	template = strings.ReplaceAll(template, "${PREVIOUS_DATA}", "")
 
-	// Build prepend blocks (order: user-instructions → continuation/low-context → callback)
+	// Build prepend blocks (order: user-instructions → low-context → callback)
 	var prepend []string
 	if ui := s.fetchUserInstructionsRaw(projectID, ticketID, workflowName, wfiID); ui != "" {
 		prepend = append(prepend, s.expandInjectable("user-instructions", map[string]string{"USER_INSTRUCTIONS": ui}))
 	}
-	prevData, prevReason := s.fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, phase, wfiID)
-	switch {
-	case prevData != "":
+	prevData, _ := s.fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, phase, wfiID)
+	if prevData != "" {
 		prepend = append(prepend, s.expandInjectable("low-context", map[string]string{"PREVIOUS_DATA": prevData}))
-	case prevReason != "" && isContinuationReason(prevReason):
-		prepend = append(prepend, s.expandInjectable("continuation", nil))
 	}
 	if cbInstr, cbFrom := s.fetchCallbackRaw(projectID, ticketID, workflowName, wfiID); cbInstr != "" {
 		prepend = append(prepend, s.expandInjectable("callback", map[string]string{

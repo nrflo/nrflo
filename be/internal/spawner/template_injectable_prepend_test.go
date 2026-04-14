@@ -35,65 +35,19 @@ func TestLoadTemplate_LowContextPrepended(t *testing.T) {
 	}
 }
 
-func TestLoadTemplate_ContinuationPrepended(t *testing.T) {
-	env := newSpawnerTestEnv(t)
-	ticketID := "CT-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-	createAgentDef(t, env, "analyzer", "Main prompt body")
-
-	wfiID := env.getWfiID(t, ticketID)
-	createContinuedSessionInEnv(t, env, ticketID, wfiID,
-		"analyzer", "claude:sonnet", "test-phase", "stall_restart_start_stall",
-		map[string]interface{}{"other_key": "value"})
-
-	sp := env.newSpawner()
-	result, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "test-phase", "", nil)
-	if err != nil {
-		t.Fatalf("loadTemplate failed: %v", err)
-	}
-	if !strings.Contains(result, "## Continuation") {
-		t.Error("expected continuation injectable header")
-	}
-	if strings.Contains(result, "## Continuation From Saved State") {
-		t.Error("should not use low-context injectable when no to_resume data")
-	}
-}
-
-func TestLoadTemplate_ContinuationNotPrependedForNonContinuationReason(t *testing.T) {
-	env := newSpawnerTestEnv(t)
-	ticketID := "CT-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-	createAgentDef(t, env, "analyzer", "Main prompt body")
-
-	wfiID := env.getWfiID(t, ticketID)
-	createContinuedSessionInEnv(t, env, ticketID, wfiID,
-		"analyzer", "claude:sonnet", "test-phase", "low_context",
-		map[string]interface{}{"other_key": "value"})
-
-	sp := env.newSpawner()
-	result, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "test-phase", "", nil)
-	if err != nil {
-		t.Fatalf("loadTemplate failed: %v", err)
-	}
-	if strings.Contains(result, "## Continuation") {
-		t.Error("should not prepend continuation for non-continuation reason without to_resume")
-	}
-}
-
-func TestLoadTemplate_ContinuationAllReasons(t *testing.T) {
+func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
 	reasons := []string{
+		"stall_restart",
 		"stall_restart_start_stall",
 		"stall_restart_running_stall",
-		"instant_stall",
 		"fail_restart",
 		"timeout_restart",
+		"instant_stall",
 	}
 	for _, reason := range reasons {
 		t.Run(reason, func(t *testing.T) {
 			env := newSpawnerTestEnv(t)
-			ticketID := "CT-" + uuid.New().String()[:6]
+			ticketID := "CN-" + uuid.New().String()[:6]
 			env.initWorkflow(t, ticketID)
 			createAgentDef(t, env, "analyzer", "Main prompt body")
 
@@ -108,8 +62,11 @@ func TestLoadTemplate_ContinuationAllReasons(t *testing.T) {
 			if err != nil {
 				t.Fatalf("loadTemplate failed: %v", err)
 			}
-			if !strings.Contains(result, "## Continuation") {
-				t.Errorf("expected continuation block for reason %q", reason)
+			if strings.Contains(result, "## Continuation") {
+				t.Error("no continuation block should be prepended after injectable removal")
+			}
+			if !strings.HasPrefix(result, "Main prompt body") {
+				t.Error("main body should be at start of result (no prepended blocks)")
 			}
 		})
 	}

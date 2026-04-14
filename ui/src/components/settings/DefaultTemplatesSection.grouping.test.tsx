@@ -49,7 +49,7 @@ describe('DefaultTemplatesSection — type grouping', () => {
   it('renders both section headers when templates include agent and injectable types', async () => {
     vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([
       makeTemplate({ id: 'implementor', type: 'agent' }),
-      makeTemplate({ id: 'continuation', type: 'injectable', name: 'Continuation' }),
+      makeTemplate({ id: 'user-instructions', type: 'injectable', name: 'User Instructions' }),
     ])
     renderWithQuery(<DefaultTemplatesSection />)
 
@@ -69,7 +69,7 @@ describe('DefaultTemplatesSection — type grouping', () => {
 
   it('hides agent section when only injectable templates exist', async () => {
     vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([
-      makeTemplate({ id: 'continuation', type: 'injectable' }),
+      makeTemplate({ id: 'user-instructions', type: 'injectable', name: 'User Instructions' }),
     ])
     renderWithQuery(<DefaultTemplatesSection />)
 
@@ -79,7 +79,7 @@ describe('DefaultTemplatesSection — type grouping', () => {
 
   it('shows help text in injectable section', async () => {
     vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([
-      makeTemplate({ id: 'continuation', type: 'injectable' }),
+      makeTemplate({ id: 'user-instructions', type: 'injectable', name: 'User Instructions' }),
     ])
     renderWithQuery(<DefaultTemplatesSection />)
 
@@ -91,7 +91,7 @@ describe('DefaultTemplatesSection — type grouping', () => {
   it('shows Injectable badge for injectable templates, not for agent templates', async () => {
     vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([
       makeTemplate({ id: 'implementor', type: 'agent' }),
-      makeTemplate({ id: 'continuation', type: 'injectable', name: 'Continuation' }),
+      makeTemplate({ id: 'user-instructions', type: 'injectable', name: 'User Instructions' }),
     ])
     renderWithQuery(<DefaultTemplatesSection />)
 

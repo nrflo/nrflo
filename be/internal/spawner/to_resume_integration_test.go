@@ -38,7 +38,7 @@ func TestToResumeEndToEnd(t *testing.T) {
 	env.createContinuedSessionWithFindings(t, firstSessionID, findings)
 
 	// Step 2: Fetch previous data (simulating what happens when spawning the next agent)
-	previousData := env.spawner.fetchPreviousData(
+	previousData, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -88,7 +88,7 @@ func TestToResumeMultipleRestarts(t *testing.T) {
 	env.createContinuedSessionWithTime(t, session1, findings1, time.Now().Add(-2*time.Hour))
 
 	// Verify first restart data can be fetched
-	data1 := env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
+	data1, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
 	if data1 != "First agent completed task A and B" {
 		t.Errorf("expected first restart data, got %q", data1)
 	}
@@ -101,7 +101,7 @@ func TestToResumeMultipleRestarts(t *testing.T) {
 	env.createContinuedSessionWithTime(t, session2, findings2, time.Now().Add(-1*time.Hour))
 
 	// Verify second restart data is now returned (most recent)
-	data2 := env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
+	data2, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
 	if data2 != "Second agent completed task C and D, now working on E" {
 		t.Errorf("expected second restart data, got %q", data2)
 	}
@@ -114,7 +114,7 @@ func TestToResumeMultipleRestarts(t *testing.T) {
 	env.createContinuedSessionWithTime(t, session3, findings3, time.Now())
 
 	// Verify third restart data is now returned (most recent)
-	data3 := env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
+	data3, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
 	if data3 != "Third agent completed task E, ready for final review" {
 		t.Errorf("expected third restart data, got %q", data3)
 	}
@@ -152,28 +152,28 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 	env.createContinuedSessionForAgent(t, session4, findings4, env.agentType, env.modelID, "different-phase")
 
 	// Verify each agent/model/phase combination gets the correct data
-	data := env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, "implementor", "claude:opus", env.phase, "")
+	data, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "implementor", "claude:opus", env.phase, "")
 	if data != "implementor progress" {
 		t.Errorf("implementor should get its own data, got %q", data)
 	}
 
-	data = env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, "test-writer", "claude:sonnet", env.phase, "")
+	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "test-writer", "claude:sonnet", env.phase, "")
 	if data != "test-writer progress" {
 		t.Errorf("test-writer should get its own data, got %q", data)
 	}
 
-	data = env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, env.agentType, "claude:haiku", env.phase, "")
+	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, "claude:haiku", env.phase, "")
 	if data != "same agent different model" {
 		t.Errorf("different model should get its own data, got %q", data)
 	}
 
-	data = env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, "different-phase", "")
+	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, "different-phase", "")
 	if data != "same agent different phase" {
 		t.Errorf("different phase should get its own data, got %q", data)
 	}
 
 	// Verify the original agent/model/phase gets empty (no continued session for it)
-	data = env.spawner.fetchPreviousData(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
+	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
 	if data != "" {
 		t.Errorf("original agent/model/phase should have no data, got %q", data)
 	}

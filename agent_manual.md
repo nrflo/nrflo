@@ -20,9 +20,6 @@ Template variables are placeholders you type directly into the agent's prompt te
 | `${TICKET_DESCRIPTION}` | Ticket description (empty for project-scope) | `${TICKET_DESCRIPTION}` | The full ticket description text |
 | `${PROJECT_ID}` | Project identifier | `Project: ${PROJECT_ID}` | `Project: myapp` |
 | `${WORKFLOW}` | Workflow name | `Running in ${WORKFLOW} workflow` | `Running in feature workflow` |
-| `${USER_INSTRUCTIONS}` | User instructions from workflow run dialog | `## Instructions\n${USER_INSTRUCTIONS}` | The instructions text, or `_No user instructions provided_` |
-| `${CALLBACK_INSTRUCTIONS}` | Context when re-run via callback | `${CALLBACK_INSTRUCTIONS}` | Callback context block or `_No callback instructions_` |
-| `${PREVIOUS_DATA}` | Saved progress from a continued session | `## Previous Progress\n${PREVIOUS_DATA}` | Progress data or empty string |
 | `${PARENT_SESSION}` | Parent orchestration session UUID | `${PARENT_SESSION}` | UUID string |
 | `${CHILD_SESSION}` | This agent's session UUID | `${CHILD_SESSION}` | UUID string |
 | `${MODEL_ID}` | Full model identifier | `${MODEL_ID}` | `claude:opus` |
@@ -32,34 +29,20 @@ Template variables are placeholders you type directly into the agent's prompt te
 
 For project-scoped workflows, `${TICKET_ID}`, `${TICKET_TITLE}`, and `${TICKET_DESCRIPTION}` resolve to empty strings. Validation at workflow creation rejects project-scoped agent prompts that use these variables.
 
-### User Instructions
+### Auto-prepended Blocks
 
-Resolves to `_No user instructions provided_` when no instructions were given at workflow launch.
+The following blocks are automatically prepended to the agent prompt when conditions are met. They are loaded from injectable templates in the Default Templates page and are user-editable.
 
-### Callback Instructions
+| Block | When Prepended | Inner Placeholders |
+|-------|---------------|-------------------|
+| **User Instructions** | User provided instructions at workflow launch | `${USER_INSTRUCTIONS}` |
+| **Continuation** | Agent was interrupted (stall/fail/timeout) without saving state | (none) |
+| **Low-Context Restart** | Agent saved `to_resume` data before restart | `${PREVIOUS_DATA}` |
+| **Callback** | A later-layer agent triggered a callback | `${CALLBACK_INSTRUCTIONS}`, `${CALLBACK_FROM_AGENT}` |
 
-During normal execution: `_No callback instructions_`
+**Prepend order:** user-instructions → continuation/low-context → callback.
 
-During a callback re-run, expands to:
-
-```
-## Callback Instructions
-
-This agent is being re-run due to a callback from a later stage.
-
-Callback triggered by: qa-verifier
-
-<instructions from the calling agent>
-```
-
-### Previous Data (Low-Context Continuation)
-
-Empty on first run. On continuation, expands to:
-
-```
-This is a continuation of a previous run. Here is what was completed:
-<contents of to_resume finding from continued session>
-```
+Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}` placeholders in agent prompts are stripped to empty.
 
 ---
 
@@ -432,9 +415,6 @@ You are a setup analyzer for ticket ${TICKET_ID}.
 - **Title:** ${TICKET_TITLE}
 - **Description:** ${TICKET_DESCRIPTION}
 
-## User Instructions
-${USER_INSTRUCTIONS}
-
 ## Project Context
 #{PROJECT_FINDINGS:architecture,conventions}
 
@@ -460,12 +440,6 @@ Implement changes for ticket ${TICKET_ID} in the ${WORKFLOW} workflow.
 
 ## Test Specifications
 #{FINDINGS:test-writer:test_cases,coverage_plan}
-
-## Callback Context
-${CALLBACK_INSTRUCTIONS}
-
-## Previous Progress
-${PREVIOUS_DATA}
 
 ## Your Task
 

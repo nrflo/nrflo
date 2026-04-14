@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -192,24 +193,23 @@ func (s *Spawner) formatFindingsError(agentType string) string {
 	return fmt.Sprintf("_No findings yet available from %s_", agentType)
 }
 
-// fetchPreviousData retrieves findings from the most recent continued session
-// for the same agent type, model, and phase. Returns empty string if none found.
+// fetchPreviousDataAndReason retrieves to_resume data and result_reason from the most
+// recent continued session for the same agent type, model, and phase.
 // instanceID is optional — when set, used directly instead of DB lookup.
-func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType, modelID, phase, instanceID string) string {
+func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, phase, instanceID string) (data string, resultReason string) {
 	if phase == "" {
-		return ""
+		return "", ""
 	}
 
 	pool := s.pool()
 	if pool == nil {
-		return ""
+		return "", ""
 	}
 
 	wfiID := instanceID
 	var err error
 	if wfiID == "" {
 		if ticketID == "" {
-			// Project-scoped workflow — get most recent active instance
 			err = pool.QueryRow(`
 				SELECT id FROM workflow_instances
 				WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND scope_type = 'project' AND status = 'active'
@@ -222,33 +222,42 @@ func (s *Spawner) fetchPreviousData(projectID, ticketID, workflowName, agentType
 				projectID, ticketID, workflowName).Scan(&wfiID)
 		}
 		if err != nil {
-			return ""
+			return "", ""
 		}
 	}
 
-	var findingsStr string
+	var findingsStr sql.NullString
+	var reasonStr sql.NullString
 	err = pool.QueryRow(`
-		SELECT findings FROM agent_sessions
+		SELECT findings, result_reason FROM agent_sessions
 		WHERE workflow_instance_id = ? AND agent_type = ? AND model_id = ? AND phase = ? AND status = 'continued'
-		  AND findings IS NOT NULL AND findings != ''
 		ORDER BY ended_at DESC LIMIT 1`,
-		wfiID, agentType, modelID, phase).Scan(&findingsStr)
-	if err != nil || findingsStr == "" {
-		return ""
+		wfiID, agentType, modelID, phase).Scan(&findingsStr, &reasonStr)
+	if err != nil {
+		return "", ""
+	}
+
+	reason := ""
+	if reasonStr.Valid {
+		reason = reasonStr.String
+	}
+
+	if !findingsStr.Valid || findingsStr.String == "" {
+		return "", reason
 	}
 
 	var findings map[string]interface{}
-	if json.Unmarshal([]byte(findingsStr), &findings) != nil || len(findings) == 0 {
-		return ""
+	if json.Unmarshal([]byte(findingsStr.String), &findings) != nil || len(findings) == 0 {
+		return "", reason
 	}
 
 	toResume, ok := findings["to_resume"]
 	if !ok {
-		return ""
+		return "", reason
 	}
 	str, ok := toResume.(string)
 	if !ok || str == "" {
-		return ""
+		return "", reason
 	}
-	return str
+	return str, reason
 }

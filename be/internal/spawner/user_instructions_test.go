@@ -132,7 +132,7 @@ func TestFetchUserInstructions_DirectString(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchUserInstructions(env.project, ticketID, "test", "")
+	got := sp.fetchUserInstructionsRaw(env.project, ticketID, "test", "")
 	if got != "Fix the login bug" {
 		t.Fatalf("expected 'Fix the login bug', got %q", got)
 	}
@@ -145,8 +145,8 @@ func TestFetchUserInstructions_MissingReturnsPlaceholder(t *testing.T) {
 
 	// No user_instructions in findings at all
 	sp := env.newSpawner()
-	got := sp.fetchUserInstructions(env.project, ticketID, "test", "")
-	expected := "_No user instructions provided_"
+	got := sp.fetchUserInstructionsRaw(env.project, ticketID, "test", "")
+	expected := ""
 	if got != expected {
 		t.Fatalf("expected %q, got %q", expected, got)
 	}
@@ -164,8 +164,8 @@ func TestFetchUserInstructions_EmptyStringReturnsPlaceholder(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchUserInstructions(env.project, ticketID, "test", "")
-	expected := "_No user instructions provided_"
+	got := sp.fetchUserInstructionsRaw(env.project, ticketID, "test", "")
+	expected := ""
 	if got != expected {
 		t.Fatalf("expected %q, got %q", expected, got)
 	}
@@ -176,8 +176,8 @@ func TestFetchUserInstructions_NoWorkflowReturnsPlaceholder(t *testing.T) {
 
 	// Don't create any ticket or workflow - should return placeholder
 	sp := env.newSpawner()
-	got := sp.fetchUserInstructions(env.project, "NONEXISTENT", "test", "")
-	expected := "_No user instructions provided_"
+	got := sp.fetchUserInstructionsRaw(env.project, "NONEXISTENT", "test", "")
+	expected := ""
 	if got != expected {
 		t.Fatalf("expected %q, got %q", expected, got)
 	}

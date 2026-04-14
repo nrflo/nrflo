@@ -31,20 +31,13 @@ func TestFetchCallbackInstructions_Present(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
+	gotInstr, gotFrom := sp.fetchCallbackRaw(env.project, ticketID, "test", "")
 
-	// Verify formatted output
-	if !strings.Contains(got, "## Callback Instructions") {
-		t.Error("expected header '## Callback Instructions'")
+	if gotInstr != "The authentication middleware is not checking token expiry correctly. Fix the validation logic." {
+		t.Errorf("expected raw instructions, got %q", gotInstr)
 	}
-	if !strings.Contains(got, "This agent is being re-run due to a callback from a later stage.") {
-		t.Error("expected callback context message")
-	}
-	if !strings.Contains(got, "Callback triggered by: qa-verifier") {
-		t.Error("expected from_agent line")
-	}
-	if !strings.Contains(got, "The authentication middleware is not checking token expiry correctly") {
-		t.Error("expected callback instructions in output")
+	if gotFrom != "qa-verifier" {
+		t.Errorf("expected from_agent 'qa-verifier', got %q", gotFrom)
 	}
 }
 
@@ -62,15 +55,17 @@ func TestFetchCallbackInstructions_Missing(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
+	gotInstr, gotFrom := sp.fetchCallbackRaw(env.project, ticketID, "test", "")
 
-	expected := "_No callback instructions_"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
+	if gotInstr != "" {
+		t.Errorf("expected empty instructions, got %q", gotInstr)
+	}
+	if gotFrom != "" {
+		t.Errorf("expected empty fromAgent, got %q", gotFrom)
 	}
 }
 
-// TestFetchCallbackInstructions_EmptyInstructions tests that the placeholder is returned
+// TestFetchCallbackInstructions_EmptyInstructions tests that empty values are returned
 // when _callback is present but instructions field is empty.
 func TestFetchCallbackInstructions_EmptyInstructions(t *testing.T) {
 	env := newSpawnerTestEnv(t)
@@ -89,26 +84,29 @@ func TestFetchCallbackInstructions_EmptyInstructions(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
+	gotInstr, gotFrom := sp.fetchCallbackRaw(env.project, ticketID, "test", "")
 
-	expected := "_No callback instructions_"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
+	if gotInstr != "" {
+		t.Errorf("expected empty instructions, got %q", gotInstr)
+	}
+	if gotFrom != "" {
+		t.Errorf("expected empty fromAgent, got %q", gotFrom)
 	}
 }
 
-// TestFetchCallbackInstructions_NoWorkflow tests that the placeholder is returned
+// TestFetchCallbackInstructions_NoWorkflow tests that empty values are returned
 // when the workflow instance doesn't exist.
 func TestFetchCallbackInstructions_NoWorkflow(t *testing.T) {
 	env := newSpawnerTestEnv(t)
 
-	// Don't create any ticket or workflow - should return placeholder
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, "NONEXISTENT", "test", "")
+	gotInstr, gotFrom := sp.fetchCallbackRaw(env.project, "NONEXISTENT", "test", "")
 
-	expected := "_No callback instructions_"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
+	if gotInstr != "" {
+		t.Errorf("expected empty instructions, got %q", gotInstr)
+	}
+	if gotFrom != "" {
+		t.Errorf("expected empty fromAgent, got %q", gotFrom)
 	}
 }
 
@@ -144,17 +142,13 @@ func TestFetchCallbackInstructions_ProjectScope(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, "", "test", "") // empty ticketID for project scope
+	gotInstr, gotFrom := sp.fetchCallbackRaw(env.project, "", "test", "")
 
-	// Verify formatted output
-	if !strings.Contains(got, "## Callback Instructions") {
-		t.Error("expected callback header")
+	if gotInstr != "Project-level callback instructions" {
+		t.Errorf("expected raw instructions, got %q", gotInstr)
 	}
-	if !strings.Contains(got, "Callback triggered by: project-verifier") {
-		t.Error("expected from_agent line")
-	}
-	if !strings.Contains(got, "Project-level callback instructions") {
-		t.Error("expected callback instructions")
+	if gotFrom != "project-verifier" {
+		t.Errorf("expected from_agent 'project-verifier', got %q", gotFrom)
 	}
 }
 
@@ -176,17 +170,13 @@ func TestFetchCallbackInstructions_NoFromAgent(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
+	gotInstr, gotFrom := sp.fetchCallbackRaw(env.project, ticketID, "test", "")
 
-	// Should still format correctly without from_agent line
-	if !strings.Contains(got, "## Callback Instructions") {
-		t.Error("expected callback header")
+	if gotInstr != "Fix the implementation" {
+		t.Errorf("expected raw instructions, got %q", gotInstr)
 	}
-	if !strings.Contains(got, "Fix the implementation") {
-		t.Error("expected callback instructions")
-	}
-	if strings.Contains(got, "Callback triggered by:") {
-		t.Error("should not have from_agent line when from_agent is missing")
+	if gotFrom != "" {
+		t.Errorf("expected empty fromAgent when from_agent is missing, got %q", gotFrom)
 	}
 }
 
@@ -204,11 +194,13 @@ func TestFetchCallbackInstructions_InvalidCallbackType(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	got := sp.fetchCallbackInstructions(env.project, ticketID, "test", "")
+	gotInstr, gotFrom := sp.fetchCallbackRaw(env.project, ticketID, "test", "")
 
-	expected := "_No callback instructions_"
-	if got != expected {
-		t.Errorf("expected %q, got %q", expected, got)
+	if gotInstr != "" {
+		t.Errorf("expected empty instructions, got %q", gotInstr)
+	}
+	if gotFrom != "" {
+		t.Errorf("expected empty fromAgent, got %q", gotFrom)
 	}
 }
 
@@ -258,23 +250,23 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
 
-	// Verify CALLBACK_INSTRUCTIONS was expanded
+	// Verify ${CALLBACK_INSTRUCTIONS} was stripped and callback injectable prepended
 	if strings.Contains(template, "${CALLBACK_INSTRUCTIONS}") {
-		t.Error("${CALLBACK_INSTRUCTIONS} variable was not expanded")
+		t.Error("${CALLBACK_INSTRUCTIONS} variable was not stripped")
 	}
 	if !strings.Contains(template, "## Callback Instructions") {
-		t.Error("expected callback instructions header in expanded template")
+		t.Error("expected callback injectable header prepended")
 	}
 	if !strings.Contains(template, "Fix the validation logic in auth middleware") {
-		t.Error("expected callback instructions content in expanded template")
+		t.Error("expected callback instructions content in prepended block")
 	}
-	if !strings.Contains(template, "Callback triggered by: verifier") {
-		t.Error("expected from_agent in expanded template")
+	if !strings.Contains(template, "**verifier**") {
+		t.Error("expected from_agent in prepended callback block")
 	}
 	if !strings.Contains(template, "Agent: analyzer") {
 		t.Error("expected other variables to still be expanded")
 	}
-	if !strings.Contains(template, "Ticket: " + ticketID) {
+	if !strings.Contains(template, "Ticket: "+ticketID) {
 		t.Error("expected ticket ID to be expanded")
 	}
 }
@@ -324,12 +316,12 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
 
-	// Verify callback instructions were NOT injected (template doesn't have the variable)
-	if strings.Contains(template, "## Callback Instructions") {
-		t.Error("callback instructions should not appear when template doesn't use ${CALLBACK_INSTRUCTIONS}")
+	// Callback is now always prepended when data exists (regardless of template content)
+	if !strings.Contains(template, "## Callback Instructions") {
+		t.Error("expected callback injectable to be prepended")
 	}
-	if strings.Contains(template, "This should not appear") {
-		t.Error("callback instructions should not be injected when variable is not in template")
+	if !strings.Contains(template, "This should not appear") {
+		t.Error("expected callback instructions content in prepended block")
 	}
 }
 
@@ -369,14 +361,14 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
 
-	// Verify CALLBACK_INSTRUCTIONS was expanded to default
+	// ${CALLBACK_INSTRUCTIONS} stripped, no prepend when no callback data
 	if strings.Contains(template, "${CALLBACK_INSTRUCTIONS}") {
-		t.Error("${CALLBACK_INSTRUCTIONS} variable was not expanded")
+		t.Error("${CALLBACK_INSTRUCTIONS} variable was not stripped")
 	}
-	if !strings.Contains(template, "_No callback instructions_") {
-		t.Error("expected default placeholder when no callback metadata exists")
+	if strings.Contains(template, "_No callback instructions_") {
+		t.Error("legacy placeholder should be stripped")
 	}
 	if strings.Contains(template, "## Callback Instructions") {
-		t.Error("should not have callback header when using default placeholder")
+		t.Error("should not have callback header when no callback data exists")
 	}
 }

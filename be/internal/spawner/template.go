@@ -102,13 +102,13 @@ func (s *Spawner) fetchTicketInfo(projectID, ticketID string) (title, descriptio
 	return title, description
 }
 
-// fetchUserInstructions returns user_instructions from the workflow instance findings.
-// Uses wfiID directly when available; falls back to ticket-based lookup.
-func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID string) string {
+// fetchUserInstructionsRaw returns user_instructions from the workflow instance findings.
+// Returns "" on miss. Uses wfiID directly when available; falls back to ticket-based lookup.
+func (s *Spawner) fetchUserInstructionsRaw(projectID, ticketID, workflowName, wfiID string) string {
 	pool := s.pool()
 	if pool == nil {
 		logger.Warn(context.Background(), "no database pool for user instructions")
-		return "_No user instructions provided_"
+		return ""
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
@@ -119,7 +119,6 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID
 	} else if ticketID != "" {
 		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
 	} else {
-		// Fallback: get most recent active project instance
 		var instances []*model.WorkflowInstance
 		instances, err = wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
 		if err == nil && len(instances) > 0 {
@@ -127,7 +126,7 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID
 		}
 	}
 	if err != nil || wi == nil {
-		return "_No user instructions provided_"
+		return ""
 	}
 	findings := wi.GetFindings()
 	if instructions, ok := findings["user_instructions"]; ok {
@@ -135,16 +134,16 @@ func (s *Spawner) fetchUserInstructions(projectID, ticketID, workflowName, wfiID
 			return str
 		}
 	}
-	return "_No user instructions provided_"
+	return ""
 }
 
-// fetchCallbackInstructions returns callback instructions from the workflow instance findings.
-// Uses wfiID directly when available; falls back to ticket-based lookup.
-func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, wfiID string) string {
+// fetchCallbackRaw returns raw callback instructions and from_agent from workflow instance findings.
+// Returns ("", "") on miss. Uses wfiID directly when available; falls back to ticket-based lookup.
+func (s *Spawner) fetchCallbackRaw(projectID, ticketID, workflowName, wfiID string) (instructions string, fromAgent string) {
 	pool := s.pool()
 	if pool == nil {
 		logger.Warn(context.Background(), "no database pool for callback instructions")
-		return "_No callback instructions_"
+		return "", ""
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
@@ -162,27 +161,23 @@ func (s *Spawner) fetchCallbackInstructions(projectID, ticketID, workflowName, w
 		}
 	}
 	if err != nil || wi == nil {
-		return "_No callback instructions_"
+		return "", ""
 	}
 	findings := wi.GetFindings()
 	callbackRaw, ok := findings["_callback"]
 	if !ok {
-		return "_No callback instructions_"
+		return "", ""
 	}
 	callbackMap, ok := callbackRaw.(map[string]interface{})
 	if !ok {
-		return "_No callback instructions_"
+		return "", ""
 	}
-	instructions, _ := callbackMap["instructions"].(string)
-	if instructions == "" {
-		return "_No callback instructions_"
+	instr, _ := callbackMap["instructions"].(string)
+	if instr == "" {
+		return "", ""
 	}
-	result := "## Callback Instructions\n\nThis agent is being re-run due to a callback from a later stage.\n\n"
-	if fromAgent, ok := callbackMap["from_agent"].(string); ok && fromAgent != "" {
-		result += "Callback triggered by: " + fromAgent + "\n\n"
-	}
-	result += instructions
-	return result
+	from, _ := callbackMap["from_agent"].(string)
+	return instr, from
 }
 
 // LoadTemplate is the public wrapper around loadTemplate. It loads and expands
@@ -233,22 +228,31 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 			template = strings.ReplaceAll(template, "${TICKET_DESCRIPTION}", "")
 		}
 	}
-	if strings.Contains(template, "${USER_INSTRUCTIONS}") {
-		instructions := s.fetchUserInstructions(projectID, ticketID, workflowName, wfiID)
-		template = strings.ReplaceAll(template, "${USER_INSTRUCTIONS}", instructions)
-	}
-	if strings.Contains(template, "${CALLBACK_INSTRUCTIONS}") {
-		cbInstructions := s.fetchCallbackInstructions(projectID, ticketID, workflowName, wfiID)
-		template = strings.ReplaceAll(template, "${CALLBACK_INSTRUCTIONS}", cbInstructions)
-	}
+	// Strip legacy placeholders (clean break — any stray ones become empty)
+	template = strings.ReplaceAll(template, "${USER_INSTRUCTIONS}", "")
+	template = strings.ReplaceAll(template, "${CALLBACK_INSTRUCTIONS}", "")
+	template = strings.ReplaceAll(template, "${PREVIOUS_DATA}", "")
 
-	// Expand ${PREVIOUS_DATA} — injects previous run's findings for continuation
-	if strings.Contains(template, "${PREVIOUS_DATA}") {
-		prevData := s.fetchPreviousData(projectID, ticketID, workflowName, agentType, modelID, phase, wfiID)
-		if prevData != "" {
-			prevData = "This is a continuation of a previous run. Here is what was completed:\n" + prevData
-		}
-		template = strings.ReplaceAll(template, "${PREVIOUS_DATA}", prevData)
+	// Build prepend blocks (order: user-instructions → continuation/low-context → callback)
+	var prepend []string
+	if ui := s.fetchUserInstructionsRaw(projectID, ticketID, workflowName, wfiID); ui != "" {
+		prepend = append(prepend, s.expandInjectable("user-instructions", map[string]string{"USER_INSTRUCTIONS": ui}))
+	}
+	prevData, prevReason := s.fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, phase, wfiID)
+	switch {
+	case prevData != "":
+		prepend = append(prepend, s.expandInjectable("low-context", map[string]string{"PREVIOUS_DATA": prevData}))
+	case prevReason != "" && isContinuationReason(prevReason):
+		prepend = append(prepend, s.expandInjectable("continuation", nil))
+	}
+	if cbInstr, cbFrom := s.fetchCallbackRaw(projectID, ticketID, workflowName, wfiID); cbInstr != "" {
+		prepend = append(prepend, s.expandInjectable("callback", map[string]string{
+			"CALLBACK_INSTRUCTIONS": cbInstr,
+			"CALLBACK_FROM_AGENT":   cbFrom,
+		}))
+	}
+	if len(prepend) > 0 {
+		template = strings.Join(prepend, "\n") + "\n" + template
 	}
 
 	// Expand findings patterns (after variable substitution)

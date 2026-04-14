@@ -314,23 +314,39 @@ Templates use placeholders injected by the spawner:
 - `${TICKET_ID}` - Current ticket ID
 - `${TICKET_TITLE}` - Ticket title from the tickets table
 - `${TICKET_DESCRIPTION}` - Ticket description from the tickets table
-- `${USER_INSTRUCTIONS}` - User instructions from workflow_instances.findings["user_instructions"]
 - `${PARENT_SESSION}` - Parent session UUID
 - `${CHILD_SESSION}` - This agent's session UUID
 - `${WORKFLOW}` - Current workflow name (e.g., "feature", "bugfix")
 - `${MODEL_ID}` - Full model identifier in cli:model format (e.g., "claude:sonnet")
 - `${MODEL}` - Just the model name (e.g., "sonnet")
-- `${PREVIOUS_DATA}` - The `to_resume` key from findings of the most recent continued session (same agent, model, phase). Populated on low-context restarts. Empty string if no prior continued session.
-- `${CALLBACK_INSTRUCTIONS}` - Callback instructions from `workflow_instances.findings["_callback"]`. Returns `"_No callback instructions_"` when no callback is active.
 - `${BRANCH_NAME}` - Git branch name (ExtraVars only, system agents)
 - `${DEFAULT_BRANCH}` - Default branch e.g. "main" (ExtraVars only, system agents)
 - `${MERGE_ERROR}` - Merge error message (ExtraVars only, system agents)
 - `#{PROJECT_FINDINGS:key}` - Single project finding value from `project_findings` table. Returns `"_No project finding for key 'keyname'_"` if missing.
 - `#{PROJECT_FINDINGS:k1,k2}` - Multiple project findings as `key: value` lines. Missing keys get individual placeholders.
 
-Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`, `${USER_INSTRUCTIONS}`) are only fetched from the database when the template contains them. Project findings are only queried when `#{PROJECT_FINDINGS:...}` patterns are present.
+Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}` placeholders are stripped to empty if present in templates. Their content is now delivered via auto-prepended injectable blocks (see below).
+
+Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`) are only fetched from the database when the template contains them. Project findings are only queried when `#{PROJECT_FINDINGS:...}` patterns are present.
 
 For project-scoped workflows, `${TICKET_ID}` is empty, and `${TICKET_TITLE}`/`${TICKET_DESCRIPTION}` are replaced with empty strings. Validation at workflow creation rejects project-scoped workflows whose agent prompts use ticket-specific variables.
+
+## Auto-prepended Injectable Blocks
+
+Instead of inline `${VAR}` substitution for user instructions, callbacks, and continuation data, the spawner loads injectable templates from the `default_templates` table (type=`injectable`) and prepends them to the agent prompt. Users can edit injectable templates on the Default Templates page.
+
+| Injectable | Trigger | Inner Placeholders |
+|------------|---------|-------------------|
+| `user-instructions` | `workflow_instances.findings["user_instructions"]` is non-empty | `${USER_INSTRUCTIONS}` |
+| `continuation` | Continued session exists with stall/fail/timeout reason but no `to_resume` data | (none) |
+| `low-context` | Continued session exists with `to_resume` data | `${PREVIOUS_DATA}` |
+| `callback` | `workflow_instances.findings["_callback"]` has non-empty instructions | `${CALLBACK_INSTRUCTIONS}`, `${CALLBACK_FROM_AGENT}` |
+
+**Prepend order:** user-instructions → continuation/low-context (mutually exclusive) → callback. Most actionable information closest to the agent prompt.
+
+**Expansion:** `expandInjectable(id, vars)` loads the template body, replaces `${VAR}` placeholders from the vars map, strips any remaining `${...}` placeholders, and returns the expanded body. Returns `""` with a warning if the template is missing.
+
+**`isContinuationReason(reason)`** returns true for: `stall_restart_start_stall`, `stall_restart_running_stall`, `instant_stall`, `fail_restart`, `timeout_restart`. These indicate the agent was interrupted without saving state.
 
 ## Findings Auto-Population
 

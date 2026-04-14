@@ -30,7 +30,7 @@ func TestFetchPreviousData_WithToResumeKey(t *testing.T) {
 	env.createContinuedSession(t, continuedSessionID, findings)
 
 	// Fetch previous data
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -60,7 +60,7 @@ func TestFetchPreviousData_WithoutToResumeKey(t *testing.T) {
 	}
 	env.createContinuedSession(t, continuedSessionID, findings)
 
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -88,7 +88,7 @@ func TestFetchPreviousData_EmptyToResumeValue(t *testing.T) {
 	}
 	env.createContinuedSession(t, continuedSessionID, findings)
 
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -116,7 +116,7 @@ func TestFetchPreviousData_NonStringToResume(t *testing.T) {
 	}
 	env.createContinuedSession(t, continuedSessionID, findings)
 
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -140,7 +140,7 @@ func TestFetchPreviousData_NoFindings(t *testing.T) {
 	findings := map[string]interface{}{}
 	env.createContinuedSession(t, continuedSessionID, findings)
 
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -162,7 +162,7 @@ func TestFetchPreviousData_NoContinuedSession(t *testing.T) {
 	defer env.cleanup()
 
 	// Don't create any continued session
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -197,7 +197,7 @@ func TestFetchPreviousData_LatestContinuedSession(t *testing.T) {
 	}
 	env.createContinuedSessionWithTime(t, newer, findingsNewer, time.Now())
 
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -226,7 +226,7 @@ func TestFetchPreviousData_DifferentAgentType(t *testing.T) {
 	env.createContinuedSessionForAgent(t, continuedSessionID, findings, "other-agent")
 
 	// Query for test-agent (should not find it)
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -255,7 +255,7 @@ func TestFetchPreviousData_DifferentModelID(t *testing.T) {
 	env.createContinuedSessionWithModel(t, continuedSessionID, findings, "claude:opus")
 
 	// Query for claude:sonnet (should not find it)
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
@@ -281,7 +281,7 @@ func TestFetchPreviousData_ProjectScope(t *testing.T) {
 	}
 	env.createContinuedSession(t, continuedSessionID, findings)
 
-	result := env.spawner.fetchPreviousData(
+	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		"", // empty ticket ID for project scope
 		env.workflowID,

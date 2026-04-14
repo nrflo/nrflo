@@ -46,6 +46,9 @@ export function DefaultTemplatesSection() {
     queryFn: () => listDefaultTemplates(typeFilter || undefined),
   })
 
+  const agentTemplates = templates.filter((t) => t.type !== 'injectable')
+  const injectableTemplates = templates.filter((t) => t.type === 'injectable')
+
   const createMutation = useMutation({
     mutationFn: (data: CreateDefaultTemplateRequest) => createDefaultTemplate(data),
     onSuccess: () => {
@@ -119,6 +122,86 @@ export function DefaultTemplatesSection() {
     updateMutation.mutate({ id: editingId, data })
   }
 
+  const renderTemplateCard = (t: DefaultTemplate) => (
+    <div key={t.id} className="border rounded-lg p-4">
+      {editingId === t.id ? (
+        <DefaultTemplateForm
+          formData={formData}
+          setFormData={setFormData}
+          onCancel={handleCancel}
+          onSave={handleSaveEdit}
+          mutation={updateMutation}
+          isReadonly={t.readonly}
+          isModified={t.readonly && t.default_template != null && t.template !== t.default_template}
+          onRestore={t.readonly && t.default_template != null && t.template !== t.default_template ? () => restoreMutation.mutate(t.id) : undefined}
+          isRestoring={restoreMutation.isPending}
+        />
+      ) : deleteConfirm === t.id ? (
+        <div className="flex items-center justify-between">
+          <div className="text-sm">
+            Are you sure you want to delete{' '}
+            <span className="font-semibold">{t.id}</span>?
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate(t.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium">{t.id}</span>
+                {t.type === 'injectable' && (
+                  <Badge variant="secondary" className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
+                    <Syringe className="h-3 w-3 mr-1" />
+                    Injectable
+                  </Badge>
+                )}
+                {t.readonly && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Built-in
+                  </Badge>
+                )}
+                {t.readonly && t.default_template != null && t.template !== t.default_template && (
+                  <Badge variant="outline" className="text-xs">
+                    Modified
+                  </Badge>
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">{t.name}</div>
+              <div className="text-xs text-muted-foreground mt-1 truncate max-w-xl font-mono">
+                {t.template.split('\n').slice(0, 2).join(' ').slice(0, 120)}
+                {t.template.length > 120 && '…'}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <Button variant="ghost" size="icon" onClick={() => handleStartEdit(t)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {!t.readonly && (
+              <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(t.id)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <Card>
       <CardHeader>
@@ -169,85 +252,22 @@ export function DefaultTemplatesSection() {
             </div>
           )}
 
-          {templates.map((t) => (
-            <div key={t.id} className="border rounded-lg p-4">
-              {editingId === t.id ? (
-                <DefaultTemplateForm
-                  formData={formData}
-                  setFormData={setFormData}
-                  onCancel={handleCancel}
-                  onSave={handleSaveEdit}
-                  mutation={updateMutation}
-                  isReadonly={t.readonly}
-                  isModified={t.readonly && t.default_template != null && t.template !== t.default_template}
-                  onRestore={t.readonly && t.default_template != null && t.template !== t.default_template ? () => restoreMutation.mutate(t.id) : undefined}
-                  isRestoring={restoreMutation.isPending}
-                />
-              ) : deleteConfirm === t.id ? (
-                <div className="flex items-center justify-between">
-                  <div className="text-sm">
-                    Are you sure you want to delete{' '}
-                    <span className="font-semibold">{t.id}</span>?
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => deleteMutation.mutate(t.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{t.id}</span>
-                        {t.type === 'injectable' && (
-                          <Badge variant="secondary" className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
-                            <Syringe className="h-3 w-3 mr-1" />
-                            Injectable
-                          </Badge>
-                        )}
-                        {t.readonly && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Lock className="h-3 w-3 mr-1" />
-                            Built-in
-                          </Badge>
-                        )}
-                        {t.readonly && t.default_template != null && t.template !== t.default_template && (
-                          <Badge variant="outline" className="text-xs">
-                            Modified
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{t.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1 truncate max-w-xl font-mono">
-                        {t.template.split('\n').slice(0, 2).join(' ').slice(0, 120)}
-                        {t.template.length > 120 && '…'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => handleStartEdit(t)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    {!t.readonly && (
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(t.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+          {agentTemplates.length > 0 && (
+            <>
+              <div className="text-sm font-semibold text-muted-foreground pt-2">Agent Templates</div>
+              {agentTemplates.map(renderTemplateCard)}
+            </>
+          )}
+
+          {injectableTemplates.length > 0 && (
+            <>
+              <div className="text-sm font-semibold text-muted-foreground pt-2">Injectable Templates</div>
+              <p className="text-xs text-muted-foreground">
+                These blocks are automatically prepended to every agent prompt when relevant data exists. Edit the markdown framing here; inner placeholders stay dynamic.
+              </p>
+              {injectableTemplates.map(renderTemplateCard)}
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

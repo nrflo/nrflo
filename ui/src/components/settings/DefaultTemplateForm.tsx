@@ -101,6 +101,17 @@ export function DefaultTemplateForm({
           maxHeight="400px"
         />
       </div>
+      {formData.type === 'injectable' && (
+        <div className="bg-muted/50 border rounded p-3 text-xs space-y-1.5">
+          <div className="font-medium text-muted-foreground">Injectable Placeholders</div>
+          <div className="space-y-1 font-mono">
+            <div><span className="text-primary">{'${USER_INSTRUCTIONS}'}</span> — User-provided instructions</div>
+            <div><span className="text-primary">{'${PREVIOUS_DATA}'}</span> — Saved state from previous run</div>
+            <div><span className="text-primary">{'${CALLBACK_INSTRUCTIONS}'}</span> — Callback instructions</div>
+            <div><span className="text-primary">{'${CALLBACK_FROM_AGENT}'}</span> — Agent that triggered callback</div>
+          </div>
+        </div>
+      )}
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>
           {isCreate ? 'Cancel' : <><X className="h-4 w-4 mr-1" />Cancel</>}

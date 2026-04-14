@@ -6,6 +6,7 @@ import "time"
 type DefaultTemplate struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
+	Type      string    `json:"type"`
 	Template  string    `json:"template"`
 	Readonly        bool      `json:"readonly"`
 	DefaultTemplate *string   `json:"default_template,omitempty"`

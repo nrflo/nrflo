@@ -1,19 +1,27 @@
 import { X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 
 export interface TemplateFormData {
   id: string
   name: string
+  type: string
   template: string
 }
 
 export const emptyTemplateForm: TemplateFormData = {
   id: '',
   name: '',
+  type: 'agent',
   template: '',
 }
+
+const typeOptions = [
+  { value: 'agent', label: 'Agent' },
+  { value: 'injectable', label: 'Injectable' },
+]
 
 export function DefaultTemplateForm({
   formData,
@@ -41,7 +49,7 @@ export function DefaultTemplateForm({
 }) {
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">
             ID {isCreate && <span className="text-destructive">*</span>}
@@ -66,6 +74,18 @@ export function DefaultTemplateForm({
             placeholder="Template name"
             disabled={isReadonly}
           />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Type</label>
+          {isCreate ? (
+            <Dropdown
+              value={formData.type}
+              onChange={(val) => setFormData({ ...formData, type: val })}
+              options={typeOptions}
+            />
+          ) : (
+            <Input value={formData.type} disabled className="bg-muted" />
+          )}
         </div>
       </div>
       <div>

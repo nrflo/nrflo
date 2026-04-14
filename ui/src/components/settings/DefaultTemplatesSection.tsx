@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, FileText, Lock } from 'lucide-react'
+import { Plus, Pencil, Trash2, FileText, Lock, Syringe } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { Dropdown } from '@/components/ui/Dropdown'
 import {
   listDefaultTemplates,
   createDefaultTemplate,
@@ -18,11 +19,17 @@ import { DefaultTemplateForm, emptyTemplateForm, type TemplateFormData } from '.
 
 const templateKeys = {
   all: ['default-templates'] as const,
-  list: () => [...templateKeys.all, 'list'] as const,
+  list: (type?: string) => [...templateKeys.all, 'list', type ?? 'all'] as const,
 }
 
+const typeFilterOptions = [
+  { value: '', label: 'All Types' },
+  { value: 'agent', label: 'Agent' },
+  { value: 'injectable', label: 'Injectable' },
+]
+
 function templateToFormData(t: DefaultTemplate): TemplateFormData {
-  return { id: t.id, name: t.name, template: t.template }
+  return { id: t.id, name: t.name, type: t.type, template: t.template }
 }
 
 export function DefaultTemplatesSection() {
@@ -32,16 +39,17 @@ export function DefaultTemplatesSection() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<TemplateFormData>(emptyTemplateForm)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState('')
 
   const { data: templates = [], isLoading, error } = useQuery({
-    queryKey: templateKeys.list(),
-    queryFn: listDefaultTemplates,
+    queryKey: templateKeys.list(typeFilter || undefined),
+    queryFn: () => listDefaultTemplates(typeFilter || undefined),
   })
 
   const createMutation = useMutation({
     mutationFn: (data: CreateDefaultTemplateRequest) => createDefaultTemplate(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: templateKeys.list() })
+      queryClient.invalidateQueries({ queryKey: templateKeys.all })
       setIsCreating(false)
       setFormData(emptyTemplateForm)
     },
@@ -51,7 +59,7 @@ export function DefaultTemplatesSection() {
     mutationFn: ({ id, data }: { id: string; data: UpdateDefaultTemplateRequest }) =>
       updateDefaultTemplate(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: templateKeys.list() })
+      queryClient.invalidateQueries({ queryKey: templateKeys.all })
       setEditingId(null)
       setFormData(emptyTemplateForm)
     },
@@ -60,7 +68,7 @@ export function DefaultTemplatesSection() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteDefaultTemplate(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: templateKeys.list() })
+      queryClient.invalidateQueries({ queryKey: templateKeys.all })
       setDeleteConfirm(null)
     },
   })
@@ -68,7 +76,7 @@ export function DefaultTemplatesSection() {
   const restoreMutation = useMutation({
     mutationFn: (id: string) => restoreDefaultTemplate(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: templateKeys.list() })
+      queryClient.invalidateQueries({ queryKey: templateKeys.all })
       setEditingId(null)
       setFormData(emptyTemplateForm)
     },
@@ -98,6 +106,7 @@ export function DefaultTemplatesSection() {
       id: formData.id.trim(),
       name: formData.name.trim(),
       template: formData.template,
+      type: formData.type,
     })
   }
 
@@ -118,10 +127,18 @@ export function DefaultTemplatesSection() {
             <CardTitle>Default Templates</CardTitle>
             <CardDescription>Global agent prompt templates</CardDescription>
           </div>
-          <Button onClick={handleStartCreate} disabled={isCreating}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Template
-          </Button>
+          <div className="flex items-center gap-3">
+            <Dropdown
+              value={typeFilter}
+              onChange={setTypeFilter}
+              options={typeFilterOptions}
+              className="w-36"
+            />
+            <Button onClick={handleStartCreate} disabled={isCreating}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Template
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -192,6 +209,12 @@ export function DefaultTemplatesSection() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{t.id}</span>
+                        {t.type === 'injectable' && (
+                          <Badge variant="secondary" className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
+                            <Syringe className="h-3 w-3 mr-1" />
+                            Injectable
+                          </Badge>
+                        )}
                         {t.readonly && (
                           <Badge variant="secondary" className="text-xs">
                             <Lock className="h-3 w-3 mr-1" />

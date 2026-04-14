@@ -23,12 +23,17 @@ func NewDefaultTemplateService(pool *db.Pool, clk clock.Clock) *DefaultTemplateS
 	return &DefaultTemplateService{pool: pool, clock: clk}
 }
 
-// List returns all default templates ordered by name
-func (s *DefaultTemplateService) List() ([]*model.DefaultTemplate, error) {
-	rows, err := s.pool.Query(`
-		SELECT id, name, template, readonly, created_at, updated_at, default_template
-		FROM default_templates
-		ORDER BY name`)
+// List returns default templates ordered by name, optionally filtered by type
+func (s *DefaultTemplateService) List(typeFilter string) ([]*model.DefaultTemplate, error) {
+	query := `SELECT id, name, type, template, readonly, created_at, updated_at, default_template FROM default_templates`
+	var args []interface{}
+	if typeFilter != "" {
+		query += ` WHERE type = ?`
+		args = append(args, typeFilter)
+	}
+	query += ` ORDER BY name`
+
+	rows, err := s.pool.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +46,7 @@ func (s *DefaultTemplateService) List() ([]*model.DefaultTemplate, error) {
 		var readonly int
 		var defaultTmpl sql.NullString
 
-		err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Template, &readonly, &createdAt, &updatedAt, &defaultTmpl)
+		err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Type, &tmpl.Template, &readonly, &createdAt, &updatedAt, &defaultTmpl)
 		if err != nil {
 			return nil, err
 		}
@@ -67,10 +72,10 @@ func (s *DefaultTemplateService) Get(id string) (*model.DefaultTemplate, error) 
 
 	var defaultTmpl sql.NullString
 	err := s.pool.QueryRow(`
-		SELECT id, name, template, readonly, created_at, updated_at, default_template
+		SELECT id, name, type, template, readonly, created_at, updated_at, default_template
 		FROM default_templates
 		WHERE id = ?`, id).Scan(
-		&tmpl.ID, &tmpl.Name, &tmpl.Template, &readonly, &createdAt, &updatedAt, &defaultTmpl,
+		&tmpl.ID, &tmpl.Name, &tmpl.Type, &tmpl.Template, &readonly, &createdAt, &updatedAt, &defaultTmpl,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("default template not found: %s", id)
@@ -103,10 +108,15 @@ func (s *DefaultTemplateService) Create(req *types.DefaultTemplateCreateRequest)
 
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
+	tmplType := req.Type
+	if tmplType == "" {
+		tmplType = "agent"
+	}
+
 	_, err := s.pool.Exec(`
-		INSERT INTO default_templates (id, name, template, readonly, created_at, updated_at)
-		VALUES (?, ?, ?, 0, ?, ?)`,
-		req.ID, req.Name, req.Template, now, now,
+		INSERT INTO default_templates (id, name, type, template, readonly, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 0, ?, ?)`,
+		req.ID, req.Name, tmplType, req.Template, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -119,6 +129,7 @@ func (s *DefaultTemplateService) Create(req *types.DefaultTemplateCreateRequest)
 	return &model.DefaultTemplate{
 		ID:        req.ID,
 		Name:      req.Name,
+		Type:      tmplType,
 		Template:  req.Template,
 		Readonly:  false,
 		CreatedAt: ts,
@@ -142,6 +153,10 @@ func (s *DefaultTemplateService) Update(id string, req *types.DefaultTemplateUpd
 	if req.Name != nil {
 		updates = append(updates, "name = ?")
 		args = append(args, *req.Name)
+	}
+	if req.Type != nil && !tmpl.Readonly {
+		updates = append(updates, "type = ?")
+		args = append(args, *req.Type)
 	}
 	if req.Template != nil {
 		updates = append(updates, "template = ?")

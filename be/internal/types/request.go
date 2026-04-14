@@ -266,12 +266,14 @@ type SystemAgentDefUpdateRequest struct {
 type DefaultTemplateCreateRequest struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
+	Type     string `json:"type"`
 	Template string `json:"template"`
 }
 
 // DefaultTemplateUpdateRequest is the request for updating a default template
 type DefaultTemplateUpdateRequest struct {
 	Name     *string `json:"name,omitempty"`
+	Type     *string `json:"type,omitempty"`
 	Template *string `json:"template,omitempty"`
 }
 

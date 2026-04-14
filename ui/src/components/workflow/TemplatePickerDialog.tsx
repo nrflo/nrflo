@@ -17,8 +17,8 @@ export function TemplatePickerDialog({ open, onClose, onApply, hasExistingPrompt
   const [selectedId, setSelectedId] = useState('')
 
   const { data: templates = [], isLoading } = useQuery({
-    queryKey: ['default-templates', 'list'],
-    queryFn: listDefaultTemplates,
+    queryKey: ['default-templates', 'list', 'agent'],
+    queryFn: () => listDefaultTemplates('agent'),
     enabled: open,
   })
 

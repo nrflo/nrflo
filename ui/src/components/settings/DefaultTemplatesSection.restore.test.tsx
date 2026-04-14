@@ -34,6 +34,7 @@ function makeTemplate(overrides: Partial<DefaultTemplate> = {}): DefaultTemplate
   return {
     id: 'implementor',
     name: 'Implementor',
+    type: 'agent',
     template: 'Implement the feature described in ${TICKET_TITLE}',
     readonly: false,
     created_at: '2026-01-01T00:00:00Z',
@@ -95,7 +96,7 @@ describe('DefaultTemplatesSection — restore functionality', () => {
     await screen.findByText('setup-analyzer')
 
     const user = userEvent.setup()
-    await user.click(screen.getAllByRole('button')[1]) // edit pencil
+    await user.click(screen.getAllByRole('button')[2]) // edit pencil (0=filter, 1=new, 2=pencil)
 
     expect(screen.getByRole('button', { name: /Restore Default/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Save/i })).toBeInTheDocument()
@@ -136,7 +137,7 @@ describe('DefaultTemplatesSection — restore functionality', () => {
     await screen.findByText('setup-analyzer')
 
     const user = userEvent.setup()
-    await user.click(screen.getAllByRole('button')[1])
+    await user.click(screen.getAllByRole('button')[2])
     await user.click(screen.getByRole('button', { name: /Restore Default/i }))
 
     await waitFor(() => {
@@ -156,7 +157,7 @@ describe('DefaultTemplatesSection — restore functionality', () => {
     await screen.findByText('qa-verifier')
 
     const user = userEvent.setup()
-    await user.click(screen.getAllByRole('button')[1])
+    await user.click(screen.getAllByRole('button')[2])
     await user.click(screen.getByRole('button', { name: /Save/i }))
 
     await waitFor(() => {

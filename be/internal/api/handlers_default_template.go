@@ -13,7 +13,8 @@ import (
 func (s *Server) handleListDefaultTemplates(w http.ResponseWriter, r *http.Request) {
 	svc := service.NewDefaultTemplateService(s.pool, s.clock)
 
-	templates, err := svc.List()
+	typeFilter := r.URL.Query().Get("type")
+	templates, err := svc.List(typeFilter)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

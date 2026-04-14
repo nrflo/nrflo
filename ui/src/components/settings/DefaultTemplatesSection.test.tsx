@@ -34,6 +34,7 @@ function makeTemplate(overrides: Partial<DefaultTemplate> = {}): DefaultTemplate
   return {
     id: 'implementor',
     name: 'Implementor',
+    type: 'agent',
     template: 'Implement the feature described in ${TICKET_TITLE}',
     readonly: false,
     created_at: '2026-01-01T00:00:00Z',
@@ -77,13 +78,11 @@ describe('DefaultTemplatesSection', () => {
     renderWithQuery(<DefaultTemplatesSection />)
     expect(await screen.findByText('Built-in')).toBeInTheDocument()
 
-    // Only New Template button + edit pencil — no delete trash button
+    // No delete trash button for readonly (filter dropdown + New Template + edit pencil)
     const buttons = screen.getAllByRole('button')
     const labels = buttons.map((b) => b.getAttribute('aria-label') ?? b.textContent)
-    // No trash/delete button for readonly
     expect(labels.some((l) => l?.toLowerCase().includes('delete'))).toBe(false)
-    // Exactly 2 buttons: "New Template" + edit pencil
-    expect(buttons).toHaveLength(2)
+    expect(buttons).toHaveLength(3)
   })
 
   it('opens edit form for readonly template with Save button and name disabled', async () => {
@@ -94,9 +93,9 @@ describe('DefaultTemplatesSection', () => {
     await screen.findByText('qa-verifier')
 
     const user = userEvent.setup()
-    // buttons[0]=New Template, buttons[1]=edit pencil
+    // buttons[0]=filter dropdown, buttons[1]=New Template, buttons[2]=edit pencil
     const buttons = screen.getAllByRole('button')
-    await user.click(buttons[1])
+    await user.click(buttons[2])
 
     // No "cannot be modified" message
     expect(
@@ -144,6 +143,7 @@ describe('DefaultTemplatesSection', () => {
         id: 'my-tpl',
         name: 'My Tpl',
         template: 'Do the thing',
+        type: 'agent',
       })
     })
   })
@@ -176,8 +176,8 @@ describe('DefaultTemplatesSection', () => {
 
     const user = userEvent.setup()
     const buttons = screen.getAllByRole('button')
-    // buttons[0]=New Template, buttons[1]=edit pencil, buttons[2]=trash
-    await user.click(buttons[1])
+    // buttons[0]=filter dropdown, buttons[1]=New Template, buttons[2]=edit pencil, buttons[3]=trash
+    await user.click(buttons[2])
 
     // ID is disabled and pre-filled
     const idInput = screen.getByDisplayValue('doc-updater')
@@ -208,9 +208,9 @@ describe('DefaultTemplatesSection', () => {
     await screen.findByText('custom-tpl')
 
     const user = userEvent.setup()
-    // buttons[0]=New Template, buttons[1]=edit pencil, buttons[2]=trash
+    // buttons[0]=filter dropdown, buttons[1]=New Template, buttons[2]=edit pencil, buttons[3]=trash
     let buttons = screen.getAllByRole('button')
-    await user.click(buttons[2])
+    await user.click(buttons[3])
 
     expect(screen.getByText(/Are you sure you want to delete/)).toBeInTheDocument()
     expect(screen.getByText('custom-tpl')).toBeInTheDocument()
@@ -222,7 +222,7 @@ describe('DefaultTemplatesSection', () => {
 
     // Re-open and confirm delete
     buttons = screen.getAllByRole('button')
-    await user.click(buttons[2])
+    await user.click(buttons[3])
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     await waitFor(() => {
       expect(defaultTemplatesApi.deleteDefaultTemplate).toHaveBeenCalledWith('custom-tpl')

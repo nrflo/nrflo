@@ -216,11 +216,11 @@ func TestHandleDeleteDefaultTemplate_NotFound(t *testing.T) {
 func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 	s := newDefaultTemplateServer(t)
 
-	// 1. List — 6 pre-seeded readonly.
+	// 1. List — 10 pre-seeded readonly.
 	listRR := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR); len(got) != 6 {
-		t.Fatalf("initial list len = %d, want 6", len(got))
+	if got := decodeDefaultTemplateList(t, listRR); len(got) != 10 {
+		t.Fatalf("initial list len = %d, want 10", len(got))
 	}
 
 	// 2. Create.
@@ -229,11 +229,11 @@ func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 		t.Errorf("newly created Readonly = true, want false")
 	}
 
-	// 3. List — 7.
+	// 3. List — 11.
 	listRR2 := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR2, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR2); len(got) != 7 {
-		t.Fatalf("after create list len = %d, want 7", len(got))
+	if got := decodeDefaultTemplateList(t, listRR2); len(got) != 11 {
+		t.Fatalf("after create list len = %d, want 11", len(got))
 	}
 
 	// 4. Update.
@@ -278,10 +278,10 @@ func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 		t.Fatalf("delete status = %d, want 200", delRR.Code)
 	}
 
-	// 8. Back to 6.
+	// 8. Back to 10.
 	listRR3 := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR3, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR3); len(got) != 6 {
-		t.Errorf("after delete list len = %d, want 6", len(got))
+	if got := decodeDefaultTemplateList(t, listRR3); len(got) != 10 {
+		t.Errorf("after delete list len = %d, want 10", len(got))
 	}
 }

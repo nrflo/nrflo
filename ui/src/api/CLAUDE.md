@@ -120,8 +120,8 @@ PATCH  /api/v1/system-agents/:id       # Update system agent definition
 DELETE /api/v1/system-agents/:id       # Delete system agent definition
 
 # Default templates (global, no X-Project header)
-GET    /api/v1/default-templates           # List all default templates
-POST   /api/v1/default-templates           # Create default template
+GET    /api/v1/default-templates           # List all default templates (?type= filter: agent, injectable)
+POST   /api/v1/default-templates           # Create default template (type defaults to 'agent')
 GET    /api/v1/default-templates/:id       # Get default template
 PATCH  /api/v1/default-templates/:id       # Update default template (readonly: template-only, 400 if name provided)
 DELETE /api/v1/default-templates/:id       # Delete default template (403 if readonly)

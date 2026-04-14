@@ -3,6 +3,7 @@ import { apiGet, apiPost, apiPatch, apiDelete } from './client'
 export interface DefaultTemplate {
   id: string
   name: string
+  type: string
   template: string
   readonly: boolean
   default_template?: string
@@ -14,15 +15,18 @@ export interface CreateDefaultTemplateRequest {
   id: string
   name: string
   template: string
+  type?: string
 }
 
 export interface UpdateDefaultTemplateRequest {
   name?: string
   template?: string
+  type?: string
 }
 
-export async function listDefaultTemplates(): Promise<DefaultTemplate[]> {
-  return apiGet<DefaultTemplate[]>('/api/v1/default-templates')
+export async function listDefaultTemplates(type?: string): Promise<DefaultTemplate[]> {
+  const url = type ? `/api/v1/default-templates?type=${encodeURIComponent(type)}` : '/api/v1/default-templates'
+  return apiGet<DefaultTemplate[]>(url)
 }
 
 export async function getDefaultTemplate(id: string): Promise<DefaultTemplate> {

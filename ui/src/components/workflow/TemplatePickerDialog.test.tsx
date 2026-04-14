@@ -13,6 +13,7 @@ vi.mock('@/api/defaultTemplates', () => ({
 const makeTemplate = (overrides: Partial<DefaultTemplate> = {}): DefaultTemplate => ({
   id: 'implementor',
   name: 'Implementor',
+  type: 'agent',
   template: 'You are a skilled implementor agent.',
   readonly: true,
   created_at: '2024-01-01T00:00:00Z',
@@ -133,6 +134,13 @@ describe('TemplatePickerDialog', () => {
     vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([makeTemplate()])
     renderDialog({ open: false })
     expect(defaultTemplatesApi.listDefaultTemplates).not.toHaveBeenCalled()
+  })
+
+  it('fetches only agent-type templates', async () => {
+    vi.mocked(defaultTemplatesApi.listDefaultTemplates).mockResolvedValue([makeTemplate()])
+    renderDialog()
+    await screen.findByText('Template')
+    expect(defaultTemplatesApi.listDefaultTemplates).toHaveBeenCalledWith('agent')
   })
 
   describe('with existing prompt', () => {

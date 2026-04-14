@@ -48,6 +48,7 @@ describe('AgentDefForm - Apply Template button', () => {
       {
         id: 'implementor',
         name: 'Implementor',
+        type: 'agent',
         template: 'You are an implementor.',
         readonly: true,
         created_at: '',
@@ -84,6 +85,7 @@ describe('AgentDefForm - Apply Template button', () => {
       {
         id: 'implementor',
         name: 'Implementor',
+        type: 'agent',
         template: 'New template',
         readonly: true,
         created_at: '',

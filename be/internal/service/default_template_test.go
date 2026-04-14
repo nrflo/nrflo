@@ -31,12 +31,12 @@ func TestDefaultTemplate_List_ReadonlyHasDefaultTemplate(t *testing.T) {
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
-	templates, err := svc.List()
+	templates, err := svc.List("")
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(templates) != 6 {
-		t.Fatalf("List len = %d, want 6 pre-seeded readonly templates", len(templates))
+	if len(templates) != 10 {
+		t.Fatalf("List len = %d, want 10 pre-seeded readonly templates", len(templates))
 	}
 	for _, tmpl := range templates {
 		if !tmpl.Readonly {
@@ -61,7 +61,7 @@ func TestDefaultTemplate_List_UserCreatedNoDefaultTemplate(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	templates, err := svc.List()
+	templates, err := svc.List("")
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}

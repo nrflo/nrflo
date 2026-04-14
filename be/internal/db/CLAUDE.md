@@ -178,14 +178,17 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │  DEFAULT_TEMPLATES                                               │
 │    id            TEXT PRIMARY KEY                                    │
 │    name          TEXT NOT NULL                                       │
+│    type          TEXT NOT NULL DEFAULT 'agent'                       │
 │    template      TEXT NOT NULL                                       │
 │    readonly      INTEGER NOT NULL DEFAULT 0                          │
 │    default_template TEXT          (original text for readonly,       │
 │                                    NULL for user-created)            │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
-│    (6 readonly templates seeded by migration 000042,                 │
-│     default_template populated by migration 000050)                  │
+│    INDEX idx_default_templates_type (type)                           │
+│    (6 readonly agent templates seeded by migration 000042,           │
+│     default_template populated by migration 000050,                  │
+│     type column + 4 readonly injectable templates added by 000054)  │
 │                                                                      │
 │  CLI_MODELS                                                          │
 │    id              TEXT PRIMARY KEY                                   │

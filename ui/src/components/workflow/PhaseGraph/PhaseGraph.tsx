@@ -1,17 +1,17 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
-import { ReactFlow, Background, Controls, useReactFlow, useStore, MarkerType, type Node, type Edge, type NodeTypes } from '@xyflow/react'
+import { ReactFlow, Background, useReactFlow, useStore, MarkerType, type Node, type Edge, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
 import { getLayoutedElements, BASE_HEIGHT } from './layout'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { AutoCenterInterval, PhaseGraphControls } from './PhaseGraphControls'
+import { FIT_VIEW_OPTIONS } from './fitViewOptions'
 import type { PhaseGraphProps, AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/workflow'
 
 const nodeTypes: NodeTypes = {
   agent: AgentFlowNode,
 }
-
-const FIT_VIEW_OPTIONS = { padding: 0.3 }
 
 /** Calls fitView() when container dimensions change (via ResizeObserver) or node layout changes. */
 function FitViewOnChange({ nodeKey }: { nodeKey: string }) {
@@ -49,6 +49,7 @@ export function PhaseGraph({
 }: PhaseGraphProps) {
 
   const isMobile = useIsMobile()
+  const [autoCenter, setAutoCenter] = useState(true)
 
   // Build phase start times map from agent history
   const phaseStartTimes: Record<string, number> = useMemo(() => {
@@ -405,8 +406,9 @@ export function PhaseGraph({
         proOptions={{ hideAttribution: true }}
       >
         <FitViewOnChange nodeKey={nodeKey} />
+        <AutoCenterInterval enabled={autoCenter} />
         <Background color="transparent" />
-        <Controls showInteractive={false} position="top-left" />
+        <PhaseGraphControls autoCenter={autoCenter} setAutoCenter={setAutoCenter} />
       </ReactFlow>
     </div>
   )

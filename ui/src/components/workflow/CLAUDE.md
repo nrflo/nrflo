@@ -39,6 +39,7 @@ PhaseTimeline (PhaseTimeline.tsx)
 - Agent sessions always fetched for ticket (enables history messages), refreshed via WebSocket `messages.updated` events
 - Custom node uses `nopan nodrag` classes and `pointerEvents: 'all'` for click handling in ReactFlow
 - **Responsive mobile layout**: Nodes are 220px on mobile (<640px), 300px on desktop. ELK spacing reduced on mobile (30/60 vs 60/120). Touch interactions enabled: pinch-to-zoom always on, pan-on-drag on mobile only. Uses `useIsMobile` hook for JS-level detection and Tailwind `sm:` breakpoints for CSS.
+- **Auto-center toggle**: The React Flow `Controls` toolbar (top-left) renders four custom `ControlButton`s: zoom-out, zoom-in, fit-view, and an "Auto center graph every 15s" checkbox (default checked, Tooltip on hover). While checked, `AutoCenterInterval` calls `fitView(FIT_VIEW_OPTIONS)` every 15s. Clicking any of the three zoom/fit buttons unchecks the toggle so the interval does not fight manual navigation. Checkbox state is local component state (no persistence). Implementation lives in `PhaseGraph/PhaseGraphControls.tsx`; shared `FIT_VIEW_OPTIONS` lives in `PhaseGraph/fitViewOptions.ts`.
 
 ## Agent Log Panel
 

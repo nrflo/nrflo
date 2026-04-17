@@ -135,7 +135,7 @@ func TestHandleTestCLIModel_CLITypeRouting(t *testing.T) {
 
 func TestHandleTestCLIModel_AllSeededModels(t *testing.T) {
 	seededIDs := []string{
-		"opus", "opus_1m", "sonnet", "haiku",
+		"opus_4_6", "opus_4_6_1m", "opus_4_7", "opus_4_7_1m", "sonnet", "haiku",
 		"opencode_minimax_m25_free", "opencode_qwen36_plus_free", "opencode_gpt54",
 		"codex_gpt_normal", "codex_gpt_high",
 		"codex_gpt54_normal", "codex_gpt54_high",

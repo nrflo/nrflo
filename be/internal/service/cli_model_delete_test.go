@@ -40,7 +40,7 @@ func TestCLIModel_DeleteReadonly(t *testing.T) {
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	err := svc.Delete("opus")
+	err := svc.Delete("opus_4_7")
 	if err == nil {
 		t.Fatal("expected error deleting readonly model, got nil")
 	}
@@ -49,7 +49,7 @@ func TestCLIModel_DeleteReadonly(t *testing.T) {
 	}
 
 	// Model still exists.
-	if _, err := svc.Get("opus"); err != nil {
+	if _, err := svc.Get("opus_4_7"); err != nil {
 		t.Errorf("model should still exist after failed delete: %v", err)
 	}
 }
@@ -97,12 +97,12 @@ func TestCLIModel_IsValidModel(t *testing.T) {
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	ok, err := svc.IsValidModel("opus")
+	ok, err := svc.IsValidModel("opus_4_7")
 	if err != nil {
 		t.Fatalf("IsValidModel: %v", err)
 	}
 	if !ok {
-		t.Error("IsValidModel(opus) = false, want true")
+		t.Error("IsValidModel(opus_4_7) = false, want true")
 	}
 }
 

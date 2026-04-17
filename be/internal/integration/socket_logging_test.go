@@ -22,7 +22,7 @@ func TestSocketHandler_AgentFail_LogsWithWarnLevel(t *testing.T) {
 	env.InitWorkflow(t, "SOCK-2")
 
 	wfiID := env.GetWorkflowInstanceID(t, "SOCK-2", "test")
-	env.InsertAgentSession(t, "sess-2", "SOCK-2", wfiID, "builder", "builder", "opus")
+	env.InsertAgentSession(t, "sess-2", "SOCK-2", wfiID, "builder", "builder", "opus_4_7")
 
 	// Execute agent.fail via socket
 	env.MustExecute(t, "agent.fail", map[string]interface{}{
@@ -126,7 +126,7 @@ func TestSocketHandler_AgentCallback_LogsWithLevel(t *testing.T) {
 	env.InitWorkflow(t, "SOCK-4")
 
 	wfiID := env.GetWorkflowInstanceID(t, "SOCK-4", "test")
-	env.InsertAgentSession(t, "sess-4", "SOCK-4", wfiID, "verifier", "verifier", "opus")
+	env.InsertAgentSession(t, "sess-4", "SOCK-4", wfiID, "verifier", "verifier", "opus_4_7")
 
 	// Execute agent.callback via socket
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
@@ -326,7 +326,7 @@ func TestSocketHandler_TrxGeneratedPerRequest(t *testing.T) {
 
 	wfiID := env.GetWorkflowInstanceID(t, "SOCK-8", "test")
 	env.InsertAgentSession(t, "sess-8a", "SOCK-8", wfiID, "analyzer", "analyzer", "sonnet")
-	env.InsertAgentSession(t, "sess-8b", "SOCK-8", wfiID, "builder", "builder", "opus")
+	env.InsertAgentSession(t, "sess-8b", "SOCK-8", wfiID, "builder", "builder", "opus_4_7")
 
 	// Execute two agent commands
 	env.MustExecute(t, "agent.fail", map[string]interface{}{

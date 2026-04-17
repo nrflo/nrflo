@@ -15,15 +15,15 @@
       "timeout": 15
     },
     "implementor": {
-      "model": "opus",
+      "model": "opus_4_7",
       "timeout": 30
     },
     "test-writer": {
-      "model": "opus",
+      "model": "opus_4_7",
       "timeout": 20
     },
     "qa-verifier": {
-      "model": "opus",
+      "model": "opus_4_7",
       "timeout": 20
     },
     "doc-updater": {

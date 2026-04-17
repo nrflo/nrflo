@@ -22,8 +22,8 @@ Template variables are placeholders you type directly into the agent's prompt te
 | `${WORKFLOW}` | Workflow name | `Running in ${WORKFLOW} workflow` | `Running in feature workflow` |
 | `${PARENT_SESSION}` | Parent orchestration session UUID | `${PARENT_SESSION}` | UUID string |
 | `${CHILD_SESSION}` | This agent's session UUID | `${CHILD_SESSION}` | UUID string |
-| `${MODEL_ID}` | Full model identifier | `${MODEL_ID}` | `claude:opus` |
-| `${MODEL}` | Short model name | `${MODEL}` | `opus` (defaults to `sonnet`) |
+| `${MODEL_ID}` | Full model identifier | `${MODEL_ID}` | `claude:opus_4_7` |
+| `${MODEL}` | Short model name | `${MODEL}` | `opus_4_7` (defaults to `sonnet`) |
 
 ### Ticket Context
 
@@ -253,8 +253,10 @@ These fields are configured via the agent form on the **Workflows** page.
 
 | Model value | Maps to |
 |-------------|---------|
-| `opus` | Claude Opus (200k context) |
-| `opus_1m` | Claude Opus (1M context) |
+| `opus_4_6` | Claude Opus 4.6 (200k context) |
+| `opus_4_6_1m` | Claude Opus 4.6 (1M context) |
+| `opus_4_7` | Claude Opus 4.7 (200k context) |
+| `opus_4_7_1m` | Claude Opus 4.7 (1M context) |
 | `sonnet` | Claude Sonnet |
 | `haiku` | Claude Haiku |
 

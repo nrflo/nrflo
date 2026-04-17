@@ -34,8 +34,8 @@ func TestCLIModel_ListEnabled_ReturnsAllByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEnabled: %v", err)
 	}
-	if len(enabled) != 11 {
-		t.Fatalf("ListEnabled len = %d, want 11 (all seeded models enabled)", len(enabled))
+	if len(enabled) != 13 {
+		t.Fatalf("ListEnabled len = %d, want 13 (all seeded models enabled)", len(enabled))
 	}
 }
 
@@ -60,8 +60,8 @@ func TestCLIModel_ListEnabled_ExcludesDisabledCustom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEnabled: %v", err)
 	}
-	if len(enabled) != 11 {
-		t.Fatalf("ListEnabled len = %d, want 11 (disabled model excluded)", len(enabled))
+	if len(enabled) != 13 {
+		t.Fatalf("ListEnabled len = %d, want 13 (disabled model excluded)", len(enabled))
 	}
 	for _, m := range enabled {
 		if m.ID == "list-disabled" {
@@ -87,8 +87,8 @@ func TestCLIModel_ListEnabled_IncludesEnabledCustom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEnabled: %v", err)
 	}
-	if len(enabled) != 12 {
-		t.Fatalf("ListEnabled len = %d, want 12 (11 seeded + 1 custom)", len(enabled))
+	if len(enabled) != 14 {
+		t.Fatalf("ListEnabled len = %d, want 14 (13 seeded + 1 custom)", len(enabled))
 	}
 }
 
@@ -201,7 +201,7 @@ func TestCLIModel_DisableReadOnlyModel_Rejected(t *testing.T) {
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	_, err := svc.Update("opus", types.CLIModelUpdateRequest{Enabled: boolPtr(false)})
+	_, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{Enabled: boolPtr(false)})
 	if err == nil {
 		t.Fatal("expected error when disabling read_only model, got nil")
 	}
@@ -209,12 +209,12 @@ func TestCLIModel_DisableReadOnlyModel_Rejected(t *testing.T) {
 		t.Errorf("error = %q, want to contain %q", err.Error(), "cannot disable system model")
 	}
 
-	m, err := svc.Get("opus")
+	m, err := svc.Get("opus_4_7")
 	if err != nil {
 		t.Fatalf("Get after rejected disable: %v", err)
 	}
 	if !m.Enabled {
-		t.Error("opus Enabled = false after rejected disable, want true")
+		t.Error("opus_4_7 Enabled = false after rejected disable, want true")
 	}
 }
 

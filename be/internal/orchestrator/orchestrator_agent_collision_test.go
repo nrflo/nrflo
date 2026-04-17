@@ -27,7 +27,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 		ID:         "implementor",
 		ProjectID:  "proj",
 		WorkflowID: "feature",
-		Model:      "opus",
+		Model:      "opus_4_7",
 		Timeout:    3600,
 		Layer:      0,
 	}
@@ -46,7 +46,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 			[]*model.Workflow{featureWf, bugfixWf},
 			[]*model.AgentDefinition{featureDef, bugfixDef},
 		)
-		// bugfixDef is last → "sonnet" wins; featureDef's "opus" is silently lost.
+		// bugfixDef is last → "sonnet" wins; featureDef's "opus_4_7" is silently lost.
 		if got := agents["implementor"].Model; got != "sonnet" {
 			t.Errorf("expected last-written model %q, got %q", "sonnet", got)
 		}
@@ -58,9 +58,9 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 			[]*model.Workflow{bugfixWf, featureWf},
 			[]*model.AgentDefinition{bugfixDef, featureDef},
 		)
-		// featureDef is last → "opus" wins.
-		if got := agents["implementor"].Model; got != "opus" {
-			t.Errorf("expected last-written model %q, got %q", "opus", got)
+		// featureDef is last → "opus_4_7" wins.
+		if got := agents["implementor"].Model; got != "opus_4_7" {
+			t.Errorf("expected last-written model %q, got %q", "opus_4_7", got)
 		}
 	})
 
@@ -70,8 +70,8 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 			[]*model.Workflow{featureWf},
 			[]*model.AgentDefinition{featureDef},
 		)
-		if got := agents["implementor"].Model; got != "opus" {
-			t.Errorf("implementor.Model = %q, want %q", got, "opus")
+		if got := agents["implementor"].Model; got != "opus_4_7" {
+			t.Errorf("implementor.Model = %q, want %q", got, "opus_4_7")
 		}
 		if got := agents["implementor"].Timeout; got != 3600 {
 			t.Errorf("implementor.Timeout = %d, want 3600", got)
@@ -98,7 +98,7 @@ func TestBuildSpawnerConfigMultiAgentSingleWorkflow(t *testing.T) {
 	wf := &model.Workflow{ID: "feature", ProjectID: "proj"}
 
 	defs := []*model.AgentDefinition{
-		{ID: "implementor", ProjectID: "proj", WorkflowID: "feature", Model: "opus", Timeout: 3600, Layer: 0},
+		{ID: "implementor", ProjectID: "proj", WorkflowID: "feature", Model: "opus_4_7", Timeout: 3600, Layer: 0},
 		{ID: "verifier", ProjectID: "proj", WorkflowID: "feature", Model: "sonnet", Timeout: 1800, Tag: "qa", Layer: 1},
 		{ID: "doc-updater", ProjectID: "proj", WorkflowID: "feature", Model: "haiku", Timeout: 900, Layer: 2},
 	}
@@ -111,7 +111,7 @@ func TestBuildSpawnerConfigMultiAgentSingleWorkflow(t *testing.T) {
 		timeout int
 		tag     string
 	}{
-		{"implementor", "opus", 3600, ""},
+		{"implementor", "opus_4_7", 3600, ""},
 		{"verifier", "sonnet", 1800, "qa"},
 		{"doc-updater", "haiku", 900, ""},
 	}
@@ -145,7 +145,7 @@ func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 		{ID: "wf-c", ProjectID: "proj"},
 	}
 	defs := []*model.AgentDefinition{
-		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-a", Model: "opus", Layer: 0},
+		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-a", Model: "opus_4_7", Layer: 0},
 		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-b", Model: "sonnet", Layer: 0},
 		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-c", Model: "haiku", Layer: 0},
 	}
@@ -160,7 +160,7 @@ func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 
 	// Each individual workflow returns its own model.
 	singles := []struct{ wf *model.Workflow; def *model.AgentDefinition; want string }{
-		{workflows[0], defs[0], "opus"},
+		{workflows[0], defs[0], "opus_4_7"},
 		{workflows[1], defs[1], "sonnet"},
 		{workflows[2], defs[2], "haiku"},
 	}

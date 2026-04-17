@@ -103,13 +103,13 @@ func TestSystemAgentDef_SeededRowDeleteAndRecreate(t *testing.T) {
 	// Recreate with custom values — should succeed now that the row is gone.
 	newDef, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     "conflict-resolver",
-		Model:  "opus",
+		Model:  "opus_4_7",
 		Prompt: "custom prompt for testing",
 	})
 	if err != nil {
 		t.Fatalf("Create after Delete: %v", err)
 	}
-	if newDef.Model != "opus" {
+	if newDef.Model != "opus_4_7" {
 		t.Errorf("recreated model = %q, want opus", newDef.Model)
 	}
 }

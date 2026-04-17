@@ -15,7 +15,7 @@ func TestAgentFail(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-1", "test")
 
 	// Create running agent session via DB
-	env.InsertAgentSession(t, "sess-2", "AGT-1", wfiID, "analyzer", "builder", "opus")
+	env.InsertAgentSession(t, "sess-2", "AGT-1", wfiID, "analyzer", "builder", "opus_4_7")
 
 	// Fail builder via socket — context derived from session on the server
 	env.MustExecute(t, "agent.fail", map[string]interface{}{

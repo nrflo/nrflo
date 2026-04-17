@@ -44,7 +44,7 @@ func TestSystemAgentDef_CreateAndGet(t *testing.T) {
 
 	def, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:                     "conflict-resolver",
-		Model:                  "opus",
+		Model:                  "opus_4_7",
 		Timeout:                30,
 		Prompt:                 "resolve conflicts",
 		RestartThreshold:       rt,
@@ -59,8 +59,8 @@ func TestSystemAgentDef_CreateAndGet(t *testing.T) {
 	if def.ID != "conflict-resolver" {
 		t.Errorf("ID = %q, want %q", def.ID, "conflict-resolver")
 	}
-	if def.Model != "opus" {
-		t.Errorf("Model = %q, want %q", def.Model, "opus")
+	if def.Model != "opus_4_7" {
+		t.Errorf("Model = %q, want %q", def.Model, "opus_4_7")
 	}
 	if def.Timeout != 30 {
 		t.Errorf("Timeout = %d, want 30", def.Timeout)
@@ -249,7 +249,7 @@ func TestSystemAgentDef_Update_PartialUpdate(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	newModel := "opus"
+	newModel := "opus_4_7"
 	if err := svc.Update("upd-agent", &types.SystemAgentDefUpdateRequest{
 		Model: &newModel,
 	}); err != nil {
@@ -260,8 +260,8 @@ func TestSystemAgentDef_Update_PartialUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get after update: %v", err)
 	}
-	if got.Model != "opus" {
-		t.Errorf("after update Model = %q, want %q", got.Model, "opus")
+	if got.Model != "opus_4_7" {
+		t.Errorf("after update Model = %q, want %q", got.Model, "opus_4_7")
 	}
 	// Unmodified fields preserved.
 	if got.Timeout != 10 {
@@ -333,7 +333,7 @@ func TestSystemAgentDef_Update_NotFound(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
-	newModel := "opus"
+	newModel := "opus_4_7"
 	err := svc.Update("no-such-agent", &types.SystemAgentDefUpdateRequest{Model: &newModel})
 	if err == nil {
 		t.Fatal("expected not-found error, got nil")

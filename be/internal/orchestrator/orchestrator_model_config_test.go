@@ -19,14 +19,14 @@ func TestCLINameFromModelConfigs_UsesDBCLIType(t *testing.T) {
 	}{
 		{
 			name:    "claude model returns claude from DB",
-			model:   "opus",
-			configs: map[string]spawner.ModelConfig{"opus": {CLIType: "claude"}},
+			model:   "opus_4_7",
+			configs: map[string]spawner.ModelConfig{"opus_4_7": {CLIType: "claude"}},
 			want:    "claude",
 		},
 		{
 			name:    "DB codex type overrides default for non-codex model",
-			model:   "opus",
-			configs: map[string]spawner.ModelConfig{"opus": {CLIType: "codex"}},
+			model:   "opus_4_7",
+			configs: map[string]spawner.ModelConfig{"opus_4_7": {CLIType: "codex"}},
 			want:    "codex",
 		},
 		{
@@ -62,7 +62,7 @@ func TestCLINameFromModelConfigs_FallsBackToDefault(t *testing.T) {
 	}{
 		{
 			name:    "nil configs falls back for claude model",
-			model:   "opus",
+			model:   "opus_4_7",
 			configs: nil,
 			want:    "claude",
 		},
@@ -80,8 +80,8 @@ func TestCLINameFromModelConfigs_FallsBackToDefault(t *testing.T) {
 		},
 		{
 			name:    "empty CLIType in DB entry falls back to default",
-			model:   "opus",
-			configs: map[string]spawner.ModelConfig{"opus": {CLIType: "", ContextLength: 200000}},
+			model:   "opus_4_7",
+			configs: map[string]spawner.ModelConfig{"opus_4_7": {CLIType: "", ContextLength: 200000}},
 			want:    "claude",
 		},
 		{
@@ -114,8 +114,10 @@ func TestLoadModelConfigs_ContainsSeedModels(t *testing.T) {
 
 	// All seeded models with their expected CLIType
 	expected := map[string]string{
-		"opus":               "claude",
-		"opus_1m":            "claude",
+		"opus_4_6":           "claude",
+		"opus_4_6_1m":        "claude",
+		"opus_4_7":           "claude",
+		"opus_4_7_1m":        "claude",
 		"sonnet":             "claude",
 		"haiku":              "claude",
 		"opencode_minimax_m25_free": "opencode",
@@ -147,16 +149,16 @@ func TestLoadModelConfigs_ModelConfigFields(t *testing.T) {
 		t.Fatalf("loadModelConfigs() error: %v", err)
 	}
 
-	// opus_1m should have 1M context and mapped model opus[1m]
-	opus1m, ok := configs["opus_1m"]
+	// opus_4_7_1m should have 1M context and mapped model claude-opus-4-7[1m]
+	opus1m, ok := configs["opus_4_7_1m"]
 	if !ok {
-		t.Fatal("loadModelConfigs() missing 'opus_1m'")
+		t.Fatal("loadModelConfigs() missing 'opus_4_7_1m'")
 	}
-	if opus1m.MappedModel != "opus[1m]" {
-		t.Errorf("opus_1m MappedModel = %q, want %q", opus1m.MappedModel, "opus[1m]")
+	if opus1m.MappedModel != "claude-opus-4-7[1m]" {
+		t.Errorf("opus_4_7_1m MappedModel = %q, want %q", opus1m.MappedModel, "claude-opus-4-7[1m]")
 	}
 	if opus1m.ContextLength != 1000000 {
-		t.Errorf("opus_1m ContextLength = %d, want 1000000", opus1m.ContextLength)
+		t.Errorf("opus_4_7_1m ContextLength = %d, want 1000000", opus1m.ContextLength)
 	}
 
 	// codex_gpt54_normal should have reasoning effort "medium"

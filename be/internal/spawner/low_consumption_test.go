@@ -36,7 +36,7 @@ func createAgentDefWithLCM(t *testing.T, env *spawnerTestEnv, agentID, prompt, l
 		ID:                  agentID,
 		ProjectID:           env.project,
 		WorkflowID:          "test",
-		Model:               "opus",
+		Model:               "opus_4_7",
 		Timeout:             60,
 		Prompt:              prompt,
 		LowConsumptionModel: lcModel,
@@ -120,21 +120,21 @@ func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
 			name:          "mode_off_no_substitution",
 			lcMode:        false,
 			lcModel:       "haiku",
-			originalModel: "opus",
-			wantModel:     "opus",
+			originalModel: "opus_4_7",
+			wantModel:     "opus_4_7",
 		},
 		{
 			name:          "mode_on_no_lcm",
 			lcMode:        true,
 			lcModel:       "",
-			originalModel: "opus",
-			wantModel:     "opus",
+			originalModel: "opus_4_7",
+			wantModel:     "opus_4_7",
 		},
 		{
 			name:          "mode_on_with_lcm",
 			lcMode:        true,
 			lcModel:       "haiku",
-			originalModel: "opus",
+			originalModel: "opus_4_7",
 			wantModel:     "haiku",
 		},
 	}
@@ -149,7 +149,7 @@ func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
 			}
 
 			// Simulate model determination from Spawn()
-			selectedModel := "opus"
+			selectedModel := "opus_4_7"
 			if agentCfg, ok := cfg.Agents["implementor"]; ok && agentCfg.Model != "" {
 				selectedModel = agentCfg.Model
 			}
@@ -182,7 +182,7 @@ func TestLowConsumptionMode_LoadAgentDef_SubstitutionDecision(t *testing.T) {
 		Clock:              clock.Real(),
 		LowConsumptionMode: true,
 		Agents: map[string]AgentConfig{
-			"analyzer": {Model: "opus"},
+			"analyzer": {Model: "opus_4_7"},
 		},
 	})
 
@@ -205,7 +205,7 @@ func TestLowConsumptionMode_ModeOff_NoSubstitution(t *testing.T) {
 	sp := New(Config{
 		LowConsumptionMode: false,
 		Agents: map[string]AgentConfig{
-			"implementor": {Model: "opus"},
+			"implementor": {Model: "opus_4_7"},
 		},
 	})
 
@@ -228,8 +228,8 @@ func TestLowConsumptionSubstitution_CLINameAndModelID(t *testing.T) {
 		wantCLI      string
 		wantModelID  string
 	}{
-		{"opus", "claude", "claude:opus"},
-		{"opus_1m", "claude", "claude:opus_1m"},
+		{"opus_4_7", "claude", "claude:opus_4_7"},
+		{"opus_4_7_1m", "claude", "claude:opus_4_7_1m"},
 		{"sonnet", "claude", "claude:sonnet"},
 		{"haiku", "claude", "claude:haiku"},
 		{"opencode_minimax_m25_free", "opencode", "opencode:opencode_minimax_m25_free"},

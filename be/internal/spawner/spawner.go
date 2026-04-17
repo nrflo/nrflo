@@ -346,7 +346,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 
 	// Determine model to spawn (single agent per Spawn call)
-	model := "opus"
+	model := "opus_4_7"
 	if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.Model != "" {
 		model = agentCfg.Model
 	}
@@ -1047,7 +1047,7 @@ func (s *Spawner) maxContextForModel(model string) int {
 	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.ContextLength > 0 {
 		return cfg.ContextLength
 	}
-	if model == "opus_1m" {
+	if model == "opus_4_6_1m" || model == "opus_4_7_1m" {
 		return 1000000
 	}
 	return 200000

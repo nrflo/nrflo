@@ -120,8 +120,15 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 }
 
 func (a *ClaudeAdapter) MapModel(model string) string {
-	if model == "opus_1m" {
-		return "opus[1m]"
+	switch model {
+	case "opus_4_6":
+		return "claude-opus-4-6"
+	case "opus_4_6_1m":
+		return "claude-opus-4-6[1m]"
+	case "opus_4_7":
+		return "claude-opus-4-7"
+	case "opus_4_7_1m":
+		return "claude-opus-4-7[1m]"
 	}
 	return model
 }

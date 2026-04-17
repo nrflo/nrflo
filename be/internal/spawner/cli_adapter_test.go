@@ -9,7 +9,7 @@ func TestClaudeAdapter_BuildCommand_DisallowsInteractiveTools(t *testing.T) {
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
-		Model:         "opus",
+		Model:         "opus_4_7",
 		SessionID:     "test-session-id",
 		PromptFile:    "/tmp/prompt.txt",
 		InitialPrompt: "Do the task",
@@ -190,7 +190,7 @@ func TestOpencodeAdapter_GetReasoningEffort(t *testing.T) {
 		{"opencode_gpt54", "high"},
 		{"opencode_minimax_m25_free", ""},
 		{"opencode_qwen36_plus_free", ""},
-		{"opus", ""},   // Anthropic models don't use variant
+		{"opus_4_7", ""}, // Anthropic models don't use variant
 		{"sonnet", ""}, // Anthropic models don't use variant
 		{"haiku", ""},  // Anthropic models don't use variant
 		{"custom", ""}, // Unknown models default to no variant
@@ -310,8 +310,10 @@ func TestClaudeAdapter_MapModel(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"opus", "opus"},
-		{"opus_1m", "opus[1m]"},
+		{"opus_4_6", "claude-opus-4-6"},
+		{"opus_4_6_1m", "claude-opus-4-6[1m]"},
+		{"opus_4_7", "claude-opus-4-7"},
+		{"opus_4_7_1m", "claude-opus-4-7[1m]"},
 		{"sonnet", "sonnet"},
 		{"haiku", "haiku"},
 	}
@@ -328,7 +330,7 @@ func TestClaudeAdapter_BuildCommand_MapsModel(t *testing.T) {
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
-		Model:     "opus_1m",
+		Model:     "opus_4_7_1m",
 		SessionID: "test-session",
 		WorkDir:   "/tmp",
 	}
@@ -337,11 +339,11 @@ func TestClaudeAdapter_BuildCommand_MapsModel(t *testing.T) {
 	args := strings.Join(cmd.Args, " ")
 
 	// Must contain the mapped model name, not the raw alias
-	if !strings.Contains(args, "--model opus[1m]") {
-		t.Errorf("Expected --model opus[1m], got: %s", args)
+	if !strings.Contains(args, "--model claude-opus-4-7[1m]") {
+		t.Errorf("Expected --model claude-opus-4-7[1m], got: %s", args)
 	}
-	if strings.Contains(args, "--model opus_1m") {
-		t.Errorf("Raw model name opus_1m should not appear in args: %s", args)
+	if strings.Contains(args, "--model opus_4_7_1m") {
+		t.Errorf("Raw model name opus_4_7_1m should not appear in args: %s", args)
 	}
 }
 

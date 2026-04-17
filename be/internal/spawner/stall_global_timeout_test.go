@@ -273,7 +273,7 @@ func TestLoadAgentDefinition_StallTimeoutFields(t *testing.T) {
 		ID:                     "stall-agent",
 		ProjectID:              env.project,
 		WorkflowID:             "test",
-		Model:                  "opus",
+		Model:                  "opus_4_7",
 		Timeout:                60,
 		Prompt:                 "stall test prompt",
 		StallStartTimeoutSec:   &startSec,
@@ -316,7 +316,7 @@ func TestLoadAgentDefinition_StallTimeoutFieldsNil(t *testing.T) {
 		ID:        "no-stall-agent",
 		ProjectID: env.project,
 		WorkflowID: "test",
-		Model:     "opus",
+		Model:     "opus_4_7",
 		Timeout:   60,
 		Prompt:    "no stall timeout",
 		// StallStartTimeoutSec and StallRunningTimeoutSec intentionally nil

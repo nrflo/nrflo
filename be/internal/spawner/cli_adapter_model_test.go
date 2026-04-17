@@ -74,8 +74,10 @@ func TestClaudeAdapterModelMapping(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"opus", "opus"},
-		{"opus_1m", "opus[1m]"},
+		{"opus_4_6", "claude-opus-4-6"},
+		{"opus_4_6_1m", "claude-opus-4-6[1m]"},
+		{"opus_4_7", "claude-opus-4-7"},
+		{"opus_4_7_1m", "claude-opus-4-7[1m]"},
 		{"sonnet", "sonnet"},
 		{"haiku", "haiku"},
 		{"claude-opus-4-5", "claude-opus-4-5"},
@@ -103,7 +105,7 @@ func TestOpencodeReasoningEffort(t *testing.T) {
 		{"opencode_gpt54", "high"},
 		{"opencode_minimax_m25_free", ""},
 		{"opencode_qwen36_plus_free", ""},
-		{"opus", ""},
+		{"opus_4_7", ""},
 		{"sonnet", ""},
 		{"haiku", ""},
 		{"unknown", ""},
@@ -153,8 +155,10 @@ func TestModelMappingRoundTrip(t *testing.T) {
 		adapter interface{ MapModel(string) string }
 		name    string
 	}{
-		{"opus", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_6", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_6_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_7", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_7_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},
@@ -220,8 +224,10 @@ func TestDefaultCLIForModel(t *testing.T) {
 		model    string
 		expected string
 	}{
-		{"opus", "claude"},
-		{"opus_1m", "claude"},
+		{"opus_4_6", "claude"},
+		{"opus_4_6_1m", "claude"},
+		{"opus_4_7", "claude"},
+		{"opus_4_7_1m", "claude"},
 		{"sonnet", "claude"},
 		{"haiku", "claude"},
 		{"opencode_minimax_m25_free", "opencode"},
@@ -252,8 +258,10 @@ func TestAllSupportedModelsAreValid(t *testing.T) {
 		adapter interface{ MapModel(string) string }
 		name    string
 	}{
-		{"opus", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_6", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_6_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_7", &ClaudeAdapter{}, "ClaudeAdapter"},
+		{"opus_4_7_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
 		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},

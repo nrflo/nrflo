@@ -38,16 +38,16 @@ func TestCLIModel_List(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(models) != 11 {
-		t.Fatalf("List len = %d, want 11", len(models))
+	if len(models) != 13 {
+		t.Fatalf("List len = %d, want 13", len(models))
 	}
 
 	// Verify ORDER BY id ascending — first and last entries.
 	if models[0].ID != "codex_gpt54_high" {
 		t.Errorf("List[0].ID = %q, want %q", models[0].ID, "codex_gpt54_high")
 	}
-	if models[10].ID != "sonnet" {
-		t.Errorf("List[10].ID = %q, want %q", models[10].ID, "sonnet")
+	if models[12].ID != "sonnet" {
+		t.Errorf("List[12].ID = %q, want %q", models[12].ID, "sonnet")
 	}
 
 	// All seeded models are read-only.
@@ -64,18 +64,18 @@ func TestCLIModel_Get(t *testing.T) {
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	m, err := svc.Get("opus")
+	m, err := svc.Get("opus_4_7")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if m.ID != "opus" {
-		t.Errorf("ID = %q, want %q", m.ID, "opus")
+	if m.ID != "opus_4_7" {
+		t.Errorf("ID = %q, want %q", m.ID, "opus_4_7")
 	}
 	if m.CLIType != "claude" {
 		t.Errorf("CLIType = %q, want %q", m.CLIType, "claude")
 	}
-	if m.MappedModel != "opus" {
-		t.Errorf("MappedModel = %q, want %q", m.MappedModel, "opus")
+	if m.MappedModel != "claude-opus-4-7" {
+		t.Errorf("MappedModel = %q, want %q", m.MappedModel, "claude-opus-4-7")
 	}
 	if m.ContextLength != 200000 {
 		t.Errorf("ContextLength = %d, want 200000", m.ContextLength)
@@ -89,12 +89,12 @@ func TestCLIModel_GetCaseInsensitive(t *testing.T) {
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	m, err := svc.Get("OPUS")
+	m, err := svc.Get("OPUS_4_7")
 	if err != nil {
 		t.Fatalf("Get with uppercase: %v", err)
 	}
-	if m.ID != "opus" {
-		t.Errorf("ID = %q, want %q", m.ID, "opus")
+	if m.ID != "opus_4_7" {
+		t.Errorf("ID = %q, want %q", m.ID, "opus_4_7")
 	}
 }
 
@@ -384,7 +384,7 @@ func TestCLIModel_UpdateReadonly(t *testing.T) {
 
 	// Readonly models CAN be updated (only delete is blocked).
 	newName := "My Opus"
-	updated, err := svc.Update("opus", types.CLIModelUpdateRequest{
+	updated, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
 		DisplayName: &newName,
 	})
 	if err != nil {

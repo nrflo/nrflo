@@ -280,7 +280,7 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 	}
 
 	// Create and complete builder session
-	env.InsertAgentSession(t, "sess-e2e-builder", "E2E-1", wfiID, "builder", "builder", "opus")
+	env.InsertAgentSession(t, "sess-e2e-builder", "E2E-1", wfiID, "builder", "builder", "opus_4_7")
 
 	_, err = env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-builder")
 	if err != nil {

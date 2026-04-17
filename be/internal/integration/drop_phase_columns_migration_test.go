@@ -249,7 +249,7 @@ func TestMigration028EndToEnd(t *testing.T) {
 	env.CompleteAgentSession(t, "sess-e2e-028-a", "pass")
 
 	// Insert and complete builder session
-	env.InsertAgentSession(t, "sess-e2e-028-b", "MI028-E2E-1", wfiID, "builder", "builder", "opus")
+	env.InsertAgentSession(t, "sess-e2e-028-b", "MI028-E2E-1", wfiID, "builder", "builder", "opus_4_7")
 	env.CompleteAgentSession(t, "sess-e2e-028-b", "pass")
 
 	// Verify both phases completed via derived status

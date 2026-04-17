@@ -79,7 +79,7 @@ func TestAgentDefGetRestartThreshold(t *testing.T) {
 	threshold := 35
 	req := &types.AgentDefCreateRequest{
 		ID:               "test-agent-3",
-		Model:            "opus",
+		Model:            "opus_4_7",
 		Timeout:          25,
 		Prompt:           "Test prompt",
 		RestartThreshold: &threshold,

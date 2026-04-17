@@ -105,7 +105,7 @@ func TestHandleListSystemAgentDefs_WithEntries(t *testing.T) {
 
 func TestHandleCreateSystemAgentDef_Valid(t *testing.T) {
 	s := newSystemAgentServer(t)
-	body := `{"id":"conflict-resolver","prompt":"resolve it","model":"opus","timeout":45}`
+	body := `{"id":"conflict-resolver","prompt":"resolve it","model":"opus_4_7","timeout":45}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr, req)
@@ -117,8 +117,8 @@ func TestHandleCreateSystemAgentDef_Valid(t *testing.T) {
 	if def.ID != "conflict-resolver" {
 		t.Errorf("ID = %q, want %q", def.ID, "conflict-resolver")
 	}
-	if def.Model != "opus" {
-		t.Errorf("Model = %q, want %q", def.Model, "opus")
+	if def.Model != "opus_4_7" {
+		t.Errorf("Model = %q, want %q", def.Model, "opus_4_7")
 	}
 	if def.Timeout != 45 {
 		t.Errorf("Timeout = %d, want 45", def.Timeout)
@@ -237,7 +237,7 @@ func TestHandleUpdateSystemAgentDef_Valid(t *testing.T) {
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/upd-agent",
-		strings.NewReader(`{"model":"opus"}`))
+		strings.NewReader(`{"model":"opus_4_7"}`))
 	req.SetPathValue("id", "upd-agent")
 	rr := httptest.NewRecorder()
 	s.handleUpdateSystemAgentDef(rr, req)
@@ -252,8 +252,8 @@ func TestHandleUpdateSystemAgentDef_Valid(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	s.handleGetSystemAgentDef(getRR, getReq)
 	def := decodeSystemAgentDef(t, getRR)
-	if def.Model != "opus" {
-		t.Errorf("after update Model = %q, want %q", def.Model, "opus")
+	if def.Model != "opus_4_7" {
+		t.Errorf("after update Model = %q, want %q", def.Model, "opus_4_7")
 	}
 	// Prompt unchanged.
 	if def.Prompt != "p" {
@@ -264,7 +264,7 @@ func TestHandleUpdateSystemAgentDef_Valid(t *testing.T) {
 func TestHandleUpdateSystemAgentDef_NotFound(t *testing.T) {
 	s := newSystemAgentServer(t)
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/no-such",
-		strings.NewReader(`{"model":"opus"}`))
+		strings.NewReader(`{"model":"opus_4_7"}`))
 	req.SetPathValue("id", "no-such")
 	rr := httptest.NewRecorder()
 	s.handleUpdateSystemAgentDef(rr, req)
@@ -376,7 +376,7 @@ func TestHandleSystemAgentDef_FullCRUDFlow(t *testing.T) {
 
 	// 5. Update.
 	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/conflict-resolver",
-		strings.NewReader(`{"model":"opus"}`))
+		strings.NewReader(`{"model":"opus_4_7"}`))
 	patchReq.SetPathValue("id", "conflict-resolver")
 	patchRR := httptest.NewRecorder()
 	s.handleUpdateSystemAgentDef(patchRR, patchReq)
@@ -390,8 +390,8 @@ func TestHandleSystemAgentDef_FullCRUDFlow(t *testing.T) {
 	getRR2 := httptest.NewRecorder()
 	s.handleGetSystemAgentDef(getRR2, getReq2)
 	def2 := decodeSystemAgentDef(t, getRR2)
-	if def2.Model != "opus" {
-		t.Errorf("after update Model = %q, want %q", def2.Model, "opus")
+	if def2.Model != "opus_4_7" {
+		t.Errorf("after update Model = %q, want %q", def2.Model, "opus_4_7")
 	}
 	if def2.Prompt != "fix it" {
 		t.Errorf("after update Prompt = %q, want %q", def2.Prompt, "fix it")

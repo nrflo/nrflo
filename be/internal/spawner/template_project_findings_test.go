@@ -284,7 +284,7 @@ func TestLoadTemplate_MixedPatterns(t *testing.T) {
 		ID:         "implementor",
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "opus",
+		Model:      "opus_4_7",
 		Timeout:    3600,
 		Prompt:     "## Agent Findings\n#{FINDINGS:analyzer}\n\n## Project Context\n#{PROJECT_FINDINGS:architecture}\n\nImplement the feature.",
 	})

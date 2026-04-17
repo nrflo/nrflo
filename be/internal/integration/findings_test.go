@@ -252,7 +252,7 @@ func TestFindingsWithModel(t *testing.T) {
 
 	wfiID := env.GetWorkflowInstanceID(t, "FIND-6", "test")
 	env.InsertAgentSession(t, "sess-model-s", "FIND-6", wfiID, "analyzer", "analyzer", "sonnet")
-	env.InsertAgentSession(t, "sess-model-o", "FIND-6", wfiID, "analyzer", "analyzer", "opus")
+	env.InsertAgentSession(t, "sess-model-o", "FIND-6", wfiID, "analyzer", "analyzer", "opus_4_7")
 
 	// Add findings to sonnet session
 	env.MustExecute(t, "findings.add", map[string]interface{}{

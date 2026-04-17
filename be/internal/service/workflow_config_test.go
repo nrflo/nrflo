@@ -13,7 +13,7 @@ func TestBuildSpawnerConfig_PhasesFromAgentDefs(t *testing.T) {
 	ads := []*model.AgentDefinition{
 		{ID: "verifier", ProjectID: "p1", WorkflowID: "feature", Model: "sonnet", Timeout: 20, Layer: 2},
 		{ID: "setup", ProjectID: "p1", WorkflowID: "feature", Model: "haiku", Timeout: 10, Layer: 0},
-		{ID: "builder", ProjectID: "p1", WorkflowID: "feature", Model: "opus", Timeout: 30, Layer: 1},
+		{ID: "builder", ProjectID: "p1", WorkflowID: "feature", Model: "opus_4_7", Timeout: 30, Layer: 1},
 	}
 
 	workflows, agents := BuildSpawnerConfig(wfs, ads)

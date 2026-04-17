@@ -47,7 +47,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	var agentType, modelName, phase string
 	if req.PlanMode {
 		agentType = "planner"
-		modelName = "opus"
+		modelName = "opus_4_7"
 		phase = "planning"
 	} else {
 		// Interactive: use the L0 agent's model
@@ -57,7 +57,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 		l0Agent := svcWf.Phases[0].Agent
 		agentType = l0Agent
 		phase = l0Agent
-		modelName = "opus"
+		modelName = "opus_4_7"
 		if cfg, ok := svcAgents[l0Agent]; ok && cfg.Model != "" {
 			modelName = cfg.Model
 		}
@@ -143,7 +143,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 			return nil, fmt.Errorf("workflow has no phases")
 		}
 		l0Agent := svcWf.Phases[0].Agent
-		l0Model := "opus"
+		l0Model := "opus_4_7"
 		if cfg, ok := agents[l0Agent]; ok && cfg.Model != "" {
 			l0Model = cfg.Model
 		}

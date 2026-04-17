@@ -59,14 +59,14 @@ func TestAgentCallbackWithModel(t *testing.T) {
 	env.InitWorkflow(t, "AGT-CB-2")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-2", "test")
-	env.InsertAgentSession(t, "sess-cb-2", "AGT-CB-2", wfiID, "builder", "builder", "opus")
+	env.InsertAgentSession(t, "sess-cb-2", "AGT-CB-2", wfiID, "builder", "builder", "opus_4_7")
 
 	// Call agent.callback with model filter
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
 		"ticket_id":   "AGT-CB-2",
 		"workflow":    "test",
 		"agent_type":  "builder",
-		"model":       "opus",
+		"model":       "opus_4_7",
 		"session_id":  "sess-cb-2",
 		"level":       2,
 		"instance_id": wfiID,

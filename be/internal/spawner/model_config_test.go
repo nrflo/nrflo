@@ -26,9 +26,9 @@ func TestCLIForModel_DBConfigTakesPriority(t *testing.T) {
 		},
 		{
 			name:  "DB codex type overrides claude default",
-			model: "opus",
+			model: "opus_4_7",
 			configs: map[string]ModelConfig{
-				"opus": {CLIType: "codex"},
+				"opus_4_7": {CLIType: "codex"},
 			},
 			want: "codex",
 		},
@@ -61,8 +61,8 @@ func TestCLIForModel_FallbackWhenNilMap(t *testing.T) {
 		model string
 		want  string
 	}{
-		{"opus", "claude"},
-		{"opus_1m", "claude"},
+		{"opus_4_7", "claude"},
+		{"opus_4_7_1m", "claude"},
 		{"sonnet", "claude"},
 		{"opencode_minimax_m25_free", "opencode"},
 		{"opencode_qwen36_plus_free", "opencode"},
@@ -85,13 +85,13 @@ func TestCLIForModel_FallbackWhenEmptyCLIType(t *testing.T) {
 	// Config entry present but CLIType is empty string → fallback
 	s := &Spawner{config: Config{
 		ModelConfigs: map[string]ModelConfig{
-			"opus": {CLIType: "", ContextLength: 500000}, // CLIType deliberately empty
+			"opus_4_7": {CLIType: "", ContextLength: 500000}, // CLIType deliberately empty
 		},
 	}}
 
-	got := s.cliForModel("opus")
+	got := s.cliForModel("opus_4_7")
 	if got != "claude" {
-		t.Errorf("cliForModel(%q) = %q, want 'claude' (empty CLIType falls back)", "opus", got)
+		t.Errorf("cliForModel(%q) = %q, want 'claude' (empty CLIType falls back)", "opus_4_7", got)
 	}
 }
 
@@ -122,17 +122,17 @@ func TestMaxContextForModel_DBConfigTakesPriority(t *testing.T) {
 	}{
 		{
 			name:  "custom context length from DB",
-			model: "opus",
+			model: "opus_4_7",
 			configs: map[string]ModelConfig{
-				"opus": {ContextLength: 500000},
+				"opus_4_7": {ContextLength: 500000},
 			},
 			want: 500000,
 		},
 		{
-			name:  "DB overrides opus_1m hardcoded 1M",
-			model: "opus_1m",
+			name:  "DB overrides opus_4_7_1m hardcoded 1M",
+			model: "opus_4_7_1m",
 			configs: map[string]ModelConfig{
-				"opus_1m": {ContextLength: 2000000},
+				"opus_4_7_1m": {ContextLength: 2000000},
 			},
 			want: 2000000,
 		},
@@ -161,16 +161,16 @@ func TestMaxContextForModel_ZeroContextLengthFallsBack(t *testing.T) {
 	// ContextLength of 0 means "not configured" — should fall back to hardcoded
 	s := &Spawner{config: Config{
 		ModelConfigs: map[string]ModelConfig{
-			"opus_1m": {ContextLength: 0, CLIType: "claude"},
-			"opus":    {ContextLength: 0},
+			"opus_4_7_1m": {ContextLength: 0, CLIType: "claude"},
+			"opus_4_7":    {ContextLength: 0},
 		},
 	}}
 
-	if got := s.maxContextForModel("opus_1m"); got != 1000000 {
-		t.Errorf("maxContextForModel(opus_1m) = %d, want 1000000 (zero ContextLength falls back)", got)
+	if got := s.maxContextForModel("opus_4_7_1m"); got != 1000000 {
+		t.Errorf("maxContextForModel(opus_4_7_1m) = %d, want 1000000 (zero ContextLength falls back)", got)
 	}
-	if got := s.maxContextForModel("opus"); got != 200000 {
-		t.Errorf("maxContextForModel(opus) = %d, want 200000 (zero ContextLength falls back)", got)
+	if got := s.maxContextForModel("opus_4_7"); got != 200000 {
+		t.Errorf("maxContextForModel(opus_4_7) = %d, want 200000 (zero ContextLength falls back)", got)
 	}
 }
 
@@ -182,8 +182,10 @@ func TestMaxContextForModel_HardcodedFallback(t *testing.T) {
 		model string
 		want  int
 	}{
-		{"opus_1m", 1000000},
-		{"opus", 200000},
+		{"opus_4_7_1m", 1000000},
+		{"opus_4_6_1m", 1000000},
+		{"opus_4_7", 200000},
+		{"opus_4_6", 200000},
 		{"sonnet", 200000},
 		{"haiku", 200000},
 		{"opencode_minimax_m25_free", 200000},
@@ -210,22 +212,22 @@ func TestClaudeAdapter_BuildCommand_UsesMappedModelFromOpts(t *testing.T) {
 
 	t.Run("opts.MappedModel used instead of MapModel", func(t *testing.T) {
 		opts := SpawnOptions{
-			Model:       "opus_1m",
-			MappedModel: "opus[1m]",
+			Model:       "opus_4_7_1m",
+			MappedModel: "claude-opus-4-7[1m]",
 			SessionID:   "s1",
 			WorkDir:     "/tmp",
 		}
 		cmd := adapter.BuildCommand(opts)
 		args := strings.Join(cmd.Args, " ")
 
-		if !strings.Contains(args, "--model opus[1m]") {
-			t.Errorf("expected --model opus[1m], got: %s", args)
+		if !strings.Contains(args, "--model claude-opus-4-7[1m]") {
+			t.Errorf("expected --model claude-opus-4-7[1m], got: %s", args)
 		}
 	})
 
 	t.Run("opts.MappedModel overrides MapModel result with custom name", func(t *testing.T) {
 		opts := SpawnOptions{
-			Model:       "opus_1m",
+			Model:       "opus_4_7_1m",
 			MappedModel: "claude-opus-db-override",
 			SessionID:   "s2",
 			WorkDir:     "/tmp",
@@ -236,14 +238,14 @@ func TestClaudeAdapter_BuildCommand_UsesMappedModelFromOpts(t *testing.T) {
 		if !strings.Contains(args, "--model claude-opus-db-override") {
 			t.Errorf("expected --model claude-opus-db-override, got: %s", args)
 		}
-		if strings.Contains(args, "opus[1m]") {
+		if strings.Contains(args, "claude-opus-4-7[1m]") {
 			t.Errorf("MapModel result should not appear when MappedModel is set: %s", args)
 		}
 	})
 
 	t.Run("empty MappedModel falls back to MapModel", func(t *testing.T) {
 		opts := SpawnOptions{
-			Model:       "opus_1m",
+			Model:       "opus_4_7_1m",
 			MappedModel: "",
 			SessionID:   "s3",
 			WorkDir:     "/tmp",
@@ -251,9 +253,9 @@ func TestClaudeAdapter_BuildCommand_UsesMappedModelFromOpts(t *testing.T) {
 		cmd := adapter.BuildCommand(opts)
 		args := strings.Join(cmd.Args, " ")
 
-		// MapModel("opus_1m") → "opus[1m]"
-		if !strings.Contains(args, "--model opus[1m]") {
-			t.Errorf("expected --model opus[1m] from MapModel fallback, got: %s", args)
+		// MapModel("opus_4_7_1m") → "claude-opus-4-7[1m]"
+		if !strings.Contains(args, "--model claude-opus-4-7[1m]") {
+			t.Errorf("expected --model claude-opus-4-7[1m] from MapModel fallback, got: %s", args)
 		}
 	})
 }

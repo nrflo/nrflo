@@ -189,7 +189,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    (6 readonly agent templates seeded by migration 000042,           │
 │     default_template populated by migration 000050,                  │
 │     type column + injectable templates added by 000054,
-│     continuation injectable removed by 000056)  │
+│     continuation injectable removed by 000056,
+│     baseline refreshed by 000058)  │
 │                                                                      │
 │  CLI_MODELS                                                          │
 │    id              TEXT PRIMARY KEY                                   │

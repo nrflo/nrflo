@@ -383,21 +383,19 @@ func TestCLIModel_UpdateReadonly(t *testing.T) {
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	// Readonly models CAN be updated (only delete is blocked).
+	// On read_only rows, only reasoning_effort may be updated — all other fields are rejected.
 	newName := "My Opus"
-	updated, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
+	_, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
 		DisplayName: &newName,
 	})
-	if err != nil {
-		t.Fatalf("Update readonly model: %v", err)
+	if err == nil {
+		t.Fatal("expected error updating display_name on read_only row, got nil")
 	}
-	if updated.DisplayName != "My Opus" {
-		t.Errorf("DisplayName = %q, want %q", updated.DisplayName, "My Opus")
+	if !strings.Contains(err.Error(), "only reasoning_effort can be updated on built-in models") {
+		t.Errorf("error = %q, want to contain %q", err.Error(), "only reasoning_effort can be updated on built-in models")
 	}
-	// Still read-only.
-	if !updated.ReadOnly {
-		t.Error("ReadOnly = false after update, want true")
-	}
+	// TODO(test-writer): cover each locked field individually (mapped_model, context_length, enabled=false)
+	// and happy-path reasoning_effort updates on read_only rows.
 }
 
 // --- ReasoningEffort validation ---
@@ -510,14 +508,24 @@ func TestCLIModel_UpdateReasoningEffort_InvalidValue(t *testing.T) {
 }
 
 func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
-	// User stored xhigh on opus_4_7, then changes mapped_model to sonnet
+	// User stored xhigh on a user-owned Opus-4.7 row, then changes mapped_model to sonnet
 	// without clearing effort. Overlay logic must reject the Update.
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	// First set xhigh on opus_4_7 (valid).
+	// Create a user-owned Opus-4.7 row (read_only rows block mapped_model edits).
+	if _, err := svc.Create(types.CLIModelCreateRequest{
+		ID:          "user-opus",
+		CLIType:     "claude",
+		DisplayName: "User Opus",
+		MappedModel: "claude-opus-4-7",
+	}); err != nil {
+		t.Fatalf("Create user-owned row: %v", err)
+	}
+
+	// First set xhigh on the user-owned row (valid).
 	xhigh := "xhigh"
-	if _, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
+	if _, err := svc.Update("user-opus", types.CLIModelUpdateRequest{
 		ReasoningEffort: &xhigh,
 	}); err != nil {
 		t.Fatalf("initial Update: %v", err)
@@ -525,7 +533,7 @@ func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
 
 	// Now try to switch mapped_model to a non-Opus-4.7 value without touching effort.
 	newMapped := "claude-sonnet-4-5"
-	_, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
+	_, err := svc.Update("user-opus", types.CLIModelUpdateRequest{
 		MappedModel: &newMapped,
 	})
 	if err == nil {
@@ -536,7 +544,7 @@ func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
 	}
 
 	// Verify state was not mutated.
-	got, err := svc.Get("opus_4_7")
+	got, err := svc.Get("user-opus")
 	if err != nil {
 		t.Fatalf("Get after failed Update: %v", err)
 	}
@@ -550,12 +558,22 @@ func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
 
 func TestCLIModel_UpdateMappedModel_AndClearEffort(t *testing.T) {
 	// Switching mapped_model to non-Opus-4.7 WHILE also clearing effort must succeed.
+	// Uses a user-owned row because read_only rows block mapped_model edits.
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	// Seed xhigh on opus_4_7.
+	if _, err := svc.Create(types.CLIModelCreateRequest{
+		ID:          "user-opus-2",
+		CLIType:     "claude",
+		DisplayName: "User Opus 2",
+		MappedModel: "claude-opus-4-7",
+	}); err != nil {
+		t.Fatalf("Create user-owned row: %v", err)
+	}
+
+	// Seed xhigh.
 	xhigh := "xhigh"
-	if _, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
+	if _, err := svc.Update("user-opus-2", types.CLIModelUpdateRequest{
 		ReasoningEffort: &xhigh,
 	}); err != nil {
 		t.Fatalf("initial Update: %v", err)
@@ -564,7 +582,7 @@ func TestCLIModel_UpdateMappedModel_AndClearEffort(t *testing.T) {
 	// Switch mapped_model AND clear effort in same request.
 	newMapped := "claude-sonnet-4-5"
 	empty := ""
-	updated, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
+	updated, err := svc.Update("user-opus-2", types.CLIModelUpdateRequest{
 		MappedModel:     &newMapped,
 		ReasoningEffort: &empty,
 	})

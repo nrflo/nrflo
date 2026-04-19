@@ -152,3 +152,86 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
     expect(setFormData).toHaveBeenCalledWith({ ...formData, reasoning_effort: 'xhigh' })
   })
 })
+
+describe('CLIModelForm — read_only (built-in) mode', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function renderReadOnly(overrides: Partial<CLIModelFormData> = {}) {
+    const setFormData = vi.fn()
+    const onSave = vi.fn()
+    const formData = makeFormData(overrides)
+    render(
+      <CLIModelForm
+        formData={formData}
+        setFormData={setFormData}
+        onCancel={vi.fn()}
+        onSave={onSave}
+        mutation={{ isPending: false, isError: false, error: null }}
+        readOnly
+      />
+    )
+    return { setFormData, onSave, formData }
+  }
+
+  it('shows built-in hint, disables display_name/mapped_model/context_length, keeps reasoning_effort dropdown enabled', () => {
+    renderReadOnly({ cli_type: 'claude', mapped_model: 'claude-opus-4-7' })
+
+    expect(screen.getByText(/Built-in model — only reasoning effort can be changed/i)).toBeInTheDocument()
+
+    expect(screen.getByDisplayValue('Opus 4.7')).toBeDisabled()
+    expect(screen.getByDisplayValue('claude-opus-4-7')).toBeDisabled()
+    expect(screen.getByDisplayValue('200000')).toBeDisabled()
+
+    // id + cli_type already disabled in edit mode regardless of readOnly
+    expect(screen.getByDisplayValue('opus_4_7')).toBeDisabled()
+    expect(screen.getByDisplayValue('claude')).toBeDisabled()
+
+    // Reasoning Effort dropdown trigger remains clickable
+    expect(getEffortTrigger()).not.toBeDisabled()
+  })
+
+  it('reasoning_effort dropdown still updates formData in read_only mode', async () => {
+    const { setFormData, formData } = renderReadOnly({
+      cli_type: 'claude',
+      mapped_model: 'claude-opus-4-7',
+      reasoning_effort: '',
+    })
+    const { user, panel } = await openAndGetPanel()
+    await user.click(within(panel).getByText('High'))
+    expect(setFormData).toHaveBeenCalledWith({ ...formData, reasoning_effort: 'high' })
+  })
+
+  it('without readOnly: display_name/mapped_model/context_length remain enabled (regression)', () => {
+    const setFormData = vi.fn()
+    render(
+      <CLIModelForm
+        formData={makeFormData()}
+        setFormData={setFormData}
+        onCancel={vi.fn()}
+        onSave={vi.fn()}
+        mutation={{ isPending: false, isError: false, error: null }}
+      />
+    )
+    expect(screen.queryByText(/Built-in model — only reasoning effort/i)).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Opus 4.7')).not.toBeDisabled()
+    expect(screen.getByDisplayValue('claude-opus-4-7')).not.toBeDisabled()
+    expect(screen.getByDisplayValue('200000')).not.toBeDisabled()
+  })
+
+  it('isCreate overrides readOnly: hint not shown, fields editable', () => {
+    const setFormData = vi.fn()
+    render(
+      <CLIModelForm
+        formData={makeFormData()}
+        setFormData={setFormData}
+        onCancel={vi.fn()}
+        onSave={vi.fn()}
+        mutation={{ isPending: false, isError: false, error: null }}
+        isCreate
+        readOnly
+      />
+    )
+    expect(screen.queryByText(/Built-in model — only reasoning effort/i)).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Opus 4.7')).not.toBeDisabled()
+  })
+})

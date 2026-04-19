@@ -96,9 +96,9 @@ func (s *Server) handleUpdateCLIModel(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "cannot disable system model") ||
-			strings.Contains(err.Error(), "invalid reasoning_effort") ||
-			strings.Contains(err.Error(), "only supported on Opus 4.7") {
+		if strings.Contains(err.Error(), "invalid reasoning_effort") ||
+			strings.Contains(err.Error(), "only supported on Opus 4.7") ||
+			strings.Contains(err.Error(), "only reasoning_effort can be updated on built-in models") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

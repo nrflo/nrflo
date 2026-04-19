@@ -137,8 +137,17 @@ export function CLIModelsSection() {
     })
   }
 
+  const editingModel = editingId ? models.find((m) => m.id === editingId) ?? null : null
+
   const handleSaveEdit = () => {
     if (!editingId) return
+    if (editingModel?.read_only) {
+      updateMutation.mutate({
+        id: editingId,
+        data: { reasoning_effort: formData.reasoning_effort.trim() || '' },
+      })
+      return
+    }
     const contextLength = parseInt(formData.context_length, 10)
     updateMutation.mutate({
       id: editingId,
@@ -234,6 +243,7 @@ export function CLIModelsSection() {
                       onCancel={handleCancel}
                       onSave={handleSaveEdit}
                       mutation={updateMutation}
+                      readOnly={m.read_only}
                     />
                   ) : deleteConfirm === m.id ? (
                     <div className="flex items-center justify-between">
@@ -288,15 +298,13 @@ export function CLIModelsSection() {
                               modelId={m.id}
                               disabled={editingId !== null || deleteConfirm !== null}
                             />
+                            <Button variant="ghost" size="icon" onClick={() => handleStartEdit(m)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             {!m.read_only && (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => handleStartEdit(m)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(m.id)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(m.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
                           </div>
                         </div>

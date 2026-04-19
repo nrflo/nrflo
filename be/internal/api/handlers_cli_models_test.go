@@ -178,12 +178,21 @@ func TestHandleUpdateCLIModel_ClearEffort_Succeeds(t *testing.T) {
 }
 
 func TestHandleUpdateCLIModel_MappedModelChange_RejectsIncompatibleStoredXhigh(t *testing.T) {
-	// Pre-condition: store xhigh on opus_4_7, then PATCH to change mapped_model
-	// only — overlay logic must catch the now-invalid combination.
+	// Pre-condition: create a user-owned opus_4_7 row (read_only rows now block mapped_model edits)
+	// store xhigh on it, then PATCH to change mapped_model only — overlay logic must catch
+	// the now-invalid combination.
 	s := newCLIModelsServer(t)
+	createBody := `{"id":"user-opus","cli_type":"claude","display_name":"User Opus","mapped_model":"claude-opus-4-7"}`
+	reqC := httptest.NewRequest(http.MethodPost, "/api/v1/cli-models", strings.NewReader(createBody))
+	rrC := httptest.NewRecorder()
+	s.handleCreateCLIModel(rrC, reqC)
+	if rrC.Code != http.StatusCreated {
+		t.Fatalf("setup create status = %d, want 201; body: %s", rrC.Code, rrC.Body.String())
+	}
+
 	setXhigh := `{"reasoning_effort":"xhigh"}`
-	req1 := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/opus_4_7", strings.NewReader(setXhigh))
-	req1.SetPathValue("id", "opus_4_7")
+	req1 := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/user-opus", strings.NewReader(setXhigh))
+	req1.SetPathValue("id", "user-opus")
 	rr1 := httptest.NewRecorder()
 	s.handleUpdateCLIModel(rr1, req1)
 	if rr1.Code != http.StatusOK {
@@ -192,14 +201,105 @@ func TestHandleUpdateCLIModel_MappedModelChange_RejectsIncompatibleStoredXhigh(t
 
 	// Now attempt to flip the model without clearing effort.
 	changeModel := `{"mapped_model":"claude-sonnet-4-5"}`
-	req2 := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/opus_4_7", strings.NewReader(changeModel))
-	req2.SetPathValue("id", "opus_4_7")
+	req2 := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/user-opus", strings.NewReader(changeModel))
+	req2.SetPathValue("id", "user-opus")
 	rr2 := httptest.NewRecorder()
 	s.handleUpdateCLIModel(rr2, req2)
 	if rr2.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400; body: %s", rr2.Code, rr2.Body.String())
 	}
 	assertErrorContains(t, rr2, "only supported on Opus 4.7")
+}
+
+// --- Update: read_only guard (only reasoning_effort editable on built-in rows) ---
+
+func TestHandleUpdateCLIModel_ReadOnly_LockedFields_Rejected(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{name: "display_name", body: `{"display_name":"Foo"}`},
+		{name: "mapped_model", body: `{"mapped_model":"claude-opus-4-7"}`},
+		{name: "context_length", body: `{"context_length":100000}`},
+		{name: "enabled_false", body: `{"enabled":false}`},
+		{name: "enabled_true", body: `{"enabled":true}`},
+	}
+
+	const wantMsg = "only reasoning_effort can be updated on built-in models"
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := newCLIModelsServer(t)
+			req := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/opus_4_7", strings.NewReader(tc.body))
+			req.SetPathValue("id", "opus_4_7")
+			rr := httptest.NewRecorder()
+			s.handleUpdateCLIModel(rr, req)
+
+			if rr.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
+			}
+			assertErrorContains(t, rr, wantMsg)
+		})
+	}
+}
+
+func TestHandleUpdateCLIModel_ReadOnly_ReasoningEffort_High_Succeeds(t *testing.T) {
+	s := newCLIModelsServer(t)
+	body := `{"reasoning_effort":"high"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/opus_4_7", strings.NewReader(body))
+	req.SetPathValue("id", "opus_4_7")
+	rr := httptest.NewRecorder()
+	s.handleUpdateCLIModel(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+	m := decodeCLIModel(t, rr)
+	if m.ReasoningEffort != "high" {
+		t.Errorf("ReasoningEffort = %q, want %q", m.ReasoningEffort, "high")
+	}
+	if !m.ReadOnly {
+		t.Error("ReadOnly = false after reasoning_effort update, want true")
+	}
+
+	// Persisted via subsequent GET.
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/cli-models/opus_4_7", nil)
+	getReq.SetPathValue("id", "opus_4_7")
+	getRR := httptest.NewRecorder()
+	s.handleGetCLIModel(getRR, getReq)
+	if getRR.Code != http.StatusOK {
+		t.Fatalf("GET status = %d, want 200", getRR.Code)
+	}
+	got := decodeCLIModel(t, getRR)
+	if got.ReasoningEffort != "high" {
+		t.Errorf("persisted ReasoningEffort = %q, want %q", got.ReasoningEffort, "high")
+	}
+}
+
+// Regression: user-owned rows still accept any field.
+func TestHandleUpdateCLIModel_UserRow_DisplayName_Succeeds(t *testing.T) {
+	s := newCLIModelsServer(t)
+
+	createBody := `{"id":"user-row","cli_type":"claude","display_name":"Orig","mapped_model":"claude-sonnet-4-5"}`
+	reqC := httptest.NewRequest(http.MethodPost, "/api/v1/cli-models", strings.NewReader(createBody))
+	rrC := httptest.NewRecorder()
+	s.handleCreateCLIModel(rrC, reqC)
+	if rrC.Code != http.StatusCreated {
+		t.Fatalf("setup create status = %d, want 201; body: %s", rrC.Code, rrC.Body.String())
+	}
+
+	body := `{"display_name":"Foo"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/user-row", strings.NewReader(body))
+	req.SetPathValue("id", "user-row")
+	rr := httptest.NewRecorder()
+	s.handleUpdateCLIModel(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+	m := decodeCLIModel(t, rr)
+	if m.DisplayName != "Foo" {
+		t.Errorf("DisplayName = %q, want %q", m.DisplayName, "Foo")
+	}
 }
 
 func TestHandleUpdateCLIModel_NotFound(t *testing.T) {

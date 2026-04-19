@@ -178,11 +178,18 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 
 // Update partially updates a CLI model
 func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*model.CLIModel, error) {
-	if req.ReasoningEffort != nil || req.MappedModel != nil {
-		current, err := s.Get(id)
-		if err != nil {
-			return nil, err
+	current, err := s.Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if current.ReadOnly {
+		if req.DisplayName != nil || req.MappedModel != nil || req.ContextLength != nil || req.Enabled != nil {
+			return nil, fmt.Errorf("only reasoning_effort can be updated on built-in models")
 		}
+	}
+
+	if req.ReasoningEffort != nil || req.MappedModel != nil {
 		mappedModel := current.MappedModel
 		if req.MappedModel != nil {
 			mappedModel = *req.MappedModel
@@ -217,21 +224,6 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 	}
 	if req.Enabled != nil {
 		if !*req.Enabled {
-			// Check if model is read_only — cannot disable system models
-			var readOnly int
-			err := s.pool.QueryRow(
-				"SELECT read_only FROM cli_models WHERE LOWER(id) = LOWER(?)", id,
-			).Scan(&readOnly)
-			if err == sql.ErrNoRows {
-				return nil, fmt.Errorf("cli model not found: %s", id)
-			}
-			if err != nil {
-				return nil, err
-			}
-			if readOnly == 1 {
-				return nil, fmt.Errorf("cannot disable system model: %s", id)
-			}
-			// Check if model is in use by any agent definitions
 			if err := s.ModelInUseCheck(id); err != nil {
 				return nil, err
 			}

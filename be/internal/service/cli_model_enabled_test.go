@@ -205,8 +205,8 @@ func TestCLIModel_DisableReadOnlyModel_Rejected(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when disabling read_only model, got nil")
 	}
-	if !strings.Contains(err.Error(), "cannot disable system model") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "cannot disable system model")
+	if !strings.Contains(err.Error(), "only reasoning_effort can be updated on built-in models") {
+		t.Errorf("error = %q, want to contain %q", err.Error(), "only reasoning_effort can be updated on built-in models")
 	}
 
 	m, err := svc.Get("opus_4_7")

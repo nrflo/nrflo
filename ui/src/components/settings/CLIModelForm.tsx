@@ -1,4 +1,4 @@
-import { X, Check, AlertTriangle } from 'lucide-react'
+import { X, Check, AlertTriangle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -55,6 +55,7 @@ export function CLIModelForm({
   onSave,
   mutation,
   isCreate,
+  readOnly,
 }: {
   formData: CLIModelFormData
   setFormData: (data: CLIModelFormData) => void
@@ -63,9 +64,17 @@ export function CLIModelForm({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mutation: { isPending: boolean; isError: boolean; error: any }
   isCreate?: boolean
+  readOnly?: boolean
 }) {
+  const lockBuiltIn = !!readOnly && !isCreate
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
+      {lockBuiltIn && (
+        <div className="flex items-center gap-2 rounded-md border border-muted bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          <Lock className="h-4 w-4 shrink-0" />
+          Built-in model — only reasoning effort can be changed
+        </div>
+      )}
       {formData.cli_type === 'codex' && (
         <div className="flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-600 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -117,6 +126,8 @@ export function CLIModelForm({
             value={formData.display_name}
             onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
             placeholder="My Model"
+            disabled={lockBuiltIn}
+            className={lockBuiltIn ? 'bg-muted' : undefined}
           />
         </div>
         <div>
@@ -127,6 +138,8 @@ export function CLIModelForm({
             value={formData.mapped_model}
             onChange={(e) => setFormData({ ...formData, mapped_model: e.target.value })}
             placeholder="claude-sonnet-4-20250514"
+            disabled={lockBuiltIn}
+            className={lockBuiltIn ? 'bg-muted' : undefined}
           />
         </div>
       </div>
@@ -147,6 +160,8 @@ export function CLIModelForm({
             value={formData.context_length}
             onChange={(e) => setFormData({ ...formData, context_length: e.target.value })}
             placeholder="200000"
+            disabled={lockBuiltIn}
+            className={lockBuiltIn ? 'bg-muted' : undefined}
           />
         </div>
       </div>

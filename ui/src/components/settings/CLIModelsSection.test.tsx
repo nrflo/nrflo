@@ -53,14 +53,14 @@ describe('CLIModelsSection', () => {
     expect(screen.getByText(/claude-opus-4/)).toBeInTheDocument()
   })
 
-  it('shows Built-in badge for read_only models and hides edit/delete buttons', async () => {
+  it('shows Built-in badge for read_only models and hides delete button (edit allowed)', async () => {
     vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
       makeCLIModel({ id: 'opus', read_only: true }),
     ])
     renderWithQuery(<CLIModelsSection />)
     expect(await screen.findByText('Built-in')).toBeInTheDocument()
-    // "New Model" + Check = 2 buttons (no edit or delete)
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+    // "New Model" + Check + Edit = 3 buttons (delete hidden for read_only)
+    expect(screen.getAllByRole('button')).toHaveLength(3)
   })
 
   it('shows edit and delete buttons for non-readonly models', async () => {
@@ -336,6 +336,83 @@ describe('CLIModelsSection', () => {
     expect(
       await screen.findByText('model is in use by: myproject/feature/implementor')
     ).toBeInTheDocument()
+  })
+
+  it('edit read_only model: Edit button is enabled; opening form shows hint and locks non-effort fields', async () => {
+    vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
+      makeCLIModel({ id: 'opus_4_7', read_only: true, mapped_model: 'claude-opus-4-7', display_name: 'Opus 4.7' }),
+    ])
+
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('opus_4_7')
+
+    const user = userEvent.setup()
+    // buttons: [0]="New Model", [1]=check, [2]=edit pencil (no delete for read_only)
+    const buttons = screen.getAllByRole('button')
+    expect(buttons).toHaveLength(3)
+    expect(buttons[2]).not.toBeDisabled()
+    await user.click(buttons[2])
+
+    expect(screen.getByText(/Built-in model — only reasoning effort can be changed/i)).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Opus 4.7')).toBeDisabled()
+    expect(screen.getByDisplayValue('claude-opus-4-7')).toBeDisabled()
+    expect(screen.getByDisplayValue('200000')).toBeDisabled()
+  })
+
+  it('edit read_only model: saving submits only { reasoning_effort } payload', async () => {
+    vi.mocked(cliModelsApi.listCLIModels)
+      .mockResolvedValueOnce([
+        makeCLIModel({ id: 'opus_4_7', read_only: true, mapped_model: 'claude-opus-4-7', display_name: 'Opus 4.7' }),
+      ])
+      .mockResolvedValue([])
+    vi.mocked(cliModelsApi.updateCLIModel).mockResolvedValue({ status: 'ok' })
+
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('opus_4_7')
+
+    const user = userEvent.setup()
+    const buttons = screen.getAllByRole('button')
+    await user.click(buttons[2]) // edit pencil
+
+    // Open Reasoning Effort dropdown and pick High
+    const label = screen.getByText('Reasoning Effort')
+    const trigger = label.parentElement!.querySelector('button') as HTMLButtonElement
+    await user.click(trigger)
+    await user.click(await screen.findByText('High'))
+
+    await user.click(screen.getByRole('button', { name: /Save/ }))
+    await waitFor(() => {
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('opus_4_7', { reasoning_effort: 'high' })
+    })
+    // No other fields included
+    const call = vi.mocked(cliModelsApi.updateCLIModel).mock.calls[0]
+    expect(Object.keys(call[1])).toEqual(['reasoning_effort'])
+  })
+
+  it('edit read_only model with cleared effort: submits { reasoning_effort: "" }', async () => {
+    vi.mocked(cliModelsApi.listCLIModels)
+      .mockResolvedValueOnce([
+        makeCLIModel({ id: 'opus_4_7', read_only: true, mapped_model: 'claude-opus-4-7', reasoning_effort: 'high' }),
+      ])
+      .mockResolvedValue([])
+    vi.mocked(cliModelsApi.updateCLIModel).mockResolvedValue({ status: 'ok' })
+
+    renderWithQuery(<CLIModelsSection />)
+    await screen.findByText('opus_4_7')
+
+    const user = userEvent.setup()
+    const buttons = screen.getAllByRole('button')
+    await user.click(buttons[2])
+
+    const label = screen.getByText('Reasoning Effort')
+    const trigger = label.parentElement!.querySelector('button') as HTMLButtonElement
+    await user.click(trigger)
+    await user.click(await screen.findByText('Default'))
+
+    await user.click(screen.getByRole('button', { name: /Save/ }))
+    await waitFor(() => {
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('opus_4_7', { reasoning_effort: '' })
+    })
   })
 
   it('delete: confirmation dialog, cancel dismisses, confirm calls API', async () => {

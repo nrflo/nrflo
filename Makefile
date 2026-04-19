@@ -8,7 +8,7 @@ PREFIX     ?= /usr/local
 BINDIR     ?= $(PREFIX)/bin
 GO         ?= go
 NPM        ?= npm
-VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION    ?= $(shell if [ -f VERSION ]; then printf 'v'; cat VERSION; else git describe --tags --always --dirty 2>/dev/null || echo "dev"; fi)
 LDFLAGS    := -s -w -X be/internal/cli.version=$(VERSION)
 CGO_CLI     ?= 0
 CGO_SERVER  ?= 1

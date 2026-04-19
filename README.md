@@ -1,27 +1,43 @@
 # nrflow
 
-A self-hosted control plane for AI engineering workflows. nrflow orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
+A self-hosted control plane for AI engineering workflows.
 
-## Features
-
-- **Vendor-agnostic orchestration** — run workflows across Claude CLI, Opencode, and Codex
-- **Layered execution model** — fan out parallel agents in the same layer, then fan in to the next validated stage
-- **Structured findings handoff** — agents write findings that later agents can pull directly into prompts
-- **Ticket and project workflows** — run isolated ticket-scoped worktree jobs or project-scoped workflows without a ticket
-- **Human takeover when needed** — start interactively, enter plan mode, take control of a running agent, or resume a finished session from the browser
-- **Recovery built in** — low-context continuation, stall restart, manual restart, and retry from the failed layer
-- **Verifier callbacks** — later stages can re-run earlier layers with explicit callback instructions
-- **Sequential ticket chains** — execute dependency-aware ticket sequences with crash recovery
-- **Automatic merge handling** — merge back from worktrees, invoke a conflict-resolver agent on failure, and optionally push after merge
-- **Real-time visibility** — WebSocket-driven workflow graphs, logs, findings, final results, and error tracking
-- **Prompt and model controls** — template variables, findings expansion, default templates, CLI model registry, and low consumption mode
+nrflow orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
 
 ## Why nrflow
 
-- **Built for repeatability** — define workflows once, then run the same implementation process across tickets and projects
-- **Built for supervision** — keep the orchestration state even when a human needs to step in and drive the agent directly
-- **Built for self-hosting** — keep execution, prompts, runtime state, and project access under your own control
-- **Built for mixed-agent teams** — use different agent backends and models without changing the workflow model
+- **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
+- **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
+- **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
+- **Mixed-agent compatible** — run workflows across Claude CLI, Opencode, and Codex without changing the workflow model
+
+## Core capabilities
+
+### Orchestration
+- Vendor-agnostic orchestration across Claude CLI, Opencode, and Codex
+- Layered execution with same-layer parallelism and validated fan-in progression
+- Ticket-scoped and project-scoped workflows
+- Dependency-aware sequential ticket chains
+
+### Handoffs and validation
+- Structured findings handoffs between agents
+- Verifier callbacks that re-run earlier layers with explicit instructions
+- Prompt templates, findings expansion, and model controls
+
+### Human control and recovery
+- Browser takeover of live runs
+- Interactive start, plan mode, and resume flows
+- Low-context continuation, stall restart, manual restart, and retry from the failed layer
+
+### Git and delivery
+- Isolated git worktrees for ticket execution
+- Automatic merge handling
+- Conflict-resolver agent on failed merge
+- Optional push after merge
+
+### Observability
+- Real-time workflow graph
+- Logs, findings, final results, and error tracking
 
 ## How It Works
 
@@ -41,6 +57,8 @@ A self-hosted control plane for AI engineering workflows. nrflow orchestrates co
 | **Database** | SQLite (`~/.nrflow/nrflow.data`), auto-migrating schema |
 
 ## Quick Start
+
+The fastest way to try nrflow on macOS is via Homebrew.
 
 ### Install via Homebrew (macOS)
 
@@ -109,7 +127,7 @@ See [agent_manual.md](agent_manual.md) for the full agent definition reference.
 
 ## Workflows
 
-Workflows are stored in the database and fully customizable via the web UI. Example configurations:
+Workflows are stored in the database and edited through the web UI. A workflow is a sequence of agent layers with validation boundaries. Example configurations:
 
 | Workflow | Phases (by layer) | Use Case |
 |----------|-------------------|----------|
@@ -122,6 +140,8 @@ Workflows are stored in the database and fully customizable via the web UI. Exam
 All agents in the same layer run concurrently. The next layer starts only after the current layer completes (at least one agent must pass). If a layer has multiple agents, the next layer must have exactly one agent (fan-in rule).
 
 ## Architecture
+
+At runtime, the server owns orchestration, process spawning, websocket updates, and persistent workflow state.
 
 ```mermaid
 graph LR
@@ -166,7 +186,9 @@ Logs are written to `$NRFLOW_HOME/logs/be.log`.
 
 ## License
 
-nrflow is source-available under the Business Source License 1.1 (`BUSL-1.1`).
+nrflow is source-available, self-hostable, and production-usable internally.
+
+nrflow is released under the Business Source License 1.1 (`BUSL-1.1`).
 
 You may use nrflow in production, including self-hosted internal/company
 deployments, but you may not offer nrflow to third parties as a hosted or

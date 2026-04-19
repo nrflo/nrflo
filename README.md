@@ -1,10 +1,14 @@
-# nrflo
+# NRFLO
 
 A self-hosted control plane for AI engineering workflows.
 
-nrflo orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
+NRFLO orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
 
-## Why nrflo
+<p align="center">
+  <img src="docs/screenshots/workflow-overview.png" alt="NRFLO workflow graph and live message stream" width="900">
+</p>
+
+## Why NRFLO
 
 - **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
 - **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
@@ -42,11 +46,11 @@ nrflo orchestrates coding agents across layered workflows, isolated git worktree
 ## How It Works
 
 1. Pick a ticket-scoped or project-scoped workflow from the web UI.
-2. nrflo starts agents by layer, running same-layer agents concurrently.
+2. NRFLO starts agents by layer, running same-layer agents concurrently.
 3. Agents write findings that downstream agents can consume in their prompts.
 4. If a verifier finds a problem, it can callback an earlier layer and re-run the workflow from that point.
 5. If automation gets stuck or needs direction, you can switch to interactive control in the browser.
-6. On success, nrflo merges worktree changes, can invoke a conflict resolver, and reports the final workflow result.
+6. On success, NRFLO merges worktree changes, can invoke a conflict resolver, and reports the final workflow result.
 
 ## Tech Stack
 
@@ -58,7 +62,7 @@ nrflo orchestrates coding agents across layered workflows, isolated git worktree
 
 ## Quick Start
 
-The fastest way to try nrflo on macOS is via Homebrew.
+The fastest way to try NRFLO on macOS is via Homebrew.
 
 ### Install via Homebrew (macOS)
 
@@ -94,7 +98,7 @@ nrflo_server --host 0.0.0.0
 
 ## CLI Overview
 
-nrflo ships two binaries:
+NRFLO ships two binaries:
 
 | Binary | Purpose |
 |--------|---------|
@@ -186,12 +190,12 @@ Logs are written to `$NRFLO_HOME/logs/be.log`.
 
 ## License
 
-nrflo is source-available, self-hostable, and production-usable internally.
+NRFLO is source-available, self-hostable, and production-usable internally.
 
-nrflo is released under the Business Source License 1.1 (`BUSL-1.1`).
+NRFLO is released under the Business Source License 1.1 (`BUSL-1.1`).
 
-You may use nrflo in production, including self-hosted internal/company
-deployments, but you may not offer nrflo to third parties as a hosted or
+You may use NRFLO in production, including self-hosted internal/company
+deployments, but you may not offer NRFLO to third parties as a hosted or
 managed service.
 
 Commercial licenses are available: anderfredx@gmail.com

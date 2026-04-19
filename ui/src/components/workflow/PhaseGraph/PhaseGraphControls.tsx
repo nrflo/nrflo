@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Controls, ControlButton, useReactFlow } from '@xyflow/react'
 import { Minus, Plus, Maximize2 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
@@ -6,15 +6,24 @@ import { FIT_VIEW_OPTIONS } from './fitViewOptions'
 
 const AUTO_CENTER_INTERVAL_MS = 15000
 
-/** When enabled, calls fitView(FIT_VIEW_OPTIONS) every 15 seconds. */
+/**
+ * When enabled, calls fitView(FIT_VIEW_OPTIONS) every 15 seconds.
+ * Keeps fitView in a ref so WS-driven parent re-renders do not tear down and
+ * re-arm the interval before it fires (regression on the ticket workflow page).
+ */
 export function AutoCenterInterval({ enabled }: { enabled: boolean }) {
   const { fitView } = useReactFlow()
+  const fitViewRef = useRef(fitView)
+
+  useEffect(() => {
+    fitViewRef.current = fitView
+  }, [fitView])
 
   useEffect(() => {
     if (!enabled) return
-    const id = setInterval(() => fitView(FIT_VIEW_OPTIONS), AUTO_CENTER_INTERVAL_MS)
+    const id = setInterval(() => fitViewRef.current(FIT_VIEW_OPTIONS), AUTO_CENTER_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [enabled, fitView])
+  }, [enabled])
 
   return null
 }

@@ -13,6 +13,9 @@ const nodeTypes: NodeTypes = {
   agent: AgentFlowNode,
 }
 
+// 4 vertical ControlButtons at 28px each + 8px top offset + safety padding.
+const CONTROLS_MIN_HEIGHT = 140
+
 /** Calls fitView() when container dimensions change (via ResizeObserver) or node layout changes. */
 function FitViewOnChange({ nodeKey }: { nodeKey: string }) {
   const { fitView } = useReactFlow()
@@ -386,7 +389,7 @@ export function PhaseGraph({
   ) + 50
 
   return (
-    <div style={{ height: containerHeight }} className="w-full">
+    <div style={{ height: Math.max(containerHeight, CONTROLS_MIN_HEIGHT) }} className="w-full">
       <ReactFlow
         nodes={layoutedNodes}
         edges={layoutedEdges}

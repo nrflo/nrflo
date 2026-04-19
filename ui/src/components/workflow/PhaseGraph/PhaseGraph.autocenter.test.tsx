@@ -15,6 +15,15 @@ const mockFitView = vi.fn()
 const mockZoomIn = vi.fn()
 const mockZoomOut = vi.fn()
 
+/**
+ * When true, the `useReactFlow` mock returns a NEW `fitView` identity on every
+ * call — mimicking @xyflow/react versions where the instance is re-created per
+ * render. This exposes the regression guarded by `AutoCenterInterval`'s ref
+ * pattern. Scoped per-test; kept off for most tests since it causes
+ * `FitViewOnChange`'s debounced effect to also re-arm on every render.
+ */
+let freshFitViewIdentity = false
+
 vi.mock('@xyflow/react', async () => {
   const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react')
   return {
@@ -33,11 +42,18 @@ vi.mock('@xyflow/react', async () => {
     }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children?: React.ReactNode }) => (
       <button onClick={onClick} {...rest}>{children}</button>
     ),
-    useReactFlow: () => ({
-      fitView: mockFitView,
-      zoomIn: mockZoomIn,
-      zoomOut: mockZoomOut,
-    }),
+    useReactFlow: () =>
+      freshFitViewIdentity
+        ? {
+            fitView: (opts?: unknown) => mockFitView(opts),
+            zoomIn: () => mockZoomIn(),
+            zoomOut: () => mockZoomOut(),
+          }
+        : {
+            fitView: mockFitView,
+            zoomIn: mockZoomIn,
+            zoomOut: mockZoomOut,
+          },
     useStore: (selector: (s: Record<string, unknown>) => unknown) =>
       selector({ width: 800, height: 600 }),
   }
@@ -114,10 +130,12 @@ describe('PhaseGraph - auto-center toggle', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    freshFitViewIdentity = false
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    freshFitViewIdentity = false
   })
 
   it('renders the auto-center checkbox, checked by default, with the documented label', async () => {
@@ -177,6 +195,44 @@ describe('PhaseGraph - auto-center toggle', () => {
     // With the toggle unchecked, the 15s interval must NOT fire again.
     act(() => { vi.advanceTimersByTime(15000) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
+  })
+
+  // Regression: on the ticket workflow page, WS-driven session refreshes cause
+  // PhaseGraph to re-render roughly once per second. In @xyflow/react the
+  // `fitView` returned from `useReactFlow()` is re-created on each render, so
+  // a naïve `[enabled, fitView]` dep array tore down and re-armed the 15s
+  // interval before it could ever fire (see ticket Background). AutoCenterInterval
+  // must keep fitView in a ref so the 15s interval survives parent re-renders.
+  it('fires fitView at 15s even when the parent re-renders every second (ticket-page regression)', async () => {
+    // Enable fresh fitView identity per useReactFlow() call to reproduce the
+    // @xyflow/react churn on the ticket page (WS-driven session refreshes).
+    // Without AutoCenterInterval's ref pattern, each re-render tears down the
+    // 15s setInterval before it can fire.
+    freshFitViewIdentity = true
+
+    const props = baseProps()
+    const { rerender } = render(<PhaseGraph {...props} />)
+    await flushLayout()
+    flushMountTimers()
+
+    // Simulate 14 WS-driven re-renders, one per second, across the 15s window.
+    for (let i = 0; i < 14; i++) {
+      act(() => { vi.advanceTimersByTime(1000) })
+      rerender(<PhaseGraph {...props} />)
+    }
+    // Settle FitViewOnChange's 150ms debounce so subsequent advances are
+    // driven solely by AutoCenterInterval.
+    act(() => { vi.advanceTimersByTime(200) })
+    mockFitView.mockClear()
+
+    // No further re-renders — FitViewOnChange will not fire. Advance 2s more.
+    // With the ref fix the AutoCenterInterval armed near mount fires its 15s
+    // tick during this window. Without the fix, each rerender re-armed the
+    // interval and the latest arm's 15s tick is still in the future.
+    act(() => { vi.advanceTimersByTime(2000) })
+
+    expect(mockFitView).toHaveBeenCalledTimes(1)
+    expect(mockFitView).toHaveBeenLastCalledWith({ padding: 0.3 })
   })
 
   it('clicking the checkbox itself does not call fitView; re-checking resumes the 15s interval', async () => {

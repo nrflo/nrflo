@@ -8,6 +8,14 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
   <img src="docs/screenshots/workflow-overview.png" alt="NRFLO workflow graph and live message stream" width="900">
 </p>
 
+<p align="center">
+  <a href="https://nrflo.com/"><strong>nrflo.com</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/2E5fqwOK0kM">▶ Watch the demo on YouTube</a>
+</p>
+
 ## Why NRFLO
 
 - **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
@@ -148,19 +156,16 @@ All agents in the same layer run concurrently. The next layer starts only after 
 At runtime, the server owns orchestration, process spawning, websocket updates, and persistent workflow state.
 
 ```mermaid
-graph LR
-    UI[Web UI] -->|HTTP / WebSocket| Server
-    Server -->|Spawn| Agents[Agent Processes]
-    Agents -->|Unix Socket| Server
-    Server -->|SQLite| DB[(~/.nrflo/nrflo.data)]
+flowchart LR
+    Browser["Web UI"]
+    Server["nrflo_server<br/>HTTP API · WebSocket · Orchestrator · Spawner · Unix Socket"]
+    Agents["Agent processes<br/>Claude · Opencode · Codex"]
+    DB[("SQLite<br/>~/.nrflo/nrflo.data")]
 
-    subgraph Server
-        API[HTTP API]
-        WS[WebSocket Hub]
-        Spawner
-        Orchestrator
-        Socket[Unix Socket]
-    end
+    Browser <-->|HTTP / WebSocket| Server
+    Server -->|spawn| Agents
+    Agents -->|Unix socket| Server
+    Server <--> DB
 ```
 
 The server runs everything in-process: the orchestrator groups phases by layer, the spawner launches agent processes, and the WebSocket hub broadcasts real-time updates to connected clients. Agent definitions (prompts, models, timeouts) and workflow definitions are stored in the database and managed through the web UI.

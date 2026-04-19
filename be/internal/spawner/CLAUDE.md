@@ -25,6 +25,7 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  │   ├── Name: "claude"                                        │    │
 │  │   ├── Model: versioned IDs (opus_4_6, opus_4_6_1m, opus_4_7,│    │
 │  │   │          opus_4_7_1m, sonnet, haiku)                    │    │
+│  │   ├── Reasoning: --effort <level> when reasoning_effort set │    │
 │  │   ├── SessionID: ✓ (--session-id)                           │    │
 │  │   ├── SystemPromptFile: ✗                                   │    │
 │  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
@@ -75,6 +76,7 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 - `opus_4_7` → `claude-opus-4-7` (200k context)
 - `opus_4_7_1m` → `claude-opus-4-7[1m]` (1M context)
 - `sonnet`, `haiku` → passed as-is (200k context)
+- Reasoning effort: `--effort <level>` is appended when `cli_models.reasoning_effort` is non-empty. Levels: `low`, `medium`, `high`, `xhigh` (Opus 4.7 only), `max`. Empty string means "use Claude CLI default" (no flag). The `xhigh + Opus 4.7` constraint is validated at the service layer (`service.validateReasoningEffort`).
 
 **Model mapping for opencode:**
 - `opencode_minimax_m25_free` → `opencode/minimax-m2.5-free` (no variant)

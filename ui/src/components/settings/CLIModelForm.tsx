@@ -27,6 +27,27 @@ const CLI_TYPE_OPTIONS = [
   { value: 'codex', label: 'Codex' },
 ]
 
+const REASONING_EFFORT_OPTIONS = [
+  { value: '', label: 'Default' },
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'xhigh', label: 'Extra High (Opus 4.7 only)' },
+  { value: 'max', label: 'Max' },
+]
+
+function buildEffortOptions(cliType: string, mappedModel: string) {
+  if (cliType === 'claude') {
+    const isOpus47 = mappedModel.startsWith('claude-opus-4-7')
+    return REASONING_EFFORT_OPTIONS.map((opt) =>
+      opt.value === 'xhigh' && !isOpus47
+        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Opus 4.7 Claude models" }
+        : opt
+    )
+  }
+  return REASONING_EFFORT_OPTIONS.filter((opt) => opt.value !== 'xhigh')
+}
+
 export function CLIModelForm({
   formData,
   setFormData,
@@ -112,10 +133,11 @@ export function CLIModelForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">Reasoning Effort</label>
-          <Input
+          {/* TODO(test-writer): cover dropdown options rendering, xhigh hidden for opencode/codex, xhigh disabled with tooltip for non-Opus-4.7 claude, setFormData on select. */}
+          <Dropdown
             value={formData.reasoning_effort}
-            onChange={(e) => setFormData({ ...formData, reasoning_effort: e.target.value })}
-            placeholder="Optional"
+            onChange={(val) => setFormData({ ...formData, reasoning_effort: val })}
+            options={buildEffortOptions(formData.cli_type, formData.mapped_model)}
           />
         </div>
         <div>

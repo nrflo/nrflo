@@ -18,6 +18,27 @@ var validCLITypes = map[string]bool{
 	"codex":    true,
 }
 
+var validReasoningEfforts = map[string]bool{
+	"":       true,
+	"low":    true,
+	"medium": true,
+	"high":   true,
+	"xhigh":  true,
+	"max":    true,
+}
+
+// validateReasoningEffort checks that effort is one of the allowed levels and
+// enforces that "xhigh" is only used with Claude Opus 4.7 models.
+func validateReasoningEffort(cliType, mappedModel, effort string) error {
+	if !validReasoningEfforts[effort] {
+		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max", effort)
+	}
+	if effort == "xhigh" && cliType == "claude" && !strings.HasPrefix(mappedModel, "claude-opus-4-7") {
+		return fmt.Errorf("reasoning_effort 'xhigh' is only supported on Opus 4.7 Claude models")
+	}
+	return nil
+}
+
 // CLIModelService handles CLI model business logic
 type CLIModelService struct {
 	pool  *db.Pool
@@ -116,6 +137,9 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 	if !validCLITypes[req.CLIType] {
 		return nil, fmt.Errorf("invalid cli_type: must be one of claude, opencode, codex")
 	}
+	if err := validateReasoningEffort(req.CLIType, req.MappedModel, req.ReasoningEffort); err != nil {
+		return nil, err
+	}
 
 	contextLength := req.ContextLength
 	if contextLength == 0 {
@@ -154,6 +178,24 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 
 // Update partially updates a CLI model
 func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*model.CLIModel, error) {
+	if req.ReasoningEffort != nil || req.MappedModel != nil {
+		current, err := s.Get(id)
+		if err != nil {
+			return nil, err
+		}
+		mappedModel := current.MappedModel
+		if req.MappedModel != nil {
+			mappedModel = *req.MappedModel
+		}
+		effort := current.ReasoningEffort
+		if req.ReasoningEffort != nil {
+			effort = *req.ReasoningEffort
+		}
+		if err := validateReasoningEffort(current.CLIType, mappedModel, effort); err != nil {
+			return nil, err
+		}
+	}
+
 	updates := []string{}
 	args := []interface{}{}
 

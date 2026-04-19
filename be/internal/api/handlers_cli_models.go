@@ -38,7 +38,10 @@ func (s *Server) handleCreateCLIModel(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "invalid cli_type") {
+		if strings.Contains(err.Error(), "required") ||
+			strings.Contains(err.Error(), "invalid cli_type") ||
+			strings.Contains(err.Error(), "invalid reasoning_effort") ||
+			strings.Contains(err.Error(), "only supported on Opus 4.7") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -93,7 +96,9 @@ func (s *Server) handleUpdateCLIModel(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "cannot disable system model") {
+		if strings.Contains(err.Error(), "cannot disable system model") ||
+			strings.Contains(err.Error(), "invalid reasoning_effort") ||
+			strings.Contains(err.Error(), "only supported on Opus 4.7") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

@@ -1,10 +1,13 @@
 import { cn } from '@/lib/utils'
 import { ChevronDown, Check } from 'lucide-react'
 import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { Tooltip } from '@/components/ui/Tooltip'
 
 export interface DropdownOption {
   value: string
   label: string
+  disabled?: boolean
+  tooltip?: string
 }
 
 export interface DropdownOptionGroup {
@@ -33,18 +36,37 @@ interface DropdownProps {
 }
 
 function OptionItem({ option, selected, onChange, onClose }: { option: DropdownOption; selected: string; onChange: (v: string) => void; onClose: () => void }) {
-  return (
+  const isDisabled = option.disabled
+  const content = (
     <div
-      onClick={() => { onChange(option.value); onClose() }}
+      onClick={() => {
+        if (isDisabled) return
+        onChange(option.value)
+        onClose()
+      }}
+      aria-disabled={isDisabled || undefined}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors',
-        option.value === selected ? 'bg-muted text-foreground' : 'text-foreground hover:bg-muted'
+        'flex items-center gap-2 px-3 py-2 text-sm transition-colors',
+        isDisabled
+          ? 'opacity-50 cursor-not-allowed text-muted-foreground'
+          : cn(
+              'cursor-pointer',
+              option.value === selected ? 'bg-muted text-foreground' : 'text-foreground hover:bg-muted'
+            )
       )}
     >
       <Check className={cn('h-3.5 w-3.5 shrink-0', option.value === selected ? 'opacity-100' : 'opacity-0')} />
       <span className="truncate">{option.label}</span>
     </div>
   )
+  if (option.tooltip) {
+    return (
+      <Tooltip text={option.tooltip} placement="right">
+        {content}
+      </Tooltip>
+    )
+  }
+  return content
 }
 
 export function Dropdown({

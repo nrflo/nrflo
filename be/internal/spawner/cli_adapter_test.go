@@ -460,6 +460,157 @@ func TestCodexAdapter_BuildCommand_IgnoresSettingsJSON(t *testing.T) {
 	}
 }
 
+// --- ReasoningEffort: Claude --effort flag ---
+
+func TestClaudeAdapter_BuildCommand_ReasoningEffort(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	tests := []struct {
+		name         string
+		effort       string
+		mappedModel  string
+		wantContains string
+		wantMissing  bool
+	}{
+		{name: "empty effort omits flag", effort: "", wantMissing: true},
+		{name: "high effort", effort: "high", wantContains: "--effort high"},
+		{name: "xhigh with opus 4.7", effort: "xhigh", mappedModel: "claude-opus-4-7", wantContains: "--effort xhigh"},
+		{name: "xhigh with opus 4.7 1M", effort: "xhigh", mappedModel: "claude-opus-4-7[1m]", wantContains: "--effort xhigh"},
+		{name: "max effort", effort: "max", wantContains: "--effort max"},
+		{name: "low effort", effort: "low", wantContains: "--effort low"},
+		{name: "medium effort", effort: "medium", wantContains: "--effort medium"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := SpawnOptions{
+				Model:           "opus_4_7",
+				SessionID:       "test-session",
+				WorkDir:         "/tmp",
+				ReasoningEffort: tt.effort,
+				MappedModel:     tt.mappedModel,
+			}
+			cmd := adapter.BuildCommand(opts)
+			args := strings.Join(cmd.Args, " ")
+
+			if tt.wantMissing {
+				if strings.Contains(args, "--effort") {
+					t.Errorf("BuildCommand with empty ReasoningEffort should not contain --effort: %s", args)
+				}
+				return
+			}
+			if !strings.Contains(args, tt.wantContains) {
+				t.Errorf("BuildCommand args missing %q: %s", tt.wantContains, args)
+			}
+		})
+	}
+}
+
+func TestClaudeAdapter_BuildCommand_EffortAdjacentToModel(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+	opts := SpawnOptions{
+		Model:           "opus_4_7",
+		SessionID:       "test-session",
+		WorkDir:         "/tmp",
+		ReasoningEffort: "high",
+		SettingsJSON:    `{"hooks":{}}`,
+	}
+	cmd := adapter.BuildCommand(opts)
+	args := cmd.Args
+
+	// Locate --model, --effort, --settings indices.
+	modelIdx, effortIdx, settingsIdx := -1, -1, -1
+	for i, a := range args {
+		switch a {
+		case "--model":
+			modelIdx = i
+		case "--effort":
+			effortIdx = i
+		case "--settings":
+			settingsIdx = i
+		}
+	}
+	if modelIdx < 0 || effortIdx < 0 || settingsIdx < 0 {
+		t.Fatalf("expected --model, --effort, --settings in args: %v", args)
+	}
+	// --effort must sit between --model and --settings so effort is not visually buried by large JSON.
+	if !(modelIdx < effortIdx && effortIdx < settingsIdx) {
+		t.Errorf("expected --model(%d) < --effort(%d) < --settings(%d) ordering: %v", modelIdx, effortIdx, settingsIdx, args)
+	}
+}
+
+func TestClaudeAdapter_BuildResumeCommand_ReasoningEffort(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	tests := []struct {
+		name         string
+		effort       string
+		wantContains string
+		wantMissing  bool
+	}{
+		{name: "empty effort omits flag", effort: "", wantMissing: true},
+		{name: "high effort", effort: "high", wantContains: "--effort high"},
+		{name: "xhigh effort", effort: "xhigh", wantContains: "--effort xhigh"},
+		{name: "max effort", effort: "max", wantContains: "--effort max"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := ResumeOptions{
+				SessionID:       "sess-resume",
+				Prompt:          "Continue",
+				WorkDir:         "/tmp",
+				ReasoningEffort: tt.effort,
+			}
+			cmd := adapter.BuildResumeCommand(opts)
+			args := strings.Join(cmd.Args, " ")
+
+			if tt.wantMissing {
+				if strings.Contains(args, "--effort") {
+					t.Errorf("BuildResumeCommand with empty ReasoningEffort should not contain --effort: %s", args)
+				}
+				return
+			}
+			if !strings.Contains(args, tt.wantContains) {
+				t.Errorf("BuildResumeCommand args missing %q: %s", tt.wantContains, args)
+			}
+		})
+	}
+}
+
+func TestOpencodeAdapter_BuildCommand_IgnoresReasoningEffortField(t *testing.T) {
+	// OpencodeAdapter uses its own --variant logic driven by MapModel + GetReasoningEffort.
+	// The ClaudeAdapter-specific --effort flag must not leak into opencode argv.
+	adapter := &OpencodeAdapter{}
+	opts := SpawnOptions{
+		Model:           "sonnet",
+		WorkDir:         "/tmp",
+		ReasoningEffort: "xhigh", // intentionally a Claude-only value
+	}
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if strings.Contains(args, "--effort") {
+		t.Errorf("OpencodeAdapter.BuildCommand should not emit --effort: %s", args)
+	}
+}
+
+func TestCodexAdapter_BuildCommand_IgnoresEffortFlag(t *testing.T) {
+	// CodexAdapter exposes reasoning effort via -c model_reasoning_effort="..." not --effort.
+	adapter := &CodexAdapter{}
+	opts := SpawnOptions{
+		Model:           "codex_gpt_high",
+		WorkDir:         "/tmp",
+		ReasoningEffort: "xhigh",
+	}
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if strings.Contains(args, "--effort") {
+		t.Errorf("CodexAdapter.BuildCommand should not emit --effort: %s", args)
+	}
+}
+
 func TestUsesStdinPrompt(t *testing.T) {
 	tests := []struct {
 		cli  string

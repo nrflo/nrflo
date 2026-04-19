@@ -36,11 +36,12 @@ type CLIAdapter interface {
 
 // ResumeOptions contains parameters for resuming a CLI session
 type ResumeOptions struct {
-	SessionID    string
-	Prompt       string
-	WorkDir      string
-	Env          []string
-	SettingsJSON string // Claude --settings JSON (ignored by non-Claude adapters)
+	SessionID       string
+	Prompt          string
+	WorkDir         string
+	Env             []string
+	SettingsJSON    string // Claude --settings JSON (ignored by non-Claude adapters)
+	ReasoningEffort string // Claude --effort level (ignored by non-Claude adapters)
 }
 
 // SpawnOptions contains parameters for building a spawn command
@@ -109,6 +110,9 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		"--session-id", opts.SessionID,
 		// prompt piped via stdin — no PromptFile arg, no InitialPrompt
 	}
+	if opts.ReasoningEffort != "" {
+		args = append(args, "--effort", opts.ReasoningEffort)
+	}
 	if opts.SettingsJSON != "" {
 		args = append(args, "--settings", opts.SettingsJSON)
 	}
@@ -158,6 +162,9 @@ func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 		"--output-format", "stream-json",
 		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
 		// prompt piped via stdin (same as BuildCommand)
+	}
+	if opts.ReasoningEffort != "" {
+		args = append(args, "--effort", opts.ReasoningEffort)
 	}
 	if opts.SettingsJSON != "" {
 		args = append(args, "--settings", opts.SettingsJSON)

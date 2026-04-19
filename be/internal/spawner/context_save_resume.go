@@ -18,7 +18,7 @@ const resumeSaveTimeout = 3 * time.Minute
 //
 // Called after kill+flush in initiateContextSave when ContextSaveViaAgent is false.
 func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, req SpawnRequest) {
-	cliName, _ := parseModelID(proc.modelID)
+	cliName, model := parseModelID(proc.modelID)
 	adapter, err := GetCLIAdapter(cliName)
 	if err != nil || !adapter.SupportsResume() {
 		logger.Warn(ctx, "CLI does not support resume, relaunching without save", "cli", cliName, "session_id", proc.sessionID)
@@ -31,12 +31,18 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 	savePrompt := buildSavePrompt()
 	logger.Info(ctx, "context save prompt", "prompt", savePrompt, "session_id", proc.sessionID)
 
+	var reasoningEffort string
+	if cfg, ok := s.config.ModelConfigs[model]; ok {
+		reasoningEffort = cfg.ReasoningEffort
+	}
+
 	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
-		SessionID:    proc.sessionID,
-		Prompt:       savePrompt,
-		WorkDir:      s.config.ProjectRoot,
-		Env:          proc.cmd.Env,
-		SettingsJSON: s.config.ClaudeSettingsJSON,
+		SessionID:       proc.sessionID,
+		Prompt:          savePrompt,
+		WorkDir:         s.config.ProjectRoot,
+		Env:             proc.cmd.Env,
+		SettingsJSON:    s.config.ClaudeSettingsJSON,
+		ReasoningEffort: reasoningEffort,
 	})
 
 	resumeCmd.Stdin = strings.NewReader(savePrompt)

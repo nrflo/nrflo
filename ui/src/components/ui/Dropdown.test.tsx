@@ -172,6 +172,51 @@ describe('Dropdown', () => {
     expect(onChange).toHaveBeenCalledWith('p1')
   })
 
+  it('disabled option is marked aria-disabled, does not call onChange, and does not close panel', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <Dropdown
+        value=""
+        onChange={onChange}
+        options={[
+          { value: 'a', label: 'Alpha' },
+          { value: 'b', label: 'Beta', disabled: true },
+        ]}
+      />
+    )
+
+    await user.click(screen.getByRole('button'))
+    const betaOption = screen.getByText('Beta').parentElement!
+    expect(betaOption).toHaveAttribute('aria-disabled', 'true')
+    expect(betaOption.className).toContain('opacity-50')
+    expect(betaOption.className).toContain('cursor-not-allowed')
+
+    await user.click(betaOption)
+    expect(onChange).not.toHaveBeenCalled()
+    // panel stays open
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+  })
+
+  it('option with tooltip shows tooltip text on hover', async () => {
+    const user = userEvent.setup()
+    render(
+      <Dropdown
+        value=""
+        onChange={vi.fn()}
+        options={[
+          { value: 'a', label: 'Alpha' },
+          { value: 'b', label: 'Beta', disabled: true, tooltip: 'not allowed here' },
+        ]}
+      />
+    )
+
+    await user.click(screen.getByRole('button'))
+    await user.hover(screen.getByText('Beta').parentElement!)
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('not allowed here')
+  })
+
   it('applies labelClassName to the label span', () => {
     renderDropdown({ value: 'alpha', labelClassName: 'hidden md:inline' })
     const btn = screen.getByRole('button')

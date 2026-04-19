@@ -106,8 +106,8 @@ describe('PhaseGraph - Container Resize', () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    // Flush mount timers (nodeKey@100ms, container@150ms)
-    act(() => { vi.advanceTimersByTime(150) })
+    // Flush mount timers (nodeKey@100ms, container@150ms) + performFitView's rAF (~16ms)
+    act(() => { vi.advanceTimersByTime(200) })
     vi.clearAllMocks()
 
     // Simulate container resize (e.g., panel collapse)
@@ -115,12 +115,12 @@ describe('PhaseGraph - Container Resize', () => {
     rerender(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    // Not called before 150ms
+    // Not called before 150ms debounce elapses
     act(() => { vi.advanceTimersByTime(149) })
     expect(mockFitView).not.toHaveBeenCalled()
 
-    // Called at 150ms
-    act(() => { vi.advanceTimersByTime(1) })
+    // Debounce timer fires + performFitView's rAF (~16ms) flushes the call
+    act(() => { vi.advanceTimersByTime(50) })
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
     expect(mockFitView).toHaveBeenCalledTimes(1)
   })
@@ -128,7 +128,7 @@ describe('PhaseGraph - Container Resize', () => {
   it('calls fitView after container width expands', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(150) })
+    act(() => { vi.advanceTimersByTime(200) })
     vi.clearAllMocks()
 
     // Simulate expand
@@ -136,14 +136,14 @@ describe('PhaseGraph - Container Resize', () => {
     rerender(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    act(() => { vi.advanceTimersByTime(150) })
+    act(() => { vi.advanceTimersByTime(200) })
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
   })
 
   it('debounces rapid dimension changes to single fitView call', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(150) })
+    act(() => { vi.advanceTimersByTime(200) })
     vi.clearAllMocks()
 
     // Rapid resizes (simulating CSS transition frames)
@@ -159,8 +159,8 @@ describe('PhaseGraph - Container Resize', () => {
     rerender(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
 
-    // Only one fitView call after 150ms from the last change
-    act(() => { vi.advanceTimersByTime(150) })
+    // Only one fitView call after 150ms debounce + rAF from the last change
+    act(() => { vi.advanceTimersByTime(200) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
   })
@@ -169,7 +169,7 @@ describe('PhaseGraph - Container Resize', () => {
     const props = makeProps({ phases: {}, phaseOrder: [] })
     const { rerender } = render(<PhaseGraph {...props} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(150) })
+    act(() => { vi.advanceTimersByTime(200) })
     vi.clearAllMocks()
 
     mockStoreState = { width: 600, height: 600 }
@@ -183,7 +183,7 @@ describe('PhaseGraph - Container Resize', () => {
   it('fires fitView independently for node changes and container resize', async () => {
     const { rerender } = render(<PhaseGraph {...propsWithAgent()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(150) })
+    act(() => { vi.advanceTimersByTime(200) })
     vi.clearAllMocks()
 
     // Change nodes AND container dimensions simultaneously
@@ -198,12 +198,12 @@ describe('PhaseGraph - Container Resize', () => {
     })} />)
     await flushLayout()
 
-    // Node change fires at 100ms
-    act(() => { vi.advanceTimersByTime(100) })
+    // Node change fires at 100ms timer + rAF (~16ms)
+    act(() => { vi.advanceTimersByTime(120) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
 
-    // Container resize fires at 150ms
-    act(() => { vi.advanceTimersByTime(50) })
+    // Container resize fires at 150ms timer + rAF (~16ms)
+    act(() => { vi.advanceTimersByTime(80) })
     expect(mockFitView).toHaveBeenCalledTimes(2)
   })
 })

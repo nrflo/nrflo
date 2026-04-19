@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Controls, ControlButton, useReactFlow } from '@xyflow/react'
 import { Minus, Plus, Maximize2 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
-import { FIT_VIEW_OPTIONS } from './fitViewOptions'
+import { performFitView } from './fitViewOptions'
 
 const AUTO_CENTER_INTERVAL_MS = 15000
 
@@ -21,7 +21,7 @@ export function AutoCenterInterval({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     if (!enabled) return
-    const id = setInterval(() => fitViewRef.current(FIT_VIEW_OPTIONS), AUTO_CENTER_INTERVAL_MS)
+    const id = setInterval(() => performFitView(fitViewRef.current), AUTO_CENTER_INTERVAL_MS)
     return () => clearInterval(id)
   }, [enabled])
 
@@ -48,7 +48,7 @@ export function PhaseGraphControls({ autoCenter, setAutoCenter }: PhaseGraphCont
 
   const handleFitView = () => {
     setAutoCenter(false)
-    fitView(FIT_VIEW_OPTIONS)
+    performFitView(fitView)
   }
 
   return (

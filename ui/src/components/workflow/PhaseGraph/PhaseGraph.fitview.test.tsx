@@ -1,5 +1,5 @@
 /**
- * FitViewOnChange tests for nodeKey trigger (single 100ms timer).
+ * FitViewOnChange tests for nodeKey trigger (single 100ms timer + rAF flush).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act } from '@testing-library/react'
@@ -95,16 +95,16 @@ describe('FitViewOnChange - nodeKey', () => {
   it('fires fitView at 100ms on nodeKey change', async () => {
     const { rerender } = render(<PhaseGraph {...baseProps()} />)
     await flushLayout()
-    // Flush all mount timers (nodeKey@100ms, container@150ms)
-    act(() => { vi.advanceTimersByTime(150) })
+    // Flush all mount timers (nodeKey@100ms, container@150ms) + rAF (~16ms)
+    act(() => { vi.advanceTimersByTime(200) })
     vi.clearAllMocks()
 
     // Add second agent — nodeKey changes
     rerender(<PhaseGraph {...propsWithTwoAgents()} />)
     await flushLayout()
 
-    // Fires at 100ms
-    act(() => { vi.advanceTimersByTime(100) })
+    // 100ms timer fires + performFitView's rAF (~16ms) flushes the call
+    act(() => { vi.advanceTimersByTime(150) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
     expect(mockFitView).toHaveBeenCalledWith({ padding: 0.3 })
   })
@@ -112,7 +112,7 @@ describe('FitViewOnChange - nodeKey', () => {
   it('nodeKey cleanup clears timer — fitView does not fire after unmount', async () => {
     const { rerender, unmount } = render(<PhaseGraph {...baseProps()} />)
     await flushLayout()
-    act(() => { vi.advanceTimersByTime(150) })
+    act(() => { vi.advanceTimersByTime(200) })
     vi.clearAllMocks()
 
     // Trigger nodeKey change
@@ -122,8 +122,8 @@ describe('FitViewOnChange - nodeKey', () => {
     // Unmount before timer fires
     unmount()
 
-    // Advance past timer deadline
-    act(() => { vi.advanceTimersByTime(200) })
+    // Advance past timer + rAF deadline
+    act(() => { vi.advanceTimersByTime(300) })
 
     // Timer must NOT fire — cleanup cleared it
     expect(mockFitView).not.toHaveBeenCalled()

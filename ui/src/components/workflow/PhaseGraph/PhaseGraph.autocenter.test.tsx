@@ -112,9 +112,14 @@ async function flushLayout() {
   await act(async () => {})
 }
 
-/** Flush the two mount timers in FitViewOnChange (nodeKey@100ms, container@150ms). */
+/** Flush the two mount timers in FitViewOnChange (nodeKey@100ms, container@150ms) + performFitView's rAF (~16ms). */
 function flushMountTimers() {
-  act(() => { vi.advanceTimersByTime(150) })
+  act(() => { vi.advanceTimersByTime(200) })
+}
+
+/** Advance by 15s + enough to flush performFitView's rAF (~16ms). */
+function advanceAutoCenterTick() {
+  act(() => { vi.advanceTimersByTime(15050) })
 }
 
 /** Toggle the native checkbox. fireEvent.click flips `checked` synchronously. */
@@ -154,11 +159,11 @@ describe('PhaseGraph - auto-center toggle', () => {
     flushMountTimers()
     mockFitView.mockClear()
 
-    act(() => { vi.advanceTimersByTime(15000) })
+    advanceAutoCenterTick()
     expect(mockFitView).toHaveBeenCalledTimes(1)
     expect(mockFitView).toHaveBeenLastCalledWith({ padding: 0.3 })
 
-    act(() => { vi.advanceTimersByTime(15000) })
+    advanceAutoCenterTick()
     expect(mockFitView).toHaveBeenCalledTimes(2)
   })
 
@@ -184,11 +189,13 @@ describe('PhaseGraph - auto-center toggle', () => {
     expect(mockZoomIn).toHaveBeenCalledTimes(1)
     expect(checkbox).not.toBeChecked()
 
-    // Re-check; fit-view click unchecks and calls fitView with FIT_VIEW_OPTIONS.
+    // Re-check; fit-view click unchecks and calls fitView with FIT_VIEW_OPTIONS
+    // (deferred via performFitView's rAF — flush with a small advance).
     clickCheckbox(checkbox)
     expect(checkbox).toBeChecked()
     clickButtonByName('fit view')
     expect(checkbox).not.toBeChecked()
+    act(() => { vi.advanceTimersByTime(20) })
     expect(mockFitView).toHaveBeenCalledTimes(1)
     expect(mockFitView).toHaveBeenLastCalledWith({ padding: 0.3 })
 
@@ -257,8 +264,43 @@ describe('PhaseGraph - auto-center toggle', () => {
     expect(checkbox).toBeChecked()
     expect(mockFitView).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(15000) })
+    advanceAutoCenterTick()
     expect(mockFitView).toHaveBeenCalledTimes(1)
     expect(mockFitView).toHaveBeenLastCalledWith({ padding: 0.3 })
+  })
+
+  // Ticket parity assertion: the Fit View button click and the 15s auto-center
+  // tick must end up calling the same fitView function with identical args.
+  // Previously these two paths produced visibly different zooms; both now route
+  // through performFitView so the captured call args must deep-equal.
+  it('Fit View button and 15s auto-center tick pass identical args to fitView', async () => {
+    render(<PhaseGraph {...baseProps()} />)
+    await flushLayout()
+    flushMountTimers()
+    mockFitView.mockClear()
+
+    // 15s interval path — capture args.
+    advanceAutoCenterTick()
+    expect(mockFitView).toHaveBeenCalledTimes(1)
+    const intervalArgs = mockFitView.mock.calls[0]
+
+    // Re-check (advanceAutoCenterTick does not un-check, but a preceding manual
+    // click would). The button path also unchecks the toggle regardless.
+    const checkbox = screen.getByRole('checkbox', {
+      name: 'Auto center graph every 15s',
+    }) as HTMLInputElement
+    expect(checkbox).toBeChecked()
+
+    mockFitView.mockClear()
+
+    // Button path — capture args.
+    clickButtonByName('fit view')
+    act(() => { vi.advanceTimersByTime(20) })
+    expect(mockFitView).toHaveBeenCalledTimes(1)
+    const buttonArgs = mockFitView.mock.calls[0]
+
+    // The ticket's core assertion: same helper -> same args -> same viewport.
+    expect(buttonArgs).toEqual(intervalArgs)
+    expect(buttonArgs).toEqual([{ padding: 0.3 }])
   })
 })

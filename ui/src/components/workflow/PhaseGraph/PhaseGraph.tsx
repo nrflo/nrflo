@@ -5,7 +5,7 @@ import { AgentFlowNode } from './AgentFlowNode'
 import { getLayoutedElements, BASE_HEIGHT } from './layout'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { AutoCenterInterval, PhaseGraphControls } from './PhaseGraphControls'
-import { FIT_VIEW_OPTIONS } from './fitViewOptions'
+import { FIT_VIEW_OPTIONS, performFitView } from './fitViewOptions'
 import type { PhaseGraphProps, AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/workflow'
 
@@ -25,12 +25,12 @@ function FitViewOnChange({ nodeKey }: { nodeKey: string }) {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fitView(FIT_VIEW_OPTIONS), 150)
+    debounceRef.current = setTimeout(() => performFitView(fitView), 150)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [containerWidth, containerHeight, fitView])
 
   useEffect(() => {
-    const timer = setTimeout(() => fitView(FIT_VIEW_OPTIONS), 100)
+    const timer = setTimeout(() => performFitView(fitView), 100)
     return () => clearTimeout(timer)
   }, [nodeKey, fitView])
 

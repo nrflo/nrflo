@@ -82,14 +82,14 @@ make build && make install
 ### Run
 
 ```bash
-nrflo_server serve
+nrflo_server
 # Open http://localhost:6587
 ```
 
 To make the server accessible on the local network:
 
 ```bash
-nrflo_server serve --host 0.0.0.0
+nrflo_server --host 0.0.0.0
 ```
 
 ## CLI Overview

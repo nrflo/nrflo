@@ -13,7 +13,7 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/2E5fqwOK0kM">▶ Watch the demo on YouTube</a>
+  <a href="https://youtu.be/9B5HqybTRmM">▶ Watch the demo on YouTube</a>
 </p>
 
 ## Why NRFLO

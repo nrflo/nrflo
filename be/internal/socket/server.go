@@ -20,14 +20,14 @@ import (
 
 const (
 	// DefaultSocketDir is the default directory for the socket file
-	DefaultSocketDir = "/tmp/nrflow"
+	DefaultSocketDir = "/tmp/nrflo"
 	// DefaultSocketName is the default socket file name
-	DefaultSocketName = "nrflow.sock"
+	DefaultSocketName = "nrflo.sock"
 )
 
 // GetSocketPath returns the socket path from env or default
 func GetSocketPath() string {
-	if path := os.Getenv("NRFLOW_SOCKET"); path != "" {
+	if path := os.Getenv("NRFLO_SOCKET"); path != "" {
 		return path
 	}
 	return filepath.Join(DefaultSocketDir, DefaultSocketName)

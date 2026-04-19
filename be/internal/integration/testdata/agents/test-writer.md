@@ -59,7 +59,7 @@ make test-coverage                   # with coverage report
 
 1. **Read Context**
    ```bash
-   nrflow findings get setup-analyzer
+   nrflo findings get setup-analyzer
    ```
 
 2. **Understand Acceptance Criteria**
@@ -78,9 +78,9 @@ make test-coverage                   # with coverage report
 
 5. **Store Findings**
    ```bash
-   nrflow findings add test_files '<json-array>'
-   nrflow findings add test_cases '<json-array>'
-   nrflow findings add coverage_plan '<string>'
+   nrflo findings add test_files '<json-array>'
+   nrflo findings add test_cases '<json-array>'
+   nrflo findings add coverage_plan '<string>'
    ```
 
 ## Findings Schema
@@ -103,12 +103,12 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can't find patterns, unclear criteria):
 ```bash
-nrflow agent fail --reason="<explanation>"
+nrflo agent fail --reason="<explanation>"
 ```
 
 If running out of context but task is not done (store `continuation_notes` finding first):
 ```bash
-nrflow agent continue
+nrflo agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**

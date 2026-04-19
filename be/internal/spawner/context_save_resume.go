@@ -136,7 +136,7 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 func buildSavePrompt() string {
 	return "URGENT: Save a summary of ALL your current work progress immediately. " +
 		"Run these two commands in order:\n\n" +
-		"1. nrflow findings add to_resume \"<detailed summary of all progress, findings, files changed, and remaining work>\"\n" +
-		"2. nrflow agent continue\n\n" +
+		"1. nrflo findings add to_resume \"<detailed summary of all progress, findings, files changed, and remaining work>\"\n" +
+		"2. nrflo agent continue\n\n" +
 		"The session and workflow context are provided via environment variables. Do NOT add any extra flags."
 }

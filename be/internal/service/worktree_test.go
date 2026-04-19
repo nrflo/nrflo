@@ -383,7 +383,7 @@ func TestCleanup_OnlyWorktreeGone(t *testing.T) {
 	}
 }
 
-// TestWorktreePath verifies worktree path is under /tmp/nrflow/worktrees.
+// TestWorktreePath verifies worktree path is under /tmp/nrflo/worktrees.
 func TestWorktreePath(t *testing.T) {
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
@@ -395,7 +395,7 @@ func TestWorktreePath(t *testing.T) {
 	}
 	defer svc.Cleanup(repoPath, "path-test-branch", worktreePath)
 
-	expectedPrefix := "/tmp/nrflow/worktrees/"
+	expectedPrefix := "/tmp/nrflo/worktrees/"
 	if !strings.HasPrefix(worktreePath, expectedPrefix) {
 		t.Errorf("worktree path should be under %s, got: %s", expectedPrefix, worktreePath)
 	}

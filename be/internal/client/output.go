@@ -74,7 +74,7 @@ func FormatProjectList(projects []*model.Project, jsonOutput bool) (string, erro
 	}
 
 	if len(projects) == 0 {
-		return "No projects found.\n\nCreate one with: nrflow project create <project-id>", nil
+		return "No projects found.\n\nCreate one with: nrflo project create <project-id>", nil
 	}
 
 	var sb strings.Builder

@@ -6,22 +6,21 @@ import (
 	"testing"
 )
 
-// Migration 000058 re-baselines the six readonly agent default templates.
-// These tests verify that after all migrations run, every readonly agent row
-// has template == default_template, both columns reflect the new canonical
-// baseline, and the injectable rows were left untouched.
+// Migration 000058 re-baselines the six readonly agent default templates;
+// migration 000059 then rewrites the seeded CLI name nrflow → nrflo inside
+// those same readonly rows. These tests verify the post-000059 state.
 
-// expectedAgentLen holds the canonical byte length of each new readonly
-// agent template as documented in the ticket. The test allows a +/- 2 byte
-// tolerance to absorb trailing-newline / line-ending differences introduced
-// by SQL literal formatting.
+// expectedAgentLen holds the canonical byte length of each readonly agent
+// template after the nrflow → nrflo rewrite in migration 000059. The test
+// allows a +/- 2 byte tolerance to absorb trailing-newline / line-ending
+// differences introduced by SQL literal formatting.
 var expectedAgentLen = map[string]int{
-	"setup-analyzer": 712,
-	"test-writer":    1428,
-	"implementor":    1253,
-	"qa-verifier":    1899,
-	"doc-updater":    1717,
-	"ticket-creator": 1762,
+	"setup-analyzer": 707,
+	"test-writer":    1425,
+	"implementor":    1249,
+	"qa-verifier":    1895,
+	"doc-updater":    1716,
+	"ticket-creator": 1759,
 }
 
 // expectedInjectableLen pins the byte lengths of injectable rows that MUST
@@ -196,7 +195,8 @@ func TestMigration058_InjectablesUntouched(t *testing.T) {
 }
 
 // TestMigration058_UpdatedAtBumped verifies the six readonly agent rows have
-// updated_at set to the migration timestamp 2026-04-17T00:00:00Z.
+// updated_at set to the migration 000059 timestamp 2026-04-19T00:00:00Z
+// (000059 rewrites the same rows after 000058 seeded them).
 func TestMigration058_UpdatedAtBumped(t *testing.T) {
 	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
 	if err != nil {
@@ -204,7 +204,7 @@ func TestMigration058_UpdatedAtBumped(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	const want = "2026-04-17T00:00:00Z"
+	const want = "2026-04-19T00:00:00Z"
 	for id := range expectedAgentLen {
 		t.Run(id, func(t *testing.T) {
 			var updatedAt string

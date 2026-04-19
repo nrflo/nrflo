@@ -74,7 +74,7 @@
   },
   "storage": {
     "backend": "wfw",
-    "data_path": ".claude/nrflow/wfw.data"
+    "data_path": ".claude/nrflo/wfw.data"
   },
   "timeouts": {
     "default_agent_minutes": 25

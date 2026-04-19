@@ -31,8 +31,8 @@ Two syntax modes:
   2. Multiple findings: key:'value' pairs (use quotes for values with spaces)
 
 Examples:
-  nrflow findings add summary "Initial analysis complete"
-  nrflow findings add summary:'Done' status:'passed'`,
+  nrflo findings add summary "Initial analysis complete"
+  nrflo findings add summary:'Done' status:'passed'`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -138,16 +138,16 @@ Use -k/--key to filter specific keys (can be repeated).
 
 Examples:
   # Own session — all findings
-  nrflow findings get
+  nrflo findings get
 
   # Own session — specific key
-  nrflow findings get -k summary
+  nrflo findings get -k summary
 
   # Cross-agent — all findings from setup-analyzer
-  nrflow findings get setup-analyzer
+  nrflo findings get setup-analyzer
 
   # Cross-agent — specific key
-  nrflow findings get setup-analyzer summary`,
+  nrflo findings get setup-analyzer summary`,
 	Args: cobra.RangeArgs(0, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -207,8 +207,8 @@ Context is read from environment variables set by the spawner:
   NRF_WORKFLOW_INSTANCE_ID — workflow instance ID
 
 Examples:
-  nrflow findings append files:'src/main.go'
-  nrflow findings append files:'src/main.go' tests:'src/main_test.go'`,
+  nrflo findings append files:'src/main.go'
+  nrflo findings append files:'src/main.go' tests:'src/main_test.go'`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -284,8 +284,8 @@ Context is read from environment variables set by the spawner:
   NRF_WORKFLOW_INSTANCE_ID — workflow instance ID
 
 Examples:
-  nrflow findings delete summary
-  nrflow findings delete temp_notes draft_output`,
+  nrflo findings delete summary
+  nrflo findings delete temp_notes draft_output`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// writeConfigFile writes cfg JSON to $tmpHome/.nrflow/config.json.
+// writeConfigFile writes cfg JSON to $tmpHome/.nrflo/config.json.
 func writeConfigFile(t *testing.T, tmpHome string, content string) {
 	t.Helper()
 	dir := filepath.Join(tmpHome, DefaultConfigDir)

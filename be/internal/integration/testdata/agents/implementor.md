@@ -22,8 +22,8 @@ You are an implementation agent. Your job is to implement the ticket based on in
 
 1. **Read Context**
    ```bash
-   nrflow findings get setup-analyzer
-   nrflow findings get test-writer  # May be empty for simple/docs
+   nrflo findings get setup-analyzer
+   nrflo findings get test-writer  # May be empty for simple/docs
    ```
 
 2. **Understand Scope**
@@ -44,11 +44,11 @@ You are an implementation agent. Your job is to implement the ticket based on in
 
 5. **Store Findings**
    ```bash
-   nrflow findings add files_created '<json-array>'
-   nrflow findings add files_modified '<json-array>'
-   nrflow findings add build_result 'pass'
-   nrflow findings add test_result 'pass'
-   nrflow findings add summary '<summary>'
+   nrflo findings add files_created '<json-array>'
+   nrflo findings add files_modified '<json-array>'
+   nrflo findings add build_result 'pass'
+   nrflo findings add test_result 'pass'
+   nrflo findings add summary '<summary>'
    ```
 
 ## Findings Schema
@@ -79,12 +79,12 @@ The spawner will relaunch you with fresh context, preserving your findings and p
 1. Store ALL your progress as findings (files modified, current state, what's left to do)
 2. Add a `continuation_notes` finding with what the next session should do:
    ```bash
-   nrflow findings add continuation_notes 'Describe remaining work here'
+   nrflo findings add continuation_notes 'Describe remaining work here'
    ```
 
 **To request continuation:**
 ```bash
-nrflow agent continue
+nrflo agent continue
 ```
 
 ---
@@ -97,12 +97,12 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (build fails, tests fail, blocked):
 ```bash
-nrflow agent fail --reason="<explanation>"
+nrflo agent fail --reason="<explanation>"
 ```
 
 If running out of context but task is not done:
 ```bash
-nrflow agent continue
+nrflo agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**

@@ -4,7 +4,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 
 ## Server Architecture
 
-`nrflow_server serve` provides:
+`nrflo_server serve` provides:
 - **HTTP API** on port 6587 — web UI, REST API, WebSocket
 - **CORS** disabled by default (same-origin serving); configurable via `cors_origins` in config file. `X-Request-ID` is exposed and allowed via CORS headers
 - **Request ID** middleware generates a trx (`logger.NewTrx()`) per HTTP request, injects it into context via `logger.WithTrx()`, and sets `X-Request-ID` response header

@@ -1,6 +1,6 @@
 version: 2
 
-project_name: nrflow
+project_name: nrflo
 
 before:
   hooks:
@@ -11,10 +11,10 @@ before:
     - cp agent_manual.md be/internal/static/agent_manual.md
 
 builds:
-  - id: nrflow
-    binary: nrflow
+  - id: nrflo
+    binary: nrflo
     dir: be
-    main: ./cmd/nrflow
+    main: ./cmd/nrflo
     env:
       - CGO_ENABLED=0
     ldflags:
@@ -25,8 +25,8 @@ builds:
       - amd64
       - arm64
 
-  - id: nrflow_server
-    binary: nrflow_server
+  - id: nrflo_server
+    binary: nrflo_server
     dir: be
     main: ./cmd/server
     tags:
@@ -52,9 +52,9 @@ builds:
 archives:
   - id: default
     ids:
-      - nrflow
-      - nrflow_server
-    name_template: "nrflow_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+      - nrflo
+      - nrflo_server
+    name_template: "nrflo_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt
@@ -69,28 +69,28 @@ changelog:
 
 release:
   github:
-    owner: nrflow
-    name: nrflow
+    owner: nrflo
+    name: nrflo
 
 homebrew_casks:
-  - name: nrflow
+  - name: nrflo
     ids:
       - default
     binaries:
-      - nrflow
-      - nrflow_server
+      - nrflo
+      - nrflo_server
     repository:
-      owner: nrflow
+      owner: nrflo
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-    homepage: https://github.com/nrflow/nrflow
+    homepage: https://github.com/nrflo/nrflo
     description: Multi-workflow agent orchestration system
     hooks:
       post:
         install: |
           system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}"]
     caveats: |
-      Database is stored at ~/.nrflow/nrflow.data by default.
-      Override with NRFLOW_HOME environment variable.
+      Database is stored at ~/.nrflo/nrflo.data by default.
+      Override with NRFLO_HOME environment variable.
 
-      To start the server: nrflow_server serve
+      To start the server: nrflo_server serve

@@ -211,7 +211,7 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
    - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
      actionable message count <= 3 (queried via CountBySessionActionable, excludes [init] and [thinking] prefixes),
-     session has no findings at all (any finding = agent did real work; agents with no work signal via `nrflow findings add no-op:no-op`)
+     session has no findings at all (any finding = agent did real work; agents with no work signal via `nrflo findings add no-op:no-op`)
    - If stallRestartCount >= maxStallRestarts (15): marks session as failed with reason
      stall_budget_exhausted (instead of letting false pass through)
    - On match (budget available): override session result=continue reason=instant_stall, status=continued,
@@ -290,11 +290,11 @@ Agent definitions store model, timeout, and prompt template per agent type per w
 
 ## Agent Environment Variables
 
-The spawner sets these env vars on every spawned agent process. Child processes (e.g., `nrflow` CLI calls) inherit them.
+The spawner sets these env vars on every spawned agent process. Child processes (e.g., `nrflo` CLI calls) inherit them.
 
 | Variable | Purpose |
 |----------|---------|
-| `NRFLOW_PROJECT` | Project ID |
+| `NRFLO_PROJECT` | Project ID |
 | `NRF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID — used by CLI to target the correct instance directly (required for findings/agent commands) |
 | `NRF_SESSION_ID` | Agent session UUID — used by CLI to target the correct session directly (required for findings/agent commands) |
 | `NRF_SPAWNED` | Set to `1` to indicate agent was spawned by the orchestrator |

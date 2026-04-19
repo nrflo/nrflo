@@ -37,7 +37,7 @@ func TestBuildV4State_IncludesWorktreeFields(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "WK041-1", "test")
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, env.Clock)
-	if err := wfiRepo.UpdateWorktree(wfiID, "/tmp/nrflow/worktrees/WK041-1", "WK041-1"); err != nil {
+	if err := wfiRepo.UpdateWorktree(wfiID, "/tmp/nrflo/worktrees/WK041-1", "WK041-1"); err != nil {
 		t.Fatalf("UpdateWorktree: %v", err)
 	}
 
@@ -57,8 +57,8 @@ func TestBuildV4State_IncludesWorktreeFields(t *testing.T) {
 	wtp, ok := result["worktree_path"].(string)
 	if !ok {
 		t.Errorf("worktree_path missing or not a string in response: %v", result["worktree_path"])
-	} else if wtp != "/tmp/nrflow/worktrees/WK041-1" {
-		t.Errorf("worktree_path = %q, want /tmp/nrflow/worktrees/WK041-1", wtp)
+	} else if wtp != "/tmp/nrflo/worktrees/WK041-1" {
+		t.Errorf("worktree_path = %q, want /tmp/nrflo/worktrees/WK041-1", wtp)
 	}
 
 	bn, ok := result["branch_name"].(string)
@@ -108,7 +108,7 @@ func TestWorktreeFieldsPersistAcrossReads(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "WK041-3", "test")
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, env.Clock)
-	if err := wfiRepo.UpdateWorktree(wfiID, "/tmp/nrflow/worktrees/WK041-3", "WK041-3"); err != nil {
+	if err := wfiRepo.UpdateWorktree(wfiID, "/tmp/nrflo/worktrees/WK041-3", "WK041-3"); err != nil {
 		t.Fatalf("UpdateWorktree: %v", err)
 	}
 
@@ -123,8 +123,8 @@ func TestWorktreeFieldsPersistAcrossReads(t *testing.T) {
 		var result map[string]interface{}
 		json.Unmarshal(data, &result)
 
-		if result["worktree_path"] != "/tmp/nrflow/worktrees/WK041-3" {
-			t.Errorf("read %d: worktree_path = %v, want /tmp/nrflow/worktrees/WK041-3", i, result["worktree_path"])
+		if result["worktree_path"] != "/tmp/nrflo/worktrees/WK041-3" {
+			t.Errorf("read %d: worktree_path = %v, want /tmp/nrflo/worktrees/WK041-3", i, result["worktree_path"])
 		}
 		if result["branch_name"] != "WK041-3" {
 			t.Errorf("read %d: branch_name = %v, want WK041-3", i, result["branch_name"])
@@ -159,7 +159,7 @@ func TestWorktreeFieldsMarshalJSON(t *testing.T) {
 	}
 
 	// After UpdateWorktree: fields should be present in JSON.
-	if err := wfiRepo.UpdateWorktree(wfiID, "/tmp/nrflow/worktrees/WK041-4", "WK041-4"); err != nil {
+	if err := wfiRepo.UpdateWorktree(wfiID, "/tmp/nrflo/worktrees/WK041-4", "WK041-4"); err != nil {
 		t.Fatalf("UpdateWorktree: %v", err)
 	}
 	wi2, err := wfiRepo.Get(wfiID)
@@ -169,8 +169,8 @@ func TestWorktreeFieldsMarshalJSON(t *testing.T) {
 	data2, _ := json.Marshal(wi2)
 	var after map[string]interface{}
 	json.Unmarshal(data2, &after)
-	if after["worktree_path"] != "/tmp/nrflow/worktrees/WK041-4" {
-		t.Errorf("worktree_path in JSON = %v, want /tmp/nrflow/worktrees/WK041-4", after["worktree_path"])
+	if after["worktree_path"] != "/tmp/nrflo/worktrees/WK041-4" {
+		t.Errorf("worktree_path in JSON = %v, want /tmp/nrflo/worktrees/WK041-4", after["worktree_path"])
 	}
 	if after["branch_name"] != "WK041-4" {
 		t.Errorf("branch_name in JSON = %v, want WK041-4", after["branch_name"])

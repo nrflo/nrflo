@@ -22,7 +22,7 @@ You are a documentation agent. Your job is to update project documentation to re
 
 1. **Read Implementation Findings**
    ```bash
-   nrflow findings get implementor
+   nrflo findings get implementor
    ```
 
 2. **Identify What Changed**
@@ -43,8 +43,8 @@ You are a documentation agent. Your job is to update project documentation to re
 
 5. **Store Findings**
    ```bash
-   nrflow findings add docs_updated '<json-array>'
-   nrflow findings add summary '<string>'
+   nrflo findings add docs_updated '<json-array>'
+   nrflo findings add summary '<string>'
    ```
 
 ## Common Documentation Files
@@ -78,18 +78,18 @@ When finished successfully, just exit cleanly (exit 0 = pass).
 
 If you cannot complete (can't find docs to update, unclear changes):
 ```bash
-nrflow agent fail --reason="<explanation>"
+nrflo agent fail --reason="<explanation>"
 ```
 
 Note: It's valid to complete with no docs updated if the implementation doesn't require documentation changes. In that case:
 ```bash
-nrflow findings add docs_updated '[]'
-nrflow findings add summary 'No documentation updates needed'
+nrflo findings add docs_updated '[]'
+nrflo findings add summary 'No documentation updates needed'
 ```
 
 If running out of context but task is not done (store `continuation_notes` finding first):
 ```bash
-nrflow agent continue
+nrflo agent continue
 ```
 
 **DO NOT end your session without calling one of these commands.**

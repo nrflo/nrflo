@@ -78,7 +78,7 @@ const defaultProps = {
   onShowRunDialog: vi.fn(),
 }
 
-describe('WorkflowTabContent - Panel Integration (nrflow-28182f)', () => {
+describe('WorkflowTabContent - Panel Integration (nrflo-28182f)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

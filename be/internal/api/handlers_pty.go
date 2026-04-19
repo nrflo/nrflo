@@ -186,7 +186,7 @@ func (s *Server) completePtyInteractive(session *model.AgentSession, workflowNam
 
 // buildPtyEnv constructs the environment for the PTY process.
 // Uses the full server env (matching the normal spawner) to avoid missing vars
-// that Claude needs to start, plus nrflow-specific vars and TERM override.
+// that Claude needs to start, plus nrflo-specific vars and TERM override.
 func buildPtyEnv(session *model.AgentSession, project *model.Project) []string {
 	// Start with full server env, filtering out CLAUDECODE
 	env := filterEnv(os.Environ(), "CLAUDECODE")
@@ -194,8 +194,8 @@ func buildPtyEnv(session *model.AgentSession, project *model.Project) []string {
 	// Ensure TERM is set for PTY
 	env = setEnv(env, "TERM", "xterm-256color")
 
-	// Set nrflow-specific vars (use setEnv to avoid duplicates).
-	env = setEnv(env, "NRFLOW_PROJECT", session.ProjectID)
+	// Set nrflo-specific vars (use setEnv to avoid duplicates).
+	env = setEnv(env, "NRFLO_PROJECT", session.ProjectID)
 	env = setEnv(env, "NRF_WORKFLOW_INSTANCE_ID", session.WorkflowInstanceID)
 	env = setEnv(env, "NRF_SESSION_ID", session.ID)
 

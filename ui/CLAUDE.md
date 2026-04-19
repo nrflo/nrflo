@@ -1,8 +1,8 @@
-# Claude Code Instructions for nrflow UI
+# Claude Code Instructions for nrflo UI
 
 ## Overview
 
-This is the web UI for the nrflow ticket management system. It's a React + TypeScript application that communicates with the `nrflow_server serve` API.
+This is the web UI for the nrflo ticket management system. It's a React + TypeScript application that communicates with the `nrflo_server serve` API.
 
 ## Key Directories
 
@@ -207,18 +207,18 @@ The full test suite (`vitest run`) must complete in **≤30 seconds wall time**.
 
 ## Important Notes
 
-- The backend (`nrflow_server serve`) must be running for the UI to work
+- The backend (`nrflo_server serve`) must be running for the UI to work
 - Default port is 6587 (single-process serves API + embedded UI); port 5175 is used only for `npm run dev` hot-reload during development
 - Projects are loaded from `/api/v1/projects` endpoint
 - Multi-project support uses `X-Project` header
-- Database is at `~/.nrflow/nrflow.data` (global; override with `NRFLOW_HOME`)
+- Database is at `~/.nrflo/nrflo.data` (global; override with `NRFLO_HOME`)
 
 ## Starting Servers
 
 The server binary embeds the UI and serves everything on a single port (default 6587).
 
 ```bash
-nrflow_server serve              # Start server (port 6587, serves API + embedded UI)
+nrflo_server serve              # Start server (port 6587, serves API + embedded UI)
 cd ui && npm run dev             # Optional: Vite dev server with hot-reload (port 5175)
 ```
 

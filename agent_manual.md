@@ -2,7 +2,7 @@
 
 > Last updated: 2026-03-31
 
-Guide for creating and managing agent definitions in the nrflow web UI. Agent definitions configure how AI agents behave within workflows — their prompts, models, timeouts, and restart behavior.
+Guide for creating and managing agent definitions in the nrflo web UI. Agent definitions configure how AI agents behave within workflows — their prompts, models, timeouts, and restart behavior.
 
 Agent definitions are created and edited on the **Workflows** page: expand a workflow card, then use the **Add Agent** button or the edit icon on an existing agent.
 
@@ -128,16 +128,16 @@ Spawned agents report results via CLI. **Exiting with code 0 is an implicit pass
 
 ```bash
 # Mark agent as failed
-nrflow agent fail [--reason <text>]
+nrflo agent fail [--reason <text>]
 
 # Signal context exhaustion — triggers relaunch with fresh context
-nrflow agent continue
+nrflo agent continue
 
 # Callback to re-run an earlier layer
-nrflow agent callback --level <N>
+nrflo agent callback --level <N>
 
 # Skip a workflow group tag
-nrflow skip <tag>
+nrflo skip <tag>
 ```
 
 | Command | When to use |
@@ -157,47 +157,47 @@ nrflow skip <tag>
 
 ```bash
 # Add single finding (own session)
-nrflow findings add <key> <value>
+nrflo findings add <key> <value>
 
 # Add multiple findings (batch syntax)
-nrflow findings add key1:val1 key2:val2
+nrflo findings add key1:val1 key2:val2
 
 # Append to existing finding (creates array if needed)
-nrflow findings append <key> <value>
-nrflow findings append key1:val1 key2:val2
+nrflo findings append <key> <value>
+nrflo findings append key1:val1 key2:val2
 
 # Get own findings
-nrflow findings get                      # all own findings
-nrflow findings get <key>               # single key (positional)
-nrflow findings get -k key1 -k key2    # multiple keys
+nrflo findings get                      # all own findings
+nrflo findings get <key>               # single key (positional)
+nrflo findings get -k key1 -k key2    # multiple keys
 
 # Get another agent's findings (cross-agent read)
-nrflow findings get <agent-type>             # all findings for agent
-nrflow findings get <agent-type> <key>      # single key
-nrflow findings get <agent-type> -k key1    # multiple keys
+nrflo findings get <agent-type>             # all findings for agent
+nrflo findings get <agent-type> <key>      # single key
+nrflo findings get <agent-type> -k key1    # multiple keys
 
 # Delete findings
-nrflow findings delete <key1> [key2...]
+nrflo findings delete <key1> [key2...]
 ```
 
 ### Project-Level Findings
 
 ```bash
 # Add
-nrflow findings project-add <key> <value>
-nrflow findings project-add key1:val1 key2:val2
+nrflo findings project-add <key> <value>
+nrflo findings project-add key1:val1 key2:val2
 
 # Get
-nrflow findings project-get                    # all project findings
-nrflow findings project-get <key>              # single key
-nrflow findings project-get -k key1 -k key2    # multiple keys
+nrflo findings project-get                    # all project findings
+nrflo findings project-get <key>              # single key
+nrflo findings project-get -k key1 -k key2    # multiple keys
 
 # Append
-nrflow findings project-append <key> <value>
-nrflow findings project-append key1:val1 key2:val2
+nrflo findings project-append <key> <value>
+nrflo findings project-append key1:val1 key2:val2
 
 # Delete
-nrflow findings project-delete <key1> [key2...]
+nrflo findings project-delete <key1> [key2...]
 ```
 
 ### Batch Syntax
@@ -205,7 +205,7 @@ nrflow findings project-delete <key1> [key2...]
 Both `add` and `append` support `key:value` pairs. The first colon separates the key from the value:
 
 ```bash
-nrflow findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
+nrflo findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
 ```
 
 ---
@@ -217,7 +217,7 @@ Any agent can write a `workflow_final_result` finding to surface a human-readabl
 ### How to Set It
 
 ```bash
-nrflow findings add workflow_final_result:"Implementation complete: added auth middleware with JWT validation"
+nrflo findings add workflow_final_result:"Implementation complete: added auth middleware with JWT validation"
 ```
 
 ### Behavior
@@ -302,7 +302,7 @@ produces the phase order: setup-analyzer -> test-writer -> implementor -> qa-ver
 
 ### Workflow Groups (Skip Tags)
 
-Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs"]`). Agents can be assigned a `tag` from the workflow's groups. During execution, an agent can call `nrflow skip <tag>` to add a tag to the instance's skip list. The orchestrator checks skip tags before each layer to skip agents whose tag is in the list.
+Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs"]`). Agents can be assigned a `tag` from the workflow's groups. During execution, an agent can call `nrflo skip <tag>` to add a tag to the instance's skip list. The orchestrator checks skip tags before each layer to skip agents whose tag is in the list.
 
 ### Scope Types
 
@@ -324,11 +324,11 @@ Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an ear
 1. Verifier agent detects an issue
 2. Verifier saves callback instructions as a finding:
    ```bash
-   nrflow findings add callback_instructions:"Fix the auth bug in middleware/auth.go"
+   nrflo findings add callback_instructions:"Fix the auth bug in middleware/auth.go"
    ```
 3. Verifier triggers callback:
    ```bash
-   nrflow agent callback --level 2
+   nrflo agent callback --level 2
    ```
 4. The system resets phases/sessions from the target layer forward
 5. Target agent (implementor at layer 2) re-runs with `${CALLBACK_INSTRUCTIONS}` expanded
@@ -349,7 +349,7 @@ When an agent's remaining context drops below the threshold, the system automati
 
 1. System detects context usage exceeds threshold (default: 75% used, i.e., 25% remaining)
 2. Kills the running agent and resumes the session with instructions to save progress to the `to_resume` finding
-3. Agent calls `nrflow agent continue` after saving
+3. Agent calls `nrflo agent continue` after saving
 4. System launches a fresh agent with `${PREVIOUS_DATA}` populated from the `to_resume` finding
 
 ### Configuration
@@ -428,7 +428,7 @@ Analyze the ticket and codebase. Store your findings:
 - `implementation_plan` — Step-by-step plan
 
 When done, save your findings and exit cleanly (exit 0 = pass):
-nrflow findings add summary:'...' files_to_modify:'[...]' implementation_plan:'...'
+nrflo findings add summary:'...' files_to_modify:'[...]' implementation_plan:'...'
 ```
 
 ### Example 2: Implementor with Findings Injection and Callbacks
@@ -447,45 +447,45 @@ Implement changes for ticket ${TICKET_ID} in the ${WORKFLOW} workflow.
 Implement the changes described in the analysis. Follow the test specifications.
 
 When done, save your findings and exit cleanly (exit 0 = pass):
-nrflow findings add be_changes_summary:'...' be_files_changed:'[...]'
+nrflo findings add be_changes_summary:'...' be_files_changed:'[...]'
 
 If blocked, fail with a reason:
-nrflow agent fail --reason "..."
+nrflo agent fail --reason "..."
 ```
 
 ---
 
 ## 13. Ticket Management CLI Commands
 
-Use the `nrflow tickets` CLI — **never use `curl` or direct HTTP API calls**.
-Requires `NRFLOW_PROJECT` env var (already set in spawned sessions).
+Use the `nrflo tickets` CLI — **never use `curl` or direct HTTP API calls**.
+Requires `NRFLO_PROJECT` env var (already set in spawned sessions).
 
 ```bash
 # List tickets
-nrflow tickets list
-nrflow tickets list --status open --type task --parent EPIC-1
+nrflo tickets list
+nrflo tickets list --status open --type task --parent EPIC-1
 
 # Get a ticket
-nrflow tickets get TICKET-1
+nrflo tickets get TICKET-1
 
 # Create a ticket
-nrflow tickets create --title "My task" [--id MY-ID] [--description "..."] \
+nrflo tickets create --title "My task" [--id MY-ID] [--description "..."] \
   [--type task|bug|epic|story] [--priority 1-4] [--parent PARENT-ID]
 
 # Update ticket fields (only specified flags are changed)
-nrflow tickets update TICKET-1 --title "New title"
-nrflow tickets update TICKET-1 --parent EPIC-1       # set parent
-nrflow tickets update TICKET-1 --parent ""           # clear parent
-nrflow tickets update TICKET-1 --priority 2 --type bug
+nrflo tickets update TICKET-1 --title "New title"
+nrflo tickets update TICKET-1 --parent EPIC-1       # set parent
+nrflo tickets update TICKET-1 --parent ""           # clear parent
+nrflo tickets update TICKET-1 --priority 2 --type bug
 
 # Close / reopen
-nrflow tickets close TICKET-1 [--reason "Done"]
-nrflow tickets reopen TICKET-1
+nrflo tickets close TICKET-1 [--reason "Done"]
+nrflo tickets reopen TICKET-1
 
 # Dependency management
-nrflow deps list TICKET-1
-nrflow deps add TICKET-1 BLOCKER-1      # TICKET-1 is blocked by BLOCKER-1
-nrflow deps remove TICKET-1 BLOCKER-1
+nrflo deps list TICKET-1
+nrflo deps add TICKET-1 BLOCKER-1      # TICKET-1 is blocked by BLOCKER-1
+nrflo deps remove TICKET-1 BLOCKER-1
 ```
 
 ---

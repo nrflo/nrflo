@@ -1,6 +1,6 @@
 # Pages
 
-Route page components for the nrflow web UI. Uses React Router v6 for routing. This directory contains 59 files including page components and co-located tests.
+Route page components for the nrflo web UI. Uses React Router v6 for routing. This directory contains 59 files including page components and co-located tests.
 
 ## Routes
 

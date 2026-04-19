@@ -31,11 +31,11 @@ func seedConflictResolver(t *testing.T, env *testEnv) {
 	}
 }
 
-// ensureSpawnerTempDir creates /tmp/nrflow so the spawner can write temp files.
+// ensureSpawnerTempDir creates /tmp/nrflo so the spawner can write temp files.
 func ensureSpawnerTempDir(t *testing.T) {
 	t.Helper()
-	if err := os.MkdirAll("/tmp/nrflow", 0o755); err != nil {
-		t.Fatalf("failed to create /tmp/nrflow: %v", err)
+	if err := os.MkdirAll("/tmp/nrflo", 0o755); err != nil {
+		t.Fatalf("failed to create /tmp/nrflo: %v", err)
 	}
 }
 

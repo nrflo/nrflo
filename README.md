@@ -1,10 +1,10 @@
-# nrflow
+# nrflo
 
 A self-hosted control plane for AI engineering workflows.
 
-nrflow orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
+nrflo orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
 
-## Why nrflow
+## Why nrflo
 
 - **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
 - **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
@@ -42,11 +42,11 @@ nrflow orchestrates coding agents across layered workflows, isolated git worktre
 ## How It Works
 
 1. Pick a ticket-scoped or project-scoped workflow from the web UI.
-2. nrflow starts agents by layer, running same-layer agents concurrently.
+2. nrflo starts agents by layer, running same-layer agents concurrently.
 3. Agents write findings that downstream agents can consume in their prompts.
 4. If a verifier finds a problem, it can callback an earlier layer and re-run the workflow from that point.
 5. If automation gets stuck or needs direction, you can switch to interactive control in the browser.
-6. On success, nrflow merges worktree changes, can invoke a conflict resolver, and reports the final workflow result.
+6. On success, nrflo merges worktree changes, can invoke a conflict resolver, and reports the final workflow result.
 
 ## Tech Stack
 
@@ -54,23 +54,23 @@ nrflow orchestrates coding agents across layered workflows, isolated git worktre
 |-------|-------------|
 | **Backend** | Go 1.25, Cobra CLI, SQLite (modernc.org/sqlite), gorilla/websocket, golang-migrate, creack/pty |
 | **Frontend** | React 19, TypeScript 5.9, TanStack Query, Zustand, Tailwind CSS v4, xterm.js, React Flow, CodeMirror 6, Zod |
-| **Database** | SQLite (`~/.nrflow/nrflow.data`), auto-migrating schema |
+| **Database** | SQLite (`~/.nrflo/nrflo.data`), auto-migrating schema |
 
 ## Quick Start
 
-The fastest way to try nrflow on macOS is via Homebrew.
+The fastest way to try nrflo on macOS is via Homebrew.
 
 ### Install via Homebrew (macOS)
 
 ```bash
-brew tap nrflow/tap
-brew install nrflow
+brew tap nrflo/tap
+brew install nrflo
 ```
 
 To upgrade:
 
 ```bash
-brew update && brew upgrade nrflow
+brew update && brew upgrade nrflo
 ```
 
 ### Build from source
@@ -82,46 +82,46 @@ make build && make install
 ### Run
 
 ```bash
-nrflow_server serve
+nrflo_server serve
 # Open http://localhost:6587
 ```
 
 To make the server accessible on the local network:
 
 ```bash
-nrflow_server serve --host 0.0.0.0
+nrflo_server serve --host 0.0.0.0
 ```
 
 ## CLI Overview
 
-nrflow ships two binaries:
+nrflo ships two binaries:
 
 | Binary | Purpose |
 |--------|---------|
-| `nrflow_server` | HTTP API + WebSocket + Unix socket server |
-| `nrflow` | Agent CLI (used by spawned agents) + ticket/dependency management |
+| `nrflo_server` | HTTP API + WebSocket + Unix socket server |
+| `nrflo` | Agent CLI (used by spawned agents) + ticket/dependency management |
 
 **Agent commands** (used by spawned agents via Unix socket):
 
 | Command | Description |
 |---------|-------------|
-| `nrflow agent fail` | Report agent failure |
-| `nrflow agent continue` | Signal continuation |
-| `nrflow agent callback --level N` | Trigger callback to re-run an earlier layer |
-| `nrflow findings add key:value` | Write findings to current session |
-| `nrflow findings append key:value` | Append to existing finding |
-| `nrflow findings get [agent-type] [key]` | Read own or cross-agent findings |
+| `nrflo agent fail` | Report agent failure |
+| `nrflo agent continue` | Signal continuation |
+| `nrflo agent callback --level N` | Trigger callback to re-run an earlier layer |
+| `nrflo findings add key:value` | Write findings to current session |
+| `nrflo findings append key:value` | Append to existing finding |
+| `nrflo findings get [agent-type] [key]` | Read own or cross-agent findings |
 
 **Ticket management** (requires running server):
 
 | Command | Description |
 |---------|-------------|
-| `nrflow tickets list` | List tickets (filterable by status, type, parent) |
-| `nrflow tickets create --title "..."` | Create a ticket |
-| `nrflow tickets update <id>` | Update ticket fields |
-| `nrflow tickets close <id>` | Close a ticket |
-| `nrflow deps add <ticket> <blocker>` | Add a dependency |
-| `nrflow deps remove <ticket> <blocker>` | Remove a dependency |
+| `nrflo tickets list` | List tickets (filterable by status, type, parent) |
+| `nrflo tickets create --title "..."` | Create a ticket |
+| `nrflo tickets update <id>` | Update ticket fields |
+| `nrflo tickets close <id>` | Close a ticket |
+| `nrflo deps add <ticket> <blocker>` | Add a dependency |
+| `nrflo deps remove <ticket> <blocker>` | Remove a dependency |
 
 See [agent_manual.md](agent_manual.md) for the full agent definition reference.
 
@@ -148,7 +148,7 @@ graph LR
     UI[Web UI] -->|HTTP / WebSocket| Server
     Server -->|Spawn| Agents[Agent Processes]
     Agents -->|Unix Socket| Server
-    Server -->|SQLite| DB[(~/.nrflow/nrflow.data)]
+    Server -->|SQLite| DB[(~/.nrflo/nrflo.data)]
 
     subgraph Server
         API[HTTP API]
@@ -179,19 +179,19 @@ The server runs everything in-process: the orchestrator groups phases by layer, 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NRFLOW_HOME` | `~/.nrflow` | Data directory (database, logs) |
-| `NRFLOW_PROJECT` | — | Project identifier (discovered from env) |
+| `NRFLO_HOME` | `~/.nrflo` | Data directory (database, logs) |
+| `NRFLO_PROJECT` | — | Project identifier (discovered from env) |
 
-Logs are written to `$NRFLOW_HOME/logs/be.log`.
+Logs are written to `$NRFLO_HOME/logs/be.log`.
 
 ## License
 
-nrflow is source-available, self-hostable, and production-usable internally.
+nrflo is source-available, self-hostable, and production-usable internally.
 
-nrflow is released under the Business Source License 1.1 (`BUSL-1.1`).
+nrflo is released under the Business Source License 1.1 (`BUSL-1.1`).
 
-You may use nrflow in production, including self-hosted internal/company
-deployments, but you may not offer nrflow to third parties as a hosted or
+You may use nrflo in production, including self-hosted internal/company
+deployments, but you may not offer nrflo to third parties as a hosted or
 managed service.
 
 Commercial licenses are available: anderfredx@gmail.com

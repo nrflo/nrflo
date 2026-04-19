@@ -14,22 +14,22 @@ var version = "1.0.0"
 // DataPath holds the custom data file path (from --data flag)
 var DataPath string
 
-// ProjectID holds the current project ID (from NRFLOW_PROJECT env or .claude/nrflow/config.json)
+// ProjectID holds the current project ID (from NRFLO_PROJECT env or .claude/nrflo/config.json)
 var ProjectID string
 
-// ProjectRoot holds the root directory of the project (where .claude/nrflow/config.json was found)
+// ProjectRoot holds the root directory of the project (where .claude/nrflo/config.json was found)
 var ProjectRoot string
 
 var rootCmd = &cobra.Command{
-	Use:   "nrflow",
-	Short: "nrflow - Multi-workflow agent orchestration",
-	Long: `nrflow is the agent CLI for nrflow orchestration system.
+	Use:   "nrflo",
+	Short: "nrflo - Multi-workflow agent orchestration",
+	Long: `nrflo is the agent CLI for nrflo orchestration system.
 
 Agent commands (used by spawned agents):
-  nrflow agent fail/continue <ticket> <agent-type> -w <workflow>
-  nrflow findings add/append/get/delete ...`,
+  nrflo agent fail/continue <ticket> <agent-type> -w <workflow>
+  nrflo findings add/append/get/delete ...`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if envProject := os.Getenv("NRFLOW_PROJECT"); envProject != "" {
+		if envProject := os.Getenv("NRFLO_PROJECT"); envProject != "" {
 			ProjectID = envProject
 		}
 		return nil
@@ -45,7 +45,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Printf("nrflow version %s\n", version)
+		cmd.Printf("nrflo version %s\n", version)
 	},
 }
 
@@ -71,7 +71,7 @@ func CheckServer() error {
 // RequireProject is a helper that ensures ProjectID is set
 func RequireProject() error {
 	if ProjectID == "" {
-		return fmt.Errorf("project not found. Set NRFLOW_PROJECT env variable")
+		return fmt.Errorf("project not found. Set NRFLO_PROJECT env variable")
 	}
 	return nil
 }

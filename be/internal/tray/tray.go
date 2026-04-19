@@ -25,9 +25,9 @@ func Run(host string, port int, agentCount AgentCountFn, onServerStart func(), o
 	systray.Run(func() {
 		initialIcon := renderIcon()
 		systray.SetTemplateIcon(initialIcon, initialIcon)
-		systray.SetTooltip(fmt.Sprintf("nrflow server — %s:%d", host, port))
+		systray.SetTooltip(fmt.Sprintf("nrflo server — %s:%d", host, port))
 
-		mOpen := systray.AddMenuItem("Open nrflow", "Open web UI in browser")
+		mOpen := systray.AddMenuItem("Open nrflo", "Open web UI in browser")
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Stop server and quit")
 

@@ -15,7 +15,7 @@ You are an investigation agent. Your job is to analyze a ticket and gather all c
 
 1. **Read Ticket Details**
    ```bash
-   nrflow ticket show ${TICKET_ID}
+   nrflo ticket show ${TICKET_ID}
    ```
    - Extract acceptance criteria
    - Understand the scope and requirements
@@ -28,21 +28,21 @@ You are an investigation agent. Your job is to analyze a ticket and gather all c
 
 3. **Store Findings**
    ```bash
-   nrflow findings add summary '<summary>'
-   nrflow findings add acceptance_criteria '<json-array>'
-   nrflow findings add files_to_modify '<json-array>'
-   nrflow findings add patterns '<json-array>'
-   nrflow findings add existing_tests '<json-array>'
+   nrflo findings add summary '<summary>'
+   nrflo findings add acceptance_criteria '<json-array>'
+   nrflo findings add files_to_modify '<json-array>'
+   nrflo findings add patterns '<json-array>'
+   nrflo findings add existing_tests '<json-array>'
    ```
 
 4. **Signal Completion** (MANDATORY)
    Exit 0 = pass. If you cannot complete:
    ```bash
-   nrflow agent fail --reason="<explanation>"
+   nrflo agent fail --reason="<explanation>"
    ```
    If running out of context but task is not done (store `continuation_notes` finding first):
    ```bash
-   nrflow agent continue
+   nrflo agent continue
    ```
 
 ## Findings Schema

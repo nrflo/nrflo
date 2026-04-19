@@ -21,7 +21,7 @@ var (
 func getHTTPClient() *client.HTTPClient {
 	baseURL := ticketsServer
 	if baseURL == "" {
-		baseURL = os.Getenv("NRFLOW_API_URL")
+		baseURL = os.Getenv("NRFLO_API_URL")
 	}
 	if baseURL == "" {
 		baseURL = "http://localhost:6587"

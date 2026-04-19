@@ -469,7 +469,7 @@ describe('AgentLogDetail', () => {
     })
   })
 
-  describe('ticket nrflow-720aec: no auto-scroll on message updates', () => {
+  describe('ticket nrflo-720aec: no auto-scroll on message updates', () => {
     it('does NOT call scrollIntoView when component renders with messages', async () => {
       const scrollIntoViewMock = Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>
       scrollIntoViewMock.mockClear()
@@ -727,7 +727,7 @@ describe('AgentLogDetail', () => {
     })
   })
 
-  describe('ticket nrflow-d3a7c4: project-level agent messages with session_id fallback', () => {
+  describe('ticket nrflo-d3a7c4: project-level agent messages with session_id fallback', () => {
     it('fetches messages using agent.session_id when session object is undefined', async () => {
       const sessionId = 'fallback-session-id'
       vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({

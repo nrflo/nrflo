@@ -9,7 +9,7 @@ import (
 // TestRegisterServerCommands verifies that RegisterServerCommands registers only serve + version commands
 func TestRegisterServerCommands(t *testing.T) {
 	// Create a fresh root command to avoid init() pollution
-	testRootCmd := &cobra.Command{Use: "nrflow"}
+	testRootCmd := &cobra.Command{Use: "nrflo"}
 
 	// Re-add versionCmd manually (normally done in init())
 	testRootCmd.AddCommand(versionCmd)
@@ -23,11 +23,11 @@ func TestRegisterServerCommands(t *testing.T) {
 	RegisterServerCommands()
 
 	// Check root command metadata
-	if rootCmd.Use != "nrflow_server" {
-		t.Errorf("RegisterServerCommands: rootCmd.Use = %q, want 'nrflow_server'", rootCmd.Use)
+	if rootCmd.Use != "nrflo_server" {
+		t.Errorf("RegisterServerCommands: rootCmd.Use = %q, want 'nrflo_server'", rootCmd.Use)
 	}
-	if rootCmd.Short != "nrflow server" {
-		t.Errorf("RegisterServerCommands: rootCmd.Short = %q, want 'nrflow server'", rootCmd.Short)
+	if rootCmd.Short != "nrflo server" {
+		t.Errorf("RegisterServerCommands: rootCmd.Short = %q, want 'nrflo server'", rootCmd.Short)
 	}
 
 	// Get all registered commands
@@ -63,7 +63,7 @@ func TestRegisterServerCommands(t *testing.T) {
 // TestRegisterCLICommands verifies that RegisterCLICommands registers only client commands
 func TestRegisterCLICommands(t *testing.T) {
 	// Create a fresh root command to avoid init() pollution
-	testRootCmd := &cobra.Command{Use: "nrflow"}
+	testRootCmd := &cobra.Command{Use: "nrflo"}
 	// Re-add versionCmd (normally done in init())
 	testRootCmd.AddCommand(versionCmd)
 
@@ -76,11 +76,11 @@ func TestRegisterCLICommands(t *testing.T) {
 	RegisterCLICommands()
 
 	// Check root command metadata
-	if rootCmd.Use != "nrflow" {
-		t.Errorf("RegisterCLICommands: rootCmd.Use = %q, want 'nrflow'", rootCmd.Use)
+	if rootCmd.Use != "nrflo" {
+		t.Errorf("RegisterCLICommands: rootCmd.Use = %q, want 'nrflo'", rootCmd.Use)
 	}
-	if rootCmd.Short != "CLI tool for nrflow server" {
-		t.Errorf("RegisterCLICommands: rootCmd.Short = %q, want 'CLI tool for nrflow server'", rootCmd.Short)
+	if rootCmd.Short != "CLI tool for nrflo server" {
+		t.Errorf("RegisterCLICommands: rootCmd.Short = %q, want 'CLI tool for nrflo server'", rootCmd.Short)
 	}
 
 	// Get all registered commands
@@ -135,7 +135,7 @@ func TestRegisterCLICommands_TicketsFlags(t *testing.T) {
 // TestNoCommandLeakage verifies that commands don't leak between registration functions
 func TestNoCommandLeakage(t *testing.T) {
 	// Test 1: RegisterServerCommands alone
-	testRootCmd1 := &cobra.Command{Use: "nrflow"}
+	testRootCmd1 := &cobra.Command{Use: "nrflo"}
 	testRootCmd1.AddCommand(versionCmd)
 
 	originalRootCmd := rootCmd
@@ -150,7 +150,7 @@ func TestNoCommandLeakage(t *testing.T) {
 
 	// Test 2: Verify serve command does NOT leak to CLI registration
 	// We test this by checking that a fresh rootCmd with only CLI commands does not have serve
-	testRootCmd2 := &cobra.Command{Use: "nrflow"}
+	testRootCmd2 := &cobra.Command{Use: "nrflo"}
 	testRootCmd2.AddCommand(versionCmd)
 
 	// Manually add CLI commands without calling RegisterCLICommands (to avoid flag re-registration)
@@ -180,7 +180,7 @@ func TestVersionCommandNotDuplicated(t *testing.T) {
 	// Instead, we verify that versionCmd is only added once by manually constructing a scenario.
 
 	// Create a fresh root command
-	testRootCmd := &cobra.Command{Use: "nrflow"}
+	testRootCmd := &cobra.Command{Use: "nrflo"}
 	testRootCmd.AddCommand(versionCmd)
 
 	// Temporarily replace rootCmd
@@ -292,21 +292,21 @@ func TestRootCommandMetadata(t *testing.T) {
 	originalRootCmd := rootCmd
 
 	// Test server registration
-	testRootCmd1 := &cobra.Command{Use: "nrflow"}
+	testRootCmd1 := &cobra.Command{Use: "nrflo"}
 	rootCmd = testRootCmd1
 	RegisterServerCommands()
-	if rootCmd.Use != "nrflow_server" {
-		t.Errorf("After RegisterServerCommands: Use = %q, want 'nrflow_server'", rootCmd.Use)
+	if rootCmd.Use != "nrflo_server" {
+		t.Errorf("After RegisterServerCommands: Use = %q, want 'nrflo_server'", rootCmd.Use)
 	}
-	if rootCmd.Short != "nrflow server" {
-		t.Errorf("After RegisterServerCommands: Short = %q, want 'nrflow server'", rootCmd.Short)
+	if rootCmd.Short != "nrflo server" {
+		t.Errorf("After RegisterServerCommands: Short = %q, want 'nrflo server'", rootCmd.Short)
 	}
 
 	// Test CLI registration metadata only (skip RegisterCLICommands to avoid flag panic)
 	// The metadata change is done in RegisterCLICommands, which has already been tested in TestRegisterCLICommands
 	// We verify the expected metadata values that RegisterCLICommands should set:
-	expectedUse := "nrflow"
-	expectedShort := "CLI tool for nrflow server"
+	expectedUse := "nrflo"
+	expectedShort := "CLI tool for nrflo server"
 
 	t.Logf("RegisterCLICommands sets Use=%q and Short=%q (verified in TestRegisterCLICommands)", expectedUse, expectedShort)
 

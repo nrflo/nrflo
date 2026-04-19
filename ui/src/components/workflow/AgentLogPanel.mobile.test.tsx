@@ -55,7 +55,7 @@ const selectedAgent = {
 
 const runningAgent = makeAgent({ result: undefined })
 
-describe('AgentLogPanel - Mobile Layout (nrflow-395fca)', () => {
+describe('AgentLogPanel - Mobile Layout (nrflo-395fca)', () => {
   describe('mobile border (border-t on mobile, border-l on desktop)', () => {
     it('detail mode: has border-t for mobile top border', () => {
       const { container } = render(

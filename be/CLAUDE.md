@@ -1,12 +1,12 @@
-# Claude Code Instructions for nrflow Backend
+# Claude Code Instructions for nrflo Backend
 
-Go backend for nrflow. Two binaries: `nrflow_server` (server) and `nrflow` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
+Go backend for nrflo. Two binaries: `nrflo_server` (server) and `nrflo` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
 
 ## Project Structure
 
 ```
 be/
-├── cmd/nrflow/main.go       # CLI binary entry point (agent, findings, tickets, deps)
+├── cmd/nrflo/main.go       # CLI binary entry point (agent, findings, tickets, deps)
 ├── cmd/server/main.go           # Server binary entry point (serve)
 ├── internal/
 │   ├── cli/                     # Cobra commands
@@ -177,9 +177,9 @@ Keep source files under 300 lines. If a newly created or modified file exceeds 3
 All build targets are in the **root** `Makefile` (not `be/`):
 
 ```bash
-cd ~/projects/2026/nrflow
+cd ~/projects/2026/nrflo
 make build                # Build both binaries (CLI + server, includes UI)
-make build-cli            # Build CLI binary (nrflow)
+make build-cli            # Build CLI binary (nrflo)
 make build-server         # Build server binary with embedded UI
 make build-server-only    # Go-only rebuild (skip UI build)
 make build-ui             # Build UI and copy dist to embed directory
@@ -193,9 +193,9 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 ## Server Architecture
 
-`nrflow_server serve` provides:
+`nrflo_server serve` provides:
 - **HTTP API** on `127.0.0.1:6587` by default — web UI, REST API, WebSocket. Use `--host 0.0.0.0` for LAN access
-- **Unix socket** at `/tmp/nrflow/nrflow.sock` — agent communication only (findings, agent completion, ws.broadcast)
+- **Unix socket** at `/tmp/nrflo/nrflo.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **Auto-migration** — database schema is automatically migrated on startup
 
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.

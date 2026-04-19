@@ -1,10 +1,10 @@
-# Claude Code Instructions for nrflow
+# Claude Code Instructions for nrflo
 
 ## Overview
 
-nrflow is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents. Supports multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), and real-time WebSocket updates.
+nrflo is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents. Supports multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), and real-time WebSocket updates.
 
-The server runs as `nrflow_server serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use the `nrflow` CLI binary (`agent fail/continue`, `findings add/append/get/delete`) to report results.
+The server runs as `nrflo_server serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use the `nrflo` CLI binary (`agent fail/continue`, `findings add/append/get/delete`) to report results.
 
 ## New features
 Do not keep old / deprecated / backward compat / legacy code
@@ -115,12 +115,12 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 ## Architecture Principles
 
-1. **Server-only**: `nrflow_server serve` is the only user-facing command; all management via web UI
+1. **Server-only**: `nrflo_server serve` is the only user-facing command; all management via web UI
 2. **Agent CLI subset**: Spawned agents use `agent fail/continue`, `findings add/append/get/delete`, and `project_findings add/add-bulk/get/append/append-bulk/delete` via Unix socket
 3. **Auto-migrate**: Database migrations run automatically on server startup
-4. **Two Go binaries**: `nrflow_server` (serve command only) and `nrflow` (agent/findings/tickets/deps CLI)
-5. **Project-scoped**: Project discovered from `NRFLOW_PROJECT` env variable
-6. **Single database**: `~/.nrflow/nrflow.data` (SQLite, global for all projects; override with `NRFLOW_HOME`)
+4. **Two Go binaries**: `nrflo_server` (serve command only) and `nrflo` (agent/findings/tickets/deps CLI)
+5. **Project-scoped**: Project discovered from `NRFLO_PROJECT` env variable
+6. **Single database**: `~/.nrflo/nrflo.data` (SQLite, global for all projects; override with `NRFLO_HOME`)
 7. **Connection Pool**: DB uses connection pooling (10 max, 5 idle)
 8. **Versioned migrations**: Schema managed by golang-migrate with embedded SQL files in `db/migrations/`
 9. **Service Layer**: Business logic separated from HTTP handlers and socket handlers
@@ -138,7 +138,7 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 21. **Clock abstraction**: All DB timestamp generation uses a `clock.Clock` interface (`internal/clock/`). Production uses `clock.Real()` (wall clock). Tests use `clock.TestClock` with `Set()`/`Advance()` for deterministic time control, eliminating `time.Sleep` for timestamp ordering.
 22. **Take-control (interactive session)**: Users can take interactive control of a running Claude agent via `POST /api/v1/tickets/:id/workflow/take-control` (or `/api/v1/projects/:id/workflow/take-control`) with `{workflow, session_id}`. This kills the running agent, sets session status to `user_interactive`, and returns the session ID for `claude --resume`. The spawner blocks (does not advance to next phase) until `POST .../exit-interactive` with `{workflow, session_id}` is called, which marks the session `interactive_completed` with `result=pass` and unblocks the spawner. Only works for Claude CLI agents (`SupportsResume() == true`). For finished sessions (completed/failed/timeout), use `POST .../resume-session` with `{session_id}` instead — this sets the session to `user_interactive` directly without requiring a running orchestration, then reuses the same PTY handler and exit flow.
 23. **PTY WebSocket endpoint**: `GET /api/v1/pty/{session_id}` upgrades to a 1:1 WebSocket and spawns `claude --resume <session_id>` in a pseudo-terminal. Relays stdin/stdout bidirectionally between browser and PTY. Handles terminal resize via JSON `{"type":"resize","rows":N,"cols":N}` text messages. On process exit, triggers exit-interactive flow (status → `interactive_completed`, unblocks spawner). Separate from the broadcast WS at `/api/v1/ws`. Session must be in `user_interactive` status.
-24. **Stall detection and auto-restart**: The spawner monitors time since last agent message. If an agent produces no output within `stall_start_timeout_sec` (default 120s) or stops producing output for `stall_running_timeout_sec` (default 480s), it is killed and relaunched via the continuation mechanism after a 15s delay. No context save is attempted (agent is frozen). Stall restarts are capped at 15 per agent. Timeouts are configurable per agent_definition (NULL = defaults, 0 = disabled). `agent.stall_restart` and `agent.stall_waiting` WS events are broadcast. Additionally, **instant stall detection** catches Claude agents that exit with status 0 in under 1 minute with <=3 actionable messages (excluding `[init]` and `[thinking]` which are auto-generated) — these are overridden to continued/instant_stall and relaunched after a 15s delay, sharing the same stall restart budget. Agents that save any findings are not treated as instant stalls. Agents that deliberately have no work should run `nrflow findings add no-op:no-op` before exiting to suppress instant stall detection. Every agent prompt includes this instruction automatically. When the stall budget is exhausted and an instant stall is detected, the session is marked as failed (`stall_budget_exhausted`) instead of passing. `agent.instant_stall_restart` WS event is broadcast. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for details.
+24. **Stall detection and auto-restart**: The spawner monitors time since last agent message. If an agent produces no output within `stall_start_timeout_sec` (default 120s) or stops producing output for `stall_running_timeout_sec` (default 480s), it is killed and relaunched via the continuation mechanism after a 15s delay. No context save is attempted (agent is frozen). Stall restarts are capped at 15 per agent. Timeouts are configurable per agent_definition (NULL = defaults, 0 = disabled). `agent.stall_restart` and `agent.stall_waiting` WS events are broadcast. Additionally, **instant stall detection** catches Claude agents that exit with status 0 in under 1 minute with <=3 actionable messages (excluding `[init]` and `[thinking]` which are auto-generated) — these are overridden to continued/instant_stall and relaunched after a 15s delay, sharing the same stall restart budget. Agents that save any findings are not treated as instant stalls. Agents that deliberately have no work should run `nrflo findings add no-op:no-op` before exiting to suppress instant stall detection. Every agent prompt includes this instruction automatically. When the stall budget is exhausted and an instant stall is detected, the session is marked as failed (`stall_budget_exhausted`) instead of passing. `agent.instant_stall_restart` WS event is broadcast. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for details.
 25. **Interactive start & plan mode**: The workflow run API accepts optional `interactive` and `plan_mode` boolean flags. When `interactive: true`, the orchestrator spawns only the L0 agent in interactive mode and returns its `session_id` in `RunWorkflowResponse`. When `plan_mode: true`, a planner agent is spawned interactively. The web UI `RunWorkflowDialog` and `RunWorkflowForm` expose these as mutually exclusive checkboxes; on success the `onInteractiveStart` callback opens the PTY terminal via `AgentTerminalDialog`.
 26. **Spawner env vars for direct targeting**: The spawner sets `NRF_WORKFLOW_INSTANCE_ID` and `NRF_SESSION_ID` env vars on every spawned agent. The CLI reads these and passes them in all socket requests (`instance_id`, `session_id` fields). The service uses them directly — no ambiguous DB lookup by `(project, ticket, workflow)`. This is required; agents without these env vars cannot use findings or agent commands. See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for the full env var list.
 27. **System agent definitions**: Global agent definitions not tied to any project or workflow, stored in `system_agent_definitions` table. Managed via `/api/v1/system-agents` CRUD endpoints (no `X-Project` header required). Used for system-level agents like conflict-resolver.
@@ -151,13 +151,13 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 
 ## Quick Start
 
-Install via Homebrew: `brew tap nrflow/tap && brew install nrflow`. Upgrade: `brew update && brew upgrade nrflow`.
+Install via Homebrew: `brew tap nrflo/tap && brew install nrflo`. Upgrade: `brew update && brew upgrade nrflo`.
 
 Or build from source: `make build && make install`.
 
-Then `nrflow_server serve` and open `http://localhost:6587`.
+Then `nrflo_server serve` and open `http://localhost:6587`.
 
-By default the server binds to `127.0.0.1` (localhost only). To make it accessible on the local network: `nrflow_server serve --host 0.0.0.0`
+By default the server binds to `127.0.0.1` (localhost only). To make it accessible on the local network: `nrflo_server serve --host 0.0.0.0`
 
 ## Agent CLI Commands
 
@@ -165,30 +165,30 @@ Spawned agents use these commands to report results (via Unix socket to the serv
 
 ```bash
 # All context derived from NRF_SESSION_ID + NRF_WORKFLOW_INSTANCE_ID env vars (set by spawner)
-nrflow agent fail [--reason <text>]
-nrflow agent continue
-nrflow agent callback --level <N>
+nrflo agent fail [--reason <text>]
+nrflo agent continue
+nrflo agent callback --level <N>
 
-nrflow skip <tag>  # Add skip tag to running workflow instance (reads NRF_WORKFLOW_INSTANCE_ID from env)
+nrflo skip <tag>  # Add skip tag to running workflow instance (reads NRF_WORKFLOW_INSTANCE_ID from env)
 
 # Own-session findings (write to current agent's session)
-nrflow findings add <key> <value>
-nrflow findings add key1:val1 [key2:val2...]
-nrflow findings append <key> <value>
-nrflow findings append key1:val1 [key2:val2...]
-nrflow findings get [key] [-k <key>...]
-nrflow findings delete <key1> [key2...]
+nrflo findings add <key> <value>
+nrflo findings add key1:val1 [key2:val2...]
+nrflo findings append <key> <value>
+nrflo findings append key1:val1 [key2:val2...]
+nrflo findings get [key] [-k <key>...]
+nrflo findings delete <key1> [key2...]
 
 # Cross-agent read (provide target agent-type; uses NRF_WORKFLOW_INSTANCE_ID to scope)
-nrflow findings get <agent-type> [key] [-k <key>...]
+nrflo findings get <agent-type> [key] [-k <key>...]
 
-# Project-level findings (scoped to NRFLOW_PROJECT)
-nrflow findings project-add <key> <value>
-nrflow findings project-add key1:val1 [key2:val2...]
-nrflow findings project-get [key] [-k <key>...]
-nrflow findings project-append <key> <value>
-nrflow findings project-append key1:val1 [key2:val2...]
-nrflow findings project-delete <key1> [key2...]
+# Project-level findings (scoped to NRFLO_PROJECT)
+nrflo findings project-add <key> <value>
+nrflo findings project-add key1:val1 [key2:val2...]
+nrflo findings project-get [key] [-k <key>...]
+nrflo findings project-append <key> <value>
+nrflo findings project-append key1:val1 [key2:val2...]
+nrflo findings project-delete <key1> [key2...]
 ```
 
 ## Ticket CLI Commands
@@ -196,20 +196,20 @@ nrflow findings project-delete <key1> [key2...]
 Manage tickets and dependencies via the HTTP API (requires server running):
 
 ```bash
-nrflow tickets list [--status <status>] [--type <type>] [--parent <id>] [--json]
-nrflow tickets get <id> [--json]
-nrflow tickets create --title <title> [--id <id>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>] [--created-by <name>] [--json]
-nrflow tickets update <id> [--title <title>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>]
-nrflow tickets close <id> [--reason <text>]
-nrflow tickets reopen <id>
-nrflow tickets delete <id>
+nrflo tickets list [--status <status>] [--type <type>] [--parent <id>] [--json]
+nrflo tickets get <id> [--json]
+nrflo tickets create --title <title> [--id <id>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>] [--created-by <name>] [--json]
+nrflo tickets update <id> [--title <title>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>]
+nrflo tickets close <id> [--reason <text>]
+nrflo tickets reopen <id>
+nrflo tickets delete <id>
 
-nrflow deps list <ticket-id> [--json]
-nrflow deps add <ticket-id> <blocker-id>
-nrflow deps remove <ticket-id> <blocker-id>
+nrflo deps list <ticket-id> [--json]
+nrflo deps add <ticket-id> <blocker-id>
+nrflo deps remove <ticket-id> <blocker-id>
 ```
 
-All ticket/deps commands use `--server` (default `NRFLOW_API_URL` or `http://localhost:6587`) and require `NRFLOW_PROJECT` env variable.
+All ticket/deps commands use `--server` (default `NRFLO_API_URL` or `http://localhost:6587`) and require `NRFLO_PROJECT` env variable.
 
 ## Workflows
 
@@ -251,4 +251,4 @@ make test           # Run backend tests
 make help           # Show all targets
 ```
 
-Logs are written to `~/.nrflow/logs/be.log` (or `$NRFLOW_HOME/logs/be.log`).
+Logs are written to `~/.nrflo/logs/be.log` (or `$NRFLO_HOME/logs/be.log`).

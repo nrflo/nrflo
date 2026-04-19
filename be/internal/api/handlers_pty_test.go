@@ -218,7 +218,7 @@ func TestBuildPtyEnv_ContainsRequiredKeys(t *testing.T) {
 
 	requiredKeys := []string{
 		"TERM",
-		"NRFLOW_PROJECT",
+		"NRFLO_PROJECT",
 		"NRF_WORKFLOW_INSTANCE_ID",
 		"NRF_SESSION_ID",
 	}
@@ -231,8 +231,8 @@ func TestBuildPtyEnv_ContainsRequiredKeys(t *testing.T) {
 	if envMap["TERM"] != "xterm-256color" {
 		t.Errorf("TERM = %q, want xterm-256color", envMap["TERM"])
 	}
-	if envMap["NRFLOW_PROJECT"] != "my-project" {
-		t.Errorf("NRFLOW_PROJECT = %q, want my-project", envMap["NRFLOW_PROJECT"])
+	if envMap["NRFLO_PROJECT"] != "my-project" {
+		t.Errorf("NRFLO_PROJECT = %q, want my-project", envMap["NRFLO_PROJECT"])
 	}
 	if envMap["NRF_WORKFLOW_INSTANCE_ID"] != "wfi-env-1" {
 		t.Errorf("NRF_WORKFLOW_INSTANCE_ID = %q, want wfi-env-1", envMap["NRF_WORKFLOW_INSTANCE_ID"])

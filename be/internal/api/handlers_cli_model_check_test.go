@@ -206,7 +206,7 @@ func TestHandleTestCLIModel_FailedStart(t *testing.T) {
 type failStartAdapter struct{ name string }
 
 func (a *failStartAdapter) Name() string                                    { return a.name }
-func (a *failStartAdapter) BuildCommand(_ spawner.SpawnOptions) *exec.Cmd   { return exec.Command("__nrflow_nonexistent_binary__") }
+func (a *failStartAdapter) BuildCommand(_ spawner.SpawnOptions) *exec.Cmd   { return exec.Command("__nrflo_nonexistent_binary__") }
 func (a *failStartAdapter) MapModel(model string) string                    { return model }
 func (a *failStartAdapter) SupportsSessionID() bool                         { return false }
 func (a *failStartAdapter) SupportsSystemPromptFile() bool                  { return false }

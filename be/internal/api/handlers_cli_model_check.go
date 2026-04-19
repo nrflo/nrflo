@@ -43,7 +43,7 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prompt := "Reply with exactly: NRFLOW_CHECK_OK"
+	prompt := "Reply with exactly: NRFLO_CHECK_OK"
 
 	opts := spawner.SpawnOptions{
 		Model:           m.ID,

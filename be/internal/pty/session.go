@@ -85,7 +85,7 @@ func (s *Session) Done() <-chan struct{} {
 	return s.done
 }
 
-// SessionID returns the nrflow session ID associated with this PTY.
+// SessionID returns the nrflo session ID associated with this PTY.
 func (s *Session) SessionID() string {
 	return s.sessionID
 }

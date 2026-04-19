@@ -15,7 +15,7 @@ import (
 type WorktreeService struct{}
 
 // worktreeBasePath is the base directory for all worktrees.
-const worktreeBasePath = "/tmp/nrflow/worktrees"
+const worktreeBasePath = "/tmp/nrflo/worktrees"
 
 // Setup creates a git branch from defaultBranch and a worktree for it.
 // Returns the absolute path to the worktree directory.

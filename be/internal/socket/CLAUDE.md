@@ -4,7 +4,7 @@ Socket server for agent communication (Unix). Handles agent-facing methods only 
 
 ## Transport
 
-- **Unix socket** at `/tmp/nrflow/nrflow.sock` — used by agents
+- **Unix socket** at `/tmp/nrflo/nrflo.sock` — used by agents
 
 Clients connect via Unix socket.
 

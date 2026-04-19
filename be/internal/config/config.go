@@ -8,13 +8,13 @@ import (
 )
 
 const (
-	DefaultConfigDir  = ".nrflow"
+	DefaultConfigDir  = ".nrflo"
 	DefaultConfigFile = "config.json"
 	DefaultPort       = 6587
 	DefaultHost       = "127.0.0.1"
 )
 
-// Config represents the global nrflow configuration
+// Config represents the global nrflo configuration
 type Config struct {
 	Server ServerConfig `json:"server"`
 }

@@ -465,7 +465,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	}
 	safePrefix := strings.ReplaceAll(filePrefix, "/", "_")
 	safePrefix = strings.ReplaceAll(safePrefix, "\\", "_")
-	promptFile, err := os.CreateTemp("/tmp/nrflow", fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
+	promptFile, err := os.CreateTemp("/tmp/nrflo", fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -510,7 +510,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		ReasoningEffort: reasoningEffort,
 		SettingsJSON:    s.config.ClaudeSettingsJSON,
 		Env: append(filterEnv(os.Environ(), "CLAUDECODE"),
-			fmt.Sprintf("NRFLOW_PROJECT=%s", req.ProjectID),
+			fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 			fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),
 			"NRF_SPAWNED=1",
@@ -533,11 +533,11 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		cmd.Stdin = stdinFile
 	}
 
-	// Capture spawn command for debugging/replay — prepend nrflow env vars
+	// Capture spawn command for debugging/replay — prepend nrflo env vars
 	// so the recorded command is fully reproducible.
 	var envParts []string
 	for _, e := range cmd.Env {
-		if strings.HasPrefix(e, "NRF_") || strings.HasPrefix(e, "NRFLOW_") {
+		if strings.HasPrefix(e, "NRF_") || strings.HasPrefix(e, "NRFLO_") {
 			envParts = append(envParts, e)
 		}
 	}

@@ -212,7 +212,7 @@ describe('AgentLogPanel', () => {
 
   // TODO(test-writer): Add tests for session lookup logic (findSession matches by session_id, agent_type+phase+model_id)
 
-  describe('ticket nrflow-46fb2e: session lookup fix for completed agents', () => {
+  describe('ticket nrflo-46fb2e: session lookup fix for completed agents', () => {
     it('uses captured session directly for completed agents instead of re-looking up', async () => {
       // Scenario: Two completed agents with same agent_type/phase/model
       // but different sessions. The bug was that detail mode always looked up
@@ -395,7 +395,7 @@ describe('AgentLogPanel', () => {
     })
   })
 
-  describe('ticket nrflow-e1c40d: stale spinner fix — live agent resolution', () => {
+  describe('ticket nrflo-e1c40d: stale spinner fix — live agent resolution', () => {
     it('detail mode shows running state when agent has no result', () => {
       const runningAgent = makeAgent({
         session_id: 'sess-run',

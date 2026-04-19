@@ -29,7 +29,7 @@ build: build-cli build-server
 
 ## build-cli: Build CLI binary only (no CGO, no tray)
 build-cli:
-	cd $(BE_DIR) && CGO_ENABLED=0 $(GO) build -o nrflow ./cmd/nrflow
+	cd $(BE_DIR) && CGO_ENABLED=0 $(GO) build -o nrflo ./cmd/nrflo
 
 ## build-ui: Build UI and copy dist to embed directory
 build-ui:
@@ -40,11 +40,11 @@ build-ui:
 
 ## build-server: Build server binary with tray (includes UI build)
 build-server: build-ui
-	cd $(BE_DIR) && $(GO) build -tags tray -o nrflow_server ./cmd/server
+	cd $(BE_DIR) && $(GO) build -tags tray -o nrflo_server ./cmd/server
 
 ## build-server-only: Go-only server rebuild (skip UI build)
 build-server-only:
-	cd $(BE_DIR) && $(GO) build -tags tray -o nrflow_server ./cmd/server
+	cd $(BE_DIR) && $(GO) build -tags tray -o nrflo_server ./cmd/server
 
 # --- Release builds ---
 
@@ -54,25 +54,25 @@ build-release: build-release-cli build-release-server
 ## build-release-cli: Release build CLI only (pure Go, no CGO)
 build-release-cli:
 	cd $(BE_DIR) && CGO_ENABLED=$(CGO_CLI) GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		$(GO) build -ldflags="$(LDFLAGS)" -o nrflow ./cmd/nrflow
+		$(GO) build -ldflags="$(LDFLAGS)" -o nrflo ./cmd/nrflo
 
 ## build-release-server: Release build server only (CGO for systray)
 build-release-server: build-ui
 	cd $(BE_DIR) && CGO_ENABLED=$(CGO_SERVER) GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		$(GO) build -tags tray -ldflags="$(LDFLAGS)" -o nrflow_server ./cmd/server
+		$(GO) build -tags tray -ldflags="$(LDFLAGS)" -o nrflo_server ./cmd/server
 
 # --- Install ---
 
 ## install: Install both binaries to PREFIX (default /usr/local)
 install: build-release
 	install -d $(DESTDIR)$(BINDIR)
-	install -m 755 $(BE_DIR)/nrflow $(DESTDIR)$(BINDIR)/nrflow
-	install -m 755 $(BE_DIR)/nrflow_server $(DESTDIR)$(BINDIR)/nrflow_server
+	install -m 755 $(BE_DIR)/nrflo $(DESTDIR)$(BINDIR)/nrflo
+	install -m 755 $(BE_DIR)/nrflo_server $(DESTDIR)$(BINDIR)/nrflo_server
 
 # --- Test ---
 # Separate locks for BE/FE prevent concurrent runs within the same toolchain.
 # Per-worktree via path hash so parallel worktrees don't block each other.
-_LOCK_PFX := /tmp/nrflow-test-$(shell echo "$(CURDIR)" | shasum | cut -c1-8)
+_LOCK_PFX := /tmp/nrflo-test-$(shell echo "$(CURDIR)" | shasum | cut -c1-8)
 BE_LOCK := $(_LOCK_PFX)-be.lock
 UI_LOCK := $(_LOCK_PFX)-ui.lock
 
@@ -161,7 +161,7 @@ tidy:
 
 ## clean: Remove build artifacts
 clean:
-	rm -f $(BE_DIR)/nrflow $(BE_DIR)/nrflow_server
+	rm -f $(BE_DIR)/nrflo $(BE_DIR)/nrflo_server
 	rm -rf $(STATIC_DIR)
 	rm -f $(BE_DIR)/internal/static/agent_manual.md
 	mkdir -p $(STATIC_DIR) && touch $(STATIC_DIR)/.gitkeep

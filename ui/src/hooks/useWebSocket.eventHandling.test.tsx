@@ -273,7 +273,7 @@ describe('Query key structure verification', () => {
   })
 })
 
-describe('useWebSocket - ticket nrflow-d3a7c4: project-level agent events', () => {
+describe('useWebSocket - ticket nrflo-d3a7c4: project-level agent events', () => {
   let queryClient: QueryClient
   let invalidateQueriesSpy: ReturnType<typeof vi.spyOn>
 

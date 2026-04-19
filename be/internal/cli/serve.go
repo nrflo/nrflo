@@ -36,8 +36,8 @@ type serverComponents struct {
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start the nrflow server",
-	Long: `Start the nrflow server for the ticket management system.
+	Short: "Start the nrflo server",
+	Long: `Start the nrflo server for the ticket management system.
 
 The server provides:
   - HTTP API on port 6587 (for web UI and REST clients)
@@ -47,11 +47,11 @@ The server provides:
 Database migrations are applied automatically on startup.
 
 Example usage:
-  nrflow_server serve                       # Start with tray icon (localhost only)
-  nrflow_server serve --no-tray             # Start headless
-  nrflow_server serve --port=8080           # Custom port
-  nrflow_server serve --host 0.0.0.0        # Listen on all interfaces (LAN access)
-  nrflow_server serve --host 192.168.1.50   # Bind to specific IP`,
+  nrflo_server serve                       # Start with tray icon (localhost only)
+  nrflo_server serve --no-tray             # Start headless
+  nrflo_server serve --port=8080           # Custom port
+  nrflo_server serve --host 0.0.0.0        # Listen on all interfaces (LAN access)
+  nrflo_server serve --host 192.168.1.50   # Bind to specific IP`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sc, err := setupServer()
 		if err != nil {
@@ -75,7 +75,7 @@ Example usage:
 				serverError <- sc.httpServer.Start(sc.cfg.Server.Host, sc.cfg.Server.Port)
 			}()
 			ctx := context.Background()
-			logger.Info(ctx, "nrflow server started", "host", sc.cfg.Server.Host, "port", sc.cfg.Server.Port, "db", sc.pool.Path)
+			logger.Info(ctx, "nrflo server started", "host", sc.cfg.Server.Host, "port", sc.cfg.Server.Port, "db", sc.pool.Path)
 			if err := <-serverError; err != nil {
 				serverErr = err
 			}
@@ -150,7 +150,7 @@ func runServer(sc *serverComponents) error {
 	}()
 
 	ctx := context.Background()
-	logger.Info(ctx, "nrflow server started", "host", sc.cfg.Server.Host, "port", sc.cfg.Server.Port, "db", sc.pool.Path)
+	logger.Info(ctx, "nrflo server started", "host", sc.cfg.Server.Host, "port", sc.cfg.Server.Port, "db", sc.pool.Path)
 
 	select {
 	case err := <-serverError:

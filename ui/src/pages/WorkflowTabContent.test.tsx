@@ -49,7 +49,7 @@ const defaultProps = {
 }
 
 describe('WorkflowTabContent', () => {
-  // Main graph container width (ticket nrflow-1d2d98: no max-w constraint)
+  // Main graph container width (ticket nrflo-1d2d98: no max-w constraint)
   it('renders main graph area without max-w constraint', () => {
     render(<WorkflowTabContent {...defaultProps} />)
     const mainContent = screen.getByTestId('phase-timeline').parentElement!

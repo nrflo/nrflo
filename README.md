@@ -22,6 +22,7 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
 - **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
 - **Mixed-agent compatible** — run workflows across Claude CLI, Opencode, and Codex without changing the workflow model
+- **Bring your own subscription** — NRFLO drives Claude Code, Opencode, and Codex as non-interactive CLIs, reusing each tool's local login, so runs go through your existing Claude or ChatGPT subscription (no extra API keys or per-token bills)
 
 ## Core capabilities
 

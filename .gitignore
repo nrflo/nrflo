@@ -5,6 +5,7 @@ nrworkflow
 nrworkflow_server
 be/nrworkflow
 be/nrworkflow_server
+be/wfw
 *.exe
 *.exe~
 *.dll

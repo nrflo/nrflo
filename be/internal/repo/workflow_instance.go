@@ -23,7 +23,8 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 }
 
 const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
-	findings, skip_tags, retry_count, parent_session, worktree_path, branch_name, created_at, updated_at`
+	findings, skip_tags, retry_count, parent_session, worktree_path, branch_name,
+	endless_loop, stop_endless_loop_after_iteration, created_at, updated_at`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
 	wi := &model.WorkflowInstance{}
@@ -31,7 +32,8 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 	err := scanner.Scan(
 		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
 		&wi.Status, &wi.Findings, &wi.SkipTags,
-		&wi.RetryCount, &wi.ParentSession, &wi.WorktreePath, &wi.BranchName, &createdAt, &updatedAt,
+		&wi.RetryCount, &wi.ParentSession, &wi.WorktreePath, &wi.BranchName,
+		&wi.EndlessLoop, &wi.StopEndlessLoopAfterIteration, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -55,11 +57,13 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
 		wi.Findings, wi.SkipTags, wi.RetryCount, wi.ParentSession,
-		wi.WorktreePath, wi.BranchName, now, now,
+		wi.WorktreePath, wi.BranchName,
+		wi.EndlessLoop, wi.StopEndlessLoopAfterIteration,
+		now, now,
 	)
 	return err
 }
@@ -225,6 +229,18 @@ func (r *WorkflowInstanceRepo) UpdateWorktree(id, worktreePath, branchName strin
 		sql.NullString{String: worktreePath, Valid: worktreePath != ""},
 		sql.NullString{String: branchName, Valid: branchName != ""},
 		now, id)
+	if err != nil {
+		return err
+	}
+	return checkAffected(result, id)
+}
+
+// UpdateStopEndlessLoopAfterIteration updates the stop_endless_loop_after_iteration flag
+func (r *WorkflowInstanceRepo) UpdateStopEndlessLoopAfterIteration(id string, stop bool) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.pool.Exec(
+		`UPDATE workflow_instances SET stop_endless_loop_after_iteration = ?, updated_at = ? WHERE id = ?`,
+		stop, now, id)
 	if err != nil {
 		return err
 	}

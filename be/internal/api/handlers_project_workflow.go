@@ -41,6 +41,26 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if body.EndlessLoop && (body.Interactive || body.PlanMode) {
+		writeError(w, http.StatusBadRequest, "endless_loop cannot be combined with interactive or plan_mode")
+		return
+	}
+
+	// Validate workflow definition is project-scoped when endless_loop requested
+	if body.EndlessLoop {
+		wfDef, wfErr := s.workflowService().GetWorkflowDef(projectID, body.Workflow)
+		if wfErr != nil {
+			writeError(w, http.StatusBadRequest, wfErr.Error())
+			return
+		}
+		if wfDef.ScopeType != "project" {
+			writeError(w, http.StatusBadRequest, "endless_loop is only supported for project-scoped workflows")
+			return
+		}
+		// Ignore client-provided instructions in endless loop mode
+		body.Instructions = ""
+	}
+
 	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
 		ProjectID:    projectID,
 		WorkflowName: body.Workflow,
@@ -48,6 +68,7 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 		ScopeType:    "project",
 		Interactive:  body.Interactive,
 		PlanMode:     body.PlanMode,
+		EndlessLoop:  body.EndlessLoop,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -351,6 +372,67 @@ func (s *Server) handleDeleteProjectWorkflowInstance(w http.ResponseWriter, r *h
 			"instance_id": instanceID,
 		}))
 	}
+}
+
+// handleStopEndlessLoop toggles the stop_endless_loop_after_iteration flag on an
+// active project-scoped workflow instance. When set true, the orchestrator will
+// not auto-restart after the current iteration completes.
+// POST /api/v1/projects/{id}/workflow/stop-endless-loop
+func (s *Server) handleStopEndlessLoop(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	var body struct {
+		InstanceID string `json:"instance_id"`
+		Stop       bool   `json:"stop"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.InstanceID == "" {
+		writeError(w, http.StatusBadRequest, "instance_id is required")
+		return
+	}
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
+	wi, err := wfiRepo.Get(body.InstanceID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "workflow instance not found")
+		return
+	}
+	if !strings.EqualFold(wi.ProjectID, projectID) {
+		writeError(w, http.StatusBadRequest, "instance does not belong to this project")
+		return
+	}
+	if wi.Status != model.WorkflowInstanceActive {
+		writeError(w, http.StatusBadRequest, "workflow instance is not active")
+		return
+	}
+	if !wi.EndlessLoop {
+		writeError(w, http.StatusBadRequest, "workflow instance is not in endless loop mode")
+		return
+	}
+
+	if err := wfiRepo.UpdateStopEndlessLoopAfterIteration(body.InstanceID, body.Stop); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if s.wsHub != nil {
+		s.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowUpdated, projectID, "", wi.WorkflowID, map[string]interface{}{
+			"instance_id":                       body.InstanceID,
+			"stop_endless_loop_after_iteration": body.Stop,
+		}))
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"instance_id":                       body.InstanceID,
+		"stop_endless_loop_after_iteration": body.Stop,
+	})
 }
 
 // handleGetProjectWorkflow returns the workflow state for a project-scoped workflow.

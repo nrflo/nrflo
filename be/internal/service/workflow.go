@@ -110,6 +110,7 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 
 	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf)
 	wi.ScopeType = "project"
+	wi.EndlessLoop = req.EndlessLoop
 
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err

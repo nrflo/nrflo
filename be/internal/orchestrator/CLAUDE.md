@@ -185,6 +185,19 @@ When `use_git_worktrees=false` for a project, multiple ticket-scoped workflows o
 - The guard does NOT apply to project-scoped workflows or when worktrees are enabled
 - The HTTP handler maps this error to 409 Conflict; the frontend detects it and shows a warning with "Proceed Anyway" option
 
+## Endless Loop Mode (Project-Scoped)
+
+When `RunRequest.EndlessLoop=true` on a project-scoped run, the orchestrator persists `endless_loop=1` on the new `workflow_instances` row via `InitProjectWorkflow`. After `markCompleted` finishes the successful run, `runLoop` calls `maybeRestartEndlessLoop`:
+
+- Only runs for project scope with `EndlessLoop=true` and non-cancelled `ctx`.
+- Re-reads the just-completed instance and exits if `StopEndlessLoopAfterIteration=true`.
+- Broadcasts `EventWorkflowUpdated` with `data.endless_loop_iterating=true` so the UI can render the transition.
+- Spawns a detached goroutine that calls `orch.Start(context.Background(), RunRequest{Scope:"project", ProjectID, WorkflowName, EndlessLoop:true})` with no instructions. Project scope allows multiple concurrent instances, so no `IsRunning` guard is needed — each iteration is a distinct instance row.
+
+Failure (`markFailed`), `Stop()` (cancelled context), and any layer callback error terminate the loop — the restart is only attempted on the normal success path.
+
+The `/api/v1/projects/{id}/workflow/stop-endless-loop` handler toggles `stop_endless_loop_after_iteration` via `repo.UpdateStopEndlessLoopAfterIteration`; only affects the next restart check and never interrupts the in-flight iteration.
+
 ## Ticket Status Management
 
 The orchestrator manages ticket status transitions for ticket-scoped workflows:

@@ -12,14 +12,17 @@ import {
   useExitInteractiveProject,
   useResumeSessionProject,
   useDeleteProjectWorkflowInstance,
+  useSetStopEndlessLoopAfterIteration,
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import { RunWorkflowForm, InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
 import { WorkflowInstanceTable } from './WorkflowInstanceTable'
-import type { ProjectWorkflowTabId } from './ProjectWorkflowComponents'
+import type { ProjectWorkflowTabId, StartMode } from './ProjectWorkflowComponents'
 import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Badge } from '@/components/ui/Badge'
+import { Repeat } from 'lucide-react'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 
@@ -65,6 +68,7 @@ export function ProjectWorkflowsPage() {
   const resumeSessionMutation = useResumeSessionProject()
   const exitInteractiveMutation = useExitInteractiveProject()
   const deleteMutation = useDeleteProjectWorkflowInstance()
+  const stopEndlessLoopMutation = useSetStopEndlessLoopAfterIteration()
 
   // Filter to project-scoped workflows only
   const projectWorkflows = workflowDefs
@@ -159,16 +163,17 @@ export function ProjectWorkflowsPage() {
     setSelectedPanelAgent(null)
   }
 
-  const handleRun = async (startMode: 'normal' | 'interactive' | 'plan' = 'normal') => {
+  const handleRun = async (startMode: StartMode = 'normal') => {
     if (!selectedWorkflowDef || !currentProject) return
     try {
       const result = await runMutation.mutateAsync({
         projectId: currentProject,
         params: {
           workflow: selectedWorkflowDef,
-          instructions: instructions || undefined,
+          ...(startMode !== 'endless' && instructions ? { instructions } : {}),
           ...(startMode === 'interactive' && { interactive: true }),
           ...(startMode === 'plan' && { plan_mode: true }),
+          ...(startMode === 'endless' && { endless_loop: true }),
         },
       })
 
@@ -335,6 +340,31 @@ export function ProjectWorkflowsPage() {
               onSelect={setSelectedInstanceId}
               tab={activeTab}
             />
+          )}
+          {displayedState?.endless_loop === true && displayedState?.status === 'active' && resolvedInstanceId && (
+            <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Repeat className="h-3.5 w-3.5" />
+                Endless loop
+              </Badge>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={displayedState?.stop_endless_loop_after_iteration === true}
+                  onChange={(e) =>
+                    currentProject &&
+                    stopEndlessLoopMutation.mutate({
+                      projectId: currentProject,
+                      instanceId: resolvedInstanceId,
+                      stop: e.target.checked,
+                    })
+                  }
+                  disabled={stopEndlessLoopMutation.isPending}
+                  className="rounded border-input"
+                />
+                Stop endless loop after current iteration
+              </label>
+            </div>
           )}
           <WorkflowTabContent
             ticketId={undefined}

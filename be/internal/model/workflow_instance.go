@@ -37,6 +37,8 @@ type WorkflowInstance struct {
 	ParentSession sql.NullString         `json:"-"`
 	WorktreePath  sql.NullString         `json:"-"`
 	BranchName    sql.NullString         `json:"-"`
+	EndlessLoop                   bool   `json:"endless_loop"`
+	StopEndlessLoopAfterIteration bool   `json:"stop_endless_loop_after_iteration"`
 	CreatedAt     time.Time              `json:"created_at"`
 	UpdatedAt     time.Time              `json:"updated_at"`
 }
@@ -133,6 +135,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		ParentSession *string                `json:"parent_session,omitempty"`
 		WorktreePath  *string                `json:"worktree_path,omitempty"`
 		BranchName    *string                `json:"branch_name,omitempty"`
+		EndlessLoop                   bool   `json:"endless_loop"`
+		StopEndlessLoopAfterIteration bool   `json:"stop_endless_loop_after_iteration"`
 		CreatedAt     time.Time              `json:"created_at"`
 		UpdatedAt     time.Time              `json:"updated_at"`
 	}{
@@ -148,6 +152,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		ParentSession: parentSession,
 		WorktreePath:  worktreePath,
 		BranchName:    branchName,
+		EndlessLoop:                   wi.EndlessLoop,
+		StopEndlessLoopAfterIteration: wi.StopEndlessLoopAfterIteration,
 		CreatedAt:     wi.CreatedAt,
 		UpdatedAt:     wi.UpdatedAt,
 	})

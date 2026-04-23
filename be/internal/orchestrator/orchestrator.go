@@ -36,7 +36,8 @@ type RunRequest struct {
 	Interactive           bool   `json:"interactive"`   // If true, start with interactive PTY session before layer execution
 	PlanMode              bool   `json:"plan_mode"`     // If true, start with planning PTY session, read plan file after
 	CloseTicketOnComplete bool   `json:"close_ticket_on_complete"`
-	Force                 bool   `json:"force"` // If true, bypass concurrent ticket workflow guard
+	Force                 bool   `json:"force"`        // If true, bypass concurrent ticket workflow guard
+	EndlessLoop           bool   `json:"endless_loop"` // Project-scope only: auto re-run on successful completion until stopped or failed
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -246,6 +247,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		wi, err = wfService.InitProjectWorkflow(req.ProjectID, &types.ProjectWorkflowRunRequest{
 			Workflow:     req.WorkflowName,
 			Instructions: req.Instructions,
+			EndlessLoop:  req.EndlessLoop,
 		})
 	} else {
 		wi, err = wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{
@@ -1296,6 +1298,52 @@ func (o *Orchestrator) runLoop(
 	}
 
 	o.markCompleted(wfiID, req)
+
+	// Endless loop: re-run a fresh instance if enabled and not stopped
+	if req.IsProjectScope() && req.EndlessLoop && ctx.Err() == nil {
+		o.maybeRestartEndlessLoop(wfiID, req)
+	}
+}
+
+// maybeRestartEndlessLoop starts a fresh workflow instance for the same
+// (project_id, workflow) when the just-completed instance had endless loop enabled
+// and the stop flag was not toggled. Called from runLoop after markCompleted.
+func (o *Orchestrator) maybeRestartEndlessLoop(wfiID string, req RunRequest) {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		logger.Error(context.Background(), "endless loop: failed to open DB", "err", err)
+		return
+	}
+	wfiRepo := repo.NewWorkflowInstanceRepo(db.WrapAsPool(database), o.clock)
+	wi, err := wfiRepo.Get(wfiID)
+	database.Close()
+	if err != nil {
+		logger.Error(context.Background(), "endless loop: failed to re-read instance", "err", err)
+		return
+	}
+	if wi.StopEndlessLoopAfterIteration {
+		logger.Info(context.Background(), "endless loop: stop flag set, exiting loop", "workflow", req.WorkflowName, "instance_id", wfiID)
+		return
+	}
+
+	logger.Info(context.Background(), "endless loop: starting next iteration", "workflow", req.WorkflowName, "prev_instance_id", wfiID)
+
+	o.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowUpdated, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+		"instance_id":          wfiID,
+		"endless_loop_iterating": true,
+	}))
+
+	go func() {
+		nextReq := RunRequest{
+			ProjectID:    req.ProjectID,
+			WorkflowName: req.WorkflowName,
+			ScopeType:    "project",
+			EndlessLoop:  true,
+		}
+		if _, err := o.Start(context.Background(), nextReq); err != nil {
+			logger.Error(context.Background(), "endless loop: auto-restart failed", "workflow", req.WorkflowName, "err", err)
+		}
+	}()
 }
 
 // handleCallback processes a callback: resets phases and sessions for layers between

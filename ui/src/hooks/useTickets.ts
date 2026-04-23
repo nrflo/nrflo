@@ -17,6 +17,7 @@ import {
   exitInteractiveProject,
   resumeSessionProject,
   deleteProjectWorkflowInstance,
+  setStopEndlessLoopAfterIteration,
 } from '@/api/projectWorkflows'
 import {
   listTickets,
@@ -459,6 +460,17 @@ export function useExitInteractiveProject() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })
+    },
+  })
+}
+
+export function useSetStopEndlessLoopAfterIteration() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, instanceId, stop }: { projectId: string; instanceId: string; stop: boolean }) =>
+      setStopEndlessLoopAfterIteration(projectId, instanceId, stop),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
     },
   })
 }

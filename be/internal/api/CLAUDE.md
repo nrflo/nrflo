@@ -87,6 +87,7 @@ POST /api/v1/projects/:id/workflow/retry-failed  # Retry failed project workflow
 POST /api/v1/projects/:id/workflow/take-control     # Kill project agent, return session ID
 POST /api/v1/projects/:id/workflow/resume-session   # Resume finished project Claude session
 POST /api/v1/projects/:id/workflow/exit-interactive  # Signal project interactive session completed
+POST /api/v1/projects/:id/workflow/stop-endless-loop # Toggle endless-loop stop flag on an active instance
 DELETE /api/v1/projects/:id/workflow/:instance_id  # Delete completed/failed project workflow instance (409 if active)
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
 GET  /api/v1/projects/:id/agents           # Get project agent sessions
@@ -187,6 +188,18 @@ GET /api/v1/daily-stats            # Daily stats (tickets, tokens, agent time) p
 GET /api/v1/ws                     # WebSocket for real-time updates (broadcast)
 GET /api/v1/pty/:session_id        # PTY WebSocket (1:1 interactive terminal relay)
 ```
+
+## Endless Loop Mode (Project Scope)
+
+`POST /api/v1/projects/{id}/workflow/run` accepts `endless_loop: bool` alongside the existing `interactive`/`plan_mode`/`instructions` body. Validation (HTTP 400 on failure):
+- Rejects `endless_loop=true` combined with `interactive=true` or `plan_mode=true` (mutually exclusive).
+- Rejects `endless_loop=true` when the workflow definition's `scope_type != "project"`.
+- Server clears `instructions` when `endless_loop=true` before forwarding to the orchestrator.
+
+`POST /api/v1/projects/{id}/workflow/stop-endless-loop` — body `{"instance_id": "...", "stop": true|false}`:
+- 200: instance exists, belongs to the project, status is `active`, and `endless_loop=1`. Updates `workflow_instances.stop_endless_loop_after_iteration` and broadcasts `EventWorkflowUpdated`. The flag only affects the next restart check; the in-flight iteration is not interrupted.
+- 404: instance not found or not owned by the project.
+- 400: instance is not active, or the workflow is not in endless-loop mode.
 
 ## Common Tasks
 

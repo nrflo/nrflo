@@ -116,6 +116,18 @@ export async function getProjectFindings(
   )
 }
 
+/** Toggle graceful stop-after-iteration for a running endless-loop project workflow */
+export async function setStopEndlessLoopAfterIteration(
+  projectId: string,
+  instanceId: string,
+  stop: boolean
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/stop-endless-loop`,
+    { instance_id: instanceId, stop }
+  )
+}
+
 /** Exit interactive session (project-scoped) */
 export async function exitInteractiveProject(
   projectId: string,

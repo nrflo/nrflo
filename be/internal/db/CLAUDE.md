@@ -81,6 +81,10 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    parent_session  TEXT               (orchestrating session UUID)   │
 │    worktree_path   TEXT               (git worktree path, nullable)  │
 │    branch_name     TEXT               (git branch name, nullable)    │
+│    endless_loop    INTEGER NOT NULL DEFAULT 0                        │
+│                    (project scope; auto-restart on success)          │
+│    stop_endless_loop_after_iteration INTEGER NOT NULL DEFAULT 0      │
+│                    (graceful stop toggle for endless_loop)           │
 │    created_at      TEXT NOT NULL                                     │
 │    updated_at      TEXT NOT NULL                                     │
 │    INDEX idx_wfi_lookup (project_id, ticket_id, workflow_id,         │

@@ -90,6 +90,8 @@ export interface WorkflowState {
   workflow_findings?: Record<string, unknown>
   callback?: CallbackInfo
   agent_history?: AgentHistoryEntry[]
+  endless_loop?: boolean
+  stop_endless_loop_after_iteration?: boolean
 }
 
 export interface WorkflowResponse {
@@ -321,4 +323,5 @@ export interface ProjectWorkflowRunRequest {
   instructions?: string
   interactive?: boolean
   plan_mode?: boolean
+  endless_loop?: boolean
 }

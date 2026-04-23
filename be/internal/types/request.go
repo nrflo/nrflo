@@ -208,6 +208,7 @@ type ProjectWorkflowRunRequest struct {
 	Instructions string `json:"instructions,omitempty"`
 	Interactive  bool   `json:"interactive,omitempty"`
 	PlanMode     bool   `json:"plan_mode,omitempty"`
+	EndlessLoop  bool   `json:"endless_loop,omitempty"`
 }
 
 // AgentDefCreateRequest is the request for creating an agent definition

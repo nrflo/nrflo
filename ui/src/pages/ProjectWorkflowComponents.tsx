@@ -10,7 +10,7 @@ import { listAgentDefs } from '@/api/agentDefs'
 import { cn, formatElapsedTime } from '@/lib/utils'
 import type { WorkflowState, AgentDef, WorkflowDefSummary } from '@/types/workflow'
 
-type StartMode = 'normal' | 'interactive' | 'plan'
+export type StartMode = 'normal' | 'interactive' | 'plan' | 'endless'
 
 function isClaudeModel(model: string): boolean {
   return !model.startsWith('opencode_') && !model.startsWith('codex_gpt_')
@@ -30,6 +30,7 @@ export function RunWorkflowForm({
   runError,
 }: {
   projectWorkflows: [string, { description: string; scope_type?: string; phases: WorkflowDefSummary['phases'] }][]
+
   defsLoading: boolean
   selectedWorkflowDef: string
   onSelectWorkflowDef: (v: string) => void
@@ -48,6 +49,7 @@ export function RunWorkflowForm({
   })
 
   const selectedDef = projectWorkflows.find(([id]) => id === selectedWorkflowDef)?.[1]
+  const isProjectScoped = selectedDef?.scope_type === 'project'
 
   const { canInteractive } = useMemo(() => {
     if (!selectedDef || !agents) return { canInteractive: false }
@@ -108,8 +110,8 @@ export function RunWorkflowForm({
         />
       </div>
 
-      {(canInteractive || canPlan) && (
-        <div className="flex gap-4">
+      {(canInteractive || canPlan || isProjectScoped) && (
+        <div className="flex gap-4 flex-wrap">
           {canInteractive && (
             <Tooltip text="Launches only the first-layer agent in a live terminal session. You interact with the agent directly, then remaining layers run automatically after you exit." placement="top" className="whitespace-normal max-w-xs">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -117,7 +119,8 @@ export function RunWorkflowForm({
                   type="checkbox"
                   checked={startMode === 'interactive'}
                   onChange={(e) => setStartMode(e.target.checked ? 'interactive' : 'normal')}
-                  className="rounded border-input"
+                  disabled={startMode === 'endless'}
+                  className="rounded border-input disabled:opacity-50"
                 />
                 Start Interactive
               </label>
@@ -130,16 +133,37 @@ export function RunWorkflowForm({
                   type="checkbox"
                   checked={startMode === 'plan'}
                   onChange={(e) => setStartMode(e.target.checked ? 'plan' : 'normal')}
-                  className="rounded border-input"
+                  disabled={startMode === 'endless'}
+                  className="rounded border-input disabled:opacity-50"
                 />
                 Plan Before Execution
+              </label>
+            </Tooltip>
+          )}
+          {isProjectScoped && (
+            <Tooltip text="Keep re-running this workflow after each successful completion. A failure terminates the loop. You can request a graceful stop from the running workflow view." placement="top" className="whitespace-normal max-w-xs">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={startMode === 'endless'}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setStartMode('endless')
+                      onInstructionsChange('')
+                    } else {
+                      setStartMode('normal')
+                    }
+                  }}
+                  className="rounded border-input"
+                />
+                Endless loop
               </label>
             </Tooltip>
           )}
         </div>
       )}
 
-      {startMode !== 'plan' && (
+      {startMode !== 'plan' && startMode !== 'endless' && (
         <div>
           <label className="block text-sm font-medium mb-1.5">
             Instructions <span className="text-muted-foreground font-normal">(optional)</span>

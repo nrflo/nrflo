@@ -228,6 +228,8 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	if wi.BranchName.Valid {
 		result["branch_name"] = wi.BranchName.String
 	}
+	result["endless_loop"] = wi.EndlessLoop
+	result["stop_endless_loop_after_iteration"] = wi.StopEndlessLoopAfterIteration
 
 	// Completion stats
 	result["status"] = string(wi.Status)

@@ -192,19 +192,6 @@ Logs are written to `$NRFLO_HOME/logs/be.log`.
 
 ## License
 
-NRFLO is source-available, self-hostable, and production-usable internally.
+NRFLO is released under the MIT License.
 
-NRFLO is released under the Business Source License 1.1 (`BUSL-1.1`).
-
-You may use NRFLO in production, including self-hosted internal/company
-deployments, but you may not offer NRFLO to third parties as a hosted or
-managed service.
-
-Commercial licenses are available: anderfredx@gmail.com
-
-Each released version converts to Apache License 2.0 on the earlier of:
-
-- April 4, 2030
-- the fourth anniversary of that version's first public release
-
-See [LICENSE](LICENSE) for the exact terms.
+See [LICENSE](LICENSE) for the full text.

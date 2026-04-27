@@ -105,3 +105,15 @@ Spawner-side (`be/internal/spawner/`):
 - `CONTINUE` → (continue, api_continue)  → monitorAll relaunches
 - `CALLBACK` → (callback, callback)      → finalizePhase reads `callback_level` finding and returns `CallbackError`
 - `CANCELLED` → (fail, cancelled)
+
+## Take-Control Rejection
+
+`apiBackend.SupportsTakeControl()` returns `false`. When a take-control request arrives for a running API agent, `monitorAll` broadcasts `EventAgentTakeControlRejected` (`agent.take_control_rejected`) with `session_id`, `agent_type`, `model_id`, and `reason="api_mode_unsupported"`, then breaks out of the take-control branch — the agent is not killed and continues running normally. The HTTP take-control handlers (ticket-scoped and project-scoped) also perform an early check via `isAPISession()` and return HTTP 409 `api_mode_unsupported` before dispatching to the orchestrator, so the spawner-side broadcast is a belt-and-suspenders fallback for any path that bypasses the HTTP layer.
+
+## Low-Context Behavior
+
+When the per-turn context percentage drops below `restart_threshold`, `monitorAll` sets `proc.lowContextSaving = true` and calls `initiateContextSave`. For API agents, `context_save.go` forces `useAgentSave = true` regardless of the `context_save_via_agent` global setting — the resume path is Claude-CLI-only and cannot be used for an in-process runner. `apiBackend.Kill` cancels the runner's stored context; the `runner.Run` goroutine returns `CANCELLED`, persists messages, and closes `proc.doneCh`. `initiateContextSave` then detects `CANCELLED`, spawns a `context-saver` system agent (haiku) to summarize the killed agent's message history and write the summary to `to_resume` findings, then calls `relaunchForContinuation` — which sets `finalStatus = CONTINUE` and triggers `monitorAll` to launch a fresh `apirun.Runner` with `${PREVIOUS_DATA}` populated from `to_resume`.
+
+## Stall Detection
+
+API agents fully participate in stall detection because the `runner.go` + `sink.go` path calls `Spawner.TrackMessage` on every text delta and tool-use event, updating `proc.lastMessageTime` identically to CLI agents. `checkStall` in `stall_restart.go` polls `lastMessageTime` on each `monitorAll` tick and fires `handleStallRestart` when `stallStartTimeout` or `stallRunningTimeout` is exceeded. The stall handler broadcasts `agent.stall_restart`, calls `apiBackend.Kill` (cancels runner ctx), increments `stallRestartCount` (cap: 15), sets `finalStatus = CONTINUE`, and calls `relaunchForContinuation` after a 15s delay. No context save is attempted — the agent is frozen. Instant-stall logic was removed in migration 000061; only `stall_restart.go` remains and it is CLI-agnostic.

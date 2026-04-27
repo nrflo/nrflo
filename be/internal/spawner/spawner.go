@@ -770,6 +770,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if proc.backend == nil || !proc.backend.SupportsTakeControl() {
 					cliName, _ := parseModelID(proc.modelID)
 					logger.Error(ctx, "take-control: backend does not support take-control", "cli", cliName, "session_id", takeControlSessionID)
+					s.broadcast(ws.EventAgentTakeControlRejected, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+						"session_id": proc.sessionID,
+						"agent_type": proc.agentType,
+						"model_id":   proc.modelID,
+						"reason":     "api_mode_unsupported",
+					})
 					break
 				}
 

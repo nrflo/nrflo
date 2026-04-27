@@ -76,6 +76,11 @@ export function AgentDefCard({
               {def.tag}
             </Badge>
           )}
+          {def.execution_mode === 'api' && (
+            <Badge variant="outline" className="text-xs border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400">
+              API
+            </Badge>
+          )}
           {def.low_consumption_model && (
             <Badge variant="outline" className="text-xs">
               lc: {def.low_consumption_model}

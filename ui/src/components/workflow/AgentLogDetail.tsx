@@ -57,9 +57,10 @@ interface AgentLogDetailProps {
   phaseLayers?: Record<string, number>
   workflowFindings?: Record<string, unknown>
   hideHeader?: boolean
+  agentExecutionMode?: 'cli' | 'api'
 }
 
-export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending, agentFindings, projectFindings, phaseLayers, workflowFindings, hideHeader }: AgentLogDetailProps) {
+export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending, agentFindings, projectFindings, phaseLayers, workflowFindings, hideHeader, agentExecutionMode }: AgentLogDetailProps) {
   const { agent, historyEntry, session, phaseName } = selectedAgent
   const isInteractive = session?.status === 'user_interactive'
   const isRunning = agent && !agent.result && !isInteractive
@@ -148,7 +149,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
               )}
             </div>
           </div>
-          {onResumeSession && sessionId && (result === 'pass' || result === 'fail') && modelId?.startsWith('claude:') && session?.status !== 'user_interactive' && (
+          {onResumeSession && sessionId && (result === 'pass' || result === 'fail') && modelId?.startsWith('claude:') && session?.status !== 'user_interactive' && agentExecutionMode !== 'api' && (
             <Tooltip text="Resume this session in an interactive terminal" placement="top">
               <Button
                 variant="outline"

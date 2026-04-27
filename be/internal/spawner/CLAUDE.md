@@ -261,19 +261,26 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - pass_count == 0 → layer fails
 
 BROADCAST: The spawner broadcasts WebSocket events (agent.started,
-messages.updated, agent.completed, agent.take_control) directly via
-the in-process WebSocket hub.
+messages.updated, agent.completed, agent.take_control,
+agent.take_control_rejected) directly via the in-process WebSocket hub.
 messages.updated events are coalesced to one per session per 2s window.
 
 7. TAKE-CONTROL (interactive session)
    - `takeControlCh` receives session ID from orchestrator
-   - Kills agent: SIGTERM → grace period → SIGKILL
-   - Sets session status to user_interactive
-   - Broadcasts agent.take_control event
-   - Blocks monitorAll on interactiveWaitCh
+   - Backend gate: proc.backend.SupportsTakeControl() must return true
+   - If false (API backends): broadcasts agent.take_control_rejected with
+     session_id, agent_type, model_id, reason="api_mode_unsupported" and
+     breaks — agent is NOT killed and continues running normally
+   - If true: kills agent (SIGTERM → grace period → SIGKILL), sets session
+     status to user_interactive, broadcasts agent.take_control event, blocks
+     monitorAll on interactiveWaitCh
    - `CompleteInteractive(sessionID)` closes the channel, unblocking
    - Proc treated as PASS for finalizePhase
    - Only works for CLIs with SupportsResume() == true
+   - HTTP handlers (ticket + project take-control) pre-screen via
+     isAPISession() and return HTTP 409 api_mode_unsupported before
+     dispatching to the orchestrator, so the spawner rejection path is a
+     belt-and-suspenders fallback
 ```
 
 ## Public Helper Methods

@@ -16,6 +16,8 @@ import { ChainDetailPage } from '@/pages/ChainDetailPage'
 import { GitStatusPage } from '@/pages/GitStatusPage'
 import { DocumentationPage } from '@/pages/DocumentationPage'
 import { ErrorsPage } from '@/pages/ErrorsPage'
+import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
+import { APICredentialsPage } from '@/pages/APICredentialsPage'
 import { useProjectStore } from '@/stores/projectStore'
 
 const queryClient = new QueryClient({
@@ -52,6 +54,8 @@ function App() {
               <Route path="chains" element={<ChainListPage />} />
               <Route path="chains/:id" element={<ChainDetailPage />} />
               <Route path="errors" element={<ErrorsPage />} />
+              <Route path="tool-definitions" element={<ToolDefinitionsPage />} />
+              <Route path="api-credentials" element={<APICredentialsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Routes>

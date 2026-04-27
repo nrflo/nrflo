@@ -260,6 +260,9 @@ export interface AgentDef {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
+  execution_mode: 'cli' | 'api'
+  tools: string
+  api_max_iterations?: number
   created_at: string
   updated_at: string
 }
@@ -274,6 +277,9 @@ export interface AgentDefCreateRequest {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
+  execution_mode?: 'cli' | 'api'
+  tools?: string
+  api_max_iterations?: number
 }
 
 export interface AgentDefUpdateRequest {
@@ -285,6 +291,9 @@ export interface AgentDefUpdateRequest {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
+  execution_mode?: 'cli' | 'api'
+  tools?: string
+  api_max_iterations?: number
 }
 
 // Orchestration types

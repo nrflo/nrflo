@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
+import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { useModelOptions } from '@/hooks/useCLIModels'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
@@ -29,6 +30,9 @@ export function AgentDefForm({
   const [tag, setTag] = useState(initial?.tag || '')
   const [lowConsumptionModel, setLowConsumptionModel] = useState(initial?.low_consumption_model || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
+  const [executionMode, setExecutionMode] = useState<'cli' | 'api'>(initial?.execution_mode || 'cli')
+  const [tools, setTools] = useState(initial?.tools || '')
+  const [apiMaxIterations, setApiMaxIterations] = useState<number | ''>(initial?.api_max_iterations ?? '')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
 
@@ -39,15 +43,27 @@ export function AgentDefForm({
     const failRestarts = maxFailRestarts !== '' ? maxFailRestarts : undefined
     const tagValue = tag || undefined
     const lcModel = lowConsumptionModel || undefined
+    const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     if (isCreate) {
-      onSubmit({ id, layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefCreateRequest)
+      onSubmit({ id, layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter } as AgentDefCreateRequest)
     } else {
-      onSubmit({ layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel } as AgentDefUpdateRequest)
+      onSubmit({ layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter } as AgentDefUpdateRequest)
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 p-4 border border-border rounded-lg bg-muted/30">
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Execution Mode</label>
+        <Dropdown
+          value={executionMode}
+          onChange={(v) => setExecutionMode(v as 'cli' | 'api')}
+          options={[
+            { value: 'cli', label: 'CLI (default)' },
+            { value: 'api', label: 'API (in-process Anthropic runner)' },
+          ]}
+        />
+      </div>
       {isCreate && (
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">ID</label>
@@ -147,6 +163,14 @@ export function AgentDefForm({
           Model to use when low consumption mode is enabled
         </p>
       </div>
+      {executionMode === 'api' && (
+        <AgentDefAPIModeFields
+          tools={tools}
+          setTools={setTools}
+          apiMaxIterations={apiMaxIterations}
+          setApiMaxIterations={setApiMaxIterations}
+        />
+      )}
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="text-xs font-medium text-muted-foreground">Prompt Template</label>

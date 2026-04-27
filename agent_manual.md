@@ -496,7 +496,110 @@ System agents are global agent definitions not tied to any specific project or w
 
 ---
 
-## 15. How to Update This Document
+## 15. API-Mode Agents
+
+API-mode agents run entirely in-process against the Anthropic Messages API instead of spawning a CLI command. They support tool use (builtins and HTTP tools), stall detection, low-context relaunching, and all findings/callback/skip features — without requiring the `claude` CLI to be installed or authenticated on the host.
+
+### When to Use API Mode vs CLI Mode
+
+| | CLI mode | API mode |
+|-|----------|---------|
+| Requires `claude` CLI | Yes | No |
+| Supports take-control (interactive PTY) | Yes (Claude CLI only) | No |
+| Tool registry | Via CLI built-ins | Configurable via `tools` CSV |
+| Context save on low-context | Resume or system-agent save | System-agent save always |
+| Stall detection | Yes | Yes |
+
+### Enabling API Mode
+
+Set **Execution Mode** to `api` on the agent definition form (Workflows page). Two additional fields become available:
+
+- **Tools** — comma-separated list of tool patterns (glob-matched). Empty means text-only (no tools).
+- **API Max Iterations** — maximum turn count (default 50). Agent fails if this is reached.
+
+### Tools Field — Pattern Syntax
+
+The `tools` CSV is glob-matched against the available tool names. Examples:
+
+| Pattern | Matches |
+|---------|---------|
+| `findings.*` | All six findings builtins (`findings_add`, `findings_get`, …) |
+| `project_findings.*` | All six project-findings builtins |
+| `agent_*` | `agent_fail`, `agent_continue`, `agent_callback`, `agent_context_update` |
+| `workflow_skip` | Workflow skip builtin |
+| `*` | Every builtin + every in-scope HTTP tool definition |
+| `findings.*,agent_fail` | Findings builtins plus `agent_fail` |
+| `my_tool` | Exact match — only `my_tool` (must be a defined HTTP tool) |
+
+If a pattern matches nothing, the workflow fails to start with a config error.
+
+### Built-In Tools
+
+| Tool name | What it does |
+|-----------|-------------|
+| `findings_add` / `findings_add_bulk` | Write one or multiple key→value pairs to this session's findings |
+| `findings_append` / `findings_append_bulk` | Append to existing findings values |
+| `findings_get` | Read own findings (or another agent's findings by agent-type) |
+| `findings_delete` | Delete findings keys |
+| `project_findings_add` / `project_findings_add_bulk` | Write project-level findings |
+| `project_findings_append` / `project_findings_append_bulk` | Append to project-level findings |
+| `project_findings_get` | Read project-level findings |
+| `project_findings_delete` | Delete project-level findings |
+| `agent_fail` | Mark this agent as failed (workflow stops at this layer) |
+| `agent_continue` | Mark this session as continued (spawns a fresh agent with `${PREVIOUS_DATA}`) |
+| `agent_callback` | Trigger a callback to re-run an earlier layer |
+| `agent_context_update` | Manually update the context-left percentage |
+| `workflow_skip` | Add a skip tag to the running workflow instance |
+
+### HTTP Tool Definitions
+
+Custom HTTP tools are defined on the **Tool Definitions** page. Each tool has:
+
+- **Name** — used in the `tools` CSV and in the provider's tool list
+- **Endpoint** — URL the server POSTs to on each invocation
+- **Input Schema** — JSON Schema for the tool's input object
+- **Timeout** — per-call timeout in seconds (default 30)
+- **Auth Method** — `none`, `bearer_env` (reads an env var), or `bearer_secret_ref` (reads from API Credentials)
+- **Auth Ref** — env var name or credential secret_ref value
+
+The server POSTs the following JSON to the endpoint:
+
+```json
+{
+  "tool": "tool_name",
+  "input": { /* tool input from agent */ },
+  "context": {
+    "project_id": "myapp",
+    "workflow": "feature",
+    "session_id": "uuid"
+  }
+}
+```
+
+The endpoint must return a plain-text string (max 16 KB). A 5xx response triggers one retry after 500ms; 4xx returns immediately as a tool error visible to the agent.
+
+### API Credentials (`secret_ref`)
+
+API credentials are managed on the **Settings → API Credentials** page. A credential's `secret_ref` field determines where the secret value is read from at runtime:
+
+| Prefix | Example | Resolution |
+|--------|---------|-----------|
+| `env:NAME` | `env:OPENAI_KEY` | Read from the named environment variable |
+| `file:/path` | `file:/etc/secrets/key.txt` | Read from the file at the given path |
+| `literal:VALUE` | `literal:sk-...` | Use the value directly (stored encrypted) |
+
+Credentials are also used for per-project Anthropic API key overrides (set on the Project page). Resolution order for API-mode agents: per-project credential → global credential → `ANTHROPIC_API_KEY` environment variable.
+
+### Limitations
+
+- **No take-control**: API-mode agents cannot be taken over interactively. Attempting it returns HTTP 409 (`api_mode_unsupported`).
+- **No instant-stall detection**: The legacy instant-stall feature (removed in migration 000061) does not apply. Standard stall detection (start-stall and running-stall timeouts) works normally.
+- **Sequential tool dispatch**: Tools in a single turn are called one after another, not in parallel.
+- **Low-context always uses system-agent save**: The resume-based save path is unavailable for API-mode agents. A `context-saver` haiku agent is always spawned to write the summary.
+
+---
+
+## 16. How to Update This Document
 
 - This file is `agent_manual.md` in the project root
 - Served by `GET /api/v1/docs/agent-manual`

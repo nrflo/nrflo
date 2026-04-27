@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import type { WSEventV2 } from './useWSProtocol'
 import { subscriptionKey } from './useWSProtocol'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
@@ -164,6 +165,10 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
     }
+  },
+
+  'agent.take_control_rejected': () => {
+    toast.error('Take-control is not supported for API-mode agents.')
   },
 
   'agent.retry_waiting': (event, qc, isProjectScope) => {

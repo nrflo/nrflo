@@ -220,6 +220,24 @@ func (s *Server) workflowService() *service.WorkflowService {
 	return service.NewWorkflowService(s.pool, s.clock)
 }
 
+// isAPISession returns true when the agent session identified by sessionID was
+// spawned in API execution mode. Used by take-control handlers to reject early.
+// Errors during lookup are treated as false (session not found / not API mode).
+func isAPISession(s *Server, sessionID string) bool {
+	sess, err := s.agentSessionRepo().Get(sessionID)
+	if err != nil {
+		return false
+	}
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
+	wfi, err := wfiRepo.Get(sess.WorkflowInstanceID)
+	if err != nil {
+		return false
+	}
+	agentDefRepo := repo.NewAgentDefinitionRepo(s.pool, s.clock)
+	def, err := agentDefRepo.Get(sess.ProjectID, wfi.WorkflowID, sess.AgentType)
+	return err == nil && def.ExecutionMode == "api"
+}
+
 // corsMiddleware adds CORS headers
 func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

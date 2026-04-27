@@ -224,6 +224,12 @@ func (s *Server) handleTakeControlProject(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Guard: API-mode agents do not support take-control
+	if isAPISession(s, body.SessionID) {
+		writeError(w, http.StatusConflict, "api_mode_unsupported")
+		return
+	}
+
 	sessionID, err := s.orchestrator.TakeControlProject(projectID, body.Workflow, body.SessionID, body.InstanceID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())

@@ -46,6 +46,8 @@ export type WSEventType =
   | 'orchestration.retried'
   | 'orchestration.callback'
   | 'agent.take_control'
+  | 'agent.take_control_rejected'
+  | 'agent.stall_waiting'
   | 'chain.updated'
   | 'layer.skipped'
   | 'merge.conflict_resolving'

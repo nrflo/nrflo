@@ -42,6 +42,7 @@ const (
 	EventProjectFindingsUpdated      = "project_findings.updated"
 	EventAgentContextUpdated         = "agent.context_updated"
 	EventAgentTakeControl            = "agent.take_control"
+	EventAgentTakeControlRejected    = "agent.take_control_rejected"
 	EventLayerSkipped                = "layer.skipped"
 	EventAgentRetryWaiting           = "agent.retry_waiting"
 	EventAgentStallWaiting           = "agent.stall_waiting"

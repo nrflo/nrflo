@@ -105,6 +105,18 @@ export async function apiPatch<T>(
   })
 }
 
+export async function apiPut<T>(
+  endpoint: string,
+  body?: unknown,
+  options?: FetchOptions
+): Promise<T> {
+  return apiFetch<T>(endpoint, {
+    ...options,
+    method: 'PUT',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+}
+
 export async function apiDelete<T>(
   endpoint: string,
   body?: unknown,

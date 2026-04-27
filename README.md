@@ -12,10 +12,6 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
   <a href="https://nrflo.com/"><strong>nrflo.com</strong></a>
 </p>
 
-<p align="center">
-  <a href="https://youtu.be/9B5HqybTRmM">▶ Watch the demo on YouTube</a>
-</p>
-
 ## Why NRFLO
 
 - **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects

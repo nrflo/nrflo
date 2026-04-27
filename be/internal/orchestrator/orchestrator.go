@@ -1024,6 +1024,13 @@ func (o *Orchestrator) runLoop(
 	}
 	defer pool.Close()
 
+	// Build API-mode wiring once per workflow run. Provider is nil if no
+	// anthropic key is configured — api-mode agents would then fail at
+	// prepareSpawn with a clear error (CLI agents are unaffected).
+	apiProvider := buildAPIProvider(ctx, pool, req.ProjectID, o.clock)
+	apiAgentSvc := newAPIAgentSvc(pool, o.clock, o.wsHub)
+	apiCredRepo := repo.NewAPICredentialRepo(pool, o.clock)
+
 	// Worktree cleanup on failure/cancellation (deferred after pool so git commands still work)
 	worktreeHandled := false
 	if wt != nil {
@@ -1160,6 +1167,9 @@ func (o *Orchestrator) runLoop(
 					ClaudeSettingsJSON:        claudeSettingsJSON,
 					ModelConfigs:              modelConfigs,
 					ErrorSvc:                  o.errorSvc,
+					Provider:                  apiProvider,
+					AgentSvc:                  apiAgentSvc,
+					APICredentialRepo:         apiCredRepo,
 				})
 
 				// Store spawner ref so RestartAgent can reach it

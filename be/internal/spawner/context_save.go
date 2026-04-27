@@ -46,8 +46,14 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	// 2. Flush messages from the killed process
 	s.saveMessages(proc)
 
-	// 3. Save context via configured method
-	if s.config.ContextSaveViaAgent {
+	// 3. Save context via configured method.
+	// API-mode agents force the agent-based save: the resume path is
+	// Claude-CLI-only, so it cannot resume an in-process API run.
+	useAgentSave := s.config.ContextSaveViaAgent
+	if proc.backend != nil && proc.backend.Name() == "api" {
+		useAgentSave = true
+	}
+	if useAgentSave {
 		s.contextSaveViaAgent(ctx, proc, req)
 	} else {
 		s.contextSaveViaResume(ctx, proc, req)

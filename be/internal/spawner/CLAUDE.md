@@ -142,7 +142,49 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 
 `spawnSingle` is split into a pure prep step (`prepareSpawn`) and a process-start step (`(s *Spawner).startBackend(proc, prep)`). Each `processInfo` carries a `backend ExecutionBackend` (`backend.go`) implementing `Name/SupportsResume/SupportsTakeControl/Start/Kill`. The default `cliBackend` wraps the existing `exec.Cmd` flow (BuildCommand, stdin pipe, stdout/stderr pipes, output and wait goroutines). All process-signal call sites — graceful shutdown, take-control, stall_restart, context_save, completion — route through `proc.backend.Kill(ctx, proc, sig)` (SIGKILL → `Process.Kill()`, else `Process.Signal(sig)`; nil-safe). `Spawner.TrackMessage` is the exported message-coalescing entry point used by the runner package (T3).
 
-T2–T5 plug an API-mode runner (`internal/spawner/apirun`) into this seam without touching `monitorAll`.
+`startBackend` selects the backend based on `prep.executionMode`: `"cli"` (default) instantiates `newCLIBackend(adapter, s)`; `"api"` instantiates `newAPIBackend(s)`. The execution mode is set in `prepareSpawn` from `agentDef.ExecutionMode` (loaded early so CLI prep is skipped for API agents).
+
+## API Backend (T3)
+
+`apiBackend` (`backend.go`) drives an in-process `apirun.Runner` (`apirun/runner.go`) instead of an `exec.Cmd`. There is no child process — `Start` launches a goroutine that:
+
+1. Runs the runner loop against `Config.Provider` (Anthropic).
+2. After the runner returns (PASS / FAIL / CANCELLED), persists messages and registers the session stop via `mapFinalStatus` → `(result, reason)`.
+3. Closes `proc.doneCh` so `monitorAll` unblocks; `monitorAll` skips `handleCompletion` because `proc.finalStatus` is already set (and `proc.cmd` is nil).
+
+`Kill` cancels the runner's stored context — the signal arg is ignored. `SupportsResume()` and `SupportsTakeControl()` return false; the resume + PTY paths are Claude-CLI-only.
+
+### Runner Loop (text-only, T3)
+
+`apirun.Runner.Run(ctx, ProcState)` drives one or more turns:
+
+- Builds an initial user message from `Config.InitialPrompt` (the rendered agent template). `Config.System` is a static prompt prefix.
+- Each turn calls `Provider.Run(ctx, Request{Tools: nil}, sink)` and switches on `StopReason`:
+  - `end_turn` → `PASS`
+  - `max_tokens` / `stop_sequence` → `FAIL` (system message includes stop_reason)
+  - `tool_use` → `FAIL` in T3 (no tool registry yet; T4 lifts this)
+  - default → `FAIL`
+- `ctx.Err()` → `CANCELLED`. Past `Config.Deadline` → `FAIL`. After `Config.MaxIterations` (default 50) → `FAIL`.
+- Per-turn context update: `pct = 100 - 100*(input + cache_read + cache_creation) / MaxContext` written to `proc.contextLeft` and broadcast via `Config.AgentSvc.UpdateContextLeft` (which fires `agent.context_updated`). `monitorAll`'s low-context branch sees this without modification.
+- Error classification (`apirun/errors.go`): 401/403 → auth_error, 429 → rate_limit, 5xx → provider_error, JSON parse → provider_protocol_error. Errors are recorded via `ErrorSvc` (when configured) and emitted as `system`-category messages.
+
+### Sink (Streaming Bridge)
+
+`runnerSink` (`apirun/sink.go`) implements `provider.EventSink`. Text deltas are coalesced into a buffer flushed on idle (200ms) or when the buffer exceeds 80 chars; tool-use start / input / usage events flush the buffer first and then emit categorised messages (`text`, `tool_use_start`, `tool_use_input`). Coalescing keeps the WS message volume comparable to CLI agents.
+
+### Context-Save Override
+
+`initiateContextSave` (`context_save.go`) forces the system-agent save path when `proc.backend.Name() == "api"`, regardless of `Config.ContextSaveViaAgent`. The resume path is Claude-CLI-only; an in-process API run cannot be resumed.
+
+### Required Spawner Config for API Agents
+
+- `Config.Provider` — `provider.Provider` (e.g. `anthropic.New(key)`). Spawner errors at start if missing.
+- `Config.AgentSvc` — `apirun.AgentSvc` (broadcasts context updates).
+- `Config.APICredentialRepo` — `anthropic.APICredentialRepo` for fail-fast key resolution in `prepareSpawn`.
+
+The orchestrator constructs all three at workflow start (`orchestrator/api_provider.go`) and threads them into every spawner created in the run.
+
+T4-T5 wire tool dispatch and continuation on top of this seam without modifying `monitorAll`.
 
 ## Error Capture
 

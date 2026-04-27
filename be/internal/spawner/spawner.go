@@ -17,6 +17,9 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/spawner/apirun"
+	"be/internal/spawner/apirun/provider"
+	"be/internal/spawner/apirun/provider/anthropic"
 	"be/internal/ws"
 )
 
@@ -52,6 +55,10 @@ const (
 	defaultStallStartTimeout   = 2 * time.Minute
 	defaultStallRunningTimeout = 8 * time.Minute
 	maxStallRestarts           = 15
+
+	defaultAPIMaxIterations = 50
+	defaultAPIMaxTokens     = 4096
+	defaultAPISystemPrompt  = "You are an agent in a workflow. Follow the instructions below."
 )
 
 // ModelConfig holds DB-sourced model configuration for the spawner.
@@ -99,6 +106,14 @@ type Config struct {
 	ModelConfigs map[string]ModelConfig
 	// ErrorSvc records agent errors (optional, nil-safe).
 	ErrorSvc ErrorRecorder
+	// Provider is the provider abstraction used by API-mode agents
+	// (execution_mode='api'). Required when any agent definition selects api mode.
+	Provider provider.Provider
+	// AgentSvc persists context_left for API-mode agents (mirrors what the
+	// CLI hook does for CLI agents).
+	AgentSvc apirun.AgentSvc
+	// APICredentialRepo resolves provider API keys for API-mode agents.
+	APICredentialRepo anthropic.APICredentialRepo
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -421,10 +436,22 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		modelID = fmt.Sprintf("%s:%s", cliName, model)
 	}
 
-	// Get CLI adapter
-	adapter, err := GetCLIAdapter(cliName)
-	if err != nil {
-		return nil, nil, err
+	// Load agent definition early — execution_mode determines whether we
+	// resolve a CLI adapter or skip CLI prep for api mode.
+	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
+	executionMode := "cli"
+	if agentDef != nil && agentDef.ExecutionMode == "api" {
+		executionMode = "api"
+	}
+
+	// Get CLI adapter (api mode skips this — there is no CLI process)
+	var adapter CLIAdapter
+	if executionMode == "cli" {
+		var err error
+		adapter, err = GetCLIAdapter(cliName)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Get agent config for timeout lookup
@@ -438,7 +465,6 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	// Load agent definition to get per-agent restart threshold and fail restart limit
 	effectiveThreshold := defaultContextThreshold
 	maxFailRestarts := 0
-	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
 	if agentDef != nil && agentDef.RestartThreshold != nil {
 		effectiveThreshold = *agentDef.RestartThreshold
 	}
@@ -480,7 +506,80 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		return nil, nil, fmt.Errorf("failed to load template: %w", err)
 	}
 
-	// Write prompt to temp file
+	workDir := s.config.ProjectRoot
+	if workDir == "" || workDir == "." {
+		workDir = ""
+	}
+
+	_, modelName := parseModelID(modelID)
+	proc := &processInfo{
+		agentID:             agentID,
+		agentType:           req.AgentType,
+		modelID:             modelID,
+		sessionID:           sessionID,
+		startTime:           s.config.Clock.Now(),
+		timeout:             time.Duration(timeout) * time.Minute,
+		pendingMessages:     make([]repo.MessageEntry, 0),
+		pendingTasks:        make(map[string]taskInfo),
+		doneCh:              make(chan struct{}),
+		lastMessagesFlush:   s.config.Clock.Now(),
+		promptContext:       prompt,
+		projectID:           req.ProjectID,
+		ticketID:            req.TicketID,
+		workflowName:        req.WorkflowName,
+		workflowInstanceID:  wfiID,
+		restartThreshold:    effectiveThreshold,
+		maxFailRestarts:     maxFailRestarts,
+		lastMessageTime:     s.config.Clock.Now(),
+		stallStartTimeout:   stallStartTimeout,
+		stallRunningTimeout: stallRunningTimeout,
+		maxContext:          s.maxContextForModel(modelName),
+	}
+
+	prep := &prepResult{
+		cliName:       cliName,
+		prompt:        prompt,
+		phase:         phase,
+		executionMode: executionMode,
+	}
+
+	if executionMode == "api" {
+		// Resolve the API key up-front so spawn fails fast on misconfiguration
+		// (matches the CLI failure mode of a missing binary).
+		if _, keyErr := anthropic.ResolveAPIKey(context.Background(), s.config.APICredentialRepo, req.ProjectID); keyErr != nil {
+			return nil, nil, fmt.Errorf("api mode: %w", keyErr)
+		}
+
+		// Resolve mapped model name for the provider call.
+		apiModelID := model
+		if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.MappedModel != "" {
+			apiModelID = cfg.MappedModel
+		}
+
+		maxIter := defaultAPIMaxIterations
+		if agentDef != nil && agentDef.APIMaxIterations != nil && *agentDef.APIMaxIterations > 0 {
+			maxIter = *agentDef.APIMaxIterations
+		}
+		maxCtx := s.maxContextForModel(modelName)
+		if s.config.Provider != nil {
+			if pmc := s.config.Provider.MaxContext(apiModelID); pmc > 0 {
+				maxCtx = pmc
+			}
+		}
+		proc.maxContext = maxCtx
+
+		prep.apiSystem = defaultAPISystemPrompt
+		prep.apiInitialPrompt = prompt
+		prep.apiTools = nil
+		prep.apiMaxIterations = maxIter
+		prep.apiMaxTokens = defaultAPIMaxTokens
+		prep.apiDeadline = proc.startTime.Add(proc.timeout)
+		prep.apiModelID = apiModelID
+		prep.apiMaxContext = maxCtx
+		return proc, prep, nil
+	}
+
+	// CLI mode: write prompt to temp file and assemble SpawnOptions.
 	filePrefix := req.TicketID
 	if req.IsProjectScope() {
 		filePrefix = "project-" + req.ProjectID
@@ -505,11 +604,6 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		} else {
 			initialPrompt = fmt.Sprintf(`Begin working on ticket %s. Follow the workflow steps in your system prompt.`, req.TicketID)
 		}
-	}
-
-	workDir := s.config.ProjectRoot
-	if workDir == "" || workDir == "." {
-		workDir = ""
 	}
 
 	// DB-sourced mapped model + reasoning effort
@@ -539,49 +633,22 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		),
 	}
 
-	_, modelName := parseModelID(modelID)
-	proc := &processInfo{
-		agentID:             agentID,
-		agentType:           req.AgentType,
-		modelID:             modelID,
-		sessionID:           sessionID,
-		startTime:           s.config.Clock.Now(),
-		timeout:             time.Duration(timeout) * time.Minute,
-		pendingMessages:     make([]repo.MessageEntry, 0),
-		pendingTasks:        make(map[string]taskInfo),
-		doneCh:              make(chan struct{}),
-		lastMessagesFlush:   s.config.Clock.Now(),
-		promptContext:       prompt,
-		projectID:           req.ProjectID,
-		ticketID:            req.TicketID,
-		workflowName:        req.WorkflowName,
-		workflowInstanceID:  wfiID,
-		restartThreshold:    effectiveThreshold,
-		maxFailRestarts:     maxFailRestarts,
-		lastMessageTime:     s.config.Clock.Now(),
-		stallStartTimeout:   stallStartTimeout,
-		stallRunningTimeout: stallRunningTimeout,
-		maxContext:          s.maxContextForModel(modelName),
-	}
-
-	prep := &prepResult{
-		adapter:    adapter,
-		cliName:    cliName,
-		opts:       opts,
-		promptFile: promptFile.Name(),
-		prompt:     prompt,
-		phase:      phase,
-	}
+	prep.adapter = adapter
+	prep.opts = opts
+	prep.promptFile = promptFile.Name()
 	return proc, prep, nil
 }
 
 // startBackend selects an ExecutionBackend based on the agent definition's
 // execution_mode (default "cli"), wires it onto the proc, calls Start, and
-// registers the agent_sessions row. Currently only "cli" is implemented; "api"
-// is wired in T2-T5.
+// registers the agent_sessions row.
 func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
-	// Pick backend. For now only cli is implemented; api is wired in T2-T5.
-	backend := newCLIBackend(prep.adapter, s)
+	var backend ExecutionBackend
+	if prep.executionMode == "api" {
+		backend = newAPIBackend(s)
+	} else {
+		backend = newCLIBackend(prep.adapter, s)
+	}
 	proc.backend = backend
 
 	if err := backend.Start(context.Background(), proc, prep); err != nil {

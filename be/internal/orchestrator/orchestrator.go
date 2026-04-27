@@ -1030,6 +1030,11 @@ func (o *Orchestrator) runLoop(
 	apiProvider := buildAPIProvider(ctx, pool, req.ProjectID, o.clock)
 	apiAgentSvc := newAPIAgentSvc(pool, o.clock, o.wsHub)
 	apiCredRepo := repo.NewAPICredentialRepo(pool, o.clock)
+	findingsSvc := service.NewFindingsService(pool, o.clock)
+	projectFindingsSvc := service.NewProjectFindingsService(pool, o.clock)
+	agentSvcReal := service.NewAgentService(pool, o.clock)
+	workflowSvcReal := service.NewWorkflowService(pool, o.clock)
+	toolDefRepo := repo.NewToolDefinitionRepo(pool, o.clock)
 
 	// Worktree cleanup on failure/cancellation (deferred after pool so git commands still work)
 	worktreeHandled := false
@@ -1170,6 +1175,11 @@ func (o *Orchestrator) runLoop(
 					Provider:                  apiProvider,
 					AgentSvc:                  apiAgentSvc,
 					APICredentialRepo:         apiCredRepo,
+					FindingsSvc:               findingsSvc,
+					ProjectFindingsSvc:        projectFindingsSvc,
+					AgentSvcReal:              agentSvcReal,
+					WorkflowSvc:               workflowSvcReal,
+					ToolDefRepo:               toolDefRepo,
 				})
 
 				// Store spawner ref so RestartAgent can reach it

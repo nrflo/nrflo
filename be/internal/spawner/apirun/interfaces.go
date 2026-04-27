@@ -26,6 +26,7 @@ type ProcState interface {
 	WorkflowInstanceID() string
 	SetFinalStatus(string)
 	SetContextLeft(int)
+	SetCallbackLevel(int)
 }
 
 // AgentSvc persists context_left and broadcasts the corresponding WS event.

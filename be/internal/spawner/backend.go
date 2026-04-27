@@ -44,6 +44,8 @@ type prepResult struct {
 	apiSystem        string
 	apiInitialPrompt string
 	apiTools         []provider.ToolSpec
+	apiHandlers      apirun.Registry
+	apiToolEnv       apirun.ToolEnv
 	apiMaxIterations int
 	apiMaxTokens     int
 	apiDeadline      time.Time
@@ -220,6 +222,8 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 		System:        prep.apiSystem,
 		InitialPrompt: prep.apiInitialPrompt,
 		Tools:         prep.apiTools,
+		Handlers:      prep.apiHandlers,
+		Env:           prep.apiToolEnv,
 		Model:         prep.apiModelID,
 		MaxIterations: prep.apiMaxIterations,
 		MaxTokens:     prep.apiMaxTokens,
@@ -280,6 +284,7 @@ func (p *procStateAdapter) ProjectID() string          { return p.proc.projectID
 func (p *procStateAdapter) WorkflowInstanceID() string { return p.proc.workflowInstanceID }
 func (p *procStateAdapter) SetFinalStatus(s string)    { p.proc.finalStatus = s }
 func (p *procStateAdapter) SetContextLeft(pct int)     { p.proc.contextLeft = pct }
+func (p *procStateAdapter) SetCallbackLevel(level int) { p.proc.callbackLevel = level }
 
 // apirunErrorAdapter converts a spawner.ErrorRecorder into apirun.ErrorRecorder.
 // Returns nil when the input is nil so the runner skips error recording.
@@ -308,6 +313,10 @@ func mapFinalStatus(status string) (result, reason string) {
 		return "fail", "cancelled"
 	case "FAIL":
 		return "fail", "api_error"
+	case "CONTINUE":
+		return "continue", "api_continue"
+	case "CALLBACK":
+		return "callback", "callback"
 	case "":
 		return "fail", "no_status"
 	default:

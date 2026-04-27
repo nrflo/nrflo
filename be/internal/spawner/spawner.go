@@ -17,9 +17,12 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
 	"be/internal/spawner/apirun/provider/anthropic"
+	"be/internal/spawner/apirun/tools_builtin"
+	"be/internal/spawner/apirun/tools_http"
 	"be/internal/ws"
 )
 
@@ -114,6 +117,16 @@ type Config struct {
 	AgentSvc apirun.AgentSvc
 	// APICredentialRepo resolves provider API keys for API-mode agents.
 	APICredentialRepo anthropic.APICredentialRepo
+	// FindingsSvc, ProjectFindingsSvc, AgentSvcReal, WorkflowSvc are used by
+	// API-mode tool builtins (findings_*, project_findings_*, agent_*,
+	// workflow_skip). They mirror the services the socket handler uses for
+	// CLI agents so WS event parity is automatic.
+	FindingsSvc        *service.FindingsService
+	ProjectFindingsSvc *service.ProjectFindingsService
+	AgentSvcReal       *service.AgentService
+	WorkflowSvc        *service.WorkflowService
+	// ToolDefRepo lists HTTP tool definitions for API-mode registry resolution.
+	ToolDefRepo *repo.ToolDefinitionRepo
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -174,6 +187,9 @@ type processInfo struct {
 	stallRestartCount   int           // incremented on each stall restart
 	// External session ID (e.g., codex thread_id) — for logging only
 	externalSessionID string
+	// Callback level set by API-mode agent_callback handler. Mirrors the
+	// callback_level finding written by AgentService.Callback for CLI agents.
+	callbackLevel int
 	// Transaction ID for structured logging (from orchestrator context)
 	trx string
 }
@@ -568,9 +584,40 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		}
 		proc.maxContext = maxCtx
 
+		// Resolve per-agent tool registry from the CSV. Empty CSV ⇒ text-only.
+		toolsCSV := ""
+		if agentDef != nil {
+			toolsCSV = agentDef.Tools
+		}
+		httpDefs, defsErr := s.loadAPIHTTPToolDefs(req.ProjectID, req.WorkflowName)
+		if defsErr != nil {
+			return nil, nil, fmt.Errorf("api mode: load tool defs: %w", defsErr)
+		}
+		specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, tools_builtin.Builtins(), httpDefs, tools_http.New(nil))
+		if regErr != nil {
+			return nil, nil, fmt.Errorf("api mode: %w", regErr)
+		}
+
 		prep.apiSystem = defaultAPISystemPrompt
 		prep.apiInitialPrompt = prompt
-		prep.apiTools = nil
+		prep.apiTools = specs
+		prep.apiHandlers = handlers
+		prep.apiToolEnv = apirun.ToolEnv{
+			Pool:               s.config.Pool,
+			WSHub:              s.config.WSHub,
+			Clock:              s.config.Clock,
+			SessionID:          proc.sessionID,
+			AgentID:            proc.agentID,
+			AgentType:          req.AgentType,
+			ProjectID:          req.ProjectID,
+			TicketID:           req.TicketID,
+			WorkflowName:       req.WorkflowName,
+			WorkflowInstanceID: wfiID,
+			Findings:           s.config.FindingsSvc,
+			ProjectFindings:    s.config.ProjectFindingsSvc,
+			Agent:              s.config.AgentSvcReal,
+			Workflow:           s.config.WorkflowSvc,
+		}
 		prep.apiMaxIterations = maxIter
 		prep.apiMaxTokens = defaultAPIMaxTokens
 		prep.apiDeadline = proc.startTime.Add(proc.timeout)
@@ -1073,6 +1120,27 @@ func (s *Spawner) cliForModel(model string) string {
 		return cfg.CLIType
 	}
 	return DefaultCLIForModel(model)
+}
+
+// loadAPIHTTPToolDefs returns HTTP tool definitions in scope for an api-mode
+// agent. Scope rules: project_id IS NULL or matches projectID, AND workflow_id
+// IS NULL or matches workflowName. The repo's ListByProject already applies
+// the project filter; this helper additionally filters by workflow scope.
+func (s *Spawner) loadAPIHTTPToolDefs(projectID, workflowName string) ([]*model.ToolDefinition, error) {
+	if s.config.ToolDefRepo == nil {
+		return nil, nil
+	}
+	all, err := s.config.ToolDefRepo.ListByProject(projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.ToolDefinition, 0, len(all))
+	for _, def := range all {
+		if def.WorkflowID == nil || *def.WorkflowID == "" || strings.EqualFold(*def.WorkflowID, workflowName) {
+			out = append(out, def)
+		}
+	}
+	return out, nil
 }
 
 func parseModelID(modelID string) (cli, model string) {

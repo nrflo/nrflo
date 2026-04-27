@@ -2,6 +2,7 @@ package apirun
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -25,6 +26,8 @@ type Config struct {
 	System           string
 	InitialPrompt    string
 	Tools            []provider.ToolSpec
+	Handlers         Registry
+	Env              ToolEnv
 	CacheBreakpoints []provider.CacheBreakpoint
 	Model            string
 	MaxIterations    int
@@ -121,10 +124,19 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 			r.fail(proc, fmt.Sprintf("stop_reason=%s", resp.StopReason))
 			return
 		case "tool_use":
-			// T4 wires a tool registry. In T3, tool_use is a hard FAIL since
-			// no tools are configured.
-			r.fail(proc, "tool_use stop_reason but no tool registry (T4 not implemented)")
-			return
+			toolResults, terminate := r.dispatchTools(ctx, proc, resp.Content)
+			if terminate {
+				return
+			}
+			if len(toolResults) == 0 {
+				r.fail(proc, "tool_use stop_reason but no tool_use blocks in response")
+				return
+			}
+			msgs = append(msgs,
+				provider.Message{Role: "assistant", Content: resp.Content},
+				provider.Message{Role: "user", Content: toolResults},
+			)
+			continue
 		default:
 			r.fail(proc, fmt.Sprintf("unexpected stop_reason=%q", resp.StopReason))
 			return
@@ -132,6 +144,62 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 	}
 
 	r.fail(proc, fmt.Sprintf("max iterations %d reached", r.cfg.MaxIterations))
+}
+
+// dispatchTools iterates tool_use blocks in resp.Content sequentially. It
+// returns the assembled tool_result blocks plus a terminate signal when a
+// handler emits a TerminalSignal (FAIL/CONTINUE/CALLBACK). Sequential
+// dispatch only in v1 — TODO(parallel): the for-range loop below is the
+// natural slot for parallel dispatch.
+func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []provider.ContentBlock) ([]provider.ContentBlock, bool) {
+	results := []provider.ContentBlock{}
+	for _, block := range content {
+		if block.Type != "tool_use" {
+			continue
+		}
+		handler, ok := r.cfg.Handlers[block.ToolName]
+		if !ok {
+			msg := fmt.Sprintf("unknown tool: %s", block.ToolName)
+			r.cfg.Sink.TrackMessage(msg, "tool_error")
+			results = append(results, provider.ContentBlock{
+				Type:      "tool_result",
+				ToolUseID: block.ToolUseID,
+				Output:    msg,
+				IsError:   true,
+			})
+			continue
+		}
+
+		out, isErr, terr := handler.Invoke(ctx, r.cfg.Env, block.Input)
+
+		var ts TerminalSignal
+		if errors.As(terr, &ts) {
+			proc.SetFinalStatus(ts.Status)
+			if ts.Status == "CALLBACK" {
+				proc.SetCallbackLevel(ts.Level)
+			}
+			return nil, true
+		}
+		if terr != nil {
+			out = terr.Error()
+			isErr = true
+		}
+		r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), "tool_result")
+		results = append(results, provider.ContentBlock{
+			Type:      "tool_result",
+			ToolUseID: block.ToolUseID,
+			Output:    out,
+			IsError:   isErr,
+		})
+	}
+	return results, false
+}
+
+func formatToolResult(name, out string, isErr bool) string {
+	if isErr {
+		return fmt.Sprintf("[tool_result:error] name=%s output=%s", name, out)
+	}
+	return fmt.Sprintf("[tool_result] name=%s output=%s", name, out)
 }
 
 // updateContext computes the percentage of context window remaining from the

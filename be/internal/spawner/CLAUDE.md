@@ -184,7 +184,7 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 
 The orchestrator constructs all three at workflow start (`orchestrator/api_provider.go`) and threads them into every spawner created in the run.
 
-T4-T5 wire tool dispatch and continuation on top of this seam without modifying `monitorAll`.
+T4 wires tool dispatch on top of this seam (registry resolution in `prepareSpawn`, dispatch loop in `apirun.Runner`, terminal-tool short-circuit via `TerminalSignal`). See [apirun/CLAUDE.md](apirun/CLAUDE.md) for the tool dispatch architecture, builtins, HTTP handler, and registry rules.
 
 ## Error Capture
 

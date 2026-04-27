@@ -156,7 +156,6 @@ export function restartReasonLabel(reason: string): string {
     case 'low_context': return 'Low context'
     case 'stall_restart_start_stall': return 'Start stall'
     case 'stall_restart_running_stall': return 'Running stall'
-    case 'instant_stall': return 'Instant stall'
     case 'fail_restart': return 'Fail restart'
     case 'timeout_restart': return 'Timeout restart'
     case 'explicit': return 'Manual continue'

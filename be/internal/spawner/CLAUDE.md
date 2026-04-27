@@ -143,8 +143,6 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 The spawner records errors to the `errors` table via `Config.ErrorSvc` (implements `ErrorRecorder` interface). Nil-safe — no-op when not configured. Errors are recorded for:
 - **Agent timeout** (`completion.go:handleGracefulTimeout`): type=agent, message=`"<agent_type>: timeout after Ns"`
 - **Agent fail** (`completion.go:handleCompletion`): type=agent, message=`"<agent_type>: <result_reason>"`
-- **Instant stall restart** (`instant_stall.go:checkInstantStall`): type=agent, message=`"<agent_type>: instant_stall (restart N/6)"`
-- **Stall budget exhausted** (`instant_stall.go:markInstantStallFailed`): type=agent, message=`"<agent_type>: stall_budget_exhausted"`
 
 ## Database Access
 
@@ -208,19 +206,6 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
    - Stall timeouts configurable per agent_definition: stall_start_timeout_sec, stall_running_timeout_sec
      (NULL = defaults, 0 = disabled)
    - Global stall timeout override: when agent def has NULL, spawner checks Config.GlobalStallStartTimeout / GlobalStallRunningTimeout before falling back to hardcoded defaults. Priority: per-agent def > global config > hardcoded default.
-
-5c. INSTANT STALL DETECTION (post-completion, in monitorAll after handleCompletion)
-   - Checked after handleCompletion when finalStatus == "PASS" (agent exited with code 0)
-   - Guards: Claude CLI only (SupportsResume), elapsed < 1 minute,
-     actionable message count <= 3 (queried via CountBySessionActionable, excludes [init] and [thinking] prefixes),
-     session has no findings at all (any finding = agent did real work; agents with no work signal via `nrflo findings add no-op:no-op`)
-   - If stallRestartCount >= maxStallRestarts (15): marks session as failed with reason
-     stall_budget_exhausted (instead of letting false pass through)
-   - On match (budget available): override session result=continue reason=instant_stall, status=continued,
-     increment stallRestartCount, set finalStatus=CONTINUE → 15s delay → relaunchForContinuation
-   - Broadcasts agent.instant_stall_restart event with session_id, agent_type, elapsed, message_count
-   - Shares stall restart budget with regular stall detection (both increment stallRestartCount, capped at 15)
-   - Messages are already flushed by handleCompletion before this check runs
 
 6. FINALIZE PHASE
    - pass_count >= 1 → layer passes (fan-in)
@@ -513,7 +498,6 @@ Template warnings (`template.go`) use `context.Background()` without trx since t
 | `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
 | `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
-| `instant_stall_test.go` | Instant stall detection: triggers restart, skips non-Claude/elapsed>=1min/actionableMsgCount>3, init/thinking exclusion, budget cap, budget-exhausted marks failed |
 | `model_config_test.go` | DB-sourced ModelConfig: cliForModel/maxContextForModel with DB priority and fallback, adapter BuildCommand with opts.MappedModel/ReasoningEffort override |
 | `safety_hook_test.go` | Safety hook: config parsing (empty/invalid/disabled), bash generation (hardcoded rm patterns, user patterns, allowed paths, git ops), settings JSON structure |
 | `logging_structured_test.go` | Structured logging: logAgent/warnAgent/errorAgent with trx+prefix, empty trx, trx isolation, printStatus per-agent lines |

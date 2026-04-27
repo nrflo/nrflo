@@ -123,7 +123,7 @@ func TestRestartDetailsInHistory_TwoRestarts(t *testing.T) {
 	t1 := env.Clock.Now()
 	// Session B: second in chain, stalled and was continued
 	insertRRSession(t, env, "rr1-sess-b", "RR-1", wfiID, "analyzer",
-		"continued", "", "instant_stall", "rr1-sess-a", 0, t1, t1.Add(42*time.Second), nil)
+		"continued", "", "stall_restart_running_stall", "rr1-sess-a", 0, t1, t1.Add(42*time.Second), nil)
 
 	env.Clock.Advance(1 * time.Second)
 	t2 := env.Clock.Now()
@@ -146,7 +146,7 @@ func TestRestartDetailsInHistory_TwoRestarts(t *testing.T) {
 		t.Errorf("restart_count = %v, want 2", rc)
 	}
 
-	assertRestartDetails(t, entry, []string{"low_context", "instant_stall"})
+	assertRestartDetails(t, entry, []string{"low_context", "stall_restart_running_stall"})
 
 	// Verify detailed fields
 	rawDetails := entry["restart_details"].([]interface{})

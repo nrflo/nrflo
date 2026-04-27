@@ -42,7 +42,6 @@ func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
 		"stall_restart_running_stall",
 		"fail_restart",
 		"timeout_restart",
-		"instant_stall",
 	}
 	for _, reason := range reasons {
 		t.Run(reason, func(t *testing.T) {

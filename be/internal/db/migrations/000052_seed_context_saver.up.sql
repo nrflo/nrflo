@@ -29,14 +29,10 @@ Analyze the message history above and produce a concise summary covering:
 3. **What remains** — tasks not yet started or partially completed
 4. **Key decisions** — any important design choices or constraints discovered
 
-Then run these two commands in order:
+Then run this command:
 
 ```bash
 NRF_SESSION_ID=${TARGET_SESSION_ID} nrflow findings add to_resume "<your concise summary>"
-```
-
-```bash
-nrflow findings add no-op:no-op
 ```
 
 ## Rules

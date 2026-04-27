@@ -791,21 +791,6 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					s.handleCompletion(ctx, proc, req)
 				}
 
-				// Instant stall detection (exit 0 but too fast with minimal output)
-				instantStallDetected := false
-				if proc.finalStatus == "PASS" {
-					s.checkInstantStall(ctx, proc, req)
-					instantStallDetected = proc.finalStatus == "CONTINUE"
-				}
-
-				// Wait before instant stall restart
-				if instantStallDetected {
-					if !s.waitBeforeStallRetry(ctx, proc, req) {
-						completed = append(completed, proc)
-						continue
-					}
-				}
-
 				// Auto-restart failed agent if configured
 				if proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts {
 					if s.waitBeforeRetry(ctx, proc) {

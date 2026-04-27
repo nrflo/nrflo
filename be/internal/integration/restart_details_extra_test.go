@@ -40,9 +40,9 @@ func TestRestartDetails_MessageCountFromDB(t *testing.T) {
 	env.Clock.Advance(1 * time.Second)
 	t1 := env.Clock.Now()
 
-	// Session B: continued after instant_stall, 1 message
+	// Session B: continued after running stall, 1 message
 	insertRRSession(t, env, "rdmc-sess-b", "RD-MC-1", wfiID, "analyzer",
-		"continued", "", "instant_stall", "rdmc-sess-a", 0, t1, t1.Add(5*time.Second), nil)
+		"continued", "", "stall_restart_running_stall", "rdmc-sess-a", 0, t1, t1.Add(5*time.Second), nil)
 	insertAgentMessage(t, env, "rdmc-sess-b", 1, "only msg")
 
 	env.Clock.Advance(1 * time.Second)

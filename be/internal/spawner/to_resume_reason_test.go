@@ -32,25 +32,6 @@ func TestFetchPreviousDataAndReason_WithDataAndReason(t *testing.T) {
 	}
 }
 
-func TestFetchPreviousDataAndReason_NoDataWithReason(t *testing.T) {
-	env := setupToResumeTestEnv(t)
-	defer env.cleanup()
-
-	sessionID := uuid.New().String()
-	findings := map[string]interface{}{"other_key": "value"}
-	createContinuedSessionWithReason(t, env, sessionID, findings, "instant_stall")
-
-	data, reason := env.spawner.fetchPreviousDataAndReason(
-		env.projectID, env.ticketID, env.workflowID,
-		"test-agent", "claude:sonnet", "test-phase", "")
-	if data != "" {
-		t.Errorf("data = %q, want empty", data)
-	}
-	if reason != "instant_stall" {
-		t.Errorf("reason = %q, want %q", reason, "instant_stall")
-	}
-}
-
 func TestFetchPreviousDataAndReason_NoContinuedSessionReturnsEmptyReason(t *testing.T) {
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
@@ -89,7 +70,6 @@ func TestFetchPreviousDataAndReason_AllStallReasons(t *testing.T) {
 	reasons := []string{
 		"stall_restart_start_stall",
 		"stall_restart_running_stall",
-		"instant_stall",
 		"fail_restart",
 		"timeout_restart",
 	}

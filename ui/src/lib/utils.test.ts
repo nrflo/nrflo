@@ -167,11 +167,10 @@ describe('formatTokenCount', () => {
 })
 
 describe('restartReasonLabel', () => {
-  it('maps all 7 known reason codes to human-readable labels', () => {
+  it('maps all known reason codes to human-readable labels', () => {
     expect(restartReasonLabel('low_context')).toBe('Low context')
     expect(restartReasonLabel('stall_restart_start_stall')).toBe('Start stall')
     expect(restartReasonLabel('stall_restart_running_stall')).toBe('Running stall')
-    expect(restartReasonLabel('instant_stall')).toBe('Instant stall')
     expect(restartReasonLabel('fail_restart')).toBe('Fail restart')
     expect(restartReasonLabel('timeout_restart')).toBe('Timeout restart')
     expect(restartReasonLabel('explicit')).toBe('Manual continue')
@@ -193,14 +192,14 @@ describe('formatRestartReasons', () => {
 
   it('returns single-item list for one detail', () => {
     expect(formatRestartReasons([
-      { reason: 'instant_stall', duration_sec: 42, context_left: 85, message_count: 3 },
-    ])).toBe('1. Instant stall — 42s, 85% ctx, 3 msgs')
+      { reason: 'stall_restart_running_stall', duration_sec: 42, context_left: 85, message_count: 3 },
+    ])).toBe('1. Running stall — 42s, 85% ctx, 3 msgs')
   })
 
   it('omits context_left when undefined', () => {
     expect(formatRestartReasons([
-      { reason: 'instant_stall', duration_sec: 42, message_count: 3 },
-    ])).toBe('1. Instant stall — 42s, 3 msgs')
+      { reason: 'stall_restart_running_stall', duration_sec: 42, message_count: 3 },
+    ])).toBe('1. Running stall — 42s, 3 msgs')
   })
 
   it('shows 0% ctx when context_left is 0', () => {

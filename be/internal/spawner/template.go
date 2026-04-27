@@ -264,7 +264,5 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		logger.Warn(context.Background(), "project findings expansion failed", "error", err)
 	}
 
-	template += "\n#No changes needed signal: If no changes needed execute - nrflo findings add no-op:no-op"
-
 	return template, nil
 }

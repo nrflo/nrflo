@@ -138,6 +138,12 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 
 `DefaultCLIForModel()` remains a public package-level function for external callers (e.g., `orchestrator_interactive.go`).
 
+## Execution Backend (T1 seam)
+
+`spawnSingle` is split into a pure prep step (`prepareSpawn`) and a process-start step (`(s *Spawner).startBackend(proc, prep)`). Each `processInfo` carries a `backend ExecutionBackend` (`backend.go`) implementing `Name/SupportsResume/SupportsTakeControl/Start/Kill`. The default `cliBackend` wraps the existing `exec.Cmd` flow (BuildCommand, stdin pipe, stdout/stderr pipes, output and wait goroutines). All process-signal call sites — graceful shutdown, take-control, stall_restart, context_save, completion — route through `proc.backend.Kill(ctx, proc, sig)` (SIGKILL → `Process.Kill()`, else `Process.Signal(sig)`; nil-safe). `Spawner.TrackMessage` is the exported message-coalescing entry point used by the runner package (T3).
+
+T2–T5 plug an API-mode runner (`internal/spawner/apirun`) into this seam without touching `monitorAll`.
+
 ## Error Capture
 
 The spawner records errors to the `errors` table via `Config.ErrorSvc` (implements `ErrorRecorder` interface). Nil-safe — no-op when not configured. Errors are recorded for:

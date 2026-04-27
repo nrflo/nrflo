@@ -24,7 +24,8 @@ func TestHandleStallRestart_StartStall_DBState(t *testing.T) {
 	close(doneCh)
 
 	proc := &processInfo{
-		cmd:               &exec.Cmd{}, // cmd.Process == nil
+		cmd:               &exec.Cmd{},
+		backend:           &cliBackend{}, // cmd.Process == nil
 		doneCh:            doneCh,
 		sessionID:         env.sessionID,
 		agentID:           "test-agent-id",
@@ -85,6 +86,7 @@ func TestHandleStallRestart_RunningStall_DBState(t *testing.T) {
 
 	proc := &processInfo{
 		cmd:               &exec.Cmd{},
+		backend:           &cliBackend{},
 		doneCh:            doneCh,
 		sessionID:         env.sessionID,
 		agentID:           "test-agent-id",
@@ -140,6 +142,7 @@ func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
 
 	proc := &processInfo{
 		cmd:               &exec.Cmd{},
+		backend:           &cliBackend{},
 		doneCh:            make(chan struct{}),
 		sessionID:         env.sessionID,
 		agentID:           "test-agent-id",

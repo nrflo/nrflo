@@ -34,16 +34,12 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	logger.Warn(ctx, "low context detected", "context_left", proc.contextLeft, "session_id", proc.sessionID)
 
 	// 1. Kill the running agent: SIGTERM → wait → SIGKILL
-	if proc.cmd.Process != nil {
-		proc.cmd.Process.Signal(syscall.SIGTERM)
-	}
+	proc.backend.Kill(ctx, proc, syscall.SIGTERM)
 	select {
 	case <-processDoneCh:
 		// Original process exited
 	case <-time.After(killGracePeriod):
-		if proc.cmd.Process != nil {
-			proc.cmd.Process.Kill()
-		}
+		proc.backend.Kill(ctx, proc, syscall.SIGKILL)
 		<-processDoneCh
 	}
 

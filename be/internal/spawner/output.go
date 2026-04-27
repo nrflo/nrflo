@@ -116,7 +116,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			model, _ := data["model"].(string)
 			if version != "" || model != "" {
 				msg := fmt.Sprintf("[init] v%s model=%s", version, model)
-				s.trackMessage(proc, msg, "text")
+				s.TrackMessage(proc, msg, "text")
 				s.logAgent(proc, msg)
 			}
 		}
@@ -128,7 +128,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			limitType, _ := info["rateLimitType"].(string)
 			if status != "" && status != "allowed" {
 				msg := fmt.Sprintf("[rate_limit] %s %s", limitType, status)
-				s.trackMessage(proc, msg, "text")
+				s.TrackMessage(proc, msg, "text")
 				s.warnAgent(proc, msg)
 			}
 		}
@@ -235,7 +235,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 // handleTextMessage processes text output from either Claude or opencode
 func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	// Track full message content
-	s.trackMessage(proc, text, "text")
+	s.TrackMessage(proc, text, "text")
 
 	// Log with truncation for long messages
 	maxLen := 500
@@ -267,7 +267,7 @@ func (s *Spawner) handleToolUse(proc *processInfo, toolName string, input map[st
 	category := toolCategory(toolName)
 
 	// Track message
-	s.trackMessage(proc, toolDetail, category)
+	s.TrackMessage(proc, toolDetail, category)
 
 	// Log with prefix
 	s.logAgent(proc, toolDetail)
@@ -324,13 +324,15 @@ func (s *Spawner) handleClaudeToolResult(proc *processInfo, data map[string]inte
 	}
 	msg := "[" + resultTag + "] " + detail
 
-	s.trackMessage(proc, msg, "subagent")
+	s.TrackMessage(proc, msg, "subagent")
 
 	s.logAgent(proc, msg)
 }
 
-// trackMessage adds a message to the pending queue for DB insertion
-func (s *Spawner) trackMessage(proc *processInfo, msg string, category string) {
+// TrackMessage adds a message to the pending queue for DB insertion. Exported so
+// that future API-mode runners (T2-T5) can feed messages from a different source
+// without depending on the rest of the spawner.
+func (s *Spawner) TrackMessage(proc *processInfo, msg string, category string) {
 	proc.messagesMutex.Lock()
 	defer proc.messagesMutex.Unlock()
 	proc.pendingMessages = append(proc.pendingMessages, repo.MessageEntry{Content: msg, Category: category})

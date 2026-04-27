@@ -67,7 +67,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	}
 
 	// Track messages and flush (first broadcast should always happen)
-	spawner.trackMessage(proc, "Message 1", "text")
+	spawner.TrackMessage(proc, "Message 1", "text")
 	spawner.saveMessages(proc)
 
 	// Drain first broadcast
@@ -85,7 +85,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	}
 
 	// Track and flush again immediately (should be suppressed by coalescing)
-	spawner.trackMessage(proc, "Message 2", "text")
+	spawner.TrackMessage(proc, "Message 2", "text")
 	spawner.saveMessages(proc)
 
 	select {
@@ -99,7 +99,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 	testClock.Advance(3 * time.Second)
 
 	// Track and flush again (should broadcast now)
-	spawner.trackMessage(proc, "Message 3", "text")
+	spawner.TrackMessage(proc, "Message 3", "text")
 	spawner.saveMessages(proc)
 
 	select {
@@ -197,7 +197,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 	}
 
 	// Flush from session 1
-	spawner.trackMessage(proc1, "Session 1 message", "text")
+	spawner.TrackMessage(proc1, "Session 1 message", "text")
 	spawner.saveMessages(proc1)
 
 	// Drain first broadcast from session 1
@@ -214,7 +214,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 	}
 
 	// Flush from session 2 immediately (should broadcast because different session)
-	spawner.trackMessage(proc2, "Session 2 message", "text")
+	spawner.TrackMessage(proc2, "Session 2 message", "text")
 	spawner.saveMessages(proc2)
 
 	select {
@@ -289,7 +289,7 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 	}
 
 	// Track and save messages
-	spawner.trackMessage(proc, "Test message", "text")
+	spawner.TrackMessage(proc, "Test message", "text")
 	spawner.saveMessages(proc)
 
 	// Verify broadcast payload

@@ -206,7 +206,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 
 | Package | Documentation | Key Content |
 |---------|--------------|-------------|
-| `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, findings auto-population, output format |
+| `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, findings auto-population, output format. T1 introduces an `ExecutionBackend` seam (`backend.go`); T2-T5 plug an `apirun` package into it for API-mode execution. |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, fan-in rules, callback flow, chain runner |
 | `internal/api/` | [api/CLAUDE.md](internal/api/CLAUDE.md) | HTTP endpoints, handler mapping, CORS, WebSocket |
 | `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Database schema, migrations, connection pool |

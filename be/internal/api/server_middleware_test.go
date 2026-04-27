@@ -116,7 +116,7 @@ func TestCORSMiddleware_AlwaysSetsMethodsAndHeaders(t *testing.T) {
 		name string
 		want string
 	}{
-		{"Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS"},
+		{"Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS"},
 		{"Access-Control-Allow-Headers", "Content-Type, X-Project, X-Request-ID"},
 		{"Access-Control-Max-Age", "86400"},
 	} {

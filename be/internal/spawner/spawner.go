@@ -1,7 +1,6 @@
 package spawner
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -113,6 +112,7 @@ type taskInfo struct {
 // processInfo tracks a single spawned agent process
 type processInfo struct {
 	cmd           *exec.Cmd
+	backend       ExecutionBackend
 	agentID       string
 	agentType     string
 	modelID       string
@@ -379,16 +379,38 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	if err != nil {
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
+	if proc.backend == nil {
+		return fmt.Errorf("internal: spawned proc has nil backend")
+	}
 	proc.trx = logger.TrxFromContext(ctx)
-	logger.Info(ctx, "agent process started", "model", modelID, "pid", proc.cmd.Process.Pid, "session_id", proc.sessionID)
+	pid := 0
+	if proc.cmd != nil && proc.cmd.Process != nil {
+		pid = proc.cmd.Process.Pid
+	}
+	logger.Info(ctx, "agent process started", "model", modelID, "pid", pid, "session_id", proc.sessionID, "backend", proc.backend.Name())
 	processes := []*processInfo{proc}
 
 	// Monitor all processes
 	return s.monitorAll(ctx, processes, req, phase.ID)
 }
 
-// spawnSingle spawns a single agent process using the appropriate CLI adapter
+// spawnSingle spawns a single agent: prep -> backend.Start -> register.
 func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*processInfo, error) {
+	proc, prep, err := s.prepareSpawn(req, modelID, phase, wfiID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.startBackend(proc, prep); err != nil {
+		return nil, err
+	}
+	return proc, nil
+}
+
+// prepareSpawn does all CLI-agnostic prep work: session/agent IDs, agent-def
+// lookup (timeouts, restart threshold, stall settings), template loading,
+// prompt file creation, and SpawnOptions assembly. The returned processInfo
+// has cmd left nil — startBackend wires up the chosen ExecutionBackend.
+func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (*processInfo, *prepResult, error) {
 	agentID := "spawn-" + uuid.New().String()[:8]
 	sessionID := uuid.New().String()
 
@@ -402,7 +424,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	// Get CLI adapter
 	adapter, err := GetCLIAdapter(cliName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Get agent config for timeout lookup
@@ -455,7 +477,7 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	// Load agent template
 	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load template: %w", err)
+		return nil, nil, fmt.Errorf("failed to load template: %w", err)
 	}
 
 	// Write prompt to temp file
@@ -467,12 +489,11 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 	safePrefix = strings.ReplaceAll(safePrefix, "\\", "_")
 	promptFile, err := os.CreateTemp("/tmp/nrflo", fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file: %w", err)
+		return nil, nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
-
 	if _, err := promptFile.WriteString(prompt); err != nil {
 		os.Remove(promptFile.Name())
-		return nil, fmt.Errorf("failed to write prompt: %w", err)
+		return nil, nil, fmt.Errorf("failed to write prompt: %w", err)
 	}
 	promptFile.Close()
 
@@ -486,13 +507,12 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		}
 	}
 
-	// Prepare spawn options
 	workDir := s.config.ProjectRoot
 	if workDir == "" || workDir == "." {
 		workDir = ""
 	}
 
-	// Look up DB-sourced model config for mapped model and reasoning effort
+	// DB-sourced mapped model + reasoning effort
 	var mappedModel, reasoningEffort string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
 		mappedModel = cfg.MappedModel
@@ -519,81 +539,23 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		),
 	}
 
-	// Build command using adapter
-	cmd := adapter.BuildCommand(opts)
-
-	// For stdin-based adapters, pipe the prompt file to stdin
-	var stdinFile *os.File
-	if adapter.UsesStdinPrompt() {
-		stdinFile, err = os.Open(promptFile.Name())
-		if err != nil {
-			os.Remove(promptFile.Name())
-			return nil, fmt.Errorf("failed to open prompt file for stdin: %w", err)
-		}
-		cmd.Stdin = stdinFile
-	}
-
-	// Capture spawn command for debugging/replay — prepend nrflo env vars
-	// so the recorded command is fully reproducible.
-	var envParts []string
-	for _, e := range cmd.Env {
-		if strings.HasPrefix(e, "NRF_") || strings.HasPrefix(e, "NRFLO_") {
-			envParts = append(envParts, e)
-		}
-	}
-	spawnCommand := strings.Join(cmd.Args, " ")
-	if adapter.UsesStdinPrompt() {
-		spawnCommand += " < " + promptFile.Name()
-	}
-	if len(envParts) > 0 {
-		spawnCommand = strings.Join(envParts, " ") + " " + spawnCommand
-	}
-
-	// Create pipes
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		os.Remove(promptFile.Name())
-		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		os.Remove(promptFile.Name())
-		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
-	}
-
-	// Start process
-	if err := cmd.Start(); err != nil {
-		if stdinFile != nil {
-			stdinFile.Close()
-		}
-		os.Remove(promptFile.Name())
-		return nil, fmt.Errorf("failed to start agent: %w", err)
-	}
-	// Close stdin file — child process has its own fd copy
-	if stdinFile != nil {
-		stdinFile.Close()
-	}
-
-	// Create process info
 	_, modelName := parseModelID(modelID)
 	proc := &processInfo{
-		cmd:            cmd,
-		agentID:        agentID,
-		agentType:      req.AgentType,
-		modelID:        modelID,
-		sessionID:      sessionID,
-		startTime:      s.config.Clock.Now(),
-		timeout:        time.Duration(timeout) * time.Minute,
-		pendingMessages:   make([]repo.MessageEntry, 0),
-		pendingTasks:      make(map[string]taskInfo),
-		doneCh:            make(chan struct{}),
-		lastMessagesFlush: s.config.Clock.Now(),
-		spawnCommand:   spawnCommand,
-		promptContext:  prompt,
-		projectID:     req.ProjectID,
-		ticketID:      req.TicketID,
-		workflowName:       req.WorkflowName,
-		workflowInstanceID: wfiID,
+		agentID:             agentID,
+		agentType:           req.AgentType,
+		modelID:             modelID,
+		sessionID:           sessionID,
+		startTime:           s.config.Clock.Now(),
+		timeout:             time.Duration(timeout) * time.Minute,
+		pendingMessages:     make([]repo.MessageEntry, 0),
+		pendingTasks:        make(map[string]taskInfo),
+		doneCh:              make(chan struct{}),
+		lastMessagesFlush:   s.config.Clock.Now(),
+		promptContext:       prompt,
+		projectID:           req.ProjectID,
+		ticketID:            req.TicketID,
+		workflowName:        req.WorkflowName,
+		workflowInstanceID:  wfiID,
 		restartThreshold:    effectiveThreshold,
 		maxFailRestarts:     maxFailRestarts,
 		lastMessageTime:     s.config.Clock.Now(),
@@ -602,30 +564,39 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 		maxContext:          s.maxContextForModel(modelName),
 	}
 
-	// Register agent start (create agent_sessions row)
-	s.registerAgentStart(req.ProjectID, req.TicketID, req.WorkflowName, wfiID, agentID, req.AgentType, cmd.Process.Pid, sessionID, modelID, phase, spawnCommand, prompt, "", 0, effectiveThreshold)
+	prep := &prepResult{
+		adapter:    adapter,
+		cliName:    cliName,
+		opts:       opts,
+		promptFile: promptFile.Name(),
+		prompt:     prompt,
+		phase:      phase,
+	}
+	return proc, prep, nil
+}
 
-	// Start output monitoring goroutines
-	go s.monitorOutput(proc, stdout)
-	go func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			line := scanner.Text()
-			s.warnAgent(proc, "[stderr] "+line)
-			s.trackMessage(proc, "[stderr] "+line, "text")
-		}
-	}()
+// startBackend selects an ExecutionBackend based on the agent definition's
+// execution_mode (default "cli"), wires it onto the proc, calls Start, and
+// registers the agent_sessions row. Currently only "cli" is implemented; "api"
+// is wired in T2-T5.
+func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
+	// Pick backend. For now only cli is implemented; api is wired in T2-T5.
+	backend := newCLIBackend(prep.adapter, s)
+	proc.backend = backend
 
-	// Single wait goroutine - closes doneCh when process exits.
-	// Capture doneCh locally: proc.doneCh may be replaced during low-context save.
-	origDoneCh := proc.doneCh
-	go func() {
-		proc.waitErr = cmd.Wait()
-		close(origDoneCh)
-		os.Remove(promptFile.Name())
-	}()
+	if err := backend.Start(context.Background(), proc, prep); err != nil {
+		return err
+	}
 
-	return proc, nil
+	pid := 0
+	if proc.cmd != nil && proc.cmd.Process != nil {
+		pid = proc.cmd.Process.Pid
+	}
+	s.registerAgentStart(proc.projectID, proc.ticketID, proc.workflowName, proc.workflowInstanceID,
+		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
+		proc.spawnCommand, proc.promptContext, "", 0, proc.restartThreshold)
+
+	return nil
 }
 
 // monitorAll monitors all spawned processes until completion.
@@ -644,9 +615,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			// Kill all running processes
 			logger.Warn(ctx, "agents cancelled", "count", len(running))
 			for _, proc := range running {
-				if proc.cmd.Process != nil {
-					proc.cmd.Process.Signal(syscall.SIGTERM)
-				}
+				proc.backend.Kill(ctx, proc, syscall.SIGTERM)
 			}
 			// Wait briefly for graceful shutdown
 			time.Sleep(2 * time.Second)
@@ -654,9 +623,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				select {
 				case <-proc.doneCh:
 				default:
-					if proc.cmd.Process != nil {
-						proc.cmd.Process.Kill()
-					}
+					proc.backend.Kill(ctx, proc, syscall.SIGKILL)
 					<-proc.doneCh
 				}
 				proc.finalStatus = "CANCELLED"
@@ -685,20 +652,17 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if proc.sessionID != takeControlSessionID {
 					continue
 				}
-				// Validate CLI supports resume
-				cliName, _ := parseModelID(proc.modelID)
-				adapter, adapterErr := GetCLIAdapter(cliName)
-				if adapterErr != nil || !adapter.SupportsResume() {
-					logger.Error(ctx, "take-control: CLI does not support resume", "cli", cliName, "session_id", takeControlSessionID)
+				// Validate backend supports take-control
+				if proc.backend == nil || !proc.backend.SupportsTakeControl() {
+					cliName, _ := parseModelID(proc.modelID)
+					logger.Error(ctx, "take-control: backend does not support take-control", "cli", cliName, "session_id", takeControlSessionID)
 					break
 				}
 
 				logger.Info(ctx, "take-control: killing agent", "session_id", takeControlSessionID)
 
 				// Kill process: SIGTERM → grace → SIGKILL
-				if proc.cmd.Process != nil {
-					proc.cmd.Process.Signal(syscall.SIGTERM)
-				}
+				proc.backend.Kill(ctx, proc, syscall.SIGTERM)
 				gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second
 				if gracePeriod == 0 {
 					gracePeriod = 5 * time.Second
@@ -706,9 +670,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				select {
 				case <-proc.doneCh:
 				case <-time.After(gracePeriod):
-					if proc.cmd.Process != nil {
-						proc.cmd.Process.Kill()
-					}
+					proc.backend.Kill(ctx, proc, syscall.SIGKILL)
 					<-proc.doneCh
 				}
 

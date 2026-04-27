@@ -64,6 +64,10 @@ The socket only handles agent-facing methods:
 4. Rebuild: `cd be && make build`
 5. **Documentation updates:**
 
+## Broadcast Helper
+
+All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, eventType, BroadcastCtx, data)` (defined in `be/internal/service/broadcast.go`). It is the single source of truth for the unpack-`BroadcastCtx`-and-broadcast pattern; the future API tool dispatcher (T4) calls the same helper. Do not reintroduce inline `ws.NewEvent(...)` + `hub.Broadcast(...)` pairs in socket handlers.
+
 ## Files
 
 | File | Purpose |

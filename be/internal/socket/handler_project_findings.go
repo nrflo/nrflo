@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
 )
@@ -23,7 +24,7 @@ func (h *Handler) handleProjectFindings(req Request, action string) Response {
 		if err := h.projectFindingsSvc.Add(projectID, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventProjectFindingsUpdated, projectID, "", "", map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventProjectFindingsUpdated, service.BroadcastCtx{ProjectID: projectID}, map[string]interface{}{
 			"key":    params.Key,
 			"action": "add",
 		})
@@ -37,7 +38,7 @@ func (h *Handler) handleProjectFindings(req Request, action string) Response {
 		if err := h.projectFindingsSvc.AddBulk(projectID, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventProjectFindingsUpdated, projectID, "", "", map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventProjectFindingsUpdated, service.BroadcastCtx{ProjectID: projectID}, map[string]interface{}{
 			"action": "add-bulk",
 			"count":  len(params.KeyValues),
 		})
@@ -68,7 +69,7 @@ func (h *Handler) handleProjectFindings(req Request, action string) Response {
 		if err := h.projectFindingsSvc.Append(projectID, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventProjectFindingsUpdated, projectID, "", "", map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventProjectFindingsUpdated, service.BroadcastCtx{ProjectID: projectID}, map[string]interface{}{
 			"key":    params.Key,
 			"action": "append",
 		})
@@ -82,7 +83,7 @@ func (h *Handler) handleProjectFindings(req Request, action string) Response {
 		if err := h.projectFindingsSvc.AppendBulk(projectID, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventProjectFindingsUpdated, projectID, "", "", map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventProjectFindingsUpdated, service.BroadcastCtx{ProjectID: projectID}, map[string]interface{}{
 			"action": "append-bulk",
 			"count":  len(params.KeyValues),
 		})
@@ -100,7 +101,7 @@ func (h *Handler) handleProjectFindings(req Request, action string) Response {
 		if err != nil {
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventProjectFindingsUpdated, projectID, "", "", map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventProjectFindingsUpdated, service.BroadcastCtx{ProjectID: projectID}, map[string]interface{}{
 			"action":  "delete",
 			"deleted": deleted,
 		})

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"be/internal/logger"
+	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
 )
@@ -66,7 +67,7 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventFindingsUpdated, bctx, map[string]interface{}{
 			"agent_type": bctx.AgentType,
 			"key":        params.Key,
 			"action":     "add",
@@ -85,7 +86,7 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventFindingsUpdated, bctx, map[string]interface{}{
 			"agent_type": bctx.AgentType,
 			"action":     "add-bulk",
 			"count":      len(params.KeyValues),
@@ -121,7 +122,7 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventFindingsUpdated, bctx, map[string]interface{}{
 			"agent_type": bctx.AgentType,
 			"key":        params.Key,
 			"action":     "append",
@@ -140,7 +141,7 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventFindingsUpdated, bctx, map[string]interface{}{
 			"agent_type": bctx.AgentType,
 			"action":     "append-bulk",
 			"count":      len(params.KeyValues),
@@ -162,7 +163,7 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 			}
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventFindingsUpdated, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventFindingsUpdated, bctx, map[string]interface{}{
 			"agent_type": bctx.AgentType,
 			"action":     "delete",
 			"deleted":    deleted,
@@ -195,7 +196,11 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		if projectID != "" {
-			h.broadcast(ws.EventAgentContextUpdated, projectID, ticketID, workflow, map[string]interface{}{
+			service.BroadcastFromCtx(h.wsHub, ws.EventAgentContextUpdated, service.BroadcastCtx{
+				ProjectID: projectID,
+				TicketID:  ticketID,
+				Workflow:  workflow,
+			}, map[string]interface{}{
 				"session_id":   params.SessionID,
 				"context_left": params.ContextLeft,
 			})
@@ -220,7 +225,7 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		logger.Warn(ctx, "agent fail received", "agent_type", bctx.AgentType, "ticket", bctx.TicketID, "workflow", bctx.Workflow)
-		h.broadcast(ws.EventAgentCompleted, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventAgentCompleted, bctx, map[string]interface{}{
 			"action":     "fail",
 			"agent_type": bctx.AgentType,
 			"session_id": bctx.SessionID,
@@ -240,7 +245,7 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		logger.Info(ctx, "agent continue received", "agent_type", bctx.AgentType, "ticket", bctx.TicketID, "workflow", bctx.Workflow)
-		h.broadcast(ws.EventAgentContinued, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventAgentContinued, bctx, map[string]interface{}{
 			"action":     "continue",
 			"agent_type": bctx.AgentType,
 			"session_id": bctx.SessionID,
@@ -259,7 +264,7 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
 		logger.Info(ctx, "agent callback received", "agent_type", bctx.AgentType, "ticket", bctx.TicketID, "level", params.Level)
-		h.broadcast(ws.EventAgentCompleted, bctx.ProjectID, bctx.TicketID, bctx.Workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventAgentCompleted, bctx, map[string]interface{}{
 			"action":     "callback",
 			"agent_type": bctx.AgentType,
 			"level":      params.Level,
@@ -302,7 +307,11 @@ func (h *Handler) handleWorkflow(ctx context.Context, req Request, action string
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		h.broadcast(ws.EventSkipTagAdded, projectID, ticketID, workflow, map[string]interface{}{
+		service.BroadcastFromCtx(h.wsHub, ws.EventSkipTagAdded, service.BroadcastCtx{
+			ProjectID: projectID,
+			TicketID:  ticketID,
+			Workflow:  workflow,
+		}, map[string]interface{}{
 			"instance_id": params.InstanceID,
 			"tag":         params.Tag,
 		})
@@ -336,7 +345,11 @@ func (h *Handler) handleWS(ctx context.Context, req Request, action string) Resp
 		}
 		// ticket_id is optional for project-scoped workflows
 		logger.Info(ctx, "ws broadcast", "type", params.Type, "project", params.ProjectID)
-		h.broadcast(params.Type, params.ProjectID, params.TicketID, params.Workflow, params.Data)
+		service.BroadcastFromCtx(h.wsHub, params.Type, service.BroadcastCtx{
+			ProjectID: params.ProjectID,
+			TicketID:  params.TicketID,
+			Workflow:  params.Workflow,
+		}, params.Data)
 		return MakeResponse(req.ID, map[string]string{"status": "broadcast"})
 
 	default:

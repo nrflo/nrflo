@@ -68,9 +68,7 @@ func (s *Spawner) handleStallRestart(ctx context.Context, proc *processInfo, req
 	})
 
 	// Kill agent: SIGTERM → grace → SIGKILL
-	if proc.cmd.Process != nil {
-		proc.cmd.Process.Signal(syscall.SIGTERM)
-	}
+	proc.backend.Kill(ctx, proc, syscall.SIGTERM)
 
 	gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second
 	if gracePeriod == 0 {
@@ -80,9 +78,7 @@ func (s *Spawner) handleStallRestart(ctx context.Context, proc *processInfo, req
 	select {
 	case <-proc.doneCh:
 	case <-time.After(gracePeriod):
-		if proc.cmd.Process != nil {
-			proc.cmd.Process.Kill()
-		}
+		proc.backend.Kill(ctx, proc, syscall.SIGKILL)
 		<-proc.doneCh
 	}
 

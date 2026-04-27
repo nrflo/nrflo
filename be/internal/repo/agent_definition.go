@@ -28,9 +28,13 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	def.UpdatedAt = def.CreatedAt
 
+	executionMode := def.ExecutionMode
+	if executionMode == "" {
+		executionMode = "cli"
+	}
 	_, err := r.db.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -44,6 +48,9 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		def.Tag,
 		def.LowConsumptionModel,
 		def.Layer,
+		executionMode,
+		def.Tools,
+		def.APIMaxIterations,
 		now,
 		now,
 	)
@@ -55,9 +62,9 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 	def := &model.AgentDefinition{}
 	var createdAt, updatedAt string
 
-	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout sql.NullInt64
+	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter sql.NullInt64
 	err := r.db.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -74,6 +81,9 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		&def.Tag,
 		&def.LowConsumptionModel,
 		&def.Layer,
+		&def.ExecutionMode,
+		&def.Tools,
+		&apiMaxIter,
 		&createdAt,
 		&updatedAt,
 	)
@@ -102,6 +112,10 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		v := int(stallRunningTimeout.Int64)
 		def.StallRunningTimeoutSec = &v
 	}
+	if apiMaxIter.Valid {
+		v := int(apiMaxIter.Int64)
+		def.APIMaxIterations = &v
+	}
 
 	return def, nil
 }
@@ -109,7 +123,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 // List retrieves all agent definitions for a workflow
 func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -122,7 +136,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 	for rows.Next() {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
-		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout sql.NullInt64
+		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter sql.NullInt64
 
 		err := rows.Scan(
 			&def.ID,
@@ -138,6 +152,9 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			&def.Tag,
 			&def.LowConsumptionModel,
 			&def.Layer,
+			&def.ExecutionMode,
+			&def.Tools,
+			&apiMaxIter,
 			&createdAt,
 			&updatedAt,
 		)
@@ -163,6 +180,10 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			v := int(stallRunningTimeout.Int64)
 			def.StallRunningTimeoutSec = &v
 		}
+		if apiMaxIter.Valid {
+			v := int(apiMaxIter.Int64)
+			def.APIMaxIterations = &v
+		}
 
 		defs = append(defs, def)
 	}
@@ -182,6 +203,9 @@ type AgentDefUpdateFields struct {
 	StallRunningTimeoutSec *int
 	Tag                    *string
 	LowConsumptionModel    *string
+	ExecutionMode          *string
+	Tools                  *string
+	APIMaxIterations       *int
 }
 
 // Update updates an agent definition
@@ -228,6 +252,18 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.LowConsumptionModel != nil {
 		updates = append(updates, "low_consumption_model = ?")
 		args = append(args, *fields.LowConsumptionModel)
+	}
+	if fields.ExecutionMode != nil {
+		updates = append(updates, "execution_mode = ?")
+		args = append(args, *fields.ExecutionMode)
+	}
+	if fields.Tools != nil {
+		updates = append(updates, "tools = ?")
+		args = append(args, *fields.Tools)
+	}
+	if fields.APIMaxIterations != nil {
+		updates = append(updates, "api_max_iterations = ?")
+		args = append(args, *fields.APIMaxIterations)
 	}
 
 	if len(updates) == 0 {

@@ -235,7 +235,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		if allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Project, X-Request-ID")
 		w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID")
 		w.Header().Set("Access-Control-Max-Age", "86400")
@@ -414,6 +414,20 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/chains/{id}", s.handleDeleteChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/remove-items", s.handleRemoveFromChain)
+
+	// Tool definitions (global, no project scope)
+	mux.HandleFunc("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
+	mux.HandleFunc("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
+	mux.HandleFunc("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
+	mux.HandleFunc("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
+	mux.HandleFunc("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
+
+	// API credentials (global, no project scope; literal secret_ref is redacted in responses)
+	mux.HandleFunc("GET /api/v1/api-credentials", s.handleListAPICredentials)
+	mux.HandleFunc("POST /api/v1/api-credentials", s.handleCreateAPICredential)
+	mux.HandleFunc("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
+	mux.HandleFunc("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
+	mux.HandleFunc("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
 
 	// Errors
 	mux.HandleFunc("GET /api/v1/errors", s.handleListErrors)

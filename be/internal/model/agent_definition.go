@@ -17,6 +17,9 @@ type AgentDefinition struct {
 	Tag                    string    `json:"tag"`
 	LowConsumptionModel    string    `json:"low_consumption_model,omitempty"`
 	Layer                  int       `json:"layer"`
+	ExecutionMode          string    `json:"execution_mode"`
+	Tools                  string    `json:"tools"`
+	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

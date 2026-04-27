@@ -16,9 +16,7 @@ func (s *Spawner) handleGracefulTimeout(ctx context.Context, proc *processInfo, 
 	proc.elapsed = time.Since(proc.startTime)
 
 	// Send SIGTERM first
-	if proc.cmd.Process != nil {
-		proc.cmd.Process.Signal(syscall.SIGTERM)
-	}
+	proc.backend.Kill(ctx, proc, syscall.SIGTERM)
 
 	// Grace period for clean shutdown
 	gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second
@@ -31,9 +29,7 @@ func (s *Spawner) handleGracefulTimeout(ctx context.Context, proc *processInfo, 
 		// Exited gracefully after SIGTERM
 	case <-time.After(gracePeriod):
 		// Force kill
-		if proc.cmd.Process != nil {
-			proc.cmd.Process.Kill()
-		}
+		proc.backend.Kill(ctx, proc, syscall.SIGKILL)
 		<-proc.doneCh // Wait for the wait goroutine to finish
 	}
 

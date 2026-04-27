@@ -29,7 +29,8 @@ func TestHandleStallRestart_BroadcastsEvent(t *testing.T) {
 	close(doneCh) // pre-exited process
 
 	proc := &processInfo{
-		cmd:               &exec.Cmd{}, // cmd.Process == nil
+		cmd:               &exec.Cmd{},
+		backend:           &cliBackend{}, // cmd.Process == nil
 		doneCh:            doneCh,
 		sessionID:         "sess-stall-event",
 		agentType:         "implementor",
@@ -86,6 +87,7 @@ func TestHandleStallRestart_RunningStall_EventType(t *testing.T) {
 
 	proc := &processInfo{
 		cmd:               &exec.Cmd{},
+		backend:           &cliBackend{},
 		doneCh:            doneCh,
 		sessionID:         "sess-running-stall",
 		agentType:         "qa-verifier",

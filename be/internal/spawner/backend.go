@@ -1,0 +1,148 @@
+package spawner
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"os"
+	"strings"
+	"syscall"
+)
+
+// ExecutionBackend abstracts how an agent process is started, signaled, and tracked.
+// CLI agents use cliBackend (current behavior). API agents (T2-T5) plug in their own
+// backend without touching monitorAll.
+type ExecutionBackend interface {
+	Name() string
+	SupportsResume() bool
+	SupportsTakeControl() bool
+	Start(ctx context.Context, proc *processInfo, prep *prepResult) error
+	Kill(ctx context.Context, proc *processInfo, sig syscall.Signal) error
+}
+
+// prepResult holds CLI-agnostic prep state produced by prepareSpawn and consumed
+// by ExecutionBackend.Start. It carries the resolved CLI adapter (CLI mode only;
+// nil for api mode in future), the prompt file path, and the assembled
+// SpawnOptions.
+type prepResult struct {
+	adapter    CLIAdapter
+	cliName    string
+	opts       SpawnOptions
+	promptFile string
+	prompt     string
+	phase      string
+}
+
+// newCLIBackend wraps the existing CLI exec.Cmd flow as an ExecutionBackend.
+func newCLIBackend(adapter CLIAdapter, s *Spawner) *cliBackend {
+	return &cliBackend{adapter: adapter, s: s}
+}
+
+type cliBackend struct {
+	adapter CLIAdapter
+	s       *Spawner
+}
+
+func (b *cliBackend) Name() string              { return "cli" }
+func (b *cliBackend) SupportsResume() bool      { return b.adapter.SupportsResume() }
+func (b *cliBackend) SupportsTakeControl() bool { return b.adapter.SupportsResume() }
+
+// Start builds the exec.Cmd, wires stdin/stdout/stderr pipes, starts the process,
+// and launches the output and wait goroutines. Sets proc.cmd and proc.spawnCommand.
+func (b *cliBackend) Start(ctx context.Context, proc *processInfo, prep *prepResult) error {
+	cmd := b.adapter.BuildCommand(prep.opts)
+
+	var stdinFile *os.File
+	if b.adapter.UsesStdinPrompt() {
+		f, err := os.Open(prep.promptFile)
+		if err != nil {
+			os.Remove(prep.promptFile)
+			return fmt.Errorf("failed to open prompt file for stdin: %w", err)
+		}
+		cmd.Stdin = f
+		stdinFile = f
+	}
+
+	// Capture spawn command for debugging/replay — prepend nrflo env vars
+	// so the recorded command is fully reproducible.
+	var envParts []string
+	for _, e := range cmd.Env {
+		if strings.HasPrefix(e, "NRF_") || strings.HasPrefix(e, "NRFLO_") {
+			envParts = append(envParts, e)
+		}
+	}
+	spawnCommand := strings.Join(cmd.Args, " ")
+	if b.adapter.UsesStdinPrompt() {
+		spawnCommand += " < " + prep.promptFile
+	}
+	if len(envParts) > 0 {
+		spawnCommand = strings.Join(envParts, " ") + " " + spawnCommand
+	}
+	proc.spawnCommand = spawnCommand
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		if stdinFile != nil {
+			stdinFile.Close()
+		}
+		os.Remove(prep.promptFile)
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		if stdinFile != nil {
+			stdinFile.Close()
+		}
+		os.Remove(prep.promptFile)
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		if stdinFile != nil {
+			stdinFile.Close()
+		}
+		os.Remove(prep.promptFile)
+		return fmt.Errorf("failed to start agent: %w", err)
+	}
+	if stdinFile != nil {
+		stdinFile.Close()
+	}
+
+	proc.cmd = cmd
+
+	// Launch output monitoring goroutines.
+	go b.s.monitorOutput(proc, stdout)
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			b.s.warnAgent(proc, "[stderr] "+line)
+			b.s.TrackMessage(proc, "[stderr] "+line, "text")
+		}
+	}()
+
+	// Wait goroutine — closes doneCh when process exits.
+	// Capture doneCh locally: proc.doneCh may be replaced during low-context save.
+	origDoneCh := proc.doneCh
+	promptPath := prep.promptFile
+	go func() {
+		proc.waitErr = cmd.Wait()
+		close(origDoneCh)
+		os.Remove(promptPath)
+	}()
+
+	return nil
+}
+
+// Kill sends a signal to the running process. SIGKILL routes to Process.Kill();
+// other signals route to Process.Signal. Nil-Process is silently ignored to
+// preserve the previous safe-kill semantics at all call sites.
+func (b *cliBackend) Kill(ctx context.Context, proc *processInfo, sig syscall.Signal) error {
+	if proc.cmd == nil || proc.cmd.Process == nil {
+		return nil
+	}
+	if sig == syscall.SIGKILL {
+		return proc.cmd.Process.Kill()
+	}
+	return proc.cmd.Process.Signal(sig)
+}

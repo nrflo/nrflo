@@ -31,6 +31,8 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
+| `handlers_tool_definitions.go` | Tool definitions CRUD (global, no project scope; ?project_id and ?workflow_id list filters) |
+| `handlers_api_credentials.go` | API credentials CRUD (global, no project scope; literal:* secret_ref redacted as literal:*** in responses) |
 | `handlers_safety_hook_check.go` | Safety hook dry-run check (POST /api/v1/safety-hook/check, global) |
 | `handlers_project_findings.go` | Project findings GET (project-scoped) |
 | `handlers_docs.go` | Documentation (agent manual) |
@@ -177,6 +179,20 @@ GET /api/v1/docs/agent-manual      # Agent manual markdown content
 
 # Logs
 GET /api/v1/logs                   # Log file contents (?type=be, default be; ?filter=<string> searches full file case-insensitive, no 1000-line cap)
+
+# Tool definitions (global, no project scope)
+GET    /api/v1/tool-definitions           # ?project_id= and ?workflow_id= filter the list
+POST   /api/v1/tool-definitions           # Create (id, name, endpoint, input_schema required; input_schema must be valid JSON)
+GET    /api/v1/tool-definitions/{id}
+PUT    /api/v1/tool-definitions/{id}
+DELETE /api/v1/tool-definitions/{id}
+
+# API credentials (global, no project scope)
+GET    /api/v1/api-credentials            # secret_ref values starting with literal: are redacted as literal:***
+POST   /api/v1/api-credentials            # secret_ref must start with env:|file:|literal:
+GET    /api/v1/api-credentials/{id}
+PUT    /api/v1/api-credentials/{id}       # Plaintext literal:* is accepted on input; never returned on output
+DELETE /api/v1/api-credentials/{id}
 
 # Errors (require X-Project header or ?project= param)
 GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)

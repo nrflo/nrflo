@@ -256,11 +256,3 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock) *Handler {
 	}
 }
 
-// broadcast sends a WebSocket event if hub is configured
-func (h *Handler) broadcast(eventType, projectID, ticketID, workflow string, data map[string]interface{}) {
-	if h.wsHub == nil {
-		return
-	}
-	event := ws.NewEvent(eventType, projectID, ticketID, workflow, data)
-	h.wsHub.Broadcast(event)
-}

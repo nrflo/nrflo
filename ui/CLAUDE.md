@@ -10,7 +10,7 @@ This is the web UI for the nrflo ticket management system. It's a React + TypeSc
 |-----------|---------|
 | `src/api/` | API client modules with X-Project header support (see [api/CLAUDE.md](src/api/CLAUDE.md)) |
 | `src/types/` | TypeScript types matching Go models (see [types/CLAUDE.md](src/types/CLAUDE.md)) |
-| `src/hooks/` | TanStack Query hooks, WebSocket hook, utility hooks (see [hooks/CLAUDE.md](src/hooks/CLAUDE.md)) |
+| `src/hooks/` | TanStack Query hooks, WebSocket hook, utility hooks (see [hooks/CLAUDE.md](src/hooks/CLAUDE.md)). `useGlobalSettings.ts` exports `useGlobalSettings()` (UseQueryResult&lt;GlobalSettings&gt;) and `useAPIModeEnabled(): boolean` (returns `false` until query resolves). |
 | `src/stores/` | Zustand stores: project selection (`projectStore.ts`), theme preference (`themeStore.ts`) |
 | `src/lib/` | Utility functions (`cn`, `formatDate`, `statusColor`, etc.) |
 | `src/components/workflow/` | Workflow visualization components (see [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)) |
@@ -231,6 +231,7 @@ cd ui && npm run dev             # Optional: Vite dev server with hot-reload (po
 - Findings display with workflow-level and agent findings separated
 - Create/edit/close tickets
 - Multi-project support via project selector
+- API-mode gating: `useAPIModeEnabled()` (from `src/hooks/useGlobalSettings.ts`) reads `api_mode_enabled` from `GET /api/v1/settings`. When false (cli mode, default): Tool Definitions and API Credentials sidebar entries hidden, corresponding routes not registered, Execution Mode dropdown hidden in `AgentDefForm`. `AgentDefCard` API badge remains visible for orphan-def detection; existing api-mode defs' `AgentDefAPIModeFields` block remains reachable in edit form regardless of api_mode_enabled. `App.tsx` uses an inner `AppRoutes` component (inside QueryClientProvider) to call the hook at route-render time.
 - Settings page with tabbed layout (General, Projects, System Agents, Default Templates, CLI Models, Logs): project management (create/update/delete, Toggle for git worktrees), system agent definitions CRUD (global agents like conflict-resolver), default template CRUD (readonly built-in templates + user-created templates with MarkdownEditor), CLI model CRUD (readonly built-in models + user-created models with cli_type badges and warnings)
 - Documentation page with agent manual (rendered markdown from API)
 - Running agents indicator: `RunningAgentsIndicator` in header shows animated spinner with count badge when agents are running across any project. Hover popover lists agents grouped by project with clickable links. Data fetched via `useRunningAgents` hook (`GET /api/v1/agents/running`, not project-scoped). WS event `global.running_agents` invalidates the query for real-time updates. Types in `src/types/agents.ts`, API in `src/api/agents.ts`.

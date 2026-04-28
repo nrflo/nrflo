@@ -6,6 +6,7 @@ import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { useModelOptions } from '@/hooks/useCLIModels'
+import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
 export function AgentDefForm({
@@ -35,6 +36,7 @@ export function AgentDefForm({
   const [apiMaxIterations, setApiMaxIterations] = useState<number | ''>(initial?.api_max_iterations ?? '')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
+  const apiModeEnabled = useAPIModeEnabled()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,17 +55,19 @@ export function AgentDefForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 p-4 border border-border rounded-lg bg-muted/30">
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Execution Mode</label>
-        <Dropdown
-          value={executionMode}
-          onChange={(v) => setExecutionMode(v as 'cli' | 'api')}
-          options={[
-            { value: 'cli', label: 'CLI (default)' },
-            { value: 'api', label: 'API (in-process Anthropic runner)' },
-          ]}
-        />
-      </div>
+      {apiModeEnabled && (
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Execution Mode</label>
+          <Dropdown
+            value={executionMode}
+            onChange={(v) => setExecutionMode(v as 'cli' | 'api')}
+            options={[
+              { value: 'cli', label: 'CLI (default)' },
+              { value: 'api', label: 'API (in-process Anthropic runner)' },
+            ]}
+          />
+        </div>
+      )}
       {isCreate && (
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">ID</label>

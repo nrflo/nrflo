@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
+vi.mock('@/hooks/useGlobalSettings', () => ({
+  useAPIModeEnabled: () => true,
+}))
+
 vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [
     { label: 'Claude', options: [

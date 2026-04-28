@@ -19,6 +19,7 @@ import { ErrorsPage } from '@/pages/ErrorsPage'
 import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
 import { APICredentialsPage } from '@/pages/APICredentialsPage'
 import { useProjectStore } from '@/stores/projectStore'
+import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,34 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+function AppRoutes() {
+  const apiModeEnabled = useAPIModeEnabled()
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="tickets" element={<TicketListPage />} />
+          <Route path="tickets/new" element={<CreateTicketPage />} />
+          <Route path="tickets/:id" element={<TicketDetailPage />} />
+          <Route path="tickets/:id/edit" element={<EditTicketPage />} />
+          <Route path="workflows" element={<WorkflowsPage />} />
+          <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
+          <Route path="git-status" element={<GitStatusPage />} />
+          <Route path="documentation" element={<DocumentationPage />} />
+          <Route path="chains" element={<ChainListPage />} />
+          <Route path="chains/:id" element={<ChainDetailPage />} />
+          <Route path="errors" element={<ErrorsPage />} />
+          {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
+          {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  )
+}
 
 function App() {
   const loadProjects = useProjectStore((s) => s.loadProjects)
@@ -39,27 +68,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WebSocketProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="tickets" element={<TicketListPage />} />
-              <Route path="tickets/new" element={<CreateTicketPage />} />
-              <Route path="tickets/:id" element={<TicketDetailPage />} />
-              <Route path="tickets/:id/edit" element={<EditTicketPage />} />
-              <Route path="workflows" element={<WorkflowsPage />} />
-              <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
-              <Route path="git-status" element={<GitStatusPage />} />
-              <Route path="documentation" element={<DocumentationPage />} />
-              <Route path="chains" element={<ChainListPage />} />
-              <Route path="chains/:id" element={<ChainDetailPage />} />
-              <Route path="errors" element={<ErrorsPage />} />
-              <Route path="tool-definitions" element={<ToolDefinitionsPage />} />
-              <Route path="api-credentials" element={<APICredentialsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <AppRoutes />
       </WebSocketProvider>
     </QueryClientProvider>
   )

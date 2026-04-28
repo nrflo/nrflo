@@ -13,6 +13,12 @@ vi.mock('@/hooks/useTickets', () => ({
   useProjectWorkflow: () => mockUseProjectWorkflow(),
 }))
 
+const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)
+vi.mock('@/hooks/useGlobalSettings', () => ({
+  useAPIModeEnabled: () => mockUseAPIModeEnabled(),
+}))
+
+
 const mockUseChainList = vi.fn()
 vi.mock('@/hooks/useChains', () => ({
   useChainList: () => mockUseChainList(),
@@ -581,5 +587,43 @@ describe('Sidebar - Chain Execution Spinner', () => {
 
     const spinners = container.querySelectorAll('[class*="spin-sync"]')
     expect(spinners).toHaveLength(3)
+  })
+})
+
+describe('Sidebar - API Mode Gating', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStatus.mockReturnValue({ data: createMockStatus() })
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    mockUseChainList.mockReturnValue({ data: [] })
+  })
+
+  it('hides Tool Definitions, API Credentials, and Configuration heading when apiModeEnabled=false', () => {
+    mockUseAPIModeEnabled.mockReturnValue(false)
+    renderSidebar()
+    expect(screen.queryByText('Tool Definitions')).not.toBeInTheDocument()
+    expect(screen.queryByText('API Credentials')).not.toBeInTheDocument()
+    expect(screen.queryByText('Configuration')).not.toBeInTheDocument()
+  })
+
+  it('shows Tool Definitions and API Credentials when apiModeEnabled=true', () => {
+    mockUseAPIModeEnabled.mockReturnValue(true)
+    renderSidebar()
+    expect(screen.getByText('Tool Definitions')).toBeInTheDocument()
+    expect(screen.getByText('API Credentials')).toBeInTheDocument()
+  })
+
+  it('shows Configuration heading when apiModeEnabled=true', () => {
+    mockUseAPIModeEnabled.mockReturnValue(true)
+    renderSidebar()
+    expect(screen.getByText('Configuration')).toBeInTheDocument()
+  })
+
+  it('other nav items always render regardless of apiModeEnabled', () => {
+    mockUseAPIModeEnabled.mockReturnValue(false)
+    renderSidebar()
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /documentation/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /errors/i })).toBeInTheDocument()
   })
 })

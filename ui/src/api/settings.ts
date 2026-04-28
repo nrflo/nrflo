@@ -1,6 +1,7 @@
 import { apiGet, apiPatch } from './client'
 
 export interface GlobalSettings {
+  api_mode_enabled: boolean
   low_consumption_mode: boolean
   context_save_via_agent: boolean
   session_retention_limit: number

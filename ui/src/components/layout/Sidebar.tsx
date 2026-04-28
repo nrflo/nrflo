@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
 import { useChainList } from '@/hooks/useChains'
 import { useProjectStore } from '@/stores/projectStore'
+import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import { Spinner } from '@/components/ui/Spinner'
 
 interface NavItemProps {
@@ -57,6 +58,7 @@ export function Sidebar() {
   const { data: status } = useStatus()
   const currentProject = useProjectStore((s) => s.currentProject)
   const projects = useProjectStore((s) => s.projects)
+  const apiModeEnabled = useAPIModeEnabled()
 
   const { data: projectWorkflowData } = useProjectWorkflow(currentProject)
   const hasRunningProjectWorkflow = useMemo(
@@ -138,21 +140,25 @@ export function Sidebar() {
           label="Errors"
           active={isActive('/errors')}
         />
-        <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Configuration
-        </div>
-        <NavItem
-          to="/tool-definitions"
-          icon={<Wrench className="h-4 w-4" />}
-          label="Tool Definitions"
-          active={isActive('/tool-definitions')}
-        />
-        <NavItem
-          to="/api-credentials"
-          icon={<KeyRound className="h-4 w-4" />}
-          label="API Credentials"
-          active={isActive('/api-credentials')}
-        />
+        {apiModeEnabled && (
+          <>
+            <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Configuration
+            </div>
+            <NavItem
+              to="/tool-definitions"
+              icon={<Wrench className="h-4 w-4" />}
+              label="Tool Definitions"
+              active={isActive('/tool-definitions')}
+            />
+            <NavItem
+              to="/api-credentials"
+              icon={<KeyRound className="h-4 w-4" />}
+              label="API Credentials"
+              active={isActive('/api-credentials')}
+            />
+          </>
+        )}
         <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           By Status
         </div>

@@ -9,6 +9,12 @@ vi.mock('@/hooks/useCLIModels', () => ({
   ],
 }))
 
+const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)
+vi.mock('@/hooks/useGlobalSettings', () => ({
+  useAPIModeEnabled: () => mockUseAPIModeEnabled(),
+}))
+
+
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
     <textarea
@@ -189,5 +195,40 @@ describe('AgentDefForm — execution mode', () => {
         expect.objectContaining({ execution_mode: 'cli', tools: '' })
       )
     })
+  })
+})
+
+describe('AgentDefForm — apiModeEnabled=false gate', () => {
+  beforeEach(() => {
+    mockUseAPIModeEnabled.mockReturnValue(false)
+  })
+
+  afterEach(() => {
+    mockUseAPIModeEnabled.mockReturnValue(true)
+  })
+
+  it('hides Execution Mode label and dropdown', () => {
+    renderForm()
+    expect(screen.queryByText('Execution Mode')).not.toBeInTheDocument()
+  })
+
+  it('cli submit still produces execution_mode=cli and tools=empty', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderForm({ onSubmit })
+
+    await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'cli-agent')
+    await user.type(screen.getByLabelText('Prompt Template'), 'prompt')
+    await user.click(screen.getByRole('button', { name: /create/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ execution_mode: 'cli', tools: '' })
+    )
+  })
+
+  it('hides Execution Mode dropdown but still shows AgentDefAPIModeFields for orphan api def', () => {
+    renderForm({ isCreate: false, initial: { execution_mode: 'api', tools: 'findings_add' } })
+    expect(screen.queryByText('Execution Mode')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/findings_add/i)).toBeInTheDocument()
   })
 })

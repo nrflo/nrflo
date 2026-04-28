@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
+vi.mock('@/hooks/useGlobalSettings', () => ({
+  useAPIModeEnabled: () => true,
+}))
+
 vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [
     { label: 'Claude', options: [

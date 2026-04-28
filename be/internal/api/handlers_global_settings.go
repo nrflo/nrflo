@@ -53,6 +53,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"low_consumption_mode":    val == "true",
 		"context_save_via_agent":  contextSaveViaAgentVal == "true",
 		"session_retention_limit": retentionLimit,
+		"api_mode_enabled":        s.apiMode,
 	}
 	if stallStartVal != "" {
 		if parsed, parseErr := strconv.Atoi(stallStartVal); parseErr == nil {

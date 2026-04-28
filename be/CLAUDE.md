@@ -198,6 +198,15 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 - **Unix socket** at `/tmp/nrflo/nrflo.sock` — agent communication only (findings, agent completion, ws.broadcast)
 - **Auto-migration** — database schema is automatically migrated on startup
 
+### Serve Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--host` | `127.0.0.1` | Host/IP to bind to |
+| `--port` | `6587` | HTTP port |
+| `--no-tray` | `false` | Disable macOS menu bar tray icon |
+| `--mode` | `cli` | Execution mode: `cli` (default) or `api`. Set to `api` to enable in-process Anthropic execution (execution_mode='api' agent definitions, tool-definitions and api-credentials endpoints). In `cli` mode those routes return 404 and creating/updating api-mode agent defs returns HTTP 400 `api_mode_disabled`. The mode touches: `handlers_agent_def.go`, `handlers_tool_definitions.go`, `handlers_api_credentials.go`, `handlers_global_settings.go` (`api_mode_enabled` field), and `spawner.Config.APIMode`. |
+
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.
 
 ## Package Documentation

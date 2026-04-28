@@ -24,6 +24,7 @@ var (
 	serveHost string
 	servePort int
 	noTray    bool
+	serveMode string
 )
 
 // serverComponents holds initialized server components for startup/shutdown.
@@ -87,6 +88,11 @@ Example usage:
 }
 
 func setupServer() (*serverComponents, error) {
+	if serveMode != "cli" && serveMode != "api" {
+		return nil, fmt.Errorf("invalid --mode value %q: must be cli or api", serveMode)
+	}
+	apiMode := serveMode == "api"
+
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
@@ -123,7 +129,7 @@ func setupServer() (*serverComponents, error) {
 		return nil, fmt.Errorf("failed to create database pool: %w", err)
 	}
 
-	httpServer := api.NewServer(cfg, DataPath, logsDir, pool)
+	httpServer := api.NewServer(cfg, DataPath, logsDir, pool, apiMode)
 
 	clk := clock.Real()
 	socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk)
@@ -183,4 +189,5 @@ func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", "", "Host/IP to bind to (default: 127.0.0.1 or from config)")
 	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP port to listen on (default: 6587 or from config)")
 	serveCmd.Flags().BoolVar(&noTray, "no-tray", false, "Disable macOS menu bar tray icon")
+	serveCmd.Flags().StringVar(&serveMode, "mode", "cli", "Execution mode: cli (default) or api")
 }

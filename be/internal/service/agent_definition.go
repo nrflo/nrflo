@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -12,16 +13,20 @@ import (
 	"be/internal/types"
 )
 
+// ErrAPIModeDisabled is returned when execution_mode="api" is used but the server was not started with --mode=api.
+var ErrAPIModeDisabled = errors.New("api mode disabled")
+
 // AgentDefinitionService handles agent definition business logic
 type AgentDefinitionService struct {
 	clock       clock.Clock
 	pool        *db.Pool
 	cliModelSvc *CLIModelService
+	apiMode     bool
 }
 
 // NewAgentDefinitionService creates a new agent definition service
-func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService) *AgentDefinitionService {
-	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc}
+func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, apiMode bool) *AgentDefinitionService {
+	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, apiMode: apiMode}
 }
 
 // CreateAgentDef creates a new agent definition
@@ -90,6 +95,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	}
 	if executionMode != "cli" && executionMode != "api" {
 		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
+	}
+	if executionMode == "api" && !s.apiMode {
+		return nil, ErrAPIModeDisabled
 	}
 
 	_, err = s.pool.Exec(`
@@ -311,6 +319,9 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		mode := *req.ExecutionMode
 		if mode != "cli" && mode != "api" {
 			return fmt.Errorf("invalid execution_mode: %q", mode)
+		}
+		if mode == "api" && !s.apiMode {
+			return ErrAPIModeDisabled
 		}
 		updates = append(updates, "execution_mode = ?")
 		args = append(args, mode)

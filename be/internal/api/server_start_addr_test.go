@@ -37,7 +37,7 @@ func newStartTestServer(t *testing.T) *Server {
 	}
 	t.Cleanup(func() { pool.Close() })
 	cfg := config.DefaultConfig()
-	return NewServer(cfg, dbPath, t.TempDir(), pool)
+	return NewServer(cfg, dbPath, t.TempDir(), pool, false)
 }
 
 // waitHTTP polls baseURL until it returns a non-error response or deadline passes.

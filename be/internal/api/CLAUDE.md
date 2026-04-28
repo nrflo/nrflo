@@ -136,8 +136,8 @@ DELETE /api/v1/cli-models/:id       # Delete CLI model (400 if readonly system m
 POST   /api/v1/cli-models/:id/test  # Health check: spawn minimal agent, return success/error/duration_ms
 
 # Global settings (no project scope)
-GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "context_save_via_agent": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null}
-PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "context_save_via_agent": bool, "session_retention_limit": int (>= 10), "stall_start_timeout_sec": int|null (>= 0), "stall_running_timeout_sec": int|null (>= 0)}
+GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "context_save_via_agent": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null, "api_mode_enabled": bool (read-only, reflects --mode=api flag)}
+PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "context_save_via_agent": bool, "session_retention_limit": int (>= 10), "stall_start_timeout_sec": int|null (>= 0), "stall_running_timeout_sec": int|null (>= 0)}; api_mode_enabled is silently ignored on PATCH
 
 # Safety hook check (global, no project scope)
 POST   /api/v1/safety-hook/check  # Dry-run command against safety hook config. Body: {config: SafetyHookConfig, command: string}. Returns {allowed: bool, reason: string}
@@ -185,14 +185,14 @@ GET /api/v1/docs/agent-manual      # Agent manual markdown content
 # Logs
 GET /api/v1/logs                   # Log file contents (?type=be, default be; ?filter=<string> searches full file case-insensitive, no 1000-line cap)
 
-# Tool definitions (global, no project scope)
+# Tool definitions (global, no project scope; routes registered only when --mode=api; return 404 in cli mode)
 GET    /api/v1/tool-definitions           # ?project_id= and ?workflow_id= filter the list
 POST   /api/v1/tool-definitions           # Create (id, name, endpoint, input_schema required; input_schema must be valid JSON)
 GET    /api/v1/tool-definitions/{id}
 PUT    /api/v1/tool-definitions/{id}
 DELETE /api/v1/tool-definitions/{id}
 
-# API credentials (global, no project scope)
+# API credentials (global, no project scope; routes registered only when --mode=api; return 404 in cli mode)
 GET    /api/v1/api-credentials            # secret_ref values starting with literal: are redacted as literal:***
 POST   /api/v1/api-credentials            # secret_ref must start with env:|file:|literal:
 GET    /api/v1/api-credentials/{id}

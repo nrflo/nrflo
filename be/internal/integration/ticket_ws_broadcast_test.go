@@ -40,7 +40,7 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 	t.Cleanup(func() { pool.Close() })
 
 	// Create server (it creates its own hub internally)
-	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool)
+	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool, false)
 
 	// Get the hub from the server
 	hub := srv.GetWSHub()
@@ -489,7 +489,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	}
 	t.Cleanup(func() { pool2.Close() })
 
-	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool2)
+	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool2, false)
 	hub := srv.GetWSHub()
 
 	go func() {

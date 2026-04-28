@@ -75,6 +75,7 @@ type Orchestrator struct {
 	wsHub    *ws.Hub
 	clock    clock.Clock
 	errorSvc spawner.ErrorRecorder
+	apiMode  bool
 
 	// OnRegisterPtyCommand is called when interactive/plan mode needs to register
 	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.
@@ -82,13 +83,14 @@ type Orchestrator struct {
 }
 
 // New creates a new Orchestrator.
-func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder) *Orchestrator {
+func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder, apiMode bool) *Orchestrator {
 	return &Orchestrator{
 		runs:     make(map[string]*runState),
 		dataPath: dataPath,
 		wsHub:    wsHub,
 		clock:    clk,
 		errorSvc: errorSvc,
+		apiMode:  apiMode,
 	}
 }
 
@@ -1180,6 +1182,7 @@ func (o *Orchestrator) runLoop(
 					AgentSvcReal:              agentSvcReal,
 					WorkflowSvc:               workflowSvcReal,
 					ToolDefRepo:               toolDefRepo,
+					APIMode:                   o.apiMode,
 				})
 
 				// Store spawner ref so RestartAgent can reach it

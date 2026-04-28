@@ -362,6 +362,10 @@ The ephemeral child spawner created in `spawnContextSaver` is extended with:
 
 The `AgentConfig` struct (`spawner.go`) carries these three new fields and `prepareSpawn` reads them as the fallback when `agentDef == nil` (the system-agent path where no project/workflow agent_definition row exists).
 
+## API Mode Gating (Config.APIMode)
+
+`Config.APIMode bool` — set from the `--mode=api` server flag (default `false`). When `false`, `prepareSpawn` rejects any agent whose `executionMode` resolves to `"api"` with error `"api_mode_disabled"` **before** any provider call, credential lookup, or tool registry resolution. This allows stale `execution_mode='api'` rows in the DB to fail cleanly at runtime rather than silently skipping or panicking. The orchestrator threads `APIMode: o.apiMode` into every `spawner.Config` it creates (main run loop, merge conflict resolution). When the server starts with `--mode=cli` (default), no API-mode agents can spawn regardless of what the database contains.
+
 ## Template Variables
 
 Templates use placeholders injected by the spawner:

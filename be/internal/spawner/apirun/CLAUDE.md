@@ -1,5 +1,7 @@
 # apirun Package
 
+> **Note:** This runner is only reachable when the server is started with `--mode=api`. In the default `--mode=cli` mode, `prepareSpawn` returns `api_mode_disabled` before ever constructing an `apirun.Runner`, so none of this code executes.
+
 In-process tool-use loop that drives API-mode agents through one or more provider turns. Replaces the CLI exec-and-parse path for agents whose `agent_definitions.execution_mode='api'`.
 
 ## Components

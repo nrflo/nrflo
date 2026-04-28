@@ -60,6 +60,7 @@ func (o *Orchestrator) attemptConflictResolution(
 		ClaudeSettingsJSON: claudeSettingsJSON,
 		ModelConfigs:       modelConfigs,
 		ErrorSvc:           o.errorSvc,
+		APIMode:            o.apiMode,
 	})
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{

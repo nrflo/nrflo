@@ -130,6 +130,9 @@ type Config struct {
 	WorkflowSvc        *service.WorkflowService
 	// ToolDefRepo lists HTTP tool definitions for API-mode registry resolution.
 	ToolDefRepo *repo.ToolDefinitionRepo
+	// APIMode enables execution_mode='api' agents. When false (default, --mode=cli),
+	// prepareSpawn rejects any agent with execution_mode='api' before making any provider call.
+	APIMode bool
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -465,6 +468,11 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.ExecutionMode == "api" {
 			executionMode = "api"
 		}
+	}
+
+	// Reject api-mode agents when the server was not started with --mode=api.
+	if executionMode == "api" && !s.config.APIMode {
+		return nil, nil, fmt.Errorf("api_mode_disabled")
 	}
 
 	// Get CLI adapter (api mode skips this — there is no CLI process)

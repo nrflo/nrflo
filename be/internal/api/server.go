@@ -34,15 +34,16 @@ type Server struct {
 	chainRunner      *orchestrator.ChainRunner
 	ptyManager       *ptyPkg.Manager
 	clock            clock.Clock
+	apiMode          bool
 	cliAdapterFunc   func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
 }
 
 // NewServer creates a new API server
-func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool) *Server {
+func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool, apiMode bool) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	errorSvc := service.NewErrorService(pool, clk, hub)
-	orch := orchestrator.New(dataPath, hub, clk, errorSvc)
+	orch := orchestrator.New(dataPath, hub, clk, errorSvc, apiMode)
 	ptyMgr := ptyPkg.NewManager()
 	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
 		ptyMgr.RegisterCommand(sessionID, cmd, args)
@@ -58,6 +59,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
 		ptyManager:   ptyMgr,
 		clock:        clk,
+		apiMode:      apiMode,
 	}
 }
 
@@ -433,19 +435,21 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
 	mux.HandleFunc("POST /api/v1/chains/{id}/remove-items", s.handleRemoveFromChain)
 
-	// Tool definitions (global, no project scope)
-	mux.HandleFunc("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
-	mux.HandleFunc("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
-	mux.HandleFunc("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
-	mux.HandleFunc("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
-	mux.HandleFunc("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
+	if s.apiMode {
+		// Tool definitions (global, no project scope; only available in --mode=api)
+		mux.HandleFunc("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
+		mux.HandleFunc("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
+		mux.HandleFunc("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
+		mux.HandleFunc("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
+		mux.HandleFunc("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
 
-	// API credentials (global, no project scope; literal secret_ref is redacted in responses)
-	mux.HandleFunc("GET /api/v1/api-credentials", s.handleListAPICredentials)
-	mux.HandleFunc("POST /api/v1/api-credentials", s.handleCreateAPICredential)
-	mux.HandleFunc("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
-	mux.HandleFunc("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
-	mux.HandleFunc("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
+		// API credentials (global, no project scope; only available in --mode=api)
+		mux.HandleFunc("GET /api/v1/api-credentials", s.handleListAPICredentials)
+		mux.HandleFunc("POST /api/v1/api-credentials", s.handleCreateAPICredential)
+		mux.HandleFunc("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
+		mux.HandleFunc("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
+		mux.HandleFunc("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
+	}
 
 	// Errors
 	mux.HandleFunc("GET /api/v1/errors", s.handleListErrors)

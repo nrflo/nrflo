@@ -36,10 +36,13 @@ func TestAgentConfigPrecedence_AgentDefWinsOverConfigAgents(t *testing.T) {
 	}
 
 	// Spawner with Config.Agents conflicting (cli) — agentDef api should win.
+	// APIMode=true bypasses the early api_mode_disabled gate so precedence logic
+	// can run to completion (failing at API key resolution with "api mode" prefix).
 	sp := New(Config{
 		DataPath: env.dbPath,
 		Pool:     db.WrapAsPool(env.database),
 		Clock:    clock.Real(),
+		APIMode:  true, // allow api-mode to reach the API key check
 		Workflows: map[string]WorkflowDef{
 			"feature": {
 				Phases: []PhaseDef{{ID: "implementor", Agent: "implementor", Layer: 0}},
@@ -97,10 +100,13 @@ func TestAgentConfigPrecedence_FallsBackToConfigWhenNoAgentDef(t *testing.T) {
 	}
 
 	// No agent_definition row — Config.Agents["my-agent"].ExecutionMode="api" must be used.
+	// APIMode=true bypasses the early api_mode_disabled gate so the fallback logic
+	// can run to completion (failing at API key resolution with "api mode" prefix).
 	sp := New(Config{
 		DataPath: env.dbPath,
 		Pool:     db.WrapAsPool(env.database),
 		Clock:    clock.Real(),
+		APIMode:  true, // allow api-mode to reach the API key check
 		Workflows: map[string]WorkflowDef{
 			"_test_wf": {
 				Phases: []PhaseDef{{ID: "my-agent", Agent: "my-agent", Layer: 0}},

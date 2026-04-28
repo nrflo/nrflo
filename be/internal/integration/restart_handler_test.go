@@ -233,7 +233,7 @@ func seedWorkflowDef(t *testing.T, dbPath, projectID string) {
 		t.Fatalf("failed to seed workflow def: %v", err)
 	}
 
-	adSvc := service.NewAgentDefinitionService(pool, clock.Real(), service.NewCLIModelService(pool, clock.Real()))
+	adSvc := service.NewAgentDefinitionService(pool, clock.Real(), service.NewCLIModelService(pool, clock.Real()), false)
 	for _, ad := range []types.AgentDefCreateRequest{
 		{ID: "analyzer", Prompt: "analyze", Layer: 0},
 		{ID: "builder", Prompt: "build", Layer: 1},

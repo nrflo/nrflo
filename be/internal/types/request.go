@@ -249,9 +249,13 @@ type AgentDefUpdateRequest struct {
 // SystemAgentDefCreateRequest is the request for creating a system agent definition
 type SystemAgentDefCreateRequest struct {
 	ID                     string `json:"id"`
+	Role                   string `json:"role,omitempty"`
+	ExecutionMode          string `json:"execution_mode,omitempty"`
 	Model                  string `json:"model,omitempty"`
 	Timeout                int    `json:"timeout,omitempty"`
 	Prompt                 string `json:"prompt"`
+	Tools                  string `json:"tools,omitempty"`
+	APIMaxIterations       *int   `json:"api_max_iterations,omitempty"`
 	RestartThreshold       *int   `json:"restart_threshold,omitempty"`
 	MaxFailRestarts        *int   `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int   `json:"stall_start_timeout_sec,omitempty"`
@@ -260,9 +264,13 @@ type SystemAgentDefCreateRequest struct {
 
 // SystemAgentDefUpdateRequest is the request for updating a system agent definition
 type SystemAgentDefUpdateRequest struct {
+	Role                   *string `json:"role,omitempty"`
+	ExecutionMode          *string `json:"execution_mode,omitempty"`
 	Model                  *string `json:"model,omitempty"`
 	Timeout                *int    `json:"timeout,omitempty"`
 	Prompt                 *string `json:"prompt,omitempty"`
+	Tools                  *string `json:"tools,omitempty"`
+	APIMaxIterations       *int    `json:"api_max_iterations,omitempty"`
 	RestartThreshold       *int    `json:"restart_threshold,omitempty"`
 	MaxFailRestarts        *int    `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int    `json:"stall_start_timeout_sec,omitempty"`

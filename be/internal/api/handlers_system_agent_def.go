@@ -43,6 +43,10 @@ func (s *Server) handleCreateSystemAgentDef(w http.ResponseWriter, r *http.Reque
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "invalid execution_mode") {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -91,6 +95,10 @@ func (s *Server) handleUpdateSystemAgentDef(w http.ResponseWriter, r *http.Reque
 	if err := svc.Update(id, &req); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "invalid execution_mode") {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err.Error())

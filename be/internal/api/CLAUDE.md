@@ -108,6 +108,11 @@ PATCH  /api/v1/workflows/:wid/agents/:id       # Update agent definition (accept
 DELETE /api/v1/workflows/:wid/agents/:id       # Delete agent definition
 
 # System agent definitions (global, no project scope)
+# Request/response includes: id, role, execution_mode (cli|api), model, timeout, prompt,
+# tools (CSV), api_max_iterations, restart_threshold, max_fail_restarts,
+# stall_start_timeout_sec, stall_running_timeout_sec, created_at, updated_at.
+# POST/PATCH: execution_mode defaults to 'cli'; invalid value returns 400.
+# Unique constraint on (role, execution_mode); duplicate returns 409.
 GET    /api/v1/system-agents           # List all system agent definitions
 POST   /api/v1/system-agents           # Create system agent definition
 GET    /api/v1/system-agents/:id       # Get system agent definition

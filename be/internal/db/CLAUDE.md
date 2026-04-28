@@ -169,15 +169,24 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                                                                      │
 │  SYSTEM_AGENT_DEFINITIONS                                            │
 │    id            TEXT PRIMARY KEY                                    │
+│    role          TEXT NOT NULL DEFAULT ''                            │
+│                  (logical role; backfilled to id for legacy rows)    │
+│    execution_mode TEXT NOT NULL DEFAULT 'cli'                        │
+│                  CHECK (execution_mode IN ('cli', 'api'))            │
 │    model         TEXT NOT NULL DEFAULT 'sonnet'                      │
 │    timeout       INTEGER NOT NULL DEFAULT 20                         │
 │    prompt        TEXT NOT NULL DEFAULT ''                            │
+│    tools         TEXT NOT NULL DEFAULT '' (CSV builtin/HTTP names)   │
+│    api_max_iterations INTEGER (NULL = runner default)                │
 │    restart_threshold INTEGER                                         │
 │    max_fail_restarts INTEGER                                         │
 │    stall_start_timeout_sec INTEGER                                   │
 │    stall_running_timeout_sec INTEGER                                 │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
+│    UNIQUE INDEX idx_system_agent_role_mode (role, execution_mode)    │
+│    (migration 000063: role backfilled = id for pre-existing rows;    │
+│     context-saver-api seeded with role=context-saver, mode=api)     │
 │                                                                      │
 │  DEFAULT_TEMPLATES                                               │
 │    id            TEXT PRIMARY KEY                                    │

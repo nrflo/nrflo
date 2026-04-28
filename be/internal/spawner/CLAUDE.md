@@ -350,7 +350,17 @@ On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` g
 Controlled by `Config.ContextSaveViaAgent` (from `context_save_via_agent` global setting, default false):
 
 - **Resume-based (default, `false`)**: Resumes the same Claude session with a save prompt. The agent writes `to_resume` findings itself. Only works for Claude CLI (`SupportsResume()`); other CLIs skip context save and relaunch without previous data. Code in `context_save_resume.go`.
-- **System agent (`true`)**: Spawns a fresh `context-saver` system agent (haiku) that reads the killed agent's message history (120k char tail truncation) and writes a summary to `to_resume` findings. Works for all CLI types. Broadcasts `EventAgentContextSaving` WS event. Code in `context_save.go`.
+- **System agent (`true` or API-mode)**: Spawns a fresh `context-saver` system agent (haiku) that reads the killed agent's message history (120k char tail truncation) and writes a summary to `to_resume` findings. Works for all CLI types. Broadcasts `EventAgentContextSaving` WS event. Code in `context_save.go`.
+
+### Saver Selection (Backend-Aware)
+
+`spawnContextSaver` reads `proc.backend.Name()` (defaults to `"cli"` when backend is nil) and calls `svc.GetForBackend("context-saver", backendName)`. When an api backend kills its agent, this selects a `context-saver-api` row from `system_agent_definitions` (matched by `role="context-saver"` AND `execution_mode="api"`). On `sql.ErrNoRows` (no api variant exists), it falls back to `svc.Get("context-saver")` with a structured warn log including the backend name and session_id.
+
+The ephemeral child spawner created in `spawnContextSaver` is extended with:
+- `AgentConfig.ExecutionMode`, `AgentConfig.Tools`, `AgentConfig.APIMaxIterations` — sourced from the selected `sysDef` so the api variant runs via the in-process runner
+- `Provider`, `AgentSvc`, `FindingsSvc`, `ProjectFindingsSvc`, `AgentSvcReal`, `WorkflowSvc`, `APICredentialRepo`, `ToolDefRepo` — forwarded from the parent spawner's config so API-mode builtins function correctly
+
+The `AgentConfig` struct (`spawner.go`) carries these three new fields and `prepareSpawn` reads them as the fallback when `agentDef == nil` (the system-agent path where no project/workflow agent_definition row exists).
 
 ## Template Variables
 

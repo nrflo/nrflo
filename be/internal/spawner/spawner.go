@@ -42,8 +42,11 @@ type PhaseDef struct {
 
 // AgentConfig holds agent-specific configuration
 type AgentConfig struct {
-	Model   string `json:"model"`
-	Timeout int    `json:"timeout"`
+	Model            string `json:"model"`
+	Timeout          int    `json:"timeout"`
+	ExecutionMode    string `json:"execution_mode"`
+	Tools            string `json:"tools"`
+	APIMaxIterations *int   `json:"api_max_iterations"`
 }
 
 // ErrorRecorder records error events. Implemented by service.ErrorService.
@@ -458,6 +461,10 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	executionMode := "cli"
 	if agentDef != nil && agentDef.ExecutionMode == "api" {
 		executionMode = "api"
+	} else if agentDef == nil {
+		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.ExecutionMode == "api" {
+			executionMode = "api"
+		}
 	}
 
 	// Get CLI adapter (api mode skips this — there is no CLI process)
@@ -575,6 +582,10 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		maxIter := defaultAPIMaxIterations
 		if agentDef != nil && agentDef.APIMaxIterations != nil && *agentDef.APIMaxIterations > 0 {
 			maxIter = *agentDef.APIMaxIterations
+		} else if agentDef == nil {
+			if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.APIMaxIterations != nil && *agentCfg.APIMaxIterations > 0 {
+				maxIter = *agentCfg.APIMaxIterations
+			}
 		}
 		maxCtx := s.maxContextForModel(modelName)
 		if s.config.Provider != nil {
@@ -588,6 +599,8 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		toolsCSV := ""
 		if agentDef != nil {
 			toolsCSV = agentDef.Tools
+		} else if agentCfg, ok := s.config.Agents[req.AgentType]; ok {
+			toolsCSV = agentCfg.Tools
 		}
 		httpDefs, defsErr := s.loadAPIHTTPToolDefs(req.ProjectID, req.WorkflowName)
 		if defsErr != nil {
@@ -731,12 +744,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			for _, proc := range running {
 				proc.backend.Kill(ctx, proc, syscall.SIGTERM)
 			}
-			// Wait briefly for graceful shutdown
-			time.Sleep(2 * time.Second)
+			// Wait for each process to exit gracefully (up to 2s each) before SIGKILL.
+			// Per-process select avoids a fixed sleep when processes exit quickly.
 			for _, proc := range running {
 				select {
 				case <-proc.doneCh:
-				default:
+				case <-time.After(2 * time.Second):
 					proc.backend.Kill(ctx, proc, syscall.SIGKILL)
 					<-proc.doneCh
 				}

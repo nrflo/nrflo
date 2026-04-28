@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"syscall"
@@ -98,12 +99,27 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		return false
 	}
 
-	// Load system agent definition
+	// Determine backend name for saver selection (api backend uses context-saver-api variant)
+	backendName := "cli"
+	if proc.backend != nil {
+		backendName = proc.backend.Name()
+	}
+
+	// Load system agent definition, preferring a backend-specific variant.
 	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock)
-	sysDef, err := svc.Get("context-saver")
+	sysDef, err := svc.GetForBackend("context-saver", backendName)
 	if err != nil {
-		logger.Warn(ctx, "context-saver system agent not found, relaunching without save", "err", err, "session_id", proc.sessionID)
-		return false
+		if !errors.Is(err, sql.ErrNoRows) {
+			logger.Warn(ctx, "context-saver system agent not found, relaunching without save", "err", err, "session_id", proc.sessionID)
+			return false
+		}
+		// No backend-specific variant — fall back to the default CLI context-saver.
+		logger.Warn(ctx, "no context-saver variant for backend, falling back to default", "backend", backendName, "session_id", proc.sessionID, "err", err)
+		sysDef, err = svc.Get("context-saver")
+		if err != nil {
+			logger.Warn(ctx, "context-saver system agent not found, relaunching without save", "err", err, "session_id", proc.sessionID)
+			return false
+		}
 	}
 
 	// Fetch message history
@@ -120,7 +136,8 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 
 	formatted := formatMessagesForSave(messages, maxMessageChars)
 
-	// Construct one-off spawner (conflict-resolver pattern)
+	// Construct one-off spawner (conflict-resolver pattern), forwarding API-mode
+	// dependencies so a context-saver-api variant can run via the in-process runner.
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
 			"_context_save": {
@@ -128,7 +145,13 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 			},
 		},
 		Agents: map[string]AgentConfig{
-			"context-saver": {Model: sysDef.Model, Timeout: sysDef.Timeout},
+			"context-saver": {
+				Model:            sysDef.Model,
+				Timeout:          sysDef.Timeout,
+				ExecutionMode:    sysDef.ExecutionMode,
+				Tools:            sysDef.Tools,
+				APIMaxIterations: sysDef.APIMaxIterations,
+			},
 		},
 		DataPath:           s.config.DataPath,
 		ProjectRoot:        s.config.ProjectRoot,
@@ -138,6 +161,14 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		ClaudeSettingsJSON: s.config.ClaudeSettingsJSON,
 		ModelConfigs:       s.config.ModelConfigs,
 		ErrorSvc:           s.config.ErrorSvc,
+		Provider:           s.config.Provider,
+		AgentSvc:           s.config.AgentSvc,
+		FindingsSvc:        s.config.FindingsSvc,
+		ProjectFindingsSvc: s.config.ProjectFindingsSvc,
+		AgentSvcReal:       s.config.AgentSvcReal,
+		WorkflowSvc:        s.config.WorkflowSvc,
+		APICredentialRepo:  s.config.APICredentialRepo,
+		ToolDefRepo:        s.config.ToolDefRepo,
 	})
 
 	saveCtx, cancel := context.WithTimeout(ctx, contextSaveTimeout)

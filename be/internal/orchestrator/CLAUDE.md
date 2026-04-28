@@ -106,6 +106,8 @@ When `MergeAndCleanup()` fails after all layers complete, the orchestrator attem
 6. On success: deletes feature branch, broadcasts `merge.conflict_resolved`
 7. On failure: broadcasts `merge.conflict_failed`, returns error → manual resolution
 
+**Note:** Automatic merge conflict resolution is still CLI-only. The `conflict-resolver` system agent requires git and bash tools that are not yet registered in the apirun tool registry, so no API-mode variant is defined.
+
 The resolver agent's session is tracked under the existing workflow instance (`wfiID`). The synthetic workflow name `_conflict_resolution` uses an underscore prefix to distinguish from user workflows.
 
 ## Chain Runner

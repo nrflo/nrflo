@@ -26,7 +26,9 @@ func (o *Orchestrator) attemptConflictResolution(
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
 ) error {
-	// Load conflict-resolver system agent definition
+	// Load conflict-resolver system agent definition.
+	// API-mode conflict resolution is not yet supported — the resolver needs
+	// git/bash tools registered for apirun, so only the CLI variant is used here.
 	svc := service.NewSystemAgentDefinitionService(pool, o.clock)
 	sysDef, err := svc.Get("conflict-resolver")
 	if err != nil {

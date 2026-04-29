@@ -869,6 +869,40 @@ func (o *Orchestrator) takeControlByInstance(wfiID, workflowName, target, sessio
 	return sessionID, nil
 }
 
+// RequestTerminalSignal kills the active agent for the given session so
+// monitorAll exits and handleCompletion reads the DB result already written
+// by the socket handler. Best-effort: returns nil when session or run not found.
+func (o *Orchestrator) RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	session, err := asRepo.Get(sessionID)
+	if err != nil {
+		return nil // session may have already ended
+	}
+
+	o.mu.Lock()
+	rs, ok := o.runs[session.WorkflowInstanceID]
+	o.mu.Unlock()
+	if !ok {
+		return nil // run finished; no-op
+	}
+
+	o.mu.Lock()
+	sp := rs.spawner
+	o.mu.Unlock()
+	if sp == nil {
+		return nil // between phases
+	}
+
+	sp.RequestTerminalSignal(sessionID, result)
+	return nil
+}
+
 // CompleteInteractive signals that the interactive session has ended.
 // It updates the agent session in DB and unblocks the spawner's wait.
 func (o *Orchestrator) CompleteInteractive(sessionID string) error {

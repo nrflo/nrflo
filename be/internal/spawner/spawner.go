@@ -200,13 +200,21 @@ type processInfo struct {
 	trx string
 }
 
+// terminalSignal is sent to terminalSignalCh to kill an agent immediately so
+// handleCompletion reads the DB-written result (fail/continue/callback).
+type terminalSignal struct {
+	SessionID string
+	Result    string
+}
+
 // Spawner manages agent lifecycle
 type Spawner struct {
-	config           Config
-	restartCh        chan string            // carries sessionID of agent to restart
-	takeControlCh    chan string            // carries sessionID of agent to take control of
-	interactiveWaits map[string]chan struct{} // sessionID → closed when interactive session completes
-	mu               sync.Mutex              // protects interactiveWaits
+	config            Config
+	restartCh         chan string            // carries sessionID of agent to restart
+	takeControlCh     chan string            // carries sessionID of agent to take control of
+	terminalSignalCh  chan terminalSignal    // carries kill signal after DB result already written
+	interactiveWaits  map[string]chan struct{} // sessionID → closed when interactive session completes
+	mu                sync.Mutex              // protects interactiveWaits
 }
 
 // SpawnRequest contains parameters for spawning an agent
@@ -233,6 +241,7 @@ func New(config Config) *Spawner {
 		config:           config,
 		restartCh:        make(chan string, 1),
 		takeControlCh:    make(chan string, 1),
+		terminalSignalCh: make(chan terminalSignal, 1),
 		interactiveWaits: make(map[string]chan struct{}),
 	}
 }
@@ -251,6 +260,16 @@ func (s *Spawner) RequestRestart(sessionID string) {
 func (s *Spawner) RequestTakeControl(sessionID string) {
 	select {
 	case s.takeControlCh <- sessionID:
+	default:
+	}
+}
+
+// RequestTerminalSignal kills the matching agent so monitorAll exits the
+// natural-exit wait and handleCompletion reads the DB result already written
+// by the socket handler. Non-blocking: silently dropped when channel is full.
+func (s *Spawner) RequestTerminalSignal(sessionID, result string) {
+	select {
+	case s.terminalSignalCh <- terminalSignal{SessionID: sessionID, Result: result}:
 	default:
 	}
 }
@@ -852,6 +871,28 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				proc.finalStatus = "PASS"
 				proc.elapsed = time.Since(proc.startTime)
 				completed = append(completed, proc)
+				break
+			}
+		case sig := <-s.terminalSignalCh:
+			// Terminal signal: DB result already written by socket handler.
+			// Kill the matching agent so handleCompletion reads it on next iteration.
+			for _, proc := range running {
+				if proc.sessionID != sig.SessionID {
+					continue
+				}
+				logger.Info(ctx, "terminal signal: killing agent", "session_id", sig.SessionID, "result", sig.Result)
+				proc.backend.Kill(ctx, proc, syscall.SIGTERM)
+				gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second
+				if gracePeriod == 0 {
+					gracePeriod = 5 * time.Second
+				}
+				select {
+				case <-proc.doneCh:
+				case <-time.After(gracePeriod):
+					proc.backend.Kill(ctx, proc, syscall.SIGKILL)
+					<-proc.doneCh
+				}
+				// doneCh closed; next loop iteration picks it up via handleCompletion
 				break
 			}
 		default:

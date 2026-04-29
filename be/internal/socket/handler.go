@@ -232,6 +232,11 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			"model_id":   bctx.ModelID,
 			"result":     "fail",
 		})
+		if h.signaler != nil {
+			if sigErr := h.signaler.RequestTerminalSignal(bctx.ProjectID, bctx.TicketID, bctx.Workflow, bctx.SessionID, "fail"); sigErr != nil {
+				logger.Info(ctx, "terminal signal dispatch error (best-effort)", "error", sigErr)
+			}
+		}
 		return MakeResponse(req.ID, map[string]string{"status": "failed"})
 
 	case "continue":
@@ -251,6 +256,11 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			"session_id": bctx.SessionID,
 			"model_id":   bctx.ModelID,
 		})
+		if h.signaler != nil {
+			if sigErr := h.signaler.RequestTerminalSignal(bctx.ProjectID, bctx.TicketID, bctx.Workflow, bctx.SessionID, "continue"); sigErr != nil {
+				logger.Info(ctx, "terminal signal dispatch error (best-effort)", "error", sigErr)
+			}
+		}
 		return MakeResponse(req.ID, map[string]string{"status": "continued"})
 
 	case "callback":
@@ -271,6 +281,11 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			"model_id":   bctx.ModelID,
 			"result":     "callback",
 		})
+		if h.signaler != nil {
+			if sigErr := h.signaler.RequestTerminalSignal(bctx.ProjectID, bctx.TicketID, bctx.Workflow, bctx.SessionID, "callback"); sigErr != nil {
+				logger.Info(ctx, "terminal signal dispatch error (best-effort)", "error", sigErr)
+			}
+		}
 		return MakeResponse(req.ID, map[string]string{"status": "callback"})
 
 	default:

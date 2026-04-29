@@ -69,7 +69,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	go hub.Run()
 
 	// 6. Socket server
-	srv := socket.NewServerWithHub(pool, hub, clk)
+	srv := socket.NewServerWithHub(pool, hub, clk, nil)
 	if err := srv.Start(); err != nil {
 		pool.Close()
 		hub.Stop()

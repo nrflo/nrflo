@@ -68,6 +68,11 @@ func (s *Server) GetWSHub() *ws.Hub {
 	return s.wsHub
 }
 
+// GetOrchestrator returns the orchestrator for external access (e.g., socket server).
+func (s *Server) GetOrchestrator() *orchestrator.Orchestrator {
+	return s.orchestrator
+}
+
 // Start starts the HTTP server
 func (s *Server) Start(host string, port int) error {
 	// Recover zombie chains from previous crash

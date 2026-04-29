@@ -53,23 +53,30 @@ type Server struct {
 	running  bool
 }
 
+// TerminalSignaler dispatches a best-effort kill signal to an active spawner
+// after the socket handler has already written the agent result to the DB.
+// The Handler nil-guards before calling — pass nil in tests.
+type TerminalSignaler interface {
+	RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error
+}
+
 // NewServer creates a new socket server
 func NewServer(pool *db.Pool, clk clock.Clock) *Server {
 	return &Server{
 		pool:       pool,
 		socketPath: GetSocketPath(),
 		shutdown:   make(chan struct{}),
-		handler:    NewHandler(pool, nil, clk),
+		handler:    NewHandler(pool, nil, clk, nil),
 	}
 }
 
 // NewServerWithHub creates a new socket server with WebSocket hub
-func NewServerWithHub(pool *db.Pool, hub *ws.Hub, clk clock.Clock) *Server {
+func NewServerWithHub(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler) *Server {
 	return &Server{
 		pool:       pool,
 		socketPath: GetSocketPath(),
 		shutdown:   make(chan struct{}),
-		handler:    NewHandler(pool, hub, clk),
+		handler:    NewHandler(pool, hub, clk, signaler),
 		wsHub:      hub,
 	}
 }
@@ -243,16 +250,18 @@ type Handler struct {
 	agentSvc           *service.AgentService
 	workflowSvc        *service.WorkflowService
 	wsHub              *ws.Hub
+	signaler           TerminalSignaler // optional; nil-safe
 }
 
 // NewHandler creates a new request handler
-func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock) *Handler {
+func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler) *Handler {
 	return &Handler{
 		findingsSvc:        service.NewFindingsService(pool, clk),
 		projectFindingsSvc: service.NewProjectFindingsService(pool, clk),
 		agentSvc:           service.NewAgentService(pool, clk),
 		workflowSvc:        service.NewWorkflowService(pool, clk),
 		wsHub:              hub,
+		signaler:           signaler,
 	}
 }
 

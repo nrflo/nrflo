@@ -37,7 +37,7 @@ func newHandlerTestEnv(t *testing.T) *handlerTestEnv {
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 
-	handler := NewHandler(pool, hub, clock.Real())
+	handler := NewHandler(pool, hub, clock.Real(), nil)
 
 	projectID := "test-project"
 

@@ -132,7 +132,7 @@ func setupServer() (*serverComponents, error) {
 	httpServer := api.NewServer(cfg, DataPath, logsDir, pool, apiMode)
 
 	clk := clock.Real()
-	socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk)
+	socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator())
 	if err := socketServer.Start(); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("failed to start socket server: %w", err)

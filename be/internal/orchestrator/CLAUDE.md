@@ -217,6 +217,7 @@ Unit tests in-package:
 - `orchestrator_mark_completed_test.go` — markCompleted ticket close, project scope, WS broadcasts
 - `orchestrator_worktree_test.go` — worktree setup/merge/cleanup lifecycle, project scope skips worktree
 - `orchestrator_take_control_test.go` — TakeControl/TakeControlProject/CompleteInteractive methods
+- `orchestrator_terminal_signal_test.go` — RequestTerminalSignal: session-not-found, run-not-found, spawner-nil, forward-to-spawner, all result values
 - `orchestrator_skip_tag_test.go` — buildAgentTags, shouldSkipLayer, createSkippedSessions, WS events
 - `orchestrator_concurrent_ticket_test.go` — HasRunningTicketWorkflows, concurrent guard (block/force/worktrees/project-scope)
 

@@ -68,10 +68,20 @@ The socket only handles agent-facing methods:
 
 All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, eventType, BroadcastCtx, data)` (defined in `be/internal/service/broadcast.go`). It is the single source of truth for the unpack-`BroadcastCtx`-and-broadcast pattern; the future API tool dispatcher (T4) calls the same helper. Do not reintroduce inline `ws.NewEvent(...)` + `hub.Broadcast(...)` pairs in socket handlers.
 
+## Terminal Signal Dispatch
+
+After the DB write and WS broadcast, the `agent.fail`, `agent.continue`, and `agent.callback` cases each dispatch a best-effort terminal signal through an injected `TerminalSignaler` (defined in `server.go`). This kills the running agent immediately so `monitorAll` exits its natural-exit wait and `handleCompletion` reads the DB-written result, eliminating the latency between the agent calling `nrflo agent fail/continue/callback` and the spawner acting on it.
+
+- **Interface**: `TerminalSignaler.RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error`
+- **Wiring**: `NewServerWithHub` accepts a `TerminalSignaler`; in production `cli/serve.go` passes `httpServer.GetOrchestrator()`; pass `nil` in tests.
+- **Nil-safe**: `Handler` nil-guards before calling — passing `nil` disables the feature silently.
+- **Order**: DB write → WS broadcast → terminal signal (best-effort, error is logged at INFO level and does not affect the response).
+
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `server.go` | Socket listener, connection handling |
+| `server.go` | Socket listener, connection handling, `TerminalSignaler` interface |
 | `handler.go` | Request routing and method dispatch |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
+| `handler_terminal_signal_test.go` | Terminal signal dispatch: fail/continue/callback dispatch, best-effort error handling, nil-guard |

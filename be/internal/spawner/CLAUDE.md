@@ -281,6 +281,20 @@ messages.updated events are coalesced to one per session per 2s window.
      isAPISession() and return HTTP 409 api_mode_unsupported before
      dispatching to the orchestrator, so the spawner rejection path is a
      belt-and-suspenders fallback
+
+8. TERMINAL SIGNAL (kill accelerator after DB write)
+   - `terminalSignalCh` (capacity 1) receives a `terminalSignal{SessionID, Result}` from
+     the socket handler via `RequestTerminalSignal(sessionID, result)` AFTER the DB
+     result has already been written and the WS broadcast sent.
+   - `monitorAll` case: find the proc with matching sessionID in `running`, kill with
+     SIGTERM → grace period → SIGKILL (same pattern as take-control), wait for doneCh.
+   - No DB writes, no WS broadcasts, no finalStatus override — handleCompletion reads
+     the DB result on the next poll iteration (doneCh is already closed).
+   - Non-matching sessionID is a no-op (agent may have already exited naturally).
+   - Non-blocking send (select/default): silently dropped when channel is full
+     (another signal already pending).
+   - All backends supported (no SupportsTakeControl gate); the goal is just to unblock
+     monitorAll quickly instead of waiting for the agent process to notice its own result.
 ```
 
 ## Public Helper Methods
@@ -566,6 +580,7 @@ Template warnings (`template.go`) use `context.Background()` without trx since t
 | `template_project_findings_test.go` | Project findings template expansion tests |
 | `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
 | `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
+| `terminal_signal_test.go` | Terminal signal channel capacity, non-blocking send, result values |
 | `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
 | `model_config_test.go` | DB-sourced ModelConfig: cliForModel/maxContextForModel with DB priority and fallback, adapter BuildCommand with opts.MappedModel/ReasoningEffort override |
 | `safety_hook_test.go` | Safety hook: config parsing (empty/invalid/disabled), bash generation (hardcoded rm patterns, user patterns, allowed paths, git ops), settings JSON structure |

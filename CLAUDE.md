@@ -34,6 +34,8 @@ Update [ui/CLAUDE.md](ui/CLAUDE.md) when modifying:
 
 The agent manual (`agent_manual.md`) is **user-facing documentation** rendered in the web UI. Keep content focused on what users need to know — no DB table names, internal Go implementation details, session status values, or env var internals.
 
+**Canonical location is the repo root.** The Go embed copy at `be/internal/static/agent_manual.md` is a gitignored build artifact created by `make build` (see `Makefile:39`). Do not edit or commit the embed copy — edit the root file. In a fresh checkout the embed copy will not exist until `make build` runs; this is expected.
+
 Update [agent_manual.md](agent_manual.md) when modifying:
 - Template variables in `be/internal/spawner/template.go`
 - Findings patterns in `be/internal/spawner/template_findings.go` or `template_project_findings.go`

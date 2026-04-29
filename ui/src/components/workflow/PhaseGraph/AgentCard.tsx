@@ -62,6 +62,17 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
         </span>
       )}
 
+      {/* Nudge count badge - bottom left corner */}
+      {(agent.nudge_count ?? 0) > 0 && (
+        <span className="absolute bottom-1 left-1">
+          <Tooltip text="Idle reminder sent — agent has not called nrflo agent continue/fail" placement="top">
+            <span className="text-xs font-mono px-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              ⏰{agent.nudge_count}/5
+            </span>
+          </Tooltip>
+        </span>
+      )}
+
       {/* Status + Model + Tag */}
       <div className="flex items-center gap-1.5">
         <AgentStatusIcon result={agent.result} isInteractive={isInteractive} />

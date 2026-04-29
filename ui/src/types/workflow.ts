@@ -33,6 +33,7 @@ export interface ActiveAgentV4 {
   restart_count?: number
   restart_threshold?: number
   restart_details?: RestartDetail[]
+  nudge_count?: number
   tag?: string
 }
 
@@ -50,6 +51,7 @@ export interface AgentHistoryEntry {
   restart_count?: number
   restart_threshold?: number
   restart_details?: RestartDetail[]
+  nudge_count?: number
   tag?: string
 }
 
@@ -170,6 +172,7 @@ export interface AgentSession {
   message_count: number
   context_left?: number
   restart_count: number
+  nudge_count?: number
   ancestor_session_id?: string
   started_at?: string
   ended_at?: string

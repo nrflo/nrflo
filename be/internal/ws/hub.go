@@ -48,6 +48,7 @@ const (
 	EventAgentRetryWaiting           = "agent.retry_waiting"
 	EventAgentStallWaiting           = "agent.stall_waiting"
 	EventAgentStallRestart           = "agent.stall_restart"
+	EventAgentNudged                 = "agent.nudged"
 	EventAgentContextSaving          = "agent.context_saving"
 	EventSkipTagAdded                = "skip_tag.added"
 	EventMergeConflictResolving      = "merge.conflict_resolving"

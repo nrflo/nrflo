@@ -56,12 +56,15 @@ type ErrorRecorder interface {
 }
 
 const (
-	defaultMaxContinuations    = 10
-	defaultContextThreshold    = 25
-	defaultFailRetryDelay      = 15 * time.Second
-	defaultStallStartTimeout   = 2 * time.Minute
-	defaultStallRunningTimeout = 8 * time.Minute
-	maxStallRestarts           = 15
+	defaultMaxContinuations       = 10
+	defaultContextThreshold       = 25
+	defaultFailRetryDelay         = 15 * time.Second
+	defaultStallStartTimeout      = 2 * time.Minute
+	defaultStallRunningTimeout    = 8 * time.Minute
+	maxStallRestarts              = 15
+	defaultIdleAfterMessageTimeout = 3 * time.Minute
+	defaultIdleStartTimeout        = 2 * time.Minute
+	defaultNudgeMax                = 5
 
 	defaultAPIMaxIterations = 50
 	defaultAPIMaxTokens     = 4096
@@ -142,6 +145,15 @@ type Config struct {
 	// PTYManager manages PTY sessions for interactive CLI mode. Required when
 	// InteractiveCLIMode is true and CLI agents are spawned.
 	PTYManager *ptyPkg.Manager
+	// IdleAfterMessageTimeoutSec: idle window after last message before nudge (default 180s, 0 = use default).
+	// Only applies to cliInteractiveBackend agents.
+	IdleAfterMessageTimeoutSec int
+	// IdleStartTimeoutSec: idle window before first message before nudge (default 120s, 0 = use default).
+	// Only applies to cliInteractiveBackend agents.
+	IdleStartTimeoutSec int
+	// NudgeMax: max nudge attempts before auto-fail (default 5, 0 = use default).
+	// Only applies to cliInteractiveBackend agents.
+	NudgeMax int
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -200,6 +212,12 @@ type processInfo struct {
 	stallStartTimeout   time.Duration // from agent_definition or default 120s
 	stallRunningTimeout time.Duration // from agent_definition or default 480s
 	stallRestartCount   int           // incremented on each stall restart
+	// Idle/nudge detection (cli_interactive backend only; nudgeMax=0 means disabled)
+	nudgeCount             int
+	nudgeMax               int
+	idleAfterMessageTimeout time.Duration
+	idleStartTimeout       time.Duration
+	lastNudgeAt            time.Time
 	// External session ID (e.g., codex thread_id) — for logging only
 	externalSessionID string
 	// Callback level set by API-mode agent_callback handler. Mirrors the
@@ -607,6 +625,28 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		stallRunningTimeout: stallRunningTimeout,
 		maxContext:          s.maxContextForModel(modelName),
 	}
+
+	// Populate idle/nudge fields only for cliInteractiveBackend agents.
+	if executionMode != "api" && s.config.InteractiveCLIMode && adapter != nil && adapter.SupportsInteractive() {
+		nudgeMax := defaultNudgeMax
+		if s.config.NudgeMax > 0 {
+			nudgeMax = s.config.NudgeMax
+		}
+		proc.nudgeMax = nudgeMax
+
+		idleAfterMsg := defaultIdleAfterMessageTimeout
+		if s.config.IdleAfterMessageTimeoutSec > 0 {
+			idleAfterMsg = time.Duration(s.config.IdleAfterMessageTimeoutSec) * time.Second
+		}
+		proc.idleAfterMessageTimeout = idleAfterMsg
+
+		idleStart := defaultIdleStartTimeout
+		if s.config.IdleStartTimeoutSec > 0 {
+			idleStart = time.Duration(s.config.IdleStartTimeoutSec) * time.Second
+		}
+		proc.idleStartTimeout = idleStart
+	}
+	// nudgeMax = 0 (zero value) → disabled for non-interactive backends
 
 	prep := &prepResult{
 		cliName:       cliName,
@@ -1083,6 +1123,8 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					}
 					continue
 				}
+				// Idle/nudge loop — send reminder or auto-fail unresponsive agent
+				s.checkIdleNudge(ctx, proc, req)
 				// Still running - check timeout
 				if elapsed > proc.timeout {
 					s.handleGracefulTimeout(ctx, proc, req)

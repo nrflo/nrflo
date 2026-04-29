@@ -41,6 +41,7 @@ type AgentSession struct {
 	SpawnCommand       sql.NullString     `json:"-"` // Full CLI command used to spawn
 	PromptContext      sql.NullString     `json:"-"` // System prompt file contents
 	RestartCount       int                `json:"-"` // Number of low-context restarts
+	NudgeCount         int                `json:"-"` // Number of idle nudges sent
 	Config             string             `json:"-"` // Safety settings JSON used for this session
 	StartedAt          sql.NullString     `json:"-"`
 	EndedAt            sql.NullString     `json:"-"`
@@ -146,6 +147,7 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		MessageCount       int                `json:"message_count"`
 		ContextLeft        *int               `json:"context_left,omitempty"`
 		RestartCount       int                `json:"restart_count"`
+		NudgeCount         int                `json:"nudge_count"`
 		Config             string             `json:"config,omitempty"`
 		AncestorSessionID  *string            `json:"ancestor_session_id,omitempty"`
 		SpawnCommand       *string            `json:"spawn_command,omitempty"`
@@ -172,6 +174,7 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		MessageCount:       as.MessageCount,
 		ContextLeft:        contextLeft,
 		RestartCount:       as.RestartCount,
+		NudgeCount:         as.NudgeCount,
 		Config:             as.Config,
 		AncestorSessionID:  ancestorSessionID,
 		SpawnCommand:       spawnCommand,

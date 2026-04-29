@@ -320,6 +320,20 @@ func (s *AgentService) setAgentResult(sessionID, result string) (BroadcastCtx, e
 	return sessionBroadcastCtx(s.pool, sessionID)
 }
 
+// IncrementNudgeCount atomically increments nudge_count for a session and returns the new value.
+func (s *AgentService) IncrementNudgeCount(sessionID string) (int, error) {
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err := s.pool.Exec(
+		`UPDATE agent_sessions SET nudge_count = nudge_count + 1, updated_at = ? WHERE id = ?`,
+		now, sessionID)
+	if err != nil {
+		return 0, err
+	}
+	var count int
+	err = s.pool.QueryRow(`SELECT nudge_count FROM agent_sessions WHERE id = ?`, sessionID).Scan(&count)
+	return count, err
+}
+
 // RecordHookMessage inserts one agent_messages row for a hook-sourced event
 // (e.g. PreToolUse/PostToolUse from Claude --settings hooks). Returns the
 // project/ticket/workflow IDs needed by the caller for WS broadcast.

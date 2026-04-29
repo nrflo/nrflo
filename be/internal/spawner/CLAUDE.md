@@ -323,6 +323,23 @@ Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
      (NULL = defaults, 0 = disabled)
    - Global stall timeout override: when agent def has NULL, spawner checks Config.GlobalStallStartTimeout / GlobalStallRunningTimeout before falling back to hardcoded defaults. Priority: per-agent def > global config > hardcoded default.
 
+5c. IDLE/NUDGE LOOP (in monitorAll poll loop)
+   - Only active for cliInteractiveBackend agents (proc.nudgeMax > 0; 0 = disabled for cli/api backends)
+   - Idle window: idleStartTimeout (default 2min) when no output received yet; idleAfterMessageTimeout (default 3min) after first output
+   - On idle window exceeded and nudgeCount < nudgeMax (default 5):
+     - Expand "finish-reminder" injectable with stdVars and write body+"\n" to PTY stdin (best-effort, log error)
+     - Broadcast agent.nudged with {session_id, agent_type, model_id, attempt, max}
+     - Call AgentSvcReal.IncrementNudgeCount → persists nudge_count in DB
+     - Record lastNudgeAt and reset lastMessageTime (treats nudge as activity, restarting idle window)
+   - After nudgeMax nudges, if another full idle window passes since lastNudgeAt:
+     - Call AgentSvcReal.Fail(reason="unresponsive_after_nudges")
+     - Call RequestTerminalSignal(sessionID, "fail") → existing terminalSignal flow drives the kill
+     - Call ErrorSvc.RecordError(projectID, "agent", sessionID, "<type>: unresponsive after N reminders")
+   - Agent stays in running list throughout (no relaunch); terminalSignal drives the doneCh close
+   - System agents (context-saver, conflict-resolver) also use this path when interactive mode is on
+   - Configurable via Config.IdleAfterMessageTimeoutSec, Config.IdleStartTimeoutSec, Config.NudgeMax
+   - nudge_count persisted in agent_sessions table (migration 000065); surfaced in V4 response (active + history)
+
 6. FINALIZE PHASE
    - pass_count >= 1 → layer passes (fan-in)
    - all skipped → layer passes

@@ -80,6 +80,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `workflow_def.*` | workflow_id | Workflow def CRUD |
 | `agent_def.*` | workflow_id, agent_id | Agent def CRUD |
 | `agent.take_control` | session_id, agent_type | Agent entered interactive mode |
+| `agent.nudged` | session_id, agent_type, attempt, max | Agent idle reminder sent; invalidates workflow + agentSessions queries |
 | `orchestration.*` | instance_id | Orchestration lifecycle |
 | `layer.skipped` | instance_id, layer, skip_tag, agents | Layer skipped due to skip tag |
 | `merge.conflict_resolving` | instance_id, branch, merge_error | Merge conflict detected, resolver agent spawned |

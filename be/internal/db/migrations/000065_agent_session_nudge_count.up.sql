@@ -1,0 +1,1 @@
+ALTER TABLE agent_sessions ADD COLUMN nudge_count INTEGER NOT NULL DEFAULT 0;

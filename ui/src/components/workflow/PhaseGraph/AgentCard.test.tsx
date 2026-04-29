@@ -236,6 +236,54 @@ describe('AgentCard - user_interactive status', () => {
   })
 })
 
+describe('AgentCard - nudge badge', () => {
+  it('renders nudge badge with count when nudge_count > 0', () => {
+    render(<AgentCard agent={makeAgent({ nudge_count: 2 })} />)
+    expect(screen.getByText('⏰2/5')).toBeInTheDocument()
+  })
+
+  it('does not render nudge badge when nudge_count is 0', () => {
+    render(<AgentCard agent={makeAgent({ nudge_count: 0 })} />)
+    expect(screen.queryByText(/⏰/)).not.toBeInTheDocument()
+  })
+
+  it('does not render nudge badge when nudge_count is undefined', () => {
+    render(<AgentCard agent={makeAgent({ nudge_count: undefined })} />)
+    expect(screen.queryByText(/⏰/)).not.toBeInTheDocument()
+  })
+
+  it('positions nudge badge at bottom-left corner', () => {
+    render(<AgentCard agent={makeAgent({ nudge_count: 3 })} />)
+    const badge = screen.getByText('⏰3/5')
+    // Tooltip adds an extra wrapper between the badge text and the positioned span
+    const positionedWrapper = badge.closest('[class*="bottom-1"]') as HTMLElement
+    expect(positionedWrapper).not.toBeNull()
+    expect(positionedWrapper.className).toContain('absolute')
+    expect(positionedWrapper.className).toContain('left-1')
+  })
+
+  it('renders nudge badge with amber styling', () => {
+    render(<AgentCard agent={makeAgent({ nudge_count: 1 })} />)
+    const badge = screen.getByText('⏰1/5')
+    expect(badge.className).toContain('bg-amber-100')
+    expect(badge.className).toContain('text-amber-700')
+  })
+
+  it('renders nudge badge with monospace font', () => {
+    render(<AgentCard agent={makeAgent({ nudge_count: 4 })} />)
+    const badge = screen.getByText('⏰4/5')
+    expect(badge.className).toContain('font-mono')
+  })
+
+  it('shows tooltip text on hover', async () => {
+    const user = userEvent.setup()
+    render(<AgentCard agent={makeAgent({ nudge_count: 2 })} />)
+    await user.hover(screen.getByText('⏰2/5'))
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('Idle reminder sent')
+  })
+})
+
 describe('AgentCard - restart badge and tooltip', () => {
   it('does not render restart badge when restart_count is 0', () => {
     render(<AgentCard agent={makeAgent({ restart_count: 0 })} />)

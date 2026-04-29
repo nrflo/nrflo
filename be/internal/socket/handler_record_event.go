@@ -78,9 +78,6 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 		}
 	}
 
-	// Update context % when token usage is present
-	h.maybeUpdateContextFromEvent(ctx, sessionID, projectID, ticketID, workflowName, event)
-
 	return MakeResponse(req.ID, map[string]string{"status": "recorded"})
 }
 
@@ -122,42 +119,3 @@ func (h *Handler) recordPostToolUse(ctx context.Context, req Request, sessionID 
 	return MakeResponse(req.ID, map[string]string{"status": "recorded"})
 }
 
-// maybeUpdateContextFromEvent parses token usage from a hook event and updates context_left.
-func (h *Handler) maybeUpdateContextFromEvent(ctx context.Context, sessionID, projectID, ticketID, workflowName string, event map[string]interface{}) {
-	usage, _ := event["usage"].(map[string]interface{})
-	if usage == nil {
-		return
-	}
-	input, _ := usage["input_tokens"].(float64)
-	cacheRead, _ := usage["cache_read_input_tokens"].(float64)
-	cacheCreate, _ := usage["cache_creation_input_tokens"].(float64)
-	output, _ := usage["output_tokens"].(float64)
-	totalUsed := int(input + cacheRead + cacheCreate + output)
-	if totalUsed == 0 {
-		return
-	}
-
-	// Use 200000 as default max context (no max_context column in agent_sessions)
-	ctxLeft := spawner.ComputeContextLeftPct(totalUsed, 200000)
-
-	updProjectID, updTicketID, updWorkflow, updErr := h.agentSvc.UpdateContextLeft(sessionID, ctxLeft)
-	if updErr != nil {
-		logger.Error(ctx, "record_event: failed to update context", "error", updErr)
-		return
-	}
-	if updProjectID == "" {
-		updProjectID = projectID
-		updTicketID = ticketID
-		updWorkflow = workflowName
-	}
-	if updProjectID != "" {
-		service.BroadcastFromCtx(h.wsHub, ws.EventAgentContextUpdated, service.BroadcastCtx{
-			ProjectID: updProjectID,
-			TicketID:  updTicketID,
-			Workflow:  updWorkflow,
-		}, map[string]interface{}{
-			"session_id":   sessionID,
-			"context_left": ctxLeft,
-		})
-	}
-}

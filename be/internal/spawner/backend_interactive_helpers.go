@@ -103,6 +103,14 @@ func mergeInteractiveSettings(safetyJSON, hooksJSON string) string {
 		merged["hooks"] = mergedHooks
 	}
 
+	// hooks side wins on conflict for non-hooks top-level keys
+	for k, v := range hooks {
+		if k == "hooks" {
+			continue
+		}
+		merged[k] = v
+	}
+
 	out, err := json.Marshal(merged)
 	if err != nil {
 		return safetyJSON

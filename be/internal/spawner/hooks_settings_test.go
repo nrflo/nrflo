@@ -117,6 +117,47 @@ func TestMergeInteractiveSettings_ConcatenatesPreToolUseArrays(t *testing.T) {
 	}
 }
 
+// TestBuildInteractiveSettingsJSON_HasStatusLine verifies that the top-level
+// "statusLine" key is present for Claude agents with type=command and a command
+// that ends with "agent statusline".
+func TestBuildInteractiveSettingsJSON_HasStatusLine(t *testing.T) {
+	proc := &processInfo{modelID: "claude:sonnet"}
+	got := BuildInteractiveSettingsJSON(proc)
+	if got == "" {
+		t.Fatal("expected non-empty JSON for claude process")
+	}
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil {
+		t.Fatalf("invalid JSON: %v\ngot: %s", err, got)
+	}
+
+	sl, ok := parsed["statusLine"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("parsed[\"statusLine\"] missing or not a map; got: %v", parsed["statusLine"])
+	}
+	if sl["type"] != "command" {
+		t.Errorf("statusLine.type = %v, want \"command\"", sl["type"])
+	}
+	cmd, _ := sl["command"].(string)
+	if !strings.HasSuffix(cmd, "agent statusline") {
+		t.Errorf("statusLine.command = %q, want suffix \"agent statusline\"", cmd)
+	}
+}
+
+// TestBuildInteractiveSettingsJSON_NonClaudeNoStatusLine verifies that non-Claude
+// processes do not return a statusLine key (they return empty string).
+func TestBuildInteractiveSettingsJSON_NonClaudeNoStatusLine(t *testing.T) {
+	for _, modelID := range []string{
+		"opencode:opencode_qwen36_plus_free",
+		"codex:codex_gpt_high",
+	} {
+		proc := &processInfo{modelID: modelID}
+		if got := BuildInteractiveSettingsJSON(proc); got != "" {
+			t.Errorf("modelID=%q: expected empty string (no statusLine for non-Claude), got %q", modelID, got[:min(60, len(got))])
+		}
+	}
+}
+
 // TestComputeContextLeftPct verifies the formula 100 - (totalUsed*100/maxCtx) with edge cases.
 func TestComputeContextLeftPct(t *testing.T) {
 	cases := []struct {

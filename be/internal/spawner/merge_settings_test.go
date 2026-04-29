@@ -106,6 +106,80 @@ func TestMergeInteractiveSettings_WithRealSafetyJSON(t *testing.T) {
 	}
 }
 
+// TestMergeInteractiveSettings_HooksSideStatusLineSurvives verifies that a
+// statusLine key from the hooks-side JSON is preserved in the merged output even
+// when the safety-side JSON only contains a hooks sub-map.
+func TestMergeInteractiveSettings_HooksSideStatusLineSurvives(t *testing.T) {
+	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"check-cmd"}]}]}}`
+	hooks := `{"hooks":{"PostToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"nrflo agent record-event"}]}]},"statusLine":{"type":"command","command":"/usr/local/bin/nrflo agent statusline"}}`
+
+	got := mergeInteractiveSettings(safety, hooks)
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil {
+		t.Fatalf("invalid JSON after merge: %v\nmerged: %s", err, got)
+	}
+	if _, hasHooks := parsed["hooks"]; !hasHooks {
+		t.Errorf("merged result missing 'hooks' key: %v", parsed)
+	}
+	sl, ok := parsed["statusLine"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("merged result missing 'statusLine' from hooks side: %v", parsed)
+	}
+	if sl["type"] != "command" {
+		t.Errorf("statusLine.type = %v, want \"command\"", sl["type"])
+	}
+}
+
+// TestMergeInteractiveSettings_SafetySideStatusLinePreservedWithHooks verifies
+// that a statusLine key from the safety-side JSON is preserved when the
+// hooks-side JSON only contains a hooks sub-map (no statusLine).
+func TestMergeInteractiveSettings_SafetySideStatusLinePreservedWithHooks(t *testing.T) {
+	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"check-bash"}]}]},"statusLine":{"type":"command","command":"/usr/local/bin/nrflo agent statusline"}}`
+	hooks := `{"hooks":{"PostToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"nrflo agent record-event"}]}]}}`
+
+	got := mergeInteractiveSettings(safety, hooks)
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil {
+		t.Fatalf("invalid JSON after merge: %v\nmerged: %s", err, got)
+	}
+	if _, hasHooks := parsed["hooks"]; !hasHooks {
+		t.Errorf("merged result missing 'hooks' key: %v", parsed)
+	}
+	// statusLine from safety side must survive (hooks side didn't override it)
+	sl, ok := parsed["statusLine"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("merged result missing 'statusLine' from safety side: %v", parsed)
+	}
+	if sl["type"] != "command" {
+		t.Errorf("statusLine.type = %v, want \"command\"", sl["type"])
+	}
+}
+
+// TestMergeInteractiveSettings_BothSidesStatusLine_HooksSideWins verifies that
+// when both safety and hooks side define a statusLine, the hooks side wins.
+func TestMergeInteractiveSettings_BothSidesStatusLine_HooksSideWins(t *testing.T) {
+	safety := `{"statusLine":{"type":"command","command":"/old/path/nrflo agent statusline"}}`
+	hooks := `{"statusLine":{"type":"command","command":"/new/path/nrflo agent statusline"}}`
+
+	got := mergeInteractiveSettings(safety, hooks)
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil {
+		t.Fatalf("invalid JSON after merge: %v\nmerged: %s", err, got)
+	}
+	sl, ok := parsed["statusLine"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("merged result missing 'statusLine': %v", parsed)
+	}
+	cmd, _ := sl["command"].(string)
+	// hooks side wins on conflict — must be the new path
+	if cmd != "/new/path/nrflo agent statusline" {
+		t.Errorf("statusLine.command = %q, want \"/new/path/nrflo agent statusline\" (hooks side wins)", cmd)
+	}
+}
+
 // TestMergeInteractiveSettings_HooksKeyOverridesFromHooksSide verifies that when
 // hooks side has a different key than safety side, both are preserved.
 func TestMergeInteractiveSettings_HooksKeyOverridesFromHooksSide(t *testing.T) {

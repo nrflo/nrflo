@@ -52,6 +52,10 @@ func BuildInteractiveSettingsJSON(proc *processInfo) string {
 			"PreToolUse":  []interface{}{hookEntry},
 			"PostToolUse": []interface{}{hookEntry},
 		},
+		"statusLine": map[string]interface{}{
+			"type":    "command",
+			"command": resolvedNrfloPath() + " agent statusline",
+		},
 	}
 
 	out, err := json.Marshal(settings)

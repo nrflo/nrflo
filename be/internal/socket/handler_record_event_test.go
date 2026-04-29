@@ -201,25 +201,21 @@ func TestRecordEvent_PostToolUse_LongResponseTruncated(t *testing.T) {
 	}
 }
 
-// TestRecordEvent_ContextUpdate_UpdatesDBAndBroadcasts verifies usage tokens in PreToolUse
-// trigger a context_left DB update and agent.context_updated WS event.
-func TestRecordEvent_ContextUpdate_UpdatesDBAndBroadcasts(t *testing.T) {
+// TestRecordEvent_PreToolUse_UsageFieldIgnored verifies that a PreToolUse event
+// containing a usage block still records the tool message successfully.
+// Context is updated via the statusLine hook path, not PreToolUse payloads.
+func TestRecordEvent_PreToolUse_UsageFieldIgnored(t *testing.T) {
 	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "RE-CTX-1")
-	wfiID := queryWFIID(t, env, "RE-CTX-1")
-	sessionID := "sess-re-ctx-1"
-	insertAgentSession(t, env, "RE-CTX-1", sessionID, wfiID)
-
-	client, sendCh := ws.NewTestClient(env.hub, "re-ctx-client")
-	env.hub.Subscribe(client, env.project, "RE-CTX-1")
+	env.createTicketAndWorkflow(t, "RE-NOCTX-1")
+	wfiID := queryWFIID(t, env, "RE-NOCTX-1")
+	sessionID := "sess-re-noctx-1"
+	insertAgentSession(t, env, "RE-NOCTX-1", sessionID, wfiID)
 
 	h := NewHandler(env.pool, env.hub, clock.Real(), nil)
-	req := buildRecordEventReq(t, "req-re-ctx", sessionID, map[string]interface{}{
+	req := buildRecordEventReq(t, "req-re-noctx", sessionID, map[string]interface{}{
 		"hook_event_name": "PreToolUse",
 		"tool_name":       "Bash",
 		"tool_input":      map[string]interface{}{"command": "pwd"},
-		// totalUsed = 50000 + 10000 + 5000 + 1000 = 66000
-		// pctLeft   = 100 - (66000 * 100 / 200000) = 100 - 33 = 67
 		"usage": map[string]interface{}{
 			"input_tokens":                50000.0,
 			"cache_read_input_tokens":     10000.0,
@@ -232,23 +228,26 @@ func TestRecordEvent_ContextUpdate_UpdatesDBAndBroadcasts(t *testing.T) {
 	if resp.Error != nil {
 		t.Fatalf("expected no error, got: %v", resp.Error)
 	}
+	var result map[string]string
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result["status"] != "recorded" {
+		t.Errorf("status = %q, want %q", result["status"], "recorded")
+	}
 
-	const wantPct = 67
+	// Tool message is still inserted
+	if n := countAgentMessages(t, env, sessionID); n != 1 {
+		t.Fatalf("agent_messages count = %d, want 1", n)
+	}
+
+	// context_left stays at NULL/0 — PreToolUse no longer updates it
 	var ctxLeft int
-	if err := env.pool.QueryRow(`SELECT context_left FROM agent_sessions WHERE id = ?`, sessionID).Scan(&ctxLeft); err != nil {
+	if err := env.pool.QueryRow(`SELECT COALESCE(context_left, 0) FROM agent_sessions WHERE id = ?`, sessionID).Scan(&ctxLeft); err != nil {
 		t.Fatalf("query context_left: %v", err)
 	}
-	if ctxLeft != wantPct {
-		t.Errorf("context_left = %d, want %d", ctxLeft, wantPct)
-	}
-
-	// Drain events until agent.context_updated
-	ev := awaitWSEvent(t, sendCh, ws.EventAgentContextUpdated)
-	if sid, _ := ev.Data["session_id"].(string); sid != sessionID {
-		t.Errorf("context_updated session_id = %q, want %q", sid, sessionID)
-	}
-	if pct, _ := ev.Data["context_left"].(float64); int(pct) != wantPct {
-		t.Errorf("context_left = %.0f, want %d", pct, wantPct)
+	if ctxLeft != 0 {
+		t.Errorf("context_left = %d, want 0 (PreToolUse no longer updates context)", ctxLeft)
 	}
 }
 

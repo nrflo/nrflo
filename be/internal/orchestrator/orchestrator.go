@@ -19,6 +19,7 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
+	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
@@ -80,6 +81,10 @@ type Orchestrator struct {
 	// OnRegisterPtyCommand is called when interactive/plan mode needs to register
 	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.
 	OnRegisterPtyCommand func(sessionID string, cmd string, args []string)
+
+	// PTYManager is the shared PTY session manager. Passed to spawner.Config.PTYManager
+	// so the interactive CLI backend can create and manage PTY sessions directly.
+	PTYManager *ptyPkg.Manager
 }
 
 // New creates a new Orchestrator.
@@ -1231,6 +1236,7 @@ func (o *Orchestrator) runLoop(
 					ToolDefRepo:               toolDefRepo,
 					APIMode:                   o.apiMode,
 					InteractiveCLIMode:        interactiveCLIMode,
+					PTYManager:                o.PTYManager,
 				})
 
 				// Store spawner ref so RestartAgent can reach it

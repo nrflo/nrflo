@@ -50,8 +50,11 @@ func (s *Spawner) handleGracefulTimeout(ctx context.Context, proc *processInfo, 
 // handleCompletion handles a completed agent process with hybrid completion semantics
 func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req SpawnRequest) {
 	exitCode := 0
-	if proc.cmd.ProcessState != nil {
+	if proc.cmd != nil && proc.cmd.ProcessState != nil {
 		exitCode = proc.cmd.ProcessState.ExitCode()
+	} else if proc.cmd == nil && proc.waitErr != nil {
+		// Non-exec.Cmd backends (e.g. cli_interactive) signal failure via waitErr.
+		exitCode = 1
 	}
 
 	var result, resultReason string

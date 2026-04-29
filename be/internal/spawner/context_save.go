@@ -138,6 +138,8 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 
 	// Construct one-off spawner (conflict-resolver pattern), forwarding API-mode
 	// dependencies so a context-saver-api variant can run via the in-process runner.
+	// InteractiveCLIMode and PTYManager are forwarded so the CLI context-saver also
+	// runs interactively when the toggle is on.
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
 			"_context_save": {
@@ -169,6 +171,8 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		WorkflowSvc:        s.config.WorkflowSvc,
 		APICredentialRepo:  s.config.APICredentialRepo,
 		ToolDefRepo:        s.config.ToolDefRepo,
+		InteractiveCLIMode: s.config.InteractiveCLIMode,
+		PTYManager:         s.config.PTYManager,
 	})
 
 	saveCtx, cancel := context.WithTimeout(ctx, contextSaveTimeout)

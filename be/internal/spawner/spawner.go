@@ -16,6 +16,7 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
+	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner/apirun"
@@ -135,8 +136,12 @@ type Config struct {
 	APIMode bool
 	// InteractiveCLIMode enables interactive terminal mode for CLI agents when set.
 	// Read once at workflow start from project config "interactive_cli_mode".
-	// Consumed by T3 — no behavior change yet in this ticket.
+	// When true, CLI agents whose adapter returns SupportsInteractive() use
+	// cliInteractiveBackend (PTY) instead of cliBackend (exec.Cmd).
 	InteractiveCLIMode bool
+	// PTYManager manages PTY sessions for interactive CLI mode. Required when
+	// InteractiveCLIMode is true and CLI agents are spawned.
+	PTYManager *ptyPkg.Manager
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -763,13 +768,20 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	return proc, prep, nil
 }
 
-// startBackend selects an ExecutionBackend based on the agent definition's
-// execution_mode (default "cli"), wires it onto the proc, calls Start, and
-// registers the agent_sessions row.
+// startBackend selects an ExecutionBackend based on execution_mode, the
+// InteractiveCLIMode toggle, and adapter capability:
+//   - execution_mode=="api"                                          → apiBackend
+//   - InteractiveCLIMode && adapter.SupportsInteractive()           → cliInteractiveBackend (PTY)
+//   - otherwise                                                      → cliBackend (exec.Cmd)
+//
+// System agents (conflict-resolver, context-saver) flow through the same
+// selector when their backend is CLI.
 func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	var backend ExecutionBackend
 	if prep.executionMode == "api" {
 		backend = newAPIBackend(s)
+	} else if s.config.InteractiveCLIMode && prep.adapter != nil && prep.adapter.SupportsInteractive() {
+		backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
 	} else {
 		backend = newCLIBackend(prep.adapter, s)
 	}
@@ -852,6 +864,19 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						"agent_type": proc.agentType,
 						"model_id":   proc.modelID,
 						"reason":     "api_mode_unsupported",
+					})
+					break
+				}
+
+				// Interactive backend: viewer-attach — broadcast but do NOT kill or block.
+				// The agent keeps running; the viewer connects via /api/v1/pty/{session_id}.
+				// No exit-interactive call is made on disconnect (completePtyInteractive is skipped).
+				if proc.backend.Name() == "cli_interactive" {
+					logger.Info(ctx, "take-control: viewer attach (interactive backend)", "session_id", takeControlSessionID)
+					s.broadcast(ws.EventAgentViewerAttached, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+						"session_id": proc.sessionID,
+						"agent_type": proc.agentType,
+						"model_id":   proc.modelID,
 					})
 					break
 				}

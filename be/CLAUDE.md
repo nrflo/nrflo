@@ -21,7 +21,10 @@ be/
 │   │   └── deps.go              # deps list/add/remove (HTTP)
 │   ├── spawner/                 # Agent spawner
 │   │   ├── spawner.go           # Spawn and monitor agents
-│   │   ├── cli_adapter.go       # CLI adapter pattern (Claude, Opencode, Codex)
+│   │   ├── cli_adapter.go       # CLIAdapter interface, types (SpawnOptions, InteractiveSpawnOptions, ResumeOptions), factory
+│   │   ├── cli_adapter_claude.go    # ClaudeAdapter implementation
+│   │   ├── cli_adapter_opencode.go  # OpencodeAdapter implementation
+│   │   ├── cli_adapter_codex.go     # CodexAdapter implementation
 │   │   ├── cli_adapter_test.go  # Adapter tests
 │   │   ├── errors.go            # Typed errors (CallbackError for layer re-execution, detected by orchestrator)
 │   │   ├── completion.go        # Completion handling, continuation relaunch

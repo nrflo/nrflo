@@ -43,6 +43,7 @@ const (
 	EventAgentContextUpdated         = "agent.context_updated"
 	EventAgentTakeControl            = "agent.take_control"
 	EventAgentTakeControlRejected    = "agent.take_control_rejected"
+	EventAgentViewerAttached         = "agent.viewer_attached"
 	EventLayerSkipped                = "layer.skipped"
 	EventAgentRetryWaiting           = "agent.retry_waiting"
 	EventAgentStallWaiting           = "agent.stall_waiting"

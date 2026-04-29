@@ -63,6 +63,7 @@ func (o *Orchestrator) attemptConflictResolution(
 		ErrorSvc:           o.errorSvc,
 		APIMode:            o.apiMode,
 		InteractiveCLIMode: interactiveCLIMode,
+		PTYManager:         o.PTYManager,
 	})
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{

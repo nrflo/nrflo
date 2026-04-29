@@ -186,6 +186,74 @@ The orchestrator constructs all three at workflow start (`orchestrator/api_provi
 
 T4 wires tool dispatch on top of this seam (registry resolution in `prepareSpawn`, dispatch loop in `apirun.Runner`, terminal-tool short-circuit via `TerminalSignal`). See [apirun/CLAUDE.md](apirun/CLAUDE.md) for the tool dispatch architecture, builtins, HTTP handler, and registry rules.
 
+## Interactive CLI Backend
+
+`cliInteractiveBackend` (`backend_interactive.go`) spawns CLI agents inside a PTY without batch flags. Selected when `Config.InteractiveCLIMode && adapter.SupportsInteractive()` and execution mode is not `"api"`.
+
+### Backend Selection
+
+```
+startBackend priority:
+  1. executionMode == "api"         → apiBackend
+  2. InteractiveCLIMode && SupportsInteractive() → cliInteractiveBackend
+  3. (default)                      → cliBackend
+```
+
+System agents (conflict-resolver, context-saver) flow through the same selector — they use cliInteractiveBackend when the toggle is on and their adapter returns `SupportsInteractive() == true`. The context-saver ephemeral spawner inherits `InteractiveCLIMode` and `PTYManager` from the parent spawner config.
+
+### CLIAdapter Interactive Extensions
+
+`SupportsInteractive() bool` — returns true for all three adapters (Claude, Opencode, Codex).
+
+`BuildInteractiveCommand(InteractiveSpawnOptions) *exec.Cmd` — builds a PTY-friendly command without batch-mode flags:
+- **Claude**: `claude --session-id <id> --model <m> --dangerously-skip-permissions [--effort] [--settings] [--append-system-prompt-file]` — no `--print/--verbose/--output-format/--disallowed-tools`
+- **Opencode**: `opencode --model <m> [--variant high]` — no `run/--format json`
+- **Codex**: `codex --model <m> --dangerously-bypass-approvals-and-sandbox` — no `exec/--json`
+
+### PTY Lifecycle
+
+1. `BuildInteractiveCommand(opts)` — build *exec.Cmd (cmd.Path + cmd.Args only; PTY owns process)
+2. `ptyMgr.RegisterCommand(sessionID, cmd.Path, cmd.Args[1:])` — registers custom command so PTY uses it instead of default `claude --resume`
+3. `ptyMgr.Create(sessionID, workDir, env)` — spawns process in PTY; session auto-removed on exit
+4. `proc.cmd = nil` — PTY owns the process; `pid=0` recorded in DB (existing nil-guards handle this)
+5. After ~250ms readiness delay, `sess.Write(promptBody + "\n")` — delivers first user message via stdin
+
+### Suffix Delivery Asymmetry
+
+- **Claude**: suffix written to a tmp file; passed as `opts.SystemPromptFile` (`--append-system-prompt-file`)
+- **Codex / Opencode**: suffix prepended to `prep.prompt` in memory before delivery via PTY stdin Write; no file needed (these adapters don't support system prompt files)
+
+### Settings Merge
+
+`BuildInteractiveSettingsJSON(proc)` returns a JSON string with hooks (currently a stub; T4 fills in hooks). `mergeInteractiveSettings(safetyJSON, hooksJSON)` deep-merges the `hooks` objects; when one side is empty the other is returned unchanged. The merged result is passed as `opts.SettingsJSON` → `--settings <json>` (Claude only).
+
+### Output Ferry
+
+`ferryPTYOutput(spawner, proc, sess, isClaude)` runs in a goroutine reading PTY stdout:
+- **Claude**: bytes are dropped (interactive UI owns the display) but `proc.lastMessageTime` is bumped under `messagesMutex` to prevent false-positive stall detection
+- **Codex / Opencode**: content passed to `s.TrackMessage(proc, content, "text")` and `lastMessageTime` updated
+
+### Wait Goroutine
+
+`<-sess.Done()` → `proc.waitErr` set if exit code ≠ 0 → `close(proc.doneCh)`. Same pattern as cliBackend so `monitorAll` unblocks normally.
+
+### Kill
+
+`sess.Close()` sends SIGTERM (PTY session handles escalation via its own `Kill()` method for SIGKILL if needed). The `Kill(ctx, proc, sig)` method on `cliInteractiveBackend` routes `SIGKILL` to `sess.Kill()` and other signals to `sess.Close()`.
+
+### Take-Control (Viewer Attach)
+
+When `proc.backend.Name() == "cli_interactive"`, the `monitorAll` take-control case does **not** kill the agent. Instead it:
+1. Broadcasts `agent.viewer_attached` with `session_id`, `agent_type`, `model_id`
+2. Leaves proc in the running list — agent continues normally
+3. Skips `interactiveWaits` registration
+
+The viewer connects via the existing `/api/v1/pty/{session_id}` endpoint (relaxed to allow `status=running` when a PTY session already exists for the session ID). Viewer disconnect does **not** trigger `completePtyInteractive` — that flow is reserved for `user_interactive` status.
+
+### Config Field
+
+`spawner.Config.PTYManager *pty.Manager` — must be set by the orchestrator (both `orchestrator.go` and `orchestrator_merge_resolve.go` pass `o.PTYManager`). `Orchestrator.PTYManager` is wired from the API server via `orch.PTYManager = ptyMgr` in `server.go`.
+
 ## Error Capture
 
 The spawner records errors to the `errors` table via `Config.ErrorSvc` (implements `ErrorRecorder` interface). Nil-safe — no-op when not configured. Errors are recorded for:

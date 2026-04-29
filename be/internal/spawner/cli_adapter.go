@@ -32,6 +32,27 @@ type CLIAdapter interface {
 
 	// BuildResumeCommand creates the exec.Cmd for resuming a session with a prompt
 	BuildResumeCommand(opts ResumeOptions) *exec.Cmd
+
+	// SupportsInteractive returns true if the CLI supports PTY-based interactive execution
+	// without batch flags (--print, --verbose, --output-format, etc.).
+	SupportsInteractive() bool
+
+	// BuildInteractiveCommand creates the exec.Cmd for interactive PTY execution.
+	// Unlike BuildCommand, it omits all batch/output-format flags so the CLI
+	// runs in its normal interactive terminal UI mode.
+	BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd
+}
+
+// InteractiveSpawnOptions contains parameters for building an interactive PTY command.
+// PromptFilePath is intentionally absent — the prompt is delivered via PTY stdin Write.
+type InteractiveSpawnOptions struct {
+	SessionID        string
+	Model            string
+	ReasoningEffort  string // passed as --effort (Claude) or --variant (Opencode)
+	WorkDir          string
+	Env              []string
+	SystemPromptFile string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
+	SettingsJSON     string // Claude: --settings JSON; others: ignored
 }
 
 // ResumeOptions contains parameters for resuming a CLI session
@@ -84,280 +105,4 @@ func GetCLIAdapter(name string) (CLIAdapter, error) {
 	default:
 		return nil, fmt.Errorf("unknown CLI: %s", name)
 	}
-}
-
-// =============================================================================
-// Claude CLI Adapter
-// =============================================================================
-
-// ClaudeAdapter implements CLIAdapter for Claude Code CLI
-type ClaudeAdapter struct{}
-
-func (a *ClaudeAdapter) Name() string {
-	return "claude"
-}
-
-func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	model := opts.MappedModel
-	if model == "" {
-		model = a.MapModel(opts.Model)
-	}
-	args := []string{
-		"--print",
-		"--verbose",
-		"--dangerously-skip-permissions",
-		"--output-format", "stream-json",
-		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
-		"--model", model,
-		"--session-id", opts.SessionID,
-		// prompt piped via stdin — no PromptFile arg, no InitialPrompt
-	}
-	if opts.ReasoningEffort != "" {
-		args = append(args, "--effort", opts.ReasoningEffort)
-	}
-	if opts.SettingsJSON != "" {
-		args = append(args, "--settings", opts.SettingsJSON)
-	}
-	if opts.SystemPromptFile != "" {
-		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
-	}
-
-	cmd := exec.Command("claude", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}
-
-func (a *ClaudeAdapter) MapModel(model string) string {
-	switch model {
-	case "opus_4_6":
-		return "claude-opus-4-6"
-	case "opus_4_6_1m":
-		return "claude-opus-4-6[1m]"
-	case "opus_4_7":
-		return "claude-opus-4-7"
-	case "opus_4_7_1m":
-		return "claude-opus-4-7[1m]"
-	}
-	return model
-}
-
-func (a *ClaudeAdapter) SupportsSessionID() bool {
-	return true
-}
-
-func (a *ClaudeAdapter) SupportsSystemPromptFile() bool {
-	return true
-}
-
-func (a *ClaudeAdapter) SupportsResume() bool {
-	return true
-}
-
-func (a *ClaudeAdapter) UsesStdinPrompt() bool {
-	return true
-}
-
-func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
-	args := []string{
-		"--resume", opts.SessionID,
-		"--print",
-		"--dangerously-skip-permissions",
-		"--verbose",
-		"--output-format", "stream-json",
-		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
-		// prompt piped via stdin (same as BuildCommand)
-	}
-	if opts.ReasoningEffort != "" {
-		args = append(args, "--effort", opts.ReasoningEffort)
-	}
-	if opts.SettingsJSON != "" {
-		args = append(args, "--settings", opts.SettingsJSON)
-	}
-	if opts.SystemPromptFile != "" {
-		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
-	}
-	cmd := exec.Command("claude", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}
-
-// =============================================================================
-// Opencode CLI Adapter
-// =============================================================================
-
-// OpencodeAdapter implements CLIAdapter for Opencode CLI
-type OpencodeAdapter struct{}
-
-func (a *OpencodeAdapter) Name() string {
-	return "opencode"
-}
-
-func (a *OpencodeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	// Opencode uses provider/model format
-	model := opts.MappedModel
-	if model == "" {
-		model = a.MapModel(opts.Model)
-	}
-	reasoningEffort := opts.ReasoningEffort
-	if reasoningEffort == "" {
-		reasoningEffort = a.GetReasoningEffort(opts.Model)
-	}
-
-	args := []string{
-		"run",
-		"--format", "json",
-		"--model", model,
-	}
-
-	// Add reasoning effort variant if specified
-	if reasoningEffort != "" {
-		args = append(args, "--variant", reasoningEffort)
-	}
-
-	// Opencode reads message from positional args, not stdin
-	if opts.Prompt != "" {
-		args = append(args, opts.Prompt)
-	}
-
-	cmd := exec.Command("opencode", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}
-
-func (a *OpencodeAdapter) MapModel(model string) string {
-	// If already in provider/model format, return as-is
-	if strings.Contains(model, "/") {
-		return model
-	}
-
-	modelMap := map[string]string{
-		"opencode_minimax_m25_free": "opencode/minimax-m2.5-free",
-		"opencode_qwen36_plus_free": "opencode/qwen3.6-plus-free",
-		"opencode_gpt54":            "openai/gpt-5.4",
-	}
-
-	if mapped, ok := modelMap[model]; ok {
-		return mapped
-	}
-
-	// Default: assume anthropic provider
-	return "anthropic/" + model
-}
-
-// GetReasoningEffort returns the reasoning effort variant for a model alias
-// Opencode uses --variant flag with values: max, high, medium, low, minimal
-func (a *OpencodeAdapter) GetReasoningEffort(model string) string {
-	switch model {
-	case "opencode_gpt54":
-		return "high"
-	default:
-		return ""
-	}
-}
-
-func (a *OpencodeAdapter) SupportsSessionID() bool {
-	return false // Opencode generates its own session IDs
-}
-
-func (a *OpencodeAdapter) SupportsSystemPromptFile() bool {
-	return false // Prompt piped via stdin
-}
-
-func (a *OpencodeAdapter) SupportsResume() bool {
-	return false
-}
-
-func (a *OpencodeAdapter) UsesStdinPrompt() bool {
-	return false // opencode reads message from positional args
-}
-
-func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
-	return nil
-}
-
-// =============================================================================
-// Codex CLI Adapter
-// =============================================================================
-
-// CodexAdapter implements CLIAdapter for OpenAI Codex CLI
-type CodexAdapter struct{}
-
-func (a *CodexAdapter) Name() string {
-	return "codex"
-}
-
-func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	model := opts.MappedModel
-	if model == "" {
-		model = a.MapModel(opts.Model)
-	}
-	reasoningEffort := opts.ReasoningEffort
-	if reasoningEffort == "" {
-		reasoningEffort = a.GetReasoningEffort(opts.Model)
-	}
-
-	args := []string{
-		"exec",
-		"--json",
-		"--model", model,
-		"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", reasoningEffort),
-		"--dangerously-bypass-approvals-and-sandbox",
-	}
-
-	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
-
-	cmd := exec.Command("codex", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}
-
-func (a *CodexAdapter) MapModel(model string) string {
-	modelMap := map[string]string{
-		"codex_gpt_normal":  "gpt-5.3-codex",
-		"codex_gpt_high":    "gpt-5.3-codex",
-		"codex_gpt54_normal": "gpt-5.4",
-		"codex_gpt54_high":   "gpt-5.4",
-	}
-	if mapped, ok := modelMap[model]; ok {
-		return mapped
-	}
-	return model // pass through custom model names
-}
-
-// GetReasoningEffort returns the reasoning effort level for a model alias
-func (a *CodexAdapter) GetReasoningEffort(model string) string {
-	switch model {
-	case "codex_gpt_normal", "codex_gpt_high":
-		return "high"
-	case "codex_gpt54_normal":
-		return "medium"
-	case "codex_gpt54_high":
-		return "high"
-	default:
-		return "high"
-	}
-}
-
-func (a *CodexAdapter) SupportsSessionID() bool {
-	return false // Codex generates its own session IDs
-}
-
-func (a *CodexAdapter) SupportsSystemPromptFile() bool {
-	return false // Prompt piped via stdin
-}
-
-func (a *CodexAdapter) SupportsResume() bool {
-	return false
-}
-
-func (a *CodexAdapter) UsesStdinPrompt() bool {
-	return true
-}
-
-func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
-	return nil
 }

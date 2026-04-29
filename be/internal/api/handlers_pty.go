@@ -50,9 +50,17 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Allow attaching to user_interactive sessions (normal take-control flow) OR
+	// to running sessions that already have an active PTY (interactive CLI backend
+	// viewer-attach). For the latter, completePtyInteractive is skipped on disconnect.
+	isViewerAttach := false
 	if session.Status != model.AgentSessionUserInteractive {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("session status is %s, expected user_interactive", session.Status))
-		return
+		if session.Status == model.AgentSessionRunning && s.ptyManager.Get(sessionID) != nil {
+			isViewerAttach = true
+		} else {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("session status is %s, expected user_interactive", session.Status))
+			return
+		}
 	}
 
 	// Look up workflow instance for the workflow name (needed for broadcast).
@@ -154,8 +162,12 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 		logger.Warn(ctx, "pty process exited with error", "session_id", sessionID, "exit_code", exitCode)
 	}
 
-	// PTY process exited — trigger exit-interactive flow.
-	s.completePtyInteractive(session, workflowName)
+	// PTY process exited — trigger exit-interactive flow only for user_interactive
+	// sessions (normal take-control). Viewer-attach sessions (interactive CLI backend)
+	// must NOT call completePtyInteractive — the spawner manages their lifecycle.
+	if !isViewerAttach {
+		s.completePtyInteractive(session, workflowName)
+	}
 
 	conn.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "process exited"))

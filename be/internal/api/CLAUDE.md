@@ -20,7 +20,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_workflow.go` | Workflow state get/patch |
 | `handlers_orchestrate.go` | Ticket-scoped run/stop/restart/retry-failed/take-control/resume-session/exit-interactive/run-epic. Run and retry-failed validate ticket is not closed or blocked (409 Conflict) |
 | `handlers_project_workflow.go` | Project-scoped run/stop/restart/retry-failed/take-control/resume-session/exit-interactive/state/agents |
-| `handlers_pty.go` | PTY WebSocket handler: upgrade, validate session, spawn/relay PTY, handle resize, exit-interactive on process exit |
+| `handlers_pty.go` | PTY WebSocket handler: upgrade, validate session, spawn/relay PTY, handle resize, exit-interactive on process exit. Also supports viewer-attach for `status=running` sessions when a PTY session already exists (interactive CLI backend); disconnect does not trigger exit-interactive in that case. |
 | `handlers_workflow_def.go` | Workflow definition CRUD (no `phases` field; phases derived from agent_definitions) |
 | `handlers_agent_def.go` | Agent definition CRUD (accepts `layer` field for phase execution order) |
 | `handlers_system_agent_def.go` | System agent definition CRUD (global, no project scope) |

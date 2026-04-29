@@ -99,3 +99,12 @@ func (s *Session) ExitCode() int {
 	}
 	return s.cmd.ProcessState.ExitCode()
 }
+
+// Kill sends SIGKILL directly to the process. Used for SIGKILL escalation
+// after a grace period when Close() (SIGTERM) was not sufficient.
+func (s *Session) Kill() error {
+	if s.cmd.Process == nil {
+		return nil
+	}
+	return s.cmd.Process.Kill()
+}

@@ -29,7 +29,11 @@ func (m *mockCLIAdapter) SupportsSessionID() bool                         { retu
 func (m *mockCLIAdapter) SupportsSystemPromptFile() bool                  { return false }
 func (m *mockCLIAdapter) SupportsResume() bool                            { return false }
 func (m *mockCLIAdapter) UsesStdinPrompt() bool                           { return false }
-func (m *mockCLIAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd { return nil }
+func (m *mockCLIAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd   { return nil }
+func (m *mockCLIAdapter) SupportsInteractive() bool                              { return false }
+func (m *mockCLIAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
+	return nil
+}
 
 func mockGetCLIAdapter(cliType string) (spawner.CLIAdapter, error) {
 	return &mockCLIAdapter{name: cliType}, nil
@@ -212,7 +216,11 @@ func (a *failStartAdapter) SupportsSessionID() bool                         { re
 func (a *failStartAdapter) SupportsSystemPromptFile() bool                  { return false }
 func (a *failStartAdapter) SupportsResume() bool                            { return false }
 func (a *failStartAdapter) UsesStdinPrompt() bool                           { return false }
-func (a *failStartAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd { return nil }
+func (a *failStartAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd   { return nil }
+func (a *failStartAdapter) SupportsInteractive() bool                              { return false }
+func (a *failStartAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
+	return nil
+}
 
 // hangingAdapter returns a command that runs indefinitely (sleep 999).
 // Used to test the timeout/kill path without waiting 40s: caller provides a
@@ -226,7 +234,11 @@ func (a *hangingAdapter) SupportsSessionID() bool                         { retu
 func (a *hangingAdapter) SupportsSystemPromptFile() bool                  { return false }
 func (a *hangingAdapter) SupportsResume() bool                            { return false }
 func (a *hangingAdapter) UsesStdinPrompt() bool                           { return false }
-func (a *hangingAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd { return nil }
+func (a *hangingAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd   { return nil }
+func (a *hangingAdapter) SupportsInteractive() bool                              { return false }
+func (a *hangingAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
+	return nil
+}
 
 // TestHandleTestCLIModel_TimeoutMessage exercises the timeout code path:
 // the response must be success=false with an error containing "40s", and the

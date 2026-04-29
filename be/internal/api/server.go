@@ -48,6 +48,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
 		ptyMgr.RegisterCommand(sessionID, cmd, args)
 	}
+	orch.PTYManager = ptyMgr
 
 	return &Server{
 		config:       cfg,

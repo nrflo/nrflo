@@ -38,10 +38,27 @@ func findDefByID(defs []*model.SystemAgentDefinition, id string) *model.SystemAg
 	return nil
 }
 
-// TestHandleListSystemAgentDefs_IncludesAPIRow verifies the seeded context-saver-api row
-// is present in the list response with role/execution_mode/tools/api_max_iterations populated.
-func TestHandleListSystemAgentDefs_IncludesAPIRow(t *testing.T) {
-	s := newSystemAgentServerWithSeeds(t)
+// newSystemAgentServerWithSeedsAPIMode creates a Server with all migration-seeded rows
+// and apiMode=true. Use this to test list behavior when api mode is enabled.
+func newSystemAgentServerWithSeedsAPIMode(t *testing.T) *Server {
+	t.Helper()
+	dbPath := filepath.Join(t.TempDir(), "sys_agent_apimode_test.db")
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	t.Cleanup(func() { pool.Close() })
+	return &Server{pool: pool, clock: clock.Real(), apiMode: true}
+}
+
+// TestHandleListSystemAgentDefs_HiddenInCLIMode verifies that in cli mode (apiMode=false,
+// the default), execution_mode='api' rows (context-saver-api) are excluded from the list
+// response while cli rows remain visible.
+func TestHandleListSystemAgentDefs_HiddenInCLIMode(t *testing.T) {
+	s := newSystemAgentServerWithSeeds(t) // apiMode=false (zero value)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agents", nil)
 	rr := httptest.NewRecorder()
@@ -56,9 +73,42 @@ func TestHandleListSystemAgentDefs_IncludesAPIRow(t *testing.T) {
 		t.Fatal("expected seeded rows in list, got empty")
 	}
 
+	// api-mode row must be absent in cli mode.
+	if apiRow := findDefByID(defs, "context-saver-api"); apiRow != nil {
+		t.Errorf("context-saver-api present in cli-mode list; execution_mode=%q", apiRow.ExecutionMode)
+	}
+
+	// CLI context-saver must still be visible with correct fields (backfill check).
+	cliRow := findDefByID(defs, "context-saver")
+	if cliRow == nil {
+		t.Fatal("context-saver not found in list")
+	}
+	if cliRow.Role != "context-saver" {
+		t.Errorf("context-saver Role = %q, want %q", cliRow.Role, "context-saver")
+	}
+	if cliRow.ExecutionMode != "cli" {
+		t.Errorf("context-saver ExecutionMode = %q, want cli", cliRow.ExecutionMode)
+	}
+}
+
+// TestHandleListSystemAgentDefs_VisibleInAPIMode verifies that in api mode (apiMode=true),
+// execution_mode='api' rows (context-saver-api) are included in the list response.
+func TestHandleListSystemAgentDefs_VisibleInAPIMode(t *testing.T) {
+	s := newSystemAgentServerWithSeedsAPIMode(t) // apiMode=true
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agents", nil)
+	rr := httptest.NewRecorder()
+	s.handleListSystemAgentDefs(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+
+	defs := decodeSystemAgentDefList(t, rr)
+
 	apiRow := findDefByID(defs, "context-saver-api")
 	if apiRow == nil {
-		t.Fatal("context-saver-api not found in list")
+		t.Fatal("context-saver-api not found in list when apiMode=true")
 	}
 	if apiRow.Role != "context-saver" {
 		t.Errorf("context-saver-api Role = %q, want %q", apiRow.Role, "context-saver")
@@ -73,16 +123,33 @@ func TestHandleListSystemAgentDefs_IncludesAPIRow(t *testing.T) {
 		t.Errorf("context-saver-api APIMaxIterations = %v, want 8", apiRow.APIMaxIterations)
 	}
 
-	// Verify that the CLI row also has role/execution_mode populated (backfill check).
-	cliRow := findDefByID(defs, "context-saver")
-	if cliRow == nil {
-		t.Fatal("context-saver not found in list")
+	// CLI row also present.
+	if cliRow := findDefByID(defs, "context-saver"); cliRow == nil {
+		t.Error("context-saver cli row missing when apiMode=true")
 	}
-	if cliRow.Role != "context-saver" {
-		t.Errorf("context-saver Role = %q, want %q", cliRow.Role, "context-saver")
+}
+
+// TestHandleGetSystemAgentDef_APIRowAccessibleInCLIMode verifies that the single-row
+// Get endpoint returns 200 for an api-mode row even when apiMode=false. This is required
+// because the spawner's GetForBackend bypasses the list filter and needs the row reachable.
+func TestHandleGetSystemAgentDef_APIRowAccessibleInCLIMode(t *testing.T) {
+	s := newSystemAgentServerWithSeeds(t) // apiMode=false
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agents/context-saver-api", nil)
+	req.SetPathValue("id", "context-saver-api")
+	rr := httptest.NewRecorder()
+	s.handleGetSystemAgentDef(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
-	if cliRow.ExecutionMode != "cli" {
-		t.Errorf("context-saver ExecutionMode = %q, want cli", cliRow.ExecutionMode)
+
+	def := decodeSystemAgentDef(t, rr)
+	if def.ID != "context-saver-api" {
+		t.Errorf("ID = %q, want %q", def.ID, "context-saver-api")
+	}
+	if def.ExecutionMode != "api" {
+		t.Errorf("ExecutionMode = %q, want api", def.ExecutionMode)
 	}
 }
 

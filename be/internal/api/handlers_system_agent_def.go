@@ -9,11 +9,13 @@ import (
 	"be/internal/ws"
 )
 
-// handleListSystemAgentDefs returns all system agent definitions
+// handleListSystemAgentDefs returns system agent definitions.
+// Single-row endpoints (Get/PATCH/DELETE) intentionally still resolve api-mode rows
+// so existing IDs remain reachable regardless of server mode.
 func (s *Server) handleListSystemAgentDefs(w http.ResponseWriter, r *http.Request) {
 	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock)
 
-	defs, err := svc.List()
+	defs, err := svc.ListForAPI(s.apiMode)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -153,14 +153,33 @@ func (s *SystemAgentDefinitionService) GetForBackend(role, backend string) (*mod
 	return def, nil
 }
 
-// List retrieves all system agent definitions
+// List retrieves all system agent definitions.
 func (s *SystemAgentDefinitionService) List() ([]*model.SystemAgentDefinition, error) {
-	rows, err := s.pool.Query(`
-		SELECT id, role, model, timeout, prompt, tools, api_max_iterations,
+	return s.listQuery("")
+}
+
+// ListForAPI retrieves system agent definitions for the HTTP list endpoint.
+// When includeAPIMode is false, execution_mode='api' rows are excluded so they
+// remain hidden in cli-mode servers while still being resolvable by GetForBackend.
+func (s *SystemAgentDefinitionService) ListForAPI(includeAPIMode bool) ([]*model.SystemAgentDefinition, error) {
+	filter := ""
+	if !includeAPIMode {
+		filter = "WHERE execution_mode <> 'api'"
+	}
+	return s.listQuery(filter)
+}
+
+func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.SystemAgentDefinition, error) {
+	q := `SELECT id, role, model, timeout, prompt, tools, api_max_iterations,
 		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
 		       execution_mode, created_at, updated_at
-		FROM system_agent_definitions
-		ORDER BY id`)
+		FROM system_agent_definitions`
+	if whereClause != "" {
+		q += " " + whereClause
+	}
+	q += " ORDER BY id"
+
+	rows, err := s.pool.Query(q)
 	if err != nil {
 		return nil, err
 	}

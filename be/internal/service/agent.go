@@ -320,6 +320,39 @@ func (s *AgentService) setAgentResult(sessionID, result string) (BroadcastCtx, e
 	return sessionBroadcastCtx(s.pool, sessionID)
 }
 
+// RecordHookMessage inserts one agent_messages row for a hook-sourced event
+// (e.g. PreToolUse/PostToolUse from Claude --settings hooks). Returns the
+// project/ticket/workflow IDs needed by the caller for WS broadcast.
+// Returns empty strings (no error) when the session is not found.
+func (s *AgentService) RecordHookMessage(sessionID, content, category string) (projectID, ticketID, workflowName string, err error) {
+	// Compute next seq from existing rows
+	var seq int
+	if err = s.pool.QueryRow(
+		`SELECT COALESCE(MAX(seq), -1) + 1 FROM agent_messages WHERE session_id = ?`,
+		sessionID,
+	).Scan(&seq); err != nil {
+		return "", "", "", err
+	}
+
+	msgRepo := repo.NewAgentMessagePoolRepo(s.pool, s.clock)
+	if err = msgRepo.InsertBatch(sessionID, seq, []repo.MessageEntry{{Content: content, Category: category}}); err != nil {
+		return "", "", "", err
+	}
+
+	// Look up project/ticket/workflow for broadcast
+	lookupErr := s.pool.QueryRow(`
+		SELECT s.project_id, s.ticket_id, wi.workflow_id
+		FROM agent_sessions s
+		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
+		WHERE s.id = ?`, sessionID).Scan(&projectID, &ticketID, &workflowName)
+	if lookupErr != nil {
+		// Session not found — not an error for the caller, just skip broadcast
+		return "", "", "", nil
+	}
+
+	return projectID, ticketID, workflowName, nil
+}
+
 // UpdateContextLeft updates context_left for a session. Returns project/ticket/workflow info for broadcasting.
 // Returns empty strings (no error) if session not found (interactive sessions).
 func (s *AgentService) UpdateContextLeft(sessionID string, contextLeft int) (projectID, ticketID, workflowName string, err error) {

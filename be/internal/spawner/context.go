@@ -53,6 +53,20 @@ func readContextLeftFromDB(pool *db.Pool, procs []*processInfo) {
 	}
 }
 
+// ComputeContextLeftPct computes the percentage of context remaining given total
+// tokens used and the maximum context size. Safe for use outside the spawner
+// (e.g. socket handler processing hook events with token usage fields).
+func ComputeContextLeftPct(totalUsed, maxCtx int) int {
+	if maxCtx <= 0 {
+		maxCtx = 200000
+	}
+	pct := 100 - (totalUsed * 100 / maxCtx)
+	if pct < 0 {
+		pct = 0
+	}
+	return pct
+}
+
 // updateClaudeContext extracts usage from a Claude assistant or result event and updates context %.
 func (s *Spawner) updateClaudeContext(proc *processInfo, data map[string]interface{}) {
 	usage, _ := data["usage"].(map[string]interface{})
@@ -72,14 +86,7 @@ func (s *Spawner) updateClaudeContext(proc *processInfo, data map[string]interfa
 	if totalUsed == 0 {
 		return
 	}
-	maxCtx := proc.maxContext
-	if maxCtx <= 0 {
-		maxCtx = 200000
-	}
-	pctLeft := 100 - (totalUsed * 100 / maxCtx)
-	if pctLeft < 0 {
-		pctLeft = 0
-	}
+	pctLeft := ComputeContextLeftPct(totalUsed, proc.maxContext)
 	if proc.contextLeft == 0 || pctLeft < proc.contextLeft {
 		proc.contextLeft = pctLeft
 		s.updateContextLeft(proc)

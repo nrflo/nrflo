@@ -179,7 +179,10 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 }
 
 func (h *Handler) handleAgent(ctx context.Context, req Request, action string) Response {
-	// context_update doesn't require project — session_id is globally unique
+	// context_update and record_event don't require project — session_id is globally unique
+	if action == "record_event" {
+		return h.handleAgentRecordEvent(ctx, req)
+	}
 	if action == "context_update" {
 		var params struct {
 			SessionID   string `json:"session_id"`

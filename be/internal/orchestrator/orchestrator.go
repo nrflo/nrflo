@@ -886,6 +886,39 @@ func (o *Orchestrator) takeControlByInstance(wfiID, workflowName, target, sessio
 	return sessionID, nil
 }
 
+// BumpLastMessage resets stall-detection state for the matching running agent.
+// Best-effort: returns nil when session or run not found.
+func (o *Orchestrator) BumpLastMessage(projectID, ticketID, workflow, sessionID string) error {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	session, err := asRepo.Get(sessionID)
+	if err != nil {
+		return nil // session may have already ended
+	}
+
+	o.mu.Lock()
+	rs, ok := o.runs[session.WorkflowInstanceID]
+	o.mu.Unlock()
+	if !ok {
+		return nil // run finished; no-op
+	}
+
+	o.mu.Lock()
+	sp := rs.spawner
+	o.mu.Unlock()
+	if sp == nil {
+		return nil // between phases
+	}
+
+	sp.BumpLastMessage(sessionID)
+	return nil
+}
+
 // RequestTerminalSignal kills the active agent for the given session so
 // monitorAll exits and handleCompletion reads the DB result already written
 // by the socket handler. Best-effort: returns nil when session or run not found.

@@ -222,6 +222,7 @@ type Spawner struct {
 	restartCh         chan string            // carries sessionID of agent to restart
 	takeControlCh     chan string            // carries sessionID of agent to take control of
 	terminalSignalCh  chan terminalSignal    // carries kill signal after DB result already written
+	bumpMessageCh     chan string            // carries sessionID to bump lastMessageTime (hook events)
 	interactiveWaits  map[string]chan struct{} // sessionID → closed when interactive session completes
 	mu                sync.Mutex              // protects interactiveWaits
 }
@@ -251,6 +252,7 @@ func New(config Config) *Spawner {
 		restartCh:        make(chan string, 1),
 		takeControlCh:    make(chan string, 1),
 		terminalSignalCh: make(chan terminalSignal, 1),
+		bumpMessageCh:    make(chan string, 1),
 		interactiveWaits: make(map[string]chan struct{}),
 	}
 }
@@ -279,6 +281,17 @@ func (s *Spawner) RequestTakeControl(sessionID string) {
 func (s *Spawner) RequestTerminalSignal(sessionID, result string) {
 	select {
 	case s.terminalSignalCh <- terminalSignal{SessionID: sessionID, Result: result}:
+	default:
+	}
+}
+
+// BumpLastMessage sends a non-blocking signal to monitorAll to update
+// lastMessageTime and hasReceivedMessage for the matching proc. Used by the
+// socket handler to reset stall detection when hook events arrive for
+// interactive CLI agents. Silently dropped when channel is full.
+func (s *Spawner) BumpLastMessage(sessionID string) {
+	select {
+	case s.bumpMessageCh <- sessionID:
 	default:
 	}
 }
@@ -956,6 +969,17 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				}
 				// doneCh closed; next loop iteration picks it up via handleCompletion
 				break
+			}
+		case bumpSessionID := <-s.bumpMessageCh:
+			// Hook event signal: update lastMessageTime so stall detection is not triggered.
+			for _, proc := range running {
+				if proc.sessionID == bumpSessionID {
+					proc.messagesMutex.Lock()
+					proc.lastMessageTime = s.config.Clock.Now()
+					proc.hasReceivedMessage = true
+					proc.messagesMutex.Unlock()
+					break
+				}
 			}
 		default:
 		}

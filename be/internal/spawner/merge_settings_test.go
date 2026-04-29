@@ -5,15 +5,6 @@ import (
 	"testing"
 )
 
-// TestBuildInteractiveSettingsJSON_ReturnsEmpty verifies the current stub
-// always returns "" (T4 will inject hooks; until then no settings are injected).
-func TestBuildInteractiveSettingsJSON_ReturnsEmpty(t *testing.T) {
-	proc := &processInfo{}
-	if got := BuildInteractiveSettingsJSON(proc); got != "" {
-		t.Errorf("BuildInteractiveSettingsJSON = %q, want empty string (T4 stub)", got)
-	}
-}
-
 // TestMergeInteractiveSettings_BothEmpty returns "" when both inputs are empty.
 func TestMergeInteractiveSettings_BothEmpty(t *testing.T) {
 	if got := mergeInteractiveSettings("", ""); got != "" {

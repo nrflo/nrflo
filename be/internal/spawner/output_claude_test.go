@@ -41,9 +41,9 @@ func TestToolCategory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.toolName, func(t *testing.T) {
-			got := toolCategory(tt.toolName)
+			got := ToolCategory(tt.toolName)
 			if got != tt.want {
-				t.Errorf("toolCategory(%q) = %q, want %q", tt.toolName, got, tt.want)
+				t.Errorf("ToolCategory(%q) = %q, want %q", tt.toolName, got, tt.want)
 			}
 		})
 	}

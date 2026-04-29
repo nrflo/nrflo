@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -177,6 +180,62 @@ var agentContextUpdateCmd = &cobra.Command{
 	},
 }
 
+var agentRecordEventCmd = &cobra.Command{
+	Use:   "record-event",
+	Short: "Forward a Claude hook event to the server (used by --settings hooks)",
+	Long: `Read a Claude hook JSON payload from stdin and forward it to the server
+via the Unix socket. Used automatically by Claude --settings PreToolUse/PostToolUse
+hooks. Exits 0 on success, 1 on error. Silently exits 0 when the server is not running
+(hooks must not block the agent).
+
+Context is read from environment variables set by the spawner:
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if !GetClient().IsServerRunning() {
+			return nil // server not running — exit silently so hooks don't block the agent
+		}
+
+		sessionID := GetSessionID()
+		if sessionID == "" {
+			return nil // no session — hook fired outside of spawner context, ignore
+		}
+
+		raw, err := io.ReadAll(cmd.InOrStdin())
+		if err != nil {
+			return fmt.Errorf("failed to read stdin: %w", err)
+		}
+
+		// Validate that hook_event_name is present
+		var probe map[string]interface{}
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			return fmt.Errorf("invalid hook JSON: %w", err)
+		}
+		if _, ok := probe["hook_event_name"]; !ok {
+			return fmt.Errorf("hook JSON missing hook_event_name field")
+		}
+
+		reqParams := map[string]interface{}{
+			"event": json.RawMessage(raw),
+		}
+		addSpawnerIDs(reqParams)
+
+		// Enforce a 2s hard deadline — hooks must not block the agent.
+		type result struct{ err error }
+		ch := make(chan result, 1)
+		go func() {
+			ch <- result{err: GetClient().ExecuteAndUnmarshal("agent.record_event", reqParams, nil)}
+		}()
+		select {
+		case r := <-ch:
+			return r.err
+		case <-time.After(2 * time.Second):
+			return fmt.Errorf("record-event: server did not respond within 2s")
+		}
+	},
+}
+
 func init() {
 	// agent fail
 	agentFailCmd.Flags().StringVar(&agentFailReason, "reason", "", "Failure reason")
@@ -192,4 +251,7 @@ func init() {
 	// agent context-update
 	agentContextUpdateCmd.Flags().Float64Var(&agentContextUpdatePctUsed, "pct-used", 0, "Percentage of context used")
 	agentCmd.AddCommand(agentContextUpdateCmd)
+
+	// agent record-event
+	agentCmd.AddCommand(agentRecordEventCmd)
 }

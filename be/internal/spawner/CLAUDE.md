@@ -225,7 +225,7 @@ System agents (conflict-resolver, context-saver) flow through the same selector 
 
 ### Settings Merge
 
-`BuildInteractiveSettingsJSON(proc)` returns a JSON string with hooks (currently a stub; T4 fills in hooks). `mergeInteractiveSettings(safetyJSON, hooksJSON)` deep-merges the `hooks` objects; when one side is empty the other is returned unchanged. The merged result is passed as `opts.SettingsJSON` → `--settings <json>` (Claude only).
+`BuildInteractiveSettingsJSON(proc)` (in `hooks_settings.go`) returns a Claude `--settings` JSON string registering `PreToolUse` and `PostToolUse` hook arrays. Each array contains one entry with `matcher: "*"` and a command hook: `<absolute-nrflo-path> agent record-event`. The nrflo path is resolved via `os.Executable()` once (cached via `sync.Once`) with a fallback to the literal `"nrflo"`. Returns `""` for non-Claude adapters (no hooks registered). `mergeInteractiveSettings(safetyJSON, hooksJSON)` deep-merges the `hooks` objects; when both sides define the same hook event key (e.g. `PreToolUse`) the arrays are **concatenated** rather than overwritten, so the safety hook command and the record-event command both appear. The merged result is passed as `opts.SettingsJSON` → `--settings <json>` (Claude only).
 
 ### Output Ferry
 

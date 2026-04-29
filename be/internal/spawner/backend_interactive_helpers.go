@@ -56,15 +56,10 @@ func (w *ptyManagerWrapper) Get(sessionID string) ptySessionIface {
 	return sess
 }
 
-// BuildInteractiveSettingsJSON returns a --settings JSON string for interactive
-// CLI agents. Currently returns "" (T4 will add hook injection).
-func BuildInteractiveSettingsJSON(_ *processInfo) string {
-	return ""
-}
-
 // mergeInteractiveSettings merges two Claude --settings JSON strings by combining
-// their hooks arrays. When one side is empty, the other is returned unchanged.
-// Both inputs must be either empty or valid JSON objects with a "hooks" key.
+// their hooks sub-maps. When one side is empty, the other is returned unchanged.
+// Hook event keys present in both sides (e.g. PreToolUse) have their arrays
+// concatenated so no entry is lost.
 func mergeInteractiveSettings(safetyJSON, hooksJSON string) string {
 	if safetyJSON == "" {
 		return hooksJSON
@@ -94,6 +89,15 @@ func mergeInteractiveSettings(safetyJSON, hooksJSON string) string {
 			mergedHooks[k] = v
 		}
 		for k, v := range hooksHooks {
+			// Concatenate arrays when both sides define the same hook event key
+			if existing, ok := mergedHooks[k]; ok {
+				if existingArr, ok1 := existing.([]interface{}); ok1 {
+					if newArr, ok2 := v.([]interface{}); ok2 {
+						mergedHooks[k] = append(existingArr, newArr...)
+						continue
+					}
+				}
+			}
 			mergedHooks[k] = v
 		}
 		merged["hooks"] = mergedHooks

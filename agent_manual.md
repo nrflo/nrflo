@@ -49,6 +49,10 @@ The `system-prompt-suffix` injectable is delivered separately from the prepended
 
 The `finish-reminder` injectable is a second readonly template that can be referenced or appended by workflows to remind agents of the completion contract just before exiting.
 
+### Interactive Claude Telemetry
+
+When the project `interactive_cli_mode` setting is enabled, Claude agents run inside a PTY and nrflo automatically registers `--settings` hooks for `PreToolUse` and `PostToolUse` events. These hooks pipe structured tool-call data back to nrflo via the unix socket, populating the agent's message timeline and keeping context-usage tracking accurate. This is transparent — no agent prompt changes or explicit calls are needed. Opencode and Codex agents are unaffected.
+
 ---
 
 ## 2. Findings Patterns

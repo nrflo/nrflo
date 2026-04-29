@@ -249,8 +249,8 @@ func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	}
 }
 
-// toolCategory returns the message category for a tool invocation
-func toolCategory(toolName string) string {
+// ToolCategory returns the message category for a tool invocation.
+func ToolCategory(toolName string) string {
 	switch toolName {
 	case "Task", "Agent":
 		return "subagent"
@@ -263,8 +263,8 @@ func toolCategory(toolName string) string {
 
 // handleToolUse processes tool usage from either Claude or opencode
 func (s *Spawner) handleToolUse(proc *processInfo, toolName string, input map[string]interface{}) {
-	toolDetail := s.formatToolDetail(toolName, input)
-	category := toolCategory(toolName)
+	toolDetail := FormatToolDetail(toolName, input)
+	category := ToolCategory(toolName)
 
 	// Track message
 	s.TrackMessage(proc, toolDetail, category)
@@ -352,8 +352,10 @@ func (s *Spawner) formatPrefix(proc *processInfo) string {
 	return fmt.Sprintf("[%s:%s]", proc.agentType, model)
 }
 
-// formatToolDetail extracts relevant details from tool input based on tool type
-func (s *Spawner) formatToolDetail(toolName string, input map[string]interface{}) string {
+// FormatToolDetail extracts relevant details from tool input based on tool type.
+// It is a package-level function so socket handlers can reuse the same formatting
+// for hook-sourced tool events without duplicating logic.
+func FormatToolDetail(toolName string, input map[string]interface{}) string {
 	// Normalize tool name to title case (opencode sends lowercase, Claude sends capitalized)
 	if len(toolName) > 0 {
 		toolName = strings.ToUpper(toolName[:1]) + toolName[1:]

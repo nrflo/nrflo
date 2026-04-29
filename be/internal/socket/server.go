@@ -58,6 +58,9 @@ type Server struct {
 // The Handler nil-guards before calling — pass nil in tests.
 type TerminalSignaler interface {
 	RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error
+	// BumpLastMessage resets stall-detection state for the matching proc so
+	// hook-driven activity (PreToolUse/PostToolUse) does not trigger a stall restart.
+	BumpLastMessage(projectID, ticketID, workflow, sessionID string) error
 }
 
 // NewServer creates a new socket server

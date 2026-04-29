@@ -49,6 +49,7 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `agent.continue` | Mark agent for continuation; broadcasts with `session_id`, `model_id` |
 | `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |
 | `agent.context_update` | Update context_left for a session; no project required; broadcasts `agent.context_updated` with `session_id`, `context_left` |
+| `agent.record_event` | Record a Claude hook event (PreToolUse/PostToolUse); no project required; inserts agent_messages row, broadcasts `messages.updated`; Stop/SessionEnd/UserPromptSubmit are silently ignored |
 | `workflow.skip` | Add a skip tag to a workflow instance; validates tag against workflow groups; broadcasts `skip_tag.added` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 
@@ -72,10 +73,11 @@ All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, e
 
 After the DB write and WS broadcast, the `agent.fail`, `agent.continue`, and `agent.callback` cases each dispatch a best-effort terminal signal through an injected `TerminalSignaler` (defined in `server.go`). This kills the running agent immediately so `monitorAll` exits its natural-exit wait and `handleCompletion` reads the DB-written result, eliminating the latency between the agent calling `nrflo agent fail/continue/callback` and the spawner acting on it.
 
-- **Interface**: `TerminalSignaler.RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error`
+- **Interface**: two methods — `RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error` and `BumpLastMessage(projectID, ticketID, workflow, sessionID string) error`.
 - **Wiring**: `NewServerWithHub` accepts a `TerminalSignaler`; in production `cli/serve.go` passes `httpServer.GetOrchestrator()`; pass `nil` in tests.
 - **Nil-safe**: `Handler` nil-guards before calling — passing `nil` disables the feature silently.
 - **Order**: DB write → WS broadcast → terminal signal (best-effort, error is logged at INFO level and does not affect the response).
+- **BumpLastMessage**: called by `agent.record_event` handler after inserting a hook message row. Forwards to `Orchestrator.BumpLastMessage` → `Spawner.BumpLastMessage`, which sends a session ID through `bumpMessageCh` so `monitorAll` updates `lastMessageTime`/`hasReceivedMessage` for the matching proc, preventing false-positive stall detection during active interactive CLI sessions.
 
 ## Files
 
@@ -83,5 +85,6 @@ After the DB write and WS broadcast, the `agent.fail`, `agent.continue`, and `ag
 |------|---------|
 | `server.go` | Socket listener, connection handling, `TerminalSignaler` interface |
 | `handler.go` | Request routing and method dispatch |
+| `handler_record_event.go` | `agent.record_event` handler: PreToolUse/PostToolUse → DB insert + WS broadcast + stall bump |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
 | `handler_terminal_signal_test.go` | Terminal signal dispatch: fail/continue/callback dispatch, best-effort error handling, nil-guard |

@@ -1,7 +1,8 @@
 .PHONY: all build build-cli build-server build-server-only build-ui \
        build-release build-release-cli build-release-server \
        install clean test test-ui test-integration test-pkg test-verbose \
-       test-coverage test-race tidy release-check release-dry-run help
+       test-coverage test-race tidy release-check release-dry-run help \
+       embed-assets
 
 # --- Configurable variables ---
 PREFIX     ?= /usr/local
@@ -19,16 +20,27 @@ GOARCH     ?= $(shell $(GO) env GOARCH)
 BE_DIR     := be
 UI_DIR     := ui
 STATIC_DIR := $(BE_DIR)/internal/static/dist
+EMBED_MANUAL := $(BE_DIR)/internal/static/agent_manual.md
+EMBED_GITKEEP := $(STATIC_DIR)/.gitkeep
 
 # --- Primary targets ---
 
 all: build
 
+## embed-assets: Ensure go:embed prerequisites exist (agent_manual.md + dist/.gitkeep). Required before any go build/test.
+embed-assets: $(EMBED_MANUAL) $(EMBED_GITKEEP)
+
+$(EMBED_MANUAL): agent_manual.md
+	cp $< $@
+
+$(EMBED_GITKEEP):
+	@mkdir -p $(STATIC_DIR) && touch $@
+
 ## build: Build both binaries (dev, includes UI)
 build: build-cli build-server
 
 ## build-cli: Build CLI binary only (no CGO, no tray)
-build-cli:
+build-cli: embed-assets
 	cd $(BE_DIR) && CGO_ENABLED=0 $(GO) build -o nrflo ./cmd/nrflo
 
 ## build-ui: Build UI and copy dist to embed directory
@@ -43,7 +55,7 @@ build-server: build-ui
 	cd $(BE_DIR) && $(GO) build -tags tray -o nrflo_server ./cmd/server
 
 ## build-server-only: Go-only server rebuild (skip UI build)
-build-server-only:
+build-server-only: embed-assets
 	cd $(BE_DIR) && $(GO) build -tags tray -o nrflo_server ./cmd/server
 
 # --- Release builds ---
@@ -52,7 +64,7 @@ build-server-only:
 build-release: build-release-cli build-release-server
 
 ## build-release-cli: Release build CLI only (pure Go, no CGO)
-build-release-cli:
+build-release-cli: embed-assets
 	cd $(BE_DIR) && CGO_ENABLED=$(CGO_CLI) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		$(GO) build -ldflags="$(LDFLAGS)" -o nrflo ./cmd/nrflo
 
@@ -93,7 +105,7 @@ define acquire_ui_lock
 endef
 
 ## test: Run backend tests (30s wall-time constraint, -p 4 avoids build cache contention)
-test:
+test: embed-assets
 	$(acquire_be_lock)
 	@START=$$(date +%s); \
 	cd $(BE_DIR) && $(GO) test -p 6 ./internal/... -count=1; \
@@ -123,22 +135,22 @@ test-ui:
 	exit $$RC
 
 ## test-integration: Run integration tests (verbose)
-test-integration:
+test-integration: embed-assets
 	$(acquire_be_lock)
 	@cd $(BE_DIR) && $(GO) test -v ./internal/integration/...; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-pkg: Run tests for a specific package (usage: make test-pkg PKG=orchestrator)
-test-pkg:
+test-pkg: embed-assets
 	$(acquire_be_lock)
 	@cd $(BE_DIR) && $(GO) test -v ./internal/$(PKG)/...; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-verbose: Run all backend tests (verbose)
-test-verbose:
+test-verbose: embed-assets
 	$(acquire_be_lock)
 	@cd $(BE_DIR) && $(GO) test -v ./internal/... -count=1; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-coverage: Run backend tests with coverage report
-test-coverage:
+test-coverage: embed-assets
 	$(acquire_be_lock)
 	@cd $(BE_DIR) && $(GO) test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/... ./internal/... -count=1; \
 	RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; \
@@ -149,7 +161,7 @@ test-coverage:
 	exit $$RC
 
 ## test-race: Run backend tests with race detector
-test-race:
+test-race: embed-assets
 	$(acquire_be_lock)
 	@cd $(BE_DIR) && $(GO) test -race ./internal/... -count=1; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 

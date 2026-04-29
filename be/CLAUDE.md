@@ -77,7 +77,7 @@ be/
 │   │   └── output.go            # Output formatting
 │   ├── static/                  # Embedded UI assets (//go:embed)
 │   │   ├── embed.go             # Embed directive and DistFS() accessor
-│   │   ├── agent_manual.md      # Build artifact: copied from repo-root agent_manual.md by `make build` (gitignored). Do NOT edit or commit — edit the root file instead.
+│   │   ├── agent_manual.md      # Build artifact: gitignored, auto-copied from repo-root agent_manual.md by the `embed-assets` Make target (a prereq of every `make build*`/`make test*`). Do NOT edit, commit, or hand-copy — edit the root file and let make do the copy.
 │   │   └── dist/                # UI build output (populated by `make build-ui`)
 │   ├── socket/                  # Unix socket server
 │   │   ├── server.go            # Socket listener

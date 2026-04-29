@@ -31,6 +31,7 @@ const CATEGORY_TABS: { value: MessageCategory | 'all'; label: string }[] = [
   { value: 'tool', label: 'Tools' },
   { value: 'subagent', label: 'Sub-agents' },
   { value: 'skill', label: 'Skills' },
+  { value: 'user_input', label: 'User input' },
 ]
 
 function formatDuration(durationSec?: number): string {
@@ -82,7 +83,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const messages = messagesData?.messages ?? []
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0 }
+    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0 }
     for (const m of messages) {
       const cat = m.category || 'text'
       counts[cat] = (counts[cat] || 0) + 1
@@ -270,13 +271,28 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
               <TableBody>
                 {[...filteredMessages].reverse().map((msg, i) => {
                   const { toolName, rest } = parseToolName(msg.content)
+                  const isUserInput = msg.category === 'user_input'
                   return (
-                    <TableRow key={i} className={cn(toolName === 'rate_limit' && "bg-orange-50 dark:bg-orange-950/20")} data-testid="message-row">
+                    <TableRow
+                      key={i}
+                      className={cn(
+                        toolName === 'rate_limit' && "bg-orange-50 dark:bg-orange-950/20",
+                        isUserInput && "border-l-4 border-l-primary bg-primary/5 dark:bg-primary/10",
+                      )}
+                      data-testid="message-row"
+                    >
                       <TableCell className="py-1 w-[110px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                         {formatTime(msg.created_at)}
                       </TableCell>
                       <TableCell className="py-1 w-[100px] overflow-hidden">
-                        {toolName && <ToolBadge name={toolName} />}
+                        {/* user_input badge — not a tool name, kept inline outside TOOL_COLORS */}
+                        {isUserInput ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-primary/10 text-primary border border-primary/40">
+                            User
+                          </span>
+                        ) : (
+                          toolName && <ToolBadge name={toolName} />
+                        )}
                       </TableCell>
                       <TableCell className="py-1 whitespace-pre-wrap break-words text-foreground/90 align-top">
                         {rest}

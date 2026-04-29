@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"be/internal/logger"
 	"be/internal/model"
@@ -125,8 +126,12 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	// inputCh carries copies of binary PTY input frames to the capture goroutine.
+	inputCh := make(chan []byte, 16)
+
 	// WebSocket → PTY (write loop)
 	go func() {
+		defer close(inputCh)
 		for {
 			msgType, data, err := conn.ReadMessage()
 			if err != nil {
@@ -147,6 +152,58 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 			// Binary messages are raw terminal input.
 			if _, err := ptySess.Write(data); err != nil {
 				return
+			}
+			// Forward a copy to the capture goroutine (best-effort).
+			cp := make([]byte, len(data))
+			copy(cp, data)
+			select {
+			case inputCh <- cp:
+			default:
+			}
+		}
+	}()
+
+	// Input capture goroutine: buffers keystrokes, splits on line endings,
+	// sanitizes, and records via the orchestrator (best-effort, non-blocking).
+	go func() {
+		var buf []byte
+		idleTimer := time.NewTimer(500 * time.Millisecond)
+		defer idleTimer.Stop()
+
+		record := func(text string) {
+			if s.orchestrator != nil && shouldRecord(text) {
+				s.orchestrator.RecordUserInput(sessionID, capEntry(text))
+			}
+		}
+		flushBuf := func() {
+			if len(buf) > 0 {
+				record(sanitizeInput(buf))
+				buf = buf[:0]
+			}
+		}
+
+		for {
+			select {
+			case data, ok := <-inputCh:
+				if !ok {
+					flushBuf()
+					return
+				}
+				buf = append(buf, data...)
+				lines, remainder := splitLines(buf)
+				buf = remainder
+				for _, line := range lines {
+					record(sanitizeInput(line))
+				}
+				if !idleTimer.Stop() {
+					select {
+					case <-idleTimer.C:
+					default:
+					}
+				}
+				idleTimer.Reset(500 * time.Millisecond)
+			case <-idleTimer.C:
+				flushBuf()
 			}
 		}
 	}()

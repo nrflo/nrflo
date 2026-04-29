@@ -157,7 +157,7 @@ GET /api/v1/agents/recent?limit=10
 # Session messages (paginated, lazy-loaded, filterable by category)
 GET /api/v1/sessions/:id/messages
 GET /api/v1/sessions/:id/messages?limit=100&offset=0
-GET /api/v1/sessions/:id/messages?category=subagent  # text|tool|subagent|skill
+GET /api/v1/sessions/:id/messages?category=subagent  # text|tool|subagent|skill|user_input
 
 # Session prompt context (returns generated prompt for an agent session)
 GET /api/v1/sessions/:id/prompt  # 200 with {prompt_context}, 204 if empty, 404 if not found

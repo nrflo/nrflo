@@ -180,7 +180,7 @@ export interface AgentSession {
   updated_at: string
 }
 
-export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill'
+export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill' | 'user_input'
 
 export interface MessageWithTime {
   content: string

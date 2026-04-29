@@ -90,7 +90,7 @@ describe('AgentLogDetail - tab count badges', () => {
 
     // Each tab button contains a count badge span — verify via textContent
     const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(5)
+    expect(tabs).toHaveLength(6)
 
     // All tab: total count = 6
     expect(tabs[0].textContent).toContain('6')
@@ -102,6 +102,8 @@ describe('AgentLogDetail - tab count badges', () => {
     expect(tabs[3].textContent).toContain('2')
     // Skills tab: 1 skill message
     expect(tabs[4].textContent).toContain('1')
+    // User input tab: 0 (none in this test)
+    expect(tabs[5].textContent).toContain('0')
   })
 
   it('messages without category field are counted in Text tab (fallback)', async () => {
@@ -190,11 +192,64 @@ describe('AgentLogDetail - tab count badges', () => {
     })
 
     const tabs = screen.getAllByRole('tab')
-    // All: 2, Text: 2, Tools: 0, Sub-agents: 0, Skills: 0
+    // All: 2, Text: 2, Tools: 0, Sub-agents: 0, Skills: 0, User input: 0
     expect(tabs[0].textContent).toContain('2')
     expect(tabs[1].textContent).toContain('2')
     expect(tabs[2].textContent).toContain('0')
     expect(tabs[3].textContent).toContain('0')
     expect(tabs[4].textContent).toContain('0')
+    expect(tabs[5].textContent).toContain('0')
+  })
+
+  it('counts user_input messages in User input tab', async () => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+      session_id: 'session-1',
+      messages: [
+        { content: 'plain text', category: 'text', created_at: '2026-01-01T00:00:10Z' },
+        { content: 'user typed this', category: 'user_input', created_at: '2026-01-01T00:00:20Z' },
+        { content: 'another user input', category: 'user_input', created_at: '2026-01-01T00:00:30Z' },
+        { content: '[Bash] git status', category: 'tool', created_at: '2026-01-01T00:00:40Z' },
+      ],
+      total: 4,
+    })
+
+    renderDetail({
+      phaseName: 'implementation',
+      agent: makeRunningAgent(),
+      session: makeSession(),
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('4 messages')).toBeInTheDocument()
+    })
+
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs).toHaveLength(6)
+    expect(tabs[0].textContent).toContain('4') // All
+    expect(tabs[1].textContent).toContain('1') // Text
+    expect(tabs[2].textContent).toContain('1') // Tools
+    expect(tabs[3].textContent).toContain('0') // Sub-agents
+    expect(tabs[4].textContent).toContain('0') // Skills
+    expect(tabs[5].textContent).toContain('2') // User input
+  })
+
+  it('User input tab has label "User input"', async () => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+      session_id: 'session-1',
+      messages: [{ content: 'hello', category: 'text', created_at: '2026-01-01T00:00:10Z' }],
+      total: 1,
+    })
+
+    renderDetail({
+      phaseName: 'implementation',
+      agent: makeRunningAgent(),
+      session: makeSession(),
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('1 messages')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('tab', { name: /User input/ })).toBeInTheDocument()
   })
 })

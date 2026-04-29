@@ -244,3 +244,41 @@ describe('ToolBadge', () => {
     expect(badge.className).not.toContain('bg-gray-100')
   })
 })
+
+describe('LogMessage - user_input category', () => {
+  it('renders a User badge when category is user_input', () => {
+    render(<LogMessage message="hello world" category="user_input" />)
+    expect(screen.getByText('User')).toBeInTheDocument()
+    expect(screen.getByText('hello world')).toBeInTheDocument()
+  })
+
+  it('User badge does not use any TOOL_COLORS class', () => {
+    render(<LogMessage message="hello" category="user_input" />)
+    const badge = screen.getByText('User')
+    // bg-primary/10 not any of the tool-specific color classes
+    expect(badge.className).not.toContain('bg-blue-100')
+    expect(badge.className).not.toContain('bg-green-100')
+    expect(badge.className).not.toContain('bg-amber-100')
+    expect(badge.className).not.toContain('bg-gray-100')
+    expect(badge.className).toContain('bg-primary')
+  })
+
+  it('outer container has left-rail accent classes for user_input', () => {
+    render(<LogMessage message="user msg" category="user_input" />)
+    const container = screen.getByText('User').closest('div')!
+    expect(container.className).toContain('border-l-4')
+    expect(container.className).toContain('border-l-primary')
+    expect(container.className).toContain('bg-primary/5')
+  })
+
+  it('no tool badge rendered even when message has [Tool] prefix', () => {
+    render(<LogMessage message="[Bash] some command" category="user_input" />)
+    expect(screen.getByText('User')).toBeInTheDocument()
+    expect(screen.queryByText('Bash')).not.toBeInTheDocument()
+  })
+
+  it('non-user_input message does not render User badge', () => {
+    render(<LogMessage message="plain text" category="text" />)
+    expect(screen.queryByText('User')).not.toBeInTheDocument()
+  })
+})

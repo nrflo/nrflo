@@ -243,6 +243,8 @@ type Spawner struct {
 	bumpMessageCh     chan string            // carries sessionID to bump lastMessageTime (hook events)
 	interactiveWaits  map[string]chan struct{} // sessionID → closed when interactive session completes
 	mu                sync.Mutex              // protects interactiveWaits
+	sessionProcsMu    sync.Mutex              // protects sessionProcs
+	sessionProcs      map[string]*processInfo // sessionID → live proc for RecordUserInput lookups
 }
 
 // SpawnRequest contains parameters for spawning an agent
@@ -272,6 +274,7 @@ func New(config Config) *Spawner {
 		terminalSignalCh: make(chan terminalSignal, 1),
 		bumpMessageCh:    make(chan string, 1),
 		interactiveWaits: make(map[string]chan struct{}),
+		sessionProcs:     make(map[string]*processInfo),
 	}
 }
 
@@ -344,6 +347,26 @@ func (s *Spawner) RegisterInteractiveWait(sessionID string) <-chan struct{} {
 
 // Close is a no-op retained for API compatibility (e.g. orchestrator defer).
 func (s *Spawner) Close() {}
+
+// registerSessionProc tracks a live proc by sessionID so RecordUserInput can
+// route user keystrokes through the normal TrackMessage pipeline.
+func (s *Spawner) registerSessionProc(sessionID string, proc *processInfo) {
+	s.sessionProcsMu.Lock()
+	s.sessionProcs[sessionID] = proc
+	s.sessionProcsMu.Unlock()
+}
+
+// unregisterSessionProcs removes completed procs from the session proc map.
+func (s *Spawner) unregisterSessionProcs(procs []*processInfo) {
+	if len(procs) == 0 {
+		return
+	}
+	s.sessionProcsMu.Lock()
+	for _, proc := range procs {
+		delete(s.sessionProcs, proc.sessionID)
+	}
+	s.sessionProcsMu.Unlock()
+}
 
 // pool returns the shared connection pool, or nil if not configured.
 func (s *Spawner) pool() *db.Pool {
@@ -852,6 +875,7 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
 		proc.spawnCommand, proc.promptContext, "", 0, proc.restartThreshold)
 
+	s.registerSessionProc(proc.sessionID, proc)
 	return nil
 }
 
@@ -888,6 +912,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					proc.sessionID, proc.agentID, "fail", "cancelled", proc.modelID)
 				completed = append(completed, proc)
 			}
+			s.unregisterSessionProcs(completed)
 			return ctx.Err()
 		case restartSessionID := <-s.restartCh:
 			// Manual restart requested — find matching proc and initiate context save
@@ -1199,8 +1224,9 @@ func (s *Spawner) printStatus(running, completed []*processInfo, phase string) {
 // All-skipped counts as success (continue to next layer).
 // Returns CallbackError if any agent completed with CALLBACK status.
 func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, req SpawnRequest, phase string) error {
-	// Clean up coalescing map entries for completed sessions
+	// Clean up per-session tracking for completed sessions.
 	cleanupBroadcastCoalescing(completed)
+	s.unregisterSessionProcs(completed)
 
 	for _, proc := range completed {
 		logger.Info(ctx, "agent result", "phase", phase, "model", proc.modelID, "status", proc.finalStatus, "duration", proc.elapsed.Round(time.Second))

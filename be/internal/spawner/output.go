@@ -477,6 +477,21 @@ func FormatToolDetail(toolName string, input map[string]interface{}) string {
 	return "[" + toolName + "] " + detail
 }
 
+// RecordUserInput records a user-typed line for the given session through the
+// normal message pipeline. Returns true if this spawner owns the session's live
+// proc (TrackMessage+immediate saveMessages path), false otherwise (caller falls back).
+func (s *Spawner) RecordUserInput(sessionID, text string) bool {
+	s.sessionProcsMu.Lock()
+	proc, found := s.sessionProcs[sessionID]
+	s.sessionProcsMu.Unlock()
+	if !found {
+		return false
+	}
+	s.TrackMessage(proc, text, "user_input")
+	s.saveMessages(proc)
+	return true
+}
+
 // broadcastCoalesceWindow is the minimum interval between messages.updated broadcasts per session.
 const broadcastCoalesceWindow = 2 * time.Second
 

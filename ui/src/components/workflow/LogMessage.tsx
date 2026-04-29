@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import type { MessageCategory } from '@/types/workflow'
 
 const TOOL_COLORS: Record<string, string> = {
   Bash: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
@@ -38,12 +39,14 @@ export function ToolBadge({ name }: { name: string }) {
 
 interface LogMessageProps {
   message: string
+  category?: MessageCategory
   variant?: 'compact' | 'full'
   className?: string
 }
 
-export function LogMessage({ message, variant = 'compact', className }: LogMessageProps) {
+export function LogMessage({ message, category, variant = 'compact', className }: LogMessageProps) {
   const { toolName, rest } = parseToolName(message)
+  const isUserInput = category === 'user_input'
 
   return (
     <div
@@ -52,10 +55,18 @@ export function LogMessage({ message, variant = 'compact', className }: LogMessa
           ? 'px-2 py-1 rounded-md border bg-muted/30 font-mono text-xs text-foreground/90'
           : 'p-3 rounded-lg border bg-muted/30 font-mono text-sm text-foreground/90',
         'whitespace-pre-wrap break-words',
+        // user_input gets a left-rail accent — not a tool, kept inline outside TOOL_COLORS
+        isUserInput && 'border-l-4 border-l-primary bg-primary/5',
         className,
       )}
     >
-      {toolName && <ToolBadge name={toolName} />}
+      {isUserInput ? (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-primary/10 text-primary border border-primary/40">
+          User
+        </span>
+      ) : (
+        toolName && <ToolBadge name={toolName} />
+      )}
       {rest}
     </div>
   )

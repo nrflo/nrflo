@@ -268,6 +268,10 @@ The `Config.Clock` field (`clock.Clock`) provides time for DB timestamps (agent 
 
 Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
 
+## User Input Recording
+
+`Spawner.RecordUserInput(sessionID, text string) bool` (in `output.go`) persists a viewer keystroke line as a message with `category="user_input"`. The spawner maintains a `sessionProcs map[string]*processInfo` (protected by `sessionProcsMu`) that is populated on spawn (`registerSessionProc`) and cleared on completion (`unregisterSessionProcs`). When the session is found in the map it calls `TrackMessage(proc, text, "user_input")` + `saveMessages(proc)` and returns `true`. Returns `false` when no active proc is found (caller falls back to direct DB insert via `orchestrator.recordUserInputFallback`). The PTY handler in `api/handlers_pty.go` routes all binary WS frames through this path after sanitizing ANSI/control bytes and splitting on line endings; JSON resize messages are excluded.
+
 ## Spawn Flow
 
 ```

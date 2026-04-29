@@ -25,6 +25,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	mergeError string,
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
+	interactiveCLIMode bool,
 ) error {
 	// Load conflict-resolver system agent definition.
 	// API-mode conflict resolution is not yet supported — the resolver needs
@@ -61,6 +62,7 @@ func (o *Orchestrator) attemptConflictResolution(
 		ModelConfigs:       modelConfigs,
 		ErrorSvc:           o.errorSvc,
 		APIMode:            o.apiMode,
+		InteractiveCLIMode: interactiveCLIMode,
 	})
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{

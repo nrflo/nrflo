@@ -26,6 +26,14 @@ func (s *Server) loadPushAfterMerge(p *model.Project) {
 	}
 }
 
+// loadInteractiveCLIMode loads the interactive_cli_mode config for a project and sets it on the model.
+func (s *Server) loadInteractiveCLIMode(p *model.Project) {
+	val, err := s.pool.GetProjectConfig(p.ID, "interactive_cli_mode")
+	if err == nil && val == "true" {
+		p.InteractiveCLIMode = true
+	}
+}
+
 // handleListProjects returns all projects
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	projectRepo := s.projectRepo()
@@ -43,6 +51,7 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	for _, p := range projects {
 		s.loadSafetyHook(p)
 		s.loadPushAfterMerge(p)
+		s.loadInteractiveCLIMode(p)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -119,6 +128,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 
 	s.loadSafetyHook(created)
 	s.loadPushAfterMerge(created)
+	s.loadInteractiveCLIMode(created)
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -136,6 +146,7 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 
 	s.loadSafetyHook(project)
 	s.loadPushAfterMerge(project)
+	s.loadInteractiveCLIMode(project)
 
 	writeJSON(w, http.StatusOK, project)
 }
@@ -155,12 +166,13 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 
 // UpdateProjectRequest represents the request body for updating a project
 type UpdateProjectRequest struct {
-	Name            *string `json:"name,omitempty"`
-	RootPath        *string `json:"root_path,omitempty"`
-	DefaultBranch   *string `json:"default_branch,omitempty"`
-	UseGitWorktrees  *bool   `json:"use_git_worktrees,omitempty"`
-	PushAfterMerge   *bool   `json:"push_after_merge,omitempty"`
-	ClaudeSafetyHook *string `json:"claude_safety_hook,omitempty"`
+	Name               *string `json:"name,omitempty"`
+	RootPath           *string `json:"root_path,omitempty"`
+	DefaultBranch      *string `json:"default_branch,omitempty"`
+	UseGitWorktrees    *bool   `json:"use_git_worktrees,omitempty"`
+	PushAfterMerge     *bool   `json:"push_after_merge,omitempty"`
+	InteractiveCLIMode *bool   `json:"interactive_cli_mode,omitempty"`
+	ClaudeSafetyHook   *string `json:"claude_safety_hook,omitempty"`
 }
 
 // handleUpdateProject updates a project
@@ -215,6 +227,18 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Handle interactive_cli_mode config (stored in config table, not projects table)
+	if req.InteractiveCLIMode != nil {
+		val := ""
+		if *req.InteractiveCLIMode {
+			val = "true"
+		}
+		if err := s.pool.SetProjectConfig(id, "interactive_cli_mode", val); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to save interactive_cli_mode config: "+err.Error())
+			return
+		}
+	}
+
 	updated, err := projectRepo.Get(id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -223,6 +247,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 
 	s.loadSafetyHook(updated)
 	s.loadPushAfterMerge(updated)
+	s.loadInteractiveCLIMode(updated)
 
 	writeJSON(w, http.StatusOK, updated)
 }

@@ -72,16 +72,16 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 9 {
-		t.Fatalf("len = %d, want 9 (pre-filled readonly templates)", len(list))
+	if len(list) != 11 {
+		t.Fatalf("len = %d, want 11 (pre-filled readonly templates)", len(list))
 	}
 	for _, tmpl := range list {
 		if !tmpl.Readonly {
 			t.Errorf("template %q: Readonly = false, want true", tmpl.ID)
 		}
 	}
-	// Ordered by name ascending.
-	wantOrder := []string{"callback", "doc-updater", "implementor", "low-context", "qa-verifier", "setup-analyzer", "test-writer", "ticket-creator", "user-instructions"}
+	// Ordered by name ascending (migration 064 adds finish-reminder + system-prompt-suffix).
+	wantOrder := []string{"callback", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "system-prompt-suffix", "test-writer", "ticket-creator", "user-instructions"}
 	for i, want := range wantOrder {
 		if list[i].ID != want {
 			t.Errorf("list[%d].ID = %q, want %q", i, list[i].ID, want)
@@ -101,8 +101,8 @@ func TestHandleListDefaultTemplates_IncludesUserCreated(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 10 {
-		t.Errorf("len = %d, want 10 (9 readonly + 1 user-created)", len(list))
+	if len(list) != 12 {
+		t.Errorf("len = %d, want 12 (11 readonly + 1 user-created)", len(list))
 	}
 }
 

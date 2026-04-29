@@ -43,6 +43,12 @@ The following blocks are automatically prepended to the agent prompt when condit
 
 Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}` placeholders in agent prompts are stripped to empty.
 
+### System Prompt Suffix
+
+The `system-prompt-suffix` injectable is delivered separately from the prepended blocks. For Claude agents it is passed via `--append-system-prompt-file`, appending it to Claude's system prompt. For codex/opencode agents it is prepended to the prompt body. The suffix template contains the completion contract (`nrflo agent continue` / `nrflo agent fail`) and is always active.
+
+The `finish-reminder` injectable is a second readonly template that can be referenced or appended by workflows to remind agents of the completion contract just before exiting.
+
 ---
 
 ## 2. Findings Patterns

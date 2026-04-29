@@ -210,6 +210,14 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.
 
+### Per-Project Settings (config table, `PATCH /api/v1/projects/:id`)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `claude_safety_hook` | string (JSON) | Safety hook config — blocks dangerous commands via `--settings` |
+| `push_after_merge` | bool | Push default branch to origin after successful worktree merge |
+| `interactive_cli_mode` | bool | Enable interactive terminal mode for CLI agents (consumed by T3) |
+
 ## Package Documentation
 
 Detailed documentation for each major package is in its own CLAUDE.md:

@@ -36,26 +36,28 @@ type CLIAdapter interface {
 
 // ResumeOptions contains parameters for resuming a CLI session
 type ResumeOptions struct {
-	SessionID       string
-	Prompt          string
-	WorkDir         string
-	Env             []string
-	SettingsJSON    string // Claude --settings JSON (ignored by non-Claude adapters)
-	ReasoningEffort string // Claude --effort level (ignored by non-Claude adapters)
+	SessionID        string
+	Prompt           string
+	WorkDir          string
+	Env              []string
+	SettingsJSON     string // Claude --settings JSON (ignored by non-Claude adapters)
+	ReasoningEffort  string // Claude --effort level (ignored by non-Claude adapters)
+	SystemPromptFile string // Path to system prompt suffix file (--append-system-prompt-file)
 }
 
 // SpawnOptions contains parameters for building a spawn command
 type SpawnOptions struct {
-	Model           string
-	SessionID       string
-	PromptFile      string // Path to system prompt file
-	Prompt          string // Full prompt content (for CLIs without file support)
-	InitialPrompt   string
-	WorkDir         string
-	Env             []string
-	MappedModel     string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
-	ReasoningEffort string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
-	SettingsJSON    string // Claude --settings JSON (ignored by non-Claude adapters)
+	Model            string
+	SessionID        string
+	PromptFile       string // Path to system prompt file
+	Prompt           string // Full prompt content (for CLIs without file support)
+	InitialPrompt    string
+	WorkDir          string
+	Env              []string
+	MappedModel      string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
+	ReasoningEffort  string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
+	SettingsJSON     string // Claude --settings JSON (ignored by non-Claude adapters)
+	SystemPromptFile string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.
@@ -116,6 +118,9 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 	if opts.SettingsJSON != "" {
 		args = append(args, "--settings", opts.SettingsJSON)
 	}
+	if opts.SystemPromptFile != "" {
+		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
+	}
 
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = opts.WorkDir
@@ -142,7 +147,7 @@ func (a *ClaudeAdapter) SupportsSessionID() bool {
 }
 
 func (a *ClaudeAdapter) SupportsSystemPromptFile() bool {
-	return false
+	return true
 }
 
 func (a *ClaudeAdapter) SupportsResume() bool {
@@ -168,6 +173,9 @@ func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 	}
 	if opts.SettingsJSON != "" {
 		args = append(args, "--settings", opts.SettingsJSON)
+	}
+	if opts.SystemPromptFile != "" {
+		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
 	}
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = opts.WorkDir

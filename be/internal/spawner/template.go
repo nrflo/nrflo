@@ -28,7 +28,8 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	}
 	cliName := s.cliForModel(model)
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
-	return s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil)
+	body, _, err := s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil)
+	return body, err
 }
 
 // loadAgentDefinition loads the full agent definition from the DB.
@@ -182,17 +183,20 @@ func (s *Spawner) fetchCallbackRaw(projectID, ticketID, workflowName, wfiID stri
 
 // LoadTemplate is the public wrapper around loadTemplate. It loads and expands
 // an agent template from DB. Used by the orchestrator to build PTY command prompts.
-func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, error) {
+// Returns (body, suffix, error). The suffix is the rendered system-prompt-suffix injectable
+// intended for --append-system-prompt-file; callers that don't use it can ignore it.
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, string, error) {
 	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID, extraVars)
 }
 
 // loadTemplate loads and expands an agent template from DB.
 // wfiID is optional — when set, used for instance-specific lookups (user instructions, callbacks).
 // extraVars is optional — when set, expanded after standard ${VAR} substitution.
-func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, error) {
+// Returns (body, suffix, error). The suffix is the rendered system-prompt-suffix injectable.
+func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	template := promptContent
@@ -200,6 +204,21 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	_, model := parseModelID(modelID)
 	if model == "" {
 		model = "sonnet"
+	}
+
+	// Build the standard vars map (used for both template body and suffix expansion)
+	stdVars := map[string]string{
+		"AGENT":          agentType,
+		"TICKET_ID":      ticketID,
+		"PROJECT_ID":     projectID,
+		"WORKFLOW":       workflowName,
+		"PARENT_SESSION": parentSession,
+		"CHILD_SESSION":  childSession,
+		"MODEL_ID":       modelID,
+		"MODEL":          model,
+	}
+	for k, v := range extraVars {
+		stdVars[k] = v
 	}
 
 	// Expand variables
@@ -216,6 +235,9 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	for k, v := range extraVars {
 		template = strings.ReplaceAll(template, "${"+k+"}", v)
 	}
+
+	// Render the system-prompt-suffix injectable using the same vars
+	suffix := s.expandInjectable("system-prompt-suffix", stdVars)
 
 	// Expand ticket context variables (skip DB fetch for project scope)
 	if strings.Contains(template, "${TICKET_TITLE}") || strings.Contains(template, "${TICKET_DESCRIPTION}") {
@@ -264,5 +286,5 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		logger.Warn(context.Background(), "project findings expansion failed", "error", err)
 	}
 
-	return template, nil
+	return template, suffix, nil
 }

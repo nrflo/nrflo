@@ -133,6 +133,10 @@ type Config struct {
 	// APIMode enables execution_mode='api' agents. When false (default, --mode=cli),
 	// prepareSpawn rejects any agent with execution_mode='api' before making any provider call.
 	APIMode bool
+	// InteractiveCLIMode enables interactive terminal mode for CLI agents when set.
+	// Read once at workflow start from project config "interactive_cli_mode".
+	// Consumed by T3 — no behavior change yet in this ticket.
+	InteractiveCLIMode bool
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -551,7 +555,7 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	}
 
 	// Load agent template
-	prompt, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars)
+	prompt, suffix, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load template: %w", err)
 	}
@@ -638,7 +642,11 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 			return nil, nil, fmt.Errorf("api mode: %w", regErr)
 		}
 
-		prep.apiSystem = defaultAPISystemPrompt
+		if suffix != "" {
+			prep.apiSystem = strings.TrimSpace(defaultAPISystemPrompt + "\n\n" + suffix)
+		} else {
+			prep.apiSystem = defaultAPISystemPrompt
+		}
 		prep.apiInitialPrompt = prompt
 		prep.apiTools = specs
 		prep.apiHandlers = handlers
@@ -667,6 +675,14 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	}
 
 	// CLI mode: write prompt to temp file and assemble SpawnOptions.
+
+	// For adapters without system-prompt-file support (Codex, Opencode), prepend
+	// the suffix directly into the prompt body so it is delivered via the prompt file.
+	promptBody := prompt
+	if suffix != "" && !adapter.SupportsSystemPromptFile() {
+		promptBody = suffix + "\n\n" + prompt
+	}
+
 	filePrefix := req.TicketID
 	if req.IsProjectScope() {
 		filePrefix = "project-" + req.ProjectID
@@ -677,11 +693,30 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
-	if _, err := promptFile.WriteString(prompt); err != nil {
+	if _, err := promptFile.WriteString(promptBody); err != nil {
 		os.Remove(promptFile.Name())
 		return nil, nil, fmt.Errorf("failed to write prompt: %w", err)
 	}
 	promptFile.Close()
+
+	// For adapters that support --append-system-prompt-file (Claude), write
+	// the suffix to a separate temp file so Claude appends it to its system prompt.
+	var suffixFilePath string
+	if suffix != "" && adapter.SupportsSystemPromptFile() {
+		sf, sfErr := os.CreateTemp("/tmp/nrflo", "system-suffix-*.md")
+		if sfErr != nil {
+			logger.Warn(context.Background(), "failed to create suffix temp file", "error", sfErr)
+		} else {
+			if _, sfErr = sf.WriteString(suffix); sfErr != nil {
+				sf.Close()
+				os.Remove(sf.Name())
+				logger.Warn(context.Background(), "failed to write suffix temp file", "error", sfErr)
+			} else {
+				sf.Close()
+				suffixFilePath = sf.Name()
+			}
+		}
+	}
 
 	// Initial prompt (skipped for stdin-based adapters — the template IS the full prompt)
 	var initialPrompt string
@@ -701,15 +736,16 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	}
 
 	opts := SpawnOptions{
-		Model:           model,
-		SessionID:       sessionID,
-		PromptFile:      promptFile.Name(),
-		Prompt:          prompt,
-		InitialPrompt:   initialPrompt,
-		WorkDir:         workDir,
-		MappedModel:     mappedModel,
-		ReasoningEffort: reasoningEffort,
-		SettingsJSON:    s.config.ClaudeSettingsJSON,
+		Model:            model,
+		SessionID:        sessionID,
+		PromptFile:       promptFile.Name(),
+		Prompt:           promptBody,
+		InitialPrompt:    initialPrompt,
+		WorkDir:          workDir,
+		MappedModel:      mappedModel,
+		ReasoningEffort:  reasoningEffort,
+		SettingsJSON:     s.config.ClaudeSettingsJSON,
+		SystemPromptFile: suffixFilePath,
 		Env: append(filterEnv(os.Environ(), "CLAUDECODE"),
 			fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
@@ -723,6 +759,7 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 	prep.adapter = adapter
 	prep.opts = opts
 	prep.promptFile = promptFile.Name()
+	prep.suffixFile = suffixFilePath
 	return proc, prep, nil
 }
 

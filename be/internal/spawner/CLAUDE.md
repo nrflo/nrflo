@@ -27,7 +27,7 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  │   │          opus_4_7_1m, sonnet, haiku)                    │    │
 │  │   ├── Reasoning: --effort <level> when reasoning_effort set │    │
 │  │   ├── SessionID: ✓ (--session-id)                           │    │
-│  │   ├── SystemPromptFile: ✗                                   │    │
+│  │   ├── SystemPromptFile: ✓ (--append-system-prompt-file)     │    │
 │  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
 │  │   └── Resume: ✓ (--resume <session-id>)                     │    │
 │  └─────────────────────────────────────────────────────────────┘    │
@@ -417,6 +417,18 @@ Instead of inline `${VAR}` substitution for user instructions, callbacks, and co
 **Prepend order:** user-instructions → low-context → callback. Most actionable information closest to the agent prompt.
 
 **Expansion:** `expandInjectable(id, vars)` loads the template body, replaces `${VAR}` placeholders from the vars map, strips any remaining `${...}` placeholders, and returns the expanded body. Returns `""` with a warning if the template is missing.
+
+### System Prompt Suffix
+
+The `system-prompt-suffix` injectable is delivered separately from the prepended blocks. `loadTemplate` returns it as a second string. Delivery depends on the CLI adapter:
+
+- **Claude** (`SupportsSystemPromptFile() == true`): written to `/tmp/nrflo/system-suffix-*.md` and passed as `--append-system-prompt-file`; the temp file is removed after spawn.
+- **Codex / Opencode** (`SupportsSystemPromptFile() == false`): prepended to the prompt body before writing the prompt file.
+- **API mode**: concatenated into `prep.apiSystem` (the Anthropic Messages API `system` parameter).
+
+The suffix always uses the same `stdVars` map as the main template body (`AGENT`, `TICKET_ID`, `PROJECT_ID`, `WORKFLOW`, `MODEL_ID`, `MODEL`). If the template is missing or empty, delivery is a no-op.
+
+The `finish-reminder` injectable is seeded as a readonly template but is not auto-delivered — it is available for user-configured workflows that reference it explicitly.
 
 ## Findings Auto-Population
 

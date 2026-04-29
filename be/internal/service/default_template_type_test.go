@@ -34,13 +34,15 @@ func TestDefaultTemplate_List_FilterByTypeInjectable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(templates) != 3 {
-		t.Fatalf("List(injectable) len = %d, want 3", len(templates))
+	if len(templates) != 5 {
+		t.Fatalf("List(injectable) len = %d, want 5", len(templates))
 	}
 	wantIDs := map[string]bool{
-		"low-context":       true,
-		"callback":          true,
-		"user-instructions": true,
+		"low-context":          true,
+		"callback":             true,
+		"user-instructions":    true,
+		"system-prompt-suffix": true,
+		"finish-reminder":      true,
 	}
 	for _, tmpl := range templates {
 		if tmpl.Type != "injectable" {
@@ -73,8 +75,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(templates) != 9 {
-		t.Fatalf("List() len = %d, want 9", len(templates))
+	if len(templates) != 11 {
+		t.Fatalf("List() len = %d, want 11", len(templates))
 	}
 	agentCount, injectableCount := 0, 0
 	for _, tmpl := range templates {
@@ -90,8 +92,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if agentCount != 6 {
 		t.Errorf("agent count = %d, want 6", agentCount)
 	}
-	if injectableCount != 3 {
-		t.Errorf("injectable count = %d, want 3", injectableCount)
+	if injectableCount != 5 {
+		t.Errorf("injectable count = %d, want 5", injectableCount)
 	}
 }
 
@@ -332,15 +334,15 @@ func TestDefaultTemplate_List_FilterAfterCreatingMixed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(injectables) != 4 {
-		t.Errorf("List(injectable) len = %d, want 4 (3 seeded + 1 created)", len(injectables))
+	if len(injectables) != 6 {
+		t.Errorf("List(injectable) len = %d, want 6 (5 seeded + 1 created)", len(injectables))
 	}
 
 	all, err := svc.List("")
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(all) != 11 {
-		t.Errorf("List() len = %d, want 11 (9 seeded + 2 created)", len(all))
+	if len(all) != 13 {
+		t.Errorf("List() len = %d, want 13 (11 seeded + 2 created)", len(all))
 	}
 }

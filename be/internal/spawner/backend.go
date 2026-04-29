@@ -36,6 +36,7 @@ type prepResult struct {
 	cliName    string
 	opts       SpawnOptions
 	promptFile string
+	suffixFile string // temp file for --append-system-prompt-file (Claude only); empty when unused
 	prompt     string
 	phase      string
 
@@ -72,11 +73,18 @@ func (b *cliBackend) SupportsTakeControl() bool { return b.adapter.SupportsResum
 func (b *cliBackend) Start(ctx context.Context, proc *processInfo, prep *prepResult) error {
 	cmd := b.adapter.BuildCommand(prep.opts)
 
+	removeSuffixFile := func() {
+		if prep.suffixFile != "" {
+			os.Remove(prep.suffixFile)
+		}
+	}
+
 	var stdinFile *os.File
 	if b.adapter.UsesStdinPrompt() {
 		f, err := os.Open(prep.promptFile)
 		if err != nil {
 			os.Remove(prep.promptFile)
+			removeSuffixFile()
 			return fmt.Errorf("failed to open prompt file for stdin: %w", err)
 		}
 		cmd.Stdin = f
@@ -106,6 +114,7 @@ func (b *cliBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 			stdinFile.Close()
 		}
 		os.Remove(prep.promptFile)
+		removeSuffixFile()
 		return fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 	stderr, err := cmd.StderrPipe()
@@ -114,6 +123,7 @@ func (b *cliBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 			stdinFile.Close()
 		}
 		os.Remove(prep.promptFile)
+		removeSuffixFile()
 		return fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
@@ -122,6 +132,7 @@ func (b *cliBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 			stdinFile.Close()
 		}
 		os.Remove(prep.promptFile)
+		removeSuffixFile()
 		return fmt.Errorf("failed to start agent: %w", err)
 	}
 	if stdinFile != nil {
@@ -145,10 +156,14 @@ func (b *cliBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 	// Capture doneCh locally: proc.doneCh may be replaced during low-context save.
 	origDoneCh := proc.doneCh
 	promptPath := prep.promptFile
+	suffixPath := prep.suffixFile
 	go func() {
 		proc.waitErr = cmd.Wait()
 		close(origDoneCh)
 		os.Remove(promptPath)
+		if suffixPath != "" {
+			os.Remove(suffixPath)
+		}
 	}()
 
 	return nil

@@ -70,12 +70,16 @@ type mockPtyManager struct {
 	sessions       map[string]*mockPtySession
 	registeredCmds map[string][]string
 	createErr      error
+	// lastEnv records the env slice passed to Create for each sessionID.
+	// Populated only when Create succeeds.
+	lastEnv map[string][]string
 }
 
 func newMockPtyManager() *mockPtyManager {
 	return &mockPtyManager{
 		sessions:       make(map[string]*mockPtySession),
 		registeredCmds: make(map[string][]string),
+		lastEnv:        make(map[string][]string),
 	}
 }
 
@@ -85,13 +89,14 @@ func (m *mockPtyManager) RegisterCommand(sessionID, cmd string, args []string) {
 	m.mu.Unlock()
 }
 
-func (m *mockPtyManager) Create(sessionID, _ string, _ []string) (ptySessionIface, error) {
+func (m *mockPtyManager) Create(sessionID, _ string, env []string) (ptySessionIface, error) {
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
 	sess := newMockSession()
 	m.mu.Lock()
 	m.sessions[sessionID] = sess
+	m.lastEnv[sessionID] = append([]string{}, env...)
 	m.mu.Unlock()
 	return sess, nil
 }

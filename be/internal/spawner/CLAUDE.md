@@ -227,6 +227,30 @@ System agents (conflict-resolver, context-saver) flow through the same selector 
 
 `BuildInteractiveSettingsJSON(proc)` (in `hooks_settings.go`) returns a Claude `--settings` JSON string with two top-level entries: (1) `hooks` — registering `PreToolUse` and `PostToolUse` hook arrays, each with `matcher: "*"` and `<absolute-nrflo-path> agent record-event`; (2) `statusLine` — a `{"type":"command","command":"<absolute-nrflo-path> agent statusline"}` block (Claude-only, interactive-only) that drives the Claude status line with live context info. The nrflo path is resolved via `os.Executable()` once (cached via `sync.Once`) with a fallback to `"nrflo"`. Returns `""` for non-Claude adapters. `mergeInteractiveSettings(safetyJSON, hooksJSON)` deep-merges by: (a) copying all top-level keys from safetyJSON into the result; (b) concatenating `hooks` sub-map arrays when both sides define the same event key; (c) copying all non-`hooks` top-level keys from hooksJSON into the result — **hooks side wins on conflict**. This ensures `statusLine` from `BuildInteractiveSettingsJSON` survives the merge even when a safety hook JSON is present. The merged result is passed as `opts.SettingsJSON` → `--settings <json>` (Claude only).
 
+### Codex Hook Profile
+
+Codex does not support `--settings`; instead, hook telemetry is delivered via a per-session CODEX_HOME directory.
+
+`BuildCodexHookProfile(proc *processInfo) (dir string, cleanup func(), err error)` (`codex_hook_setup.go`):
+- Creates `os.MkdirTemp("", "nrflo-codex-<sessionID>-*")`
+- Delegates to `WriteCodexProfile(dir, resolvedNrfloPath())`
+- Returns a cleanup func that calls `os.RemoveAll(dir)` (best-effort)
+- On `WriteCodexProfile` failure, removes the dir before returning the error
+
+`WriteCodexProfile(dir, nrfloPath string) error`:
+- Writes `<dir>/config.toml`: `[features]\ncodex_hooks = true\n`
+- Writes `<dir>/hooks.json`: `{"PreToolUse":[hookEntry],"PostToolUse":[hookEntry]}` where `hookEntry = {matcher:"*",hooks:[{type:"command",command:"<nrfloPath> agent record-event",timeout:5}]}`
+- Hook entry shape mirrors `hooks_settings.go` (matcher/hooks/type/command) with an added `timeout:5` field
+
+`backend_interactive.go` wiring:
+- After computing `settingsJSON`, if `b.adapter.Name() == "codex"`: call `BuildCodexHookProfile(proc)`; on error log via `b.s.warnAgent` and keep empty `CodexHome`; on success set `opts.CodexHome` and stash cleanup
+- On `b.ptyMgr.Create` error: call `codexCleanup()` before returning
+- In `<-sess.Done()` goroutine: call `codexCleanup()` after suffix file removal
+
+`CodexAdapter.BuildInteractiveCommand` injects `CODEX_HOME=<dir>` by appending to `opts.Env` (preserving all spawner-set env vars like `NRF_SESSION_ID`, `NRF_WORKFLOW_INSTANCE_ID`, `NRFLO_PROJECT`). When `opts.CodexHome` is empty, `cmd.Env = opts.Env` unchanged.
+
+`resolvedNrfloPath()` is shared with `hooks_settings.go` — no duplication.
+
 ### Output Ferry
 
 `ferryPTYOutput(spawner, proc, sess, isClaude)` runs in a goroutine reading PTY stdout:

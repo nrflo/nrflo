@@ -90,7 +90,11 @@ func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *ex
 	}
 	cmd := exec.Command("codex", args...)
 	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
+	if opts.CodexHome != "" {
+		cmd.Env = append(opts.Env, "CODEX_HOME="+opts.CodexHome)
+	} else {
+		cmd.Env = opts.Env
+	}
 	return cmd
 }
 

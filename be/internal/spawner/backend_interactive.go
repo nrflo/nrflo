@@ -53,6 +53,18 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		prep.opts.SettingsJSON,
 	)
 
+	codexCleanup := func() {}
+	var codexHome string
+	if b.adapter.Name() == "codex" {
+		dir, cleanup, err := BuildCodexHookProfile(proc)
+		if err != nil {
+			b.s.warnAgent(proc, "codex hook profile build failed: "+err.Error())
+		} else {
+			codexHome = dir
+			codexCleanup = cleanup
+		}
+	}
+
 	opts := InteractiveSpawnOptions{
 		SessionID:        sessionID,
 		Model:            model,
@@ -61,6 +73,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		Env:              env,
 		SystemPromptFile: prep.suffixFile, // non-empty for Claude (written by prepareSpawn)
 		SettingsJSON:     settingsJSON,
+		CodexHome:        codexHome,
 	}
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)
@@ -75,6 +88,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		if prep.suffixFile != "" {
 			os.Remove(prep.suffixFile)
 		}
+		codexCleanup()
 		return fmt.Errorf("cli_interactive: pty create: %w", err)
 	}
 
@@ -101,6 +115,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		if suffixPath != "" {
 			os.Remove(suffixPath)
 		}
+		codexCleanup()
 	}()
 
 	return nil

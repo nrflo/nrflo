@@ -238,3 +238,49 @@ func TestCodexAdapter_BuildInteractiveCommand_HasRequiredFlags(t *testing.T) {
 		t.Errorf("cmd.Dir = %q, want /work", cmd.Dir)
 	}
 }
+
+// TestCodexAdapter_BuildInteractiveCommand_CodexHomeEnv verifies that CODEX_HOME is
+// appended to cmd.Env when InteractiveSpawnOptions.CodexHome is non-empty, and that
+// caller-supplied env vars are preserved.
+func TestCodexAdapter_BuildInteractiveCommand_CodexHomeEnv(t *testing.T) {
+	a := &CodexAdapter{}
+	opts := InteractiveSpawnOptions{
+		Model:     "gpt-5.3-codex",
+		WorkDir:   "/tmp",
+		Env:       []string{"FOO=bar", "NRF_SESSION_ID=sess-1"},
+		CodexHome: "/tmp/codex-home-abc",
+	}
+	cmd := a.BuildInteractiveCommand(opts)
+
+	envSet := make(map[string]bool, len(cmd.Env))
+	for _, e := range cmd.Env {
+		envSet[e] = true
+	}
+	if !envSet["CODEX_HOME=/tmp/codex-home-abc"] {
+		t.Errorf("cmd.Env missing CODEX_HOME=/tmp/codex-home-abc: %v", cmd.Env)
+	}
+	if !envSet["FOO=bar"] {
+		t.Errorf("cmd.Env missing caller-supplied FOO=bar: %v", cmd.Env)
+	}
+	if !envSet["NRF_SESSION_ID=sess-1"] {
+		t.Errorf("cmd.Env missing caller-supplied NRF_SESSION_ID=sess-1: %v", cmd.Env)
+	}
+}
+
+// TestCodexAdapter_BuildInteractiveCommand_EmptyCodexHome_NoCodexHomeEnv verifies
+// that no CODEX_HOME entry appears in cmd.Env when CodexHome is empty.
+func TestCodexAdapter_BuildInteractiveCommand_EmptyCodexHome_NoCodexHomeEnv(t *testing.T) {
+	a := &CodexAdapter{}
+	opts := InteractiveSpawnOptions{
+		Model:   "gpt-5.3-codex",
+		WorkDir: "/tmp",
+		Env:     []string{"FOO=bar"},
+		// CodexHome intentionally left empty
+	}
+	cmd := a.BuildInteractiveCommand(opts)
+	for _, e := range cmd.Env {
+		if strings.HasPrefix(e, "CODEX_HOME=") {
+			t.Errorf("cmd.Env must not contain CODEX_HOME when CodexHome is empty: %v", cmd.Env)
+		}
+	}
+}

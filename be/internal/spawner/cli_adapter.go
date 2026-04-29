@@ -53,6 +53,7 @@ type InteractiveSpawnOptions struct {
 	Env              []string
 	SystemPromptFile string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
 	SettingsJSON     string // Claude: --settings JSON; others: ignored
+	CodexHome        string // CODEX_HOME dir path; Codex only — ignored by other adapters
 }
 
 // ResumeOptions contains parameters for resuming a CLI session

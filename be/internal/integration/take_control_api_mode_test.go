@@ -78,7 +78,7 @@ func seedAPISession(t *testing.T, dbPath, projectID, ticketID, sessionID, wfiID 
 		INSERT OR IGNORE INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			 status, result, result_reason, pid, findings,
-			 context_left, ancestor_session_id, spawn_command, prompt_context,
+			 context_left, ancestor_session_id, spawn_command, prompt,
 			 restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		sessionID, projectID, ticketID, wfiID, "L0", "api-agent", now, now, now,

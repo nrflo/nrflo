@@ -24,7 +24,7 @@ func NewAgentSessionRepo(database db.Querier, clk clock.Clock) *AgentSessionRepo
 
 const sessionCols = `id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 	model_id, status, result, result_reason, pid, findings,
-	context_left, ancestor_session_id, spawn_command, prompt_context,
+	context_left, ancestor_session_id, spawn_command, prompt, system_prompt,
 	restart_count, nudge_count, config, started_at, ended_at, created_at, updated_at`
 
 func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
@@ -33,7 +33,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 	err := scanner.Scan(
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
-		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.PromptContext,
+		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt,
 	)
 	if err != nil {
@@ -47,7 +47,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 // sessionColsWithWorkflow returns columns for JOINed queries that include workflow_id
 const sessionColsJoined = `s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
 	s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
-	s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt_context,
+	s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
 	s.restart_count, s.nudge_count, s.config, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id`
 
 func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
@@ -56,7 +56,7 @@ func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.
 	err := scanner.Scan(
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
-		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.PromptContext,
+		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt, &s.Workflow,
 	)
 	if err != nil {
@@ -75,7 +75,7 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 
 	_, err := r.db.Exec(`
 		INSERT INTO agent_sessions (`+sessionCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		strings.ToLower(session.ProjectID),
 		strings.ToLower(session.TicketID),
@@ -91,7 +91,8 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 		session.ContextLeft,
 		session.AncestorSessionID,
 		session.SpawnCommand,
-		session.PromptContext,
+		session.Prompt,
+		session.SystemPrompt,
 		session.RestartCount,
 		0, // nudge_count defaults to 0
 		session.Config,

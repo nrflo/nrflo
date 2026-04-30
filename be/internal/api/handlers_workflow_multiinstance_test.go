@@ -200,7 +200,7 @@ func TestHandleGetAgentSessions_FilterByInstanceID(t *testing.T) {
 			INSERT INTO agent_sessions
 				(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 				 model_id, status, result, result_reason, pid, findings,
-				 context_left, ancestor_session_id, spawn_command, prompt_context,
+				 context_left, ancestor_session_id, spawn_command, prompt,
 				 restart_count, started_at, ended_at, created_at, updated_at)
 			VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', NULL, 'completed', 'pass', NULL, NULL, NULL,
 				NULL, NULL, NULL, NULL, 0, NULL, NULL, ?, ?)`,

@@ -76,7 +76,7 @@ func insertSession(t *testing.T, pool *db.Pool, id, wfiID, agentType, status, re
 	_, err := pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			status, result, result_reason, pid, findings, context_left, ancestor_session_id,
-			spawn_command, prompt_context, restart_count, started_at, ended_at, created_at, updated_at)
+			spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, 'test-proj', '', ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		id, wfiID, agentType, agentType, status, resultVal, createdAt, createdAt, now)
 	if err != nil {
@@ -501,7 +501,7 @@ func BenchmarkDerivePhaseStatuses(b *testing.B) {
 		pool.Exec(`
 			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 				status, result, result_reason, pid, findings, context_left, ancestor_session_id,
-				spawn_command, prompt_context, restart_count, started_at, ended_at, created_at, updated_at)
+				spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
 			VALUES (?, 'test-proj', '', ?, ?, ?, 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 			fmt.Sprintf("sess-%d", i), wfiID, fmt.Sprintf("agent-%d", i), fmt.Sprintf("agent-%d", i),
 			now, now, now)

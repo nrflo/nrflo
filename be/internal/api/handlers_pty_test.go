@@ -81,7 +81,7 @@ func insertPtyTestSession(t *testing.T, dbPath, sessionID string, status model.A
 	_, err = database.Exec(`INSERT OR IGNORE INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status,
 		 result, result_reason, pid, findings, context_left, ancestor_session_id,
-		 spawn_command, prompt_context, restart_count, started_at, ended_at, created_at, updated_at)
+		 spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, 'proj-pty', 'TKT-PTY', ?, 'phase1', 'analyzer', ?,
 		        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		sessionID, wfiID, string(status), now, now, now)

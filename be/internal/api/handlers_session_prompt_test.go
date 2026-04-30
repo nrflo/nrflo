@@ -32,7 +32,7 @@ func newSessionPromptServer(t *testing.T) (*Server, *db.DB) {
 	return s, database
 }
 
-// insertSessionWithPrompt inserts an agent_session row with the given prompt_context value.
+// insertSessionWithPrompt inserts an agent_session row with the given prompt value.
 // Pass empty string for promptContext to store NULL (omits the column from INSERT).
 func insertSessionWithPrompt(t *testing.T, database *db.DB, id, wfiID, projectID, promptContext string) {
 	t.Helper()
@@ -48,7 +48,7 @@ func insertSessionWithPrompt(t *testing.T, database *db.DB, id, wfiID, projectID
 	} else {
 		_, err := database.Exec(`
 			INSERT INTO agent_sessions
-			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, prompt_context, created_at, updated_at)
+			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, prompt, created_at, updated_at)
 			VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet', 'completed', ?, datetime('now'), datetime('now'))`,
 			id, projectID, wfiID, promptContext)
 		if err != nil {
@@ -57,7 +57,7 @@ func insertSessionWithPrompt(t *testing.T, database *db.DB, id, wfiID, projectID
 	}
 }
 
-// TestHandleGetSessionPrompt_WithPrompt verifies 200 and correct JSON body when prompt_context is set.
+// TestHandleGetSessionPrompt_WithPrompt verifies 200 and correct JSON body when prompt is set.
 func TestHandleGetSessionPrompt_WithPrompt(t *testing.T) {
 	s, database := newSessionPromptServer(t)
 	defer database.Close()
@@ -80,12 +80,12 @@ func TestHandleGetSessionPrompt_WithPrompt(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	got, ok := resp["prompt_context"].(string)
+	got, ok := resp["prompt"].(string)
 	if !ok {
-		t.Fatalf("prompt_context field missing or wrong type: %v", resp["prompt_context"])
+		t.Fatalf("prompt field missing or wrong type: %v", resp["prompt"])
 	}
 	if got != wantPrompt {
-		t.Errorf("prompt_context = %q, want %q", got, wantPrompt)
+		t.Errorf("prompt = %q, want %q", got, wantPrompt)
 	}
 
 	// Verify Content-Type is JSON
@@ -95,7 +95,7 @@ func TestHandleGetSessionPrompt_WithPrompt(t *testing.T) {
 	}
 }
 
-// TestHandleGetSessionPrompt_NullPrompt verifies 204 with no body when prompt_context is NULL.
+// TestHandleGetSessionPrompt_NullPrompt verifies 204 with no body when prompt is NULL.
 func TestHandleGetSessionPrompt_NullPrompt(t *testing.T) {
 	s, database := newSessionPromptServer(t)
 	defer database.Close()
@@ -167,7 +167,7 @@ func TestHandleGetSessionPrompt_TableDriven(t *testing.T) {
 			name:       "existing session with prompt",
 			sessionID:  "sess-table-with",
 			wantStatus: http.StatusOK,
-			wantKey:    "prompt_context",
+			wantKey:    "prompt",
 		},
 		{
 			name:       "existing session without prompt",

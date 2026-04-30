@@ -17,7 +17,7 @@ func insertSessionWithTimestamps(t *testing.T, env *TestEnv, id, ticketID, wfiID
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
-			context_left, ancestor_session_id, spawn_command, prompt_context,
+			context_left, ancestor_session_id, spawn_command, prompt,
 			restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, ?, ?, ?)`,
 		id, env.ProjectID, ticketID, wfiID, phase, agentType,
@@ -93,7 +93,7 @@ func TestAgentHistoryDurationOnlyStarted(t *testing.T) {
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
-			context_left, ancestor_session_id, spawn_command, prompt_context,
+			context_left, ancestor_session_id, spawn_command, prompt,
 			restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		"dur-sess-2", env.ProjectID, "DUR-2", wfiID, "analyzer", "setup-analyzer",
@@ -151,7 +151,7 @@ func TestAgentHistoryDurationOnlyEnded(t *testing.T) {
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
-			context_left, ancestor_session_id, spawn_command, prompt_context,
+			context_left, ancestor_session_id, spawn_command, prompt,
 			restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?)`,
 		"dur-sess-3", env.ProjectID, "DUR-3", wfiID, "analyzer", "setup-analyzer",
@@ -207,7 +207,7 @@ func TestAgentHistoryDurationNeitherTimestamp(t *testing.T) {
 	_, err := env.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			model_id, status, result, result_reason, pid, findings,
-			context_left, ancestor_session_id, spawn_command, prompt_context,
+			context_left, ancestor_session_id, spawn_command, prompt,
 			restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, ?, ?)`,
 		"dur-sess-4", env.ProjectID, "DUR-4", wfiID, "analyzer", "setup-analyzer",

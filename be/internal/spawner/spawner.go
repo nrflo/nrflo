@@ -202,8 +202,9 @@ type processInfo struct {
 	contextLeft int
 	maxContext  int
 	// Spawn context (for debugging/replay)
-	spawnCommand  string
-	promptContext string
+	spawnCommand string
+	prompt       string // rendered user prompt body
+	systemPrompt string // rendered system-prompt-suffix delivered to the agent
 	// Request context (for broadcasting)
 	projectID          string
 	ticketID           string
@@ -672,7 +673,8 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		sessionStartCh:      make(chan struct{}),
 		firstByteCh:         make(chan struct{}),
 		lastMessagesFlush:   s.config.Clock.Now(),
-		promptContext:       prompt,
+		prompt:              prompt,
+		systemPrompt:        suffix,
 		projectID:           req.ProjectID,
 		ticketID:            req.TicketID,
 		workflowName:        req.WorkflowName,
@@ -916,7 +918,7 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	}
 	s.registerAgentStart(proc.projectID, proc.ticketID, proc.workflowName, proc.workflowInstanceID,
 		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
-		proc.spawnCommand, proc.promptContext, "", 0, proc.restartThreshold)
+		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", 0, proc.restartThreshold)
 	return nil
 }
 

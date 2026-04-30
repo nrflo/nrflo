@@ -87,6 +87,10 @@ func (s *Server) Start(host string, port int) error {
 	// Start retention cleanup for workflow instances and agent sessions
 	s.startRetentionCleanup()
 
+	// Reclaim orphaned prompt / system-suffix files and codex profile dirs
+	// left behind by previous server processes that were killed mid-run.
+	spawner.CleanupOrphanedTempFiles(1 * time.Hour)
+
 	// Start WebSocket hub
 	go s.wsHub.Run()
 

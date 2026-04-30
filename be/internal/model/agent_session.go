@@ -39,7 +39,8 @@ type AgentSession struct {
 	ContextLeft        sql.NullInt64      `json:"-"` // Remaining context percentage
 	AncestorSessionID  sql.NullString     `json:"-"` // Ancestor session for continuation
 	SpawnCommand       sql.NullString     `json:"-"` // Full CLI command used to spawn
-	PromptContext      sql.NullString     `json:"-"` // System prompt file contents
+	Prompt             sql.NullString     `json:"-"` // Rendered user prompt sent to the agent
+	SystemPrompt       sql.NullString     `json:"-"` // Rendered system-prompt-suffix delivered to the agent
 	RestartCount       int                `json:"-"` // Number of low-context restarts
 	NudgeCount         int                `json:"-"` // Number of idle nudges sent
 	Config             string             `json:"-"` // Safety settings JSON used for this session
@@ -87,9 +88,13 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 	if as.SpawnCommand.Valid {
 		spawnCommand = &as.SpawnCommand.String
 	}
-	var promptContext *string
-	if as.PromptContext.Valid {
-		promptContext = &as.PromptContext.String
+	var prompt *string
+	if as.Prompt.Valid {
+		prompt = &as.Prompt.String
+	}
+	var systemPrompt *string
+	if as.SystemPrompt.Valid {
+		systemPrompt = &as.SystemPrompt.String
 	}
 	var contextLeft *int
 	if as.ContextLeft.Valid {
@@ -151,7 +156,8 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		Config             string             `json:"config,omitempty"`
 		AncestorSessionID  *string            `json:"ancestor_session_id,omitempty"`
 		SpawnCommand       *string            `json:"spawn_command,omitempty"`
-		PromptContext      *string            `json:"prompt_context,omitempty"`
+		Prompt             *string            `json:"prompt,omitempty"`
+		SystemPrompt       *string            `json:"system_prompt,omitempty"`
 		StartedAt          *string            `json:"started_at,omitempty"`
 		EndedAt            *string            `json:"ended_at,omitempty"`
 		CreatedAt          time.Time          `json:"created_at"`
@@ -178,7 +184,8 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		Config:             as.Config,
 		AncestorSessionID:  ancestorSessionID,
 		SpawnCommand:       spawnCommand,
-		PromptContext:      promptContext,
+		Prompt:             prompt,
+		SystemPrompt:       systemPrompt,
 		StartedAt:          startedAt,
 		EndedAt:            endedAt,
 		CreatedAt:          as.CreatedAt,

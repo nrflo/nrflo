@@ -7,8 +7,9 @@ import (
 	"be/internal/repo"
 )
 
-// handleGetSessionPrompt returns the prompt context for an agent session.
-// Returns 200 with {prompt_context: string}, 204 if empty/NULL, 404 if not found.
+// handleGetSessionPrompt returns the rendered user prompt and system prompt
+// stored on the agent_sessions row. Returns 200 with {prompt, system_prompt},
+// 204 if both are empty/NULL, 404 if the session is not found.
 func (s *Server) handleGetSessionPrompt(w http.ResponseWriter, r *http.Request) {
 	sessionID := extractID(r)
 
@@ -23,12 +24,21 @@ func (s *Server) handleGetSessionPrompt(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !session.PromptContext.Valid || session.PromptContext.String == "" {
+	prompt := ""
+	if session.Prompt.Valid {
+		prompt = session.Prompt.String
+	}
+	systemPrompt := ""
+	if session.SystemPrompt.Valid {
+		systemPrompt = session.SystemPrompt.String
+	}
+	if prompt == "" && systemPrompt == "" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"prompt_context": session.PromptContext.String,
+		"prompt":        prompt,
+		"system_prompt": systemPrompt,
 	})
 }

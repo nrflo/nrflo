@@ -58,3 +58,20 @@ Events flow: Producer → Hub.Broadcast → EventLogRepo.Append (assigns seq) �
 Global events flow: Producer → Hub.BroadcastGlobal → broadcastGlobalEvent → ALL clients (no event log).
 Replay flow: Client subscribe with since_seq → handleReplay → EventLogRepo.QuerySince → stream to client.
 Snapshot flow: Cursor too old or since_seq=0 → streamSnapshot → SnapshotProvider.BuildSnapshot → chunks to client.
+Listener fan-out: After broadcastEvent stamps seq, a single goroutine iterates all registered Listeners and calls OnEvent — never on the broadcast loop, so a slow listener cannot stall the WS pipeline.
+
+## Listener Extension Point
+
+`Hub.RegisterListener(l Listener)` registers an out-of-band receiver for every broadcast event. Must be called before `Hub.Run()`. The `internal/notify` Dispatcher is registered here.
+
+Fan-out is non-blocking: a goroutine is spawned per broadcast, iterating all listeners sequentially. Slow or blocking OnEvent implementations affect only each other, never the WS broadcast pipeline.
+
+## Notification Event Constants
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `EventNotificationChannelCreated` | `notification_channel.created` | Channel created |
+| `EventNotificationChannelUpdated` | `notification_channel.updated` | Channel updated |
+| `EventNotificationChannelDeleted` | `notification_channel.deleted` | Channel deleted |
+| `EventNotificationDelivered` | `notification.delivered` | Delivery sent successfully |
+| `EventNotificationFailed` | `notification.failed` | Delivery giving up (3 attempts exhausted) |

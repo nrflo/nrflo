@@ -13,6 +13,7 @@ import (
 	"be/internal/config"
 	"be/internal/db"
 	"be/internal/logger"
+	"be/internal/notify"
 	"be/internal/orchestrator"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
@@ -25,19 +26,22 @@ import (
 
 // Server represents the HTTP API server
 type Server struct {
-	config           *config.Config
-	dataPath         string
-	logsDir          string
-	pool             *db.Pool
-	httpServer       *http.Server
-	wsHub            *ws.Hub
-	orchestrator     *orchestrator.Orchestrator
-	chainRunner      *orchestrator.ChainRunner
-	ptyManager       *ptyPkg.Manager
-	clock            clock.Clock
-	apiMode          bool
-	cliAdapterFunc   func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
-	scheduler        *scheduler.Scheduler
+	config                 *config.Config
+	dataPath               string
+	logsDir                string
+	pool                   *db.Pool
+	httpServer             *http.Server
+	wsHub                  *ws.Hub
+	orchestrator           *orchestrator.Orchestrator
+	chainRunner            *orchestrator.ChainRunner
+	ptyManager             *ptyPkg.Manager
+	clock                  clock.Clock
+	apiMode                bool
+	cliAdapterFunc         func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
+	scheduler              *scheduler.Scheduler
+	notifyWaker            service.NotificationWaker
+	notifyWorker           *notify.Worker
+	notifyWorkerCancel     context.CancelFunc
 }
 
 // NewServer creates a new API server
@@ -54,6 +58,15 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 
 	sched := scheduler.New(pool, orch, hub, clk)
 
+	// Notification subsystem
+	notifyWakeCh := make(chan struct{}, 8)
+	channelRepo := repo.NewNotificationChannelRepo(pool, clk)
+	deliveryRepo := repo.NewNotificationDeliveryRepo(pool, clk)
+	dispatcher := notify.NewDispatcher(channelRepo, deliveryRepo, notifyWakeCh)
+	hub.RegisterListener(dispatcher)
+	waker := service.NewChanWaker(notifyWakeCh)
+	notifyWorker := notify.NewWorker(deliveryRepo, channelRepo, hub, errorSvc, clk, notifyWakeCh)
+
 	return &Server{
 		config:       cfg,
 		dataPath:     dataPath,
@@ -66,6 +79,8 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		clock:        clk,
 		apiMode:      apiMode,
 		scheduler:    sched,
+		notifyWaker:  waker,
+		notifyWorker: notifyWorker,
 	}
 }
 
@@ -99,6 +114,13 @@ func (s *Server) Start(host string, port int) error {
 	// Start WebSocket hub
 	go s.wsHub.Run()
 
+	// Start notification delivery worker
+	if s.notifyWorker != nil {
+		workerCtx, workerCancel := context.WithCancel(context.Background())
+		s.notifyWorkerCancel = workerCancel
+		go s.notifyWorker.Run(workerCtx)
+	}
+
 	// Start cron scheduler
 	if s.scheduler != nil {
 		if err := s.scheduler.Start(context.Background()); err != nil {
@@ -125,6 +147,10 @@ func (s *Server) Start(host string, port int) error {
 
 // Stop gracefully stops the server
 func (s *Server) Stop(ctx context.Context) error {
+	// Stop notification delivery worker
+	if s.notifyWorkerCancel != nil {
+		s.notifyWorkerCancel()
+	}
 	// Stop cron scheduler
 	if s.scheduler != nil {
 		s.scheduler.Stop()
@@ -421,6 +447,15 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
 	mux.HandleFunc("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
 	mux.HandleFunc("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
+
+	// Notification channels (project-scoped via X-Project header)
+	mux.HandleFunc("GET /api/v1/notification-channels", s.handleListNotificationChannels)
+	mux.HandleFunc("POST /api/v1/notification-channels", s.handleCreateNotificationChannel)
+	mux.HandleFunc("GET /api/v1/notification-channels/{id}", s.handleGetNotificationChannel)
+	mux.HandleFunc("PATCH /api/v1/notification-channels/{id}", s.handleUpdateNotificationChannel)
+	mux.HandleFunc("DELETE /api/v1/notification-channels/{id}", s.handleDeleteNotificationChannel)
+	mux.HandleFunc("POST /api/v1/notification-channels/{id}/test", s.handleTestNotificationChannel)
+	mux.HandleFunc("GET /api/v1/notification-deliveries", s.handleListNotificationDeliveries)
 
 	// Scheduled tasks (project-scoped via X-Project header)
 	mux.HandleFunc("GET /api/v1/scheduled-tasks", s.handleListScheduledTasks)

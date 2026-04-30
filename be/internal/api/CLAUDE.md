@@ -28,6 +28,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_cli_model_check.go` | CLI model health check (POST /api/v1/cli-models/{id}/test) |
 | `handlers_default_template.go` | Default template CRUD (global, no project scope, readonly enforcement) |
 | `handlers_scheduled_tasks.go` | Scheduled task CRUD + run-now + list-runs (project-scoped via X-Project header) |
+| `handlers_notification_channels.go` | Notification channel CRUD + /test + deliveries list (project-scoped via X-Project header); secrets masked in responses |
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/delete/append/remove-items |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
@@ -202,6 +203,15 @@ POST   /api/v1/api-credentials            # secret_ref must start with env:|file
 GET    /api/v1/api-credentials/{id}
 PUT    /api/v1/api-credentials/{id}       # Plaintext literal:* is accepted on input; never returned on output
 DELETE /api/v1/api-credentials/{id}
+
+# Notification channels (require X-Project header)
+GET    /api/v1/notification-channels              # List channels (configs masked)
+POST   /api/v1/notification-channels              # Create; body: {name, kind, enabled?, config?, event_types?}
+GET    /api/v1/notification-channels/{id}         # Get one (config masked)
+PATCH  /api/v1/notification-channels/{id}         # Partial update; masked secrets preserved if echoed back
+DELETE /api/v1/notification-channels/{id}         # Delete
+POST   /api/v1/notification-channels/{id}/test    # Enqueue synthetic test delivery; returns {status:"queued"}
+GET    /api/v1/notification-deliveries            # ?channel_id= (required) + ?limit=; newest first
 
 # Scheduled tasks (require X-Project header)
 GET    /api/v1/scheduled-tasks              # List all scheduled tasks for project

@@ -63,6 +63,7 @@ be/
 │   │   ├── handlers_git.go        # Git commit history endpoints
 │   │   ├── handlers_daily_stats.go # Daily stats endpoint
 │   │   ├── handlers_errors.go     # Error log list endpoint (paginated)
+│   │   ├── handlers_notification_channels.go # Notification channel CRUD + /test + deliveries list
 │   │   └── handlers_logs.go       # Backend log file viewer
 │   ├── ws/                      # WebSocket support (protocol v2)
 │   │   ├── hub.go               # Client management, event log integration, broadcasting
@@ -90,6 +91,13 @@ be/
 │   │   ├── server.go            # Socket listener
 │   │   ├── handler.go           # Request routing
 │   │   └── protocol.go          # JSON-RPC protocol types
+│   ├── notify/                  # Notification dispatch subsystem
+│   │   ├── notify.go            # Dispatcher (ws.Listener): filters 5 events, inserts delivery rows
+│   │   ├── transport.go         # Transport interface, registry, shared http.Client
+│   │   ├── transport_slack.go   # Slack webhook transport (init registers)
+│   │   ├── transport_telegram.go # Telegram Bot API transport (init registers)
+│   │   ├── queue.go             # Worker: drain queue, exponential backoff, WS events
+│   │   └── payload.go           # renderSlack/renderTelegram per event type
 │   ├── service/                 # Business logic layer
 │   │   ├── project.go           # Project operations
 │   │   ├── ticket.go            # Ticket operations
@@ -107,6 +115,7 @@ be/
 │   │   ├── cli_model.go         # CLI model CRUD (global, readonly delete enforcement)
 │   │   ├── global_settings.go   # Global and project-scoped settings (wraps pool.GetConfig/SetConfig/GetProjectConfig/SetProjectConfig)
 │   │   ├── error_service.go     # Error tracking (RecordError + ListErrors)
+│   │   ├── notification.go      # Notification channel CRUD + masking + TestSend
 │   │   ├── findings.go          # Findings operations
 │   │   ├── chain.go             # Chain build, dependency expansion, topo sort
 │   │   ├── chain_append.go      # AppendToChain for running chains
@@ -242,6 +251,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | Package | Documentation | Key Content |
 |---------|--------------|-------------|
 | `internal/scheduler/` | [scheduler/CLAUDE.md](internal/scheduler/CLAUDE.md) | Cron scheduler: lifecycle, dispatch flow, integration with orchestrator |
+| `internal/notify/` | (inline docs) | Notification subsystem: Dispatcher (ws.Listener), Slack/Telegram transports, async retry queue with backoff 15s/60s/300s, secret masking, error tracking on giving_up |
 | `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, findings auto-population, output format. T1 introduces an `ExecutionBackend` seam (`backend.go`). T2 added the provider abstraction + Anthropic streaming impl. T3 wires `apirun.Runner` and `apiBackend` into the seam for text-only API-mode execution; tools/continuation arrive in T4-T5. |
 | `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler, sink (streaming bridge), take-control rejection, low-context save override, stall detection behavior. |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, fan-in rules, callback flow, chain runner |

@@ -69,6 +69,11 @@ const (
 	EventWorkflowPushed              = "workflow.pushed"
 	EventWorkflowPushFailed          = "workflow.push_failed"
 	EventTestEcho                    = "test.echo"
+	EventNotificationChannelCreated  = "notification_channel.created"
+	EventNotificationChannelUpdated  = "notification_channel.updated"
+	EventNotificationChannelDeleted  = "notification_channel.deleted"
+	EventNotificationDelivered       = "notification.delivered"
+	EventNotificationFailed          = "notification.failed"
 )
 
 // Event represents a WebSocket event to broadcast
@@ -130,6 +135,16 @@ type Hub struct {
 
 	// SnapshotProvider builds snapshot data for v2 subscribe-with-cursor
 	snapshotProvider SnapshotProvider
+
+	// listeners receive a copy of each broadcast event (non-blocking fan-out)
+	listeners []Listener
+}
+
+// Listener receives a copy of every broadcast event for out-of-band processing.
+// OnEvent is called from a dedicated goroutine per broadcast — never on the
+// broadcast loop itself — so a slow implementation cannot stall the WS pipeline.
+type Listener interface {
+	OnEvent(*Event)
 }
 
 // SnapshotProvider builds snapshot data for a given subscription scope.
@@ -170,6 +185,12 @@ func (h *Hub) SetSnapshotProvider(sp SnapshotProvider) {
 // GetEventLog returns the event log repo (may be nil).
 func (h *Hub) GetEventLog() *repo.EventLogRepo {
 	return h.eventLog
+}
+
+// RegisterListener adds a Listener that receives a copy of every broadcast event.
+// Must be called before Hub.Run(). Not thread-safe after Run starts.
+func (h *Hub) RegisterListener(l Listener) {
+	h.listeners = append(h.listeners, l)
 }
 
 // Run starts the hub's main loop
@@ -354,6 +375,18 @@ func (h *Hub) broadcastEvent(event *Event) {
 			event.Sequence = seq
 			event.ProtocolVersion = ProtocolVersion
 		}
+	}
+
+	// Fan out to registered listeners in a separate goroutine so a slow
+	// listener cannot stall the WS broadcast pipeline.
+	if len(h.listeners) > 0 {
+		listeners := make([]Listener, len(h.listeners))
+		copy(listeners, h.listeners)
+		go func() {
+			for _, l := range listeners {
+				l.OnEvent(event)
+			}
+		}()
 	}
 
 	h.mu.RLock()

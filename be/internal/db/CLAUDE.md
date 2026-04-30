@@ -332,6 +332,34 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    INDEX idx_schedule_runs_task (scheduled_task_id, triggered_at)   │
 │    INDEX idx_schedule_runs_project (project_id)                      │
 │                                                                      │
+│  NOTIFICATION_CHANNELS                                               │
+│    id          TEXT PRIMARY KEY                                      │
+│    project_id  TEXT NOT NULL (FK → projects.id, CASCADE)             │
+│    name        TEXT NOT NULL                                         │
+│    kind        TEXT NOT NULL CHECK (kind IN ('slack','telegram'))    │
+│    enabled     INTEGER NOT NULL DEFAULT 1                            │
+│    config      TEXT NOT NULL DEFAULT '{}' (JSON: secrets masked)    │
+│    event_types TEXT NOT NULL DEFAULT '[]' (JSON: watched event list) │
+│    created_at  TEXT NOT NULL                                         │
+│    updated_at  TEXT NOT NULL                                         │
+│    INDEX idx_notification_channels_project (project_id)              │
+│                                                                      │
+│  NOTIFICATION_DELIVERIES                                             │
+│    id              TEXT PRIMARY KEY                                  │
+│    channel_id      TEXT NOT NULL (FK → notification_channels.id CASCADE)│
+│    project_id      TEXT NOT NULL                                     │
+│    event_type      TEXT NOT NULL                                     │
+│    payload         TEXT NOT NULL DEFAULT '{}' (JSON: raw event data) │
+│    status          TEXT NOT NULL DEFAULT 'pending'                   │
+│                    CHECK (pending|sent|failed|giving_up)             │
+│    attempts        INTEGER NOT NULL DEFAULT 0                        │
+│    last_error      TEXT NOT NULL DEFAULT ''                          │
+│    next_attempt_at TEXT           (nullable, RFC3339Nano)            │
+│    created_at      TEXT NOT NULL                                     │
+│    updated_at      TEXT NOT NULL                                     │
+│    INDEX idx_notification_deliveries_status (status, next_attempt_at)│
+│    INDEX idx_notification_deliveries_channel (channel_id, created_at DESC)│
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 

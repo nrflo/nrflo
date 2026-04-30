@@ -16,6 +16,7 @@ import (
 	"be/internal/orchestrator"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
+	"be/internal/scheduler"
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/static"
@@ -36,6 +37,7 @@ type Server struct {
 	clock            clock.Clock
 	apiMode          bool
 	cliAdapterFunc   func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
+	scheduler        *scheduler.Scheduler
 }
 
 // NewServer creates a new API server
@@ -50,6 +52,8 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	}
 	orch.PTYManager = ptyMgr
 
+	sched := scheduler.New(pool, orch, hub, clk)
+
 	return &Server{
 		config:       cfg,
 		dataPath:     dataPath,
@@ -61,6 +65,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		ptyManager:   ptyMgr,
 		clock:        clk,
 		apiMode:      apiMode,
+		scheduler:    sched,
 	}
 }
 
@@ -94,6 +99,13 @@ func (s *Server) Start(host string, port int) error {
 	// Start WebSocket hub
 	go s.wsHub.Run()
 
+	// Start cron scheduler
+	if s.scheduler != nil {
+		if err := s.scheduler.Start(context.Background()); err != nil {
+			logger.Info(context.Background(), "scheduler start error", "error", err)
+		}
+	}
+
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
 
@@ -113,6 +125,10 @@ func (s *Server) Start(host string, port int) error {
 
 // Stop gracefully stops the server
 func (s *Server) Stop(ctx context.Context) error {
+	// Stop cron scheduler
+	if s.scheduler != nil {
+		s.scheduler.Stop()
+	}
 	// Cancel all active orchestrations
 	if s.orchestrator != nil {
 		s.orchestrator.StopAll()
@@ -405,6 +421,15 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
 	mux.HandleFunc("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
 	mux.HandleFunc("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
+
+	// Scheduled tasks (project-scoped via X-Project header)
+	mux.HandleFunc("GET /api/v1/scheduled-tasks", s.handleListScheduledTasks)
+	mux.HandleFunc("POST /api/v1/scheduled-tasks", s.handleCreateScheduledTask)
+	mux.HandleFunc("GET /api/v1/scheduled-tasks/{id}", s.handleGetScheduledTask)
+	mux.HandleFunc("PATCH /api/v1/scheduled-tasks/{id}", s.handleUpdateScheduledTask)
+	mux.HandleFunc("DELETE /api/v1/scheduled-tasks/{id}", s.handleDeleteScheduledTask)
+	mux.HandleFunc("GET /api/v1/scheduled-tasks/{id}/runs", s.handleListScheduleRuns)
+	mux.HandleFunc("POST /api/v1/scheduled-tasks/{id}/run-now", s.handleRunScheduledTaskNow)
 
 	// Default templates (global, no project scope)
 	mux.HandleFunc("GET /api/v1/default-templates", s.handleListDefaultTemplates)

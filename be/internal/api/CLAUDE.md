@@ -27,6 +27,7 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_cli_models.go` | CLI model CRUD (global, no project scope, readonly delete enforcement, enabled toggle: 400 on system model, 409 on in-use) |
 | `handlers_cli_model_check.go` | CLI model health check (POST /api/v1/cli-models/{id}/test) |
 | `handlers_default_template.go` | Default template CRUD (global, no project scope, readonly enforcement) |
+| `handlers_scheduled_tasks.go` | Scheduled task CRUD + run-now + list-runs (project-scoped via X-Project header) |
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/delete/append/remove-items |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
@@ -198,6 +199,15 @@ POST   /api/v1/api-credentials            # secret_ref must start with env:|file
 GET    /api/v1/api-credentials/{id}
 PUT    /api/v1/api-credentials/{id}       # Plaintext literal:* is accepted on input; never returned on output
 DELETE /api/v1/api-credentials/{id}
+
+# Scheduled tasks (require X-Project header)
+GET    /api/v1/scheduled-tasks              # List all scheduled tasks for project
+POST   /api/v1/scheduled-tasks              # Create; body: {id?, name, description?, cron_expression, workflows, enabled?}; validates cron + project-scope workflows; 400/409
+GET    /api/v1/scheduled-tasks/{id}         # Get one
+PATCH  /api/v1/scheduled-tasks/{id}         # Partial update; same validations as Create
+DELETE /api/v1/scheduled-tasks/{id}         # Delete (cascades schedule_runs)
+GET    /api/v1/scheduled-tasks/{id}/runs    # Paginated run history (?limit=&offset=)
+POST   /api/v1/scheduled-tasks/{id}/run-now # Dispatch immediately; returns inserted ScheduleRun
 
 # Errors (require X-Project header or ?project= param)
 GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)

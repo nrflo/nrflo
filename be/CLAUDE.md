@@ -35,6 +35,10 @@ be/
 │   │   ├── output.go            # Output monitoring, message formatting
 │   │   ├── template.go          # Template loading, variable expansion
 │   │   └── template_findings.go # Findings expansion, ${PREVIOUS_DATA}, formatting
+│   ├── scheduler/               # Cron-driven scheduled task runner (robfig/cron/v3)
+│   │   ├── scheduler.go         # New/Start/Reload/Stop/RunNow lifecycle
+│   │   ├── scheduler_dispatch.go # dispatch(): fan-out per workflow, update run row, broadcast
+│   │   └── CLAUDE.md            # Package documentation
 │   ├── orchestrator/            # Server-side workflow orchestration
 │   │   ├── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)
 │   │   ├── orchestrator_interactive.go # Interactive start & plan-before-execute pre-step
@@ -231,6 +235,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 
 | Package | Documentation | Key Content |
 |---------|--------------|-------------|
+| `internal/scheduler/` | [scheduler/CLAUDE.md](internal/scheduler/CLAUDE.md) | Cron scheduler: lifecycle, dispatch flow, integration with orchestrator |
 | `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, findings auto-population, output format. T1 introduces an `ExecutionBackend` seam (`backend.go`). T2 added the provider abstraction + Anthropic streaming impl. T3 wires `apirun.Runner` and `apiBackend` into the seam for text-only API-mode execution; tools/continuation arrive in T4-T5. |
 | `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler, sink (streaming bridge), take-control rejection, low-context save override, stall detection behavior. |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, fan-in rules, callback flow, chain runner |

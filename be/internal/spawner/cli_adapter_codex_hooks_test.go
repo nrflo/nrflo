@@ -22,8 +22,8 @@ func TestWriteCodexProfile_ConfigInheritsUserSettings(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if err := WriteCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
-		t.Fatalf("WriteCodexProfile() error: %v", err)
+	if err := writeCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
+		t.Fatalf("writeCodexProfile() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "config.toml"))
 	if err != nil {
@@ -46,8 +46,8 @@ func TestWriteCodexProfile_ConfigInheritsUserSettings(t *testing.T) {
 func TestWriteCodexProfile_EnablesCodexHooksFeature(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
-	if err := WriteCodexProfile(dir, "/custom/nrflo"); err != nil {
-		t.Fatalf("WriteCodexProfile() error: %v", err)
+	if err := writeCodexProfile(dir, "/custom/nrflo"); err != nil {
+		t.Fatalf("writeCodexProfile() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "config.toml"))
 	if err != nil {
@@ -62,7 +62,7 @@ func TestWriteCodexProfile_EnablesCodexHooksFeature(t *testing.T) {
 	}
 }
 
-// TestWriteCodexProfileForSession_TrustsWorkDir verifies that the agent's
+// TestwriteCodexProfileForSession_TrustsWorkDir verifies that the agent's
 // working directory is added to the project trust list. Without this, codex
 // 0.125 blocks on its trust dialog and the agent exits during init when no
 // one answers (the --dangerously-bypass-approvals-and-sandbox flag does NOT
@@ -71,8 +71,8 @@ func TestWriteCodexProfileForSession_TrustsWorkDir(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
 	workDir := "/Users/x/projects/my-app"
-	if err := WriteCodexProfileForSession(dir, "/usr/local/bin/nrflo", "s", "i", "p", workDir); err != nil {
-		t.Fatalf("WriteCodexProfileForSession() error: %v", err)
+	if err := writeCodexProfileForSession(dir, "/usr/local/bin/nrflo", "s", "i", "p", workDir); err != nil {
+		t.Fatalf("writeCodexProfileForSession() error: %v", err)
 	}
 	body, _ := os.ReadFile(filepath.Join(dir, "config.toml"))
 	want := `[projects."/Users/x/projects/my-app"]`
@@ -84,7 +84,7 @@ func TestWriteCodexProfileForSession_TrustsWorkDir(t *testing.T) {
 	}
 }
 
-// TestWriteCodexProfileForSession_SkipsTrustWhenUserHasIt prevents a duplicate
+// TestwriteCodexProfileForSession_SkipsTrustWhenUserHasIt prevents a duplicate
 // `[projects."<path>"]` table when the user's main config already trusts the
 // directory.
 func TestWriteCodexProfileForSession_SkipsTrustWhenUserHasIt(t *testing.T) {
@@ -101,8 +101,8 @@ func TestWriteCodexProfileForSession_SkipsTrustWhenUserHasIt(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if err := WriteCodexProfileForSession(dir, "/usr/local/bin/nrflo", "s", "i", "p", workDir); err != nil {
-		t.Fatalf("WriteCodexProfileForSession() error: %v", err)
+	if err := writeCodexProfileForSession(dir, "/usr/local/bin/nrflo", "s", "i", "p", workDir); err != nil {
+		t.Fatalf("writeCodexProfileForSession() error: %v", err)
 	}
 	body, _ := os.ReadFile(filepath.Join(dir, "config.toml"))
 	count := strings.Count(string(body), `[projects."/Users/x/projects/my-app"]`)
@@ -129,8 +129,8 @@ func TestBuildCodexHookCommand_EnvPrefix(t *testing.T) {
 func TestWriteCodexProfile_NoSeparateHooksFile(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
-	if err := WriteCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
-		t.Fatalf("WriteCodexProfile() error: %v", err)
+	if err := writeCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
+		t.Fatalf("writeCodexProfile() error: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "hooks.json")); !os.IsNotExist(err) {
 		t.Errorf("hooks.json should not exist (codex uses inline config.toml hooks): %v", err)
@@ -152,8 +152,8 @@ func TestWriteCodexProfile_CopiesAuthJSON(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if err := WriteCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
-		t.Fatalf("WriteCodexProfile() error: %v", err)
+	if err := writeCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
+		t.Fatalf("writeCodexProfile() error: %v", err)
 	}
 	got, err := os.ReadFile(filepath.Join(dir, "auth.json"))
 	if err != nil {
@@ -181,8 +181,8 @@ func TestWriteCodexProfile_SkipsFeaturesWhenUserHasIt(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if err := WriteCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
-		t.Fatalf("WriteCodexProfile() error: %v", err)
+	if err := writeCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
+		t.Fatalf("writeCodexProfile() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "config.toml"))
 	if err != nil {
@@ -200,8 +200,8 @@ func TestWriteCodexProfile_SkipsFeaturesWhenUserHasIt(t *testing.T) {
 func TestWriteCodexProfile_NoUserConfig(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
-	if err := WriteCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
-		t.Fatalf("WriteCodexProfile() error: %v", err)
+	if err := writeCodexProfile(dir, "/usr/local/bin/nrflo"); err != nil {
+		t.Fatalf("writeCodexProfile() error: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "config.toml"))
 	if err != nil {
@@ -212,65 +212,103 @@ func TestWriteCodexProfile_NoUserConfig(t *testing.T) {
 	}
 }
 
-// TestBuildCodexHookProfile_DirContainsSessionID verifies the created directory
-// name embeds the processInfo sessionID.
-func TestBuildCodexHookProfile_DirContainsSessionID(t *testing.T) {
+// TestCodexAdapter_PrepareInteractive_DirContainsSessionID verifies the
+// created directory name embeds the processInfo sessionID.
+func TestCodexAdapter_PrepareInteractive_DirContainsSessionID(t *testing.T) {
 	proc := &processInfo{sessionID: "sess-x", doneCh: make(chan struct{})}
-	dir, cleanup, err := BuildCodexHookProfile(proc, "")
+	extras, cleanup, err := (&CodexAdapter{}).PrepareInteractive(InteractivePrepOptions{SessionID: proc.sessionID, WorkflowInstanceID: proc.workflowInstanceID, ProjectID: proc.projectID})
 	if err != nil {
-		t.Fatalf("BuildCodexHookProfile() error: %v", err)
+		t.Fatalf("PrepareInteractive() error: %v", err)
 	}
 	t.Cleanup(cleanup)
 
-	if _, statErr := os.Stat(dir); statErr != nil {
+	if _, statErr := os.Stat(extras.CodexHome); statErr != nil {
 		t.Errorf("profile dir does not exist: %v", statErr)
 	}
-	base := filepath.Base(dir)
+	base := filepath.Base(extras.CodexHome)
 	if !strings.Contains(base, "sess-x") {
 		t.Errorf("dir base %q does not contain sessionID 'sess-x'", base)
 	}
 }
 
-// TestBuildCodexHookProfile_Cleanup verifies that calling the returned cleanup
-// func removes the profile directory.
-func TestBuildCodexHookProfile_Cleanup(t *testing.T) {
+// TestCodexAdapter_PrepareInteractive_Cleanup verifies that calling the
+// returned cleanup func removes the profile directory.
+func TestCodexAdapter_PrepareInteractive_Cleanup(t *testing.T) {
 	proc := &processInfo{sessionID: "sess-cleanup", doneCh: make(chan struct{})}
-	dir, cleanup, err := BuildCodexHookProfile(proc, "")
+	extras, cleanup, err := (&CodexAdapter{}).PrepareInteractive(InteractivePrepOptions{SessionID: proc.sessionID, WorkflowInstanceID: proc.workflowInstanceID, ProjectID: proc.projectID})
 	if err != nil {
-		t.Fatalf("BuildCodexHookProfile() error: %v", err)
+		t.Fatalf("PrepareInteractive() error: %v", err)
 	}
-	if _, statErr := os.Stat(dir); statErr != nil {
+	if _, statErr := os.Stat(extras.CodexHome); statErr != nil {
 		t.Fatalf("dir does not exist before cleanup: %v", statErr)
 	}
 	cleanup()
-	if _, statErr := os.Stat(dir); !os.IsNotExist(statErr) {
-		t.Errorf("cleanup() did not remove dir %q (stat: %v)", dir, statErr)
+	if _, statErr := os.Stat(extras.CodexHome); !os.IsNotExist(statErr) {
+		t.Errorf("cleanup() did not remove dir %q (stat: %v)", extras.CodexHome, statErr)
 	}
 }
 
-// TestBuildCodexHookProfile_CleanupIdempotent verifies that calling cleanup twice
-// does not panic.
-func TestBuildCodexHookProfile_CleanupIdempotent(t *testing.T) {
+// TestCodexAdapter_PrepareInteractive_CleanupIdempotent verifies that calling
+// cleanup twice does not panic.
+func TestCodexAdapter_PrepareInteractive_CleanupIdempotent(t *testing.T) {
 	proc := &processInfo{sessionID: "sess-idempotent", doneCh: make(chan struct{})}
-	_, cleanup, err := BuildCodexHookProfile(proc, "")
+	_, cleanup, err := (&CodexAdapter{}).PrepareInteractive(InteractivePrepOptions{SessionID: proc.sessionID, WorkflowInstanceID: proc.workflowInstanceID, ProjectID: proc.projectID})
 	if err != nil {
-		t.Fatalf("BuildCodexHookProfile() error: %v", err)
+		t.Fatalf("PrepareInteractive() error: %v", err)
 	}
 	cleanup()
 	cleanup() // second call must not panic
 }
 
-// TestBuildCodexHookProfile_FailureReturnsError verifies that BuildCodexHookProfile
-// returns an error when the temp directory cannot be created, and the returned
-// cleanup is a no-op (does not panic).
-func TestBuildCodexHookProfile_FailureReturnsError(t *testing.T) {
+// TestCodexAdapter_PrepareInteractive_FailureReturnsError verifies that
+// PrepareInteractive returns an error when the temp directory cannot be
+// created, and the returned cleanup is a no-op (does not panic).
+func TestCodexAdapter_PrepareInteractive_FailureReturnsError(t *testing.T) {
 	t.Setenv("TMPDIR", "/nonexistent-nrflo-test-dir-xyz")
 	proc := &processInfo{sessionID: "sess-fail", doneCh: make(chan struct{})}
-	_, cleanup, err := BuildCodexHookProfile(proc, "")
+	_, cleanup, err := (&CodexAdapter{}).PrepareInteractive(InteractivePrepOptions{SessionID: proc.sessionID, WorkflowInstanceID: proc.workflowInstanceID, ProjectID: proc.projectID})
 	if err == nil {
 		cleanup()
-		t.Error("BuildCodexHookProfile() should return error when TMPDIR is invalid")
+		t.Error("PrepareInteractive() should return error when TMPDIR is invalid")
 		return
 	}
 	cleanup() // must not panic even on error path
+}
+
+// TestCodexAdapter_PrepareInteractive_HookEvents verifies the returned
+// InteractiveExtras carries one HookEvent per canonical codex event with the
+// env-prefixed nrflo command.
+func TestCodexAdapter_PrepareInteractive_HookEvents(t *testing.T) {
+	proc := &processInfo{
+		sessionID:          "sess-h",
+		workflowInstanceID: "inst-h",
+		projectID:          "proj-h",
+		doneCh:             make(chan struct{}),
+	}
+	extras, cleanup, err := (&CodexAdapter{}).PrepareInteractive(InteractivePrepOptions{SessionID: proc.sessionID, WorkflowInstanceID: proc.workflowInstanceID, ProjectID: proc.projectID})
+	if err != nil {
+		t.Fatalf("PrepareInteractive() error: %v", err)
+	}
+	t.Cleanup(cleanup)
+	if got, want := len(extras.Hooks), len(codexHookEvents); got != want {
+		t.Fatalf("hook events count = %d, want %d", got, want)
+	}
+	wantEvents := map[string]bool{}
+	for _, ev := range codexHookEvents {
+		wantEvents[ev] = true
+	}
+	for _, h := range extras.Hooks {
+		if !wantEvents[h.Event] {
+			t.Errorf("unexpected hook event %q", h.Event)
+		}
+		if !strings.Contains(h.Command, "NRF_SESSION_ID=sess-h") {
+			t.Errorf("hook command missing session id: %q", h.Command)
+		}
+		if !strings.Contains(h.Command, "agent record-event") {
+			t.Errorf("hook command missing nrflo agent record-event: %q", h.Command)
+		}
+		if h.TimeoutSec != 5 {
+			t.Errorf("hook timeout = %d, want 5", h.TimeoutSec)
+		}
+	}
 }

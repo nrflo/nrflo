@@ -113,6 +113,21 @@ func (a *OpencodeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) 
 	return cmd
 }
 
+// PrepareInteractive returns zero extras — Opencode never reaches the
+// interactive backend (SupportsInteractive=false), so this is unreachable in
+// production. Implemented only to satisfy the CLIAdapter contract.
+func (a *OpencodeAdapter) PrepareInteractive(_ InteractivePrepOptions) (InteractiveExtras, func(), error) {
+	return InteractiveExtras{}, func() {}, nil
+}
+
+// DeliversPromptInline returns false (unreachable; opencode falls back to
+// cliBackend).
+func (a *OpencodeAdapter) DeliversPromptInline() bool { return false }
+
+// NeedsTerminalQueryReplies returns false (unreachable; opencode falls back to
+// cliBackend).
+func (a *OpencodeAdapter) NeedsTerminalQueryReplies() bool { return false }
+
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil
 }

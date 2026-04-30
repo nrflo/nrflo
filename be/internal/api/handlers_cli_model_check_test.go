@@ -34,6 +34,11 @@ func (m *mockCLIAdapter) SupportsInteractive() bool                             
 func (m *mockCLIAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
 	return nil
 }
+func (m *mockCLIAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
+	return spawner.InteractiveExtras{}, func() {}, nil
+}
+func (m *mockCLIAdapter) DeliversPromptInline() bool      { return false }
+func (m *mockCLIAdapter) NeedsTerminalQueryReplies() bool { return false }
 
 func mockGetCLIAdapter(cliType string) (spawner.CLIAdapter, error) {
 	return &mockCLIAdapter{name: cliType}, nil
@@ -221,6 +226,11 @@ func (a *failStartAdapter) SupportsInteractive() bool                           
 func (a *failStartAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
 	return nil
 }
+func (a *failStartAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
+	return spawner.InteractiveExtras{}, func() {}, nil
+}
+func (a *failStartAdapter) DeliversPromptInline() bool      { return false }
+func (a *failStartAdapter) NeedsTerminalQueryReplies() bool { return false }
 
 // hangingAdapter returns a command that runs indefinitely (sleep 999).
 // Used to test the timeout/kill path without waiting 40s: caller provides a
@@ -239,6 +249,11 @@ func (a *hangingAdapter) SupportsInteractive() bool                             
 func (a *hangingAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
 	return nil
 }
+func (a *hangingAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
+	return spawner.InteractiveExtras{}, func() {}, nil
+}
+func (a *hangingAdapter) DeliversPromptInline() bool      { return false }
+func (a *hangingAdapter) NeedsTerminalQueryReplies() bool { return false }
 
 // TestHandleTestCLIModel_TimeoutMessage exercises the timeout code path:
 // the response must be success=false with an error containing "40s", and the

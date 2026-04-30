@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -156,6 +157,40 @@ func removeEnvKey(env []string, prefix string) []string {
 	}
 	return out
 }
+
+// PrepareInteractive creates a per-session CODEX_HOME profile dir (auth +
+// model/personality + workDir trust + [features] codex_hooks=true) and builds
+// the hook event list the backend must inject via repeated `-c hooks.<event>=…`
+// flags. Returns a cleanup func that removes the temp dir (best-effort).
+func (a *CodexAdapter) PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error) {
+	dir, err := os.MkdirTemp("", "nrflo-codex-"+opts.SessionID+"-*")
+	if err != nil {
+		return InteractiveExtras{}, func() {}, err
+	}
+	if err := writeCodexProfileForSession(dir, resolvedNrfloPath(), opts.SessionID, opts.WorkflowInstanceID, opts.ProjectID, opts.WorkDir); err != nil {
+		_ = os.RemoveAll(dir)
+		return InteractiveExtras{}, func() {}, fmt.Errorf("write codex profile: %w", err)
+	}
+
+	cmd := buildCodexHookCommand(resolvedNrfloPath(), opts.SessionID, opts.WorkflowInstanceID, opts.ProjectID)
+	hooks := make([]HookEvent, 0, len(codexHookEvents))
+	for _, ev := range codexHookEvents {
+		hooks = append(hooks, HookEvent{Event: ev, Command: cmd, TimeoutSec: 5})
+	}
+	cleanup := func() { _ = os.RemoveAll(dir) }
+	return InteractiveExtras{CodexHome: dir, Hooks: hooks}, cleanup, nil
+}
+
+// DeliversPromptInline returns true — codex receives the prompt as the final
+// argv positional (avoids the TUI input-box wrapping panic at
+// `tui/src/wrapping.rs:52` on multi-KB pasted bodies). The backend skips PTY
+// stdin prompt delivery for codex.
+func (a *CodexAdapter) DeliversPromptInline() bool { return true }
+
+// NeedsTerminalQueryReplies returns true — codex's TUI sends DSR/DA/kitty/OSC
+// capability queries during init and bails when no replies arrive. The backend
+// PTY ferry must auto-answer them.
+func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 
 func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil

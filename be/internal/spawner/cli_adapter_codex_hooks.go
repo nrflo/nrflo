@@ -7,49 +7,26 @@ import (
 	"strings"
 )
 
-// BuildCodexHookProfile creates a temporary CODEX_HOME directory wired with
-// nrflo telemetry hooks. The profile inherits the user's auth.json and
-// config.toml (model, personality, project trust list) so the agent runs with
-// the same identity and defaults as a normal codex invocation. workDir is
-// pre-trusted so codex doesn't block on its trust dialog. Returns the dir
-// path, a cleanup func, and any error. cleanup is best-effort RemoveAll.
-//
-// Hooks themselves are NOT registered in this profile's config.toml — codex
-// 0.125's TUI ignores `<CODEX_HOME>/config.toml` hooks in PTY contexts. They
-// are injected via repeated `-c hooks.<event>=…` flags from
-// CodexAdapter.BuildInteractiveCommand instead. The profile only needs to
-// carry: user auth, user model/personality settings, the workDir trust entry,
-// and `[features] codex_hooks = true` (required for the hook subsystem).
-func BuildCodexHookProfile(proc *processInfo, workDir string) (dir string, cleanup func(), err error) {
-	dir, err = os.MkdirTemp("", "nrflo-codex-"+proc.sessionID+"-*")
-	if err != nil {
-		return "", func() {}, err
-	}
-	if err = WriteCodexProfileForSession(dir, resolvedNrfloPath(), proc.sessionID, proc.workflowInstanceID, proc.projectID, workDir); err != nil {
-		_ = os.RemoveAll(dir)
-		return "", func() {}, fmt.Errorf("write codex profile: %w", err)
-	}
-	return dir, func() { _ = os.RemoveAll(dir) }, nil
+// codex hook profile + hook command helpers — package-internal, called only
+// from cli_adapter_codex.go (PrepareInteractive). Codex's TUI in PTY contexts
+// ignores `<CODEX_HOME>/config.toml` hook tables entirely, so this profile
+// only carries auth, model/personality, the workDir trust entry, and the
+// `[features] codex_hooks = true` flag. Hooks themselves are injected via
+// repeated `-c hooks.<event>=…` flags from BuildInteractiveCommand.
+
+// writeCodexProfile is a convenience wrapper for tests that don't need
+// per-session env injection.
+func writeCodexProfile(dir, nrfloPath string) error {
+	return writeCodexProfileForSession(dir, nrfloPath, "", "", "", "")
 }
 
-// WriteCodexProfile is a convenience wrapper for tests that don't need
-// per-session env injection. Production callers go through
-// WriteCodexProfileForSession.
-func WriteCodexProfile(dir, nrfloPath string) error {
-	return WriteCodexProfileForSession(dir, nrfloPath, "", "", "", "")
-}
-
-// WriteCodexProfileForSession writes config.toml and copies the user's
+// writeCodexProfileForSession writes config.toml and copies the user's
 // ~/.codex/auth.json (when present) so the agent stays logged in. The user's
 // existing config.toml is preserved verbatim with `[[hooks.…]]` blocks
 // stripped (those would compete with our `-c`-injected hooks), `[features]
 // codex_hooks = true` ensured, and a `[projects."<workDir>"]` trust entry
 // appended so codex doesn't block on its trust dialog.
-//
-// The hook command itself (used by CodexAdapter.BuildInteractiveCommand to
-// build `-c hooks.<event>=…` flags) is built by buildCodexHookCommand below,
-// not written here.
-func WriteCodexProfileForSession(dir, nrfloPath, sessionID, instanceID, projectID, workDir string) error {
+func writeCodexProfileForSession(dir, nrfloPath, sessionID, instanceID, projectID, workDir string) error {
 	_ = sessionID
 	_ = instanceID
 	_ = projectID
@@ -145,3 +122,7 @@ func userCodexHome() string {
 	}
 	return ".codex"
 }
+
+// codexHookEvents is the canonical list of codex hook events the spawner wires
+// up for interactive sessions. Used by CodexAdapter.PrepareInteractive.
+var codexHookEvents = []string{"PreToolUse", "PostToolUse", "SessionStart", "UserPromptSubmit", "Stop"}

@@ -27,8 +27,9 @@ func globSet(pattern string) map[string]bool {
 }
 
 // TestInteractiveBackend_CodexBuildsProfile verifies that Start() for a Codex
-// adapter calls BuildCodexHookProfile (profile dir created in tempdir) and that
-// the dir is removed when the PTY session closes (codexCleanup fired in sess.Done).
+// adapter calls CodexAdapter.PrepareInteractive (profile dir created in tempdir)
+// and that the dir is removed when the PTY session closes (prepCleanup fires
+// in sess.Done).
 //
 // NOTE: The production code passes the original env (not cmd.Env) to
 // ptyMgr.Create, so CODEX_HOME is present in cmd.Env but does not reach the
@@ -76,7 +77,7 @@ func TestInteractiveBackend_CodexBuildsProfile(t *testing.T) {
 		}
 	}
 	if codexHome == "" {
-		t.Fatal("BuildCodexHookProfile not called — no new profile dir found matching " + pattern)
+		t.Fatal("CodexAdapter.PrepareInteractive not called — no new profile dir found matching " + pattern)
 	}
 
 	// Profile dir must contain config.toml (hooks live inline; no hooks.json).
@@ -84,7 +85,7 @@ func TestInteractiveBackend_CodexBuildsProfile(t *testing.T) {
 		t.Errorf("profile dir missing config.toml: %v", err)
 	}
 
-	// Close the session so the sess.Done() goroutine fires codexCleanup.
+	// Close the session so the sess.Done() goroutine fires prepCleanup.
 	mgr.mu.Lock()
 	sess := mgr.sessions[sessionID]
 	mgr.mu.Unlock()
@@ -166,7 +167,7 @@ func TestInteractiveBackend_ClaudeUnaffected_NoCodexHome(t *testing.T) {
 }
 
 // TestInteractiveBackend_CodexProfileFailureFallsThrough verifies that Start()
-// succeeds even when BuildCodexHookProfile fails: a warning is logged but the
+// succeeds even when CodexAdapter.PrepareInteractive fails: a warning is logged but the
 // spawn continues without CODEX_HOME. No profile dir is left behind.
 func TestInteractiveBackend_CodexProfileFailureFallsThrough(t *testing.T) {
 	// Force os.MkdirTemp to fail by pointing TMPDIR at a non-existent path.
@@ -227,7 +228,7 @@ func TestInteractiveBackend_CodexCleanup_OnPTYCreateError(t *testing.T) {
 	after, _ := filepath.Glob(pattern)
 	for _, m := range after {
 		if !before[m] {
-			t.Errorf("codexCleanup not called on PTY create error; new dir remains: %s", m)
+			t.Errorf("prepCleanup not called on PTY create error; new dir remains: %s", m)
 		}
 	}
 }

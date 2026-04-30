@@ -17,7 +17,13 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │    ├── SupportsSystemPromptFile() bool                              │
 │    ├── SupportsResume() bool                                        │
 │    ├── UsesStdinPrompt() bool                                       │
-│    └── BuildResumeCommand(opts ResumeOptions) *exec.Cmd             │
+│    ├── BuildResumeCommand(opts ResumeOptions) *exec.Cmd             │
+│    ├── SupportsInteractive() bool                                   │
+│    ├── BuildInteractiveCommand(InteractiveSpawnOptions) *exec.Cmd   │
+│    ├── PrepareInteractive(InteractivePrepOptions)                   │
+│    │      → (InteractiveExtras, cleanup func(), error)              │
+│    ├── DeliversPromptInline() bool                                  │
+│    └── NeedsTerminalQueryReplies() bool                             │
 │                                                                      │
 │  Implementations:                                                    │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -233,20 +239,23 @@ Codex does not support `--settings`. Hook telemetry is delivered via two coopera
 
 **Profile dir** (per-session CODEX_HOME): carries auth, model/personality settings, and a workDir trust entry so codex doesn't block on its trust dialog or run unauthenticated. Hooks themselves are NOT written to this profile — codex 0.125's TUI ignores `<CODEX_HOME>/config.toml` hook tables in PTY contexts (verified empirically across many configs).
 
-`BuildCodexHookProfile(proc *processInfo, workDir string) (dir string, cleanup func(), err error)` (`codex_hook_setup.go`):
-- Creates `os.MkdirTemp("", "nrflo-codex-<sessionID>-*")`
-- Delegates to `WriteCodexProfileForSession(dir, resolvedNrfloPath(), proc.sessionID, proc.workflowInstanceID, proc.projectID, workDir)`
-- Returns a cleanup func that calls `os.RemoveAll(dir)` (best-effort)
+`(*CodexAdapter).PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error)` (`cli_adapter_codex.go`):
+- Creates `os.MkdirTemp("", "nrflo-codex-<SessionID>-*")`
+- Delegates to `writeCodexProfileForSession(dir, resolvedNrfloPath(), opts.SessionID, opts.WorkflowInstanceID, opts.ProjectID, opts.WorkDir)`
+- Builds the `[]HookEvent` list (one entry per `codexHookEvents` event, env-prefixed nrflo command)
+- Returns `InteractiveExtras{CodexHome: dir, Hooks: hooks}` plus a cleanup func that calls `os.RemoveAll(dir)` (best-effort)
 - On profile write failure, removes the dir before returning the error
 
-`WriteCodexProfileForSession(dir, nrfloPath, sessionID, instanceID, projectID, workDir string) error`:
+The profile/hook helpers themselves live in `cli_adapter_codex_hooks.go` as package-internal functions (lowercase): `writeCodexProfile`, `writeCodexProfileForSession`, `buildCodexHookCommand`, `stripHookTables`, `hasFeaturesTable`, `hasProjectTrust`, `userCodexHome`, plus the `codexHookEvents` slice — used only by `CodexAdapter.PrepareInteractive`.
+
+`writeCodexProfileForSession(dir, nrfloPath, sessionID, instanceID, projectID, workDir string) error`:
 - Reads the user's `~/.codex/config.toml` (when present), strips any `[[hooks.…]]` / `[hooks.…]` blocks (so user-config hooks don't compete with our `-c`-injected ones), and writes the rest into `<dir>/config.toml` verbatim.
 - Ensures `[features] codex_hooks = true` is present (required for the codex_hooks feature to be enabled; appended only if user config doesn't already declare it).
 - Appends `[projects."<workDir>"] trust_level = "trusted"` so codex doesn't show its trust dialog (the `--dangerously-bypass-approvals-and-sandbox` flag does NOT skip the trust prompt).
 - Copies the user's `~/.codex/auth.json` into the per-session dir so the spawned codex stays logged in.
 - No `hooks.json` is written — codex 0.125 does not consume it.
 
-**Hook injection** (`-c hooks.<event>=…`): `CodexAdapter.BuildInteractiveCommand` translates `opts.Hooks` (a `[]HookEvent` populated by `backend_interactive.go`) into repeated `-c` flags with inline-TOML array-of-tables values:
+**Hook injection** (`-c hooks.<event>=…`): `CodexAdapter.BuildInteractiveCommand` translates `opts.Hooks` (a `[]HookEvent` populated upstream by `CodexAdapter.PrepareInteractive`, threaded through `InteractiveExtras.Hooks`) into repeated `-c` flags with inline-TOML array-of-tables values:
 
 ```
 -c hooks.SessionStart=[{matcher="*",hooks=[{type="command",command="…",timeout=5}]}]
@@ -264,11 +273,13 @@ Other codex flags relevant to interactive spawn:
 - `-c check_for_update_on_startup=false` — prevents codex from running `brew upgrade --cask codex` mid-session (which would consume the run as a self-upgrade)
 - `--dangerously-bypass-approvals-and-sandbox` — skips command approval prompts (does NOT bypass the project trust dialog — that's why we add the trust entry to the profile)
 
-`backend_interactive.go` wiring:
-- If `b.adapter.Name() == "codex"`: call `BuildCodexHookProfile(proc, workDir)`; on error log via `b.s.warnAgent` and keep empty `CodexHome`; on success set `opts.CodexHome` and stash cleanup
-- Build `opts.Hooks` for codex by calling `buildCodexHookCommand(...)` and registering one `HookEvent` per event (`PreToolUse`, `PostToolUse`, `SessionStart`, `UserPromptSubmit`, `Stop`)
-- On `b.ptyMgr.Create` error: call `codexCleanup()` before returning
-- In `<-sess.Done()` goroutine: call `codexCleanup()` after suffix file removal
+`backend_interactive.go` wiring (adapter-name agnostic — no `Name() == "codex"` branches):
+- Calls `b.adapter.PrepareInteractive(InteractivePrepOptions{SessionID, WorkflowInstanceID, ProjectID, WorkDir})`; on error logs via `b.s.warnAgent` and continues with zero extras. Cleanup func is non-nil even on error (defensive).
+- Sets `opts.CodexHome = extras.CodexHome` and `opts.Hooks = extras.Hooks` unconditionally (zero values for non-codex adapters).
+- Selects prompt delivery via `b.adapter.DeliversPromptInline()`: when true, the backend passes an empty body to `deliverPrompt` (codex receives the prompt via argv positional in `BuildInteractiveCommand`); when false, the backend writes the prompt to PTY stdin after the readiness delay (Claude).
+- Selects PTY-stream terminal-query auto-replies via `b.adapter.NeedsTerminalQueryReplies()`: passed as a bool to `ferryPTYOutput`. True for codex (TUI sends DSR/DA/kitty/OSC probes during init); false for claude (skips the responder entirely).
+- On `b.ptyMgr.Create` error: calls `prepCleanup()` before returning.
+- In `<-sess.Done()` goroutine: calls `prepCleanup()` after suffix file removal.
 
 `CodexAdapter.BuildInteractiveCommand`:
 - Strips any pre-existing `CODEX_HOME=` from `opts.Env` before appending ours (macOS getenv returns first match; appended duplicates lose to anything inherited via shell)
@@ -277,9 +288,23 @@ Other codex flags relevant to interactive spawn:
 
 `resolvedNrfloPath()` is shared with `hooks_settings.go` — no duplication.
 
+### CLIAdapter Interactive Surface
+
+The interactive sub-surface on `CLIAdapter` makes per-CLI divergence live entirely in the adapter file:
+
+| Method | Claude | Codex | Opencode |
+|--------|--------|-------|----------|
+| `SupportsInteractive()` | true | true | false (falls back to `cliBackend`) |
+| `BuildInteractiveCommand(opts)` | --settings + suffix file | argv prompt + `-c hooks…` | unreachable (interface contract only) |
+| `PrepareInteractive(opts)` | zero extras, noop cleanup | profile dir + hook list | zero extras, noop cleanup |
+| `DeliversPromptInline()` | false | true | false |
+| `NeedsTerminalQueryReplies()` | false | true | false |
+
+Adding a new interactive CLI: implement these five methods in `cli_adapter_<name>.go` and register in `GetCLIAdapter`. No changes required to `backend_interactive.go`.
+
 ### Output Ferry
 
-`ferryPTYOutput(spawner, proc, sess, adapterName)` runs in a goroutine reading PTY stdout. Bytes are always dropped — visibility comes from hook events forwarded via `nrflo agent record-event`; the raw TUI stream is noise (cursor escapes, redraws, status bars). `proc.lastMessageTime` is bumped on each chunk under `messagesMutex` so stall detection doesn't fire while the agent is redrawing. Only Claude and Codex reach this code path today (Opencode falls back to cliBackend; see Backend Selection above). The `adapterName` parameter is unused but retained for future adapters that may want a different policy.
+`ferryPTYOutput(spawner, proc, sess, respondToQueries bool)` runs in a goroutine reading PTY stdout. Bytes are always dropped — visibility comes from hook events forwarded via `nrflo agent record-event`; the raw TUI stream is noise (cursor escapes, redraws, status bars). `proc.lastMessageTime` is bumped on each chunk under `messagesMutex` so stall detection doesn't fire while the agent is redrawing. Only Claude and Codex reach this code path today (Opencode falls back to cliBackend; see Backend Selection above). When `respondToQueries == true` (codex), the chunk is scanned for terminal capability queries and canned replies are written back to the PTY — see `respondToTerminalQueries`.
 
 ### Context Tracking (Codex Interactive)
 

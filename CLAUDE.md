@@ -106,6 +106,20 @@ Root `CLAUDE.md` contains only project-level information (architecture principle
 - Frontend module details → `ui/src/<module>/CLAUDE.md`
 - DB schema, full API listings, spawner internals, etc. must NOT be duplicated in root — use cross-references instead.
 
+### 6. Polymorphism lives in the implementation, not the call site
+
+When you find yourself writing `if x.Name() == "foo"` (or any equivalent type/name-string switch) at a call site that already holds a polymorphic interface, **push the divergence into the interface** — don't accumulate name-checks at the call site.
+
+- One `if name == "x"` is a paper cut.
+- Three is a structural problem — the interface is missing a method.
+- Four guarantees the next contributor adds a fifth.
+
+When you spot the second name-string branch on the same dispatcher, stop and extend the interface (or extract a sub-interface) so each implementation owns its divergence in its own file. Don't ship "I'll clean it up later"; later becomes a fifth branch.
+
+Applies to all polymorphic seams: CLI adapters, execution backends, providers, repos, services. Generic code must not reach back into a name-tag check; the interface decides.
+
+Concrete prior case: codex-only setup leaked into `backend_interactive.go` as three `b.adapter.Name() == "codex"` branches; resolved by extending `CLIAdapter` with `PrepareInteractive` / `DeliversPromptInline` / `NeedsTerminalQueryReplies` so codex specifics live entirely in `cli_adapter_codex*.go`.
+
 ## Key Files
 
 | File | Purpose |

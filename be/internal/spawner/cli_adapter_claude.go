@@ -93,6 +93,21 @@ func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 	return cmd
 }
 
+// PrepareInteractive returns zero extras and a noop cleanup — Claude needs no
+// per-session profile dir or out-of-band hook events; --settings JSON is set
+// directly on InteractiveSpawnOptions by the backend.
+func (a *ClaudeAdapter) PrepareInteractive(_ InteractivePrepOptions) (InteractiveExtras, func(), error) {
+	return InteractiveExtras{}, func() {}, nil
+}
+
+// DeliversPromptInline returns false — Claude's prompt body is written to PTY
+// stdin by the backend after the readiness delay.
+func (a *ClaudeAdapter) DeliversPromptInline() bool { return false }
+
+// NeedsTerminalQueryReplies returns false — Claude's TUI does not probe the
+// host terminal during init, so the PTY ferry skips the canned-reply responder.
+func (a *ClaudeAdapter) NeedsTerminalQueryReplies() bool { return false }
+
 func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 	args := []string{
 		"--resume", opts.SessionID,

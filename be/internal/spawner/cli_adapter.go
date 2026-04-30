@@ -41,6 +41,43 @@ type CLIAdapter interface {
 	// Unlike BuildCommand, it omits all batch/output-format flags so the CLI
 	// runs in its normal interactive terminal UI mode.
 	BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd
+
+	// PrepareInteractive performs adapter-owned spawn-time setup for interactive
+	// runs (e.g., codex's per-session CODEX_HOME profile dir + hook event list).
+	// Returns extras that the backend forwards into InteractiveSpawnOptions, a
+	// cleanup func (always non-nil; safe to call on the error path and from the
+	// wait goroutine), and any error. Adapters with no setup return zero
+	// InteractiveExtras and a noop cleanup.
+	PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error)
+
+	// DeliversPromptInline returns true when the adapter passes the rendered
+	// prompt to the CLI itself (e.g., codex via argv positional). When false,
+	// the backend writes the prompt body to PTY stdin after the readiness delay.
+	DeliversPromptInline() bool
+
+	// NeedsTerminalQueryReplies returns true when the CLI's TUI sends DSR/DA/
+	// kitty/OSC capability queries during init that must be auto-answered for
+	// the TUI to proceed (codex). Adapters that don't probe (claude) return
+	// false so the responder is skipped on their PTY ferry.
+	NeedsTerminalQueryReplies() bool
+}
+
+// InteractiveExtras carries adapter-owned spawn-time outputs that the backend
+// forwards into InteractiveSpawnOptions. Fields are zero for adapters with no
+// extras.
+type InteractiveExtras struct {
+	CodexHome string      // per-session CODEX_HOME dir (codex only)
+	Hooks     []HookEvent // event-keyed hook commands (codex only)
+}
+
+// InteractivePrepOptions carries the per-spawn context the adapter needs for
+// PrepareInteractive. Kept as a struct of explicit fields so the interface
+// doesn't leak the unexported processInfo type to external implementers.
+type InteractivePrepOptions struct {
+	SessionID          string
+	WorkflowInstanceID string
+	ProjectID          string
+	WorkDir            string
 }
 
 // InteractiveSpawnOptions contains parameters for building an interactive PTY command.

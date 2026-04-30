@@ -53,24 +53,17 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		prep.opts.SettingsJSON,
 	)
 
-	codexCleanup := func() {}
-	var codexHome string
-	if b.adapter.Name() == "codex" {
-		dir, cleanup, err := BuildCodexHookProfile(proc, workDir)
-		if err != nil {
-			b.s.warnAgent(proc, "codex hook profile build failed: "+err.Error())
-		} else {
-			codexHome = dir
-			codexCleanup = cleanup
-		}
+	extras, prepCleanup, err := b.adapter.PrepareInteractive(InteractivePrepOptions{
+		SessionID:          proc.sessionID,
+		WorkflowInstanceID: proc.workflowInstanceID,
+		ProjectID:          proc.projectID,
+		WorkDir:            workDir,
+	})
+	if err != nil {
+		b.s.warnAgent(proc, "interactive prep failed: "+err.Error())
 	}
-
-	var hooks []HookEvent
-	if b.adapter.Name() == "codex" {
-		hookCmd := buildCodexHookCommand(resolvedNrfloPath(), proc.sessionID, proc.workflowInstanceID, proc.projectID)
-		for _, ev := range []string{"PreToolUse", "PostToolUse", "SessionStart", "UserPromptSubmit", "Stop"} {
-			hooks = append(hooks, HookEvent{Event: ev, Command: hookCmd, TimeoutSec: 5})
-		}
+	if prepCleanup == nil {
+		prepCleanup = func() {}
 	}
 
 	opts := InteractiveSpawnOptions{
@@ -81,9 +74,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		Env:              env,
 		SystemPromptFile: prep.suffixFile, // non-empty for Claude (written by prepareSpawn)
 		SettingsJSON:     settingsJSON,
-		CodexHome:        codexHome,
+		CodexHome:        extras.CodexHome,
 		Prompt:           prep.prompt, // Codex pre-loads via argv; other adapters ignore
-		Hooks:            hooks,       // Codex translates to repeated `-c hooks.<event>=…`; others ignore
+		Hooks:            extras.Hooks,
 	}
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)
@@ -113,23 +106,23 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		if prep.suffixFile != "" {
 			os.Remove(prep.suffixFile)
 		}
-		codexCleanup()
+		prepCleanup()
 		return fmt.Errorf("cli_interactive: pty create: %w", err)
 	}
 	proc.pid = sess.Pid()
 
-	// Deliver prompt body to PTY after readiness delay. Codex receives the
-	// prompt via argv positional (see CodexAdapter.BuildInteractiveCommand —
-	// avoids the TUI input-box wrapping panic on long bodies); pass empty
-	// body so deliverPrompt is a no-op for codex.
+	// Deliver prompt body to PTY after readiness delay. Adapters that deliver
+	// the prompt themselves (codex, via argv positional) get an empty body so
+	// deliverPrompt is a no-op for them.
 	deliveryBody := prep.prompt
-	if b.adapter.Name() == "codex" {
+	if b.adapter.DeliversPromptInline() {
 		deliveryBody = ""
 	}
 	go deliverPrompt(b.s, proc, sess, deliveryBody, b.adapter.Name(), proc.sessionStartCh, proc.firstByteCh)
 
-	// Ferry PTY output to the spawner's message tracker.
-	go ferryPTYOutput(b.s, proc, sess, b.adapter.Name())
+	// Ferry PTY output to the spawner's message tracker. Auto-answer terminal
+	// capability queries only for adapters that need them (codex).
+	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies())
 
 	// Wait goroutine: close doneCh when PTY session exits, clean up temp files.
 	doneCh := proc.doneCh
@@ -146,7 +139,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		if suffixPath != "" {
 			os.Remove(suffixPath)
 		}
-		codexCleanup()
+		prepCleanup()
 	}()
 
 	return nil

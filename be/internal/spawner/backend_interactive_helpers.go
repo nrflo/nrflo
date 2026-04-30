@@ -128,11 +128,10 @@ func mergeInteractiveSettings(safetyJSON, hooksJSON string) string {
 // while the agent is actively redrawing. Returns when the session closes.
 //
 // Terminal capability queries (DSR, DA, kitty keyboard, OSC color) are
-// auto-answered by writing canned replies back to the PTY. Without this
-// codex's TUI bails during init when its probes time out unanswered (claude
-// doesn't probe so it's unaffected). See respondToTerminalQueries.
-func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, adapterName string) {
-	_ = adapterName
+// auto-answered when respondToQueries is true (codex's TUI bails during init
+// otherwise). Adapters that don't probe (claude) pass false to skip the
+// scan entirely. See respondToTerminalQueries.
+func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respondToQueries bool) {
 	buf := make([]byte, 4096)
 	for {
 		n, err := sess.Read(buf)
@@ -148,8 +147,10 @@ func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, adapter
 			proc.hasReceivedMessage = true
 			proc.messagesMutex.Unlock()
 
-			if reply := respondToTerminalQueries(buf[:n]); len(reply) > 0 {
-				_, _ = sess.Write(reply)
+			if respondToQueries {
+				if reply := respondToTerminalQueries(buf[:n]); len(reply) > 0 {
+					_, _ = sess.Write(reply)
+				}
 			}
 		}
 		if err != nil {

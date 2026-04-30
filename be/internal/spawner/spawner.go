@@ -802,6 +802,13 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		promptBody = suffix + "\n\n" + prompt
 	}
 
+	// Backends that consume `prep.prompt` directly (cliInteractiveBackend
+	// passing the body to PTY stdin or — for codex — to argv) must see the
+	// suffix-prepended version too. prep.prompt was set earlier to the bare
+	// body for parity with the API backend; overwrite now that promptBody
+	// is final.
+	prep.prompt = promptBody
+
 	filePrefix := req.TicketID
 	if req.IsProjectScope() {
 		filePrefix = "project-" + req.ProjectID

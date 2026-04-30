@@ -92,8 +92,16 @@ func (a *OpencodeAdapter) UsesStdinPrompt() bool {
 	return false // opencode reads message from positional args
 }
 
-func (a *OpencodeAdapter) SupportsInteractive() bool { return true }
+// SupportsInteractive returns false for Opencode: the CLI has no hook system,
+// so a PTY-attached run gives us only ANSI-laden TUI bytes with no structured
+// telemetry. Opencode agents fall back to cliBackend (non-interactive
+// `opencode run`) which produces clean JSON-derived messages.
+func (a *OpencodeAdapter) SupportsInteractive() bool { return false }
 
+// BuildInteractiveCommand is unreachable via the spawner selector
+// (SupportsInteractive=false) but kept here for the CLIAdapter interface
+// contract and direct unit tests. It mirrors BuildCommand's flag layout
+// minus the batch-mode `run --format json` arguments.
 func (a *OpencodeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{"--model", opts.Model}
 	if opts.ReasoningEffort != "" {

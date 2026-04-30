@@ -56,12 +56,20 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	codexCleanup := func() {}
 	var codexHome string
 	if b.adapter.Name() == "codex" {
-		dir, cleanup, err := BuildCodexHookProfile(proc)
+		dir, cleanup, err := BuildCodexHookProfile(proc, workDir)
 		if err != nil {
 			b.s.warnAgent(proc, "codex hook profile build failed: "+err.Error())
 		} else {
 			codexHome = dir
 			codexCleanup = cleanup
+		}
+	}
+
+	var hooks []HookEvent
+	if b.adapter.Name() == "codex" {
+		hookCmd := buildCodexHookCommand(resolvedNrfloPath(), proc.sessionID, proc.workflowInstanceID, proc.projectID)
+		for _, ev := range []string{"PreToolUse", "PostToolUse", "SessionStart", "UserPromptSubmit", "Stop"} {
+			hooks = append(hooks, HookEvent{Event: ev, Command: hookCmd, TimeoutSec: 5})
 		}
 	}
 
@@ -74,6 +82,8 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		SystemPromptFile: prep.suffixFile, // non-empty for Claude (written by prepareSpawn)
 		SettingsJSON:     settingsJSON,
 		CodexHome:        codexHome,
+		Prompt:           prep.prompt, // Codex pre-loads via argv; other adapters ignore
+		Hooks:            hooks,       // Codex translates to repeated `-c hooks.<event>=…`; others ignore
 	}
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)
@@ -108,13 +118,18 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 	proc.pid = sess.Pid()
 
-	isClaude := b.adapter.Name() == "claude"
-
-	// Deliver prompt body to PTY after readiness delay.
-	go deliverPrompt(b.s, proc, sess, prep.prompt, proc.sessionStartCh, proc.firstByteCh)
+	// Deliver prompt body to PTY after readiness delay. Codex receives the
+	// prompt via argv positional (see CodexAdapter.BuildInteractiveCommand —
+	// avoids the TUI input-box wrapping panic on long bodies); pass empty
+	// body so deliverPrompt is a no-op for codex.
+	deliveryBody := prep.prompt
+	if b.adapter.Name() == "codex" {
+		deliveryBody = ""
+	}
+	go deliverPrompt(b.s, proc, sess, deliveryBody, b.adapter.Name(), proc.sessionStartCh, proc.firstByteCh)
 
 	// Ferry PTY output to the spawner's message tracker.
-	go ferryPTYOutput(b.s, proc, sess, isClaude)
+	go ferryPTYOutput(b.s, proc, sess, b.adapter.Name())
 
 	// Wait goroutine: close doneCh when PTY session exits, clean up temp files.
 	doneCh := proc.doneCh

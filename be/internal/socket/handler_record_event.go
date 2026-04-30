@@ -37,6 +37,28 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 
 	hookEventName, _ := event["hook_event_name"].(string)
 
+	// Codex interactive sessions don't include token usage in hook payloads,
+	// but every hook payload carries `transcript_path` pointing at the rollout
+	// JSONL where codex writes per-turn `token_count` events. Tail-scan it so
+	// we can update context_left for codex agents the same way Claude does
+	// from its assistant/result events. Best-effort: silently skipped when the
+	// path is absent (Claude hooks don't carry it) or unreadable.
+	if pct, ok := extractCodexContextLeft(event); ok {
+		projectID, ticketID, workflow, err := h.agentSvc.UpdateContextLeft(params.SessionID, pct)
+		if err != nil {
+			logger.Info(ctx, "record_event: codex context_update error (best-effort)", "error", err)
+		} else if projectID != "" {
+			service.BroadcastFromCtx(h.wsHub, ws.EventAgentContextUpdated, service.BroadcastCtx{
+				ProjectID: projectID,
+				TicketID:  ticketID,
+				Workflow:  workflow,
+			}, map[string]interface{}{
+				"session_id":   params.SessionID,
+				"context_left": pct,
+			})
+		}
+	}
+
 	switch hookEventName {
 	case "PreToolUse":
 		return h.recordPreToolUse(ctx, req, params.SessionID, event)

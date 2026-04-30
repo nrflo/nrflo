@@ -86,6 +86,7 @@ After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.
 |------|---------|
 | `server.go` | Socket listener, connection handling, `TerminalSignaler` interface |
 | `handler.go` | Request routing and method dispatch |
-| `handler_record_event.go` | `agent.record_event` handler: PreToolUse/PostToolUse → DB insert + WS broadcast + stall bump |
+| `handler_record_event.go` | `agent.record_event` handler: PreToolUse/PostToolUse → DB insert + WS broadcast + stall bump; opportunistic codex context update via `extractCodexContextLeft` |
+| `handler_codex_context.go` | `extractCodexContextLeft` — tail-scans the codex rollout JSONL pointed at by hook `transcript_path` for the latest `token_count` event and returns % context remaining |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
 | `handler_terminal_signal_test.go` | Terminal signal dispatch: fail/continue/callback dispatch, best-effort error handling, nil-guard |

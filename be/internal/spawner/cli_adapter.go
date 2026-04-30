@@ -44,7 +44,10 @@ type CLIAdapter interface {
 }
 
 // InteractiveSpawnOptions contains parameters for building an interactive PTY command.
-// PromptFilePath is intentionally absent — the prompt is delivered via PTY stdin Write.
+// For most adapters the prompt is delivered post-spawn via PTY stdin Write
+// (see deliverPrompt). Codex is the exception: its TUI input box has a
+// wrapping bug that panics on multi-KB pasted bodies (`tui/src/wrapping.rs:52`,
+// integer underflow), so we pass the prompt as an argv positional instead.
 type InteractiveSpawnOptions struct {
 	SessionID        string
 	Model            string
@@ -54,6 +57,17 @@ type InteractiveSpawnOptions struct {
 	SystemPromptFile string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
 	SettingsJSON     string // Claude: --settings JSON; others: ignored
 	CodexHome        string // CODEX_HOME dir path; Codex only — ignored by other adapters
+	Prompt           string // initial user prompt; Codex passes this as argv positional, others ignore
+	Hooks            []HookEvent // event-keyed hook commands; Codex injects via repeated `-c hooks.<event>=…` (TUI ignores config.toml hooks); other adapters ignore
+}
+
+// HookEvent describes one hook event registration the spawner wants codex to
+// fire. Translated to a `-c hooks.<Event>=[{matcher="*",hooks=[{...}]}]`
+// inline-TOML CLI override at command-build time.
+type HookEvent struct {
+	Event   string // e.g. "SessionStart", "PostToolUse", "Stop"
+	Command string // shell command codex execs when the event fires
+	TimeoutSec int // hook timeout in seconds
 }
 
 // ResumeOptions contains parameters for resuming a CLI session

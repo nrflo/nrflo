@@ -203,7 +203,7 @@ System agents (conflict-resolver, context-saver) flow through the same selector 
 
 ### CLIAdapter Interactive Extensions
 
-`SupportsInteractive() bool` — returns true for all three adapters (Claude, Opencode, Codex).
+`SupportsInteractive() bool` — returns true for Claude and Codex; **false** for Opencode (no hooks → no structured visibility, so opencode agents fall back to the non-interactive cliBackend regardless of the project's `interactive_cli_mode` setting).
 
 `BuildInteractiveCommand(InteractiveSpawnOptions) *exec.Cmd` — builds a PTY-friendly command without batch-mode flags:
 - **Claude**: `claude --session-id <id> --model <m> --dangerously-skip-permissions [--effort] [--settings] [--append-system-prompt-file]` — no `--print/--verbose/--output-format/--disallowed-tools`
@@ -227,35 +227,72 @@ System agents (conflict-resolver, context-saver) flow through the same selector 
 
 `BuildInteractiveSettingsJSON(proc)` (in `hooks_settings.go`) returns a Claude `--settings` JSON string with two top-level entries: (1) `hooks` — registering `PreToolUse` and `PostToolUse` hook arrays, each with `matcher: "*"` and `<absolute-nrflo-path> agent record-event`; (2) `statusLine` — a `{"type":"command","command":"<absolute-nrflo-path> agent statusline"}` block (Claude-only, interactive-only) that drives the Claude status line with live context info. The nrflo path is resolved via `os.Executable()` once (cached via `sync.Once`) with a fallback to `"nrflo"`. Returns `""` for non-Claude adapters. `mergeInteractiveSettings(safetyJSON, hooksJSON)` deep-merges by: (a) copying all top-level keys from safetyJSON into the result; (b) concatenating `hooks` sub-map arrays when both sides define the same event key; (c) copying all non-`hooks` top-level keys from hooksJSON into the result — **hooks side wins on conflict**. This ensures `statusLine` from `BuildInteractiveSettingsJSON` survives the merge even when a safety hook JSON is present. The merged result is passed as `opts.SettingsJSON` → `--settings <json>` (Claude only).
 
-### Codex Hook Profile
+### Codex Hook Profile + Hook Injection
 
-Codex does not support `--settings`; instead, hook telemetry is delivered via a per-session CODEX_HOME directory.
+Codex does not support `--settings`. Hook telemetry is delivered via two cooperating mechanisms:
 
-`BuildCodexHookProfile(proc *processInfo) (dir string, cleanup func(), err error)` (`codex_hook_setup.go`):
+**Profile dir** (per-session CODEX_HOME): carries auth, model/personality settings, and a workDir trust entry so codex doesn't block on its trust dialog or run unauthenticated. Hooks themselves are NOT written to this profile — codex 0.125's TUI ignores `<CODEX_HOME>/config.toml` hook tables in PTY contexts (verified empirically across many configs).
+
+`BuildCodexHookProfile(proc *processInfo, workDir string) (dir string, cleanup func(), err error)` (`codex_hook_setup.go`):
 - Creates `os.MkdirTemp("", "nrflo-codex-<sessionID>-*")`
-- Delegates to `WriteCodexProfile(dir, resolvedNrfloPath())`
+- Delegates to `WriteCodexProfileForSession(dir, resolvedNrfloPath(), proc.sessionID, proc.workflowInstanceID, proc.projectID, workDir)`
 - Returns a cleanup func that calls `os.RemoveAll(dir)` (best-effort)
-- On `WriteCodexProfile` failure, removes the dir before returning the error
+- On profile write failure, removes the dir before returning the error
 
-`WriteCodexProfile(dir, nrfloPath string) error`:
-- Writes `<dir>/config.toml`: `[features]\ncodex_hooks = true\n`
-- Writes `<dir>/hooks.json`: `{"PreToolUse":[hookEntry],"PostToolUse":[hookEntry]}` where `hookEntry = {matcher:"*",hooks:[{type:"command",command:"<nrfloPath> agent record-event",timeout:5}]}`
-- Hook entry shape mirrors `hooks_settings.go` (matcher/hooks/type/command) with an added `timeout:5` field
+`WriteCodexProfileForSession(dir, nrfloPath, sessionID, instanceID, projectID, workDir string) error`:
+- Reads the user's `~/.codex/config.toml` (when present), strips any `[[hooks.…]]` / `[hooks.…]` blocks (so user-config hooks don't compete with our `-c`-injected ones), and writes the rest into `<dir>/config.toml` verbatim.
+- Ensures `[features] codex_hooks = true` is present (required for the codex_hooks feature to be enabled; appended only if user config doesn't already declare it).
+- Appends `[projects."<workDir>"] trust_level = "trusted"` so codex doesn't show its trust dialog (the `--dangerously-bypass-approvals-and-sandbox` flag does NOT skip the trust prompt).
+- Copies the user's `~/.codex/auth.json` into the per-session dir so the spawned codex stays logged in.
+- No `hooks.json` is written — codex 0.125 does not consume it.
+
+**Hook injection** (`-c hooks.<event>=…`): `CodexAdapter.BuildInteractiveCommand` translates `opts.Hooks` (a `[]HookEvent` populated by `backend_interactive.go`) into repeated `-c` flags with inline-TOML array-of-tables values:
+
+```
+-c hooks.SessionStart=[{matcher="*",hooks=[{type="command",command="…",timeout=5}]}]
+-c hooks.PostToolUse=[{matcher="*",hooks=[{type="command",command="…",timeout=5}]}]
+-c hooks.PreToolUse=[…]
+-c hooks.UserPromptSubmit=[…]
+-c hooks.Stop=[…]
+```
+
+This is the **only** path that survives codex's TUI hook-config bypass. `-c` is a session-layer override applied last, after user/managed config layers.
+
+Hook command shape: `/usr/bin/env NRF_SESSION_ID=<sess> NRF_WORKFLOW_INSTANCE_ID=<inst> NRFLO_PROJECT=<proj> nrflo agent record-event` (built by `buildCodexHookCommand`). The `env` wrapper is required because codex strips most env vars from hook subprocesses (only `CODEX_HOME, HOME, HOMEBREW_*, SHELL, TMPDIR, USER, PATH` survive); without it nrflo CLI sees no session and silently exits.
+
+Other codex flags relevant to interactive spawn:
+- `-c check_for_update_on_startup=false` — prevents codex from running `brew upgrade --cask codex` mid-session (which would consume the run as a self-upgrade)
+- `--dangerously-bypass-approvals-and-sandbox` — skips command approval prompts (does NOT bypass the project trust dialog — that's why we add the trust entry to the profile)
 
 `backend_interactive.go` wiring:
-- After computing `settingsJSON`, if `b.adapter.Name() == "codex"`: call `BuildCodexHookProfile(proc)`; on error log via `b.s.warnAgent` and keep empty `CodexHome`; on success set `opts.CodexHome` and stash cleanup
+- If `b.adapter.Name() == "codex"`: call `BuildCodexHookProfile(proc, workDir)`; on error log via `b.s.warnAgent` and keep empty `CodexHome`; on success set `opts.CodexHome` and stash cleanup
+- Build `opts.Hooks` for codex by calling `buildCodexHookCommand(...)` and registering one `HookEvent` per event (`PreToolUse`, `PostToolUse`, `SessionStart`, `UserPromptSubmit`, `Stop`)
 - On `b.ptyMgr.Create` error: call `codexCleanup()` before returning
 - In `<-sess.Done()` goroutine: call `codexCleanup()` after suffix file removal
 
-`CodexAdapter.BuildInteractiveCommand` injects `CODEX_HOME=<dir>` by appending to `opts.Env` (preserving all spawner-set env vars like `NRF_SESSION_ID`, `NRF_WORKFLOW_INSTANCE_ID`, `NRFLO_PROJECT`). When `opts.CodexHome` is empty, `cmd.Env = opts.Env` unchanged.
+`CodexAdapter.BuildInteractiveCommand`:
+- Strips any pre-existing `CODEX_HOME=` from `opts.Env` before appending ours (macOS getenv returns first match; appended duplicates lose to anything inherited via shell)
+- Sets `TERM=xterm-256color` if not already set
+- Appends `opts.Prompt` as the final argv positional — codex pre-loads it as the first user message instead of running it through the TUI input box (the input box has a wrapping bug at `tui/src/wrapping.rs:52` that panics on multi-KB pasted bodies)
 
 `resolvedNrfloPath()` is shared with `hooks_settings.go` — no duplication.
 
 ### Output Ferry
 
-`ferryPTYOutput(spawner, proc, sess, isClaude)` runs in a goroutine reading PTY stdout:
-- **Claude**: bytes are dropped (interactive UI owns the display) but `proc.lastMessageTime` is bumped under `messagesMutex` to prevent false-positive stall detection
-- **Codex / Opencode**: content passed to `s.TrackMessage(proc, content, "text")` and `lastMessageTime` updated
+`ferryPTYOutput(spawner, proc, sess, adapterName)` runs in a goroutine reading PTY stdout. Bytes are always dropped — visibility comes from hook events forwarded via `nrflo agent record-event`; the raw TUI stream is noise (cursor escapes, redraws, status bars). `proc.lastMessageTime` is bumped on each chunk under `messagesMutex` so stall detection doesn't fire while the agent is redrawing. Only Claude and Codex reach this code path today (Opencode falls back to cliBackend; see Backend Selection above). The `adapterName` parameter is unused but retained for future adapters that may want a different policy.
+
+### Context Tracking (Codex Interactive)
+
+Codex hook payloads themselves don't carry token usage, but every payload includes `transcript_path` pointing at the rollout JSONL where codex writes per-turn `token_count` events:
+
+```
+{"type":"event_msg","payload":{"type":"token_count","info":{
+   "last_token_usage":{"input_tokens":18389,"cached_input_tokens":11648,...},
+   "total_token_usage":{...},
+   "model_context_window":258400}}}
+```
+
+`socket/handler_codex_context.go:extractCodexContextLeft` opens the file on every `agent.record_event` call, scans backwards for the most recent `token_count` record, and returns `100 - 100 * last_token_usage.input_tokens / model_context_window`. `cached_input_tokens` is a subset of `input_tokens` (no double-count). The handler in `handler_record_event.go` runs this opportunistically before the event-name switch and pipes the result through the same `agentSvc.UpdateContextLeft` + `EventAgentContextUpdated` broadcast path used for Claude. Claude hook payloads carry no `transcript_path` so the helper is a no-op for them. Best-effort: missing/unreadable file or no `token_count` record yet → silently skipped, no error to caller. Low-context restart now trips for codex interactive sessions on the next hook fire after a relaunch threshold is crossed. Opencode interactive does not exist as a configuration: `OpencodeAdapter.SupportsInteractive() == false`.
 
 ### Wait Goroutine
 

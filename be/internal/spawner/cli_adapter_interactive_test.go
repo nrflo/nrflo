@@ -5,22 +5,24 @@ import (
 	"testing"
 )
 
-// TestAllAdapters_SupportsInteractive verifies that all three CLIAdapters return
-// true for SupportsInteractive, enabling cliInteractiveBackend selection when
-// Config.InteractiveCLIMode is set.
+// TestAllAdapters_SupportsInteractive pins each adapter's interactive policy.
+// Claude and Codex opt in (they have hooks for structured visibility); Opencode
+// opts out (no hook system → falls back to cliBackend even when the project's
+// interactive_cli_mode toggle is on).
 func TestAllAdapters_SupportsInteractive(t *testing.T) {
 	cases := []struct {
 		name    string
 		adapter CLIAdapter
+		want    bool
 	}{
-		{"claude", &ClaudeAdapter{}},
-		{"opencode", &OpencodeAdapter{}},
-		{"codex", &CodexAdapter{}},
+		{"claude", &ClaudeAdapter{}, true},
+		{"opencode", &OpencodeAdapter{}, false},
+		{"codex", &CodexAdapter{}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if !tc.adapter.SupportsInteractive() {
-				t.Errorf("%s.SupportsInteractive() = false, want true", tc.name)
+			if got := tc.adapter.SupportsInteractive(); got != tc.want {
+				t.Errorf("%s.SupportsInteractive() = %v, want %v", tc.name, got, tc.want)
 			}
 		})
 	}

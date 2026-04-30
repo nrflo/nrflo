@@ -79,11 +79,9 @@ func TestInteractiveBackend_CodexBuildsProfile(t *testing.T) {
 		t.Fatal("BuildCodexHookProfile not called — no new profile dir found matching " + pattern)
 	}
 
-	// Profile dir must contain both required files.
-	for _, name := range []string{"config.toml", "hooks.json"} {
-		if _, err := os.Stat(filepath.Join(codexHome, name)); err != nil {
-			t.Errorf("profile dir missing %s: %v", name, err)
-		}
+	// Profile dir must contain config.toml (hooks live inline; no hooks.json).
+	if _, err := os.Stat(filepath.Join(codexHome, "config.toml")); err != nil {
+		t.Errorf("profile dir missing config.toml: %v", err)
 	}
 
 	// Close the session so the sess.Done() goroutine fires codexCleanup.

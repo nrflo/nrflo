@@ -90,6 +90,10 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `ticket.updated` | | Ticket state changed |
 | `global.running_agents` | | Running agents changed (global broadcast, no subscription scope) |
 | `error.created` | | New error recorded, invalidates error query cache |
+| `schedule.created` | | Scheduled task created, invalidates scheduleKeys.all |
+| `schedule.updated` | | Scheduled task updated, invalidates scheduleKeys.all |
+| `schedule.deleted` | | Scheduled task deleted, invalidates scheduleKeys.all |
+| `schedule.triggered` | task_id, run_id, status | Schedule dispatched, invalidates scheduleKeys.all + scheduleKeys.runs(task_id) |
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`
 **Exception:** `global.running_agents` is a global broadcast with no project_id/ticket_id/seq. Handled as early return before `dispatchV2Event`.
@@ -101,6 +105,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useTickets.ts` | TanStack Query hooks for ticket data, query key factory |
 | `useProjects.ts` | TanStack Query hook for projects |
 | `useChains.ts` | TanStack Query hooks for chain executions. `useChain` supports optional `refetchInterval` for running chain polling fallback. `useRemoveFromChain` mutation for removing pending items. |
+| `useScheduledTasks.ts` | TanStack Query hooks for scheduled tasks and run history. Key factory: `scheduleKeys`. Exports: `useScheduledTasks`, `useScheduleRuns(taskId, page)`, `useCreateScheduledTask`, `useUpdateScheduledTask`, `useDeleteScheduledTask`, `useRunScheduleNow`. All mutations invalidate `scheduleKeys.all`. |
 | `useElapsedTime.ts` | Elapsed time hooks |
 | `useGoBack.ts` | History-aware back navigation |
 | `useTakeControl()` | Mutation: take interactive control of running Claude agent (ticket-scoped) |

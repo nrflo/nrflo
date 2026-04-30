@@ -1,6 +1,6 @@
 # Types
 
-TypeScript type definitions matching Go API models. Contains 4 files.
+TypeScript type definitions matching Go API models. Contains 5 files.
 
 ## Key Ticket Types (`ticket.ts`)
 
@@ -41,6 +41,16 @@ TypeScript type definitions matching Go API models. Contains 4 files.
 |------|-------------|
 | `ErrorLog` | Error record with `id`, `project_id`, `error_type` (agent/workflow/system), `instance_id`, `message`, `created_at` |
 | `ErrorsResponse` | `{ errors: ErrorLog[], total, page, per_page, total_pages }` — paginated error list |
+
+## Schedule Types (`schedules.ts`)
+
+| Type | Description |
+|------|-------------|
+| `ScheduledTask` | Scheduled task with cron expression, project-scoped workflow list, enabled flag, last/next run timestamps |
+| `ScheduleRun` | Single run record with status, triggered_at, per-workflow instance_id and error |
+| `ScheduleRunWorkflow` | Per-workflow result within a run (workflow name, instance_id, optional error) |
+| `ScheduleRunStatus` | `'pending' \| 'triggered' \| 'running' \| 'failed'` |
+| `ScheduledTaskCreateRequest` / `ScheduledTaskUpdateRequest` | CRUD request types |
 
 ## Type Safety
 

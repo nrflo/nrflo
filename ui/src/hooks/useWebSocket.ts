@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { getProject } from '../api/client'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
+import { scheduleKeys } from './useScheduledTasks'
 import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
@@ -57,6 +58,10 @@ export type WSEventType =
   | 'ticket.updated'
   | 'global.running_agents'
   | 'error.created'
+  | 'schedule.created'
+  | 'schedule.updated'
+  | 'schedule.deleted'
+  | 'schedule.triggered'
   | 'test.echo'
 
 export interface WSEvent {
@@ -219,6 +224,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     qc.invalidateQueries({ queryKey: ['session-messages'] })
     qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
     qc.invalidateQueries({ queryKey: errorKeys.all })
+    qc.invalidateQueries({ queryKey: scheduleKeys.all })
   }, [])
 
   // Build subscribe message with cursor for v2 resume

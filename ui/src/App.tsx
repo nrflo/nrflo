@@ -16,6 +16,7 @@ import { ChainDetailPage } from '@/pages/ChainDetailPage'
 import { GitStatusPage } from '@/pages/GitStatusPage'
 import { DocumentationPage } from '@/pages/DocumentationPage'
 import { ErrorsPage } from '@/pages/ErrorsPage'
+import { SchedulesPage } from '@/pages/SchedulesPage'
 import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
 import { APICredentialsPage } from '@/pages/APICredentialsPage'
 import { useProjectStore } from '@/stores/projectStore'
@@ -47,6 +48,7 @@ function AppRoutes() {
           <Route path="documentation" element={<DocumentationPage />} />
           <Route path="chains" element={<ChainListPage />} />
           <Route path="chains/:id" element={<ChainDetailPage />} />
+          <Route path="schedules" element={<SchedulesPage />} />
           <Route path="errors" element={<ErrorsPage />} />
           {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
           {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}

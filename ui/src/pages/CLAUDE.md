@@ -17,6 +17,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |
 | `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, useTickingClock for 1s elapsed time updates + 10s refetchInterval fallback when running |
 | `/errors` | `ErrorsPage.tsx` | Paginated error log table with type filter tabs (All/Agent/Workflow/System), server-side pagination, WS auto-refresh |
+| `/schedules` | `SchedulesPage.tsx` | Scheduled tasks table with create/edit/delete/run-now actions and run history dialog |
 | `/settings` | `SettingsPage.tsx` | Tabbed settings page (General, Projects, System Agents, Default Templates, CLI Models, Logs) composing GlobalSettingsSection + ProjectsSection + SystemAgentsSection + DefaultTemplatesSection + CLIModelsSection + LogsSection |
 
 Routes are defined in `src/App.tsx`.

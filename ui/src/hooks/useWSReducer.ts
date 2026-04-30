@@ -4,6 +4,7 @@ import type { WSEventV2 } from './useWSProtocol'
 import { subscriptionKey } from './useWSProtocol'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
+import { scheduleKeys } from './useScheduledTasks'
 import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
 import type { WSEventType } from './useWebSocket'
@@ -374,5 +375,21 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
 
   'error.created': (_event, qc) => {
     qc.invalidateQueries({ queryKey: errorKeys.all })
+  },
+
+  'schedule.created': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+  },
+  'schedule.updated': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+  },
+  'schedule.deleted': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+  },
+  'schedule.triggered': (event, qc) => {
+    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+    if (event.data?.task_id) {
+      qc.invalidateQueries({ queryKey: scheduleKeys.runs(event.data.task_id as string) })
+    }
   },
 }

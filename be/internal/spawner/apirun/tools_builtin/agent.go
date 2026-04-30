@@ -57,6 +57,37 @@ func (agentFailHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input js
 	return "", false, apirun.TerminalSignal{Status: "FAIL", Reason: args.Reason}
 }
 
+type agentFinishedHandler struct{}
+
+func (agentFinishedHandler) Spec() provider.ToolSpec {
+	return provider.ToolSpec{
+		Name:        "agent_finished",
+		Description: "Mark the current agent as successfully finished (pass) so the orchestrator advances to the next phase.",
+		InputSchema: json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`),
+	}
+}
+
+func (agentFinishedHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
+	if env.Agent == nil {
+		return missingService("agent")
+	}
+	bctx, err := env.Agent.Finished(&types.AgentRequest{
+		SessionID:  env.SessionID,
+		InstanceID: env.WorkflowInstanceID,
+	})
+	if err != nil {
+		return err.Error(), true, nil
+	}
+	service.BroadcastFromCtx(env.WSHub, ws.EventAgentCompleted, bctx, map[string]interface{}{
+		"action":     "finished",
+		"agent_type": bctx.AgentType,
+		"session_id": bctx.SessionID,
+		"model_id":   bctx.ModelID,
+		"result":     "pass",
+	})
+	return "", false, apirun.TerminalSignal{Status: "PASS"}
+}
+
 type agentContinueHandler struct{}
 
 func (agentContinueHandler) Spec() provider.ToolSpec {

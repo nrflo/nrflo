@@ -50,16 +50,34 @@ func TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse(t *testing.T) {
 	}
 }
 
-// TestBuildInteractiveSettingsJSON_NoUnwantedHookKeys verifies Stop/SessionEnd/UserPromptSubmit absent.
-func TestBuildInteractiveSettingsJSON_NoUnwantedHookKeys(t *testing.T) {
+// TestBuildInteractiveSettingsJSON_HookKeys verifies we register only the
+// signal-bearing Claude hook events. Stop/SessionStart/SessionEnd are dropped
+// because they duplicate spawn/completion log lines without adding signal.
+func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
 	proc := &processInfo{modelID: "claude:opus"}
 	var parsed map[string]interface{}
 	json.Unmarshal([]byte(BuildInteractiveSettingsJSON(proc)), &parsed)
 	hooks, _ := parsed["hooks"].(map[string]interface{})
 
-	for _, banned := range []string{"Stop", "SessionEnd", "UserPromptSubmit", "SessionStart"} {
+	for _, want := range []string{
+		"PreToolUse", "PostToolUse",
+		"UserPromptSubmit", "Notification",
+		"SubagentStop", "PreCompact",
+		// Used as a TUI-ready signal (handler does not record a message).
+		"SessionStart",
+	} {
+		if _, ok := hooks[want]; !ok {
+			t.Errorf("hooks missing expected key %q (got: %v)", want, hooks)
+		}
+	}
+	for _, banned := range []string{
+		"Stop", "SessionEnd", "Setup",
+		// These trigger settings rejection on the installed Claude CLI
+		// version — keep out until verified.
+		"PostToolUseFailure", "StopFailure", "SubagentStart", "UserPromptExpansion",
+	} {
 		if _, ok := hooks[banned]; ok {
-			t.Errorf("hooks should not contain %q key (got: %v)", banned, hooks)
+			t.Errorf("hooks should not contain unsupported key %q (got: %v)", banned, hooks)
 		}
 	}
 }

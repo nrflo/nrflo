@@ -2,10 +2,12 @@ package spawner
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	ptyPkg "be/internal/pty"
 )
+
 
 // ptySessionIface abstracts *pty.Session so tests can inject a mock PTY session.
 type ptySessionIface interface {
@@ -14,6 +16,7 @@ type ptySessionIface interface {
 	Close() error
 	Kill() error
 	Done() <-chan struct{}
+	Pid() int
 }
 
 // ptyManagerIface abstracts *pty.Manager so tests can inject a mock PTY manager.
@@ -130,8 +133,21 @@ func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, isClaud
 	for {
 		n, err := sess.Read(buf)
 		if n > 0 {
+			// First non-empty PTY read = TUI is alive and painting. Used by
+			// deliverPrompt only as a fallback when SessionStart never fires
+			// (older Claude builds, codex/opencode without hooks).
+			if proc.firstByteCh != nil {
+				proc.firstByteOnce.Do(func() {
+					s.logAgent(proc, "ready signal: first PTY bytes received")
+					close(proc.firstByteCh)
+				})
+			}
 			if isClaude {
-				// Bump timestamp to avoid stall detection — output is T4 hook territory.
+				// Claude TUI output is dropped — visibility comes from
+				// PreToolUse/PostToolUse hook events forwarded via
+				// `nrflo agent record-event`. We only bump the message
+				// timestamp here so stall detection doesn't fire while the
+				// agent is actively redrawing its UI.
 				proc.messagesMutex.Lock()
 				proc.lastMessageTime = s.config.Clock.Now()
 				proc.hasReceivedMessage = true
@@ -146,14 +162,80 @@ func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, isClaud
 	}
 }
 
-// deliverPrompt writes the prompt body followed by a newline to the PTY session
-// after a ~250ms readiness delay. Files listed in cleanupPaths are removed on
-// error (normal cleanup happens in the wait goroutine).
+// deliverPrompt waits for the TUI to signal ready, then writes the prompt
+// body + CR. In raw-mode TUIs Enter is \r, not \n — \n inside the body is
+// preserved as a newline in the input box and the trailing \r submits.
 //
-// The 250ms delay is a v1 heuristic — a future version may sniff for a readiness
-// indicator in the PTY output before writing.
-func deliverPrompt(sess ptySessionIface, body string) {
-	time.Sleep(250 * time.Millisecond)
-	payload := []byte(body + "\n")
-	_, _ = sess.Write(payload)
+// Readiness uses a two-stage strategy:
+//
+//  1. Primary: wait up to sessionStartTimeout for SessionStart hook (the
+//     canonical "TUI fully bootstrapped" signal from Claude). On arrival,
+//     write immediately — no extra wait needed.
+//  2. Fallback: if SessionStart never arrives (older Claude builds, codex,
+//     opencode), wait for firstByteCh (PTY first paint) then enforce a
+//     bootstrap floor of bootstrapFloor relative to spawn — gives the TUI
+//     enough time to set up raw mode after the first paint.
+//
+// Hard total deadline of totalDeadline ensures we never hang forever; if
+// nothing fires we write anyway as a last resort.
+//
+// If sessionStartCh and firstByteCh are nil (legacy callers / tests), falls
+// back to a fixed bootstrapFloor delay matching the original behavior.
+func deliverPrompt(s *Spawner, proc *processInfo, sess ptySessionIface, body string, sessionStartCh, firstByteCh <-chan struct{}) {
+	const sessionStartTimeout = 3 * time.Second
+	const bootstrapFloor = 1500 * time.Millisecond
+	const totalDeadline = 20 * time.Second
+
+	start := time.Now()
+	waitForReady(s, proc, start, sessionStartCh, firstByteCh, sessionStartTimeout, bootstrapFloor, totalDeadline)
+
+	if n, err := sess.Write([]byte(body)); err != nil {
+		s.errorAgent(proc, fmt.Sprintf("deliverPrompt: write body failed: %v", err))
+		return
+	} else {
+		s.logAgent(proc, fmt.Sprintf("deliverPrompt: wrote %d-byte body", n))
+	}
+	time.Sleep(150 * time.Millisecond)
+	if _, err := sess.Write([]byte("\r")); err != nil {
+		s.errorAgent(proc, fmt.Sprintf("deliverPrompt: write CR failed: %v", err))
+		return
+	}
+	s.logAgent(proc, fmt.Sprintf("deliverPrompt: submitted (total %s)", time.Since(start).Round(time.Millisecond)))
+}
+
+// waitForReady implements the two-stage SessionStart→firstByte+floor logic.
+// Returns when ready (or when totalDeadline expires).
+func waitForReady(s *Spawner, proc *processInfo, start time.Time, sessionStartCh, firstByteCh <-chan struct{}, sessionStartTimeout, bootstrapFloor, totalDeadline time.Duration) {
+	if sessionStartCh == nil && firstByteCh == nil {
+		// Legacy / test path: blind floor.
+		time.Sleep(bootstrapFloor)
+		return
+	}
+	// Stage 1: prefer SessionStart.
+	select {
+	case <-sessionStartCh:
+		s.logAgent(proc, fmt.Sprintf("deliverPrompt: ready via SessionStart after %s", time.Since(start).Round(time.Millisecond)))
+		return
+	case <-time.After(sessionStartTimeout):
+		s.logAgent(proc, fmt.Sprintf("deliverPrompt: SessionStart not received in %s — falling back to first-byte+floor", sessionStartTimeout))
+	}
+	// Stage 2: fall back to first-byte + bootstrap floor.
+	remaining := totalDeadline - time.Since(start)
+	if remaining <= 0 {
+		s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached — writing anyway", totalDeadline))
+		return
+	}
+	select {
+	case <-firstByteCh:
+		s.logAgent(proc, fmt.Sprintf("deliverPrompt: first-byte fallback after %s", time.Since(start).Round(time.Millisecond)))
+	case <-time.After(remaining):
+		s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached — writing anyway", totalDeadline))
+		return
+	}
+	// Bootstrap floor: ensure TUI has had bootstrapFloor since spawn to set
+	// up raw mode after first paint.
+	if rem := bootstrapFloor - time.Since(start); rem > 0 {
+		s.logAgent(proc, fmt.Sprintf("deliverPrompt: bootstrap floor — sleeping %s", rem.Round(time.Millisecond)))
+		time.Sleep(rem)
+	}
 }

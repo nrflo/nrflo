@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"context"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -100,10 +101,11 @@ func TestCLIInteractiveBackend_Start_DeliverPrompt(t *testing.T) {
 		t.Error("Start() did not call RegisterCommand")
 	}
 
-	// Poll for prompt delivery (deliverPrompt sleeps 250ms then writes).
+	// Poll for prompt delivery (deliverPrompt waits ~1.5s, writes body, settles
+	// ~150ms, then submits with CR — total ~1.65s).
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
-	deadline := time.After(1 * time.Second)
+	deadline := time.After(3 * time.Second)
 	var written string
 outer:
 	for {
@@ -118,7 +120,8 @@ outer:
 				continue
 			}
 			sess.mu.Lock()
-			if len(sess.writtenBytes) > 0 {
+			// Wait for both writes (body + submit CR) before declaring success.
+			if strings.HasSuffix(string(sess.writtenBytes), "\r") {
 				written = string(sess.writtenBytes)
 				sess.mu.Unlock()
 				break outer
@@ -127,8 +130,8 @@ outer:
 		}
 	}
 
-	if written != "run the tests\n" {
-		t.Errorf("delivered bytes = %q, want %q", written, "run the tests\n")
+	if written != "run the tests\r" {
+		t.Errorf("delivered bytes = %q, want %q", written, "run the tests\r")
 	}
 }
 

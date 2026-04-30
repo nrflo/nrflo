@@ -168,6 +168,17 @@ type taskInfo struct {
 type processInfo struct {
 	cmd           *exec.Cmd
 	backend       ExecutionBackend
+	pid           int // OS pid; set by backends when proc.cmd is nil (e.g. PTY-owned process)
+	// sessionStartCh is closed (idempotently) when Claude's SessionStart hook
+	// fires — the canonical readiness signal. firstByteCh is closed on the
+	// first non-empty PTY read — used only as a fallback when SessionStart
+	// does not arrive (older Claude builds, codex/opencode without hooks).
+	// deliverPrompt prefers sessionStartCh; firstByteCh + a bootstrap floor
+	// only kick in if SessionStart never appears within ~3s.
+	sessionStartCh   chan struct{}
+	sessionStartOnce sync.Once
+	firstByteCh      chan struct{}
+	firstByteOnce    sync.Once
 	agentID       string
 	agentType     string
 	modelID       string
@@ -317,6 +328,20 @@ func (s *Spawner) BumpLastMessage(sessionID string) {
 	}
 }
 
+// MarkSessionReady closes the matching proc's sessionStartCh — the canonical
+// TUI-ready signal from Claude's SessionStart hook. Idempotent. Called by the
+// socket handler when SessionStart arrives.
+func (s *Spawner) MarkSessionReady(sessionID string) {
+	proc := s.lookupSessionProc(sessionID)
+	if proc == nil || proc.sessionStartCh == nil {
+		return
+	}
+	proc.sessionStartOnce.Do(func() {
+		s.logAgent(proc, "ready signal: SessionStart hook")
+		close(proc.sessionStartCh)
+	})
+}
+
 // CompleteInteractive signals that the interactive session has ended,
 // unblocking the spawner's monitorAll wait.
 func (s *Spawner) CompleteInteractive(sessionID string) {
@@ -354,6 +379,13 @@ func (s *Spawner) registerSessionProc(sessionID string, proc *processInfo) {
 	s.sessionProcsMu.Lock()
 	s.sessionProcs[sessionID] = proc
 	s.sessionProcsMu.Unlock()
+}
+
+// lookupSessionProc returns the live proc for sessionID, or nil if unknown.
+func (s *Spawner) lookupSessionProc(sessionID string) *processInfo {
+	s.sessionProcsMu.Lock()
+	defer s.sessionProcsMu.Unlock()
+	return s.sessionProcs[sessionID]
 }
 
 // unregisterSessionProcs removes completed procs from the session proc map.
@@ -494,7 +526,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	logger.Info(ctx, "spawning agent", "agent_type", req.AgentType, "target", spawnTarget, "model", modelID, "workflow", req.WorkflowName, "layer", phase.Layer)
 
 	// Spawn agent
-	proc, err := s.spawnSingle(req, modelID, phase.ID, wi.ID)
+	proc, err := s.spawnSingle(ctx, req, modelID, phase.ID, wi.ID)
 	if err != nil {
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
@@ -502,7 +534,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 		return fmt.Errorf("internal: spawned proc has nil backend")
 	}
 	proc.trx = logger.TrxFromContext(ctx)
-	pid := 0
+	pid := proc.pid
 	if proc.cmd != nil && proc.cmd.Process != nil {
 		pid = proc.cmd.Process.Pid
 	}
@@ -514,8 +546,8 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 }
 
 // spawnSingle spawns a single agent: prep -> backend.Start -> register.
-func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*processInfo, error) {
-	proc, prep, err := s.prepareSpawn(req, modelID, phase, wfiID)
+func (s *Spawner) spawnSingle(ctx context.Context, req SpawnRequest, modelID, phase, wfiID string) (*processInfo, error) {
+	proc, prep, err := s.prepareSpawn(ctx, req, modelID, phase, wfiID)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +561,9 @@ func (s *Spawner) spawnSingle(req SpawnRequest, modelID, phase, wfiID string) (*
 // lookup (timeouts, restart threshold, stall settings), template loading,
 // prompt file creation, and SpawnOptions assembly. The returned processInfo
 // has cmd left nil — startBackend wires up the chosen ExecutionBackend.
-func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (*processInfo, *prepResult, error) {
+// The ctx's trx is threaded into NRF_TRX so socket-driven log lines from
+// spawned agents share the workflow's trx.
+func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, phase, wfiID string) (*processInfo, *prepResult, error) {
 	agentID := "spawn-" + uuid.New().String()[:8]
 	sessionID := uuid.New().String()
 
@@ -635,6 +669,8 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 		pendingMessages:     make([]repo.MessageEntry, 0),
 		pendingTasks:        make(map[string]taskInfo),
 		doneCh:              make(chan struct{}),
+		sessionStartCh:      make(chan struct{}),
+		firstByteCh:         make(chan struct{}),
 		lastMessagesFlush:   s.config.Clock.Now(),
 		promptContext:       prompt,
 		projectID:           req.ProjectID,
@@ -831,6 +867,7 @@ func (s *Spawner) prepareSpawn(req SpawnRequest, modelID, phase, wfiID string) (
 			fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 			fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),
+			fmt.Sprintf("NRF_TRX=%s", logger.TrxFromContext(ctx)),
 			"NRF_SPAWNED=1",
 			fmt.Sprintf("NRF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
 			fmt.Sprintf("NRF_MAX_CONTEXT=%d", s.maxContextForModel(model)),
@@ -863,19 +900,23 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	}
 	proc.backend = backend
 
+	// Register sessionProc BEFORE backend.Start so a fast SessionStart hook
+	// (or any other socket lookup keyed by sessionID) can find the proc the
+	// moment Claude posts back, not after we've returned from Start.
+	s.registerSessionProc(proc.sessionID, proc)
+
 	if err := backend.Start(context.Background(), proc, prep); err != nil {
+		s.unregisterSessionProcs([]*processInfo{proc})
 		return err
 	}
 
-	pid := 0
+	pid := proc.pid
 	if proc.cmd != nil && proc.cmd.Process != nil {
 		pid = proc.cmd.Process.Pid
 	}
 	s.registerAgentStart(proc.projectID, proc.ticketID, proc.workflowName, proc.workflowInstanceID,
 		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
 		proc.spawnCommand, proc.promptContext, "", 0, proc.restartThreshold)
-
-	s.registerSessionProc(proc.sessionID, proc)
 	return nil
 }
 

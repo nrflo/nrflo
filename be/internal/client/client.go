@@ -87,6 +87,9 @@ func (c *Client) Execute(method string, params interface{}) (*socket.Response, e
 		ID:      uuid.New().String(),
 		Method:  method,
 		Project: c.projectID,
+		// Inherit the workflow's trx (set by spawner via NRF_TRX env var) so
+		// server-side log lines from this socket call share the parent trx.
+		Trx: os.Getenv("NRF_TRX"),
 	}
 
 	if params != nil {
@@ -161,6 +164,9 @@ func (c *Client) ExecuteStreaming(method string, params interface{}) (<-chan soc
 		ID:      uuid.New().String(),
 		Method:  method,
 		Project: c.projectID,
+		// Inherit the workflow's trx (set by spawner via NRF_TRX env var) so
+		// server-side log lines from this socket call share the parent trx.
+		Trx: os.Getenv("NRF_TRX"),
 	}
 
 	if params != nil {

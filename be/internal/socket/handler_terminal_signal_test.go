@@ -39,6 +39,8 @@ func (f *fakeTerminalSignaler) BumpLastMessage(projectID, ticketID, workflow, se
 	return nil
 }
 
+func (f *fakeTerminalSignaler) SignalSessionReady(sessionID string) error { return nil }
+
 // insertAgentSession inserts a running agent_sessions row for terminal signal tests.
 func insertAgentSession(t *testing.T, env *handlerTestEnv, ticketID, sessionID, wfiID string) {
 	t.Helper()

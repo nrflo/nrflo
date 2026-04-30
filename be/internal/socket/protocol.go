@@ -11,6 +11,11 @@ type Request struct {
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 	Project string          `json:"project"`
+	// Trx is the parent workflow trx, threaded through from the spawner via
+	// NRF_TRX env var. When set, the socket handler reuses it instead of
+	// generating a new trx so all log lines for one workflow share the same
+	// id even when the agent makes its own socket calls.
+	Trx string `json:"trx,omitempty"`
 }
 
 // Response represents a JSON-RPC style response from server to CLI

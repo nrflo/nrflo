@@ -2,6 +2,7 @@ package socket
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ type bumpRecordSignaler struct {
 }
 
 func (b *bumpRecordSignaler) RequestTerminalSignal(_, _, _, _, _ string) error { return nil }
+func (b *bumpRecordSignaler) SignalSessionReady(_ string) error                 { return nil }
 func (b *bumpRecordSignaler) BumpLastMessage(_, _, _, sessionID string) error {
 	b.bumps = append(b.bumps, sessionID)
 	return nil
@@ -190,14 +192,15 @@ func TestRecordEvent_PostToolUse_LongResponseTruncated(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", resp.Error)
 	}
 	content, _ := lastAgentMessage(t, env, sessionID)
-	// Expected: "[Bash result] " + 200 x's + "..."
+	// Expected: "[Bash result] " + 200 x's + "…" (UTF-8 ellipsis, 3 bytes)
 	const prefix = "[Bash result] "
-	wantLen := len(prefix) + 200 + len("...")
+	const ellipsis = "…"
+	wantLen := len(prefix) + 200 + len(ellipsis)
 	if len(content) != wantLen {
 		t.Errorf("content length = %d, want %d\ncontent prefix: %q", len(content), wantLen, content[:min(40, len(content))])
 	}
-	if content[len(content)-3:] != "..." {
-		t.Errorf("expected content to end with '...', got: %q", content[max(0, len(content)-10):])
+	if !strings.HasSuffix(content, ellipsis) {
+		t.Errorf("expected content to end with %q, got: %q", ellipsis, content[max(0, len(content)-10):])
 	}
 }
 
@@ -251,35 +254,51 @@ func TestRecordEvent_PreToolUse_UsageFieldIgnored(t *testing.T) {
 	}
 }
 
-// TestRecordEvent_IgnoredEvents verifies Stop/SessionEnd/UserPromptSubmit return status=ignored
-// and insert no DB rows.
-func TestRecordEvent_IgnoredEvents(t *testing.T) {
-	for _, hookName := range []string{"Stop", "SessionEnd", "UserPromptSubmit"} {
-		hookName := hookName
-		t.Run(hookName, func(t *testing.T) {
+// TestRecordEvent_VerboseEventsRecorded verifies the new verbose hook types
+// each record exactly one agent_messages row with category=text (or subagent
+// for SubagentStop). Completion is still signaled by `agent finished/fail/
+// continue`; these are visibility-only.
+func TestRecordEvent_VerboseEventsRecorded(t *testing.T) {
+	cases := []struct {
+		hookName   string
+		extraField string
+		extraValue string
+	}{
+		{"UserPromptSubmit", "prompt", "do the thing"},
+		{"Notification", "message", "permission requested"},
+		{"SubagentStop", "", ""},
+		{"PreCompact", "trigger", "auto"},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.hookName, func(t *testing.T) {
 			env := newHandlerTestEnv(t)
-			h := NewHandler(env.pool, env.hub, clock.Real(), nil)
+			ticketID := "RE-V-" + c.hookName
+			env.createTicketAndWorkflow(t, ticketID)
+			wfiID := queryWFIID(t, env, ticketID)
+			sessionID := "sess-verb-" + c.hookName
+			insertAgentSession(t, env, ticketID, sessionID, wfiID)
 
-			req := buildRecordEventReq(t, "req-ign-"+hookName, "any-session", map[string]interface{}{
-				"hook_event_name": hookName,
-			})
+			h := NewHandler(env.pool, env.hub, clock.Real(), nil)
+			payload := map[string]interface{}{"hook_event_name": c.hookName}
+			if c.extraField != "" {
+				payload[c.extraField] = c.extraValue
+			}
+			req := buildRecordEventReq(t, "req-verb-"+c.hookName, sessionID, payload)
 			resp := h.Handle(req)
 
 			if resp.Error != nil {
-				t.Errorf("%s: expected no error, got: %v", hookName, resp.Error)
+				t.Fatalf("%s: expected no error, got: %v", c.hookName, resp.Error)
 			}
 			var result map[string]string
 			if err := json.Unmarshal(resp.Result, &result); err != nil {
-				t.Fatalf("%s: unmarshal result: %v", hookName, err)
+				t.Fatalf("%s: unmarshal result: %v", c.hookName, err)
 			}
-			if result["status"] != "ignored" {
-				t.Errorf("%s: status = %q, want %q", hookName, result["status"], "ignored")
+			if result["status"] != "recorded" {
+				t.Errorf("%s: status = %q, want %q", c.hookName, result["status"], "recorded")
 			}
-			// No DB rows should be inserted
-			var count int
-			_ = env.pool.QueryRow(`SELECT COUNT(*) FROM agent_messages WHERE session_id = ?`, "any-session").Scan(&count)
-			if count != 0 {
-				t.Errorf("%s: expected 0 agent_messages rows, got %d", hookName, count)
+			if n := countAgentMessages(t, env, sessionID); n != 1 {
+				t.Errorf("%s: expected 1 agent_messages row, got %d", c.hookName, n)
 			}
 		})
 	}

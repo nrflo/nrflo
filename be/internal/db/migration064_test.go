@@ -33,7 +33,10 @@ func TestMigration064_SeedsSystemPromptSuffix(t *testing.T) {
 	if readonly != 1 {
 		t.Errorf("readonly = %d, want 1", readonly)
 	}
-	for _, want := range []string{"Completion Contract", "nrflo agent continue", "nrflo agent fail"} {
+	// After migration 000068, system-prompt-suffix carries the autonomy rules
+	// and the completion contract. `agent continue` was removed — it is the
+	// spawner's internal low-context protocol, not user-facing.
+	for _, want := range []string{"Completion Contract", "Autonomous Run", "nrflo agent finished", "nrflo agent fail"} {
 		if !strings.Contains(template, want) {
 			t.Errorf("system-prompt-suffix template missing %q", want)
 		}
@@ -67,7 +70,8 @@ func TestMigration064_SeedsFinishReminder(t *testing.T) {
 	if readonly != 1 {
 		t.Errorf("readonly = %d, want 1", readonly)
 	}
-	for _, want := range []string{"Before Finishing", "nrflo agent continue", "nrflo agent fail"} {
+	// After migration 000066, finish-reminder uses `agent finished` for success.
+	for _, want := range []string{"Before Finishing", "nrflo agent finished", "nrflo agent fail"} {
 		if !strings.Contains(template, want) {
 			t.Errorf("finish-reminder template missing %q", want)
 		}

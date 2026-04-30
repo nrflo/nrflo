@@ -59,30 +59,50 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 
 	var result, resultReason string
 
-	if exitCode != 0 {
-		// Non-zero exit = immediate fail
+	// Always check the DB for an explicit result first. Agents call
+	// `nrflo agent finished/fail/continue/callback`, the socket handler writes
+	// the result + reason, then dispatches a terminal signal that kills the
+	// process — Claude (and other TUIs) exit non-zero when killed by signal,
+	// so trusting exit_code alone would clobber the explicit signal.
+	switch explicit := s.getAgentResult(proc); explicit {
+	case "fail":
 		result = "fail"
-		resultReason = "exit_code"
-		proc.finalStatus = "FAIL"
-	} else {
-		// Exit 0: check DB for explicit fail/continue/callback set before process exited
-		if explicit := s.getAgentResult(proc); explicit == "fail" || explicit == "continue" || explicit == "callback" {
-			result = explicit
+		resultReason = s.getAgentResultReason(proc)
+		if resultReason == "" {
 			resultReason = "explicit"
+		}
+		proc.finalStatus = "FAIL"
+	case "continue":
+		result = "continue"
+		resultReason = s.getAgentResultReason(proc)
+		if resultReason == "" {
+			resultReason = "explicit"
+		}
+		proc.finalStatus = "CONTINUE"
+	case "callback":
+		result = "callback"
+		resultReason = s.getAgentResultReason(proc)
+		if resultReason == "" {
+			resultReason = "explicit"
+		}
+		proc.finalStatus = "CALLBACK"
+	case "pass":
+		result = "pass"
+		resultReason = s.getAgentResultReason(proc)
+		if resultReason == "" {
+			resultReason = "explicit"
+		}
+		proc.finalStatus = "PASS"
+	default:
+		// No explicit signal — fall back to exit code.
+		if exitCode != 0 {
+			result = "fail"
+			resultReason = "exit_code"
+			proc.finalStatus = "FAIL"
 		} else {
 			result = "pass"
 			resultReason = "implicit"
-		}
-
-		switch result {
-		case "pass":
 			proc.finalStatus = "PASS"
-		case "continue":
-			proc.finalStatus = "CONTINUE"
-		case "callback":
-			proc.finalStatus = "CALLBACK"
-		default:
-			proc.finalStatus = "FAIL"
 		}
 	}
 
@@ -110,7 +130,7 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	}
 
 	// Spawn a new process with the same model
-	newProc, err := s.spawnSingle(req, oldProc.modelID, phase, oldProc.workflowInstanceID)
+	newProc, err := s.spawnSingle(ctx, req, oldProc.modelID, phase, oldProc.workflowInstanceID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +182,23 @@ func (s *Spawner) getAgentResult(proc *processInfo) string {
 
 	if session.Result.Valid {
 		return session.Result.String
+	}
+	return ""
+}
+
+// getAgentResultReason reads the result_reason column for an agent session.
+func (s *Spawner) getAgentResultReason(proc *processInfo) string {
+	pool := s.pool()
+	if pool == nil {
+		return ""
+	}
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+	session, err := sessionRepo.Get(proc.sessionID)
+	if err != nil {
+		return ""
+	}
+	if session.ResultReason.Valid {
+		return session.ResultReason.String
 	}
 	return ""
 }

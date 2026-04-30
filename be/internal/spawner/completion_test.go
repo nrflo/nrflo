@@ -178,17 +178,19 @@ func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
 	}
 }
 
-// TestHandleCompletion_ExitZeroIgnoresExplicitPass tests that exit 0 is always
-// implicit pass — explicit pass in DB is ignored (agents should not call agent complete)
-func TestHandleCompletion_ExitZeroIgnoresExplicitPass(t *testing.T) {
+// TestHandleCompletion_ExitZeroPreservesExplicitPassReason verifies that when
+// `nrflo agent finished` writes result='pass', result_reason='finished' to the DB
+// before the process exits, handleCompletion preserves the reason instead of
+// overwriting it with 'implicit'.
+func TestHandleCompletion_ExitZeroPreservesExplicitPassReason(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
 	env.createSession(t, "claude:opus")
 
-	// Even if result='pass' is set in DB, handleCompletion should treat exit 0 as implicit
+	// Simulate `nrflo agent finished` having stored explicit pass + reason.
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
-	if err := sessionRepo.UpdateResult(env.sessionID, "pass", "explicit"); err != nil {
+	if err := sessionRepo.UpdateResult(env.sessionID, "pass", "finished"); err != nil {
 		t.Fatalf("failed to update result: %v", err)
 	}
 
@@ -225,9 +227,9 @@ func TestHandleCompletion_ExitZeroIgnoresExplicitPass(t *testing.T) {
 		t.Errorf("expected result='pass', got %v", updatedSession.Result)
 	}
 
-	// Should be implicit, not explicit — exit 0 = implicit pass regardless of DB state
-	if !updatedSession.ResultReason.Valid || updatedSession.ResultReason.String != "implicit" {
-		t.Errorf("expected result_reason='implicit', got %v", updatedSession.ResultReason)
+	// Explicit `agent finished` reason must be preserved.
+	if !updatedSession.ResultReason.Valid || updatedSession.ResultReason.String != "finished" {
+		t.Errorf("expected result_reason='finished', got %v", updatedSession.ResultReason)
 	}
 
 	if proc.finalStatus != "PASS" {

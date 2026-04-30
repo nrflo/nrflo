@@ -17,6 +17,7 @@ type mockPtySession struct {
 	done         chan struct{}
 	doneOnce     sync.Once
 	exitCodeVal  int
+	pidVal       int
 	readChunks   []string
 	readIdx      int
 }
@@ -63,6 +64,7 @@ func (m *mockPtySession) Kill() error {
 
 func (m *mockPtySession) Done() <-chan struct{} { return m.done }
 func (m *mockPtySession) ExitCode() int         { return m.exitCodeVal }
+func (m *mockPtySession) Pid() int               { return m.pidVal }
 
 // mockPtyManager implements ptyManagerIface for tests.
 type mockPtyManager struct {

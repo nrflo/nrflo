@@ -18,7 +18,14 @@ func (h *Handler) Handle(req Request) Response {
 		return MakeErrorResponse(req.ID, NewInvalidRequestError("method is required"))
 	}
 
-	trx := logger.NewTrx()
+	// Reuse the caller-supplied trx (set by spawned agents via NRF_TRX env)
+	// so socket-driven log lines share the parent workflow's id. Fall back
+	// to a fresh trx when the caller did not provide one (e.g. ad-hoc CLI
+	// invocations).
+	trx := req.Trx
+	if trx == "" {
+		trx = logger.NewTrx()
+	}
 	ctx := logger.WithTrx(context.Background(), trx)
 
 	// Route based on method prefix
@@ -265,6 +272,31 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			}
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "continued"})
+
+	case "finished":
+		var params types.AgentRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		bctx, err := h.agentSvc.Finished(&params)
+		if err != nil {
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		logger.Info(ctx, "agent finished received", "agent_type", bctx.AgentType, "ticket", bctx.TicketID, "workflow", bctx.Workflow)
+		service.BroadcastFromCtx(h.wsHub, ws.EventAgentCompleted, bctx, map[string]interface{}{
+			"action":     "finished",
+			"agent_type": bctx.AgentType,
+			"session_id": bctx.SessionID,
+			"model_id":   bctx.ModelID,
+			"result":     "pass",
+		})
+		if h.signaler != nil {
+			if sigErr := h.signaler.RequestTerminalSignal(bctx.ProjectID, bctx.TicketID, bctx.Workflow, bctx.SessionID, "pass"); sigErr != nil {
+				logger.Info(ctx, "terminal signal dispatch error (best-effort)", "error", sigErr)
+			}
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "finished"})
 
 	case "callback":
 		var params types.AgentCallbackRequest

@@ -47,6 +47,7 @@ Handlers self-declare terminal status by returning a `TerminalSignal` in the `er
 
 | Signal Status | Set By | Triggers |
 |---------------|--------|----------|
+| `PASS` | `agent_finished` | spawner registers stop with result=pass, reason=finished; finalizePhase advances |
 | `FAIL` | `agent_fail` | spawner registers stop with result=fail; finalizePhase does not pass |
 | `CONTINUE` | `agent_continue` | monitorAll calls `relaunchForContinuation` for the next session |
 | `CALLBACK` | `agent_callback` | finalizePhase reads `callback_level` finding and returns `CallbackError` |
@@ -59,7 +60,7 @@ Each terminal handler also calls the corresponding `AgentService` method first, 
 |-----------|-------------|----------|
 | `findings_add` / `findings_add_bulk` / `findings_append` / `findings_append_bulk` / `findings_get` / `findings_delete` | `FindingsService.*` | `findings.updated` |
 | `project_findings_add` / `..._add_bulk` / `..._append` / `..._append_bulk` / `..._get` / `..._delete` | `ProjectFindingsService.*` | `project_findings.updated` |
-| `agent_fail` / `agent_continue` / `agent_callback` | `AgentService.{Fail,Continue,Callback}` | `agent.completed` / `agent.continued` / `agent.completed` |
+| `agent_fail` / `agent_finished` / `agent_continue` / `agent_callback` | `AgentService.{Fail,Finished,Continue,Callback}` | `agent.completed` / `agent.completed` / `agent.continued` / `agent.completed` |
 | `agent_context_update` | `AgentService.UpdateContextLeft` | `agent.context_updated` |
 | `workflow_skip` | `WorkflowService.AddSkipTag` | `skip_tag.added` |
 

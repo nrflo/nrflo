@@ -168,12 +168,13 @@ By default the server binds to `127.0.0.1` (localhost only). To make it accessib
 
 ## Agent CLI Commands
 
-Spawned agents use these commands to report results (via Unix socket to the server). Exit 0 = pass (no explicit call needed). Only call `agent fail` for explicit failure.
+Spawned agents use these commands to report results (via Unix socket to the server). Exit 0 = implicit pass; `agent finished` is the explicit equivalent. `agent continue` is reserved for context-exhaustion relaunch (NOT a success signal).
 
 ```bash
 # All context derived from NRF_SESSION_ID + NRF_WORKFLOW_INSTANCE_ID env vars (set by spawner)
+nrflo agent finished                 # explicit success — proceed to next phase
 nrflo agent fail [--reason <text>]
-nrflo agent continue
+nrflo agent continue                 # context exhausted — relaunch with fresh context
 nrflo agent callback --level <N>
 
 nrflo skip <tag>  # Add skip tag to running workflow instance (reads NRF_WORKFLOW_INSTANCE_ID from env)

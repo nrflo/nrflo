@@ -45,7 +45,7 @@ Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}
 
 ### System Prompt Suffix
 
-The `system-prompt-suffix` injectable is delivered separately from the prepended blocks. For Claude agents it is passed via `--append-system-prompt-file`, appending it to Claude's system prompt. For codex/opencode agents it is prepended to the prompt body. The suffix template contains the completion contract (`nrflo agent continue` / `nrflo agent fail`) and is always active.
+The `system-prompt-suffix` injectable is delivered separately from the prepended blocks. For Claude agents it is passed via `--append-system-prompt-file`, appending it to Claude's system prompt. For codex/opencode agents it is prepended to the prompt body. The suffix template contains the completion contract (`nrflo agent finished` / `nrflo agent fail` / `nrflo agent continue` for context exhaustion) and is always active.
 
 The `finish-reminder` injectable is a second readonly template that can be referenced or appended by workflows to remind agents of the completion contract just before exiting.
 
@@ -134,9 +134,12 @@ For multiple keys, each missing key gets its own placeholder while found keys di
 
 ## 3. Agent Lifecycle Commands
 
-Spawned agents report results via CLI. **Exiting with code 0 is an implicit pass** — no explicit completion call needed. Only call `agent fail` when the task cannot be completed. Context is provided automatically by the system.
+Spawned agents report results via CLI. **Exiting with code 0 is an implicit pass** — `agent finished` is the explicit equivalent. Only call `agent fail` when the task cannot be completed. Context is provided automatically by the system.
 
 ```bash
+# Mark agent as successfully finished (proceed to next phase)
+nrflo agent finished
+
 # Mark agent as failed
 nrflo agent fail [--reason <text>]
 
@@ -152,12 +155,13 @@ nrflo skip <tag>
 
 | Command | When to use |
 |---------|------------|
+| `finished` | Task completed successfully; orchestrator advances to the next phase. Equivalent to exit 0 but explicit |
 | `fail` | Task cannot be completed; `--reason` is optional but recommended |
-| `continue` | Context window exhausted; save progress to `to_resume` first |
+| `continue` | Context window exhausted; save progress to `to_resume` first — agent will be relaunched with `${PREVIOUS_DATA}` |
 | `callback` | Issue found that requires re-running an earlier layer; `--level` (0-based layer index) is required |
 | `skip <tag>` | Skip a workflow group in subsequent layers; tag must be in workflow's `groups` |
 
-**Completion semantics:** Exit 0 = pass (immediate, no grace period). Exit non-zero = fail. Only use `agent fail` for explicit failure with a reason.
+**Completion semantics:** Exit 0 or `agent finished` = pass. Non-zero exit or `agent fail` = fail. `agent continue` ≠ success — it triggers a fresh relaunch for context-exhausted agents.
 
 ---
 

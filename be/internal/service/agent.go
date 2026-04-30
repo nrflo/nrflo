@@ -277,6 +277,21 @@ func (s *AgentService) Continue(req *types.AgentRequest) (BroadcastCtx, error) {
 	return s.setAgentResult(req.SessionID, "continue")
 }
 
+// Finished marks an agent as successfully completed (pass, proceed to next phase).
+// Stores result_reason="finished" so the explicit signal is distinguishable from
+// implicit-pass on exit 0.
+func (s *AgentService) Finished(req *types.AgentRequest) (BroadcastCtx, error) {
+	bctx, err := s.setAgentResult(req.SessionID, "pass")
+	if err != nil {
+		return BroadcastCtx{}, err
+	}
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, _ = s.pool.Exec(
+		`UPDATE agent_sessions SET result_reason = ?, updated_at = ? WHERE id = ?`,
+		"finished", now, req.SessionID)
+	return bctx, nil
+}
+
 // Callback marks an agent as requesting a callback to a previous layer. Returns BroadcastCtx.
 func (s *AgentService) Callback(req *types.AgentCallbackRequest) (BroadcastCtx, error) {
 	bctx, err := s.setAgentResult(req.SessionID, "callback")

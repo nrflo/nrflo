@@ -78,8 +78,23 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)
 
-	// Build a forensics-friendly spawn command string.
-	proc.spawnCommand = "interactive:" + strings.Join(cmd.Args, " ")
+	// Record the exact executable command (env-prefix + argv) for forensics.
+	var envParts []string
+	for _, e := range cmd.Env {
+		if strings.HasPrefix(e, "NRF_") || strings.HasPrefix(e, "NRFLO_") {
+			envParts = append(envParts, e)
+		}
+	}
+	spawnCommand := strings.Join(cmd.Args, " ")
+	if len(envParts) > 0 {
+		spawnCommand = strings.Join(envParts, " ") + " " + spawnCommand
+	}
+	if prep.promptFile != "" {
+		// Prompt body is written via PTY stdin Write after spawn, not via stdin
+		// redirect — but the file path documents where the body lives for replay.
+		spawnCommand += " < " + prep.promptFile
+	}
+	proc.spawnCommand = spawnCommand
 
 	// Register the command with the PTY manager then create the session.
 	b.ptyMgr.RegisterCommand(sessionID, cmd.Path, cmd.Args[1:])
@@ -91,11 +106,12 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		codexCleanup()
 		return fmt.Errorf("cli_interactive: pty create: %w", err)
 	}
+	proc.pid = sess.Pid()
 
 	isClaude := b.adapter.Name() == "claude"
 
 	// Deliver prompt body to PTY after readiness delay.
-	go deliverPrompt(sess, prep.prompt)
+	go deliverPrompt(b.s, proc, sess, prep.prompt, proc.sessionStartCh, proc.firstByteCh)
 
 	// Ferry PTY output to the spawner's message tracker.
 	go ferryPTYOutput(b.s, proc, sess, isClaude)

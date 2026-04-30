@@ -64,6 +64,44 @@ Use --reason to provide a failure description.`,
 	},
 }
 
+var agentFinishedCmd = &cobra.Command{
+	Use:   "finished",
+	Short: "Mark the current agent session as finished (pass; proceed to next phase)",
+	Long: `Mark the current agent session as completed successfully. The orchestrator
+will treat this as a PASS and advance to the next phase.
+
+Context is read from environment variables set by the spawner:
+  NRF_SESSION_ID          — current agent session ID (required)
+  NRF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := RequireProject(); err != nil {
+			return err
+		}
+		if err := CheckServer(); err != nil {
+			return err
+		}
+
+		sessionID := GetSessionID()
+		if sessionID == "" {
+			return fmt.Errorf("NRF_SESSION_ID env var is required")
+		}
+
+		c := GetClient()
+		reqParams := map[string]interface{}{
+			"session_id": sessionID,
+		}
+		addSpawnerIDs(reqParams)
+
+		if err := c.ExecuteAndUnmarshal("agent.finished", reqParams, nil); err != nil {
+			return err
+		}
+
+		fmt.Println("Agent marked as finished")
+		return nil
+	},
+}
+
 var agentContinueCmd = &cobra.Command{
 	Use:   "continue",
 	Short: "Signal that the current agent needs context continuation",
@@ -240,6 +278,9 @@ func init() {
 	// agent fail
 	agentFailCmd.Flags().StringVar(&agentFailReason, "reason", "", "Failure reason")
 	agentCmd.AddCommand(agentFailCmd)
+
+	// agent finished
+	agentCmd.AddCommand(agentFinishedCmd)
 
 	// agent continue
 	agentCmd.AddCommand(agentContinueCmd)

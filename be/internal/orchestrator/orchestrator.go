@@ -886,6 +886,21 @@ func (o *Orchestrator) takeControlByInstance(wfiID, workflowName, target, sessio
 	return sessionID, nil
 }
 
+// SignalSessionReady marks the matching running proc as TUI-ready, releasing
+// its prompt-delivery wait. Best-effort: returns nil when session or run is
+// not found. Idempotent on the spawner side.
+func (o *Orchestrator) SignalSessionReady(sessionID string) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	for _, rs := range o.runs {
+		if rs == nil || rs.spawner == nil {
+			continue
+		}
+		rs.spawner.MarkSessionReady(sessionID)
+	}
+	return nil
+}
+
 // BumpLastMessage resets stall-detection state for the matching running agent.
 // Best-effort: returns nil when session or run not found.
 func (o *Orchestrator) BumpLastMessage(projectID, ticketID, workflow, sessionID string) error {

@@ -108,3 +108,12 @@ func (s *Session) Kill() error {
 	}
 	return s.cmd.Process.Kill()
 }
+
+// Pid returns the OS process id of the spawned process, or 0 if the process
+// has not started yet.
+func (s *Session) Pid() int {
+	if s.cmd == nil || s.cmd.Process == nil {
+		return 0
+	}
+	return s.cmd.Process.Pid
+}

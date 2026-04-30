@@ -46,7 +46,8 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `project_findings.append-bulk` | Append multiple project-level findings |
 | `project_findings.delete` | Delete project-level finding keys |
 | `agent.fail` | Mark agent as failed; broadcasts with `session_id`, `model_id`, `result` |
-| `agent.continue` | Mark agent for continuation; broadcasts with `session_id`, `model_id` |
+| `agent.finished` | Mark agent as successfully finished (pass; proceed to next phase); broadcasts `agent.completed` with `session_id`, `model_id`, `result=pass` |
+| `agent.continue` | Mark agent for context-exhaustion relaunch; broadcasts with `session_id`, `model_id` |
 | `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |
 | `agent.context_update` | Update context_left for a session; no project required; broadcasts `agent.context_updated` with `session_id`, `context_left` |
 | `agent.record_event` | Record a Claude hook event (PreToolUse/PostToolUse); no project required; inserts agent_messages row, broadcasts `messages.updated`; Stop/SessionEnd/UserPromptSubmit are silently ignored |
@@ -71,7 +72,7 @@ All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, e
 
 ## Terminal Signal Dispatch
 
-After the DB write and WS broadcast, the `agent.fail`, `agent.continue`, and `agent.callback` cases each dispatch a best-effort terminal signal through an injected `TerminalSignaler` (defined in `server.go`). This kills the running agent immediately so `monitorAll` exits its natural-exit wait and `handleCompletion` reads the DB-written result, eliminating the latency between the agent calling `nrflo agent fail/continue/callback` and the spawner acting on it.
+After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.continue`, and `agent.callback` cases each dispatch a best-effort terminal signal through an injected `TerminalSignaler` (defined in `server.go`). This kills the running agent immediately so `monitorAll` exits its natural-exit wait and `handleCompletion` reads the DB-written result, eliminating the latency between the agent calling `nrflo agent fail/finished/continue/callback` and the spawner acting on it.
 
 - **Interface**: two methods — `RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error` and `BumpLastMessage(projectID, ticketID, workflow, sessionID string) error`.
 - **Wiring**: `NewServerWithHub` accepts a `TerminalSignaler`; in production `cli/serve.go` passes `httpServer.GetOrchestrator()`; pass `nil` in tests.

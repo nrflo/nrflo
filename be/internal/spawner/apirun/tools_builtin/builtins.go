@@ -28,6 +28,7 @@ func Builtins() map[string]apirun.ToolHandler {
 		"project_findings_delete":      projectFindingsDeleteHandler{},
 
 		"agent_fail":           agentFailHandler{},
+		"agent_finished":       agentFinishedHandler{},
 		"agent_continue":       agentContinueHandler{},
 		"agent_callback":       agentCallbackHandler{},
 		"agent_context_update": agentContextUpdateHandler{},

@@ -31,8 +31,8 @@ func TestExpandInjectable_SystemPromptSuffix(t *testing.T) {
 	}
 
 	// Must contain success and failure instructions
-	if !strings.Contains(body, "nrflo agent continue") {
-		t.Errorf("system-prompt-suffix body missing 'nrflo agent continue'; got: %q", body)
+	if !strings.Contains(body, "nrflo agent finished") {
+		t.Errorf("system-prompt-suffix body missing 'nrflo agent finished'; got: %q", body)
 	}
 	if !strings.Contains(body, "nrflo agent fail") {
 		t.Errorf("system-prompt-suffix body missing 'nrflo agent fail'; got: %q", body)

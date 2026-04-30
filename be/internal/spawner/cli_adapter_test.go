@@ -303,6 +303,56 @@ func TestOpencodeAdapter_BuildCommand_WithoutVariant(t *testing.T) {
 	}
 }
 
+func TestClaudeAdapter_BuildCommand_IncludesPartialMessages(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := SpawnOptions{
+		Model:     "opus_4_7",
+		SessionID: "sess-partial-1",
+		WorkDir:   "/tmp",
+	}
+
+	cmd := adapter.BuildCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if !strings.Contains(args, "--include-partial-messages") {
+		t.Errorf("BuildCommand args missing --include-partial-messages: %s", args)
+	}
+}
+
+func TestClaudeAdapter_BuildResumeCommand_IncludesPartialMessages(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := ResumeOptions{
+		SessionID: "sess-partial-resume-1",
+		WorkDir:   "/tmp",
+	}
+
+	cmd := adapter.BuildResumeCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if !strings.Contains(args, "--include-partial-messages") {
+		t.Errorf("BuildResumeCommand args missing --include-partial-messages: %s", args)
+	}
+}
+
+func TestClaudeAdapter_BuildInteractiveCommand_OmitsPartialMessages(t *testing.T) {
+	adapter := &ClaudeAdapter{}
+
+	opts := InteractiveSpawnOptions{
+		Model:     "opus_4_7",
+		SessionID: "sess-interactive-partial-1",
+		WorkDir:   "/tmp",
+	}
+
+	cmd := adapter.BuildInteractiveCommand(opts)
+	args := strings.Join(cmd.Args, " ")
+
+	if strings.Contains(args, "--include-partial-messages") {
+		t.Errorf("BuildInteractiveCommand args should NOT contain --include-partial-messages: %s", args)
+	}
+}
+
 func TestClaudeAdapter_MapModel(t *testing.T) {
 	adapter := &ClaudeAdapter{}
 

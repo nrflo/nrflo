@@ -19,6 +19,7 @@ func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 		"--verbose",
 		"--dangerously-skip-permissions",
 		"--output-format", "stream-json",
+		"--include-partial-messages",
 		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
 		"--model", model,
 		"--session-id", opts.SessionID,
@@ -115,6 +116,7 @@ func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 		"--dangerously-skip-permissions",
 		"--verbose",
 		"--output-format", "stream-json",
+		"--include-partial-messages",
 		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
 		// prompt piped via stdin (same as BuildCommand)
 	}

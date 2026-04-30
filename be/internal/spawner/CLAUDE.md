@@ -35,6 +35,8 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 │  │   ├── SessionID: ✓ (--session-id)                           │    │
 │  │   ├── SystemPromptFile: ✓ (--append-system-prompt-file)     │    │
 │  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
+│  │   ├── PartialMessages: ✓ (--include-partial-messages,       │    │
+│  │   │     BatchCommand+ResumeCommand only, NOT interactive)   │    │
 │  │   └── Resume: ✓ (--resume <session-id>)                     │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -740,6 +742,10 @@ Template warnings (`template.go`) use `context.Background()` without trx since t
 │    ├── user: tool_result items → handleClaudeToolResult correlation  │
 │    ├── system (subtype=init): [init] v<ver> model=<model>           │
 │    ├── assistant thinking content: [thinking] prefix + text          │
+│    │     (--include-partial-messages ensures thinking blocks appear  │
+│    │      in the final assistant event; partial streaming events     │
+│    │      content_block_start/delta/stop are emitted but ignored —   │
+│    │      the final assistant event is the single source of truth)  │
 │    ├── assistant/result usage: context % tracking via tokens         │
 │    └── rate_limit_event: [rate_limit] type status (non-allowed only)│
 │                                                                      │

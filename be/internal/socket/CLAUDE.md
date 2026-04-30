@@ -50,7 +50,7 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `agent.continue` | Mark agent for context-exhaustion relaunch; broadcasts with `session_id`, `model_id` |
 | `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |
 | `agent.context_update` | Update context_left for a session; no project required; broadcasts `agent.context_updated` with `session_id`, `context_left` |
-| `agent.record_event` | Record a Claude hook event (PreToolUse/PostToolUse); no project required; inserts agent_messages row, broadcasts `messages.updated`; Stop/SessionEnd/UserPromptSubmit are silently ignored |
+| `agent.record_event` | Record a Claude/codex hook event (PreToolUse/PostToolUse/UserPromptSubmit/Stop); no project required; inserts agent_messages row, broadcasts `messages.updated`. SessionEnd is silently ignored. Stop triggers a per-turn flush of new `event_msg/agent_message` records from the codex rollout JSONL (text category) so the model's spoken output is visible. |
 | `workflow.skip` | Add a skip tag to a workflow instance; validates tag against workflow groups; broadcasts `skip_tag.added` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 
@@ -86,7 +86,7 @@ After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.
 |------|---------|
 | `server.go` | Socket listener, connection handling, `TerminalSignaler` interface |
 | `handler.go` | Request routing and method dispatch |
-| `handler_record_event.go` | `agent.record_event` handler: PreToolUse/PostToolUse → DB insert + WS broadcast + stall bump; opportunistic codex context update via `extractCodexContextLeft` |
-| `handler_codex_context.go` | `extractCodexContextLeft` — tail-scans the codex rollout JSONL pointed at by hook `transcript_path` for the latest `token_count` event and returns % context remaining |
+| `handler_record_event.go` | `agent.record_event` handler: PreToolUse/PostToolUse → DB insert + WS broadcast + stall bump; opportunistic codex context update via `extractCodexContextLeft`; Stop → `flushCodexAgentMessages` to emit new agent text rows |
+| `handler_codex_context.go` | Codex JSONL extractors: `extractCodexContextLeft` (latest `token_count` → % context remaining) and `extractCodexNewAgentMessages` (new `event_msg/agent_message` bodies since the per-session offset). Reasoning blocks are NOT extracted — codex 0.125 emits only encrypted reasoning. |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
 | `handler_terminal_signal_test.go` | Terminal signal dispatch: fail/continue/callback dispatch, best-effort error handling, nil-guard |

@@ -115,8 +115,17 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 			}
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "ready"})
-	case "Stop", "SessionEnd":
-		// Predictable per-turn / per-session noise — ignored.
+	case "Stop":
+		// Per-turn boundary. For codex sessions, flush any new
+		// `event_msg/agent_message` text from the rollout JSONL into
+		// agent_messages so the model's spoken output is visible. Reasoning
+		// blocks are NOT extracted (codex 0.125 emits only encrypted
+		// reasoning). Best-effort: silently no-op when transcript_path is
+		// absent (Claude Stop) or unreadable.
+		h.flushCodexAgentMessages(ctx, req, params.SessionID, event)
+		return MakeResponse(req.ID, map[string]string{"status": "recorded"})
+	case "SessionEnd":
+		// Predictable per-session noise — ignored.
 		return MakeResponse(req.ID, map[string]string{"status": "ignored"})
 	default:
 		logger.Info(ctx, "record_event: unknown hook event", "hook_event_name", hookEventName, "session_id", params.SessionID)
@@ -218,6 +227,38 @@ func extractErrorMessage(event map[string]interface{}) string {
 		}
 	}
 	return ""
+}
+
+// flushCodexAgentMessages reads new `event_msg/agent_message` records from
+// the codex rollout JSONL referenced by event["transcript_path"] and inserts
+// each as an agent_messages row (category=text). Tracks per-session byte
+// offsets so subsequent Stop fires only emit new text. Best-effort: errors
+// are logged at INFO and do not fail the response.
+func (h *Handler) flushCodexAgentMessages(ctx context.Context, req Request, sessionID string, event map[string]interface{}) {
+	path, _ := event["transcript_path"].(string)
+	if path == "" {
+		return
+	}
+
+	h.codexJSONLMu.Lock()
+	startOffset := h.codexJSONLOffsets[sessionID]
+	h.codexJSONLMu.Unlock()
+
+	msgs, newOffset, err := extractCodexNewAgentMessages(path, startOffset)
+	if err != nil {
+		logger.Info(ctx, "record_event: codex jsonl scan error (best-effort)", "error", err, "session_id", sessionID)
+		return
+	}
+
+	h.codexJSONLMu.Lock()
+	h.codexJSONLOffsets[sessionID] = newOffset
+	h.codexJSONLMu.Unlock()
+
+	for _, body := range msgs {
+		// recordSimpleEvent broadcasts messages.updated and bumps stall
+		// detection per row, mirroring the Pre/PostToolUse path.
+		h.recordSimpleEvent(ctx, req, sessionID, truncate(body, 2000), "text")
+	}
 }
 
 // recordSimpleEvent inserts a single agent_messages row with the given content +

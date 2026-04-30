@@ -306,9 +306,11 @@ Adding a new interactive CLI: implement these five methods in `cli_adapter_<name
 
 `ferryPTYOutput(spawner, proc, sess, respondToQueries bool)` runs in a goroutine reading PTY stdout. Bytes are always dropped — visibility comes from hook events forwarded via `nrflo agent record-event`; the raw TUI stream is noise (cursor escapes, redraws, status bars). `proc.lastMessageTime` is bumped on each chunk under `messagesMutex` so stall detection doesn't fire while the agent is redrawing. Only Claude and Codex reach this code path today (Opencode falls back to cliBackend; see Backend Selection above). When `respondToQueries == true` (codex), the chunk is scanned for terminal capability queries and canned replies are written back to the PTY — see `respondToTerminalQueries`.
 
-### Context Tracking (Codex Interactive)
+### Codex Rollout JSONL Extraction
 
-Codex hook payloads themselves don't carry token usage, but every payload includes `transcript_path` pointing at the rollout JSONL where codex writes per-turn `token_count` events:
+Codex hook payloads carry `transcript_path` pointing at the rollout JSONL where codex writes the full turn record (token usage, model output, encrypted reasoning, tool I/O). Two extractors live in `socket/handler_codex_context.go`:
+
+**Context tracking** (`extractCodexContextLeft`): per-turn `token_count` events.
 
 ```
 {"type":"event_msg","payload":{"type":"token_count","info":{
@@ -317,7 +319,11 @@ Codex hook payloads themselves don't carry token usage, but every payload includ
    "model_context_window":258400}}}
 ```
 
-`socket/handler_codex_context.go:extractCodexContextLeft` opens the file on every `agent.record_event` call, scans backwards for the most recent `token_count` record, and returns `100 - 100 * last_token_usage.input_tokens / model_context_window`. `cached_input_tokens` is a subset of `input_tokens` (no double-count). The handler in `handler_record_event.go` runs this opportunistically before the event-name switch and pipes the result through the same `agentSvc.UpdateContextLeft` + `EventAgentContextUpdated` broadcast path used for Claude. Claude hook payloads carry no `transcript_path` so the helper is a no-op for them. Best-effort: missing/unreadable file or no `token_count` record yet → silently skipped, no error to caller. Low-context restart now trips for codex interactive sessions on the next hook fire after a relaunch threshold is crossed. Opencode interactive does not exist as a configuration: `OpencodeAdapter.SupportsInteractive() == false`.
+`extractCodexContextLeft` opens the file on every `agent.record_event` call, scans backwards for the most recent `token_count` record, and returns `100 - 100 * last_token_usage.input_tokens / model_context_window`. `cached_input_tokens` is a subset of `input_tokens` (no double-count). The handler in `handler_record_event.go` runs this opportunistically before the event-name switch and pipes the result through the same `agentSvc.UpdateContextLeft` + `EventAgentContextUpdated` broadcast path used for Claude. Claude hook payloads carry no `transcript_path` so the helper is a no-op for them. Best-effort: missing/unreadable file or no `token_count` record yet → silently skipped, no error to caller. Low-context restart now trips for codex interactive sessions on the next hook fire after a relaunch threshold is crossed. Opencode interactive does not exist as a configuration: `OpencodeAdapter.SupportsInteractive() == false`.
+
+**Agent text** (`extractCodexNewAgentMessages`): per-turn `event_msg/agent_message` records, flushed on `Stop`. Codex's hook events expose tool I/O (Pre/PostToolUse) and user input (UserPromptSubmit) but never the model's own spoken output — that lives in the JSONL only. On every `Stop` hook, `Handler.flushCodexAgentMessages` reads bytes since the per-session offset (in-memory `Handler.codexJSONLOffsets`, mutex-guarded) and emits each `agent_message` body as an `agent_messages` row (category `text`, truncated to 2000 bytes) via the same `recordSimpleEvent` path used for hooks. Phase tags (`commentary` / `final_answer`) are dropped — the body usually makes its role clear and the tag adds noise. Offsets are not persisted across server restarts; a re-flush after restart is acceptable noise. File rotation/truncation (file shorter than tracked offset) resets the offset to 0.
+
+**Reasoning is NOT extracted.** Codex 0.125 emits `response_item/reasoning` records with `summary: []`, `content: null`, and only an opaque `encrypted_content` blob (verified across 109 reasoning items in real sessions; 0/109 had plaintext). Reasoning text is encrypted server-side by OpenAI and not decryptable client-side. If codex eventually exposes a `reasoning_summary` text field, this extractor can be extended.
 
 ### Wait Goroutine
 

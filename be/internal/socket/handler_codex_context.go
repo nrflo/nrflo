@@ -3,6 +3,7 @@ package socket
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 
 	"be/internal/spawner"
@@ -66,4 +67,69 @@ func extractCodexContextLeft(event map[string]interface{}) (int, bool) {
 		return spawner.ComputeContextLeftPct(used, ctx), true
 	}
 	return 0, false
+}
+
+// extractCodexNewAgentMessages reads the codex rollout JSONL starting at
+// startOffset and returns every `event_msg / agent_message` body found, plus
+// the new file offset (size at end of read). Used by the `Stop` hook handler
+// to flush per-turn agent text to agent_messages without re-emitting bodies
+// from prior turns.
+//
+// Returns ([], startOffset, nil) when path is empty / unreadable / file is
+// shorter than startOffset (indicates rotation; reset to 0 by caller).
+// Reasoning blocks are NOT extracted — codex 0.125 only writes encrypted
+// reasoning content, never plaintext.
+func extractCodexNewAgentMessages(path string, startOffset int64) ([]string, int64, error) {
+	if path == "" {
+		return nil, startOffset, nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, startOffset, nil
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, startOffset, nil
+	}
+	size := stat.Size()
+	if size < startOffset {
+		// File rotated/truncated — caller should reset offset.
+		return nil, 0, nil
+	}
+	if startOffset > 0 {
+		if _, err := f.Seek(startOffset, io.SeekStart); err != nil {
+			return nil, startOffset, nil
+		}
+	}
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, startOffset, nil
+	}
+
+	var msgs []string
+	for _, line := range bytes.Split(data, []byte{'\n'}) {
+		if len(line) == 0 {
+			continue
+		}
+		var rec struct {
+			Type    string `json:"type"`
+			Payload struct {
+				Type    string `json:"type"`
+				Message string `json:"message"`
+			} `json:"payload"`
+		}
+		if err := json.Unmarshal(line, &rec); err != nil {
+			continue
+		}
+		if rec.Type != "event_msg" || rec.Payload.Type != "agent_message" {
+			continue
+		}
+		if rec.Payload.Message == "" {
+			continue
+		}
+		msgs = append(msgs, rec.Payload.Message)
+	}
+	return msgs, size, nil
 }

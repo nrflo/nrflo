@@ -258,6 +258,13 @@ type Handler struct {
 	workflowSvc        *service.WorkflowService
 	wsHub              *ws.Hub
 	signaler           TerminalSignaler // optional; nil-safe
+
+	// codexJSONLOffsets tracks per-session byte offsets into the codex rollout
+	// JSONL so each `Stop` hook scan only reads new bytes since the last flush.
+	// In-memory only; not persisted across restarts (rare event; codex sessions
+	// are short, so a re-flush on restart is acceptable noise).
+	codexJSONLMu      sync.Mutex
+	codexJSONLOffsets map[string]int64
 }
 
 // NewHandler creates a new request handler
@@ -269,6 +276,7 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 		workflowSvc:        service.NewWorkflowService(pool, clk),
 		wsHub:              hub,
 		signaler:           signaler,
+		codexJSONLOffsets:  make(map[string]int64),
 	}
 }
 

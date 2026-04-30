@@ -62,6 +62,11 @@ export type WSEventType =
   | 'schedule.updated'
   | 'schedule.deleted'
   | 'schedule.triggered'
+  | 'notification_channel.created'
+  | 'notification_channel.updated'
+  | 'notification_channel.deleted'
+  | 'notification.delivered'
+  | 'notification.failed'
   | 'test.echo'
 
 export interface WSEvent {
@@ -225,6 +230,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
     qc.invalidateQueries({ queryKey: errorKeys.all })
     qc.invalidateQueries({ queryKey: scheduleKeys.all })
+    qc.invalidateQueries({ queryKey: ['notification-channels'] })
   }, [])
 
   // Build subscribe message with cursor for v2 resume

@@ -9,8 +9,9 @@ import { SystemAgentsSection } from '@/components/settings/SystemAgentsSection'
 import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesSection'
 import { CLIModelsSection } from '@/components/settings/CLIModelsSection'
 import { LogsSection } from '@/components/settings/LogsSection'
+import { NotificationsSection } from '@/components/settings/NotificationsSection'
 
-type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs'
+type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'notifications'
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
@@ -19,6 +20,7 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'default-templates', label: 'Default Templates' },
   { id: 'cli-models', label: 'CLI Models' },
   { id: 'logs', label: 'Logs' },
+  { id: 'notifications', label: 'Notifications' },
 ]
 
 const tabIds = new Set<string>(tabs.map((t) => t.id))
@@ -89,6 +91,7 @@ export function SettingsPage() {
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'cli-models' && <CLIModelsSection />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
+      {activeTab === 'notifications' && <NotificationsSection />}
     </div>
   )
 }

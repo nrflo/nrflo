@@ -392,4 +392,26 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: scheduleKeys.runs(event.data.task_id as string) })
     }
   },
+
+  'notification_channel.created': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: ['notification-channels'] })
+  },
+  'notification_channel.updated': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: ['notification-channels'] })
+  },
+  'notification_channel.deleted': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: ['notification-channels'] })
+  },
+  'notification.delivered': (event, qc) => {
+    qc.invalidateQueries({ queryKey: ['notification-channels'] })
+    if (event.data?.channel_id) {
+      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as number] })
+    }
+  },
+  'notification.failed': (event, qc) => {
+    qc.invalidateQueries({ queryKey: ['notification-channels'] })
+    if (event.data?.channel_id) {
+      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as number] })
+    }
+  },
 }

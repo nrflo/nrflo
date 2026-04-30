@@ -94,6 +94,11 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `schedule.updated` | | Scheduled task updated, invalidates scheduleKeys.all |
 | `schedule.deleted` | | Scheduled task deleted, invalidates scheduleKeys.all |
 | `schedule.triggered` | task_id, run_id, status | Schedule dispatched, invalidates scheduleKeys.all + scheduleKeys.runs(task_id) |
+| `notification_channel.created` | | Channel created, invalidates notification-channels |
+| `notification_channel.updated` | | Channel updated, invalidates notification-channels |
+| `notification_channel.deleted` | | Channel deleted, invalidates notification-channels |
+| `notification.delivered` | channel_id | Delivery succeeded, invalidates notification-channels + notification-deliveries(channel_id) |
+| `notification.failed` | channel_id | Delivery failed, invalidates notification-channels + notification-deliveries(channel_id) |
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`
 **Exception:** `global.running_agents` is a global broadcast with no project_id/ticket_id/seq. Handled as early return before `dispatchV2Event`.

@@ -148,6 +148,92 @@ func TestHandleGetSessionPrompt_EmptyID(t *testing.T) {
 	}
 }
 
+// insertSessionFull inserts an agent_session row with optional prompt and system_prompt.
+// Pass empty string for either to store NULL.
+func insertSessionFull(t *testing.T, database *db.DB, id, wfiID, projectID, prompt, systemPrompt string) {
+	t.Helper()
+	var p, sp interface{}
+	if prompt != "" {
+		p = prompt
+	}
+	if systemPrompt != "" {
+		sp = systemPrompt
+	}
+	_, err := database.Exec(`
+		INSERT INTO agent_sessions
+		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, prompt, system_prompt, created_at, updated_at)
+		VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet', 'completed', ?, ?, datetime('now'), datetime('now'))`,
+		id, projectID, wfiID, p, sp)
+	if err != nil {
+		t.Fatalf("insertSessionFull(%s): %v", id, err)
+	}
+}
+
+// TestHandleGetSessionPrompt_BothFields verifies both prompt and system_prompt round-trip correctly.
+func TestHandleGetSessionPrompt_BothFields(t *testing.T) {
+	s, database := newSessionPromptServer(t)
+	defer database.Close()
+	wfiID := seedProject(t, database, "proj-both", "Both Fields Project")
+	wantPrompt := "# User Prompt\n\nDo the implementation."
+	wantSystemPrompt := "You are a senior engineer. Follow TDD."
+	insertSessionFull(t, database, "sess-both", wfiID, "proj-both", wantPrompt, wantSystemPrompt)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sessions/sess-both/prompt", nil)
+	req.SetPathValue("id", "sess-both")
+	rr := httptest.NewRecorder()
+	s.handleGetSessionPrompt(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body = %s", rr.Code, rr.Body.String())
+	}
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	gotPrompt, ok := resp["prompt"].(string)
+	if !ok {
+		t.Fatalf("prompt field missing or wrong type: %v", resp["prompt"])
+	}
+	if gotPrompt != wantPrompt {
+		t.Errorf("prompt = %q, want %q", gotPrompt, wantPrompt)
+	}
+	gotSystemPrompt, ok := resp["system_prompt"].(string)
+	if !ok {
+		t.Fatalf("system_prompt field missing or wrong type: %v", resp["system_prompt"])
+	}
+	if gotSystemPrompt != wantSystemPrompt {
+		t.Errorf("system_prompt = %q, want %q", gotSystemPrompt, wantSystemPrompt)
+	}
+}
+
+// TestHandleGetSessionPrompt_SystemPromptOnly verifies 200 (not 204) when only system_prompt is set.
+func TestHandleGetSessionPrompt_SystemPromptOnly(t *testing.T) {
+	s, database := newSessionPromptServer(t)
+	defer database.Close()
+	wfiID := seedProject(t, database, "proj-sys-only", "SysPrompt Only Project")
+	wantSystemPrompt := "You are a careful reviewer."
+	insertSessionFull(t, database, "sess-sys-only", wfiID, "proj-sys-only", "", wantSystemPrompt)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sessions/sess-sys-only/prompt", nil)
+	req.SetPathValue("id", "sess-sys-only")
+	rr := httptest.NewRecorder()
+	s.handleGetSessionPrompt(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (system_prompt is set); body = %s", rr.Code, rr.Body.String())
+	}
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if gotPrompt, _ := resp["prompt"].(string); gotPrompt != "" {
+		t.Errorf("prompt = %q, want empty string (NULL)", gotPrompt)
+	}
+	gotSystemPrompt, ok := resp["system_prompt"].(string)
+	if !ok {
+		t.Fatalf("system_prompt field missing or wrong type: %v", resp["system_prompt"])
+	}
+	if gotSystemPrompt != wantSystemPrompt {
+		t.Errorf("system_prompt = %q, want %q", gotSystemPrompt, wantSystemPrompt)
+	}
+}
+
 // TestHandleGetSessionPrompt_TableDriven runs all cases in a table for clarity.
 func TestHandleGetSessionPrompt_TableDriven(t *testing.T) {
 	s, database := newSessionPromptServer(t)

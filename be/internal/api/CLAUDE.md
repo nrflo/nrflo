@@ -160,7 +160,7 @@ GET /api/v1/sessions/:id/messages?limit=100&offset=0
 GET /api/v1/sessions/:id/messages?category=subagent  # text|tool|subagent|skill|user_input
 
 # Session prompt context (returns generated prompt for an agent session)
-GET /api/v1/sessions/:id/prompt  # 200 with {prompt_context}, 204 if empty, 404 if not found
+GET /api/v1/sessions/:id/prompt  # 200 with {prompt, system_prompt}, 204 when both are empty, 404 if not found
 
 # Dependencies
 GET /api/v1/tickets/:id/dependencies  # Get ticket dependencies

@@ -315,6 +315,11 @@ func TestSocketHandler_FindingsNotLogged(t *testing.T) {
 
 // TestSocketHandler_TrxGeneratedPerRequest verifies each socket Handle() call gets a new trx.
 func TestSocketHandler_TrxGeneratedPerRequest(t *testing.T) {
+	// Clear NRF_TRX so the socket client doesn't propagate a parent trx —
+	// this test must run in isolation regardless of whether the test binary
+	// is invoked from inside a spawned-agent environment.
+	t.Setenv("NRF_TRX", "")
+
 	env := NewTestEnv(t)
 
 	var logBuf bytes.Buffer

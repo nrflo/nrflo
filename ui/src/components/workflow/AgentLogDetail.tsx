@@ -211,8 +211,21 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
               <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
               <p className="text-xs">Loading prompt context...</p>
             </div>
-          ) : promptData?.prompt_context ? (
-            <RenderedMarkdown content={promptData.prompt_context} />
+          ) : (promptData?.prompt || promptData?.system_prompt) ? (
+            <div className="space-y-4">
+              {promptData.prompt && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">User prompt</p>
+                  <RenderedMarkdown content={promptData.prompt} />
+                </div>
+              )}
+              {promptData.system_prompt && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">System prompt suffix</p>
+                  <RenderedMarkdown content={promptData.system_prompt} />
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <FileText className="h-8 w-8 mb-2 opacity-30" />

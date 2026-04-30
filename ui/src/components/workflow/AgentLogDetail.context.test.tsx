@@ -85,7 +85,7 @@ describe('AgentLogDetail — Context tab', () => {
   })
 
   it('clicking Context tab triggers fetchSessionPrompt with the session ID', async () => {
-    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({ prompt_context: '# Hello' })
+    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({ prompt: '# Hello', system_prompt: '' })
     const user = userEvent.setup()
 
     renderDetail({ phaseName: 'implementation', agent: makeRunningAgent(), session: makeSession() })
@@ -107,21 +107,54 @@ describe('AgentLogDetail — Context tab', () => {
     expect(screen.getByText('Loading prompt context...')).toBeInTheDocument()
   })
 
-  it('renders markdown when prompt_context is non-empty', async () => {
+  it('renders markdown when prompt is non-empty', async () => {
     vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({
-      prompt_context: '# My Prompt\nInstructions go here.',
+      prompt: '# My Prompt\nInstructions go here.',
+      system_prompt: '',
     })
     const user = userEvent.setup()
 
     renderDetail({ phaseName: 'implementation', agent: makeRunningAgent(), session: makeSession() })
     await user.click(screen.getByText('Context'))
 
+    await screen.findByText('User prompt')
     await screen.findByText('My Prompt')
     expect(screen.getByText('Instructions go here.')).toBeInTheDocument()
   })
 
-  it('shows placeholder when prompt_context is empty', async () => {
-    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({ prompt_context: '' })
+  it('renders system prompt suffix section when system_prompt is non-empty', async () => {
+    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({
+      prompt: '# User instructions',
+      system_prompt: '## Safety rules\nDo not delete files.',
+    })
+    const user = userEvent.setup()
+
+    renderDetail({ phaseName: 'implementation', agent: makeRunningAgent(), session: makeSession() })
+    await user.click(screen.getByText('Context'))
+
+    await screen.findByText('User prompt')
+    await screen.findByText('System prompt suffix')
+    expect(screen.getByText('User instructions')).toBeInTheDocument()
+    expect(screen.getByText('Safety rules')).toBeInTheDocument()
+    expect(screen.getByText('Do not delete files.')).toBeInTheDocument()
+  })
+
+  it('hides system prompt suffix section when system_prompt is empty (Codex/Opencode case)', async () => {
+    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({
+      prompt: '# Task instructions',
+      system_prompt: '',
+    })
+    const user = userEvent.setup()
+
+    renderDetail({ phaseName: 'implementation', agent: makeRunningAgent(), session: makeSession() })
+    await user.click(screen.getByText('Context'))
+
+    await screen.findByText('User prompt')
+    expect(screen.queryByText('System prompt suffix')).not.toBeInTheDocument()
+  })
+
+  it('shows placeholder when prompt and system_prompt are both empty', async () => {
+    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({ prompt: '', system_prompt: '' })
     const user = userEvent.setup()
 
     renderDetail({ phaseName: 'implementation', agent: makeRunningAgent(), session: makeSession() })
@@ -144,7 +177,7 @@ describe('AgentLogDetail — Context tab', () => {
   })
 
   it('switching back to Messages tab shows messages content', async () => {
-    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({ prompt_context: '# Prompt' })
+    vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({ prompt: '# Prompt', system_prompt: '' })
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
       messages: [{ content: 'Running tests...', created_at: '2026-01-01T00:00:10Z' }],

@@ -109,7 +109,7 @@ GET    /api/v1/agents/recent?limit=10
 GET    /api/v1/sessions/:id/messages
 GET    /api/v1/sessions/:id/messages?limit=100&offset=0
 
-# Session prompt context
+# Session prompt context — returns { prompt: string, system_prompt: string }; 204 → both empty strings
 GET    /api/v1/sessions/:id/prompt
 
 # System agent definitions (global, no X-Project header)

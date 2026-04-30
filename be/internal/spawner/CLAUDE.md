@@ -180,7 +180,7 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 
 ### Context-Save Override
 
-`initiateContextSave` (`context_save.go`) forces the system-agent save path when `proc.backend.Name() == "api"`, regardless of `Config.ContextSaveViaAgent`. The resume path is Claude-CLI-only; an in-process API run cannot be resumed.
+`initiateContextSave` (`context_save.go`) routes via `shouldUseAgentSave` which forces the agent path for api-mode backends and any adapter where `SupportsResume() == false` (codex). See "Context Save Methods" below for the full decision matrix.
 
 ### Required Spawner Config for API Agents
 
@@ -542,10 +542,17 @@ On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` g
 
 ## Context Save Methods
 
-Controlled by `Config.ContextSaveViaAgent` (from `context_save_via_agent` global setting, default false):
+Two paths exist; selection is computed by `(*Spawner).shouldUseAgentSave(proc)` (`context_save.go`):
 
-- **Resume-based (default, `false`)**: Resumes the same Claude session with a save prompt. The agent writes `to_resume` findings itself. Only works for Claude CLI (`SupportsResume()`); other CLIs skip context save and relaunch without previous data. Code in `context_save_resume.go`.
-- **System agent (`true` or API-mode)**: Spawns a fresh `context-saver` system agent (haiku) that reads the killed agent's message history (120k char tail truncation) and writes a summary to `to_resume` findings. Works for all CLI types. Broadcasts `EventAgentContextSaving` WS event. Code in `context_save.go`.
+- **Resume-based** (`contextSaveViaResume`, `context_save_resume.go`): Resumes the same Claude session with a save prompt; the agent writes `to_resume` findings itself. Requires `adapter.SupportsResume() == true` — only Claude qualifies.
+- **System agent** (`contextSaveViaAgent`, `context_save.go`): Spawns a fresh `context-saver` system agent (haiku) that reads the killed agent's message history (120k char tail truncation) and writes a summary to `to_resume` findings. Works for all CLI types. Broadcasts `EventAgentContextSaving` WS event.
+
+`shouldUseAgentSave` returns `true` (forces the agent path) when ANY of:
+1. `Config.ContextSaveViaAgent == true` (global `context_save_via_agent` setting, default false — explicit user opt-in).
+2. `proc.backend.Name() == "api"` — the resume path is CLI-only and cannot resume an in-process API run.
+3. `adapter.SupportsResume() == false` — covers codex (and any future non-resumable CLI). Without this clause, `contextSaveViaResume` would short-circuit with a warning and relaunch with empty `${PREVIOUS_DATA}`, silently dropping all carryover. The cost is one extra haiku invocation per low-context event for non-claude sessions; the previous default was silent data loss.
+
+Default: claude → resume; codex/opencode → agent; api-mode → agent.
 
 ### Saver Selection (Backend-Aware)
 

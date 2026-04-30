@@ -48,17 +48,45 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	s.saveMessages(proc)
 
 	// 3. Save context via configured method.
-	// API-mode agents force the agent-based save: the resume path is
-	// Claude-CLI-only, so it cannot resume an in-process API run.
-	useAgentSave := s.config.ContextSaveViaAgent
-	if proc.backend != nil && proc.backend.Name() == "api" {
-		useAgentSave = true
-	}
-	if useAgentSave {
+	if s.shouldUseAgentSave(proc) {
 		s.contextSaveViaAgent(ctx, proc, req)
 	} else {
 		s.contextSaveViaResume(ctx, proc, req)
 	}
+}
+
+// shouldUseAgentSave decides whether the system-agent context-saver path is
+// required, regardless of the global `context_save_via_agent` setting.
+//
+// Forced cases:
+//  1. Global setting enabled — user opt-in.
+//  2. API-mode backend — `contextSaveViaResume` requires `--resume <session>`,
+//     which doesn't apply to an in-process API run.
+//  3. Adapter doesn't support resume — codex (and any future non-resumable CLI)
+//     would otherwise short-circuit `contextSaveViaResume` with a warning and
+//     relaunch blind, dropping all carryover. The agent-save path works for
+//     every CLI because it reads `agent_messages` rather than resuming the
+//     session.
+//
+// Costs one haiku context-saver invocation per low-context event for non-claude
+// CLIs even when the user hasn't opted into agent-save. That's the right
+// tradeoff: the previous default was silent data loss.
+func (s *Spawner) shouldUseAgentSave(proc *processInfo) bool {
+	if s.config.ContextSaveViaAgent {
+		return true
+	}
+	if proc.backend != nil && proc.backend.Name() == "api" {
+		return true
+	}
+	cliName, _ := parseModelID(proc.modelID)
+	if cliName == "" {
+		return false
+	}
+	adapter, err := GetCLIAdapter(cliName)
+	if err != nil {
+		return false
+	}
+	return !adapter.SupportsResume()
 }
 
 // contextSaveViaAgent uses a system agent (haiku) to summarize the killed agent's

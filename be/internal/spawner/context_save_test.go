@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -377,5 +378,83 @@ func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string
 	}
 
 	return sessionID
+}
+
+// =============================================================================
+// shouldUseAgentSave tests
+// =============================================================================
+
+// fakeBackend implements ExecutionBackend purely for shouldUseAgentSave tests
+// (the function only reads Name()).
+type fakeBackend struct{ name string }
+
+func (b fakeBackend) Name() string                                                       { return b.name }
+func (b fakeBackend) SupportsResume() bool                                                { return false }
+func (b fakeBackend) SupportsTakeControl() bool                                           { return false }
+func (b fakeBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) error        { return nil }
+func (b fakeBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error      { return nil }
+
+func TestShouldUseAgentSave_GlobalSettingForcesAgent(t *testing.T) {
+	s := New(Config{ContextSaveViaAgent: true, Clock: clock.Real()})
+	proc := &processInfo{modelID: "claude:sonnet"}
+	if !s.shouldUseAgentSave(proc) {
+		t.Error("global setting=true must force agent save regardless of adapter")
+	}
+}
+
+func TestShouldUseAgentSave_APIBackendForcesAgent(t *testing.T) {
+	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
+	proc := &processInfo{
+		modelID: "claude:sonnet",
+		backend: fakeBackend{name: "api"},
+	}
+	if !s.shouldUseAgentSave(proc) {
+		t.Error("api backend must force agent save (no resume path for in-process API runs)")
+	}
+}
+
+// TestShouldUseAgentSave_CodexForcesAgent is the regression test for the
+// codex-interactive low-context fix: codex's adapter returns SupportsResume()=
+// false, so the resume path would silently skip the save and relaunch with
+// empty PREVIOUS_DATA. shouldUseAgentSave must route around that.
+func TestShouldUseAgentSave_CodexForcesAgent(t *testing.T) {
+	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
+	proc := &processInfo{
+		modelID: "codex:gpt-5.3-codex",
+		backend: fakeBackend{name: "cli_interactive"},
+	}
+	if !s.shouldUseAgentSave(proc) {
+		t.Error("codex must force agent save (SupportsResume=false would otherwise short-circuit)")
+	}
+}
+
+func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
+	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
+	proc := &processInfo{
+		modelID: "claude:sonnet",
+		backend: fakeBackend{name: "cli"},
+	}
+	if s.shouldUseAgentSave(proc) {
+		t.Error("claude with default settings must use resume path; got forced agent save")
+	}
+}
+
+func TestShouldUseAgentSave_OpencodeForcesAgent(t *testing.T) {
+	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
+	proc := &processInfo{
+		modelID: "opencode:openai/gpt-5.4",
+		backend: fakeBackend{name: "cli"},
+	}
+	if !s.shouldUseAgentSave(proc) {
+		t.Error("opencode must force agent save (SupportsResume=false)")
+	}
+}
+
+func TestShouldUseAgentSave_UnknownAdapterFallsThrough(t *testing.T) {
+	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
+	proc := &processInfo{modelID: "unknown:weird"}
+	if s.shouldUseAgentSave(proc) {
+		t.Error("unknown adapter must NOT force agent save (graceful fallback to resume; resume itself will warn)")
+	}
 }
 

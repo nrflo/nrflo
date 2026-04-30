@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"syscall"
+
+	"be/internal/ws"
 )
 
 // cliInteractiveBackend runs a CLI agent inside a PTY without batch flags.
@@ -77,6 +79,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		CodexHome:        extras.CodexHome,
 		Prompt:           prep.prompt, // Codex pre-loads via argv; other adapters ignore
 		Hooks:            extras.Hooks,
+		Port:             extras.Port, // embedded server port (opencode only; 0 for others)
 	}
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)
@@ -111,6 +114,24 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 	proc.pid = sess.Pid()
 
+	// Optional post-spawn setup (e.g., opencode SSE consumer).
+	// Interface-asserted so adapters that don't need it are unaffected.
+	postCleanup := func() {}
+	if starter, ok := b.adapter.(PostInteractiveStarter); ok {
+		sink := &spawnerSink{s: b.s}
+		cu, startErr := starter.PostInteractiveStart(ctx, PostInteractiveStartOptions{
+			SessionID: proc.sessionID,
+			WorkDir:   workDir,
+			Port:      extras.Port,
+			Sink:      sink,
+		})
+		if startErr != nil {
+			b.s.warnAgent(proc, "PostInteractiveStart failed: "+startErr.Error())
+		} else if cu != nil {
+			postCleanup = cu
+		}
+	}
+
 	// Deliver prompt body to PTY after readiness delay. Adapters that deliver
 	// the prompt themselves (codex, via argv positional) get an empty body so
 	// deliverPrompt is a no-op for them.
@@ -139,6 +160,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		if suffixPath != "" {
 			os.Remove(suffixPath)
 		}
+		postCleanup()
 		prepCleanup()
 	}()
 
@@ -168,3 +190,50 @@ func exitCodeFromSession(sess ptySessionIface) int {
 	return 0
 }
 
+// spawnerSink implements the Sink interface for the SSE event consumer,
+// routing events through the spawner's existing service and broadcast paths.
+type spawnerSink struct {
+	s *Spawner
+}
+
+func (ss *spawnerSink) RecordHookMessage(sessionID, content, category string) (string, string, string, error) {
+	if ss.s.config.AgentSvcReal == nil {
+		return "", "", "", nil
+	}
+	return ss.s.config.AgentSvcReal.RecordHookMessage(sessionID, content, category)
+}
+
+func (ss *spawnerSink) UpdateContextLeft(sessionID string, pct int) (string, string, string, error) {
+	if ss.s.config.AgentSvcReal == nil {
+		return "", "", "", nil
+	}
+	projectID, ticketID, workflowName, err := ss.s.config.AgentSvcReal.UpdateContextLeft(sessionID, pct)
+	if err == nil && projectID != "" {
+		ss.s.broadcast(ws.EventAgentContextUpdated, projectID, ticketID, workflowName, map[string]interface{}{
+			"session_id":   sessionID,
+			"context_left": pct,
+		})
+	}
+	return projectID, ticketID, workflowName, err
+}
+
+func (ss *spawnerSink) BumpLastMessage(sessionID string) {
+	ss.s.BumpLastMessage(sessionID)
+}
+
+func (ss *spawnerSink) OnTurnComplete(sessionID string) {
+	// Reset idle window by bumping the last-message timestamp.
+	ss.s.BumpLastMessage(sessionID)
+}
+
+func (ss *spawnerSink) BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID string) {
+	ss.s.broadcast(ws.EventMessagesUpdated, projectID, ticketID, workflow, map[string]interface{}{
+		"session_id": sessionID,
+	})
+}
+
+func (ss *spawnerSink) RecordError(projectID, errType, sessionID, msg string) {
+	if ss.s.config.ErrorSvc != nil {
+		ss.s.config.ErrorSvc.RecordError(projectID, errType, sessionID, msg)
+	}
+}

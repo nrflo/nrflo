@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -68,6 +69,7 @@ type CLIAdapter interface {
 type InteractiveExtras struct {
 	CodexHome string      // per-session CODEX_HOME dir (codex only)
 	Hooks     []HookEvent // event-keyed hook commands (codex only)
+	Port      int         // embedded HTTP server port (opencode only; 0 = not used)
 }
 
 // InteractivePrepOptions carries the per-spawn context the adapter needs for
@@ -96,6 +98,41 @@ type InteractiveSpawnOptions struct {
 	CodexHome        string // CODEX_HOME dir path; Codex only — ignored by other adapters
 	Prompt           string // initial user prompt; Codex passes this as argv positional, others ignore
 	Hooks            []HookEvent // event-keyed hook commands; Codex injects via repeated `-c hooks.<event>=…` (TUI ignores config.toml hooks); other adapters ignore
+	Port             int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
+}
+
+// Sink is a spawner-internal interface the SSE event consumer uses to report
+// events back to the spawner without importing the concrete *Spawner type.
+// All methods are best-effort: implementations must not panic on errors.
+type Sink interface {
+	// RecordHookMessage inserts one agent_messages row + returns IDs for broadcast.
+	RecordHookMessage(sessionID, content, category string) (projectID, ticketID, workflowName string, err error)
+	// UpdateContextLeft updates context_left percentage for a session.
+	UpdateContextLeft(sessionID string, pct int) (projectID, ticketID, workflowName string, err error)
+	// BumpLastMessage resets stall/idle detection timestamp for the session.
+	BumpLastMessage(sessionID string)
+	// OnTurnComplete signals end of an assistant turn (e.g. session.idle event).
+	OnTurnComplete(sessionID string)
+	// BroadcastMessagesUpdated broadcasts a messages.updated WS event.
+	BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID string)
+	// RecordError records an actionable error to the errors table.
+	RecordError(projectID, errType, sessionID, msg string)
+}
+
+// PostInteractiveStartOptions holds parameters for PostInteractiveStart.
+type PostInteractiveStartOptions struct {
+	SessionID string
+	WorkDir   string
+	Port      int
+	Sink      Sink
+}
+
+// PostInteractiveStarter is an optional sub-interface for CLIAdapter
+// implementations that need to run additional setup after the PTY session is
+// created. Asserted at the call site via interface assertion — NOT added to
+// CLIAdapter itself — so adapters that don't need it are unaffected.
+type PostInteractiveStarter interface {
+	PostInteractiveStart(ctx context.Context, opts PostInteractiveStartOptions) (cleanup func(), err error)
 }
 
 // HookEvent describes one hook event registration the spawner wants codex to

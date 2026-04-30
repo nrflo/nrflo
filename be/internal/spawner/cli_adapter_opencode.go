@@ -1,7 +1,10 @@
 package spawner
 
 import (
+	"context"
+	"net"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -65,7 +68,7 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 	return "anthropic/" + model
 }
 
-// GetReasoningEffort returns the reasoning effort variant for a model alias
+// GetReasoningEffort returns the reasoning effort variant for a model alias.
 // Opencode uses --variant flag with values: max, high, medium, low, minimal
 func (a *OpencodeAdapter) GetReasoningEffort(model string) string {
 	switch model {
@@ -81,7 +84,7 @@ func (a *OpencodeAdapter) SupportsSessionID() bool {
 }
 
 func (a *OpencodeAdapter) SupportsSystemPromptFile() bool {
-	return false // Prompt piped via stdin
+	return false // Suffix prepended to prompt body in deliverPrompt
 }
 
 func (a *OpencodeAdapter) SupportsResume() bool {
@@ -92,42 +95,77 @@ func (a *OpencodeAdapter) UsesStdinPrompt() bool {
 	return false // opencode reads message from positional args
 }
 
-// SupportsInteractive returns false for Opencode: the CLI has no hook system,
-// so a PTY-attached run gives us only ANSI-laden TUI bytes with no structured
-// telemetry. Opencode agents fall back to cliBackend (non-interactive
-// `opencode run`) which produces clean JSON-derived messages.
-func (a *OpencodeAdapter) SupportsInteractive() bool { return false }
+// SupportsInteractive returns true for Opencode: the embedded HTTP server
+// (started via --port / --hostname flags) exposes an SSE /event bus that
+// replaces hook telemetry, giving the same structured visibility as Claude's
+// --settings hooks or Codex's -c hook injection.
+func (a *OpencodeAdapter) SupportsInteractive() bool { return true }
 
-// BuildInteractiveCommand is unreachable via the spawner selector
-// (SupportsInteractive=false) but kept here for the CLIAdapter interface
-// contract and direct unit tests. It mirrors BuildCommand's flag layout
-// minus the batch-mode `run --format json` arguments.
+// BuildInteractiveCommand builds the PTY command for an opencode TUI session
+// with the embedded HTTP server enabled. The first positional arg is the
+// working directory; --port and --hostname start the embedded event server.
+// Prompt delivery is via PTY stdin (DeliversPromptInline=false).
 func (a *OpencodeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
-	args := []string{"--model", opts.Model}
+	args := []string{
+		opts.WorkDir,
+		"--port", strconv.Itoa(opts.Port),
+		"--hostname", "127.0.0.1",
+		"--model", opts.Model,
+	}
 	if opts.ReasoningEffort != "" {
 		args = append(args, "--variant", opts.ReasoningEffort)
 	}
+
 	cmd := exec.Command("opencode", args...)
 	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
+
+	// Ensure TERM is set so the TUI can initialize inside the PTY.
+	hasTERM := false
+	for _, e := range opts.Env {
+		if strings.HasPrefix(e, "TERM=") {
+			hasTERM = true
+			break
+		}
+	}
+	if hasTERM {
+		cmd.Env = opts.Env
+	} else {
+		cmd.Env = append(opts.Env, "TERM=xterm-256color")
+	}
 	return cmd
 }
 
-// PrepareInteractive returns zero extras — Opencode never reaches the
-// interactive backend (SupportsInteractive=false), so this is unreachable in
-// production. Implemented only to satisfy the CLIAdapter contract.
+// PrepareInteractive allocates a free localhost port for the embedded HTTP
+// server by binding and immediately releasing a TCP listener. The port is
+// returned in InteractiveExtras.Port; opencode will bind it on startup.
 func (a *OpencodeAdapter) PrepareInteractive(_ InteractivePrepOptions) (InteractiveExtras, func(), error) {
-	return InteractiveExtras{}, func() {}, nil
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return InteractiveExtras{}, func() {}, err
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+	return InteractiveExtras{Port: port}, func() {}, nil
 }
 
-// DeliversPromptInline returns false (unreachable; opencode falls back to
-// cliBackend).
+// PostInteractiveStart launches the in-process SSE consumer goroutine that
+// subscribes to opencode's embedded HTTP /event bus and dispatches events
+// into the spawner's message/context tracking pipelines. Returns a cleanup
+// func that stops the consumer goroutine.
+func (a *OpencodeAdapter) PostInteractiveStart(ctx context.Context, opts PostInteractiveStartOptions) (func(), error) {
+	cancel := startOpencodeEventStream(ctx, opts.Port, opts.SessionID, opts.WorkDir, opts.Sink)
+	return cancel, nil
+}
+
+// DeliversPromptInline returns false: prompt is delivered via PTY stdin Write
+// after the readiness delay, identical to Claude's interactive path.
 func (a *OpencodeAdapter) DeliversPromptInline() bool { return false }
 
-// NeedsTerminalQueryReplies returns false (unreachable; opencode falls back to
-// cliBackend).
+// NeedsTerminalQueryReplies returns false: opencode's TUI does not send
+// DSR/DA/kitty/OSC capability queries that require auto-replies.
 func (a *OpencodeAdapter) NeedsTerminalQueryReplies() bool { return false }
 
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil
 }
+

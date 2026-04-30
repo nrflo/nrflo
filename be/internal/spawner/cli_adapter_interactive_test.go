@@ -6,9 +6,8 @@ import (
 )
 
 // TestAllAdapters_SupportsInteractive pins each adapter's interactive policy.
-// Claude and Codex opt in (they have hooks for structured visibility); Opencode
-// opts out (no hook system → falls back to cliBackend even when the project's
-// interactive_cli_mode toggle is on).
+// All three opt in: Claude via --settings hooks, Codex via -c hook injection,
+// and Opencode via its embedded HTTP SSE server (--port/--hostname flags).
 func TestAllAdapters_SupportsInteractive(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -16,7 +15,7 @@ func TestAllAdapters_SupportsInteractive(t *testing.T) {
 		want    bool
 	}{
 		{"claude", &ClaudeAdapter{}, true},
-		{"opencode", &OpencodeAdapter{}, false},
+		{"opencode", &OpencodeAdapter{}, true},
 		{"codex", &CodexAdapter{}, true},
 	}
 	for _, tc := range cases {

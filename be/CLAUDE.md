@@ -129,7 +129,8 @@ be/
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution, item, lock models
 │   │   ├── error_log.go         # ErrorLog struct + ErrorType enum
-│   │   └── daily_stats.go
+│   │   ├── daily_stats.go
+│   │   └── scheduled_task.go    # ScheduledTask + ScheduleRun + ScheduleRunWorkflow models
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -144,10 +145,13 @@ be/
 │   │   ├── chain_locks.go       # Chain lock operations
 │   │   ├── error_log.go         # Error log CRUD (Insert, List, Count)
 │   │   ├── daily_stats.go
-│   │   └── event_log.go         # WS event log persistence (append, query, cleanup)
+│   │   ├── event_log.go         # WS event log persistence (append, query, cleanup)
+│   │   ├── scheduled_task.go    # ScheduledTask CRUD + ListEnabled + UpdateTriggerTimestamps
+│   │   └── schedule_run.go      # ScheduleRun Insert/UpdateStatus/ListByTask/Get
 │   ├── types/                   # Shared request/response types
 │   │   ├── request.go
-│   │   └── chain_request.go     # Chain create/update request types
+│   │   ├── chain_request.go     # Chain create/update request types
+│   │   └── scheduled_task_request.go # ScheduledTaskCreate/UpdateRequest types
 │   ├── clock/                   # Time abstraction for testability
 │   │   ├── clock.go             # Clock interface + Real() (production wall clock)
 │   │   └── test.go              # TestClock with Set()/Advance() for deterministic tests

@@ -304,6 +304,34 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │  TICKETS_FTS (Full-text search)                                      │
 │    project_id, id, title, description                                │
 │                                                                      │
+│  SCHEDULED_TASKS                                                     │
+│    id              TEXT PRIMARY KEY                                  │
+│    project_id      TEXT NOT NULL (FK → projects.id, CASCADE)         │
+│    name            TEXT NOT NULL                                     │
+│    description     TEXT NOT NULL DEFAULT ''                          │
+│    cron_expression TEXT NOT NULL                                     │
+│    workflows       TEXT NOT NULL DEFAULT '[]' (JSON: workflow names) │
+│    enabled         INTEGER NOT NULL DEFAULT 1                        │
+│    last_triggered_at TEXT        (nullable, RFC3339Nano)             │
+│    next_run_at     TEXT          (nullable, RFC3339Nano)             │
+│    created_at      TEXT NOT NULL                                     │
+│    updated_at      TEXT NOT NULL                                     │
+│    INDEX idx_scheduled_tasks_project (project_id)                   │
+│    INDEX idx_scheduled_tasks_enabled (enabled)                       │
+│                                                                      │
+│  SCHEDULE_RUNS                                                       │
+│    id                TEXT PRIMARY KEY                                │
+│    scheduled_task_id TEXT NOT NULL (FK → scheduled_tasks.id CASCADE) │
+│    project_id        TEXT NOT NULL                                   │
+│    triggered_at      TEXT NOT NULL                                   │
+│    status            TEXT NOT NULL DEFAULT 'running'                 │
+│                      (pending|triggered|running|failed)              │
+│    workflows         TEXT NOT NULL DEFAULT '[]'                      │
+│                      (JSON: [{workflow, instance_id, error}])        │
+│    error             TEXT NOT NULL DEFAULT ''                        │
+│    INDEX idx_schedule_runs_task (scheduled_task_id, triggered_at)   │
+│    INDEX idx_schedule_runs_project (project_id)                      │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 

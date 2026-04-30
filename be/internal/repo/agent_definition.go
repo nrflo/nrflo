@@ -306,6 +306,25 @@ func (r *AgentDefinitionRepo) Delete(projectID, workflowID, id string) error {
 	return nil
 }
 
+// AllToolsCSVs returns the tools CSV string for every row in agent_definitions.
+// system_agent_definitions.tools is intentionally excluded in v1.
+func (r *AgentDefinitionRepo) AllToolsCSVs() ([]string, error) {
+	rows, err := r.db.Query("SELECT tools FROM agent_definitions")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var tools string
+		if err := rows.Scan(&tools); err != nil {
+			return nil, err
+		}
+		out = append(out, tools)
+	}
+	return out, nil
+}
+
 // Exists checks if an agent definition exists
 func (r *AgentDefinitionRepo) Exists(projectID, workflowID, id string) (bool, error) {
 	var count int

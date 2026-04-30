@@ -33,6 +33,8 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
 | `handlers_tool_definitions.go` | Tool definitions CRUD (global, no project scope; ?project_id and ?workflow_id list filters) |
+| `handlers_tool_definitions_register.go` | POST /api/v1/tool-definitions/register — bearer-auth-gated idempotent upsert + safe prune of global tool definitions |
+| `handlers_tool_definitions_register_validate.go` | Validation logic for register request entries |
 | `handlers_api_credentials.go` | API credentials CRUD (global, no project scope; literal:* secret_ref redacted as literal:*** in responses) |
 | `handlers_safety_hook_check.go` | Safety hook dry-run check (POST /api/v1/safety-hook/check, global) |
 | `handlers_project_findings.go` | Project findings GET (project-scoped) |
@@ -192,6 +194,7 @@ POST   /api/v1/tool-definitions           # Create (id, name, endpoint, input_sc
 GET    /api/v1/tool-definitions/{id}
 PUT    /api/v1/tool-definitions/{id}
 DELETE /api/v1/tool-definitions/{id}
+POST   /api/v1/tool-definitions/register  # Idempotent upsert manifest + safe prune; bearer auth via NRFLO_REGISTER_TOKEN env var; 503 when unset; 401 on bearer mismatch; body: {tools: [{name,endpoint,input_schema,auth_method?,auth_ref?,timeout_sec?,description?}]}; prunes global tools absent from payload unless name is matched by any agent_definitions.tools pattern (literal, prefix*, or *)
 
 # API credentials (global, no project scope; routes registered only when --mode=api; return 404 in cli mode)
 GET    /api/v1/api-credentials            # secret_ref values starting with literal: are redacted as literal:***

@@ -84,31 +84,29 @@ func splitPatterns(csv string) []string {
 	return out
 }
 
-// matchAvailable returns the subset of `pool` whose names match the pattern.
+// MatchName reports whether name matches pattern.
 // Supported forms:
-//   - "*"          -> all
-//   - "prefix.*"   -> names starting with "prefix."
-//   - "prefix_*"   -> names starting with "prefix_"
-//   - exact        -> exact name
-func matchAvailable(pattern string, pool map[string]ToolHandler) map[string]ToolHandler {
-	matched := map[string]ToolHandler{}
+//   - "*"        -> true (matches all)
+//   - "prefix*"  -> strings.HasPrefix(name, prefix)
+//   - exact      -> pattern == name
+func MatchName(pattern, name string) bool {
 	if pattern == "*" {
-		for name, h := range pool {
-			matched[name] = h
-		}
-		return matched
+		return true
 	}
 	if strings.HasSuffix(pattern, "*") {
 		prefix := strings.TrimSuffix(pattern, "*")
-		for name, h := range pool {
-			if strings.HasPrefix(name, prefix) {
-				matched[name] = h
-			}
-		}
-		return matched
+		return strings.HasPrefix(name, prefix)
 	}
-	if h, ok := pool[pattern]; ok {
-		matched[pattern] = h
+	return pattern == name
+}
+
+// matchAvailable returns the subset of `pool` whose names match the pattern.
+func matchAvailable(pattern string, pool map[string]ToolHandler) map[string]ToolHandler {
+	matched := map[string]ToolHandler{}
+	for name, h := range pool {
+		if MatchName(pattern, name) {
+			matched[name] = h
+		}
 	}
 	return matched
 }

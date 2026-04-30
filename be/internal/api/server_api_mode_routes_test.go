@@ -87,6 +87,32 @@ func TestAPIRoutes_APICredentials_RegisteredInAPIMode(t *testing.T) {
 	}
 }
 
+// TestAPIRoutes_ToolDefinitionsRegister_404_CLIMode verifies the register endpoint returns 404 in cli mode.
+func TestAPIRoutes_ToolDefinitionsRegister_404_CLIMode(t *testing.T) {
+	mux := newRoutesMux(t, false)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tool-definitions/register", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("POST /api/v1/tool-definitions/register (cli mode) status = %d, want 404", rr.Code)
+	}
+}
+
+// TestAPIRoutes_ToolDefinitionsRegister_RegisteredInAPIMode verifies the register endpoint is served in api mode.
+func TestAPIRoutes_ToolDefinitionsRegister_RegisteredInAPIMode(t *testing.T) {
+	mux := newRoutesMux(t, true)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tool-definitions/register", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusNotFound {
+		t.Errorf("POST /api/v1/tool-definitions/register (api mode) returned 404; route should be registered")
+	}
+}
+
 // TestAPIRoutes_NonGatedRoute_AlwaysRegistered verifies that standard routes like
 // GET /api/v1/settings are accessible regardless of apiMode.
 func TestAPIRoutes_NonGatedRoute_AlwaysRegistered(t *testing.T) {

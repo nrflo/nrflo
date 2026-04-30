@@ -477,6 +477,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
 		mux.HandleFunc("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
 		mux.HandleFunc("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
+		mux.HandleFunc("POST /api/v1/tool-definitions/register", s.handleRegisterToolDefinitions)
 
 		// API credentials (global, no project scope; only available in --mode=api)
 		mux.HandleFunc("GET /api/v1/api-credentials", s.handleListAPICredentials)

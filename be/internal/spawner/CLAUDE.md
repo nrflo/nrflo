@@ -520,6 +520,14 @@ messages.updated events are coalesced to one per session per 2s window.
      could be drained by any of those goroutines first; if the receiver did not
      own the signal's session, the kill silently dropped and the agent waited
      until idle/nudge or stall detection picked it up minutes later.
+   - **Orchestrator sessionID→*Spawner index**: `Config.OnSessionRegister(sid, sp)`
+     and `Config.OnSessionUnregister(sid)` are called by `registerTerminalSignal`
+     and `unregisterTerminalSignal` respectively, **after** releasing
+     `terminalSignalsMu` (to avoid lock-order inversion — the callback acquires
+     `orchestrator.mu`). The orchestrator uses these callbacks to maintain a
+     `runState.spawners map[string]*Spawner` keyed by session ID, replacing the
+     old single `runState.spawner` pointer that was overwritten last-writer-wins
+     in parallel-layer execution.
 ```
 
 ## Public Helper Methods
@@ -530,7 +538,7 @@ messages.updated events are coalesced to one per session per 2s window.
 func (s *Spawner) RegisterInteractiveWait(sessionID string) <-chan struct{}
 ```
 
-Creates and returns a channel that blocks until `CompleteInteractive` is called for the given session ID. Used by the orchestrator to wait on interactive or plan PTY sessions before entering the layer execution loop. The returned channel is closed when the interactive session finishes, unblocking the caller. This is the external entry point for the same interactive-wait mechanism used internally by the take-control flow (step 7 in the spawn flow above).
+Creates and returns a channel that blocks until `CompleteInteractive` is called for the given session ID. Used by the orchestrator to wait on interactive or plan PTY sessions before entering the layer execution loop. The returned channel is closed when the interactive session finishes, unblocking the caller. Fires `OnSessionRegister(sessionID, s)` after registering (outside the mutex, same discipline as `registerTerminalSignal`) so the orchestrator's `rs.spawners` index includes the pre-step spawner for the duration of the wait. This is the external entry point for the same interactive-wait mechanism used internally by the take-control flow (step 7 in the spawn flow above).
 
 ### LoadTemplate
 

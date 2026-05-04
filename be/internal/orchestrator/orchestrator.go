@@ -62,11 +62,13 @@ type worktreeInfo struct {
 	defaultBranch string
 }
 
-// runState tracks a running orchestration's cancel func and active spawner.
+// runState tracks a running orchestration's cancel func and active spawners.
+// spawners is a sessionID→*Spawner index maintained via spawner-side
+// OnSessionRegister/OnSessionUnregister callbacks.
 type runState struct {
-	cancel  context.CancelFunc
-	spawner *spawner.Spawner // nil between phases
-	done    chan struct{}     // closed when runLoop goroutine exits
+	cancel   context.CancelFunc
+	spawners map[string]*spawner.Spawner
+	done     chan struct{} // closed when runLoop goroutine exits
 }
 
 // Orchestrator manages server-side workflow runs.
@@ -372,7 +374,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// the HTTP handler returns. Propagate the trx for log correlation.
 	orchCtx, cancel := context.WithCancel(logger.WithTrx(context.Background(), logger.TrxFromContext(ctx)))
 
-	rs := &runState{cancel: cancel, done: make(chan struct{})}
+	rs := &runState{cancel: cancel, spawners: make(map[string]*spawner.Spawner), done: make(chan struct{})}
 	o.mu.Lock()
 	o.runs[wi.ID] = rs
 	o.mu.Unlock()
@@ -393,10 +395,6 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			o.mu.Unlock()
 			return nil, fmt.Errorf("failed to setup interactive pre-step: %w", err)
 		}
-		// Store the pre-step spawner in runState so CompleteInteractive can find it
-		o.mu.Lock()
-		rs.spawner = pre.spawner
-		o.mu.Unlock()
 	}
 
 	// Run orchestration loop in goroutine
@@ -781,7 +779,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Create orchestration context detached from HTTP request context
 	orchCtx, cancel := context.WithCancel(logger.WithTrx(context.Background(), logger.TrxFromContext(ctx)))
-	rs := &runState{cancel: cancel, done: make(chan struct{})}
+	rs := &runState{cancel: cancel, spawners: make(map[string]*spawner.Spawner), done: make(chan struct{})}
 	o.mu.Lock()
 	o.runs[wi.ID] = rs
 	o.mu.Unlock()
@@ -837,7 +835,7 @@ func (o *Orchestrator) restartAgentByInstance(wfiID, workflowName, target, sessi
 	}
 
 	o.mu.Lock()
-	sp := rs.spawner
+	sp := rs.spawners[sessionID]
 	o.mu.Unlock()
 	if sp == nil {
 		return fmt.Errorf("no active spawner (agent may be between phases)")
@@ -883,7 +881,7 @@ func (o *Orchestrator) takeControlByInstance(wfiID, workflowName, target, sessio
 	}
 
 	o.mu.Lock()
-	sp := rs.spawner
+	sp := rs.spawners[sessionID]
 	o.mu.Unlock()
 	if sp == nil {
 		return "", fmt.Errorf("no active spawner (agent may be between phases)")
@@ -898,13 +896,20 @@ func (o *Orchestrator) takeControlByInstance(wfiID, workflowName, target, sessio
 // not found. Idempotent on the spawner side.
 func (o *Orchestrator) SignalSessionReady(sessionID string) error {
 	o.mu.Lock()
-	defer o.mu.Unlock()
+	seen := make(map[*spawner.Spawner]struct{})
 	for _, rs := range o.runs {
-		if rs == nil || rs.spawner == nil {
+		if rs == nil {
 			continue
 		}
-		rs.spawner.MarkSessionReady(sessionID)
+		for _, sp := range rs.spawners {
+			if _, ok := seen[sp]; ok {
+				continue
+			}
+			seen[sp] = struct{}{}
+			sp.MarkSessionReady(sessionID)
+		}
 	}
+	o.mu.Unlock()
 	return nil
 }
 
@@ -931,7 +936,7 @@ func (o *Orchestrator) BumpLastMessage(projectID, ticketID, workflow, sessionID 
 	}
 
 	o.mu.Lock()
-	sp := rs.spawner
+	sp := rs.spawners[sessionID]
 	o.mu.Unlock()
 	if sp == nil {
 		return nil // between phases
@@ -969,7 +974,7 @@ func (o *Orchestrator) SetLastMessage(projectID, ticketID, workflow, sessionID, 
 	}
 
 	o.mu.Lock()
-	sp := rs.spawner
+	sp := rs.spawners[sessionID]
 	o.mu.Unlock()
 	if sp == nil {
 		return nil
@@ -1003,7 +1008,7 @@ func (o *Orchestrator) RequestTerminalSignal(projectID, ticketID, workflow, sess
 	}
 
 	o.mu.Lock()
-	sp := rs.spawner
+	sp := rs.spawners[sessionID]
 	o.mu.Unlock()
 	if sp == nil {
 		return nil // between phases
@@ -1032,12 +1037,17 @@ func (o *Orchestrator) CompleteInteractive(sessionID string) error {
 
 	// Find the runState that has this session's spawner and call CompleteInteractive
 	o.mu.Lock()
-	defer o.mu.Unlock()
+	seen := make(map[*spawner.Spawner]struct{})
 	for _, rs := range o.runs {
-		if rs.spawner != nil {
-			rs.spawner.CompleteInteractive(sessionID)
+		for _, sp := range rs.spawners {
+			if _, ok := seen[sp]; ok {
+				continue
+			}
+			seen[sp] = struct{}{}
+			sp.CompleteInteractive(sessionID)
 		}
 	}
+	o.mu.Unlock()
 
 	return nil
 }
@@ -1224,12 +1234,6 @@ func (o *Orchestrator) runLoop(
 			o.markFailed(wfiID, req, "cancelled")
 			return
 		}
-		// Clear the pre-step spawner from runState
-		o.mu.Lock()
-		if rs, ok := o.runs[wfiID]; ok {
-			rs.spawner = nil
-		}
-		o.mu.Unlock()
 		pre.spawner.Close()
 
 		if req.PlanMode {
@@ -1338,14 +1342,21 @@ func (o *Orchestrator) runLoop(
 					NrvappReviewRepo:          nrvappReviewRepo,
 					PythonRunner:              pythonRunner,
 					CustomerConfigDir:         customerConfigDir,
+					OnSessionRegister: func(sid string, s *spawner.Spawner) {
+						o.mu.Lock()
+						if rs, ok := o.runs[wfiID]; ok {
+							rs.spawners[sid] = s
+						}
+						o.mu.Unlock()
+					},
+					OnSessionUnregister: func(sid string) {
+						o.mu.Lock()
+						if rs, ok := o.runs[wfiID]; ok {
+							delete(rs.spawners, sid)
+						}
+						o.mu.Unlock()
+					},
 				})
-
-				// Store spawner ref so RestartAgent can reach it
-				o.mu.Lock()
-				if rs, ok := o.runs[wfiID]; ok {
-					rs.spawner = sp
-				}
-				o.mu.Unlock()
 
 				err := sp.Spawn(ctx, spawner.SpawnRequest{
 					AgentType:          phase.Agent,
@@ -1402,13 +1413,6 @@ func (o *Orchestrator) runLoop(
 				passCount++
 			}
 		}
-
-		// Clear spawner ref (layer done)
-		o.mu.Lock()
-		if rs, ok := o.runs[wfiID]; ok {
-			rs.spawner = nil
-		}
-		o.mu.Unlock()
 
 		// Handle callback before fan-in failure check
 		if callbackDetected {
@@ -1786,15 +1790,20 @@ func convertToSpawnerAgents(svc map[string]service.SpawnerAgentConfig) map[strin
 // (user_interactive / resume-session cases).
 func (o *Orchestrator) RecordUserInput(sessionID, text string) {
 	o.mu.Lock()
-	var spawners []*spawner.Spawner
+	seen := make(map[*spawner.Spawner]struct{})
+	var uniqueSpawners []*spawner.Spawner
 	for _, rs := range o.runs {
-		if rs.spawner != nil {
-			spawners = append(spawners, rs.spawner)
+		for _, sp := range rs.spawners {
+			if _, ok := seen[sp]; ok {
+				continue
+			}
+			seen[sp] = struct{}{}
+			uniqueSpawners = append(uniqueSpawners, sp)
 		}
 	}
 	o.mu.Unlock()
 
-	for _, sp := range spawners {
+	for _, sp := range uniqueSpawners {
 		if sp.RecordUserInput(sessionID, text) {
 			return
 		}

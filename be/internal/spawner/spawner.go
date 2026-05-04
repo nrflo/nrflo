@@ -170,6 +170,13 @@ type Config struct {
 	// CustomerConfigDir is the absolute path to the customer config directory for this project.
 	// Used to load tool_manifest.yaml when APIMode is true and the dir is non-empty.
 	CustomerConfigDir string
+	// OnSessionRegister is called after registerTerminalSignal adds sessionID to the registry.
+	// The callback fires outside terminalSignalsMu to avoid lock-order inversion.
+	// The orchestrator uses this to maintain its sessionID→*Spawner index.
+	OnSessionRegister func(sessionID string, sp *Spawner)
+	// OnSessionUnregister is called after unregisterTerminalSignal removes sessionID.
+	// Fires outside terminalSignalsMu. Used symmetrically with OnSessionRegister.
+	OnSessionUnregister func(sessionID string)
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -395,6 +402,11 @@ func (s *Spawner) registerTerminalSignal(sessionID string, ch chan terminalSigna
 	s.terminalSignalsMu.Lock()
 	s.terminalSignals[sessionID] = ch
 	s.terminalSignalsMu.Unlock()
+	// Fire callback outside the mutex to avoid lock-order inversion
+	// (callback acquires orchestrator's mu; terminalSignalsMu must not be held).
+	if s.config.OnSessionRegister != nil {
+		s.config.OnSessionRegister(sessionID, s)
+	}
 }
 
 // unregisterTerminalSignal removes sessionID from the registry. Subsequent
@@ -403,6 +415,9 @@ func (s *Spawner) unregisterTerminalSignal(sessionID string) {
 	s.terminalSignalsMu.Lock()
 	delete(s.terminalSignals, sessionID)
 	s.terminalSignalsMu.Unlock()
+	if s.config.OnSessionUnregister != nil {
+		s.config.OnSessionUnregister(sessionID)
+	}
 }
 
 // BumpLastMessage sends a non-blocking signal to monitorAll to update
@@ -457,6 +472,9 @@ func (s *Spawner) MarkSessionReady(sessionID string) {
 func (s *Spawner) CompleteInteractive(sessionID string) {
 	s.mu.Lock()
 	ch, ok := s.interactiveWaits[sessionID]
+	if ok {
+		delete(s.interactiveWaits, sessionID)
+	}
 	s.mu.Unlock()
 	if ok {
 		select {
@@ -465,18 +483,29 @@ func (s *Spawner) CompleteInteractive(sessionID string) {
 		default:
 			close(ch)
 		}
+		// Note: OnSessionUnregister is NOT fired here. The orchestrator holds
+		// o.mu when it calls this method (iterating rs.spawners), so firing the
+		// callback would deadlock. Pre-step spawners remain in rs.spawners as
+		// harmless orphans until the runState is GC'd; take-control spawners are
+		// cleaned up by unregisterTerminalSignal when monitorAll unblocks.
 	}
 }
 
 // RegisterInteractiveWait creates and returns a channel that blocks until
 // CompleteInteractive is called for the given session ID. Used by the
 // orchestrator to wait on interactive/plan PTY sessions before entering
-// the layer execution loop.
+// the layer execution loop. Fires OnSessionRegister so the orchestrator's
+// sessionID→*Spawner index includes this spawner for the duration of the wait.
 func (s *Spawner) RegisterInteractiveWait(sessionID string) <-chan struct{} {
 	ch := make(chan struct{})
 	s.mu.Lock()
 	s.interactiveWaits[sessionID] = ch
 	s.mu.Unlock()
+	// Fire outside the mutex (same discipline as registerTerminalSignal) to
+	// avoid lock-order inversion with the orchestrator's mu.
+	if s.config.OnSessionRegister != nil {
+		s.config.OnSessionRegister(sessionID, s)
+	}
 	return ch
 }
 

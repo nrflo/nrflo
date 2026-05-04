@@ -51,8 +51,8 @@ func TestTakeControl_NoActiveSpawner(t *testing.T) {
 
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
-		cancel:  func() {},
-		spawner: nil,
+		cancel:   func() {},
+		spawners: make(map[string]*spawner.Spawner),
 	}
 	env.orch.mu.Unlock()
 
@@ -84,8 +84,8 @@ func TestTakeControl_ForwardsToSpawner(t *testing.T) {
 
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
-		cancel:  func() {},
-		spawner: sp,
+		cancel:   func() {},
+		spawners: map[string]*spawner.Spawner{"target-session-tc4": sp},
 	}
 	env.orch.mu.Unlock()
 
@@ -144,8 +144,8 @@ func TestTakeControlProject_ForwardsToSpawner(t *testing.T) {
 
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
-		cancel:  func() {},
-		spawner: sp,
+		cancel:   func() {},
+		spawners: map[string]*spawner.Spawner{"proj-session-1": sp},
 	}
 	env.orch.mu.Unlock()
 
@@ -206,7 +206,7 @@ func TestTakeControl_ReturnsCorrectSessionID(t *testing.T) {
 
 	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 	env.orch.mu.Lock()
-	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawner: sp}
+	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawners: map[string]*spawner.Spawner{want: sp}}
 	env.orch.mu.Unlock()
 	t.Cleanup(func() {
 		env.orch.mu.Lock()

@@ -113,6 +113,91 @@ func TestRequestTerminalSignal_NonBlockingWhenFull(t *testing.T) {
 	}
 }
 
+// TestRegisterTerminalSignal_FiresOnSessionRegisterCallback verifies that the
+// OnSessionRegister callback fires with the correct sessionID and a pointer-equal
+// Spawner after registerTerminalSignal adds the entry to the registry.
+// It also confirms the callback fires AFTER the channel is wired (signal delivers).
+func TestRegisterTerminalSignal_FiresOnSessionRegisterCallback(t *testing.T) {
+	t.Parallel()
+
+	var gotSessionID string
+	var gotSpawner *Spawner
+
+	sp := New(Config{
+		Clock: clock.Real(),
+		OnSessionRegister: func(sessionID string, s *Spawner) {
+			gotSessionID = sessionID
+			gotSpawner = s
+		},
+	})
+
+	ch := make(chan terminalSignal, 1)
+	sp.registerTerminalSignal("sess-cb-reg", ch)
+
+	if gotSessionID != "sess-cb-reg" {
+		t.Errorf("OnSessionRegister got sessionID=%q, want %q", gotSessionID, "sess-cb-reg")
+	}
+	if gotSpawner != sp {
+		t.Errorf("OnSessionRegister got wrong spawner pointer, want pointer-equal to sp")
+	}
+
+	// Confirm the channel was registered before the callback fired (signal can be delivered).
+	sp.RequestTerminalSignal("sess-cb-reg", "fail")
+	select {
+	case sig := <-ch:
+		if sig.SessionID != "sess-cb-reg" {
+			t.Errorf("got SessionID=%q, want %q", sig.SessionID, "sess-cb-reg")
+		}
+		if sig.Result != "fail" {
+			t.Errorf("got Result=%q, want %q", sig.Result, "fail")
+		}
+	default:
+		t.Fatal("channel empty: registerTerminalSignal did not wire the channel before firing the callback")
+	}
+}
+
+// TestUnregisterTerminalSignal_FiresOnSessionUnregisterCallback verifies that
+// the OnSessionUnregister callback fires exactly once with the correct sessionID,
+// and that the channel is no longer reachable after unregister (signal is dropped).
+func TestUnregisterTerminalSignal_FiresOnSessionUnregisterCallback(t *testing.T) {
+	t.Parallel()
+
+	var callCount int
+	var gotSessionID string
+
+	sp := New(Config{
+		Clock: clock.Real(),
+		OnSessionUnregister: func(sessionID string) {
+			callCount++
+			gotSessionID = sessionID
+		},
+	})
+
+	ch := make(chan terminalSignal, 1)
+	sp.registerTerminalSignal("sess-cb-unreg", ch)
+
+	if callCount != 0 {
+		t.Fatalf("OnSessionUnregister fired %d times before unregister, want 0", callCount)
+	}
+
+	sp.unregisterTerminalSignal("sess-cb-unreg")
+
+	if callCount != 1 {
+		t.Errorf("OnSessionUnregister fired %d times, want exactly 1", callCount)
+	}
+	if gotSessionID != "sess-cb-unreg" {
+		t.Errorf("OnSessionUnregister got sessionID=%q, want %q", gotSessionID, "sess-cb-unreg")
+	}
+
+	// Confirm the channel is no longer in the registry: signal must be dropped.
+	sp.RequestTerminalSignal("sess-cb-unreg", "fail")
+	select {
+	case sig := <-ch:
+		t.Errorf("expected no signal after unregister, got {%q, %q}", sig.SessionID, sig.Result)
+	default:
+	}
+}
+
 // TestRequestTerminalSignal_ResultValues verifies that each result string
 // (fail, continue, callback) is correctly carried through the registry path.
 func TestRequestTerminalSignal_ResultValues(t *testing.T) {

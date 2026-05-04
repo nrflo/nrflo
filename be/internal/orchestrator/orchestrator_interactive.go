@@ -103,6 +103,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 
 	// Create a temp spawner just for the interactive wait mechanism.
 	// Nrvapp manifest fields are not needed here (CLI-only, no API spawn).
+	wfiID := wi.ID
 	sp := spawner.New(spawner.Config{
 		Workflows:    workflows,
 		Agents:       agents,
@@ -110,6 +111,20 @@ func (o *Orchestrator) setupInteractivePreStep(
 		WSHub:        o.wsHub,
 		Clock:        o.clock,
 		ModelConfigs: modelConfigs,
+		OnSessionRegister: func(sid string, s *spawner.Spawner) {
+			o.mu.Lock()
+			if rs, ok := o.runs[wfiID]; ok {
+				rs.spawners[sid] = s
+			}
+			o.mu.Unlock()
+		},
+		OnSessionUnregister: func(sid string) {
+			o.mu.Lock()
+			if rs, ok := o.runs[wfiID]; ok {
+				delete(rs.spawners, sid)
+			}
+			o.mu.Unlock()
+		},
 	})
 	waitCh := sp.RegisterInteractiveWait(sessionID)
 
@@ -152,6 +167,8 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		modelID := fmt.Sprintf("%s:%s", cliName, l0Model)
 
 		// Template-only spawner for prompt expansion. Nrvapp fields not needed (CLI-only).
+		// Callbacks wired for uniformity; this spawner never registers sessions.
+		tmplWfiID := wi.ID
 		sp := spawner.New(spawner.Config{
 			Workflows:    workflows,
 			Agents:       agents,
@@ -160,6 +177,20 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 			Pool:         pool,
 			Clock:        o.clock,
 			ModelConfigs: modelConfigs,
+			OnSessionRegister: func(sid string, s *spawner.Spawner) {
+				o.mu.Lock()
+				if rs, ok := o.runs[tmplWfiID]; ok {
+					rs.spawners[sid] = s
+				}
+				o.mu.Unlock()
+			},
+			OnSessionUnregister: func(sid string) {
+				o.mu.Lock()
+				if rs, ok := o.runs[tmplWfiID]; ok {
+					delete(rs.spawners, sid)
+				}
+				o.mu.Unlock()
+			},
 		})
 
 		tmpl, _, err := sp.LoadTemplate(l0Agent, req.TicketID, req.ProjectID, "", sessionID, req.WorkflowName, modelID, l0Agent, wi.ID, nil)

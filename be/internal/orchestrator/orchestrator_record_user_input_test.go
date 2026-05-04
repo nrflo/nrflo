@@ -7,6 +7,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/repo"
+	"be/internal/spawner"
 	"be/internal/ws"
 )
 
@@ -138,9 +139,9 @@ func TestOrchestrator_RecordUserInput_NilSpawnerFallback(t *testing.T) {
 	sessionID := "sess-rui-nilsp-1"
 	insertRunningSession(t, env, wfiID, "RUI-NILSP-1", sessionID)
 
-	// Register a run state with nil spawner (between phases).
+	// Register a run state with empty spawners map (between phases).
 	env.orch.mu.Lock()
-	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawner: nil}
+	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawners: make(map[string]*spawner.Spawner)}
 	env.orch.mu.Unlock()
 	t.Cleanup(func() {
 		env.orch.mu.Lock()

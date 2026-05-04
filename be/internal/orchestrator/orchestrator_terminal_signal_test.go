@@ -44,7 +44,7 @@ func TestRequestTerminalSignal_SpawnerNil(t *testing.T) {
 	insertRunningSession(t, env, wfiID, "TC-TS-2", "sess-ts-nil-sp")
 
 	env.orch.mu.Lock()
-	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawner: nil}
+	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawners: make(map[string]*spawner.Spawner)}
 	env.orch.mu.Unlock()
 	t.Cleanup(func() {
 		env.orch.mu.Lock()
@@ -71,7 +71,7 @@ func TestRequestTerminalSignal_ForwardsToSpawner(t *testing.T) {
 	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 
 	env.orch.mu.Lock()
-	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawner: sp}
+	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawners: map[string]*spawner.Spawner{sessionID: sp}}
 	env.orch.mu.Unlock()
 	t.Cleanup(func() {
 		env.orch.mu.Lock()
@@ -88,6 +88,128 @@ func TestRequestTerminalSignal_ForwardsToSpawner(t *testing.T) {
 	// because the channel (capacity 1) is already full.
 	// No panic, no block = signal was delivered correctly.
 	sp.RequestTerminalSignal(sessionID, "continue")
+}
+
+// TestRequestTerminalSignal_RoutesPerSession_AcrossParallelSpawners verifies
+// that RequestTerminalSignal routes each session's signal to its own spawner
+// when multiple agents run concurrently in the same workflow instance (same layer).
+// This is the key regression check for the runState.spawner → spawners-map change.
+func TestRequestTerminalSignal_RoutesPerSession_AcrossParallelSpawners(t *testing.T) {
+	env := newTestEnv(t)
+	env.createTicket(t, "TC-PS-TS", "Parallel spawner signal routing")
+	wfiID := env.initWorkflow(t, "TC-PS-TS")
+
+	sessA := "sess-ps-ts-a"
+	sessB := "sess-ps-ts-b"
+	insertRunningSession(t, env, wfiID, "TC-PS-TS", sessA)
+	insertRunningSession(t, env, wfiID, "TC-PS-TS", sessB)
+
+	spA := spawner.New(spawner.Config{Clock: clock.Real()})
+	spB := spawner.New(spawner.Config{Clock: clock.Real()})
+
+	env.orch.mu.Lock()
+	env.orch.runs[wfiID] = &runState{
+		cancel: func() {},
+		spawners: map[string]*spawner.Spawner{
+			sessA: spA,
+			sessB: spB,
+		},
+	}
+	env.orch.mu.Unlock()
+	t.Cleanup(func() {
+		env.orch.mu.Lock()
+		delete(env.orch.runs, wfiID)
+		env.orch.mu.Unlock()
+	})
+
+	if err := env.orch.RequestTerminalSignal(env.project, "TC-PS-TS", "test", sessA, "fail"); err != nil {
+		t.Errorf("RequestTerminalSignal(sessA)=%v, want nil", err)
+	}
+	if err := env.orch.RequestTerminalSignal(env.project, "TC-PS-TS", "test", sessB, "continue"); err != nil {
+		t.Errorf("RequestTerminalSignal(sessB)=%v, want nil", err)
+	}
+
+	// Subsequent calls on each spawner are no-ops — no panic or block = routing succeeded.
+	spA.RequestTerminalSignal(sessA, "second-a")
+	spB.RequestTerminalSignal(sessB, "second-b")
+}
+
+// TestBumpLastMessage_RoutesPerSession_AcrossParallelSpawners verifies
+// that BumpLastMessage routes to the spawner registered for that sessionID
+// when two agents share the same workflow instance (parallel layer execution).
+func TestBumpLastMessage_RoutesPerSession_AcrossParallelSpawners(t *testing.T) {
+	env := newTestEnv(t)
+	env.createTicket(t, "TC-PS-BM", "Parallel spawner bump routing")
+	wfiID := env.initWorkflow(t, "TC-PS-BM")
+
+	sessA := "sess-ps-bm-a"
+	sessB := "sess-ps-bm-b"
+	insertRunningSession(t, env, wfiID, "TC-PS-BM", sessA)
+	insertRunningSession(t, env, wfiID, "TC-PS-BM", sessB)
+
+	spA := spawner.New(spawner.Config{Clock: clock.Real()})
+	spB := spawner.New(spawner.Config{Clock: clock.Real()})
+
+	env.orch.mu.Lock()
+	env.orch.runs[wfiID] = &runState{
+		cancel: func() {},
+		spawners: map[string]*spawner.Spawner{
+			sessA: spA,
+			sessB: spB,
+		},
+	}
+	env.orch.mu.Unlock()
+	t.Cleanup(func() {
+		env.orch.mu.Lock()
+		delete(env.orch.runs, wfiID)
+		env.orch.mu.Unlock()
+	})
+
+	if err := env.orch.BumpLastMessage(env.project, "TC-PS-BM", "test", sessA); err != nil {
+		t.Errorf("BumpLastMessage(sessA)=%v, want nil", err)
+	}
+	if err := env.orch.BumpLastMessage(env.project, "TC-PS-BM", "test", sessB); err != nil {
+		t.Errorf("BumpLastMessage(sessB)=%v, want nil", err)
+	}
+}
+
+// TestSetLastMessage_RoutesPerSession_AcrossParallelSpawners verifies
+// that SetLastMessage routes to the spawner registered for that sessionID
+// when two agents share the same workflow instance (parallel layer execution).
+func TestSetLastMessage_RoutesPerSession_AcrossParallelSpawners(t *testing.T) {
+	env := newTestEnv(t)
+	env.createTicket(t, "TC-PS-SLM", "Parallel spawner set-last-message routing")
+	wfiID := env.initWorkflow(t, "TC-PS-SLM")
+
+	sessA := "sess-ps-slm-a"
+	sessB := "sess-ps-slm-b"
+	insertRunningSession(t, env, wfiID, "TC-PS-SLM", sessA)
+	insertRunningSession(t, env, wfiID, "TC-PS-SLM", sessB)
+
+	spA := spawner.New(spawner.Config{Clock: clock.Real()})
+	spB := spawner.New(spawner.Config{Clock: clock.Real()})
+
+	env.orch.mu.Lock()
+	env.orch.runs[wfiID] = &runState{
+		cancel: func() {},
+		spawners: map[string]*spawner.Spawner{
+			sessA: spA,
+			sessB: spB,
+		},
+	}
+	env.orch.mu.Unlock()
+	t.Cleanup(func() {
+		env.orch.mu.Lock()
+		delete(env.orch.runs, wfiID)
+		env.orch.mu.Unlock()
+	})
+
+	if err := env.orch.SetLastMessage(env.project, "TC-PS-SLM", "test", sessA, "agent A output"); err != nil {
+		t.Errorf("SetLastMessage(sessA)=%v, want nil", err)
+	}
+	if err := env.orch.SetLastMessage(env.project, "TC-PS-SLM", "test", sessB, "agent B output"); err != nil {
+		t.Errorf("SetLastMessage(sessB)=%v, want nil", err)
+	}
 }
 
 // TestRequestTerminalSignal_MultipleResults verifies that all result strings
@@ -113,7 +235,7 @@ func TestRequestTerminalSignal_MultipleResults(t *testing.T) {
 
 			sp := spawner.New(spawner.Config{Clock: clock.Real()})
 			env.orch.mu.Lock()
-			env.orch.runs[wfiID] = &runState{cancel: func() {}, spawner: sp}
+			env.orch.runs[wfiID] = &runState{cancel: func() {}, spawners: map[string]*spawner.Spawner{tc.sessionID: sp}}
 			env.orch.mu.Unlock()
 			t.Cleanup(func() {
 				env.orch.mu.Lock()

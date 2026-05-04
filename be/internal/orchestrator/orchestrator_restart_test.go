@@ -45,8 +45,8 @@ func TestRestartAgent_NoActiveSpawner(t *testing.T) {
 	// Simulate a running orchestration with no spawner (between phases)
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
-		cancel:  func() {},
-		spawner: nil,
+		cancel:   func() {},
+		spawners: make(map[string]*spawner.Spawner),
 	}
 	env.orch.mu.Unlock()
 
@@ -77,8 +77,8 @@ func TestRestartAgent_ForwardsToSpawner(t *testing.T) {
 
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
-		cancel:  func() {},
-		spawner: sp,
+		cancel:   func() {},
+		spawners: map[string]*spawner.Spawner{"target-session-123": sp},
 	}
 	env.orch.mu.Unlock()
 
@@ -115,8 +115,8 @@ func TestRestartAgent_BroadcastsWSEvent(t *testing.T) {
 
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
-		cancel:  func() {},
-		spawner: sp,
+		cancel:   func() {},
+		spawners: map[string]*spawner.Spawner{"sess-ws": sp},
 	}
 	env.orch.mu.Unlock()
 
@@ -141,39 +141,40 @@ func TestRunState_SpawnerLifecycle(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "RST-6", "Lifecycle test")
 	wfiID := env.initWorkflow(t, "RST-6")
+	sessionID := "sess-lifecycle-abc"
 
-	// Phase 1: no spawner (between phases)
+	// Phase 1: spawners map is empty (between phases)
 	env.orch.mu.Lock()
-	rs := &runState{cancel: func() {}}
+	rs := &runState{cancel: func() {}, spawners: make(map[string]*spawner.Spawner)}
 	env.orch.runs[wfiID] = rs
 	env.orch.mu.Unlock()
 
 	env.orch.mu.Lock()
-	if rs.spawner != nil {
-		t.Fatal("spawner should be nil initially")
+	if len(rs.spawners) != 0 {
+		t.Fatal("spawners map should be empty initially")
 	}
 	env.orch.mu.Unlock()
 
-	// Phase 2: set spawner (during phase)
+	// Phase 2: register spawner (during phase)
 	sp := spawner.New(spawner.Config{Clock: clock.Real()})
 	env.orch.mu.Lock()
-	rs.spawner = sp
+	rs.spawners[sessionID] = sp
 	env.orch.mu.Unlock()
 
 	env.orch.mu.Lock()
-	if rs.spawner != sp {
-		t.Fatal("spawner should be set during phase")
+	if rs.spawners[sessionID] != sp {
+		t.Fatal("spawner should be registered during phase")
 	}
 	env.orch.mu.Unlock()
 
-	// Phase 3: clear spawner (phase done)
+	// Phase 3: unregister spawner (phase done)
 	env.orch.mu.Lock()
-	rs.spawner = nil
+	delete(rs.spawners, sessionID)
 	env.orch.mu.Unlock()
 
 	env.orch.mu.Lock()
-	if rs.spawner != nil {
-		t.Fatal("spawner should be nil after phase completion")
+	if rs.spawners[sessionID] != nil {
+		t.Fatal("spawner should be removed after phase completion")
 	}
 	env.orch.mu.Unlock()
 
@@ -220,8 +221,8 @@ func TestStopByTicket_StillWorksWithRunState(t *testing.T) {
 	cancelled := false
 	env.orch.mu.Lock()
 	env.orch.runs[wfiID] = &runState{
-		cancel:  func() { cancelled = true },
-		spawner: nil,
+		cancel:   func() { cancelled = true },
+		spawners: make(map[string]*spawner.Spawner),
 	}
 	env.orch.mu.Unlock()
 

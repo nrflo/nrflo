@@ -157,6 +157,8 @@ The orchestrator supports taking interactive control of a running agent:
 
 Only works for Claude CLI agents (`SupportsResume() == true`). Project-scoped equivalents: `TakeControlProject`, same `CompleteInteractive`.
 
+**Spawner index**: `runState.spawners` is a `map[string]*spawner.Spawner` (keyed by session ID) that replaces the old single `runState.spawner` pointer. The map is maintained via `spawner.Config.OnSessionRegister`/`OnSessionUnregister` callbacks fired by `registerTerminalSignal`/`unregisterTerminalSignal` in the spawner (after releasing `terminalSignalsMu`). This eliminates the last-writer-wins race in parallel-layer execution where multiple goroutines wrote to the same pointer. All session-scoped forwarders (`RequestTerminalSignal`, `BumpLastMessage`, `SetLastMessage`, `restartAgentByInstance`, `takeControlByInstance`) look up by session ID; broadcast forwarders (`SignalSessionReady`, `CompleteInteractive`, `RecordUserInput`) iterate the map with dedupe by `*spawner.Spawner` pointer.
+
 ## Interactive Start & Plan Mode
 
 The orchestrator supports two pre-launch modes that create a `user_interactive` agent session before the normal layer execution begins. Both are triggered via the workflow run endpoint and are mutually exclusive (passing both `interactive=true` and `plan_mode=true` returns 400).

@@ -72,6 +72,20 @@ func (o *Orchestrator) attemptConflictResolution(
 		NrvappDispatchRepo: nrvappDispatchRepo,
 		NrvappReviewRepo:   nrvappReviewRepo,
 		CustomerConfigDir:  customerConfigDir,
+		OnSessionRegister: func(sid string, s *spawner.Spawner) {
+			o.mu.Lock()
+			if rs, ok := o.runs[wfiID]; ok {
+				rs.spawners[sid] = s
+			}
+			o.mu.Unlock()
+		},
+		OnSessionUnregister: func(sid string) {
+			o.mu.Lock()
+			if rs, ok := o.runs[wfiID]; ok {
+				delete(rs.spawners, sid)
+			}
+			o.mu.Unlock()
+		},
 	})
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{

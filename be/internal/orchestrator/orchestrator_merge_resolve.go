@@ -8,6 +8,7 @@ import (
 
 	"be/internal/db"
 	"be/internal/logger"
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/ws"
@@ -26,6 +27,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
 	interactiveCLIMode bool,
+	customerConfigDir string,
 ) error {
 	// Load conflict-resolver system agent definition.
 	// API-mode conflict resolution is not yet supported — the resolver needs
@@ -43,7 +45,10 @@ func (o *Orchestrator) attemptConflictResolution(
 		"merge_error": mergeError,
 	}))
 
-	// Construct spawner with synthetic single-phase workflow
+	// Construct spawner with synthetic single-phase workflow.
+	// Conflict resolution is CLI-only; nrvapp manifest tools are not used here.
+	nrvappDispatchRepo := repo.NewNrvappDispatchRepo(pool, o.clock)
+	nrvappReviewRepo := repo.NewNrvappReviewRepo(pool, o.clock)
 	sp := spawner.New(spawner.Config{
 		Workflows: map[string]spawner.WorkflowDef{
 			"_conflict_resolution": {
@@ -64,6 +69,9 @@ func (o *Orchestrator) attemptConflictResolution(
 		APIMode:            o.apiMode,
 		InteractiveCLIMode: interactiveCLIMode,
 		PTYManager:         o.PTYManager,
+		NrvappDispatchRepo: nrvappDispatchRepo,
+		NrvappReviewRepo:   nrvappReviewRepo,
+		CustomerConfigDir:  customerConfigDir,
 	})
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{

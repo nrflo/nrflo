@@ -15,12 +15,14 @@ type ConfigFile struct {
 
 // Tool is a single validated entry from the manifest.
 type Tool struct {
-	Name        string      `yaml:"name"`
-	Type        ToolType    `yaml:"type"`
-	Description string      `yaml:"description"`
-	Script      string      `yaml:"script"`       // path relative to manifest dir
+	Name        string       `yaml:"name"`
+	Type        ToolType     `yaml:"type"`
+	Description string       `yaml:"description"`
+	Script      string       `yaml:"script"`       // path relative to manifest dir
 	ConfigFiles []ConfigFile `yaml:"config_files"`
-	InputSchema []byte      // compiled JSON bytes from input_schema field
+	InputSchema []byte       // compiled JSON bytes from input_schema field
+	Review      bool         `yaml:"review"`     // when true, successful invocations create a review item
+	EnvAllow    []string     `yaml:"env_allow"`  // glob patterns scoping env vars passed to the script
 }
 
 // ConfigPath returns the primary config file path for this tool, if set.
@@ -52,6 +54,8 @@ type rawTool struct {
 	Script      string                 `yaml:"script"`
 	ConfigFiles []ConfigFile           `yaml:"config_files"`
 	InputSchema map[string]interface{} `yaml:"input_schema"`
+	Review      bool                   `yaml:"review"`
+	EnvAllow    []string               `yaml:"env_allow"`
 }
 
 // rawManifest is the top-level YAML decode target.

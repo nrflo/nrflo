@@ -74,6 +74,10 @@ const (
 	EventNotificationChannelDeleted  = "notification_channel.deleted"
 	EventNotificationDelivered       = "notification.delivered"
 	EventNotificationFailed          = "notification.failed"
+	EventNrvappReviewCreated         = "nrvapp.review_created"
+	EventNrvappReviewUpdated         = "nrvapp.review_updated"
+	EventNrvappConfigUpdated         = "nrvapp.config_updated"
+	EventNrvappDispatchCompleted     = "nrvapp.dispatch_completed"
 )
 
 // Event represents a WebSocket event to broadcast

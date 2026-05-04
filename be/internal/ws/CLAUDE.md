@@ -75,3 +75,12 @@ Fan-out is non-blocking: a goroutine is spawned per broadcast, iterating all lis
 | `EventNotificationChannelDeleted` | `notification_channel.deleted` | Channel deleted |
 | `EventNotificationDelivered` | `notification.delivered` | Delivery sent successfully |
 | `EventNotificationFailed` | `notification.failed` | Delivery giving up (3 attempts exhausted) |
+
+## Nrvapp Event Constants
+
+| Constant | Value | Data fields | Description |
+|----------|-------|-------------|-------------|
+| `EventNrvappDispatchCompleted` | `nrvapp.dispatch_completed` | `tool_name`, `status` (success\|error), `duration_ms`, `dispatch_id` | Emitted after every manifest tool invocation (success or error) |
+| `EventNrvappReviewCreated` | `nrvapp.review_created` | `review_item_id`, `tool_name` | Emitted when a manifest tool with `review:true` creates a new review item |
+| `EventNrvappReviewUpdated` | `nrvapp.review_updated` | — | Reserved for review item status changes (approve/reject) |
+| `EventNrvappConfigUpdated` | `nrvapp.config_updated` | — | Reserved for customer config file edits |

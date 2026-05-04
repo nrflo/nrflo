@@ -61,6 +61,8 @@ func Load(dir string) (*Manifest, error) {
 			Script:      rt.Script,
 			ConfigFiles: rt.ConfigFiles,
 			InputSchema: schemaJSON,
+			Review:      rt.Review,
+			EnvAllow:    rt.EnvAllow,
 		}
 		m.Tools = append(m.Tools, t)
 		m.toolsByName[t.Name] = &m.Tools[len(m.Tools)-1]

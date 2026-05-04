@@ -81,24 +81,42 @@ Each terminal handler also calls the corresponding `AgentService` method first, 
 
 ## Per-Agent Registry Resolution
 
-`apirun.ResolveRegistry(toolsCSV, builtins, httpDefs, httpFactory)`:
+`apirun.ResolveRegistry(toolsCSV, builtins, httpDefs, httpFactory, manifestProvider)`:
+
+Three sources compose in order: **builtins → manifest tools → HTTP defs**. Collision detection ensures no name appears in more than one source.
 
 - `""` (empty CSV) → empty registry; agent runs text-only (T3 path).
 - `"findings.*"` → all six findings builtins (matcher: `*` and `prefix.*`).
 - `"agent_*,workflow_skip"` → all four agent_* + workflow_skip.
-- `"*"` → every builtin + every in-scope HTTP tool.
+- `"*"` → every builtin + every manifest tool + every in-scope HTTP tool.
 - Exact name → only that handler.
 - No matches for any pattern → spawn fails with `no tools matched pattern "..."` (config error).
-- Builtin name collision with HTTP `def.Name` → spawn fails with collision error.
+- Builtin name collision with HTTP `def.Name` → spawn fails with `collides with builtin` error.
+- Manifest tool collision with HTTP `def.Name` → spawn fails with `collides with manifest tool` error.
+- `manifestProvider == nil` → manifest source is skipped (parity with pre-existing 3-source behavior).
 
 HTTP defs in scope: `project_id IS NULL OR project_id == agent.project_id` AND `workflow_id IS NULL OR workflow_id == agent.workflow_name`. Project filter happens in the repo (`ListByProject`); workflow filter happens in `spawner.loadAPIHTTPToolDefs`.
+
+### Manifest Tool Source (tools_nrvapp)
+
+`tools_nrvapp.New(manifest, runner, projectID, sessionID, dispatchRepo, reviewRepo, hub, clk)` returns an `apirun.ManifestProvider` (interface defined in `registry.go`). Only constructed when `Config.APIMode && Config.CustomerConfigDir != "" && Config.PythonRunner != nil`.
+
+**Invocation flow per tool call:**
+1. Unmarshal `json.RawMessage` → `interface{}`, validate against tool's compiled `InputSchema`.
+2. `python.Runtime{runner, configDir}.Invoke(ctx, tool.Script, inputBytes, python.MatchEnv(tool.EnvAllow, os.Environ()), 30s)`.
+3. Insert `NrvappToolDispatch` row (status=success|error, duration_ms, error_msg when applicable).
+4. Broadcast `nrvapp.dispatch_completed` with `{tool_name, status, duration_ms, dispatch_id}`.
+5. When `tool.Review && status==success`: insert `NrvappReviewItem` (status=pending) and broadcast `nrvapp.review_created`.
+6. On runner error: return `isError=true` with the error message; no review item.
+
+**Per-project mtime cache:** `Spawner.loadManifestCached(configDir)` stats `tool_manifest.yaml` on every spawn and reloads only when mtime has changed. Cache is a `map[string]*manifestCacheEntry` guarded by `sync.Mutex` on the Spawner struct. Cache misses call `config.Load(configDir)`.
 
 ## Wiring (Spawner ↔ apirun)
 
 Spawner-side (`be/internal/spawner/`):
 
-- `Config` carries `Provider`, `AgentSvc`, `APICredentialRepo`, `FindingsSvc`, `ProjectFindingsSvc`, `AgentSvcReal`, `WorkflowSvc`, `ToolDefRepo`. Set by orchestrator at workflow start.
-- `prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + `apirun.ResolveRegistry` and stuffs results into `prep.apiTools` / `prep.apiHandlers` / `prep.apiToolEnv`.
+- `Config` carries `Provider`, `AgentSvc`, `APICredentialRepo`, `FindingsSvc`, `ProjectFindingsSvc`, `AgentSvcReal`, `WorkflowSvc`, `ToolDefRepo`, `NrvappDispatchRepo`, `NrvappReviewRepo`, `PythonRunner`, `CustomerConfigDir`. Set by orchestrator at workflow start.
+- `prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + (optionally) `loadManifestCached` + `apirun.ResolveRegistry` and stuffs results into `prep.apiTools` / `prep.apiHandlers` / `prep.apiToolEnv`.
 - `apiBackend.Start` builds an `apirun.Runner` from the Config and runs it in a goroutine. On exit it persists messages and registers stop via `registerAgentStopWithReason(mapFinalStatus(proc.finalStatus))`.
 - `procStateAdapter` exposes `SetFinalStatus`, `SetContextLeft`, `SetCallbackLevel` over `*processInfo`.
 

@@ -40,11 +40,32 @@ tools:
 All `script` and `config_file` paths must be relative (no `..` traversal).
 `input_schema` is required for every tool; compiled once by `config.Load()` using Draft2020.
 
+**Tool fields** (full):
+| Field | YAML key | Description |
+|-------|----------|-------------|
+| `Name` | `name` | Unique tool identifier used in the apirun registry |
+| `Type` | `type` | Execution backend; `python_script` only |
+| `Description` | `description` | Human-readable description; exposed as tool description to the model |
+| `Script` | `script` | Path to the Python script, relative to the manifest dir |
+| `ConfigFiles` | `config_files` | Config files managed by this tool |
+| `Review` | `review` | When `true`, a successful invocation creates an `NrvappReviewItem` and emits `nrvapp.review_created` |
+| `EnvAllow` | `env_allow` | Glob patterns scoping which env vars are passed to the script (via `python.MatchEnv`); empty = no env |
+
 ### Key types
 
 - `Manifest.Tool(name) (*Tool, bool)` — O(1) lookup by name
 - `Manifest.ValidateInput(toolName, input) error` — validate JSON-compatible input against input_schema
 - `Load(dir string) (*Manifest, error)` — reads `dir/tool_manifest.yaml`
+
+### How tool dispatch works (api-mode)
+
+When an api-mode agent invokes a manifest tool:
+1. `tools_nrvapp.New()` builds an `apirun.ManifestProvider` for the loaded manifest.
+2. The provider is composed as the third source in `apirun.ResolveRegistry` (after builtins and HTTP defs).
+3. On invocation, the handler: validates input against `InputSchema`, runs the Python script via `python.Runtime`, inserts an `NrvappToolDispatch` row, broadcasts `nrvapp.dispatch_completed`.
+4. On success with `Review:true`: inserts an `NrvappReviewItem` (status=pending) and broadcasts `nrvapp.review_created`.
+
+Manifest tools are only registered when `Config.APIMode=true` **and** `Config.CustomerConfigDir != ""` **and** `Config.PythonRunner != nil`. Manifest load failures log a warning and skip without failing the spawn.
 
 ---
 

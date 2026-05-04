@@ -101,7 +101,8 @@ func (o *Orchestrator) setupInteractivePreStep(
 		o.OnRegisterPtyCommand(sessionID, "claude", args)
 	}
 
-	// Create a temp spawner just for the interactive wait mechanism
+	// Create a temp spawner just for the interactive wait mechanism.
+	// Nrvapp manifest fields are not needed here (CLI-only, no API spawn).
 	sp := spawner.New(spawner.Config{
 		Workflows:    workflows,
 		Agents:       agents,
@@ -150,6 +151,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		cliName := cliNameFromModelConfigs(modelConfigs, l0Model)
 		modelID := fmt.Sprintf("%s:%s", cliName, l0Model)
 
+		// Template-only spawner for prompt expansion. Nrvapp fields not needed (CLI-only).
 		sp := spawner.New(spawner.Config{
 			Workflows:    workflows,
 			Agents:       agents,

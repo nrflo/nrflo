@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle, Play, XCircle } from 'lucide-react'
+import { Bookmark, CheckCircle, Play, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -258,7 +258,7 @@ export function InstanceList({
 
 // --- Tab Bar ---
 
-export type ProjectWorkflowTabId = 'run' | 'running' | 'failed' | 'completed'
+export type ProjectWorkflowTabId = 'run' | 'running' | 'failed' | 'completed' | 'findings'
 
 export function ProjectWorkflowTabBar({
   activeTab,
@@ -278,6 +278,7 @@ export function ProjectWorkflowTabBar({
     { id: 'running', label: 'Running', count: runningCount },
     { id: 'failed', label: 'Failed', icon: XCircle, count: failedCount },
     { id: 'completed', label: 'Completed', icon: CheckCircle, count: completedCount },
+    { id: 'findings', label: 'Findings', icon: Bookmark },
   ]
 
   return (

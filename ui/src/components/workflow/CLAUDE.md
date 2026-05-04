@@ -76,6 +76,7 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 | `RunEpicWorkflowDialog.tsx` | Dialog for epic workflow execution: two-step flow (create chain preview, then start) |
 | `AgentTerminalDialog.tsx` | Dialog wrapper for interactive agent terminal: non-dismissable backdrop, lazy-loads XTerminal, Exit Session footer button |
 | `XTerminal.tsx` | xterm.js terminal connected to PTY WebSocket (`/api/v1/pty/{sessionId}`). Relays keystrokes to WS, output to terminal. FitAddon for auto-resize, debounced resize events, dark theme |
+| `ProjectFindingsTab.tsx` | Findings tab for `ProjectWorkflowsPage`: Add/Edit/Delete project-level findings, "Show internal keys" toggle, `ConfirmDialog` for deletes, `sonner` toasts on errors. Uses `useProjectFindings`, `useUpsertProjectFinding`, `useDeleteProjectFinding`. |
 
 ## Testing
 

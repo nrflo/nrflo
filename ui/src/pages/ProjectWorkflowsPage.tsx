@@ -20,6 +20,7 @@ import { RunWorkflowForm, InstanceList, ProjectWorkflowTabBar } from './ProjectW
 import { WorkflowInstanceTable } from './WorkflowInstanceTable'
 import type { ProjectWorkflowTabId, StartMode } from './ProjectWorkflowComponents'
 import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
+import { ProjectFindingsTab } from '@/components/workflow/ProjectFindingsTab'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Badge } from '@/components/ui/Badge'
 import { Repeat } from 'lucide-react'
@@ -221,6 +222,10 @@ export function ProjectWorkflowsPage() {
           runPending={runMutation.isPending}
           runError={runMutation.isError ? runMutation.error : null}
         />
+      )}
+
+      {activeTab === 'findings' && currentProject && (
+        <ProjectFindingsTab projectId={currentProject} />
       )}
 
       {activeTab === 'completed' && (

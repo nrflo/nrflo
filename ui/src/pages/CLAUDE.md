@@ -12,7 +12,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/tickets/:id/edit` | `EditTicketPage.tsx` | Edit existing ticket form |
 | `/tickets/:id` | `TicketDetailPage.tsx` | Ticket detail with tabbed interface |
 | `/workflows` | `WorkflowsPage.tsx` | Workflow definitions and agent definitions CRUD |
-| `/project-workflows` | `ProjectWorkflowsPage.tsx` | Project-scoped workflows (3-tab layout) |
+| `/project-workflows` | `ProjectWorkflowsPage.tsx` | Project-scoped workflows (5-tab layout: Run / Running / Failed / Completed / Findings) |
 | `/git-status` | `GitStatusPage.tsx` | Standalone git commit status page (conditional on `default_branch`) |
 | `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |
 | `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, useTickingClock for 1s elapsed time updates + 10s refetchInterval fallback when running |
@@ -47,12 +47,13 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 ## ProjectWorkflowsPage
 
-4-tab layout for project-scoped workflows with multi-instance support:
+5-tab layout for project-scoped workflows with multi-instance support:
 
 - **Run Workflow**: Inline workflow selector + instructions form
 - **Running**: Instance list chips with status (uses `InstanceList` + `WorkflowTabContent`)
 - **Failed**: `WorkflowInstanceTable` with delete column, plus `WorkflowTabContent` for phase timeline
 - **Completed**: `WorkflowInstanceTable` with delete column, plus `WorkflowTabContent` for phase timeline (same pattern as Failed tab)
+- **Findings**: Project-level findings CRUD via `ProjectFindingsTab` (Add/Edit/Delete, show/hide internal keys toggle)
 
 Sub-components in `ProjectWorkflowComponents.tsx`:
 - `ProjectWorkflowTabBar` — tab bar component

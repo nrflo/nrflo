@@ -116,6 +116,28 @@ export async function getProjectFindings(
   )
 }
 
+/** Upsert a project finding (create or update) */
+export async function upsertProjectFinding(
+  projectId: string,
+  key: string,
+  value: unknown
+): Promise<Record<string, unknown>> {
+  return apiPost<Record<string, unknown>>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/findings`,
+    { key, value }
+  )
+}
+
+/** Delete a project finding by key */
+export async function deleteProjectFinding(
+  projectId: string,
+  key: string
+): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/findings/${encodeURIComponent(key)}`
+  )
+}
+
 /** Toggle graceful stop-after-iteration for a running endless-loop project workflow */
 export async function setStopEndlessLoopAfterIteration(
   projectId: string,

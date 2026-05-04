@@ -102,6 +102,8 @@ POST   /api/v1/projects/:id/workflow/retry-failed # Retry project workflow
 GET    /api/v1/projects/:id/agents                # Get project agent sessions
 DELETE /api/v1/projects/:id/workflow/:instance_id # Delete project workflow instance
 GET    /api/v1/projects/:id/findings              # Get all project findings as JSON map
+POST   /api/v1/projects/:id/findings              # Upsert a project finding; body: {key, value}
+DELETE /api/v1/projects/:id/findings/:key         # Delete a project finding by key (key URL-encoded)
 
 # Workflow definitions (require X-Project header)
 GET    /api/v1/workflows

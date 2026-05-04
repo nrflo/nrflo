@@ -9,6 +9,8 @@ import {
   getProjectWorkflow,
   getProjectAgentSessions,
   getProjectFindings,
+  upsertProjectFinding,
+  deleteProjectFinding,
   runProjectWorkflow,
   stopProjectWorkflow,
   restartProjectAgent,
@@ -484,6 +486,28 @@ export function useDeleteProjectWorkflowInstance() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })
+    },
+  })
+}
+
+export function useUpsertProjectFinding() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, key, value }: { projectId: string; key: string; value: unknown }) =>
+      upsertProjectFinding(projectId, key, value),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.findings(variables.projectId) })
+    },
+  })
+}
+
+export function useDeleteProjectFinding() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, key }: { projectId: string; key: string }) =>
+      deleteProjectFinding(projectId, key),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.findings(variables.projectId) })
     },
   })
 }

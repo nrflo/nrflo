@@ -141,6 +141,7 @@ be/
 │   │   ├── workflow.go
 │   │   ├── workflow_instance.go
 │   │   ├── chain.go             # Chain execution, item, lock models
+│   │   ├── workflow_chain.go    # WorkflowChain, WorkflowChainStep, WorkflowChainRun, WorkflowChainRunStep models
 │   │   ├── error_log.go         # ErrorLog struct + ErrorType enum
 │   │   ├── daily_stats.go
 │   │   ├── scheduled_task.go    # ScheduledTask + ScheduleRun + ScheduleRunWorkflow models
@@ -168,6 +169,8 @@ be/
 │   │   ├── chain.go             # Chain execution CRUD
 │   │   ├── chain_items.go       # Chain item operations (GetMaxPosition, GetTicketIDsByChain)
 │   │   ├── chain_locks.go       # Chain lock operations
+│   │   ├── workflow_chain.go    # WorkflowChainRepo (chain CRUD) + WorkflowChainStepRepo (step CRUD, BulkReorder)
+│   │   ├── workflow_chain_run.go # WorkflowChainRunRepo (run lifecycle, MaterializeRunSteps, GetNextPendingStep, GetActiveRuns)
 │   │   ├── error_log.go         # Error log CRUD (Insert, List, Count)
 │   │   ├── daily_stats.go
 │   │   ├── event_log.go         # WS event log persistence (append, query, cleanup)

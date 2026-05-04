@@ -431,12 +431,67 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    INDEX idx_audit_log_user (user_id)                                 │
 │    INDEX idx_audit_log_created (created_at DESC)                      │
 │                                                                      │
+│  WORKFLOW_CHAINS                                      (mig 000082)   │
+│    id          TEXT NOT NULL                                          │
+│    project_id  TEXT NOT NULL (FK → projects.id CASCADE)              │
+│    name        TEXT NOT NULL                                          │
+│    description TEXT NOT NULL DEFAULT ''                               │
+│    created_at  TEXT NOT NULL                                          │
+│    updated_at  TEXT NOT NULL                                          │
+│    PRIMARY KEY (project_id, id)                                       │
+│                                                                      │
+│  WORKFLOW_CHAIN_STEPS                                 (mig 000082)   │
+│    id                     TEXT PRIMARY KEY                            │
+│    project_id             TEXT NOT NULL                               │
+│    chain_id               TEXT NOT NULL                               │
+│    position               INTEGER NOT NULL                            │
+│    workflow_name          TEXT NOT NULL                               │
+│    scope_type             TEXT NOT NULL CHECK (project|ticket)        │
+│    base_instructions      TEXT NOT NULL DEFAULT ''                    │
+│    require_ticket_handoff INTEGER NOT NULL DEFAULT 0                  │
+│    created_at             TEXT NOT NULL                               │
+│    updated_at             TEXT NOT NULL                               │
+│    FK (project_id, chain_id) → workflow_chains(project_id, id) CASCADE│
+│    UNIQUE (chain_id, position)                                        │
+│    INDEX idx_workflow_chain_steps_chain (chain_id, position)          │
+│                                                                      │
+│  WORKFLOW_CHAIN_RUNS                                  (mig 000082)   │
+│    id                   TEXT PRIMARY KEY                              │
+│    project_id           TEXT NOT NULL (FK → projects.id CASCADE)     │
+│    chain_id             TEXT NOT NULL                                 │
+│    status               TEXT NOT NULL CHECK (pending|running|completed|failed|canceled)│
+│    initial_instructions TEXT NOT NULL DEFAULT ''                      │
+│    triggered_by         TEXT NOT NULL DEFAULT ''                      │
+│    current_position     INTEGER NOT NULL DEFAULT 0                    │
+│    started_at           TEXT (nullable)                               │
+│    completed_at         TEXT (nullable)                               │
+│    created_at           TEXT NOT NULL                                 │
+│    updated_at           TEXT NOT NULL                                 │
+│    FK (project_id, chain_id) → workflow_chains(project_id, id) CASCADE│
+│    INDEX idx_workflow_chain_runs_status (project_id, status)          │
+│                                                                      │
+│  WORKFLOW_CHAIN_RUN_STEPS                             (mig 000082)   │
+│    id                   TEXT PRIMARY KEY                              │
+│    chain_run_id         TEXT NOT NULL (FK → workflow_chain_runs.id CASCADE)│
+│    position             INTEGER NOT NULL                              │
+│    workflow_name        TEXT NOT NULL                                 │
+│    scope_type           TEXT NOT NULL                                 │
+│    workflow_instance_id TEXT (nullable)                               │
+│    ticket_id            TEXT (nullable)                               │
+│    instructions_used    TEXT NOT NULL DEFAULT ''                      │
+│    status               TEXT NOT NULL CHECK (pending|running|completed|failed|skipped|canceled)│
+│    started_at           TEXT (nullable)                               │
+│    ended_at             TEXT (nullable)                               │
+│    created_at           TEXT NOT NULL                                 │
+│    updated_at           TEXT NOT NULL                                 │
+│    INDEX idx_workflow_chain_run_steps_run (chain_run_id, position)    │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Adding a Database Migration
 
-Current highest migration: **000081** (rename_config_versions — renames tables to review_items, tool_dispatches, customer_config_versions)
+Current highest migration: **000082** (workflow_chains — creates workflow_chains, workflow_chain_steps, workflow_chain_runs, workflow_chain_run_steps tables)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

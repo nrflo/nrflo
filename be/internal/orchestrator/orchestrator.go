@@ -1678,16 +1678,23 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 		wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted)
 		if req.CloseTicketOnComplete {
 			ticketService := service.NewTicketService(pool, o.clock)
-			reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
-			if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
-				logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
+			ticket, err := ticketService.Get(req.ProjectID, req.TicketID)
+			if err != nil {
+				logger.Error(context.Background(), "failed to fetch ticket for auto-close", "ticket", req.TicketID, "err", err)
+			} else if ticket.Status == model.StatusClosed {
+				logger.Info(context.Background(), "skipping auto-close: ticket already closed", "ticket", req.TicketID)
 			} else {
-				o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "closed"}))
-				// Best-effort: auto-close parent epic if all children are now closed
-				if epic, err := ticketService.TryCloseParentEpic(req.ProjectID, req.TicketID); err != nil {
-					logger.Error(context.Background(), "failed to auto-close parent epic", "ticket", req.TicketID, "err", err)
-				} else if epic != nil {
-					o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, epic.ID, "", map[string]interface{}{"status": "closed"}))
+				reason := fmt.Sprintf("Workflow '%s' completed successfully", req.WorkflowName)
+				if err := ticketService.Close(req.ProjectID, req.TicketID, reason); err != nil {
+					logger.Error(context.Background(), "failed to close ticket", "ticket", req.TicketID, "err", err)
+				} else {
+					o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, req.TicketID, "", map[string]interface{}{"status": "closed"}))
+					// Best-effort: auto-close parent epic if all children are now closed
+					if epic, err := ticketService.TryCloseParentEpic(req.ProjectID, req.TicketID); err != nil {
+						logger.Error(context.Background(), "failed to auto-close parent epic", "ticket", req.TicketID, "err", err)
+					} else if epic != nil {
+						o.wsHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, req.ProjectID, epic.ID, "", map[string]interface{}{"status": "closed"}))
+					}
 				}
 			}
 		}

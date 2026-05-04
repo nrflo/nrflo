@@ -139,7 +139,7 @@ func TestMarkCompletedAlreadyClosedTicket(t *testing.T) {
 	env.createTicket(t, "MC-5", "Already closed")
 	wfiID := env.initWorkflow(t, "MC-5")
 
-	// Close the ticket first
+	// Close the ticket first with an explicit reason
 	ticketSvc := service.NewTicketService(env.pool, clock.Real())
 	err := ticketSvc.Close(env.project, "MC-5", "manually closed")
 	if err != nil {
@@ -153,21 +153,73 @@ func TestMarkCompletedAlreadyClosedTicket(t *testing.T) {
 		CloseTicketOnComplete: true,
 	})
 
-	// Verify ticket is still closed
+	// Verify ticket is still closed and original close_reason is preserved
+	// (markCompleted must skip Close() when ticket is already closed)
 	ticket := env.getTicket(t, "MC-5")
 	if ticket.Status != model.StatusClosed {
 		t.Fatalf("expected ticket status 'closed', got %v", ticket.Status)
 	}
-
-	expectedReason := "Workflow 'test' completed successfully"
-	if !ticket.CloseReason.Valid || ticket.CloseReason.String != expectedReason {
-		t.Fatalf("expected close_reason %q, got %v", expectedReason, ticket.CloseReason)
+	if !ticket.CloseReason.Valid || ticket.CloseReason.String != "manually closed" {
+		t.Errorf("expected original close_reason %q preserved, got %v", "manually closed", ticket.CloseReason)
 	}
 
 	// Workflow instance should still be completed
 	wi := env.getWorkflowInstance(t, wfiID)
 	if wi.Status != model.WorkflowInstanceCompleted {
 		t.Fatalf("expected workflow status 'completed', got %v", wi.Status)
+	}
+}
+
+// TestMarkCompleted_TicketAlreadyClosed_PreservesCloseMetadata is a regression
+// test verifying that markCompleted does not clobber closed_at or close_reason
+// when the ticket was already closed before workflow completion.
+func TestMarkCompleted_TicketAlreadyClosed_PreservesCloseMetadata(t *testing.T) {
+	env := newTestEnv(t)
+
+	// Seed the ticket via direct INSERT with explicit closed_at and close_reason
+	// so we can assert the exact values are preserved after markCompleted runs.
+	originalClosedAt := "2024-01-15T10:00:00Z"
+	originalReason := "closed by another process"
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err := env.pool.Exec(`
+		INSERT INTO tickets (id, project_id, title, status, issue_type, priority,
+			closed_at, close_reason, created_at, updated_at, created_by)
+		VALUES (?, ?, 'Pre-closed ticket', 'closed', 'task', 2, ?, ?, ?, ?, 'tester')`,
+		"mc-pre-closed", env.project, originalClosedAt, originalReason, now, now)
+	if err != nil {
+		t.Fatalf("failed to seed pre-closed ticket: %v", err)
+	}
+
+	wfiID := env.initWorkflow(t, "mc-pre-closed")
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:             env.project,
+		TicketID:              "mc-pre-closed",
+		WorkflowName:          "test",
+		CloseTicketOnComplete: true,
+	})
+
+	// Read directly from DB to assert closed_at and close_reason are unchanged
+	var gotClosedAt, gotCloseReason string
+	err = env.pool.QueryRow(`
+		SELECT COALESCE(closed_at, ''), COALESCE(close_reason, '')
+		FROM tickets WHERE LOWER(id) = LOWER(?) AND LOWER(project_id) = LOWER(?)`,
+		"mc-pre-closed", env.project).Scan(&gotClosedAt, &gotCloseReason)
+	if err != nil {
+		t.Fatalf("failed to read ticket from DB: %v", err)
+	}
+
+	if gotClosedAt != originalClosedAt {
+		t.Errorf("closed_at = %q, want original %q (must not be clobbered)", gotClosedAt, originalClosedAt)
+	}
+	if gotCloseReason != originalReason {
+		t.Errorf("close_reason = %q, want original %q (must not be clobbered)", gotCloseReason, originalReason)
+	}
+
+	// Workflow instance should be completed
+	wi := env.getWorkflowInstance(t, wfiID)
+	if wi.Status != model.WorkflowInstanceCompleted {
+		t.Errorf("expected workflow status 'completed', got %v", wi.Status)
 	}
 }
 

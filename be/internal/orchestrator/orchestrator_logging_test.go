@@ -357,7 +357,7 @@ func TestOrchestratorStart_TrxPropagation_SameTrxInAllLogs(t *testing.T) {
 
 func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 	env := newTestEnv(t)
-	// Don't create ticket - this will cause close to fail
+	// Don't create ticket - this will cause the Get() call to fail before Close()
 	logBuf := setupLogCapture(t)
 
 	// Create workflow instance directly without ticket
@@ -370,7 +370,7 @@ func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
-	// Call markCompleted which should try to close ticket and log error
+	// Call markCompleted which should try to fetch ticket and log error
 	req := RunRequest{
 		ProjectID:             env.project,
 		TicketID:              "NONEXISTENT",
@@ -386,7 +386,7 @@ func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 	if !strings.Contains(output, "ERROR") {
 		t.Errorf("log output missing ERROR level: %s", output)
 	}
-	if !strings.Contains(output, "failed to close ticket") {
+	if !strings.Contains(output, "failed to fetch ticket for auto-close") {
 		t.Errorf("log output missing error message: %s", output)
 	}
 	if !strings.Contains(output, "ticket=NONEXISTENT") {

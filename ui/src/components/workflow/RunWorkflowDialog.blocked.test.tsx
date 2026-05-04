@@ -49,7 +49,7 @@ describe('RunWorkflowDialog — blockedReason prop', () => {
 
   describe('Run button disabled state', () => {
     it('disables Run button when blockedReason is set', () => {
-      renderDialog({ blockedReason: 'cannot run workflow on closed ticket' })
+      renderDialog({ blockedReason: 'cannot run workflow on blocked ticket — blocked by: TICKET-2' })
 
       expect(screen.getByRole('button', { name: /^run$/i })).toBeDisabled()
     })
@@ -73,7 +73,7 @@ describe('RunWorkflowDialog — blockedReason prop', () => {
     })
 
     it('Run button stays disabled even after workflow loads when blockedReason is set', async () => {
-      renderDialog({ blockedReason: 'cannot run workflow on closed ticket' })
+      renderDialog({ blockedReason: 'cannot run workflow on blocked ticket — blocked by: TICKET-2' })
 
       await waitFor(() => expect(workflowApi.listWorkflowDefs).toHaveBeenCalled())
 
@@ -83,7 +83,7 @@ describe('RunWorkflowDialog — blockedReason prop', () => {
 
   describe('yellow warning banner', () => {
     it('shows yellow warning banner with blockedReason text', () => {
-      const reason = 'cannot run workflow on closed ticket'
+      const reason = 'cannot run workflow on blocked ticket — blocked by: TICKET-2'
       renderDialog({ blockedReason: reason })
 
       expect(screen.getByText(reason)).toBeInTheDocument()

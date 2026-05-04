@@ -255,14 +255,10 @@ func (s *TicketService) Update(projectID, ticketID string, req *types.TicketUpda
 }
 
 // ValidateRunnable checks that a ticket can have a workflow run on it.
-// Returns an error if the ticket is closed or blocked by open dependencies.
+// Returns an error if the ticket is blocked by open dependencies.
 func (s *TicketService) ValidateRunnable(projectID, ticketID string) error {
-	ticket, err := s.Get(projectID, ticketID)
-	if err != nil {
+	if _, err := s.Get(projectID, ticketID); err != nil {
 		return err
-	}
-	if ticket.Status == model.StatusClosed {
-		return fmt.Errorf("cannot run workflow on closed ticket")
 	}
 	blockers, err := s.getOpenBlockers(projectID, ticketID)
 	if err != nil {

@@ -85,12 +85,8 @@ export function TicketDetailPage() {
   const reopenMutation = useReopenTicket()
   const deleteMutation = useDeleteTicket()
 
-  const blockedReason = ticket
-    ? ticket.status === 'closed'
-      ? 'Cannot run workflow on a closed ticket'
-      : ticket.is_blocked
-        ? `Cannot run workflow — blocked by: ${ticket.blocked_by?.join(', ') || 'open dependencies'}`
-        : undefined
+  const blockedReason = ticket && ticket.is_blocked
+    ? `Cannot run workflow — blocked by: ${ticket.blocked_by?.join(', ') || 'open dependencies'}`
     : undefined
 
   const handleExpandedChange = useCallback((expanded: boolean) => {

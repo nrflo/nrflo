@@ -67,11 +67,11 @@ describe('WorkflowTabContent — blockedReason prop on Retry Failed', () => {
     vi.clearAllMocks()
   })
 
-  it('disables Retry Failed button when blockedReason is set (closed ticket)', () => {
+  it('disables Retry Failed button when blockedReason is set (blocked ticket)', () => {
     render(
       <WorkflowTabContent
         {...defaultProps}
-        blockedReason="cannot run workflow on closed ticket"
+        blockedReason="cannot run workflow on blocked ticket — blocked by: DEP-1"
       />
     )
 
@@ -106,7 +106,7 @@ describe('WorkflowTabContent — blockedReason prop on Retry Failed', () => {
   })
 
   it('shows blockedReason in tooltip wrapper when set', () => {
-    const reason = 'cannot run workflow on closed ticket'
+    const reason = 'cannot run workflow on blocked ticket — blocked by: DEP-1'
     render(
       <WorkflowTabContent
         {...defaultProps}
@@ -124,7 +124,7 @@ describe('WorkflowTabContent — blockedReason prop on Retry Failed', () => {
     render(
       <WorkflowTabContent
         {...defaultProps}
-        blockedReason="cannot run workflow on closed ticket"
+        blockedReason="cannot run workflow on blocked ticket — blocked by: DEP-1"
         retryingSessionId="sess-1"
       />
     )

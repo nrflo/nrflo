@@ -76,19 +76,37 @@ func TestValidateRunnable_TicketNotFound(t *testing.T) {
 	}
 }
 
-// TestValidateRunnable_ClosedTicket verifies that a closed ticket returns an error
-// containing "closed ticket".
+// TestValidateRunnable_ClosedTicket verifies that a closed, unblocked ticket
+// passes validation (returns nil). Closed tickets may have workflows run on them.
 func TestValidateRunnable_ClosedTicket(t *testing.T) {
 	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "closed")
 
 	err := svc.ValidateRunnable("proj", "TICK-1")
-	if err == nil {
-		t.Fatal("expected error for closed ticket, got nil")
+	if err != nil {
+		t.Errorf("expected nil for closed unblocked ticket, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "closed ticket") {
-		t.Errorf("error = %q, want to contain 'closed ticket'", err.Error())
+}
+
+// TestValidateRunnable_ClosedAndBlocked verifies that a closed ticket with an
+// open blocker still returns a "blocked by" error.
+func TestValidateRunnable_ClosedAndBlocked(t *testing.T) {
+	t.Parallel()
+	pool, svc := setupValidateRunnableDB(t, "proj")
+	svcSeedTicket(t, pool, "proj", "TICK-1", "closed")
+	svcSeedTicket(t, pool, "proj", "BLOCKER-OPEN", "open")
+	svcSeedDependency(t, pool, "proj", "TICK-1", "BLOCKER-OPEN")
+
+	err := svc.ValidateRunnable("proj", "TICK-1")
+	if err == nil {
+		t.Fatal("expected error for closed ticket with open blocker, got nil")
+	}
+	if !strings.Contains(err.Error(), "blocked by") {
+		t.Errorf("error = %q, want to contain 'blocked by'", err.Error())
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "blocker-open") {
+		t.Errorf("error = %q, want to contain blocker ID 'blocker-open'", err.Error())
 	}
 }
 

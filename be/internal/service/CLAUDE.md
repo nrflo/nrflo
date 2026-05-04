@@ -7,7 +7,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | File | Domain |
 |------|--------|
 | `project.go` | Project CRUD operations |
-| `ticket.go` | Ticket CRUD, close/reopen, search, `ValidateRunnable` (rejects closed/blocked tickets) |
+| `ticket.go` | Ticket CRUD, close/reopen, search, `ValidateRunnable` (rejects blocked tickets) |
 | `workflow.go` | Workflow operations (ticket + project scope): init, start/complete phase, state queries |
 | `workflow_defs.go` | Workflow definitions CRUD (no phases in create/update; phases derived from agent_definitions at read time) |
 | `workflow_config.go` | Workflow config loading: `BuildSpawnerConfig` and `parseWorkflowDefFromDB` derive phases from agent_definitions (layer field), sorted by layer ASC, id ASC |

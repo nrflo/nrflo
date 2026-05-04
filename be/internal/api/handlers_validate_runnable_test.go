@@ -51,7 +51,8 @@ func seedDepInPool(t *testing.T, pool *db.Pool, projectID, issueID, blockerID st
 
 // ── handleRunWorkflow: ValidateRunnable guards ────────────────────────────────
 
-// TestHandleRunWorkflow_ClosedTicket verifies 409 Conflict when the target ticket is closed.
+// TestHandleRunWorkflow_ClosedTicket verifies that a closed, unblocked ticket
+// passes ValidateRunnable and does NOT produce 409 or 404.
 func TestHandleRunWorkflow_ClosedTicket(t *testing.T) {
 	s := newTakeControlServer(t)
 	seedProjectInPool(t, s.pool, "proj")
@@ -65,10 +66,14 @@ func TestHandleRunWorkflow_ClosedTicket(t *testing.T) {
 	rr := httptest.NewRecorder()
 	s.handleRunWorkflow(rr, req)
 
-	if rr.Code != http.StatusConflict {
-		t.Errorf("status = %d, want 409 (closed ticket)", rr.Code)
+	// Validation passes for closed unblocked tickets — response is an error
+	// from orchestrator.Start, but NOT 409 (blocked/closed) or 404 (not found).
+	if rr.Code == http.StatusConflict {
+		t.Errorf("closed unblocked ticket must not produce 409 Conflict")
 	}
-	assertErrorContains(t, rr, "closed ticket")
+	if rr.Code == http.StatusNotFound {
+		t.Errorf("closed unblocked ticket must not produce 404 (ValidateRunnable regression)")
+	}
 }
 
 // TestHandleRunWorkflow_BlockedTicket verifies 409 Conflict when the ticket has an open blocker.
@@ -162,7 +167,8 @@ func TestHandleRunWorkflow_ClosedBlockerDoesNotBlock(t *testing.T) {
 
 // ── handleRetryFailedAgent: ValidateRunnable guards ───────────────────────────
 
-// TestHandleRetryFailed_ClosedTicket verifies 409 Conflict when the target ticket is closed.
+// TestHandleRetryFailed_ClosedTicket verifies that a closed, unblocked ticket
+// passes ValidateRunnable and does NOT produce 409 or 404.
 func TestHandleRetryFailed_ClosedTicket(t *testing.T) {
 	s := newTakeControlServer(t)
 	seedProjectInPool(t, s.pool, "proj")
@@ -176,10 +182,14 @@ func TestHandleRetryFailed_ClosedTicket(t *testing.T) {
 	rr := httptest.NewRecorder()
 	s.handleRetryFailedAgent(rr, req)
 
-	if rr.Code != http.StatusConflict {
-		t.Errorf("status = %d, want 409 (closed ticket)", rr.Code)
+	// Validation passes for closed unblocked tickets — response is an error
+	// from orchestrator.RetryFailedAgent, but NOT 409 (blocked/closed) or 404 (not found).
+	if rr.Code == http.StatusConflict {
+		t.Errorf("closed unblocked ticket must not produce 409 Conflict")
 	}
-	assertErrorContains(t, rr, "closed ticket")
+	if rr.Code == http.StatusNotFound {
+		t.Errorf("closed unblocked ticket must not produce 404 (ValidateRunnable regression)")
+	}
 }
 
 // TestHandleRetryFailed_BlockedTicket verifies 409 Conflict when the ticket has an open blocker.

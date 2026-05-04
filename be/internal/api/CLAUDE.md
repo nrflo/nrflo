@@ -43,6 +43,10 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
 | `handlers_errors.go` | Error log list (paginated, type filter) |
 | `handlers_logs.go` | Backend log file viewer |
+| `handlers_nrvapp_review.go` | nrvapp review item CRUD (list, create, get with diff, patch draft, approve, reject); project-scoped via X-Project header; api-mode only |
+| `handlers_nrvapp_review_diff.go` | `diffJSON` helper: key-by-key JSON object comparison returning {added, removed, changed} |
+| `handlers_nrvapp_config.go` | nrvapp config editor (list files, get content, put content, get history, rollback); project-scoped; api-mode only; builds configeditor.Service per-request from customer_config_dir project setting |
+| `handlers_nrvapp_insights.go` | nrvapp insights aggregations (summary, edit-rate, throughput); project-scoped; api-mode only |
 | `static_handler.go` | SPA handler: serves embedded UI files with index.html fallback for client-side routing |
 
 ## HTTP API Endpoints
@@ -203,6 +207,28 @@ POST   /api/v1/api-credentials            # secret_ref must start with env:|file
 GET    /api/v1/api-credentials/{id}
 PUT    /api/v1/api-credentials/{id}       # Plaintext literal:* is accepted on input; never returned on output
 DELETE /api/v1/api-credentials/{id}
+
+# nrvapp (api-mode only; all require X-Project header)
+
+## Review items
+GET    /api/v1/nrvapp/review                    # List review items; ?status=pending|approved|rejected, ?limit=, ?offset=
+POST   /api/v1/nrvapp/review                    # Create review item; body: {tool_name, input, session_id?, output?, draft?}
+GET    /api/v1/nrvapp/review/{id}               # Get one; includes diff field when draft is set ({added,removed,changed})
+PATCH  /api/v1/nrvapp/review/{id}               # Update draft; body: {draft}; broadcasts nrvapp.review_updated
+POST   /api/v1/nrvapp/review/{id}/approve       # Approve (copies draft→output if output empty); broadcasts nrvapp.review_updated
+POST   /api/v1/nrvapp/review/{id}/reject        # Reject; body: {reason}; broadcasts nrvapp.review_updated
+
+## Config editor (customer_config_dir must be set in project settings)
+GET    /api/v1/nrvapp/config/files                        # List managed files (manifest + tool config_files + disk yaml/json)
+GET    /api/v1/nrvapp/config/content/{file...}            # Get file content (DB version if edited, else disk fallback) + version number
+PUT    /api/v1/nrvapp/config/content/{file...}            # Update file; raw body = new content; validates against sidecar schema; broadcasts nrvapp.config_updated
+GET    /api/v1/nrvapp/config/history/{file...}            # Version history (newest first)
+POST   /api/v1/nrvapp/config/rollback/{file...}           # Rollback; body: {version: int}; creates new version with old content; broadcasts nrvapp.config_updated
+
+## Insights
+GET    /api/v1/nrvapp/insights/summary          # Dispatch stats + review counts; ?range=7d|30d (default 7d)
+GET    /api/v1/nrvapp/insights/edit-rate        # Per-tool review outcomes with edit_rate_pct; ?range=7d|30d
+GET    /api/v1/nrvapp/insights/throughput       # Bucketed dispatch counts; ?range=7d|30d; ?bucket=1h|6h|1d (default 1h for 7d, 6h for 30d)
 
 # Notification channels (require X-Project header)
 GET    /api/v1/notification-channels              # List channels (configs masked)

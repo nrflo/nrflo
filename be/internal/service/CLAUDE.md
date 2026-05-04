@@ -32,6 +32,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `error_service.go` | Error tracking: `RecordError` (UUID gen, clock timestamp, DB insert, WS broadcast), `ListErrors` (paginated) |
 | `notification.go` | Notification channel CRUD + secret masking/unmasking + PATCH mask-preserves semantics + TestSend (enqueue synthetic delivery) + ListDeliveries |
 | `snapshot.go` | WS snapshot provider (builds chunks from workflow state) |
+| `nrvapp_insights.go` | Insights service for nrvapp review/dispatch dashboards: `Summary`, `EditRate`, `Throughput`; wraps `NrvappDispatchRepo` and `NrvappReviewRepo`. Helpers: `ParseRange` (7d/30d → time.Time), `ParseBucket` (1h/6h/1d → time.Duration). |
 
 ## Workflow Types
 

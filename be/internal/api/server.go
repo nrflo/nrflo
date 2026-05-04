@@ -520,6 +520,26 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
 		mux.HandleFunc("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
 		mux.HandleFunc("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
+
+		// nrvapp review (project-scoped; only available in --mode=api)
+		mux.HandleFunc("GET /api/v1/nrvapp/review", s.handleListNrvappReviews)
+		mux.HandleFunc("POST /api/v1/nrvapp/review", s.handleCreateNrvappReview)
+		mux.HandleFunc("GET /api/v1/nrvapp/review/{id}", s.handleGetNrvappReview)
+		mux.HandleFunc("PATCH /api/v1/nrvapp/review/{id}", s.handlePatchNrvappReview)
+		mux.HandleFunc("POST /api/v1/nrvapp/review/{id}/approve", s.handleApproveNrvappReview)
+		mux.HandleFunc("POST /api/v1/nrvapp/review/{id}/reject", s.handleRejectNrvappReview)
+
+		// nrvapp config editor (project-scoped; only available in --mode=api)
+		mux.HandleFunc("GET /api/v1/nrvapp/config/files", s.handleListNrvappConfigFiles)
+		mux.HandleFunc("GET /api/v1/nrvapp/config/content/{file...}", s.handleGetNrvappConfigFile)
+		mux.HandleFunc("PUT /api/v1/nrvapp/config/content/{file...}", s.handlePutNrvappConfigFile)
+		mux.HandleFunc("GET /api/v1/nrvapp/config/history/{file...}", s.handleGetNrvappConfigHistory)
+		mux.HandleFunc("POST /api/v1/nrvapp/config/rollback/{file...}", s.handleRollbackNrvappConfig)
+
+		// nrvapp insights (project-scoped; only available in --mode=api)
+		mux.HandleFunc("GET /api/v1/nrvapp/insights/summary", s.handleNrvappInsightsSummary)
+		mux.HandleFunc("GET /api/v1/nrvapp/insights/edit-rate", s.handleNrvappInsightsEditRate)
+		mux.HandleFunc("GET /api/v1/nrvapp/insights/throughput", s.handleNrvappInsightsThroughput)
 	}
 
 	// Errors

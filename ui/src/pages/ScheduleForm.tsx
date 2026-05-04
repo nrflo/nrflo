@@ -9,8 +9,30 @@ import { Toggle } from '@/components/ui/Toggle'
 import { listWorkflowDefs } from '@/api/workflows'
 import { useCreateScheduledTask, useUpdateScheduledTask } from '@/hooks/useScheduledTasks'
 import { useProjectStore } from '@/stores/projectStore'
-import { cn } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
+import { computeNextRuns, formatCountdown } from '@/lib/cron'
+import { useTickingClock } from '@/hooks/useElapsedTime'
 import type { ScheduledTask } from '@/types/schedules'
+
+interface NextRunsPreviewProps {
+  expression: string
+}
+
+function NextRunsPreview({ expression }: NextRunsPreviewProps) {
+  useTickingClock(true)
+  const now = new Date()
+  const runs = computeNextRuns(expression, 5)
+  if (runs.length === 0) return null
+  return (
+    <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+      {runs.map((d, i) => (
+        <p key={i}>
+          {formatDateTime(d)} · {formatCountdown(d, now)}
+        </p>
+      ))}
+    </div>
+  )
+}
 
 interface ScheduleFormProps {
   open: boolean
@@ -109,7 +131,10 @@ export function ScheduleForm({ open, onClose, editTarget }: ScheduleFormProps) {
           {cronError ? (
             <p className="text-xs text-destructive">{cronError}</p>
           ) : cronDescription ? (
-            <p className="text-xs text-muted-foreground">{cronDescription}</p>
+            <>
+              <p className="text-xs text-muted-foreground">{cronDescription}</p>
+              <NextRunsPreview expression={cronExpression} />
+            </>
           ) : null}
         </div>
         <div className="space-y-1.5">

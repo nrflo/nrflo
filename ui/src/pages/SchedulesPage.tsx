@@ -11,6 +11,7 @@ import { ScheduleForm } from './ScheduleForm'
 import { ScheduleRunsDialog } from './ScheduleRunsDialog'
 import { useScheduledTasks, useDeleteScheduledTask, useUpdateScheduledTask, useRunScheduleNow } from '@/hooks/useScheduledTasks'
 import { formatRelativeTime, cn } from '@/lib/utils'
+import { CronCountdown } from '@/components/ui/CronCountdown'
 import type { ScheduledTask } from '@/types/schedules'
 
 function cronSummary(expr: string): string {
@@ -107,8 +108,8 @@ export function SchedulesPage() {
                   <TableCell className="text-muted-foreground text-sm">
                     {task.last_triggered_at ? formatRelativeTime(task.last_triggered_at) : '—'}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {task.next_run_at ? formatRelativeTime(task.next_run_at) : '—'}
+                  <TableCell>
+                    <CronCountdown nextRunAt={task.next_run_at} />
                   </TableCell>
                   <TableCell>
                     <Toggle

@@ -102,7 +102,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	}
 
 	// Create a temp spawner just for the interactive wait mechanism.
-	// Nrvapp manifest fields are not needed here (CLI-only, no API spawn).
+	// Manifest fields are not needed here (CLI-only, no API spawn).
 	wfiID := wi.ID
 	sp := spawner.New(spawner.Config{
 		Workflows:    workflows,
@@ -166,7 +166,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		cliName := cliNameFromModelConfigs(modelConfigs, l0Model)
 		modelID := fmt.Sprintf("%s:%s", cliName, l0Model)
 
-		// Template-only spawner for prompt expansion. Nrvapp fields not needed (CLI-only).
+		// Template-only spawner for prompt expansion. Manifest fields not needed (CLI-only).
 		// Callbacks wired for uniformity; this spawner never registers sessions.
 		tmplWfiID := wi.ID
 		sp := spawner.New(spawner.Config{

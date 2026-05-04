@@ -19,7 +19,7 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
-	"be/internal/nrvapp/python"
+	"be/internal/manifest/python"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
@@ -1193,8 +1193,8 @@ func (o *Orchestrator) runLoop(
 	agentSvcReal := service.NewAgentService(pool, o.clock)
 	workflowSvcReal := service.NewWorkflowService(pool, o.clock)
 	toolDefRepo := repo.NewToolDefinitionRepo(pool, o.clock)
-	nrvappDispatchRepo := repo.NewNrvappDispatchRepo(pool, o.clock)
-	nrvappReviewRepo := repo.NewNrvappReviewRepo(pool, o.clock)
+	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
+	reviewRepo := repo.NewReviewRepo(pool, o.clock)
 	pythonRunner := python.NewOSRunner()
 
 	// Worktree cleanup on failure/cancellation (deferred after pool so git commands still work)
@@ -1338,8 +1338,8 @@ func (o *Orchestrator) runLoop(
 					APIMode:                   o.apiMode,
 					InteractiveCLIMode:        interactiveCLIMode,
 					PTYManager:                o.PTYManager,
-					NrvappDispatchRepo:        nrvappDispatchRepo,
-					NrvappReviewRepo:          nrvappReviewRepo,
+					DispatchRepo:              dispatchRepo,
+					ReviewRepo:                reviewRepo,
 					PythonRunner:              pythonRunner,
 					CustomerConfigDir:         customerConfigDir,
 					OnSessionRegister: func(sid string, s *spawner.Spawner) {

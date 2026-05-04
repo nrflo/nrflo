@@ -14,7 +14,7 @@ import (
 type HTTPHandlerFactory func(def *model.ToolDefinition) ToolHandler
 
 // ManifestProvider is the contract for manifest-backed tools. The interface
-// keeps registry.go free of a tools_nrvapp import (same pattern as HTTPHandlerFactory).
+// keeps registry.go free of a tools_manifest import (same pattern as HTTPHandlerFactory).
 type ManifestProvider interface {
 	Specs() []provider.ToolSpec
 	Handler(name string) (ToolHandler, bool)

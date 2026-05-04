@@ -46,9 +46,9 @@ func (o *Orchestrator) attemptConflictResolution(
 	}))
 
 	// Construct spawner with synthetic single-phase workflow.
-	// Conflict resolution is CLI-only; nrvapp manifest tools are not used here.
-	nrvappDispatchRepo := repo.NewNrvappDispatchRepo(pool, o.clock)
-	nrvappReviewRepo := repo.NewNrvappReviewRepo(pool, o.clock)
+	// Conflict resolution is CLI-only; manifest tools are not used here.
+	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
+	reviewRepo := repo.NewReviewRepo(pool, o.clock)
 	sp := spawner.New(spawner.Config{
 		Workflows: map[string]spawner.WorkflowDef{
 			"_conflict_resolution": {
@@ -69,8 +69,8 @@ func (o *Orchestrator) attemptConflictResolution(
 		APIMode:            o.apiMode,
 		InteractiveCLIMode: interactiveCLIMode,
 		PTYManager:         o.PTYManager,
-		NrvappDispatchRepo: nrvappDispatchRepo,
-		NrvappReviewRepo:   nrvappReviewRepo,
+		DispatchRepo: dispatchRepo,
+		ReviewRepo:   reviewRepo,
 		CustomerConfigDir:  customerConfigDir,
 		OnSessionRegister: func(sid string, s *spawner.Spawner) {
 			o.mu.Lock()

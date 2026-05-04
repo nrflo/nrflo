@@ -17,8 +17,8 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
-	nrvappConfig "be/internal/nrvapp/config"
-	"be/internal/nrvapp/python"
+	manifestConfig "be/internal/manifest/config"
+	"be/internal/manifest/python"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
@@ -27,7 +27,7 @@ import (
 	"be/internal/spawner/apirun/provider/anthropic"
 	"be/internal/spawner/apirun/tools_builtin"
 	"be/internal/spawner/apirun/tools_http"
-	"be/internal/spawner/apirun/tools_nrvapp"
+	"be/internal/spawner/apirun/tools_manifest"
 	"be/internal/ws"
 )
 
@@ -158,13 +158,13 @@ type Config struct {
 	// NudgeMax: max nudge attempts before auto-fail (default 5, 0 = use default).
 	// Only applies to cliInteractiveBackend agents.
 	NudgeMax int
-	// NrvappDispatchRepo records tool dispatch events for nrvapp manifest tools.
+	// DispatchRepo records tool dispatch events for manifest tools.
 	// Optional (nil-safe): when nil, dispatch rows are not inserted.
-	NrvappDispatchRepo *repo.NrvappDispatchRepo
-	// NrvappReviewRepo stores review items created by manifest tools with review:true.
+	DispatchRepo *repo.DispatchRepo
+	// ReviewRepo stores review items created by manifest tools with review:true.
 	// Optional (nil-safe): when nil, review rows are not inserted.
-	NrvappReviewRepo *repo.NrvappReviewRepo
-	// PythonRunner executes Python scripts for nrvapp manifest tools.
+	ReviewRepo *repo.ReviewRepo
+	// PythonRunner executes Python scripts for manifest tools.
 	// Optional (nil-safe): when nil, manifest tools are unavailable even if APIMode is set.
 	PythonRunner python.Runner
 	// CustomerConfigDir is the absolute path to the customer config directory for this project.
@@ -273,7 +273,7 @@ type terminalSignal struct {
 // manifestCacheEntry caches a loaded manifest keyed by its directory path.
 type manifestCacheEntry struct {
 	mtime    time.Time
-	manifest *nrvappConfig.Manifest
+	manifest *manifestConfig.Manifest
 }
 
 // Spawner manages agent lifecycle
@@ -327,7 +327,7 @@ func New(config Config) *Spawner {
 // loadManifestCached loads and caches tool_manifest.yaml from configDir. It
 // reloads only when the file's mtime has changed since the last load.
 // Returns (nil, nil) when the manifest file does not exist.
-func (s *Spawner) loadManifestCached(configDir string) (*nrvappConfig.Manifest, error) {
+func (s *Spawner) loadManifestCached(configDir string) (*manifestConfig.Manifest, error) {
 	manifestPath := filepath.Join(configDir, "tool_manifest.yaml")
 	info, statErr := os.Stat(manifestPath)
 	if statErr != nil {
@@ -347,7 +347,7 @@ func (s *Spawner) loadManifestCached(configDir string) (*nrvappConfig.Manifest, 
 	}
 	s.manifestCacheMu.Unlock()
 
-	m, loadErr := nrvappConfig.Load(configDir)
+	m, loadErr := manifestConfig.Load(configDir)
 	if loadErr != nil {
 		return nil, loadErr
 	}
@@ -902,13 +902,13 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			if mErr != nil {
 				logger.Warn(ctx, "manifest load failed, skipping manifest tools", "dir", s.config.CustomerConfigDir, "err", mErr)
 			} else if manifest != nil {
-				manifestProv = tools_nrvapp.New(
+				manifestProv = tools_manifest.New(
 					manifest,
 					s.config.PythonRunner,
 					req.ProjectID,
 					proc.sessionID,
-					s.config.NrvappDispatchRepo,
-					s.config.NrvappReviewRepo,
+					s.config.DispatchRepo,
+					s.config.ReviewRepo,
 					s.config.WSHub,
 					s.config.Clock,
 				)

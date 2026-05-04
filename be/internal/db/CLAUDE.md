@@ -360,7 +360,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    INDEX idx_notification_deliveries_status (status, next_attempt_at)│
 │    INDEX idx_notification_deliveries_channel (channel_id, created_at DESC)│
 │                                                                      │
-│  NRVAPP_REVIEW_ITEMS                                  (mig 000072)   │
+│  REVIEW_ITEMS                          (mig 000072; renamed 000079)  │
 │    id            TEXT PRIMARY KEY (rev-xxxxxx)                       │
 │    project_id    TEXT NOT NULL (FK → projects.id CASCADE)            │
 │    tool_name     TEXT NOT NULL                                       │
@@ -374,9 +374,9 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    approved_at   TEXT           (nullable, set on Approve)           │
-│    INDEX idx_nrvapp_review_items_lookup (project_id, status, created_at DESC)│
+│    INDEX idx_review_items_lookup (project_id, status, created_at DESC)│
 │                                                                      │
-│  NRVAPP_TOOL_DISPATCHES                               (mig 000073)   │
+│  TOOL_DISPATCHES                       (mig 000073; renamed 000080)  │
 │    id            TEXT PRIMARY KEY (disp-xxxxxx)                     │
 │    project_id    TEXT NOT NULL (FK → projects.id CASCADE)            │
 │    session_id    TEXT           (nullable)                           │
@@ -387,9 +387,9 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    error_msg     TEXT           (nullable)                           │
 │    duration_ms   INTEGER NOT NULL                                    │
 │    created_at    TEXT NOT NULL                                       │
-│    INDEX idx_nrvapp_tool_dispatches_lookup (project_id, tool_name, created_at)│
+│    INDEX idx_tool_dispatches_lookup (project_id, tool_name, created_at)│
 │                                                                      │
-│  NRVAPP_CONFIG_VERSIONS                               (mig 000074)   │
+│  CUSTOMER_CONFIG_VERSIONS              (mig 000074; renamed 000081)  │
 │    id            INTEGER PRIMARY KEY AUTOINCREMENT                   │
 │    project_id    TEXT NOT NULL (FK → projects.id CASCADE)            │
 │    file          TEXT NOT NULL (config file path/name)               │
@@ -397,7 +397,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    content       BLOB NOT NULL                                       │
 │    actor         TEXT           (nullable, who made the change)      │
 │    created_at    TEXT NOT NULL                                       │
-│    UNIQUE INDEX idx_nrvapp_config_versions_unique (project_id, file, version)│
+│    UNIQUE INDEX idx_customer_config_versions_unique (project_id, file, version)│
 │                                                                      │
 │  USERS                                                (mig 000075)   │
 │    id                  TEXT PRIMARY KEY                               │
@@ -436,7 +436,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000078** (seed_admin — seeds admin@nrflo.com with must_change_password=1)
+Current highest migration: **000081** (rename_config_versions — renames tables to review_items, tool_dispatches, customer_config_versions)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

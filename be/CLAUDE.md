@@ -145,14 +145,17 @@ be/
 │   │   ├── daily_stats.go
 │   │   ├── scheduled_task.go    # ScheduledTask + ScheduleRun + ScheduleRunWorkflow models
 │   │   ├── user.go              # User struct (id, email, role, status, must_change_password, timestamps)
-│   │   └── audit.go             # AuditEntry struct + AuditFilter
-│   ├── nrvapp/                  # Customer config management for api-mode workflows (see internal/nrvapp/CLAUDE.md)
+│   │   ├── audit.go             # AuditEntry struct + AuditFilter
+│   │   ├── review_item.go       # ReviewItem struct + status constants (pending|approved|rejected)
+│   │   ├── tool_dispatch.go     # ToolDispatch + DispatchSummary/EditRateRow/ThroughputPoint aggregates
+│   │   └── config_version.go    # ConfigVersion struct
+│   ├── manifest/                # Manifest parsing, python runtime, scaffolder (see internal/manifest/CLAUDE.md)
 │   │   ├── config/              # Manifest parsing, tool validation, JSON Schema compilation
 │   │   ├── python/              # Python script execution runtime (Runner, OSRunner, env scoping)
-│   │   ├── configeditor/        # Versioned config file editing service (DB-backed)
-│   │   ├── configmigrate/       # Forward-only config migration runner
-│   │   │   └── migrations/      # Migration implementations
 │   │   └── scaffold/            # init-customer scaffolder (embedded template tree)
+│   ├── configeditor/            # Versioned config file editing service (DB-backed) (see internal/configeditor/CLAUDE.md)
+│   │   └── migrate/             # Forward-only config migration runner
+│   │       └── migrations/      # Migration implementations
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -170,9 +173,9 @@ be/
 │   │   ├── event_log.go         # WS event log persistence (append, query, cleanup)
 │   │   ├── scheduled_task.go    # ScheduledTask CRUD + ListEnabled + UpdateTriggerTimestamps
 │   │   ├── schedule_run.go      # ScheduleRun Insert/UpdateStatus/ListByTask/Get
-│   │   ├── nrvapp_review.go     # NrvappReviewRepo: Insert/Get/List/UpdateDraft/Approve/Reject
-│   │   ├── nrvapp_dispatch.go   # NrvappDispatchRepo: Insert/ListSummary/EditRateByTool/Throughput
-│   │   ├── nrvapp_config_version.go # NrvappConfigVersionRepo: Insert (tx, auto-version)/LatestVersion/Get/History
+│   │   ├── review.go            # ReviewRepo: Insert/Get/List/UpdateDraft/Approve/Reject
+│   │   ├── tool_dispatch.go     # DispatchRepo: Insert/ListSummary/EditRateByTool/Throughput
+│   │   ├── config_version.go    # ConfigVersionRepo: Insert (tx, auto-version)/LatestVersion/Get/History
 │   │   ├── user_repo.go         # UserRepo: Get/GetByEmail/List/Create/UpdateProfile/UpdatePassword/UpdateLastLogin/CountActiveAdmins/Delete
 │   │   └── audit_repo.go        # AuditRepo: Append/List (with AuditFilter + pagination + total count)
 │   ├── types/                   # Shared request/response types
@@ -278,8 +281,8 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 |---------|--------------|-------------|
 | `internal/scheduler/` | [scheduler/CLAUDE.md](internal/scheduler/CLAUDE.md) | Cron scheduler: lifecycle, dispatch flow, integration with orchestrator |
 | `internal/notify/` | (inline docs) | Notification subsystem: Dispatcher (ws.Listener), Slack/Telegram transports, async retry queue with backoff 15s/60s/300s, secret masking, error tracking on giving_up |
-| `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, findings auto-population, output format. T1 introduces an `ExecutionBackend` seam (`backend.go`). T2 added the provider abstraction + Anthropic streaming impl. T3 wires `apirun.Runner` and `apiBackend` into the seam for text-only API-mode execution; tools/continuation arrive in T4-T5. `Config` adds `NrvappDispatchRepo`, `NrvappReviewRepo`, `PythonRunner`, `CustomerConfigDir` for manifest-tool dispatch. |
-| `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler, sink (streaming bridge), take-control rejection, low-context save override, stall detection behavior. Three registry sources: builtins → manifest tools (`tools_nrvapp`) → HTTP defs. |
+| `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, findings auto-population, output format. T1 introduces an `ExecutionBackend` seam (`backend.go`). T2 added the provider abstraction + Anthropic streaming impl. T3 wires `apirun.Runner` and `apiBackend` into the seam for text-only API-mode execution; tools/continuation arrive in T4-T5. `Config` adds `DispatchRepo`, `ReviewRepo`, `PythonRunner`, `CustomerConfigDir` for manifest-tool dispatch. |
+| `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler, sink (streaming bridge), take-control rejection, low-context save override, stall detection behavior. Three registry sources: builtins → manifest tools (`tools_manifest`) → HTTP defs. |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, fan-in rules, callback flow, chain runner |
 | `internal/api/` | [api/CLAUDE.md](internal/api/CLAUDE.md) | HTTP endpoints, handler mapping, CORS, WebSocket |
 | `internal/auth/` | [auth/CLAUDE.md](internal/auth/CLAUDE.md) | Argon2id password hashing (PHC format), SCS session manager constructor, seedhash tool |
@@ -287,7 +290,8 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Service layer, file mapping, workflow types, common tasks; includes AuthService and UserService |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
-| `internal/nrvapp/` | [nrvapp/CLAUDE.md](internal/nrvapp/CLAUDE.md) | Customer config management: manifest parsing, python runtime, versioned config editor, migration runner, init-customer scaffold |
+| `internal/manifest/` | [manifest/CLAUDE.md](internal/manifest/CLAUDE.md) | Manifest parsing, python script runtime, init-customer scaffold |
+| `internal/configeditor/` | [configeditor/CLAUDE.md](internal/configeditor/CLAUDE.md) | Versioned config file editing service + forward-only migration runner |
 
 ## Running Tests
 

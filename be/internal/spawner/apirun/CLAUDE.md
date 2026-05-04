@@ -97,16 +97,16 @@ Three sources compose in order: **builtins → manifest tools → HTTP defs**. C
 
 HTTP defs in scope: `project_id IS NULL OR project_id == agent.project_id` AND `workflow_id IS NULL OR workflow_id == agent.workflow_name`. Project filter happens in the repo (`ListByProject`); workflow filter happens in `spawner.loadAPIHTTPToolDefs`.
 
-### Manifest Tool Source (tools_nrvapp)
+### Manifest Tool Source (tools_manifest)
 
-`tools_nrvapp.New(manifest, runner, projectID, sessionID, dispatchRepo, reviewRepo, hub, clk)` returns an `apirun.ManifestProvider` (interface defined in `registry.go`). Only constructed when `Config.APIMode && Config.CustomerConfigDir != "" && Config.PythonRunner != nil`.
+`tools_manifest.New(manifest, runner, projectID, sessionID, dispatchRepo, reviewRepo, hub, clk)` returns an `apirun.ManifestProvider` (interface defined in `registry.go`). Only constructed when `Config.APIMode && Config.CustomerConfigDir != "" && Config.PythonRunner != nil`.
 
 **Invocation flow per tool call:**
 1. Unmarshal `json.RawMessage` → `interface{}`, validate against tool's compiled `InputSchema`.
 2. `python.Runtime{runner, configDir}.Invoke(ctx, tool.Script, inputBytes, python.MatchEnv(tool.EnvAllow, os.Environ()), 30s)`.
-3. Insert `NrvappToolDispatch` row (status=success|error, duration_ms, error_msg when applicable).
-4. Broadcast `nrvapp.dispatch_completed` with `{tool_name, status, duration_ms, dispatch_id}`.
-5. When `tool.Review && status==success`: insert `NrvappReviewItem` (status=pending) and broadcast `nrvapp.review_created`.
+3. Insert `ToolDispatch` row (status=success|error, duration_ms, error_msg when applicable).
+4. Broadcast `tool.dispatched` with `{tool_name, status, duration_ms, dispatch_id}`.
+5. When `tool.Review && status==success`: insert `ReviewItem` (status=pending) and broadcast `review.created`.
 6. On runner error: return `isError=true` with the error message; no review item.
 
 **Per-project mtime cache:** `Spawner.loadManifestCached(configDir)` stats `tool_manifest.yaml` on every spawn and reloads only when mtime has changed. Cache is a `map[string]*manifestCacheEntry` guarded by `sync.Mutex` on the Spawner struct. Cache misses call `config.Load(configDir)`.
@@ -115,7 +115,7 @@ HTTP defs in scope: `project_id IS NULL OR project_id == agent.project_id` AND `
 
 Spawner-side (`be/internal/spawner/`):
 
-- `Config` carries `Provider`, `AgentSvc`, `APICredentialRepo`, `FindingsSvc`, `ProjectFindingsSvc`, `AgentSvcReal`, `WorkflowSvc`, `ToolDefRepo`, `NrvappDispatchRepo`, `NrvappReviewRepo`, `PythonRunner`, `CustomerConfigDir`. Set by orchestrator at workflow start.
+- `Config` carries `Provider`, `AgentSvc`, `APICredentialRepo`, `FindingsSvc`, `ProjectFindingsSvc`, `AgentSvcReal`, `WorkflowSvc`, `ToolDefRepo`, `DispatchRepo`, `ReviewRepo`, `PythonRunner`, `CustomerConfigDir`. Set by orchestrator at workflow start.
 - `prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + (optionally) `loadManifestCached` + `apirun.ResolveRegistry` and stuffs results into `prep.apiTools` / `prep.apiHandlers` / `prep.apiToolEnv`.
 - `apiBackend.Start` builds an `apirun.Runner` from the Config and runs it in a goroutine. On exit it persists messages and registers stop via `registerAgentStopWithReason(mapFinalStatus(proc.finalStatus))`.
 - `procStateAdapter` exposes `SetFinalStatus`, `SetContextLeft`, `SetCallbackLevel` over `*processInfo`.

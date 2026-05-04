@@ -7,10 +7,10 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import type { NrvappThroughputPoint } from '@/types/nrvapp'
+import type { ThroughputPoint } from '@/types/insights'
 
 interface Props {
-  data: NrvappThroughputPoint[]
+  data: ThroughputPoint[]
 }
 
 export function ThroughputChart({ data }: Props) {

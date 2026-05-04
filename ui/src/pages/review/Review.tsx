@@ -3,8 +3,8 @@ import { ClipboardList } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { useReviewItems } from '@/hooks/useNrvapp'
-import type { ReviewStatus } from '@/types/nrvapp'
+import { useReviewItems } from '@/hooks/useReview'
+import type { ReviewStatus } from '@/types/review'
 import { cn } from '@/lib/utils'
 
 const STATUS_TABS: { label: string; value: ReviewStatus | 'all' }[] = [
@@ -64,7 +64,7 @@ export function ReviewPage() {
               {data.map((item) => (
                 <Link
                   key={item.id}
-                  to={`/nrvapp/review/${item.id}`}
+                  to={`/review/${item.id}`}
                   className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
                 >
                   <div>

@@ -8,10 +8,10 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts'
-import type { NrvappEditRateRow } from '@/types/nrvapp'
+import type { EditRateRow } from '@/types/insights'
 
 interface Props {
-  data: NrvappEditRateRow[]
+  data: EditRateRow[]
 }
 
 export function EditRateChart({ data }: Props) {

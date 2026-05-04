@@ -6,13 +6,13 @@ import { Badge } from '@/components/ui/Badge'
 import { Textarea } from '@/components/ui/Textarea'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
-import { DiffPreview } from '@/components/nrvapp/DiffPreview'
+import { DiffPreview } from '@/components/review/DiffPreview'
 import {
   useReviewItem,
   useUpdateReviewDraft,
   useApproveReview,
   useRejectReview,
-} from '@/hooks/useNrvapp'
+} from '@/hooks/useReview'
 
 const STATUS_BADGE: Record<string, 'secondary' | 'default' | 'destructive'> = {
   pending: 'secondary',

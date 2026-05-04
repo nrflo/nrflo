@@ -9,19 +9,19 @@ import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
 import type { WSEventType } from './useWebSocket'
 
-// Module-level throttle state for nrvapp.dispatch_completed (1s leading+trailing)
+// Module-level throttle state for tool.dispatched (1s leading+trailing)
 let _insightsThrottleTimer: ReturnType<typeof setTimeout> | null = null
 let _insightsThrottlePendingQc: QueryClient | null = null
 
 function throttledInsightsInvalidate(qc: QueryClient): void {
   if (!_insightsThrottleTimer) {
     // Leading edge: fire immediately
-    qc.invalidateQueries({ queryKey: ['nrvapp', 'insights'] })
+    qc.invalidateQueries({ queryKey: ['insights'] })
     _insightsThrottleTimer = setTimeout(() => {
       _insightsThrottleTimer = null
       if (_insightsThrottlePendingQc) {
         // Trailing edge: fire once more for calls within the window
-        _insightsThrottlePendingQc.invalidateQueries({ queryKey: ['nrvapp', 'insights'] })
+        _insightsThrottlePendingQc.invalidateQueries({ queryKey: ['insights'] })
         _insightsThrottlePendingQc = null
       }
     }, 1000)
@@ -437,16 +437,16 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     }
   },
 
-  'nrvapp.review_created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['nrvapp', 'review'] })
+  'review.created': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: ['review'] })
   },
-  'nrvapp.review_updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['nrvapp', 'review'] })
+  'review.updated': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: ['review'] })
   },
-  'nrvapp.config_updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['nrvapp', 'config'] })
+  'config_file.updated': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: ['config-files'] })
   },
-  'nrvapp.dispatch_completed': (_event, qc) => {
+  'tool.dispatched': (_event, qc) => {
     throttledInsightsInvalidate(qc)
   },
 }

@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ConfigEditorPage } from './ConfigEditor'
-import type { NrvappConfigFile, NrvappConfigVersion } from '@/types/nrvapp'
+import type { ConfigFile, ConfigVersion } from '@/types/config_file'
 
-vi.mock('@/hooks/useNrvapp', () => ({
+vi.mock('@/hooks/useConfigFiles', () => ({
   useConfigFile: vi.fn(),
   useConfigHistory: vi.fn(),
   usePutConfigFile: vi.fn(),
@@ -28,12 +28,12 @@ vi.mock('@/components/ui/MarkdownEditor', () => ({
   ),
 }))
 
-vi.mock('@/components/nrvapp/VersionHistory', () => ({
+vi.mock('@/components/configeditor/VersionHistory', () => ({
   VersionHistory: ({
     versions,
     onRollback,
   }: {
-    versions: NrvappConfigVersion[]
+    versions: ConfigVersion[]
     currentVersion: number
     onRollback: (v: number) => void
     isRollingBack: boolean
@@ -52,7 +52,7 @@ vi.mock('@/components/nrvapp/VersionHistory', () => ({
   ),
 }))
 
-vi.mock('@/components/nrvapp/DiffPreview', () => ({
+vi.mock('@/components/review/DiffPreview', () => ({
   DiffPreview: ({ before, after }: { before: string; after: string }) => (
     <div data-testid="diff-preview" data-before={before} data-after={after} />
   ),
@@ -76,9 +76,9 @@ import {
   useConfigHistory,
   usePutConfigFile,
   useRollbackConfig,
-} from '@/hooks/useNrvapp'
+} from '@/hooks/useConfigFiles'
 
-function makeConfigFile(overrides: Partial<NrvappConfigFile> = {}): NrvappConfigFile {
+function makeConfigFile(overrides: Partial<ConfigFile> = {}): ConfigFile {
   return {
     path: 'customer/config.yaml',
     content: 'key: value',
@@ -87,7 +87,7 @@ function makeConfigFile(overrides: Partial<NrvappConfigFile> = {}): NrvappConfig
   }
 }
 
-function makeVersion(version: number): NrvappConfigVersion {
+function makeVersion(version: number): ConfigVersion {
   return {
     version,
     actor: 'user',
@@ -98,7 +98,7 @@ function makeVersion(version: number): NrvappConfigVersion {
 const mockPutMutate = vi.fn()
 const mockRollbackMutate = vi.fn()
 
-function setupMocks(file = makeConfigFile(), history: NrvappConfigVersion[] = []) {
+function setupMocks(file = makeConfigFile(), history: ConfigVersion[] = []) {
   vi.mocked(useConfigFile).mockReturnValue({
     data: file,
     isLoading: false,
@@ -118,9 +118,9 @@ function setupMocks(file = makeConfigFile(), history: NrvappConfigVersion[] = []
 
 function renderPage(filePath = 'customer%2Fconfig.yaml') {
   return render(
-    <MemoryRouter initialEntries={[`/nrvapp/config/${filePath}`]}>
+    <MemoryRouter initialEntries={[`/config-files/${filePath}`]}>
       <Routes>
-        <Route path="/nrvapp/config/:file" element={<ConfigEditorPage />} />
+        <Route path="/config-files/:file" element={<ConfigEditorPage />} />
       </Routes>
     </MemoryRouter>
   )
@@ -226,14 +226,14 @@ describe('ConfigEditorPage', () => {
     it('shows diff preview after rollback succeeds', async () => {
       const user = userEvent.setup()
       vi.mocked(useRollbackConfig).mockReturnValue({
-        mutate: (vars: unknown, opts: { onSuccess: (data: NrvappConfigFile) => void }) => {
+        mutate: (vars: unknown, opts: { onSuccess: (data: ConfigFile) => void }) => {
           opts.onSuccess(makeConfigFile({ content: 'new content', version: 2 }))
         },
         isPending: false,
       } as unknown as ReturnType<typeof useRollbackConfig>)
       setupMocks(makeConfigFile(), [makeVersion(2)])
       vi.mocked(useRollbackConfig).mockReturnValue({
-        mutate: (vars: unknown, opts: { onSuccess: (data: NrvappConfigFile) => void }) => {
+        mutate: (vars: unknown, opts: { onSuccess: (data: ConfigFile) => void }) => {
           opts.onSuccess(makeConfigFile({ content: 'new content', version: 2 }))
         },
         isPending: false,

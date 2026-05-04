@@ -32,19 +32,19 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 
 const ReviewPage = lazy(() =>
-  import('@/pages/nrvapp/Review').then((m) => ({ default: m.ReviewPage }))
+  import('@/pages/review/Review').then((m) => ({ default: m.ReviewPage }))
 )
 const ReviewDetailPage = lazy(() =>
-  import('@/pages/nrvapp/ReviewDetail').then((m) => ({ default: m.ReviewDetailPage }))
+  import('@/pages/review/ReviewDetail').then((m) => ({ default: m.ReviewDetailPage }))
 )
-const ConfigPage = lazy(() =>
-  import('@/pages/nrvapp/Config').then((m) => ({ default: m.ConfigPage }))
+const ConfigFilesPage = lazy(() =>
+  import('@/pages/configeditor/Config').then((m) => ({ default: m.ConfigFilesPage }))
 )
 const ConfigEditorPage = lazy(() =>
-  import('@/pages/nrvapp/ConfigEditor').then((m) => ({ default: m.ConfigEditorPage }))
+  import('@/pages/configeditor/ConfigEditor').then((m) => ({ default: m.ConfigEditorPage }))
 )
-const NrvappDashboard = lazy(() =>
-  import('@/pages/nrvapp/Dashboard').then((m) => ({ default: m.NrvappDashboard }))
+const InsightsDashboard = lazy(() =>
+  import('@/pages/insights/Insights').then((m) => ({ default: m.InsightsDashboard }))
 )
 
 const queryClient = new QueryClient({
@@ -81,11 +81,11 @@ function AppRoutes() {
               <Route path="errors" element={<ErrorsPage />} />
               {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
               {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
-              {apiModeEnabled && <Route path="nrvapp/review" element={<ReviewPage />} />}
-              {apiModeEnabled && <Route path="nrvapp/review/:id" element={<ReviewDetailPage />} />}
-              {apiModeEnabled && <Route path="nrvapp/config" element={<ConfigPage />} />}
-              {apiModeEnabled && <Route path="nrvapp/config/:file" element={<ConfigEditorPage />} />}
-              {apiModeEnabled && <Route path="nrvapp/dashboard" element={<NrvappDashboard />} />}
+              {apiModeEnabled && <Route path="review" element={<ReviewPage />} />}
+              {apiModeEnabled && <Route path="review/:id" element={<ReviewDetailPage />} />}
+              {apiModeEnabled && <Route path="config-files" element={<ConfigFilesPage />} />}
+              {apiModeEnabled && <Route path="config-files/:file" element={<ConfigEditorPage />} />}
+              {apiModeEnabled && <Route path="insights" element={<InsightsDashboard />} />}
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path="admin/users" element={<RequireAdmin><UsersPage /></RequireAdmin>} />

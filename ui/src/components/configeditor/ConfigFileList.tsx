@@ -1,15 +1,15 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/Badge'
-import type { NrvappConfigFileMeta } from '@/types/nrvapp'
+import type { ConfigFileMeta } from '@/types/config_file'
 
 interface Props {
-  files: NrvappConfigFileMeta[]
+  files: ConfigFileMeta[]
 }
 
 export function ConfigFileList({ files }: Props) {
   const grouped = useMemo(() => {
-    const map = new Map<string, NrvappConfigFileMeta[]>()
+    const map = new Map<string, ConfigFileMeta[]>()
     for (const f of files) {
       const dir = f.path.includes('/') ? f.path.split('/').slice(0, -1).join('/') : '.'
       const existing = map.get(dir) ?? []
@@ -30,7 +30,7 @@ export function ConfigFileList({ files }: Props) {
             {items.map((file) => (
               <Link
                 key={file.path}
-                to={`/nrvapp/config/${encodeURIComponent(file.path)}`}
+                to={`/config-files/${encodeURIComponent(file.path)}`}
                 className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
               >
                 <div>

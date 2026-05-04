@@ -7,9 +7,10 @@ import yaml from 'js-yaml'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
-import { VersionHistory } from '@/components/nrvapp/VersionHistory'
-import { DiffPreview } from '@/components/nrvapp/DiffPreview'
-import { useConfigFile, useConfigHistory, usePutConfigFile, useRollbackConfig } from '@/hooks/useNrvapp'
+import { VersionHistory } from '@/components/configeditor/VersionHistory'
+import { DiffPreview } from '@/components/review/DiffPreview'
+import { useConfigFile, useConfigHistory, usePutConfigFile, useRollbackConfig } from '@/hooks/useConfigFiles'
+import type { ConfigFile } from '@/types/config_file'
 
 export function ConfigEditorPage() {
   const { file: fileParam = '' } = useParams<{ file: string }>()
@@ -48,7 +49,7 @@ export function ConfigEditorPage() {
 
   const handleRollback = (version: number) => {
     rollback.mutate({ path: filePath, version }, {
-      onSuccess: (data) => {
+      onSuccess: (data: ConfigFile) => {
         setContent(data.content)
         setDiffBase(currentContent)
         if (data.schema ?? file?.schema) {

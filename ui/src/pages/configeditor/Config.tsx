@@ -1,11 +1,11 @@
 import { FolderOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
-import { ConfigFileList } from '@/components/nrvapp/ConfigFileList'
-import { useConfigFiles } from '@/hooks/useNrvapp'
+import { ConfigFileList } from '@/components/configeditor/ConfigFileList'
+import { useConfigFiles } from '@/hooks/useConfigFiles'
 import { ApiError } from '@/api/client'
 
-export function ConfigPage() {
+export function ConfigFilesPage() {
   const { data = [], isLoading, error } = useConfigFiles()
 
   const is400 = error instanceof ApiError && error.status === 400

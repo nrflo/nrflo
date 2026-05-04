@@ -33,7 +33,9 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `users.ts` | User management (admin-only, no X-Project header): `listUsers()→{users:User[]}`, `createUser(req)→User`, `updateUser(id,req)→User`, `resetUserPassword(id,req)→void`, `deleteUser(id)→void`. Errors: 409 `email_exists`, 400 `last_admin`/`cannot_delete_self`. |
 | `auditLog.ts` | Audit log (admin-only, no X-Project header): `listAuditLog({page,per_page,user_id,action})→AuditListResponse`. Returns `{items,total,page,per_page}`. |
 | `notifications.ts` | Notification channel CRUD + test + deliveries (`GET/POST/PATCH/DELETE /api/v1/notification-channels(/:id)`, `POST /api/v1/notification-channels/:id/test`, `GET /api/v1/notification-deliveries?channel_id=&limit=`; requires X-Project header) |
-| `nrvapp.ts` | Vertical app API: review CRUD (list/get/update-draft/approve/reject), config files (list/get/put/history/rollback), insights (summary/edit-rate/throughput). `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
+| `review.ts` | Review item API: listReviewItems/getReviewItem/updateReviewDraft/approveReview/rejectReview against `/api/v1/review[/...]` |
+| `configFiles.ts` | Config file API: listConfigFiles/getConfigFile/putConfigFile/getConfigHistory/rollbackConfig against `/api/v1/config-files[/...]`. `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
+| `insights.ts` | Insights API: getSummary/getEditRate/getThroughput against `/api/v1/insights/{summary,edit-rate,throughput}` |
 | `projects.ts` | Also exports `checkSafetyHook()` for dry-run safety hook check (no X-Project header) |
 
 ## Global 401 Handler

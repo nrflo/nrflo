@@ -177,22 +177,22 @@ export function Sidebar() {
               Vertical app
             </div>
             <NavItem
-              to="/nrvapp/review"
+              to="/review"
               icon={<ClipboardList className="h-4 w-4" />}
               label="Review queue"
-              active={isActive('/nrvapp/review')}
+              active={isActive('/review')}
             />
             <NavItem
-              to="/nrvapp/config"
+              to="/config-files"
               icon={<FileEdit className="h-4 w-4" />}
               label="Config"
-              active={isActive('/nrvapp/config')}
+              active={isActive('/config-files')}
             />
             <NavItem
-              to="/nrvapp/dashboard"
+              to="/insights"
               icon={<BarChart3 className="h-4 w-4" />}
               label="Insights"
-              active={isActive('/nrvapp/dashboard')}
+              active={isActive('/insights')}
             />
           </>
         )}

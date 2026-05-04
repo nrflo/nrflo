@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { ConfigPage } from './Config'
-import type { NrvappConfigFileMeta } from '@/types/nrvapp'
+import { ConfigFilesPage } from './Config'
+import type { ConfigFileMeta } from '@/types/config_file'
 import { ApiError } from '@/api/client'
 
-vi.mock('@/hooks/useNrvapp', () => ({
+vi.mock('@/hooks/useConfigFiles', () => ({
   useConfigFiles: vi.fn(),
 }))
 
-vi.mock('@/components/nrvapp/ConfigFileList', () => ({
-  ConfigFileList: ({ files }: { files: NrvappConfigFileMeta[] }) => (
+vi.mock('@/components/configeditor/ConfigFileList', () => ({
+  ConfigFileList: ({ files }: { files: ConfigFileMeta[] }) => (
     <div data-testid="config-file-list">
       {files.map((f) => (
         <div key={f.path} data-testid="config-file-item">
@@ -21,9 +21,9 @@ vi.mock('@/components/nrvapp/ConfigFileList', () => ({
   ),
 }))
 
-import { useConfigFiles } from '@/hooks/useNrvapp'
+import { useConfigFiles } from '@/hooks/useConfigFiles'
 
-function makeFileMeta(overrides: Partial<NrvappConfigFileMeta> = {}): NrvappConfigFileMeta {
+function makeFileMeta(overrides: Partial<ConfigFileMeta> = {}): ConfigFileMeta {
   return {
     path: 'customer/config.yaml',
     latest_version: 1,
@@ -33,7 +33,7 @@ function makeFileMeta(overrides: Partial<NrvappConfigFileMeta> = {}): NrvappConf
   }
 }
 
-function setupMocks(data: NrvappConfigFileMeta[] = [], extra = {}) {
+function setupMocks(data: ConfigFileMeta[] = [], extra = {}) {
   vi.mocked(useConfigFiles).mockReturnValue({
     data,
     isLoading: false,
@@ -45,14 +45,14 @@ function setupMocks(data: NrvappConfigFileMeta[] = [], extra = {}) {
 function renderPage() {
   return render(
     <MemoryRouter>
-      <ConfigPage />
+      <ConfigFilesPage />
     </MemoryRouter>
   )
 }
 
 beforeEach(() => vi.clearAllMocks())
 
-describe('ConfigPage', () => {
+describe('ConfigFilesPage', () => {
   it('shows loading state', () => {
     setupMocks([], { isLoading: true, data: undefined })
     renderPage()

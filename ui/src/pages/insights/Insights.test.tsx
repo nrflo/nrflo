@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { NrvappDashboard } from './Dashboard'
-import type { NrvappSummary, NrvappEditRateRow, NrvappThroughputPoint } from '@/types/nrvapp'
+import { InsightsDashboard } from './Insights'
+import type { InsightsSummary, EditRateRow, ThroughputPoint } from '@/types/insights'
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -18,7 +18,7 @@ vi.mock('recharts', () => ({
   Legend: () => null,
 }))
 
-vi.mock('@/components/nrvapp/SummaryCards', () => ({
+vi.mock('@/components/insights/SummaryCards', () => ({
   SummaryCards: ({ cards }: { cards: Array<{ label: string; value: string | number }> }) => (
     <div data-testid="summary-cards">
       {cards.map((c) => <div key={c.label}>{c.label}</div>)}
@@ -26,23 +26,23 @@ vi.mock('@/components/nrvapp/SummaryCards', () => ({
   ),
 }))
 
-vi.mock('@/components/nrvapp/ThroughputChart', () => ({
+vi.mock('@/components/insights/ThroughputChart', () => ({
   ThroughputChart: () => <div data-testid="throughput-chart" />,
 }))
 
-vi.mock('@/components/nrvapp/EditRateChart', () => ({
+vi.mock('@/components/insights/EditRateChart', () => ({
   EditRateChart: () => <div data-testid="edit-rate-chart" />,
 }))
 
-vi.mock('@/hooks/useNrvapp', () => ({
-  useNrvappSummary: vi.fn(),
-  useNrvappEditRate: vi.fn(),
-  useNrvappThroughput: vi.fn(),
+vi.mock('@/hooks/useInsights', () => ({
+  useInsightsSummary: vi.fn(),
+  useInsightsEditRate: vi.fn(),
+  useInsightsThroughput: vi.fn(),
 }))
 
-import { useNrvappSummary, useNrvappEditRate, useNrvappThroughput } from '@/hooks/useNrvapp'
+import { useInsightsSummary, useInsightsEditRate, useInsightsThroughput } from '@/hooks/useInsights'
 
-const mockSummary: NrvappSummary = {
+const mockSummary: InsightsSummary = {
   total_dispatches: 100,
   total_reviews: 40,
   pending_reviews: 5,
@@ -50,37 +50,37 @@ const mockSummary: NrvappSummary = {
   reject_rate: 0.25,
 }
 
-const mockEditRate: NrvappEditRateRow[] = [
+const mockEditRate: EditRateRow[] = [
   { tool_name: 'tool-a', approve_no_edits: 10, approve_with_edits: 5, reject: 2 },
 ]
 
-const mockThroughput: NrvappThroughputPoint[] = [
+const mockThroughput: ThroughputPoint[] = [
   { time: '2026-01-01T00:00:00Z', success: 8, error: 2 },
 ]
 
-function setupMocks(summary: NrvappSummary | undefined = mockSummary) {
-  vi.mocked(useNrvappSummary).mockReturnValue({
+function setupMocks(summary: InsightsSummary | undefined = mockSummary) {
+  vi.mocked(useInsightsSummary).mockReturnValue({
     data: summary,
-  } as unknown as ReturnType<typeof useNrvappSummary>)
-  vi.mocked(useNrvappEditRate).mockReturnValue({
+  } as unknown as ReturnType<typeof useInsightsSummary>)
+  vi.mocked(useInsightsEditRate).mockReturnValue({
     data: mockEditRate,
-  } as unknown as ReturnType<typeof useNrvappEditRate>)
-  vi.mocked(useNrvappThroughput).mockReturnValue({
+  } as unknown as ReturnType<typeof useInsightsEditRate>)
+  vi.mocked(useInsightsThroughput).mockReturnValue({
     data: mockThroughput,
-  } as unknown as ReturnType<typeof useNrvappThroughput>)
+  } as unknown as ReturnType<typeof useInsightsThroughput>)
 }
 
 function renderPage() {
   return render(
     <MemoryRouter>
-      <NrvappDashboard />
+      <InsightsDashboard />
     </MemoryRouter>
   )
 }
 
 beforeEach(() => vi.clearAllMocks())
 
-describe('NrvappDashboard', () => {
+describe('InsightsDashboard', () => {
   describe('summary cards', () => {
     it('renders SummaryCards component when summary data available', () => {
       setupMocks()
@@ -91,15 +91,15 @@ describe('NrvappDashboard', () => {
     })
 
     it('does not render SummaryCards when summary is undefined', () => {
-      vi.mocked(useNrvappSummary).mockReturnValue({
+      vi.mocked(useInsightsSummary).mockReturnValue({
         data: undefined,
-      } as unknown as ReturnType<typeof useNrvappSummary>)
-      vi.mocked(useNrvappEditRate).mockReturnValue({
+      } as unknown as ReturnType<typeof useInsightsSummary>)
+      vi.mocked(useInsightsEditRate).mockReturnValue({
         data: mockEditRate,
-      } as unknown as ReturnType<typeof useNrvappEditRate>)
-      vi.mocked(useNrvappThroughput).mockReturnValue({
+      } as unknown as ReturnType<typeof useInsightsEditRate>)
+      vi.mocked(useInsightsThroughput).mockReturnValue({
         data: mockThroughput,
-      } as unknown as ReturnType<typeof useNrvappThroughput>)
+      } as unknown as ReturnType<typeof useInsightsThroughput>)
       renderPage()
       expect(screen.queryByTestId('summary-cards')).not.toBeInTheDocument()
     })
@@ -130,8 +130,8 @@ describe('NrvappDashboard', () => {
     it('defaults to 7d range and calls hooks with 7d + 1h bucket', () => {
       setupMocks()
       renderPage()
-      expect(vi.mocked(useNrvappSummary)).toHaveBeenCalledWith('7d')
-      expect(vi.mocked(useNrvappThroughput)).toHaveBeenCalledWith('7d', '1h')
+      expect(vi.mocked(useInsightsSummary)).toHaveBeenCalledWith('7d')
+      expect(vi.mocked(useInsightsThroughput)).toHaveBeenCalledWith('7d', '1h')
     })
 
     it('clicking 30d calls hooks with 30d + 6h bucket', async () => {
@@ -139,8 +139,8 @@ describe('NrvappDashboard', () => {
       setupMocks()
       renderPage()
       await user.click(screen.getByRole('button', { name: '30d' }))
-      expect(vi.mocked(useNrvappSummary)).toHaveBeenCalledWith('30d')
-      expect(vi.mocked(useNrvappThroughput)).toHaveBeenCalledWith('30d', '6h')
+      expect(vi.mocked(useInsightsSummary)).toHaveBeenCalledWith('30d')
+      expect(vi.mocked(useInsightsThroughput)).toHaveBeenCalledWith('30d', '6h')
     })
 
     it('clicking 7d after 30d reverts hooks to 7d', async () => {
@@ -149,7 +149,7 @@ describe('NrvappDashboard', () => {
       renderPage()
       await user.click(screen.getByRole('button', { name: '30d' }))
       await user.click(screen.getByRole('button', { name: '7d' }))
-      const lastSummaryCalls = vi.mocked(useNrvappSummary).mock.calls
+      const lastSummaryCalls = vi.mocked(useInsightsSummary).mock.calls
       expect(lastSummaryCalls[lastSummaryCalls.length - 1][0]).toBe('7d')
     })
   })

@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { RangeSelector } from '@/components/nrvapp/RangeSelector'
-import { SummaryCards } from '@/components/nrvapp/SummaryCards'
-import { ThroughputChart } from '@/components/nrvapp/ThroughputChart'
-import { EditRateChart } from '@/components/nrvapp/EditRateChart'
-import { useNrvappSummary, useNrvappEditRate, useNrvappThroughput } from '@/hooks/useNrvapp'
-import type { NrvappRange } from '@/types/nrvapp'
+import { RangeSelector } from '@/components/insights/RangeSelector'
+import { SummaryCards } from '@/components/insights/SummaryCards'
+import { ThroughputChart } from '@/components/insights/ThroughputChart'
+import { EditRateChart } from '@/components/insights/EditRateChart'
+import { useInsightsSummary, useInsightsEditRate, useInsightsThroughput } from '@/hooks/useInsights'
+import type { InsightsRange } from '@/types/insights'
 
-export function NrvappDashboard() {
-  const [range, setRange] = useState<NrvappRange>('7d')
+export function InsightsDashboard() {
+  const [range, setRange] = useState<InsightsRange>('7d')
   const bucket = range === '7d' ? ('1h' as const) : ('6h' as const)
 
-  const { data: summary } = useNrvappSummary(range)
-  const { data: editRate = [] } = useNrvappEditRate(range)
-  const { data: throughput = [] } = useNrvappThroughput(range, bucket)
+  const { data: summary } = useInsightsSummary(range)
+  const { data: editRate = [] } = useInsightsEditRate(range)
+  const { data: throughput = [] } = useInsightsThroughput(range, bucket)
 
   const summaryCards = summary
     ? [

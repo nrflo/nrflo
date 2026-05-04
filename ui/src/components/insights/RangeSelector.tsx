@@ -1,12 +1,12 @@
 import { cn } from '@/lib/utils'
-import type { NrvappRange } from '@/types/nrvapp'
+import type { InsightsRange } from '@/types/insights'
 
 interface Props {
-  value: NrvappRange
-  onChange: (range: NrvappRange) => void
+  value: InsightsRange
+  onChange: (range: InsightsRange) => void
 }
 
-const options: { label: string; value: NrvappRange }[] = [
+const options: { label: string; value: InsightsRange }[] = [
   { label: '7d', value: '7d' },
   { label: '30d', value: '30d' },
 ]

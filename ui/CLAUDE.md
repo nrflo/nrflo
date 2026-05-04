@@ -19,8 +19,12 @@ This is the web UI for the nrflo ticket management system. It's a React + TypeSc
 | `src/components/workflow/` | Workflow visualization components (see [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)) |
 | `src/components/ui/` | Reusable UI components: Badge, Button, Card, ConfirmDialog (variant-based), Dialog (modal with backdrop/ESC/click-outside), Dropdown (generic custom dropdown with click-outside/Escape/Check icon, supports flat and grouped options via `DropdownOptionGroup`), Input, MarkdownEditor (CodeMirror 6), codemirror-theme.ts, ProjectSelect (uses Dropdown internally), RenderedMarkdown (react-markdown with github-markdown-css, remark-gfm, rehype-highlight), Spinner, StatusCell (lucide-react icon + status text label with animate-pulse for running/in_progress), PriorityIcon (directional arrow icons for priority 1-4 with label), ResultIcon (check/x/minus icons for pass/fail/skip), Table (composable: Table, TableHeader, TableBody, TableRow, TableHead, TableCell with hover:bg-muted/50 on rows), Textarea, Toggle, Tooltip (Radix-based with keyboard accessibility) |
 | `src/components/layout/` | Layout components (Header, Sidebar, DailyStats, RunningAgentsIndicator) |
-| `src/components/nrvapp/` | Vertical app UI components: RangeSelector, SummaryCards, ThroughputChart (recharts AreaChart), EditRateChart (recharts BarChart), ConfigFileList (directory-grouped), VersionHistory (rollback table), DiffPreview (LCS line diff) |
-| `src/pages/nrvapp/` | Vertical app pages: ReviewPage (`/nrvapp/review`), ReviewDetailPage (`/nrvapp/review/:id`), ConfigPage (`/nrvapp/config`), ConfigEditorPage (`/nrvapp/config/:file`), NrvappDashboard (`/nrvapp/dashboard`). All gated by `apiModeEnabled`. |
+| `src/components/review/` | Review UI components: DiffPreview (LCS line diff) |
+| `src/components/configeditor/` | Config editor UI components: ConfigFileList (directory-grouped), VersionHistory (rollback table) |
+| `src/components/insights/` | Insights UI components: RangeSelector, SummaryCards, ThroughputChart (recharts AreaChart), EditRateChart (recharts BarChart) |
+| `src/pages/review/` | Review pages: ReviewPage (`/review`), ReviewDetailPage (`/review/:id`). Gated by `apiModeEnabled`. |
+| `src/pages/configeditor/` | Config editor pages: ConfigFilesPage (`/config-files`), ConfigEditorPage (`/config-files/:file`). Gated by `apiModeEnabled`. |
+| `src/pages/insights/` | Insights page: InsightsDashboard (`/insights`). Gated by `apiModeEnabled`. |
 | `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
 | `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, ChainOrderList, AppendToChainDialog) |
 | `src/components/git/` | Git commit detail dialog and diff viewer components |

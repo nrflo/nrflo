@@ -1,9 +1,9 @@
 import { formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
-import type { NrvappConfigVersion } from '@/types/nrvapp'
+import type { ConfigVersion } from '@/types/config_file'
 
 interface Props {
-  versions: NrvappConfigVersion[]
+  versions: ConfigVersion[]
   currentVersion: number
   onRollback: (version: number) => void
   isRollingBack?: boolean

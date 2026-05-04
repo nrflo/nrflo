@@ -3,15 +3,15 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ReviewPage } from './Review'
-import type { NrvappReviewItem } from '@/types/nrvapp'
+import type { ReviewItem } from '@/types/review'
 
-vi.mock('@/hooks/useNrvapp', () => ({
+vi.mock('@/hooks/useReview', () => ({
   useReviewItems: vi.fn(),
 }))
 
-import { useReviewItems } from '@/hooks/useNrvapp'
+import { useReviewItems } from '@/hooks/useReview'
 
-function makeItem(overrides: Partial<NrvappReviewItem> = {}): NrvappReviewItem {
+function makeItem(overrides: Partial<ReviewItem> = {}): ReviewItem {
   return {
     id: 'review-1',
     tool_name: 'my-tool',
@@ -24,7 +24,7 @@ function makeItem(overrides: Partial<NrvappReviewItem> = {}): NrvappReviewItem {
   }
 }
 
-function setupMocks(data: NrvappReviewItem[] = [], extra = {}) {
+function setupMocks(data: ReviewItem[] = [], extra = {}) {
   vi.mocked(useReviewItems).mockReturnValue({
     data,
     isLoading: false,
@@ -35,10 +35,10 @@ function setupMocks(data: NrvappReviewItem[] = [], extra = {}) {
 
 function renderPage(search = '?status=pending') {
   return render(
-    <MemoryRouter initialEntries={[`/nrvapp/review${search}`]}>
+    <MemoryRouter initialEntries={[`/review${search}`]}>
       <Routes>
-        <Route path="/nrvapp/review" element={<ReviewPage />} />
-        <Route path="/nrvapp/review/:id" element={<div>Detail Page</div>} />
+        <Route path="/review" element={<ReviewPage />} />
+        <Route path="/review/:id" element={<div>Detail Page</div>} />
       </Routes>
     </MemoryRouter>
   )

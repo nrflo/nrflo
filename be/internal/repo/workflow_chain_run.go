@@ -155,20 +155,21 @@ func (r *WorkflowChainRunRepo) MaterializeRunSteps(runID string, steps []*model.
 	created := make([]*model.WorkflowChainRunStep, 0, len(steps))
 	for _, s := range steps {
 		rs := &model.WorkflowChainRunStep{
-			ID:           uuid.New().String(),
-			ChainRunID:   runID,
-			Position:     s.Position,
-			WorkflowName: s.WorkflowName,
-			ScopeType:    s.ScopeType,
-			Status:       "pending",
+			ID:                   uuid.New().String(),
+			ChainRunID:           runID,
+			Position:             s.Position,
+			WorkflowName:         s.WorkflowName,
+			ScopeType:            s.ScopeType,
+			RequireTicketHandoff: s.RequireTicketHandoff,
+			Status:               "pending",
 		}
 		rs.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 		rs.UpdatedAt = rs.CreatedAt
 
 		_, err := tx.Exec(
-			`INSERT INTO workflow_chain_run_steps (id, chain_run_id, position, workflow_name, scope_type, workflow_instance_id, ticket_id, instructions_used, status, started_at, ended_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, NULL, NULL, '', 'pending', NULL, NULL, ?, ?)`,
-			rs.ID, rs.ChainRunID, rs.Position, rs.WorkflowName, rs.ScopeType, now, now,
+			`INSERT INTO workflow_chain_run_steps (id, chain_run_id, position, workflow_name, scope_type, require_ticket_handoff, workflow_instance_id, ticket_id, instructions_used, status, started_at, ended_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, '', 'pending', NULL, NULL, ?, ?)`,
+			rs.ID, rs.ChainRunID, rs.Position, rs.WorkflowName, rs.ScopeType, boolToInt(rs.RequireTicketHandoff), now, now,
 		)
 		if err != nil {
 			return nil, err
@@ -184,7 +185,7 @@ func (r *WorkflowChainRunRepo) MaterializeRunSteps(runID string, steps []*model.
 // GetNextPendingStep returns the lowest-position pending step for a run, or nil if none.
 func (r *WorkflowChainRunRepo) GetNextPendingStep(runID string) (*model.WorkflowChainRunStep, error) {
 	row := r.db.QueryRow(
-		`SELECT id, chain_run_id, position, workflow_name, scope_type, workflow_instance_id, ticket_id, instructions_used, status, started_at, ended_at, created_at, updated_at
+		`SELECT id, chain_run_id, position, workflow_name, scope_type, require_ticket_handoff, workflow_instance_id, ticket_id, instructions_used, status, started_at, ended_at, created_at, updated_at
          FROM workflow_chain_run_steps
          WHERE chain_run_id = ? AND status = 'pending'
          ORDER BY position ASC LIMIT 1`, runID)
@@ -264,13 +265,16 @@ func (r *WorkflowChainRunRepo) GetActiveRuns() ([]*model.WorkflowChainRun, error
 func scanWorkflowChainRunStep(row interface{ Scan(...interface{}) error }) (*model.WorkflowChainRunStep, error) {
 	rs := &model.WorkflowChainRunStep{}
 	var createdAt, updatedAt string
+	var requireHandoff int
 	if err := row.Scan(
 		&rs.ID, &rs.ChainRunID, &rs.Position, &rs.WorkflowName, &rs.ScopeType,
+		&requireHandoff,
 		&rs.WorkflowInstanceID, &rs.TicketID, &rs.InstructionsUsed, &rs.Status,
 		&rs.StartedAt, &rs.EndedAt, &createdAt, &updatedAt,
 	); err != nil {
 		return nil, err
 	}
+	rs.RequireTicketHandoff = requireHandoff != 0
 	rs.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	rs.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return rs, nil

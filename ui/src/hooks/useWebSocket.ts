@@ -74,6 +74,11 @@ export type WSEventType =
   | 'chain_def.created'
   | 'chain_def.updated'
   | 'chain_def.deleted'
+  | 'chain.run_started'
+  | 'chain.step_started'
+  | 'chain.step_completed'
+  | 'chain.run_completed'
+  | 'chain.run_failed'
   | 'test.echo'
 
 export interface WSEvent {

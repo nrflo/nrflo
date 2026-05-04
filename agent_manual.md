@@ -151,6 +151,10 @@ nrflo agent callback --level <N>
 
 # Skip a workflow group tag
 nrflo skip <tag>
+
+# Workflow chain handoff — set data for the next step before finishing
+nrflo agent chain-next-instructions --instructions "<text>"
+nrflo agent chain-next-ticket --ticket-id "<id>"
 ```
 
 | Command | When to use |
@@ -160,6 +164,8 @@ nrflo skip <tag>
 | `continue` | Context window exhausted; save progress to `to_resume` first — agent will be relaunched with `${PREVIOUS_DATA}` |
 | `callback` | Issue found that requires re-running an earlier layer; `--level` (0-based layer index) is required |
 | `skip <tag>` | Skip a workflow group in subsequent layers; tag must be in workflow's `groups` |
+| `chain-next-instructions` | When running inside a workflow chain, pass instructions to the next step. Call before `finished` or exit 0 |
+| `chain-next-ticket` | When running inside a workflow chain, set the ticket ID for the next ticket-scope step. Call before `finished` or exit 0 |
 
 **Completion semantics:** Exit 0 or `agent finished` = pass. Non-zero exit or `agent fail` = fail. `agent continue` ≠ success — it triggers a fresh relaunch for context-exhausted agents.
 

@@ -319,6 +319,12 @@ PATCH  /api/v1/workflow-chains/{id}/steps/{stepId}  # Update step fields; valida
 DELETE /api/v1/workflow-chains/{id}/steps/{stepId}  # Delete step; re-densifies positions
 POST   /api/v1/workflow-chains/{id}/steps/reorder   # Reorder; body: {ordered_step_ids:[...]}; validates IDs match chain
 
+# Workflow chain runs (project-scoped, require X-Project header)
+GET    /api/v1/workflow-chains/{id}/runs                      # List runs for chain
+POST   /api/v1/workflow-chains/{id}/runs                      # Start run; body: {instructions?, triggered_by?}; 201 with WorkflowChainRunDetail; broadcasts chain.run_started
+GET    /api/v1/workflow-chains/{id}/runs/{runId}              # Get run with steps
+POST   /api/v1/workflow-chains/{id}/runs/{runId}/cancel       # Cancel run (admin-only); 204 on success; 400 if already terminal
+
 # Errors (require X-Project header or ?project= param)
 GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)
 

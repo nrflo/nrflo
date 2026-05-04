@@ -21,6 +21,7 @@ import {
 import { StepRow } from './WorkflowChainStepRow'
 import type { StepEdit } from './WorkflowChainStepRow'
 import type { WorkflowChainStep } from '@/types/workflowChain'
+import { WorkflowChainRunsTab } from './WorkflowChainRunsTab'
 
 export function WorkflowChainEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -28,6 +29,7 @@ export function WorkflowChainEditorPage() {
   const isAdmin = useIsAdmin()
   const currentProject = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  const [activeTab, setActiveTab] = useState<'definition' | 'runs'>('definition')
 
   const { data: chainData, isLoading } = useWorkflowChain(id ?? '')
 
@@ -187,7 +189,25 @@ export function WorkflowChainEditorPage() {
         </h1>
       </div>
 
-      {isLoading ? (
+      <div className="flex gap-4 border-b border-border">
+        {(['definition', 'runs'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`pb-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+              activeTab === tab
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'runs' && id ? (
+        <WorkflowChainRunsTab chainId={id} />
+      ) : isLoading ? (
         <div className="flex justify-center py-12">
           <Spinner size="lg" />
         </div>

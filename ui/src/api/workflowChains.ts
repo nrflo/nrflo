@@ -7,6 +7,9 @@ import type {
   WorkflowChainStepRequest,
   WorkflowChainStepUpdateRequest,
   ReorderStepsRequest,
+  WorkflowChainRun,
+  WorkflowChainRunDetail,
+  StartChainRunRequest,
 } from '@/types/workflowChain'
 
 export async function listChains(): Promise<WorkflowChain[]> {
@@ -69,5 +72,34 @@ export async function reorderSteps(
   return apiPost<WorkflowChainWithSteps>(
     `/api/v1/workflow-chains/${encodeURIComponent(chainId)}/steps/reorder`,
     data
+  )
+}
+
+export async function listChainRuns(chainId: string): Promise<WorkflowChainRun[]> {
+  return apiGet<WorkflowChainRun[]>(
+    `/api/v1/workflow-chains/${encodeURIComponent(chainId)}/runs`
+  )
+}
+
+export async function getChainRun(chainId: string, runId: string): Promise<WorkflowChainRunDetail> {
+  return apiGet<WorkflowChainRunDetail>(
+    `/api/v1/workflow-chains/${encodeURIComponent(chainId)}/runs/${encodeURIComponent(runId)}`
+  )
+}
+
+export async function startChainRun(
+  chainId: string,
+  data: StartChainRunRequest
+): Promise<WorkflowChainRunDetail> {
+  return apiPost<WorkflowChainRunDetail>(
+    `/api/v1/workflow-chains/${encodeURIComponent(chainId)}/runs`,
+    data
+  )
+}
+
+export async function cancelChainRun(chainId: string, runId: string): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/workflow-chains/${encodeURIComponent(chainId)}/runs/${encodeURIComponent(runId)}/cancel`,
+    {}
   )
 }

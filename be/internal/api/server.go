@@ -12,6 +12,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 
 	"be/internal/auth"
+	"be/internal/chainrunner"
 	"be/internal/clock"
 	"be/internal/config"
 	"be/internal/db"
@@ -37,6 +38,7 @@ type Server struct {
 	wsHub                  *ws.Hub
 	orchestrator           *orchestrator.Orchestrator
 	chainRunner            *orchestrator.ChainRunner
+	wfChainRunner          *chainrunner.Runner
 	ptyManager             *ptyPkg.Manager
 	clock                  clock.Clock
 	apiMode                bool
@@ -81,23 +83,24 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	userSvc := service.NewUserService(pool, clk)
 
 	return &Server{
-		config:       cfg,
-		dataPath:     dataPath,
-		logsDir:      logsDir,
-		pool:         pool,
-		wsHub:        hub,
-		orchestrator: orch,
-		chainRunner:  orchestrator.NewChainRunner(orch, dataPath, hub, clk),
-		ptyManager:   ptyMgr,
-		clock:        clk,
-		apiMode:      apiMode,
-		scheduler:    sched,
-		notifyWaker:  waker,
-		notifyWorker: notifyWorker,
-		sessionMgr:   sessionMgr,
-		authSvc:      authSvc,
-		userSvc:      userSvc,
-		rateLimiter:  newLoginRateLimiter(),
+		config:        cfg,
+		dataPath:      dataPath,
+		logsDir:       logsDir,
+		pool:          pool,
+		wsHub:         hub,
+		orchestrator:  orch,
+		chainRunner:   orchestrator.NewChainRunner(orch, dataPath, hub, clk),
+		wfChainRunner: chainrunner.New(orch, dataPath, hub, clk),
+		ptyManager:    ptyMgr,
+		clock:         clk,
+		apiMode:       apiMode,
+		scheduler:     sched,
+		notifyWaker:   waker,
+		notifyWorker:  notifyWorker,
+		sessionMgr:    sessionMgr,
+		authSvc:       authSvc,
+		userSvc:       userSvc,
+		rateLimiter:   newLoginRateLimiter(),
 	}
 }
 
@@ -116,6 +119,9 @@ func (s *Server) Start(host string, port int) error {
 	// Recover zombie chains from previous crash
 	if s.chainRunner != nil {
 		s.chainRunner.RecoverZombieChains()
+	}
+	if s.wfChainRunner != nil {
+		s.wfChainRunner.RecoverZombieRuns()
 	}
 
 	// Initialize event log for durable WS event persistence
@@ -538,6 +544,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("PATCH /api/v1/workflow-chains/{id}/steps/{stepId}", s.handleUpdateChainStep)
 	admin("DELETE /api/v1/workflow-chains/{id}/steps/{stepId}", s.handleDeleteChainStep)
 	admin("POST /api/v1/workflow-chains/{id}/steps/reorder", s.handleReorderChainSteps)
+
+	// Workflow chain runs (project-scoped) — cancel is admin-only
+	protected("GET /api/v1/workflow-chains/{id}/runs", s.handleListChainRuns)
+	protected("POST /api/v1/workflow-chains/{id}/runs", s.handleStartChainRun)
+	protected("GET /api/v1/workflow-chains/{id}/runs/{runId}", s.handleGetChainRun)
+	admin("POST /api/v1/workflow-chains/{id}/runs/{runId}/cancel", s.handleCancelChainRun)
 
 	// Default templates (global) — writes are admin-only
 	protected("GET /api/v1/default-templates", s.handleListDefaultTemplates)

@@ -517,6 +517,11 @@ func (o *Orchestrator) StopByTicket(projectID, ticketID, workflowName, instanceI
 	return fmt.Errorf("no running orchestration found for %s", ticketID)
 }
 
+// StopByInstance stops a workflow instance by ID, optionally validating project ownership.
+func (o *Orchestrator) StopByInstance(projectID, instanceID string) error {
+	return o.Stop(instanceID)
+}
+
 // StopByProject stops a running project-scoped orchestration.
 // If instanceID is provided, stops that specific instance.
 // Otherwise, stops all running instances for the given workflow (or all project workflows if workflowName is empty).

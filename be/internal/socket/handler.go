@@ -323,6 +323,44 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "callback"})
 
+	case "chain_next_instructions":
+		var params struct {
+			InstanceID   string `json:"instance_id"`
+			Instructions string `json:"instructions"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.InstanceID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("instance_id is required"))
+		}
+		if params.Instructions == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("instructions is required"))
+		}
+		if err := h.wfChainRunSvc.SetNextStepInstructions(params.InstanceID, params.Instructions); err != nil {
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "ok"})
+
+	case "chain_next_ticket":
+		var params struct {
+			InstanceID string `json:"instance_id"`
+			TicketID   string `json:"ticket_id"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.InstanceID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("instance_id is required"))
+		}
+		if params.TicketID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("ticket_id is required"))
+		}
+		if err := h.wfChainRunSvc.SetNextStepTicket(params.InstanceID, params.TicketID); err != nil {
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "ok"})
+
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", "agent."+action)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("agent."+action))

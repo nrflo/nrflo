@@ -46,17 +46,18 @@ type WorkflowChainRun struct {
 
 // WorkflowChainRunStep is the materialized snapshot of one step within a WorkflowChainRun.
 type WorkflowChainRunStep struct {
-	ID                 string         `json:"id"`
-	ChainRunID         string         `json:"chain_run_id"`
-	Position           int            `json:"position"`
-	WorkflowName       string         `json:"workflow_name"`
-	ScopeType          string         `json:"scope_type"`
-	WorkflowInstanceID sql.NullString `json:"-"`
-	TicketID           sql.NullString `json:"-"`
-	InstructionsUsed   string         `json:"instructions_used"`
-	Status             string         `json:"status"`
-	StartedAt          sql.NullString `json:"-"`
-	EndedAt            sql.NullString `json:"-"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
+	ID                   string         `json:"id"`
+	ChainRunID           string         `json:"chain_run_id"`
+	Position             int            `json:"position"`
+	WorkflowName         string         `json:"workflow_name"`
+	ScopeType            string         `json:"scope_type"`
+	RequireTicketHandoff bool           `json:"require_ticket_handoff"`
+	WorkflowInstanceID   sql.NullString `json:"-"`
+	TicketID             sql.NullString `json:"-"`
+	InstructionsUsed     string         `json:"instructions_used"`
+	Status               string         `json:"status"`
+	StartedAt            sql.NullString `json:"-"`
+	EndedAt              sql.NullString `json:"-"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
 }

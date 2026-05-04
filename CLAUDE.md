@@ -291,9 +291,17 @@ Workflow runtime state is stored in two main tables: `workflow_instances` (one r
 
 Chains allow sequential execution of multiple tickets with a single workflow. Tickets are expanded with transitive dependency blockers, topologically sorted, and locked to prevent overlapping runs. Items execute one at a time via the orchestrator. Zombie running chains are marked failed on server startup (crash recovery). See [be/internal/orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) for chain runner details and [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for chain API endpoints.
 
-## Workflow Chain Definitions
+## Workflow Chain Definitions and Runs
 
-Named sequences of workflow+step configurations stored in `workflow_chains` / `workflow_chain_steps` tables. Each chain is a project-scoped ordered list of steps; step 0 must be `scope_type=project`, steps may be `ticket` or `project` scoped, and positions are dense `0..N-1`. `require_ticket_handoff` is only valid for ticket-scoped steps. CRUD API at `/api/v1/workflow-chains` (reads protected, writes admin-only); WS events `chain_def.created/updated/deleted`. UI: `WorkflowChainsPage` and `WorkflowChainEditorPage`. No execution logic yet — creation/editing only. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) and [ui/CLAUDE.md](ui/CLAUDE.md).
+Named sequences of workflow+step configurations stored in `workflow_chains` / `workflow_chain_steps` tables. Each chain is a project-scoped ordered list of steps; step 0 must be `scope_type=project`, steps may be `ticket` or `project` scoped, and positions are dense `0..N-1`. `require_ticket_handoff` is only valid for ticket-scoped steps. CRUD API at `/api/v1/workflow-chains` (reads protected, writes admin-only); WS events `chain_def.created/updated/deleted`. UI: `WorkflowChainsPage` and `WorkflowChainEditorPage`.
+
+**Execution engine** (`be/internal/chainrunner/`): Runs persisted in `workflow_chain_runs` / `workflow_chain_run_steps` tables. `chainrunner.Runner` executes steps sequentially via the orchestrator; each step spawns a `workflow_instances` row. WS events: `chain.run_started/step_started/step_completed/run_completed/run_failed`. API: `POST /api/v1/workflow-chains/{id}/runs` starts; `GET /runs` / `GET /runs/{runId}` list/get; `POST /runs/{runId}/cancel` (admin).
+
+**Agent handoff**: Agent in step N sets data for step N+1 before finishing:
+- `nrflo agent chain-next-instructions --instructions "..."` → next step's `instructions_used`
+- `nrflo agent chain-next-ticket --ticket-id "..."` → next step's `ticket_id` (for ticket-scope steps)
+
+See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) and [ui/CLAUDE.md](ui/CLAUDE.md).
 
 ## Building & Installing
 

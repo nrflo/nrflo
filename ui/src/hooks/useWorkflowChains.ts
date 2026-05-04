@@ -9,6 +9,10 @@ import {
   updateStep,
   deleteStep,
   reorderSteps,
+  listChainRuns,
+  getChainRun,
+  startChainRun,
+  cancelChainRun,
 } from '@/api/workflowChains'
 import type {
   WorkflowChainCreateRequest,
@@ -16,6 +20,7 @@ import type {
   WorkflowChainStepRequest,
   WorkflowChainStepUpdateRequest,
   ReorderStepsRequest,
+  StartChainRunRequest,
 } from '@/types/workflowChain'
 import { useProjectStore } from '@/stores/projectStore'
 
@@ -123,6 +128,56 @@ export function useReorderSteps() {
       reorderSteps(chainId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workflowChainKeys.all })
+    },
+  })
+}
+
+export const workflowChainRunKeys = {
+  all: ['workflow-chain-runs'] as const,
+  lists: (project: string, chainId: string) =>
+    [...workflowChainRunKeys.all, 'list', project, chainId] as const,
+  detail: (project: string, runId: string) =>
+    [...workflowChainRunKeys.all, project, runId] as const,
+}
+
+export function useChainRunsList(chainId: string) {
+  const project = useProjectStore((s) => s.currentProject)
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: workflowChainRunKeys.lists(project, chainId),
+    queryFn: () => listChainRuns(chainId),
+    enabled: projectsLoaded && !!chainId,
+  })
+}
+
+export function useChainRun(chainId: string, runId: string) {
+  const project = useProjectStore((s) => s.currentProject)
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: workflowChainRunKeys.detail(project, runId),
+    queryFn: () => getChainRun(chainId, runId),
+    enabled: projectsLoaded && !!chainId && !!runId,
+  })
+}
+
+export function useStartChainRun() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ chainId, data }: { chainId: string; data: StartChainRunRequest }) =>
+      startChainRun(chainId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowChainRunKeys.all })
+    },
+  })
+}
+
+export function useCancelChainRun() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ chainId, runId }: { chainId: string; runId: string }) =>
+      cancelChainRun(chainId, runId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowChainRunKeys.all })
     },
   })
 }

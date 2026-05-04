@@ -78,9 +78,14 @@ const (
 	EventReviewUpdated    = "review.updated"
 	EventConfigFileUpdated = "config_file.updated"
 	EventToolDispatched   = "tool.dispatched"
-	EventWorkflowChainCreated = "chain_def.created"
-	EventWorkflowChainUpdated = "chain_def.updated"
-	EventWorkflowChainDeleted = "chain_def.deleted"
+	EventWorkflowChainCreated  = "chain_def.created"
+	EventWorkflowChainUpdated  = "chain_def.updated"
+	EventWorkflowChainDeleted  = "chain_def.deleted"
+	EventChainRunStarted       = "chain.run_started"
+	EventChainStepStarted      = "chain.step_started"
+	EventChainStepCompleted    = "chain.step_completed"
+	EventChainRunCompleted     = "chain.run_completed"
+	EventChainRunFailed        = "chain.run_failed"
 )
 
 // Event represents a WebSocket event to broadcast

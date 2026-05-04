@@ -261,6 +261,7 @@ type Handler struct {
 	projectFindingsSvc *service.ProjectFindingsService
 	agentSvc           *service.AgentService
 	workflowSvc        *service.WorkflowService
+	wfChainRunSvc      *service.WorkflowChainRunService
 	wsHub              *ws.Hub
 	signaler           TerminalSignaler // optional; nil-safe
 
@@ -279,6 +280,7 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 		projectFindingsSvc: service.NewProjectFindingsService(pool, clk),
 		agentSvc:           service.NewAgentService(pool, clk),
 		workflowSvc:        service.NewWorkflowService(pool, clk),
+		wfChainRunSvc:      service.NewWorkflowChainRunService(pool, clk),
 		wsHub:              hub,
 		signaler:           signaler,
 		codexJSONLOffsets:  make(map[string]int64),

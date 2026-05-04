@@ -12,7 +12,8 @@ be/
 │   ├── cli/                     # Cobra commands
 │   │   ├── root.go              # Root command, global flags, project discovery
 │   │   ├── serve.go             # HTTP API server (auto-migrates DB)
-│   │   ├── agent.go             # agent fail/continue/callback (context from NRF_SESSION_ID + NRF_WORKFLOW_INSTANCE_ID env vars)
+│   │   ├── agent.go             # agent fail/continue/callback/chain-next-instructions/chain-next-ticket (context from NRF_SESSION_ID + NRF_WORKFLOW_INSTANCE_ID env vars)
+│   │   ├── chain.go             # agent chain-next-instructions and chain-next-ticket subcommands
 │   │   ├── findings.go          # findings add/append/get/delete (own-session writes; cross-agent reads via agent-type arg)
 │   │   ├── findings_project.go  # project-level findings (project-add/get/append/delete)
 │   │   ├── skip.go              # skip <tag> command (adds skip tag to running workflow instance)
@@ -43,7 +44,11 @@ be/
 │   │   ├── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)
 │   │   ├── orchestrator_interactive.go # Interactive start & plan-before-execute pre-step
 │   │   ├── plan_reader.go       # Plan file reader for plan-before-execute mode
-│   │   └── chain_runner.go      # Sequential chain execution runner
+│   │   └── chain_runner.go      # Sequential chain execution runner (old chain_executions system)
+│   ├── chainrunner/             # Workflow chain run execution engine (workflow_chain_runs system)
+│   │   ├── chainrunner.go       # Runner struct, Start/Cancel/IsRunning/WaitAll, pollInstance
+│   │   ├── loop.go              # runLoop, executeStep, cancelRun, failRun
+│   │   └── recovery.go         # RecoverZombieRuns (crash recovery on startup)
 │   ├── api/                     # HTTP API
 │   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator, PTY manager
 │   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints
@@ -61,6 +66,7 @@ be/
 │   │   ├── handlers_pty.go      # PTY WebSocket handler (1:1 interactive terminal relay)
 │   │   ├── handlers_chains.go   # Chain execution list/get/create/update/start/cancel/append/remove-items + run-epic
 │   │   ├── handlers_workflow_chains.go # Workflow chain definition CRUD + step append/update/delete/reorder (project-scoped; admin writes)
+│   │   └── handlers_workflow_chain_runs.go # Workflow chain run lifecycle: start/cancel/list/get (project-scoped)
 │   │   ├── handlers_git.go        # Git commit history endpoints
 │   │   ├── handlers_daily_stats.go # Daily stats endpoint
 │   │   ├── handlers_errors.go     # Error log list endpoint (paginated)
@@ -124,6 +130,7 @@ be/
 │   │   ├── daily_stats.go       # Daily stats computation from source tables
 │   │   ├── git.go               # Git operations (commit listing, detail via os/exec)
 │   │   ├── workflow_chain.go    # WorkflowChainService: chain+step CRUD, validation (dense positions, step 0 project-scope, workflow_name resolves)
+│   │   ├── workflow_chain_run.go # WorkflowChainRunService: CreateRun, CancelRun, ListRuns, GetRunDetail, SetNextStepInstructions, SetNextStepTicket
 │   │   └── snapshot.go          # WS snapshot provider (builds chunks from workflow state)
 │   ├── db/                      # Database layer
 │   │   ├── db.go                # SQLite connection
@@ -172,7 +179,8 @@ be/
 │   │   ├── chain_items.go       # Chain item operations (GetMaxPosition, GetTicketIDsByChain)
 │   │   ├── chain_locks.go       # Chain lock operations
 │   │   ├── workflow_chain.go    # WorkflowChainRepo (chain CRUD) + WorkflowChainStepRepo (step CRUD, BulkReorder)
-│   │   ├── workflow_chain_run.go # WorkflowChainRunRepo (run lifecycle, MaterializeRunSteps, GetNextPendingStep, GetActiveRuns)
+│   │   ├── workflow_chain_run.go # WorkflowChainRunRepo (run lifecycle, MaterializeRunSteps, GetNextPendingStep, GetActiveRuns, SetRunStepInstance)
+│   │   ├── workflow_chain_run_step.go # GetRunStepByInstanceID, SetNextPendingStepInstructions, SetNextPendingStepTicket, ListRunSteps
 │   │   ├── error_log.go         # Error log CRUD (Insert, List, Count)
 │   │   ├── daily_stats.go
 │   │   ├── event_log.go         # WS event log persistence (append, query, cleanup)

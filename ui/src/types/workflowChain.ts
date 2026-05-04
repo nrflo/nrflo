@@ -54,3 +54,38 @@ export interface WorkflowChainStepUpdateRequest {
 export interface ReorderStepsRequest {
   ordered_step_ids: string[]
 }
+
+export interface WorkflowChainRun {
+  id: string
+  project_id: string
+  chain_id: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'canceled'
+  initial_instructions: string
+  triggered_by: string
+  current_position: number
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowChainRunStep {
+  id: string
+  chain_run_id: string
+  position: number
+  workflow_name: string
+  scope_type: 'project' | 'ticket'
+  instructions_used: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | 'canceled'
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowChainRunDetail extends WorkflowChainRun {
+  steps: WorkflowChainRunStep[]
+}
+
+export interface StartChainRunRequest {
+  instructions?: string
+  triggered_by?: string
+}

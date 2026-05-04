@@ -5,7 +5,7 @@ import { subscriptionKey } from './useWSProtocol'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
 import { scheduleKeys } from './useScheduledTasks'
-import { workflowChainKeys } from './useWorkflowChains'
+import { workflowChainKeys, workflowChainRunKeys } from './useWorkflowChains'
 import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
 import type { WSEventType } from './useWebSocket'
@@ -459,5 +459,21 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
   },
   'chain_def.deleted': (_event, qc) => {
     qc.invalidateQueries({ queryKey: workflowChainKeys.all })
+  },
+
+  'chain.run_started': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
+  },
+  'chain.step_started': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
+  },
+  'chain.step_completed': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
+  },
+  'chain.run_completed': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
+  },
+  'chain.run_failed': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
   },
 }

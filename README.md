@@ -27,6 +27,7 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - Layered execution with same-layer parallelism and validated fan-in progression
 - Ticket-scoped and project-scoped workflows
 - Dependency-aware sequential ticket chains
+- Cron-driven scheduled task runs for project-scoped workflows
 
 ### Handoffs and validation
 - Structured findings handoffs between agents
@@ -34,8 +35,10 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - Prompt templates, findings expansion, and model controls
 
 ### Human control and recovery
-- Browser takeover of live runs
+- Browser takeover of live runs (kill-and-resume, or live viewer-attach in interactive CLI mode)
 - Interactive start, plan mode, and resume flows
+- PTY-backed interactive CLI mode for Claude/Codex/Opencode with live keystroke capture
+- Idle/nudge loop that prompts unresponsive interactive agents before failing them
 - Low-context continuation, stall restart, manual restart, and retry from the failed layer
 
 ### Git and delivery
@@ -43,6 +46,9 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - Automatic merge handling
 - Conflict-resolver agent on failed merge
 - Optional push after merge
+
+### Notifications
+- Per-project Slack and Telegram channels for workflow events
 
 ### Observability
 - Real-time workflow graph
@@ -91,14 +97,14 @@ make build && make install
 ### Run
 
 ```bash
-nrflo_server
+nrflo_server serve
 # Open http://localhost:6587
 ```
 
 To make the server accessible on the local network:
 
 ```bash
-nrflo_server --host 0.0.0.0
+nrflo_server serve --host 0.0.0.0
 ```
 
 ## CLI Overview

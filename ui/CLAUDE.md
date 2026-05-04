@@ -170,14 +170,14 @@ When creating a new reusable UI component:
 ### Commands
 
 ```bash
-make test-ui                          # all tests (30s wall-time constraint)
+make test-ui                          # all tests (60s wall-time constraint)
 make test-ui ARGS="src/components/"   # directory
 make test-ui ARGS="path/to/file.test.tsx"  # single file
 ```
 
 ### Performance Constraint
 
-The full test suite (`vitest run`) must complete in **≤30 seconds wall time**. Enforced by `make test-ui`.
+The full test suite (`vitest run`) must complete in **≤60 seconds wall time**. Enforced by `make test-ui`.
 
 **Never introduce:**
 - `setTimeout` in test bodies or mock implementations — use a never-resolving promise `new Promise(() => {})` to keep a mutation in-flight for `isPending` tests

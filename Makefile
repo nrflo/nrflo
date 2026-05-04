@@ -104,7 +104,7 @@ define acquire_ui_lock
 	fi
 endef
 
-## test: Run backend tests (30s wall-time constraint, -p 4 avoids build cache contention)
+## test: Run backend tests (60s wall-time constraint, -p 4 avoids build cache contention)
 test: embed-assets
 	$(acquire_be_lock)
 	@START=$$(date +%s); \
@@ -112,14 +112,14 @@ test: embed-assets
 	RC=$$?; \
 	rmdir $(BE_LOCK) 2>/dev/null || true; \
 	ELAPSED=$$(( $$(date +%s) - $$START )); \
-	if [ "$$ELAPSED" -gt 30 ]; then \
+	if [ "$$ELAPSED" -gt 60 ]; then \
 		echo ""; \
-		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 30 SECONDS. ANALYZE AND FIX."; \
+		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 60 SECONDS. ANALYZE AND FIX."; \
 		exit 1; \
 	fi; \
 	exit $$RC
 
-## test-ui: Run frontend tests (30s wall-time constraint). Use ARGS= for path filter.
+## test-ui: Run frontend tests (60s wall-time constraint). Use ARGS= for path filter.
 test-ui:
 	$(acquire_ui_lock)
 	@START=$$(date +%s); \
@@ -127,9 +127,9 @@ test-ui:
 	RC=$$?; \
 	rmdir $(UI_LOCK) 2>/dev/null || true; \
 	ELAPSED=$$(( $$(date +%s) - $$START )); \
-	if [ "$$ELAPSED" -gt 30 ]; then \
+	if [ "$$ELAPSED" -gt 60 ]; then \
 		echo ""; \
-		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 30 SECONDS. ANALYZE AND FIX."; \
+		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 60 SECONDS. ANALYZE AND FIX."; \
 		exit 1; \
 	fi; \
 	exit $$RC

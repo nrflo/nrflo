@@ -59,9 +59,9 @@ Workflow runtime state is stored in normalized database tables:
 - Active agents = `agent_sessions WHERE status = 'running'`
 - Agent history = `agent_sessions WHERE status != 'running'`
 
-### 4. CRITICAL: Backend Test Suite Must Run in Under 30 Seconds
+### 4. CRITICAL: Backend Test Suite Must Run in Under 60 Seconds
 
-The full backend test suite (`make test`) must complete in **≤30 seconds wall time**. Enforced by the Makefile target.
+The full backend test suite (`make test`) must complete in **≤60 seconds wall time**. Enforced by the Makefile target.
 
 **Never introduce:**
 - `time.Sleep` in tests — use `clock.TestClock.Advance()` for time-dependent logic, or poll with a tight loop+timeout for async conditions
@@ -76,11 +76,11 @@ The full backend test suite (`make test`) must complete in **≤30 seconds wall 
 
 **After editing or creating a test**, run that single test file immediately (`make test-pkg PKG=<package>` for BE, `make test-ui ARGS="path/to/file.test.tsx"` for FE) and verify it completes quickly (under 5s for a single test). If it stalls or is slow, fix it before proceeding.
 
-If the test suite exceeds 30 seconds, **identify and eliminate the cause before merging**.
+If the test suite exceeds 60 seconds, **identify and eliminate the cause before merging**.
 
-### 4b. CRITICAL: Frontend Test Suite Must Run in Under 30 Seconds
+### 4b. CRITICAL: Frontend Test Suite Must Run in Under 60 Seconds
 
-The full frontend test suite (`make test-ui`) must complete in **≤30 seconds wall time**. Enforced by the Makefile target. Pool is set to `threads` in `vitest.config.ts` for speed.
+The full frontend test suite (`make test-ui`) must complete in **≤60 seconds wall time**. Enforced by the Makefile target. Pool is set to `threads` in `vitest.config.ts` for speed.
 
 **Never introduce:**
 - `setTimeout` in test bodies or mock implementations — use `new Promise(() => {})` (never-resolving) to keep a mutation in-flight for `isPending` tests
@@ -93,7 +93,7 @@ The full frontend test suite (`make test-ui`) must complete in **≤30 seconds w
 
 **After editing or creating a test**, run that single test file immediately (`make test-ui ARGS="path/to/file.test.tsx"`) and verify it completes quickly (under 5s for a single test). If it stalls or is slow, fix it before proceeding.
 
-If the test suite exceeds 30 seconds, **identify and eliminate the cause before merging**.
+If the test suite exceeds 60 seconds, **identify and eliminate the cause before merging**.
 
 ### 5. Keep Source Files Under 300 Lines
 

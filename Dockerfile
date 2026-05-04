@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1.7
+#
+# Linux multi-arch image for nrflo_server in api-mode only.
+# Hard-bakes `serve --mode=api`. Ships with git but no agent CLIs
+# (no claude/codex/opencode) — api-mode runs the Anthropic Messages API
+# in-process via be/internal/spawner/apirun and never spawns child agents.
+
+# ---------------------------------------------------------------------------
+# Stage 1 — UI build (Node, host-arch, runs once for both target arches)
+# ---------------------------------------------------------------------------
+FROM --platform=$BUILDPLATFORM node:22-alpine AS ui-builder
+WORKDIR /src/ui
+COPY ui/package.json ui/package-lock.json ./
+RUN npm ci
+COPY ui/ ./
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Stage 2 — Go cross-compile (host-arch builder, target-arch output)
+# ---------------------------------------------------------------------------
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-builder
+ARG TARGETOS
+ARG TARGETARCH
+ARG VERSION=dev
+WORKDIR /src
+
+# Module cache layer
+COPY be/go.mod be/go.sum ./be/
+RUN cd be && go mod download
+
+# Source + embed inputs (matches Makefile build-ui + embed-assets targets)
+COPY be/ ./be/
+COPY agent_manual.md ./agent_manual.md
+COPY --from=ui-builder /src/ui/dist ./be/internal/static/dist
+RUN cp agent_manual.md be/internal/static/agent_manual.md
+
+# Pure-static build: no CGO, no `tray` tag (uses serve_notray.go).
+# `creack/pty` is pure-Go on Linux; modernc.org/sqlite is pure-Go too.
+RUN cd be && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -trimpath \
+      -ldflags="-s -w -X be/internal/cli.version=${VERSION}" \
+      -o /out/nrflo_server ./cmd/server
+
+# ---------------------------------------------------------------------------
+# Stage 3 — runtime
+# ---------------------------------------------------------------------------
+FROM alpine:3.20 AS runtime
+
+RUN apk add --no-cache ca-certificates git tini \
+ && addgroup -S nrflo \
+ && adduser -S -G nrflo -u 65532 -h /data nrflo \
+ && mkdir -p /data \
+ && chown nrflo:nrflo /data
+
+COPY --from=go-builder /out/nrflo_server /usr/local/bin/nrflo_server
+
+ENV NRFLO_HOME=/data
+VOLUME ["/data"]
+EXPOSE 6587
+USER nrflo:nrflo
+WORKDIR /data
+
+# `--mode=api` is hard-baked; the image deliberately ships no agent CLIs,
+# so cli-mode would have nothing to spawn anyway.
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/nrflo_server", "serve", \
+            "--mode=api", "--host", "0.0.0.0", "--port", "6587"]

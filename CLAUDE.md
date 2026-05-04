@@ -177,6 +177,13 @@ Install via Homebrew: `brew tap nrflo/tap && brew install nrflo`. Upgrade: `brew
 
 Or build from source: `make build && make install`.
 
+Or run the Linux container (api-mode only, no agent CLIs in image):
+```bash
+docker run -d -p 6587:6587 -v nrflo-data:/data \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
+  ghcr.io/nrflo/nrflo-server:latest
+```
+
 Then `nrflo_server serve` and open `http://localhost:6587`.
 
 By default the server binds to `127.0.0.1` (localhost only). To make it accessible on the local network: `nrflo_server serve --host 0.0.0.0`
@@ -273,5 +280,15 @@ make install        # Install to /usr/local/bin (or PREFIX=...)
 make test           # Run backend tests
 make help           # Show all targets
 ```
+
+### Docker image (linux/amd64+arm64, api-mode only)
+
+Distributed as `ghcr.io/nrflo/nrflo-server` (built by [`Dockerfile`](Dockerfile) and [`.github/workflows/docker.yml`](.github/workflows/docker.yml)). The image:
+- Hard-bakes `serve --mode=api --host 0.0.0.0` in its ENTRYPOINT — only api-mode workflows run.
+- Ships `git`, `ca-certificates`, `tini`, and the static `nrflo_server` binary. No `claude`, `codex`, or `opencode` CLIs (api-mode runs the Anthropic Messages API in-process via `be/internal/spawner/apirun`).
+- Runs as non-root user `nrflo` (uid 65532) with `/data` as the `NRFLO_HOME` volume.
+- Built with `CGO_ENABLED=0` and no `tray` build tag (uses `be/internal/cli/serve_notray.go`).
+
+Make targets: `make docker-build` (single-arch local), `make docker-buildx` (multi-arch + push), `make docker-login`. Override `IMAGE_OWNER`, `IMAGE_NAME`, `IMAGE_TAG`, `PLATFORMS` on the command line. The `docker.yml` workflow auto-builds and pushes on every `v*` tag.
 
 Logs are written to `~/.nrflo/logs/be.log` (or `$NRFLO_HOME/logs/be.log`).

@@ -2,7 +2,7 @@
        build-release build-release-cli build-release-server \
        install clean test test-ui test-integration test-pkg test-verbose \
        test-coverage test-race tidy release-check release-dry-run help \
-       embed-assets
+       embed-assets docker-build docker-buildx docker-login
 
 # --- Configurable variables ---
 PREFIX     ?= /usr/local
@@ -185,6 +185,43 @@ release-check:
 ## release-dry-run: Test GoReleaser locally (no publish)
 release-dry-run:
 	goreleaser release --snapshot --clean
+
+# --- Docker (linux/amd64+arm64, api-mode only, pushes to GHCR) ---
+
+IMAGE_REGISTRY ?= ghcr.io
+IMAGE_OWNER    ?= nrflo
+IMAGE_NAME     ?= nrflo-server
+# Strip leading 'v' from VERSION for OCI-style tag (v1.2.3 -> 1.2.3).
+IMAGE_TAG      ?= $(VERSION:v%=%)
+IMAGE_REF      := $(IMAGE_REGISTRY)/$(IMAGE_OWNER)/$(IMAGE_NAME)
+PLATFORMS      ?= linux/amd64,linux/arm64
+
+## docker-build: Build single-arch image locally (host arch) for sanity testing
+docker-build:
+	docker build \
+	  --build-arg VERSION=$(IMAGE_TAG) \
+	  -t $(IMAGE_REF):$(IMAGE_TAG) \
+	  -t $(IMAGE_REF):latest \
+	  .
+
+## docker-buildx: Build & push multi-arch image (linux/amd64,arm64) to $IMAGE_REGISTRY
+docker-buildx:
+	@docker buildx inspect nrflo-builder >/dev/null 2>&1 \
+	  || docker buildx create --name nrflo-builder --use
+	docker buildx build \
+	  --platform $(PLATFORMS) \
+	  --build-arg VERSION=$(IMAGE_TAG) \
+	  -t $(IMAGE_REF):$(IMAGE_TAG) \
+	  -t $(IMAGE_REF):latest \
+	  --push \
+	  .
+
+## docker-login: Log in to $IMAGE_REGISTRY using $CR_PAT or $GITHUB_TOKEN
+docker-login:
+	@if [ -z "$${CR_PAT}$${GITHUB_TOKEN}" ]; then \
+		echo "ERROR: set CR_PAT (a GitHub PAT with write:packages) or GITHUB_TOKEN"; exit 1; \
+	fi
+	@printf '%s' "$${CR_PAT:-$$GITHUB_TOKEN}" | docker login $(IMAGE_REGISTRY) -u $(IMAGE_OWNER) --password-stdin
 
 ## help: Show available targets
 help:

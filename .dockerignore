@@ -1,0 +1,25 @@
+.git
+.github
+.idea
+.claude
+.opencode
+.DS_Store
+
+node_modules
+ui/node_modules
+ui/dist
+be/internal/static/dist
+be/internal/static/agent_manual.md
+
+dist/
+logs/
+Formula/
+docs/
+
+*.data
+*.log
+*.lock
+
+# Build outputs from `make build`
+be/nrflo
+be/nrflo_server

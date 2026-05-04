@@ -188,6 +188,18 @@ Then `nrflo_server serve` and open `http://localhost:6587`.
 
 By default the server binds to `127.0.0.1` (localhost only). To make it accessible on the local network: `nrflo_server serve --host 0.0.0.0`
 
+### nrflo_server subcommands
+
+| Command | Description |
+|---------|-------------|
+| `serve` | Start the HTTP/WebSocket server (default when no subcommand given) |
+| `version` | Print version information |
+| `init-customer` | Scaffold a starter customer config directory for nrvapp tools (api-mode workflows). See [be/internal/nrvapp/CLAUDE.md](be/internal/nrvapp/CLAUDE.md). |
+
+```bash
+nrflo_server init-customer --out /path/to/my-customer --name MyCustomer --git
+```
+
 ## Agent CLI Commands
 
 Spawned agents use these commands to report results (via Unix socket to the server). Exit 0 = implicit pass; `agent finished` is the explicit equivalent. `agent continue` is reserved for context-exhaustion relaunch (NOT a success signal).

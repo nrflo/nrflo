@@ -33,10 +33,11 @@ func TestRegisterServerCommands(t *testing.T) {
 	// Get all registered commands
 	commands := getCommandNames(rootCmd)
 
-	// Expected: serve, version (version is in init())
+	// Expected: serve, version, init-customer (version is in init())
 	expectedCommands := map[string]bool{
-		"serve":   true,
-		"version": true,
+		"serve":         true,
+		"version":       true,
+		"init-customer": true,
 	}
 
 	// Verify all expected commands are present
@@ -54,9 +55,9 @@ func TestRegisterServerCommands(t *testing.T) {
 		}
 	}
 
-	// Verify exact count: serve + version = 2
-	if len(commands) != 2 {
-		t.Errorf("RegisterServerCommands: got %d commands, want 2. Commands: %v", len(commands), commands)
+	// Verify exact count: serve + version + init-customer = 3
+	if len(commands) != 3 {
+		t.Errorf("RegisterServerCommands: got %d commands, want 3. Commands: %v", len(commands), commands)
 	}
 }
 

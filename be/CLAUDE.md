@@ -144,6 +144,13 @@ be/
 │   │   ├── error_log.go         # ErrorLog struct + ErrorType enum
 │   │   ├── daily_stats.go
 │   │   └── scheduled_task.go    # ScheduledTask + ScheduleRun + ScheduleRunWorkflow models
+│   ├── nrvapp/                  # Customer config management for api-mode workflows (see internal/nrvapp/CLAUDE.md)
+│   │   ├── config/              # Manifest parsing, tool validation, JSON Schema compilation
+│   │   ├── python/              # Python script execution runtime (Runner, OSRunner, env scoping)
+│   │   ├── configeditor/        # Versioned config file editing service (DB-backed)
+│   │   ├── configmigrate/       # Forward-only config migration runner
+│   │   │   └── migrations/      # Migration implementations
+│   │   └── scaffold/            # init-customer scaffolder (embedded template tree)
 │   ├── repo/                    # Repository pattern
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -264,6 +271,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Service layer, file mapping, workflow types, common tasks |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
+| `internal/nrvapp/` | [nrvapp/CLAUDE.md](internal/nrvapp/CLAUDE.md) | Customer config management: manifest parsing, python runtime, versioned config editor, migration runner, init-customer scaffold |
 
 ## Running Tests
 

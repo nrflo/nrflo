@@ -11,7 +11,9 @@ This is the web UI for the nrflo ticket management system. It's a React + TypeSc
 | `src/api/` | API client modules with X-Project header support (see [api/CLAUDE.md](src/api/CLAUDE.md)) |
 | `src/types/` | TypeScript types matching Go models (see [types/CLAUDE.md](src/types/CLAUDE.md)) |
 | `src/hooks/` | TanStack Query hooks, WebSocket hook, utility hooks (see [hooks/CLAUDE.md](src/hooks/CLAUDE.md)). `useGlobalSettings.ts` exports `useGlobalSettings()` (UseQueryResult&lt;GlobalSettings&gt;) and `useAPIModeEnabled(): boolean` (returns `false` until query resolves). |
-| `src/stores/` | Zustand stores: project selection (`projectStore.ts`), theme preference (`themeStore.ts`) |
+| `src/stores/` | Zustand stores: project selection (`projectStore.ts`), theme preference (`themeStore.ts`), auth (`authStore.ts`) |
+| `src/components/auth/` | Auth components: `AuthGate` (boot wrapper; calls refresh before rendering routes), `RequireAuth` (route guard; redirects anon→/login, must_change_password→/account?force=1), `RequireAdmin` (extends RequireAuth; redirects non-admin→/forbidden), `MustChangePasswordBanner` (sticky banner in Layout) |
+| `src/pages/auth/` | Auth pages: `LoginPage` (`/login`, public), `AccountPage` (`/account`, change-password form with force=1 banner) |
 | `src/lib/` | Utility functions (`cn`, `formatDate`, `statusColor`, etc.) |
 | `src/components/workflow/` | Workflow visualization components (see [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)) |
 | `src/components/ui/` | Reusable UI components: Badge, Button, Card, ConfirmDialog (variant-based), Dialog (modal with backdrop/ESC/click-outside), Dropdown (generic custom dropdown with click-outside/Escape/Check icon, supports flat and grouped options via `DropdownOptionGroup`), Input, MarkdownEditor (CodeMirror 6), codemirror-theme.ts, ProjectSelect (uses Dropdown internally), RenderedMarkdown (react-markdown with github-markdown-css, remark-gfm, rehype-highlight), Spinner, StatusCell (lucide-react icon + status text label with animate-pulse for running/in_progress), PriorityIcon (directional arrow icons for priority 1-4 with label), ResultIcon (check/x/minus icons for pass/fail/skip), Table (composable: Table, TableHeader, TableBody, TableRow, TableHead, TableCell with hover:bg-muted/50 on rows), Textarea, Toggle, Tooltip (Radix-based with keyboard accessibility) |
@@ -65,9 +67,27 @@ npx tsc --noEmit   # TypeScript check only
 ### State Management
 
 - **Server state**: TanStack Query (useQuery, useMutation)
-- **Client state**: Zustand (project selection via `projectStore.ts`, theme preference via `themeStore.ts`)
+- **Client state**: Zustand (project selection via `projectStore.ts`, theme preference via `themeStore.ts`, auth via `authStore.ts`)
 - Query keys are in `src/hooks/useTickets.ts` — invalidate appropriately on mutations
-- Projects are loaded from API on startup (see `projectStore.ts`)
+- Projects are loaded from API when auth status becomes `authed` (see `App.tsx` useEffect on `authStatus`)
+
+### Auth System
+
+- `useAuthStore` — state: `{ user, status: 'loading'|'authed'|'anon' }`, actions: `refresh()`, `login()`, `logout()`, `clear()`. Selector hooks: `useIsAdmin()`, `useIsAuthed()`, `useMustChangePassword()`.
+- `AuthGate` — wraps `<Routes>` inside `BrowserRouter`. On mount: registers the apiFetch 401 handler (calls `clear()` + navigates to `/login?next=<encoded path>` via `window.history.pushState` + popstate event) then calls `refresh()`. Renders `null` while `status==='loading'`; renders children once resolved.
+- `RequireAuth` — if `status==='anon'` → `<Navigate to="/login?next=...">`. If `user.must_change_password` and not on `/account` or `/login` → `<Navigate to="/account?force=1">`. Otherwise renders `children` (or `<Outlet />` when used without children).
+- `RequireAdmin` — same as RequireAuth plus role check; non-admin → `<Navigate to="/forbidden">`.
+- `MustChangePasswordBanner` — shown by Layout via `useMustChangePassword()`; links to `/account?force=1`.
+- `apiFetch` 401 handler — skips navigation when endpoint is `/api/v1/auth/login`; calls registered `on401` for all other endpoints. Register via `set401Handler()` (exported from `client.ts`).
+- Public routes (`/login`, `/forbidden`) are outside `RequireAuth`. `/account` is inside Layout/RequireAuth.
+
+### Public Routes
+
+| Path | Page | Auth |
+|------|------|------|
+| `/login` | `LoginPage` | Public |
+| `/forbidden` | `ForbiddenPage` | Public |
+| `/account` | `AccountPage` | RequireAuth (no admin check) |
 
 ### Real-Time Updates (Protocol v2)
 

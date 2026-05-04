@@ -14,7 +14,8 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 
 | Module | Purpose |
 |--------|---------|
-| `client.ts` | Base API client with X-Project header support |
+| `client.ts` | Base API client with X-Project header support, `credentials:'include'`, `UnauthenticatedError`/`ForbiddenError` subclasses, global 401 handler via `set401Handler()` |
+| `auth.ts` | Auth API: `login(email, password)`, `logout()`, `getMe()`, `changePassword(current, next)` — wraps apiFetch on `/api/v1/auth/*` |
 | `projects.ts` | Project API functions |
 | `tickets.ts` | Ticket and workflow API functions |
 | `workflows.ts` | Workflow definition and orchestration API functions |
@@ -33,9 +34,25 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `nrvapp.ts` | Vertical app API: review CRUD (list/get/update-draft/approve/reject), config files (list/get/put/history/rollback), insights (summary/edit-rate/throughput). `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
 | `projects.ts` | Also exports `checkSafetyHook()` for dry-run safety hook check (no X-Project header) |
 
+## Global 401 Handler
+
+`client.ts` exports `set401Handler(fn)`. When any request (except `POST /api/v1/auth/login`) returns 401:
+1. Throws `UnauthenticatedError` (subclass of `ApiError`)
+2. Calls the registered handler with `window.location.pathname + window.location.search`
+
+`AuthGate` registers this handler on first mount. The handler calls `useAuthStore.getState().clear()` and navigates to `/login?next=<encoded path>` via `window.history.pushState` + popstate event, unless already on `/login`.
+
+403 responses throw `ForbiddenError` without calling the handler. Both `UnauthenticatedError` and `ForbiddenError` are exported from `client.ts`.
+
 ## REST API Endpoints
 
 ```
+# Auth (no X-Project header; login is the only public route)
+POST /api/v1/auth/login           # Body: {email, password}. Returns {user: User}. Rate-limited: 5/5min per IP+email (429 + Retry-After)
+POST /api/v1/auth/logout          # Returns 204
+GET  /api/v1/auth/me              # Returns {user: User}
+POST /api/v1/auth/change-password # Body: {current_password, new_password}. Returns 204
+
 # Projects
 GET    /api/v1/projects
 GET    /api/v1/projects/:id

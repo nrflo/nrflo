@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WebSocketProvider } from '@/providers/WebSocketProvider'
 import { Layout } from '@/components/layout/Layout'
+import { AuthGate } from '@/components/auth/AuthGate'
+import { RequireAuth } from '@/components/auth/RequireAuth'
 import { Dashboard } from '@/pages/Dashboard'
 import { TicketListPage } from '@/pages/TicketListPage'
 import { TicketDetailPage } from '@/pages/TicketDetailPage'
@@ -19,7 +21,11 @@ import { ErrorsPage } from '@/pages/ErrorsPage'
 import { SchedulesPage } from '@/pages/SchedulesPage'
 import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
 import { APICredentialsPage } from '@/pages/APICredentialsPage'
+import { LoginPage } from '@/pages/auth/LoginPage'
+import { AccountPage } from '@/pages/auth/AccountPage'
+import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { useProjectStore } from '@/stores/projectStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 
 const ReviewPage = lazy(() =>
@@ -51,44 +57,52 @@ function AppRoutes() {
   const apiModeEnabled = useAPIModeEnabled()
   return (
     <BrowserRouter>
-      <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="tickets" element={<TicketListPage />} />
-          <Route path="tickets/new" element={<CreateTicketPage />} />
-          <Route path="tickets/:id" element={<TicketDetailPage />} />
-          <Route path="tickets/:id/edit" element={<EditTicketPage />} />
-          <Route path="workflows" element={<WorkflowsPage />} />
-          <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
-          <Route path="git-status" element={<GitStatusPage />} />
-          <Route path="documentation" element={<DocumentationPage />} />
-          <Route path="chains" element={<ChainListPage />} />
-          <Route path="chains/:id" element={<ChainDetailPage />} />
-          <Route path="schedules" element={<SchedulesPage />} />
-          <Route path="errors" element={<ErrorsPage />} />
-          {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
-          {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
-          {apiModeEnabled && <Route path="nrvapp/review" element={<ReviewPage />} />}
-          {apiModeEnabled && <Route path="nrvapp/review/:id" element={<ReviewDetailPage />} />}
-          {apiModeEnabled && <Route path="nrvapp/config" element={<ConfigPage />} />}
-          {apiModeEnabled && <Route path="nrvapp/config/:file" element={<ConfigEditorPage />} />}
-          {apiModeEnabled && <Route path="nrvapp/dashboard" element={<NrvappDashboard />} />}
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />
-        </Route>
-      </Routes>
-      </Suspense>
+      <AuthGate>
+        <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/forbidden" element={<ForbiddenPage />} />
+            <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
+              <Route index element={<Dashboard />} />
+              <Route path="tickets" element={<TicketListPage />} />
+              <Route path="tickets/new" element={<CreateTicketPage />} />
+              <Route path="tickets/:id" element={<TicketDetailPage />} />
+              <Route path="tickets/:id/edit" element={<EditTicketPage />} />
+              <Route path="workflows" element={<WorkflowsPage />} />
+              <Route path="project-workflows" element={<ProjectWorkflowsPage />} />
+              <Route path="git-status" element={<GitStatusPage />} />
+              <Route path="documentation" element={<DocumentationPage />} />
+              <Route path="chains" element={<ChainListPage />} />
+              <Route path="chains/:id" element={<ChainDetailPage />} />
+              <Route path="schedules" element={<SchedulesPage />} />
+              <Route path="errors" element={<ErrorsPage />} />
+              {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
+              {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
+              {apiModeEnabled && <Route path="nrvapp/review" element={<ReviewPage />} />}
+              {apiModeEnabled && <Route path="nrvapp/review/:id" element={<ReviewDetailPage />} />}
+              {apiModeEnabled && <Route path="nrvapp/config" element={<ConfigPage />} />}
+              {apiModeEnabled && <Route path="nrvapp/config/:file" element={<ConfigEditorPage />} />}
+              {apiModeEnabled && <Route path="nrvapp/dashboard" element={<NrvappDashboard />} />}
+              <Route path="account" element={<AccountPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />
+            </Route>
+          </Routes>
+        </Suspense>
+      </AuthGate>
     </BrowserRouter>
   )
 }
 
 function App() {
+  const authStatus = useAuthStore((s) => s.status)
   const loadProjects = useProjectStore((s) => s.loadProjects)
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    if (authStatus === 'authed') {
+      loadProjects()
+    }
+  }, [authStatus, loadProjects])
 
   return (
     <QueryClientProvider client={queryClient}>

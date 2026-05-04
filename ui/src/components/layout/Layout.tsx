@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
+import { MustChangePasswordBanner } from '@/components/auth/MustChangePasswordBanner'
 import { useProjectStore } from '@/stores/projectStore'
 
 export function Layout() {
@@ -19,6 +20,7 @@ export function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <MustChangePasswordBanner />
       <div className="flex flex-1">
         <Sidebar />
         <main className="flex-1 p-6 overflow-auto">

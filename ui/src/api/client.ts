@@ -15,8 +15,27 @@ export class ApiError extends Error {
   }
 }
 
+export class UnauthenticatedError extends ApiError {
+  constructor(message: string) {
+    super(401, message)
+    this.name = 'UnauthenticatedError'
+  }
+}
+
+export class ForbiddenError extends ApiError {
+  constructor(message: string) {
+    super(403, message)
+    this.name = 'ForbiddenError'
+  }
+}
+
 let currentProject = 'default'
 let currentDbPath = ''
+let on401: ((path: string) => void) | null = null
+
+export function set401Handler(handler: (path: string) => void) {
+  on401 = handler
+}
 
 export function setProject(project: string) {
   currentProject = project
@@ -47,13 +66,13 @@ export async function apiFetch<T>(
     'X-Project': projectHeader,
   }
 
-  // Only add X-DB-Path if we have a path configured
   if (dbPathHeader) {
     headers['X-DB-Path'] = dbPathHeader
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...fetchOptions,
+    credentials: 'include',
     headers: {
       ...headers,
       ...fetchOptions.headers,
@@ -68,7 +87,20 @@ export async function apiFetch<T>(
     } catch {
       // ignore parse error
     }
+    if (response.status === 401) {
+      if (endpoint !== '/api/v1/auth/login' && on401) {
+        on401(window.location.pathname + window.location.search)
+      }
+      throw new UnauthenticatedError(message)
+    }
+    if (response.status === 403) {
+      throw new ForbiddenError(message)
+    }
     throw new ApiError(response.status, message)
+  }
+
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T
   }
 
   return response.json()

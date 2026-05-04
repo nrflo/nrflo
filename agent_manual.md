@@ -240,6 +240,7 @@ nrflo findings add workflow_final_result:"Implementation complete: added auth mi
 - Displayed in the UI above the agent flow tree after workflow completion
 - **Last-writer-wins:** if multiple agents write `workflow_final_result`, the value from the session with the latest `ended_at` is used
 - If no agent writes this finding, no result is displayed
+- When notification channels (Slack, Telegram) are configured, the summary is included as a blockquote in completion notifications
 
 ---
 

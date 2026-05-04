@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -318,14 +319,14 @@ func (s *WorkflowService) BuildCombinedFindings(wi *model.WorkflowInstance) map[
 	return combined
 }
 
-// ExtractWorkflowFinalResult scans agent sessions for the workflow_final_result finding,
+// ExtractWorkflowFinalResultByInstanceID scans agent sessions for the workflow_final_result finding,
 // returning the value from the session with the latest ended_at. Running sessions (NULL
 // ended_at) are deprioritized — completed sessions always take precedence.
-func (s *WorkflowService) ExtractWorkflowFinalResult(wi *model.WorkflowInstance) string {
-	rows, err := s.pool.Query(`
+func ExtractWorkflowFinalResultByInstanceID(pool *db.Pool, instanceID string) string {
+	rows, err := pool.Query(`
 		SELECT findings FROM agent_sessions
 		WHERE workflow_instance_id = ? AND findings IS NOT NULL AND findings != ''
-		ORDER BY ended_at IS NULL, ended_at DESC`, wi.ID)
+		ORDER BY ended_at IS NULL, ended_at DESC`, instanceID)
 	if err != nil {
 		return ""
 	}
@@ -347,4 +348,9 @@ func (s *WorkflowService) ExtractWorkflowFinalResult(wi *model.WorkflowInstance)
 		}
 	}
 	return ""
+}
+
+// ExtractWorkflowFinalResult scans agent sessions for the workflow_final_result finding.
+func (s *WorkflowService) ExtractWorkflowFinalResult(wi *model.WorkflowInstance) string {
+	return ExtractWorkflowFinalResultByInstanceID(s.pool, wi.ID)
 }

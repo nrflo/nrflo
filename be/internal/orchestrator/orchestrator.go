@@ -1684,9 +1684,11 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 		}
 	}
 
-	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-		"instance_id": wfiID,
-	}))
+	data := map[string]interface{}{"instance_id": wfiID}
+	if summary := service.ExtractWorkflowFinalResultByInstanceID(pool, wfiID); summary != "" {
+		data["workflow_final_result"] = summary
+	}
+	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, data))
 }
 
 // markFailed marks the workflow instance as failed and broadcasts.

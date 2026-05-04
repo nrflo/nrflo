@@ -483,3 +483,72 @@ func TestMarkCompletedProjectScopeDoesNotBroadcastTicketUpdated(t *testing.T) {
 		// Good - no ticket.updated event
 	}
 }
+
+func TestMarkCompletedBroadcastsWorkflowFinalResult(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "MC-FR1", "Final result test")
+	wfiID := env.initWorkflow(t, "MC-FR1")
+
+	// Insert an agent_session with workflow_final_result finding and a non-NULL ended_at
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+			status, result, findings, ended_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'test-phase', 'analyzer', 'completed', 'pass', ?, ?, ?, ?)`,
+		"sess-fr1", env.project, "MC-FR1", wfiID,
+		`{"workflow_final_result":"hello"}`,
+		now, now, now)
+	if err != nil {
+		t.Fatalf("failed to insert session: %v", err)
+	}
+
+	ch := env.subscribeWSClient(t, "ws-fr1", "MC-FR1")
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		TicketID:     "MC-FR1",
+		WorkflowName: "test",
+	})
+
+	event := expectEvent(t, ch, ws.EventOrchestrationCompleted, 2*time.Second)
+	if event.Data["workflow_final_result"] != "hello" {
+		t.Errorf("expected workflow_final_result 'hello', got %v", event.Data["workflow_final_result"])
+	}
+}
+
+func TestMarkCompletedOmitsWorkflowFinalResultWhenAbsent(t *testing.T) {
+	env := newTestEnv(t)
+
+	env.createTicket(t, "MC-FR2", "No final result")
+	wfiID := env.initWorkflow(t, "MC-FR2")
+
+	// Insert an agent_session with a different finding key (no workflow_final_result)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+			status, result, findings, ended_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'test-phase', 'analyzer', 'completed', 'pass', ?, ?, ?, ?)`,
+		"sess-fr2", env.project, "MC-FR2", wfiID,
+		`{"some_other_key":"value"}`,
+		now, now, now)
+	if err != nil {
+		t.Fatalf("failed to insert session: %v", err)
+	}
+
+	ch := env.subscribeWSClient(t, "ws-fr2", "MC-FR2")
+
+	env.orch.markCompleted(wfiID, RunRequest{
+		ProjectID:    env.project,
+		TicketID:     "MC-FR2",
+		WorkflowName: "test",
+	})
+
+	event := expectEvent(t, ch, ws.EventOrchestrationCompleted, 2*time.Second)
+	if _, ok := event.Data["workflow_final_result"]; ok {
+		t.Errorf("expected workflow_final_result to be absent, but it was present: %v", event.Data["workflow_final_result"])
+	}
+	if event.Data["instance_id"] != wfiID {
+		t.Errorf("expected instance_id %q, got %v", wfiID, event.Data["instance_id"])
+	}
+}

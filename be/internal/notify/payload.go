@@ -3,26 +3,77 @@ package notify
 import (
 	"fmt"
 	"strings"
+
+	"be/internal/ws"
 )
 
 // renderSlack builds a Slack mrkdwn message for the given event.
 func renderSlack(eventType string, data map[string]interface{}) string {
 	label := eventLabel(eventType, data)
 	details := eventDetails(data)
-	if details != "" {
-		return fmt.Sprintf("*nrflo* — %s\n%s", label, details)
+	header := fmt.Sprintf("*nrflo* — %s", label)
+
+	if eventType == ws.EventOrchestrationCompleted {
+		if summary, ok := data["workflow_final_result"].(string); ok && summary != "" {
+			block := renderSummaryBlock(summary, func(s string) string { return s })
+			if details != "" {
+				return header + "\n" + block + "\n" + details
+			}
+			return header + "\n" + block
+		}
 	}
-	return fmt.Sprintf("*nrflo* — %s", label)
+
+	if details != "" {
+		return header + "\n" + details
+	}
+	return header
 }
 
 // renderTelegram builds a Telegram MarkdownV2 message for the given event.
 func renderTelegram(eventType string, data map[string]interface{}) string {
 	label := escapeTelegramV2(eventLabel(eventType, data))
 	details := escapeTelegramV2(eventDetails(data))
-	if details != "" {
-		return fmt.Sprintf("*nrflo* — %s\n%s", label, details)
+	header := fmt.Sprintf("*nrflo* — %s", label)
+
+	if eventType == ws.EventOrchestrationCompleted {
+		if summary, ok := data["workflow_final_result"].(string); ok && summary != "" {
+			block := renderSummaryBlock(summary, escapeTelegramV2)
+			if details != "" {
+				return header + "\n" + block + "\n" + details
+			}
+			return header + "\n" + block
+		}
 	}
-	return fmt.Sprintf("*nrflo* — %s", label)
+
+	if details != "" {
+		return header + "\n" + details
+	}
+	return header
+}
+
+// renderSummaryBlock truncates, optionally escapes, and formats a summary as > -prefixed lines.
+func renderSummaryBlock(summary string, escape func(string) string) string {
+	truncated := truncateRunes(summary, 1500)
+	escaped := escape(truncated)
+	lines := strings.Split(escaped, "\n")
+	var b strings.Builder
+	for i, line := range lines {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString("> ")
+		b.WriteString(line)
+	}
+	return b.String()
+}
+
+// truncateRunes truncates s to at most max runes, appending "…" when truncated.
+func truncateRunes(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max]) + "…"
 }
 
 // eventLabel returns a human-readable summary line for the event type.

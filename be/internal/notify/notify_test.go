@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 
@@ -199,5 +200,41 @@ func TestDispatcher_WatchedEvents_AllFiveTypes(t *testing.T) {
 	results2, _ := deliveryRepo.ListByChannel(ch2.ID, 20)
 	if len(results2) != 1 {
 		t.Errorf("ch2 deliveries = %d, want 1", len(results2))
+	}
+}
+
+func TestDispatcher_OnEvent_WorkflowFinalResultPreservedInPayload(t *testing.T) {
+	database, projectID := setupNotifyDB(t)
+	clk := clock.Real()
+	channelRepo := repo.NewNotificationChannelRepo(database, clk)
+	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
+	wakeCh := make(chan struct{}, 1)
+	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+
+	ch := insertNotifyChannel(t, channelRepo, projectID, "result-ch", true, []string{ws.EventOrchestrationCompleted})
+
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", "feature", map[string]interface{}{
+		"workflow":              "feature",
+		"instance_id":          "wfi-123",
+		"workflow_final_result": "Build completed successfully",
+	}))
+
+	results, err := deliveryRepo.ListByChannel(ch.ID, 10)
+	if err != nil {
+		t.Fatalf("ListByChannel: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("deliveries = %d, want 1", len(results))
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(results[0].Payload), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if payload["workflow_final_result"] != "Build completed successfully" {
+		t.Errorf("workflow_final_result = %q, want %q", payload["workflow_final_result"], "Build completed successfully")
+	}
+	if payload["workflow"] != "feature" {
+		t.Errorf("workflow = %q, want %q", payload["workflow"], "feature")
 	}
 }

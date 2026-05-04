@@ -3,6 +3,8 @@ package notify
 import (
 	"strings"
 	"testing"
+
+	"be/internal/ws"
 )
 
 func TestRenderSlack_AllWatchedEventTypes(t *testing.T) {
@@ -165,5 +167,101 @@ func TestRenderSlack_ProjectScoped(t *testing.T) {
 	})
 	if !strings.Contains(result, "project-scoped") {
 		t.Errorf("project-scoped missing from: %q", result)
+	}
+}
+
+func TestTruncateRunes_TruncatesLongString(t *testing.T) {
+	s := strings.Repeat("a", 2000)
+	result := truncateRunes(s, 1500)
+	runes := []rune(result)
+	if len(runes) != 1501 {
+		t.Errorf("expected 1501 runes (1500 + ellipsis), got %d", len(runes))
+	}
+	if !strings.HasSuffix(result, "…") {
+		t.Errorf("expected result to end with '…', got %q", result[len(result)-10:])
+	}
+}
+
+func TestTruncateRunes_PassthroughWhenShort(t *testing.T) {
+	s := "short string"
+	result := truncateRunes(s, 1500)
+	if result != s {
+		t.Errorf("expected passthrough for short string, got %q", result)
+	}
+}
+
+func TestRenderSummaryBlock_LinesPrefixedWithChevron(t *testing.T) {
+	identity := func(s string) string { return s }
+	result := renderSummaryBlock("line one\nline two", identity)
+	for _, line := range strings.Split(result, "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.HasPrefix(line, "> ") {
+			t.Errorf("line %q does not start with '> '", line)
+		}
+	}
+}
+
+func TestRenderSummaryBlock_MultiLinePreservesNewlines(t *testing.T) {
+	identity := func(s string) string { return s }
+	result := renderSummaryBlock("first\nsecond\nthird", identity)
+	if !strings.Contains(result, "\n") {
+		t.Errorf("expected multiline output, got single line: %q", result)
+	}
+	lines := strings.Split(strings.TrimRight(result, "\n"), "\n")
+	if len(lines) < 3 {
+		t.Errorf("expected at least 3 lines in output, got %d: %q", len(lines), result)
+	}
+}
+
+func TestRenderSlack_SummaryBlockOnOrchestrationCompleted(t *testing.T) {
+	data := map[string]interface{}{
+		"workflow_final_result": "my result",
+	}
+	result := renderSlack(ws.EventOrchestrationCompleted, data)
+	if !strings.Contains(result, "> my result") {
+		t.Errorf("expected '> my result' in output, got %q", result)
+	}
+}
+
+func TestRenderSlack_NoSummaryOnOrchestrationFailed(t *testing.T) {
+	data := map[string]interface{}{
+		"workflow_final_result": "hi",
+	}
+	result := renderSlack("orchestration.failed", data)
+	if strings.Contains(result, "> hi") {
+		t.Errorf("expected no summary block for orchestration.failed, but got '> hi' in %q", result)
+	}
+}
+
+func TestRenderSlack_NoSummaryWhenFieldAbsent(t *testing.T) {
+	result := renderSlack(ws.EventOrchestrationCompleted, map[string]interface{}{})
+	if strings.Contains(result, "> ") {
+		t.Errorf("expected no summary block when workflow_final_result absent, got %q", result)
+	}
+}
+
+func TestRenderTelegram_SummaryEscapesDots(t *testing.T) {
+	data := map[string]interface{}{
+		"workflow_final_result": "v1.0",
+	}
+	result := renderTelegram(ws.EventOrchestrationCompleted, data)
+	if !strings.Contains(result, `\.`) {
+		t.Errorf("expected dot to be escaped as '\\.' in MarkdownV2, got %q", result)
+	}
+}
+
+func TestRenderSlack_SummaryTruncated(t *testing.T) {
+	summary := strings.Repeat("x", 2000)
+	data := map[string]interface{}{
+		"workflow_final_result": summary,
+	}
+	result := renderSlack(ws.EventOrchestrationCompleted, data)
+	if len([]rune(result)) >= 2100 {
+		t.Errorf("expected total output under 2100 runes, got %d", len([]rune(result)))
+	}
+	if !strings.Contains(result, "…") {
+		t.Errorf("expected truncation ellipsis '…' in output, got %q", result[:100])
 	}
 }

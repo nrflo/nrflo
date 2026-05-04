@@ -86,7 +86,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_tool_definitions.go` | Tool definitions CRUD (global, no project scope; ?project_id and ?workflow_id list filters) |
 | `handlers_api_credentials.go` | API credentials CRUD (global, no project scope; literal:* secret_ref redacted as literal:*** in responses) |
 | `handlers_safety_hook_check.go` | Safety hook dry-run check (POST /api/v1/safety-hook/check, global) |
-| `handlers_project_findings.go` | Project findings GET (project-scoped) |
+| `handlers_project_findings.go` | Project findings GET, POST upsert, DELETE single-key (project-scoped) |
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
 | `handlers_errors.go` | Error log list (paginated, type filter) |
@@ -159,7 +159,9 @@ POST /api/v1/projects/:id/workflow/stop-endless-loop # Toggle endless-loop stop 
 DELETE /api/v1/projects/:id/workflow/:instance_id  # Delete completed/failed project workflow instance (409 if active)
 GET  /api/v1/projects/:id/workflow          # Get project workflow state
 GET  /api/v1/projects/:id/agents           # Get project agent sessions
-GET  /api/v1/projects/:id/findings         # Get all project findings as JSON map
+GET    /api/v1/projects/:id/findings         # Get all project findings as JSON map
+POST   /api/v1/projects/:id/findings         # Upsert a finding; body: {key, value}; returns {status:"saved", key}
+DELETE /api/v1/projects/:id/findings/:key    # Delete a single finding by key; returns {status:"deleted", key}; 404 if missing
 
 # Git (project-scoped, reads from project root_path)
 GET  /api/v1/projects/:id/git/commits           # Paginated commit list (?page=&per_page=)

@@ -481,6 +481,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)
 	protected("GET /api/v1/projects/{id}/agents", s.handleGetProjectAgentSessions)
 	protected("GET /api/v1/projects/{id}/findings", s.handleGetProjectFindings)
+	protected("POST /api/v1/projects/{id}/findings", s.handleUpsertProjectFinding)
+	protected("DELETE /api/v1/projects/{id}/findings/{key}", s.handleDeleteProjectFinding)
 
 	// Git
 	protected("GET /api/v1/projects/{id}/git/commits", s.handleListGitCommits)

@@ -304,13 +304,14 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │  TICKETS_FTS (Full-text search)                                      │
 │    project_id, id, title, description                                │
 │                                                                      │
-│  SCHEDULED_TASKS                                                     │
+│  SCHEDULED_TASKS                                      (mig 000084)   │
 │    id              TEXT PRIMARY KEY                                  │
 │    project_id      TEXT NOT NULL (FK → projects.id, CASCADE)         │
 │    name            TEXT NOT NULL                                     │
 │    description     TEXT NOT NULL DEFAULT ''                          │
 │    cron_expression TEXT NOT NULL                                     │
 │    workflows       TEXT NOT NULL DEFAULT '[]' (JSON: workflow names) │
+│    workflow_chain_ids TEXT NOT NULL DEFAULT '[]' (JSON: chain IDs)  │
 │    enabled         INTEGER NOT NULL DEFAULT 1                        │
 │    last_triggered_at TEXT        (nullable, RFC3339Nano)             │
 │    next_run_at     TEXT          (nullable, RFC3339Nano)             │
@@ -319,7 +320,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    INDEX idx_scheduled_tasks_project (project_id)                   │
 │    INDEX idx_scheduled_tasks_enabled (enabled)                       │
 │                                                                      │
-│  SCHEDULE_RUNS                                                       │
+│  SCHEDULE_RUNS                                        (mig 000084)   │
 │    id                TEXT PRIMARY KEY                                │
 │    scheduled_task_id TEXT NOT NULL (FK → scheduled_tasks.id CASCADE) │
 │    project_id        TEXT NOT NULL                                   │
@@ -328,6 +329,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                      (pending|triggered|running|failed)              │
 │    workflows         TEXT NOT NULL DEFAULT '[]'                      │
 │                      (JSON: [{workflow, instance_id, error}])        │
+│    chain_runs        TEXT NOT NULL DEFAULT '[]'                      │
+│                      (JSON: [{chain_id, chain_run_id, error}])       │
 │    error             TEXT NOT NULL DEFAULT ''                        │
 │    INDEX idx_schedule_runs_task (scheduled_task_id, triggered_at)   │
 │    INDEX idx_schedule_runs_project (project_id)                      │
@@ -470,7 +473,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    FK (project_id, chain_id) → workflow_chains(project_id, id) CASCADE│
 │    INDEX idx_workflow_chain_runs_status (project_id, status)          │
 │                                                                      │
-│  WORKFLOW_CHAIN_RUN_STEPS                             (mig 000082)   │
+│  WORKFLOW_CHAIN_RUN_STEPS                             (mig 000083)   │
 │    id                   TEXT PRIMARY KEY                              │
 │    chain_run_id         TEXT NOT NULL (FK → workflow_chain_runs.id CASCADE)│
 │    position             INTEGER NOT NULL                              │
@@ -479,6 +482,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    workflow_instance_id TEXT (nullable)                               │
 │    ticket_id            TEXT (nullable)                               │
 │    instructions_used    TEXT NOT NULL DEFAULT ''                      │
+│    require_ticket_handoff INTEGER NOT NULL DEFAULT 0                  │
 │    status               TEXT NOT NULL CHECK (pending|running|completed|failed|skipped|canceled)│
 │    started_at           TEXT (nullable)                               │
 │    ended_at             TEXT (nullable)                               │
@@ -491,7 +495,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000082** (workflow_chains — creates workflow_chains, workflow_chain_steps, workflow_chain_runs, workflow_chain_run_steps tables)
+Current highest migration: **000084** (scheduler_chain_ids — adds `workflow_chain_ids` to `scheduled_tasks` and `chain_runs` to `schedule_runs`)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

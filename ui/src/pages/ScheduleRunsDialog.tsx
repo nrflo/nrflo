@@ -46,6 +46,7 @@ export function ScheduleRunsDialog({ open, onClose, task }: ScheduleRunsDialogPr
                   <TableHead className="w-24">Status</TableHead>
                   <TableHead className="w-36">Triggered</TableHead>
                   <TableHead>Workflows</TableHead>
+                  <TableHead>Chains</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -86,6 +87,34 @@ export function ScheduleRunsDialog({ open, onClose, task }: ScheduleRunsDialogPr
                       )}
                       {run.error && (
                         <p className="text-xs text-destructive mt-1">{run.error}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {!run.chain_runs || run.chain_runs.length === 0 ? (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      ) : (
+                        <div className="space-y-1">
+                          {run.chain_runs.map((cr, i) => (
+                            <div key={i} className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground font-mono text-xs">
+                                {cr.chain_id.slice(0, 8)}
+                              </span>
+                              {cr.chain_run_id && (
+                                <Link
+                                  to={`/workflow-chains/${cr.chain_id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  view
+                                </Link>
+                              )}
+                              {cr.error && (
+                                <span className="text-xs text-destructive">{cr.error}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>

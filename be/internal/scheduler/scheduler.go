@@ -7,29 +7,33 @@ import (
 
 	"github.com/robfig/cron/v3"
 
+	"be/internal/chainrunner"
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/ws"
 )
 
 // Scheduler drives per-project cron schedules that trigger orchestrator.Start calls.
 type Scheduler struct {
-	pool  *db.Pool
-	orch  *orchestrator.Orchestrator
-	hub   *ws.Hub
-	clock clock.Clock
-	mu    sync.Mutex
-	cron  *cron.Cron
-	ctx   context.Context
+	pool            *db.Pool
+	orch            *orchestrator.Orchestrator
+	hub             *ws.Hub
+	clock           clock.Clock
+	mu              sync.Mutex
+	cron            *cron.Cron
+	ctx             context.Context
+	wfChainRunSvc   *service.WorkflowChainRunService
+	wfChainRunner   *chainrunner.Runner
 }
 
 // New constructs a Scheduler. Call Start(ctx) to begin scheduling.
-func New(pool *db.Pool, orch *orchestrator.Orchestrator, hub *ws.Hub, clk clock.Clock) *Scheduler {
-	return &Scheduler{pool: pool, orch: orch, hub: hub, clock: clk}
+func New(pool *db.Pool, orch *orchestrator.Orchestrator, hub *ws.Hub, clk clock.Clock, wfChainRunSvc *service.WorkflowChainRunService, wfChainRunner *chainrunner.Runner) *Scheduler {
+	return &Scheduler{pool: pool, orch: orch, hub: hub, clock: clk, wfChainRunSvc: wfChainRunSvc, wfChainRunner: wfChainRunner}
 }
 
 // Start loads enabled tasks and registers cron entries. Stores ctx for dispatched runs.

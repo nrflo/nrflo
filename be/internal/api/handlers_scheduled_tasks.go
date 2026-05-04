@@ -16,7 +16,7 @@ func (s *Server) handleListScheduledTasks(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "X-Project header required")
 		return
 	}
-	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler)
+	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler, s.newWFChainSvc())
 	tasks, err := svc.List(projectID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -36,7 +36,7 @@ func (s *Server) handleCreateScheduledTask(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler)
+	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler, s.newWFChainSvc())
 	task, err := svc.Create(projectID, &req)
 	if err != nil {
 		status := http.StatusBadRequest
@@ -57,7 +57,7 @@ func (s *Server) handleGetScheduledTask(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	id := r.PathValue("id")
-	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler)
+	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler, s.newWFChainSvc())
 	task, err := svc.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -82,7 +82,7 @@ func (s *Server) handleUpdateScheduledTask(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler)
+	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler, s.newWFChainSvc())
 	task, err := svc.Update(id, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -103,7 +103,7 @@ func (s *Server) handleDeleteScheduledTask(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	id := r.PathValue("id")
-	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler)
+	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler, s.newWFChainSvc())
 	if err := svc.Delete(id); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())
@@ -135,7 +135,7 @@ func (s *Server) handleListScheduleRuns(w http.ResponseWriter, r *http.Request) 
 			offset = n
 		}
 	}
-	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler)
+	svc := service.NewScheduledTaskService(s.pool, s.clock, s.scheduler, s.newWFChainSvc())
 	runs, err := svc.ListRuns(taskID, limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

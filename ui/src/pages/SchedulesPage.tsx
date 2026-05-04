@@ -80,7 +80,7 @@ export function SchedulesPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead className="w-64">Cron Expression</TableHead>
-              <TableHead className="w-28">Workflows</TableHead>
+              <TableHead className="w-36">Triggers</TableHead>
               <TableHead className="w-32">Last Run</TableHead>
               <TableHead className="w-32">Next Run</TableHead>
               <TableHead className="w-20">Enabled</TableHead>
@@ -109,7 +109,21 @@ export function SchedulesPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{task.workflows.length}</Badge>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {task.workflows.length > 0 && (
+                        <Badge variant="secondary" title={`${task.workflows.length} workflow${task.workflows.length !== 1 ? 's' : ''}`}>
+                          {task.workflows.length} wf
+                        </Badge>
+                      )}
+                      {task.workflow_chain_ids?.length > 0 && (
+                        <Badge variant="secondary" title={`${task.workflow_chain_ids.length} chain${task.workflow_chain_ids.length !== 1 ? 's' : ''}`}>
+                          {task.workflow_chain_ids.length} ch
+                        </Badge>
+                      )}
+                      {task.workflows.length === 0 && !task.workflow_chain_ids?.length && (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {task.last_triggered_at ? formatRelativeTime(task.last_triggered_at) : '—'}

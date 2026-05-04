@@ -30,7 +30,7 @@ func newScheduledTaskServer(t *testing.T) *Server {
 	}
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
-	sched := scheduler.New(pool, nil, hub, clock.Real())
+	sched := scheduler.New(pool, nil, hub, clock.Real(), nil, nil)
 	t.Cleanup(func() {
 		sched.Stop()
 		hub.Stop()

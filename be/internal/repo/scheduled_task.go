@@ -25,7 +25,7 @@ func NewScheduledTaskRepo(database db.Querier, clk clock.Clock) *ScheduledTaskRe
 
 func scanScheduledTask(
 	id, projectID, name, description, cronExpr *string,
-	workflowsJSON *string,
+	workflowsJSON, chainIDsJSON *string,
 	enabled *int,
 	lastTriggeredAt, nextRunAt sql.NullString,
 	createdAt, updatedAt *string,
@@ -41,6 +41,9 @@ func scanScheduledTask(
 
 	if err := json.Unmarshal([]byte(*workflowsJSON), &t.Workflows); err != nil {
 		t.Workflows = []string{}
+	}
+	if err := json.Unmarshal([]byte(*chainIDsJSON), &t.WorkflowChainIDs); err != nil {
+		t.WorkflowChainIDs = []string{}
 	}
 
 	t.CreatedAt, _ = time.Parse(time.RFC3339Nano, *createdAt)
@@ -62,17 +65,17 @@ func scanScheduledTask(
 	return t, nil
 }
 
-const scheduledTaskCols = `id, project_id, name, description, cron_expression, workflows, enabled, last_triggered_at, next_run_at, created_at, updated_at`
+const scheduledTaskCols = `id, project_id, name, description, cron_expression, workflows, workflow_chain_ids, enabled, last_triggered_at, next_run_at, created_at, updated_at`
 
 func (r *ScheduledTaskRepo) scanRow(row interface{ Scan(...interface{}) error }) (*model.ScheduledTask, error) {
-	var id, projectID, name, description, cronExpr, workflowsJSON, createdAt, updatedAt string
+	var id, projectID, name, description, cronExpr, workflowsJSON, chainIDsJSON, createdAt, updatedAt string
 	var enabled int
 	var lastTriggeredAt, nextRunAt sql.NullString
 
-	if err := row.Scan(&id, &projectID, &name, &description, &cronExpr, &workflowsJSON, &enabled, &lastTriggeredAt, &nextRunAt, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&id, &projectID, &name, &description, &cronExpr, &workflowsJSON, &chainIDsJSON, &enabled, &lastTriggeredAt, &nextRunAt, &createdAt, &updatedAt); err != nil {
 		return nil, err
 	}
-	return scanScheduledTask(&id, &projectID, &name, &description, &cronExpr, &workflowsJSON, &enabled, lastTriggeredAt, nextRunAt, &createdAt, &updatedAt)
+	return scanScheduledTask(&id, &projectID, &name, &description, &cronExpr, &workflowsJSON, &chainIDsJSON, &enabled, lastTriggeredAt, nextRunAt, &createdAt, &updatedAt)
 }
 
 // Create inserts a new scheduled task
@@ -85,15 +88,23 @@ func (r *ScheduledTaskRepo) Create(task *model.ScheduledTask) error {
 	if err != nil {
 		return err
 	}
+	if task.WorkflowChainIDs == nil {
+		task.WorkflowChainIDs = []string{}
+	}
+	cJSON, err := json.Marshal(task.WorkflowChainIDs)
+	if err != nil {
+		return err
+	}
 
 	_, err = r.db.Exec(
-		`INSERT INTO scheduled_tasks (`+scheduledTaskCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO scheduled_tasks (`+scheduledTaskCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(task.ID),
 		strings.ToLower(task.ProjectID),
 		task.Name,
 		task.Description,
 		task.CronExpression,
 		string(wJSON),
+		string(cJSON),
 		boolToInt(task.Enabled),
 		nullableTime(task.LastTriggeredAt),
 		nullableTime(task.NextRunAt),
@@ -143,13 +154,21 @@ func (r *ScheduledTaskRepo) Update(task *model.ScheduledTask) error {
 	if err != nil {
 		return err
 	}
+	if task.WorkflowChainIDs == nil {
+		task.WorkflowChainIDs = []string{}
+	}
+	cJSON, err := json.Marshal(task.WorkflowChainIDs)
+	if err != nil {
+		return err
+	}
 
 	result, err := r.db.Exec(
-		`UPDATE scheduled_tasks SET name=?, description=?, cron_expression=?, workflows=?, enabled=?, last_triggered_at=?, next_run_at=?, updated_at=? WHERE LOWER(id) = LOWER(?)`,
+		`UPDATE scheduled_tasks SET name=?, description=?, cron_expression=?, workflows=?, workflow_chain_ids=?, enabled=?, last_triggered_at=?, next_run_at=?, updated_at=? WHERE LOWER(id) = LOWER(?)`,
 		task.Name,
 		task.Description,
 		task.CronExpression,
 		string(wJSON),
+		string(cJSON),
 		boolToInt(task.Enabled),
 		nullableTime(task.LastTriggeredAt),
 		nullableTime(task.NextRunAt),

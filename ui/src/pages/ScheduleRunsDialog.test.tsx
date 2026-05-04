@@ -25,6 +25,7 @@ const defaultTask: ScheduledTask = {
   description: '',
   cron_expression: '0 9 * * 1-5',
   workflows: ['feature'],
+  workflow_chain_ids: [],
   enabled: true,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
@@ -151,5 +152,74 @@ describe('ScheduleRunsDialog', () => {
     })
     renderDialog()
     expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+  })
+})
+
+describe('ScheduleRunsDialog - Chains column', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('renders "Chains" column header', () => {
+    mockUseScheduleRuns.mockReturnValue({ data: [makeRun()], isLoading: false })
+    renderDialog()
+    expect(screen.getByText('Chains')).toBeInTheDocument()
+  })
+
+  it('shows "—" in chains cell when chain_runs is absent', () => {
+    mockUseScheduleRuns.mockReturnValue({
+      data: [makeRun({ chain_runs: undefined })],
+      isLoading: false,
+    })
+    renderDialog()
+    // Chains column shows "—"; workflows column also has content, so at least one "—" total
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows chain_id prefix (8 chars) when chain_runs present', () => {
+    mockUseScheduleRuns.mockReturnValue({
+      data: [makeRun({
+        workflows: [],
+        chain_runs: [{ chain_id: 'abcdef1234567890', chain_run_id: 'run-abc' }],
+      })],
+      isLoading: false,
+    })
+    renderDialog()
+    expect(screen.getByText('abcdef12')).toBeInTheDocument()
+  })
+
+  it('shows link to /workflow-chains/:chainId when chain_run_id present', () => {
+    mockUseScheduleRuns.mockReturnValue({
+      data: [makeRun({
+        workflows: [],
+        chain_runs: [{ chain_id: 'chain-full-id', chain_run_id: 'run-xyz' }],
+      })],
+      isLoading: false,
+    })
+    renderDialog()
+    const link = screen.getByRole('link', { name: /view/i })
+    expect(link).toHaveAttribute('href', '/workflow-chains/chain-full-id')
+  })
+
+  it('shows no link when chain_run_id is absent', () => {
+    mockUseScheduleRuns.mockReturnValue({
+      data: [makeRun({
+        workflows: [],
+        chain_runs: [{ chain_id: 'abcdef1234567890' }],
+      })],
+      isLoading: false,
+    })
+    renderDialog()
+    expect(screen.queryByRole('link', { name: /view/i })).not.toBeInTheDocument()
+  })
+
+  it('shows chain run error when present', () => {
+    mockUseScheduleRuns.mockReturnValue({
+      data: [makeRun({
+        workflows: [],
+        chain_runs: [{ chain_id: 'abcdef1234567890', error: 'chain failed' }],
+      })],
+      isLoading: false,
+    })
+    renderDialog()
+    expect(screen.getByText('chain failed')).toBeInTheDocument()
   })
 })

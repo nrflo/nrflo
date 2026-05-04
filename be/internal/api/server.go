@@ -66,7 +66,9 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	}
 	orch.PTYManager = ptyMgr
 
-	sched := scheduler.New(pool, orch, hub, clk)
+	wfChainRunner := chainrunner.New(orch, dataPath, hub, clk)
+	wfChainRunSvc := service.NewWorkflowChainRunService(pool, clk)
+	sched := scheduler.New(pool, orch, hub, clk, wfChainRunSvc, wfChainRunner)
 
 	// Notification subsystem
 	notifyWakeCh := make(chan struct{}, 8)
@@ -90,7 +92,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		wsHub:         hub,
 		orchestrator:  orch,
 		chainRunner:   orchestrator.NewChainRunner(orch, dataPath, hub, clk),
-		wfChainRunner: chainrunner.New(orch, dataPath, hub, clk),
+		wfChainRunner: wfChainRunner,
 		ptyManager:    ptyMgr,
 		clock:         clk,
 		apiMode:       apiMode,
@@ -312,6 +314,11 @@ func (s *Server) ticketService() *service.TicketService {
 // workflowService returns a workflow service backed by the connection pool
 func (s *Server) workflowService() *service.WorkflowService {
 	return service.NewWorkflowService(s.pool, s.clock)
+}
+
+// newWFChainSvc returns a WorkflowChainService backed by the connection pool
+func (s *Server) newWFChainSvc() *service.WorkflowChainService {
+	return service.NewWorkflowChainService(s.pool, s.clock, service.NewWorkflowService(s.pool, s.clock))
 }
 
 // isAPISession returns true when the agent session identified by sessionID was

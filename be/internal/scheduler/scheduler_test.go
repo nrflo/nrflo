@@ -35,7 +35,7 @@ func newSchedTestEnv(t *testing.T) *schedTestEnv {
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	orch := orchestrator.New(dbPath, hub, clock.Real(), nil, false)
-	sched := New(pool, orch, hub, clock.Real())
+	sched := New(pool, orch, hub, clock.Real(), nil, nil)
 	t.Cleanup(func() {
 		sched.Stop()
 		hub.Stop()

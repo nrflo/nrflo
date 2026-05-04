@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -16,9 +17,9 @@ import (
 	"be/internal/ws"
 )
 
-// dispatch inserts a ScheduleRun row, fans out one goroutine per workflow calling
-// orchestrator.Start with ScopeType="project", collects results, and updates the run.
-// It also updates last_triggered_at / next_run_at on the task.
+// dispatch inserts a ScheduleRun row, fans out one goroutine per workflow and per
+// chain ID calling orchestrator.Start / wfChainRunSvc.CreateRun+wfChainRunner.Start,
+// collects results, and updates the run. It also updates last_triggered_at / next_run_at.
 func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*model.ScheduleRun, error) {
 	runRepo := repo.NewScheduleRunRepo(s.pool, s.clock)
 	taskRepo := repo.NewScheduledTaskRepo(s.pool, s.clock)
@@ -31,18 +32,19 @@ func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*m
 		TriggeredAt:     s.clock.Now().UTC(),
 		Status:          "pending",
 		Workflows:       []model.ScheduleRunWorkflow{},
+		ChainRuns:       []model.ScheduleRunChain{},
 	}
 	if err := runRepo.Insert(run); err != nil {
 		return nil, err
 	}
 
 	// 2. Fan out per-workflow goroutines
-	type result struct {
+	type wfResult struct {
 		workflow   string
 		instanceID string
 		errMsg     string
 	}
-	results := make([]result, len(task.Workflows))
+	wfResults := make([]wfResult, len(task.Workflows))
 	var wg sync.WaitGroup
 
 	for i, wfName := range task.Workflows {
@@ -57,19 +59,51 @@ func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*m
 			}
 			runResult, err := s.orch.Start(ctx, req)
 			if err != nil {
-				results[i] = result{workflow: wfName, errMsg: err.Error()}
+				wfResults[i] = wfResult{workflow: wfName, errMsg: err.Error()}
 				return
 			}
-			results[i] = result{workflow: wfName, instanceID: runResult.InstanceID}
+			wfResults[i] = wfResult{workflow: wfName, instanceID: runResult.InstanceID}
 		}()
 	}
+
+	// 3. Fan out per-chain goroutines
+	type chainResult struct {
+		chainID    string
+		chainRunID string
+		errMsg     string
+	}
+	chainResults := make([]chainResult, len(task.WorkflowChainIDs))
+
+	for i, chainID := range task.WorkflowChainIDs {
+		i, chainID := i, chainID
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if s.wfChainRunSvc == nil || s.wfChainRunner == nil {
+				chainResults[i] = chainResult{chainID: chainID, errMsg: "chain runner not available"}
+				return
+			}
+			triggeredBy := fmt.Sprintf("schedule:%s", task.ID)
+			detail, err := s.wfChainRunSvc.CreateRun(task.ProjectID, chainID, "", triggeredBy)
+			if err != nil {
+				chainResults[i] = chainResult{chainID: chainID, errMsg: err.Error()}
+				return
+			}
+			if err := s.wfChainRunner.Start(ctx, detail.ID); err != nil {
+				chainResults[i] = chainResult{chainID: chainID, chainRunID: detail.ID, errMsg: err.Error()}
+				return
+			}
+			chainResults[i] = chainResult{chainID: chainID, chainRunID: detail.ID}
+		}()
+	}
+
 	wg.Wait()
 
-	// 3. Build ScheduleRunWorkflow slice
-	runWorkflows := make([]model.ScheduleRunWorkflow, len(results))
-	overallErr := ""
+	// 4. Build ScheduleRunWorkflow slice
+	runWorkflows := make([]model.ScheduleRunWorkflow, len(wfResults))
 	anyFailed := false
-	for i, r := range results {
+	overallErr := ""
+	for i, r := range wfResults {
 		runWorkflows[i] = model.ScheduleRunWorkflow{
 			Workflow:   r.workflow,
 			InstanceID: r.instanceID,
@@ -83,26 +117,54 @@ func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*m
 		}
 	}
 
-	// 4. Marshal workflows JSON and update run status
-	wfJSON, _ := json.Marshal(runWorkflows)
+	// 5. Build ScheduleRunChain slice
+	runChains := make([]model.ScheduleRunChain, len(chainResults))
+	for i, r := range chainResults {
+		runChains[i] = model.ScheduleRunChain{
+			ChainID:    r.chainID,
+			ChainRunID: r.chainRunID,
+			Error:      r.errMsg,
+		}
+		if r.errMsg != "" {
+			anyFailed = true
+			if overallErr == "" {
+				overallErr = r.errMsg
+			}
+		}
+	}
+
+	// 6. Determine final status: failed only if all items (workflows + chains) failed
+	totalItems := len(task.Workflows) + len(task.WorkflowChainIDs)
 	finalStatus := "triggered"
-	if anyFailed && len(task.Workflows) > 0 {
+	if anyFailed && totalItems > 0 {
 		allFailed := true
-		for _, r := range results {
+		for _, r := range wfResults {
 			if r.errMsg == "" {
 				allFailed = false
 				break
 			}
 		}
 		if allFailed {
+			for _, r := range chainResults {
+				if r.errMsg == "" {
+					allFailed = false
+					break
+				}
+			}
+		}
+		if allFailed {
 			finalStatus = "failed"
 		}
 	}
-	if err := runRepo.UpdateStatus(run.ID, finalStatus, string(wfJSON), overallErr); err != nil {
+
+	// 7. Marshal and persist
+	wfJSON, _ := json.Marshal(runWorkflows)
+	chainJSON, _ := json.Marshal(runChains)
+	if err := runRepo.UpdateStatusFull(run.ID, finalStatus, string(wfJSON), string(chainJSON), overallErr); err != nil {
 		logger.Info(ctx, "scheduler: failed to update run status", "run_id", run.ID, "err", err)
 	}
 
-	// 5. Update task timestamps
+	// 8. Update task timestamps
 	now := s.clock.Now().UTC()
 	var nextRunAt *time.Time
 	if sched, err := cron.ParseStandard(task.CronExpression); err == nil {
@@ -113,13 +175,15 @@ func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*m
 		logger.Info(ctx, "scheduler: failed to update task timestamps", "id", task.ID, "err", err)
 	}
 
-	// 6. Broadcast EventScheduleTriggered
+	// 9. Broadcast EventScheduleTriggered
 	run.Status = finalStatus
 	run.Workflows = runWorkflows
+	run.ChainRuns = runChains
 	s.hub.Broadcast(ws.NewEvent(ws.EventScheduleTriggered, task.ProjectID, "", "", map[string]interface{}{
-		"task_id": task.ID,
-		"run_id":  run.ID,
-		"status":  finalStatus,
+		"task_id":    task.ID,
+		"run_id":     run.ID,
+		"status":     finalStatus,
+		"chain_runs": runChains,
 	}))
 
 	return run, nil

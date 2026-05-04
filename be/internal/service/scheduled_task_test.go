@@ -34,7 +34,7 @@ func setupScheduledTaskTestEnv(t *testing.T) (*ScheduledTaskService, *db.Pool, *
 		t.Fatalf("open pool: %v", err)
 	}
 	reloader := &mockReloader{}
-	svc := NewScheduledTaskService(pool, clock.Real(), reloader)
+	svc := NewScheduledTaskService(pool, clock.Real(), reloader, nil)
 	return svc, pool, reloader, func() { pool.Close() }
 }
 

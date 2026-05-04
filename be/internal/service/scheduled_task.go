@@ -22,14 +22,15 @@ type ScheduleReloader interface {
 
 // ScheduledTaskService handles scheduled task business logic.
 type ScheduledTaskService struct {
-	pool      *db.Pool
-	clock     clock.Clock
-	reloader  ScheduleReloader
+	pool         *db.Pool
+	clock        clock.Clock
+	reloader     ScheduleReloader
+	wfChainSvc   *WorkflowChainService
 }
 
 // NewScheduledTaskService creates a new ScheduledTaskService.
-func NewScheduledTaskService(pool *db.Pool, clk clock.Clock, reloader ScheduleReloader) *ScheduledTaskService {
-	return &ScheduledTaskService{pool: pool, clock: clk, reloader: reloader}
+func NewScheduledTaskService(pool *db.Pool, clk clock.Clock, reloader ScheduleReloader, wfChainSvc *WorkflowChainService) *ScheduledTaskService {
+	return &ScheduledTaskService{pool: pool, clock: clk, reloader: reloader, wfChainSvc: wfChainSvc}
 }
 
 // List returns all scheduled tasks for a project.
@@ -59,10 +60,13 @@ func (s *ScheduledTaskService) Create(projectID string, req *types.ScheduledTask
 	if _, err := cron.ParseStandard(req.CronExpression); err != nil {
 		return nil, fmt.Errorf("invalid cron expression: %s", err.Error())
 	}
-	if len(req.Workflows) == 0 {
+	if len(req.Workflows) == 0 && len(req.WorkflowChainIDs) == 0 {
 		return nil, fmt.Errorf("workflows_required")
 	}
 	if err := s.validateWorkflows(projectID, req.Workflows); err != nil {
+		return nil, err
+	}
+	if err := s.validateChainIDs(projectID, req.WorkflowChainIDs); err != nil {
 		return nil, err
 	}
 
@@ -76,14 +80,20 @@ func (s *ScheduledTaskService) Create(projectID string, req *types.ScheduledTask
 		enabled = *req.Enabled
 	}
 
+	chainIDs := req.WorkflowChainIDs
+	if chainIDs == nil {
+		chainIDs = []string{}
+	}
+
 	task := &model.ScheduledTask{
-		ID:             id,
-		ProjectID:      projectID,
-		Name:           req.Name,
-		Description:    req.Description,
-		CronExpression: req.CronExpression,
-		Workflows:      req.Workflows,
-		Enabled:        enabled,
+		ID:               id,
+		ProjectID:        projectID,
+		Name:             req.Name,
+		Description:      req.Description,
+		CronExpression:   req.CronExpression,
+		Workflows:        req.Workflows,
+		WorkflowChainIDs: chainIDs,
+		Enabled:          enabled,
 	}
 
 	r := repo.NewScheduledTaskRepo(s.pool, s.clock)
@@ -121,13 +131,20 @@ func (s *ScheduledTaskService) Update(id string, req *types.ScheduledTaskUpdateR
 		task.CronExpression = *req.CronExpression
 	}
 	if req.Workflows != nil {
-		if len(*req.Workflows) == 0 {
-			return nil, fmt.Errorf("workflows_required")
-		}
 		if err := s.validateWorkflows(task.ProjectID, *req.Workflows); err != nil {
 			return nil, err
 		}
 		task.Workflows = *req.Workflows
+	}
+	if req.WorkflowChainIDs != nil {
+		if err := s.validateChainIDs(task.ProjectID, *req.WorkflowChainIDs); err != nil {
+			return nil, err
+		}
+		task.WorkflowChainIDs = *req.WorkflowChainIDs
+	}
+	// After applying both fields, ensure at least one is non-empty
+	if len(task.Workflows) == 0 && len(task.WorkflowChainIDs) == 0 {
+		return nil, fmt.Errorf("workflows_required")
 	}
 	if req.Enabled != nil {
 		task.Enabled = *req.Enabled
@@ -175,6 +192,19 @@ func (s *ScheduledTaskService) validateWorkflows(projectID string, workflows []s
 		}
 		if wf.ScopeType != "project" {
 			return fmt.Errorf("not_project_scope: workflow %s has scope_type=%s", wfID, wf.ScopeType)
+		}
+	}
+	return nil
+}
+
+// validateChainIDs ensures every chain ID exists for the project.
+func (s *ScheduledTaskService) validateChainIDs(projectID string, chainIDs []string) error {
+	if s.wfChainSvc == nil {
+		return nil
+	}
+	for _, chainID := range chainIDs {
+		if _, err := s.wfChainSvc.GetChain(projectID, chainID); err != nil {
+			return fmt.Errorf("invalid_chain: %s", chainID)
 		}
 	}
 	return nil

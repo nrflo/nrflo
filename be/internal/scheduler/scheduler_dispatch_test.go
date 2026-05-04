@@ -29,7 +29,7 @@ func setupDispatchEnv(t *testing.T) (*Scheduler, *db.Pool, *ws.Hub) {
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	orch := orchestrator.New(dbPath, hub, clock.Real(), nil, false)
-	sched := New(pool, orch, hub, clock.Real())
+	sched := New(pool, orch, hub, clock.Real(), nil, nil)
 	t.Cleanup(func() {
 		orch.StopAll()
 		sched.Stop()

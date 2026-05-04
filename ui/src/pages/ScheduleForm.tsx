@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Toggle } from '@/components/ui/Toggle'
 import { listWorkflowDefs } from '@/api/workflows'
 import { useCreateScheduledTask, useUpdateScheduledTask } from '@/hooks/useScheduledTasks'
+import { useWorkflowChainsList } from '@/hooks/useWorkflowChains'
 import { useProjectStore } from '@/stores/projectStore'
 import { cn, formatDateTime } from '@/lib/utils'
 import { computeNextRuns, formatCountdown } from '@/lib/cron'
@@ -49,6 +50,7 @@ export function ScheduleForm({ open, onClose, editTarget }: ScheduleFormProps) {
   const [description, setDescription] = useState(editTarget?.description ?? '')
   const [cronExpression, setCronExpression] = useState(editTarget?.cron_expression ?? '')
   const [workflows, setWorkflows] = useState<string[]>(editTarget?.workflows ?? [])
+  const [chainIds, setChainIds] = useState<string[]>(editTarget?.workflow_chain_ids ?? [])
   const [enabled, setEnabled] = useState(editTarget?.enabled ?? true)
 
   const { data: workflowDefs } = useQuery({
@@ -56,6 +58,8 @@ export function ScheduleForm({ open, onClose, editTarget }: ScheduleFormProps) {
     queryFn: listWorkflowDefs,
     enabled: projectsLoaded,
   })
+
+  const { data: chainDefs } = useWorkflowChainsList()
 
   const projectWorkflows = workflowDefs
     ? Object.entries(workflowDefs).filter(([, def]) => def.scope_type === 'project')
@@ -71,7 +75,7 @@ export function ScheduleForm({ open, onClose, editTarget }: ScheduleFormProps) {
     }
   }
 
-  const canSubmit = name.trim() && cronExpression.trim() && !cronError && workflows.length > 0
+  const canSubmit = name.trim() && cronExpression.trim() && !cronError && (workflows.length > 0 || chainIds.length > 0)
 
   const createMutation = useCreateScheduledTask()
   const updateMutation = useUpdateScheduledTask()
@@ -83,16 +87,22 @@ export function ScheduleForm({ open, onClose, editTarget }: ScheduleFormProps) {
     )
   }
 
+  const toggleChain = (id: string) => {
+    setChainIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    )
+  }
+
   const handleSubmit = () => {
     if (!canSubmit) return
     if (isEdit && editTarget) {
       updateMutation.mutate(
-        { id: editTarget.id, data: { name, description, cron_expression: cronExpression, workflows, enabled } },
+        { id: editTarget.id, data: { name, description, cron_expression: cronExpression, workflows, workflow_chain_ids: chainIds, enabled } },
         { onSuccess: onClose }
       )
     } else {
       createMutation.mutate(
-        { name, description, cron_expression: cronExpression, workflows, enabled },
+        { name, description, cron_expression: cronExpression, workflows, workflow_chain_ids: chainIds, enabled },
         { onSuccess: onClose }
       )
     }
@@ -169,10 +179,43 @@ export function ScheduleForm({ open, onClose, editTarget }: ScheduleFormProps) {
               })}
             </div>
           )}
-          {workflows.length === 0 && (
-            <p className="text-xs text-muted-foreground">Select at least one workflow</p>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Workflow Chains</label>
+          {!chainDefs || chainDefs.length === 0 ? (
+            <p className="text-sm text-muted-foreground border border-border rounded-lg p-3">
+              No workflow chains found
+            </p>
+          ) : (
+            <div className="border border-border rounded-lg p-2 space-y-1 max-h-40 overflow-y-auto">
+              {chainDefs.map((chain) => {
+                const selected = chainIds.includes(chain.id)
+                return (
+                  <button
+                    key={chain.id}
+                    type="button"
+                    onClick={() => toggleChain(chain.id)}
+                    className={cn(
+                      'flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-left transition-colors',
+                      selected ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                    )}
+                  >
+                    <div className={cn(
+                      'h-4 w-4 rounded border flex items-center justify-center shrink-0',
+                      selected ? 'bg-primary border-primary' : 'border-muted-foreground/40'
+                    )}>
+                      {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    {chain.name}
+                  </button>
+                )
+              })}
+            </div>
           )}
         </div>
+        {workflows.length === 0 && chainIds.length === 0 && (
+          <p className="text-xs text-muted-foreground">Select at least one workflow or chain</p>
+        )}
         <div className="flex items-center gap-3">
           <Toggle checked={enabled} onChange={setEnabled} label="Enabled" />
         </div>

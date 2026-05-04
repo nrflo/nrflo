@@ -47,6 +47,7 @@ function makeTask(overrides: Partial<ScheduledTask> = {}): ScheduledTask {
     description: '',
     cron_expression: '0 9 * * 1-5',
     workflows: ['feature'],
+    workflow_chain_ids: [],
     enabled: true,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -227,5 +228,63 @@ describe('SchedulesPage - Viewer Role', () => {
   it('still shows View runs button per row', () => {
     renderPage()
     expect(screen.getByTitle('View runs')).toBeInTheDocument()
+  })
+})
+
+describe('SchedulesPage - Triggers column', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseIsAdmin.mockReturnValue(true)
+  })
+
+  it('renders "Triggers" column header', () => {
+    mockUseScheduledTasks.mockReturnValue({ data: [makeTask()], isLoading: false, error: null })
+    renderPage()
+    expect(screen.getByText('Triggers')).toBeInTheDocument()
+  })
+
+  it('shows "X wf" badge when task has workflows', () => {
+    mockUseScheduledTasks.mockReturnValue({
+      data: [makeTask({ workflows: ['feature', 'bugfix'], workflow_chain_ids: [] })],
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+    expect(screen.getByText('2 wf')).toBeInTheDocument()
+  })
+
+  it('shows "X ch" badge when task has workflow_chain_ids', () => {
+    mockUseScheduledTasks.mockReturnValue({
+      data: [makeTask({ workflows: [], workflow_chain_ids: ['chain-1', 'chain-2', 'chain-3'] })],
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+    expect(screen.getByText('3 ch')).toBeInTheDocument()
+  })
+
+  it('shows both wf and ch badges when task has both', () => {
+    mockUseScheduledTasks.mockReturnValue({
+      data: [makeTask({ workflows: ['feature'], workflow_chain_ids: ['chain-1'] })],
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+    expect(screen.getByText('1 wf')).toBeInTheDocument()
+    expect(screen.getByText('1 ch')).toBeInTheDocument()
+  })
+
+  it('shows "—" when task has neither workflows nor chains', () => {
+    mockUseScheduledTasks.mockReturnValue({
+      data: [makeTask({ workflows: [], workflow_chain_ids: [] })],
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+    // Triggers column and Last Run column both show "—"
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
+    // Neither badge should appear
+    expect(screen.queryByText(/\d+ wf/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\d+ ch/)).not.toBeInTheDocument()
   })
 })

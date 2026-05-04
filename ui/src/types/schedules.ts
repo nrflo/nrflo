@@ -6,6 +6,12 @@ export interface ScheduleRunWorkflow {
   error?: string
 }
 
+export interface ScheduleRunChain {
+  chain_id: string
+  chain_run_id?: string
+  error?: string
+}
+
 export interface ScheduledTask {
   id: string
   project_id: string
@@ -13,6 +19,7 @@ export interface ScheduledTask {
   description: string
   cron_expression: string
   workflows: string[]
+  workflow_chain_ids: string[]
   enabled: boolean
   last_triggered_at?: string
   next_run_at?: string
@@ -27,6 +34,7 @@ export interface ScheduleRun {
   triggered_at: string
   status: ScheduleRunStatus
   workflows: ScheduleRunWorkflow[]
+  chain_runs?: ScheduleRunChain[]
   error?: string
 }
 
@@ -36,6 +44,7 @@ export interface ScheduledTaskCreateRequest {
   description?: string
   cron_expression: string
   workflows: string[]
+  workflow_chain_ids?: string[]
   enabled?: boolean
 }
 
@@ -44,5 +53,6 @@ export interface ScheduledTaskUpdateRequest {
   description?: string
   cron_expression?: string
   workflows?: string[]
+  workflow_chain_ids?: string[]
   enabled?: boolean
 }

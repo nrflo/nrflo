@@ -399,12 +399,44 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    created_at    TEXT NOT NULL                                       │
 │    UNIQUE INDEX idx_nrvapp_config_versions_unique (project_id, file, version)│
 │                                                                      │
+│  USERS                                                (mig 000075)   │
+│    id                  TEXT PRIMARY KEY                               │
+│    email               TEXT NOT NULL UNIQUE COLLATE NOCASE            │
+│    display_name        TEXT NOT NULL DEFAULT ''                       │
+│    password_hash       TEXT NOT NULL (Argon2id PHC format)            │
+│    role                TEXT NOT NULL CHECK (admin|viewer)             │
+│    status              TEXT NOT NULL CHECK (active|disabled)          │
+│    must_change_password INTEGER NOT NULL DEFAULT 0                    │
+│    created_at          TEXT NOT NULL                                  │
+│    updated_at          TEXT NOT NULL                                  │
+│    last_login_at       TEXT (nullable)                                │
+│    INDEX idx_users_status (status)                                    │
+│                                                                      │
+│  SESSIONS                                             (mig 000076)   │
+│    token   TEXT PRIMARY KEY (SCS session token)                      │
+│    data    BLOB NOT NULL   (session payload)                          │
+│    expiry  REAL NOT NULL   (unix timestamp)                           │
+│    INDEX sessions_expiry_idx (expiry)                                 │
+│                                                                      │
+│  AUDIT_LOG                                            (mig 000077)   │
+│    id            TEXT PRIMARY KEY                                     │
+│    user_id       TEXT (FK → users.id ON DELETE SET NULL, nullable)    │
+│    action        TEXT NOT NULL                                        │
+│    resource_type TEXT NOT NULL DEFAULT ''                             │
+│    resource_id   TEXT NOT NULL DEFAULT ''                             │
+│    ip            TEXT NOT NULL DEFAULT ''                             │
+│    user_agent    TEXT NOT NULL DEFAULT ''                             │
+│    metadata      TEXT NOT NULL DEFAULT '{}'                           │
+│    created_at    TEXT NOT NULL                                        │
+│    INDEX idx_audit_log_user (user_id)                                 │
+│    INDEX idx_audit_log_created (created_at DESC)                      │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Adding a Database Migration
 
-Current highest migration: **000074** (nrvapp_config_versions)
+Current highest migration: **000078** (seed_admin — seeds admin@nrflo.com with must_change_password=1)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

@@ -143,7 +143,9 @@ be/
 │   │   ├── chain.go             # Chain execution, item, lock models
 │   │   ├── error_log.go         # ErrorLog struct + ErrorType enum
 │   │   ├── daily_stats.go
-│   │   └── scheduled_task.go    # ScheduledTask + ScheduleRun + ScheduleRunWorkflow models
+│   │   ├── scheduled_task.go    # ScheduledTask + ScheduleRun + ScheduleRunWorkflow models
+│   │   ├── user.go              # User struct (id, email, role, status, must_change_password, timestamps)
+│   │   └── audit.go             # AuditEntry struct + AuditFilter
 │   ├── nrvapp/                  # Customer config management for api-mode workflows (see internal/nrvapp/CLAUDE.md)
 │   │   ├── config/              # Manifest parsing, tool validation, JSON Schema compilation
 │   │   ├── python/              # Python script execution runtime (Runner, OSRunner, env scoping)
@@ -170,7 +172,9 @@ be/
 │   │   ├── schedule_run.go      # ScheduleRun Insert/UpdateStatus/ListByTask/Get
 │   │   ├── nrvapp_review.go     # NrvappReviewRepo: Insert/Get/List/UpdateDraft/Approve/Reject
 │   │   ├── nrvapp_dispatch.go   # NrvappDispatchRepo: Insert/ListSummary/EditRateByTool/Throughput
-│   │   └── nrvapp_config_version.go # NrvappConfigVersionRepo: Insert (tx, auto-version)/LatestVersion/Get/History
+│   │   ├── nrvapp_config_version.go # NrvappConfigVersionRepo: Insert (tx, auto-version)/LatestVersion/Get/History
+│   │   ├── user_repo.go         # UserRepo: Get/GetByEmail/List/Create/UpdateProfile/UpdatePassword/UpdateLastLogin/CountActiveAdmins/Delete
+│   │   └── audit_repo.go        # AuditRepo: Append/List (with AuditFilter + pagination + total count)
 │   ├── types/                   # Shared request/response types
 │   │   ├── request.go
 │   │   ├── chain_request.go     # Chain create/update request types
@@ -261,8 +265,9 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler, sink (streaming bridge), take-control rejection, low-context save override, stall detection behavior. Three registry sources: builtins → manifest tools (`tools_nrvapp`) → HTTP defs. |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, fan-in rules, callback flow, chain runner |
 | `internal/api/` | [api/CLAUDE.md](internal/api/CLAUDE.md) | HTTP endpoints, handler mapping, CORS, WebSocket |
-| `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Database schema, migrations, connection pool |
-| `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Service layer, file mapping, workflow types, common tasks |
+| `internal/auth/` | [auth/CLAUDE.md](internal/auth/CLAUDE.md) | Argon2id password hashing (PHC format), SCS session manager constructor, seedhash tool |
+| `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Database schema, migrations (000001–000078), connection pool |
+| `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Service layer, file mapping, workflow types, common tasks; includes AuthService and UserService |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
 | `internal/nrvapp/` | [nrvapp/CLAUDE.md](internal/nrvapp/CLAUDE.md) | Customer config management: manifest parsing, python runtime, versioned config editor, migration runner, init-customer scaffold |

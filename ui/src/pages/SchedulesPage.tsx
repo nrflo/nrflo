@@ -7,11 +7,13 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Toggle } from '@/components/ui/Toggle'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { ReadOnlyHint } from '@/components/auth/ReadOnlyHint'
 import { ScheduleForm } from './ScheduleForm'
 import { ScheduleRunsDialog } from './ScheduleRunsDialog'
 import { useScheduledTasks, useDeleteScheduledTask, useUpdateScheduledTask, useRunScheduleNow } from '@/hooks/useScheduledTasks'
 import { formatRelativeTime, cn } from '@/lib/utils'
 import { CronCountdown } from '@/components/ui/CronCountdown'
+import { useIsAdmin } from '@/stores/authStore'
 import type { ScheduledTask } from '@/types/schedules'
 
 function cronSummary(expr: string): string {
@@ -27,6 +29,7 @@ export function SchedulesPage() {
   const [editTarget, setEditTarget] = useState<ScheduledTask | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [runsTarget, setRunsTarget] = useState<ScheduledTask | null>(null)
+  const isAdmin = useIsAdmin()
 
   const { data: tasks, isLoading, error } = useScheduledTasks()
   const deleteMutation = useDeleteScheduledTask()
@@ -43,6 +46,7 @@ export function SchedulesPage() {
 
   return (
     <div className="max-w-[85%] mx-auto space-y-6">
+      {!isAdmin && <ReadOnlyHint />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Schedules</h1>
@@ -50,10 +54,12 @@ export function SchedulesPage() {
             {tasks?.length ?? 0} task{tasks?.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Schedule
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Schedule
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -114,8 +120,8 @@ export function SchedulesPage() {
                   <TableCell>
                     <Toggle
                       checked={task.enabled}
-                      onChange={() => handleToggleEnabled(task)}
-                      disabled={updateMutation.isPending}
+                      onChange={() => isAdmin && handleToggleEnabled(task)}
+                      disabled={!isAdmin || updateMutation.isPending}
                     />
                   </TableCell>
                   <TableCell>
@@ -127,31 +133,35 @@ export function SchedulesPage() {
                       >
                         <List className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        onClick={() => handleRunNow(task.id)}
-                        disabled={runNowMutation.isPending}
-                        className={cn(
-                          'p-1 text-muted-foreground hover:text-foreground transition-colors',
-                          runNowMutation.isPending && 'opacity-50 cursor-not-allowed'
-                        )}
-                        title="Run now"
-                      >
-                        <Play className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setEditTarget(task)}
-                        className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTargetId(task.id)}
-                        className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => handleRunNow(task.id)}
+                            disabled={runNowMutation.isPending}
+                            className={cn(
+                              'p-1 text-muted-foreground hover:text-foreground transition-colors',
+                              runNowMutation.isPending && 'opacity-50 cursor-not-allowed'
+                            )}
+                            title="Run now"
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setEditTarget(task)}
+                            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTargetId(task.id)}
+                            className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -161,11 +171,13 @@ export function SchedulesPage() {
         </Table>
       )}
 
-      <ScheduleForm
-        open={showCreate}
-        onClose={() => setShowCreate(false)}
-      />
-      {editTarget && (
+      {isAdmin && (
+        <ScheduleForm
+          open={showCreate}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
+      {isAdmin && editTarget && (
         <ScheduleForm
           open={!!editTarget}
           onClose={() => setEditTarget(null)}
@@ -179,21 +191,23 @@ export function SchedulesPage() {
           task={runsTarget}
         />
       )}
-      <ConfirmDialog
-        open={!!deleteTargetId}
-        onClose={() => setDeleteTargetId(null)}
-        onConfirm={() => {
-          if (deleteTargetId) {
-            deleteMutation.mutate(deleteTargetId, {
-              onSettled: () => setDeleteTargetId(null),
-            })
-          }
-        }}
-        title="Delete Schedule"
-        message="Are you sure you want to delete this schedule? This action cannot be undone."
-        confirmLabel="Delete"
-        variant="destructive"
-      />
+      {isAdmin && (
+        <ConfirmDialog
+          open={!!deleteTargetId}
+          onClose={() => setDeleteTargetId(null)}
+          onConfirm={() => {
+            if (deleteTargetId) {
+              deleteMutation.mutate(deleteTargetId, {
+                onSettled: () => setDeleteTargetId(null),
+              })
+            }
+          }}
+          title="Delete Schedule"
+          message="Are you sure you want to delete this schedule? This action cannot be undone."
+          confirmLabel="Delete"
+          variant="destructive"
+        />
+      )}
     </div>
   )
 }

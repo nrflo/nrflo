@@ -10,12 +10,17 @@ const mockUseScheduledTasks = vi.fn()
 const mockDeleteMutate = vi.fn()
 const mockUpdateMutate = vi.fn()
 const mockRunNowMutate = vi.fn()
+const mockUseIsAdmin = vi.fn().mockReturnValue(true)
 
 vi.mock('@/hooks/useScheduledTasks', () => ({
   useScheduledTasks: () => mockUseScheduledTasks(),
   useDeleteScheduledTask: () => ({ mutate: mockDeleteMutate, isPending: false }),
   useUpdateScheduledTask: () => ({ mutate: mockUpdateMutate, isPending: false }),
   useRunScheduleNow: () => ({ mutate: mockRunNowMutate, isPending: false }),
+}))
+
+vi.mock('@/stores/authStore', () => ({
+  useIsAdmin: () => mockUseIsAdmin(),
 }))
 
 vi.mock('@/stores/projectStore', () => ({
@@ -61,7 +66,7 @@ function renderPage() {
 }
 
 describe('SchedulesPage - Render States', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => { vi.clearAllMocks(); mockUseIsAdmin.mockReturnValue(true) })
 
   it('renders loading spinner', () => {
     mockUseScheduledTasks.mockReturnValue({ data: undefined, isLoading: true, error: null })
@@ -105,7 +110,7 @@ describe('SchedulesPage - Render States', () => {
 })
 
 describe('SchedulesPage - Actions', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => { vi.clearAllMocks(); mockUseIsAdmin.mockReturnValue(true) })
 
   it('clicking New Schedule opens ScheduleForm in create mode', async () => {
     const user = userEvent.setup()
@@ -187,5 +192,40 @@ describe('SchedulesPage - Actions', () => {
 
     await user.click(screen.getByTitle('Run now'))
     expect(mockRunNowMutate).toHaveBeenCalledWith('task-xyz')
+  })
+})
+
+describe('SchedulesPage - Viewer Role', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseIsAdmin.mockReturnValue(false)
+    mockUseScheduledTasks.mockReturnValue({ data: [makeTask()], isLoading: false, error: null })
+  })
+
+  it('shows ReadOnlyHint banner', () => {
+    renderPage()
+    expect(screen.getByText('Read-only — admin required to make changes.')).toBeInTheDocument()
+  })
+
+  it('hides New Schedule button', () => {
+    renderPage()
+    expect(screen.queryByRole('button', { name: /New Schedule/i })).not.toBeInTheDocument()
+  })
+
+  it('hides Edit, Run now, and Delete per-row buttons', () => {
+    renderPage()
+    expect(screen.queryByTitle('Edit')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Run now')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument()
+  })
+
+  it('still renders task rows', () => {
+    renderPage()
+    expect(screen.getByText('Daily Build')).toBeInTheDocument()
+  })
+
+  it('still shows View runs button per row', () => {
+    renderPage()
+    expect(screen.getByTitle('View runs')).toBeInTheDocument()
   })
 })

@@ -130,6 +130,8 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useNrvapp.ts` | TanStack Query hooks for Vertical app: `nrvappKeys` factory; `useReviewItems`, `useReviewItem`, `useUpdateReviewDraft`, `useApproveReview`, `useRejectReview`, `useConfigFiles`, `useConfigFile`, `usePutConfigFile`, `useConfigHistory`, `useRollbackConfig`, `useNrvappSummary`, `useNrvappEditRate`, `useNrvappThroughput`. |
 | `useModelOptions()` | Derives `DropdownOptionGroup[]` from `useCLIModels()` data, grouped by `cli_type` with provider-prefixed labels (e.g., "Claude: Opus"). Groups and options sorted alphabetically. Unknown `cli_type` values fall back to capitalized name. Used by AgentForm, AgentDefForm. Defined in `useCLIModels.ts`. |
 | `useErrors.ts` | TanStack Query hook for paginated error logs (`GET /api/v1/errors`). Key factory: `errorKeys`. Invalidated by `error.created` WS event. |
+| `useUsers.ts` | TanStack Query hooks for user management (admin-only, no X-Project): `userKeys` factory; `useUsers()`, `useCreateUser()`, `useUpdateUser()`, `useResetUserPassword()`, `useDeleteUser()`. All mutations invalidate `userKeys.all`. Errors propagate as `ApiError` for `email_exists`/`last_admin`/`cannot_delete_self` mapping at call site. |
+| `useAuditLog.ts` | TanStack Query hook for paginated audit log (admin-only): `auditKeys` factory; `useAuditLog({page,per_page,user_id,action})`. Keyed by all params so filter changes trigger refetch. |
 
 ## Testing
 

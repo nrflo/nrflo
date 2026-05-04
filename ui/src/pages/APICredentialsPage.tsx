@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { APICredentialForm } from '@/components/apiCredentials/APICredentialForm'
+import { ReadOnlyHint } from '@/components/auth/ReadOnlyHint'
 import {
   useAPICredentials,
   useCreateAPICredential,
@@ -11,6 +12,7 @@ import {
   useDeleteAPICredential,
 } from '@/hooks/useAPICredentials'
 import { useProjects } from '@/hooks/useProjects'
+import { useIsAdmin } from '@/stores/authStore'
 import type { APICredential, APICredentialCreateRequest, APICredentialUpdateRequest } from '@/types/apiCredential'
 
 function redactSecretRef(ref: string): string {
@@ -22,6 +24,7 @@ export function APICredentialsPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const isAdmin = useIsAdmin()
 
   const { data: credentials = [], isLoading, error } = useAPICredentials()
   const { data: projectsData } = useProjects()
@@ -57,6 +60,7 @@ export function APICredentialsPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-4">
+      {!isAdmin && <ReadOnlyHint />}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -67,17 +71,19 @@ export function APICredentialsPage() {
               </CardTitle>
               <CardDescription>Provider API keys for API-mode agents</CardDescription>
             </div>
-            <Button onClick={() => { setIsCreating(true); setEditingId(null) }} disabled={isCreating}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Credential
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => { setIsCreating(true); setEditingId(null) }} disabled={isCreating}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Credential
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {isLoading && <p className="text-center py-8 text-muted-foreground">Loading…</p>}
             {error && <p className="text-center py-8 text-destructive">Error: {(error as Error).message}</p>}
-            {isCreating && (
+            {isAdmin && isCreating && (
               <APICredentialForm
                 isCreate
                 projects={projects}
@@ -91,7 +97,7 @@ export function APICredentialsPage() {
             )}
             {credentials.map((cred: APICredential) => (
               <div key={cred.id} className="border rounded-lg p-4">
-                {editingId === cred.id ? (
+                {isAdmin && editingId === cred.id ? (
                   <APICredentialForm
                     initial={cred}
                     isCreate={false}
@@ -113,14 +119,16 @@ export function APICredentialsPage() {
                         {redactSecretRef(cred.secret_ref)}
                       </div>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingId(cred.id); setIsCreating(false) }}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(cred.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(cred.id); setIsCreating(false) }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(cred.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

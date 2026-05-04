@@ -52,6 +52,23 @@ TypeScript type definitions matching Go API models. Contains 5 files.
 | `ScheduleRunStatus` | `'pending' \| 'triggered' \| 'running' \| 'failed'` |
 | `ScheduledTaskCreateRequest` / `ScheduledTaskUpdateRequest` | CRUD request types |
 
+## User Types (`user.ts`)
+
+| Type | Description |
+|------|-------------|
+| `User` | User record with id, email, display_name, role (admin\|viewer), status (active\|disabled), must_change_password, timestamps, optional last_login_at |
+| `UserListResponse` | `{ users: User[] }` — list endpoint response |
+| `CreateUserRequest` | `{ email, display_name, password, role }` |
+| `UpdateUserRequest` | `{ display_name?, role?, status? }` — all optional partial update |
+| `ResetPasswordRequest` | `{ new_password }` |
+
+## Audit Types (`audit.ts`)
+
+| Type | Description |
+|------|-------------|
+| `AuditEntry` | Audit log row: id, user_id (optional), action, resource_type, resource_id, ip, user_agent, metadata (JSON string), created_at |
+| `AuditListResponse` | `{ items: AuditEntry[], total, page, per_page }` — paginated list |
+
 ## Type Safety
 
 - Types in `src/types/` must match the Go API models

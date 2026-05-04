@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ToolDefinitionForm } from '@/components/toolDefinitions/ToolDefinitionForm'
+import { ReadOnlyHint } from '@/components/auth/ReadOnlyHint'
 import {
   useToolDefinitions,
   useCreateToolDefinition,
@@ -11,12 +12,14 @@ import {
   useDeleteToolDefinition,
 } from '@/hooks/useToolDefinitions'
 import { useProjects } from '@/hooks/useProjects'
+import { useIsAdmin } from '@/stores/authStore'
 import type { ToolDefinition, ToolDefinitionCreateRequest, ToolDefinitionUpdateRequest } from '@/types/toolDefinition'
 
 export function ToolDefinitionsPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const isAdmin = useIsAdmin()
 
   const { data: toolDefs = [], isLoading, error } = useToolDefinitions()
   const { data: projectsData } = useProjects()
@@ -49,6 +52,7 @@ export function ToolDefinitionsPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-4">
+      {!isAdmin && <ReadOnlyHint />}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -59,17 +63,19 @@ export function ToolDefinitionsPage() {
               </CardTitle>
               <CardDescription>HTTP tools callable by API-mode agents</CardDescription>
             </div>
-            <Button onClick={() => { setIsCreating(true); setEditingId(null) }} disabled={isCreating}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Tool Definition
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => { setIsCreating(true); setEditingId(null) }} disabled={isCreating}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Tool Definition
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {isLoading && <p className="text-center py-8 text-muted-foreground">Loading…</p>}
             {error && <p className="text-center py-8 text-destructive">Error: {(error as Error).message}</p>}
-            {isCreating && (
+            {isAdmin && isCreating && (
               <ToolDefinitionForm
                 isCreate
                 onSubmit={handleCreate}
@@ -82,7 +88,7 @@ export function ToolDefinitionsPage() {
             )}
             {toolDefs.map((def: ToolDefinition) => (
               <div key={def.id} className="border rounded-lg p-4">
-                {editingId === def.id ? (
+                {isAdmin && editingId === def.id ? (
                   <ToolDefinitionForm
                     initial={def}
                     isCreate={false}
@@ -104,14 +110,16 @@ export function ToolDefinitionsPage() {
                         {` · Timeout: ${def.timeout_sec}s`}
                       </div>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingId(def.id); setIsCreating(false) }}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(def.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(def.id); setIsCreating(false) }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirmId(def.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

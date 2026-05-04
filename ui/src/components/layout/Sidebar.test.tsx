@@ -18,6 +18,10 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => mockUseAPIModeEnabled(),
 }))
 
+const mockUseIsAdmin = vi.fn().mockReturnValue(true)
+vi.mock('@/stores/authStore', () => ({
+  useIsAdmin: () => mockUseIsAdmin(),
+}))
 
 const mockUseChainList = vi.fn()
 vi.mock('@/hooks/useChains', () => ({
@@ -56,6 +60,7 @@ function createMockStatus(overrides: Partial<StatusResponse> = {}): StatusRespon
 describe('Sidebar - Spinner Visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseIsAdmin.mockReturnValue(true)
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -195,6 +200,7 @@ describe('Sidebar - Spinner Visibility', () => {
 
 describe('Sidebar - Navigation', () => {
   beforeEach(() => {
+    mockUseIsAdmin.mockReturnValue(true)
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })
     mockUseStatus.mockReturnValue({
@@ -265,6 +271,7 @@ describe('Sidebar - Navigation', () => {
 
 describe('Sidebar - Spinner Component Properties', () => {
   beforeEach(() => {
+    mockUseIsAdmin.mockReturnValue(true)
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -315,6 +322,7 @@ describe('Sidebar - Spinner Component Properties', () => {
 
 describe('Sidebar - Edge Cases', () => {
   beforeEach(() => {
+    mockUseIsAdmin.mockReturnValue(true)
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -405,6 +413,7 @@ describe('Sidebar - Edge Cases', () => {
 describe('Sidebar - Project Workflow Spinner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseIsAdmin.mockReturnValue(true)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -497,6 +506,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
 describe('Sidebar - Chain Execution Spinner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseIsAdmin.mockReturnValue(true)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
   })
@@ -593,6 +603,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
 describe('Sidebar - API Mode Gating', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseIsAdmin.mockReturnValue(true)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })

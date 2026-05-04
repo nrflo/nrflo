@@ -19,12 +19,15 @@ import {
   ClipboardList,
   FileEdit,
   BarChart3,
+  Users,
+  ScrollText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
 import { useChainList } from '@/hooks/useChains'
 import { useProjectStore } from '@/stores/projectStore'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
+import { useIsAdmin } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
 
 interface NavItemProps {
@@ -63,6 +66,7 @@ export function Sidebar() {
   const currentProject = useProjectStore((s) => s.currentProject)
   const projects = useProjectStore((s) => s.projects)
   const apiModeEnabled = useAPIModeEnabled()
+  const isAdmin = useIsAdmin()
 
   const { data: projectWorkflowData } = useProjectWorkflow(currentProject)
   const hasRunningProjectWorkflow = useMemo(
@@ -132,12 +136,14 @@ export function Sidebar() {
           active={isActive('/chains')}
           indicator={runningChains?.length ? <><span className="text-xs text-muted-foreground">{remainingChainTickets}</span><Spinner size="sm" /></> : undefined}
         />
-        <NavItem
-          to="/schedules"
-          icon={<CalendarClock className="h-4 w-4" />}
-          label="Schedules"
-          active={isActive('/schedules')}
-        />
+        {isAdmin && (
+          <NavItem
+            to="/schedules"
+            icon={<CalendarClock className="h-4 w-4" />}
+            label="Schedules"
+            active={isActive('/schedules')}
+          />
+        )}
         <NavItem
           to="/documentation"
           icon={<BookOpen className="h-4 w-4" />}
@@ -150,7 +156,7 @@ export function Sidebar() {
           label="Errors"
           active={isActive('/errors')}
         />
-        {apiModeEnabled && (
+        {apiModeEnabled && isAdmin && (
           <>
             <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Configuration
@@ -187,6 +193,25 @@ export function Sidebar() {
               icon={<BarChart3 className="h-4 w-4" />}
               label="Insights"
               active={isActive('/nrvapp/dashboard')}
+            />
+          </>
+        )}
+        {isAdmin && (
+          <>
+            <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Administration
+            </div>
+            <NavItem
+              to="/admin/users"
+              icon={<Users className="h-4 w-4" />}
+              label="Users"
+              active={isActive('/admin/users')}
+            />
+            <NavItem
+              to="/admin/audit"
+              icon={<ScrollText className="h-4 w-4" />}
+              label="Audit Log"
+              active={isActive('/admin/audit')}
             />
           </>
         )}

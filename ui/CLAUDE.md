@@ -12,7 +12,8 @@ This is the web UI for the nrflo ticket management system. It's a React + TypeSc
 | `src/types/` | TypeScript types matching Go models (see [types/CLAUDE.md](src/types/CLAUDE.md)) |
 | `src/hooks/` | TanStack Query hooks, WebSocket hook, utility hooks (see [hooks/CLAUDE.md](src/hooks/CLAUDE.md)). `useGlobalSettings.ts` exports `useGlobalSettings()` (UseQueryResult&lt;GlobalSettings&gt;) and `useAPIModeEnabled(): boolean` (returns `false` until query resolves). |
 | `src/stores/` | Zustand stores: project selection (`projectStore.ts`), theme preference (`themeStore.ts`), auth (`authStore.ts`) |
-| `src/components/auth/` | Auth components: `AuthGate` (boot wrapper; calls refresh before rendering routes), `RequireAuth` (route guard; redirects anon→/login, must_change_password→/account?force=1), `RequireAdmin` (extends RequireAuth; redirects non-admin→/forbidden), `MustChangePasswordBanner` (sticky banner in Layout) |
+| `src/components/auth/` | Auth components: `AuthGate` (boot wrapper; calls refresh before rendering routes), `RequireAuth` (route guard; redirects anon→/login, must_change_password→/account?force=1), `RequireAdmin` (extends RequireAuth; redirects non-admin→/forbidden), `MustChangePasswordBanner` (sticky banner in Layout), `ReadOnlyHint` (amber banner shown at top of admin-resource pages when `!useIsAdmin()`) |
+| `src/pages/admin/` | Admin-only pages: `UsersPage.tsx` (user management CRUD with dialogs in `UsersPageDialogs.tsx`), `AuditLogPage.tsx` (paginated audit log with filters). Both gated via `RequireAdmin` at route level in `App.tsx`. |
 | `src/pages/auth/` | Auth pages: `LoginPage` (`/login`, public), `AccountPage` (`/account`, change-password form with force=1 banner) |
 | `src/lib/` | Utility functions (`cn`, `formatDate`, `statusColor`, etc.) |
 | `src/components/workflow/` | Workflow visualization components (see [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)) |
@@ -76,7 +77,9 @@ npx tsc --noEmit   # TypeScript check only
 - `useAuthStore` — state: `{ user, status: 'loading'|'authed'|'anon' }`, actions: `refresh()`, `login()`, `logout()`, `clear()`. Selector hooks: `useIsAdmin()`, `useIsAuthed()`, `useMustChangePassword()`.
 - `AuthGate` — wraps `<Routes>` inside `BrowserRouter`. On mount: registers the apiFetch 401 handler (calls `clear()` + navigates to `/login?next=<encoded path>` via `window.history.pushState` + popstate event) then calls `refresh()`. Renders `null` while `status==='loading'`; renders children once resolved.
 - `RequireAuth` — if `status==='anon'` → `<Navigate to="/login?next=...">`. If `user.must_change_password` and not on `/account` or `/login` → `<Navigate to="/account?force=1">`. Otherwise renders `children` (or `<Outlet />` when used without children).
-- `RequireAdmin` — same as RequireAuth plus role check; non-admin → `<Navigate to="/forbidden">`.
+- `RequireAdmin` — same as RequireAuth plus role check; non-admin → `<Navigate to="/forbidden">`. Applied at route level for `/settings`, `/admin/users`, `/admin/audit`.
+- `useIsAdmin()` — selector from `authStore.ts`; use in-component for conditional rendering (hiding write buttons, showing `ReadOnlyHint`). Currently used by: `Header` (settings gear icon), `Sidebar` (Schedules, Configuration, Administration entries), `ToolDefinitionsPage`, `APICredentialsPage`, `SchedulesPage`.
+- `ReadOnlyHint` — amber banner (`src/components/auth/ReadOnlyHint.tsx`) rendered at page top when `!isAdmin`. Used by pages that are reachable by all authenticated users but restrict write operations to admins (ToolDefinitions, APICredentials, Schedules).
 - `MustChangePasswordBanner` — shown by Layout via `useMustChangePassword()`; links to `/account?force=1`.
 - `apiFetch` 401 handler — skips navigation when endpoint is `/api/v1/auth/login`; calls registered `on401` for all other endpoints. Register via `set401Handler()` (exported from `client.ts`).
 - Public routes (`/login`, `/forbidden`) are outside `RequireAuth`. `/account` is inside Layout/RequireAuth.
@@ -88,6 +91,9 @@ npx tsc --noEmit   # TypeScript check only
 | `/login` | `LoginPage` | Public |
 | `/forbidden` | `ForbiddenPage` | Public |
 | `/account` | `AccountPage` | RequireAuth (no admin check) |
+| `/settings` | `SettingsPage` | RequireAdmin |
+| `/admin/users` | `UsersPage` | RequireAdmin |
+| `/admin/audit` | `AuditLogPage` | RequireAdmin |
 
 ### Real-Time Updates (Protocol v2)
 

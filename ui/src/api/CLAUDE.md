@@ -30,6 +30,8 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `cliModels.ts` | CLI model CRUD + health check test (global, no X-Project header) |
 | `errors.ts` | Paginated error log list (`GET /api/v1/errors?page=&per_page=&type=`) |
 | `scheduledTasks.ts` | Scheduled task CRUD + run history (`GET/POST/PATCH/DELETE /api/v1/scheduled-tasks`, `GET /api/v1/scheduled-tasks/:id/runs`, `POST /api/v1/scheduled-tasks/:id/run-now`; requires X-Project header) |
+| `users.ts` | User management (admin-only, no X-Project header): `listUsers()→{users:User[]}`, `createUser(req)→User`, `updateUser(id,req)→User`, `resetUserPassword(id,req)→void`, `deleteUser(id)→void`. Errors: 409 `email_exists`, 400 `last_admin`/`cannot_delete_self`. |
+| `auditLog.ts` | Audit log (admin-only, no X-Project header): `listAuditLog({page,per_page,user_id,action})→AuditListResponse`. Returns `{items,total,page,per_page}`. |
 | `notifications.ts` | Notification channel CRUD + test + deliveries (`GET/POST/PATCH/DELETE /api/v1/notification-channels(/:id)`, `POST /api/v1/notification-channels/:id/test`, `GET /api/v1/notification-deliveries?channel_id=&limit=`; requires X-Project header) |
 | `nrvapp.ts` | Vertical app API: review CRUD (list/get/update-draft/approve/reject), config files (list/get/put/history/rollback), insights (summary/edit-rate/throughput). `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
 | `projects.ts` | Also exports `checkSafetyHook()` for dry-run safety hook check (no X-Project header) |
@@ -47,6 +49,16 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 ## REST API Endpoints
 
 ```
+# Users (admin-only, no X-Project header)
+GET    /api/v1/users                       # List all users
+POST   /api/v1/users                       # Create user; 409 email_exists
+PATCH  /api/v1/users/{id}                  # Partial update; 400 last_admin
+DELETE /api/v1/users/{id}                  # Delete; 400 cannot_delete_self | last_admin
+POST   /api/v1/users/{id}/reset-password   # Force-reset; sets must_change_password=1
+
+# Audit log (admin-only, no X-Project header)
+GET    /api/v1/audit-log                   # ?page=&per_page= (default 1/50, max 200) + ?user_id= + ?action=
+
 # Auth (no X-Project header; login is the only public route)
 POST /api/v1/auth/login           # Body: {email, password}. Returns {user: User}. Rate-limited: 5/5min per IP+email (429 + Retry-After)
 POST /api/v1/auth/logout          # Returns 204

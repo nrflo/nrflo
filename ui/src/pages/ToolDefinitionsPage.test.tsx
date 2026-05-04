@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { ToolDefinitionsPage } from './ToolDefinitionsPage'
 import type { ToolDefinition } from '@/types/toolDefinition'
 
+const mockUseIsAdmin = vi.fn().mockReturnValue(true)
+
+vi.mock('@/stores/authStore', () => ({
+  useIsAdmin: () => mockUseIsAdmin(),
+}))
+
 vi.mock('@/hooks/useToolDefinitions', () => ({
   useToolDefinitions: vi.fn(),
   useCreateToolDefinition: vi.fn(),
@@ -50,6 +56,7 @@ function setupMocks(toolDefs: ToolDefinition[] = []) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockUseIsAdmin.mockReturnValue(true)
 })
 
 describe('ToolDefinitionsPage', () => {
@@ -209,6 +216,38 @@ describe('ToolDefinitionsPage', () => {
       expect(screen.getByText('Delete Tool Definition')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /^Cancel$/i }))
       expect(screen.queryByText('Delete Tool Definition')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('viewer role (isAdmin=false)', () => {
+    beforeEach(() => {
+      mockUseIsAdmin.mockReturnValue(false)
+    })
+
+    it('hides New Tool Definition button', () => {
+      setupMocks([])
+      render(<ToolDefinitionsPage />)
+      expect(screen.queryByRole('button', { name: /New Tool Definition/i })).not.toBeInTheDocument()
+    })
+
+    it('hides edit and delete buttons for existing definitions', () => {
+      setupMocks([makeToolDef()])
+      render(<ToolDefinitionsPage />)
+      const row = screen.getByText('fetch-weather').closest('.border') as HTMLElement
+      expect(within(row).queryAllByRole('button')).toHaveLength(0)
+    })
+
+    it('shows ReadOnlyHint banner', () => {
+      setupMocks([])
+      render(<ToolDefinitionsPage />)
+      expect(screen.getByText('Read-only — admin required to make changes.')).toBeInTheDocument()
+    })
+
+    it('still renders tool definition rows', () => {
+      setupMocks([makeToolDef(), makeToolDef({ id: 'tool-2', name: 'send-sms' })])
+      render(<ToolDefinitionsPage />)
+      expect(screen.getByText('fetch-weather')).toBeInTheDocument()
+      expect(screen.getByText('send-sms')).toBeInTheDocument()
     })
   })
 })

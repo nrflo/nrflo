@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { APICredentialsPage } from './APICredentialsPage'
 import type { APICredential } from '@/types/apiCredential'
 
+const mockUseIsAdmin = vi.fn().mockReturnValue(true)
+
+vi.mock('@/stores/authStore', () => ({
+  useIsAdmin: () => mockUseIsAdmin(),
+}))
+
 vi.mock('@/hooks/useAPICredentials', () => ({
   useAPICredentials: vi.fn(),
   useCreateAPICredential: vi.fn(),
@@ -46,6 +52,7 @@ function setupMocks(credentials: APICredential[] = []) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockUseIsAdmin.mockReturnValue(true)
 })
 
 describe('APICredentialsPage', () => {
@@ -203,6 +210,34 @@ describe('APICredentialsPage', () => {
         'cred-1',
         expect.objectContaining({ onSuccess: expect.any(Function) })
       )
+    })
+  })
+
+  describe('viewer role (isAdmin=false)', () => {
+    beforeEach(() => {
+      mockUseIsAdmin.mockReturnValue(false)
+      setupMocks([makeCredential()])
+    })
+
+    it('shows ReadOnlyHint banner', () => {
+      render(<APICredentialsPage />)
+      expect(screen.getByText('Read-only — admin required to make changes.')).toBeInTheDocument()
+    })
+
+    it('hides New Credential button', () => {
+      render(<APICredentialsPage />)
+      expect(screen.queryByRole('button', { name: /New Credential/i })).not.toBeInTheDocument()
+    })
+
+    it('shows no write action buttons in credential rows', () => {
+      render(<APICredentialsPage />)
+      expect(screen.queryAllByRole('button')).toHaveLength(0)
+    })
+
+    it('still renders credential rows', () => {
+      render(<APICredentialsPage />)
+      expect(screen.getByText('anthropic')).toBeInTheDocument()
+      expect(screen.getByText('env:ANTHROPIC_API_KEY')).toBeInTheDocument()
     })
   })
 })

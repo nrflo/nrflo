@@ -8,12 +8,14 @@ import { DailyStats } from '@/components/layout/DailyStats'
 import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
 import { useProjectStore } from '@/stores/projectStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useIsAdmin } from '@/stores/authStore'
 
 export function Header() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const { currentProject, setCurrentProject, projects } = useProjectStore()
   const { theme, setTheme } = useThemeStore()
+  const isAdmin = useIsAdmin()
 
   const cycleTheme = () => {
     const next = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system'
@@ -112,13 +114,15 @@ export function Header() {
           <ThemeIcon className="h-5 w-5" />
         </button>
 
-        <Link
-          to="/settings"
-          className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          title="Settings"
-        >
-          <Settings className="h-5 w-5" />
-        </Link>
+        {isAdmin && (
+          <Link
+            to="/settings"
+            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </Link>
+        )}
       </div>
     </header>
   )

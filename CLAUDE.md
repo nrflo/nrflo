@@ -43,6 +43,10 @@ Update [agent_manual.md](agent_manual.md) when modifying:
 - Agent definition schema in `be/internal/model/agent_definition.go`
 - Workflow phase format or layer execution rules
 
+Do not document in [agent_manual.md](agent_manual.md):
+- API-mode agent configuration (`execution_mode='api'`, `tools` CSV, `api_max_iterations`, `customer_config_dir` manifest tools) — covered by root CLAUDE.md principles 35/36/37/40 and [be/internal/spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
+- API Credentials (`secret_ref`, `bearer_secret_ref`) — operator/admin territory, not user-facing agent authoring
+
 ### 2. Layer-Based Phase Execution
 
 Agents are grouped by `layer` number. All agents in the same layer run concurrently; layers execute in ascending order. The spawner validates:

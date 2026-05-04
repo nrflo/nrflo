@@ -191,6 +191,77 @@ func TestCompletedWorkflowDuration(t *testing.T) {
 	}
 }
 
+// TestCompletedWorkflowStats_PerModelContext verifies that total_tokens_used uses
+// the per-model context_length from cli_models instead of the hardcoded 200000 default.
+// opus_4_7_1m has context_length=1000000; two sessions at context_left=50 each
+// should yield 1000000 * (100-50)/100 * 2 = 1_000_000.
+func TestCompletedWorkflowStats_PerModelContext(t *testing.T) {
+	env := NewTestEnv(t)
+
+	env.CreateTicket(t, "CS-6", "Per-model context length")
+	env.InitWorkflow(t, "CS-6")
+
+	wfiID := env.GetWorkflowInstanceID(t, "CS-6", "test")
+
+	insertSessionWithContextLeft(t, env, "cs6-sess-1", "CS-6", wfiID,
+		"analyzer", "setup-analyzer", "opus_4_7_1m", "completed", "pass", 50)
+	insertSessionWithContextLeft(t, env, "cs6-sess-2", "CS-6", wfiID,
+		"builder", "implementor", "opus_4_7_1m", "completed", "pass", 50)
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
+	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {
+		t.Fatalf("failed to set workflow completed: %v", err)
+	}
+
+	status, err := getWorkflowStatus(t, env, "CS-6", &types.WorkflowGetRequest{Workflow: "test"})
+	if err != nil {
+		t.Fatalf("failed to get status: %v", err)
+	}
+
+	// 2 × (1000000 * (100-50)/100) = 2 × 500000 = 1000000
+	tokensUsed, ok := status["total_tokens_used"].(float64)
+	if !ok {
+		t.Fatalf("expected total_tokens_used to be float64, got %T (%v)", status["total_tokens_used"], status["total_tokens_used"])
+	}
+	if int64(tokensUsed) != 1_000_000 {
+		t.Errorf("expected total_tokens_used 1000000, got %v", tokensUsed)
+	}
+}
+
+// TestCompletedWorkflowStats_FallbackOnUnknownModel verifies that a session with
+// an unrecognized model_id falls back to the 200000 default context window.
+// context_left=50 with default window: 200000*(100-50)/100 = 100000.
+func TestCompletedWorkflowStats_FallbackOnUnknownModel(t *testing.T) {
+	env := NewTestEnv(t)
+
+	env.CreateTicket(t, "CS-7", "Unknown model fallback")
+	env.InitWorkflow(t, "CS-7")
+
+	wfiID := env.GetWorkflowInstanceID(t, "CS-7", "test")
+
+	insertSessionWithContextLeft(t, env, "cs7-sess-1", "CS-7", wfiID,
+		"analyzer", "setup-analyzer", "deleted-custom-model", "completed", "pass", 50)
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
+	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {
+		t.Fatalf("failed to set workflow completed: %v", err)
+	}
+
+	status, err := getWorkflowStatus(t, env, "CS-7", &types.WorkflowGetRequest{Workflow: "test"})
+	if err != nil {
+		t.Fatalf("failed to get status: %v", err)
+	}
+
+	// 200000 * (100-50)/100 = 100000
+	tokensUsed, ok := status["total_tokens_used"].(float64)
+	if !ok {
+		t.Fatalf("expected total_tokens_used to be float64, got %T (%v)", status["total_tokens_used"], status["total_tokens_used"])
+	}
+	if int64(tokensUsed) != 100_000 {
+		t.Errorf("expected total_tokens_used 100000 (200K fallback), got %v", tokensUsed)
+	}
+}
+
 // TestCompletedWorkflowNoAgents verifies that a completed workflow with no
 // agent sessions returns total_tokens_used = 0.
 func TestCompletedWorkflowNoAgents(t *testing.T) {

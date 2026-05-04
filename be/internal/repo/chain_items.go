@@ -66,10 +66,10 @@ func (r *ChainItemRepo) ListByChain(chainID string) ([]*model.ChainExecutionItem
 		LEFT JOIN chain_executions ce ON ce.id = ci.chain_id
 		LEFT JOIN tickets t ON LOWER(t.id) = LOWER(ci.ticket_id) AND LOWER(t.project_id) = LOWER(ce.project_id)
 		LEFT JOIN (
-			SELECT workflow_instance_id, SUM(200000 * (100 - context_left) / 100) AS total_tokens
-			FROM agent_sessions
-			WHERE status NOT IN ('running', 'continued') AND context_left IS NOT NULL
-			GROUP BY workflow_instance_id
+			SELECT s.workflow_instance_id, SUM(COALESCE(m.context_length, 200000) * (100 - s.context_left) / 100) AS total_tokens
+			FROM agent_sessions s LEFT JOIN cli_models m ON m.id = s.model_id
+			WHERE s.status NOT IN ('running', 'continued') AND s.context_left IS NOT NULL
+			GROUP BY s.workflow_instance_id
 		) tok ON tok.workflow_instance_id = ci.workflow_instance_id
 		WHERE ci.chain_id = ?
 		ORDER BY ci.position ASC`, chainID)

@@ -248,14 +248,21 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	agentHistory := s.buildAgentHistory(wi.ID, detailsMap)
 	result["agent_history"] = agentHistory
 
-	// Total tokens used (200K context window per agent)
+	// Total tokens used (per-session context window via cli_models)
 	if wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceProjectCompleted {
+		ctxLengths := s.loadModelContextLengths()
 		var totalTokens int64
 		for _, entry := range agentHistory {
 			if m, ok := entry.(map[string]interface{}); ok {
 				if cl, exists := m["context_left"]; exists {
 					if contextLeft, ok := cl.(int64); ok {
-						totalTokens += 200000 * (100 - contextLeft) / 100
+						ctxLen := int64(200000)
+						if modelID, ok := m["model_id"].(string); ok && modelID != "" {
+							if l, found := ctxLengths[modelID]; found {
+								ctxLen = l
+							}
+						}
+						totalTokens += ctxLen * (100 - contextLeft) / 100
 					}
 				}
 			}

@@ -6,6 +6,7 @@ import (
 )
 
 func TestClaudeAdapter_BuildCommand_DisallowsInteractiveTools(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
@@ -39,6 +40,7 @@ func TestClaudeAdapter_BuildCommand_DisallowsInteractiveTools(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildResumeCommand_DisallowsInteractiveTools(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := ResumeOptions{
@@ -65,6 +67,7 @@ func TestClaudeAdapter_BuildResumeCommand_DisallowsInteractiveTools(t *testing.T
 }
 
 func TestGetCLIAdapter_Codex(t *testing.T) {
+	t.Parallel()
 	adapter, err := GetCLIAdapter("codex")
 	if err != nil {
 		t.Fatalf("GetCLIAdapter('codex') returned error: %v", err)
@@ -75,6 +78,7 @@ func TestGetCLIAdapter_Codex(t *testing.T) {
 }
 
 func TestCodexAdapter_Capabilities(t *testing.T) {
+	t.Parallel()
 	adapter, _ := GetCLIAdapter("codex")
 
 	if adapter.SupportsSessionID() {
@@ -86,6 +90,7 @@ func TestCodexAdapter_Capabilities(t *testing.T) {
 }
 
 func TestCodexAdapter_MapModel(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	tests := []struct {
@@ -106,6 +111,7 @@ func TestCodexAdapter_MapModel(t *testing.T) {
 }
 
 func TestCodexAdapter_GetReasoningEffort(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	tests := []struct {
@@ -126,6 +132,7 @@ func TestCodexAdapter_GetReasoningEffort(t *testing.T) {
 }
 
 func TestCodexAdapter_BuildCommand(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	opts := SpawnOptions{
@@ -181,6 +188,7 @@ func TestCodexAdapter_BuildCommand(t *testing.T) {
 }
 
 func TestOpencodeAdapter_GetReasoningEffort(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	tests := []struct {
@@ -205,6 +213,7 @@ func TestOpencodeAdapter_GetReasoningEffort(t *testing.T) {
 }
 
 func TestOpencodeAdapter_MapModel(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	tests := []struct {
@@ -227,6 +236,7 @@ func TestOpencodeAdapter_MapModel(t *testing.T) {
 }
 
 func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	opts := SpawnOptions{
@@ -274,6 +284,7 @@ func TestOpencodeAdapter_BuildCommand_WithVariant(t *testing.T) {
 }
 
 func TestOpencodeAdapter_BuildCommand_WithoutVariant(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	opts := SpawnOptions{
@@ -304,6 +315,7 @@ func TestOpencodeAdapter_BuildCommand_WithoutVariant(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildCommand_IncludesPartialMessages(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
@@ -321,6 +333,7 @@ func TestClaudeAdapter_BuildCommand_IncludesPartialMessages(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildResumeCommand_IncludesPartialMessages(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := ResumeOptions{
@@ -337,6 +350,7 @@ func TestClaudeAdapter_BuildResumeCommand_IncludesPartialMessages(t *testing.T) 
 }
 
 func TestClaudeAdapter_BuildInteractiveCommand_OmitsPartialMessages(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := InteractiveSpawnOptions{
@@ -354,6 +368,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_OmitsPartialMessages(t *testing.T
 }
 
 func TestClaudeAdapter_MapModel(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	tests := []struct {
@@ -377,6 +392,7 @@ func TestClaudeAdapter_MapModel(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildCommand_MapsModel(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
@@ -398,6 +414,7 @@ func TestClaudeAdapter_BuildCommand_MapsModel(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildCommand_SettingsJSON(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 	settingsJSON := `{"hooks":{"PreToolUse":[]}}`
 
@@ -420,6 +437,7 @@ func TestClaudeAdapter_BuildCommand_SettingsJSON(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildCommand_EmptySettingsJSON(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
@@ -438,6 +456,7 @@ func TestClaudeAdapter_BuildCommand_EmptySettingsJSON(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildResumeCommand_SettingsJSON(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 	settingsJSON := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[]}]}}`
 
@@ -460,6 +479,7 @@ func TestClaudeAdapter_BuildResumeCommand_SettingsJSON(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildResumeCommand_EmptySettingsJSON(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := ResumeOptions{
@@ -477,6 +497,7 @@ func TestClaudeAdapter_BuildResumeCommand_EmptySettingsJSON(t *testing.T) {
 }
 
 func TestOpencodeAdapter_BuildCommand_IgnoresSettingsJSON(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	opts := SpawnOptions{
@@ -494,6 +515,7 @@ func TestOpencodeAdapter_BuildCommand_IgnoresSettingsJSON(t *testing.T) {
 }
 
 func TestCodexAdapter_BuildCommand_IgnoresSettingsJSON(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	opts := SpawnOptions{
@@ -513,6 +535,7 @@ func TestCodexAdapter_BuildCommand_IgnoresSettingsJSON(t *testing.T) {
 // --- ReasoningEffort: Claude --effort flag ---
 
 func TestClaudeAdapter_BuildCommand_ReasoningEffort(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	tests := []struct {
@@ -557,6 +580,7 @@ func TestClaudeAdapter_BuildCommand_ReasoningEffort(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildCommand_EffortAdjacentToModel(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 	opts := SpawnOptions{
 		Model:           "opus_4_7",
@@ -590,6 +614,7 @@ func TestClaudeAdapter_BuildCommand_EffortAdjacentToModel(t *testing.T) {
 }
 
 func TestClaudeAdapter_BuildResumeCommand_ReasoningEffort(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	tests := []struct {
@@ -629,6 +654,7 @@ func TestClaudeAdapter_BuildResumeCommand_ReasoningEffort(t *testing.T) {
 }
 
 func TestOpencodeAdapter_BuildCommand_IgnoresReasoningEffortField(t *testing.T) {
+	t.Parallel()
 	// OpencodeAdapter uses its own --variant logic driven by MapModel + GetReasoningEffort.
 	// The ClaudeAdapter-specific --effort flag must not leak into opencode argv.
 	adapter := &OpencodeAdapter{}
@@ -646,6 +672,7 @@ func TestOpencodeAdapter_BuildCommand_IgnoresReasoningEffortField(t *testing.T) 
 }
 
 func TestCodexAdapter_BuildCommand_IgnoresEffortFlag(t *testing.T) {
+	t.Parallel()
 	// CodexAdapter exposes reasoning effort via -c model_reasoning_effort="..." not --effort.
 	adapter := &CodexAdapter{}
 	opts := SpawnOptions{
@@ -662,6 +689,7 @@ func TestCodexAdapter_BuildCommand_IgnoresEffortFlag(t *testing.T) {
 }
 
 func TestUsesStdinPrompt(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		cli  string
 		want bool

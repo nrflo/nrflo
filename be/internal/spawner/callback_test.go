@@ -14,6 +14,7 @@ import (
 // TestHandleCompletion_ExitZeroWithExplicitCallback tests that explicit callback
 // is detected during the grace period
 func TestHandleCompletion_ExitZeroWithExplicitCallback(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -75,6 +76,7 @@ func TestHandleCompletion_ExitZeroWithExplicitCallback(t *testing.T) {
 // TestHandleCompletion_CallbackStatusMapping tests that callback result
 // is correctly mapped to callback status in registerAgentStopWithReason
 func TestHandleCompletion_CallbackStatusMapping(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -125,6 +127,7 @@ func TestHandleCompletion_CallbackStatusMapping(t *testing.T) {
 // TestHandleCompletion_CallbackWithOtherResults verifies callback doesn't
 // interfere with other result types
 func TestHandleCompletion_CallbackWithOtherResults(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name           string
 		result         string
@@ -194,6 +197,7 @@ func TestHandleCompletion_CallbackWithOtherResults(t *testing.T) {
 // TestHandleCompletion_CallbackGetAgentResult tests that getAgentResult
 // correctly returns "callback" when the session has callback result
 func TestHandleCompletion_CallbackGetAgentResult(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 

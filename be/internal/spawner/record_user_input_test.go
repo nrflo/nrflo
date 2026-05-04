@@ -13,6 +13,7 @@ import (
 // TestRecordUserInput_NoProcReturnsFalse verifies that RecordUserInput returns
 // false when no proc is registered for the given sessionID.
 func TestRecordUserInput_NoProcReturnsFalse(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	got := sp.RecordUserInput("nonexistent-session-xyz", "hello")
 	if got {
@@ -23,6 +24,7 @@ func TestRecordUserInput_NoProcReturnsFalse(t *testing.T) {
 // TestRecordUserInput_ProcHitReturnsTrue verifies that RecordUserInput returns
 // true when a proc is registered for the sessionID.
 func TestRecordUserInput_ProcHitReturnsTrue(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "RUI-HIT-1"
 	wfiID := env.initWorkflow(t, ticketID)
@@ -49,6 +51,7 @@ func TestRecordUserInput_ProcHitReturnsTrue(t *testing.T) {
 // TestRecordUserInput_ProcHitWritesToDB verifies that the message is persisted
 // to agent_messages with category="user_input".
 func TestRecordUserInput_ProcHitWritesToDB(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "RUI-DB-1"
 	wfiID := env.initWorkflow(t, ticketID)
@@ -87,6 +90,7 @@ func TestRecordUserInput_ProcHitWritesToDB(t *testing.T) {
 // TestRecordUserInput_SeqIncrementsOnMultipleCalls verifies that successive
 // RecordUserInput calls produce sequential DB rows.
 func TestRecordUserInput_SeqIncrementsOnMultipleCalls(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "RUI-SEQ-1"
 	wfiID := env.initWorkflow(t, ticketID)
@@ -127,6 +131,7 @@ func TestRecordUserInput_SeqIncrementsOnMultipleCalls(t *testing.T) {
 // TestRecordUserInput_BroadcastFired verifies that a messages.updated WS event
 // is broadcast after a user_input message is recorded.
 func TestRecordUserInput_BroadcastFired(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "RUI-BC-1"
 	wfiID := env.initWorkflow(t, ticketID)
@@ -171,6 +176,7 @@ func TestRecordUserInput_BroadcastFired(t *testing.T) {
 // TestRecordUserInput_UnregisterAfterRemoval verifies that after
 // unregisterSessionProcs the same session returns false.
 func TestRecordUserInput_UnregisterAfterRemoval(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	proc := &processInfo{

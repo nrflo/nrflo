@@ -14,6 +14,7 @@ func skipIfJqMissing(t *testing.T) {
 }
 
 func TestCheckSafetyHook_EmptyCommand(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{Enabled: true, AllowGit: true}
 	_, _, err := CheckSafetyHook(cfg, "")
@@ -23,6 +24,7 @@ func TestCheckSafetyHook_EmptyCommand(t *testing.T) {
 }
 
 func TestCheckSafetyHook_AllowedCommand(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:          true,
@@ -42,6 +44,7 @@ func TestCheckSafetyHook_AllowedCommand(t *testing.T) {
 }
 
 func TestCheckSafetyHook_BlockedHardcodedPattern(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:  true,
@@ -61,6 +64,7 @@ func TestCheckSafetyHook_BlockedHardcodedPattern(t *testing.T) {
 }
 
 func TestCheckSafetyHook_BlockedUserDefinedPattern(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:           true,
@@ -81,6 +85,7 @@ func TestCheckSafetyHook_BlockedUserDefinedPattern(t *testing.T) {
 }
 
 func TestCheckSafetyHook_BlockedGitOpWhenAllowGitFalse(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:          true,
@@ -100,6 +105,7 @@ func TestCheckSafetyHook_BlockedGitOpWhenAllowGitFalse(t *testing.T) {
 }
 
 func TestCheckSafetyHook_AllowedGitOpWhenAllowGitTrue(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:          true,
@@ -116,6 +122,7 @@ func TestCheckSafetyHook_AllowedGitOpWhenAllowGitTrue(t *testing.T) {
 }
 
 func TestCheckSafetyHook_AllowedRmOnAllowedPath(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:          true,
@@ -146,6 +153,7 @@ func TestCheckSafetyHook_AllowedRmOnAllowedPath(t *testing.T) {
 }
 
 func TestCheckSafetyHook_BlockedRmOnNonAllowedPath(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:          true,
@@ -166,6 +174,7 @@ func TestCheckSafetyHook_BlockedRmOnNonAllowedPath(t *testing.T) {
 }
 
 func TestCheckSafetyHook_BlockedRmWhenNoAllowedPaths(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:  true,
@@ -185,6 +194,7 @@ func TestCheckSafetyHook_BlockedRmWhenNoAllowedPaths(t *testing.T) {
 }
 
 func TestCheckSafetyHook_HardcodedPatternsVariants(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:  true,
@@ -214,6 +224,7 @@ func TestCheckSafetyHook_HardcodedPatternsVariants(t *testing.T) {
 }
 
 func TestCheckSafetyHook_CommandWithSpecialJSONChars(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	// Command containing special JSON chars — should not cause a marshal/parse error
 	cfg := SafetyHookConfig{
@@ -232,6 +243,7 @@ func TestCheckSafetyHook_CommandWithSpecialJSONChars(t *testing.T) {
 }
 
 func TestCheckSafetyHook_MultipleUserPatterns(t *testing.T) {
+	t.Parallel()
 	skipIfJqMissing(t)
 	cfg := SafetyHookConfig{
 		Enabled:           true,

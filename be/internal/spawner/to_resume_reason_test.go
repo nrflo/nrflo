@@ -14,6 +14,7 @@ import (
 )
 
 func TestFetchPreviousDataAndReason_WithDataAndReason(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -33,6 +34,7 @@ func TestFetchPreviousDataAndReason_WithDataAndReason(t *testing.T) {
 }
 
 func TestFetchPreviousDataAndReason_NoContinuedSessionReturnsEmptyReason(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -48,6 +50,7 @@ func TestFetchPreviousDataAndReason_NoContinuedSessionReturnsEmptyReason(t *test
 }
 
 func TestFetchPreviousDataAndReason_NullReason(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -67,6 +70,7 @@ func TestFetchPreviousDataAndReason_NullReason(t *testing.T) {
 }
 
 func TestFetchPreviousDataAndReason_AllStallReasons(t *testing.T) {
+	t.Parallel()
 	reasons := []string{
 		"stall_restart_start_stall",
 		"stall_restart_running_stall",

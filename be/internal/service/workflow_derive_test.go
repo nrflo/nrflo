@@ -91,6 +91,7 @@ var twoPhases = []PhaseDef{
 }
 
 func TestDerivePhaseStatuses(t *testing.T) {
+	t.Parallel()
 	type wantPhase struct {
 		status string
 		result string
@@ -293,6 +294,7 @@ func assertPhase(t *testing.T, phases map[string]model.PhaseStatus, name, wantSt
 }
 
 func TestDerivePhaseStatuses_UnknownPhaseIgnored(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	// Insert session for an agent_type not in the phases slice
@@ -306,6 +308,7 @@ func TestDerivePhaseStatuses_UnknownPhaseIgnored(t *testing.T) {
 }
 
 func TestDerivePhaseStatuses_EmptyPhasesSlice(t *testing.T) {
+	t.Parallel()
 	_, svc, wfiID := setupDeriveTestEnv(t)
 
 	got := svc.derivePhaseStatuses(wfiID, []PhaseDef{})
@@ -316,6 +319,7 @@ func TestDerivePhaseStatuses_EmptyPhasesSlice(t *testing.T) {
 }
 
 func TestDeriveCurrentPhase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(pool *db.Pool, wfiID string)
@@ -381,6 +385,7 @@ func TestDeriveCurrentPhase(t *testing.T) {
 }
 
 func TestDerivePhaseStatuses_ThreeLayerSkipInference(t *testing.T) {
+	t.Parallel()
 	pool, svc, _ := setupDeriveTestEnv(t)
 
 	// Add extra workflow with 3 layers
@@ -420,6 +425,7 @@ func TestDerivePhaseStatuses_ThreeLayerSkipInference(t *testing.T) {
 // TestDerivePhaseStatuses_NoSkipWhenNoLaterLayers verifies that a phase with no session
 // is NOT inferred as skipped when no later layers have sessions.
 func TestDerivePhaseStatuses_NoSkipWhenNoLaterLayers(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	// Only analyzer (layer 0) has a session; builder (layer 1) has none.
@@ -435,6 +441,7 @@ func TestDerivePhaseStatuses_NoSkipWhenNoLaterLayers(t *testing.T) {
 // TestDerivePhaseStatuses_SessionForDifferentWFI verifies isolation between
 // workflow instances — sessions from another instance don't affect results.
 func TestDerivePhaseStatuses_SessionForDifferentWFI(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	// Insert a second workflow def so the FK constraint passes
@@ -466,6 +473,7 @@ func TestDerivePhaseStatuses_SessionForDifferentWFI(t *testing.T) {
 // TestDeriveWorkflowProgress_SkippedPhasesCountAsCompleted verifies that skipped phases
 // count toward completed progress (e.g., 5/5 not 3/5 when 2 phases are skipped).
 func TestDeriveWorkflowProgress_SkippedPhasesCountAsCompleted(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	// analyzer (layer 0) is explicitly skipped; builder (layer 1) is completed

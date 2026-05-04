@@ -24,6 +24,7 @@ func insertChain(t *testing.T, svc *ChainService, projectID, chainID string, sta
 
 // TestDeleteChain_DeletableStatuses verifies pending/completed/failed/canceled can be deleted.
 func TestDeleteChain_DeletableStatuses(t *testing.T) {
+	t.Parallel()
 	cases := []model.ChainStatus{
 		model.ChainStatusPending,
 		model.ChainStatusCompleted,
@@ -48,6 +49,7 @@ func TestDeleteChain_DeletableStatuses(t *testing.T) {
 
 // TestDeleteChain_RunningRejected verifies running chains cannot be deleted.
 func TestDeleteChain_RunningRejected(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -65,6 +67,7 @@ func TestDeleteChain_RunningRejected(t *testing.T) {
 
 // TestDeleteChain_NotFound verifies error when chain does not exist.
 func TestDeleteChain_NotFound(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -81,6 +84,7 @@ func TestDeleteChain_NotFound(t *testing.T) {
 
 // TestDeleteChain_ProjectMismatch verifies error when chain belongs to a different project.
 func TestDeleteChain_ProjectMismatch(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -98,6 +102,7 @@ func TestDeleteChain_ProjectMismatch(t *testing.T) {
 
 // TestDeleteChain_ChainGoneAfterDelete verifies chain is no longer retrievable after deletion.
 func TestDeleteChain_ChainGoneAfterDelete(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 

@@ -67,6 +67,10 @@ export type WSEventType =
   | 'notification_channel.deleted'
   | 'notification.delivered'
   | 'notification.failed'
+  | 'nrvapp.review_created'
+  | 'nrvapp.review_updated'
+  | 'nrvapp.config_updated'
+  | 'nrvapp.dispatch_completed'
   | 'test.echo'
 
 export interface WSEvent {

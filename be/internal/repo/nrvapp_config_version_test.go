@@ -28,6 +28,7 @@ func setupNrvappConfigVersionDB(t *testing.T) (*NrvappConfigVersionRepo, string)
 }
 
 func TestNrvappConfigVersionRepo_InsertAutoVersion(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	for i, wantVersion := range []int{1, 2, 3} {
@@ -52,6 +53,7 @@ func TestNrvappConfigVersionRepo_InsertAutoVersion(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_VersionsIndependentPerFile(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	// Two inserts for config.yaml → versions 1 and 2
@@ -76,6 +78,7 @@ func TestNrvappConfigVersionRepo_VersionsIndependentPerFile(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_LatestVersionUnknown(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	ver, err := r.LatestVersion(projectID, "nonexistent.yaml")
@@ -88,6 +91,7 @@ func TestNrvappConfigVersionRepo_LatestVersionUnknown(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_LatestVersionAfterInserts(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	for i := 0; i < 3; i++ {
@@ -105,6 +109,7 @@ func TestNrvappConfigVersionRepo_LatestVersionAfterInserts(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_GetSpecificVersion(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	actor := "alice"
@@ -141,6 +146,7 @@ func TestNrvappConfigVersionRepo_GetSpecificVersion(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_GetNotFound(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	_, err := r.Get(projectID, "missing.yaml", 99)
@@ -150,6 +156,7 @@ func TestNrvappConfigVersionRepo_GetNotFound(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_History_DescOrder(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	for _, content := range []string{"v1", "v2", "v3"} {
@@ -181,6 +188,7 @@ func TestNrvappConfigVersionRepo_History_DescOrder(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_HistoryEmpty(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	history, err := r.History(projectID, "empty.yaml")
@@ -193,6 +201,7 @@ func TestNrvappConfigVersionRepo_HistoryEmpty(t *testing.T) {
 }
 
 func TestNrvappConfigVersionRepo_SequentialInsertsMonotonic(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappConfigVersionDB(t)
 
 	v1 := &model.NrvappConfigVersion{ProjectID: projectID, File: "seq.yaml", Content: []byte("first")}

@@ -53,6 +53,7 @@ func makeTicketWFI(suffix string) *model.WorkflowInstance {
 // TestUpdateWorktree_SetsFields verifies that UpdateWorktree persists worktree_path and
 // branch_name correctly and they are readable via Get.
 func TestUpdateWorktree_SetsFields(t *testing.T) {
+	t.Parallel()
 	r, _ := makeWorktreeTestDB(t, "wt1")
 	wi := makeTicketWFI("wt1")
 	if err := r.Create(wi); err != nil {
@@ -85,6 +86,7 @@ func TestUpdateWorktree_SetsFields(t *testing.T) {
 
 // TestUpdateWorktree_EmptyStrings_StoresNull verifies that empty strings result in NULL columns.
 func TestUpdateWorktree_EmptyStrings_StoresNull(t *testing.T) {
+	t.Parallel()
 	r, _ := makeWorktreeTestDB(t, "wt2")
 	wi := makeTicketWFI("wt2")
 	if err := r.Create(wi); err != nil {
@@ -111,6 +113,7 @@ func TestUpdateWorktree_EmptyStrings_StoresNull(t *testing.T) {
 
 // TestUpdateWorktree_NonexistentID_ReturnsError verifies that updating a missing row returns an error.
 func TestUpdateWorktree_NonexistentID_ReturnsError(t *testing.T) {
+	t.Parallel()
 	r, _ := makeWorktreeTestDB(t, "wt3")
 	err := r.UpdateWorktree("nonexistent-id", "/tmp/worktrees/x", "x")
 	if err == nil {
@@ -121,6 +124,7 @@ func TestUpdateWorktree_NonexistentID_ReturnsError(t *testing.T) {
 // TestCreate_NullWorktreeFields verifies that a newly created workflow instance
 // (without worktree info) has NULL worktree_path and branch_name.
 func TestCreate_NullWorktreeFields(t *testing.T) {
+	t.Parallel()
 	r, _ := makeWorktreeTestDB(t, "wt4")
 	wi := makeTicketWFI("wt4")
 	if err := r.Create(wi); err != nil {
@@ -142,6 +146,7 @@ func TestCreate_NullWorktreeFields(t *testing.T) {
 // TestCreate_WithWorktreeFields_Roundtrip verifies that a workflow instance created
 // with WorktreePath and BranchName pre-set persists and reads back correctly.
 func TestCreate_WithWorktreeFields_Roundtrip(t *testing.T) {
+	t.Parallel()
 	r, _ := makeWorktreeTestDB(t, "wt5")
 	wi := makeTicketWFI("wt5")
 	wi.WorktreePath = sql.NullString{String: "/tmp/nrflo/worktrees/tkt-wt5", Valid: true}

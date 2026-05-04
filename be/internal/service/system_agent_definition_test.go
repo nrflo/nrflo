@@ -31,6 +31,7 @@ func intPtr(v int) *int { return &v }
 // --- Create + Get roundtrip ---
 
 func TestSystemAgentDef_CreateAndGet(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -112,6 +113,7 @@ func TestSystemAgentDef_CreateAndGet(t *testing.T) {
 // --- Default values ---
 
 func TestSystemAgentDef_CreateWithDefaults(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -146,6 +148,7 @@ func TestSystemAgentDef_CreateWithDefaults(t *testing.T) {
 // --- Create with missing ID ---
 
 func TestSystemAgentDef_CreateMissingID(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -163,6 +166,7 @@ func TestSystemAgentDef_CreateMissingID(t *testing.T) {
 // --- Duplicate create ---
 
 func TestSystemAgentDef_CreateDuplicate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -182,6 +186,7 @@ func TestSystemAgentDef_CreateDuplicate(t *testing.T) {
 // --- Get not found ---
 
 func TestSystemAgentDef_GetNotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -197,6 +202,7 @@ func TestSystemAgentDef_GetNotFound(t *testing.T) {
 // --- List ---
 
 func TestSystemAgentDef_List(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -241,6 +247,7 @@ func TestSystemAgentDef_List(t *testing.T) {
 // --- Partial update ---
 
 func TestSystemAgentDef_Update_PartialUpdate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -274,6 +281,7 @@ func TestSystemAgentDef_Update_PartialUpdate(t *testing.T) {
 }
 
 func TestSystemAgentDef_Update_PointerFields(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -305,6 +313,7 @@ func TestSystemAgentDef_Update_PointerFields(t *testing.T) {
 }
 
 func TestSystemAgentDef_Update_NoFieldsIsNoOp(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -331,6 +340,7 @@ func TestSystemAgentDef_Update_NoFieldsIsNoOp(t *testing.T) {
 // --- Update not found ---
 
 func TestSystemAgentDef_Update_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -347,6 +357,7 @@ func TestSystemAgentDef_Update_NotFound(t *testing.T) {
 // --- Delete ---
 
 func TestSystemAgentDef_Delete(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -369,6 +380,7 @@ func TestSystemAgentDef_Delete(t *testing.T) {
 }
 
 func TestSystemAgentDef_Delete_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -384,6 +396,7 @@ func TestSystemAgentDef_Delete_NotFound(t *testing.T) {
 // --- Case-insensitive ID lookup ---
 
 func TestSystemAgentDef_CaseInsensitiveID(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 

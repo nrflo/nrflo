@@ -124,6 +124,7 @@ func (env *testEnv) createSession(t *testing.T, modelID string) *model.AgentSess
 // TestHandleCompletion_ExitZeroNoExplicitCompletion tests the fallback case
 // where agent exits cleanly (code 0) but does not call agent complete/fail/continue
 func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -183,6 +184,7 @@ func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
 // before the process exits, handleCompletion preserves the reason instead of
 // overwriting it with 'implicit'.
 func TestHandleCompletion_ExitZeroPreservesExplicitPassReason(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -240,6 +242,7 @@ func TestHandleCompletion_ExitZeroPreservesExplicitPassReason(t *testing.T) {
 // TestHandleCompletion_ExitZeroWithExplicitFail tests that explicit fail
 // is detected during the grace period
 func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -299,6 +302,7 @@ func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
 // TestHandleCompletion_ExitZeroWithExplicitContinue tests that explicit continue
 // is detected during the grace period
 func TestHandleCompletion_ExitZeroWithExplicitContinue(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -358,6 +362,7 @@ func TestHandleCompletion_ExitZeroWithExplicitContinue(t *testing.T) {
 // TestHandleCompletion_NonZeroExitCode tests that non-zero exit code
 // results in immediate fail with exit_code reason
 func TestHandleCompletion_NonZeroExitCode(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -411,6 +416,7 @@ func TestHandleCompletion_NonZeroExitCode(t *testing.T) {
 
 // TestHandleCompletion_EndedAtTimestamp tests that ended_at timestamp is set
 func TestHandleCompletion_EndedAtTimestamp(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 

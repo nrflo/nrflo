@@ -44,6 +44,7 @@ func makeDelivery(channelID, projectID, eventType string) *model.NotificationDel
 }
 
 func TestNotificationDeliveryRepo_Insert(t *testing.T) {
+	t.Parallel()
 	dr, projectID, channelID := setupNotificationDeliveryDB(t)
 	d := makeDelivery(channelID, projectID, "orchestration.completed")
 	if err := dr.Insert(d); err != nil {
@@ -58,6 +59,7 @@ func TestNotificationDeliveryRepo_Insert(t *testing.T) {
 }
 
 func TestNotificationDeliveryRepo_ListPending_ExcludesSentFailedGivingUp(t *testing.T) {
+	t.Parallel()
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
@@ -106,6 +108,7 @@ func TestNotificationDeliveryRepo_ListPending_ExcludesSentFailedGivingUp(t *test
 }
 
 func TestNotificationDeliveryRepo_ListPending_ExcludesFutureNextAttempt(t *testing.T) {
+	t.Parallel()
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
@@ -159,6 +162,7 @@ func TestNotificationDeliveryRepo_ListPending_ExcludesFutureNextAttempt(t *testi
 }
 
 func TestNotificationDeliveryRepo_ListByChannel_NewestFirst(t *testing.T) {
+	t.Parallel()
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
@@ -205,6 +209,7 @@ func TestNotificationDeliveryRepo_ListByChannel_NewestFirst(t *testing.T) {
 }
 
 func TestNotificationDeliveryRepo_UpdateStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	dr, _, _ := setupNotificationDeliveryDB(t)
 	if err := dr.UpdateStatus("no-such", model.DeliveryStatusSent, 1, "", nil); err == nil {
 		t.Errorf("UpdateStatus missing: expected error, got nil")
@@ -212,6 +217,7 @@ func TestNotificationDeliveryRepo_UpdateStatus_NotFound(t *testing.T) {
 }
 
 func TestNotificationDeliveryRepo_ListByChannel_Limit(t *testing.T) {
+	t.Parallel()
 	dr, projectID, channelID := setupNotificationDeliveryDB(t)
 	for i := 0; i < 5; i++ {
 		dr.Insert(makeDelivery(channelID, projectID, "e"))

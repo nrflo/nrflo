@@ -11,6 +11,7 @@ import (
 
 // TestCreateChain_WithCustomOrder verifies that a valid custom order is used instead of auto-sort.
 func TestCreateChain_WithCustomOrder(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -55,6 +56,7 @@ func TestCreateChain_WithCustomOrder(t *testing.T) {
 
 // TestCreateChain_WithCustomOrderRespectingDeps verifies custom order that respects deps is accepted.
 func TestCreateChain_WithCustomOrderRespectingDeps(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -88,6 +90,7 @@ func TestCreateChain_WithCustomOrderRespectingDeps(t *testing.T) {
 
 // TestCreateChain_WithInvalidCustomOrder verifies that blocker-after-dependent is rejected.
 func TestCreateChain_WithInvalidCustomOrder(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -117,6 +120,7 @@ func TestCreateChain_WithInvalidCustomOrder(t *testing.T) {
 
 // TestCreateChain_WithMismatchedTicketSet verifies that OrderedTicketIDs not matching expanded set is rejected.
 func TestCreateChain_WithMismatchedTicketSet(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -141,6 +145,7 @@ func TestCreateChain_WithMismatchedTicketSet(t *testing.T) {
 
 // TestCreateChain_WithMismatchedSizeLess verifies OrderedTicketIDs with fewer tickets is rejected.
 func TestCreateChain_WithMismatchedSizeLess(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -164,6 +169,7 @@ func TestCreateChain_WithMismatchedSizeLess(t *testing.T) {
 
 // TestCreateChain_WithoutCustomOrder_BackwardCompat verifies auto-sort still works when omitted.
 func TestCreateChain_WithoutCustomOrder_BackwardCompat(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -201,6 +207,7 @@ func TestCreateChain_WithoutCustomOrder_BackwardCompat(t *testing.T) {
 
 // TestCreateChain_DepsPopulatedInResponse verifies deps map is included in the create response.
 func TestCreateChain_DepsPopulatedInResponse(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -233,6 +240,7 @@ func TestCreateChain_DepsPopulatedInResponse(t *testing.T) {
 
 // TestUpdateChain_WithCustomOrder verifies that a valid custom order is used on update.
 func TestUpdateChain_WithCustomOrder(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -279,6 +287,7 @@ func TestUpdateChain_WithCustomOrder(t *testing.T) {
 
 // TestUpdateChain_WithInvalidCustomOrder verifies invalid order is rejected on update.
 func TestUpdateChain_WithInvalidCustomOrder(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -316,6 +325,7 @@ func TestUpdateChain_WithInvalidCustomOrder(t *testing.T) {
 
 // TestGetChainWithItems_IncludesDeps verifies deps map is included in GetChainWithItems response.
 func TestGetChainWithItems_IncludesDeps(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -364,6 +374,7 @@ func TestGetChainWithItems_IncludesDeps(t *testing.T) {
 
 // TestUpdateChain_DepsPopulatedInResponse verifies deps map is included in update response.
 func TestUpdateChain_DepsPopulatedInResponse(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 

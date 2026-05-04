@@ -92,6 +92,7 @@ func assertBoolKey(t *testing.T, state map[string]interface{}, key string, want 
 // workflow instance with endless_loop=true and stop_endless_loop_after_iteration=false
 // emits both keys in the v4 state response.
 func TestBuildV4State_EndlessLoop_ProjectScopedActive(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupEndlessLoopTestEnv(t)
 
 	wfiID := "wfi-proj-endless"
@@ -116,6 +117,7 @@ func TestBuildV4State_EndlessLoop_ProjectScopedActive(t *testing.T) {
 // response reflects the updated value on re-read (proving the field reads from DB
 // state, not a cached construct).
 func TestBuildV4State_EndlessLoop_StopAfterIterationFlip(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupEndlessLoopTestEnv(t)
 
 	wfiID := "wfi-proj-flip"
@@ -152,6 +154,7 @@ func TestBuildV4State_EndlessLoop_StopAfterIterationFlip(t *testing.T) {
 // both keys present and set to false — satisfying the acceptance criterion that
 // the keys are unconditional.
 func TestBuildV4State_EndlessLoop_TicketScopedDefaultFalse(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupEndlessLoopTestEnv(t)
 
 	wfiID := "wfi-ticket-default"
@@ -175,6 +178,7 @@ func TestBuildV4State_EndlessLoop_TicketScopedDefaultFalse(t *testing.T) {
 // four combinations of (endless_loop, stop_endless_loop_after_iteration) values
 // to guard against any regression that would make the keys conditional.
 func TestBuildV4State_EndlessLoop_KeysAlwaysPresent(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name      string
 		endless   bool

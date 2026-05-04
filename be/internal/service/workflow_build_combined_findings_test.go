@@ -11,6 +11,7 @@ import (
 // workflow-level findings (e.g. user_instructions) stored in workflow_instances.findings
 // do NOT appear in BuildCombinedFindings output.
 func TestBuildCombinedFindings_ExcludesWorkflowLevelFindings(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	wfFindings := map[string]interface{}{
@@ -39,6 +40,7 @@ func TestBuildCombinedFindings_ExcludesWorkflowLevelFindings(t *testing.T) {
 // TestBuildCombinedFindings_IncludesAgentSessionFindings verifies that agent session
 // findings are included, keyed by agent_type.
 func TestBuildCombinedFindings_IncludesAgentSessionFindings(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	sessionFindings := `{"my_key":"my_value","count":42}`
@@ -62,6 +64,7 @@ func TestBuildCombinedFindings_IncludesAgentSessionFindings(t *testing.T) {
 // TestBuildCombinedFindings_EmptyWhenNoSessions verifies that the result is empty
 // when no agent sessions exist, regardless of workflow-level findings.
 func TestBuildCombinedFindings_EmptyWhenNoSessions(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	wfFindings := map[string]interface{}{
@@ -82,6 +85,7 @@ func TestBuildCombinedFindings_EmptyWhenNoSessions(t *testing.T) {
 // TestBuildCombinedFindings_MultipleAgents verifies that multiple agent sessions
 // are each keyed by their agent_type in the combined map.
 func TestBuildCombinedFindings_MultipleAgents(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-analyzer", wfiID, "analyzer", "completed", "pass", "")
@@ -117,6 +121,7 @@ func TestBuildCombinedFindings_MultipleAgents(t *testing.T) {
 // TestBuildCombinedFindings_SessionWithModelID verifies that sessions with a model_id
 // are keyed as "agent_type:model_id" in the combined map.
 func TestBuildCombinedFindings_SessionWithModelID(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-opus", wfiID, "analyzer", "completed", "pass", "")
@@ -136,6 +141,7 @@ func TestBuildCombinedFindings_SessionWithModelID(t *testing.T) {
 // TestBuildCombinedFindings_InvalidFindingsJSONSkipped verifies that sessions with
 // invalid JSON in findings are silently skipped.
 func TestBuildCombinedFindings_InvalidFindingsJSONSkipped(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-bad", wfiID, "analyzer", "completed", "pass", "")
@@ -154,6 +160,7 @@ func TestBuildCombinedFindings_InvalidFindingsJSONSkipped(t *testing.T) {
 // If it did, JavaScript's Object.keys on a string returns character indices,
 // causing one-char-per-line rendering in the UI.
 func TestBuildCombinedFindings_NoLeakFromWorkflowLevel(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	wfData := map[string]interface{}{

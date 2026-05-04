@@ -17,6 +17,7 @@ import (
 // TestExpandProjectFindings_SingleKey tests that #{PROJECT_FINDINGS:key} is replaced
 // with the stored value from the project_findings table.
 func TestExpandProjectFindings_SingleKey(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Insert project finding
@@ -45,6 +46,7 @@ func TestExpandProjectFindings_SingleKey(t *testing.T) {
 // TestExpandProjectFindings_MultipleKeys tests that #{PROJECT_FINDINGS:k1,k2} is replaced
 // with formatted key:value output for multiple keys.
 func TestExpandProjectFindings_MultipleKeys(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Insert multiple project findings
@@ -77,6 +79,7 @@ func TestExpandProjectFindings_MultipleKeys(t *testing.T) {
 
 // TestExpandProjectFindings_MissingKey tests that missing keys produce a placeholder.
 func TestExpandProjectFindings_MissingKey(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	sp := env.newSpawner()
@@ -95,6 +98,7 @@ func TestExpandProjectFindings_MissingKey(t *testing.T) {
 // TestExpandProjectFindings_PartialMissing tests that multi-key expansion with some
 // missing keys returns found values and placeholders for missing keys.
 func TestExpandProjectFindings_PartialMissing(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Insert only k1
@@ -126,6 +130,7 @@ func TestExpandProjectFindings_PartialMissing(t *testing.T) {
 // TestExpandProjectFindings_NoPatterns tests that templates without #{PROJECT_FINDINGS:...}
 // patterns pass through unchanged.
 func TestExpandProjectFindings_NoPatterns(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	sp := env.newSpawner()
@@ -142,6 +147,7 @@ func TestExpandProjectFindings_NoPatterns(t *testing.T) {
 
 // TestExpandProjectFindings_WithWhitespace tests that keys with whitespace are trimmed.
 func TestExpandProjectFindings_WithWhitespace(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Insert project finding
@@ -177,6 +183,7 @@ func TestExpandProjectFindings_WithWhitespace(t *testing.T) {
 // TestExpandProjectFindings_MultiplePatterns tests that multiple #{PROJECT_FINDINGS:...}
 // patterns in the same template are all expanded.
 func TestExpandProjectFindings_MultiplePatterns(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Insert project findings
@@ -209,6 +216,7 @@ func TestExpandProjectFindings_MultiplePatterns(t *testing.T) {
 // TestLoadTemplate_ProjectFindingsExpansion tests that #{PROJECT_FINDINGS:key} is expanded
 // when present in an agent definition prompt template.
 func TestLoadTemplate_ProjectFindingsExpansion(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "PF-" + uuid.New().String()[:6]
 
@@ -266,6 +274,7 @@ func TestLoadTemplate_ProjectFindingsExpansion(t *testing.T) {
 // TestLoadTemplate_MixedPatterns tests that templates with both #{FINDINGS:agent} and
 // #{PROJECT_FINDINGS:key} patterns have both resolved independently.
 func TestLoadTemplate_MixedPatterns(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "MIX-" + uuid.New().String()[:6]
 
@@ -332,6 +341,7 @@ func TestLoadTemplate_MixedPatterns(t *testing.T) {
 // TestLoadTemplate_NoProjectFindings tests that templates without #{PROJECT_FINDINGS:...}
 // patterns are unaffected and don't trigger DB queries.
 func TestLoadTemplate_NoProjectFindings(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "NPF-" + uuid.New().String()[:6]
 
@@ -376,6 +386,7 @@ func TestLoadTemplate_NoProjectFindings(t *testing.T) {
 // TestExpandProjectFindings_ComplexValue tests that project findings with complex JSON
 // values (objects, arrays) are formatted correctly.
 func TestExpandProjectFindings_ComplexValue(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Insert project finding with JSON object value
@@ -405,6 +416,7 @@ func TestExpandProjectFindings_ComplexValue(t *testing.T) {
 // TestExpandProjectFindings_AllMissingKeys tests that multi-key request with all keys missing
 // produces placeholders for each key.
 func TestExpandProjectFindings_AllMissingKeys(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	sp := env.newSpawner()

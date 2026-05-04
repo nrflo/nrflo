@@ -48,6 +48,7 @@ func setupAgentDefTestEnv(t *testing.T, groups []string) (*db.Pool, *AgentDefini
 // --- CreateAgentDef tag validation ---
 
 func TestCreateAgentDef_WithValidTag(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -64,6 +65,7 @@ func TestCreateAgentDef_WithValidTag(t *testing.T) {
 }
 
 func TestCreateAgentDef_WithEmptyTag(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -80,6 +82,7 @@ func TestCreateAgentDef_WithEmptyTag(t *testing.T) {
 }
 
 func TestCreateAgentDef_TagNotInGroups(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -93,6 +96,7 @@ func TestCreateAgentDef_TagNotInGroups(t *testing.T) {
 }
 
 func TestCreateAgentDef_TagWithEmptyWorkflowGroups(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{}) // no groups defined
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -106,6 +110,7 @@ func TestCreateAgentDef_TagWithEmptyWorkflowGroups(t *testing.T) {
 }
 
 func TestCreateAgentDef_NoTagWorkflowHasGroups(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	// No tag required — agent can opt out of tagging
@@ -121,6 +126,7 @@ func TestCreateAgentDef_NoTagWorkflowHasGroups(t *testing.T) {
 // --- GetAgentDef returns tag ---
 
 func TestGetAgentDef_ReturnsTag(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -144,6 +150,7 @@ func TestGetAgentDef_ReturnsTag(t *testing.T) {
 // --- ListAgentDefs returns tag ---
 
 func TestListAgentDefs_ReturnsTag(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -170,6 +177,7 @@ func TestListAgentDefs_ReturnsTag(t *testing.T) {
 // --- UpdateAgentDef tag validation ---
 
 func TestUpdateAgentDef_UpdatesTag(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -198,6 +206,7 @@ func TestUpdateAgentDef_UpdatesTag(t *testing.T) {
 }
 
 func TestUpdateAgentDef_InvalidTag(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -217,6 +226,7 @@ func TestUpdateAgentDef_InvalidTag(t *testing.T) {
 }
 
 func TestUpdateAgentDef_ClearsTag(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, []string{"be", "fe"})
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{

@@ -15,6 +15,7 @@ import (
 // result="continue", result_reason="stall_restart_start_stall", status="continued",
 // and sets proc.finalStatus="CONTINUE" and increments stallRestartCount.
 func TestHandleStallRestart_StartStall_DBState(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -76,6 +77,7 @@ func TestHandleStallRestart_StartStall_DBState(t *testing.T) {
 
 // TestHandleStallRestart_RunningStall_DBState verifies result_reason=stall_restart_running_stall.
 func TestHandleStallRestart_RunningStall_DBState(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -132,6 +134,7 @@ func TestHandleStallRestart_RunningStall_DBState(t *testing.T) {
 // TestHandleStallRestart_MaxRestartsGuard verifies checkStall returns false
 // once stallRestartCount == maxStallRestarts, preventing further restarts.
 func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -175,6 +178,7 @@ func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
 // TestStallRestart_CounterSequence simulates consecutive stall restarts and verifies
 // stallRestartCount increments correctly and is capped at maxStallRestarts.
 func TestStallRestart_CounterSequence(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		stallRestartCount: 0,
 	}

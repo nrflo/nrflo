@@ -16,6 +16,7 @@ const readonlyUpdateErr = "only reasoning_effort can be updated on built-in mode
 // --- Happy path: reasoning_effort IS editable on read_only rows ---
 
 func TestCLIModel_UpdateReadonly_ReasoningEffort_High(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -47,6 +48,7 @@ func TestCLIModel_UpdateReadonly_ReasoningEffort_High(t *testing.T) {
 }
 
 func TestCLIModel_UpdateReadonly_ReasoningEffort_XhighOnOpus47(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -63,6 +65,7 @@ func TestCLIModel_UpdateReadonly_ReasoningEffort_XhighOnOpus47(t *testing.T) {
 }
 
 func TestCLIModel_UpdateReadonly_ReasoningEffort_XhighOnSonnet_Rejected(t *testing.T) {
+	t.Parallel()
 	// xhigh rule is still enforced on read_only rows. Validation error, NOT the new
 	// "only reasoning_effort" guard, because the field allowed through is reasoning_effort itself.
 	svc, cleanup := setupCLIModelTestEnv(t)
@@ -87,6 +90,7 @@ func TestCLIModel_UpdateReadonly_ReasoningEffort_XhighOnSonnet_Rejected(t *testi
 // --- Locked fields rejected individually on read_only rows ---
 
 func TestCLIModel_UpdateReadonly_LockedFields_Rejected(t *testing.T) {
+	t.Parallel()
 	newName := "My Opus"
 	newModel := "claude-opus-4-7"
 	newCtx := 100000
@@ -148,6 +152,7 @@ func TestCLIModel_UpdateReadonly_LockedFields_Rejected(t *testing.T) {
 
 // Mixed request: reasoning_effort alongside a locked field is still rejected wholesale.
 func TestCLIModel_UpdateReadonly_MixedLockedPlusEffort_Rejected(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -177,6 +182,7 @@ func TestCLIModel_UpdateReadonly_MixedLockedPlusEffort_Rejected(t *testing.T) {
 // --- Regression: user-owned rows are NOT affected by the new guard ---
 
 func TestCLIModel_UpdateUserRow_DisplayName_Succeeds(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -205,6 +211,7 @@ func TestCLIModel_UpdateUserRow_DisplayName_Succeeds(t *testing.T) {
 }
 
 func TestCLIModel_UpdateUserRow_AllFields_Succeeds(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 

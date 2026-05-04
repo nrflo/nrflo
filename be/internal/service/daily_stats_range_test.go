@@ -50,6 +50,7 @@ func insertRangeSession(t *testing.T, pool *db.Pool, projectID, wfInstanceID, id
 }
 
 func TestValidRange(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		rangeType string
 		want      bool
@@ -73,6 +74,7 @@ func TestValidRange(t *testing.T) {
 }
 
 func TestGetRange_Today(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -102,6 +104,7 @@ func TestGetRange_Today(t *testing.T) {
 }
 
 func TestGetRange_Week(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -141,6 +144,7 @@ func TestGetRange_Week(t *testing.T) {
 }
 
 func TestGetRange_Month(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -173,6 +177,7 @@ func TestGetRange_Month(t *testing.T) {
 }
 
 func TestGetRange_All(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -205,6 +210,7 @@ func TestGetRange_All(t *testing.T) {
 }
 
 func TestGetRange_NotPersisted(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -226,6 +232,7 @@ func TestGetRange_NotPersisted(t *testing.T) {
 }
 
 func TestGetRange_BoundaryDate(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -255,6 +262,7 @@ func TestGetRange_BoundaryDate(t *testing.T) {
 }
 
 func TestGetRange_ExcludesRunningContinued(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 

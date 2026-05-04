@@ -48,6 +48,7 @@ func setupTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
 // TestResetSessionsForCallback tests that ResetSessionsForCallback correctly
 // marks sessions as callback, clears findings, and sets ended_at.
 func TestResetSessionsForCallback(t *testing.T) {
+	t.Parallel()
 	database, repo, wfiID := setupTestDB(t)
 	defer database.Close()
 
@@ -144,6 +145,7 @@ func TestResetSessionsForCallback(t *testing.T) {
 // TestResetSessionsForCallback_ExcludesRunningAndContinued tests that
 // running and continued sessions are excluded from reset.
 func TestResetSessionsForCallback_ExcludesRunningAndContinued(t *testing.T) {
+	t.Parallel()
 	database, repo, wfiID := setupTestDB(t)
 	defer database.Close()
 
@@ -223,6 +225,7 @@ func TestResetSessionsForCallback_ExcludesRunningAndContinued(t *testing.T) {
 
 // TestResetSessionsForCallback_EmptyPhases tests that empty phases list is a no-op.
 func TestResetSessionsForCallback_EmptyPhases(t *testing.T) {
+	t.Parallel()
 	database, repo, wfiID := setupTestDB(t)
 	defer database.Close()
 

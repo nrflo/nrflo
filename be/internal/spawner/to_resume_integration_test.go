@@ -20,6 +20,7 @@ import (
 // 2. New agent is spawned and fetchPreviousData retrieves the to_resume value
 // 3. Template expansion injects the to_resume data into ${PREVIOUS_DATA}
 func TestToResumeEndToEnd(t *testing.T) {
+	t.Parallel()
 	env := setupE2ETestEnv(t)
 	defer env.cleanup()
 
@@ -77,6 +78,7 @@ func TestToResumeEndToEnd(t *testing.T) {
 // TestToResumeMultipleRestarts tests that multiple restarts work correctly,
 // with each restart saving to to_resume and the next agent reading from it
 func TestToResumeMultipleRestarts(t *testing.T) {
+	t.Parallel()
 	env := setupE2ETestEnv(t)
 	defer env.cleanup()
 
@@ -123,6 +125,7 @@ func TestToResumeMultipleRestarts(t *testing.T) {
 // TestToResumeIsolationBetweenAgents tests that to_resume data is isolated
 // between different agents/models/phases
 func TestToResumeIsolationBetweenAgents(t *testing.T) {
+	t.Parallel()
 	env := setupE2ETestEnv(t)
 	defer env.cleanup()
 

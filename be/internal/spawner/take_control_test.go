@@ -15,6 +15,7 @@ import (
 // TestRequestTakeControl_SendsToChannel verifies that RequestTakeControl puts
 // the sessionID onto takeControlCh in a non-blocking manner.
 func TestRequestTakeControl_SendsToChannel(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	sp.RequestTakeControl("sess-abc")
@@ -32,6 +33,7 @@ func TestRequestTakeControl_SendsToChannel(t *testing.T) {
 // TestRequestTakeControl_NonBlockingWhenFull verifies that calling RequestTakeControl
 // a second time when the channel is full is a no-op (no panic, no block).
 func TestRequestTakeControl_NonBlockingWhenFull(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	sp.RequestTakeControl("first")
@@ -58,6 +60,7 @@ func TestRequestTakeControl_NonBlockingWhenFull(t *testing.T) {
 // TestCompleteInteractive_ClosesChannel verifies that CompleteInteractive closes
 // the wait channel registered under the given sessionID.
 func TestCompleteInteractive_ClosesChannel(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	waitCh := make(chan struct{})
@@ -78,6 +81,7 @@ func TestCompleteInteractive_ClosesChannel(t *testing.T) {
 // TestCompleteInteractive_IdempotentDoubleClose verifies that calling
 // CompleteInteractive twice on the same sessionID does not panic.
 func TestCompleteInteractive_IdempotentDoubleClose(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	waitCh := make(chan struct{})
@@ -93,6 +97,7 @@ func TestCompleteInteractive_IdempotentDoubleClose(t *testing.T) {
 // TestCompleteInteractive_UnknownSession verifies that calling CompleteInteractive
 // for a session that has no registered wait channel is a no-op.
 func TestCompleteInteractive_UnknownSession(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	// No wait channel registered — must not panic.
 	sp.CompleteInteractive("no-such-session")
@@ -102,6 +107,7 @@ func TestCompleteInteractive_UnknownSession(t *testing.T) {
 // user_interactive and interactive_completed to the agent_sessions CHECK constraint,
 // so DB updates for interactive sessions now succeed.
 func TestUserInteractive_DBConstraintFixed(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -123,6 +129,7 @@ func TestUserInteractive_DBConstraintFixed(t *testing.T) {
 // that registerAgentStopWithReason broadcasts an EventAgentCompleted event
 // with result=user_interactive when hub is configured.
 func TestRegisterAgentStopWithReason_UserInteractive_BroadcastsEvent(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -169,6 +176,7 @@ func TestRegisterAgentStopWithReason_UserInteractive_BroadcastsEvent(t *testing.
 // TestTakeControlBroadcastsEventAgentTakeControl verifies that the
 // EventAgentTakeControl broadcast carries the correct fields.
 func TestTakeControlBroadcastsEventAgentTakeControl(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -221,6 +229,7 @@ func TestTakeControlBroadcastsEventAgentTakeControl(t *testing.T) {
 // TestInteractiveWaits_ConcurrentAccess verifies that registering and completing
 // multiple interactive waits concurrently does not race or panic.
 func TestInteractiveWaits_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	sessions := []string{"sess-1", "sess-2", "sess-3"}

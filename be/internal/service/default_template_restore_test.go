@@ -10,6 +10,7 @@ import (
 // --- Restore ---
 
 func TestDefaultTemplate_Restore_Valid(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -50,6 +51,7 @@ func TestDefaultTemplate_Restore_Valid(t *testing.T) {
 }
 
 func TestDefaultTemplate_Restore_DefaultTemplateColumnUnchanged(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -84,6 +86,7 @@ func TestDefaultTemplate_Restore_DefaultTemplateColumnUnchanged(t *testing.T) {
 }
 
 func TestDefaultTemplate_Restore_NonReadonlyReturnsError(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -103,6 +106,7 @@ func TestDefaultTemplate_Restore_NonReadonlyReturnsError(t *testing.T) {
 }
 
 func TestDefaultTemplate_Restore_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -118,6 +122,7 @@ func TestDefaultTemplate_Restore_NotFound(t *testing.T) {
 // --- Delete ---
 
 func TestDefaultTemplate_Delete_ReadonlyRejected(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -135,6 +140,7 @@ func TestDefaultTemplate_Delete_ReadonlyRejected(t *testing.T) {
 }
 
 func TestDefaultTemplate_Delete_UserCreatedAllowed(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 

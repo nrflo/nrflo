@@ -8,6 +8,7 @@ import (
 // === tool_result: nested content array correlation ===
 
 func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesTask(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-nc-1")
 
@@ -53,6 +54,7 @@ func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesTask(t *testing.T)
 // === user type tool_result triggers tool result correlation ===
 
 func TestProcessOutput_Claude_UserToolResult_MatchesTask(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-utr-1")
 
@@ -99,6 +101,7 @@ func TestProcessOutput_Claude_UserToolResult_MatchesTask(t *testing.T) {
 
 // TestProcessOutput_Claude_ToolResult_NestedContent_MatchesAgent mirrors the Task version for Agent.
 func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesAgent(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-agent-nc-1")
 
@@ -143,6 +146,7 @@ func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesAgent(t *testing.T
 
 // TestProcessOutput_Claude_UserToolResult_MatchesAgent mirrors the Task version for Agent.
 func TestProcessOutput_Claude_UserToolResult_MatchesAgent(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-agent-utr-1")
 
@@ -188,6 +192,7 @@ func TestProcessOutput_Claude_UserToolResult_MatchesAgent(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_UserToolResult_UnknownID_Ignored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-utr-2")
 
@@ -212,6 +217,7 @@ func TestProcessOutput_Claude_UserToolResult_UnknownID_Ignored(t *testing.T) {
 // === Multiple in-flight Task invocations ===
 
 func TestProcessOutput_Claude_MultipleInFlightTasks(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-multi-1")
 
@@ -293,6 +299,7 @@ func TestProcessOutput_Claude_MultipleInFlightTasks(t *testing.T) {
 // === [TaskResult] message format variants ===
 
 func TestProcessOutput_Claude_TaskResult_Formats(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		description  string
@@ -368,6 +375,7 @@ func TestProcessOutput_Claude_TaskResult_Formats(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_TaskResult_LongDetail_Truncated(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-trunc-1")
 

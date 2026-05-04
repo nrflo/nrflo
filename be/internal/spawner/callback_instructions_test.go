@@ -15,6 +15,7 @@ import (
 // TestFetchCallbackInstructions_Present tests that callback instructions are formatted
 // correctly when _callback metadata is present in workflow instance findings.
 func TestFetchCallbackInstructions_Present(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -44,6 +45,7 @@ func TestFetchCallbackInstructions_Present(t *testing.T) {
 // TestFetchCallbackInstructions_Missing tests that the placeholder is returned
 // when no _callback key exists in workflow instance findings.
 func TestFetchCallbackInstructions_Missing(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -68,6 +70,7 @@ func TestFetchCallbackInstructions_Missing(t *testing.T) {
 // TestFetchCallbackInstructions_EmptyInstructions tests that empty values are returned
 // when _callback is present but instructions field is empty.
 func TestFetchCallbackInstructions_EmptyInstructions(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -97,6 +100,7 @@ func TestFetchCallbackInstructions_EmptyInstructions(t *testing.T) {
 // TestFetchCallbackInstructions_NoWorkflow tests that empty values are returned
 // when the workflow instance doesn't exist.
 func TestFetchCallbackInstructions_NoWorkflow(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	sp := env.newSpawner()
@@ -113,6 +117,7 @@ func TestFetchCallbackInstructions_NoWorkflow(t *testing.T) {
 // TestFetchCallbackInstructions_ProjectScope tests that callback instructions work
 // for project-scoped workflows (empty ticketID).
 func TestFetchCallbackInstructions_ProjectScope(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Update test workflow to project scope
@@ -155,6 +160,7 @@ func TestFetchCallbackInstructions_ProjectScope(t *testing.T) {
 // TestFetchCallbackInstructions_NoFromAgent tests that callback instructions
 // work even when from_agent is missing from metadata.
 func TestFetchCallbackInstructions_NoFromAgent(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -183,6 +189,7 @@ func TestFetchCallbackInstructions_NoFromAgent(t *testing.T) {
 // TestFetchCallbackInstructions_InvalidCallbackType tests that the placeholder
 // is returned when _callback is not a map.
 func TestFetchCallbackInstructions_InvalidCallbackType(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -207,6 +214,7 @@ func TestFetchCallbackInstructions_InvalidCallbackType(t *testing.T) {
 // TestLoadTemplate_CallbackInstructionsExpansion tests that ${CALLBACK_INSTRUCTIONS}
 // is expanded when present in the template.
 func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 
@@ -274,6 +282,7 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 // TestLoadTemplate_NoCallbackInstructions tests that templates without
 // ${CALLBACK_INSTRUCTIONS} are unaffected.
 func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 
@@ -328,6 +337,7 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 // TestLoadTemplate_CallbackInstructionsDefault tests that ${CALLBACK_INSTRUCTIONS}
 // expands to the default placeholder when no callback metadata exists.
 func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "CB-" + uuid.New().String()[:6]
 

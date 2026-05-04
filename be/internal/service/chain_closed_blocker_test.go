@@ -40,6 +40,7 @@ func containsID(ids []string, id string) bool {
 // Setup: C→B→A, where A is closed.
 // Expected: allIDs = {B, C}, deps["b"] is empty (A excluded).
 func TestExpandWithBlockers_ClosedBlockerExcluded(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -98,6 +99,7 @@ func TestExpandWithBlockers_ClosedBlockerExcluded(t *testing.T) {
 // Setup: D→C→B→A, where A and B are closed.
 // Expected: allIDs = {C, D}.
 func TestExpandWithBlockers_TransitiveClosedBlockers(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -154,6 +156,7 @@ func TestExpandWithBlockers_TransitiveClosedBlockers(t *testing.T) {
 // caller explicitly requests a closed ticket it is NOT filtered out — only discovered
 // blockers are excluded.
 func TestExpandWithBlockers_ExplicitTicketClosedStillIncluded(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -187,6 +190,7 @@ func TestExpandWithBlockers_ExplicitTicketClosedStillIncluded(t *testing.T) {
 // Setup: B→A, A is closed.
 // Expected: chain has 1 item (B only).
 func TestCreateChain_ClosedBlockerNotInItems(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -226,6 +230,7 @@ func TestCreateChain_ClosedBlockerNotInItems(t *testing.T) {
 // Setup: B→A, A is closed.
 // Expected: AddedByDeps=[], TicketIDs=[b].
 func TestPreviewChain_ClosedBlockerNotInAddedByDeps(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -278,6 +283,7 @@ func TestPreviewChain_ClosedBlockerNotInAddedByDeps(t *testing.T) {
 // Setup: C blocked by A (closed) and B (open).
 // Expected: allIDs = {B, C}, deps["c"] = [b].
 func TestExpandWithBlockers_MixedOpenAndClosedBlockers(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 

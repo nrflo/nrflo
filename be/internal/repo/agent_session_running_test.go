@@ -58,6 +58,7 @@ func insertRunningSession(t *testing.T, database *db.DB, id, wfiID string, statu
 }
 
 func TestGetRunning_OnlyRunningReturned(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 
@@ -83,6 +84,7 @@ func TestGetRunning_OnlyRunningReturned(t *testing.T) {
 }
 
 func TestGetRunning_OrderedByStartedAtASC(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 
@@ -111,6 +113,7 @@ func TestGetRunning_OrderedByStartedAtASC(t *testing.T) {
 }
 
 func TestGetRunning_RespectsLimit(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 
@@ -129,6 +132,7 @@ func TestGetRunning_RespectsLimit(t *testing.T) {
 }
 
 func TestGetRunning_EmptyTable(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupRunningTestDB(t)
 
 	sessions, err := r.GetRunning(50)
@@ -141,6 +145,7 @@ func TestGetRunning_EmptyTable(t *testing.T) {
 }
 
 func TestGetRunning_WorkflowIDPopulated(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 
@@ -159,6 +164,7 @@ func TestGetRunning_WorkflowIDPopulated(t *testing.T) {
 }
 
 func TestGetRunning_AllNonRunningStatuses(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 

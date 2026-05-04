@@ -9,6 +9,7 @@ import (
 // --- CreateAgentDef low_consumption_model ---
 
 func TestCreateAgentDef_WithLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -25,6 +26,7 @@ func TestCreateAgentDef_WithLowConsumptionModel(t *testing.T) {
 }
 
 func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -46,6 +48,7 @@ func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
 }
 
 func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -83,6 +86,7 @@ func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
 }
 
 func TestUpdateAgentDef_UpdatesLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "upd-main", Prompt: "main"})
@@ -107,6 +111,7 @@ func TestUpdateAgentDef_UpdatesLowConsumptionModel(t *testing.T) {
 }
 
 func TestUpdateAgentDef_ClearsLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -137,6 +142,7 @@ func TestUpdateAgentDef_ClearsLowConsumptionModel(t *testing.T) {
 // --- Validation: invalid model ---
 
 func TestCreateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -150,6 +156,7 @@ func TestCreateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
 }
 
 func TestUpdateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -171,6 +178,7 @@ func TestUpdateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
 // --- Casing: value is lowercased on create and update ---
 
 func TestCreateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -187,6 +195,7 @@ func TestCreateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
 }
 
 func TestUpdateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "case-main", Prompt: "main"})
@@ -213,6 +222,7 @@ func TestUpdateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
 // --- Default: empty low_consumption_model ---
 
 func TestCreateAgentDef_DefaultEmptyLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{

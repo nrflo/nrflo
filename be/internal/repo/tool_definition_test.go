@@ -32,6 +32,7 @@ func mkTool(id, name string) *model.ToolDefinition {
 
 // TestToolDefinitionRepo_CreateGet round-trips via the repo.
 func TestToolDefinitionRepo_CreateGet(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 
 	tool := mkTool("t1", "echo")
@@ -64,6 +65,7 @@ func TestToolDefinitionRepo_CreateGet(t *testing.T) {
 }
 
 func TestToolDefinitionRepo_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 	_, err := r.Get("missing")
 	if err == nil {
@@ -77,6 +79,7 @@ func TestToolDefinitionRepo_Get_NotFound(t *testing.T) {
 // TestToolDefinitionRepo_ListByProject_NullsIncluded — both per-project rows and
 // global (NULL project_id) rows are returned for a given project_id filter.
 func TestToolDefinitionRepo_ListByProject_NullsIncluded(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 
 	a := mkTool("ta", "alpha")
@@ -112,6 +115,7 @@ func TestToolDefinitionRepo_ListByProject_NullsIncluded(t *testing.T) {
 }
 
 func TestToolDefinitionRepo_ListByWorkflow(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 
 	a := mkTool("ta", "alpha")
@@ -135,6 +139,7 @@ func TestToolDefinitionRepo_ListByWorkflow(t *testing.T) {
 }
 
 func TestToolDefinitionRepo_Update(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 	if err := r.Create(mkTool("t1", "echo")); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -158,6 +163,7 @@ func TestToolDefinitionRepo_Update(t *testing.T) {
 }
 
 func TestToolDefinitionRepo_Update_NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 	v := "x"
 	err := r.Update("nope", &ToolDefUpdateFields{Description: &v})
@@ -170,6 +176,7 @@ func TestToolDefinitionRepo_Update_NotFound(t *testing.T) {
 }
 
 func TestToolDefinitionRepo_Delete(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 	if err := r.Create(mkTool("t1", "echo")); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -186,6 +193,7 @@ func TestToolDefinitionRepo_Delete(t *testing.T) {
 }
 
 func TestToolDefinitionRepo_UniqueName(t *testing.T) {
+	t.Parallel()
 	r, _ := setupToolDefRepo(t)
 	if err := r.Create(mkTool("t1", "echo")); err != nil {
 		t.Fatalf("Create t1: %v", err)

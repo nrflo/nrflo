@@ -6,6 +6,7 @@ import (
 )
 
 func TestBuildSavePrompt(t *testing.T) {
+	t.Parallel()
 	prompt := buildSavePrompt()
 
 	if !strings.Contains(prompt, "nrflo findings add to_resume") {

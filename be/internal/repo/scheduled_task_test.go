@@ -40,6 +40,7 @@ func makeTask(id, projectID string, enabled bool, workflows []string) *model.Sch
 }
 
 func TestScheduledTaskRepo_Create_Get(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupScheduledTaskDB(t)
 
 	task := makeTask("task-1", projectID, true, []string{"a", "b"})
@@ -91,6 +92,7 @@ func TestScheduledTaskRepo_Create_Get(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_Create_Get_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupScheduledTaskDB(t)
 
 	task := makeTask("TASK-UPPER", projectID, true, []string{"w1"})
@@ -117,6 +119,7 @@ func TestScheduledTaskRepo_Create_Get_CaseInsensitive(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupScheduledTaskDB(t)
 
 	_, err := r.Get("no-such-task")
@@ -126,6 +129,7 @@ func TestScheduledTaskRepo_Get_NotFound(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_List_FiltersByProjectID(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	database, err := db.OpenPath(dbPath)
 	if err != nil {
@@ -176,6 +180,7 @@ func TestScheduledTaskRepo_List_FiltersByProjectID(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_Update_MutatesFields(t *testing.T) {
+	t.Parallel()
 	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
@@ -234,6 +239,7 @@ func TestScheduledTaskRepo_Update_MutatesFields(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_Update_NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupScheduledTaskDB(t)
 
 	task := makeTask("no-such", "proj-1", true, []string{"w"})
@@ -244,6 +250,7 @@ func TestScheduledTaskRepo_Update_NotFound(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_Delete(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupScheduledTaskDB(t)
 
 	task := makeTask("task-del", projectID, true, []string{"w"})
@@ -262,6 +269,7 @@ func TestScheduledTaskRepo_Delete(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_ListEnabled_CrossProject(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	database, err := db.OpenPath(dbPath)
 	if err != nil {
@@ -319,6 +327,7 @@ func TestScheduledTaskRepo_ListEnabled_CrossProject(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_UpdateTriggerTimestamps(t *testing.T) {
+	t.Parallel()
 	fixedTime := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
@@ -382,6 +391,7 @@ func TestScheduledTaskRepo_UpdateTriggerTimestamps(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_UpdateTriggerTimestamps_NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupScheduledTaskDB(t)
 
 	err := r.UpdateTriggerTimestamps("no-such", nil, nil)
@@ -391,6 +401,7 @@ func TestScheduledTaskRepo_UpdateTriggerTimestamps_NotFound(t *testing.T) {
 }
 
 func TestScheduledTaskRepo_Create_WorkflowsEmptySlice(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupScheduledTaskDB(t)
 
 	task := makeTask("task-empty-wf", projectID, true, []string{})

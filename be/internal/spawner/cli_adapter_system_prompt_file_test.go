@@ -8,6 +8,7 @@ import (
 // TestClaudeAdapter_BuildCommand_SystemPromptFile verifies that BuildCommand
 // emits --append-system-prompt-file <path> exactly when SystemPromptFile != "".
 func TestClaudeAdapter_BuildCommand_SystemPromptFile(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
@@ -31,6 +32,7 @@ func TestClaudeAdapter_BuildCommand_SystemPromptFile(t *testing.T) {
 // TestClaudeAdapter_BuildCommand_NoSystemPromptFile verifies that BuildCommand
 // does NOT emit --append-system-prompt-file when SystemPromptFile is empty.
 func TestClaudeAdapter_BuildCommand_NoSystemPromptFile(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := SpawnOptions{
@@ -50,6 +52,7 @@ func TestClaudeAdapter_BuildCommand_NoSystemPromptFile(t *testing.T) {
 // TestClaudeAdapter_BuildResumeCommand_SystemPromptFile verifies that
 // BuildResumeCommand emits --append-system-prompt-file when SystemPromptFile != "".
 func TestClaudeAdapter_BuildResumeCommand_SystemPromptFile(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	opts := ResumeOptions{
@@ -72,6 +75,7 @@ func TestClaudeAdapter_BuildResumeCommand_SystemPromptFile(t *testing.T) {
 
 // TestClaudeAdapter_SupportsSystemPromptFile verifies ClaudeAdapter capability.
 func TestClaudeAdapter_SupportsSystemPromptFile(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 	if !adapter.SupportsSystemPromptFile() {
 		t.Error("ClaudeAdapter.SupportsSystemPromptFile() should return true")
@@ -81,6 +85,7 @@ func TestClaudeAdapter_SupportsSystemPromptFile(t *testing.T) {
 // TestOpencodeAdapter_BuildCommand_IgnoresSystemPromptFile verifies that
 // OpencodeAdapter never emits --append-system-prompt-file even when set.
 func TestOpencodeAdapter_BuildCommand_IgnoresSystemPromptFile(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	opts := SpawnOptions{
@@ -99,6 +104,7 @@ func TestOpencodeAdapter_BuildCommand_IgnoresSystemPromptFile(t *testing.T) {
 
 // TestOpencodeAdapter_SupportsSystemPromptFile verifies capability is false.
 func TestOpencodeAdapter_SupportsSystemPromptFile(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 	if adapter.SupportsSystemPromptFile() {
 		t.Error("OpencodeAdapter.SupportsSystemPromptFile() should return false")
@@ -108,6 +114,7 @@ func TestOpencodeAdapter_SupportsSystemPromptFile(t *testing.T) {
 // TestCodexAdapter_BuildCommand_IgnoresSystemPromptFile verifies that
 // CodexAdapter never emits --append-system-prompt-file even when set.
 func TestCodexAdapter_BuildCommand_IgnoresSystemPromptFile(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	opts := SpawnOptions{

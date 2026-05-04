@@ -14,6 +14,7 @@ import (
 // --- Config struct fields ---
 
 func TestConfig_LowConsumptionMode_DefaultFalse(t *testing.T) {
+	t.Parallel()
 	cfg := Config{}
 	if cfg.LowConsumptionMode {
 		t.Error("Config.LowConsumptionMode default = true, want false")
@@ -47,6 +48,7 @@ func createAgentDefWithLCM(t *testing.T, env *spawnerTestEnv, agentID, prompt, l
 }
 
 func TestLoadAgentDefinition_ReturnsLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	createAgentDefWithLCM(t, env, "analyzer", "analyze things", "sonnet")
@@ -70,6 +72,7 @@ func TestLoadAgentDefinition_ReturnsLowConsumptionModel(t *testing.T) {
 }
 
 func TestLoadAgentDefinition_EmptyLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	createAgentDefWithLCM(t, env, "analyzer", "analyze things", "")
@@ -90,6 +93,7 @@ func TestLoadAgentDefinition_EmptyLowConsumptionModel(t *testing.T) {
 }
 
 func TestLoadAgentDefinition_ReturnsNilWhenNotFound(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	sp := New(Config{
@@ -109,6 +113,7 @@ func TestLoadAgentDefinition_ReturnsNilWhenNotFound(t *testing.T) {
 // TestLowConsumptionSubstitution_ModelSelection verifies model is overridden
 // when LowConsumptionMode is on and LowConsumptionModel is set.
 func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		lcMode        bool
@@ -170,6 +175,7 @@ func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
 // LowConsumptionMode is enabled, loadAgentDefinition returns the def with
 // LowConsumptionModel set, enabling the model override path in Spawn().
 func TestLowConsumptionMode_LoadAgentDef_SubstitutionDecision(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "LCM-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -202,6 +208,7 @@ func TestLowConsumptionMode_LoadAgentDef_SubstitutionDecision(t *testing.T) {
 // TestLowConsumptionMode_ModeOff_NoSubstitution verifies that when LowConsumptionMode
 // is false, the model override code path is not entered regardless of LCM setting.
 func TestLowConsumptionMode_ModeOff_NoSubstitution(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{
 		LowConsumptionMode: false,
 		Agents: map[string]AgentConfig{
@@ -223,6 +230,7 @@ func TestLowConsumptionMode_ModeOff_NoSubstitution(t *testing.T) {
 // and modelID format are correctly derived from each low_consumption_model value.
 // This mirrors the spawner logic: cliName = DefaultCLIForModel(model), modelID = cli:model.
 func TestLowConsumptionSubstitution_CLINameAndModelID(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		lcModel      string
 		wantCLI      string

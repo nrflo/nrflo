@@ -34,6 +34,7 @@ func stallPositiveProc(clk *clock.TestClock, hasMsg bool, lastMsgOffset time.Dur
 // TestCheckStall_StartStall_ExceedsThreshold verifies checkStall returns true
 // when no messages have been received and elapsed time exceeds stallStartTimeout.
 func TestCheckStall_StartStall_ExceedsThreshold(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -55,6 +56,7 @@ func TestCheckStall_StartStall_ExceedsThreshold(t *testing.T) {
 // TestCheckStall_RunningStall_ExceedsThreshold verifies checkStall returns true
 // when the agent received messages but then went silent past stallRunningTimeout.
 func TestCheckStall_RunningStall_ExceedsThreshold(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -73,6 +75,7 @@ func TestCheckStall_RunningStall_ExceedsThreshold(t *testing.T) {
 // TestCheckStall_APIBackend_StartStall_IsCliAgnostic verifies that stall detection
 // fires identically for API-mode agents, confirming the stall path is CLI-agnostic.
 func TestCheckStall_APIBackend_StartStall_IsCliAgnostic(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -102,6 +105,7 @@ func TestCheckStall_APIBackend_StartStall_IsCliAgnostic(t *testing.T) {
 // TestCheckStall_Cap_14Triggers_15Blocks verifies the maxStallRestarts cap:
 // stallRestartCount=14 (one below cap) triggers; stallRestartCount=15 (at cap) is blocked.
 func TestCheckStall_Cap_14Triggers_15Blocks(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -125,6 +129,7 @@ func TestCheckStall_Cap_14Triggers_15Blocks(t *testing.T) {
 // TestCheckStall_StallEventBroadcast verifies that a triggered stall broadcasts
 // EventAgentStallRestart with the correct session_id and stall_type fields.
 func TestCheckStall_StallEventBroadcast(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -185,6 +190,7 @@ func TestCheckStall_StallEventBroadcast(t *testing.T) {
 // TestCheckStall_RunningStall_EventBroadcast verifies the running-stall event
 // carries stall_type="running" when triggered with hasReceivedMessage=true.
 func TestCheckStall_RunningStall_EventBroadcast(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()

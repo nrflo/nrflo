@@ -17,6 +17,7 @@ func intPtr(v int) *int { return &v }
 // TestConfig_GlobalStallTimeoutFields verifies Config.GlobalStallStartTimeout and
 // Config.GlobalStallRunningTimeout default to nil and accept *int values.
 func TestConfig_GlobalStallTimeoutFields(t *testing.T) {
+	t.Parallel()
 	cfg := Config{}
 	if cfg.GlobalStallStartTimeout != nil {
 		t.Error("Config.GlobalStallStartTimeout default = non-nil, want nil")
@@ -48,6 +49,7 @@ func TestConfig_GlobalStallTimeoutFields(t *testing.T) {
 //
 //	per-agent def (non-nil) > global config (non-nil) > hardcoded default.
 func TestStallTimeout_ResolutionPriority(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		globalStart   *int
@@ -125,6 +127,7 @@ func TestStallTimeout_ResolutionPriority(t *testing.T) {
 
 // TestStallTimeout_ResolutionPriority_Running mirrors TestStallTimeout_ResolutionPriority for the running timeout.
 func TestStallTimeout_ResolutionPriority_Running(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		globalRunning  *int
@@ -197,6 +200,7 @@ func TestStallTimeout_ResolutionPriority_Running(t *testing.T) {
 // a globally-resolved start timeout of 60s. Constructs processInfo as spawnSingle would after
 // resolution: agentDef nil + GlobalStallStartTimeout=60 → stallStartTimeout=60s.
 func TestStallTimeout_GlobalOverride_CheckStall_Start(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	globalVal := 60
 	s := New(Config{Clock: clk, GlobalStallStartTimeout: &globalVal})
@@ -218,6 +222,7 @@ func TestStallTimeout_GlobalOverride_CheckStall_Start(t *testing.T) {
 // TestStallTimeout_GlobalOverride_CheckStall_Running verifies checkStall does not trigger before
 // a globally-resolved running timeout of 300s.
 func TestStallTimeout_GlobalOverride_CheckStall_Running(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	globalVal := 300
 	s := New(Config{Clock: clk, GlobalStallRunningTimeout: &globalVal})
@@ -239,6 +244,7 @@ func TestStallTimeout_GlobalOverride_CheckStall_Running(t *testing.T) {
 // TestStallTimeout_GlobalDisabled_CheckStall verifies that when global timeout is 0 (disabled),
 // checkStall returns false regardless of elapsed time.
 func TestStallTimeout_GlobalDisabled_CheckStall(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -258,6 +264,7 @@ func TestStallTimeout_GlobalDisabled_CheckStall(t *testing.T) {
 // TestLoadAgentDefinition_StallTimeoutFields verifies loadAgentDefinition returns
 // StallStartTimeoutSec and StallRunningTimeoutSec from DB when set.
 func TestLoadAgentDefinition_StallTimeoutFields(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	database, err := db.Open(env.dbPath)
@@ -303,6 +310,7 @@ func TestLoadAgentDefinition_StallTimeoutFields(t *testing.T) {
 // TestLoadAgentDefinition_StallTimeoutFieldsNil verifies loadAgentDefinition returns nil
 // stall timeout fields when not set (DB NULL → Go nil).
 func TestLoadAgentDefinition_StallTimeoutFieldsNil(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	database, err := db.Open(env.dbPath)

@@ -12,6 +12,7 @@ import (
 // hides execution_mode='api' rows (e.g., context-saver-api) while still returning
 // cli-mode rows.
 func TestSystemAgentDef_ListForAPI_ExcludesAPIMode(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "listforapi_exclude.db")
 	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
 	if err != nil {
@@ -50,6 +51,7 @@ func TestSystemAgentDef_ListForAPI_ExcludesAPIMode(t *testing.T) {
 // returns all rows including execution_mode='api', so the seeded context-saver-api
 // row is visible when the server is in api-mode.
 func TestSystemAgentDef_ListForAPI_IncludesAPIMode(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "listforapi_include.db")
 	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
 	if err != nil {

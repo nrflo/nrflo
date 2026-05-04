@@ -11,6 +11,7 @@ import (
 )
 
 func TestListByParent(t *testing.T) {
+	t.Parallel()
 	// Create temporary database
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
@@ -101,6 +102,7 @@ func TestListByParent(t *testing.T) {
 }
 
 func TestListByParentNoChildren(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -145,6 +147,7 @@ func TestListByParentNoChildren(t *testing.T) {
 }
 
 func TestListByParentCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 

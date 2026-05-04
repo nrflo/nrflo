@@ -13,6 +13,7 @@ import (
 // --- sanitizeFTS5Query unit tests ---
 
 func TestSanitizeFTS5Query(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		input string
@@ -119,6 +120,7 @@ func mustCreateTicket(t *testing.T, repo *TicketRepo, ticket *model.Ticket) {
 // --- TicketRepo.Search integration tests ---
 
 func TestSearchTicketIDStyle(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -146,6 +148,7 @@ func TestSearchTicketIDStyle(t *testing.T) {
 }
 
 func TestSearchBareNumber(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -171,6 +174,7 @@ func TestSearchBareNumber(t *testing.T) {
 }
 
 func TestSearchFTS5OperatorWords(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -186,6 +190,7 @@ func TestSearchFTS5OperatorWords(t *testing.T) {
 }
 
 func TestSearchOnlySpecialChars(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -200,6 +205,7 @@ func TestSearchOnlySpecialChars(t *testing.T) {
 }
 
 func TestSearchEmptyQuery(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -213,6 +219,7 @@ func TestSearchEmptyQuery(t *testing.T) {
 }
 
 func TestSearchDescriptionContent(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -240,6 +247,7 @@ func TestSearchDescriptionContent(t *testing.T) {
 }
 
 func TestSearchPlainText(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -275,6 +283,7 @@ func TestSearchPlainText(t *testing.T) {
 }
 
 func TestSearchProjectIsolation(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -308,6 +317,7 @@ func TestSearchProjectIsolation(t *testing.T) {
 // --- SearchWithBlockedInfo integration tests ---
 
 func TestSearchWithBlockedInfoTicketID(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 
@@ -337,6 +347,7 @@ func TestSearchWithBlockedInfoTicketID(t *testing.T) {
 }
 
 func TestSearchWithBlockedInfoEmptySanitized(t *testing.T) {
+	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
 

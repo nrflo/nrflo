@@ -36,6 +36,7 @@ func setupWorkflowDefsTestEnv(t *testing.T) (*db.Pool, *WorkflowService) {
 // --- ValidateGroups unit tests ---
 
 func TestValidateGroups(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		groups  []string
@@ -67,6 +68,7 @@ func TestValidateGroups(t *testing.T) {
 // --- CreateWorkflowDef with groups ---
 
 func TestCreateWorkflowDef_WithGroups(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -82,6 +84,7 @@ func TestCreateWorkflowDef_WithGroups(t *testing.T) {
 }
 
 func TestCreateWorkflowDef_NoGroups(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -94,6 +97,7 @@ func TestCreateWorkflowDef_NoGroups(t *testing.T) {
 }
 
 func TestCreateWorkflowDef_EmptyGroupEntry(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -106,6 +110,7 @@ func TestCreateWorkflowDef_EmptyGroupEntry(t *testing.T) {
 }
 
 func TestCreateWorkflowDef_DuplicateGroup(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -120,6 +125,7 @@ func TestCreateWorkflowDef_DuplicateGroup(t *testing.T) {
 // --- GetWorkflowDef returns groups ---
 
 func TestGetWorkflowDef_ReturnsGroups(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 	groups := []string{"be", "fe"}
 
@@ -144,6 +150,7 @@ func TestGetWorkflowDef_ReturnsGroups(t *testing.T) {
 }
 
 func TestGetWorkflowDef_EmptyGroupsReturnsSlice(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -168,6 +175,7 @@ func TestGetWorkflowDef_EmptyGroupsReturnsSlice(t *testing.T) {
 // --- ListWorkflowDefs returns groups ---
 
 func TestListWorkflowDefs_ReturnsGroups(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -194,6 +202,7 @@ func TestListWorkflowDefs_ReturnsGroups(t *testing.T) {
 // --- UpdateWorkflowDef groups ---
 
 func TestUpdateWorkflowDef_UpdatesGroups(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -221,6 +230,7 @@ func TestUpdateWorkflowDef_UpdatesGroups(t *testing.T) {
 }
 
 func TestUpdateWorkflowDef_InvalidGroups(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{

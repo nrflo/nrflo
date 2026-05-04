@@ -7,6 +7,7 @@ import (
 
 // TestMergeInteractiveSettings_BothEmpty returns "" when both inputs are empty.
 func TestMergeInteractiveSettings_BothEmpty(t *testing.T) {
+	t.Parallel()
 	if got := mergeInteractiveSettings("", ""); got != "" {
 		t.Errorf("mergeInteractiveSettings(\"\", \"\") = %q, want \"\"", got)
 	}
@@ -15,6 +16,7 @@ func TestMergeInteractiveSettings_BothEmpty(t *testing.T) {
 // TestMergeInteractiveSettings_SafetyEmptyReturnsHooks returns the hooks JSON
 // unchanged when the safety input is empty.
 func TestMergeInteractiveSettings_SafetyEmptyReturnsHooks(t *testing.T) {
+	t.Parallel()
 	hooks := `{"hooks":{"PostToolUse":[{"matcher":"Write"}]}}`
 	if got := mergeInteractiveSettings("", hooks); got != hooks {
 		t.Errorf("mergeInteractiveSettings(\"\", hooks) = %q, want %q", got, hooks)
@@ -24,6 +26,7 @@ func TestMergeInteractiveSettings_SafetyEmptyReturnsHooks(t *testing.T) {
 // TestMergeInteractiveSettings_HooksEmptyReturnsSafety returns the safety JSON
 // unchanged when the hooks input is empty.
 func TestMergeInteractiveSettings_HooksEmptyReturnsSafety(t *testing.T) {
+	t.Parallel()
 	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash"}]}}`
 	if got := mergeInteractiveSettings(safety, ""); got != safety {
 		t.Errorf("mergeInteractiveSettings(safety, \"\") = %q, want %q", got, safety)
@@ -33,6 +36,7 @@ func TestMergeInteractiveSettings_HooksEmptyReturnsSafety(t *testing.T) {
 // TestMergeInteractiveSettings_BothSet_MergesHooks verifies that when both
 // inputs contain a "hooks" sub-map, the keys from both are present in the result.
 func TestMergeInteractiveSettings_BothSet_MergesHooks(t *testing.T) {
+	t.Parallel()
 	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash"}]}}`
 	hooks := `{"hooks":{"PostToolUse":[{"matcher":"Write"}]}}`
 	got := mergeInteractiveSettings(safety, hooks)
@@ -56,6 +60,7 @@ func TestMergeInteractiveSettings_BothSet_MergesHooks(t *testing.T) {
 // TestMergeInteractiveSettings_InvalidSafetyJSON returns hooksJSON unchanged
 // when safetyJSON is not parseable.
 func TestMergeInteractiveSettings_InvalidSafetyJSON_ReturnsHooks(t *testing.T) {
+	t.Parallel()
 	hooks := `{"hooks":{"PostToolUse":[]}}`
 	got := mergeInteractiveSettings("not-valid-json", hooks)
 	if got != hooks {
@@ -66,6 +71,7 @@ func TestMergeInteractiveSettings_InvalidSafetyJSON_ReturnsHooks(t *testing.T) {
 // TestMergeInteractiveSettings_InvalidHooksJSON returns safetyJSON unchanged
 // when hooksJSON is not parseable.
 func TestMergeInteractiveSettings_InvalidHooksJSON_ReturnsSafety(t *testing.T) {
+	t.Parallel()
 	safety := `{"hooks":{"PreToolUse":[]}}`
 	got := mergeInteractiveSettings(safety, "not-valid-json")
 	if got != safety {
@@ -76,6 +82,7 @@ func TestMergeInteractiveSettings_InvalidHooksJSON_ReturnsSafety(t *testing.T) {
 // TestMergeInteractiveSettings_NoHooksKey merges two valid JSON objects that
 // lack a "hooks" key — both sides must be present in the result.
 func TestMergeInteractiveSettings_NoHooksKey(t *testing.T) {
+	t.Parallel()
 	safety := `{"allow":true}`
 	hooks := `{"extra":"data"}`
 	got := mergeInteractiveSettings(safety, hooks)
@@ -96,6 +103,7 @@ func TestMergeInteractiveSettings_NoHooksKey(t *testing.T) {
 // BuildSafetySettingsJSON: merging real safety output with empty hooks returns
 // the safety output unchanged (no accidental mutation).
 func TestMergeInteractiveSettings_WithRealSafetyJSON(t *testing.T) {
+	t.Parallel()
 	safety := BuildSafetySettingsJSON(`{"enabled":true,"allow_git":true}`)
 	if safety == "" {
 		t.Skip("safety hook disabled; coverage provided by safety_hook_test.go")
@@ -110,6 +118,7 @@ func TestMergeInteractiveSettings_WithRealSafetyJSON(t *testing.T) {
 // statusLine key from the hooks-side JSON is preserved in the merged output even
 // when the safety-side JSON only contains a hooks sub-map.
 func TestMergeInteractiveSettings_HooksSideStatusLineSurvives(t *testing.T) {
+	t.Parallel()
 	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"check-cmd"}]}]}}`
 	hooks := `{"hooks":{"PostToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"nrflo agent record-event"}]}]},"statusLine":{"type":"command","command":"/usr/local/bin/nrflo agent statusline"}}`
 
@@ -135,6 +144,7 @@ func TestMergeInteractiveSettings_HooksSideStatusLineSurvives(t *testing.T) {
 // that a statusLine key from the safety-side JSON is preserved when the
 // hooks-side JSON only contains a hooks sub-map (no statusLine).
 func TestMergeInteractiveSettings_SafetySideStatusLinePreservedWithHooks(t *testing.T) {
+	t.Parallel()
 	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"check-bash"}]}]},"statusLine":{"type":"command","command":"/usr/local/bin/nrflo agent statusline"}}`
 	hooks := `{"hooks":{"PostToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"nrflo agent record-event"}]}]}}`
 
@@ -160,6 +170,7 @@ func TestMergeInteractiveSettings_SafetySideStatusLinePreservedWithHooks(t *test
 // TestMergeInteractiveSettings_BothSidesStatusLine_HooksSideWins verifies that
 // when both safety and hooks side define a statusLine, the hooks side wins.
 func TestMergeInteractiveSettings_BothSidesStatusLine_HooksSideWins(t *testing.T) {
+	t.Parallel()
 	safety := `{"statusLine":{"type":"command","command":"/old/path/nrflo agent statusline"}}`
 	hooks := `{"statusLine":{"type":"command","command":"/new/path/nrflo agent statusline"}}`
 
@@ -183,6 +194,7 @@ func TestMergeInteractiveSettings_BothSidesStatusLine_HooksSideWins(t *testing.T
 // TestMergeInteractiveSettings_HooksKeyOverridesFromHooksSide verifies that when
 // hooks side has a different key than safety side, both are preserved.
 func TestMergeInteractiveSettings_HooksKeyOverridesFromHooksSide(t *testing.T) {
+	t.Parallel()
 	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"check-bash"}]}]}}`
 	hooks := `{"hooks":{"PreToolUse":[{"matcher":"Write","hooks":[{"type":"command","command":"check-write"}]}]}}`
 	got := mergeInteractiveSettings(safety, hooks)

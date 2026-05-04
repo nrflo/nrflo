@@ -29,6 +29,7 @@ func setupNotificationServicePool(t *testing.T) (*db.Pool, string) {
 }
 
 func TestMaskConfig_Slack_MasksLastFour(t *testing.T) {
+	t.Parallel()
 	config := `{"webhook_url":"https://hooks.slack.com/services/ABC/DEF/GHIJ"}`
 	result := maskConfig("slack", config)
 	if strings.Contains(result, "GHIJ") {
@@ -40,6 +41,7 @@ func TestMaskConfig_Slack_MasksLastFour(t *testing.T) {
 }
 
 func TestMaskConfig_Telegram_MasksToken_PassesChatID(t *testing.T) {
+	t.Parallel()
 	config := `{"bot_token":"1234567890:ABCDEFGH","chat_id":"-100123"}`
 	result := maskConfig("telegram", config)
 	if strings.Contains(result, "ABCDEFGH") {
@@ -51,6 +53,7 @@ func TestMaskConfig_Telegram_MasksToken_PassesChatID(t *testing.T) {
 }
 
 func TestMaskConfig_InvalidJSON_Passthrough(t *testing.T) {
+	t.Parallel()
 	bad := `not-json`
 	result := maskConfig("slack", bad)
 	if result != bad {
@@ -59,6 +62,7 @@ func TestMaskConfig_InvalidJSON_Passthrough(t *testing.T) {
 }
 
 func TestMaskToken(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -77,6 +81,7 @@ func TestMaskToken(t *testing.T) {
 }
 
 func TestMaskURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -94,6 +99,7 @@ func TestMaskURL(t *testing.T) {
 }
 
 func TestApplyConfigPatch_MaskedValuePreservesSecret(t *testing.T) {
+	t.Parallel()
 	stored := `{"webhook_url":"https://hooks.slack.com/services/ABC/XYZW"}`
 	masked := maskConfig("slack", stored)
 
@@ -114,6 +120,7 @@ func TestApplyConfigPatch_MaskedValuePreservesSecret(t *testing.T) {
 }
 
 func TestApplyConfigPatch_NewValueRotatesSecret(t *testing.T) {
+	t.Parallel()
 	stored := `{"webhook_url":"https://hooks.slack.com/old-secret-XXXX"}`
 	newURL := "https://hooks.slack.com/new-url-YYYY"
 	incoming, _ := json.Marshal(map[string]interface{}{"webhook_url": newURL})
@@ -128,6 +135,7 @@ func TestApplyConfigPatch_NewValueRotatesSecret(t *testing.T) {
 }
 
 func TestNotificationService_Create_List_Get(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupNotificationServicePool(t)
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
@@ -179,6 +187,7 @@ func TestNotificationService_Create_List_Get(t *testing.T) {
 }
 
 func TestNotificationService_Update_MaskedPreservesSecret(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupNotificationServicePool(t)
 	svc := NewNotificationService(pool, clock.Real(), nil, nil)
 
@@ -214,6 +223,7 @@ func TestNotificationService_Update_MaskedPreservesSecret(t *testing.T) {
 }
 
 func TestNotificationService_Update_NewValueRotatesSecret(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupNotificationServicePool(t)
 	svc := NewNotificationService(pool, clock.Real(), nil, nil)
 
@@ -239,6 +249,7 @@ func TestNotificationService_Update_NewValueRotatesSecret(t *testing.T) {
 }
 
 func TestNotificationService_Delete(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupNotificationServicePool(t)
 	svc := NewNotificationService(pool, clock.Real(), nil, nil)
 
@@ -256,6 +267,7 @@ func TestNotificationService_Delete(t *testing.T) {
 }
 
 func TestNotificationService_TestSend_InsertsOneDelivery(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupNotificationServicePool(t)
 	wakeCh := make(chan struct{}, 1)
 	waker := NewChanWaker(wakeCh)
@@ -290,6 +302,7 @@ func TestNotificationService_TestSend_InsertsOneDelivery(t *testing.T) {
 }
 
 func TestNotificationService_Create_Validation(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupNotificationServicePool(t)
 	svc := NewNotificationService(pool, clock.Real(), nil, nil)
 

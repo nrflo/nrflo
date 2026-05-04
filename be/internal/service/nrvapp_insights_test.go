@@ -94,6 +94,7 @@ func insertReviewItem(t *testing.T, pool *db.Pool, clk clock.Clock,
 // --- ParseRange ---
 
 func TestParseRange(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	cases := []struct {
 		input   string
@@ -127,6 +128,7 @@ func TestParseRange(t *testing.T) {
 // --- ParseBucket ---
 
 func TestParseBucket(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		input   string
 		want    time.Duration
@@ -158,6 +160,7 @@ func TestParseBucket(t *testing.T) {
 // --- Summary ---
 
 func TestNrvappInsightsService_Summary(t *testing.T) {
+	t.Parallel()
 	pool, pid, clk := setupInsightsDB(t)
 
 	// Seed dispatches: 3 success, 2 error with known durations
@@ -224,6 +227,7 @@ func TestNrvappInsightsService_Summary(t *testing.T) {
 // --- EditRate ---
 
 func TestNrvappInsightsService_EditRate(t *testing.T) {
+	t.Parallel()
 	pool, pid, clk := setupInsightsDB(t)
 	const sid = "sess-edit-1"
 	const tool = "tool-edit"
@@ -271,6 +275,7 @@ func TestNrvappInsightsService_EditRate(t *testing.T) {
 // --- Throughput ---
 
 func TestNrvappInsightsService_Throughput(t *testing.T) {
+	t.Parallel()
 	pool, pid, clk := setupInsightsDB(t)
 
 	// Insert 2 dispatches in the same hour bucket, 1 in a different hour.

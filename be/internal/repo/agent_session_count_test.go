@@ -8,6 +8,7 @@ import (
 )
 
 func TestCountRunning_EmptyTable(t *testing.T) {
+	t.Parallel()
 	_, r, _ := setupRunningTestDB(t)
 
 	count, err := r.CountRunning()
@@ -20,6 +21,7 @@ func TestCountRunning_EmptyTable(t *testing.T) {
 }
 
 func TestCountRunning_OnlyCountsRunning(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 
@@ -40,6 +42,7 @@ func TestCountRunning_OnlyCountsRunning(t *testing.T) {
 }
 
 func TestCountRunning_MultipleRunning(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 
@@ -58,6 +61,7 @@ func TestCountRunning_MultipleRunning(t *testing.T) {
 }
 
 func TestCountRunning_AllNonRunningStatuses(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		status model.AgentSessionStatus
@@ -87,6 +91,7 @@ func TestCountRunning_AllNonRunningStatuses(t *testing.T) {
 }
 
 func TestCountRunning_SingleRunning(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupRunningTestDB(t)
 	defer database.Close()
 

@@ -12,6 +12,7 @@ import (
 )
 
 func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -125,6 +126,7 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 }
 
 func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -196,6 +198,7 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 }
 
 func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -265,6 +268,7 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 }
 
 func TestWorkflowInstanceCleanupKeepLatest_EmptyTable(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -288,6 +292,7 @@ func TestWorkflowInstanceCleanupKeepLatest_EmptyTable(t *testing.T) {
 }
 
 func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 

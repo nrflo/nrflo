@@ -10,6 +10,7 @@ import (
 )
 
 func TestGetBlockersWithTitles(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -87,6 +88,7 @@ func TestGetBlockersWithTitles(t *testing.T) {
 }
 
 func TestGetBlockedWithTitles(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -164,6 +166,7 @@ func TestGetBlockedWithTitles(t *testing.T) {
 }
 
 func TestGetBlockersDeletedTicket(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -248,6 +251,7 @@ func TestGetBlockersDeletedTicket(t *testing.T) {
 }
 
 func TestGetBlockedCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -322,6 +326,7 @@ func TestGetBlockedCaseInsensitive(t *testing.T) {
 }
 
 func TestGetBlockersMultipleBlockers(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 

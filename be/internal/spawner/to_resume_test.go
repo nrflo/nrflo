@@ -18,6 +18,7 @@ import (
 // TestFetchPreviousData_WithToResumeKey tests that fetchPreviousData extracts
 // the to_resume key from a continued session's findings
 func TestFetchPreviousData_WithToResumeKey(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -49,6 +50,7 @@ func TestFetchPreviousData_WithToResumeKey(t *testing.T) {
 // TestFetchPreviousData_WithoutToResumeKey tests that fetchPreviousData returns
 // empty string when findings don't have a to_resume key
 func TestFetchPreviousData_WithoutToResumeKey(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -78,6 +80,7 @@ func TestFetchPreviousData_WithoutToResumeKey(t *testing.T) {
 // TestFetchPreviousData_EmptyToResumeValue tests that empty to_resume value
 // returns empty string
 func TestFetchPreviousData_EmptyToResumeValue(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -106,6 +109,7 @@ func TestFetchPreviousData_EmptyToResumeValue(t *testing.T) {
 // TestFetchPreviousData_NonStringToResume tests that non-string to_resume value
 // returns empty string
 func TestFetchPreviousData_NonStringToResume(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -133,6 +137,7 @@ func TestFetchPreviousData_NonStringToResume(t *testing.T) {
 
 // TestFetchPreviousData_NoFindings tests that empty findings return empty string
 func TestFetchPreviousData_NoFindings(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -158,6 +163,7 @@ func TestFetchPreviousData_NoFindings(t *testing.T) {
 // TestFetchPreviousData_NoContinuedSession tests that no continued session
 // returns empty string
 func TestFetchPreviousData_NoContinuedSession(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -180,6 +186,7 @@ func TestFetchPreviousData_NoContinuedSession(t *testing.T) {
 // TestFetchPreviousData_LatestContinuedSession tests that fetchPreviousData
 // returns data from the most recent continued session when multiple exist
 func TestFetchPreviousData_LatestContinuedSession(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -215,6 +222,7 @@ func TestFetchPreviousData_LatestContinuedSession(t *testing.T) {
 // TestFetchPreviousData_DifferentAgentType tests that fetchPreviousData only
 // retrieves data for matching agent type
 func TestFetchPreviousData_DifferentAgentType(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -244,6 +252,7 @@ func TestFetchPreviousData_DifferentAgentType(t *testing.T) {
 // TestFetchPreviousData_DifferentModelID tests that fetchPreviousData only
 // retrieves data for matching model ID
 func TestFetchPreviousData_DifferentModelID(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnv(t)
 	defer env.cleanup()
 
@@ -272,6 +281,7 @@ func TestFetchPreviousData_DifferentModelID(t *testing.T) {
 
 // TestFetchPreviousData_ProjectScope tests fetchPreviousData for project-scoped workflows
 func TestFetchPreviousData_ProjectScope(t *testing.T) {
+	t.Parallel()
 	env := setupToResumeTestEnvProjectScope(t)
 	defer env.cleanup()
 

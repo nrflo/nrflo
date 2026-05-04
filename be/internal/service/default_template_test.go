@@ -28,6 +28,7 @@ func setupDefaultTemplateTestEnv(t *testing.T) (*DefaultTemplateService, func())
 // --- List ---
 
 func TestDefaultTemplate_List_ReadonlyHasDefaultTemplate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -52,6 +53,7 @@ func TestDefaultTemplate_List_ReadonlyHasDefaultTemplate(t *testing.T) {
 }
 
 func TestDefaultTemplate_List_UserCreatedNoDefaultTemplate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -79,6 +81,7 @@ func TestDefaultTemplate_List_UserCreatedNoDefaultTemplate(t *testing.T) {
 // --- Get ---
 
 func TestDefaultTemplate_Get_ReadonlyHasDefaultTemplate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -98,6 +101,7 @@ func TestDefaultTemplate_Get_ReadonlyHasDefaultTemplate(t *testing.T) {
 }
 
 func TestDefaultTemplate_Get_UserCreatedNoDefaultTemplate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -116,6 +120,7 @@ func TestDefaultTemplate_Get_UserCreatedNoDefaultTemplate(t *testing.T) {
 }
 
 func TestDefaultTemplate_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -131,6 +136,7 @@ func TestDefaultTemplate_Get_NotFound(t *testing.T) {
 // --- Update ---
 
 func TestDefaultTemplate_Update_ReadonlyTemplateTextAllowed(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -153,6 +159,7 @@ func TestDefaultTemplate_Update_ReadonlyTemplateTextAllowed(t *testing.T) {
 }
 
 func TestDefaultTemplate_Update_ReadonlyNameRejected(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -175,6 +182,7 @@ func TestDefaultTemplate_Update_ReadonlyNameRejected(t *testing.T) {
 }
 
 func TestDefaultTemplate_Update_ReadonlyNameAndTemplateBothRejected(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -190,6 +198,7 @@ func TestDefaultTemplate_Update_ReadonlyNameAndTemplateBothRejected(t *testing.T
 }
 
 func TestDefaultTemplate_Update_NonReadonlyAllFields(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -220,6 +229,7 @@ func TestDefaultTemplate_Update_NonReadonlyAllFields(t *testing.T) {
 }
 
 func TestDefaultTemplate_Update_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 

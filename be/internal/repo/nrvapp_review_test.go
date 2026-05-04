@@ -30,6 +30,7 @@ func setupNrvappReviewDB(t *testing.T) (*NrvappReviewRepo, string) {
 }
 
 func TestNrvappReviewRepo_InsertGet(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	item := &model.NrvappReviewItem{
@@ -78,6 +79,7 @@ func TestNrvappReviewRepo_InsertGet(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_GetNotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupNrvappReviewDB(t)
 	_, err := r.Get("no-such-id")
 	if err == nil {
@@ -89,6 +91,7 @@ func TestNrvappReviewRepo_GetNotFound(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_ListAllStatuses(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	for _, tool := range []string{"tool_a", "tool_b", "tool_c"} {
@@ -108,6 +111,7 @@ func TestNrvappReviewRepo_ListAllStatuses(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_ListStatusFilter(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	pending := &model.NrvappReviewItem{ProjectID: projectID, ToolName: "tp", Input: `{}`}
@@ -142,6 +146,7 @@ func TestNrvappReviewRepo_ListStatusFilter(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_ListPagination(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	for i := 0; i < 5; i++ {
@@ -186,6 +191,7 @@ func TestNrvappReviewRepo_ListPagination(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_UpdateDraft(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	item := &model.NrvappReviewItem{ProjectID: projectID, ToolName: "t", Input: `{}`}
@@ -208,6 +214,7 @@ func TestNrvappReviewRepo_UpdateDraft(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_UpdateDraftNotFound(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 	if err := r.UpdateDraft("no-such-id", projectID, "x"); err == nil {
 		t.Fatal("UpdateDraft non-existent: expected error, got nil")
@@ -215,6 +222,7 @@ func TestNrvappReviewRepo_UpdateDraftNotFound(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_ApproveCopiesDraftToOutput(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	item := &model.NrvappReviewItem{ProjectID: projectID, ToolName: "t", Input: `{}`}
@@ -241,6 +249,7 @@ func TestNrvappReviewRepo_ApproveCopiesDraftToOutput(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_ApprovePreservesExistingOutput(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	existing := "original output"
@@ -267,6 +276,7 @@ func TestNrvappReviewRepo_ApprovePreservesExistingOutput(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_ApproveNotFound(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 	if err := r.Approve("no-such-id", projectID); err == nil {
 		t.Fatal("Approve non-existent: expected error, got nil")
@@ -274,6 +284,7 @@ func TestNrvappReviewRepo_ApproveNotFound(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_Reject(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	item := &model.NrvappReviewItem{ProjectID: projectID, ToolName: "t", Input: `{}`}
@@ -296,6 +307,7 @@ func TestNrvappReviewRepo_Reject(t *testing.T) {
 }
 
 func TestNrvappReviewRepo_RejectEmptyReason(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappReviewDB(t)
 
 	item := &model.NrvappReviewItem{ProjectID: projectID, ToolName: "t", Input: `{}`}

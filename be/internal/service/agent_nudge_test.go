@@ -57,6 +57,7 @@ func setupAgentNudgeEnv(t *testing.T) (*AgentService, string) {
 
 // TestIncrementNudgeCount_FirstCallReturnsOne verifies the first call returns 1.
 func TestIncrementNudgeCount_FirstCallReturnsOne(t *testing.T) {
+	t.Parallel()
 	svc, sessionID := setupAgentNudgeEnv(t)
 
 	count, err := svc.IncrementNudgeCount(sessionID)
@@ -70,6 +71,7 @@ func TestIncrementNudgeCount_FirstCallReturnsOne(t *testing.T) {
 
 // TestIncrementNudgeCount_SecondCallReturnsTwo verifies the second call returns 2.
 func TestIncrementNudgeCount_SecondCallReturnsTwo(t *testing.T) {
+	t.Parallel()
 	svc, sessionID := setupAgentNudgeEnv(t)
 
 	if _, err := svc.IncrementNudgeCount(sessionID); err != nil {
@@ -87,6 +89,7 @@ func TestIncrementNudgeCount_SecondCallReturnsTwo(t *testing.T) {
 // TestIncrementNudgeCount_DBReflectsCount verifies nudge_count in the DB reflects the
 // incremented value after multiple calls.
 func TestIncrementNudgeCount_DBReflectsCount(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "reflect_test.db")
 	if err := svcCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)
@@ -143,6 +146,7 @@ func TestIncrementNudgeCount_DBReflectsCount(t *testing.T) {
 // TestIncrementNudgeCount_UnknownSession_ReturnsError verifies an unknown session ID
 // causes an error (sql.ErrNoRows from the SELECT after the no-op UPDATE).
 func TestIncrementNudgeCount_UnknownSession_ReturnsError(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "unknown_test.db")
 	if err := svcCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)
@@ -163,6 +167,7 @@ func TestIncrementNudgeCount_UnknownSession_ReturnsError(t *testing.T) {
 
 // TestIncrementNudgeCount_UpdatedAt_SetFromClock verifies updated_at is refreshed by the clock.
 func TestIncrementNudgeCount_UpdatedAt_SetFromClock(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "ts_test.db")
 	if err := svcCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)

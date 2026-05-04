@@ -10,6 +10,7 @@ import (
 // TestSpawnContextSaver_NoPool verifies that spawnContextSaver returns false
 // immediately when the spawner has no database pool configured.
 func TestSpawnContextSaver_NoPool(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()}) // no Pool set
 	proc := &processInfo{
 		sessionID: "test-session-id",
@@ -24,6 +25,7 @@ func TestSpawnContextSaver_NoPool(t *testing.T) {
 // TestSpawnContextSaver_SystemAgentNotFound verifies graceful fallback when the
 // context-saver system agent definition is missing from the database.
 func TestSpawnContextSaver_SystemAgentNotFound(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -45,6 +47,7 @@ func TestSpawnContextSaver_SystemAgentNotFound(t *testing.T) {
 // TestSpawnContextSaver_NoMessages verifies graceful fallback when the session
 // has no agent messages to summarize.
 func TestSpawnContextSaver_NoMessages(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 

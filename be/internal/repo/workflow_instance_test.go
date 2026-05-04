@@ -11,6 +11,7 @@ import (
 )
 
 func TestUpdateStatusToProjectCompleted(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -72,6 +73,7 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 }
 
 func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 

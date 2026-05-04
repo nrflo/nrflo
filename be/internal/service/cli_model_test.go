@@ -32,6 +32,7 @@ func strPtr(v string) *string { return &v }
 // --- List ---
 
 func TestCLIModel_List(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -62,6 +63,7 @@ func TestCLIModel_List(t *testing.T) {
 // --- Get ---
 
 func TestCLIModel_Get(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -87,6 +89,7 @@ func TestCLIModel_Get(t *testing.T) {
 }
 
 func TestCLIModel_GetCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -100,6 +103,7 @@ func TestCLIModel_GetCaseInsensitive(t *testing.T) {
 }
 
 func TestCLIModel_GetNotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -115,6 +119,7 @@ func TestCLIModel_GetNotFound(t *testing.T) {
 // --- Create ---
 
 func TestCLIModel_Create(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -166,6 +171,7 @@ func TestCLIModel_Create(t *testing.T) {
 }
 
 func TestCLIModel_CreateInvalidCLIType(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -184,6 +190,7 @@ func TestCLIModel_CreateInvalidCLIType(t *testing.T) {
 }
 
 func TestCLIModel_CreateMissingID(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -201,6 +208,7 @@ func TestCLIModel_CreateMissingID(t *testing.T) {
 }
 
 func TestCLIModel_CreateMissingDisplayName(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -218,6 +226,7 @@ func TestCLIModel_CreateMissingDisplayName(t *testing.T) {
 }
 
 func TestCLIModel_CreateMissingMappedModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -235,6 +244,7 @@ func TestCLIModel_CreateMissingMappedModel(t *testing.T) {
 }
 
 func TestCLIModel_CreateDuplicate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -257,6 +267,7 @@ func TestCLIModel_CreateDuplicate(t *testing.T) {
 }
 
 func TestCLIModel_CreateContextLengthDefault(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -276,6 +287,7 @@ func TestCLIModel_CreateContextLengthDefault(t *testing.T) {
 }
 
 func TestCLIModel_CreateIDNormalized(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -296,6 +308,7 @@ func TestCLIModel_CreateIDNormalized(t *testing.T) {
 // --- Update ---
 
 func TestCLIModel_Update(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -329,6 +342,7 @@ func TestCLIModel_Update(t *testing.T) {
 }
 
 func TestCLIModel_UpdateMultipleFields(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -364,6 +378,7 @@ func TestCLIModel_UpdateMultipleFields(t *testing.T) {
 }
 
 func TestCLIModel_UpdateNotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -380,6 +395,7 @@ func TestCLIModel_UpdateNotFound(t *testing.T) {
 }
 
 func TestCLIModel_UpdateReadonly(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -401,6 +417,7 @@ func TestCLIModel_UpdateReadonly(t *testing.T) {
 // --- ReasoningEffort validation ---
 
 func TestCLIModel_CreateReasoningEffort(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		cliType     string
@@ -458,6 +475,7 @@ func TestCLIModel_CreateReasoningEffort(t *testing.T) {
 }
 
 func TestCLIModel_UpdateReasoningEffort_Valid(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -475,6 +493,7 @@ func TestCLIModel_UpdateReasoningEffort_Valid(t *testing.T) {
 }
 
 func TestCLIModel_UpdateReasoningEffort_XhighRejectedOnNonOpus47(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -492,6 +511,7 @@ func TestCLIModel_UpdateReasoningEffort_XhighRejectedOnNonOpus47(t *testing.T) {
 }
 
 func TestCLIModel_UpdateReasoningEffort_InvalidValue(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -508,6 +528,7 @@ func TestCLIModel_UpdateReasoningEffort_InvalidValue(t *testing.T) {
 }
 
 func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
+	t.Parallel()
 	// User stored xhigh on a user-owned Opus-4.7 row, then changes mapped_model to sonnet
 	// without clearing effort. Overlay logic must reject the Update.
 	svc, cleanup := setupCLIModelTestEnv(t)
@@ -557,6 +578,7 @@ func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
 }
 
 func TestCLIModel_UpdateMappedModel_AndClearEffort(t *testing.T) {
+	t.Parallel()
 	// Switching mapped_model to non-Opus-4.7 WHILE also clearing effort must succeed.
 	// Uses a user-owned row because read_only rows block mapped_model edits.
 	svc, cleanup := setupCLIModelTestEnv(t)
@@ -598,6 +620,7 @@ func TestCLIModel_UpdateMappedModel_AndClearEffort(t *testing.T) {
 }
 
 func TestCLIModel_UpdateNoFields(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 

@@ -10,6 +10,7 @@ import (
 // TestRegisterInteractiveWait_BlocksUntilCompleteInteractive verifies that
 // the channel returned by RegisterInteractiveWait blocks until CompleteInteractive is called.
 func TestRegisterInteractiveWait_BlocksUntilCompleteInteractive(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	waitCh := sp.RegisterInteractiveWait("sess-rwi-1")
@@ -35,6 +36,7 @@ func TestRegisterInteractiveWait_BlocksUntilCompleteInteractive(t *testing.T) {
 
 // TestRegisterInteractiveWait_RegistersInMap verifies the session is stored in interactiveWaits.
 func TestRegisterInteractiveWait_RegistersInMap(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	sp.RegisterInteractiveWait("sess-map-check")
@@ -50,6 +52,7 @@ func TestRegisterInteractiveWait_RegistersInMap(t *testing.T) {
 
 // TestRegisterInteractiveWait_MultipleSessions verifies each session gets an isolated channel.
 func TestRegisterInteractiveWait_MultipleSessions(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 
 	ch1 := sp.RegisterInteractiveWait("sess-multi-1")
@@ -84,6 +87,7 @@ func TestRegisterInteractiveWait_MultipleSessions(t *testing.T) {
 // TestRegisterInteractiveWait_ReturnedChannelIsReadOnly verifies the returned channel
 // is receive-only (cannot be closed by the caller accidentally).
 func TestRegisterInteractiveWait_ReturnedChannelIsReadOnly(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	ch := sp.RegisterInteractiveWait("sess-readonly")
 	// Compile-time: ch is <-chan struct{}, so we can only receive from it.

@@ -10,6 +10,7 @@ import (
 // --- Enabled field in List ---
 
 func TestCLIModel_List_EnabledField(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -27,6 +28,7 @@ func TestCLIModel_List_EnabledField(t *testing.T) {
 // --- ListEnabled ---
 
 func TestCLIModel_ListEnabled_ReturnsAllByDefault(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -40,6 +42,7 @@ func TestCLIModel_ListEnabled_ReturnsAllByDefault(t *testing.T) {
 }
 
 func TestCLIModel_ListEnabled_ExcludesDisabledCustom(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -71,6 +74,7 @@ func TestCLIModel_ListEnabled_ExcludesDisabledCustom(t *testing.T) {
 }
 
 func TestCLIModel_ListEnabled_IncludesEnabledCustom(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -95,6 +99,7 @@ func TestCLIModel_ListEnabled_IncludesEnabledCustom(t *testing.T) {
 // --- Get enabled field ---
 
 func TestCLIModel_Get_EnabledField(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -110,6 +115,7 @@ func TestCLIModel_Get_EnabledField(t *testing.T) {
 // --- Create returns enabled=true ---
 
 func TestCLIModel_Create_EnabledByDefault(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -138,6 +144,7 @@ func TestCLIModel_Create_EnabledByDefault(t *testing.T) {
 // --- Disable custom model ---
 
 func TestCLIModel_DisableCustomModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -170,6 +177,7 @@ func TestCLIModel_DisableCustomModel(t *testing.T) {
 // --- Re-enable model ---
 
 func TestCLIModel_EnableCustomModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -198,6 +206,7 @@ func TestCLIModel_EnableCustomModel(t *testing.T) {
 // --- Reject disable on read_only model ---
 
 func TestCLIModel_DisableReadOnlyModel_Rejected(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -221,6 +230,7 @@ func TestCLIModel_DisableReadOnlyModel_Rejected(t *testing.T) {
 // --- IsValidModel with enabled ---
 
 func TestCLIModel_IsValidModel_DisabledModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -247,6 +257,7 @@ func TestCLIModel_IsValidModel_DisabledModel(t *testing.T) {
 }
 
 func TestCLIModel_IsValidModel_ReenabledModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 

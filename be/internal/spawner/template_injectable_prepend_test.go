@@ -8,6 +8,7 @@ import (
 )
 
 func TestLoadTemplate_LowContextPrepended(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "LC-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -36,6 +37,7 @@ func TestLoadTemplate_LowContextPrepended(t *testing.T) {
 }
 
 func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
+	t.Parallel()
 	reasons := []string{
 		"stall_restart",
 		"stall_restart_start_stall",
@@ -72,6 +74,7 @@ func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
 }
 
 func TestLoadTemplate_PrependOrdering(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "PO-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)

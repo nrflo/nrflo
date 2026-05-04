@@ -32,6 +32,7 @@ func mkCred(id, provider, secretRef string, projectID *string) *model.APICredent
 
 // TestAPICredentialRepo_CreateGet round-trips a global credential.
 func TestAPICredentialRepo_CreateGet(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 
 	c := mkCred("c1", "anthropic", "env:ANTHROPIC_API_KEY", nil)
@@ -55,6 +56,7 @@ func TestAPICredentialRepo_CreateGet(t *testing.T) {
 
 // TestAPICredentialRepo_List orders rows.
 func TestAPICredentialRepo_List(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 	pid := "p1"
 	if err := r.Create(mkCred("c1", "anthropic", "env:KEY", nil)); err != nil {
@@ -74,6 +76,7 @@ func TestAPICredentialRepo_List(t *testing.T) {
 
 // TestAPICredentialRepo_Update mutates fields.
 func TestAPICredentialRepo_Update(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 	if err := r.Create(mkCred("c1", "anthropic", "env:OLD", nil)); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -92,6 +95,7 @@ func TestAPICredentialRepo_Update(t *testing.T) {
 }
 
 func TestAPICredentialRepo_Delete(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 	if err := r.Create(mkCred("c1", "anthropic", "env:K", nil)); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -108,6 +112,7 @@ func TestAPICredentialRepo_Delete(t *testing.T) {
 
 // TestAPICredentialRepo_Resolve_PerProjectBeatsGlobal verifies the precedence rule.
 func TestAPICredentialRepo_Resolve_PerProjectBeatsGlobal(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 	pid := "proj-a"
 	if err := r.Create(mkCred("g", "anthropic", "env:GLOBAL", nil)); err != nil {
@@ -131,6 +136,7 @@ func TestAPICredentialRepo_Resolve_PerProjectBeatsGlobal(t *testing.T) {
 
 // TestAPICredentialRepo_Resolve_FallbackToGlobal verifies fallback when no per-project row.
 func TestAPICredentialRepo_Resolve_FallbackToGlobal(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 	if err := r.Create(mkCred("g", "anthropic", "env:GLOBAL", nil)); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -150,6 +156,7 @@ func TestAPICredentialRepo_Resolve_FallbackToGlobal(t *testing.T) {
 
 // TestAPICredentialRepo_Resolve_NoMatch returns sql.ErrNoRows when neither exists.
 func TestAPICredentialRepo_Resolve_NoMatch(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 	_, err := r.Resolve("anthropic", "")
 	if err != sql.ErrNoRows {
@@ -164,6 +171,7 @@ func TestAPICredentialRepo_Resolve_NoMatch(t *testing.T) {
 // TestAPICredentialRepo_Resolve_EmptyProjectIDUsesGlobalOnly verifies that an
 // empty project_id only returns a global row, never a per-project one.
 func TestAPICredentialRepo_Resolve_EmptyProjectIDUsesGlobalOnly(t *testing.T) {
+	t.Parallel()
 	r := setupAPICredRepo(t)
 	pid := "proj-a"
 	if err := r.Create(mkCred("p", "anthropic", "literal:sk-proj", &pid)); err != nil {

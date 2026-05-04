@@ -35,6 +35,7 @@ func setupDailyStatsTestDB(t *testing.T) (*db.Pool, string) {
 }
 
 func TestComputeAndStore_WithKnownData(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -159,6 +160,7 @@ func TestComputeAndStore_WithKnownData(t *testing.T) {
 }
 
 func TestComputeAndStore_ExcludesRunningAndContinuedSessions(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -232,6 +234,7 @@ func TestComputeAndStore_ExcludesRunningAndContinuedSessions(t *testing.T) {
 }
 
 func TestComputeAndStore_ExcludesNullTimestamps(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -308,6 +311,7 @@ func TestComputeAndStore_ExcludesNullTimestamps(t *testing.T) {
 }
 
 func TestComputeAndStore_NoData(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -336,6 +340,7 @@ func TestComputeAndStore_NoData(t *testing.T) {
 }
 
 func TestComputeAndStore_UpsertUpdatesExisting(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -398,6 +403,7 @@ func TestComputeAndStore_UpsertUpdatesExisting(t *testing.T) {
 }
 
 func TestComputeAndStore_CaseInsensitiveProjectID(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -428,6 +434,7 @@ func TestComputeAndStore_CaseInsensitiveProjectID(t *testing.T) {
 }
 
 func TestGetToday(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -462,6 +469,7 @@ func TestGetToday(t *testing.T) {
 }
 
 func TestComputeAndStore_TokensCalculation(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 
@@ -528,6 +536,7 @@ func TestComputeAndStore_TokensCalculation(t *testing.T) {
 }
 
 func TestComputeAndStore_AgentTimeCalculation(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupDailyStatsTestDB(t)
 	defer pool.Close()
 

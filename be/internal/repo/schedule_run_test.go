@@ -70,6 +70,7 @@ func makeRun(id, taskID, projectID, status string) *model.ScheduleRun {
 }
 
 func TestScheduleRunRepo_Insert_AutoFillsTriggeredAt(t *testing.T) {
+	t.Parallel()
 	fixedTime := time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
@@ -117,6 +118,7 @@ func TestScheduleRunRepo_Insert_AutoFillsTriggeredAt(t *testing.T) {
 }
 
 func TestScheduleRunRepo_Insert_KeepsExplicitTriggeredAt(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	explicitTime := time.Date(2026, 3, 10, 8, 30, 0, 0, time.UTC)
@@ -137,6 +139,7 @@ func TestScheduleRunRepo_Insert_KeepsExplicitTriggeredAt(t *testing.T) {
 }
 
 func TestScheduleRunRepo_Insert_WorkflowsRoundTrip(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	run := &model.ScheduleRun{
@@ -169,6 +172,7 @@ func TestScheduleRunRepo_Insert_WorkflowsRoundTrip(t *testing.T) {
 }
 
 func TestScheduleRunRepo_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	_, err := env.runRepo.Get("no-such-run")
@@ -178,6 +182,7 @@ func TestScheduleRunRepo_Get_NotFound(t *testing.T) {
 }
 
 func TestScheduleRunRepo_UpdateStatus(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	run := makeRun("run-upd", env.taskID, env.projectID, "running")
@@ -210,6 +215,7 @@ func TestScheduleRunRepo_UpdateStatus(t *testing.T) {
 }
 
 func TestScheduleRunRepo_UpdateStatus_WithError(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	run := makeRun("run-fail", env.taskID, env.projectID, "running")
@@ -234,6 +240,7 @@ func TestScheduleRunRepo_UpdateStatus_WithError(t *testing.T) {
 }
 
 func TestScheduleRunRepo_UpdateStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	err := env.runRepo.UpdateStatus("no-such", "completed", "[]", "")
@@ -243,6 +250,7 @@ func TestScheduleRunRepo_UpdateStatus_NotFound(t *testing.T) {
 }
 
 func TestScheduleRunRepo_ListByTask_OrderedDescWithLimitOffset(t *testing.T) {
+	t.Parallel()
 	fixedBase := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedBase)
 
@@ -318,6 +326,7 @@ func TestScheduleRunRepo_ListByTask_OrderedDescWithLimitOffset(t *testing.T) {
 }
 
 func TestScheduleRunRepo_ListByTask_EmptySliceWhenNoRows(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	runs, err := env.runRepo.ListByTask(env.taskID, 10, 0)
@@ -333,6 +342,7 @@ func TestScheduleRunRepo_ListByTask_EmptySliceWhenNoRows(t *testing.T) {
 }
 
 func TestScheduleRunRepo_ListByTask_CascadeDelete(t *testing.T) {
+	t.Parallel()
 	env := setupScheduleRunDB(t)
 
 	// Insert a couple of runs

@@ -15,6 +15,7 @@ import (
 // TestHandleStallRestart_BroadcastsEvent verifies agent.stall_restart event is broadcast
 // with the correct payload fields before the agent is killed.
 func TestHandleStallRestart_BroadcastsEvent(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -72,6 +73,7 @@ func TestHandleStallRestart_BroadcastsEvent(t *testing.T) {
 
 // TestHandleStallRestart_RunningStall_EventType verifies stall_type="running" for running_stall.
 func TestHandleStallRestart_RunningStall_EventType(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -124,6 +126,7 @@ func TestHandleStallRestart_RunningStall_EventType(t *testing.T) {
 // TestStallRestart_FieldCarryover verifies stallRestartCount and timeout values
 // are carried over in relaunchForContinuation.
 func TestStallRestart_FieldCarryover(t *testing.T) {
+	t.Parallel()
 	oldProc := &processInfo{
 		sessionID:           "old-session",
 		stallRestartCount:   2,
@@ -161,6 +164,7 @@ func TestStallRestart_FieldCarryover(t *testing.T) {
 
 // TestEventAgentStallRestart_Constant verifies the event constant uses resource.action naming.
 func TestEventAgentStallRestart_Constant(t *testing.T) {
+	t.Parallel()
 	const want = "agent.stall_restart"
 	if ws.EventAgentStallRestart != want {
 		t.Errorf("EventAgentStallRestart = %q, want %q", ws.EventAgentStallRestart, want)

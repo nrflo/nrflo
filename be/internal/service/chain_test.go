@@ -78,6 +78,7 @@ func createTestDependencies(t *testing.T, pool *db.Pool, projectID string, deps 
 
 // TestExpandWithBlockers_NoDependencies verifies that expansion works with no dependencies
 func TestExpandWithBlockers_NoDependencies(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -103,6 +104,7 @@ func TestExpandWithBlockers_NoDependencies(t *testing.T) {
 
 // TestExpandWithBlockers_DirectBlockers verifies single-level dependency expansion
 func TestExpandWithBlockers_DirectBlockers(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -132,6 +134,7 @@ func TestExpandWithBlockers_DirectBlockers(t *testing.T) {
 
 // TestExpandWithBlockers_TransitiveBlockers verifies multi-level dependency expansion
 func TestExpandWithBlockers_TransitiveBlockers(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -166,6 +169,7 @@ func TestExpandWithBlockers_TransitiveBlockers(t *testing.T) {
 
 // TestDetectCycles_NoCycle verifies that valid DAGs don't trigger cycle detection
 func TestDetectCycles_NoCycle(t *testing.T) {
+	t.Parallel()
 	// Linear: A -> B -> C
 	deps := map[string][]string{
 		"b": {"a"},
@@ -179,6 +183,7 @@ func TestDetectCycles_NoCycle(t *testing.T) {
 
 // TestDetectCycles_SimpleCycle verifies detection of simple A -> B -> A cycle
 func TestDetectCycles_SimpleCycle(t *testing.T) {
+	t.Parallel()
 	deps := map[string][]string{
 		"a": {"b"},
 		"b": {"a"},
@@ -194,6 +199,7 @@ func TestDetectCycles_SimpleCycle(t *testing.T) {
 
 // TestDetectCycles_DiamondNotCycle verifies diamond dependencies don't trigger false positive
 func TestDetectCycles_DiamondNotCycle(t *testing.T) {
+	t.Parallel()
 	// Diamond: D depends on B and C, both B and C depend on A
 	deps := map[string][]string{
 		"b": {"a"},
@@ -208,6 +214,7 @@ func TestDetectCycles_DiamondNotCycle(t *testing.T) {
 
 // TestDetectCycles_ComplexCycle verifies detection of cycle in larger graph
 func TestDetectCycles_ComplexCycle(t *testing.T) {
+	t.Parallel()
 	// A -> B -> C -> D -> A (cycle back to A)
 	deps := map[string][]string{
 		"b": {"a"},
@@ -223,6 +230,7 @@ func TestDetectCycles_ComplexCycle(t *testing.T) {
 
 // TestTopologicalSort_Linear verifies simple linear chain ordering
 func TestTopologicalSort_Linear(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -256,6 +264,7 @@ func TestTopologicalSort_Linear(t *testing.T) {
 
 // TestTopologicalSort_Diamond verifies diamond dependency ordering
 func TestTopologicalSort_Diamond(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -298,6 +307,7 @@ func TestTopologicalSort_Diamond(t *testing.T) {
 
 // TestTopologicalSort_TieBreak verifies created_at then ID tie-breaking
 func TestTopologicalSort_TieBreak(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -332,6 +342,7 @@ func TestTopologicalSort_TieBreak(t *testing.T) {
 
 // TestCreateChain_HappyPath verifies basic chain creation
 func TestCreateChain_HappyPath(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -385,6 +396,7 @@ func TestCreateChain_HappyPath(t *testing.T) {
 
 // TestCreateChain_CycleDetection verifies cycle detection during creation
 func TestCreateChain_CycleDetection(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -414,6 +426,7 @@ func TestCreateChain_CycleDetection(t *testing.T) {
 
 // TestCreateChain_LockConflict verifies lock conflict detection
 func TestCreateChain_LockConflict(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -463,6 +476,7 @@ func TestCreateChain_LockConflict(t *testing.T) {
 
 // TestUpdateChain_PendingOnly verifies only pending chains can be edited
 func TestUpdateChain_PendingOnly(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -500,6 +514,7 @@ func TestUpdateChain_PendingOnly(t *testing.T) {
 
 // TestUpdateChain_TicketReexpansion verifies ticket list updates trigger re-expansion
 func TestUpdateChain_TicketReexpansion(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -552,6 +567,7 @@ func TestUpdateChain_TicketReexpansion(t *testing.T) {
 
 // TestCreateChain_EmptyTicketList verifies error on empty ticket list
 func TestCreateChain_EmptyTicketList(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -571,6 +587,7 @@ func TestCreateChain_EmptyTicketList(t *testing.T) {
 
 // TestCreateChain_SingleTicketNoDeps verifies single ticket with no dependencies
 func TestCreateChain_SingleTicketNoDeps(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -598,6 +615,7 @@ func TestCreateChain_SingleTicketNoDeps(t *testing.T) {
 
 // TestChainItemTicketTitle_DeletedTicket verifies ticket title is empty string when ticket is deleted
 func TestChainItemTicketTitle_DeletedTicket(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -650,6 +668,7 @@ func TestChainItemTicketTitle_DeletedTicket(t *testing.T) {
 
 // TestGetChainWithItems_TicketTitlesPopulated verifies GetChainWithItems includes ticket titles
 func TestGetChainWithItems_TicketTitlesPopulated(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 

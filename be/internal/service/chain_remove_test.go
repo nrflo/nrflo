@@ -24,6 +24,7 @@ func getChainItemCount(t *testing.T, svc *ChainService, chainID string) int {
 // TestRemoveFromChain_PendingItemRemoved verifies that a pending item is deleted
 // and its lock is released.
 func TestRemoveFromChain_PendingItemRemoved(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -94,6 +95,7 @@ func TestRemoveFromChain_PendingItemRemoved(t *testing.T) {
 
 // TestRemoveFromChain_MultipleItemsRemoved verifies bulk removal of pending items.
 func TestRemoveFromChain_MultipleItemsRemoved(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -143,6 +145,7 @@ func TestRemoveFromChain_MultipleItemsRemoved(t *testing.T) {
 
 // TestRemoveFromChain_EmptyTicketListFails verifies that an empty request fails.
 func TestRemoveFromChain_EmptyTicketListFails(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -173,6 +176,7 @@ func TestRemoveFromChain_EmptyTicketListFails(t *testing.T) {
 
 // TestRemoveFromChain_NonRunningChainFails verifies rejection when chain is not running.
 func TestRemoveFromChain_NonRunningChainFails(t *testing.T) {
+	t.Parallel()
 	statuses := []model.ChainStatus{
 		model.ChainStatusPending,
 		model.ChainStatusCompleted,
@@ -220,6 +224,7 @@ func TestRemoveFromChain_NonRunningChainFails(t *testing.T) {
 
 // TestRemoveFromChain_NonPendingItemFails verifies that non-pending items cannot be removed.
 func TestRemoveFromChain_NonPendingItemFails(t *testing.T) {
+	t.Parallel()
 	nonPendingStatuses := []model.ChainItemStatus{
 		model.ChainItemRunning,
 		model.ChainItemCompleted,
@@ -288,6 +293,7 @@ func TestRemoveFromChain_NonPendingItemFails(t *testing.T) {
 // TestRemoveFromChain_TicketNotInChainFails verifies that a ticket not in the chain
 // returns an error.
 func TestRemoveFromChain_TicketNotInChainFails(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -324,6 +330,7 @@ func TestRemoveFromChain_TicketNotInChainFails(t *testing.T) {
 // The delete + lock release are wrapped in a transaction, so mixed batches
 // (some pending + some non-pending) are rolled back atomically.
 func TestRemoveFromChain_SingleNonPendingFailIsAtomic(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -380,6 +387,7 @@ func TestRemoveFromChain_SingleNonPendingFailIsAtomic(t *testing.T) {
 // TestRemoveFromChain_CaseInsensitiveDeduplicated verifies that ticket IDs are
 // matched and deduplicated case-insensitively.
 func TestRemoveFromChain_CaseInsensitiveDeduplicated(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 

@@ -14,6 +14,7 @@ func boolPtr(b bool) *bool { return &b }
 // --- CreateWorkflowDef: close_ticket_on_complete defaults ---
 
 func TestCreateWorkflowDef_CloseTicketOnComplete_DefaultsToTrue(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	// Omit close_ticket_on_complete entirely → should default to true
@@ -29,6 +30,7 @@ func TestCreateWorkflowDef_CloseTicketOnComplete_DefaultsToTrue(t *testing.T) {
 }
 
 func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitFalse(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -44,6 +46,7 @@ func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitFalse(t *testing.T) {
 }
 
 func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitTrue(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -61,6 +64,7 @@ func TestCreateWorkflowDef_CloseTicketOnComplete_ExplicitTrue(t *testing.T) {
 // --- GetWorkflowDef / ListWorkflowDefs: field persisted and read back ---
 
 func TestGetWorkflowDef_CloseTicketOnComplete_Persisted(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	cases := []struct {
@@ -95,6 +99,7 @@ func TestGetWorkflowDef_CloseTicketOnComplete_Persisted(t *testing.T) {
 }
 
 func TestListWorkflowDefs_CloseTicketOnComplete_Persisted(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -121,6 +126,7 @@ func TestListWorkflowDefs_CloseTicketOnComplete_Persisted(t *testing.T) {
 // --- UpdateWorkflowDef: field is updateable ---
 
 func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToFalse(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	// Create with default (true)
@@ -148,6 +154,7 @@ func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToFalse(t *testing.T) {
 }
 
 func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToTrue(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	// Create with explicit false
@@ -176,6 +183,7 @@ func TestUpdateWorkflowDef_CloseTicketOnComplete_UpdateToTrue(t *testing.T) {
 }
 
 func TestUpdateWorkflowDef_CloseTicketOnComplete_NilPreservesValue(t *testing.T) {
+	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
@@ -206,6 +214,7 @@ func TestUpdateWorkflowDef_CloseTicketOnComplete_NilPreservesValue(t *testing.T)
 // --- BuildSpawnerConfig: propagates close_ticket_on_complete ---
 
 func TestBuildSpawnerConfig_CloseTicketOnComplete_Propagated(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		value bool
@@ -239,6 +248,7 @@ func TestBuildSpawnerConfig_CloseTicketOnComplete_Propagated(t *testing.T) {
 // --- WorkflowDef MarshalJSON includes close_ticket_on_complete ---
 
 func TestWorkflowDef_MarshalJSON_IncludesCloseTicketOnComplete(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		value bool

@@ -17,6 +17,7 @@ import (
 // No Provider is set on Config (it would be nil). If the rejection happened AFTER
 // provider access the spawner would panic or return a different error.
 func TestSpawner_RejectsAPIModeAgent_WhenConfigAPIModeFalse(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -60,6 +61,7 @@ func TestSpawner_RejectsAPIModeAgent_WhenConfigAPIModeFalse(t *testing.T) {
 // TestSpawner_RejectsAPIModeAgent_ViaConfigAgents verifies that the "api_mode_disabled"
 // rejection also fires when the api mode comes from Config.Agents (no agentDef row).
 func TestSpawner_RejectsAPIModeAgent_ViaConfigAgents(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 

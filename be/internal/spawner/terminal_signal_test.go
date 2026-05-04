@@ -10,6 +10,7 @@ import (
 // RequestTerminalSignal sends a terminalSignal to the channel registered
 // for that session ID via registerTerminalSignal.
 func TestRequestTerminalSignal_RoutesToRegisteredChannel(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	ch := make(chan terminalSignal, 1)
 	sp.registerTerminalSignal("sess-abc", ch)
@@ -32,6 +33,7 @@ func TestRequestTerminalSignal_RoutesToRegisteredChannel(t *testing.T) {
 // TestRequestTerminalSignal_UnregisteredSessionIsNoOp verifies that calling
 // RequestTerminalSignal for a session not in the registry is a silent no-op.
 func TestRequestTerminalSignal_UnregisteredSessionIsNoOp(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	// No registerTerminalSignal call — session is unknown.
 	sp.RequestTerminalSignal("unknown-session", "fail") // must not panic / block
@@ -40,6 +42,7 @@ func TestRequestTerminalSignal_UnregisteredSessionIsNoOp(t *testing.T) {
 // TestRequestTerminalSignal_UnregisterStopsRouting verifies that after
 // unregisterTerminalSignal, subsequent sends for that session are dropped.
 func TestRequestTerminalSignal_UnregisterStopsRouting(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	ch := make(chan terminalSignal, 1)
 	sp.registerTerminalSignal("sess-x", ch)
@@ -58,6 +61,7 @@ func TestRequestTerminalSignal_UnregisterStopsRouting(t *testing.T) {
 // different session IDs land on their own channels. This is the property
 // that prevents one monitorAll from stealing another's signal.
 func TestRequestTerminalSignal_RoutesPerSession(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	chA := make(chan terminalSignal, 1)
 	chB := make(chan terminalSignal, 1)
@@ -89,6 +93,7 @@ func TestRequestTerminalSignal_RoutesPerSession(t *testing.T) {
 // destination channel is full, a second send for the same session is
 // silently dropped without blocking.
 func TestRequestTerminalSignal_NonBlockingWhenFull(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	ch := make(chan terminalSignal, 1)
 	sp.registerTerminalSignal("sess-full", ch)
@@ -111,6 +116,7 @@ func TestRequestTerminalSignal_NonBlockingWhenFull(t *testing.T) {
 // TestRequestTerminalSignal_ResultValues verifies that each result string
 // (fail, continue, callback) is correctly carried through the registry path.
 func TestRequestTerminalSignal_ResultValues(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		sessionID string
 		result    string

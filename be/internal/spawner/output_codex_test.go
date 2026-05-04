@@ -47,6 +47,7 @@ func pendingMessages(proc *processInfo) []string {
 // === thread.started ===
 
 func TestProcessOutput_ThreadStarted_SetsExternalSessionID(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ts-1")
 
@@ -61,6 +62,7 @@ func TestProcessOutput_ThreadStarted_SetsExternalSessionID(t *testing.T) {
 }
 
 func TestProcessOutput_ThreadStarted_EmptyThreadIDIgnored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ts-2")
 	proc.externalSessionID = "existing"
@@ -76,6 +78,7 @@ func TestProcessOutput_ThreadStarted_EmptyThreadIDIgnored(t *testing.T) {
 }
 
 func TestProcessOutput_ThreadStarted_MissingThreadIDIgnored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ts-3")
 	proc.externalSessionID = "existing"
@@ -92,6 +95,7 @@ func TestProcessOutput_ThreadStarted_MissingThreadIDIgnored(t *testing.T) {
 // === item.completed: reasoning ===
 
 func TestProcessOutput_ItemCompleted_Reasoning_TracksThinkingMessage(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ic-r")
 
@@ -117,6 +121,7 @@ func TestProcessOutput_ItemCompleted_Reasoning_TracksThinkingMessage(t *testing.
 }
 
 func TestProcessOutput_ItemCompleted_Reasoning_EmptyTextIgnored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ic-r2")
 
@@ -138,6 +143,7 @@ func TestProcessOutput_ItemCompleted_Reasoning_EmptyTextIgnored(t *testing.T) {
 // === item.completed: agent_message ===
 
 func TestProcessOutput_ItemCompleted_AgentMessage_TracksMessage(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ic-am")
 
@@ -162,6 +168,7 @@ func TestProcessOutput_ItemCompleted_AgentMessage_TracksMessage(t *testing.T) {
 // === item.completed: command_execution ===
 
 func TestProcessOutput_ItemCompleted_CommandExecution_TracksAsBashToolUse(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ic-ce")
 
@@ -190,6 +197,7 @@ func TestProcessOutput_ItemCompleted_CommandExecution_TracksAsBashToolUse(t *tes
 }
 
 func TestProcessOutput_ItemCompleted_CommandExecution_EmptyCommandIgnored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ic-ce2")
 
@@ -212,6 +220,7 @@ func TestProcessOutput_ItemCompleted_CommandExecution_EmptyCommandIgnored(t *tes
 // === item.started ===
 
 func TestProcessOutput_ItemStarted_CommandExecution_DoesNotTrackMessage(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-is-ce")
 
@@ -234,6 +243,7 @@ func TestProcessOutput_ItemStarted_CommandExecution_DoesNotTrackMessage(t *testi
 // === Full Codex output sequence ===
 
 func TestProcessOutput_CodexFullSequence(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-full")
 

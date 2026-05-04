@@ -62,6 +62,7 @@ func (s *opencodeTestSink) RecordError(projectID, errType, sessionID, msg string
 // =============================================================================
 
 func TestDispatchSSEEvent_ToolRunning_CallsRecordHookMessage(t *testing.T) {
+	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := newSSEState()
 	payload := `{
@@ -93,6 +94,7 @@ func TestDispatchSSEEvent_ToolRunning_CallsRecordHookMessage(t *testing.T) {
 }
 
 func TestDispatchSSEEvent_ToolCompleted_CallsRecordHookMessage(t *testing.T) {
+	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := newSSEState()
 	payload := `{
@@ -123,6 +125,7 @@ func TestDispatchSSEEvent_ToolCompleted_CallsRecordHookMessage(t *testing.T) {
 }
 
 func TestDispatchSSEEvent_PartDelta_AccumulatesInBuffer(t *testing.T) {
+	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := newSSEState()
 
@@ -152,6 +155,7 @@ func TestDispatchSSEEvent_PartDelta_AccumulatesInBuffer(t *testing.T) {
 }
 
 func TestDispatchSSEEvent_MessageUpdated_FlushesTextAndUpdatesContext(t *testing.T) {
+	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := newSSEState()
 
@@ -196,6 +200,7 @@ func TestDispatchSSEEvent_MessageUpdated_FlushesTextAndUpdatesContext(t *testing
 }
 
 func TestDispatchSSEEvent_SessionIdle_BumpsAndCompletesTheTurn(t *testing.T) {
+	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := newSSEState()
 	payload := `{"type": "session.idle", "properties": {}}`
@@ -214,6 +219,7 @@ func TestDispatchSSEEvent_SessionIdle_BumpsAndCompletesTheTurn(t *testing.T) {
 }
 
 func TestDispatchSSEEvent_SessionError_RecordsMessageAndError(t *testing.T) {
+	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := newSSEState()
 	payload := `{
@@ -245,6 +251,7 @@ func TestDispatchSSEEvent_SessionError_RecordsMessageAndError(t *testing.T) {
 // =============================================================================
 
 func TestOpencodeSSELoop_CtxCancel_Exits(t *testing.T) {
+	t.Parallel()
 	// Server blocks until client disconnects.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -280,6 +287,7 @@ func TestOpencodeSSELoop_CtxCancel_Exits(t *testing.T) {
 // =============================================================================
 
 func TestOpencodeSSELoop_ReconnectsAfterEOF(t *testing.T) {
+	t.Parallel()
 	var mu sync.Mutex
 	reqCount := 0
 
@@ -341,6 +349,7 @@ func TestOpencodeSSELoop_ReconnectsAfterEOF(t *testing.T) {
 // =============================================================================
 
 func TestCapitalize(t *testing.T) {
+	t.Parallel()
 	cases := []struct{ in, want string }{
 		{"bash", "Bash"},
 		{"Bash", "Bash"},
@@ -355,6 +364,7 @@ func TestCapitalize(t *testing.T) {
 }
 
 func TestTruncateStr(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   string
 		max  int

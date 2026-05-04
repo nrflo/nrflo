@@ -12,6 +12,7 @@ import (
 
 // TestDefaultFailRetryDelay_Is15Seconds verifies the retry delay constant is 15 seconds.
 func TestDefaultFailRetryDelay_Is15Seconds(t *testing.T) {
+	t.Parallel()
 	if defaultFailRetryDelay != 15*time.Second {
 		t.Errorf("defaultFailRetryDelay = %v, want 15s", defaultFailRetryDelay)
 	}
@@ -20,6 +21,7 @@ func TestDefaultFailRetryDelay_Is15Seconds(t *testing.T) {
 // TestWaitBeforeRetry_CancelledContext_ReturnsFalse verifies that an already-cancelled
 // context causes waitBeforeRetry to return false without waiting the full 15s delay.
 func TestWaitBeforeRetry_CancelledContext_ReturnsFalse(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -55,6 +57,7 @@ func TestWaitBeforeRetry_CancelledContext_ReturnsFalse(t *testing.T) {
 // TestWaitBeforeRetry_BroadcastEvent_AllFields verifies that waitBeforeRetry broadcasts
 // an agent.retry_waiting event with all required payload fields.
 func TestWaitBeforeRetry_BroadcastEvent_AllFields(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -102,6 +105,7 @@ func TestWaitBeforeRetry_BroadcastEvent_AllFields(t *testing.T) {
 // TestWaitBeforeRetry_NoHub_CancelledContext verifies that waitBeforeRetry returns
 // false with a cancelled context when no hub is configured (nil hub, no panic).
 func TestWaitBeforeRetry_NoHub_CancelledContext(t *testing.T) {
+	t.Parallel()
 	s := New(Config{Clock: clock.Real()}) // WSHub intentionally nil
 
 	proc := &processInfo{
@@ -127,6 +131,7 @@ func TestWaitBeforeRetry_NoHub_CancelledContext(t *testing.T) {
 // TestWaitBeforeRetry_EventConstant_Format verifies EventAgentRetryWaiting matches
 // the resource.action naming convention used by all event constants.
 func TestWaitBeforeRetry_EventConstant_Format(t *testing.T) {
+	t.Parallel()
 	const want = "agent.retry_waiting"
 	if ws.EventAgentRetryWaiting != want {
 		t.Errorf("EventAgentRetryWaiting = %q, want %q", ws.EventAgentRetryWaiting, want)
@@ -136,6 +141,7 @@ func TestWaitBeforeRetry_EventConstant_Format(t *testing.T) {
 // TestWaitBeforeRetry_BroadcastPayload_DelayMatchesConstant verifies delay_seconds
 // in the broadcast equals int(defaultFailRetryDelay.Seconds()), not a hardcoded value.
 func TestWaitBeforeRetry_BroadcastPayload_DelayMatchesConstant(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -170,6 +176,7 @@ func TestWaitBeforeRetry_BroadcastPayload_DelayMatchesConstant(t *testing.T) {
 // TestWaitBeforeRetry_CounterValues_ReflectedInEvent verifies fail_restart_count and
 // max_fail_restarts are taken from the processInfo at call time, not hardcoded.
 func TestWaitBeforeRetry_CounterValues_ReflectedInEvent(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name             string
 		failRestartCount int

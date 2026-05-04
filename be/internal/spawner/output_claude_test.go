@@ -19,6 +19,7 @@ func pendingEntries(proc *processInfo) []repo.MessageEntry {
 // === toolCategory ===
 
 func TestToolCategory(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		toolName string
 		want     string
@@ -52,6 +53,7 @@ func TestToolCategory(t *testing.T) {
 // === Category assignment from Claude assistant events ===
 
 func TestProcessOutput_Claude_CategoryAssignment(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		toolName string // empty = text message
@@ -133,6 +135,7 @@ func buildToolInput(toolName string) map[string]interface{} {
 // === pendingTasks tracking ===
 
 func TestProcessOutput_Claude_TaskToolUse_TracksPendingTask(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-pending-1")
 
@@ -173,6 +176,7 @@ func TestProcessOutput_Claude_TaskToolUse_TracksPendingTask(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_NonTaskToolUse_NoPendingEntry(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-pending-2")
 
@@ -200,6 +204,7 @@ func TestProcessOutput_Claude_NonTaskToolUse_NoPendingEntry(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_TaskToolUse_MissingID_NoPendingEntry(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-pending-3")
 
@@ -237,6 +242,7 @@ func TestProcessOutput_Claude_TaskToolUse_MissingID_NoPendingEntry(t *testing.T)
 // === tool_result correlation ===
 
 func TestProcessOutput_Claude_ToolResult_MatchingID_GeneratesTaskResult(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-tr-1")
 
@@ -284,6 +290,7 @@ func TestProcessOutput_Claude_ToolResult_MatchingID_GeneratesTaskResult(t *testi
 }
 
 func TestProcessOutput_Claude_ToolResult_MatchingID_RemovesPendingTask(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-tr-2")
 
@@ -316,6 +323,7 @@ func TestProcessOutput_Claude_ToolResult_MatchingID_RemovesPendingTask(t *testin
 }
 
 func TestProcessOutput_Claude_ToolResult_UnknownID_Ignored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-tr-3")
 
@@ -331,6 +339,7 @@ func TestProcessOutput_Claude_ToolResult_UnknownID_Ignored(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_ToolResult_EmptyID_Ignored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-tr-4")
 

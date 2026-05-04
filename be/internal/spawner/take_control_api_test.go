@@ -12,6 +12,7 @@ import (
 // TestEventAgentTakeControlRejected_Constant verifies the WS event constant
 // uses the correct resource.action naming convention.
 func TestEventAgentTakeControlRejected_Constant(t *testing.T) {
+	t.Parallel()
 	const want = "agent.take_control_rejected"
 	if ws.EventAgentTakeControlRejected != want {
 		t.Errorf("EventAgentTakeControlRejected = %q, want %q", ws.EventAgentTakeControlRejected, want)
@@ -24,6 +25,7 @@ func TestEventAgentTakeControlRejected_Constant(t *testing.T) {
 // reason=api_mode_unsupported). This mirrors the monitorAll rejection path at
 // spawner.go when proc.backend.SupportsTakeControl() returns false.
 func TestTakeControlRejected_APIMode_BroadcastsEvent(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -79,6 +81,7 @@ func TestTakeControlRejected_APIMode_BroadcastsEvent(t *testing.T) {
 // apiBackend.SupportsTakeControl() returns false, which is the gate condition
 // that triggers the rejection broadcast path in monitorAll.
 func TestTakeControlRejected_APIBackend_SupportsTakeControlFalse(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
 	b := newAPIBackend(sp)
 	if b.SupportsTakeControl() {
@@ -96,6 +99,7 @@ func TestTakeControlRejected_APIBackend_SupportsTakeControlFalse(t *testing.T) {
 // TestTakeControlRejected_CLIBackend_ClaudeSupportsTrue verifies that Claude's
 // cliBackend supports take-control, contrasting with the API rejection path.
 func TestTakeControlRejected_CLIBackend_ClaudeSupportsTrue(t *testing.T) {
+	t.Parallel()
 	b := newCLIBackend(&ClaudeAdapter{}, nil)
 	if !b.SupportsTakeControl() {
 		t.Error("cliBackend(Claude).SupportsTakeControl() = false, want true")
@@ -106,6 +110,7 @@ func TestTakeControlRejected_CLIBackend_ClaudeSupportsTrue(t *testing.T) {
 // rejection event type string is distinct from the success event type, so UI
 // subscribers can differentiate them.
 func TestTakeControlRejected_EventType_DistinctFromSuccessEvent(t *testing.T) {
+	t.Parallel()
 	if ws.EventAgentTakeControlRejected == ws.EventAgentTakeControl {
 		t.Errorf("EventAgentTakeControlRejected == EventAgentTakeControl (%q); they must be distinct",
 			ws.EventAgentTakeControlRejected)

@@ -58,6 +58,7 @@ func makeSession(id, wfiID, config string) *model.AgentSession {
 
 // TestAgentSessionCreate_ConfigPersisted verifies Config is written to DB.
 func TestAgentSessionCreate_ConfigPersisted(t *testing.T) {
+	t.Parallel()
 	_, r, wfiID := setupConfigTestDB(t)
 
 	configJSON := `{"allowedTools":["bash"],"permissions":{"allow":["*"]}}`
@@ -78,6 +79,7 @@ func TestAgentSessionCreate_ConfigPersisted(t *testing.T) {
 
 // TestAgentSessionCreate_EmptyConfigDefault verifies Config defaults to empty string.
 func TestAgentSessionCreate_EmptyConfigDefault(t *testing.T) {
+	t.Parallel()
 	_, r, wfiID := setupConfigTestDB(t)
 
 	sess := makeSession("sess-cfg-empty", wfiID, "")
@@ -98,6 +100,7 @@ func TestAgentSessionCreate_EmptyConfigDefault(t *testing.T) {
 // TestAgentSessionCreate_ConfigRoundTrip verifies multiple sessions retain their
 // own Config values.
 func TestAgentSessionCreate_ConfigRoundTrip(t *testing.T) {
+	t.Parallel()
 	_, r, wfiID := setupConfigTestDB(t)
 
 	cases := []struct {
@@ -129,6 +132,7 @@ func TestAgentSessionCreate_ConfigRoundTrip(t *testing.T) {
 
 // TestAgentSessionGetRunning_ConfigIncluded verifies GetRunning returns the Config field.
 func TestAgentSessionGetRunning_ConfigIncluded(t *testing.T) {
+	t.Parallel()
 	_, r, wfiID := setupConfigTestDB(t)
 
 	configJSON := `{"permissions":{"allow":["read"]}}`
@@ -163,6 +167,7 @@ func TestAgentSessionGetRunning_ConfigIncluded(t *testing.T) {
 // TestAgentSessionInsertWithoutConfig_DefaultsToEmpty ensures legacy inserts
 // (without explicit config column) don't break when read back.
 func TestAgentSessionInsertWithoutConfig_DefaultsToEmpty(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupConfigTestDB(t)
 
 	now := "2026-01-01T00:00:00Z"

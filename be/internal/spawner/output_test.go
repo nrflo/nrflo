@@ -12,6 +12,7 @@ import (
 
 // TestMessageCoalescingWindow verifies messages.updated broadcasts are coalesced per 2s window.
 func TestMessageCoalescingWindow(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "TEST-COAL-1"
 	env.initWorkflow(t, ticketID)
@@ -123,6 +124,7 @@ func TestMessageCoalescingWindow(t *testing.T) {
 
 // TestMessageCoalescingPerSession verifies coalescing is tracked per session.
 func TestMessageCoalescingPerSession(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "TEST-COAL-2"
 	env.initWorkflow(t, ticketID)
@@ -234,6 +236,7 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 
 // TestMessageBroadcastPayloadFields verifies messages.updated event has all required fields.
 func TestMessageBroadcastPayloadFields(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "TEST-COAL-3"
 	env.initWorkflow(t, ticketID)

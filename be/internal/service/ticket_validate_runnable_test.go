@@ -64,6 +64,7 @@ func svcSeedDependency(t *testing.T, pool *db.Pool, projectID, issueID, blockerI
 
 // TestValidateRunnable_TicketNotFound verifies that a missing ticket returns a "not found" error.
 func TestValidateRunnable_TicketNotFound(t *testing.T) {
+	t.Parallel()
 	_, svc := setupValidateRunnableDB(t, "proj")
 
 	err := svc.ValidateRunnable("proj", "nonexistent-ticket")
@@ -78,6 +79,7 @@ func TestValidateRunnable_TicketNotFound(t *testing.T) {
 // TestValidateRunnable_ClosedTicket verifies that a closed ticket returns an error
 // containing "closed ticket".
 func TestValidateRunnable_ClosedTicket(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "closed")
 
@@ -93,6 +95,7 @@ func TestValidateRunnable_ClosedTicket(t *testing.T) {
 // TestValidateRunnable_BlockedTicket verifies that a ticket blocked by an open dependency
 // returns an error containing "blocked by" and the blocker's ID.
 func TestValidateRunnable_BlockedTicket(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "open")
 	svcSeedTicket(t, pool, "proj", "BLOCKER-1", "open")
@@ -112,6 +115,7 @@ func TestValidateRunnable_BlockedTicket(t *testing.T) {
 
 // TestValidateRunnable_MultipleBlockers verifies that all blocker IDs are listed in the error.
 func TestValidateRunnable_MultipleBlockers(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "open")
 	svcSeedTicket(t, pool, "proj", "BLOCKER-A", "open")
@@ -134,6 +138,7 @@ func TestValidateRunnable_MultipleBlockers(t *testing.T) {
 
 // TestValidateRunnable_OpenUnblocked verifies that an open ticket with no blockers returns nil.
 func TestValidateRunnable_OpenUnblocked(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "open")
 
@@ -146,6 +151,7 @@ func TestValidateRunnable_OpenUnblocked(t *testing.T) {
 // TestValidateRunnable_InProgressUnblocked verifies that an in_progress ticket with no
 // blockers also returns nil (not blocked by status check).
 func TestValidateRunnable_InProgressUnblocked(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "in_progress")
 
@@ -158,6 +164,7 @@ func TestValidateRunnable_InProgressUnblocked(t *testing.T) {
 // TestValidateRunnable_ClosedBlockerDoesNotBlock verifies that a dependency on a
 // *closed* ticket is not treated as a blocker.
 func TestValidateRunnable_ClosedBlockerDoesNotBlock(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "open")
 	svcSeedTicket(t, pool, "proj", "BLOCKER-DONE", "closed")
@@ -172,6 +179,7 @@ func TestValidateRunnable_ClosedBlockerDoesNotBlock(t *testing.T) {
 // TestValidateRunnable_MixedBlockers verifies that only open blockers trigger the error.
 // When one blocker is closed and one is open, the error should only list the open blocker.
 func TestValidateRunnable_MixedBlockers(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupValidateRunnableDB(t, "proj")
 	svcSeedTicket(t, pool, "proj", "TICK-1", "open")
 	svcSeedTicket(t, pool, "proj", "BLK-OPEN", "open")

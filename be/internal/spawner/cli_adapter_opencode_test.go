@@ -17,6 +17,7 @@ import (
 // =============================================================================
 
 func TestOpencodeAdapter_PrepareInteractive_AllocatesNonZeroPort(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	extras, cleanup, err := a.PrepareInteractive(InteractivePrepOptions{WorkDir: "/tmp"})
 	defer cleanup()
@@ -29,6 +30,7 @@ func TestOpencodeAdapter_PrepareInteractive_AllocatesNonZeroPort(t *testing.T) {
 }
 
 func TestOpencodeAdapter_PrepareInteractive_PortIsFree(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	extras, cleanup, err := a.PrepareInteractive(InteractivePrepOptions{WorkDir: "/tmp"})
 	defer cleanup()
@@ -49,6 +51,7 @@ func TestOpencodeAdapter_PrepareInteractive_PortIsFree(t *testing.T) {
 // =============================================================================
 
 func TestOpencodeAdapter_BuildInteractiveCommand_WorkDirFirstPositional(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:   "openai/gpt-5.4",
@@ -66,6 +69,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_WorkDirFirstPositional(t *testi
 }
 
 func TestOpencodeAdapter_BuildInteractiveCommand_HasPortAndHostname(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:   "openai/gpt-5.4",
@@ -82,6 +86,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_HasPortAndHostname(t *testing.T
 }
 
 func TestOpencodeAdapter_BuildInteractiveCommand_PortValueIsNumeric(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", WorkDir: "/tmp", Port: 12345}
 	cmd := a.BuildInteractiveCommand(opts)
@@ -101,6 +106,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_PortValueIsNumeric(t *testing.T
 }
 
 func TestOpencodeAdapter_BuildInteractiveCommand_CmdDirMatchesWorkDir(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", WorkDir: "/work/myproject", Port: 8080}
 	if cmd := a.BuildInteractiveCommand(opts); cmd.Dir != "/work/myproject" {
@@ -109,6 +115,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_CmdDirMatchesWorkDir(t *testing
 }
 
 func TestOpencodeAdapter_BuildInteractiveCommand_TERMAdded(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:   "openai/gpt-5.4",
@@ -126,6 +133,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_TERMAdded(t *testing.T) {
 }
 
 func TestOpencodeAdapter_BuildInteractiveCommand_TERMNotDuplicated(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:   "openai/gpt-5.4",
@@ -153,6 +161,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_TERMNotDuplicated(t *testing.T)
 // consumer against a test HTTP server, calls cleanup(), and verifies the server
 // handler exits (request cancelled) within 200ms.
 func TestOpencodeAdapter_PostInteractiveStart_CleanupStopsGoroutine(t *testing.T) {
+	t.Parallel()
 	// handlerConnected signals when the server receives the SSE request.
 	handlerConnected := make(chan struct{}, 1)
 	handlerDone := make(chan struct{})

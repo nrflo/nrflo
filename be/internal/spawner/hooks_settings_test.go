@@ -8,6 +8,7 @@ import (
 
 // TestBuildInteractiveSettingsJSON_ClaudeReturnsJSON verifies a claude process yields valid JSON.
 func TestBuildInteractiveSettingsJSON_ClaudeReturnsJSON(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{modelID: "claude:sonnet"}
 	got := BuildInteractiveSettingsJSON(proc)
 	if got == "" {
@@ -21,6 +22,7 @@ func TestBuildInteractiveSettingsJSON_ClaudeReturnsJSON(t *testing.T) {
 
 // TestBuildInteractiveSettingsJSON_NonClaudeReturnsEmpty verifies non-claude processes yield "".
 func TestBuildInteractiveSettingsJSON_NonClaudeReturnsEmpty(t *testing.T) {
+	t.Parallel()
 	for _, modelID := range []string{
 		"opencode:opencode_qwen36_plus_free",
 		"codex:codex_gpt_high",
@@ -34,6 +36,7 @@ func TestBuildInteractiveSettingsJSON_NonClaudeReturnsEmpty(t *testing.T) {
 
 // TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse verifies PreToolUse and PostToolUse are present.
 func TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{modelID: "claude:opus"}
 	var parsed map[string]interface{}
 	json.Unmarshal([]byte(BuildInteractiveSettingsJSON(proc)), &parsed)
@@ -54,6 +57,7 @@ func TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse(t *testing.T) {
 // signal-bearing Claude hook events. Stop/SessionStart/SessionEnd are dropped
 // because they duplicate spawn/completion log lines without adding signal.
 func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{modelID: "claude:opus"}
 	var parsed map[string]interface{}
 	json.Unmarshal([]byte(BuildInteractiveSettingsJSON(proc)), &parsed)
@@ -84,6 +88,7 @@ func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
 
 // TestBuildInteractiveSettingsJSON_CommandAndMatcherShape verifies each hook entry structure.
 func TestBuildInteractiveSettingsJSON_CommandAndMatcherShape(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{modelID: "claude:sonnet"}
 	got := BuildInteractiveSettingsJSON(proc)
 
@@ -120,6 +125,7 @@ func TestBuildInteractiveSettingsJSON_CommandAndMatcherShape(t *testing.T) {
 // TestMergeInteractiveSettings_ConcatenatesPreToolUseArrays verifies arrays are concatenated when
 // both sides define the same hook event key (e.g. PreToolUse).
 func TestMergeInteractiveSettings_ConcatenatesPreToolUseArrays(t *testing.T) {
+	t.Parallel()
 	safety := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"echo safety"}]}]}}`
 	hooks := `{"hooks":{"PreToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"nrflo agent record-event"}]}]}}`
 
@@ -139,6 +145,7 @@ func TestMergeInteractiveSettings_ConcatenatesPreToolUseArrays(t *testing.T) {
 // "statusLine" key is present for Claude agents with type=command and a command
 // that ends with "agent statusline".
 func TestBuildInteractiveSettingsJSON_HasStatusLine(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{modelID: "claude:sonnet"}
 	got := BuildInteractiveSettingsJSON(proc)
 	if got == "" {
@@ -165,6 +172,7 @@ func TestBuildInteractiveSettingsJSON_HasStatusLine(t *testing.T) {
 // TestBuildInteractiveSettingsJSON_NonClaudeNoStatusLine verifies that non-Claude
 // processes do not return a statusLine key (they return empty string).
 func TestBuildInteractiveSettingsJSON_NonClaudeNoStatusLine(t *testing.T) {
+	t.Parallel()
 	for _, modelID := range []string{
 		"opencode:opencode_qwen36_plus_free",
 		"codex:codex_gpt_high",
@@ -178,6 +186,7 @@ func TestBuildInteractiveSettingsJSON_NonClaudeNoStatusLine(t *testing.T) {
 
 // TestComputeContextLeftPct verifies the formula 100 - (totalUsed*100/maxCtx) with edge cases.
 func TestComputeContextLeftPct(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		totalUsed int
 		maxCtx    int

@@ -8,6 +8,7 @@ import (
 
 // TestCreateAgentDef_WithStallStartTimeoutSec verifies stall_start_timeout_sec is persisted.
 func TestCreateAgentDef_WithStallStartTimeoutSec(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	n := 90
@@ -29,6 +30,7 @@ func TestCreateAgentDef_WithStallStartTimeoutSec(t *testing.T) {
 
 // TestCreateAgentDef_WithBothStallTimeouts verifies both stall timeout fields persist together.
 func TestCreateAgentDef_WithBothStallTimeouts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	start := 120
@@ -52,6 +54,7 @@ func TestCreateAgentDef_WithBothStallTimeouts(t *testing.T) {
 
 // TestCreateAgentDef_NilStallTimeouts confirms omitting stall timeout fields produces nil.
 func TestCreateAgentDef_NilStallTimeouts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -71,6 +74,7 @@ func TestCreateAgentDef_NilStallTimeouts(t *testing.T) {
 
 // TestCreateAgentDef_StallTimeoutsZero verifies explicit 0 means "disabled", not nil.
 func TestCreateAgentDef_StallTimeoutsZero(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	zero := 0
@@ -99,6 +103,7 @@ func TestCreateAgentDef_StallTimeoutsZero(t *testing.T) {
 
 // TestGetAgentDef_ReturnsStallTimeouts verifies round-trip through GetAgentDef.
 func TestGetAgentDef_ReturnsStallTimeouts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	start := 60
@@ -127,6 +132,7 @@ func TestGetAgentDef_ReturnsStallTimeouts(t *testing.T) {
 
 // TestGetAgentDef_StallTimeoutsNilRoundTrip verifies nil returned when never set.
 func TestGetAgentDef_StallTimeoutsNilRoundTrip(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -151,6 +157,7 @@ func TestGetAgentDef_StallTimeoutsNilRoundTrip(t *testing.T) {
 
 // TestUpdateAgentDef_SetsStallTimeouts verifies UpdateAgentDef can set stall timeouts.
 func TestUpdateAgentDef_SetsStallTimeouts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -184,6 +191,7 @@ func TestUpdateAgentDef_SetsStallTimeouts(t *testing.T) {
 
 // TestListAgentDefs_ReturnsStallTimeouts verifies list includes stall timeout values.
 func TestListAgentDefs_ReturnsStallTimeouts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	start := 150

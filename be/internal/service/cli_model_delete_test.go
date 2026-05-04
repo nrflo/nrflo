@@ -10,6 +10,7 @@ import (
 // --- Delete ---
 
 func TestCLIModel_Delete(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -37,6 +38,7 @@ func TestCLIModel_Delete(t *testing.T) {
 }
 
 func TestCLIModel_DeleteReadonly(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -55,6 +57,7 @@ func TestCLIModel_DeleteReadonly(t *testing.T) {
 }
 
 func TestCLIModel_DeleteNotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -68,6 +71,7 @@ func TestCLIModel_DeleteNotFound(t *testing.T) {
 }
 
 func TestCLIModel_DeleteCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -94,6 +98,7 @@ func TestCLIModel_DeleteCaseInsensitive(t *testing.T) {
 // --- IsValidModel ---
 
 func TestCLIModel_IsValidModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -107,6 +112,7 @@ func TestCLIModel_IsValidModel(t *testing.T) {
 }
 
 func TestCLIModel_IsValidModelCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -120,6 +126,7 @@ func TestCLIModel_IsValidModelCaseInsensitive(t *testing.T) {
 }
 
 func TestCLIModel_IsValidModelNotFound(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -133,6 +140,7 @@ func TestCLIModel_IsValidModelNotFound(t *testing.T) {
 }
 
 func TestCLIModel_IsValidModelAfterCreate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -155,6 +163,7 @@ func TestCLIModel_IsValidModelAfterCreate(t *testing.T) {
 }
 
 func TestCLIModel_IsValidModelAfterDelete(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 

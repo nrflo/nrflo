@@ -3,6 +3,7 @@ package spawner
 import "testing"
 
 func TestRespondToTerminalQueries_DSRCursorPosition(t *testing.T) {
+	t.Parallel()
 	got := respondToTerminalQueries([]byte("\x1b[6n"))
 	if string(got) != "\x1b[24;80R" {
 		t.Errorf("DSR reply = %q, want %q", got, "\x1b[24;80R")
@@ -10,6 +11,7 @@ func TestRespondToTerminalQueries_DSRCursorPosition(t *testing.T) {
 }
 
 func TestRespondToTerminalQueries_DAPrimary(t *testing.T) {
+	t.Parallel()
 	got := respondToTerminalQueries([]byte("\x1b[c"))
 	if string(got) != "\x1b[?1;2c" {
 		t.Errorf("DA primary reply = %q, want %q", got, "\x1b[?1;2c")
@@ -17,6 +19,7 @@ func TestRespondToTerminalQueries_DAPrimary(t *testing.T) {
 }
 
 func TestRespondToTerminalQueries_KittyKeyboard(t *testing.T) {
+	t.Parallel()
 	got := respondToTerminalQueries([]byte("\x1b[?u"))
 	if string(got) != "\x1b[?0u" {
 		t.Errorf("kitty reply = %q, want %q", got, "\x1b[?0u")
@@ -24,6 +27,7 @@ func TestRespondToTerminalQueries_KittyKeyboard(t *testing.T) {
 }
 
 func TestRespondToTerminalQueries_OSCForegroundColor(t *testing.T) {
+	t.Parallel()
 	got := respondToTerminalQueries([]byte("\x1b]10;?\x1b\\"))
 	want := "\x1b]10;rgb:c0c0/c0c0/c0c0\x1b\\"
 	if string(got) != want {
@@ -35,6 +39,7 @@ func TestRespondToTerminalQueries_OSCForegroundColor(t *testing.T) {
 // bracketed paste set, kitty push, focus events set, DSR, kitty query, DA query.
 // Of those, DSR / kitty-query / DA are the ones a terminal must answer.
 func TestRespondToTerminalQueries_CodexInitBurst(t *testing.T) {
+	t.Parallel()
 	burst := []byte("\x1b[?2004h\x1b[>7u\x1b[?1004h\x1b[6n\x1b[?u\x1b[c")
 	got := respondToTerminalQueries(burst)
 	want := "\x1b[24;80R\x1b[?0u\x1b[?1;2c"
@@ -44,6 +49,7 @@ func TestRespondToTerminalQueries_CodexInitBurst(t *testing.T) {
 }
 
 func TestRespondToTerminalQueries_NoQueriesNoReply(t *testing.T) {
+	t.Parallel()
 	// SET sequences (lowercase l = reset, h = set) and cursor moves are not
 	// queries — must produce no reply.
 	noQuery := []byte("\x1b[?2004h\x1b[?2004l\x1b[H\x1b[2J\x1b[?25l\x1b[?25h")
@@ -54,6 +60,7 @@ func TestRespondToTerminalQueries_NoQueriesNoReply(t *testing.T) {
 }
 
 func TestRespondToTerminalQueries_EmptyAndPartial(t *testing.T) {
+	t.Parallel()
 	if got := respondToTerminalQueries(nil); len(got) != 0 {
 		t.Errorf("nil chunk produced reply: %q", got)
 	}

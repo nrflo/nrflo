@@ -9,6 +9,7 @@ import (
 // All three opt in: Claude via --settings hooks, Codex via -c hook injection,
 // and Opencode via its embedded HTTP SSE server (--port/--hostname flags).
 func TestAllAdapters_SupportsInteractive(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		adapter CLIAdapter
@@ -30,6 +31,7 @@ func TestAllAdapters_SupportsInteractive(t *testing.T) {
 // TestClaudeAdapter_BuildInteractiveCommand_NoBatchFlags verifies that the
 // interactive command omits all batch-mode flags present in BuildCommand.
 func TestClaudeAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	opts := InteractiveSpawnOptions{
 		SessionID: "sess-1",
@@ -50,6 +52,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
 // TestClaudeAdapter_BuildInteractiveCommand_HasRequiredFlags verifies that the
 // interactive command includes session-id, model, and dangerously-skip-permissions.
 func TestClaudeAdapter_BuildInteractiveCommand_HasRequiredFlags(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	opts := InteractiveSpawnOptions{
 		SessionID: "sess-abc",
@@ -72,6 +75,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_HasRequiredFlags(t *testing.T) {
 // TestClaudeAdapter_BuildInteractiveCommand_WithEffort verifies --effort is added
 // when ReasoningEffort is non-empty.
 func TestClaudeAdapter_BuildInteractiveCommand_WithEffort(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	opts := InteractiveSpawnOptions{
 		SessionID:       "sess-1",
@@ -88,6 +92,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_WithEffort(t *testing.T) {
 // TestClaudeAdapter_BuildInteractiveCommand_EmptyEffortOmitsFlag verifies --effort
 // is absent when ReasoningEffort is empty.
 func TestClaudeAdapter_BuildInteractiveCommand_EmptyEffortOmitsFlag(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	opts := InteractiveSpawnOptions{SessionID: "s", Model: "claude-sonnet", WorkDir: "/tmp"}
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
@@ -99,6 +104,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_EmptyEffortOmitsFlag(t *testing.T
 // TestClaudeAdapter_BuildInteractiveCommand_WithSettings verifies --settings is
 // included when SettingsJSON is non-empty.
 func TestClaudeAdapter_BuildInteractiveCommand_WithSettings(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	settingsJSON := `{"hooks":{"PreToolUse":[]}}`
 	opts := InteractiveSpawnOptions{
@@ -119,6 +125,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_WithSettings(t *testing.T) {
 // TestClaudeAdapter_BuildInteractiveCommand_EmptySettingsOmitsFlag verifies
 // --settings is absent when SettingsJSON is empty.
 func TestClaudeAdapter_BuildInteractiveCommand_EmptySettingsOmitsFlag(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	opts := InteractiveSpawnOptions{SessionID: "s", Model: "claude-sonnet", WorkDir: "/tmp"}
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
@@ -130,6 +137,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_EmptySettingsOmitsFlag(t *testing
 // TestClaudeAdapter_BuildInteractiveCommand_WithSystemPromptFile verifies
 // --append-system-prompt-file is added when SystemPromptFile is non-empty.
 func TestClaudeAdapter_BuildInteractiveCommand_WithSystemPromptFile(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	opts := InteractiveSpawnOptions{
 		SessionID:        "sess-1",
@@ -149,6 +157,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_WithSystemPromptFile(t *testing.T
 // TestClaudeAdapter_BuildInteractiveCommand_EmptySystemPromptFileOmitsFlag verifies
 // --append-system-prompt-file is absent when SystemPromptFile is empty.
 func TestClaudeAdapter_BuildInteractiveCommand_EmptySystemPromptFileOmitsFlag(t *testing.T) {
+	t.Parallel()
 	a := &ClaudeAdapter{}
 	opts := InteractiveSpawnOptions{SessionID: "s", Model: "claude-sonnet", WorkDir: "/tmp"}
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
@@ -160,6 +169,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_EmptySystemPromptFileOmitsFlag(t 
 // TestOpencodeAdapter_BuildInteractiveCommand_NoBatchFlags verifies that Opencode's
 // interactive command omits run, --format, and json batch flags.
 func TestOpencodeAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", WorkDir: "/tmp"}
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
@@ -173,6 +183,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
 
 // TestOpencodeAdapter_BuildInteractiveCommand_HasModel verifies --model is present.
 func TestOpencodeAdapter_BuildInteractiveCommand_HasModel(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", WorkDir: "/work"}
 	cmd := a.BuildInteractiveCommand(opts)
@@ -189,6 +200,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_HasModel(t *testing.T) {
 // TestOpencodeAdapter_BuildInteractiveCommand_WithVariant verifies --variant is added
 // when ReasoningEffort is non-empty.
 func TestOpencodeAdapter_BuildInteractiveCommand_WithVariant(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", ReasoningEffort: "high", WorkDir: "/tmp"}
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
@@ -200,6 +212,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_WithVariant(t *testing.T) {
 // TestOpencodeAdapter_BuildInteractiveCommand_NoVariantWhenEmpty verifies --variant
 // is absent when ReasoningEffort is empty.
 func TestOpencodeAdapter_BuildInteractiveCommand_NoVariantWhenEmpty(t *testing.T) {
+	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{Model: "opencode/minimax-m2.5-free", WorkDir: "/tmp"}
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
@@ -211,6 +224,7 @@ func TestOpencodeAdapter_BuildInteractiveCommand_NoVariantWhenEmpty(t *testing.T
 // TestCodexAdapter_BuildInteractiveCommand_NoBatchFlags verifies that Codex's
 // interactive command omits exec and --json batch flags.
 func TestCodexAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
+	t.Parallel()
 	a := &CodexAdapter{}
 	opts := InteractiveSpawnOptions{Model: "gpt-5.3-codex", WorkDir: "/tmp"}
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
@@ -225,6 +239,7 @@ func TestCodexAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
 // TestCodexAdapter_BuildInteractiveCommand_HasRequiredFlags verifies Codex includes
 // --model and --dangerously-bypass-approvals-and-sandbox.
 func TestCodexAdapter_BuildInteractiveCommand_HasRequiredFlags(t *testing.T) {
+	t.Parallel()
 	a := &CodexAdapter{}
 	opts := InteractiveSpawnOptions{Model: "gpt-5.3-codex", WorkDir: "/work"}
 	cmd := a.BuildInteractiveCommand(opts)
@@ -244,6 +259,7 @@ func TestCodexAdapter_BuildInteractiveCommand_HasRequiredFlags(t *testing.T) {
 // appended to cmd.Env when InteractiveSpawnOptions.CodexHome is non-empty, and that
 // caller-supplied env vars are preserved.
 func TestCodexAdapter_BuildInteractiveCommand_CodexHomeEnv(t *testing.T) {
+	t.Parallel()
 	a := &CodexAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:     "gpt-5.3-codex",
@@ -271,6 +287,7 @@ func TestCodexAdapter_BuildInteractiveCommand_CodexHomeEnv(t *testing.T) {
 // TestCodexAdapter_BuildInteractiveCommand_EmptyCodexHome_NoCodexHomeEnv verifies
 // that no CODEX_HOME entry appears in cmd.Env when CodexHome is empty.
 func TestCodexAdapter_BuildInteractiveCommand_EmptyCodexHome_NoCodexHomeEnv(t *testing.T) {
+	t.Parallel()
 	a := &CodexAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:   "gpt-5.3-codex",

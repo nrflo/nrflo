@@ -10,6 +10,7 @@ import (
 
 // TestStall_Constants verifies the stall detection constants match the spec.
 func TestStall_Constants(t *testing.T) {
+	t.Parallel()
 	if defaultStallStartTimeout != 2*time.Minute {
 		t.Errorf("defaultStallStartTimeout = %v, want 2m", defaultStallStartTimeout)
 	}
@@ -23,6 +24,7 @@ func TestStall_Constants(t *testing.T) {
 
 // TestStall_Fields_ProcessInfo verifies processInfo has the expected stall fields.
 func TestStall_Fields_ProcessInfo(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		stallStartTimeout:   30 * time.Second,
 		stallRunningTimeout: 5 * time.Minute,
@@ -55,6 +57,7 @@ func TestStall_Fields_ProcessInfo(t *testing.T) {
 
 // TestCheckStall_LowContextSavingSkips verifies stall check is bypassed during low-context save.
 func TestCheckStall_LowContextSavingSkips(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{WSHub: nil, Clock: clk})
 
@@ -75,6 +78,7 @@ func TestCheckStall_LowContextSavingSkips(t *testing.T) {
 
 // TestCheckStall_MaxRestartsReached verifies stall check is blocked at maxStallRestarts.
 func TestCheckStall_MaxRestartsReached(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{WSHub: nil, Clock: clk})
 
@@ -94,6 +98,7 @@ func TestCheckStall_MaxRestartsReached(t *testing.T) {
 
 // TestCheckStall_StartStallNotYet verifies no stall when within start timeout.
 func TestCheckStall_StartStallNotYet(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{WSHub: nil, Clock: clk})
 
@@ -115,6 +120,7 @@ func TestCheckStall_StartStallNotYet(t *testing.T) {
 
 // TestCheckStall_RunningStallNotYet verifies no stall when within running timeout.
 func TestCheckStall_RunningStallNotYet(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{WSHub: nil, Clock: clk})
 
@@ -136,6 +142,7 @@ func TestCheckStall_RunningStallNotYet(t *testing.T) {
 
 // TestCheckStall_StartStallDisabled verifies no stall when stallStartTimeout=0.
 func TestCheckStall_StartStallDisabled(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{WSHub: nil, Clock: clk})
 
@@ -154,6 +161,7 @@ func TestCheckStall_StartStallDisabled(t *testing.T) {
 
 // TestCheckStall_RunningStallDisabled verifies no stall when stallRunningTimeout=0.
 func TestCheckStall_RunningStallDisabled(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{WSHub: nil, Clock: clk})
 

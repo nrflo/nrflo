@@ -34,6 +34,7 @@ func setupErrorServiceEnv(t *testing.T) (*ErrorService, *db.Pool, string) {
 }
 
 func TestErrorService_RecordError_InsertsToDb(t *testing.T) {
+	t.Parallel()
 	svc, pool, projectID := setupErrorServiceEnv(t)
 
 	if err := svc.RecordError(projectID, "agent", "sess-123", "implementor: timeout"); err != nil {
@@ -50,6 +51,7 @@ func TestErrorService_RecordError_InsertsToDb(t *testing.T) {
 }
 
 func TestErrorService_RecordError_GeneratesUUID(t *testing.T) {
+	t.Parallel()
 	svc, pool, projectID := setupErrorServiceEnv(t)
 
 	if err := svc.RecordError(projectID, "agent", "sess-1", "error msg"); err != nil {
@@ -69,6 +71,7 @@ func TestErrorService_RecordError_GeneratesUUID(t *testing.T) {
 }
 
 func TestErrorService_RecordError_SetsTimestampFromClock(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "ts_test.db")
 	if err := svcCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)
@@ -104,6 +107,7 @@ func TestErrorService_RecordError_SetsTimestampFromClock(t *testing.T) {
 }
 
 func TestErrorService_RecordError_NilHub_NoPanic(t *testing.T) {
+	t.Parallel()
 	svc, _, projectID := setupErrorServiceEnv(t)
 	// svc has nil hub — should not panic
 	if err := svc.RecordError(projectID, "system", "wfi-99", "merge conflict"); err != nil {
@@ -112,6 +116,7 @@ func TestErrorService_RecordError_NilHub_NoPanic(t *testing.T) {
 }
 
 func TestErrorService_RecordError_BroadcastsWSEvent(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "ws_test.db")
 	if err := svcCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)
@@ -168,6 +173,7 @@ func TestErrorService_RecordError_BroadcastsWSEvent(t *testing.T) {
 }
 
 func TestErrorService_ListErrors_EmptyResult(t *testing.T) {
+	t.Parallel()
 	svc, _, projectID := setupErrorServiceEnv(t)
 
 	errors, total, err := svc.ListErrors(projectID, "", 1, 20)
@@ -183,6 +189,7 @@ func TestErrorService_ListErrors_EmptyResult(t *testing.T) {
 }
 
 func TestErrorService_ListErrors_Pagination(t *testing.T) {
+	t.Parallel()
 	svc, pool, projectID := setupErrorServiceEnv(t)
 
 	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -218,6 +225,7 @@ func TestErrorService_ListErrors_Pagination(t *testing.T) {
 }
 
 func TestErrorService_ListErrors_TypeFilter(t *testing.T) {
+	t.Parallel()
 	svc, pool, projectID := setupErrorServiceEnv(t)
 
 	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -261,6 +269,7 @@ func TestErrorService_ListErrors_TypeFilter(t *testing.T) {
 }
 
 func TestErrorService_RecordError_StoresAllFields(t *testing.T) {
+	t.Parallel()
 	svc, pool, projectID := setupErrorServiceEnv(t)
 
 	if err := svc.RecordError(projectID, "system", "wfi-999", "merge conflict: branch main"); err != nil {

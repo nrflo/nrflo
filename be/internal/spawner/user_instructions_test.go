@@ -121,6 +121,7 @@ func (e *spawnerTestEnv) newSpawner() *Spawner {
 }
 
 func TestFetchUserInstructions_DirectString(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "UI-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -139,6 +140,7 @@ func TestFetchUserInstructions_DirectString(t *testing.T) {
 }
 
 func TestFetchUserInstructions_MissingReturnsPlaceholder(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "UI-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -153,6 +155,7 @@ func TestFetchUserInstructions_MissingReturnsPlaceholder(t *testing.T) {
 }
 
 func TestFetchUserInstructions_EmptyStringReturnsPlaceholder(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "UI-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -172,6 +175,7 @@ func TestFetchUserInstructions_EmptyStringReturnsPlaceholder(t *testing.T) {
 }
 
 func TestFetchUserInstructions_NoWorkflowReturnsPlaceholder(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
 	// Don't create any ticket or workflow - should return placeholder

@@ -99,6 +99,10 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `notification_channel.deleted` | | Channel deleted, invalidates notification-channels |
 | `notification.delivered` | channel_id | Delivery succeeded, invalidates notification-channels + notification-deliveries(channel_id) |
 | `notification.failed` | channel_id | Delivery failed, invalidates notification-channels + notification-deliveries(channel_id) |
+| `nrvapp.review_created` | | New review item, invalidates `['nrvapp','review']` |
+| `nrvapp.review_updated` | | Review item updated, invalidates `['nrvapp','review']` |
+| `nrvapp.config_updated` | | Config file changed, invalidates `['nrvapp','config']` |
+| `nrvapp.dispatch_completed` | | Dispatch completed, invalidates `['nrvapp','insights']` with 1s leading+trailing throttle |
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`
 **Exception:** `global.running_agents` is a global broadcast with no project_id/ticket_id/seq. Handled as early return before `dispatchV2Event`.
@@ -123,6 +127,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useSessionPrompt.ts` | TanStack Query hook for fetching session prompt context (lazy, staleTime: Infinity) |
 | `useProjectFindings()` | TanStack Query hook for project findings (`GET /api/v1/projects/:id/findings`). Invalidated by `project_findings.updated` WS event. Defined in `useTickets.ts`. |
 | `useCLIModels()` | TanStack Query hook for CLI models (`GET /api/v1/cli-models`). Defined in `useCLIModels.ts`. |
+| `useNrvapp.ts` | TanStack Query hooks for Vertical app: `nrvappKeys` factory; `useReviewItems`, `useReviewItem`, `useUpdateReviewDraft`, `useApproveReview`, `useRejectReview`, `useConfigFiles`, `useConfigFile`, `usePutConfigFile`, `useConfigHistory`, `useRollbackConfig`, `useNrvappSummary`, `useNrvappEditRate`, `useNrvappThroughput`. |
 | `useModelOptions()` | Derives `DropdownOptionGroup[]` from `useCLIModels()` data, grouped by `cli_type` with provider-prefixed labels (e.g., "Claude: Opus"). Groups and options sorted alphabetically. Unknown `cli_type` values fall back to capitalized name. Used by AgentForm, AgentDefForm. Defined in `useCLIModels.ts`. |
 | `useErrors.ts` | TanStack Query hook for paginated error logs (`GET /api/v1/errors`). Key factory: `errorKeys`. Invalidated by `error.created` WS event. |
 

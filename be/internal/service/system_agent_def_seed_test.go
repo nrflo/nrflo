@@ -14,6 +14,7 @@ import (
 // seeded by migration 000039 is accessible via the service layer immediately after
 // DB creation, without any additional setup or manual seeding.
 func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "seed_accessible.db")
 	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
 	if err != nil {
@@ -49,6 +50,7 @@ func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
 // TestSystemAgentDef_SeededRowInList verifies that the seeded conflict-resolver row
 // appears in the List response.
 func TestSystemAgentDef_SeededRowInList(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "seed_list.db")
 	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
 	if err != nil {
@@ -78,6 +80,7 @@ func TestSystemAgentDef_SeededRowInList(t *testing.T) {
 // TestSystemAgentDef_SeededRowDeleteAndRecreate verifies that after deleting the
 // migration-seeded row, a new conflict-resolver can be created with different values.
 func TestSystemAgentDef_SeededRowDeleteAndRecreate(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -117,6 +120,7 @@ func TestSystemAgentDef_SeededRowDeleteAndRecreate(t *testing.T) {
 // TestSystemAgentDef_SeededConflictResolverPromptVars verifies that the seeded
 // prompt contains the ExtraVars placeholders used by the spawner for conflict resolution.
 func TestSystemAgentDef_SeededConflictResolverPromptVars(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "seed_vars.db")
 	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
 	if err != nil {

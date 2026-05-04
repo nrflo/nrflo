@@ -42,6 +42,7 @@ func setupLayerTestEnv(t *testing.T) (*db.Pool, *AgentDefinitionService, *Workfl
 }
 
 func TestCreateAgentDef_LayerStored(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
 
 	def, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
@@ -66,6 +67,7 @@ func TestCreateAgentDef_LayerStored(t *testing.T) {
 }
 
 func TestGetAgentDef_ReturnsLayer(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
 
 	_, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
@@ -85,6 +87,7 @@ func TestGetAgentDef_ReturnsLayer(t *testing.T) {
 }
 
 func TestListAgentDefs_OrderedByLayerThenID(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
 
 	agents := []types.AgentDefCreateRequest{
@@ -121,6 +124,7 @@ func TestListAgentDefs_OrderedByLayerThenID(t *testing.T) {
 }
 
 func TestUpdateAgentDef_UpdatesLayer(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
 
 	_, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
@@ -147,6 +151,7 @@ func TestUpdateAgentDef_UpdatesLayer(t *testing.T) {
 }
 
 func TestCreateAgentDef_FanInValidation(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
 
 	// L0: two parallel agents
@@ -175,6 +180,7 @@ func TestCreateAgentDef_FanInValidation(t *testing.T) {
 }
 
 func TestUpdateAgentDef_FanInValidation(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
 
 	// L0: solo, L1: solo, L2: solo
@@ -204,6 +210,7 @@ func TestUpdateAgentDef_FanInValidation(t *testing.T) {
 }
 
 func TestCreateAgentDef_NegativeLayerRejected(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
 
 	_, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
@@ -215,6 +222,7 @@ func TestCreateAgentDef_NegativeLayerRejected(t *testing.T) {
 }
 
 func TestGetWorkflowDef_PhasesDerivedFromAgentDefs(t *testing.T) {
+	t.Parallel()
 	_, svc, wfSvc := setupLayerTestEnv(t)
 
 	// Create agents with various layers
@@ -251,6 +259,7 @@ func TestGetWorkflowDef_PhasesDerivedFromAgentDefs(t *testing.T) {
 }
 
 func TestGetWorkflowDef_EmptyAgentDefsReturnsEmptyPhases(t *testing.T) {
+	t.Parallel()
 	_, _, wfSvc := setupLayerTestEnv(t)
 
 	wf, err := wfSvc.GetWorkflowDef("proj1", "wf1")
@@ -263,6 +272,7 @@ func TestGetWorkflowDef_EmptyAgentDefsReturnsEmptyPhases(t *testing.T) {
 }
 
 func TestListWorkflowDefs_PhasesDerivedFromAgentDefs(t *testing.T) {
+	t.Parallel()
 	_, svc, wfSvc := setupLayerTestEnv(t)
 
 	if _, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{

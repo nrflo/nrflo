@@ -46,6 +46,7 @@ func (env *testEnv) createSessionWithID(t *testing.T, sessionID, modelID string)
 // TestFinalizePhase_CallbackDetection tests that finalizePhase returns CallbackError
 // when an agent completes with CALLBACK status.
 func TestFinalizePhase_CallbackDetection(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -106,6 +107,7 @@ func TestFinalizePhase_CallbackDetection(t *testing.T) {
 
 // TestFinalizePhase_CallbackLevelZero tests callback to level 0 (valid edge case)
 func TestFinalizePhase_CallbackLevelZero(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -155,6 +157,7 @@ func TestFinalizePhase_CallbackLevelZero(t *testing.T) {
 
 // TestFinalizePhase_CallbackWithMissingInstructions tests callback with missing callback_instructions
 func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -206,6 +209,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 // TestFinalizePhase_PassTakesPrecedenceOverCallback tests that when both PASS and CALLBACK
 // are present, PASS count >= 1 means success (callback detection happens later)
 func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -279,6 +283,7 @@ func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
 
 // TestFinalizePhase_NoCallback_Pass tests normal pass flow (no callback)
 func TestFinalizePhase_NoCallback_Pass(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -318,6 +323,7 @@ func TestFinalizePhase_NoCallback_Pass(t *testing.T) {
 
 // TestFinalizePhase_NoCallback_Fail tests normal fail flow (no callback)
 func TestFinalizePhase_NoCallback_Fail(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -363,6 +369,7 @@ func TestFinalizePhase_NoCallback_Fail(t *testing.T) {
 
 // TestFinalizePhase_AllSkipped tests all-skipped flow (no callback)
 func TestFinalizePhase_AllSkipped(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -402,6 +409,7 @@ func TestFinalizePhase_AllSkipped(t *testing.T) {
 
 // TestFinalizePhase_CallbackLevelFloat tests callback_level as float64 (JSON unmarshal behavior)
 func TestFinalizePhase_CallbackLevelFloat(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 

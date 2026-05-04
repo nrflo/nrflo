@@ -13,6 +13,7 @@ import (
 
 // TestValidateCustomOrder_ValidOrder verifies that a valid order (blockers before dependents) passes.
 func TestValidateCustomOrder_ValidOrder(t *testing.T) {
+	t.Parallel()
 	// A -> B -> C
 	deps := map[string][]string{
 		"b": {"a"},
@@ -26,6 +27,7 @@ func TestValidateCustomOrder_ValidOrder(t *testing.T) {
 
 // TestValidateCustomOrder_InvalidOrder verifies that blocker-after-dependent returns an error.
 func TestValidateCustomOrder_InvalidOrder(t *testing.T) {
+	t.Parallel()
 	// B depends on A, but B is listed before A (wrong)
 	deps := map[string][]string{
 		"b": {"a"},
@@ -41,6 +43,7 @@ func TestValidateCustomOrder_InvalidOrder(t *testing.T) {
 
 // TestValidateCustomOrder_EmptyDeps verifies that any order passes with no dependencies.
 func TestValidateCustomOrder_EmptyDeps(t *testing.T) {
+	t.Parallel()
 	err := validateCustomOrder([]string{"c", "a", "b"}, map[string][]string{})
 	if err != nil {
 		t.Errorf("expected no error for empty deps, got: %v", err)
@@ -49,6 +52,7 @@ func TestValidateCustomOrder_EmptyDeps(t *testing.T) {
 
 // TestValidateCustomOrder_DiamondValid verifies a diamond dependency with a valid order passes.
 func TestValidateCustomOrder_DiamondValid(t *testing.T) {
+	t.Parallel()
 	// D depends on B and C, B and C depend on A
 	deps := map[string][]string{
 		"b": {"a"},
@@ -63,6 +67,7 @@ func TestValidateCustomOrder_DiamondValid(t *testing.T) {
 
 // TestValidateCustomOrder_DiamondInvalid verifies that placing dependent before blocker in diamond fails.
 func TestValidateCustomOrder_DiamondInvalid(t *testing.T) {
+	t.Parallel()
 	deps := map[string][]string{
 		"b": {"a"},
 		"c": {"a"},
@@ -77,6 +82,7 @@ func TestValidateCustomOrder_DiamondInvalid(t *testing.T) {
 
 // TestValidateCustomOrder_CaseInsensitive verifies that comparison is case-insensitive.
 func TestValidateCustomOrder_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	deps := map[string][]string{
 		"b": {"a"},
 	}
@@ -88,6 +94,7 @@ func TestValidateCustomOrder_CaseInsensitive(t *testing.T) {
 
 // TestValidateCustomOrder_TableDriven covers multiple scenarios concisely.
 func TestValidateCustomOrder_TableDriven(t *testing.T) {
+	t.Parallel()
 	deps := map[string][]string{
 		"b": {"a"},
 		"c": {"b"},
@@ -119,6 +126,7 @@ func TestValidateCustomOrder_TableDriven(t *testing.T) {
 
 // TestValidateSameSet_Match verifies that identical sets pass.
 func TestValidateSameSet_Match(t *testing.T) {
+	t.Parallel()
 	err := validateSameSet([]string{"a", "b", "c"}, []string{"c", "a", "b"})
 	if err != nil {
 		t.Errorf("expected matching sets to pass, got: %v", err)
@@ -127,6 +135,7 @@ func TestValidateSameSet_Match(t *testing.T) {
 
 // TestValidateSameSet_DifferentSize verifies that different-sized sets fail.
 func TestValidateSameSet_DifferentSize(t *testing.T) {
+	t.Parallel()
 	err := validateSameSet([]string{"a", "b"}, []string{"a", "b", "c"})
 	if err == nil {
 		t.Fatal("expected error for different sizes, got nil")
@@ -135,6 +144,7 @@ func TestValidateSameSet_DifferentSize(t *testing.T) {
 
 // TestValidateSameSet_MissingTicket verifies that a missing ticket causes failure.
 func TestValidateSameSet_MissingTicket(t *testing.T) {
+	t.Parallel()
 	err := validateSameSet([]string{"a", "b", "c"}, []string{"a", "b", "d"})
 	if err == nil {
 		t.Fatal("expected error for missing ticket, got nil")
@@ -143,6 +153,7 @@ func TestValidateSameSet_MissingTicket(t *testing.T) {
 
 // TestValidateSameSet_CaseInsensitive verifies case-insensitive set comparison.
 func TestValidateSameSet_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	err := validateSameSet([]string{"A", "B"}, []string{"a", "b"})
 	if err != nil {
 		t.Errorf("expected case-insensitive match to pass, got: %v", err)
@@ -151,6 +162,7 @@ func TestValidateSameSet_CaseInsensitive(t *testing.T) {
 
 // TestValidateSameSet_ExtraTicketInFirst verifies extra ticket in first set fails.
 func TestValidateSameSet_ExtraTicketInFirst(t *testing.T) {
+	t.Parallel()
 	err := validateSameSet([]string{"a", "b", "c"}, []string{"a", "b"})
 	if err == nil {
 		t.Fatal("expected error when first set has extra ticket, got nil")
@@ -161,6 +173,7 @@ func TestValidateSameSet_ExtraTicketInFirst(t *testing.T) {
 
 // TestPreviewChain_ExpandsAndSorts verifies that PreviewChain returns sorted expanded tickets.
 func TestPreviewChain_ExpandsAndSorts(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -202,6 +215,7 @@ func TestPreviewChain_ExpandsAndSorts(t *testing.T) {
 
 // TestPreviewChain_AutoAddedByDeps verifies added_by_deps contains transitive additions.
 func TestPreviewChain_AutoAddedByDeps(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -232,6 +246,7 @@ func TestPreviewChain_AutoAddedByDeps(t *testing.T) {
 
 // TestPreviewChain_NoAutoAdded verifies empty added_by_deps when no transitive expansion occurs.
 func TestPreviewChain_NoAutoAdded(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -257,6 +272,7 @@ func TestPreviewChain_NoAutoAdded(t *testing.T) {
 
 // TestPreviewChain_DetectsCycle verifies cycle detection returns an error.
 func TestPreviewChain_DetectsCycle(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -284,6 +300,7 @@ func TestPreviewChain_DetectsCycle(t *testing.T) {
 
 // TestPreviewChain_EmptyTickets verifies error on empty ticket list.
 func TestPreviewChain_EmptyTickets(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -301,6 +318,7 @@ func TestPreviewChain_EmptyTickets(t *testing.T) {
 
 // TestPreviewChain_NeverNilDepsOrAddedByDeps verifies that response fields are never nil.
 func TestPreviewChain_NeverNilDepsOrAddedByDeps(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 

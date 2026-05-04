@@ -8,6 +8,7 @@ import (
 
 // TestBuildSafetySettingsJSON_EmptyInput returns "" for empty string
 func TestBuildSafetySettingsJSON_EmptyInput(t *testing.T) {
+	t.Parallel()
 	got := BuildSafetySettingsJSON("")
 	if got != "" {
 		t.Errorf("BuildSafetySettingsJSON(\"\") = %q, want \"\"", got)
@@ -16,6 +17,7 @@ func TestBuildSafetySettingsJSON_EmptyInput(t *testing.T) {
 
 // TestBuildSafetySettingsJSON_InvalidJSON returns "" for unparseable input
 func TestBuildSafetySettingsJSON_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	got := BuildSafetySettingsJSON("not valid json")
 	if got != "" {
 		t.Errorf("BuildSafetySettingsJSON(invalid) = %q, want \"\"", got)
@@ -24,6 +26,7 @@ func TestBuildSafetySettingsJSON_InvalidJSON(t *testing.T) {
 
 // TestBuildSafetySettingsJSON_Disabled returns "" when enabled=false
 func TestBuildSafetySettingsJSON_Disabled(t *testing.T) {
+	t.Parallel()
 	cfg := `{"enabled":false,"allow_git":true}`
 	got := BuildSafetySettingsJSON(cfg)
 	if got != "" {
@@ -33,6 +36,7 @@ func TestBuildSafetySettingsJSON_Disabled(t *testing.T) {
 
 // TestBuildSafetySettingsJSON_EnabledReturnsValidJSON validates the structure
 func TestBuildSafetySettingsJSON_EnabledReturnsValidJSON(t *testing.T) {
+	t.Parallel()
 	cfg := `{"enabled":true,"allow_git":false}`
 	got := BuildSafetySettingsJSON(cfg)
 	if got == "" {
@@ -78,6 +82,7 @@ func TestBuildSafetySettingsJSON_EnabledReturnsValidJSON(t *testing.T) {
 
 // TestBuildSafetySettingsJSON_ContainsDangerousPattern checks user patterns are in bash
 func TestBuildSafetySettingsJSON_ContainsDangerousPattern(t *testing.T) {
+	t.Parallel()
 	cfg := `{"enabled":true,"dangerous_patterns":["drop table","curl | bash"]}`
 	got := BuildSafetySettingsJSON(cfg)
 	if got == "" {
@@ -92,6 +97,7 @@ func TestBuildSafetySettingsJSON_ContainsDangerousPattern(t *testing.T) {
 
 // TestBuildSafetySettingsJSON_ContainsAllowedPaths checks allowed paths appear in bash
 func TestBuildSafetySettingsJSON_ContainsAllowedPaths(t *testing.T) {
+	t.Parallel()
 	cfg := `{"enabled":true,"rm_rf_allowed_paths":["/tmp","/var/cache","node_modules"]}`
 	got := BuildSafetySettingsJSON(cfg)
 	if got == "" {
@@ -106,6 +112,7 @@ func TestBuildSafetySettingsJSON_ContainsAllowedPaths(t *testing.T) {
 
 // TestBuildSafetySettingsJSON_GitBlockWhenDisallowed checks git ops appear when allow_git=false
 func TestBuildSafetySettingsJSON_GitBlockWhenDisallowed(t *testing.T) {
+	t.Parallel()
 	cfg := `{"enabled":true,"allow_git":false}`
 	got := BuildSafetySettingsJSON(cfg)
 	if got == "" {
@@ -120,6 +127,7 @@ func TestBuildSafetySettingsJSON_GitBlockWhenDisallowed(t *testing.T) {
 
 // TestBuildSafetySettingsJSON_GitAllowedWhenEnabled checks git ops absent when allow_git=true
 func TestBuildSafetySettingsJSON_GitAllowedWhenEnabled(t *testing.T) {
+	t.Parallel()
 	cfg := `{"enabled":true,"allow_git":true}`
 	got := BuildSafetySettingsJSON(cfg)
 	if got == "" {
@@ -137,6 +145,7 @@ func TestBuildSafetySettingsJSON_GitAllowedWhenEnabled(t *testing.T) {
 // =============================================================================
 
 func TestBuildSafetyCommand_HardcodedDangerousRmPatterns(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{Enabled: true}
 	cmd := buildSafetyCommand(cfg)
 
@@ -148,6 +157,7 @@ func TestBuildSafetyCommand_HardcodedDangerousRmPatterns(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_UserDangerousPatterns(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{
 		Enabled:           true,
 		DangerousPatterns: []string{"wget http", "nc -e"},
@@ -162,6 +172,7 @@ func TestBuildSafetyCommand_UserDangerousPatterns(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_EmptyDangerousPatterns(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{Enabled: true, DangerousPatterns: []string{}}
 	cmd := buildSafetyCommand(cfg)
 	// Should still contain hardcoded rm patterns and default exit 0
@@ -174,6 +185,7 @@ func TestBuildSafetyCommand_EmptyDangerousPatterns(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_AbsoluteAllowedPath_PrefixMatch(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{
 		Enabled:          true,
 		RmRfAllowedPaths: []string{"/tmp/workspace"},
@@ -187,6 +199,7 @@ func TestBuildSafetyCommand_AbsoluteAllowedPath_PrefixMatch(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_RelativeAllowedPath_BasenameMatch(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{
 		Enabled:          true,
 		RmRfAllowedPaths: []string{"node_modules"},
@@ -203,6 +216,7 @@ func TestBuildSafetyCommand_RelativeAllowedPath_BasenameMatch(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_NoAllowedPaths_BlocksAll(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{
 		Enabled:          true,
 		RmRfAllowedPaths: []string{},
@@ -220,6 +234,7 @@ func TestBuildSafetyCommand_NoAllowedPaths_BlocksAll(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_GitBlocked_WhenAllowGitFalse(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{Enabled: true, AllowGit: false}
 	cmd := buildSafetyCommand(cfg)
 
@@ -232,6 +247,7 @@ func TestBuildSafetyCommand_GitBlocked_WhenAllowGitFalse(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_GitAllowed_WhenAllowGitTrue(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{Enabled: true, AllowGit: true}
 	cmd := buildSafetyCommand(cfg)
 
@@ -244,6 +260,7 @@ func TestBuildSafetyCommand_GitAllowed_WhenAllowGitTrue(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_StartsWithBashC(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{Enabled: true}
 	cmd := buildSafetyCommand(cfg)
 
@@ -256,6 +273,7 @@ func TestBuildSafetyCommand_StartsWithBashC(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_ReadsStdinViajq(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{Enabled: true}
 	cmd := buildSafetyCommand(cfg)
 
@@ -268,6 +286,7 @@ func TestBuildSafetyCommand_ReadsStdinViajq(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_DefaultExit0(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{Enabled: true, AllowGit: true}
 	cmd := buildSafetyCommand(cfg)
 
@@ -277,6 +296,7 @@ func TestBuildSafetyCommand_DefaultExit0(t *testing.T) {
 }
 
 func TestBuildSafetyCommand_MultipleAllowedPaths(t *testing.T) {
+	t.Parallel()
 	cfg := SafetyHookConfig{
 		Enabled:          true,
 		RmRfAllowedPaths: []string{"/tmp", "/var/cache", "dist", "build"},

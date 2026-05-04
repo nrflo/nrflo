@@ -18,6 +18,7 @@ func (h *fakeHub) Broadcast(e *ws.Event) {
 // TestBroadcastFromCtx_BuildsExpectedEvent verifies the helper unpacks
 // BroadcastCtx and emits an event matching ws.NewEvent's output shape.
 func TestBroadcastFromCtx_BuildsExpectedEvent(t *testing.T) {
+	t.Parallel()
 	hub := &fakeHub{}
 	bc := BroadcastCtx{
 		SessionID: "sess-1",
@@ -64,6 +65,7 @@ func TestBroadcastFromCtx_BuildsExpectedEvent(t *testing.T) {
 // TestBroadcastFromCtx_NilHub is a no-op (matches existing socket-handler behavior
 // where the hub may be nil in some test setups).
 func TestBroadcastFromCtx_NilHub(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("BroadcastFromCtx(nil hub) panicked: %v", r)
@@ -75,6 +77,7 @@ func TestBroadcastFromCtx_NilHub(t *testing.T) {
 // TestBroadcastFromCtx_PassesScopeFields verifies project/ticket/workflow are
 // taken from the context (not the data map).
 func TestBroadcastFromCtx_PassesScopeFields(t *testing.T) {
+	t.Parallel()
 	hub := &fakeHub{}
 	bc := BroadcastCtx{ProjectID: "P", TicketID: "T", Workflow: "W"}
 	BroadcastFromCtx(hub, "agent.completed", bc, map[string]interface{}{"x": 1})

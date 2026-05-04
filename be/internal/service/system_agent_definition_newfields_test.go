@@ -11,6 +11,7 @@ import (
 
 // TestGetForBackend_API verifies GetForBackend returns the api-mode row with all new fields.
 func TestGetForBackend_API(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -44,6 +45,7 @@ func TestGetForBackend_API(t *testing.T) {
 
 // TestGetForBackend_CLI verifies GetForBackend returns the cli-mode context-saver.
 func TestGetForBackend_CLI(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -65,6 +67,7 @@ func TestGetForBackend_CLI(t *testing.T) {
 
 // TestGetForBackend_Miss verifies GetForBackend returns sql.ErrNoRows for unknown role+mode.
 func TestGetForBackend_Miss(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -79,6 +82,7 @@ func TestGetForBackend_Miss(t *testing.T) {
 
 // TestSystemAgentDef_BackfillRolePopulated verifies migration backfill set role=id for legacy rows.
 func TestSystemAgentDef_BackfillRolePopulated(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -96,6 +100,7 @@ func TestSystemAgentDef_BackfillRolePopulated(t *testing.T) {
 
 // TestSystemAgentDef_CreateAndGet_NewFields verifies Role/ExecutionMode/Tools/APIMaxIterations round-trip.
 func TestSystemAgentDef_CreateAndGet_NewFields(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -145,6 +150,7 @@ func TestSystemAgentDef_CreateAndGet_NewFields(t *testing.T) {
 
 // TestSystemAgentDef_CreateDefaultRole verifies role defaults to id when not supplied.
 func TestSystemAgentDef_CreateDefaultRole(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -165,6 +171,7 @@ func TestSystemAgentDef_CreateDefaultRole(t *testing.T) {
 
 // TestSystemAgentDef_Update_ToolsAndAPIMax verifies Update persists tools and api_max_iterations.
 func TestSystemAgentDef_Update_ToolsAndAPIMax(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -203,6 +210,7 @@ func TestSystemAgentDef_Update_ToolsAndAPIMax(t *testing.T) {
 
 // TestSystemAgentDef_CreateInvalidExecutionMode verifies invalid mode is rejected on Create.
 func TestSystemAgentDef_CreateInvalidExecutionMode(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -221,6 +229,7 @@ func TestSystemAgentDef_CreateInvalidExecutionMode(t *testing.T) {
 
 // TestSystemAgentDef_UpdateInvalidExecutionMode verifies invalid mode is rejected on Update.
 func TestSystemAgentDef_UpdateInvalidExecutionMode(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
@@ -245,6 +254,7 @@ func TestSystemAgentDef_UpdateInvalidExecutionMode(t *testing.T) {
 
 // TestSystemAgentDef_DuplicateRoleMode_Conflict verifies unique index on (role, execution_mode).
 func TestSystemAgentDef_DuplicateRoleMode_Conflict(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WebSocketProvider } from '@/providers/WebSocketProvider'
@@ -22,6 +22,22 @@ import { APICredentialsPage } from '@/pages/APICredentialsPage'
 import { useProjectStore } from '@/stores/projectStore'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 
+const ReviewPage = lazy(() =>
+  import('@/pages/nrvapp/Review').then((m) => ({ default: m.ReviewPage }))
+)
+const ReviewDetailPage = lazy(() =>
+  import('@/pages/nrvapp/ReviewDetail').then((m) => ({ default: m.ReviewDetailPage }))
+)
+const ConfigPage = lazy(() =>
+  import('@/pages/nrvapp/Config').then((m) => ({ default: m.ConfigPage }))
+)
+const ConfigEditorPage = lazy(() =>
+  import('@/pages/nrvapp/ConfigEditor').then((m) => ({ default: m.ConfigEditorPage }))
+)
+const NrvappDashboard = lazy(() =>
+  import('@/pages/nrvapp/Dashboard').then((m) => ({ default: m.NrvappDashboard }))
+)
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -35,6 +51,7 @@ function AppRoutes() {
   const apiModeEnabled = useAPIModeEnabled()
   return (
     <BrowserRouter>
+      <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
@@ -52,10 +69,16 @@ function AppRoutes() {
           <Route path="errors" element={<ErrorsPage />} />
           {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
           {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
+          {apiModeEnabled && <Route path="nrvapp/review" element={<ReviewPage />} />}
+          {apiModeEnabled && <Route path="nrvapp/review/:id" element={<ReviewDetailPage />} />}
+          {apiModeEnabled && <Route path="nrvapp/config" element={<ConfigPage />} />}
+          {apiModeEnabled && <Route path="nrvapp/config/:file" element={<ConfigEditorPage />} />}
+          {apiModeEnabled && <Route path="nrvapp/dashboard" element={<NrvappDashboard />} />}
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

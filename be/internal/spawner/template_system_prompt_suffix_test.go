@@ -11,6 +11,7 @@ import (
 // system-prompt-suffix injectable expands ${VAR} substitutions and
 // contains the completion contract content.
 func TestExpandInjectable_SystemPromptSuffix(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	sp := env.newSpawner()
 
@@ -48,6 +49,7 @@ func TestExpandInjectable_SystemPromptSuffix(t *testing.T) {
 // passing an empty/nil vars map to system-prompt-suffix does not panic and
 // returns a non-empty body (no ${VAR} in the template itself).
 func TestExpandInjectable_SystemPromptSuffix_EmptyVarsNoPanel(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	sp := env.newSpawner()
 
@@ -65,6 +67,7 @@ func TestExpandInjectable_SystemPromptSuffix_EmptyVarsNoPanel(t *testing.T) {
 // TestLoadTemplate_SuffixReturnedFromLoadTemplate verifies that loadTemplate
 // returns a non-empty suffix equal to the system-prompt-suffix expansion.
 func TestLoadTemplate_SuffixReturnedFromLoadTemplate(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "SS-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -91,6 +94,7 @@ func TestLoadTemplate_SuffixReturnedFromLoadTemplate(t *testing.T) {
 // TestLoadTemplate_SuffixNotInBody verifies that the system-prompt-suffix
 // content is returned separately and not auto-prepended into the prompt body.
 func TestLoadTemplate_SuffixNotInBody(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "SN-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)

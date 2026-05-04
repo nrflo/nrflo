@@ -7,6 +7,7 @@ import (
 
 // TestFormatMessagesForSave_NilInput verifies nil input returns empty string.
 func TestFormatMessagesForSave_NilInput(t *testing.T) {
+	t.Parallel()
 	got := formatMessagesForSave(nil, 1000)
 	if got != "" {
 		t.Errorf("nil input = %q, want empty string", got)
@@ -15,6 +16,7 @@ func TestFormatMessagesForSave_NilInput(t *testing.T) {
 
 // TestFormatMessagesForSave_EmptySlice verifies empty slice returns empty string.
 func TestFormatMessagesForSave_EmptySlice(t *testing.T) {
+	t.Parallel()
 	got := formatMessagesForSave([]string{}, 1000)
 	if got != "" {
 		t.Errorf("empty slice = %q, want empty string", got)
@@ -24,6 +26,7 @@ func TestFormatMessagesForSave_EmptySlice(t *testing.T) {
 // TestFormatMessagesForSave_SingleMessage_UnderLimit verifies a single message
 // under the limit is returned as-is.
 func TestFormatMessagesForSave_SingleMessage_UnderLimit(t *testing.T) {
+	t.Parallel()
 	msg := "this is a single message"
 	got := formatMessagesForSave([]string{msg}, 1000)
 	if got != msg {
@@ -34,6 +37,7 @@ func TestFormatMessagesForSave_SingleMessage_UnderLimit(t *testing.T) {
 // TestFormatMessagesForSave_MultipleMessages_UnderLimit verifies multiple
 // messages under the limit are joined with newlines.
 func TestFormatMessagesForSave_MultipleMessages_UnderLimit(t *testing.T) {
+	t.Parallel()
 	messages := []string{"message one", "message two", "message three"}
 	want := "message one\nmessage two\nmessage three"
 	got := formatMessagesForSave(messages, 1000)
@@ -45,6 +49,7 @@ func TestFormatMessagesForSave_MultipleMessages_UnderLimit(t *testing.T) {
 // TestFormatMessagesForSave_ExactBoundary verifies messages that join to exactly
 // maxChars are returned without a truncation header.
 func TestFormatMessagesForSave_ExactBoundary(t *testing.T) {
+	t.Parallel()
 	// "aaa\nbbb" = 7 chars
 	messages := []string{"aaa", "bbb"}
 	want := "aaa\nbbb"
@@ -57,6 +62,7 @@ func TestFormatMessagesForSave_ExactBoundary(t *testing.T) {
 // TestFormatMessagesForSave_ExactBoundaryMinus1 verifies that one byte over
 // the limit triggers truncation.
 func TestFormatMessagesForSave_ExactBoundaryMinus1(t *testing.T) {
+	t.Parallel()
 	// "aaa\nbbb" = 7 chars; maxChars = 6 → truncation, keeps "bbb"
 	messages := []string{"aaa", "bbb"}
 	got := formatMessagesForSave(messages, 6)
@@ -75,6 +81,7 @@ func TestFormatMessagesForSave_ExactBoundaryMinus1(t *testing.T) {
 // TestFormatMessagesForSave_OverLimit_KeepsTail verifies that when messages
 // exceed maxChars, the last (most recent) messages are kept.
 func TestFormatMessagesForSave_OverLimit_KeepsTail(t *testing.T) {
+	t.Parallel()
 	// Each message 4 chars; joined = "msg1\nmsg2\nmsg3\nmsg4\nmsg5" = 24 chars.
 	// maxChars=14: fits msg3\nmsg4\nmsg5 = 4+1+4+1+4 = 14 chars exactly.
 	messages := []string{"msg1", "msg2", "msg3", "msg4", "msg5"}
@@ -98,6 +105,7 @@ func TestFormatMessagesForSave_OverLimit_KeepsTail(t *testing.T) {
 // TestFormatMessagesForSave_OverLimit_MessageOrderPreserved verifies that
 // after truncation the remaining messages are in their original order.
 func TestFormatMessagesForSave_OverLimit_MessageOrderPreserved(t *testing.T) {
+	t.Parallel()
 	// "first\nsecond\nthird" = 18 chars; maxChars=12: fits "second\nthird" = 12.
 	messages := []string{"first", "second", "third"}
 	got := formatMessagesForSave(messages, 12)
@@ -123,6 +131,7 @@ func TestFormatMessagesForSave_OverLimit_MessageOrderPreserved(t *testing.T) {
 // TestFormatMessagesForSave_TruncationHeaderFormat verifies the "[truncated:
 // showing last N of M messages]" header format when many messages are dropped.
 func TestFormatMessagesForSave_TruncationHeaderFormat(t *testing.T) {
+	t.Parallel()
 	// 10 messages of 5 chars each; joined = 10*5 + 9 = 59 chars.
 	// maxChars=20: fits 3 messages (5+1+5+1+5=17 ≤ 20; adding 4th: 17+1+5=23 > 20).
 	messages := []string{
@@ -154,6 +163,7 @@ func TestFormatMessagesForSave_TruncationHeaderFormat(t *testing.T) {
 // TestFormatMessagesForSave_SingleMessageOverLimit verifies a single message
 // that exceeds maxChars still returns a truncation header with 0 kept messages.
 func TestFormatMessagesForSave_SingleMessageOverLimit(t *testing.T) {
+	t.Parallel()
 	// "toolong" = 7 chars, maxChars = 3: cannot keep even one message.
 	got := formatMessagesForSave([]string{"toolong"}, 3)
 

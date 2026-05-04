@@ -16,6 +16,9 @@ import {
   Wrench,
   KeyRound,
   CalendarClock,
+  ClipboardList,
+  FileEdit,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
@@ -163,6 +166,27 @@ export function Sidebar() {
               icon={<KeyRound className="h-4 w-4" />}
               label="API Credentials"
               active={isActive('/api-credentials')}
+            />
+            <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Vertical app
+            </div>
+            <NavItem
+              to="/nrvapp/review"
+              icon={<ClipboardList className="h-4 w-4" />}
+              label="Review queue"
+              active={isActive('/nrvapp/review')}
+            />
+            <NavItem
+              to="/nrvapp/config"
+              icon={<FileEdit className="h-4 w-4" />}
+              label="Config"
+              active={isActive('/nrvapp/config')}
+            />
+            <NavItem
+              to="/nrvapp/dashboard"
+              icon={<BarChart3 className="h-4 w-4" />}
+              label="Insights"
+              active={isActive('/nrvapp/dashboard')}
             />
           </>
         )}

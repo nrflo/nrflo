@@ -11,6 +11,7 @@ import (
 )
 
 func TestEventLogAppend(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -62,6 +63,7 @@ func TestEventLogAppend(t *testing.T) {
 }
 
 func TestEventLogQuerySince(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -151,6 +153,7 @@ func TestEventLogQuerySince(t *testing.T) {
 }
 
 func TestEventLogLatestSeq(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -216,6 +219,7 @@ func TestEventLogLatestSeq(t *testing.T) {
 }
 
 func TestEventLogCleanup(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 

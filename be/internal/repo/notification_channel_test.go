@@ -38,6 +38,7 @@ func makeNotifyChannel(projectID, name string, kind model.ChannelKind, enabled b
 }
 
 func TestNotificationChannelRepo_Insert_Get(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNotificationChannelDB(t)
 
 	ch := makeNotifyChannel(projectID, "slack-alerts", model.ChannelKindSlack, true,
@@ -77,6 +78,7 @@ func TestNotificationChannelRepo_Insert_Get(t *testing.T) {
 }
 
 func TestNotificationChannelRepo_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupNotificationChannelDB(t)
 	_, err := r.Get("no-such-id")
 	if err == nil {
@@ -85,6 +87,7 @@ func TestNotificationChannelRepo_Get_NotFound(t *testing.T) {
 }
 
 func TestNotificationChannelRepo_Update_MutatesFields(t *testing.T) {
+	t.Parallel()
 	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
@@ -134,6 +137,7 @@ func TestNotificationChannelRepo_Update_MutatesFields(t *testing.T) {
 }
 
 func TestNotificationChannelRepo_Update_NotFound(t *testing.T) {
+	t.Parallel()
 	r, _ := setupNotificationChannelDB(t)
 	ch := &model.NotificationChannel{ID: "no-such", Name: "x", Kind: model.ChannelKindSlack}
 	if err := r.Update(ch); err == nil {
@@ -142,6 +146,7 @@ func TestNotificationChannelRepo_Update_NotFound(t *testing.T) {
 }
 
 func TestNotificationChannelRepo_Delete(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNotificationChannelDB(t)
 	ch := makeNotifyChannel(projectID, "to-delete", model.ChannelKindSlack, true, nil)
 	if err := r.Insert(ch); err != nil {
@@ -156,6 +161,7 @@ func TestNotificationChannelRepo_Delete(t *testing.T) {
 }
 
 func TestNotificationChannelRepo_ListByProject_FiltersProject(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	database, err := db.OpenPath(dbPath)
 	if err != nil {
@@ -199,6 +205,7 @@ func TestNotificationChannelRepo_ListByProject_FiltersProject(t *testing.T) {
 }
 
 func TestNotificationChannelRepo_ListEnabledForEvent(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNotificationChannelDB(t)
 
 	// enabled + subscribes to target event

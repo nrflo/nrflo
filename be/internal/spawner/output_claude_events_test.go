@@ -8,6 +8,7 @@ import (
 // === assistant: thinking content ===
 
 func TestProcessOutput_Claude_AssistantThinking_TracksMessage(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-think-1")
 
@@ -39,6 +40,7 @@ func TestProcessOutput_Claude_AssistantThinking_TracksMessage(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_AssistantThinking_EmptyIgnored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-think-2")
 
@@ -59,6 +61,7 @@ func TestProcessOutput_Claude_AssistantThinking_EmptyIgnored(t *testing.T) {
 // === system: init ===
 
 func TestProcessOutput_Claude_SystemInit_TracksMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		version string
@@ -93,6 +96,7 @@ func TestProcessOutput_Claude_SystemInit_TracksMessage(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_SystemInit_BothEmpty_Silent(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-init-empty")
 	processJSON(s, proc, map[string]interface{}{
@@ -105,6 +109,7 @@ func TestProcessOutput_Claude_SystemInit_BothEmpty_Silent(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_SystemNonInit_Silent(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-sysother")
 	processJSON(s, proc, map[string]interface{}{
@@ -119,6 +124,7 @@ func TestProcessOutput_Claude_SystemNonInit_Silent(t *testing.T) {
 // === assistant: context tracking via usage ===
 
 func TestProcessOutput_Claude_AssistantUsage_UpdatesContextLeft(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ctx-1")
 	proc.maxContext = 200000
@@ -144,6 +150,7 @@ func TestProcessOutput_Claude_AssistantUsage_UpdatesContextLeft(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_AssistantUsage_DoesNotIncreaseContextLeft(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ctx-mono-1")
 	proc.maxContext = 200000
@@ -184,6 +191,7 @@ func TestProcessOutput_Claude_AssistantUsage_DoesNotIncreaseContextLeft(t *testi
 }
 
 func TestProcessOutput_Claude_AssistantUsage_ZeroTokens_NoUpdate(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-ctx-2")
 	proc.maxContext = 200000
@@ -205,6 +213,7 @@ func TestProcessOutput_Claude_AssistantUsage_ZeroTokens_NoUpdate(t *testing.T) {
 // === result: context tracking skipped (cumulative usage would overestimate) ===
 
 func TestProcessOutput_Claude_ResultUsage_DoesNotUpdateContextLeft(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-res-1")
 	proc.maxContext = 100000
@@ -224,6 +233,7 @@ func TestProcessOutput_Claude_ResultUsage_DoesNotUpdateContextLeft(t *testing.T)
 // === rate_limit_event ===
 
 func TestProcessOutput_Claude_RateLimit_NonAllowed_Tracked(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		status    string
@@ -263,6 +273,7 @@ func TestProcessOutput_Claude_RateLimit_NonAllowed_Tracked(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_RateLimit_Allowed_Silent(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-rl-ok")
 	processJSON(s, proc, map[string]interface{}{
@@ -277,6 +288,7 @@ func TestProcessOutput_Claude_RateLimit_Allowed_Silent(t *testing.T) {
 }
 
 func TestProcessOutput_Claude_RateLimit_MissingInfo_NoCrash(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-rl-noinfo")
 	// Must not panic even with no rate_limit_info key
@@ -289,6 +301,7 @@ func TestProcessOutput_Claude_RateLimit_MissingInfo_NoCrash(t *testing.T) {
 // === content_block_stop: dead code removed ===
 
 func TestProcessOutput_Claude_ContentBlockStop_Ignored(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-cbs-1")
 	processJSON(s, proc, map[string]interface{}{

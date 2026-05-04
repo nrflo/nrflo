@@ -11,6 +11,7 @@ import (
 // --- Agent Definition Tag ---
 
 func TestAgentDefinitionTagCreateAndGet(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -46,6 +47,7 @@ func TestAgentDefinitionTagCreateAndGet(t *testing.T) {
 }
 
 func TestAgentDefinitionTagUpdate(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -80,6 +82,7 @@ func TestAgentDefinitionTagUpdate(t *testing.T) {
 }
 
 func TestAgentDefinitionTagInList(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -115,6 +118,7 @@ func TestAgentDefinitionTagInList(t *testing.T) {
 }
 
 func TestAgentDefinitionTagDefaultEmpty(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -137,6 +141,7 @@ func TestAgentDefinitionTagDefaultEmpty(t *testing.T) {
 // --- WorkflowInstance SkipTags ---
 
 func TestWorkflowInstanceSkipTagsCreateAndGet(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -162,6 +167,7 @@ func TestWorkflowInstanceSkipTagsCreateAndGet(t *testing.T) {
 }
 
 func TestWorkflowInstanceSkipTagsDefaultEmpty(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -182,6 +188,7 @@ func TestWorkflowInstanceSkipTagsDefaultEmpty(t *testing.T) {
 }
 
 func TestWorkflowInstanceUpdateSkipTags(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -220,6 +227,7 @@ func TestWorkflowInstanceUpdateSkipTags(t *testing.T) {
 }
 
 func TestWorkflowInstanceUpdateSkipTagsNotFound(t *testing.T) {
+	t.Parallel()
 	pool := newSkipTagsPool(t)
 	seedProjectPool(t, pool, "proj")
 	seedWorkflowPool(t, pool, "proj", "wf")
@@ -233,6 +241,7 @@ func TestWorkflowInstanceUpdateSkipTagsNotFound(t *testing.T) {
 // --- WorkflowInstance model unit tests ---
 
 func TestWorkflowInstanceGetSetSkipTagsRoundTrip(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		tags []string
@@ -260,6 +269,7 @@ func TestWorkflowInstanceGetSetSkipTagsRoundTrip(t *testing.T) {
 }
 
 func TestWorkflowInstanceAddSkipTagDeduplication(t *testing.T) {
+	t.Parallel()
 	wi := &model.WorkflowInstance{SkipTags: "[]"}
 	wi.AddSkipTag("be")
 	wi.AddSkipTag("be") // duplicate
@@ -273,6 +283,7 @@ func TestWorkflowInstanceAddSkipTagDeduplication(t *testing.T) {
 }
 
 func TestWorkflowInstanceAddSkipTagFromEmpty(t *testing.T) {
+	t.Parallel()
 	wi := &model.WorkflowInstance{}
 	wi.AddSkipTag("docs")
 	if tags := wi.GetSkipTags(); len(tags) != 1 || tags[0] != "docs" {

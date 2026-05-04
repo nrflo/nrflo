@@ -8,6 +8,7 @@ import (
 
 // TestCreateAgentDef_WithMaxFailRestarts verifies that max_fail_restarts is persisted on create.
 func TestCreateAgentDef_WithMaxFailRestarts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	n := 3
@@ -30,6 +31,7 @@ func TestCreateAgentDef_WithMaxFailRestarts(t *testing.T) {
 // TestCreateAgentDef_NilMaxFailRestarts confirms that omitting max_fail_restarts
 // produces nil (not 0) — preserving the "not configured" sentinel.
 func TestCreateAgentDef_NilMaxFailRestarts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -47,6 +49,7 @@ func TestCreateAgentDef_NilMaxFailRestarts(t *testing.T) {
 
 // TestGetAgentDef_ReturnsMaxFailRestarts verifies the round-trip through GetAgentDef.
 func TestGetAgentDef_ReturnsMaxFailRestarts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	n := 5
@@ -74,6 +77,7 @@ func TestGetAgentDef_ReturnsMaxFailRestarts(t *testing.T) {
 // TestGetAgentDef_MaxFailRestartsNilRoundTrip verifies nil is returned when
 // max_fail_restarts was never set (DB column is NULL).
 func TestGetAgentDef_MaxFailRestartsNilRoundTrip(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -96,6 +100,7 @@ func TestGetAgentDef_MaxFailRestartsNilRoundTrip(t *testing.T) {
 // TestUpdateAgentDef_SetsMaxFailRestarts verifies that UpdateAgentDef can set
 // max_fail_restarts on an existing definition.
 func TestUpdateAgentDef_SetsMaxFailRestarts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -128,6 +133,7 @@ func TestUpdateAgentDef_SetsMaxFailRestarts(t *testing.T) {
 // TestUpdateAgentDef_ChangesMaxFailRestarts verifies that the value can be
 // changed from one non-zero value to another.
 func TestUpdateAgentDef_ChangesMaxFailRestarts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	initial := 1
@@ -159,6 +165,7 @@ func TestUpdateAgentDef_ChangesMaxFailRestarts(t *testing.T) {
 // TestListAgentDefs_ReturnsMaxFailRestarts verifies that ListAgentDefs includes
 // max_fail_restarts values correctly.
 func TestListAgentDefs_ReturnsMaxFailRestarts(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	n := 4
@@ -207,6 +214,7 @@ func TestListAgentDefs_ReturnsMaxFailRestarts(t *testing.T) {
 // TestCreateAgentDef_MaxFailRestartsZero verifies that explicitly passing 0
 // stores it as 0 (not nil) — callers can explicitly disable.
 func TestCreateAgentDef_MaxFailRestartsZero(t *testing.T) {
+	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	zero := 0

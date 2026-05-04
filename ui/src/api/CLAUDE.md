@@ -30,6 +30,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `errors.ts` | Paginated error log list (`GET /api/v1/errors?page=&per_page=&type=`) |
 | `scheduledTasks.ts` | Scheduled task CRUD + run history (`GET/POST/PATCH/DELETE /api/v1/scheduled-tasks`, `GET /api/v1/scheduled-tasks/:id/runs`, `POST /api/v1/scheduled-tasks/:id/run-now`; requires X-Project header) |
 | `notifications.ts` | Notification channel CRUD + test + deliveries (`GET/POST/PATCH/DELETE /api/v1/notification-channels(/:id)`, `POST /api/v1/notification-channels/:id/test`, `GET /api/v1/notification-deliveries?channel_id=&limit=`; requires X-Project header) |
+| `nrvapp.ts` | Vertical app API: review CRUD (list/get/update-draft/approve/reject), config files (list/get/put/history/rollback), insights (summary/edit-rate/throughput). `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
 | `projects.ts` | Also exports `checkSafetyHook()` for dry-run safety hook check (no X-Project header) |
 
 ## REST API Endpoints

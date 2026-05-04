@@ -36,6 +36,7 @@ func selectBackendForTest(s *Spawner, executionMode string, adapter CLIAdapter) 
 //	(cli, interactiveOn,  supportsInteractive=true) → cliInteractiveBackend
 //	(cli, interactiveOn,  supportsInteractive=false) → cliBackend
 func TestStartBackend_SelectorMatrix(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name            string
 		executionMode   string
@@ -95,6 +96,7 @@ func TestStartBackend_SelectorMatrix(t *testing.T) {
 // TestEventAgentViewerAttached_Constant verifies the WS event constant uses the
 // resource.action naming convention expected by the web UI.
 func TestEventAgentViewerAttached_Constant(t *testing.T) {
+	t.Parallel()
 	const want = "agent.viewer_attached"
 	if ws.EventAgentViewerAttached != want {
 		t.Errorf("EventAgentViewerAttached = %q, want %q", ws.EventAgentViewerAttached, want)
@@ -104,6 +106,7 @@ func TestEventAgentViewerAttached_Constant(t *testing.T) {
 // TestEventAgentViewerAttached_DistinctFromTakeControl verifies it is different
 // from the existing take-control event so UIs can distinguish them.
 func TestEventAgentViewerAttached_DistinctFromTakeControl(t *testing.T) {
+	t.Parallel()
 	if ws.EventAgentViewerAttached == ws.EventAgentTakeControl {
 		t.Errorf("EventAgentViewerAttached == EventAgentTakeControl (%q); they must differ",
 			ws.EventAgentViewerAttached)
@@ -114,6 +117,7 @@ func TestEventAgentViewerAttached_DistinctFromTakeControl(t *testing.T) {
 // EventAgentViewerAttached delivers the correct payload fields (session_id,
 // agent_type, model_id) — mirroring the monitorAll viewer-attach path.
 func TestEventAgentViewerAttached_Broadcast(t *testing.T) {
+	t.Parallel()
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 	defer hub.Stop()
@@ -163,6 +167,7 @@ func TestEventAgentViewerAttached_Broadcast(t *testing.T) {
 // cliInteractiveBackend.SupportsTakeControl() returns true for all adapters —
 // unlike cliBackend which gates on SupportsResume().
 func TestCLIInteractiveBackend_SupportsTakeControl_AlwaysTrue(t *testing.T) {
+	t.Parallel()
 	for _, adapter := range []CLIAdapter{&ClaudeAdapter{}, &OpencodeAdapter{}, &CodexAdapter{}} {
 		b := newCLIInteractiveBackend(adapter, nil, nil)
 		if !b.SupportsTakeControl() {

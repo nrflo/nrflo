@@ -7,6 +7,7 @@ import (
 
 // TestProcessOutput_Claude_AgentToolUse_TracksPendingTask mirrors the Task version for "Agent" tool.
 func TestProcessOutput_Claude_AgentToolUse_TracksPendingTask(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-agent-pending-1")
 
@@ -48,6 +49,7 @@ func TestProcessOutput_Claude_AgentToolUse_TracksPendingTask(t *testing.T) {
 
 // TestProcessOutput_Claude_AgentToolUse_StoresToolNameInTaskInfo verifies toolName="Agent" is stored.
 func TestProcessOutput_Claude_AgentToolUse_StoresToolNameInTaskInfo(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-agent-toolname-1")
 
@@ -79,6 +81,7 @@ func TestProcessOutput_Claude_AgentToolUse_StoresToolNameInTaskInfo(t *testing.T
 
 // TestProcessOutput_Claude_TaskToolUse_StoresToolNameInTaskInfo verifies toolName="Task" is stored.
 func TestProcessOutput_Claude_TaskToolUse_StoresToolNameInTaskInfo(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-task-toolname-1")
 
@@ -110,6 +113,7 @@ func TestProcessOutput_Claude_TaskToolUse_StoresToolNameInTaskInfo(t *testing.T)
 
 // TestProcessOutput_Claude_AgentToolUse_MissingID_NoPendingEntry mirrors the Task version.
 func TestProcessOutput_Claude_AgentToolUse_MissingID_NoPendingEntry(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-agent-pending-2")
 
@@ -146,6 +150,7 @@ func TestProcessOutput_Claude_AgentToolUse_MissingID_NoPendingEntry(t *testing.T
 
 // TestProcessOutput_Claude_ToolResult_MatchingAgent_GeneratesAgentResult verifies [AgentResult] prefix.
 func TestProcessOutput_Claude_ToolResult_MatchingAgent_GeneratesAgentResult(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-agent-tr-1")
 
@@ -191,6 +196,7 @@ func TestProcessOutput_Claude_ToolResult_MatchingAgent_GeneratesAgentResult(t *t
 
 // TestProcessOutput_Claude_AgentResult_Formats tests format variants for Agent tool results.
 func TestProcessOutput_Claude_AgentResult_Formats(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		description  string
@@ -267,6 +273,7 @@ func TestProcessOutput_Claude_AgentResult_Formats(t *testing.T) {
 
 // TestProcessOutput_Claude_AgentResult_LongDetail_Truncated verifies truncation at 200 chars.
 func TestProcessOutput_Claude_AgentResult_LongDetail_Truncated(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-agent-trunc-1")
 
@@ -310,6 +317,7 @@ func TestProcessOutput_Claude_AgentResult_LongDetail_Truncated(t *testing.T) {
 // TestProcessOutput_Claude_TaskInfo_EmptyToolName_DefaultsToTaskResult verifies backward compat:
 // a taskInfo with empty toolName (zero value) produces [TaskResult], not [AgentResult].
 func TestProcessOutput_Claude_TaskInfo_EmptyToolName_DefaultsToTaskResult(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-compat-1")
 
@@ -344,6 +352,7 @@ func TestProcessOutput_Claude_TaskInfo_EmptyToolName_DefaultsToTaskResult(t *tes
 // TestProcessOutput_Claude_MixedTaskAndAgent_CorrectPrefixes verifies both tool types in-flight
 // simultaneously produce the correct result prefix independently.
 func TestProcessOutput_Claude_MixedTaskAndAgent_CorrectPrefixes(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := minProc("sess-mixed-1")
 

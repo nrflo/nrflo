@@ -72,6 +72,7 @@ func addRemoteCommit(t *testing.T, barePath, filename, content, message string) 
 // TestSetup_NoRemote_BestEffort verifies Setup succeeds when no remote is configured.
 // fetchRemote failure must be non-fatal.
 func TestSetup_NoRemote_BestEffort(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	t.Cleanup(func() { os.RemoveAll(repoPath) })
 
@@ -93,6 +94,7 @@ func TestSetup_NoRemote_BestEffort(t *testing.T) {
 // TestMergeAndCleanup_NoRemote_BestEffort verifies MergeAndCleanup succeeds when
 // no remote is configured — fetch and rev-list failures are non-fatal.
 func TestMergeAndCleanup_NoRemote_BestEffort(t *testing.T) {
+	t.Parallel()
 	orig := mergeRetryDelay
 	mergeRetryDelay = 0
 	t.Cleanup(func() { mergeRetryDelay = orig })
@@ -129,6 +131,7 @@ func cleanWorktree(t *testing.T, branchName string) {
 // TestMergeAndCleanup_RemoteAhead_FastForwardsAndRebases verifies the full remote-ahead
 // flow: fetch, fast-forward local default branch, rebase feature branch, then merge.
 func TestMergeAndCleanup_RemoteAhead_FastForwardsAndRebases(t *testing.T) {
+	t.Parallel()
 	orig := mergeRetryDelay
 	mergeRetryDelay = 0
 	t.Cleanup(func() { mergeRetryDelay = orig })
@@ -176,6 +179,7 @@ func TestMergeAndCleanup_RemoteAhead_FastForwardsAndRebases(t *testing.T) {
 // and the feature branch both modify the same file, the rebase fails, the branch is
 // preserved, and a descriptive error is returned.
 func TestMergeAndCleanup_RebaseConflict_RemoteAhead(t *testing.T) {
+	t.Parallel()
 	orig := mergeRetryDelay
 	mergeRetryDelay = 0
 	t.Cleanup(func() { mergeRetryDelay = orig })
@@ -224,6 +228,7 @@ func TestMergeAndCleanup_RebaseConflict_RemoteAhead(t *testing.T) {
 // TestMergeAndCleanup_RemoteUpToDate verifies that when the local branch is already
 // at the same commit as the remote, no fast-forward is attempted and the merge proceeds.
 func TestMergeAndCleanup_RemoteUpToDate(t *testing.T) {
+	t.Parallel()
 	orig := mergeRetryDelay
 	mergeRetryDelay = 0
 	t.Cleanup(func() { mergeRetryDelay = orig })

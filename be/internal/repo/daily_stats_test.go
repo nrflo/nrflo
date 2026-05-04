@@ -11,6 +11,7 @@ import (
 )
 
 func TestDailyStatsUpsertAndGet(t *testing.T) {
+	t.Parallel()
 	// Create temporary database
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
@@ -85,6 +86,7 @@ func TestDailyStatsUpsertAndGet(t *testing.T) {
 }
 
 func TestDailyStatsUpsertUpdate(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -100,7 +102,8 @@ func TestDailyStatsUpsertUpdate(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	repo := NewDailyStatsRepo(database, clock.Real())
+	clk := clock.NewTest(time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC))
+	repo := NewDailyStatsRepo(database, clk)
 
 	projectID := "test-proj"
 	date := "2025-01-15"
@@ -124,8 +127,8 @@ func TestDailyStatsUpsertUpdate(t *testing.T) {
 	}
 	firstUpdatedAt := first.UpdatedAt
 
-	// Small delay to ensure updated_at changes (RFC3339 has 1-second resolution)
-	time.Sleep(1100 * time.Millisecond)
+	// Advance clock to ensure updated_at changes
+	clk.Advance(2 * time.Second)
 
 	// Upsert with updated values (same project+date)
 	updatedStats := model.DailyStats{
@@ -171,6 +174,7 @@ func TestDailyStatsUpsertUpdate(t *testing.T) {
 }
 
 func TestDailyStatsGetByDateNonexistent(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -222,6 +226,7 @@ func TestDailyStatsGetByDateNonexistent(t *testing.T) {
 }
 
 func TestDailyStatsMultipleProjects(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -300,6 +305,7 @@ func TestDailyStatsMultipleProjects(t *testing.T) {
 }
 
 func TestDailyStatsMultipleDates(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -350,6 +356,7 @@ func TestDailyStatsMultipleDates(t *testing.T) {
 }
 
 func TestDailyStatsForeignKeyConstraint(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -380,6 +387,7 @@ func TestDailyStatsForeignKeyConstraint(t *testing.T) {
 }
 
 func TestDailyStatsDefaultValues(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
@@ -430,6 +438,7 @@ func TestDailyStatsDefaultValues(t *testing.T) {
 }
 
 func TestDailyStatsLargeValues(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 

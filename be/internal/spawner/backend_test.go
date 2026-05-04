@@ -10,6 +10,7 @@ import (
 
 // TestCLIBackend_Name verifies the backend identifies as "cli".
 func TestCLIBackend_Name(t *testing.T) {
+	t.Parallel()
 	b := newCLIBackend(&ClaudeAdapter{}, nil)
 	if got := b.Name(); got != "cli" {
 		t.Errorf("Name() = %q, want %q", got, "cli")
@@ -18,6 +19,7 @@ func TestCLIBackend_Name(t *testing.T) {
 
 // TestCLIBackend_SupportsResume_MirrorsAdapter verifies SupportsResume reflects the adapter.
 func TestCLIBackend_SupportsResume_MirrorsAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		adapter CLIAdapter
@@ -40,6 +42,7 @@ func TestCLIBackend_SupportsResume_MirrorsAdapter(t *testing.T) {
 // TestCLIBackend_SupportsTakeControl_MatchesSupportsResume verifies that take-control
 // support is gated by SupportsResume — preserving the existing CLI behavior.
 func TestCLIBackend_SupportsTakeControl_MatchesSupportsResume(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		adapter CLIAdapter
@@ -62,6 +65,7 @@ func TestCLIBackend_SupportsTakeControl_MatchesSupportsResume(t *testing.T) {
 // TestCLIBackend_Kill_NilSafe verifies Kill on a proc with no cmd or no started
 // process is a no-op (preserves existing safe-kill semantics at six call sites).
 func TestCLIBackend_Kill_NilSafe(t *testing.T) {
+	t.Parallel()
 	b := newCLIBackend(&ClaudeAdapter{}, nil)
 	ctx := context.Background()
 
@@ -84,6 +88,7 @@ func TestCLIBackend_Kill_NilSafe(t *testing.T) {
 // TestCLIBackend_Kill_SIGTERM verifies SIGTERM signals a running process and the
 // backend reports no error. Uses a short-running OS sleep — not a CLI binary.
 func TestCLIBackend_Kill_SIGTERM(t *testing.T) {
+	t.Parallel()
 	b := newCLIBackend(&ClaudeAdapter{}, nil)
 	cmd := exec.Command("sleep", "60")
 	if err := cmd.Start(); err != nil {
@@ -112,6 +117,7 @@ func TestCLIBackend_Kill_SIGTERM(t *testing.T) {
 // TestCLIBackend_Kill_SIGKILL verifies SIGKILL routes to Process.Kill() and
 // terminates an unkillable-by-SIGTERM process within the wait window.
 func TestCLIBackend_Kill_SIGKILL(t *testing.T) {
+	t.Parallel()
 	b := newCLIBackend(&ClaudeAdapter{}, nil)
 	cmd := exec.Command("sleep", "60")
 	if err := cmd.Start(); err != nil {

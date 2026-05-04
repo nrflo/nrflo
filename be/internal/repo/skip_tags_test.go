@@ -70,6 +70,7 @@ func seedWorkflowPool(t *testing.T, pool *db.Pool, projectID, workflowID string)
 // --- Workflow Groups ---
 
 func TestWorkflowGroupsCreateAndGet(t *testing.T) {
+	t.Parallel()
 	database := newSkipTagsDB(t)
 	seedProjectDB(t, database, "proj")
 	repo := NewWorkflowRepo(database, clock.Real())
@@ -111,6 +112,7 @@ func TestWorkflowGroupsCreateAndGet(t *testing.T) {
 }
 
 func TestWorkflowGroupsUpdate(t *testing.T) {
+	t.Parallel()
 	database := newSkipTagsDB(t)
 	seedProjectDB(t, database, "proj")
 	repo := NewWorkflowRepo(database, clock.Real())
@@ -136,6 +138,7 @@ func TestWorkflowGroupsUpdate(t *testing.T) {
 }
 
 func TestWorkflowGroupsDefaultEmpty(t *testing.T) {
+	t.Parallel()
 	database := newSkipTagsDB(t)
 	seedProjectDB(t, database, "proj")
 
@@ -155,6 +158,7 @@ func TestWorkflowGroupsDefaultEmpty(t *testing.T) {
 }
 
 func TestWorkflowGroupsList(t *testing.T) {
+	t.Parallel()
 	database := newSkipTagsDB(t)
 	seedProjectDB(t, database, "proj")
 	repo := NewWorkflowRepo(database, clock.Real())
@@ -193,6 +197,7 @@ func TestWorkflowGroupsList(t *testing.T) {
 // --- Workflow and AgentSession model unit tests ---
 
 func TestWorkflowGetSetGroupsRoundTrip(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		groups []string
@@ -227,6 +232,7 @@ func TestWorkflowGetSetGroupsRoundTrip(t *testing.T) {
 }
 
 func TestWorkflowGetGroupsEmptyString(t *testing.T) {
+	t.Parallel()
 	wf := &model.Workflow{Groups: ""}
 	if got := wf.GetGroups(); len(got) != 0 {
 		t.Errorf("GetGroups() on empty string = %v, want []", got)
@@ -234,6 +240,7 @@ func TestWorkflowGetGroupsEmptyString(t *testing.T) {
 }
 
 func TestAgentSessionSkippedConstant(t *testing.T) {
+	t.Parallel()
 	if model.AgentSessionSkipped != "skipped" {
 		t.Errorf("AgentSessionSkipped = %q, want %q", model.AgentSessionSkipped, "skipped")
 	}

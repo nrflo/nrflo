@@ -15,6 +15,7 @@ import (
 // =============================================================================
 
 func TestCLIInteractiveBackend_Name(t *testing.T) {
+	t.Parallel()
 	b := newCLIInteractiveBackend(&ClaudeAdapter{}, nil, nil)
 	if got := b.Name(); got != "cli_interactive" {
 		t.Errorf("Name() = %q, want cli_interactive", got)
@@ -22,6 +23,7 @@ func TestCLIInteractiveBackend_Name(t *testing.T) {
 }
 
 func TestCLIInteractiveBackend_SupportsTakeControl(t *testing.T) {
+	t.Parallel()
 	b := newCLIInteractiveBackend(&ClaudeAdapter{}, nil, nil)
 	if !b.SupportsTakeControl() {
 		t.Error("SupportsTakeControl() = false, want true")
@@ -29,6 +31,7 @@ func TestCLIInteractiveBackend_SupportsTakeControl(t *testing.T) {
 }
 
 func TestCLIInteractiveBackend_SupportsResume_MirrorsAdapter(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		adapter CLIAdapter
@@ -53,6 +56,7 @@ func TestCLIInteractiveBackend_SupportsResume_MirrorsAdapter(t *testing.T) {
 // =============================================================================
 
 func TestCLIInteractiveBackend_Start_NilPtyManager_ReturnsError(t *testing.T) {
+	t.Parallel()
 	s := New(Config{Clock: clock.Real()})
 	b := newCLIInteractiveBackend(&ClaudeAdapter{}, s, nil)
 	proc := &processInfo{sessionID: "s", doneCh: make(chan struct{})}
@@ -66,6 +70,7 @@ func TestCLIInteractiveBackend_Start_NilPtyManager_ReturnsError(t *testing.T) {
 // command with the PTY manager, creates a session, and delivers prompt+\n via
 // PTY stdin within ~1s (deliverPrompt has a 250ms readiness delay).
 func TestCLIInteractiveBackend_Start_DeliverPrompt(t *testing.T) {
+	t.Parallel()
 	s := New(Config{Clock: clock.Real()})
 	mgr := newMockPtyManager()
 	b := newCLIInteractiveBackend(&ClaudeAdapter{}, s, mgr)
@@ -140,6 +145,7 @@ outer:
 // =============================================================================
 
 func TestCLIInteractiveBackend_Kill_SIGKILL_RoutesToSessionKill(t *testing.T) {
+	t.Parallel()
 	mgr := newMockPtyManager()
 	sess := newMockSession()
 	mgr.mu.Lock()
@@ -164,6 +170,7 @@ func TestCLIInteractiveBackend_Kill_SIGKILL_RoutesToSessionKill(t *testing.T) {
 }
 
 func TestCLIInteractiveBackend_Kill_SIGTERM_RoutesToSessionClose(t *testing.T) {
+	t.Parallel()
 	mgr := newMockPtyManager()
 	sess := newMockSession()
 	mgr.mu.Lock()
@@ -188,6 +195,7 @@ func TestCLIInteractiveBackend_Kill_SIGTERM_RoutesToSessionClose(t *testing.T) {
 }
 
 func TestCLIInteractiveBackend_Kill_NilSession_IsNoop(t *testing.T) {
+	t.Parallel()
 	mgr := newMockPtyManager() // empty — no session registered
 	b := newCLIInteractiveBackend(&ClaudeAdapter{}, nil, mgr)
 	proc := &processInfo{sessionID: "no-such-session"}
@@ -201,6 +209,7 @@ func TestCLIInteractiveBackend_Kill_NilSession_IsNoop(t *testing.T) {
 // =============================================================================
 
 func TestExitCodeFromSession_WithExitCoder(t *testing.T) {
+	t.Parallel()
 	sess := newMockSession()
 	sess.exitCodeVal = 42
 	if got := exitCodeFromSession(sess); got != 42 {
@@ -209,6 +218,7 @@ func TestExitCodeFromSession_WithExitCoder(t *testing.T) {
 }
 
 func TestExitCodeFromSession_ZeroExitCode(t *testing.T) {
+	t.Parallel()
 	sess := newMockSession() // exitCodeVal defaults to 0
 	if got := exitCodeFromSession(sess); got != 0 {
 		t.Errorf("exitCodeFromSession = %d, want 0", got)
@@ -219,6 +229,7 @@ func TestExitCodeFromSession_ZeroExitCode(t *testing.T) {
 type noExitCoder struct{ ptySessionIface }
 
 func TestExitCodeFromSession_WithoutExitCoder_ReturnsZero(t *testing.T) {
+	t.Parallel()
 	wrapped := noExitCoder{newMockSession()}
 	if got := exitCodeFromSession(wrapped); got != 0 {
 		t.Errorf("exitCodeFromSession (no ExitCode) = %d, want 0", got)

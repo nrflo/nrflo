@@ -22,6 +22,7 @@ func setupAgentDefAPIModeEnv(t *testing.T) (svcOff, svcOn *AgentDefinitionServic
 // TestCreateAgentDef_ErrAPIModeDisabled verifies that creating an agent definition with
 // execution_mode="api" returns ErrAPIModeDisabled when the service was constructed with apiMode=false.
 func TestCreateAgentDef_ErrAPIModeDisabled(t *testing.T) {
+	t.Parallel()
 	svcOff, _, wfID := setupAgentDefAPIModeEnv(t)
 
 	_, err := svcOff.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -40,6 +41,7 @@ func TestCreateAgentDef_ErrAPIModeDisabled(t *testing.T) {
 // TestCreateAgentDef_APIMode_Succeeds verifies that creating an agent definition with
 // execution_mode="api" succeeds when the service was constructed with apiMode=true.
 func TestCreateAgentDef_APIMode_Succeeds(t *testing.T) {
+	t.Parallel()
 	_, svcOn, wfID := setupAgentDefAPIModeEnv(t)
 
 	def, err := svcOn.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -58,6 +60,7 @@ func TestCreateAgentDef_APIMode_Succeeds(t *testing.T) {
 // TestCreateAgentDef_CLIMode_SucceedsWhenAPIModeOff verifies that execution_mode="cli"
 // agents are always accepted regardless of the service apiMode flag.
 func TestCreateAgentDef_CLIMode_SucceedsWhenAPIModeOff(t *testing.T) {
+	t.Parallel()
 	svcOff, _, wfID := setupAgentDefAPIModeEnv(t)
 
 	def, err := svcOff.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -76,6 +79,7 @@ func TestCreateAgentDef_CLIMode_SucceedsWhenAPIModeOff(t *testing.T) {
 // TestCreateAgentDef_DefaultExecutionMode verifies that omitting execution_mode
 // defaults to "cli" and succeeds regardless of apiMode.
 func TestCreateAgentDef_DefaultExecutionMode(t *testing.T) {
+	t.Parallel()
 	svcOff, _, wfID := setupAgentDefAPIModeEnv(t)
 
 	def, err := svcOff.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
@@ -94,6 +98,7 @@ func TestCreateAgentDef_DefaultExecutionMode(t *testing.T) {
 // TestUpdateAgentDef_ErrAPIModeDisabled verifies that updating execution_mode to "api"
 // returns ErrAPIModeDisabled when the service was constructed with apiMode=false.
 func TestUpdateAgentDef_ErrAPIModeDisabled(t *testing.T) {
+	t.Parallel()
 	svcOff, svcOn, wfID := setupAgentDefAPIModeEnv(t)
 
 	// Create a CLI agent using the apiMode=true service so it succeeds
@@ -121,6 +126,7 @@ func TestUpdateAgentDef_ErrAPIModeDisabled(t *testing.T) {
 // TestUpdateAgentDef_APIMode_Succeeds verifies that updating execution_mode to "api"
 // succeeds when the service was constructed with apiMode=true.
 func TestUpdateAgentDef_APIMode_Succeeds(t *testing.T) {
+	t.Parallel()
 	_, svcOn, wfID := setupAgentDefAPIModeEnv(t)
 
 	_, err := svcOn.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{

@@ -9,6 +9,7 @@ import (
 // --- List with type filter ---
 
 func TestDefaultTemplate_List_FilterByTypeAgent(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -27,6 +28,7 @@ func TestDefaultTemplate_List_FilterByTypeAgent(t *testing.T) {
 }
 
 func TestDefaultTemplate_List_FilterByTypeInjectable(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -55,6 +57,7 @@ func TestDefaultTemplate_List_FilterByTypeInjectable(t *testing.T) {
 }
 
 func TestDefaultTemplate_List_FilterByTypeUnknownReturnsEmpty(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -68,6 +71,7 @@ func TestDefaultTemplate_List_FilterByTypeUnknownReturnsEmpty(t *testing.T) {
 }
 
 func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -100,6 +104,7 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 // --- Create type handling ---
 
 func TestDefaultTemplate_Create_DefaultsTypeToAgent(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -123,6 +128,7 @@ func TestDefaultTemplate_Create_DefaultsTypeToAgent(t *testing.T) {
 }
 
 func TestDefaultTemplate_Create_InjectableType(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -146,6 +152,7 @@ func TestDefaultTemplate_Create_InjectableType(t *testing.T) {
 }
 
 func TestDefaultTemplate_Create_CustomType(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -163,6 +170,7 @@ func TestDefaultTemplate_Create_CustomType(t *testing.T) {
 // --- Update type handling ---
 
 func TestDefaultTemplate_Update_ReadonlyIgnoresTypeChange(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -182,6 +190,7 @@ func TestDefaultTemplate_Update_ReadonlyIgnoresTypeChange(t *testing.T) {
 }
 
 func TestDefaultTemplate_Update_ReadonlyInjectableIgnoresTypeChange(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -201,6 +210,7 @@ func TestDefaultTemplate_Update_ReadonlyInjectableIgnoresTypeChange(t *testing.T
 }
 
 func TestDefaultTemplate_Update_NonReadonlyAllowsTypeChange(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -227,6 +237,7 @@ func TestDefaultTemplate_Update_NonReadonlyAllowsTypeChange(t *testing.T) {
 // --- Seeded injectables verification ---
 
 func TestDefaultTemplate_SeededInjectables(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -267,6 +278,7 @@ func TestDefaultTemplate_SeededInjectables(t *testing.T) {
 // --- Restore injectable ---
 
 func TestDefaultTemplate_Restore_InjectableReadonly(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 
@@ -308,6 +320,7 @@ func TestDefaultTemplate_Restore_InjectableReadonly(t *testing.T) {
 // --- List with filter after creating mixed types ---
 
 func TestDefaultTemplate_List_FilterAfterCreatingMixed(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupDefaultTemplateTestEnv(t)
 	defer cleanup()
 

@@ -23,6 +23,7 @@ func setupGlobalSettingsTestEnv(t *testing.T) *GlobalSettingsService {
 }
 
 func TestGlobalSettings_Get_MissingKey(t *testing.T) {
+	t.Parallel()
 	svc := setupGlobalSettingsTestEnv(t)
 
 	val, err := svc.Get("nonexistent_key")
@@ -35,6 +36,7 @@ func TestGlobalSettings_Get_MissingKey(t *testing.T) {
 }
 
 func TestGlobalSettings_Get_ReturnsSetValue(t *testing.T) {
+	t.Parallel()
 	svc := setupGlobalSettingsTestEnv(t)
 
 	if err := svc.Set("my_key", "hello"); err != nil {
@@ -51,6 +53,7 @@ func TestGlobalSettings_Get_ReturnsSetValue(t *testing.T) {
 }
 
 func TestGlobalSettings_Set_Upsert(t *testing.T) {
+	t.Parallel()
 	svc := setupGlobalSettingsTestEnv(t)
 
 	if err := svc.Set("upsert_key", "initial"); err != nil {
@@ -71,6 +74,7 @@ func TestGlobalSettings_Set_Upsert(t *testing.T) {
 }
 
 func TestGlobalSettings_MultipleKeys_Independent(t *testing.T) {
+	t.Parallel()
 	svc := setupGlobalSettingsTestEnv(t)
 
 	keys := map[string]string{
@@ -97,6 +101,7 @@ func TestGlobalSettings_MultipleKeys_Independent(t *testing.T) {
 }
 
 func TestGlobalSettings_LowConsumptionMode_DefaultFalse(t *testing.T) {
+	t.Parallel()
 	svc := setupGlobalSettingsTestEnv(t)
 
 	val, err := svc.Get("low_consumption_mode")
@@ -110,6 +115,7 @@ func TestGlobalSettings_LowConsumptionMode_DefaultFalse(t *testing.T) {
 }
 
 func TestGlobalSettings_LowConsumptionMode_SetAndGet(t *testing.T) {
+	t.Parallel()
 	svc := setupGlobalSettingsTestEnv(t)
 
 	// Enable

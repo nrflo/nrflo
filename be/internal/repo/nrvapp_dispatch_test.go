@@ -60,6 +60,7 @@ func makeDispatch(projectID, toolName, status string, durationMs int64) *model.N
 }
 
 func TestNrvappDispatchRepo_InsertSetsIDAndTimestamp(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappDispatchDB(t)
 
 	d := makeDispatch(projectID, "write_file", model.DispatchStatusSuccess, 100)
@@ -75,6 +76,7 @@ func TestNrvappDispatchRepo_InsertSetsIDAndTimestamp(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_InsertErrorStatus(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappDispatchDB(t)
 
 	errMsg := "connection refused"
@@ -95,6 +97,7 @@ func TestNrvappDispatchRepo_InsertErrorStatus(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_ListSummary_Counts(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappDispatchDB(t)
 	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
@@ -121,6 +124,7 @@ func TestNrvappDispatchRepo_ListSummary_Counts(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_ListSummary_Percentiles(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappDispatchDB(t)
 	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
@@ -144,6 +148,7 @@ func TestNrvappDispatchRepo_ListSummary_Percentiles(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_ListSummary_Empty(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappDispatchDB(t)
 	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
@@ -160,6 +165,7 @@ func TestNrvappDispatchRepo_ListSummary_Empty(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_ListSummary_SinceFilters(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	r, projectID := setupNrvappDispatchDBWithClock(t, clk)
 
@@ -183,6 +189,7 @@ func TestNrvappDispatchRepo_ListSummary_SinceFilters(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_EditRateByTool(t *testing.T) {
+	t.Parallel()
 	dispatchRepo, reviewRepo, projectID := setupNrvappDispatchAndReviewDB(t)
 	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
@@ -242,6 +249,7 @@ func TestNrvappDispatchRepo_EditRateByTool(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_EditRateByTool_Empty(t *testing.T) {
+	t.Parallel()
 	r, _, projectID := setupNrvappDispatchAndReviewDB(t)
 	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
@@ -255,6 +263,7 @@ func TestNrvappDispatchRepo_EditRateByTool_Empty(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_Throughput_Buckets(t *testing.T) {
+	t.Parallel()
 	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(t0)
 	r, projectID := setupNrvappDispatchDBWithClock(t, clk)
@@ -295,6 +304,7 @@ func TestNrvappDispatchRepo_Throughput_Buckets(t *testing.T) {
 }
 
 func TestNrvappDispatchRepo_Throughput_Empty(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupNrvappDispatchDB(t)
 	// since is in the future → no records match
 	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Hour)

@@ -15,6 +15,7 @@ import (
 )
 
 func TestExpandInjectable_BasicExpansion(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	sp := env.newSpawner()
 
@@ -30,6 +31,7 @@ func TestExpandInjectable_BasicExpansion(t *testing.T) {
 }
 
 func TestExpandInjectable_MissingFromDB(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	sp := env.newSpawner()
 
@@ -40,6 +42,7 @@ func TestExpandInjectable_MissingFromDB(t *testing.T) {
 }
 
 func TestExpandInjectable_StripsUnusedPlaceholders(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	sp := env.newSpawner()
 
@@ -55,6 +58,7 @@ func TestExpandInjectable_StripsUnusedPlaceholders(t *testing.T) {
 }
 
 func TestLoadTemplate_LegacyPlaceholderStripping(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "LP-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -78,6 +82,7 @@ func TestLoadTemplate_LegacyPlaceholderStripping(t *testing.T) {
 }
 
 func TestLoadTemplate_UserInstructionsPrepended(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "UI-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -108,6 +113,7 @@ func TestLoadTemplate_UserInstructionsPrepended(t *testing.T) {
 }
 
 func TestLoadTemplate_UserInstructionsAbsent_NoPrepend(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "UI-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -125,6 +131,7 @@ func TestLoadTemplate_UserInstructionsAbsent_NoPrepend(t *testing.T) {
 }
 
 func TestLoadTemplate_InjectableMissingFromDB(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "IM-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)

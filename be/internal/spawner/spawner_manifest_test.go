@@ -36,6 +36,7 @@ func newTestSpawner() *Spawner {
 }
 
 func TestLoadManifestCached_HappyPath(t *testing.T) {
+	t.Parallel()
 	dir := newManifestDir(t, testManifestYAML)
 	s := newTestSpawner()
 
@@ -57,6 +58,7 @@ func TestLoadManifestCached_HappyPath(t *testing.T) {
 }
 
 func TestLoadManifestCached_MissingFile_ReturnsNilNil(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir() // empty dir — no tool_manifest.yaml
 	s := newTestSpawner()
 
@@ -70,6 +72,7 @@ func TestLoadManifestCached_MissingFile_ReturnsNilNil(t *testing.T) {
 }
 
 func TestLoadManifestCached_CacheHitOnUnchangedMtime(t *testing.T) {
+	t.Parallel()
 	dir := newManifestDir(t, testManifestYAML)
 	s := newTestSpawner()
 
@@ -90,6 +93,7 @@ func TestLoadManifestCached_CacheHitOnUnchangedMtime(t *testing.T) {
 }
 
 func TestLoadManifestCached_CacheMissOnMtimeChange(t *testing.T) {
+	t.Parallel()
 	dir := newManifestDir(t, testManifestYAML)
 	s := newTestSpawner()
 
@@ -116,6 +120,7 @@ func TestLoadManifestCached_CacheMissOnMtimeChange(t *testing.T) {
 }
 
 func TestLoadManifestCached_InvalidManifest_ReturnsError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	// Write invalid YAML to trigger a parse/validation error.
 	invalid := []byte("tools:\n  - name: bad\n    type: builtin\n    description: x\n    input_schema: {type: object}\n")
@@ -130,6 +135,7 @@ func TestLoadManifestCached_InvalidManifest_ReturnsError(t *testing.T) {
 }
 
 func TestLoadManifestCached_MultipleTools(t *testing.T) {
+	t.Parallel()
 	multiYAML := `
 tools:
   - name: tool_a
@@ -165,6 +171,7 @@ tools:
 
 // TestLoadManifestCached_SetsDir verifies that config.Load sets Dir correctly.
 func TestLoadManifestCached_SetsDir(t *testing.T) {
+	t.Parallel()
 	dir := newManifestDir(t, testManifestYAML)
 	s := newTestSpawner()
 

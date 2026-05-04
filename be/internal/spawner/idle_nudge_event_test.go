@@ -12,6 +12,7 @@ import (
 
 // TestSendNudge_BroadcastsNudgedEvent verifies EventAgentNudged is broadcast with correct fields.
 func TestSendNudge_BroadcastsNudgedEvent(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
@@ -77,6 +78,7 @@ func TestSendNudge_BroadcastsNudgedEvent(t *testing.T) {
 // TestSendNudge_BroadcastFields_AttemptIncrements verifies that attempt reflects the
 // pre-increment nudgeCount+1 on each nudge, matching the event payload.
 func TestSendNudge_BroadcastFields_AttemptIncrements(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
@@ -128,6 +130,7 @@ func TestSendNudge_BroadcastFields_AttemptIncrements(t *testing.T) {
 // TestSendNudge_NudgeCountFallback_NilAgentSvc verifies nudgeCount is incremented via the
 // fallback path when AgentSvcReal is nil.
 func TestSendNudge_NudgeCountFallback_NilAgentSvc(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk}) // no WSHub, no AgentSvcReal
 
@@ -150,6 +153,7 @@ func TestSendNudge_NudgeCountFallback_NilAgentSvc(t *testing.T) {
 // TestSendNudge_ResetsLastMessageTime verifies sendNudge resets lastMessageTime to Now()
 // and sets hasReceivedMessage=true so the idle window restarts.
 func TestSendNudge_ResetsLastMessageTime(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -182,6 +186,7 @@ func TestSendNudge_ResetsLastMessageTime(t *testing.T) {
 
 // TestSendNudge_LastNudgeAtSet verifies lastNudgeAt is set on each nudge.
 func TestSendNudge_LastNudgeAtSet(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -208,6 +213,7 @@ func TestSendNudge_LastNudgeAtSet(t *testing.T) {
 
 // TestSendNudge_NilPTYManager_NoPanic verifies no panic when PTYManager is nil.
 func TestSendNudge_NilPTYManager_NoPanic(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk}) // PTYManager is nil
 
@@ -231,6 +237,7 @@ func TestSendNudge_NilPTYManager_NoPanic(t *testing.T) {
 // TestHandleNudgeAutoFail_DispatchesTerminalSignal verifies RequestTerminalSignal is called
 // with the correct sessionID and "fail" result.
 func TestHandleNudgeAutoFail_DispatchesTerminalSignal(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -263,6 +270,7 @@ func TestHandleNudgeAutoFail_DispatchesTerminalSignal(t *testing.T) {
 // TestHandleNudgeAutoFail_NilServices_NoPanic verifies no panic when AgentSvcReal and
 // ErrorSvc are nil (the common test configuration).
 func TestHandleNudgeAutoFail_NilServices_NoPanic(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk}) // AgentSvcReal=nil, ErrorSvc=nil
 

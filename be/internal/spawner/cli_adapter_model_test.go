@@ -6,6 +6,7 @@ import (
 
 // TestOpencodeAdapterModelMapping tests that OpencodeAdapter correctly maps model aliases.
 func TestOpencodeAdapterModelMapping(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	tests := []struct {
@@ -38,6 +39,7 @@ func TestOpencodeAdapterModelMapping(t *testing.T) {
 
 // TestCodexAdapterModelMapping tests that CodexAdapter correctly maps model aliases.
 func TestCodexAdapterModelMapping(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	tests := []struct {
@@ -68,6 +70,7 @@ func TestCodexAdapterModelMapping(t *testing.T) {
 // TestClaudeAdapterModelMapping tests that ClaudeAdapter preserves
 // the default Anthropic model names correctly.
 func TestClaudeAdapterModelMapping(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	tests := []struct {
@@ -96,6 +99,7 @@ func TestClaudeAdapterModelMapping(t *testing.T) {
 
 // TestOpencodeReasoningEffort tests that OpencodeAdapter returns correct reasoning effort variants.
 func TestOpencodeReasoningEffort(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	tests := []struct {
@@ -123,6 +127,7 @@ func TestOpencodeReasoningEffort(t *testing.T) {
 
 // TestCodexReasoningEffort tests that CodexAdapter returns correct reasoning effort levels.
 func TestCodexReasoningEffort(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	tests := []struct {
@@ -149,6 +154,7 @@ func TestCodexReasoningEffort(t *testing.T) {
 // TestModelMappingRoundTrip tests that model names can be used in workflow definitions
 // and correctly resolve to their provider-specific formats.
 func TestModelMappingRoundTrip(t *testing.T) {
+	t.Parallel()
 	// Each model should only be tested with its correct adapter
 	tests := []struct {
 		model   string
@@ -182,6 +188,7 @@ func TestModelMappingRoundTrip(t *testing.T) {
 
 // TestUnsupportedModelHandling tests how adapters handle unsupported or unknown models.
 func TestUnsupportedModelHandling(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		adapter        interface{ MapModel(string) string }
@@ -220,6 +227,7 @@ func TestUnsupportedModelHandling(t *testing.T) {
 
 // TestDefaultCLIForModel tests routing of model names to CLI adapters.
 func TestDefaultCLIForModel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		model    string
 		expected string
@@ -253,6 +261,7 @@ func TestDefaultCLIForModel(t *testing.T) {
 // TestAllSupportedModelsAreValid tests that all supported model aliases
 // are properly handled by their respective adapters.
 func TestAllSupportedModelsAreValid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		model   string
 		adapter interface{ MapModel(string) string }

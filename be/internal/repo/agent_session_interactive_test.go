@@ -12,6 +12,7 @@ import (
 // added user_interactive and interactive_completed to the agent_sessions
 // CHECK constraint, so DB operations with these statuses now succeed.
 func TestUserInteractive_StatusConstraintFixed(t *testing.T) {
+	t.Parallel()
 	database, r, wfiID := setupTestDB(t)
 	defer database.Close()
 
@@ -59,6 +60,7 @@ func TestUserInteractive_StatusConstraintFixed(t *testing.T) {
 // TestUpdateStatusToInteractiveCompleted_NotFound verifies that
 // UpdateStatusToInteractiveCompleted returns an error for a nonexistent session ID.
 func TestUpdateStatusToInteractiveCompleted_NotFound(t *testing.T) {
+	t.Parallel()
 	database, r, _ := setupTestDB(t)
 	defer database.Close()
 
@@ -71,6 +73,7 @@ func TestUpdateStatusToInteractiveCompleted_NotFound(t *testing.T) {
 // TestUpdateStatusToInteractiveCompleted_TimestampUsesRepoClock verifies that
 // UpdateStatusToInteractiveCompleted uses the injected clock for timestamps.
 func TestUpdateStatusToInteractiveCompleted_TimestampUsesRepoClock(t *testing.T) {
+	t.Parallel()
 	database, _, wfiID := setupTestDB(t)
 	defer database.Close()
 

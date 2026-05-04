@@ -133,6 +133,7 @@ func renameCommit(t *testing.T, repoPath, oldName, newName, message string) {
 
 // TestListCommits_HappyPath verifies basic pagination works correctly.
 func TestListCommits_HappyPath(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -193,6 +194,7 @@ func TestListCommits_HappyPath(t *testing.T) {
 
 // TestListCommits_Pagination verifies page offset works correctly.
 func TestListCommits_Pagination(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -240,6 +242,7 @@ func TestListCommits_Pagination(t *testing.T) {
 
 // TestListCommits_InvalidRepoPath verifies error for non-existent repo.
 func TestListCommits_InvalidRepoPath(t *testing.T) {
+	t.Parallel()
 	svc := &GitService{}
 	_, _, err := svc.ListCommits("/nonexistent/path", "main", 1, 20)
 
@@ -254,6 +257,7 @@ func TestListCommits_InvalidRepoPath(t *testing.T) {
 
 // TestListCommits_NotGitRepo verifies error for non-git directory.
 func TestListCommits_NotGitRepo(t *testing.T) {
+	t.Parallel()
 	tmpDir := filepath.Join("/tmp", "not_git_repo")
 	os.MkdirAll(tmpDir, 0755)
 	defer os.RemoveAll(tmpDir)
@@ -272,6 +276,7 @@ func TestListCommits_NotGitRepo(t *testing.T) {
 
 // TestListCommits_InvalidBranch verifies error for invalid branch name.
 func TestListCommits_InvalidBranch(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -301,6 +306,7 @@ func TestListCommits_InvalidBranch(t *testing.T) {
 
 // TestGetCommitDetail_HappyPath verifies commit detail retrieval.
 func TestGetCommitDetail_HappyPath(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -346,6 +352,7 @@ func TestGetCommitDetail_HappyPath(t *testing.T) {
 
 // TestGetCommitDetail_ModifiedFile verifies file status and stats for modified file.
 func TestGetCommitDetail_ModifiedFile(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -401,6 +408,7 @@ func TestGetCommitDetail_ModifiedFile(t *testing.T) {
 
 // TestGetCommitDetail_DeletedFile verifies file status for deleted file.
 func TestGetCommitDetail_DeletedFile(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -448,6 +456,7 @@ func TestGetCommitDetail_DeletedFile(t *testing.T) {
 
 // TestGetCommitDetail_RenamedFile verifies file status for renamed file.
 func TestGetCommitDetail_RenamedFile(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -486,6 +495,7 @@ func TestGetCommitDetail_RenamedFile(t *testing.T) {
 
 // TestGetCommitDetail_AddedFile verifies file status for added file.
 func TestGetCommitDetail_AddedFile(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -533,6 +543,7 @@ func TestGetCommitDetail_AddedFile(t *testing.T) {
 
 // TestGetCommitDetail_InvalidHash verifies error for invalid hash format.
 func TestGetCommitDetail_InvalidHash(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -564,6 +575,7 @@ func TestGetCommitDetail_InvalidHash(t *testing.T) {
 
 // TestGetCommitDetail_NonexistentHash verifies error for valid format but nonexistent hash.
 func TestGetCommitDetail_NonexistentHash(t *testing.T) {
+	t.Parallel()
 	repoPath := setupTestGitRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -579,6 +591,7 @@ func TestGetCommitDetail_NonexistentHash(t *testing.T) {
 
 // TestValidateBranch verifies branch name validation.
 func TestValidateBranch(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name    string
 		branch  string
@@ -611,6 +624,7 @@ func TestValidateBranch(t *testing.T) {
 
 // TestValidateHash verifies hash validation.
 func TestValidateHash(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name    string
 		hash    string
@@ -638,6 +652,7 @@ func TestValidateHash(t *testing.T) {
 
 // TestValidateRepoPath verifies repo path validation.
 func TestValidateRepoPath(t *testing.T) {
+	t.Parallel()
 	// Create a valid git repo
 	validRepo := setupTestGitRepo(t)
 	defer os.RemoveAll(validRepo)

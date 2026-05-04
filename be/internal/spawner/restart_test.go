@@ -5,6 +5,7 @@ import (
 )
 
 func TestRequestRestart_SendsSessionID(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{})
 
 	sp.RequestRestart("session-123")
@@ -20,6 +21,7 @@ func TestRequestRestart_SendsSessionID(t *testing.T) {
 }
 
 func TestRequestRestart_NonBlocking(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{})
 
 	// Fill the channel (capacity 1)
@@ -44,6 +46,7 @@ func TestRequestRestart_NonBlocking(t *testing.T) {
 }
 
 func TestRequestRestart_Idempotent(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{})
 
 	// Multiple rapid calls should not panic or block
@@ -68,6 +71,7 @@ done:
 }
 
 func TestNewSpawner_RestartChBuffered(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{})
 
 	if cap(sp.restartCh) != 1 {
@@ -76,6 +80,7 @@ func TestNewSpawner_RestartChBuffered(t *testing.T) {
 }
 
 func TestRequestRestart_DifferentSessionIDs(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{})
 
 	// Send first
@@ -97,6 +102,7 @@ func TestRequestRestart_DifferentSessionIDs(t *testing.T) {
 }
 
 func TestSpawnerClose_NoOp(t *testing.T) {
+	t.Parallel()
 	sp := New(Config{})
 	// Close should not panic
 	sp.Close()

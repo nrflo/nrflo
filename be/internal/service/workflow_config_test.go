@@ -7,6 +7,7 @@ import (
 )
 
 func TestBuildSpawnerConfig_PhasesFromAgentDefs(t *testing.T) {
+	t.Parallel()
 	wfs := []*model.Workflow{
 		{ID: "feature", ProjectID: "p1", Description: "Feature workflow", ScopeType: "ticket", CloseTicketOnComplete: true},
 	}
@@ -55,6 +56,7 @@ func TestBuildSpawnerConfig_PhasesFromAgentDefs(t *testing.T) {
 }
 
 func TestBuildSpawnerConfig_ParallelAgentsSameLayer(t *testing.T) {
+	t.Parallel()
 	wfs := []*model.Workflow{
 		{ID: "parallel", ProjectID: "p1", ScopeType: "ticket"},
 	}
@@ -86,6 +88,7 @@ func TestBuildSpawnerConfig_ParallelAgentsSameLayer(t *testing.T) {
 }
 
 func TestBuildSpawnerConfig_EmptyAgentDefs(t *testing.T) {
+	t.Parallel()
 	wfs := []*model.Workflow{
 		{ID: "empty", ProjectID: "p1", ScopeType: "ticket"},
 	}
@@ -103,6 +106,7 @@ func TestBuildSpawnerConfig_EmptyAgentDefs(t *testing.T) {
 }
 
 func TestBuildSpawnerConfig_ScopeTypeDefault(t *testing.T) {
+	t.Parallel()
 	wfs := []*model.Workflow{
 		{ID: "wf1", ProjectID: "p1", ScopeType: ""},
 	}
@@ -114,6 +118,7 @@ func TestBuildSpawnerConfig_ScopeTypeDefault(t *testing.T) {
 }
 
 func TestBuildSpawnerConfig_MultipleWorkflows(t *testing.T) {
+	t.Parallel()
 	wfs := []*model.Workflow{
 		{ID: "wf-a", ProjectID: "p1", ScopeType: "ticket"},
 		{ID: "wf-b", ProjectID: "p1", ScopeType: "project"},
@@ -137,6 +142,7 @@ func TestBuildSpawnerConfig_MultipleWorkflows(t *testing.T) {
 }
 
 func TestBuildSpawnerConfig_AgentTag(t *testing.T) {
+	t.Parallel()
 	wfs := []*model.Workflow{
 		{ID: "wf1", ProjectID: "p1", ScopeType: "ticket"},
 	}

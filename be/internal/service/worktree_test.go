@@ -69,6 +69,7 @@ func branchExists(t *testing.T, repoPath, branchName string) bool {
 
 // TestSetup_HappyPath verifies Setup creates branch and worktree.
 func TestSetup_HappyPath(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -105,6 +106,7 @@ func TestSetup_HappyPath(t *testing.T) {
 
 // TestSetup_AlreadyExists verifies Setup retries after cleanup when branch exists.
 func TestSetup_AlreadyExists(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -137,6 +139,7 @@ func TestSetup_AlreadyExists(t *testing.T) {
 
 // TestSetup_InvalidRepoPath verifies Setup fails for non-git directory.
 func TestSetup_InvalidRepoPath(t *testing.T) {
+	t.Parallel()
 	tmpDir := filepath.Join("/tmp", "not_git_worktree_test")
 	os.MkdirAll(tmpDir, 0o755)
 	defer os.RemoveAll(tmpDir)
@@ -155,6 +158,7 @@ func TestSetup_InvalidRepoPath(t *testing.T) {
 
 // TestSetup_InvalidBranch verifies Setup fails for invalid branch names.
 func TestSetup_InvalidBranch(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -183,6 +187,7 @@ func TestSetup_InvalidBranch(t *testing.T) {
 
 // TestMergeAndCleanup_HappyPath verifies merge and cleanup succeed.
 func TestMergeAndCleanup_HappyPath(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -235,6 +240,7 @@ func TestMergeAndCleanup_HappyPath(t *testing.T) {
 
 // TestMergeAndCleanup_Conflict verifies merge conflict handling.
 func TestMergeAndCleanup_Conflict(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -301,6 +307,7 @@ func TestMergeAndCleanup_Conflict(t *testing.T) {
 
 // TestMergeAndCleanup_InvalidRepo verifies error for invalid repo.
 func TestMergeAndCleanup_InvalidRepo(t *testing.T) {
+	t.Parallel()
 	svc := &WorktreeService{}
 	err := svc.MergeAndCleanup("/nonexistent", "main", "branch", "/tmp/worktree")
 
@@ -311,6 +318,7 @@ func TestMergeAndCleanup_InvalidRepo(t *testing.T) {
 
 // TestCleanup_HappyPath verifies Cleanup removes worktree and branch.
 func TestCleanup_HappyPath(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -345,6 +353,7 @@ func TestCleanup_HappyPath(t *testing.T) {
 
 // TestCleanup_AlreadyGone verifies Cleanup is idempotent.
 func TestCleanup_AlreadyGone(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -359,6 +368,7 @@ func TestCleanup_AlreadyGone(t *testing.T) {
 
 // TestCleanup_OnlyWorktreeGone verifies Cleanup handles partial state.
 func TestCleanup_OnlyWorktreeGone(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -385,6 +395,7 @@ func TestCleanup_OnlyWorktreeGone(t *testing.T) {
 
 // TestWorktreePath verifies worktree path is under /tmp/nrflo/worktrees.
 func TestWorktreePath(t *testing.T) {
+	t.Parallel()
 	repoPath := setupWorktreeTestRepo(t)
 	defer os.RemoveAll(repoPath)
 
@@ -408,6 +419,7 @@ func TestWorktreePath(t *testing.T) {
 
 // TestMergeAndCleanup_StaleLock verifies merge succeeds after stale lock removal.
 func TestMergeAndCleanup_StaleLock(t *testing.T) {
+	t.Parallel()
 	orig := mergeRetryDelay
 	mergeRetryDelay = 0
 	t.Cleanup(func() { mergeRetryDelay = orig })
@@ -458,12 +470,14 @@ func TestMergeAndCleanup_StaleLock(t *testing.T) {
 
 // TestRemoveStaleLock_NoFile verifies removeStaleLock is a no-op without a lock.
 func TestRemoveStaleLock_NoFile(t *testing.T) {
+	t.Parallel()
 	// Should not panic or error
 	removeStaleLock("/nonexistent/path/index.lock")
 }
 
 // TestRemoveStaleLock_FreshLock verifies fresh locks are not removed.
 func TestRemoveStaleLock_FreshLock(t *testing.T) {
+	t.Parallel()
 	lockPath := filepath.Join("/tmp", "test_fresh_lock_"+t.Name())
 	defer os.Remove(lockPath)
 

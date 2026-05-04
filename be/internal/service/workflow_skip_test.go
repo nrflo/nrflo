@@ -66,6 +66,7 @@ func getSkipTags(t *testing.T, pool *db.Pool, wfiID string) string {
 
 // TestAddSkipTag_HappyPath verifies a valid tag is added to skip_tags.
 func TestAddSkipTag_HappyPath(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupSkipTestEnv(t)
 
 	projectID, ticketID, workflowID, err := svc.AddSkipTag(wfiID, "be")
@@ -91,6 +92,7 @@ func TestAddSkipTag_HappyPath(t *testing.T) {
 
 // TestAddSkipTag_Idempotent verifies adding the same tag twice does not duplicate.
 func TestAddSkipTag_Idempotent(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupSkipTestEnv(t)
 
 	if _, _, _, err := svc.AddSkipTag(wfiID, "be"); err != nil {
@@ -108,6 +110,7 @@ func TestAddSkipTag_Idempotent(t *testing.T) {
 
 // TestAddSkipTag_MultipleTags verifies multiple distinct tags accumulate.
 func TestAddSkipTag_MultipleTags(t *testing.T) {
+	t.Parallel()
 	pool, svc, wfiID := setupSkipTestEnv(t)
 
 	for _, tag := range []string{"be", "fe", "docs"} {
@@ -127,6 +130,7 @@ func TestAddSkipTag_MultipleTags(t *testing.T) {
 
 // TestAddSkipTag_TagNotInGroups verifies an error is returned for unknown tags.
 func TestAddSkipTag_TagNotInGroups(t *testing.T) {
+	t.Parallel()
 	_, svc, wfiID := setupSkipTestEnv(t)
 
 	_, _, _, err := svc.AddSkipTag(wfiID, "nonexistent")
@@ -137,6 +141,7 @@ func TestAddSkipTag_TagNotInGroups(t *testing.T) {
 
 // TestAddSkipTag_InstanceNotFound verifies an error is returned for nonexistent instances.
 func TestAddSkipTag_InstanceNotFound(t *testing.T) {
+	t.Parallel()
 	_, svc, _ := setupSkipTestEnv(t)
 
 	_, _, _, err := svc.AddSkipTag("nonexistent-instance-id", "be")
@@ -147,6 +152,7 @@ func TestAddSkipTag_InstanceNotFound(t *testing.T) {
 
 // TestAddSkipTag_WorkflowNoGroups verifies error when workflow has no groups.
 func TestAddSkipTag_WorkflowNoGroups(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "skip_nogroups_test.db")
 	if err := svcCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)

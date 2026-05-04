@@ -57,6 +57,7 @@ func createSystemAgentDef(t *testing.T, env *spawnerTestEnv, agentID, prompt str
 // ---- ExtraVars expansion ----
 
 func TestLoadTemplate_ExtraVars_BasicExpansion(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "EV-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -80,6 +81,7 @@ func TestLoadTemplate_ExtraVars_BasicExpansion(t *testing.T) {
 }
 
 func TestLoadTemplate_ExtraVars_MultipleVars(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "EV-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -107,6 +109,7 @@ func TestLoadTemplate_ExtraVars_MultipleVars(t *testing.T) {
 }
 
 func TestLoadTemplate_ExtraVars_Nil_NoPanic(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "EV-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -123,6 +126,7 @@ func TestLoadTemplate_ExtraVars_Nil_NoPanic(t *testing.T) {
 }
 
 func TestLoadTemplate_ExtraVars_EmptyMap_NoPanic(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "EV-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -142,6 +146,7 @@ func TestLoadTemplate_ExtraVars_EmptyMap_NoPanic(t *testing.T) {
 // substitution happens before ExtraVars. An ExtraVars key matching a standard var
 // name (e.g. "AGENT") does not replace the already-expanded value.
 func TestLoadTemplate_ExtraVars_StandardVarsRunFirst(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "EV-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -161,6 +166,7 @@ func TestLoadTemplate_ExtraVars_StandardVarsRunFirst(t *testing.T) {
 }
 
 func TestLoadTemplate_ExtraVars_UnusedVarsIgnored(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "EV-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
@@ -184,6 +190,7 @@ func TestLoadTemplate_ExtraVars_UnusedVarsIgnored(t *testing.T) {
 // ---- System agent definition fallback ----
 
 func TestLoadPromptContent_SystemDefFallback(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	// Only system def — no project-scoped def.
 	createSystemAgentDef(t, env, "conflict-resolver", "Resolve merge conflicts for ${BRANCH_NAME}")
@@ -199,6 +206,7 @@ func TestLoadPromptContent_SystemDefFallback(t *testing.T) {
 }
 
 func TestLoadPromptContent_ProjectDefPriority(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	// Both project-scoped and system def exist with different prompts.
 	createAgentDef(t, env, "conflict-resolver", "project-scoped prompt")
@@ -215,6 +223,7 @@ func TestLoadPromptContent_ProjectDefPriority(t *testing.T) {
 }
 
 func TestLoadPromptContent_BothMissing_ReturnsError(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	// Neither project-scoped nor system def exists.
 
@@ -229,6 +238,7 @@ func TestLoadPromptContent_BothMissing_ReturnsError(t *testing.T) {
 }
 
 func TestLoadPromptContent_ProjectDefEmptyPrompt_ReturnsError(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	createAgentDef(t, env, "empty-agent", "")
 
@@ -243,6 +253,7 @@ func TestLoadPromptContent_ProjectDefEmptyPrompt_ReturnsError(t *testing.T) {
 }
 
 func TestLoadPromptContent_SystemDefEmptyPrompt_ReturnsError(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	// Only system def, but it has an empty prompt.
 	createSystemAgentDef(t, env, "empty-sys-agent", "")
@@ -260,6 +271,7 @@ func TestLoadPromptContent_SystemDefEmptyPrompt_ReturnsError(t *testing.T) {
 // TestLoadTemplate_SystemDefFallback_WithExtraVars tests the full flow:
 // system def is loaded as fallback, then ExtraVars are expanded.
 func TestLoadTemplate_SystemDefFallback_WithExtraVars(t *testing.T) {
+	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "EV-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)

@@ -13,6 +13,7 @@ import (
 // auto-restart override changes it to status=continued, result=continue,
 // result_reason=timeout_restart.
 func TestAutoRestart_TimeoutSessionOverriddenToContinued(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -93,6 +94,7 @@ func TestAutoRestart_TimeoutSessionOverriddenToContinued(t *testing.T) {
 // shared between exit-code failures and timeouts: the budget is consumed regardless
 // of which failure type triggers the restart, and the limit is enforced collectively.
 func TestAutoRestart_MixedFailAndTimeoutShareCounter(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		finalStatus:      "FAIL",
 		maxFailRestarts:  2,
@@ -137,6 +139,7 @@ func TestAutoRestart_MixedFailAndTimeoutShareCounter(t *testing.T) {
 // TestAutoRestart_TimeoutDisabledAtZero confirms that maxFailRestarts=0 means
 // no auto-restart after timeout — the session stays failed.
 func TestAutoRestart_TimeoutDisabledAtZero(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -184,6 +187,7 @@ func TestAutoRestart_TimeoutDisabledAtZero(t *testing.T) {
 // TestAutoRestart_TimeoutTerminalAtMaxCount verifies the restart is blocked when
 // failRestartCount has reached maxFailRestarts via a prior timeout restart.
 func TestAutoRestart_TimeoutTerminalAtMaxCount(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 

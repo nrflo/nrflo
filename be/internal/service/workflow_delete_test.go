@@ -55,6 +55,7 @@ func setupDeleteProjWFEnv(t *testing.T, projectID, instanceID, status, scopeType
 
 // TestDeleteProjectWorkflowInstance_Statuses verifies deletable statuses succeed and active fails.
 func TestDeleteProjectWorkflowInstance_Statuses(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		status  string
 		wantErr bool
@@ -91,6 +92,7 @@ func TestDeleteProjectWorkflowInstance_Statuses(t *testing.T) {
 
 // TestDeleteProjectWorkflowInstance_NotFound verifies error when instance does not exist.
 func TestDeleteProjectWorkflowInstance_NotFound(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "wf_delete_notfound.db")
 	if err := svcCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)
@@ -113,6 +115,7 @@ func TestDeleteProjectWorkflowInstance_NotFound(t *testing.T) {
 
 // TestDeleteProjectWorkflowInstance_WrongProject verifies 404-style error for wrong project ID.
 func TestDeleteProjectWorkflowInstance_WrongProject(t *testing.T) {
+	t.Parallel()
 	_, svc := setupDeleteProjWFEnv(t, "proj-real", "inst-wrong-proj", "completed", "project")
 
 	err := svc.DeleteProjectWorkflowInstance("proj-other", "inst-wrong-proj")
@@ -126,6 +129,7 @@ func TestDeleteProjectWorkflowInstance_WrongProject(t *testing.T) {
 
 // TestDeleteProjectWorkflowInstance_TicketScoped verifies error for ticket-scoped instance.
 func TestDeleteProjectWorkflowInstance_TicketScoped(t *testing.T) {
+	t.Parallel()
 	_, svc := setupDeleteProjWFEnv(t, "proj-tscoped", "inst-tscoped", "completed", "ticket")
 
 	err := svc.DeleteProjectWorkflowInstance("proj-tscoped", "inst-tscoped")
@@ -140,6 +144,7 @@ func TestDeleteProjectWorkflowInstance_TicketScoped(t *testing.T) {
 
 // TestDeleteProjectWorkflowInstance_CaseInsensitiveProjectID verifies project ID comparison is case-insensitive.
 func TestDeleteProjectWorkflowInstance_CaseInsensitiveProjectID(t *testing.T) {
+	t.Parallel()
 	// CreateWorkflowDef lowercases the project ID, so seed with lowercase too.
 	_, svc := setupDeleteProjWFEnv(t, "proj-case", "inst-case", "completed", "project")
 
@@ -151,6 +156,7 @@ func TestDeleteProjectWorkflowInstance_CaseInsensitiveProjectID(t *testing.T) {
 
 // TestDeleteProjectWorkflowInstance_AlreadyDeleted verifies second delete returns "not found".
 func TestDeleteProjectWorkflowInstance_AlreadyDeleted(t *testing.T) {
+	t.Parallel()
 	_, svc := setupDeleteProjWFEnv(t, "proj-twice", "inst-twice", "completed", "project")
 
 	if err := svc.DeleteProjectWorkflowInstance("proj-twice", "inst-twice"); err != nil {
@@ -168,6 +174,7 @@ func TestDeleteProjectWorkflowInstance_AlreadyDeleted(t *testing.T) {
 
 // TestDeleteProjectWorkflowInstance_InstanceRemovedFromDB verifies the DB row is gone after delete.
 func TestDeleteProjectWorkflowInstance_InstanceRemovedFromDB(t *testing.T) {
+	t.Parallel()
 	pool, svc := setupDeleteProjWFEnv(t, "proj-dbcheck", "inst-dbcheck", "failed", "project")
 
 	if err := svc.DeleteProjectWorkflowInstance("proj-dbcheck", "inst-dbcheck"); err != nil {

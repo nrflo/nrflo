@@ -62,6 +62,7 @@ func seedProjectAndWorkflow(t *testing.T, pool *db.Pool, projectID, workflowID, 
 // -- List --
 
 func TestScheduledTaskService_List_Empty(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-list", "wf-list", "project")
@@ -76,6 +77,7 @@ func TestScheduledTaskService_List_Empty(t *testing.T) {
 }
 
 func TestScheduledTaskService_List_ReturnsTasks(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-list2", "wf-proj", "project")
@@ -101,6 +103,7 @@ func TestScheduledTaskService_List_ReturnsTasks(t *testing.T) {
 // -- Get --
 
 func TestScheduledTaskService_Get_Found(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-get", "wf-get", "project")
@@ -121,6 +124,7 @@ func TestScheduledTaskService_Get_Found(t *testing.T) {
 }
 
 func TestScheduledTaskService_Get_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, _, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 
@@ -136,6 +140,7 @@ func TestScheduledTaskService_Get_NotFound(t *testing.T) {
 // -- Create validation --
 
 func TestScheduledTaskService_Create_Valid(t *testing.T) {
+	t.Parallel()
 	svc, pool, reloader, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-create", "wf-create", "project")
@@ -158,6 +163,7 @@ func TestScheduledTaskService_Create_Valid(t *testing.T) {
 }
 
 func TestScheduledTaskService_Create_MissingName(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-cn", "wf-cn", "project")
@@ -171,6 +177,7 @@ func TestScheduledTaskService_Create_MissingName(t *testing.T) {
 }
 
 func TestScheduledTaskService_Create_InvalidCron(t *testing.T) {
+	t.Parallel()
 	cases := []string{"bad-cron", "*/5 *", "0 0 * * * * *"}
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
@@ -192,6 +199,7 @@ func TestScheduledTaskService_Create_InvalidCron(t *testing.T) {
 }
 
 func TestScheduledTaskService_Create_EmptyWorkflows(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-ewf", "wf-ewf", "project")
@@ -208,6 +216,7 @@ func TestScheduledTaskService_Create_EmptyWorkflows(t *testing.T) {
 }
 
 func TestScheduledTaskService_Create_NonExistentWorkflow(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-newf", "wf-newf", "project")
@@ -224,6 +233,7 @@ func TestScheduledTaskService_Create_NonExistentWorkflow(t *testing.T) {
 }
 
 func TestScheduledTaskService_Create_TicketScopedWorkflow(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-tscope", "wf-ticket", "ticket")
@@ -240,6 +250,7 @@ func TestScheduledTaskService_Create_TicketScopedWorkflow(t *testing.T) {
 }
 
 func TestScheduledTaskService_Create_DuplicateID(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-dup", "wf-dup", "project")
@@ -264,6 +275,7 @@ func TestScheduledTaskService_Create_DuplicateID(t *testing.T) {
 // -- Update --
 
 func TestScheduledTaskService_Update_NameOnly(t *testing.T) {
+	t.Parallel()
 	svc, pool, reloader, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-upd", "wf-upd", "project")
@@ -289,6 +301,7 @@ func TestScheduledTaskService_Update_NameOnly(t *testing.T) {
 }
 
 func TestScheduledTaskService_Update_InvalidCron(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-ucron", "wf-ucron", "project")
@@ -310,6 +323,7 @@ func TestScheduledTaskService_Update_InvalidCron(t *testing.T) {
 }
 
 func TestScheduledTaskService_Update_EnabledToggle(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-toggle", "wf-toggle", "project")
@@ -331,6 +345,7 @@ func TestScheduledTaskService_Update_EnabledToggle(t *testing.T) {
 }
 
 func TestScheduledTaskService_Update_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, _, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 
@@ -347,6 +362,7 @@ func TestScheduledTaskService_Update_NotFound(t *testing.T) {
 // -- Delete --
 
 func TestScheduledTaskService_Delete_RemovesTask(t *testing.T) {
+	t.Parallel()
 	svc, pool, reloader, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-del", "wf-del", "project")
@@ -372,6 +388,7 @@ func TestScheduledTaskService_Delete_RemovesTask(t *testing.T) {
 }
 
 func TestScheduledTaskService_Delete_CascadesScheduleRuns(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-casc", "wf-casc", "project")
@@ -409,6 +426,7 @@ func TestScheduledTaskService_Delete_CascadesScheduleRuns(t *testing.T) {
 }
 
 func TestScheduledTaskService_Delete_NotFound(t *testing.T) {
+	t.Parallel()
 	svc, _, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 
@@ -424,6 +442,7 @@ func TestScheduledTaskService_Delete_NotFound(t *testing.T) {
 // -- ListRuns --
 
 func TestScheduledTaskService_ListRuns_Empty(t *testing.T) {
+	t.Parallel()
 	svc, pool, _, cleanup := setupScheduledTaskTestEnv(t)
 	defer cleanup()
 	seedProjectAndWorkflow(t, pool, "proj-runs", "wf-runs", "project")

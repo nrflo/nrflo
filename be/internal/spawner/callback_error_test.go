@@ -8,6 +8,7 @@ import (
 // TestCallbackError_ErrorMessage tests that CallbackError implements error interface
 // and returns the expected error message format.
 func TestCallbackError_ErrorMessage(t *testing.T) {
+	t.Parallel()
 	err := &CallbackError{
 		Level:        1,
 		Instructions: "Fix the bug in layer 0",
@@ -22,6 +23,7 @@ func TestCallbackError_ErrorMessage(t *testing.T) {
 
 // TestCallbackError_ErrorsAs tests that errors.As correctly detects CallbackError
 func TestCallbackError_ErrorsAs(t *testing.T) {
+	t.Parallel()
 	err := &CallbackError{
 		Level:        2,
 		Instructions: "Re-run from layer 2",
@@ -46,6 +48,7 @@ func TestCallbackError_ErrorsAs(t *testing.T) {
 
 // TestCallbackError_ErrorsAsNonCallback tests that errors.As returns false for non-callback errors
 func TestCallbackError_ErrorsAsNonCallback(t *testing.T) {
+	t.Parallel()
 	err := errors.New("regular error")
 
 	var cbErr *CallbackError
@@ -56,6 +59,7 @@ func TestCallbackError_ErrorsAsNonCallback(t *testing.T) {
 
 // TestCallbackError_ZeroLevel tests callback with level 0 (valid)
 func TestCallbackError_ZeroLevel(t *testing.T) {
+	t.Parallel()
 	err := &CallbackError{
 		Level:        0,
 		Instructions: "Start from beginning",
@@ -74,6 +78,7 @@ func TestCallbackError_ZeroLevel(t *testing.T) {
 
 // TestCallbackError_MultipleErrorWrapping tests that CallbackError can be wrapped and unwrapped
 func TestCallbackError_MultipleErrorWrapping(t *testing.T) {
+	t.Parallel()
 	cbErr := &CallbackError{
 		Level:        3,
 		Instructions: "Callback instructions",
@@ -99,6 +104,7 @@ func TestCallbackError_MultipleErrorWrapping(t *testing.T) {
 
 // TestCallbackError_DifferentLevels tests CallbackError with various level values
 func TestCallbackError_DifferentLevels(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		level    int
 		expected string

@@ -14,6 +14,7 @@ import (
 // TestAutoRestartCondition_Boundaries verifies the guard condition for auto-restart
 // across all relevant boundary values of maxFailRestarts and failRestartCount.
 func TestAutoRestartCondition_Boundaries(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name             string
 		finalStatus      string
@@ -60,6 +61,7 @@ func TestAutoRestartCondition_Boundaries(t *testing.T) {
 // handleCompletion registers a failed session, then the auto-restart override
 // changes it to status=continued, result=continue, result_reason=fail_restart.
 func TestAutoRestart_SessionOverriddenToContined(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -139,6 +141,7 @@ func TestAutoRestart_SessionOverriddenToContined(t *testing.T) {
 
 // TestAutoRestart_DisabledAtZero confirms maxFailRestarts=0 means no auto-restart.
 func TestAutoRestart_DisabledAtZero(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -191,6 +194,7 @@ func TestAutoRestart_DisabledAtZero(t *testing.T) {
 // TestAutoRestart_TerminalAtMaxCount verifies the restart is blocked when
 // failRestartCount has reached maxFailRestarts.
 func TestAutoRestart_TerminalAtMaxCount(t *testing.T) {
+	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
@@ -232,6 +236,7 @@ func TestAutoRestart_TerminalAtMaxCount(t *testing.T) {
 // TestAutoRestart_CounterIncrementSequence simulates two consecutive fail-restarts
 // and verifies failRestartCount increments correctly, with the third failure terminal.
 func TestAutoRestart_CounterIncrementSequence(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		finalStatus:      "FAIL",
 		maxFailRestarts:  2,
@@ -276,6 +281,7 @@ func TestAutoRestart_CounterIncrementSequence(t *testing.T) {
 // (used by low-context restarts) and failRestartCount are tracked separately.
 // A context-restarted agent (restartCount=3) can still fail-restart up to maxFailRestarts.
 func TestAutoRestart_IndependentFromContextRestartCount(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		finalStatus:      "FAIL",
 		maxFailRestarts:  2,
@@ -304,6 +310,7 @@ func TestAutoRestart_IndependentFromContextRestartCount(t *testing.T) {
 // TestAutoRestart_FieldsInProcessInfo verifies that the processInfo struct contains
 // the expected fields maxFailRestarts and failRestartCount.
 func TestAutoRestart_FieldsInProcessInfo(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		maxFailRestarts:  5,
 		failRestartCount: 3,
@@ -330,6 +337,7 @@ func TestAutoRestart_FieldsInProcessInfo(t *testing.T) {
 // copies maxFailRestarts and failRestartCount to the new processInfo.
 // Uses direct field inspection on a manually constructed processInfo chain.
 func TestAutoRestart_RelaunchFieldCarryover(t *testing.T) {
+	t.Parallel()
 	// Simulate what relaunchForContinuation does: copy fields from oldProc to newProc.
 	oldProc := &processInfo{
 		sessionID:        "old-session",

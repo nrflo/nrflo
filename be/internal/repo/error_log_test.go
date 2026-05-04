@@ -29,6 +29,7 @@ func setupErrorLogDB(t *testing.T) (*ErrorLogRepo, string) {
 }
 
 func TestErrorLogRepo_Insert(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupErrorLogDB(t)
 
 	e := &model.ErrorLog{
@@ -73,6 +74,7 @@ func TestErrorLogRepo_Insert(t *testing.T) {
 }
 
 func TestErrorLogRepo_Insert_UsesClockWhenCreatedAtEmpty(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	database, err := db.OpenPath(dbPath)
 	if err != nil {
@@ -116,6 +118,7 @@ func TestErrorLogRepo_Insert_UsesClockWhenCreatedAtEmpty(t *testing.T) {
 }
 
 func TestErrorLogRepo_List_Pagination(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupErrorLogDB(t)
 
 	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -171,6 +174,7 @@ func TestErrorLogRepo_List_Pagination(t *testing.T) {
 }
 
 func TestErrorLogRepo_List_TypeFilter(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupErrorLogDB(t)
 
 	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -223,6 +227,7 @@ func TestErrorLogRepo_List_TypeFilter(t *testing.T) {
 }
 
 func TestErrorLogRepo_Count(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupErrorLogDB(t)
 
 	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -265,6 +270,7 @@ func TestErrorLogRepo_Count(t *testing.T) {
 }
 
 func TestErrorLogRepo_List_EmptyResult(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupErrorLogDB(t)
 
 	results, err := r.List(projectID, "", 10, 0)
@@ -277,6 +283,7 @@ func TestErrorLogRepo_List_EmptyResult(t *testing.T) {
 }
 
 func TestErrorLogRepo_Count_EmptyResult(t *testing.T) {
+	t.Parallel()
 	r, projectID := setupErrorLogDB(t)
 
 	count, err := r.Count(projectID, "")

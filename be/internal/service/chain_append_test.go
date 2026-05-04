@@ -13,6 +13,7 @@ import (
 
 // TestAppendToChain_RunningChainSucceeds verifies appending to a running chain
 func TestAppendToChain_RunningChainSucceeds(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -75,6 +76,7 @@ func TestAppendToChain_RunningChainSucceeds(t *testing.T) {
 
 // TestAppendToChain_PendingChainFails verifies appending to pending chain fails
 func TestAppendToChain_PendingChainFails(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -108,6 +110,7 @@ func TestAppendToChain_PendingChainFails(t *testing.T) {
 
 // TestAppendToChain_CompletedChainFails verifies appending to completed chain fails
 func TestAppendToChain_CompletedChainFails(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -146,6 +149,7 @@ func TestAppendToChain_CompletedChainFails(t *testing.T) {
 
 // TestAppendToChain_FailedChainFails verifies appending to failed chain fails
 func TestAppendToChain_FailedChainFails(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -184,6 +188,7 @@ func TestAppendToChain_FailedChainFails(t *testing.T) {
 
 // TestAppendToChain_DuplicateTicketExcluded verifies duplicate is silently excluded
 func TestAppendToChain_DuplicateTicketExcluded(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -225,6 +230,7 @@ func TestAppendToChain_DuplicateTicketExcluded(t *testing.T) {
 
 // TestAppendToChain_LockedTicketFails verifies lock conflict detection
 func TestAppendToChain_LockedTicketFails(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -276,6 +282,7 @@ func TestAppendToChain_LockedTicketFails(t *testing.T) {
 
 // TestAppendToChain_TransitiveBlockersExpanded verifies blocker expansion
 func TestAppendToChain_TransitiveBlockersExpanded(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -347,6 +354,7 @@ func TestAppendToChain_TransitiveBlockersExpanded(t *testing.T) {
 
 // TestAppendToChain_BlockerAlreadyInChainExcluded verifies blockers already in chain are filtered out
 func TestAppendToChain_BlockerAlreadyInChainExcluded(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -402,6 +410,7 @@ func TestAppendToChain_BlockerAlreadyInChainExcluded(t *testing.T) {
 
 // TestAppendToChain_CycleDetection verifies cycle detection among new tickets
 func TestAppendToChain_CycleDetection(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -449,6 +458,7 @@ func TestAppendToChain_CycleDetection(t *testing.T) {
 
 // TestAppendToChain_EmptyAfterDedup verifies empty ticket list after dedup returns chain as-is
 func TestAppendToChain_EmptyAfterDedup(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 
@@ -489,6 +499,7 @@ func TestAppendToChain_EmptyAfterDedup(t *testing.T) {
 
 // TestAppendToChain_EmptyTicketListFails verifies empty request fails
 func TestAppendToChain_EmptyTicketListFails(t *testing.T) {
+	t.Parallel()
 	pool, projectID := setupChainTestDB(t)
 	defer pool.Close()
 

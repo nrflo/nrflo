@@ -10,6 +10,7 @@ import (
 
 // TestIdleNudge_Constants verifies the idle/nudge detection constants match the spec.
 func TestIdleNudge_Constants(t *testing.T) {
+	t.Parallel()
 	if defaultIdleAfterMessageTimeout != 3*time.Minute {
 		t.Errorf("defaultIdleAfterMessageTimeout = %v, want 3m", defaultIdleAfterMessageTimeout)
 	}
@@ -23,6 +24,7 @@ func TestIdleNudge_Constants(t *testing.T) {
 
 // TestIdleNudge_Fields_ProcessInfo verifies processInfo has the expected nudge fields.
 func TestIdleNudge_Fields_ProcessInfo(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		nudgeCount:              2,
 		nudgeMax:                5,
@@ -49,6 +51,7 @@ func TestIdleNudge_Fields_ProcessInfo(t *testing.T) {
 
 // TestCheckIdleNudge_DisabledWhenNudgeMaxZero verifies nudgeMax=0 skips all logic.
 func TestCheckIdleNudge_DisabledWhenNudgeMaxZero(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -68,6 +71,7 @@ func TestCheckIdleNudge_DisabledWhenNudgeMaxZero(t *testing.T) {
 
 // TestCheckIdleNudge_SkipsNilBackend verifies nil backend skips all logic.
 func TestCheckIdleNudge_SkipsNilBackend(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -87,6 +91,7 @@ func TestCheckIdleNudge_SkipsNilBackend(t *testing.T) {
 
 // TestCheckIdleNudge_SkipsCLIBackend verifies cliBackend (Name()="cli") is skipped.
 func TestCheckIdleNudge_SkipsCLIBackend(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -106,6 +111,7 @@ func TestCheckIdleNudge_SkipsCLIBackend(t *testing.T) {
 
 // TestCheckIdleNudge_SkipsAPIBackend verifies apiBackend (Name()="api") is skipped.
 func TestCheckIdleNudge_SkipsAPIBackend(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -125,6 +131,7 @@ func TestCheckIdleNudge_SkipsAPIBackend(t *testing.T) {
 
 // TestCheckIdleNudge_WithinIdleStartTimeout_NoNudge verifies no nudge while within the start window.
 func TestCheckIdleNudge_WithinIdleStartTimeout_NoNudge(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -147,6 +154,7 @@ func TestCheckIdleNudge_WithinIdleStartTimeout_NoNudge(t *testing.T) {
 
 // TestCheckIdleNudge_IdleStartTimeoutExceeded_FirstNudge verifies first nudge when start timeout exceeded.
 func TestCheckIdleNudge_IdleStartTimeoutExceeded_FirstNudge(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -170,6 +178,7 @@ func TestCheckIdleNudge_IdleStartTimeoutExceeded_FirstNudge(t *testing.T) {
 
 // TestCheckIdleNudge_HasMessageUsesAfterMessageTimeout verifies the post-message idle window.
 func TestCheckIdleNudge_HasMessageUsesAfterMessageTimeout(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -200,6 +209,7 @@ func TestCheckIdleNudge_HasMessageUsesAfterMessageTimeout(t *testing.T) {
 
 // TestCheckIdleNudge_ZeroIdleWindow_NoNudge verifies that a zero idle window disables nudging.
 func TestCheckIdleNudge_ZeroIdleWindow_NoNudge(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -221,6 +231,7 @@ func TestCheckIdleNudge_ZeroIdleWindow_NoNudge(t *testing.T) {
 // TestCheckIdleNudge_NudgeCapReached_RecentLastNudge_NoAutoFail verifies no auto-fail when
 // cap is reached but the last nudge was recent (within one idle window).
 func TestCheckIdleNudge_NudgeCapReached_RecentLastNudge_NoAutoFail(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -251,6 +262,7 @@ func TestCheckIdleNudge_NudgeCapReached_RecentLastNudge_NoAutoFail(t *testing.T)
 // TestCheckIdleNudge_NudgeCapReached_OldLastNudge_AutoFail verifies auto-fail when cap is
 // reached and a full idle window has elapsed since the last nudge.
 func TestCheckIdleNudge_NudgeCapReached_OldLastNudge_AutoFail(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
@@ -287,6 +299,7 @@ func TestCheckIdleNudge_NudgeCapReached_OldLastNudge_AutoFail(t *testing.T) {
 // TestCheckIdleNudge_IncrementCounter_MultipleNudges verifies nudgeCount increments each
 // cycle and lastNudgeAt is updated after each nudge.
 func TestCheckIdleNudge_IncrementCounter_MultipleNudges(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 

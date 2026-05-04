@@ -65,6 +65,7 @@ func insertTestSystemAgentDef(t *testing.T, svc *CLIModelService, agentID, model
 // --- ModelInUseCheck ---
 
 func TestCLIModel_ModelInUseCheck_Unused(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -83,6 +84,7 @@ func TestCLIModel_ModelInUseCheck_Unused(t *testing.T) {
 }
 
 func TestCLIModel_ModelInUseCheck_UsedByAgentDefModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -112,6 +114,7 @@ func TestCLIModel_ModelInUseCheck_UsedByAgentDefModel(t *testing.T) {
 }
 
 func TestCLIModel_ModelInUseCheck_UsedByLowConsumptionModel(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -141,6 +144,7 @@ func TestCLIModel_ModelInUseCheck_UsedByLowConsumptionModel(t *testing.T) {
 }
 
 func TestCLIModel_ModelInUseCheck_UsedBySystemAgentDef(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -168,6 +172,7 @@ func TestCLIModel_ModelInUseCheck_UsedBySystemAgentDef(t *testing.T) {
 }
 
 func TestCLIModel_ModelInUseCheck_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -197,6 +202,7 @@ func TestCLIModel_ModelInUseCheck_CaseInsensitive(t *testing.T) {
 // --- Disable in-use model rejected ---
 
 func TestCLIModel_DisableInUseModel_Rejected(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -231,6 +237,7 @@ func TestCLIModel_DisableInUseModel_Rejected(t *testing.T) {
 }
 
 func TestCLIModel_DisableModel_ChecksBothModelAndLowConsumption(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
@@ -258,6 +265,7 @@ func TestCLIModel_DisableModel_ChecksBothModelAndLowConsumption(t *testing.T) {
 }
 
 func TestCLIModel_DisableModel_ChecksSystemAgentDefs(t *testing.T) {
+	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 

@@ -10,6 +10,7 @@ import (
 
 // TestSpawnerLogging_ContextPropagation verifies that spawner functions accept and use context with trx
 func TestSpawnerLogging_ContextPropagation(t *testing.T) {
+	t.Parallel()
 	// This test verifies that spawner logging functions have the correct signatures
 	// and can be called with trx-enriched context
 	// The actual logging output is tested in integration tests
@@ -43,6 +44,7 @@ func TestSpawnerLogging_ContextPropagation(t *testing.T) {
 
 // TestSpawnerLogging_LoggerFunctions verifies logger functions work correctly
 func TestSpawnerLogging_LoggerFunctions(t *testing.T) {
+	t.Parallel()
 	// Verify logger package functions are accessible from spawner tests
 	ctx := logger.WithTrx(context.Background(), "test1234")
 
@@ -60,6 +62,7 @@ func TestSpawnerLogging_LoggerFunctions(t *testing.T) {
 
 // TestSpawnerLogging_StructuredKeys verifies expected key names are used
 func TestSpawnerLogging_StructuredKeys(t *testing.T) {
+	t.Parallel()
 	// This test documents the expected structured logging keys used in spawner
 	// Based on the implementation, these are the keys that should be present in logs
 
@@ -99,6 +102,7 @@ func TestSpawnerLogging_StructuredKeys(t *testing.T) {
 
 // TestSpawnerLogging_MessageConventions verifies logging message conventions
 func TestSpawnerLogging_MessageConventions(t *testing.T) {
+	t.Parallel()
 	// This test documents the expected message patterns used in spawner logging
 	// Based on the implementation, these are the messages that should be present
 

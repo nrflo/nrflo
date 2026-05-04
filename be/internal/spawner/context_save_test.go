@@ -20,6 +20,7 @@ import (
 // TestCheckToResumeFindings_ValidToResumeKey tests that checkToResumeFindings
 // returns true when to_resume key exists with non-empty string value
 func TestCheckToResumeFindings_ValidToResumeKey(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -43,6 +44,7 @@ func TestCheckToResumeFindings_ValidToResumeKey(t *testing.T) {
 // TestCheckToResumeFindings_EmptyFindings tests that checkToResumeFindings
 // returns false when findings are empty
 func TestCheckToResumeFindings_EmptyFindings(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -63,6 +65,7 @@ func TestCheckToResumeFindings_EmptyFindings(t *testing.T) {
 // TestCheckToResumeFindings_NullFindings tests that checkToResumeFindings
 // returns false when findings column is NULL
 func TestCheckToResumeFindings_NullFindings(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -82,6 +85,7 @@ func TestCheckToResumeFindings_NullFindings(t *testing.T) {
 // TestCheckToResumeFindings_MissingToResumeKey tests that checkToResumeFindings
 // returns false when findings exist but to_resume key is missing
 func TestCheckToResumeFindings_MissingToResumeKey(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -105,6 +109,7 @@ func TestCheckToResumeFindings_MissingToResumeKey(t *testing.T) {
 // TestCheckToResumeFindings_EmptyToResumeValue tests that checkToResumeFindings
 // returns false when to_resume is empty string
 func TestCheckToResumeFindings_EmptyToResumeValue(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -128,6 +133,7 @@ func TestCheckToResumeFindings_EmptyToResumeValue(t *testing.T) {
 // TestCheckToResumeFindings_NonStringToResumeValue tests that checkToResumeFindings
 // returns false when to_resume value is not a string
 func TestCheckToResumeFindings_NonStringToResumeValue(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -151,6 +157,7 @@ func TestCheckToResumeFindings_NonStringToResumeValue(t *testing.T) {
 // TestCheckToResumeFindings_ToResumeAsArray tests that checkToResumeFindings
 // returns false when to_resume value is an array
 func TestCheckToResumeFindings_ToResumeAsArray(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -174,6 +181,7 @@ func TestCheckToResumeFindings_ToResumeAsArray(t *testing.T) {
 // TestCheckToResumeFindings_ToResumeAsObject tests that checkToResumeFindings
 // returns false when to_resume value is an object
 func TestCheckToResumeFindings_ToResumeAsObject(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -197,6 +205,7 @@ func TestCheckToResumeFindings_ToResumeAsObject(t *testing.T) {
 // TestCheckToResumeFindings_SessionNotFound tests that checkToResumeFindings
 // returns false when session doesn't exist
 func TestCheckToResumeFindings_SessionNotFound(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -214,6 +223,7 @@ func TestCheckToResumeFindings_SessionNotFound(t *testing.T) {
 // TestCheckToResumeFindings_InvalidJSON tests that checkToResumeFindings
 // returns false when findings contain invalid JSON
 func TestCheckToResumeFindings_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -395,6 +405,7 @@ func (b fakeBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) err
 func (b fakeBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error      { return nil }
 
 func TestShouldUseAgentSave_GlobalSettingForcesAgent(t *testing.T) {
+	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: true, Clock: clock.Real()})
 	proc := &processInfo{modelID: "claude:sonnet"}
 	if !s.shouldUseAgentSave(proc) {
@@ -403,6 +414,7 @@ func TestShouldUseAgentSave_GlobalSettingForcesAgent(t *testing.T) {
 }
 
 func TestShouldUseAgentSave_APIBackendForcesAgent(t *testing.T) {
+	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "claude:sonnet",
@@ -418,6 +430,7 @@ func TestShouldUseAgentSave_APIBackendForcesAgent(t *testing.T) {
 // false, so the resume path would silently skip the save and relaunch with
 // empty PREVIOUS_DATA. shouldUseAgentSave must route around that.
 func TestShouldUseAgentSave_CodexForcesAgent(t *testing.T) {
+	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "codex:gpt-5.3-codex",
@@ -429,6 +442,7 @@ func TestShouldUseAgentSave_CodexForcesAgent(t *testing.T) {
 }
 
 func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
+	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "claude:sonnet",
@@ -440,6 +454,7 @@ func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
 }
 
 func TestShouldUseAgentSave_OpencodeForcesAgent(t *testing.T) {
+	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "opencode:openai/gpt-5.4",
@@ -451,6 +466,7 @@ func TestShouldUseAgentSave_OpencodeForcesAgent(t *testing.T) {
 }
 
 func TestShouldUseAgentSave_UnknownAdapterFallsThrough(t *testing.T) {
+	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{modelID: "unknown:weird"}
 	if s.shouldUseAgentSave(proc) {

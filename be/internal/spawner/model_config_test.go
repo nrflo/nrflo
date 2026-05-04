@@ -10,6 +10,7 @@ import (
 // =============================================================================
 
 func TestCLIForModel_DBConfigTakesPriority(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		model   string
@@ -54,6 +55,7 @@ func TestCLIForModel_DBConfigTakesPriority(t *testing.T) {
 }
 
 func TestCLIForModel_FallbackWhenNilMap(t *testing.T) {
+	t.Parallel()
 	// nil map must not panic; should fall back to DefaultCLIForModel
 	s := &Spawner{config: Config{}}
 
@@ -82,6 +84,7 @@ func TestCLIForModel_FallbackWhenNilMap(t *testing.T) {
 }
 
 func TestCLIForModel_FallbackWhenEmptyCLIType(t *testing.T) {
+	t.Parallel()
 	// Config entry present but CLIType is empty string → fallback
 	s := &Spawner{config: Config{
 		ModelConfigs: map[string]ModelConfig{
@@ -96,6 +99,7 @@ func TestCLIForModel_FallbackWhenEmptyCLIType(t *testing.T) {
 }
 
 func TestCLIForModel_FallbackWhenModelNotInMap(t *testing.T) {
+	t.Parallel()
 	// Map populated but this specific model is absent
 	s := &Spawner{config: Config{
 		ModelConfigs: map[string]ModelConfig{
@@ -114,6 +118,7 @@ func TestCLIForModel_FallbackWhenModelNotInMap(t *testing.T) {
 // =============================================================================
 
 func TestMaxContextForModel_DBConfigTakesPriority(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		model   string
@@ -158,6 +163,7 @@ func TestMaxContextForModel_DBConfigTakesPriority(t *testing.T) {
 }
 
 func TestMaxContextForModel_ZeroContextLengthFallsBack(t *testing.T) {
+	t.Parallel()
 	// ContextLength of 0 means "not configured" — should fall back to hardcoded
 	s := &Spawner{config: Config{
 		ModelConfigs: map[string]ModelConfig{
@@ -175,6 +181,7 @@ func TestMaxContextForModel_ZeroContextLengthFallsBack(t *testing.T) {
 }
 
 func TestMaxContextForModel_HardcodedFallback(t *testing.T) {
+	t.Parallel()
 	// nil ModelConfigs → pure hardcoded logic
 	s := &Spawner{config: Config{}}
 
@@ -208,6 +215,7 @@ func TestMaxContextForModel_HardcodedFallback(t *testing.T) {
 // =============================================================================
 
 func TestClaudeAdapter_BuildCommand_UsesMappedModelFromOpts(t *testing.T) {
+	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
 	t.Run("opts.MappedModel used instead of MapModel", func(t *testing.T) {
@@ -261,6 +269,7 @@ func TestClaudeAdapter_BuildCommand_UsesMappedModelFromOpts(t *testing.T) {
 }
 
 func TestOpencodeAdapter_BuildCommand_UsesMappedModelAndEffortFromOpts(t *testing.T) {
+	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
 	t.Run("opts.MappedModel and opts.ReasoningEffort override adapter methods", func(t *testing.T) {
@@ -321,6 +330,7 @@ func TestOpencodeAdapter_BuildCommand_UsesMappedModelAndEffortFromOpts(t *testin
 }
 
 func TestCodexAdapter_BuildCommand_UsesMappedModelAndEffortFromOpts(t *testing.T) {
+	t.Parallel()
 	adapter := &CodexAdapter{}
 
 	t.Run("opts.MappedModel and opts.ReasoningEffort override adapter methods", func(t *testing.T) {
@@ -382,6 +392,7 @@ func TestCodexAdapter_BuildCommand_UsesMappedModelAndEffortFromOpts(t *testing.T
 // =============================================================================
 
 func TestSpawnOptions_ZeroValueDoesNotPanic(t *testing.T) {
+	t.Parallel()
 	// Ensure BuildCommand on each adapter handles zero-value SpawnOptions without panicking.
 	for _, cli := range []string{"claude", "opencode", "codex"} {
 		adapter, err := GetCLIAdapter(cli)

@@ -15,6 +15,7 @@ import (
 // TestAPIBackend_Identification verifies the apiBackend identifies as "api"
 // and reports no resume / no take-control support.
 func TestAPIBackend_Identification(t *testing.T) {
+	t.Parallel()
 	s := New(Config{Clock: clock.NewTest(time.Now())})
 	b := newAPIBackend(s)
 	if got := b.Name(); got != "api" {
@@ -31,6 +32,7 @@ func TestAPIBackend_Identification(t *testing.T) {
 // TestAPIBackend_Start_RejectsMissingProvider returns an error when the
 // spawner has no Provider configured.
 func TestAPIBackend_Start_RejectsMissingProvider(t *testing.T) {
+	t.Parallel()
 	s := New(Config{Clock: clock.NewTest(time.Now()), Provider: nil})
 	b := newAPIBackend(s)
 	err := b.Start(context.Background(), &processInfo{doneCh: make(chan struct{})}, &prepResult{})
@@ -41,6 +43,7 @@ func TestAPIBackend_Start_RejectsMissingProvider(t *testing.T) {
 
 // TestAPIBackend_Start_RejectsMissingAgentSvc verifies missing AgentSvc fails fast.
 func TestAPIBackend_Start_RejectsMissingAgentSvc(t *testing.T) {
+	t.Parallel()
 	s := New(Config{
 		Clock:    clock.NewTest(time.Now()),
 		Provider: mock.New(),
@@ -54,6 +57,7 @@ func TestAPIBackend_Start_RejectsMissingAgentSvc(t *testing.T) {
 
 // TestAPIBackend_Kill_NilSafe verifies Kill before Start is a no-op.
 func TestAPIBackend_Kill_NilSafe(t *testing.T) {
+	t.Parallel()
 	s := New(Config{Clock: clock.NewTest(time.Now())})
 	b := newAPIBackend(s)
 	if err := b.Kill(context.Background(), &processInfo{}, syscall.SIGTERM); err != nil {
@@ -64,6 +68,7 @@ func TestAPIBackend_Kill_NilSafe(t *testing.T) {
 // TestMapFinalStatus_AllCases ensures each finalStatus maps to the correct
 // (result, reason) pair persisted to agent_sessions.
 func TestMapFinalStatus_AllCases(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in         string
 		wantResult string
@@ -89,6 +94,7 @@ func TestMapFinalStatus_AllCases(t *testing.T) {
 // TestProcStateAdapter verifies the adapter reads and writes the correct
 // processInfo fields used by monitorAll.
 func TestProcStateAdapter(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{
 		sessionID:          "s-1",
 		projectID:          "p-1",
@@ -119,6 +125,7 @@ func TestProcStateAdapter(t *testing.T) {
 // TestApirunErrorAdapter_PassesThroughAndNilSafe verifies the adapter wraps a
 // non-nil ErrorRecorder and short-circuits to nil when the input is nil.
 func TestApirunErrorAdapter_PassesThroughAndNilSafe(t *testing.T) {
+	t.Parallel()
 	if got := apirunErrorAdapter(nil); got != nil {
 		t.Errorf("apirunErrorAdapter(nil) = %v, want nil", got)
 	}
@@ -140,6 +147,7 @@ func TestApirunErrorAdapter_PassesThroughAndNilSafe(t *testing.T) {
 // adapter pushes messages into the proc's pendingMessages queue with the
 // supplied category, matching what the runner needs for WS broadcast parity.
 func TestProcMessageSink_DelegatesToTrackMessage(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	s := New(Config{Clock: clk})
 	proc := &processInfo{}
@@ -180,6 +188,7 @@ func (m *mockErrRec) RecordError(projectID, errorType, instanceID, message strin
 // are no-ops when proc has no DB-resolvable session, so the test only checks
 // that finalStatus is set, doneCh closes, and Kill cancels promptly.
 func TestAPIBackend_FullLoop_RunsAndKills(t *testing.T) {
+	t.Parallel()
 	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	prov := &blockingMockProvider{started: make(chan struct{})}
 	s := New(Config{

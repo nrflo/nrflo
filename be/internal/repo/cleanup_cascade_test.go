@@ -15,6 +15,7 @@ import (
 // TestCleanupCascade verifies that deleting a workflow instance via cleanup
 // automatically deletes its associated agent sessions due to ON DELETE CASCADE.
 func TestCleanupCascade(t *testing.T) {
+	t.Parallel()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 

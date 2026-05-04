@@ -46,6 +46,7 @@ func insertSession(t *testing.T, pool *db.Pool, id string, contextLeft int) {
 }
 
 func TestReadContextLeftFromDB_UpdatesProcs(t *testing.T) {
+	t.Parallel()
 	pool := setupTestDB(t)
 	insertSession(t, pool, "sess-1", 60)
 	insertSession(t, pool, "sess-2", 30)
@@ -66,6 +67,7 @@ func TestReadContextLeftFromDB_UpdatesProcs(t *testing.T) {
 }
 
 func TestReadContextLeftFromDB_NilPool(t *testing.T) {
+	t.Parallel()
 	proc := &processInfo{sessionID: "sess-1", contextLeft: 75}
 	readContextLeftFromDB(nil, []*processInfo{proc})
 
@@ -75,12 +77,14 @@ func TestReadContextLeftFromDB_NilPool(t *testing.T) {
 }
 
 func TestReadContextLeftFromDB_EmptyProcs(t *testing.T) {
+	t.Parallel()
 	pool := setupTestDB(t)
 	readContextLeftFromDB(pool, nil)
 	readContextLeftFromDB(pool, []*processInfo{})
 }
 
 func TestReadContextLeftFromDB_SessionNotInDB(t *testing.T) {
+	t.Parallel()
 	pool := setupTestDB(t)
 
 	proc := &processInfo{sessionID: "nonexistent", contextLeft: 50}
@@ -92,6 +96,7 @@ func TestReadContextLeftFromDB_SessionNotInDB(t *testing.T) {
 }
 
 func TestReadContextLeftFromDB_HigherDBValueNotOverwritten(t *testing.T) {
+	t.Parallel()
 	pool := setupTestDB(t)
 	// DB holds contextLeft=80 (less context used), but proc already recorded 50 (more context used)
 	insertSession(t, pool, "sess-higher-db", 80)
@@ -105,6 +110,7 @@ func TestReadContextLeftFromDB_HigherDBValueNotOverwritten(t *testing.T) {
 }
 
 func TestReadContextLeftFromDB_LowerDBValueUpdatesProc(t *testing.T) {
+	t.Parallel()
 	pool := setupTestDB(t)
 	// DB holds contextLeft=30 (more context used than in-memory 50) — should update
 	insertSession(t, pool, "sess-lower-db", 30)
@@ -120,6 +126,7 @@ func TestReadContextLeftFromDB_LowerDBValueUpdatesProc(t *testing.T) {
 // === updateContextLeft: DB persistence and WS broadcast ===
 
 func TestUpdateContextLeft_PersistsToDB(t *testing.T) {
+	t.Parallel()
 	pool := setupTestDB(t)
 	insertSession(t, pool, "sess-ucl-1", 100)
 
@@ -142,6 +149,7 @@ func TestUpdateContextLeft_PersistsToDB(t *testing.T) {
 }
 
 func TestUpdateContextLeft_NilPool_NoError(t *testing.T) {
+	t.Parallel()
 	s := noPoolSpawner()
 	proc := &processInfo{
 		sessionID:   "sess-ucl-nil",
@@ -152,6 +160,7 @@ func TestUpdateContextLeft_NilPool_NoError(t *testing.T) {
 }
 
 func TestUpdateContextLeft_BroadcastsWSEvent(t *testing.T) {
+	t.Parallel()
 	pool := setupTestDB(t)
 	insertSession(t, pool, "sess-ucl-ws", 100)
 

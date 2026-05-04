@@ -75,9 +75,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const [activeTab, setActiveTab] = useState<'messages' | 'context' | 'findings' | 'all-findings'>('messages')
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | 'all'>('all')
   const sessionId = session?.id || agent?.session_id || historyEntry?.session_id
-  const { data: messagesData, isLoading: messagesLoading } = useSessionMessages(sessionId, {
-    isRunning: isRunning || false,
-  })
+  const { data: messagesData, isLoading: messagesLoading } = useSessionMessages(sessionId)
   const { data: promptData, isLoading: promptLoading } = useSessionPrompt(sessionId, activeTab === 'context')
 
   const messages = messagesData?.messages ?? []
@@ -232,7 +230,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
               <p className="text-xs">No prompt context available</p>
             </div>
           )
-        ) : messagesLoading ? (
+        ) : messagesLoading && messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
             <p className="text-xs">Loading messages...</p>

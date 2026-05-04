@@ -33,8 +33,16 @@ export function AgentLogPanel({
   workflowFindings,
 }: AgentLogPanelProps) {
   const runningAgents = useMemo(() => {
-    return Object.values(activeAgents).filter(a => !a.result)
-  }, [activeAgents])
+    return Object.values(activeAgents).filter(a => {
+      if (a.result) return false
+      const s = a.session_id
+        ? sessions.find(s => s.id === a.session_id) ??
+          sessions.find(s => s.agent_type === a.agent_type && s.phase === a.phase && (!a.model_id || s.model_id === a.model_id))
+        : sessions.find(s => s.agent_type === a.agent_type && s.phase === a.phase && (!a.model_id || s.model_id === a.model_id))
+      if (s && s.status !== 'running' && s.status !== 'user_interactive') return false
+      return true
+    })
+  }, [activeAgents, sessions])
 
   const findSession = (agent: ActiveAgentV4): AgentSession | undefined => {
     if (agent.session_id) {

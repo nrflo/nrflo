@@ -560,6 +560,71 @@ describe('AgentLogDetail', () => {
     })
   })
 
+  describe('no loading flash on background refetch', () => {
+    it('does not show Loading messages... when messages are cached and agent.result transitions to pass', async () => {
+      // Simulate the background-refetch scenario: messages already loaded,
+      // then agent.result changes from undefined→"pass". The loading overlay
+      // must NOT appear because messages.length > 0.
+      vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+        session_id: 'session-1',
+        messages: [
+          { content: 'Implementing feature...', created_at: '2026-01-01T00:00:10Z' },
+          { content: 'Running tests...', created_at: '2026-01-01T00:00:20Z' },
+        ],
+        total: 2,
+      })
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      })
+
+      const runningAgent = makeRunningAgent({ session_id: 'session-1' })
+      const session = makeSession({ id: 'session-1', status: 'running' })
+
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <AgentLogDetail
+            selectedAgent={{ phaseName: 'implementation', agent: runningAgent, session }}
+          />
+        </QueryClientProvider>
+      )
+
+      // Wait for messages to load from initial fetch
+      await screen.findByText('2 messages')
+      expect(screen.queryByText('Loading messages...')).not.toBeInTheDocument()
+
+      // Simulate agent completing (result: 'pass') — triggers background refetch
+      const completedAgent = { ...runningAgent, result: 'pass' }
+      const completedSession = { ...session, status: 'completed' as const }
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentLogDetail
+            selectedAgent={{ phaseName: 'implementation', agent: completedAgent, session: completedSession }}
+          />
+        </QueryClientProvider>
+      )
+
+      // Loading overlay must NOT flash even if a background refetch is in flight
+      expect(screen.queryByText('Loading messages...')).not.toBeInTheDocument()
+      // Messages should still be visible (cached data)
+      expect(screen.getByText('2 messages')).toBeInTheDocument()
+    })
+
+    it('shows Loading messages... only when there are zero cached messages', () => {
+      // Never-resolving promise → isLoading=true, messages=[]
+      vi.mocked(ticketsApi.getSessionMessages).mockReturnValue(new Promise(() => {}))
+
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent(),
+        session: makeSession(),
+      })
+
+      // Zero messages + loading → overlay should appear
+      expect(screen.getByText('Loading messages...')).toBeInTheDocument()
+    })
+  })
+
   describe('user_interactive status display', () => {
     it('shows "User controlling" badge when session status is user_interactive', async () => {
       renderDetail({

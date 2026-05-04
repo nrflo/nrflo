@@ -330,13 +330,14 @@ export function useExitInteractive() {
 
 export function useSessionMessages(
   sessionId: string | undefined,
+  // isRunning is accepted for call-site compatibility but no longer affects staleTime
   options?: { enabled?: boolean; isRunning?: boolean; category?: string }
 ) {
   return useQuery<SessionMessagesResponse>({
     queryKey: ['session-messages', sessionId, options?.category],
     queryFn: () => getSessionMessages(sessionId!, options?.category),
     enabled: !!sessionId && (options?.enabled ?? true),
-    staleTime: options?.isRunning ? 2000 : 30000,
+    staleTime: 2000,
   })
 }
 

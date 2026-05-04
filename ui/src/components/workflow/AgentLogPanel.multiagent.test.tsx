@@ -87,6 +87,88 @@ function renderPanel(props: Partial<React.ComponentProps<typeof AgentLogPanel>> 
 describe('AgentLogPanel - multi-agent detail view', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  describe('runningAgents session-status filtering', () => {
+    it('excludes agent whose session status is completed even when agent.result is absent', () => {
+      // Core fix: agent in activeAgents with no result, but matching session is completed
+      const agent = makeAgent({ session_id: 'sess-done' })
+      const session = makeSession({ id: 'sess-done', status: 'completed', result: 'pass' })
+      renderPanel({
+        activeAgents: { 'a1': agent },
+        sessions: [session],
+      })
+      expect(screen.queryAllByTestId('agent-tab')).toHaveLength(0)
+      expect(screen.queryByTestId('agent-log-detail')).not.toBeInTheDocument()
+    })
+
+    it('excludes agent whose session status is failed', () => {
+      const agent = makeAgent({ session_id: 'sess-fail' })
+      const session = makeSession({ id: 'sess-fail', status: 'failed' })
+      renderPanel({
+        activeAgents: { 'a1': agent },
+        sessions: [session],
+      })
+      expect(screen.queryAllByTestId('agent-tab')).toHaveLength(0)
+    })
+
+    it('excludes agent whose session status is timeout', () => {
+      const agent = makeAgent({ session_id: 'sess-timeout' })
+      const session = makeSession({ id: 'sess-timeout', status: 'timeout' })
+      renderPanel({
+        activeAgents: { 'a1': agent },
+        sessions: [session],
+      })
+      expect(screen.queryAllByTestId('agent-tab')).toHaveLength(0)
+    })
+
+    it('excludes agent whose session status is interactive_completed', () => {
+      const agent = makeAgent({ session_id: 'sess-ic' })
+      const session = makeSession({ id: 'sess-ic', status: 'interactive_completed' })
+      renderPanel({
+        activeAgents: { 'a1': agent },
+        sessions: [session],
+      })
+      expect(screen.queryAllByTestId('agent-tab')).toHaveLength(0)
+    })
+
+    it('treats user_interactive session status as running — agent tab is shown', () => {
+      const agent = makeAgent({ session_id: 'sess-ui' })
+      const session = makeSession({ id: 'sess-ui', status: 'user_interactive' })
+      renderPanel({
+        activeAgents: { 'a1': agent },
+        sessions: [session],
+      })
+      // user_interactive is a "live" state; agent should still show a tab
+      expect(screen.getAllByTestId('agent-tab')).toHaveLength(1)
+    })
+
+    it('shows tab for agent with no matching session (newly spawned)', () => {
+      // Regression guard: brand-new agent has no session yet
+      const agent = makeAgent({ agent_type: 'doc-updater', phase: 'docs', session_id: undefined })
+      renderPanel({
+        activeAgents: { 'a1': agent },
+        sessions: [], // no sessions at all
+      })
+      expect(screen.getAllByTestId('agent-tab')).toHaveLength(1)
+    })
+
+    it('shows only the truly running agent when one has a completed session and one does not', () => {
+      const doneAgent = makeAgent({ agent_id: 'a1', session_id: 'sess-done', agent_type: 'implementor', phase: 'implementation' })
+      const doneSession = makeSession({ id: 'sess-done', status: 'completed' })
+
+      const liveAgent = makeAgent({ agent_id: 'a2', session_id: 'sess-live', agent_type: 'tester', phase: 'verification', model_id: 'claude-haiku' })
+      const liveSession = makeSession({ id: 'sess-live', status: 'running', agent_type: 'tester', phase: 'verification', model_id: 'claude-haiku' })
+
+      renderPanel({
+        activeAgents: { 'a1': doneAgent, 'a2': liveAgent },
+        sessions: [doneSession, liveSession],
+      })
+
+      const tabs = screen.getAllByTestId('agent-tab')
+      expect(tabs).toHaveLength(1)
+      expect(screen.getByTestId('detail-agent-type')).toHaveTextContent('tester')
+    })
+  })
+
   describe('rendering', () => {
     it('renders exactly one AgentLogDetail when one agent is running', () => {
       renderPanel({

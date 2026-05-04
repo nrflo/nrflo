@@ -934,6 +934,44 @@ func (o *Orchestrator) BumpLastMessage(projectID, ticketID, workflow, sessionID 
 	return nil
 }
 
+// SetLastMessage updates proc.lastMessage on the running agent so the
+// "agent status" log line and any in-memory status surface show the most
+// recent agent output. Best-effort: returns nil when session/run/spawner
+// not found, or when content is empty.
+func (o *Orchestrator) SetLastMessage(projectID, ticketID, workflow, sessionID, content string) error {
+	if content == "" {
+		return nil
+	}
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	session, err := asRepo.Get(sessionID)
+	if err != nil {
+		return nil
+	}
+
+	o.mu.Lock()
+	rs, ok := o.runs[session.WorkflowInstanceID]
+	o.mu.Unlock()
+	if !ok {
+		return nil
+	}
+
+	o.mu.Lock()
+	sp := rs.spawner
+	o.mu.Unlock()
+	if sp == nil {
+		return nil
+	}
+
+	sp.SetLastMessage(sessionID, content)
+	return nil
+}
+
 // RequestTerminalSignal kills the active agent for the given session so
 // monitorAll exits and handleCompletion reads the DB result already written
 // by the socket handler. Best-effort: returns nil when session or run not found.

@@ -235,17 +235,20 @@ func TestHandleNudgeAutoFail_DispatchesTerminalSignal(t *testing.T) {
 	s := New(Config{Clock: clk})
 
 	proc := &processInfo{
-		sessionID: "sess-auto-fail",
-		agentType: "implementor",
-		projectID: "proj-1",
-		nudgeMax:  5,
+		sessionID:  "sess-auto-fail",
+		agentType:  "implementor",
+		projectID:  "proj-1",
+		nudgeMax:   5,
 		nudgeCount: 5,
 	}
+
+	ch := make(chan terminalSignal, 1)
+	s.registerTerminalSignal(proc.sessionID, ch)
 
 	s.handleNudgeAutoFail(context.Background(), proc, SpawnRequest{})
 
 	select {
-	case sig := <-s.terminalSignalCh:
+	case sig := <-ch:
 		if sig.SessionID != "sess-auto-fail" {
 			t.Errorf("signal.SessionID = %q, want 'sess-auto-fail'", sig.SessionID)
 		}
@@ -253,7 +256,7 @@ func TestHandleNudgeAutoFail_DispatchesTerminalSignal(t *testing.T) {
 			t.Errorf("signal.Result = %q, want 'fail'", sig.Result)
 		}
 	default:
-		t.Error("terminalSignalCh empty: RequestTerminalSignal not dispatched by handleNudgeAutoFail")
+		t.Error("registered channel empty: RequestTerminalSignal not dispatched by handleNudgeAutoFail")
 	}
 }
 

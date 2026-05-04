@@ -61,6 +61,11 @@ type TerminalSignaler interface {
 	// BumpLastMessage resets stall-detection state for the matching proc so
 	// hook-driven activity (PreToolUse/PostToolUse) does not trigger a stall restart.
 	BumpLastMessage(projectID, ticketID, workflow, sessionID string) error
+	// SetLastMessage updates the running proc's in-memory lastMessage so the
+	// periodic "agent status" log line surfaces hook/SSE-delivered content for
+	// interactive CLI agents (whose PTY output is otherwise dropped). Empty
+	// content or unknown session is a no-op.
+	SetLastMessage(projectID, ticketID, workflow, sessionID, content string) error
 	// SignalSessionReady marks the matching proc as TUI-ready, unblocking the
 	// PTY prompt-delivery wait. Best-effort and idempotent — repeated calls,
 	// or calls for unknown sessions, are no-ops.

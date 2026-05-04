@@ -74,11 +74,12 @@ All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, e
 
 After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.continue`, and `agent.callback` cases each dispatch a best-effort terminal signal through an injected `TerminalSignaler` (defined in `server.go`). This kills the running agent immediately so `monitorAll` exits its natural-exit wait and `handleCompletion` reads the DB-written result, eliminating the latency between the agent calling `nrflo agent fail/finished/continue/callback` and the spawner acting on it.
 
-- **Interface**: two methods — `RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error` and `BumpLastMessage(projectID, ticketID, workflow, sessionID string) error`.
+- **Interface**: four methods — `RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error`, `BumpLastMessage(projectID, ticketID, workflow, sessionID string) error`, `SetLastMessage(projectID, ticketID, workflow, sessionID, content string) error`, and `SignalSessionReady(sessionID string) error`.
 - **Wiring**: `NewServerWithHub` accepts a `TerminalSignaler`; in production `cli/serve.go` passes `httpServer.GetOrchestrator()`; pass `nil` in tests.
 - **Nil-safe**: `Handler` nil-guards before calling — passing `nil` disables the feature silently.
 - **Order**: DB write → WS broadcast → terminal signal (best-effort, error is logged at INFO level and does not affect the response).
 - **BumpLastMessage**: called by `agent.record_event` handler after inserting a hook message row. Forwards to `Orchestrator.BumpLastMessage` → `Spawner.BumpLastMessage`, which sends a session ID through `bumpMessageCh` so `monitorAll` updates `lastMessageTime`/`hasReceivedMessage` for the matching proc, preventing false-positive stall detection during active interactive CLI sessions.
+- **SetLastMessage**: called alongside BumpLastMessage with the recorded message body. Forwards to `Orchestrator.SetLastMessage` → `Spawner.SetLastMessage`, which looks up the proc directly via `sessionProcs` and updates `proc.lastMessage` under `messagesMutex`. This makes the periodic "agent status" log line (`last_msg=...`) populate for interactive CLI agents — the PTY ferry drops raw bytes, so without this the status line was always empty in interactive mode.
 
 ## Files
 

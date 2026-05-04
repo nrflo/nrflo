@@ -239,8 +239,9 @@ type processInfo struct {
 	trx string
 }
 
-// terminalSignal is sent to terminalSignalCh to kill an agent immediately so
-// handleCompletion reads the DB-written result (fail/continue/callback).
+// terminalSignal is routed via the per-session terminalSignals registry to kill
+// an agent immediately so handleCompletion reads the DB-written result
+// (fail/continue/callback).
 type terminalSignal struct {
 	SessionID string
 	Result    string
@@ -248,15 +249,16 @@ type terminalSignal struct {
 
 // Spawner manages agent lifecycle
 type Spawner struct {
-	config            Config
-	restartCh         chan string            // carries sessionID of agent to restart
-	takeControlCh     chan string            // carries sessionID of agent to take control of
-	terminalSignalCh  chan terminalSignal    // carries kill signal after DB result already written
-	bumpMessageCh     chan string            // carries sessionID to bump lastMessageTime (hook events)
-	interactiveWaits  map[string]chan struct{} // sessionID → closed when interactive session completes
-	mu                sync.Mutex              // protects interactiveWaits
-	sessionProcsMu    sync.Mutex              // protects sessionProcs
-	sessionProcs      map[string]*processInfo // sessionID → live proc for RecordUserInput lookups
+	config             Config
+	restartCh          chan string             // carries sessionID of agent to restart
+	takeControlCh      chan string             // carries sessionID of agent to take control of
+	terminalSignals    map[string]chan terminalSignal // sessionID → its monitorAll's receive channel
+	terminalSignalsMu  sync.Mutex              // protects terminalSignals
+	bumpMessageCh      chan string             // carries sessionID to bump lastMessageTime (hook events)
+	interactiveWaits   map[string]chan struct{} // sessionID → closed when interactive session completes
+	mu                 sync.Mutex              // protects interactiveWaits
+	sessionProcsMu     sync.Mutex              // protects sessionProcs
+	sessionProcs       map[string]*processInfo // sessionID → live proc for RecordUserInput lookups
 }
 
 // SpawnRequest contains parameters for spawning an agent
@@ -283,7 +285,7 @@ func New(config Config) *Spawner {
 		config:           config,
 		restartCh:        make(chan string, 1),
 		takeControlCh:    make(chan string, 1),
-		terminalSignalCh: make(chan terminalSignal, 1),
+		terminalSignals:  make(map[string]chan terminalSignal),
 		bumpMessageCh:    make(chan string, 1),
 		interactiveWaits: make(map[string]chan struct{}),
 		sessionProcs:     make(map[string]*processInfo),
@@ -310,12 +312,38 @@ func (s *Spawner) RequestTakeControl(sessionID string) {
 
 // RequestTerminalSignal kills the matching agent so monitorAll exits the
 // natural-exit wait and handleCompletion reads the DB result already written
-// by the socket handler. Non-blocking: silently dropped when channel is full.
+// by the socket handler. Routes the signal to the specific monitorAll
+// goroutine that owns this sessionID, so concurrent monitorAlls cannot
+// steal each other's signals. No-op if the session is not registered
+// (already finished or never started). Non-blocking on the channel send.
 func (s *Spawner) RequestTerminalSignal(sessionID, result string) {
+	s.terminalSignalsMu.Lock()
+	ch, ok := s.terminalSignals[sessionID]
+	s.terminalSignalsMu.Unlock()
+	if !ok {
+		return
+	}
 	select {
-	case s.terminalSignalCh <- terminalSignal{SessionID: sessionID, Result: result}:
+	case ch <- terminalSignal{SessionID: sessionID, Result: result}:
 	default:
 	}
+}
+
+// registerTerminalSignal binds sessionID to ch in the registry so
+// RequestTerminalSignal(sessionID, ...) routes to ch. Used by monitorAll
+// at start and on continuation-relaunch to track new session IDs.
+func (s *Spawner) registerTerminalSignal(sessionID string, ch chan terminalSignal) {
+	s.terminalSignalsMu.Lock()
+	s.terminalSignals[sessionID] = ch
+	s.terminalSignalsMu.Unlock()
+}
+
+// unregisterTerminalSignal removes sessionID from the registry. Subsequent
+// RequestTerminalSignal calls for this sessionID become no-ops.
+func (s *Spawner) unregisterTerminalSignal(sessionID string) {
+	s.terminalSignalsMu.Lock()
+	delete(s.terminalSignals, sessionID)
+	s.terminalSignalsMu.Unlock()
 }
 
 // BumpLastMessage sends a non-blocking signal to monitorAll to update
@@ -327,6 +355,28 @@ func (s *Spawner) BumpLastMessage(sessionID string) {
 	case s.bumpMessageCh <- sessionID:
 	default:
 	}
+}
+
+// SetLastMessage updates proc.lastMessage for the matching session so the
+// status log line ("agent status ... last_msg=...") shows the most recent
+// agent output. Interactive CLI mode otherwise leaves lastMessage empty
+// because the PTY ferry drops bytes — hook events / SSE events feed content
+// here directly. Also bumps lastMessageTime + hasReceivedMessage (same as
+// BumpLastMessage) so stall/idle detection treats this as activity.
+// No-op when the session is unknown or content is empty.
+func (s *Spawner) SetLastMessage(sessionID, content string) {
+	if content == "" {
+		return
+	}
+	proc := s.lookupSessionProc(sessionID)
+	if proc == nil {
+		return
+	}
+	proc.messagesMutex.Lock()
+	proc.lastMessage = content
+	proc.lastMessageTime = s.config.Clock.Now()
+	proc.hasReceivedMessage = true
+	proc.messagesMutex.Unlock()
 }
 
 // MarkSessionReady closes the matching proc's sessionStartCh — the canonical
@@ -938,6 +988,36 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 	copy(running, processes)
 	var completed []*processInfo
 
+	// Per-monitorAll terminal-signal channel. Each session registered against
+	// this channel routes its RequestTerminalSignal sends here, so concurrent
+	// monitorAll goroutines cannot steal each other's signals.
+	// Buffer large enough for all initial procs plus a margin for relaunches.
+	ownTerminalCh := make(chan terminalSignal, len(processes)+4)
+	registeredSessions := make(map[string]struct{}, len(processes))
+	for _, proc := range processes {
+		s.registerTerminalSignal(proc.sessionID, ownTerminalCh)
+		registeredSessions[proc.sessionID] = struct{}{}
+	}
+	defer func() {
+		for sid := range registeredSessions {
+			s.unregisterTerminalSignal(sid)
+		}
+	}()
+	// relaunchAndRegister wraps relaunchForContinuation to keep the
+	// terminal-signal registry in sync across continuation relaunches:
+	// drop the old session ID and bind the new one to ownTerminalCh.
+	relaunchAndRegister := func(oldProc *processInfo) (*processInfo, error) {
+		newProc, err := s.relaunchForContinuation(ctx, oldProc, req, phase)
+		if err != nil {
+			return nil, err
+		}
+		s.unregisterTerminalSignal(oldProc.sessionID)
+		delete(registeredSessions, oldProc.sessionID)
+		s.registerTerminalSignal(newProc.sessionID, ownTerminalCh)
+		registeredSessions[newProc.sessionID] = struct{}{}
+		return newProc, nil
+	}
+
 	for len(running) > 0 {
 		// Check for context cancellation or manual restart signal
 		select {
@@ -1063,9 +1143,10 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				completed = append(completed, proc)
 				break
 			}
-		case sig := <-s.terminalSignalCh:
+		case sig := <-ownTerminalCh:
 			// Terminal signal: DB result already written by socket handler.
 			// Kill the matching agent so handleCompletion reads it on next iteration.
+			// The registry ensures this signal is routed to *our* monitorAll only.
 			for _, proc := range running {
 				if proc.sessionID != sig.SessionID {
 					continue
@@ -1156,7 +1237,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if proc.finalStatus == "CONTINUE" {
 					if proc.restartCount < defaultMaxContinuations {
 						logger.Info(ctx, "continuation relaunching", "model", proc.modelID, "count", proc.restartCount+1, "max", defaultMaxContinuations)
-						newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
+						newProc, err := relaunchAndRegister(proc)
 						if err != nil {
 							logger.Error(ctx, "failed to relaunch", "model", proc.modelID, "err", err)
 							completed = append(completed, proc)
@@ -1184,7 +1265,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						continue
 					}
 					if proc.restartCount < defaultMaxContinuations {
-						newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
+						newProc, err := relaunchAndRegister(proc)
 						if err != nil {
 							logger.Error(ctx, "failed to relaunch after stall", "model", proc.modelID, "err", err)
 							completed = append(completed, proc)
@@ -1217,7 +1298,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 							}
 							proc.failRestartCount++
 							proc.finalStatus = "CONTINUE"
-							newProc, err := s.relaunchForContinuation(ctx, proc, req, phase)
+							newProc, err := relaunchAndRegister(proc)
 							if err != nil {
 								logger.Error(ctx, "failed to relaunch after timeout", "model", proc.modelID, "err", err)
 								completed = append(completed, proc)

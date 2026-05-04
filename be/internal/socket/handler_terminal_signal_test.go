@@ -39,6 +39,10 @@ func (f *fakeTerminalSignaler) BumpLastMessage(projectID, ticketID, workflow, se
 	return nil
 }
 
+func (f *fakeTerminalSignaler) SetLastMessage(projectID, ticketID, workflow, sessionID, content string) error {
+	return nil
+}
+
 func (f *fakeTerminalSignaler) SignalSessionReady(sessionID string) error { return nil }
 
 // insertAgentSession inserts a running agent_sessions row for terminal signal tests.

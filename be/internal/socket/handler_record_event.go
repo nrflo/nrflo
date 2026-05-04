@@ -256,8 +256,12 @@ func (h *Handler) flushCodexAgentMessages(ctx context.Context, req Request, sess
 
 	for _, body := range msgs {
 		// recordSimpleEvent broadcasts messages.updated and bumps stall
-		// detection per row, mirroring the Pre/PostToolUse path.
-		h.recordSimpleEvent(ctx, req, sessionID, truncate(body, 2000), "text")
+		// detection per row, mirroring the Pre/PostToolUse path. No truncation —
+		// matches the non-interactive batch path (TrackMessage) which stores
+		// agent text in full. The 2000-byte cap that used to live here was
+		// silently clipping legitimate model output and never matched the
+		// non-interactive UI behavior.
+		h.recordSimpleEvent(ctx, req, sessionID, body, "text")
 	}
 }
 
@@ -281,6 +285,12 @@ func (h *Handler) recordSimpleEvent(ctx context.Context, req Request, sessionID,
 	if h.signaler != nil {
 		if sigErr := h.signaler.BumpLastMessage(projectID, ticketID, workflowName, sessionID); sigErr != nil {
 			logger.Info(ctx, "record_event: BumpLastMessage error (best-effort)", "error", sigErr)
+		}
+		// Also push the content through SetLastMessage so the periodic
+		// "agent status" log line shows what the agent is doing in
+		// interactive CLI mode (where the PTY ferry drops raw bytes).
+		if sigErr := h.signaler.SetLastMessage(projectID, ticketID, workflowName, sessionID, content); sigErr != nil {
+			logger.Info(ctx, "record_event: SetLastMessage error (best-effort)", "error", sigErr)
 		}
 	}
 	return MakeResponse(req.ID, map[string]string{"status": "recorded"})
@@ -309,10 +319,13 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 		})
 	}
 
-	// Bump stall detection (best-effort)
+	// Bump stall detection (best-effort) and surface tool name in status log
 	if h.signaler != nil {
 		if sigErr := h.signaler.BumpLastMessage(projectID, ticketID, workflowName, sessionID); sigErr != nil {
 			logger.Info(ctx, "record_event: BumpLastMessage error (best-effort)", "error", sigErr)
+		}
+		if sigErr := h.signaler.SetLastMessage(projectID, ticketID, workflowName, sessionID, content); sigErr != nil {
+			logger.Info(ctx, "record_event: SetLastMessage error (best-effort)", "error", sigErr)
 		}
 	}
 
@@ -344,10 +357,13 @@ func (h *Handler) recordPostToolUse(ctx context.Context, req Request, sessionID 
 		})
 	}
 
-	// Bump stall detection (best-effort)
+	// Bump stall detection (best-effort) and surface tool result in status log
 	if h.signaler != nil {
 		if sigErr := h.signaler.BumpLastMessage(projectID, ticketID, workflowName, sessionID); sigErr != nil {
 			logger.Info(ctx, "record_event: BumpLastMessage error (best-effort)", "error", sigErr)
+		}
+		if sigErr := h.signaler.SetLastMessage(projectID, ticketID, workflowName, sessionID, content); sigErr != nil {
+			logger.Info(ctx, "record_event: SetLastMessage error (best-effort)", "error", sigErr)
 		}
 	}
 

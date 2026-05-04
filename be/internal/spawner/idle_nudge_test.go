@@ -236,10 +236,13 @@ func TestCheckIdleNudge_NudgeCapReached_RecentLastNudge_NoAutoFail(t *testing.T)
 		sessionID:               "sess-recent-nudge",
 	}
 
+	ch := make(chan terminalSignal, 1)
+	s.registerTerminalSignal(proc.sessionID, ch)
+
 	s.checkIdleNudge(context.Background(), proc, SpawnRequest{})
 
 	select {
-	case <-s.terminalSignalCh:
+	case <-ch:
 		t.Error("auto-fail triggered when lastNudgeAt is recent (< idle window)")
 	default:
 	}
@@ -263,10 +266,13 @@ func TestCheckIdleNudge_NudgeCapReached_OldLastNudge_AutoFail(t *testing.T) {
 		sessionID:               "sess-auto-fail",
 	}
 
+	ch := make(chan terminalSignal, 1)
+	s.registerTerminalSignal(proc.sessionID, ch)
+
 	s.checkIdleNudge(context.Background(), proc, SpawnRequest{})
 
 	select {
-	case sig := <-s.terminalSignalCh:
+	case sig := <-ch:
 		if sig.SessionID != "sess-auto-fail" {
 			t.Errorf("signal.SessionID = %q, want 'sess-auto-fail'", sig.SessionID)
 		}
@@ -274,7 +280,7 @@ func TestCheckIdleNudge_NudgeCapReached_OldLastNudge_AutoFail(t *testing.T) {
 			t.Errorf("signal.Result = %q, want 'fail'", sig.Result)
 		}
 	default:
-		t.Error("auto-fail not triggered: terminalSignalCh empty after cap + elapsed idle window")
+		t.Error("auto-fail not triggered: registered channel empty after cap + elapsed idle window")
 	}
 }
 

@@ -323,7 +323,7 @@ Codex hook payloads carry `transcript_path` pointing at the rollout JSONL where 
 
 `extractCodexContextLeft` opens the file on every `agent.record_event` call, scans backwards for the most recent `token_count` record, and returns `100 - 100 * last_token_usage.input_tokens / model_context_window`. `cached_input_tokens` is a subset of `input_tokens` (no double-count). The handler in `handler_record_event.go` runs this opportunistically before the event-name switch and pipes the result through the same `agentSvc.UpdateContextLeft` + `EventAgentContextUpdated` broadcast path used for Claude. Claude hook payloads carry no `transcript_path` so the helper is a no-op for them. Best-effort: missing/unreadable file or no `token_count` record yet → silently skipped, no error to caller. Low-context restart now trips for codex interactive sessions on the next hook fire after a relaunch threshold is crossed. Opencode uses the SSE consumer path (see "Opencode SSE Consumer" below) instead of hooks for context tracking.
 
-**Agent text** (`extractCodexNewAgentMessages`): per-turn `event_msg/agent_message` records, flushed on `Stop`. Codex's hook events expose tool I/O (Pre/PostToolUse) and user input (UserPromptSubmit) but never the model's own spoken output — that lives in the JSONL only. On every `Stop` hook, `Handler.flushCodexAgentMessages` reads bytes since the per-session offset (in-memory `Handler.codexJSONLOffsets`, mutex-guarded) and emits each `agent_message` body as an `agent_messages` row (category `text`, truncated to 2000 bytes) via the same `recordSimpleEvent` path used for hooks. Phase tags (`commentary` / `final_answer`) are dropped — the body usually makes its role clear and the tag adds noise. Offsets are not persisted across server restarts; a re-flush after restart is acceptable noise. File rotation/truncation (file shorter than tracked offset) resets the offset to 0.
+**Agent text** (`extractCodexNewAgentMessages`): per-turn `event_msg/agent_message` records, flushed on `Stop`. Codex's hook events expose tool I/O (Pre/PostToolUse) and user input (UserPromptSubmit) but never the model's own spoken output — that lives in the JSONL only. On every `Stop` hook, `Handler.flushCodexAgentMessages` reads bytes since the per-session offset (in-memory `Handler.codexJSONLOffsets`, mutex-guarded) and emits each `agent_message` body as an `agent_messages` row (category `text`) via the same `recordSimpleEvent` path used for hooks. The body is stored in full — the previous 2000-byte cap silently clipped legitimate model output and never matched the non-interactive `TrackMessage` path which stores agent text untruncated. Phase tags (`commentary` / `final_answer`) are dropped — the body usually makes its role clear and the tag adds noise. Offsets are not persisted across server restarts; a re-flush after restart is acceptable noise. File rotation/truncation (file shorter than tracked offset) resets the offset to 0.
 
 **Reasoning is NOT extracted.** Codex 0.125 emits `response_item/reasoning` records with `summary: []`, `content: null`, and only an opaque `encrypted_content` blob (verified across 109 reasoning items in real sessions; 0/109 had plaintext). Reasoning text is encrypted server-side by OpenAI and not decryptable client-side. If codex eventually exposes a `reasoning_summary` text field, this extractor can be extended.
 
@@ -495,18 +495,31 @@ messages.updated events are coalesced to one per session per 2s window.
      belt-and-suspenders fallback
 
 8. TERMINAL SIGNAL (kill accelerator after DB write)
-   - `terminalSignalCh` (capacity 1) receives a `terminalSignal{SessionID, Result}` from
-     the socket handler via `RequestTerminalSignal(sessionID, result)` AFTER the DB
-     result has already been written and the WS broadcast sent.
-   - `monitorAll` case: find the proc with matching sessionID in `running`, kill with
-     SIGTERM → grace period → SIGKILL (same pattern as take-control), wait for doneCh.
-   - No DB writes, no WS broadcasts, no finalStatus override — handleCompletion reads
-     the DB result on the next poll iteration (doneCh is already closed).
-   - Non-matching sessionID is a no-op (agent may have already exited naturally).
-   - Non-blocking send (select/default): silently dropped when channel is full
-     (another signal already pending).
-   - All backends supported (no SupportsTakeControl gate); the goal is just to unblock
-     monitorAll quickly instead of waiting for the agent process to notice its own result.
+   - Per-session registry `terminalSignals map[sessionID]chan terminalSignal`
+     (protected by `terminalSignalsMu`). Each `monitorAll` creates one buffered
+     `ownTerminalCh` and registers all of its procs (initial + relaunched) against
+     it via `registerTerminalSignal(sessionID, ownTerminalCh)`.
+   - `RequestTerminalSignal(sessionID, result)` from the socket handler looks up
+     the channel for that exact session and sends to it (non-blocking). If the
+     session is not registered (already finished, or never started), the call is
+     a silent no-op — there is no shared channel that another `monitorAll` can
+     drain by mistake.
+   - `monitorAll` case: receive on `ownTerminalCh` (signal is guaranteed to be
+     for one of *our* procs); find the matching proc in `running`, kill with
+     SIGTERM → grace period → SIGKILL (same pattern as take-control), wait for
+     doneCh. No DB writes, no WS broadcasts, no finalStatus override —
+     handleCompletion reads the DB result on the next poll iteration.
+   - Continuation relaunches go through `relaunchAndRegister` which unregisters
+     the old session ID and registers the new one against the same `ownTerminalCh`.
+   - All backends supported (no SupportsTakeControl gate); the goal is just to
+     unblock monitorAll quickly instead of waiting for the agent process to
+     notice its own result.
+   - Why per-session and not a shared channel: with multiple agents in the same
+     layer running concurrently, each Spawn() call has its own `monitorAll`
+     goroutine, but they share the same Spawner. A shared `terminalSignalCh`
+     could be drained by any of those goroutines first; if the receiver did not
+     own the signal's session, the kill silently dropped and the agent waited
+     until idle/nudge or stall detection picked it up minutes later.
 ```
 
 ## Public Helper Methods

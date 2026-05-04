@@ -221,6 +221,10 @@ func (ss *spawnerSink) BumpLastMessage(sessionID string) {
 	ss.s.BumpLastMessage(sessionID)
 }
 
+func (ss *spawnerSink) SetLastMessage(sessionID, content string) {
+	ss.s.SetLastMessage(sessionID, content)
+}
+
 func (ss *spawnerSink) OnTurnComplete(sessionID string) {
 	// Reset idle window by bumping the last-message timestamp.
 	ss.s.BumpLastMessage(sessionID)

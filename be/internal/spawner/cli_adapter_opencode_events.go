@@ -188,6 +188,7 @@ func handleToolPart(ctx context.Context, part map[string]interface{}, sessionID 
 			sink.BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID)
 		}
 		sink.BumpLastMessage(sessionID)
+		sink.SetLastMessage(sessionID, content)
 
 	case "completed":
 		output, _ := partState["output"].(string)
@@ -201,6 +202,7 @@ func handleToolPart(ctx context.Context, part map[string]interface{}, sessionID 
 			sink.BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID)
 		}
 		sink.BumpLastMessage(sessionID)
+		sink.SetLastMessage(sessionID, content)
 	}
 }
 
@@ -255,6 +257,7 @@ func handleMessageUpdated(ctx context.Context, props map[string]interface{}, ses
 				sink.BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID)
 			}
 			sink.BumpLastMessage(sessionID)
+			sink.SetLastMessage(sessionID, text)
 		}
 	}
 

@@ -44,6 +44,7 @@ func (s *opencodeTestSink) BumpLastMessage(sessionID string) {
 	s.bumpCount++
 	s.mu.Unlock()
 }
+func (s *opencodeTestSink) SetLastMessage(sessionID, content string) {}
 func (s *opencodeTestSink) OnTurnComplete(sessionID string) {
 	s.mu.Lock()
 	s.turnCompletes++

@@ -17,6 +17,7 @@ type bumpRecordSignaler struct {
 
 func (b *bumpRecordSignaler) RequestTerminalSignal(_, _, _, _, _ string) error { return nil }
 func (b *bumpRecordSignaler) SignalSessionReady(_ string) error                 { return nil }
+func (b *bumpRecordSignaler) SetLastMessage(_, _, _, _, _ string) error         { return nil }
 func (b *bumpRecordSignaler) BumpLastMessage(_, _, _, sessionID string) error {
 	b.bumps = append(b.bumps, sessionID)
 	return nil

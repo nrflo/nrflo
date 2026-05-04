@@ -111,6 +111,10 @@ type Sink interface {
 	UpdateContextLeft(sessionID string, pct int) (projectID, ticketID, workflowName string, err error)
 	// BumpLastMessage resets stall/idle detection timestamp for the session.
 	BumpLastMessage(sessionID string)
+	// SetLastMessage updates proc.lastMessage so the periodic "agent status"
+	// log line surfaces SSE/hook content. Empty content or unknown session
+	// is a no-op.
+	SetLastMessage(sessionID, content string)
 	// OnTurnComplete signals end of an assistant turn (e.g. session.idle event).
 	OnTurnComplete(sessionID string)
 	// BroadcastMessagesUpdated broadcasts a messages.updated WS event.

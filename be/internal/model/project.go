@@ -16,7 +16,8 @@ type Project struct {
 	UseGitWorktrees  bool   `json:"use_git_worktrees"`
 	ClaudeSafetyHook  string `json:"-"` // Loaded from config table, not projects table
 	PushAfterMerge    bool   `json:"-"` // Loaded from config table, not projects table
-	InteractiveCLIMode bool  `json:"-"` // Loaded from config table, not projects table
+	InteractiveCLIMode  bool   `json:"-"` // Loaded from config table, not projects table
+	CustomerConfigDir   string `json:"-"` // Loaded from config table, not projects table
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 }
@@ -38,6 +39,11 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		claudeSafetyHook = &p.ClaudeSafetyHook
 	}
 
+	var customerConfigDir *string
+	if p.CustomerConfigDir != "" {
+		customerConfigDir = &p.CustomerConfigDir
+	}
+
 	return json.Marshal(&struct {
 		ID                 string    `json:"id"`
 		Name               string    `json:"name"`
@@ -46,6 +52,7 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		UseGitWorktrees    bool      `json:"use_git_worktrees"`
 		PushAfterMerge     bool      `json:"push_after_merge"`
 		InteractiveCLIMode bool      `json:"interactive_cli_mode"`
+		CustomerConfigDir  *string   `json:"customer_config_dir"`
 		ClaudeSafetyHook   *string   `json:"claude_safety_hook"`
 		CreatedAt          time.Time `json:"created_at"`
 		UpdatedAt          time.Time `json:"updated_at"`
@@ -57,6 +64,7 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		UseGitWorktrees:    p.UseGitWorktrees,
 		PushAfterMerge:     p.PushAfterMerge,
 		InteractiveCLIMode: p.InteractiveCLIMode,
+		CustomerConfigDir:  customerConfigDir,
 		ClaudeSafetyHook:   claudeSafetyHook,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,

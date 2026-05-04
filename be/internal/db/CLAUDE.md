@@ -360,10 +360,51 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    INDEX idx_notification_deliveries_status (status, next_attempt_at)│
 │    INDEX idx_notification_deliveries_channel (channel_id, created_at DESC)│
 │                                                                      │
+│  NRVAPP_REVIEW_ITEMS                                  (mig 000072)   │
+│    id            TEXT PRIMARY KEY (rev-xxxxxx)                       │
+│    project_id    TEXT NOT NULL (FK → projects.id CASCADE)            │
+│    tool_name     TEXT NOT NULL                                       │
+│    session_id    TEXT           (nullable agent session reference)   │
+│    input         TEXT NOT NULL  (tool input JSON)                    │
+│    output        TEXT           (tool output; nullable)              │
+│    draft         TEXT           (human-edited draft; nullable)       │
+│    status        TEXT NOT NULL DEFAULT 'pending'                     │
+│                  CHECK (pending|approved|rejected)                   │
+│    reject_reason TEXT           (nullable)                           │
+│    created_at    TEXT NOT NULL                                       │
+│    updated_at    TEXT NOT NULL                                       │
+│    approved_at   TEXT           (nullable, set on Approve)           │
+│    INDEX idx_nrvapp_review_items_lookup (project_id, status, created_at DESC)│
+│                                                                      │
+│  NRVAPP_TOOL_DISPATCHES                               (mig 000073)   │
+│    id            TEXT PRIMARY KEY (disp-xxxxxx)                     │
+│    project_id    TEXT NOT NULL (FK → projects.id CASCADE)            │
+│    session_id    TEXT           (nullable)                           │
+│    tool_name     TEXT NOT NULL                                       │
+│    input         TEXT NOT NULL                                       │
+│    output        TEXT           (nullable)                           │
+│    status        TEXT NOT NULL CHECK (success|error)                 │
+│    error_msg     TEXT           (nullable)                           │
+│    duration_ms   INTEGER NOT NULL                                    │
+│    created_at    TEXT NOT NULL                                       │
+│    INDEX idx_nrvapp_tool_dispatches_lookup (project_id, tool_name, created_at)│
+│                                                                      │
+│  NRVAPP_CONFIG_VERSIONS                               (mig 000074)   │
+│    id            INTEGER PRIMARY KEY AUTOINCREMENT                   │
+│    project_id    TEXT NOT NULL (FK → projects.id CASCADE)            │
+│    file          TEXT NOT NULL (config file path/name)               │
+│    version       INTEGER NOT NULL (auto-incremented per project+file)│
+│    content       BLOB NOT NULL                                       │
+│    actor         TEXT           (nullable, who made the change)      │
+│    created_at    TEXT NOT NULL                                       │
+│    UNIQUE INDEX idx_nrvapp_config_versions_unique (project_id, file, version)│
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Adding a Database Migration
+
+Current highest migration: **000074** (nrvapp_config_versions)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

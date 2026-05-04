@@ -160,7 +160,10 @@ be/
 │   │   ├── daily_stats.go
 │   │   ├── event_log.go         # WS event log persistence (append, query, cleanup)
 │   │   ├── scheduled_task.go    # ScheduledTask CRUD + ListEnabled + UpdateTriggerTimestamps
-│   │   └── schedule_run.go      # ScheduleRun Insert/UpdateStatus/ListByTask/Get
+│   │   ├── schedule_run.go      # ScheduleRun Insert/UpdateStatus/ListByTask/Get
+│   │   ├── nrvapp_review.go     # NrvappReviewRepo: Insert/Get/List/UpdateDraft/Approve/Reject
+│   │   ├── nrvapp_dispatch.go   # NrvappDispatchRepo: Insert/ListSummary/EditRateByTool/Throughput
+│   │   └── nrvapp_config_version.go # NrvappConfigVersionRepo: Insert (tx, auto-version)/LatestVersion/Get/History
 │   ├── types/                   # Shared request/response types
 │   │   ├── request.go
 │   │   ├── chain_request.go     # Chain create/update request types
@@ -243,6 +246,7 @@ The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.
 | `claude_safety_hook` | string (JSON) | Safety hook config — blocks dangerous commands via `--settings` |
 | `push_after_merge` | bool | Push default branch to origin after successful worktree merge |
 | `interactive_cli_mode` | bool | Enable interactive terminal mode for CLI agents (consumed by T3) |
+| `customer_config_dir` | string (abs path) | Absolute path to an existing directory containing customer config files; validated on PATCH (must be absolute, must exist, must be a directory) |
 
 ## Package Documentation
 

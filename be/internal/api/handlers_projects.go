@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"be/internal/model"
 	"be/internal/repo"
@@ -34,6 +36,14 @@ func (s *Server) loadInteractiveCLIMode(p *model.Project) {
 	}
 }
 
+// loadCustomerConfigDir loads the customer_config_dir config for a project and sets it on the model.
+func (s *Server) loadCustomerConfigDir(p *model.Project) {
+	val, err := s.pool.GetProjectConfig(p.ID, "customer_config_dir")
+	if err == nil {
+		p.CustomerConfigDir = val
+	}
+}
+
 // handleListProjects returns all projects
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	projectRepo := s.projectRepo()
@@ -52,6 +62,7 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 		s.loadSafetyHook(p)
 		s.loadPushAfterMerge(p)
 		s.loadInteractiveCLIMode(p)
+		s.loadCustomerConfigDir(p)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -129,6 +140,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	s.loadSafetyHook(created)
 	s.loadPushAfterMerge(created)
 	s.loadInteractiveCLIMode(created)
+	s.loadCustomerConfigDir(created)
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -147,6 +159,7 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 	s.loadSafetyHook(project)
 	s.loadPushAfterMerge(project)
 	s.loadInteractiveCLIMode(project)
+	s.loadCustomerConfigDir(project)
 
 	writeJSON(w, http.StatusOK, project)
 }
@@ -172,6 +185,7 @@ type UpdateProjectRequest struct {
 	UseGitWorktrees    *bool   `json:"use_git_worktrees,omitempty"`
 	PushAfterMerge     *bool   `json:"push_after_merge,omitempty"`
 	InteractiveCLIMode *bool   `json:"interactive_cli_mode,omitempty"`
+	CustomerConfigDir  *string `json:"customer_config_dir,omitempty"`
 	ClaudeSafetyHook   *string `json:"claude_safety_hook,omitempty"`
 }
 
@@ -239,6 +253,30 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Handle customer_config_dir config (stored in config table, not projects table)
+	if req.CustomerConfigDir != nil {
+		dirVal := *req.CustomerConfigDir
+		if dirVal != "" {
+			if !filepath.IsAbs(dirVal) {
+				writeError(w, http.StatusBadRequest, "customer_config_dir must be an absolute path")
+				return
+			}
+			info, err := os.Stat(dirVal)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "customer_config_dir path does not exist: "+err.Error())
+				return
+			}
+			if !info.IsDir() {
+				writeError(w, http.StatusBadRequest, "customer_config_dir must be a directory, not a file")
+				return
+			}
+		}
+		if err := s.pool.SetProjectConfig(id, "customer_config_dir", dirVal); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to save customer_config_dir config: "+err.Error())
+			return
+		}
+	}
+
 	updated, err := projectRepo.Get(id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -248,6 +286,7 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 	s.loadSafetyHook(updated)
 	s.loadPushAfterMerge(updated)
 	s.loadInteractiveCLIMode(updated)
+	s.loadCustomerConfigDir(updated)
 
 	writeJSON(w, http.StatusOK, updated)
 }

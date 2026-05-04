@@ -54,7 +54,7 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 	database.Close()
 
 	// Start server with WS, subscribe to all tickets in project
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, "")
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, "")
 
 	// Close the blocker ticket
 	body := `{"reason":"Completed"}`
@@ -62,7 +62,7 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 	database.Close()
 
 	// Start server with WS, subscribe to all tickets in project
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, "")
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, "")
 
 	// Close the blocker ticket
 	body := `{"reason":"Done"}`
@@ -150,7 +150,7 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestCloseBlockerWithClosedDependent(t *testing.T) {
 	database.Close()
 
 	// Start server with WS, subscribe to all tickets in project
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, "")
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, "")
 
 	// Close the blocker ticket
 	body := `{"reason":"Done"}`
@@ -247,7 +247,7 @@ func TestCloseBlockerWithClosedDependent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestCloseBlockerGetBlockedErrorHandling(t *testing.T) {
 	}
 	database.Close()
 
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, ticketID)
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, ticketID)
 
 	// Close the ticket - should succeed despite GetBlocked error
 	body := `{"reason":"Done"}`
@@ -318,7 +318,7 @@ func TestCloseBlockerGetBlockedErrorHandling(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -396,13 +396,13 @@ func TestReopenBlockerDoesNotBroadcastUnblockEvents(t *testing.T) {
 	database.Close()
 
 	// Start server with WS, subscribe to all tickets in project
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, "")
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, "")
 
 	// Reopen the blocker
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+blockerID+"/reopen", nil)
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -447,7 +447,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Start server with WS, subscribe to all tickets in project
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, "")
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, "")
 
 	// Step 1: Create blocker ticket
 	body := fmt.Sprintf(`{"id":"%s","title":"Blocker ticket","created_by":"tester"}`, blockerID)
@@ -455,7 +455,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create blocker: %v", err)
 	}
@@ -468,7 +468,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create dependent: %v", err)
 	}
@@ -481,7 +481,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to add dependency: %v", err)
 	}
@@ -495,7 +495,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/"+dependentID, nil)
 	req.Header.Set("X-Project", projectID)
 
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get dependent ticket: %v", err)
 	}
@@ -514,7 +514,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to close blocker: %v", err)
 	}
@@ -542,7 +542,7 @@ func TestCloseBlockerE2E(t *testing.T) {
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/"+dependentID+"/dependencies", nil)
 	req.Header.Set("X-Project", projectID)
 
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get dependencies: %v", err)
 	}

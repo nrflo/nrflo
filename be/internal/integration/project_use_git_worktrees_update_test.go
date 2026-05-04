@@ -19,13 +19,13 @@ func TestUpdateProjectToggleUseGitWorktrees(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project without use_git_worktrees (defaults to false)
 	createBody := `{"id":"toggle-proj","name":"Toggle Project"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestUpdateProjectToggleUseGitWorktrees(t *testing.T) {
 	updateBody := `{"use_git_worktrees":true}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/toggle-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestUpdateProjectToggleUseGitWorktrees(t *testing.T) {
 	updateBody2 := `{"use_git_worktrees":false}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/toggle-proj", bytes.NewBufferString(updateBody2))
 	req.Header.Set("Content-Type", "application/json")
-	resp2, err := http.DefaultClient.Do(req)
+	resp2, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("update request 2 failed: %v", err)
 	}
@@ -128,13 +128,13 @@ func TestUpdateProjectWithoutUseGitWorktreesDoesNotReset(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with use_git_worktrees=true
 	createBody := `{"id":"no-reset-proj","name":"No Reset Project","use_git_worktrees":true}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestUpdateProjectWithoutUseGitWorktreesDoesNotReset(t *testing.T) {
 	updateBody := `{"name":"Updated Name"}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/no-reset-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -197,13 +197,13 @@ func TestUpdateProjectMultipleFieldsIncludingUseGitWorktrees(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with some fields
 	createBody := `{"id":"multi-field-proj","name":"Multi Field Project","default_branch":"main"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestUpdateProjectMultipleFieldsIncludingUseGitWorktrees(t *testing.T) {
 	updateBody := `{"name":"Updated Multi","default_branch":"develop","use_git_worktrees":true}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/multi-field-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -248,13 +248,13 @@ func TestProjectUseGitWorktreesEndToEnd(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Step 1: Create project with use_git_worktrees=true
 	createBody := `{"id":"e2e-worktrees","name":"E2E Worktrees","use_git_worktrees":true,"default_branch":"main"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -267,7 +267,7 @@ func TestProjectUseGitWorktreesEndToEnd(t *testing.T) {
 
 	// Step 2: GET project and verify all fields
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/e2e-worktrees", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestProjectUseGitWorktreesEndToEnd(t *testing.T) {
 	updateBody := `{"use_git_worktrees":false}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/e2e-worktrees", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestProjectUseGitWorktreesEndToEnd(t *testing.T) {
 
 	// Step 4: GET again and verify update persisted
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/e2e-worktrees", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get2 request failed: %v", err)
 	}
@@ -327,7 +327,7 @@ func TestProjectUseGitWorktreesEndToEnd(t *testing.T) {
 
 	// Step 5: List projects and verify it appears correctly
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -381,12 +381,12 @@ func TestMigrationExistingProjectsHaveUseGitWorktreesFalse(t *testing.T) {
 	database.Close()
 
 	// Create a project via API and verify it defaults to false
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	createBody := `{"id":"migration-test","name":"Migration Test"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}

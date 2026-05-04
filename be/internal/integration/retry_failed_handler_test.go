@@ -17,7 +17,7 @@ import (
 	"be/internal/types"
 )
 
-func doRetryFailed(t *testing.T, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
+func doRetryFailed(t *testing.T, client *http.Client, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
 	t.Helper()
 	bodyJSON, _ := json.Marshal(body)
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+ticketID+"/workflow/retry-failed",
@@ -27,7 +27,7 @@ func doRetryFailed(t *testing.T, baseURL, ticketID, project string, body map[str
 		req.Header.Set("X-Project", project)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -36,7 +36,7 @@ func doRetryFailed(t *testing.T, baseURL, ticketID, project string, body map[str
 	return resp, respBody
 }
 
-func doRetryFailedProject(t *testing.T, baseURL, projectID string, body map[string]string) (*http.Response, []byte) {
+func doRetryFailedProject(t *testing.T, client *http.Client, baseURL, projectID string, body map[string]string) (*http.Response, []byte) {
 	t.Helper()
 	bodyJSON, _ := json.Marshal(body)
 	url := baseURL + "/api/v1/projects/" + projectID + "/workflow/retry-failed"
@@ -47,7 +47,7 @@ func doRetryFailedProject(t *testing.T, baseURL, projectID string, body map[stri
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(bodyJSON))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -80,9 +80,9 @@ func TestRetryFailedHandler_MissingProject(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailed(t, baseURL, "TICK-1", "", map[string]string{
+	resp, body := doRetryFailed(t, client, baseURL, "TICK-1", "", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -106,9 +106,9 @@ func TestRetryFailedHandler_MissingWorkflow(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailed(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRetryFailed(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "",
 		"session_id": "sess-1",
 	})
@@ -132,9 +132,9 @@ func TestRetryFailedHandler_MissingSessionID(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailed(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRetryFailed(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "",
 	})
@@ -158,9 +158,9 @@ func TestRetryFailedHandler_WorkflowNotFound(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailed(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRetryFailed(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "nonexistent",
 		"session_id": "sess-1",
 	})
@@ -181,10 +181,10 @@ func TestRetryFailedHandler_WorkflowNotFailed(t *testing.T) {
 	seedProject(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
 	seedTicketAndWorkflow(t, dbPath, "proj", "TICK-1")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Workflow is active, not failed
-	resp, body := doRetryFailed(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRetryFailed(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -233,9 +233,9 @@ func TestRetryFailedHandler_HappyPath(t *testing.T) {
 	asRepo.Create(session)
 	database.Close()
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailed(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRetryFailed(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-retry-1",
 	})
@@ -273,14 +273,14 @@ func TestRetryFailedHandler_InvalidJSON(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/TICK-1/workflow/retry-failed",
 		bytes.NewBufferString("{invalid json"))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -300,14 +300,14 @@ func TestRetryFailedHandler_EmptyBody(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/TICK-1/workflow/retry-failed",
 		bytes.NewBufferString(""))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -365,9 +365,9 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	asRepo.Create(session)
 	database.Close()
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailedProject(t, baseURL, "proj", map[string]string{
+	resp, body := doRetryFailedProject(t, client, baseURL, "proj", map[string]string{
 		"workflow":    "test",
 		"session_id":  "sess-proj-retry-1",
 		"instance_id": wi.ID,
@@ -405,9 +405,9 @@ func TestRetryFailedProjectHandler_MissingProject(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailedProject(t, baseURL, "", map[string]string{
+	resp, body := doRetryFailedProject(t, client, baseURL, "", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -426,9 +426,9 @@ func TestRetryFailedProjectHandler_MissingWorkflow(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailedProject(t, baseURL, "proj", map[string]string{
+	resp, body := doRetryFailedProject(t, client, baseURL, "proj", map[string]string{
 		"workflow":   "",
 		"session_id": "sess-1",
 	})
@@ -446,9 +446,9 @@ func TestRetryFailedProjectHandler_MissingSessionID(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRetryFailedProject(t, baseURL, "proj", map[string]string{
+	resp, body := doRetryFailedProject(t, client, baseURL, "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "",
 	})

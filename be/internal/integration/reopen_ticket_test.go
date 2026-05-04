@@ -20,7 +20,7 @@ type ticketResponse struct {
 	CloseReason *string `json:"close_reason"`
 }
 
-func setupReopenTest(t *testing.T) (baseURL string) {
+func setupReopenTest(t *testing.T) (string, *http.Client) {
 	t.Helper()
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
@@ -34,14 +34,14 @@ func setupReopenTest(t *testing.T) (baseURL string) {
 }
 
 // createTicket creates a ticket and returns the decoded response.
-func createTicket(t *testing.T, baseURL, project, id, title string) ticketResponse {
+func createTicket(t *testing.T, client *http.Client, baseURL, project, id, title string) ticketResponse {
 	t.Helper()
 	body := `{"id":"` + id + `","title":"` + title + `","created_by":"tester"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", project)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create ticket request failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func createTicket(t *testing.T, baseURL, project, id, title string) ticketRespon
 }
 
 // closeTicket closes a ticket with an optional reason.
-func closeTicket(t *testing.T, baseURL, project, id, reason string) ticketResponse {
+func closeTicket(t *testing.T, client *http.Client, baseURL, project, id, reason string) ticketResponse {
 	t.Helper()
 	var body string
 	if reason != "" {
@@ -70,7 +70,7 @@ func closeTicket(t *testing.T, baseURL, project, id, reason string) ticketRespon
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", project)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("close ticket request failed: %v", err)
 	}
@@ -89,12 +89,12 @@ func closeTicket(t *testing.T, baseURL, project, id, reason string) ticketRespon
 }
 
 // reopenTicket sends POST /reopen and returns status code + decoded body.
-func reopenTicket(t *testing.T, baseURL, project, id string) (int, ticketResponse) {
+func reopenTicket(t *testing.T, client *http.Client, baseURL, project, id string) (int, ticketResponse) {
 	t.Helper()
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+id+"/reopen", nil)
 	req.Header.Set("X-Project", project)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("reopen ticket request failed: %v", err)
 	}
@@ -107,16 +107,16 @@ func reopenTicket(t *testing.T, baseURL, project, id string) (int, ticketRespons
 }
 
 func TestReopenTicket(t *testing.T) {
-	baseURL := setupReopenTest(t)
+	baseURL, client := setupReopenTest(t)
 
 	// 1. Create a ticket
-	created := createTicket(t, baseURL, "reopen", "REOPEN-001", "Reopen test ticket")
+	created := createTicket(t, client, baseURL, "reopen", "REOPEN-001", "Reopen test ticket")
 	if created.Status != "open" {
 		t.Fatalf("expected status 'open' after create, got %q", created.Status)
 	}
 
 	// 2. Close it with a reason
-	closed := closeTicket(t, baseURL, "reopen", created.ID, "done")
+	closed := closeTicket(t, client, baseURL, "reopen", created.ID, "done")
 	if closed.Status != "closed" {
 		t.Fatalf("expected status 'closed' after close, got %q", closed.Status)
 	}
@@ -128,7 +128,7 @@ func TestReopenTicket(t *testing.T) {
 	}
 
 	// 3. Reopen it
-	status, reopened := reopenTicket(t, baseURL, "reopen", created.ID)
+	status, reopened := reopenTicket(t, client, baseURL, "reopen", created.ID)
 	if status != http.StatusOK {
 		t.Fatalf("expected 200 on reopen, got %d", status)
 	}
@@ -144,22 +144,22 @@ func TestReopenTicket(t *testing.T) {
 }
 
 func TestReopenTicketNotFound(t *testing.T) {
-	baseURL := setupReopenTest(t)
+	baseURL, client := setupReopenTest(t)
 
-	status, _ := reopenTicket(t, baseURL, "reopen", "NONEXISTENT-999")
+	status, _ := reopenTicket(t, client, baseURL, "reopen", "NONEXISTENT-999")
 	if status != http.StatusNotFound {
 		t.Fatalf("expected 404 for non-existent ticket, got %d", status)
 	}
 }
 
 func TestReopenOpenTicket(t *testing.T) {
-	baseURL := setupReopenTest(t)
+	baseURL, client := setupReopenTest(t)
 
 	// Create a ticket (starts as open)
-	created := createTicket(t, baseURL, "reopen", "REOPEN-002", "Already open ticket")
+	created := createTicket(t, client, baseURL, "reopen", "REOPEN-002", "Already open ticket")
 
 	// Reopen an already-open ticket — should be idempotent
-	status, reopened := reopenTicket(t, baseURL, "reopen", created.ID)
+	status, reopened := reopenTicket(t, client, baseURL, "reopen", created.ID)
 	if status != http.StatusOK {
 		t.Fatalf("expected 200 on reopening open ticket, got %d", status)
 	}
@@ -175,13 +175,13 @@ func TestReopenOpenTicket(t *testing.T) {
 }
 
 func TestReopenTicketClearsCloseReason(t *testing.T) {
-	baseURL := setupReopenTest(t)
+	baseURL, client := setupReopenTest(t)
 
 	// Create, close with reason, reopen, verify reason is cleared
-	created := createTicket(t, baseURL, "reopen", "REOPEN-003", "Reason clearing test")
-	closeTicket(t, baseURL, "reopen", created.ID, "completed implementation")
+	created := createTicket(t, client, baseURL, "reopen", "REOPEN-003", "Reason clearing test")
+	closeTicket(t, client, baseURL, "reopen", created.ID, "completed implementation")
 
-	status, reopened := reopenTicket(t, baseURL, "reopen", created.ID)
+	status, reopened := reopenTicket(t, client, baseURL, "reopen", created.ID)
 	if status != http.StatusOK {
 		t.Fatalf("expected 200, got %d", status)
 	}
@@ -194,16 +194,16 @@ func TestReopenTicketClearsCloseReason(t *testing.T) {
 }
 
 func TestReopenTicketMissingProject(t *testing.T) {
-	baseURL := setupReopenTest(t)
+	baseURL, client := setupReopenTest(t)
 
 	// Create a ticket first
-	created := createTicket(t, baseURL, "reopen", "REOPEN-004", "Missing project test")
+	created := createTicket(t, client, baseURL, "reopen", "REOPEN-004", "Missing project test")
 
 	// Try to reopen without X-Project header
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+created.ID+"/reopen", nil)
 	// No X-Project header
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

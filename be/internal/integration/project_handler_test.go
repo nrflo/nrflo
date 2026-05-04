@@ -20,13 +20,13 @@ func TestCreateProjectWithDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"id":"proj-with-branch","name":"Project with Branch","default_branch":"develop"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -78,13 +78,13 @@ func TestCreateProjectWithoutDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"id":"proj-no-branch","name":"Project without Branch"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -127,13 +127,13 @@ func TestGetProjectReturnsDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with default_branch
 	createBody := `{"id":"get-proj","name":"Get Project","default_branch":"main"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestGetProjectReturnsDefaultBranch(t *testing.T) {
 
 	// GET the project
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/get-proj", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -175,13 +175,13 @@ func TestGetProjectReturnsNullDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project without default_branch
 	createBody := `{"id":"get-proj-null","name":"Get Project Null"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestGetProjectReturnsNullDefaultBranch(t *testing.T) {
 
 	// GET the project
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/get-proj-null", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -223,13 +223,13 @@ func TestListProjectsReturnsDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with default_branch
 	createBody1 := `{"id":"list-proj-1","name":"List Project 1","default_branch":"main"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody1))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request 1 failed: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestListProjectsReturnsDefaultBranch(t *testing.T) {
 	createBody2 := `{"id":"list-proj-2","name":"List Project 2"}`
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody2))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("create request 2 failed: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestListProjectsReturnsDefaultBranch(t *testing.T) {
 
 	// List projects
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -314,13 +314,13 @@ func TestUpdateProjectSetDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project without default_branch
 	createBody := `{"id":"update-proj","name":"Update Project"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -330,7 +330,7 @@ func TestUpdateProjectSetDefaultBranch(t *testing.T) {
 	updateBody := `{"default_branch":"feature-branch"}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/update-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -364,13 +364,13 @@ func TestUpdateProjectClearDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with default_branch
 	createBody := `{"id":"clear-proj","name":"Clear Project","default_branch":"main"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -380,7 +380,7 @@ func TestUpdateProjectClearDefaultBranch(t *testing.T) {
 	updateBody := `{"default_branch":""}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/clear-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -422,13 +422,13 @@ func TestUpdateProjectMultipleFields(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with some fields
 	createBody := `{"id":"multi-proj","name":"Multi Project","default_branch":"main"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestUpdateProjectMultipleFields(t *testing.T) {
 	updateBody := `{"name":"Updated Multi","default_branch":"develop"}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/multi-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -470,13 +470,13 @@ func TestProjectDefaultBranchEndToEnd(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Step 1: Create project with default_branch
 	createBody := `{"id":"e2e-proj","name":"E2E Project","default_branch":"main","root_path":"/tmp/test"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -489,7 +489,7 @@ func TestProjectDefaultBranchEndToEnd(t *testing.T) {
 
 	// Step 2: GET project and verify all fields
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/e2e-proj", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -515,7 +515,7 @@ func TestProjectDefaultBranchEndToEnd(t *testing.T) {
 	updateBody := `{"default_branch":"develop"}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/e2e-proj", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}
@@ -528,7 +528,7 @@ func TestProjectDefaultBranchEndToEnd(t *testing.T) {
 
 	// Step 4: GET again and verify update persisted
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/e2e-proj", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get2 request failed: %v", err)
 	}
@@ -549,7 +549,7 @@ func TestProjectDefaultBranchEndToEnd(t *testing.T) {
 
 	// Step 5: List projects and verify it appears correctly
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}

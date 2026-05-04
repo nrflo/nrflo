@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,7 +39,7 @@ func newStartTestServer(t *testing.T) *Server {
 	}
 	t.Cleanup(func() { pool.Close() })
 	cfg := config.DefaultConfig()
-	return NewServer(cfg, dbPath, t.TempDir(), pool, false)
+	return NewServer(cfg, dbPath, t.TempDir(), pool, false, true)
 }
 
 // waitHTTP polls baseURL until it returns a non-error response or deadline passes.
@@ -99,7 +101,21 @@ func TestServerStart_DefaultHostBindsLocalhost(t *testing.T) {
 	waitHTTP(t, baseURL, 3*time.Second)
 	t.Cleanup(func() { srv.Stop(nil) })
 
-	resp, err := http.Get(baseURL + "/api/v1/projects")
+	jar, _ := cookiejar.New(nil)
+	authClient := &http.Client{Jar: jar}
+	loginReq, _ := http.NewRequest("POST", baseURL+"/api/v1/auth/login",
+		strings.NewReader(`{"email":"admin@nrflo.com","password":"nrfloAdmin"}`))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginResp, err := authClient.Do(loginReq)
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	loginResp.Body.Close()
+	if loginResp.StatusCode != http.StatusOK {
+		t.Fatalf("login status = %d, want 200", loginResp.StatusCode)
+	}
+
+	resp, err := authClient.Get(baseURL + "/api/v1/projects")
 	if err != nil {
 		t.Fatalf("GET /api/v1/projects: %v", err)
 	}

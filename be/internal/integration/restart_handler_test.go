@@ -14,7 +14,7 @@ import (
 	"be/internal/types"
 )
 
-func doRestart(t *testing.T, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
+func doRestart(t *testing.T, client *http.Client, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
 	t.Helper()
 	bodyJSON, _ := json.Marshal(body)
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+ticketID+"/workflow/restart",
@@ -24,7 +24,7 @@ func doRestart(t *testing.T, baseURL, ticketID, project string, body map[string]
 		req.Header.Set("X-Project", project)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -40,9 +40,9 @@ func TestRestartHandler_MissingProject(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRestart(t, baseURL, "TICK-1", "", map[string]string{
+	resp, body := doRestart(t, client, baseURL, "TICK-1", "", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -66,9 +66,9 @@ func TestRestartHandler_MissingWorkflow(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRestart(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRestart(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "",
 		"session_id": "sess-1",
 	})
@@ -92,9 +92,9 @@ func TestRestartHandler_MissingSessionID(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doRestart(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRestart(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "",
 	})
@@ -118,10 +118,10 @@ func TestRestartHandler_WorkflowNotFound(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// No workflow initialized — should get 404
-	resp, body := doRestart(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRestart(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "nonexistent",
 		"session_id": "sess-1",
 	})
@@ -141,10 +141,10 @@ func TestRestartHandler_NoRunningOrchestration(t *testing.T) {
 	seedProject(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
 	seedTicketAndWorkflow(t, dbPath, "proj", "TICK-1")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Workflow exists but no orchestration running
-	resp, body := doRestart(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doRestart(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -168,14 +168,14 @@ func TestRestartHandler_InvalidJSON(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/TICK-1/workflow/restart",
 		bytes.NewBufferString("{invalid json"))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -195,14 +195,14 @@ func TestRestartHandler_EmptyBody(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/TICK-1/workflow/restart",
 		bytes.NewBufferString(""))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

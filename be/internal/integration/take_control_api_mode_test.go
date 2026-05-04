@@ -104,7 +104,7 @@ func TestTakeControlHandler_APIMode_Returns409(t *testing.T) {
 	wfiID := "wfi-api-tc-1"
 
 	seedAPISession(t, dbPath, projectID, ticketID, sessionID, wfiID)
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body, _ := json.Marshal(map[string]string{
 		"workflow":   "api-wf",
@@ -116,7 +116,7 @@ func TestTakeControlHandler_APIMode_Returns409(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestTakeControlProjectHandler_APIMode_Returns409(t *testing.T) {
 	wfiID := "wfi-api-prtc-1"
 
 	seedAPISession(t, dbPath, projectID, ticketID, sessionID, wfiID)
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body, _ := json.Marshal(map[string]string{
 		"workflow":    "api-wf",
@@ -164,7 +164,7 @@ func TestTakeControlProjectHandler_APIMode_Returns409(t *testing.T) {
 		bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestTakeControlHandler_CLIMode_ReachesOrchestrator(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj-cli-tc")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// session_id does not exist at all — isAPISession returns false (err != nil),
 	// so the guard passes and the orchestrator returns 404 (no running orchestration).
@@ -210,7 +210,7 @@ func TestTakeControlHandler_CLIMode_ReachesOrchestrator(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "proj-cli-tc")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}

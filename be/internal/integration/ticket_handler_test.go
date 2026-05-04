@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -19,8 +20,8 @@ import (
 )
 
 // startAPIServer creates a test HTTP API server backed by the given DB path.
-// Returns the base URL and a cleanup function.
-func startAPIServer(t *testing.T, dbPath string) string {
+// Returns the base URL and an authenticated HTTP client (logged in as seeded admin).
+func startAPIServer(t *testing.T, dbPath string) (string, *http.Client) {
 	t.Helper()
 
 	// Find a free port
@@ -34,13 +35,13 @@ func startAPIServer(t *testing.T, dbPath string) string {
 	cfg := config.DefaultConfig()
 	cfg.Server.CORSOrigins = []string{"*"}
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool, false)
+	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool, false, true)
 
 	// Start in background
 	go func() {
@@ -64,7 +65,27 @@ func startAPIServer(t *testing.T, dbPath string) string {
 		srv.Stop(nil)
 	})
 
-	return baseURL
+	return baseURL, loginAdminClient(t, baseURL)
+}
+
+// loginAdminClient creates an http.Client with a cookie jar and logs in as the seeded admin
+// (admin@nrflo.com / nrfloAdmin). The returned client automatically sends the session cookie.
+func loginAdminClient(t *testing.T, baseURL string) *http.Client {
+	t.Helper()
+	jar, _ := cookiejar.New(nil)
+	c := &http.Client{Jar: jar}
+	body := bytes.NewBufferString(`{"email":"admin@nrflo.com","password":"nrfloAdmin"}`)
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/auth/login", body)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatalf("loginAdminClient: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("loginAdminClient: status %d, want 200", resp.StatusCode)
+	}
+	return c
 }
 
 // seedProject inserts a project directly into the DB.
@@ -95,14 +116,14 @@ func TestCreateTicketWithExplicitID(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "myproj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"id":"MYPROJ-001","title":"Explicit ID ticket","created_by":"tester"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "myproj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -138,7 +159,7 @@ func TestCreateTicketAutoGeneratesID(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "myproj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// No "id" field in request body
 	body := `{"title":"Auto ID ticket","created_by":"tester"}`
@@ -146,7 +167,7 @@ func TestCreateTicketAutoGeneratesID(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "myproj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -184,7 +205,7 @@ func TestCreateTicketAutoIDWithEmptyString(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Explicitly pass empty string for id
 	body := `{"id":"","title":"Empty ID ticket","created_by":"tester"}`
@@ -192,7 +213,7 @@ func TestCreateTicketAutoIDWithEmptyString(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -223,7 +244,7 @@ func TestCreateTicketAutoIDUnique(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "uniq")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create two tickets without IDs, verify they get different IDs
 	ids := make(map[string]bool)
@@ -233,7 +254,7 @@ func TestCreateTicketAutoIDUnique(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Project", "uniq")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("request %d failed: %v", i, err)
 		}
@@ -271,14 +292,14 @@ func TestCreateTicketMissingTitle(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "errproj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"created_by":"tester"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "errproj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -304,14 +325,14 @@ func TestCreateTicketMissingCreatedBy(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "errproj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"title":"No creator"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "errproj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -336,14 +357,14 @@ func TestCreateTicketMissingProject(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"title":"No project","created_by":"tester"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	// No X-Project header
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -363,7 +384,7 @@ func TestCreateTicketDefaultsApplied(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "defaults")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Minimal request - should get default priority and issue_type
 	body := `{"id":"DEF-001","title":"Defaults test","created_by":"tester"}`
@@ -371,7 +392,7 @@ func TestCreateTicketDefaultsApplied(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "defaults")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -407,7 +428,7 @@ func TestGetEpicTicketWithChildren(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "epic-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create an epic ticket
 	epicBody := `{"id":"EPIC-001","title":"Epic Ticket","issue_type":"epic","priority":1,"created_by":"tester"}`
@@ -415,7 +436,7 @@ func TestGetEpicTicketWithChildren(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "epic-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create epic: %v", err)
 	}
@@ -429,7 +450,7 @@ func TestGetEpicTicketWithChildren(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child1Body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "epic-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create child 1: %v", err)
 	}
@@ -443,7 +464,7 @@ func TestGetEpicTicketWithChildren(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child2Body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "epic-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create child 2: %v", err)
 	}
@@ -455,7 +476,7 @@ func TestGetEpicTicketWithChildren(t *testing.T) {
 	// GET the epic and verify children are returned
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/EPIC-001", nil)
 	req.Header.Set("X-Project", "epic-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get epic: %v", err)
 	}
@@ -507,7 +528,7 @@ func TestGetEpicTicketWithNoChildren(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "empty-epic")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create an epic with no children
 	epicBody := `{"id":"LONELY-EPIC","title":"Epic Without Children","issue_type":"epic","created_by":"tester"}`
@@ -515,7 +536,7 @@ func TestGetEpicTicketWithNoChildren(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "empty-epic")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create epic: %v", err)
 	}
@@ -527,7 +548,7 @@ func TestGetEpicTicketWithNoChildren(t *testing.T) {
 	// GET the epic
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/LONELY-EPIC", nil)
 	req.Header.Set("X-Project", "empty-epic")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get epic: %v", err)
 	}
@@ -564,7 +585,7 @@ func TestGetNonEpicTicketHasEmptyChildrenArray(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "task-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create a non-epic ticket (task)
 	taskBody := `{"id":"TASK-001","title":"Regular Task","issue_type":"task","created_by":"tester"}`
@@ -572,7 +593,7 @@ func TestGetNonEpicTicketHasEmptyChildrenArray(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "task-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create task: %v", err)
 	}
@@ -584,7 +605,7 @@ func TestGetNonEpicTicketHasEmptyChildrenArray(t *testing.T) {
 	// GET the task
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/TASK-001", nil)
 	req.Header.Set("X-Project", "task-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get task: %v", err)
 	}
@@ -625,7 +646,7 @@ func TestGetBugTicketHasEmptyChildrenArray(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "bug-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create a bug ticket
 	bugBody := `{"id":"BUG-001","title":"Bug Ticket","issue_type":"bug","created_by":"tester"}`
@@ -633,7 +654,7 @@ func TestGetBugTicketHasEmptyChildrenArray(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "bug-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create bug: %v", err)
 	}
@@ -645,7 +666,7 @@ func TestGetBugTicketHasEmptyChildrenArray(t *testing.T) {
 	// GET the bug
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/BUG-001", nil)
 	req.Header.Set("X-Project", "bug-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get bug: %v", err)
 	}
@@ -686,14 +707,14 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "order-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create epic
 	epicBody := `{"id":"ORDER-EPIC","title":"Test Ordering","issue_type":"epic","created_by":"tester"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(epicBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "order-proj")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create epic: %v", err)
 	}
@@ -704,7 +725,7 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child1Body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "order-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create C1: %v", err)
 	}
@@ -717,7 +738,7 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child2Body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "order-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create C2: %v", err)
 	}
@@ -730,7 +751,7 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child3Body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "order-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create C3: %v", err)
 	}
@@ -743,7 +764,7 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child4Body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "order-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create C4: %v", err)
 	}
@@ -752,7 +773,7 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	// GET epic and verify order
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/ORDER-EPIC", nil)
 	req.Header.Set("X-Project", "order-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get epic: %v", err)
 	}
@@ -787,14 +808,14 @@ func TestGetEpicCaseInsensitiveParentLookup(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "case-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create epic with mixed case
 	epicBody := `{"id":"MixedCase-Epic","title":"Case Test","issue_type":"epic","created_by":"tester"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(epicBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "case-proj")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create epic: %v", err)
 	}
@@ -805,7 +826,7 @@ func TestGetEpicCaseInsensitiveParentLookup(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(childBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "case-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create child: %v", err)
 	}
@@ -814,7 +835,7 @@ func TestGetEpicCaseInsensitiveParentLookup(t *testing.T) {
 	// GET epic using different case
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/mixedcase-epic", nil)
 	req.Header.Set("X-Project", "case-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get epic: %v", err)
 	}

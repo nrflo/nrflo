@@ -32,7 +32,7 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	seedWorkflow(t, dbPath, "testproj", "bugfix", "Bugfix workflow")
 
 	// Start API server
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create three tickets via API
 	tickets := []struct {
@@ -45,7 +45,7 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	}
 
 	for _, tc := range tickets {
-		createTicketViaAPI(t, baseURL, "testproj", tc.id, tc.title)
+		createTicketViaAPI(t, client, baseURL, "testproj", tc.id, tc.title)
 	}
 
 	// Directly seed workflow instances in DB
@@ -123,7 +123,7 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	req, _ := http.NewRequest("GET", baseURL+"/api/v1/tickets?status=open", nil)
 	req.Header.Set("X-Project", "testproj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to list tickets: %v", err)
 	}
@@ -205,11 +205,11 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 
 	seedProject(t, dbPath, "testproj2")
 	seedWorkflow(t, dbPath, "testproj2", "feature", "Feature workflow")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create tickets
-	createTicketViaAPI(t, baseURL, "testproj2", "PROJ2-001", "In progress ticket")
-	createTicketViaAPI(t, baseURL, "testproj2", "PROJ2-002", "Open ticket")
+	createTicketViaAPI(t, client, baseURL, "testproj2", "PROJ2-001", "In progress ticket")
+	createTicketViaAPI(t, client, baseURL, "testproj2", "PROJ2-002", "Open ticket")
 
 	// Set PROJ2-001 to in-progress status
 	database, err := db.Open(dbPath)
@@ -275,7 +275,7 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	req, _ := http.NewRequest("GET", baseURL+"/api/v1/tickets?status=in_progress", nil)
 	req.Header.Set("X-Project", "testproj2")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to list tickets: %v", err)
 	}
@@ -333,16 +333,16 @@ func TestTicketListAPI_WorkflowProgressErrorRecovery(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "testproj3")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create ticket
-	createTicketViaAPI(t, baseURL, "testproj3", "PROJ3-001", "Test ticket")
+	createTicketViaAPI(t, client, baseURL, "testproj3", "PROJ3-001", "Test ticket")
 
 	// Request tickets - even if workflow enrichment has issues, tickets should return
 	req, _ := http.NewRequest("GET", baseURL+"/api/v1/tickets?status=open", nil)
 	req.Header.Set("X-Project", "testproj3")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to list tickets: %v", err)
 	}
@@ -390,7 +390,7 @@ func seedWorkflow(t *testing.T, dbPath, projectID, workflowID, description strin
 }
 
 // Helper function to create tickets via API
-func createTicketViaAPI(t *testing.T, baseURL, projectID, ticketID, title string) {
+func createTicketViaAPI(t *testing.T, client *http.Client, baseURL, projectID, ticketID, title string) {
 	t.Helper()
 
 	body := `{"id":"` + ticketID + `","title":"` + title + `","created_by":"tester"}`
@@ -398,7 +398,7 @@ func createTicketViaAPI(t *testing.T, baseURL, projectID, ticketID, title string
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create ticket %s: %v", ticketID, err)
 	}

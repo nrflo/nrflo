@@ -7,10 +7,9 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
-
 )
 
-func doTakeControl(t *testing.T, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
+func doTakeControl(t *testing.T, client *http.Client, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
 	t.Helper()
 	bodyJSON, _ := json.Marshal(body)
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+ticketID+"/workflow/take-control",
@@ -19,7 +18,7 @@ func doTakeControl(t *testing.T, baseURL, ticketID, project string, body map[str
 	if project != "" {
 		req.Header.Set("X-Project", project)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -28,7 +27,7 @@ func doTakeControl(t *testing.T, baseURL, ticketID, project string, body map[str
 	return resp, respBody
 }
 
-func doExitInteractive(t *testing.T, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
+func doExitInteractive(t *testing.T, client *http.Client, baseURL, ticketID, project string, body map[string]string) (*http.Response, []byte) {
 	t.Helper()
 	bodyJSON, _ := json.Marshal(body)
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+ticketID+"/workflow/exit-interactive",
@@ -37,7 +36,7 @@ func doExitInteractive(t *testing.T, baseURL, ticketID, project string, body map
 	if project != "" {
 		req.Header.Set("X-Project", project)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -54,9 +53,9 @@ func TestTakeControlHandler_MissingProject(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doTakeControl(t, baseURL, "TICK-1", "", map[string]string{
+	resp, body := doTakeControl(t, client, baseURL, "TICK-1", "", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -80,9 +79,9 @@ func TestTakeControlHandler_MissingWorkflow(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doTakeControl(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doTakeControl(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"session_id": "sess-1",
 	})
 
@@ -105,9 +104,9 @@ func TestTakeControlHandler_MissingSessionID(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doTakeControl(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doTakeControl(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow": "test",
 	})
 
@@ -130,9 +129,9 @@ func TestTakeControlHandler_WorkflowNotFound(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doTakeControl(t, baseURL, "TICK-NONE", "proj", map[string]string{
+	resp, body := doTakeControl(t, client, baseURL, "TICK-NONE", "proj", map[string]string{
 		"workflow":   "nonexistent",
 		"session_id": "sess-1",
 	})
@@ -154,9 +153,9 @@ func TestTakeControlHandler_NoRunningOrchestration(t *testing.T) {
 	seedProject(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
 	seedTicketAndWorkflow(t, dbPath, "proj", "TICK-1")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doTakeControl(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doTakeControl(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -180,14 +179,14 @@ func TestTakeControlHandler_InvalidBody(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/TICK-1/workflow/take-control",
 		bytes.NewBufferString("{not valid json"))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -207,9 +206,9 @@ func TestExitInteractiveHandler_MissingProject(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doExitInteractive(t, baseURL, "TICK-1", "", map[string]string{
+	resp, body := doExitInteractive(t, client, baseURL, "TICK-1", "", map[string]string{
 		"workflow":   "test",
 		"session_id": "sess-1",
 	})
@@ -233,9 +232,9 @@ func TestExitInteractiveHandler_MissingWorkflow(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doExitInteractive(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doExitInteractive(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"session_id": "sess-1",
 	})
 
@@ -258,9 +257,9 @@ func TestExitInteractiveHandler_MissingSessionID(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doExitInteractive(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doExitInteractive(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow": "test",
 	})
 
@@ -285,9 +284,9 @@ func TestExitInteractiveHandler_SessionNotFound(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp, body := doExitInteractive(t, baseURL, "TICK-1", "proj", map[string]string{
+	resp, body := doExitInteractive(t, client, baseURL, "TICK-1", "proj", map[string]string{
 		"workflow":   "test",
 		"session_id": "does-not-exist",
 	})
@@ -307,14 +306,14 @@ func TestTakeControlProjectHandler_MissingWorkflow(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	bodyJSON, _ := json.Marshal(map[string]string{"session_id": "s1", "instance_id": "i1"})
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects/proj-1/workflow/take-control",
 		bytes.NewBuffer(bodyJSON))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -335,7 +334,7 @@ func TestTakeControlProjectHandler_NoRunningOrchestration(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	bodyJSON, _ := json.Marshal(map[string]string{
 		"workflow":    "test",
@@ -346,7 +345,7 @@ func TestTakeControlProjectHandler_NoRunningOrchestration(t *testing.T) {
 		bytes.NewBuffer(bodyJSON))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -367,7 +366,7 @@ func TestExitInteractiveProjectHandler_SessionNotFound(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	bodyJSON, _ := json.Marshal(map[string]string{
 		"workflow":   "test",
@@ -377,7 +376,7 @@ func TestExitInteractiveProjectHandler_SessionNotFound(t *testing.T) {
 		bytes.NewBuffer(bodyJSON))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

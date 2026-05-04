@@ -320,7 +320,7 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "httptest")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create tickets via HTTP API (nano-precision timestamps ensure different ordering)
 	tickets := []struct {
@@ -338,7 +338,7 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Project", "httptest")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("failed to create ticket %s: %v", tc.id, err)
 		}
@@ -354,7 +354,7 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 	req, _ := http.NewRequest("PATCH", baseURL+"/api/v1/tickets/http-1", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "httptest")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to update ticket: %v", err)
 	}
@@ -363,7 +363,7 @@ func TestListWithBlockedInfo_ViaHTTP_E2E(t *testing.T) {
 	// List tickets with status filter
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets?status=open", nil)
 	req.Header.Set("X-Project", "httptest")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to list tickets: %v", err)
 	}

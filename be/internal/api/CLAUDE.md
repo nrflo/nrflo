@@ -10,10 +10,56 @@ HTTP API server providing REST endpoints and WebSocket for the web UI.
 - **Request ID** middleware generates a trx (`logger.NewTrx()`) per HTTP request, injects it into context via `logger.WithTrx()`, and sets `X-Request-ID` response header
 - **WebSocket** at `/api/v1/ws` for real-time updates
 
+## Authentication
+
+### Middleware Chain
+
+`Start()` assembles: `cors → requestID → projectMiddleware → LoadAndSave (for /api/* only) → mux`
+
+Per-route auth is applied at registration time via three helpers in `registerRoutes`:
+- `protected(pat, h)` — wraps with `requireAuth` (valid session required)
+- `admin(pat, h)` — wraps with `requireAdmin` (admin role required)
+- Plain `mux.HandleFunc(pat, h)` — public (no auth); used only for `POST /api/v1/auth/login`
+
+`requireAuth` reads the user ID from the SCS session context, loads the `model.User` from DB, stashes it in request context with `userKey`. Returns 401 if session missing, user not found, or user disabled. Returns without checking if `sessionMgr == nil` (test environments that create `*Server` directly).
+
+`requireAdmin` wraps `requireAuth` and additionally 403s when `user.Role != admin`.
+
+Helpers `getUser(r)` and `getUserID(r)` retrieve the stashed user from context in handler bodies.
+
+### Admin-gated Routes
+
+Write operations on configuration resources require admin role:
+- `POST /api/v1/projects`, `DELETE /api/v1/projects/{id}`
+- `POST|PATCH|DELETE /api/v1/system-agents/{...}`
+- `POST|PATCH|DELETE /api/v1/cli-models/{...}`
+- `POST|PATCH|DELETE /api/v1/default-templates/{...}` (including `/restore`)
+- `POST|PATCH|DELETE /api/v1/scheduled-tasks/{...}`
+- `POST|PUT|DELETE /api/v1/tool-definitions/{...}` (api-mode only)
+- `POST|PUT|DELETE /api/v1/api-credentials/{...}` (api-mode only)
+- `PATCH /api/v1/settings`
+
+All reads on those resources are `protected` (requireAuth only). All other routes are `protected`.
+
+### Login Rate Limiter
+
+`auth_ratelimit.go` implements a per-IP+email token bucket: 5 attempts per 5-minute sliding window. On limit exceeded, returns HTTP 429 with `Retry-After` header (seconds). Keys are `{ip}|{email}`.
+
+### --insecure-cookies Flag
+
+`nrflo_server serve --insecure-cookies` passes `dev=true` to `auth.NewManager`, disabling the `Secure` cookie flag. Use for local HTTP development without TLS.
+
+### WS / PTY Auth
+
+`GET /api/v1/ws` and `GET /api/v1/pty/{session_id}` are registered via `requireAuth`, so the 401 is returned before any WebSocket upgrade handshake.
+
 ## Handler File Mapping
 
 | File | Endpoints |
 |------|-----------|
+| `auth_middleware.go` | `requireAuth`/`requireAdmin` middleware, `getUser`/`getUserID` helpers |
+| `auth_ratelimit.go` | Per-IP+email login rate limiter (5 req/5 min) |
+| `handlers_auth.go` | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` |
 | `server.go` | Server setup, CORS, route registration, orchestrator init |
 | `handlers_tickets.go` | Ticket list/create/get |
 | `handlers_tickets_update.go` | Ticket update/delete/close/reopen |

@@ -18,8 +18,8 @@ import (
 )
 
 // startAPIServerWithWS creates a test HTTP API server with WebSocket support.
-// Returns the base URL, ws client, ws channel, and cleanup function.
-func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (string, *ws.Client, chan []byte) {
+// Returns the base URL, ws client, ws channel, and an authenticated HTTP client.
+func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (string, *ws.Client, chan []byte, *http.Client) {
 	t.Helper()
 
 	// Find a free port
@@ -33,14 +33,14 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 	cfg := config.DefaultConfig()
 	cfg.Server.CORSOrigins = []string{"*"}
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
 
 	// Create server (it creates its own hub internally)
-	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool, false)
+	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool, false, true)
 
 	// Get the hub from the server
 	hub := srv.GetWSHub()
@@ -64,15 +64,15 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 	}
 
 	// Create test WS client subscribed to the ticket
-	client, ch := ws.NewTestClient(hub, "test-ws-client")
-	hub.Register(client)
-	hub.Subscribe(client, projectID, ticketID)
+	wsClient, ch := ws.NewTestClient(hub, "test-ws-client")
+	hub.Register(wsClient)
+	hub.Subscribe(wsClient, projectID, ticketID)
 
 	t.Cleanup(func() {
 		srv.Stop(nil)
 	})
 
-	return baseURL, client, ch
+	return baseURL, wsClient, ch, loginAdminClient(t, baseURL)
 }
 
 func TestTicketCreateBroadcastsWSEvent(t *testing.T) {
@@ -87,7 +87,7 @@ func TestTicketCreateBroadcastsWSEvent(t *testing.T) {
 	projectID := "ws-test"
 	ticketID := "ws-test-create1"
 	seedProject(t, dbPath, projectID)
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, ticketID)
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, ticketID)
 
 	// Create ticket
 	body := fmt.Sprintf(`{"id":"%s","title":"Create broadcast test","created_by":"tester"}`, ticketID)
@@ -95,7 +95,7 @@ func TestTicketCreateBroadcastsWSEvent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestTicketUpdateBroadcastsWSEvent(t *testing.T) {
 	}
 	database.Close()
 
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, ticketID)
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, ticketID)
 
 	// Update ticket status
 	body := `{"status":"in_progress"}`
@@ -154,7 +154,7 @@ func TestTicketUpdateBroadcastsWSEvent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestTicketCloseBroadcastsWSEvent(t *testing.T) {
 	}
 	database.Close()
 
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, ticketID)
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, ticketID)
 
 	// Close ticket
 	body := `{"reason":"Done"}`
@@ -210,7 +210,7 @@ func TestTicketCloseBroadcastsWSEvent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -258,13 +258,13 @@ func TestTicketReopenBroadcastsWSEvent(t *testing.T) {
 	}
 	database.Close()
 
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, ticketID)
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, ticketID)
 
 	// Reopen ticket
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+ticketID+"/reopen", nil)
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -312,13 +312,13 @@ func TestTicketDeleteBroadcastsWSEvent(t *testing.T) {
 	}
 	database.Close()
 
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, ticketID)
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, ticketID)
 
 	// Delete ticket
 	req, _ := http.NewRequest("DELETE", baseURL+"/api/v1/tickets/"+ticketID, nil)
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestTicketUpdateMultipleFieldsBroadcastsWSEvent(t *testing.T) {
 	}
 	database.Close()
 
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, ticketID)
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, ticketID)
 
 	// Update multiple fields including status
 	body := `{"title":"Updated title","status":"in_progress","priority":1}`
@@ -374,7 +374,7 @@ func TestTicketUpdateMultipleFieldsBroadcastsWSEvent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -423,7 +423,7 @@ func TestTicketUpdateNoWSHubDoesNotPanic(t *testing.T) {
 	database.Close()
 
 	// Start server WITHOUT WS hub (using startAPIServer instead of startAPIServerWithWS)
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Update ticket - should not panic even without hub
 	body := `{"status":"in_progress"}`
@@ -431,7 +431,7 @@ func TestTicketUpdateNoWSHubDoesNotPanic(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -483,13 +483,13 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Server.CORSOrigins = []string{"*"}
 
-	pool2, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool2, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to open pool: %v", err)
 	}
 	t.Cleanup(func() { pool2.Close() })
 
-	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool2, false)
+	srv := api.NewServer(cfg, dbPath, t.TempDir(), pool2, false, true)
 	hub := srv.GetWSHub()
 
 	go func() {
@@ -508,6 +508,9 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+
+	// Login as admin for HTTP requests
+	client := loginAdminClient(t, baseURL)
 
 	// Create two WS clients subscribed to different tickets
 	client1, ch1 := ws.NewTestClient(hub, "client1")
@@ -528,7 +531,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -548,7 +551,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
 
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

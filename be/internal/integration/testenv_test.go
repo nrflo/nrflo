@@ -12,6 +12,7 @@ import (
 	"be/internal/client"
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/service"
 	"be/internal/socket"
 	"be/internal/types"
@@ -286,4 +287,20 @@ func nullStr(s string) interface{} {
 func (e *TestEnv) getAgentDefService(t *testing.T) *service.AgentDefinitionService {
 	t.Helper()
 	return service.NewAgentDefinitionService(e.Pool, e.Clock, service.NewCLIModelService(e.Pool, e.Clock), false)
+}
+
+// CreateAdminUser creates an active admin user in the DB and returns the user ID.
+// The user's must_change_password flag is cleared so login works without forced change.
+func (e *TestEnv) CreateAdminUser(t *testing.T, email, password string) string {
+	t.Helper()
+	userSvc := service.NewUserService(e.Pool, e.Clock)
+	id := userSvc.GenerateID()
+	_, err := userSvc.Create("", id, email, "Admin", password, model.UserRoleAdmin)
+	if err != nil {
+		t.Fatalf("failed to create admin user: %v", err)
+	}
+	if _, err := e.Pool.Exec(`UPDATE users SET must_change_password = 0 WHERE id = ?`, id); err != nil {
+		t.Fatalf("failed to clear must_change_password: %v", err)
+	}
+	return id
 }

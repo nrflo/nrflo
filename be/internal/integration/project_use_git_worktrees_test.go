@@ -20,13 +20,13 @@ func TestCreateProjectWithUseGitWorktrees(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"id":"proj-with-worktrees","name":"Project with Worktrees","use_git_worktrees":true}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -77,13 +77,13 @@ func TestCreateProjectWithoutUseGitWorktrees(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"id":"proj-no-worktrees","name":"Project without Worktrees"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -130,13 +130,13 @@ func TestCreateProjectWithUseGitWorktreesFalse(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := `{"id":"proj-explicit-false","name":"Project Explicit False","use_git_worktrees":false}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -183,13 +183,13 @@ func TestGetProjectReturnsUseGitWorktrees(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with use_git_worktrees=true
 	createBody := `{"id":"get-proj-worktrees","name":"Get Project Worktrees","use_git_worktrees":true}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestGetProjectReturnsUseGitWorktrees(t *testing.T) {
 
 	// GET the project
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/get-proj-worktrees", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -231,13 +231,13 @@ func TestGetProjectReturnsUseGitWorktreesFalse(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project without use_git_worktrees (defaults to false)
 	createBody := `{"id":"get-proj-no-worktrees","name":"Get Project No Worktrees"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -245,7 +245,7 @@ func TestGetProjectReturnsUseGitWorktreesFalse(t *testing.T) {
 
 	// GET the project
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/get-proj-no-worktrees", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -279,13 +279,13 @@ func TestListProjectsReturnsUseGitWorktrees(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create project with use_git_worktrees=true
 	createBody1 := `{"id":"list-proj-worktrees-1","name":"List Project Worktrees 1","use_git_worktrees":true}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody1))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request 1 failed: %v", err)
 	}
@@ -295,7 +295,7 @@ func TestListProjectsReturnsUseGitWorktrees(t *testing.T) {
 	createBody2 := `{"id":"list-proj-worktrees-2","name":"List Project Worktrees 2"}`
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody2))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("create request 2 failed: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestListProjectsReturnsUseGitWorktrees(t *testing.T) {
 
 	// List projects
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}

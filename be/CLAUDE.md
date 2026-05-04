@@ -241,6 +241,23 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 | `--port` | `6587` | HTTP port |
 | `--no-tray` | `false` | Disable macOS menu bar tray icon |
 | `--mode` | `cli` | Execution mode: `cli` (default) or `api`. Set to `api` to enable in-process Anthropic execution (execution_mode='api' agent definitions, tool-definitions and api-credentials endpoints). In `cli` mode those routes return 404 and creating/updating api-mode agent defs returns HTTP 400 `api_mode_disabled`. The mode touches: `handlers_agent_def.go`, `handlers_tool_definitions.go`, `handlers_api_credentials.go`, `handlers_global_settings.go` (`api_mode_enabled` field), and `spawner.Config.APIMode`. |
+| `--insecure-cookies` | `false` | Disable `Secure` flag on `nrflo_session` cookie. Use for local HTTP dev without TLS. Passed as `dev=true` to `auth.NewManager`. |
+
+## Authentication
+
+HTTP API routes are protected by SCS cookie-based sessions (sqlite3store, `nrflo_session` cookie). The handler chain is:
+
+```
+cors → requestID → projectMiddleware → LoadAndSave (for /api/* only) → mux
+```
+
+Per-route auth: `protected` (requireAuth) or `admin` (requireAdmin = admin role). Public: `POST /api/v1/auth/login` only.
+
+Admin-gated writes: `POST /projects`, `DELETE /projects/{id}`, system-agents writes, cli-models writes, default-templates writes, scheduled-tasks writes, tool-definitions writes (api-mode), api-credentials writes (api-mode), `PATCH /settings`.
+
+Login rate limiter: 5 attempts per 5 min per IP+email key, returns HTTP 429 with `Retry-After`.
+
+Default seeded admin: `admin@nrflo.com` / `nrfloAdmin`, `must_change_password=1` (migration 000078). See [be/internal/auth/CLAUDE.md](internal/auth/CLAUDE.md).
 
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.
 

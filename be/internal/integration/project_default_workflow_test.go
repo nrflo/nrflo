@@ -19,14 +19,14 @@ func TestCreateProjectWithDefaultWorkflowFieldIgnored(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Include default_workflow — should be ignored, not rejected
 	body := `{"id":"proj-dw-ignored","name":"DW Ignored","default_workflow":"feature"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -57,13 +57,13 @@ func TestGetProjectResponseOmitsDefaultWorkflow(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create a project
 	createBody := `{"id":"proj-get-no-dw","name":"Get No DW"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestGetProjectResponseOmitsDefaultWorkflow(t *testing.T) {
 
 	// GET the project
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects/proj-get-no-dw", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get request failed: %v", err)
 	}
@@ -102,13 +102,13 @@ func TestListProjectsResponseOmitsDefaultWorkflow(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create a project
 	createBody := `{"id":"proj-list-no-dw","name":"List No DW"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestListProjectsResponseOmitsDefaultWorkflow(t *testing.T) {
 
 	// List projects
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/projects", nil)
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("list request failed: %v", err)
 	}
@@ -151,13 +151,13 @@ func TestUpdateProjectWithDefaultWorkflowFieldIgnored(t *testing.T) {
 		t.Fatalf("failed to copy template DB: %v", err)
 	}
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create a project
 	createBody := `{"id":"proj-patch-dw","name":"Patch DW"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/projects", bytes.NewBufferString(createBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestUpdateProjectWithDefaultWorkflowFieldIgnored(t *testing.T) {
 	updateBody := `{"name":"Patch DW Updated","default_workflow":"bugfix"}`
 	req, _ = http.NewRequest("PATCH", baseURL+"/api/v1/projects/proj-patch-dw", bytes.NewBufferString(updateBody))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("update request failed: %v", err)
 	}

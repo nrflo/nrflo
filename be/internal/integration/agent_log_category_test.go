@@ -107,11 +107,11 @@ func TestAgentLogE2E_Category(t *testing.T) {
 	)
 	seedCategoryMessages(t, dbPath, projID, sessID)
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	t.Run("category_field_in_response", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/sessions/%s/messages?limit=100&offset=0", baseURL, sessID)
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			t.Fatalf("HTTP request failed: %v", err)
 		}
@@ -153,7 +153,7 @@ func TestAgentLogE2E_Category(t *testing.T) {
 
 	t.Run("filter_subagent", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/sessions/%s/messages?category=subagent", baseURL, sessID)
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			t.Fatalf("HTTP request failed: %v", err)
 		}
@@ -180,7 +180,7 @@ func TestAgentLogE2E_Category(t *testing.T) {
 
 	t.Run("filter_tool", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/sessions/%s/messages?category=tool", baseURL, sessID)
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			t.Fatalf("HTTP request failed: %v", err)
 		}
@@ -198,7 +198,7 @@ func TestAgentLogE2E_Category(t *testing.T) {
 
 	t.Run("filter_no_category_returns_all", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/sessions/%s/messages", baseURL, sessID)
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			t.Fatalf("HTTP request failed: %v", err)
 		}
@@ -216,7 +216,7 @@ func TestAgentLogE2E_Category(t *testing.T) {
 
 	t.Run("legacy_message_defaults_to_text", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/sessions/%s/messages", baseURL, legacySessID)
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			t.Fatalf("HTTP request failed: %v", err)
 		}

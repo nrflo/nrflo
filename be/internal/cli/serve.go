@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	serveHost string
-	servePort int
-	noTray    bool
-	serveMode string
+	serveHost       string
+	servePort       int
+	noTray          bool
+	serveMode       string
+	insecureCookies bool
 )
 
 // serverComponents holds initialized server components for startup/shutdown.
@@ -129,7 +130,7 @@ func setupServer() (*serverComponents, error) {
 		return nil, fmt.Errorf("failed to create database pool: %w", err)
 	}
 
-	httpServer := api.NewServer(cfg, DataPath, logsDir, pool, apiMode)
+	httpServer := api.NewServer(cfg, DataPath, logsDir, pool, apiMode, insecureCookies)
 
 	clk := clock.Real()
 	socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator())
@@ -190,4 +191,5 @@ func init() {
 	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP port to listen on (default: 6587 or from config)")
 	serveCmd.Flags().BoolVar(&noTray, "no-tray", false, "Disable macOS menu bar tray icon")
 	serveCmd.Flags().StringVar(&serveMode, "mode", "cli", "Execution mode: cli (default) or api")
+	serveCmd.Flags().BoolVar(&insecureCookies, "insecure-cookies", false, "Disable Secure flag on session cookies (for local HTTP dev without TLS)")
 }

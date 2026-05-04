@@ -60,7 +60,7 @@ func seedChainDeps(t *testing.T, dbPath, projectID string, deps map[string][]str
 }
 
 // doChainRequest is a helper to make authenticated chain API requests.
-func doChainRequest(t *testing.T, method, url, projectID string, body interface{}) *http.Response {
+func doChainRequest(t *testing.T, client *http.Client, method, url, projectID string, body interface{}) *http.Response {
 	t.Helper()
 	var reqBody io.Reader
 	if body != nil {
@@ -78,7 +78,7 @@ func doChainRequest(t *testing.T, method, url, projectID string, body interface{
 	if projectID != "" {
 		req.Header.Set("X-Project", projectID)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request %s %s failed: %v", method, url, err)
 	}
@@ -108,9 +108,9 @@ func TestChainPreviewEndpoint_HappyPath(t *testing.T) {
 		"T3": {"T2"},
 	})
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp := doChainRequest(t, "POST", baseURL+"/api/v1/chains/preview", projectID,
+	resp := doChainRequest(t, client, "POST", baseURL+"/api/v1/chains/preview", projectID,
 		types.ChainPreviewRequest{TicketIDs: []string{"T3"}})
 	defer resp.Body.Close()
 
@@ -164,9 +164,9 @@ func TestChainPreviewEndpoint_NoTransitiveDeps(t *testing.T) {
 		"B": base.Add(time.Second),
 	})
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp := doChainRequest(t, "POST", baseURL+"/api/v1/chains/preview", projectID,
+	resp := doChainRequest(t, client, "POST", baseURL+"/api/v1/chains/preview", projectID,
 		types.ChainPreviewRequest{TicketIDs: []string{"A", "B"}})
 	defer resp.Body.Close()
 
@@ -198,9 +198,9 @@ func TestChainPreviewEndpoint_EmptyTickets(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj-empty")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	resp := doChainRequest(t, "POST", baseURL+"/api/v1/chains/preview", "proj-empty",
+	resp := doChainRequest(t, client, "POST", baseURL+"/api/v1/chains/preview", "proj-empty",
 		types.ChainPreviewRequest{TicketIDs: []string{}})
 	defer resp.Body.Close()
 
@@ -220,10 +220,10 @@ func TestChainPreviewEndpoint_MissingProjectHeader(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "proj-nohdr")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// No projectID → no X-Project header
-	resp := doChainRequest(t, "POST", baseURL+"/api/v1/chains/preview", "",
+	resp := doChainRequest(t, client, "POST", baseURL+"/api/v1/chains/preview", "",
 		types.ChainPreviewRequest{TicketIDs: []string{"A"}})
 	defer resp.Body.Close()
 
@@ -253,7 +253,7 @@ func TestChainCreateEndpoint_WithCustomOrder(t *testing.T) {
 	})
 	// No dependencies — any order valid
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := map[string]interface{}{
 		"name":               "Custom Order Chain",
@@ -261,7 +261,7 @@ func TestChainCreateEndpoint_WithCustomOrder(t *testing.T) {
 		"ticket_ids":         []string{"X", "Y", "Z"},
 		"ordered_ticket_ids": []string{"Z", "X", "Y"},
 	}
-	resp := doChainRequest(t, "POST", baseURL+"/api/v1/chains", projectID, body)
+	resp := doChainRequest(t, client, "POST", baseURL+"/api/v1/chains", projectID, body)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
@@ -310,7 +310,7 @@ func TestChainCreateEndpoint_WithInvalidCustomOrder(t *testing.T) {
 		"B": {"A"}, // B depends on A
 	})
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := map[string]interface{}{
 		"name":               "Invalid Order Chain",
@@ -318,7 +318,7 @@ func TestChainCreateEndpoint_WithInvalidCustomOrder(t *testing.T) {
 		"ticket_ids":         []string{"B"},
 		"ordered_ticket_ids": []string{"b", "a"}, // invalid: B before A (its blocker)
 	}
-	resp := doChainRequest(t, "POST", baseURL+"/api/v1/chains", projectID, body)
+	resp := doChainRequest(t, client, "POST", baseURL+"/api/v1/chains", projectID, body)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusBadRequest {
@@ -348,7 +348,7 @@ func TestChainGetEndpoint_IncludesDeps(t *testing.T) {
 		"Q": {"P"}, // Q depends on P
 	})
 
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create a chain first
 	createBody := map[string]interface{}{
@@ -356,7 +356,7 @@ func TestChainGetEndpoint_IncludesDeps(t *testing.T) {
 		"workflow_name": "test",
 		"ticket_ids":    []string{"Q"},
 	}
-	createResp := doChainRequest(t, "POST", baseURL+"/api/v1/chains", projectID, createBody)
+	createResp := doChainRequest(t, client, "POST", baseURL+"/api/v1/chains", projectID, createBody)
 	defer createResp.Body.Close()
 
 	if createResp.StatusCode != http.StatusCreated {
@@ -374,7 +374,7 @@ func TestChainGetEndpoint_IncludesDeps(t *testing.T) {
 	}
 
 	// Get the chain
-	getResp := doChainRequest(t, "GET", fmt.Sprintf("%s/api/v1/chains/%s", baseURL, chainID), projectID, nil)
+	getResp := doChainRequest(t, client, "GET", fmt.Sprintf("%s/api/v1/chains/%s", baseURL, chainID), projectID, nil)
 	defer getResp.Body.Close()
 
 	if getResp.StatusCode != http.StatusOK {

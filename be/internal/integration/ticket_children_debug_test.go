@@ -21,7 +21,7 @@ func TestGetEpicTicketWithChildrenDebug(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "epic-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create an epic ticket
 	epicBody := `{"id":"EPIC-001","title":"Epic Ticket","issue_type":"epic","priority":1,"created_by":"tester"}`
@@ -29,7 +29,7 @@ func TestGetEpicTicketWithChildrenDebug(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "epic-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create epic: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestGetEpicTicketWithChildrenDebug(t *testing.T) {
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child1Body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "epic-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create child 1: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestGetEpicTicketWithChildrenDebug(t *testing.T) {
 	// Now test via HTTP API
 	req, _ = http.NewRequest("GET", baseURL+"/api/v1/tickets/EPIC-001", nil)
 	req.Header.Set("X-Project", "epic-proj")
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to get epic: %v", err)
 	}

@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexedwards/scs/v2"
+
+	"be/internal/auth"
 	"be/internal/clock"
 	"be/internal/config"
 	"be/internal/db"
@@ -42,10 +45,15 @@ type Server struct {
 	notifyWaker            service.NotificationWaker
 	notifyWorker           *notify.Worker
 	notifyWorkerCancel     context.CancelFunc
+	sessionMgr             *scs.SessionManager
+	authSvc                *service.AuthService
+	userSvc                *service.UserService
+	rateLimiter            *loginRateLimiter
 }
 
-// NewServer creates a new API server
-func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool, apiMode bool) *Server {
+// NewServer creates a new API server.
+// insecureCookies=true disables the Secure cookie flag (for local HTTP dev/testing).
+func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool, apiMode bool, insecureCookies bool) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	errorSvc := service.NewErrorService(pool, clk, hub)
@@ -67,6 +75,11 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	waker := service.NewChanWaker(notifyWakeCh)
 	notifyWorker := notify.NewWorker(deliveryRepo, channelRepo, hub, errorSvc, clk, notifyWakeCh)
 
+	// Auth subsystem
+	sessionMgr := auth.NewManager(pool.DB, insecureCookies)
+	authSvc := service.NewAuthService(pool, clk)
+	userSvc := service.NewUserService(pool, clk)
+
 	return &Server{
 		config:       cfg,
 		dataPath:     dataPath,
@@ -81,6 +94,10 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		scheduler:    sched,
 		notifyWaker:  waker,
 		notifyWorker: notifyWorker,
+		sessionMgr:   sessionMgr,
+		authSvc:      authSvc,
+		userSvc:      userSvc,
+		rateLimiter:  newLoginRateLimiter(),
 	}
 }
 
@@ -131,7 +148,8 @@ func (s *Server) Start(host string, port int) error {
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
 
-	handler := s.corsMiddleware(s.requestIDMiddleware(s.projectMiddleware(mux)))
+	// cors -> requestID -> projectMiddleware -> LoadAndSave (for /api/ paths only) -> mux
+	handler := s.corsMiddleware(s.requestIDMiddleware(s.projectMiddleware(s.withSessionForAPI(mux))))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", host, port),
@@ -143,6 +161,22 @@ func (s *Server) Start(host string, port int) error {
 	logger.Info(ctx, "database path", "path", db.GetDBPath(s.dataPath))
 	logger.Info(ctx, "websocket endpoint", "url", fmt.Sprintf("ws://%s:%d/api/v1/ws", host, port))
 	return s.httpServer.ListenAndServe()
+}
+
+// withSessionForAPI applies SCS LoadAndSave only for /api/ path prefix.
+// Static UI routes are excluded so session cookies are not set on SPA page loads.
+func (s *Server) withSessionForAPI(next http.Handler) http.Handler {
+	if s.sessionMgr == nil {
+		return next
+	}
+	ls := s.sessionMgr.LoadAndSave(next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			ls.ServeHTTP(w, r)
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
 }
 
 // Stop gracefully stops the server
@@ -358,199 +392,216 @@ func getProjectID(r *http.Request) string {
 	return ""
 }
 
-// registerRoutes sets up all API routes
+// registerRoutes sets up all API routes.
+// protected wraps with requireAuth; admin wraps with requireAdmin (admin role required);
+// public registers with no auth wrapper.
+// LoadAndSave is applied upstream in Start() via withSessionForAPI.
 func (s *Server) registerRoutes(mux *http.ServeMux) {
-	// WebSocket endpoints
+	protected := func(pat string, h http.HandlerFunc) {
+		mux.Handle(pat, s.requireAuth(h))
+	}
+	admin := func(pat string, h http.HandlerFunc) {
+		mux.Handle(pat, s.requireAdmin(h))
+	}
+
+	// Auth endpoints
+	mux.HandleFunc("POST /api/v1/auth/login", s.handleAuthLogin)           // public (login page)
+	protected("POST /api/v1/auth/logout", s.handleAuthLogout)
+	protected("GET /api/v1/auth/me", s.handleAuthMe)
+	protected("POST /api/v1/auth/change-password", s.handleAuthChangePassword)
+
+	// WebSocket endpoints — gated on session before upgrade
 	wsHandler := ws.NewHandler(s.wsHub)
-	mux.Handle("GET /api/v1/ws", wsHandler)
-	mux.HandleFunc("GET /api/v1/pty/{session_id}", s.handlePtyWebSocket)
+	mux.Handle("GET /api/v1/ws", s.requireAuth(wsHandler))
+	protected("GET /api/v1/pty/{session_id}", s.handlePtyWebSocket)
 
 	// Documentation
-	mux.HandleFunc("GET /api/v1/docs/agent-manual", s.handleGetAgentManual)
+	protected("GET /api/v1/docs/agent-manual", s.handleGetAgentManual)
 
 	// Logs
-	mux.HandleFunc("GET /api/v1/logs", s.handleGetLogs)
+	protected("GET /api/v1/logs", s.handleGetLogs)
 
-	// Projects
-	mux.HandleFunc("GET /api/v1/projects", s.handleListProjects)
-	mux.HandleFunc("POST /api/v1/projects", s.handleCreateProject)
-	mux.HandleFunc("GET /api/v1/projects/{id}", s.handleGetProject)
-	mux.HandleFunc("PATCH /api/v1/projects/{id}", s.handleUpdateProject)
-	mux.HandleFunc("DELETE /api/v1/projects/{id}", s.handleDeleteProject)
+	// Projects — POST is admin; reads and updates are protected
+	protected("GET /api/v1/projects", s.handleListProjects)
+	admin("POST /api/v1/projects", s.handleCreateProject)
+	protected("GET /api/v1/projects/{id}", s.handleGetProject)
+	protected("PATCH /api/v1/projects/{id}", s.handleUpdateProject)
+	admin("DELETE /api/v1/projects/{id}", s.handleDeleteProject)
 
 	// Tickets (project-scoped)
-	mux.HandleFunc("GET /api/v1/tickets", s.handleListTickets)
-	mux.HandleFunc("POST /api/v1/tickets", s.handleCreateTicket)
-	mux.HandleFunc("GET /api/v1/tickets/{id}", s.handleGetTicket)
-	mux.HandleFunc("PATCH /api/v1/tickets/{id}", s.handleUpdateTicket)
-	mux.HandleFunc("DELETE /api/v1/tickets/{id}", s.handleDeleteTicket)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/close", s.handleCloseTicket)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/reopen", s.handleReopenTicket)
+	protected("GET /api/v1/tickets", s.handleListTickets)
+	protected("POST /api/v1/tickets", s.handleCreateTicket)
+	protected("GET /api/v1/tickets/{id}", s.handleGetTicket)
+	protected("PATCH /api/v1/tickets/{id}", s.handleUpdateTicket)
+	protected("DELETE /api/v1/tickets/{id}", s.handleDeleteTicket)
+	protected("POST /api/v1/tickets/{id}/close", s.handleCloseTicket)
+	protected("POST /api/v1/tickets/{id}/reopen", s.handleReopenTicket)
 
 	// Workflow (ticket-scoped runtime state)
-	mux.HandleFunc("GET /api/v1/tickets/{id}/workflow", s.handleGetWorkflow)
-	mux.HandleFunc("PATCH /api/v1/tickets/{id}/workflow", s.handleUpdateWorkflow)
+	protected("GET /api/v1/tickets/{id}/workflow", s.handleGetWorkflow)
+	protected("PATCH /api/v1/tickets/{id}/workflow", s.handleUpdateWorkflow)
 
 	// Workflow orchestration (run/stop/restart from UI)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/run", s.handleRunWorkflow)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/stop", s.handleStopWorkflow)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/restart", s.handleRestartAgent)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/retry-failed", s.handleRetryFailedAgent)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/take-control", s.handleTakeControl)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/resume-session", s.handleResumeSession)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/exit-interactive", s.handleExitInteractive)
-	mux.HandleFunc("POST /api/v1/tickets/{id}/workflow/run-epic", s.handleRunEpicWorkflow)
+	protected("POST /api/v1/tickets/{id}/workflow/run", s.handleRunWorkflow)
+	protected("POST /api/v1/tickets/{id}/workflow/stop", s.handleStopWorkflow)
+	protected("POST /api/v1/tickets/{id}/workflow/restart", s.handleRestartAgent)
+	protected("POST /api/v1/tickets/{id}/workflow/retry-failed", s.handleRetryFailedAgent)
+	protected("POST /api/v1/tickets/{id}/workflow/take-control", s.handleTakeControl)
+	protected("POST /api/v1/tickets/{id}/workflow/resume-session", s.handleResumeSession)
+	protected("POST /api/v1/tickets/{id}/workflow/exit-interactive", s.handleExitInteractive)
+	protected("POST /api/v1/tickets/{id}/workflow/run-epic", s.handleRunEpicWorkflow)
 
 	// Workflow definitions (project-scoped)
-	mux.HandleFunc("GET /api/v1/workflows", s.handleListWorkflowDefs)
-	mux.HandleFunc("POST /api/v1/workflows", s.handleCreateWorkflowDef)
-	mux.HandleFunc("GET /api/v1/workflows/{id}", s.handleGetWorkflowDef)
-	mux.HandleFunc("PATCH /api/v1/workflows/{id}", s.handleUpdateWorkflowDef)
-	mux.HandleFunc("DELETE /api/v1/workflows/{id}", s.handleDeleteWorkflowDef)
+	protected("GET /api/v1/workflows", s.handleListWorkflowDefs)
+	protected("POST /api/v1/workflows", s.handleCreateWorkflowDef)
+	protected("GET /api/v1/workflows/{id}", s.handleGetWorkflowDef)
+	protected("PATCH /api/v1/workflows/{id}", s.handleUpdateWorkflowDef)
+	protected("DELETE /api/v1/workflows/{id}", s.handleDeleteWorkflowDef)
 
 	// Project-scoped workflow operations
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/run", s.handleRunProjectWorkflow)
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/stop", s.handleStopProjectWorkflow)
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/restart", s.handleRestartProjectAgent)
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/retry-failed", s.handleRetryFailedProjectAgent)
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/take-control", s.handleTakeControlProject)
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/resume-session", s.handleResumeSessionProject)
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/exit-interactive", s.handleExitInteractiveProject)
-	mux.HandleFunc("POST /api/v1/projects/{id}/workflow/stop-endless-loop", s.handleStopEndlessLoop)
-	mux.HandleFunc("DELETE /api/v1/projects/{id}/workflow/{instance_id}", s.handleDeleteProjectWorkflowInstance)
-	mux.HandleFunc("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)
-	mux.HandleFunc("GET /api/v1/projects/{id}/agents", s.handleGetProjectAgentSessions)
-	mux.HandleFunc("GET /api/v1/projects/{id}/findings", s.handleGetProjectFindings)
+	protected("POST /api/v1/projects/{id}/workflow/run", s.handleRunProjectWorkflow)
+	protected("POST /api/v1/projects/{id}/workflow/stop", s.handleStopProjectWorkflow)
+	protected("POST /api/v1/projects/{id}/workflow/restart", s.handleRestartProjectAgent)
+	protected("POST /api/v1/projects/{id}/workflow/retry-failed", s.handleRetryFailedProjectAgent)
+	protected("POST /api/v1/projects/{id}/workflow/take-control", s.handleTakeControlProject)
+	protected("POST /api/v1/projects/{id}/workflow/resume-session", s.handleResumeSessionProject)
+	protected("POST /api/v1/projects/{id}/workflow/exit-interactive", s.handleExitInteractiveProject)
+	protected("POST /api/v1/projects/{id}/workflow/stop-endless-loop", s.handleStopEndlessLoop)
+	protected("DELETE /api/v1/projects/{id}/workflow/{instance_id}", s.handleDeleteProjectWorkflowInstance)
+	protected("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)
+	protected("GET /api/v1/projects/{id}/agents", s.handleGetProjectAgentSessions)
+	protected("GET /api/v1/projects/{id}/findings", s.handleGetProjectFindings)
 
 	// Git
-	mux.HandleFunc("GET /api/v1/projects/{id}/git/commits", s.handleListGitCommits)
-	mux.HandleFunc("GET /api/v1/projects/{id}/git/commits/{hash}", s.handleGetGitCommitDetail)
+	protected("GET /api/v1/projects/{id}/git/commits", s.handleListGitCommits)
+	protected("GET /api/v1/projects/{id}/git/commits/{hash}", s.handleGetGitCommitDetail)
 
 	// Agent definitions (nested under workflows)
-	mux.HandleFunc("GET /api/v1/workflows/{wid}/agents", s.handleListAgentDefs)
-	mux.HandleFunc("POST /api/v1/workflows/{wid}/agents", s.handleCreateAgentDef)
-	mux.HandleFunc("GET /api/v1/workflows/{wid}/agents/{id}", s.handleGetAgentDef)
-	mux.HandleFunc("PATCH /api/v1/workflows/{wid}/agents/{id}", s.handleUpdateAgentDef)
-	mux.HandleFunc("DELETE /api/v1/workflows/{wid}/agents/{id}", s.handleDeleteAgentDef)
+	protected("GET /api/v1/workflows/{wid}/agents", s.handleListAgentDefs)
+	protected("POST /api/v1/workflows/{wid}/agents", s.handleCreateAgentDef)
+	protected("GET /api/v1/workflows/{wid}/agents/{id}", s.handleGetAgentDef)
+	protected("PATCH /api/v1/workflows/{wid}/agents/{id}", s.handleUpdateAgentDef)
+	protected("DELETE /api/v1/workflows/{wid}/agents/{id}", s.handleDeleteAgentDef)
 
-	// System agent definitions (global, no project scope)
-	mux.HandleFunc("GET /api/v1/system-agents", s.handleListSystemAgentDefs)
-	mux.HandleFunc("POST /api/v1/system-agents", s.handleCreateSystemAgentDef)
-	mux.HandleFunc("GET /api/v1/system-agents/{id}", s.handleGetSystemAgentDef)
-	mux.HandleFunc("PATCH /api/v1/system-agents/{id}", s.handleUpdateSystemAgentDef)
-	mux.HandleFunc("DELETE /api/v1/system-agents/{id}", s.handleDeleteSystemAgentDef)
+	// System agent definitions (global) — writes are admin-only
+	protected("GET /api/v1/system-agents", s.handleListSystemAgentDefs)
+	admin("POST /api/v1/system-agents", s.handleCreateSystemAgentDef)
+	protected("GET /api/v1/system-agents/{id}", s.handleGetSystemAgentDef)
+	admin("PATCH /api/v1/system-agents/{id}", s.handleUpdateSystemAgentDef)
+	admin("DELETE /api/v1/system-agents/{id}", s.handleDeleteSystemAgentDef)
 
-	// CLI models (global, no project scope)
-	mux.HandleFunc("GET /api/v1/cli-models", s.handleListCLIModels)
-	mux.HandleFunc("POST /api/v1/cli-models", s.handleCreateCLIModel)
-	mux.HandleFunc("GET /api/v1/cli-models/{id}", s.handleGetCLIModel)
-	mux.HandleFunc("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
-	mux.HandleFunc("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
-	mux.HandleFunc("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
+	// CLI models (global) — writes are admin-only
+	protected("GET /api/v1/cli-models", s.handleListCLIModels)
+	admin("POST /api/v1/cli-models", s.handleCreateCLIModel)
+	protected("GET /api/v1/cli-models/{id}", s.handleGetCLIModel)
+	admin("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
+	admin("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
+	protected("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
 
-	// Notification channels (project-scoped via X-Project header)
-	mux.HandleFunc("GET /api/v1/notification-channels", s.handleListNotificationChannels)
-	mux.HandleFunc("POST /api/v1/notification-channels", s.handleCreateNotificationChannel)
-	mux.HandleFunc("GET /api/v1/notification-channels/{id}", s.handleGetNotificationChannel)
-	mux.HandleFunc("PATCH /api/v1/notification-channels/{id}", s.handleUpdateNotificationChannel)
-	mux.HandleFunc("DELETE /api/v1/notification-channels/{id}", s.handleDeleteNotificationChannel)
-	mux.HandleFunc("POST /api/v1/notification-channels/{id}/test", s.handleTestNotificationChannel)
-	mux.HandleFunc("GET /api/v1/notification-deliveries", s.handleListNotificationDeliveries)
+	// Notification channels (project-scoped)
+	protected("GET /api/v1/notification-channels", s.handleListNotificationChannels)
+	protected("POST /api/v1/notification-channels", s.handleCreateNotificationChannel)
+	protected("GET /api/v1/notification-channels/{id}", s.handleGetNotificationChannel)
+	protected("PATCH /api/v1/notification-channels/{id}", s.handleUpdateNotificationChannel)
+	protected("DELETE /api/v1/notification-channels/{id}", s.handleDeleteNotificationChannel)
+	protected("POST /api/v1/notification-channels/{id}/test", s.handleTestNotificationChannel)
+	protected("GET /api/v1/notification-deliveries", s.handleListNotificationDeliveries)
 
-	// Scheduled tasks (project-scoped via X-Project header)
-	mux.HandleFunc("GET /api/v1/scheduled-tasks", s.handleListScheduledTasks)
-	mux.HandleFunc("POST /api/v1/scheduled-tasks", s.handleCreateScheduledTask)
-	mux.HandleFunc("GET /api/v1/scheduled-tasks/{id}", s.handleGetScheduledTask)
-	mux.HandleFunc("PATCH /api/v1/scheduled-tasks/{id}", s.handleUpdateScheduledTask)
-	mux.HandleFunc("DELETE /api/v1/scheduled-tasks/{id}", s.handleDeleteScheduledTask)
-	mux.HandleFunc("GET /api/v1/scheduled-tasks/{id}/runs", s.handleListScheduleRuns)
-	mux.HandleFunc("POST /api/v1/scheduled-tasks/{id}/run-now", s.handleRunScheduledTaskNow)
+	// Scheduled tasks (project-scoped) — writes are admin-only
+	protected("GET /api/v1/scheduled-tasks", s.handleListScheduledTasks)
+	admin("POST /api/v1/scheduled-tasks", s.handleCreateScheduledTask)
+	protected("GET /api/v1/scheduled-tasks/{id}", s.handleGetScheduledTask)
+	admin("PATCH /api/v1/scheduled-tasks/{id}", s.handleUpdateScheduledTask)
+	admin("DELETE /api/v1/scheduled-tasks/{id}", s.handleDeleteScheduledTask)
+	protected("GET /api/v1/scheduled-tasks/{id}/runs", s.handleListScheduleRuns)
+	protected("POST /api/v1/scheduled-tasks/{id}/run-now", s.handleRunScheduledTaskNow)
 
-	// Default templates (global, no project scope)
-	mux.HandleFunc("GET /api/v1/default-templates", s.handleListDefaultTemplates)
-	mux.HandleFunc("POST /api/v1/default-templates", s.handleCreateDefaultTemplate)
-	mux.HandleFunc("GET /api/v1/default-templates/{id}", s.handleGetDefaultTemplate)
-	mux.HandleFunc("PATCH /api/v1/default-templates/{id}", s.handleUpdateDefaultTemplate)
-	mux.HandleFunc("DELETE /api/v1/default-templates/{id}", s.handleDeleteDefaultTemplate)
-	mux.HandleFunc("POST /api/v1/default-templates/{id}/restore", s.handleRestoreDefaultTemplate)
+	// Default templates (global) — writes are admin-only
+	protected("GET /api/v1/default-templates", s.handleListDefaultTemplates)
+	admin("POST /api/v1/default-templates", s.handleCreateDefaultTemplate)
+	protected("GET /api/v1/default-templates/{id}", s.handleGetDefaultTemplate)
+	admin("PATCH /api/v1/default-templates/{id}", s.handleUpdateDefaultTemplate)
+	admin("DELETE /api/v1/default-templates/{id}", s.handleDeleteDefaultTemplate)
+	admin("POST /api/v1/default-templates/{id}/restore", s.handleRestoreDefaultTemplate)
 
-	// Global settings (no project scope)
-	mux.HandleFunc("GET /api/v1/settings", s.handleGetGlobalSettings)
-	mux.HandleFunc("PATCH /api/v1/settings", s.handlePatchGlobalSettings)
+	// Global settings — GET is protected, PATCH is admin-only
+	protected("GET /api/v1/settings", s.handleGetGlobalSettings)
+	admin("PATCH /api/v1/settings", s.handlePatchGlobalSettings)
 
-	// Safety hook check (global, no project scope)
-	mux.HandleFunc("POST /api/v1/safety-hook/check", s.handleCheckSafetyHook)
+	// Safety hook check
+	protected("POST /api/v1/safety-hook/check", s.handleCheckSafetyHook)
 
 	// Agent sessions
-	mux.HandleFunc("GET /api/v1/tickets/{id}/agents", s.handleGetAgentSessions)
-	mux.HandleFunc("GET /api/v1/agents/running", s.handleGetRunningAgents)
-	mux.HandleFunc("GET /api/v1/agents/recent", s.handleGetRecentAgents)
-	mux.HandleFunc("GET /api/v1/sessions/{id}/messages", s.handleGetSessionMessages)
-	mux.HandleFunc("GET /api/v1/sessions/{id}/prompt", s.handleGetSessionPrompt)
+	protected("GET /api/v1/tickets/{id}/agents", s.handleGetAgentSessions)
+	protected("GET /api/v1/agents/running", s.handleGetRunningAgents)
+	protected("GET /api/v1/agents/recent", s.handleGetRecentAgents)
+	protected("GET /api/v1/sessions/{id}/messages", s.handleGetSessionMessages)
+	protected("GET /api/v1/sessions/{id}/prompt", s.handleGetSessionPrompt)
 
 	// Dependencies
-	mux.HandleFunc("GET /api/v1/tickets/{id}/dependencies", s.handleGetDependencies)
-	mux.HandleFunc("POST /api/v1/dependencies", s.handleAddDependency)
-	mux.HandleFunc("DELETE /api/v1/dependencies", s.handleRemoveDependency)
+	protected("GET /api/v1/tickets/{id}/dependencies", s.handleGetDependencies)
+	protected("POST /api/v1/dependencies", s.handleAddDependency)
+	protected("DELETE /api/v1/dependencies", s.handleRemoveDependency)
 
 	// Chain executions
-	mux.HandleFunc("GET /api/v1/chains", s.handleListChains)
-	mux.HandleFunc("POST /api/v1/chains", s.handleCreateChain)
-	mux.HandleFunc("POST /api/v1/chains/preview", s.handlePreviewChain)
-	mux.HandleFunc("GET /api/v1/chains/{id}", s.handleGetChain)
-	mux.HandleFunc("PATCH /api/v1/chains/{id}", s.handleUpdateChain)
-	mux.HandleFunc("POST /api/v1/chains/{id}/start", s.handleStartChain)
-	mux.HandleFunc("POST /api/v1/chains/{id}/cancel", s.handleCancelChain)
-	mux.HandleFunc("DELETE /api/v1/chains/{id}", s.handleDeleteChain)
-	mux.HandleFunc("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
-	mux.HandleFunc("POST /api/v1/chains/{id}/remove-items", s.handleRemoveFromChain)
+	protected("GET /api/v1/chains", s.handleListChains)
+	protected("POST /api/v1/chains", s.handleCreateChain)
+	protected("POST /api/v1/chains/preview", s.handlePreviewChain)
+	protected("GET /api/v1/chains/{id}", s.handleGetChain)
+	protected("PATCH /api/v1/chains/{id}", s.handleUpdateChain)
+	protected("POST /api/v1/chains/{id}/start", s.handleStartChain)
+	protected("POST /api/v1/chains/{id}/cancel", s.handleCancelChain)
+	protected("DELETE /api/v1/chains/{id}", s.handleDeleteChain)
+	protected("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
+	protected("POST /api/v1/chains/{id}/remove-items", s.handleRemoveFromChain)
 
 	if s.apiMode {
-		// Tool definitions (global, no project scope; only available in --mode=api)
-		mux.HandleFunc("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
-		mux.HandleFunc("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
-		mux.HandleFunc("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
-		mux.HandleFunc("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
-		mux.HandleFunc("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
-		// API credentials (global, no project scope; only available in --mode=api)
-		mux.HandleFunc("GET /api/v1/api-credentials", s.handleListAPICredentials)
-		mux.HandleFunc("POST /api/v1/api-credentials", s.handleCreateAPICredential)
-		mux.HandleFunc("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
-		mux.HandleFunc("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
-		mux.HandleFunc("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
+		// Tool definitions (global; only in --mode=api) — writes are admin-only
+		protected("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
+		admin("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
+		protected("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
+		admin("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
+		admin("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
 
-		// nrvapp review (project-scoped; only available in --mode=api)
-		mux.HandleFunc("GET /api/v1/nrvapp/review", s.handleListNrvappReviews)
-		mux.HandleFunc("POST /api/v1/nrvapp/review", s.handleCreateNrvappReview)
-		mux.HandleFunc("GET /api/v1/nrvapp/review/{id}", s.handleGetNrvappReview)
-		mux.HandleFunc("PATCH /api/v1/nrvapp/review/{id}", s.handlePatchNrvappReview)
-		mux.HandleFunc("POST /api/v1/nrvapp/review/{id}/approve", s.handleApproveNrvappReview)
-		mux.HandleFunc("POST /api/v1/nrvapp/review/{id}/reject", s.handleRejectNrvappReview)
+		// API credentials (global; only in --mode=api) — writes are admin-only
+		protected("GET /api/v1/api-credentials", s.handleListAPICredentials)
+		admin("POST /api/v1/api-credentials", s.handleCreateAPICredential)
+		protected("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
+		admin("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
+		admin("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
 
-		// nrvapp config editor (project-scoped; only available in --mode=api)
-		mux.HandleFunc("GET /api/v1/nrvapp/config/files", s.handleListNrvappConfigFiles)
-		mux.HandleFunc("GET /api/v1/nrvapp/config/content/{file...}", s.handleGetNrvappConfigFile)
-		mux.HandleFunc("PUT /api/v1/nrvapp/config/content/{file...}", s.handlePutNrvappConfigFile)
-		mux.HandleFunc("GET /api/v1/nrvapp/config/history/{file...}", s.handleGetNrvappConfigHistory)
-		mux.HandleFunc("POST /api/v1/nrvapp/config/rollback/{file...}", s.handleRollbackNrvappConfig)
+		// nrvapp review (project-scoped; only in --mode=api)
+		protected("GET /api/v1/nrvapp/review", s.handleListNrvappReviews)
+		protected("POST /api/v1/nrvapp/review", s.handleCreateNrvappReview)
+		protected("GET /api/v1/nrvapp/review/{id}", s.handleGetNrvappReview)
+		protected("PATCH /api/v1/nrvapp/review/{id}", s.handlePatchNrvappReview)
+		protected("POST /api/v1/nrvapp/review/{id}/approve", s.handleApproveNrvappReview)
+		protected("POST /api/v1/nrvapp/review/{id}/reject", s.handleRejectNrvappReview)
 
-		// nrvapp insights (project-scoped; only available in --mode=api)
-		mux.HandleFunc("GET /api/v1/nrvapp/insights/summary", s.handleNrvappInsightsSummary)
-		mux.HandleFunc("GET /api/v1/nrvapp/insights/edit-rate", s.handleNrvappInsightsEditRate)
-		mux.HandleFunc("GET /api/v1/nrvapp/insights/throughput", s.handleNrvappInsightsThroughput)
+		// nrvapp config editor (project-scoped; only in --mode=api)
+		protected("GET /api/v1/nrvapp/config/files", s.handleListNrvappConfigFiles)
+		protected("GET /api/v1/nrvapp/config/content/{file...}", s.handleGetNrvappConfigFile)
+		protected("PUT /api/v1/nrvapp/config/content/{file...}", s.handlePutNrvappConfigFile)
+		protected("GET /api/v1/nrvapp/config/history/{file...}", s.handleGetNrvappConfigHistory)
+		protected("POST /api/v1/nrvapp/config/rollback/{file...}", s.handleRollbackNrvappConfig)
+
+		// nrvapp insights (project-scoped; only in --mode=api)
+		protected("GET /api/v1/nrvapp/insights/summary", s.handleNrvappInsightsSummary)
+		protected("GET /api/v1/nrvapp/insights/edit-rate", s.handleNrvappInsightsEditRate)
+		protected("GET /api/v1/nrvapp/insights/throughput", s.handleNrvappInsightsThroughput)
 	}
 
 	// Errors
-	mux.HandleFunc("GET /api/v1/errors", s.handleListErrors)
+	protected("GET /api/v1/errors", s.handleListErrors)
 
 	// Search
-	mux.HandleFunc("GET /api/v1/search", s.handleSearch)
+	protected("GET /api/v1/search", s.handleSearch)
 
 	// Status/Dashboard
-	mux.HandleFunc("GET /api/v1/status", s.handleStatus)
-	mux.HandleFunc("GET /api/v1/daily-stats", s.handleGetDailyStats)
+	protected("GET /api/v1/status", s.handleStatus)
+	protected("GET /api/v1/daily-stats", s.handleGetDailyStats)
 
-	// Embedded UI (SPA catch-all — must be last)
+	// Embedded UI (SPA catch-all — no auth, serves login page too)
 	if uiFS, err := static.DistFS(); err == nil {
 		if h := spaHandler(uiFS); h != nil {
 			mux.Handle("/", h)

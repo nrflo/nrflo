@@ -104,11 +104,11 @@ func TestAgentLogImprovements_E2E(t *testing.T) {
 	seedSessionAndMessages(t, dbPath)
 
 	// Start HTTP server
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// -- Hit the messages endpoint --
 	url := fmt.Sprintf("%s/api/v1/sessions/sess-e2e-1/messages?limit=100&offset=0", baseURL)
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		t.Fatalf("HTTP request failed: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestAgentLogImprovements_E2E(t *testing.T) {
 
 	// -- Pagination test --
 	url2 := fmt.Sprintf("%s/api/v1/sessions/sess-e2e-1/messages?limit=3&offset=0", baseURL)
-	resp2, err := http.Get(url2)
+	resp2, err := client.Get(url2)
 	if err != nil {
 		t.Fatalf("pagination request failed: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestAgentLogImprovements_E2E(t *testing.T) {
 
 	// Page 2 has different content
 	url3 := fmt.Sprintf("%s/api/v1/sessions/sess-e2e-1/messages?limit=3&offset=3", baseURL)
-	resp3, err := http.Get(url3)
+	resp3, err := client.Get(url3)
 	if err != nil {
 		t.Fatalf("page2 request failed: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestAgentLogImprovements_E2E(t *testing.T) {
 
 	// -- 404 for non-existent session --
 	url404 := fmt.Sprintf("%s/api/v1/sessions/does-not-exist/messages", baseURL)
-	resp404, err := http.Get(url404)
+	resp404, err := client.Get(url404)
 	if err != nil {
 		t.Fatalf("404 request failed: %v", err)
 	}

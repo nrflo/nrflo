@@ -45,13 +45,13 @@ func insertEpicAndChildrenDB(t *testing.T, dbPath, projectID, epicID string, chi
 }
 
 // doClose issues a POST /close request and returns the response.
-func doClose(t *testing.T, baseURL, projectID, ticketID string) *http.Response {
+func doClose(t *testing.T, client *http.Client, baseURL, projectID, ticketID string) *http.Response {
 	t.Helper()
 	body := `{"reason":"done"}`
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets/"+ticketID+"/close", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", projectID)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("close request failed for %s: %v", ticketID, err)
 	}
@@ -59,11 +59,11 @@ func doClose(t *testing.T, baseURL, projectID, ticketID string) *http.Response {
 }
 
 // getTicketStatus fetches a ticket via GET and returns its status field.
-func getTicketStatus(t *testing.T, baseURL, projectID, ticketID string) string {
+func getTicketStatus(t *testing.T, client *http.Client, baseURL, projectID, ticketID string) string {
 	t.Helper()
 	req, _ := http.NewRequest("GET", baseURL+"/api/v1/tickets/"+ticketID, nil)
 	req.Header.Set("X-Project", projectID)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("GET ticket %s failed: %v", ticketID, err)
 	}
@@ -94,10 +94,10 @@ func TestAPICloseLastChild_AutoClosesEpicAndBroadcasts(t *testing.T) {
 	insertEpicAndChildrenDB(t, dbPath, projectID, epicID, []string{child1ID, child2ID})
 
 	// Subscribe to all project events (empty ticketID)
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, "")
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, "")
 
 	// --- Close child1 (NOT the last child) ---
-	resp1 := doClose(t, baseURL, projectID, child1ID)
+	resp1 := doClose(t, client, baseURL, projectID, child1ID)
 	io.Copy(io.Discard, resp1.Body)
 	resp1.Body.Close()
 	if resp1.StatusCode != http.StatusOK {
@@ -114,12 +114,12 @@ func TestAPICloseLastChild_AutoClosesEpicAndBroadcasts(t *testing.T) {
 	expectNoEvent(t, ch, 300*time.Millisecond)
 
 	// Verify epic still open
-	if status := getTicketStatus(t, baseURL, projectID, epicID); status != "open" {
+	if status := getTicketStatus(t, client, baseURL, projectID, epicID); status != "open" {
 		t.Errorf("expected epic open after closing child1, got %q", status)
 	}
 
 	// --- Close child2 (the last child) ---
-	resp2 := doClose(t, baseURL, projectID, child2ID)
+	resp2 := doClose(t, client, baseURL, projectID, child2ID)
 	io.Copy(io.Discard, resp2.Body)
 	resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
@@ -151,7 +151,7 @@ func TestAPICloseLastChild_AutoClosesEpicAndBroadcasts(t *testing.T) {
 	}
 
 	// Verify epic closed via GET
-	if status := getTicketStatus(t, baseURL, projectID, epicID); status != "closed" {
+	if status := getTicketStatus(t, client, baseURL, projectID, epicID); status != "closed" {
 		t.Errorf("expected epic closed via GET, got %q", status)
 	}
 }
@@ -194,9 +194,9 @@ func TestAPICloseChild_NonEpicParentNotAffected(t *testing.T) {
 	}
 	database.Close()
 
-	baseURL, _, ch := startAPIServerWithWS(t, dbPath, projectID, "")
+	baseURL, _, ch, client := startAPIServerWithWS(t, dbPath, projectID, "")
 
-	resp := doClose(t, baseURL, projectID, childID)
+	resp := doClose(t, client, baseURL, projectID, childID)
 	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -208,7 +208,7 @@ func TestAPICloseChild_NonEpicParentNotAffected(t *testing.T) {
 	expectNoEvent(t, ch, 300*time.Millisecond)
 
 	// Parent must remain open
-	if status := getTicketStatus(t, baseURL, projectID, parentID); status != "open" {
+	if status := getTicketStatus(t, client, baseURL, projectID, parentID); status != "open" {
 		t.Errorf("expected non-epic parent to remain open, got %q", status)
 	}
 }

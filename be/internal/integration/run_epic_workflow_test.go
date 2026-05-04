@@ -28,7 +28,7 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "test-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	base := time.Now()
 	now := base.UTC().Format(time.RFC3339Nano)
@@ -77,7 +77,7 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "test-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestRunEpicWorkflow_NoChildren(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "test-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create epic with no children
 	database, err := db.OpenPath(dbPath)
@@ -174,7 +174,7 @@ func TestRunEpicWorkflow_NoChildren(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "test-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestRunEpicWorkflow_NonEpicTicket(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "test-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create regular feature ticket
 	database, err := db.OpenPath(dbPath)
@@ -231,7 +231,7 @@ func TestRunEpicWorkflow_NonEpicTicket(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "test-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestRunEpicWorkflow_ExcludesClosedChildren(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "test-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	database, err := db.OpenPath(dbPath)
 	if err != nil {
@@ -301,7 +301,7 @@ func TestRunEpicWorkflow_ExcludesClosedChildren(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "test-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestRunEpicWorkflow_TicketNotFound(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "test-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	body := map[string]interface{}{
 		"workflow_name": "test",
@@ -355,7 +355,7 @@ func TestRunEpicWorkflow_TicketNotFound(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "test-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestRunEpicWorkflow_MissingWorkflowName(t *testing.T) {
 	}
 
 	seedProject(t, dbPath, "test-proj")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create epic
 	database, err := db.OpenPath(dbPath)
@@ -411,7 +411,7 @@ func TestRunEpicWorkflow_MissingWorkflowName(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", "test-proj")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

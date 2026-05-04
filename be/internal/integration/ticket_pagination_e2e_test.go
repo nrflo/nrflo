@@ -22,7 +22,7 @@ type paginationListResponse struct {
 }
 
 // doListTickets sends GET /api/v1/tickets with the given query string.
-func doListTickets(t *testing.T, baseURL, project, query string) *paginationListResponse {
+func doListTickets(t *testing.T, client *http.Client, baseURL, project, query string) *paginationListResponse {
 	t.Helper()
 	url := baseURL + "/api/v1/tickets"
 	if query != "" {
@@ -30,7 +30,7 @@ func doListTickets(t *testing.T, baseURL, project, query string) *paginationList
 	}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("X-Project", project)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("GET tickets: %v", err)
 	}
@@ -47,7 +47,7 @@ func doListTickets(t *testing.T, baseURL, project, query string) *paginationList
 }
 
 // createTicketHTTP creates a ticket via the API with optional priority.
-func createTicketHTTP(t *testing.T, baseURL, project, id, title string, priority int) {
+func createTicketHTTP(t *testing.T, client *http.Client, baseURL, project, id, title string, priority int) {
 	t.Helper()
 	var body string
 	if priority > 0 {
@@ -58,7 +58,7 @@ func createTicketHTTP(t *testing.T, baseURL, project, id, title string, priority
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Project", project)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create ticket %s: %v", id, err)
 	}
@@ -76,15 +76,15 @@ func TestListTickets_PaginationMetadata_E2E(t *testing.T) {
 		t.Fatalf("copy template DB: %v", err)
 	}
 	seedProject(t, dbPath, "pgmeta")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create 5 tickets.
 	for i := 1; i <= 5; i++ {
-		createTicketHTTP(t, baseURL, "pgmeta", fmt.Sprintf("META-%d", i), fmt.Sprintf("Ticket %d", i), 0)
+		createTicketHTTP(t, client, baseURL, "pgmeta", fmt.Sprintf("META-%d", i), fmt.Sprintf("Ticket %d", i), 0)
 	}
 
 	// Request page 1 of 2 per page → expect 2 tickets, total=5, total_pages=3.
-	result := doListTickets(t, baseURL, "pgmeta", "page=1&per_page=2")
+	result := doListTickets(t, client, baseURL, "pgmeta", "page=1&per_page=2")
 
 	if result.TotalCount != 5 {
 		t.Errorf("total_count = %d, want 5", result.TotalCount)
@@ -106,7 +106,7 @@ func TestListTickets_PaginationMetadata_E2E(t *testing.T) {
 	}
 
 	// Page 3 should return the remaining 1 ticket.
-	result3 := doListTickets(t, baseURL, "pgmeta", "page=3&per_page=2")
+	result3 := doListTickets(t, client, baseURL, "pgmeta", "page=3&per_page=2")
 	if result3.TotalCount != 5 {
 		t.Errorf("page3 total_count = %d, want 5", result3.TotalCount)
 	}
@@ -115,7 +115,7 @@ func TestListTickets_PaginationMetadata_E2E(t *testing.T) {
 	}
 
 	// Page beyond total: empty tickets array, not nil, correct total.
-	result99 := doListTickets(t, baseURL, "pgmeta", "page=99&per_page=2")
+	result99 := doListTickets(t, client, baseURL, "pgmeta", "page=99&per_page=2")
 	if result99.TotalCount != 5 {
 		t.Errorf("page99 total_count = %d, want 5", result99.TotalCount)
 	}
@@ -134,14 +134,14 @@ func TestListTickets_SortByPriority_E2E(t *testing.T) {
 		t.Fatalf("copy template DB: %v", err)
 	}
 	seedProject(t, dbPath, "pgprio")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create tickets with distinct priorities (in non-sorted order).
-	createTicketHTTP(t, baseURL, "pgprio", "PGPRIO-1", "Ticket 1", 3)
-	createTicketHTTP(t, baseURL, "pgprio", "PGPRIO-2", "Ticket 2", 1)
-	createTicketHTTP(t, baseURL, "pgprio", "PGPRIO-3", "Ticket 3", 2)
+	createTicketHTTP(t, client, baseURL, "pgprio", "PGPRIO-1", "Ticket 1", 3)
+	createTicketHTTP(t, client, baseURL, "pgprio", "PGPRIO-2", "Ticket 2", 1)
+	createTicketHTTP(t, client, baseURL, "pgprio", "PGPRIO-3", "Ticket 3", 2)
 
-	result := doListTickets(t, baseURL, "pgprio", "sort_by=priority&sort_order=asc")
+	result := doListTickets(t, client, baseURL, "pgprio", "sort_by=priority&sort_order=asc")
 
 	if len(result.Tickets) != 3 {
 		t.Fatalf("len(tickets) = %d, want 3", len(result.Tickets))
@@ -163,7 +163,7 @@ func TestListTickets_SortByPriority_E2E(t *testing.T) {
 	}
 
 	// Verify sort_order=desc reverses the order.
-	resultDesc := doListTickets(t, baseURL, "pgprio", "sort_by=priority&sort_order=desc")
+	resultDesc := doListTickets(t, client, baseURL, "pgprio", "sort_by=priority&sort_order=desc")
 	if len(resultDesc.Tickets) != 3 {
 		t.Fatalf("desc len(tickets) = %d, want 3", len(resultDesc.Tickets))
 	}
@@ -183,13 +183,13 @@ func TestListTickets_PerPageCapped_E2E(t *testing.T) {
 		t.Fatalf("copy template DB: %v", err)
 	}
 	seedProject(t, dbPath, "pgcap")
-	baseURL := startAPIServer(t, dbPath)
+	baseURL, client := startAPIServer(t, dbPath)
 
-	createTicketHTTP(t, baseURL, "pgcap", "CAP-1", "Ticket 1", 0)
-	createTicketHTTP(t, baseURL, "pgcap", "CAP-2", "Ticket 2", 0)
+	createTicketHTTP(t, client, baseURL, "pgcap", "CAP-1", "Ticket 1", 0)
+	createTicketHTTP(t, client, baseURL, "pgcap", "CAP-2", "Ticket 2", 0)
 
 	// Request per_page=200 — handler must cap it to 100.
-	result := doListTickets(t, baseURL, "pgcap", "per_page=200")
+	result := doListTickets(t, client, baseURL, "pgcap", "per_page=200")
 	if result.PerPage != 100 {
 		t.Errorf("per_page = %d, want 100 (capped from 200)", result.PerPage)
 	}
@@ -199,7 +199,7 @@ func TestListTickets_PerPageCapped_E2E(t *testing.T) {
 	}
 
 	// Default params (no page/per_page): page=1, per_page=30.
-	resultDefault := doListTickets(t, baseURL, "pgcap", "")
+	resultDefault := doListTickets(t, client, baseURL, "pgcap", "")
 	if resultDefault.Page != 1 {
 		t.Errorf("default page = %d, want 1", resultDefault.Page)
 	}

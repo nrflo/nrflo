@@ -31,6 +31,8 @@ Helpers `getUser(r)` and `getUserID(r)` retrieve the stashed user from context i
 
 Write operations on configuration resources require admin role:
 - `POST /api/v1/projects`, `DELETE /api/v1/projects/{id}`
+- `GET|POST|PATCH|DELETE /api/v1/users/{...}` (all user management)
+- `GET /api/v1/audit-log`
 - `POST|PATCH|DELETE /api/v1/system-agents/{...}`
 - `POST|PATCH|DELETE /api/v1/cli-models/{...}`
 - `POST|PATCH|DELETE /api/v1/default-templates/{...}` (including `/restore`)
@@ -58,6 +60,8 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | File | Endpoints |
 |------|-----------|
 | `auth_middleware.go` | `requireAuth`/`requireAdmin` middleware, `getUser`/`getUserID` helpers |
+| `handlers_users.go` | User management CRUD: `GET|POST /users`, `PATCH|DELETE /users/{id}`, `POST /users/{id}/reset-password` (admin-only) |
+| `handlers_audit.go` | Audit log: `GET /audit-log` with pagination and user_id/action filters (admin-only) |
 | `auth_ratelimit.go` | Per-IP+email login rate limiter (5 req/5 min) |
 | `handlers_auth.go` | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` |
 | `server.go` | Server setup, CORS, route registration, orchestrator init |
@@ -96,6 +100,16 @@ All reads on those resources are `protected` (requireAuth only). All other route
 ## HTTP API Endpoints
 
 ```bash
+# Users (admin-only)
+GET    /api/v1/users                       # List all users (password_hash never serialized)
+POST   /api/v1/users                       # Create user; body: {email, display_name, password, role}; 409 email_exists
+PATCH  /api/v1/users/{id}                  # Partial update; body: {display_name?, role?, status?}; 400 last_admin
+DELETE /api/v1/users/{id}                  # Delete; 400 cannot_delete_self | last_admin; 404 not found
+POST   /api/v1/users/{id}/reset-password   # Force-reset password; body: {new_password}; sets must_change_password=1
+
+# Audit log (admin-only)
+GET    /api/v1/audit-log                   # Paginated: ?page=&per_page= (default 1/50, max 200) + ?user_id= + ?action= filters
+
 # Projects
 GET /api/v1/projects
 GET /api/v1/projects/:id

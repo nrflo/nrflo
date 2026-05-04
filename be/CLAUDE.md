@@ -253,7 +253,7 @@ cors → requestID → projectMiddleware → LoadAndSave (for /api/* only) → m
 
 Per-route auth: `protected` (requireAuth) or `admin` (requireAdmin = admin role). Public: `POST /api/v1/auth/login` only.
 
-Admin-gated writes: `POST /projects`, `DELETE /projects/{id}`, system-agents writes, cli-models writes, default-templates writes, scheduled-tasks writes, tool-definitions writes (api-mode), api-credentials writes (api-mode), `PATCH /settings`.
+Admin-gated writes: `POST /projects`, `DELETE /projects/{id}`, all `/users` endpoints, `GET /audit-log`, system-agents writes, cli-models writes, default-templates writes, scheduled-tasks writes, tool-definitions writes (api-mode), api-credentials writes (api-mode), `PATCH /settings`.
 
 Login rate limiter: 5 attempts per 5 min per IP+email key, returns HTTP 429 with `Retry-After`.
 

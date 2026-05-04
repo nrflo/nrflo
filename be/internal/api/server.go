@@ -410,6 +410,16 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/auth/me", s.handleAuthMe)
 	protected("POST /api/v1/auth/change-password", s.handleAuthChangePassword)
 
+	// User management (admin-only)
+	admin("GET /api/v1/users", s.handleListUsers)
+	admin("POST /api/v1/users", s.handleCreateUser)
+	admin("PATCH /api/v1/users/{id}", s.handleUpdateUser)
+	admin("DELETE /api/v1/users/{id}", s.handleDeleteUser)
+	admin("POST /api/v1/users/{id}/reset-password", s.handleResetUserPassword)
+
+	// Audit log (admin-only)
+	admin("GET /api/v1/audit-log", s.handleListAuditLog)
+
 	// WebSocket endpoints — gated on session before upgrade
 	wsHandler := ws.NewHandler(s.wsHub)
 	mux.Handle("GET /api/v1/ws", s.requireAuth(wsHandler))

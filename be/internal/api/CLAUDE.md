@@ -78,6 +78,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_cli_model_check.go` | CLI model health check (POST /api/v1/cli-models/{id}/test) |
 | `handlers_default_template.go` | Default template CRUD (global, no project scope, readonly enforcement) |
 | `handlers_scheduled_tasks.go` | Scheduled task CRUD + run-now + list-runs (project-scoped via X-Project header) |
+| `handlers_workflow_chains.go` | Workflow chain definition CRUD + step append/update/delete/reorder (project-scoped via X-Project header; writes admin-only) |
 | `handlers_notification_channels.go` | Notification channel CRUD + /test + deliveries list (project-scoped via X-Project header); secrets masked in responses |
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/delete/append/remove-items |
 | `handlers_git.go` | Git commit history list/detail |
@@ -306,6 +307,17 @@ PATCH  /api/v1/scheduled-tasks/{id}         # Partial update; same validations a
 DELETE /api/v1/scheduled-tasks/{id}         # Delete (cascades schedule_runs)
 GET    /api/v1/scheduled-tasks/{id}/runs    # Paginated run history (?limit=&offset=)
 POST   /api/v1/scheduled-tasks/{id}/run-now # Dispatch immediately; returns inserted ScheduleRun
+
+# Workflow chain definitions (project-scoped, require X-Project header; writes admin-only)
+GET    /api/v1/workflow-chains              # List all workflow chains for project
+POST   /api/v1/workflow-chains              # Create; body: {id?, name, description?, steps:[{id?,workflow_name,scope_type,base_instructions?,require_ticket_handoff?}]}; validates dense positions, step 0 project-scope, workflow_name resolves
+GET    /api/v1/workflow-chains/{id}         # Get one with steps
+PATCH  /api/v1/workflow-chains/{id}         # Partial update name/description; broadcasts chain_def.updated
+DELETE /api/v1/workflow-chains/{id}         # Delete (cascades steps); broadcasts chain_def.deleted
+POST   /api/v1/workflow-chains/{id}/steps   # Append step; body: WorkflowChainStepRequest; validates full list; 201 on success
+PATCH  /api/v1/workflow-chains/{id}/steps/{stepId}  # Update step fields; validates full list
+DELETE /api/v1/workflow-chains/{id}/steps/{stepId}  # Delete step; re-densifies positions
+POST   /api/v1/workflow-chains/{id}/steps/reorder   # Reorder; body: {ordered_step_ids:[...]}; validates IDs match chain
 
 # Errors (require X-Project header or ?project= param)
 GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)

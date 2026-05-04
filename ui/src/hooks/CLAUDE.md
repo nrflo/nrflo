@@ -115,6 +115,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useProjects.ts` | TanStack Query hook for projects |
 | `useChains.ts` | TanStack Query hooks for chain executions. `useChain` supports optional `refetchInterval` for running chain polling fallback. `useRemoveFromChain` mutation for removing pending items. |
 | `useScheduledTasks.ts` | TanStack Query hooks for scheduled tasks and run history. Key factory: `scheduleKeys`. Exports: `useScheduledTasks`, `useScheduleRuns(taskId, page)`, `useCreateScheduledTask`, `useUpdateScheduledTask`, `useDeleteScheduledTask`, `useRunScheduleNow`. All mutations invalidate `scheduleKeys.all`. |
+| `useWorkflowChains.ts` | TanStack Query hooks for workflow chain definitions. Key factory: `workflowChainKeys` (static `all`, `lists(project)`, `detail(project, id)`). Exports: `useWorkflowChainsList`, `useWorkflowChain(id)`, `useCreateWorkflowChain`, `useUpdateWorkflowChain`, `useDeleteWorkflowChain`, `useAppendStep`, `useUpdateStep`, `useDeleteStep`, `useReorderSteps`. All mutations invalidate `workflowChainKeys.all`. WS events `chain_def.created/updated/deleted` invalidate cache. |
 | `useElapsedTime.ts` | Elapsed time hooks |
 | `useGoBack.ts` | History-aware back navigation |
 | `useTakeControl()` | Mutation: take interactive control of running Claude agent (ticket-scoped) |

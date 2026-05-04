@@ -33,6 +33,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `notification.go` | Notification channel CRUD + secret masking/unmasking + PATCH mask-preserves semantics + TestSend (enqueue synthetic delivery) + ListDeliveries |
 | `snapshot.go` | WS snapshot provider (builds chunks from workflow state) |
 | `insights.go` | Insights service for review/dispatch dashboards: `Summary`, `EditRate`, `Throughput`; wraps `DispatchRepo` and `ReviewRepo`. Helpers: `ParseRange` (7d/30d → time.Time), `ParseBucket` (1h/6h/1d → time.Duration). |
+| `workflow_chain.go` | WorkflowChainService: CreateChain/GetChain/ListChains/UpdateChain/DeleteChain + AppendStep/UpdateStep/DeleteStep/ReorderSteps. Validates dense step positions, step 0 project-scope, workflow_name resolves via WorkflowService.GetWorkflowDef, require_ticket_handoff only when scope_type=ticket. Constructor: `NewWorkflowChainService(pool, clk, wfSvc)`. |
 
 ## Workflow Types
 

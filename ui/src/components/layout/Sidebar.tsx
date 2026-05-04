@@ -21,6 +21,7 @@ import {
   BarChart3,
   Users,
   ScrollText,
+  ListOrdered,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
@@ -144,6 +145,12 @@ export function Sidebar() {
             active={isActive('/schedules')}
           />
         )}
+        <NavItem
+          to="/workflow-chains"
+          icon={<ListOrdered className="h-4 w-4" />}
+          label="Workflow Chains"
+          active={isActive('/workflow-chains')}
+        />
         <NavItem
           to="/documentation"
           icon={<BookOpen className="h-4 w-4" />}

@@ -18,6 +18,8 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, useTickingClock for 1s elapsed time updates + 10s refetchInterval fallback when running |
 | `/errors` | `ErrorsPage.tsx` | Paginated error log table with type filter tabs (All/Agent/Workflow/System), server-side pagination, WS auto-refresh |
 | `/schedules` | `SchedulesPage.tsx` | Scheduled tasks table; write controls (New/Edit/Delete/Run-now/Toggle) hidden for non-admins via `useIsAdmin()`; ReadOnlyHint shown at top |
+| `/workflow-chains` | `WorkflowChainsPage.tsx` | Workflow chain list; New/Delete admin-only; ReadOnlyHint at top for non-admins; clicking row navigates to editor |
+| `/workflow-chains/:id` | `WorkflowChainEditorPage.tsx` | Chain editor — chain metadata form + ordered step list with Up/Down reorder, per-step inline form, Add/Delete step |
 | `/settings` | `SettingsPage.tsx` | Tabbed settings page (General, Projects, System Agents, Default Templates, CLI Models, Logs) — admin-only, gated via `RequireAdmin` at route level |
 | `/admin/users` | `admin/UsersPage.tsx` | Admin user management: table with email/role/status/last-login/must-change-pwd; Create/Edit/Reset-Password/Delete actions; error-surfacing for last_admin/cannot_delete_self/email_exists; dialogs extracted to `admin/UsersPageDialogs.tsx` |
 | `/admin/audit` | `admin/AuditLogPage.tsx` | Admin audit log: paginated table with timestamp/user/action/resource/ip; filters by action (Input) and user_id (Dropdown); per-page selector (50/100/200); Prev/Next pagination |

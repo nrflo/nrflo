@@ -528,6 +528,17 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/scheduled-tasks/{id}/runs", s.handleListScheduleRuns)
 	protected("POST /api/v1/scheduled-tasks/{id}/run-now", s.handleRunScheduledTaskNow)
 
+	// Workflow chain definitions (project-scoped) — writes are admin-only
+	protected("GET /api/v1/workflow-chains", s.handleListWorkflowChains)
+	admin("POST /api/v1/workflow-chains", s.handleCreateWorkflowChain)
+	protected("GET /api/v1/workflow-chains/{id}", s.handleGetWorkflowChain)
+	admin("PATCH /api/v1/workflow-chains/{id}", s.handleUpdateWorkflowChain)
+	admin("DELETE /api/v1/workflow-chains/{id}", s.handleDeleteWorkflowChain)
+	admin("POST /api/v1/workflow-chains/{id}/steps", s.handleAppendChainStep)
+	admin("PATCH /api/v1/workflow-chains/{id}/steps/{stepId}", s.handleUpdateChainStep)
+	admin("DELETE /api/v1/workflow-chains/{id}/steps/{stepId}", s.handleDeleteChainStep)
+	admin("POST /api/v1/workflow-chains/{id}/steps/reorder", s.handleReorderChainSteps)
+
 	// Default templates (global) — writes are admin-only
 	protected("GET /api/v1/default-templates", s.handleListDefaultTemplates)
 	admin("POST /api/v1/default-templates", s.handleCreateDefaultTemplate)

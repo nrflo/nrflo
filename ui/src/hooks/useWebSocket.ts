@@ -71,6 +71,9 @@ export type WSEventType =
   | 'review.updated'
   | 'config_file.updated'
   | 'tool.dispatched'
+  | 'chain_def.created'
+  | 'chain_def.updated'
+  | 'chain_def.deleted'
   | 'test.echo'
 
 export interface WSEvent {

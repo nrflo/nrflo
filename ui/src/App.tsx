@@ -22,6 +22,8 @@ import { GitStatusPage } from '@/pages/GitStatusPage'
 import { DocumentationPage } from '@/pages/DocumentationPage'
 import { ErrorsPage } from '@/pages/ErrorsPage'
 import { SchedulesPage } from '@/pages/SchedulesPage'
+import { WorkflowChainsPage } from '@/pages/WorkflowChainsPage'
+import { WorkflowChainEditorPage } from '@/pages/WorkflowChainEditorPage'
 import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
 import { APICredentialsPage } from '@/pages/APICredentialsPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -78,6 +80,8 @@ function AppRoutes() {
               <Route path="chains" element={<ChainListPage />} />
               <Route path="chains/:id" element={<ChainDetailPage />} />
               <Route path="schedules" element={<SchedulesPage />} />
+              <Route path="workflow-chains" element={<WorkflowChainsPage />} />
+              <Route path="workflow-chains/:id" element={<WorkflowChainEditorPage />} />
               <Route path="errors" element={<ErrorsPage />} />
               {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
               {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}

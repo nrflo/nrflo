@@ -5,6 +5,7 @@ import { subscriptionKey } from './useWSProtocol'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
 import { scheduleKeys } from './useScheduledTasks'
+import { workflowChainKeys } from './useWorkflowChains'
 import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
 import type { WSEventType } from './useWebSocket'
@@ -448,5 +449,15 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
   },
   'tool.dispatched': (_event, qc) => {
     throttledInsightsInvalidate(qc)
+  },
+
+  'chain_def.created': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainKeys.all })
+  },
+  'chain_def.updated': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainKeys.all })
+  },
+  'chain_def.deleted': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: workflowChainKeys.all })
   },
 }

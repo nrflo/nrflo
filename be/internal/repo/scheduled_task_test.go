@@ -1,23 +1,17 @@
 package repo
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func setupScheduledTaskDB(t *testing.T) (*ScheduledTaskRepo, string) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`,
 	)
@@ -130,15 +124,11 @@ func TestScheduledTaskRepo_Get_NotFound(t *testing.T) {
 
 func TestScheduledTaskRepo_List_FiltersByProjectID(t *testing.T) {
 	t.Parallel()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 
 	for _, id := range []string{"proj-a", "proj-b"} {
-		_, err = database.Exec(
+		_, err := database.Exec(
 			`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, 'P', datetime('now'), datetime('now'))`, id)
 		if err != nil {
 			t.Fatalf("insert project %s: %v", id, err)
@@ -184,12 +174,8 @@ func TestScheduledTaskRepo_Update_MutatesFields(t *testing.T) {
 	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`)
 	if err != nil {
@@ -270,15 +256,11 @@ func TestScheduledTaskRepo_Delete(t *testing.T) {
 
 func TestScheduledTaskRepo_ListEnabled_CrossProject(t *testing.T) {
 	t.Parallel()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 
 	for _, id := range []string{"proj-x", "proj-y"} {
-		_, err = database.Exec(
+		_, err := database.Exec(
 			`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, 'P', datetime('now'), datetime('now'))`, id)
 		if err != nil {
 			t.Fatalf("insert project %s: %v", id, err)
@@ -331,12 +313,8 @@ func TestScheduledTaskRepo_UpdateTriggerTimestamps(t *testing.T) {
 	fixedTime := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`)
 	if err != nil {

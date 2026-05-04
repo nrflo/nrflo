@@ -2,7 +2,6 @@ package repo
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,11 +13,8 @@ import (
 func setupRunningTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
 	t.Helper()
 
-	dbPath := filepath.Join(t.TempDir(), "running_test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open db: %v", err)
-	}
+	database := newTestDB(t)
+	var err error
 
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES ('proj', 'Test Project', datetime('now'), datetime('now'))`)

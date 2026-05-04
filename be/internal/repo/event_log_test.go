@@ -2,24 +2,15 @@ package repo
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 )
 
 func TestEventLogAppend(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
 
 	repo := NewEventLogRepo(pool, clock.Real())
 
@@ -64,21 +55,15 @@ func TestEventLogAppend(t *testing.T) {
 
 func TestEventLogQuerySince(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
 
 	repo := NewEventLogRepo(pool, clock.Real())
+	var err error
 
 	// Insert multiple events in same scope
 	for i := 1; i <= 5; i++ {
 		payload := json.RawMessage(`{"index":` + string(rune(i+'0')) + `}`)
-		_, err := repo.Append("proj-1", "ticket-1", "test.echo", "feature", payload)
+		_, err = repo.Append("proj-1", "ticket-1", "test.echo", "feature", payload)
 		if err != nil {
 			t.Fatalf("Append failed: %v", err)
 		}
@@ -154,14 +139,7 @@ func TestEventLogQuerySince(t *testing.T) {
 
 func TestEventLogLatestSeq(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
 
 	repo := NewEventLogRepo(pool, clock.Real())
 
@@ -220,16 +198,10 @@ func TestEventLogLatestSeq(t *testing.T) {
 
 func TestEventLogCleanup(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
 
 	repo := NewEventLogRepo(pool, clock.Real())
+	var err error
 
 	// Insert an old event by manually setting created_at
 	cutoff := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339Nano)
@@ -244,7 +216,7 @@ func TestEventLogCleanup(t *testing.T) {
 
 	// Insert recent events
 	for i := 0; i < 3; i++ {
-		_, err := repo.Append("proj-1", "ticket-1", "test.echo", "feature", nil)
+		_, err = repo.Append("proj-1", "ticket-1", "test.echo", "feature", nil)
 		if err != nil {
 			t.Fatalf("Append failed: %v", err)
 		}

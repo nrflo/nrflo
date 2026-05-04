@@ -1,26 +1,18 @@
 package repo
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func TestDailyStatsUpsertAndGet(t *testing.T) {
 	t.Parallel()
 	// Create temporary database
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project first (FK constraint)
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -87,14 +79,8 @@ func TestDailyStatsUpsertAndGet(t *testing.T) {
 
 func TestDailyStatsUpsertUpdate(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project first (FK constraint)
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -175,14 +161,8 @@ func TestDailyStatsUpsertUpdate(t *testing.T) {
 
 func TestDailyStatsGetByDateNonexistent(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project first (FK constraint)
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -227,14 +207,8 @@ func TestDailyStatsGetByDateNonexistent(t *testing.T) {
 
 func TestDailyStatsMultipleProjects(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create two projects
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "proj-a", "Project A")
@@ -306,14 +280,8 @@ func TestDailyStatsMultipleProjects(t *testing.T) {
 
 func TestDailyStatsMultipleDates(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -357,14 +325,8 @@ func TestDailyStatsMultipleDates(t *testing.T) {
 
 func TestDailyStatsForeignKeyConstraint(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	repo := NewDailyStatsRepo(database, clock.Real())
 
@@ -388,14 +350,8 @@ func TestDailyStatsForeignKeyConstraint(t *testing.T) {
 
 func TestDailyStatsDefaultValues(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -439,14 +395,8 @@ func TestDailyStatsDefaultValues(t *testing.T) {
 
 func TestDailyStatsLargeValues(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")

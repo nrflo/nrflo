@@ -2,22 +2,16 @@ package repo
 
 import (
 	"database/sql"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func setupAPICredRepo(t *testing.T) *APICredentialRepo {
 	t.Helper()
-	pool, err := db.NewPoolPath(filepath.Join(t.TempDir(), "test.db"), db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("NewPoolPath: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
+	pool := newTestPool(t)
 	return NewAPICredentialRepo(pool, clock.Real())
 }
 

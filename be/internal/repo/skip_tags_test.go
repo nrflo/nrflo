@@ -3,25 +3,18 @@
 package repo
 
 import (
+	"be/internal/db"
 	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 // newSkipTagsDB opens a fresh DB (for WorkflowRepo which requires *db.DB).
 func newSkipTagsDB(t *testing.T) *db.DB {
 	t.Helper()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
-	return database
+	return newTestDB(t)
 }
 
 // newSkipTagsPool opens a fresh Pool (for WorkflowInstanceRepo and AgentDefinitionRepo).

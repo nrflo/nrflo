@@ -2,7 +2,6 @@ package repo
 
 import (
 	"database/sql"
-	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
@@ -13,12 +12,8 @@ import (
 func setupConfigTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
 	t.Helper()
 
-	dbPath := filepath.Join(t.TempDir(), "config_test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at)
 		VALUES ('proj', 'Test Project', datetime('now'), datetime('now'))`)

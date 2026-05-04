@@ -2,25 +2,17 @@ package repo
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
+	var err error
 
 	// Create project
 	_, err = pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
@@ -127,14 +119,8 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 
 func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
+	var err error
 
 	// Create project
 	_, err = pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
@@ -199,14 +185,8 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 
 func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
+	var err error
 
 	// Create project
 	_, err = pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
@@ -269,14 +249,7 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 
 func TestWorkflowInstanceCleanupKeepLatest_EmptyTable(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
@@ -293,14 +266,8 @@ func TestWorkflowInstanceCleanupKeepLatest_EmptyTable(t *testing.T) {
 
 func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
+	pool := newTestPool(t)
+	var err error
 
 	// Create project
 	_, err = pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,

@@ -150,3 +150,41 @@ Python scripts (`*.py`) are written with mode `0755`; all others `0644`.
 `--git` runs `git init && git add . && git commit` after materialization (best-effort).
 
 The embedded template contains only `python_script` tools (no `builtin`/`config_template` entries).
+
+---
+
+## How Tool Dispatch Works End-to-End
+
+```
+Spawn (api-mode, customer_config_dir set)
+  └─ Spawner.loadManifestCached(configDir)
+       stats tool_manifest.yaml → reloads only when mtime changed
+       config.Load(configDir) → parses yaml, compiles input schemas
+
+apirun.ResolveRegistry(toolsCSV, builtins, httpDefs, httpFactory, manifestProvider)
+  1. builtins (findings_*, project_findings_*, agent_*, workflow_skip)
+  2. manifest tools via tools_nrvapp.ManifestProvider (python_script entries)
+  3. HTTP tool definitions (project-scoped or global)
+  Collision on any duplicate name → spawn fails
+
+Agent invocation (per tool_use block in provider response)
+  └─ tools_nrvapp handler:
+       1. Validate input against tool.InputSchema (Draft2020 JSON Schema)
+       2. python.Runtime.Invoke(ctx, tool.Script, inputBytes, envAllow, 30s)
+            stdin = JSON input, stdout = JSON output, stderr → ScriptError.Stderr
+            SIGKILL to process group on timeout
+       3. Insert NrvappToolDispatch row (status=success|error, duration_ms, error_msg)
+       4. Broadcast nrvapp.dispatch_completed {tool_name, status, duration_ms, dispatch_id}
+       5. If tool.Review && status==success:
+            Insert NrvappReviewItem (status=pending, input, output, session_id)
+            Broadcast nrvapp.review_created {review_item_id, tool_name}
+       6. On error: return isError=true (tool result visible to model); no review item created
+
+UI side (on WS events)
+  nrvapp.dispatch_completed → invalidate insights queries (dispatch count, throughput)
+  nrvapp.review_created     → invalidate review queue list → new pending item appears
+  nrvapp.review_updated     → invalidate single review item (approve/reject/draft change)
+  nrvapp.config_updated     → invalidate config editor content + history
+```
+
+**Skipped when:** `Config.APIMode == false` OR `Config.CustomerConfigDir == ""` OR `Config.PythonRunner == nil`. Manifest load failures log a warning and skip without failing the spawn.

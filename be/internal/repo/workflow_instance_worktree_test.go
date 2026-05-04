@@ -1,25 +1,20 @@
 package repo
 
 import (
+	"be/internal/db"
 	"database/sql"
-	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 // makeWorktreeTestDB creates a fresh pool and inserts the necessary project + workflow records.
 func makeWorktreeTestDB(t *testing.T, suffix string) (*WorkflowInstanceRepo, *db.Pool) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
+	pool := newTestPool(t)
 
+	var err error
 	projectID := "proj-" + suffix
 	workflowID := "wf-" + suffix
 	_, err = pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at)

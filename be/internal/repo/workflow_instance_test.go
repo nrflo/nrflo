@@ -2,25 +2,17 @@ package repo
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func TestUpdateStatusToProjectCompleted(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
+	pool := newTestPool(t)
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
-
+	var err error
 	// Create project first
 	_, err = pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
 		"test-project", "Test Project", "/tmp/test")
@@ -74,15 +66,9 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 
 func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
+	pool := newTestPool(t)
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
-
+	var err error
 	projectID := "test-project"
 
 	// Create project first

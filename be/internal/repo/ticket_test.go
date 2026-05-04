@@ -2,25 +2,17 @@ package repo
 
 import (
 	"database/sql"
-	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func TestListByParent(t *testing.T) {
 	t.Parallel()
 	// Create temporary database
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project first (FK constraint)
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -103,14 +95,8 @@ func TestListByParent(t *testing.T) {
 
 func TestListByParentNoChildren(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project first (FK constraint)
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -148,14 +134,8 @@ func TestListByParentNoChildren(t *testing.T) {
 
 func TestListByParentCaseInsensitive(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project first (FK constraint)
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")

@@ -1,23 +1,17 @@
 package repo
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func setupNotificationDeliveryDB(t *testing.T) (*NotificationDeliveryRepo, string, string) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	clk := clock.Real()
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-d', 'Test', datetime('now'), datetime('now'))`)
@@ -63,12 +57,8 @@ func TestNotificationDeliveryRepo_ListPending_ExcludesSentFailedGivingUp(t *test
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`)
 	if err != nil {
@@ -112,12 +102,8 @@ func TestNotificationDeliveryRepo_ListPending_ExcludesFutureNextAttempt(t *testi
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p2', 'T', datetime('now'), datetime('now'))`)
 	if err != nil {
@@ -166,12 +152,8 @@ func TestNotificationDeliveryRepo_ListByChannel_NewestFirst(t *testing.T) {
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p3', 'T', datetime('now'), datetime('now'))`)
 	if err != nil {

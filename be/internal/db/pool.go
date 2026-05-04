@@ -68,6 +68,22 @@ func NewPoolPath(path string, config PoolConfig) (*Pool, error) {
 	return pool, nil
 }
 
+// NewPoolPathExisting opens a connection pool at a path that already has migrations applied.
+// Use when copying from a pre-migrated template DB in tests (avoids running all migrations again).
+func NewPoolPathExisting(path string, config PoolConfig) (*Pool, error) {
+	db, err := sql.Open("sqlite", buildDSN(path))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	if err := setDatabasePragmas(db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	pool := &Pool{DB: db, Path: path}
+	pool.applyConfig(config)
+	return pool, nil
+}
+
 // applyConfig applies pool configuration
 func (p *Pool) applyConfig(config PoolConfig) {
 	p.SetMaxOpenConns(config.MaxOpenConns)

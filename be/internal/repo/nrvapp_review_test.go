@@ -3,23 +3,17 @@ package repo
 import (
 	"database/sql"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func setupNrvappReviewDB(t *testing.T) (*NrvappReviewRepo, string) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`)
 	if err != nil {

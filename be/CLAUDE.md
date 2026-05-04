@@ -240,12 +240,6 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.
 
-### Server Env Vars
-
-| Env Var | Description |
-|---------|-------------|
-| `NRFLO_REGISTER_TOKEN` | Bearer token that gates `POST /api/v1/tool-definitions/register`. Read once per request via `os.Getenv`. Returns 503 when unset; 401 on mismatch. Only relevant when `--mode=api` (route is not registered in cli mode). |
-
 ### Per-Project Settings (config table, `PATCH /api/v1/projects/:id`)
 
 | Key | Type | Description |

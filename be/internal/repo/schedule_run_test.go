@@ -3,12 +3,10 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
@@ -24,12 +22,8 @@ func setupScheduleRunDB(t *testing.T) *scheduleRunTestEnv {
 	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`,
@@ -74,12 +68,8 @@ func TestScheduleRunRepo_Insert_AutoFillsTriggeredAt(t *testing.T) {
 	fixedTime := time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`)
@@ -254,12 +244,8 @@ func TestScheduleRunRepo_ListByTask_OrderedDescWithLimitOffset(t *testing.T) {
 	fixedBase := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedBase)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`)

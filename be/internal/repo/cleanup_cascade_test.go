@@ -3,7 +3,6 @@ package repo
 import (
 	"database/sql"
 	"encoding/json"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,16 +15,9 @@ import (
 // automatically deletes its associated agent sessions due to ON DELETE CASCADE.
 func TestCleanupCascade(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
+	pool := newTestPool(t)
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	defer pool.Close()
-
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(pool.Path)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}

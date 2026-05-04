@@ -1,23 +1,17 @@
 package repo
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func setupNotificationChannelDB(t *testing.T) (*NotificationChannelRepo, string) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`)
 	if err != nil {
@@ -91,15 +85,10 @@ func TestNotificationChannelRepo_Update_MutatesFields(t *testing.T) {
 	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
 
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`)
-	if err != nil {
+	database := newTestDB(t)
+	var err error
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
 	r := NewNotificationChannelRepo(database, clk)
@@ -162,16 +151,11 @@ func TestNotificationChannelRepo_Delete(t *testing.T) {
 
 func TestNotificationChannelRepo_ListByProject_FiltersProject(t *testing.T) {
 	t.Parallel()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	for _, id := range []string{"pa", "pb"} {
-		_, err = database.Exec(
-			`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, 'P', datetime('now'), datetime('now'))`, id)
-		if err != nil {
+		if _, err := database.Exec(
+			`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, 'P', datetime('now'), datetime('now'))`, id); err != nil {
 			t.Fatalf("insert project %s: %v", id, err)
 		}
 	}

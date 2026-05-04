@@ -613,7 +613,17 @@ Credentials are also used for per-project Anthropic API key overrides (set on th
 
 ---
 
-## 16. How to Update This Document
+## 16. API-Mode Tools from a Customer Config Dir
+
+When the server is started in `--mode=api` and the project has a **Customer Config Dir** configured (set on the Project page), manifest tools defined in that directory become available to api-mode agents alongside built-in tools and HTTP tool definitions.
+
+- **Using manifest tools in an agent**: list manifest tool names in the `tools` CSV on the agent definition form, using the same glob syntax as builtins and HTTP tools (e.g., `lookup_sku`, `update_record`, or `*` for everything). No special syntax is needed — manifest tool names appear in the same tool registry as builtins.
+- **Review queue**: tools marked with `review: true` in the manifest automatically create a pending entry in the project **Review Queue** page on each successful call. Reviewers can inspect the agent's input and output, edit a draft response, and approve or reject. The agent receives the raw tool output immediately; the review is an asynchronous audit and approval step.
+- **Insights dashboard**: every manifest tool dispatch is audit-logged and counted. The project **Insights** page shows total dispatch counts, per-tool edit rates (what fraction of outputs reviewers changed), and throughput over time. Use these to monitor tool reliability and identify tools that frequently need human correction.
+
+---
+
+## 17. How to Update This Document
 
 - This file is `agent_manual.md` in the project root
 - Served by `GET /api/v1/docs/agent-manual`

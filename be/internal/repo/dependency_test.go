@@ -1,24 +1,16 @@
 package repo
 
 import (
-	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func TestGetBlockersWithTitles(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -89,14 +81,8 @@ func TestGetBlockersWithTitles(t *testing.T) {
 
 func TestGetBlockedWithTitles(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -167,14 +153,8 @@ func TestGetBlockedWithTitles(t *testing.T) {
 
 func TestGetBlockersDeletedTicket(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -252,14 +232,8 @@ func TestGetBlockersDeletedTicket(t *testing.T) {
 
 func TestGetBlockedCaseInsensitive(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
@@ -327,14 +301,8 @@ func TestGetBlockedCaseInsensitive(t *testing.T) {
 
 func TestGetBlockersMultipleBlockers(t *testing.T) {
 	t.Parallel()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	defer database.Close()
+	database := newTestDB(t)
+	var err error
 
 	// Create project
 	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")

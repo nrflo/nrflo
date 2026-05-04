@@ -1,22 +1,17 @@
 package repo
 
 import (
-	"path/filepath"
+	"be/internal/db"
 	"strings"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func setupToolDefRepo(t *testing.T) (*ToolDefinitionRepo, *db.Pool) {
 	t.Helper()
-	pool, err := db.NewPoolPath(filepath.Join(t.TempDir(), "test.db"), db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("NewPoolPath: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
+	pool := newTestPool(t)
 	return NewToolDefinitionRepo(pool, clock.Real()), pool
 }
 

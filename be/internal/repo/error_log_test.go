@@ -2,23 +2,17 @@ package repo
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
 func setupErrorLogDB(t *testing.T) (*ErrorLogRepo, string) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
+	database := newTestDB(t)
+	var err error
 	_, err = database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`,
 	)
@@ -75,16 +69,11 @@ func TestErrorLogRepo_Insert(t *testing.T) {
 
 func TestErrorLogRepo_Insert_UsesClockWhenCreatedAtEmpty(t *testing.T) {
 	t.Parallel()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
-	_, err = database.Exec(
+	database := newTestDB(t)
+	var err error
+	if _, err := database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`,
-	)
-	if err != nil {
+	); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
 

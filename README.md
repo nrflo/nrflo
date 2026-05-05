@@ -18,7 +18,7 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
 - **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
 - **Mixed-agent compatible** — run workflows across Claude CLI, Opencode, and Codex without changing the workflow model
-- **Bring your own subscription** — NRFLO drives Claude Code, Opencode, and Codex as non-interactive CLIs, reusing each tool's local login, so runs go through your existing Claude or ChatGPT subscription (no extra API keys or per-token bills)
+- **Uses your existing CLI subscriptions. No API billing.** NRFLO drives Claude CLI, Opencode, and Codex in two flavours — as non-interactive batch invocations for headless layered runs, or as PTY-attached interactive sessions you can take over live in the browser. Both flavours reuse each tool's local login, so runs go through your Claude Pro / Max, ChatGPT, or Opencode provider plan. Nothing new to pay for, no API keys to rotate, no per-token surprises.
 
 ## Core capabilities
 
@@ -27,7 +27,13 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - Layered execution with same-layer parallelism and validated fan-in progression
 - Ticket-scoped and project-scoped workflows
 - Dependency-aware sequential ticket chains
-- Cron-driven scheduled task runs for project-scoped workflows
+- Endless loop mode for project-scoped workflows that re-spawn after completion
+- Per-agent low-consumption toggle that swaps to a cheaper model on the fly
+
+### Scheduled execution
+- Cron-driven scheduler dispatches workflows or workflow chains on a schedule
+- Per-task fan-out across multiple workflows with run-row tracking
+- Ad-hoc "run now" trigger from the UI; full run history retained per task
 
 ### Handoffs and validation
 - Structured findings handoffs between agents
@@ -52,7 +58,9 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 
 ### Observability
 - Real-time workflow graph
-- Logs, findings, final results, and error tracking
+- Logs, findings, and final results
+- Dedicated errors page recording agent failures, workflow failures, and merge-conflict events
+- Paginated agent session log page (`/logs`) for finished sessions with workflow and schedule context
 
 ## How It Works
 
@@ -186,6 +194,19 @@ The server runs everything in-process: the orchestrator groups phases by layer, 
 | `make clean` | Remove build artifacts |
 | `make tidy` | Tidy Go module dependencies |
 | `make help` | Show all available targets |
+
+## Authentication
+
+The web UI is protected by username/password sessions. On first launch the database is seeded with a single admin account:
+
+| Field | Value |
+|-------|-------|
+| Username | `admin` |
+| Password | `admin` |
+
+Change it from **Settings → Administration → Users** as soon as you log in. The Users page (admin only) supports creating, updating, and deactivating users; an Audit Log page records administrative actions. Failed login attempts are rate-limited per IP and email.
+
+When running the server over plain HTTP for local development, start it with `--insecure-cookies` so the session cookie is not marked `Secure`.
 
 ## Configuration
 

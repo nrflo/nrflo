@@ -6,6 +6,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { formatDateTime, formatElapsedTime } from '@/lib/utils'
 import type { AgentHistoryEntry, AgentSession } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
+import { findSession } from './agentRowHelpers'
 
 const PAGE_SIZE = 20
 
@@ -46,20 +47,8 @@ export function CompletedAgentsTable({ agentHistory, sessions, onAgentSelect }: 
   const safePage = Math.min(currentPage, pageCount - 1)
   const pageItems = sortedAgents.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE)
 
-  const findSession = (entry: AgentHistoryEntry): AgentSession | undefined => {
-    if (entry.session_id) {
-      const byId = sessions.find(s => s.id === entry.session_id)
-      if (byId) return byId
-    }
-    return sessions.find(s =>
-      s.agent_type === entry.agent_type &&
-      s.phase === entry.phase &&
-      (!entry.model_id || s.model_id === entry.model_id)
-    )
-  }
-
   const handleClick = (entry: AgentHistoryEntry) => {
-    const session = findSession(entry)
+    const session = findSession(entry, sessions)
     onAgentSelect({
       phaseName: entry.phase,
       historyEntry: entry,

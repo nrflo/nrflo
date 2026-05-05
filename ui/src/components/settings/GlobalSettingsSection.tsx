@@ -46,6 +46,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const simplifiedGraphMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ simplified_agents_graph: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   const retentionMutation = useMutation({
     mutationFn: (val: number) => updateGlobalSettings({ session_retention_limit: val }),
     onSuccess: () => {
@@ -142,6 +149,20 @@ export function GlobalSettingsSection() {
                 checked={settings.context_save_via_agent}
                 onChange={(val) => contextSaveMutation.mutate(val)}
                 disabled={contextSaveMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Use simplified agents graph</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Show agents as a flat table instead of the interactive graph
+                </p>
+              </div>
+              <Toggle
+                checked={settings.simplified_agents_graph ?? false}
+                onChange={(val) => simplifiedGraphMutation.mutate(val)}
+                disabled={simplifiedGraphMutation.isPending}
               />
             </div>
             <div className="border-t border-border" />

@@ -25,7 +25,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/delete/append/removeFromChain/runEpicWorkflow) |
 | `workflowChains.ts` | Workflow chain definition CRUD + step management (`GET/POST /api/v1/workflow-chains`, `GET/PATCH/DELETE /api/v1/workflow-chains/{id}`, `POST/PATCH/DELETE /api/v1/workflow-chains/{id}/steps`, `POST .../steps/reorder`; requires X-Project header) |
 | `docs.ts` | Documentation API functions (getAgentManual) |
-| `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode, context save via agent, session retention limit, stall start/running timeouts). `GlobalSettings.api_mode_enabled` (bool, read-only — server ignores on PATCH) reflects the `--mode=api` startup flag. |
+| `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode, context save via agent, simplified agents graph toggle, session retention limit, stall start/running timeouts). `GlobalSettings.api_mode_enabled` (bool, read-only — server ignores on PATCH) reflects the `--mode=api` startup flag. |
 | `agents.ts` | Agent API functions (fetchRecentAgents, fetchRunningAgents, fetchSessionMessages, fetchSessionPrompt) |
 | `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
 | `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |

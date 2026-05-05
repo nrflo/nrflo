@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 import { Clock, Cpu } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { PhaseGraph } from './PhaseGraph'
+import { AgentsTable } from './AgentsTable'
 import { useAgentSessions } from '@/hooks/useTickets'
+import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import type { WorkflowState, AgentHistoryEntry, AgentSession } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
@@ -33,6 +35,8 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
     { enabled: !!ticketId && !sessionsProp }
   )
   const sessions = sessionsProp ?? sessionsData?.sessions
+  const { data: gSettings } = useGlobalSettings()
+  const simplified = !!gSettings?.simplified_agents_graph
 
   if (Object.keys(phases).length === 0) {
     return (
@@ -60,21 +64,32 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
         )}
       </div>
 
-      {/* Phase Graph */}
-      <PhaseGraph
-        phases={phases}
-        currentPhase={workflow.current_phase}
-        activeAgents={activeAgents}
-        agentHistory={agentHistory}
-        phaseOrder={workflow.phase_order}
-        phaseLayers={workflow.phase_layers}
-        sessions={sessions}
-        onAgentSelect={onAgentSelect}
-        onRetryFailed={onRetryFailed}
-        retryingSessionId={retryingSessionId}
-        workflowStatus={workflow.status}
-        callbackInfo={workflow.callback}
-      />
+      {simplified ? (
+        <AgentsTable
+          phases={phases}
+          activeAgents={activeAgents}
+          agentHistory={agentHistory}
+          phaseOrder={workflow.phase_order}
+          phaseLayers={workflow.phase_layers}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+        />
+      ) : (
+        <PhaseGraph
+          phases={phases}
+          currentPhase={workflow.current_phase}
+          activeAgents={activeAgents}
+          agentHistory={agentHistory}
+          phaseOrder={workflow.phase_order}
+          phaseLayers={workflow.phase_layers}
+          sessions={sessions}
+          onAgentSelect={onAgentSelect}
+          onRetryFailed={onRetryFailed}
+          retryingSessionId={retryingSessionId}
+          workflowStatus={workflow.status}
+          callbackInfo={workflow.callback}
+        />
+      )}
 
     </div>
   )

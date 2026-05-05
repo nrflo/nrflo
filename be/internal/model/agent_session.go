@@ -74,6 +74,24 @@ func (as *AgentSession) SetFindings(findings map[string]interface{}) {
 	as.Findings = sql.NullString{String: string(data), Valid: true}
 }
 
+// AgentSessionLogRow carries joined fields for the agent session log endpoint.
+// Fields from agent_sessions joined with workflow_instances and agent_definitions.
+type AgentSessionLogRow struct {
+	SessionID          string
+	ProjectID          string
+	AgentType          string
+	ModelID            sql.NullString
+	Status             AgentSessionStatus
+	StartedAt          sql.NullString
+	EndedAt            sql.NullString
+	UpdatedAt          sql.NullString
+	Findings           sql.NullString
+	WorkflowID         string
+	WorkflowInstanceID string
+	ScheduledTaskID    sql.NullString
+	ExecutionMode      sql.NullString
+}
+
 // MarshalJSON implements custom JSON marshaling for AgentSession
 func (as AgentSession) MarshalJSON() ([]byte, error) {
 	messages := as.Messages

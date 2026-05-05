@@ -655,6 +655,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Errors
 	protected("GET /api/v1/errors", s.handleListErrors)
 
+	// Agent session logs
+	protected("GET /api/v1/agent-session-logs", s.handleListAgentSessionLogs)
+
 	// Search
 	protected("GET /api/v1/search", s.handleSearch)
 

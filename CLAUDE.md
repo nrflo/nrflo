@@ -186,6 +186,7 @@ Where to look when working on a feature. Each entry is a one-line pointer; full 
 ### Storage & operations
 - **Python scripts table + CRUD + validation** → [api/CLAUDE.md](be/internal/api/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **Error tracking (`errors` table + `error.created` events)** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
+- **Agent session logs (paginated finished sessions with joined workflow/schedule metadata)** → `GET /api/v1/agent-session-logs` in [api/CLAUDE.md](be/internal/api/CLAUDE.md); handler `be/internal/api/handlers_agent_session_logs.go`; service `be/internal/service/agent_session_log.go`
 - **Notification channels (Slack/Telegram dispatch + retry)** → [be/CLAUDE.md](be/CLAUDE.md) (notify section)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
 - **Versioned config-file editor (manifest workflows)** → [configeditor/CLAUDE.md](be/internal/configeditor/CLAUDE.md)

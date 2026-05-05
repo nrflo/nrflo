@@ -94,6 +94,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
 | `handlers_errors.go` | Error log list (paginated, type filter) |
+| `handlers_agent_session_logs.go` | Agent session log list (GET /api/v1/agent-session-logs, paginated, project-scoped, finished sessions only joined with workflow_instances + agent_definitions) |
 | `handlers_logs.go` | Backend log file viewer |
 | `handlers_python_scripts.go` | Python script CRUD (list, create, get, update, delete) + validate; project-scoped via X-Project header; writes admin-only |
 | `handlers_review.go` | Review item CRUD (list, create, get with diff, patch draft, approve, reject); project-scoped via X-Project header; api-mode only |
@@ -339,6 +340,9 @@ POST   /api/v1/workflow-chains/{id}/runs/{runId}/cancel       # Cancel run (admi
 
 # Errors (require X-Project header or ?project= param)
 GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)
+
+# Agent Session Logs (require X-Project header or ?project= param)
+GET /api/v1/agent-session-logs     # Paginated finished sessions: ?page=&per_page= (default 1/20, max 100); joins workflow_instances (workflow_id, scheduled_task_id) and agent_definitions (execution_mode); includes workflow_final_result parsed from findings, duration_sec, scheduled bool
 
 # Other
 GET /api/v1/search?q=              # Full-text search

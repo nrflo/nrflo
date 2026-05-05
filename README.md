@@ -109,6 +109,8 @@ nrflo_server serve
 # Open http://localhost:6587
 ```
 
+Sign in with the seeded admin account — **username `admin`, password `admin`** — and change the password immediately from **Settings → Administration → Users**. See [Authentication](#authentication) for details.
+
 To make the server accessible on the local network:
 
 ```bash

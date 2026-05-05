@@ -93,4 +93,11 @@ homebrew_casks:
       Database is stored at ~/.nrflo/nrflo.data by default.
       Override with NRFLO_HOME environment variable.
 
-      To start the server: nrflo_server serve
+      To start the server: nrflo_server
+      Then open http://localhost:6587
+
+      Default login (change on first sign-in):
+        Username: admin
+        Password: admin
+
+      Rotate credentials in Settings -> Administration -> Users.

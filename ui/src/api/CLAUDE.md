@@ -21,6 +21,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `workflows.ts` | Workflow definition and orchestration API functions |
 | `projectWorkflows.ts` | Project-scoped workflow API functions (run/stop/get/restart/delete/agent sessions/findings) |
 | `agentDefs.ts` | Agent definition API client |
+| `pythonScripts.ts` | Python script CRUD + syntax validation (`listPythonScripts`, `getPythonScript`, `createPythonScript`, `updatePythonScript`, `deletePythonScript`, `validatePythonScript`); requires X-Project header |
 | `chains.ts` | Chain execution API functions (list/get/create/update/start/cancel/delete/append/removeFromChain/runEpicWorkflow) |
 | `workflowChains.ts` | Workflow chain definition CRUD + step management (`GET/POST /api/v1/workflow-chains`, `GET/PATCH/DELETE /api/v1/workflow-chains/{id}`, `POST/PATCH/DELETE /api/v1/workflow-chains/{id}/steps`, `POST .../steps/reorder`; requires X-Project header) |
 | `docs.ts` | Documentation API functions (getAgentManual) |
@@ -121,6 +122,14 @@ POST   /api/v1/workflows/:wid/agents
 GET    /api/v1/workflows/:wid/agents/:id
 PATCH  /api/v1/workflows/:wid/agents/:id
 DELETE /api/v1/workflows/:wid/agents/:id
+
+# Python scripts (require X-Project header; writes admin-only)
+GET    /api/v1/python-scripts            # List all scripts for project
+POST   /api/v1/python-scripts            # Create script
+GET    /api/v1/python-scripts/:id        # Get script
+PATCH  /api/v1/python-scripts/:id        # Update script
+DELETE /api/v1/python-scripts/:id        # Delete script
+POST   /api/v1/python-scripts/validate   # Syntax check only (no DB write); body: {code}
 
 # Chain executions (require X-Project header)
 GET    /api/v1/chains                             # List (?status=&epic_ticket_id=)

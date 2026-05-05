@@ -207,9 +207,15 @@ describe('AgentDefForm — apiModeEnabled=false gate', () => {
     mockUseAPIModeEnabled.mockReturnValue(true)
   })
 
-  it('hides Execution Mode label and dropdown', () => {
+  it('hides API option from Execution Mode dropdown', async () => {
+    const user = userEvent.setup()
     renderForm()
-    expect(screen.queryByText('Execution Mode')).not.toBeInTheDocument()
+    // Execution Mode dropdown is always visible (controls cli/api/script)
+    expect(screen.getByText('Execution Mode')).toBeInTheDocument()
+    // Open dropdown — API option must not appear; Script option must be available
+    await user.click(getExecutionModeButton())
+    expect(screen.queryByText('API (in-process Anthropic runner)')).not.toBeInTheDocument()
+    expect(screen.getByText('Script (Python)')).toBeInTheDocument()
   })
 
   it('cli submit still produces execution_mode=cli and tools=empty', async () => {
@@ -226,9 +232,10 @@ describe('AgentDefForm — apiModeEnabled=false gate', () => {
     )
   })
 
-  it('hides Execution Mode dropdown but still shows AgentDefAPIModeFields for orphan api def', () => {
+  it('shows AgentDefAPIModeFields for orphan api def even without API option in dropdown', () => {
     renderForm({ isCreate: false, initial: { execution_mode: 'api', tools: 'findings_add' } })
-    expect(screen.queryByText('Execution Mode')).not.toBeInTheDocument()
+    // Dropdown always visible; API option absent but existing api-mode def fields still rendered
+    expect(screen.getByText('Execution Mode')).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/findings_add/i)).toBeInTheDocument()
   })
 })

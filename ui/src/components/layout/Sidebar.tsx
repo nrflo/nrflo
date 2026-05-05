@@ -22,6 +22,7 @@ import {
   Users,
   ScrollText,
   ListOrdered,
+  FileCode,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
@@ -150,6 +151,12 @@ export function Sidebar() {
           icon={<ListOrdered className="h-4 w-4" />}
           label="Workflow Chains"
           active={isActive('/workflow-chains')}
+        />
+        <NavItem
+          to="/python-scripts"
+          icon={<FileCode className="h-4 w-4" />}
+          label="Python Scripts"
+          active={isActive('/python-scripts')}
         />
         <NavItem
           to="/documentation"

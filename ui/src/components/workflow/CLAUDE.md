@@ -68,9 +68,10 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 | Component | Purpose |
 |-----------|---------|
 | `WorkflowDefForm.tsx` | Workflow definition create/edit form (includes groups chip input) |
-| `AgentDefForm.tsx` | Agent definition create/edit form (includes layer input, tag dropdown when groups available, "Apply Template" button opens TemplatePickerDialog) |
+| `AgentDefForm.tsx` | Agent definition create/edit form (includes layer input, tag dropdown when groups available, "Apply Template" button opens TemplatePickerDialog). Execution Mode dropdown always visible; `api` option only included when `apiModeEnabled`. When `executionMode==='script'`: hides Model, Low consumption model, AgentDefAPIModeFields, and Prompt Template; renders `PythonScriptPickerField` (required). On mode switch away from script, clears `pythonScriptId`. Script-mode submit sends `{python_script_id, layer, timeout, max_fail_restarts, tag, execution_mode:'script'}` omitting prompt/model/tools/api_max_iterations/low_consumption_model. |
 | `TemplatePickerDialog.tsx` | Dialog for selecting and applying a default template to an agent's prompt. Fetches from default-templates API, shows dropdown + preview, warns on non-empty prompt replacement. |
 | `AgentDefCard.tsx` | Agent definition card with edit/delete (shows tag badge) |
+| `PythonScriptPickerField.tsx` | Dropdown of project Python scripts sourced from `usePythonScripts()`; shows empty-state hint with link to `/python-scripts` when no scripts exist; lazy-mounted only when AgentDefForm renders script branch |
 | `AgentDefsSection.tsx` | Agent definitions list within a workflow (passes groups to children) |
 | `RunWorkflowDialog.tsx` | Dialog for starting orchestrated ticket workflow runs. Supports "Start Interactive" and "Plan Before Execution" checkboxes (mutually exclusive). "Start Interactive" requires L0 to have exactly 1 Claude agent AND the workflow must have multiple layers. "Plan Before Execution" requires L0 to have exactly 1 Claude agent. Props: `onInteractiveStart?(sessionId, agentType)` callback for opening PTY terminal. Shows inline concurrent-workflow warning on 409 when worktrees disabled, with "Proceed Anyway" to re-submit with `force: true`. |
 | `RunEpicWorkflowDialog.tsx` | Dialog for epic workflow execution: two-step flow (create chain preview, then start) |

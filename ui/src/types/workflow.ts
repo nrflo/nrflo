@@ -263,9 +263,10 @@ export interface AgentDef {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode: 'cli' | 'api'
+  execution_mode: 'cli' | 'api' | 'script'
   tools: string
   api_max_iterations?: number
+  python_script_id?: string
   created_at: string
   updated_at: string
 }
@@ -275,14 +276,15 @@ export interface AgentDefCreateRequest {
   layer: number
   model?: string
   timeout?: number
-  prompt: string
+  prompt?: string
   restart_threshold?: number
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode?: 'cli' | 'api'
+  execution_mode?: 'cli' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
+  python_script_id?: string
 }
 
 export interface AgentDefUpdateRequest {
@@ -294,9 +296,10 @@ export interface AgentDefUpdateRequest {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode?: 'cli' | 'api'
+  execution_mode?: 'cli' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
+  python_script_id?: string
 }
 
 // Orchestration types

@@ -12,6 +12,15 @@ TypeScript type definitions matching Go API models. Contains 5 files.
 | `SearchResponse` | `{ tickets: PendingTicket[], query: string }` — search also returns PendingTicket |
 | `StatusResponse` | Includes `counts.blocked` for sidebar badge |
 
+## Python Script Types (`pythonScript.ts`)
+
+| Type | Description |
+|------|-------------|
+| `PythonScript` | Python script record with `id`, `project_id`, `name`, `description`, `code`, timestamps |
+| `PythonScriptCreateRequest` | `{ name, description?, code }` |
+| `PythonScriptUpdateRequest` | `{ name?, description?, code? }` — all optional partial update |
+| `ValidationResult` | `{ ok, error?, line?, col? }` — syntax check result from `/validate` endpoint |
+
 ## Key Workflow Types (`workflow.ts`)
 
 | Type | Description |
@@ -26,6 +35,7 @@ TypeScript type definitions matching Go API models. Contains 5 files.
 | `CompletedAgentRow` | Extends `AgentHistoryEntry` with `workflow_label: string` for unified completed agents table |
 | `AgentSession` | Session record with `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left` |
 | `WorkflowFindings` | `Record<string, Record<string, unknown>>` (agent_type → field → value) |
+| `AgentDef` | Agent definition. `execution_mode` is `'cli'\|'api'\|'script'`; includes optional `python_script_id?: string` |
 
 ## Chain Types (`chain.ts`)
 

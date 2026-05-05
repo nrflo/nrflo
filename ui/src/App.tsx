@@ -26,6 +26,7 @@ import { WorkflowChainsPage } from '@/pages/WorkflowChainsPage'
 import { WorkflowChainEditorPage } from '@/pages/WorkflowChainEditorPage'
 import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
 import { APICredentialsPage } from '@/pages/APICredentialsPage'
+import { PythonScriptsPage } from '@/pages/PythonScriptsPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { AccountPage } from '@/pages/auth/AccountPage'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
@@ -83,6 +84,7 @@ function AppRoutes() {
               <Route path="workflow-chains" element={<WorkflowChainsPage />} />
               <Route path="workflow-chains/:id" element={<WorkflowChainEditorPage />} />
               <Route path="errors" element={<ErrorsPage />} />
+              <Route path="python-scripts" element={<PythonScriptsPage />} />
               {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
               {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
               {apiModeEnabled && <Route path="review" element={<ReviewPage />} />}

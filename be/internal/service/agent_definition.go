@@ -10,6 +10,7 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
+	"be/internal/repo"
 	"be/internal/types"
 )
 
@@ -18,15 +19,40 @@ var ErrAPIModeDisabled = errors.New("api mode disabled")
 
 // AgentDefinitionService handles agent definition business logic
 type AgentDefinitionService struct {
-	clock       clock.Clock
-	pool        *db.Pool
-	cliModelSvc *CLIModelService
-	apiMode     bool
+	clock            clock.Clock
+	pool             *db.Pool
+	cliModelSvc      *CLIModelService
+	pythonScriptRepo *repo.PythonScriptRepo
+	apiMode          bool
 }
 
 // NewAgentDefinitionService creates a new agent definition service
-func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, apiMode bool) *AgentDefinitionService {
-	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, apiMode: apiMode}
+func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, pythonScriptRepo *repo.PythonScriptRepo, apiMode bool) *AgentDefinitionService {
+	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, pythonScriptRepo: pythonScriptRepo, apiMode: apiMode}
+}
+
+// validateScriptMode enforces coupling rules for execution_mode="script":
+// PythonScriptID required, Prompt/Tools/APIMaxIterations must be empty/nil,
+// script must belong to the given project.
+func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScriptID *string, prompt, tools string, apiMaxIterations *int) error {
+	if pythonScriptID == nil {
+		return fmt.Errorf("python_script_id_required")
+	}
+	if prompt != "" {
+		return fmt.Errorf("script_mode_no_prompt")
+	}
+	if tools != "" {
+		return fmt.Errorf("script_mode_no_tools")
+	}
+	if apiMaxIterations != nil {
+		return fmt.Errorf("script_mode_no_api_max_iterations")
+	}
+	if s.pythonScriptRepo != nil {
+		if _, err := s.pythonScriptRepo.Get(projectID, *pythonScriptID); err != nil {
+			return fmt.Errorf("python_script_not_found: %s", *pythonScriptID)
+		}
+	}
+	return nil
 }
 
 // CreateAgentDef creates a new agent definition
@@ -34,8 +60,30 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	if req.ID == "" {
 		return nil, fmt.Errorf("agent id is required")
 	}
-	if req.Prompt == "" {
+
+	// Determine execution mode early so we can skip prompt requirement for scripts.
+	executionMode := req.ExecutionMode
+	if executionMode == "" {
+		executionMode = "cli"
+	}
+	if executionMode != "cli" && executionMode != "api" && executionMode != "script" {
+		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
+	}
+	if executionMode == "api" && !s.apiMode {
+		return nil, ErrAPIModeDisabled
+	}
+
+	if executionMode != "script" && req.Prompt == "" {
 		return nil, fmt.Errorf("prompt is required")
+	}
+
+	// Script mode: enforce coupling rules.
+	if executionMode == "script" {
+		if err := s.validateScriptMode(projectID, req.PythonScriptID, req.Prompt, req.Tools, req.APIMaxIterations); err != nil {
+			return nil, err
+		}
+	} else if req.PythonScriptID != nil {
+		return nil, fmt.Errorf("python_script_id_requires_script_mode")
 	}
 
 	// Verify workflow exists and get groups for tag validation
@@ -76,7 +124,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 
 	// Defaults
 	modelName := req.Model
-	if modelName == "" {
+	if executionMode == "script" {
+		modelName = "script" // force sentinel model for script agents
+	} else if modelName == "" {
 		modelName = "sonnet"
 	}
 	timeout := req.Timeout
@@ -84,26 +134,22 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		timeout = 20
 	}
 
+	// Default stall_start_timeout to 0 (disabled) for script agents when not specified.
+	stallStartTimeout := req.StallStartTimeoutSec
+	if executionMode == "script" && stallStartTimeout == nil {
+		zero := 0
+		stallStartTimeout = &zero
+	}
+
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	id := strings.ToLower(req.ID)
 	pid := strings.ToLower(projectID)
 	wid := strings.ToLower(workflowID)
 
-	executionMode := req.ExecutionMode
-	if executionMode == "" {
-		executionMode = "cli"
-	}
-	if executionMode != "cli" && executionMode != "api" && executionMode != "script" {
-		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
-	}
-	if executionMode == "api" && !s.apiMode {
-		return nil, ErrAPIModeDisabled
-	}
-
 	_, err = s.pool.Exec(`
 		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.PythonScriptID, now, now,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.PythonScriptID, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -122,7 +168,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		Prompt:           req.Prompt,
 		RestartThreshold:       req.RestartThreshold,
 		MaxFailRestarts:        req.MaxFailRestarts,
-		StallStartTimeoutSec:   req.StallStartTimeoutSec,
+		StallStartTimeoutSec:   stallStartTimeout,
 		StallRunningTimeoutSec: req.StallRunningTimeoutSec,
 		Tag:                    req.Tag,
 		LowConsumptionModel:    lcModel,
@@ -334,8 +380,42 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		if mode == "api" && !s.apiMode {
 			return ErrAPIModeDisabled
 		}
+		if mode == "script" {
+			// When switching to script mode, validate script coupling rules.
+			prompt := ""
+			if req.Prompt != nil {
+				prompt = *req.Prompt
+			}
+			tools := ""
+			if req.Tools != nil {
+				tools = *req.Tools
+			}
+			if err := s.validateScriptMode(projectID, req.PythonScriptID, prompt, tools, req.APIMaxIterations); err != nil {
+				return err
+			}
+			// Force model to "script" sentinel.
+			updates = append(updates, "model = ?")
+			args = append(args, "script")
+		}
 		updates = append(updates, "execution_mode = ?")
 		args = append(args, mode)
+	} else if req.PythonScriptID != nil {
+		// PythonScriptID set without changing ExecutionMode: validate the existing mode.
+		var currentMode string
+		queryErr := s.pool.QueryRow(
+			"SELECT execution_mode FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+			projectID, workflowID, id).Scan(&currentMode)
+		if queryErr != nil {
+			return fmt.Errorf("failed to load agent definition: %w", queryErr)
+		}
+		if currentMode != "script" {
+			return fmt.Errorf("python_script_id_requires_script_mode")
+		}
+		if s.pythonScriptRepo != nil {
+			if _, err := s.pythonScriptRepo.Get(projectID, *req.PythonScriptID); err != nil {
+				return fmt.Errorf("python_script_not_found: %s", *req.PythonScriptID)
+			}
+		}
 	}
 	if req.Tools != nil {
 		updates = append(updates, "tools = ?")

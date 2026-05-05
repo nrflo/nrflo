@@ -27,9 +27,12 @@ func newCLIInteractiveBackend(adapter CLIAdapter, s *Spawner, mgr ptyManagerIfac
 	return &cliInteractiveBackend{adapter: adapter, s: s, ptyMgr: mgr}
 }
 
-func (b *cliInteractiveBackend) Name() string              { return "cli_interactive" }
-func (b *cliInteractiveBackend) SupportsResume() bool      { return b.adapter.SupportsResume() }
-func (b *cliInteractiveBackend) SupportsTakeControl() bool { return true }
+func (b *cliInteractiveBackend) Name() string                  { return "cli_interactive" }
+func (b *cliInteractiveBackend) SupportsResume() bool          { return b.adapter.SupportsResume() }
+func (b *cliInteractiveBackend) SupportsTakeControl() bool     { return true }
+func (b *cliInteractiveBackend) RequiresPrompt() bool          { return true }
+func (b *cliInteractiveBackend) TracksContext() bool           { return true }
+func (b *cliInteractiveBackend) ParsesStructuredOutput() bool  { return false }
 
 // Start creates the PTY session, registers the command, delivers the rendered
 // prompt body via stdin after a ~250ms readiness delay, and launches the ferry

@@ -76,6 +76,7 @@ type Orchestrator struct {
 	mu       sync.Mutex
 	runs     map[string]*runState // wfi_id → state
 	dataPath string
+	sdkDir   string
 	wsHub    *ws.Hub
 	clock    clock.Clock
 	errorSvc spawner.ErrorRecorder
@@ -91,10 +92,11 @@ type Orchestrator struct {
 }
 
 // New creates a new Orchestrator.
-func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder, apiMode bool) *Orchestrator {
+func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder, apiMode bool, sdkDir string) *Orchestrator {
 	return &Orchestrator{
 		runs:     make(map[string]*runState),
 		dataPath: dataPath,
+		sdkDir:   sdkDir,
 		wsHub:    wsHub,
 		clock:    clk,
 		errorSvc: errorSvc,
@@ -1347,6 +1349,8 @@ func (o *Orchestrator) runLoop(
 					ReviewRepo:                reviewRepo,
 					PythonRunner:              pythonRunner,
 					CustomerConfigDir:         customerConfigDir,
+					SDKDir:                    o.sdkDir,
+					PythonScriptRepo:          repo.NewPythonScriptRepo(pool, o.clock),
 					OnSessionRegister: func(sid string, s *spawner.Spawner) {
 						o.mu.Lock()
 						if rs, ok := o.runs[wfiID]; ok {

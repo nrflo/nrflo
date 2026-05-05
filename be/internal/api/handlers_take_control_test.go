@@ -33,7 +33,7 @@ func newTakeControlServer(t *testing.T) *Server {
 	go hub.Run()
 	t.Cleanup(hub.Stop)
 
-	orch := orchestrator.New(dbPath, hub, clock.Real(), nil, false)
+	orch := orchestrator.New(dbPath, hub, clock.Real(), nil, false, "")
 	return &Server{orchestrator: orch, clock: clock.Real(), pool: pool}
 }
 

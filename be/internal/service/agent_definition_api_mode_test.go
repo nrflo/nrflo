@@ -14,8 +14,8 @@ func setupAgentDefAPIModeEnv(t *testing.T) (svcOff, svcOn *AgentDefinitionServic
 	t.Helper()
 	pool, _, wfID := setupAgentDefTestEnv(t, nil)
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svcOff = NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, false)
-	svcOn = NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, true)
+	svcOff = NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, nil, false)
+	svcOn = NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, nil, true)
 	return svcOff, svcOn, wfID
 }
 

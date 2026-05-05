@@ -69,9 +69,11 @@ func (o *Orchestrator) attemptConflictResolution(
 		APIMode:            o.apiMode,
 		InteractiveCLIMode: interactiveCLIMode,
 		PTYManager:         o.PTYManager,
-		DispatchRepo: dispatchRepo,
-		ReviewRepo:   reviewRepo,
-		CustomerConfigDir:  customerConfigDir,
+		DispatchRepo:      dispatchRepo,
+		ReviewRepo:        reviewRepo,
+		CustomerConfigDir: customerConfigDir,
+		SDKDir:            o.sdkDir,
+		PythonScriptRepo:  repo.NewPythonScriptRepo(pool, o.clock),
 		OnSessionRegister: func(sid string, s *spawner.Spawner) {
 			o.mu.Lock()
 			if rs, ok := o.runs[wfiID]; ok {

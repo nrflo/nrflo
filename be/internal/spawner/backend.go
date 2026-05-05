@@ -22,6 +22,13 @@ type ExecutionBackend interface {
 	Name() string
 	SupportsResume() bool
 	SupportsTakeControl() bool
+	// RequiresPrompt reports whether the backend requires a rendered prompt template.
+	RequiresPrompt() bool
+	// TracksContext reports whether monitorAll should trigger low-context save for this backend.
+	TracksContext() bool
+	// ParsesStructuredOutput reports whether processOutput should parse stdout as JSON.
+	// When false, each stdout line is tracked as a "text" message directly.
+	ParsesStructuredOutput() bool
 	Start(ctx context.Context, proc *processInfo, prep *prepResult) error
 	Kill(ctx context.Context, proc *processInfo, sig syscall.Signal) error
 }
@@ -31,6 +38,7 @@ type ExecutionBackend interface {
 // nil for api mode), the prompt file path, and the assembled SpawnOptions.
 //
 // For api mode, adapter is nil and the api* fields are populated.
+// For script mode, scriptCode/scriptID are populated and CLI/API fields are empty.
 type prepResult struct {
 	adapter    CLIAdapter
 	cliName    string
@@ -40,7 +48,11 @@ type prepResult struct {
 	prompt     string
 	phase      string
 
-	// API-mode fields. executionMode is "cli" (default) or "api".
+	// Script-mode fields.
+	scriptCode string
+	scriptID   string
+
+	// API-mode fields. executionMode is "cli" (default), "api", or "script".
 	executionMode    string
 	apiSystem        string
 	apiInitialPrompt string
@@ -64,9 +76,12 @@ type cliBackend struct {
 	s       *Spawner
 }
 
-func (b *cliBackend) Name() string              { return "cli" }
-func (b *cliBackend) SupportsResume() bool      { return b.adapter.SupportsResume() }
-func (b *cliBackend) SupportsTakeControl() bool { return b.adapter.SupportsResume() }
+func (b *cliBackend) Name() string                  { return "cli" }
+func (b *cliBackend) SupportsResume() bool          { return b.adapter.SupportsResume() }
+func (b *cliBackend) SupportsTakeControl() bool     { return b.adapter.SupportsResume() }
+func (b *cliBackend) RequiresPrompt() bool          { return true }
+func (b *cliBackend) TracksContext() bool           { return true }
+func (b *cliBackend) ParsesStructuredOutput() bool  { return true }
 
 // Start builds the exec.Cmd, wires stdin/stdout/stderr pipes, starts the process,
 // and launches the output and wait goroutines. Sets proc.cmd and proc.spawnCommand.
@@ -202,9 +217,12 @@ func newAPIBackend(s *Spawner) *apiBackend {
 	}
 }
 
-func (b *apiBackend) Name() string              { return "api" }
-func (b *apiBackend) SupportsResume() bool      { return false }
-func (b *apiBackend) SupportsTakeControl() bool { return false }
+func (b *apiBackend) Name() string                  { return "api" }
+func (b *apiBackend) SupportsResume() bool          { return false }
+func (b *apiBackend) SupportsTakeControl() bool     { return false }
+func (b *apiBackend) RequiresPrompt() bool          { return true }
+func (b *apiBackend) TracksContext() bool           { return true }
+func (b *apiBackend) ParsesStructuredOutput() bool  { return false }
 
 // Start launches the runner goroutine. The goroutine flushes messages and
 // registers the session stop before closing proc.doneCh, so monitorAll can

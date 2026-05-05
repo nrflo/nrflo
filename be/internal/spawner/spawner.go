@@ -177,6 +177,13 @@ type Config struct {
 	// OnSessionUnregister is called after unregisterTerminalSignal removes sessionID.
 	// Fires outside terminalSignalsMu. Used symmetrically with OnSessionRegister.
 	OnSessionUnregister func(sessionID string)
+	// SDKDir is the absolute path to the nrflo SDK directory (NRFLO_HOME/sdk).
+	// When non-empty, NRFLO_SDK_DIR is injected into script-mode agent environments.
+	// T3 writes the embedded SDK file; T2 only plumbs the directory.
+	SDKDir string
+	// PythonScriptRepo loads python_scripts rows for script-mode agents.
+	// Required when any agent definition uses execution_mode='script'.
+	PythonScriptRepo *repo.PythonScriptRepo
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -696,6 +703,102 @@ func (s *Spawner) spawnSingle(ctx context.Context, req SpawnRequest, modelID, ph
 	return proc, nil
 }
 
+// prepareScriptSpawn handles execution_mode="script" agent prep:
+// loads the python_scripts row, builds minimal SpawnOptions with NRF_* env, and
+// returns early without template loading or CLI adapter resolution.
+func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phase, wfiID, agentID, sessionID string, agentDef *model.AgentDefinition) (*processInfo, *prepResult, error) {
+	if s.config.PythonScriptRepo == nil {
+		return nil, nil, fmt.Errorf("python_script_id_required: PythonScriptRepo not configured")
+	}
+	if agentDef == nil || agentDef.PythonScriptID == nil {
+		return nil, nil, fmt.Errorf("python_script_id_required")
+	}
+
+	script, err := s.config.PythonScriptRepo.Get(req.ProjectID, *agentDef.PythonScriptID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("python_script_not_found: %w", err)
+	}
+
+	// Resolve timeout from agent config or agent definition.
+	timeout := 40
+	if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.Timeout > 0 {
+		timeout = agentCfg.Timeout
+	}
+	if agentDef.Timeout > 0 {
+		timeout = agentDef.Timeout
+	}
+
+	// Stall settings: stall_start disabled by default for scripts.
+	stallStartTimeout := time.Duration(0)
+	stallRunningTimeout := defaultStallRunningTimeout
+	if agentDef.StallStartTimeoutSec != nil {
+		if *agentDef.StallStartTimeoutSec == 0 {
+			stallStartTimeout = 0
+		} else {
+			stallStartTimeout = time.Duration(*agentDef.StallStartTimeoutSec) * time.Second
+		}
+	}
+	if agentDef.StallRunningTimeoutSec != nil {
+		if *agentDef.StallRunningTimeoutSec == 0 {
+			stallRunningTimeout = 0
+		} else {
+			stallRunningTimeout = time.Duration(*agentDef.StallRunningTimeoutSec) * time.Second
+		}
+	}
+
+	workDir := s.config.ProjectRoot
+	if workDir == "" || workDir == "." {
+		workDir = ""
+	}
+
+	modelID := "script:" + script.ID
+
+	env := append(filterEnv(os.Environ(), "CLAUDECODE"),
+		fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
+		fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
+		fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),
+		fmt.Sprintf("NRF_TRX=%s", logger.TrxFromContext(ctx)),
+		"NRF_SPAWNED=1",
+	)
+
+	proc := &processInfo{
+		agentID:             agentID,
+		agentType:           req.AgentType,
+		modelID:             modelID,
+		sessionID:           sessionID,
+		startTime:           s.config.Clock.Now(),
+		timeout:             time.Duration(timeout) * time.Minute,
+		pendingMessages:     make([]repo.MessageEntry, 0),
+		pendingTasks:        make(map[string]taskInfo),
+		doneCh:              make(chan struct{}),
+		sessionStartCh:      make(chan struct{}),
+		firstByteCh:         make(chan struct{}),
+		lastMessagesFlush:   s.config.Clock.Now(),
+		projectID:           req.ProjectID,
+		ticketID:            req.TicketID,
+		workflowName:        req.WorkflowName,
+		workflowInstanceID:  wfiID,
+		lastMessageTime:     s.config.Clock.Now(),
+		stallStartTimeout:   stallStartTimeout,
+		stallRunningTimeout: stallRunningTimeout,
+		maxContext:          0,
+		restartThreshold:    defaultContextThreshold,
+	}
+
+	prep := &prepResult{
+		executionMode: "script",
+		scriptCode:    script.Code,
+		scriptID:      script.ID,
+		phase:         phase,
+		opts: SpawnOptions{
+			WorkDir: workDir,
+			Env:     env,
+		},
+	}
+
+	return proc, prep, nil
+}
+
 // prepareSpawn does all CLI-agnostic prep work: session/agent IDs, agent-def
 // lookup (timeouts, restart threshold, stall settings), template loading,
 // prompt file creation, and SpawnOptions assembly. The returned processInfo
@@ -714,15 +817,20 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	// Load agent definition early — execution_mode determines whether we
-	// resolve a CLI adapter or skip CLI prep for api mode.
+	// resolve a CLI adapter or skip CLI prep for api/script mode.
 	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
 	executionMode := "cli"
-	if agentDef != nil && agentDef.ExecutionMode == "api" {
-		executionMode = "api"
+	if agentDef != nil && (agentDef.ExecutionMode == "api" || agentDef.ExecutionMode == "script") {
+		executionMode = agentDef.ExecutionMode
 	} else if agentDef == nil {
-		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.ExecutionMode == "api" {
-			executionMode = "api"
+		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && (agentCfg.ExecutionMode == "api" || agentCfg.ExecutionMode == "script") {
+			executionMode = agentCfg.ExecutionMode
 		}
+	}
+
+	// Script mode: delegate to dedicated prep path (not gated by APIMode).
+	if executionMode == "script" {
+		return s.prepareScriptSpawn(ctx, req, phase, wfiID, agentID, sessionID, agentDef)
 	}
 
 	// Reject api-mode agents when the server was not started with --mode=api.
@@ -1059,7 +1167,9 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 // selector when their backend is CLI.
 func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	var backend ExecutionBackend
-	if prep.executionMode == "api" {
+	if prep.executionMode == "script" {
+		backend = newScriptBackend(s)
+	} else if prep.executionMode == "api" {
 		backend = newAPIBackend(s)
 	} else if s.config.InteractiveCLIMode && prep.adapter != nil && prep.adapter.SupportsInteractive() {
 		backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
@@ -1305,8 +1415,9 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		for _, proc := range running {
 			elapsed := time.Since(proc.startTime)
 
-			// Detect low context and initiate save (works for all CLI types)
-			if !proc.lowContextSaving && proc.contextLeft > 0 && proc.contextLeft <= proc.restartThreshold {
+			// Detect low context and initiate save (only for backends that track context)
+			if !proc.lowContextSaving && proc.contextLeft > 0 && proc.contextLeft <= proc.restartThreshold &&
+				(proc.backend == nil || proc.backend.TracksContext()) {
 				proc.lowContextSaving = true
 				// Replace doneCh — initiateContextSave will close the new one when the full flow completes
 				oldDoneCh := proc.doneCh

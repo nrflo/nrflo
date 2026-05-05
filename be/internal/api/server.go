@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -59,7 +60,11 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	errorSvc := service.NewErrorService(pool, clk, hub)
-	orch := orchestrator.New(dataPath, hub, clk, errorSvc, apiMode)
+	sdkDir := ""
+	if dataPath != "" {
+		sdkDir = filepath.Join(filepath.Dir(dataPath), "sdk")
+	}
+	orch := orchestrator.New(dataPath, hub, clk, errorSvc, apiMode, sdkDir)
 	ptyMgr := ptyPkg.NewManager()
 	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
 		ptyMgr.RegisterCommand(sessionID, cmd, args)

@@ -32,6 +32,12 @@ func (s *Spawner) monitorOutput(proc *processInfo, stdout io.ReadCloser) {
 // processOutput processes a line of output from the agent and tracks stats
 // Handles both Claude CLI and opencode JSON formats
 func (s *Spawner) processOutput(proc *processInfo, line string) {
+	// For backends that don't emit structured JSON, track each line as plain text.
+	if proc.backend != nil && !proc.backend.ParsesStructuredOutput() {
+		s.TrackMessage(proc, line, "text")
+		return
+	}
+
 	// Try to parse as JSON (stream-json format)
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(line), &data); err != nil {

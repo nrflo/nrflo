@@ -69,12 +69,12 @@ func startAPIServer(t *testing.T, dbPath string) (string, *http.Client) {
 }
 
 // loginAdminClient creates an http.Client with a cookie jar and logs in as the seeded admin
-// (admin@nrflo.com / nrfloAdmin). The returned client automatically sends the session cookie.
+// (admin / admin). The returned client automatically sends the session cookie.
 func loginAdminClient(t *testing.T, baseURL string) *http.Client {
 	t.Helper()
 	jar, _ := cookiejar.New(nil)
 	c := &http.Client{Jar: jar}
-	body := bytes.NewBufferString(`{"email":"admin@nrflo.com","password":"nrfloAdmin"}`)
+	body := bytes.NewBufferString(`{"email":"admin","password":"admin"}`)
 	req, _ := http.NewRequest("POST", baseURL+"/api/v1/auth/login", body)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.Do(req)

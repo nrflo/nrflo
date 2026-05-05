@@ -253,7 +253,7 @@ func TestSeedAdminLoginWithKnownCredentials(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	svc := NewAuthService(pool, clock.Real())
-	u, err := svc.Login("admin@nrflo.com", "nrfloAdmin", "127.0.0.1", "test")
+	u, err := svc.Login("admin", "admin", "127.0.0.1", "test")
 	if err != nil {
 		t.Fatalf("seed admin login: %v", err)
 	}

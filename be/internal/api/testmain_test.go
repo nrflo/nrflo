@@ -48,7 +48,7 @@ func patchFastAdminHash(dbPath string) error {
 	if _, err := rand.Read(salt); err != nil {
 		return err
 	}
-	key := argon2.IDKey([]byte("nrfloAdmin"), salt, 1, 4096, 1, 32)
+	key := argon2.IDKey([]byte("admin"), salt, 1, 4096, 1, 32)
 	enc := base64.RawStdEncoding
 	hash := fmt.Sprintf("$argon2id$v=19$m=4096,t=1,p=1$%s$%s",
 		enc.EncodeToString(salt), enc.EncodeToString(key))
@@ -57,7 +57,7 @@ func patchFastAdminHash(dbPath string) error {
 		return err
 	}
 	defer database.Close()
-	_, err = database.Exec(`UPDATE users SET password_hash = ? WHERE email = 'admin@nrflo.com'`, hash)
+	_, err = database.Exec(`UPDATE users SET password_hash = ? WHERE email = 'admin'`, hash)
 	return err
 }
 

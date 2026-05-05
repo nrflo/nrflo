@@ -104,7 +104,7 @@ func TestServerStart_DefaultHostBindsLocalhost(t *testing.T) {
 	jar, _ := cookiejar.New(nil)
 	authClient := &http.Client{Jar: jar}
 	loginReq, _ := http.NewRequest("POST", baseURL+"/api/v1/auth/login",
-		strings.NewReader(`{"email":"admin@nrflo.com","password":"nrfloAdmin"}`))
+		strings.NewReader(`{"email":"admin","password":"admin"}`))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginResp, err := authClient.Do(loginReq)
 	if err != nil {

@@ -115,14 +115,14 @@ func TestVerify_MalformedHash(t *testing.T) {
 	}
 }
 
-// TestSeedAdminHashVerifiesNrfloAdmin verifies that the hash seeded in
+// TestSeedAdminHashVerifiesAdmin verifies that the hash seeded in
 // migration 000078_seed_admin.up.sql authenticates with the known password.
 // This guarantees the seeded admin can log in before HTTP wiring (T2).
-func TestSeedAdminHashVerifiesNrfloAdmin(t *testing.T) {
+func TestSeedAdminHashVerifiesAdmin(t *testing.T) {
 	t.Parallel()
-	const seedHash = `$argon2id$v=19$m=65536,t=3,p=2$849PsyNeHcJ2HIioUrr9Kw$lC7qhb6GEB8eJrov0Y8lY28mqopVtAA8Sl+opWdxVac`
-	if err := Verify(seedHash, "nrfloAdmin"); err != nil {
-		t.Errorf("Verify(seedHash, \"nrfloAdmin\") = %v, want nil", err)
+	const seedHash = `$argon2id$v=19$m=65536,t=3,p=2$wp1TNUWXyUKgfR4DUO9lNw$I3aPnpvRtOZrJU4VESkpkNfcPpg7sncPAZtxKJZDpm4`
+	if err := Verify(seedHash, "admin"); err != nil {
+		t.Errorf("Verify(seedHash, \"admin\") = %v, want nil", err)
 	}
 }
 

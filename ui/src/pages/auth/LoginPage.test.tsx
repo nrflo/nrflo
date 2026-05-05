@@ -140,6 +140,20 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled()
   })
 
+  it('accepts plain username (non-email) without HTML5 validation blocking submit', async () => {
+    const user = userEvent.setup()
+    const mockLogin = vi.fn().mockResolvedValue(undefined)
+    useAuthStore.setState({ login: mockLogin })
+
+    renderLoginPage()
+
+    await user.type(screen.getByLabelText(/email or username/i), 'admin')
+    await user.type(screen.getByLabelText(/password/i), 'admin')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    expect(mockLogin).toHaveBeenCalledWith('admin', 'admin')
+  })
+
   it('ignores non-root next param (external redirect attempt)', async () => {
     const user = userEvent.setup()
     const mockLogin = vi.fn().mockResolvedValue(undefined)

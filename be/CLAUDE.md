@@ -284,7 +284,7 @@ Admin-gated writes: `POST /projects`, `DELETE /projects/{id}`, all `/users` endp
 
 Login rate limiter: 5 attempts per 5 min per IP+email key, returns HTTP 429 with `Retry-After`.
 
-Default seeded admin: `admin@nrflo.com` / `nrfloAdmin`, `must_change_password=1` (migration 000078). See [be/internal/auth/CLAUDE.md](internal/auth/CLAUDE.md).
+Default seeded admin: `admin` / `admin`, `must_change_password=0` (migration 000078). See [be/internal/auth/CLAUDE.md](internal/auth/CLAUDE.md).
 
 The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.*` (add, add-bulk, get, append, append-bulk, delete), `project_findings.*` (add, add-bulk, get, append, append-bulk, delete), `agent.fail/continue/callback/context_update`, `workflow.skip`, and `ws.broadcast` methods are supported.
 

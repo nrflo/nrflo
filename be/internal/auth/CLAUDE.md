@@ -42,4 +42,4 @@ Helpers `PutUserID`, `UserID`, `Renew` wrap the session manager calls to avoid s
 
 Migrations 000075–000078 are picked up automatically by the `//go:embed *.sql` directive in `be/internal/db/migrations/embed.go`. The integration test harness in `be/internal/integration/testmain_test.go` calls `db.NewPoolPath` which runs `RunMigrations`, so the new tables are included in the template DB on first test run — no harness change required.
 
-The seeded admin row (migration 000078) uses `INSERT OR IGNORE` — safe to re-run. Default credentials: `admin@nrflo.com` / `nrfloAdmin`, `must_change_password=1`.
+The seeded admin row (migration 000078) uses `INSERT OR IGNORE` — safe to re-run. Default credentials: `admin` / `admin`, `must_change_password=0`.

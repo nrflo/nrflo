@@ -15,8 +15,8 @@ import (
 
 // Template DB seeded admin credentials (migration 000078).
 const (
-	adminEmail = "admin@nrflo.com"
-	adminPass  = "nrfloAdmin"
+	adminEmail = "admin"
+	adminPass  = "admin"
 )
 
 // patchJSON sends a PATCH request with a JSON-marshaled body.

@@ -143,6 +143,7 @@ Rules every change must respect. (Mandatory Rules above cover layer execution, s
 - **Spawner is in-process**: it broadcasts WS events through the hub directly. No socket fallback for orchestration events.
 - **WebSocket-only realtime**: the UI never polls; all live updates flow through `/api/v1/ws`.
 - **Agents identify themselves via env**: the spawner sets `NRF_SESSION_ID` + `NRF_WORKFLOW_INSTANCE_ID` on every agent process; without them no socket call (findings, agent.*, skip) can resolve.
+- **Spawned agents authenticate to the HTTP API via per-session bearer token**: the spawner mints a `spawn_token` per agent session, persists it on the `agent_sessions` row, and sets `NRFLO_AGENT_TOKEN` on the agent process env. The CLI's HTTPClient sends it as `Authorization: Bearer …`; `requireAuth` accepts it when the session's status is `running` or `user_interactive`, and enforces project scope against the `X-Project` header. Tokens are not admin-equivalent — `requireAdmin` routes always reject them. No SCS `Lifetime`/`IdleTimeout` cap applies; validity ends when the session reaches a terminal status.
 - **Agent CLI is a small subset**: `agent fail/finished/continue/callback`, `findings *`, `project_findings *`, `skip`. Anything else goes through the HTTP API.
 - **Clock abstraction for tests**: DB timestamps go through the `clock.Clock` interface (`internal/clock/`); tests use `clock.TestClock` with `Set()`/`Advance()` instead of `time.Sleep`.
 

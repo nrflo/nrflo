@@ -38,6 +38,8 @@ PHC format: `$argon2id$v=19$m=65536,t=3,p=2$<salt-b64>$<key-b64>` (base64 raw st
 
 Helpers `PutUserID`, `UserID`, `Renew` wrap the session manager calls to avoid string-key typos at call sites.
 
+**Spawned-agent auth bypasses SCS entirely.** The HTTP middleware (`be/internal/api/auth_middleware.go`) checks for `Authorization: Bearer <agent_token>` before consulting the session manager. Tokens are minted by the spawner per `agent_sessions` row and validated against `spawn_token` with a `status IN ('running','user_interactive')` filter; the SCS `Lifetime` (24h) and `IdleTimeout` (8h) caps do not apply, which matters for chains, scheduled tasks, and endless-loop runs that can outlive an operator session.
+
 ## Migration Notes
 
 Migrations 000075–000078 are picked up automatically by the `//go:embed *.sql` directive in `be/internal/db/migrations/embed.go`. The integration test harness in `be/internal/integration/testmain_test.go` calls `db.NewPoolPath` which runs `RunMigrations`, so the new tables are included in the template DB on first test run — no harness change required.

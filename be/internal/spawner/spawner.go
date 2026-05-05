@@ -2,6 +2,8 @@ package spawner
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -235,6 +237,7 @@ type processInfo struct {
 	spawnCommand string
 	prompt       string // rendered user prompt body
 	systemPrompt string // rendered system-prompt-suffix delivered to the agent
+	spawnToken   string // bearer token injected into env for HTTP API auth (valid while session is running)
 	// Request context (for broadcasting)
 	projectID          string
 	ticketID           string
@@ -706,7 +709,7 @@ func (s *Spawner) spawnSingle(ctx context.Context, req SpawnRequest, modelID, ph
 // prepareScriptSpawn handles execution_mode="script" agent prep:
 // loads the python_scripts row, builds minimal SpawnOptions with NRF_* env, and
 // returns early without template loading or CLI adapter resolution.
-func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phase, wfiID, agentID, sessionID string, agentDef *model.AgentDefinition) (*processInfo, *prepResult, error) {
+func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phase, wfiID, agentID, sessionID, spawnToken string, agentDef *model.AgentDefinition) (*processInfo, *prepResult, error) {
 	if s.config.PythonScriptRepo == nil {
 		return nil, nil, fmt.Errorf("python_script_id_required: PythonScriptRepo not configured")
 	}
@@ -757,6 +760,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 		fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 		fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),
+		fmt.Sprintf("NRFLO_AGENT_TOKEN=%s", spawnToken),
 		fmt.Sprintf("NRF_TRX=%s", logger.TrxFromContext(ctx)),
 		"NRF_SPAWNED=1",
 	)
@@ -766,6 +770,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		agentType:           req.AgentType,
 		modelID:             modelID,
 		sessionID:           sessionID,
+		spawnToken:          spawnToken,
 		startTime:           s.config.Clock.Now(),
 		timeout:             time.Duration(timeout) * time.Minute,
 		pendingMessages:     make([]repo.MessageEntry, 0),
@@ -808,6 +813,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, phase, wfiID string) (*processInfo, *prepResult, error) {
 	agentID := "spawn-" + uuid.New().String()[:8]
 	sessionID := uuid.New().String()
+	spawnToken := MintSpawnToken()
 
 	// Parse modelID (cli:model format)
 	cliName, model := parseModelID(modelID)
@@ -830,7 +836,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 
 	// Script mode: delegate to dedicated prep path (not gated by APIMode).
 	if executionMode == "script" {
-		return s.prepareScriptSpawn(ctx, req, phase, wfiID, agentID, sessionID, agentDef)
+		return s.prepareScriptSpawn(ctx, req, phase, wfiID, agentID, sessionID, spawnToken, agentDef)
 	}
 
 	// Reject api-mode agents when the server was not started with --mode=api.
@@ -911,6 +917,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		agentType:           req.AgentType,
 		modelID:             modelID,
 		sessionID:           sessionID,
+		spawnToken:          spawnToken,
 		startTime:           s.config.Clock.Now(),
 		timeout:             time.Duration(timeout) * time.Minute,
 		pendingMessages:     make([]repo.MessageEntry, 0),
@@ -1143,6 +1150,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 			fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),
+			fmt.Sprintf("NRFLO_AGENT_TOKEN=%s", spawnToken),
 			fmt.Sprintf("NRF_TRX=%s", logger.TrxFromContext(ctx)),
 			"NRF_SPAWNED=1",
 			fmt.Sprintf("NRF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
@@ -1194,7 +1202,7 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	}
 	s.registerAgentStart(proc.projectID, proc.ticketID, proc.workflowName, proc.workflowInstanceID,
 		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
-		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", 0, proc.restartThreshold)
+		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", proc.spawnToken, 0, proc.restartThreshold)
 	return nil
 }
 
@@ -1675,6 +1683,21 @@ func filterEnv(env []string, name string) []string {
 		}
 	}
 	return out
+}
+
+// MintSpawnToken returns a 32-byte random hex token used as the spawned
+// agent's HTTP API bearer credential. Persisted in agent_sessions.spawn_token
+// and exposed to the agent process via NRFLO_AGENT_TOKEN.
+func MintSpawnToken() string {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		// crypto/rand failure is essentially impossible on supported platforms;
+		// fall back to a UUID so we never panic. Token uniqueness is the only
+		// invariant — uniqueness via UUIDv4 is sufficient.
+		return strings.ReplaceAll(uuid.New().String(), "-", "") +
+			strings.ReplaceAll(uuid.New().String(), "-", "")
+	}
+	return hex.EncodeToString(buf)
 }
 
 func (s *Spawner) maxContextForModel(model string) int {

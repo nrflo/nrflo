@@ -280,6 +280,8 @@ cors → requestID → projectMiddleware → LoadAndSave (for /api/* only) → m
 
 Per-route auth: `protected` (requireAuth) or `admin` (requireAdmin = admin role). Public: `POST /api/v1/auth/login` only.
 
+`requireAuth` also accepts `Authorization: Bearer <agent_token>` for spawned-agent calls. The token is the `agent_sessions.spawn_token` minted by the spawner and exposed to the agent process via `NRFLO_AGENT_TOKEN`; it is valid only while the row's status is `running` or `user_interactive`. The middleware also requires the `X-Project` header (when present) to match the session's project. Bearer-authenticated requests do **not** populate the user context, so `requireAdmin` always 403s for them.
+
 Admin-gated writes: `POST /projects`, `DELETE /projects/{id}`, all `/users` endpoints, `GET /audit-log`, system-agents writes, cli-models writes, default-templates writes, scheduled-tasks writes, tool-definitions writes (api-mode), api-credentials writes (api-mode), `PATCH /settings`.
 
 Login rate limiter: 5 attempts per 5 min per IP+email key, returns HTTP 429 with `Retry-After`.

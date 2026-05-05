@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"be/internal/auth"
 	"be/internal/model"
@@ -10,12 +11,37 @@ import (
 )
 
 const userKey contextKey = "user"
+const agentSessionKey contextKey = "agent_session"
 
 // requireAuth ensures the request has a valid, active session.
-// Loads the user and stashes it in context. Returns 401 on failure.
-// If sessionMgr is nil (test environments), passes through without auth.
+// Accepts either an SCS session cookie (operator/UI) or an Authorization:
+// Bearer <agent_token> header (spawned agent processes; token is minted by the
+// spawner and valid only while the agent_sessions row is running/user_interactive).
+// Returns 401 on failure. If sessionMgr is nil (test environments) the cookie
+// path passes through; the bearer path still works because it doesn't depend
+// on the session manager.
 func (s *Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Bearer-token path (spawned agents). Tokens are short-lived and
+		// scoped to a single agent_session row; we treat them as project-
+		// scoped credentials and reject any X-Project mismatch.
+		if token := bearerToken(r.Header.Get("Authorization")); token != "" {
+			sessRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
+			sess, err := sessRepo.GetByToken(token)
+			if err == nil && sess != nil {
+				if hp := r.Header.Get("X-Project"); hp != "" && !strings.EqualFold(hp, sess.ProjectID) {
+					writeError(w, http.StatusForbidden, "agent token project mismatch")
+					return
+				}
+				ctx := context.WithValue(r.Context(), agentSessionKey, sess)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			// Unknown / expired token — fall through to cookie path so a
+			// browser request with both a stale token and a valid cookie
+			// still works. Almost always the cookie path will also reject.
+		}
+
 		if s.sessionMgr == nil {
 			next.ServeHTTP(w, r)
 			return
@@ -34,6 +60,23 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), userKey, u)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// bearerToken extracts the token from an "Authorization: Bearer <token>"
+// header value, or returns "" if the header is empty / not Bearer.
+func bearerToken(h string) string {
+	const prefix = "Bearer "
+	if len(h) <= len(prefix) || !strings.EqualFold(h[:len(prefix)], prefix) {
+		return ""
+	}
+	return strings.TrimSpace(h[len(prefix):])
+}
+
+// getAgentSession retrieves the agent session associated with a bearer-token
+// authenticated request, or nil for cookie-authenticated (operator) requests.
+func getAgentSession(r *http.Request) *model.AgentSession {
+	s, _ := r.Context().Value(agentSessionKey).(*model.AgentSession)
+	return s
 }
 
 // requireAdmin composes requireAuth and returns 403 if the user is not an admin.

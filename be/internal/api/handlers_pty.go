@@ -12,6 +12,7 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/spawner"
 	"be/internal/ws"
 
 	"github.com/gorilla/websocket"
@@ -84,6 +85,20 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 	workDir := ""
 	if project.RootPath.Valid {
 		workDir = project.RootPath.String
+	}
+
+	// Ensure the session has a spawn_token so the PTY-driven CLI can authenticate
+	// to the HTTP API. New sessions get one from the spawner; legacy rows or
+	// take-control resumes mint one here on first attach.
+	sessRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
+	if !session.SpawnToken.Valid || session.SpawnToken.String == "" {
+		token := spawner.MintSpawnToken()
+		if err := sessRepo.UpdateSpawnToken(session.ID, token); err != nil {
+			logger.Warn(context.Background(), "failed to persist spawn_token for pty session", "session_id", session.ID, "error", err)
+		} else {
+			session.SpawnToken.String = token
+			session.SpawnToken.Valid = true
+		}
 	}
 
 	env := buildPtyEnv(session, project)
@@ -267,6 +282,9 @@ func buildPtyEnv(session *model.AgentSession, project *model.Project) []string {
 	env = setEnv(env, "NRFLO_PROJECT", session.ProjectID)
 	env = setEnv(env, "NRF_WORKFLOW_INSTANCE_ID", session.WorkflowInstanceID)
 	env = setEnv(env, "NRF_SESSION_ID", session.ID)
+	if session.SpawnToken.Valid && session.SpawnToken.String != "" {
+		env = setEnv(env, "NRFLO_AGENT_TOKEN", session.SpawnToken.String)
+	}
 
 	return env
 }

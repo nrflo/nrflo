@@ -642,6 +642,7 @@ The spawner sets these env vars on every spawned agent process. Child processes 
 | `NRFLO_PROJECT` | Project ID |
 | `NRF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID — used by CLI to target the correct instance directly (required for findings/agent commands) |
 | `NRF_SESSION_ID` | Agent session UUID — used by CLI to target the correct session directly (required for findings/agent commands) |
+| `NRFLO_AGENT_TOKEN` | Per-session bearer token (`MintSpawnToken()` → `agent_sessions.spawn_token`). Picked up by the CLI's HTTPClient and sent as `Authorization: Bearer …`; the API's `requireAuth` accepts it while the session is `running` or `user_interactive`. |
 | `NRF_SPAWNED` | Set to `1` to indicate agent was spawned by the orchestrator |
 | `NRF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
 | `NRF_MAX_CONTEXT` | Max context window size in tokens (e.g., 200000 or 1000000 for opus_4_7_1m). Used by hooks to calculate context % |

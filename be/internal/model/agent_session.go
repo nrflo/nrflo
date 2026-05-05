@@ -46,6 +46,7 @@ type AgentSession struct {
 	Config             string             `json:"-"` // Safety settings JSON used for this session
 	StartedAt          sql.NullString     `json:"-"`
 	EndedAt            sql.NullString     `json:"-"`
+	SpawnToken         sql.NullString     `json:"-"` // Bearer token for spawned agent's HTTP API access (valid while session is running/user_interactive)
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`
 

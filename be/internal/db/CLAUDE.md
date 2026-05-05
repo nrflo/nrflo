@@ -117,6 +117,9 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    config        TEXT NOT NULL DEFAULT '' (safety settings JSON)     │
 │    started_at    TEXT                (when agent started running)    │
 │    ended_at      TEXT                (when agent finished)           │
+│    spawn_token   TEXT                (per-session HTTP bearer token; │
+│                                       set by spawner, NULL on legacy │
+│                                       rows; UNIQUE INDEX, mig 000087)│
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    FK workflow_instance_id → workflow_instances(id) CASCADE          │
@@ -512,7 +515,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000085** (python_scripts — adds `python_scripts` table, `agent_definitions.python_script_id` column, extends `execution_mode` CHECK to include `script`)
+Current highest migration: **000087** (agent_session_spawn_token — adds `agent_sessions.spawn_token` column + unique partial index for per-session HTTP bearer auth)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

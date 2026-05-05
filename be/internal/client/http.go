@@ -6,21 +6,24 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 )
 
 // HTTPClient is a lightweight HTTP client for the nrflo API
 type HTTPClient struct {
-	BaseURL   string
-	ProjectID string
-	client    *http.Client
+	BaseURL    string
+	ProjectID  string
+	AgentToken string // bearer token from NRFLO_AGENT_TOKEN env (set by spawner on agent processes)
+	client     *http.Client
 }
 
 // NewHTTPClient creates a new HTTP client
 func NewHTTPClient(baseURL, projectID string) *HTTPClient {
 	return &HTTPClient{
-		BaseURL:   baseURL,
-		ProjectID: projectID,
-		client:    &http.Client{},
+		BaseURL:    baseURL,
+		ProjectID:  projectID,
+		AgentToken: os.Getenv("NRFLO_AGENT_TOKEN"),
+		client:     &http.Client{},
 	}
 }
 
@@ -62,6 +65,9 @@ func (c *HTTPClient) do(method, path string, body, result interface{}) error {
 	req.Header.Set("Content-Type", "application/json")
 	if c.ProjectID != "" {
 		req.Header.Set("X-Project", c.ProjectID)
+	}
+	if c.AgentToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.AgentToken)
 	}
 
 	resp, err := c.client.Do(req)

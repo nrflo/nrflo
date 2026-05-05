@@ -25,7 +25,7 @@ func NewAgentSessionRepo(database db.Querier, clk clock.Clock) *AgentSessionRepo
 const sessionCols = `id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 	model_id, status, result, result_reason, pid, findings,
 	context_left, ancestor_session_id, spawn_command, prompt, system_prompt,
-	restart_count, nudge_count, config, started_at, ended_at, created_at, updated_at`
+	restart_count, nudge_count, config, started_at, ended_at, spawn_token, created_at, updated_at`
 
 func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
 	s := &model.AgentSession{}
@@ -34,7 +34,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
-		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt,
+		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &s.SpawnToken, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 const sessionColsJoined = `s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
 	s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
 	s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
-	s.restart_count, s.nudge_count, s.config, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id`
+	s.restart_count, s.nudge_count, s.config, s.started_at, s.ended_at, s.spawn_token, s.created_at, s.updated_at, wi.workflow_id`
 
 func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
 	s := &model.AgentSession{}
@@ -57,7 +57,7 @@ func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
-		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt, &s.Workflow,
+		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &s.SpawnToken, &createdAt, &updatedAt, &s.Workflow,
 	)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 
 	_, err := r.db.Exec(`
 		INSERT INTO agent_sessions (`+sessionCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		strings.ToLower(session.ProjectID),
 		strings.ToLower(session.TicketID),
@@ -98,10 +98,48 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 		session.Config,
 		session.StartedAt,
 		session.EndedAt,
+		session.SpawnToken,
 		now,
 		now,
 	)
 	return err
+}
+
+// GetByToken returns the session matching the bearer token, only if its status
+// indicates the session is still active (running or user_interactive). Returns
+// (nil, nil) when no row matches — callers treat that as "invalid token".
+func (r *AgentSessionRepo) GetByToken(token string) (*model.AgentSession, error) {
+	if token == "" {
+		return nil, nil
+	}
+	row := r.db.QueryRow(`SELECT `+sessionCols+` FROM agent_sessions
+		WHERE spawn_token = ? AND status IN ('running', 'user_interactive')`, token)
+	s, err := scanSession(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// UpdateSpawnToken sets the bearer token for an existing session. Used when
+// the PTY take-control flow resumes a session and needs a fresh token to inject
+// into the agent's environment.
+func (r *AgentSessionRepo) UpdateSpawnToken(id, token string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.Exec(
+		`UPDATE agent_sessions SET spawn_token = ?, updated_at = ? WHERE id = ?`,
+		sql.NullString{String: token, Valid: token != ""}, now, id)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("agent session not found: %s", id)
+	}
+	return nil
 }
 
 // Get retrieves an agent session by ID

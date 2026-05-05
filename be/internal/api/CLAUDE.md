@@ -23,9 +23,11 @@ Per-route auth is applied at registration time via three helpers in `registerRou
 
 `requireAuth` reads the user ID from the SCS session context, loads the `model.User` from DB, stashes it in request context with `userKey`. Returns 401 if session missing, user not found, or user disabled. Returns without checking if `sessionMgr == nil` (test environments that create `*Server` directly).
 
+`requireAuth` also accepts `Authorization: Bearer <agent_token>` (the spawned-agent path). The token is looked up via `AgentSessionRepo.GetByToken`, which only returns rows with `status IN ('running','user_interactive')`. On match, the session is stashed under `agentSessionKey` (helper: `getAgentSession(r)`). When `X-Project` is present it must equal the session's `project_id` (case-insensitive) — otherwise 403. The user context is **not** populated for bearer requests, so `requireAdmin` always 403s them.
+
 `requireAdmin` wraps `requireAuth` and additionally 403s when `user.Role != admin`.
 
-Helpers `getUser(r)` and `getUserID(r)` retrieve the stashed user from context in handler bodies.
+Helpers `getUser(r)` and `getUserID(r)` retrieve the stashed user from context in handler bodies. `getAgentSession(r)` returns the bearer-authenticated agent session (or nil for cookie/operator requests).
 
 ### Admin-gated Routes
 

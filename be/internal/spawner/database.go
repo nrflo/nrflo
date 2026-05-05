@@ -11,7 +11,7 @@ import (
 )
 
 // registerAgentStart creates an agent_sessions row for a newly spawned agent
-func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, ancestorSessionID string, restartCount, restartThreshold int) {
+func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, ancestorSessionID, spawnToken string, restartCount, restartThreshold int) {
 	pool := s.pool()
 	if pool == nil {
 		return
@@ -33,6 +33,7 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		Prompt:             sql.NullString{String: prompt, Valid: prompt != ""},
 		SystemPrompt:       sql.NullString{String: systemPrompt, Valid: systemPrompt != ""},
 		AncestorSessionID:  sql.NullString{String: ancestorSessionID, Valid: ancestorSessionID != ""},
+		SpawnToken:         sql.NullString{String: spawnToken, Valid: spawnToken != ""},
 		RestartCount:       restartCount,
 		StartedAt:          sql.NullString{String: now, Valid: true},
 		Config:             s.config.ClaudeSettingsJSON,

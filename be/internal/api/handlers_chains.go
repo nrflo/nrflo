@@ -356,8 +356,13 @@ func (s *Server) handleRunEpicWorkflow(w http.ResponseWriter, r *http.Request) {
 
 	// Create chain via ChainService
 	chainSvc := service.NewChainService(s.pool, s.clock)
+	trimmed := strings.TrimSpace(ticket.Title)
+	chainName := fmt.Sprintf("Epic: %s", ticket.Title)
+	if strings.HasPrefix(strings.ToLower(trimmed), "epic:") {
+		chainName = ticket.Title
+	}
 	chain, err := chainSvc.CreateChain(projectID, &types.ChainCreateRequest{
-		Name:         fmt.Sprintf("Epic: %s", ticket.Title),
+		Name:         chainName,
 		WorkflowName: body.WorkflowName,
 		EpicTicketID: ticketID,
 		TicketIDs:    childIDs,

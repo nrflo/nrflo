@@ -110,8 +110,8 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	if result.Status != string(model.ChainStatusPending) {
 		t.Errorf("expected status 'pending', got %s", result.Status)
 	}
-	if !strings.Contains(result.Name, "Epic:") {
-		t.Errorf("expected name to contain 'Epic:', got %s", result.Name)
+	if result.Name != "Epic: Epic Story" {
+		t.Errorf("expected name 'Epic: Epic Story', got %s", result.Name)
 	}
 
 	// Verify 3 items in correct topological order: A, B, C

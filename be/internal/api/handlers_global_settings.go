@@ -38,6 +38,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	simplifiedAgentsGraphVal, err := svc.Get("simplified_agents_graph")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	stallStartVal, err := svc.Get("stall_start_timeout_sec")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -50,10 +56,11 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 	}
 
 	resp := map[string]interface{}{
-		"low_consumption_mode":    val == "true",
-		"context_save_via_agent":  contextSaveViaAgentVal == "true",
-		"session_retention_limit": retentionLimit,
-		"api_mode_enabled":        s.apiMode,
+		"low_consumption_mode":     val == "true",
+		"context_save_via_agent":   contextSaveViaAgentVal == "true",
+		"simplified_agents_graph":  simplifiedAgentsGraphVal == "true",
+		"session_retention_limit":  retentionLimit,
+		"api_mode_enabled":         s.apiMode,
 	}
 	if stallStartVal != "" {
 		if parsed, parseErr := strconv.Atoi(stallStartVal); parseErr == nil {
@@ -79,6 +86,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	var req struct {
 		LowConsumptionMode     *bool           `json:"low_consumption_mode"`
 		ContextSaveViaAgent    *bool           `json:"context_save_via_agent"`
+		SimplifiedAgentsGraph  *bool           `json:"simplified_agents_graph"`
 		SessionRetentionLimit  *int            `json:"session_retention_limit"`
 		StallStartTimeoutSec   json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec json.RawMessage `json:"stall_running_timeout_sec"`
@@ -107,6 +115,17 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			val = "true"
 		}
 		if err := svc.Set("context_save_via_agent", val); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	if req.SimplifiedAgentsGraph != nil {
+		val := "false"
+		if *req.SimplifiedAgentsGraph {
+			val = "true"
+		}
+		if err := svc.Set("simplified_agents_graph", val); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

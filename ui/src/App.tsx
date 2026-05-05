@@ -21,6 +21,7 @@ import { ChainDetailPage } from '@/pages/ChainDetailPage'
 import { GitStatusPage } from '@/pages/GitStatusPage'
 import { DocumentationPage } from '@/pages/DocumentationPage'
 import { ErrorsPage } from '@/pages/ErrorsPage'
+import { LogsPage } from '@/pages/LogsPage'
 import { SchedulesPage } from '@/pages/SchedulesPage'
 import { WorkflowChainsPage } from '@/pages/WorkflowChainsPage'
 import { WorkflowChainEditorPage } from '@/pages/WorkflowChainEditorPage'
@@ -84,6 +85,7 @@ function AppRoutes() {
               <Route path="workflow-chains" element={<WorkflowChainsPage />} />
               <Route path="workflow-chains/:id" element={<WorkflowChainEditorPage />} />
               <Route path="errors" element={<ErrorsPage />} />
+              <Route path="logs" element={<LogsPage />} />
               <Route path="python-scripts" element={<PythonScriptsPage />} />
               {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
               {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}

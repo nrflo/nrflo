@@ -170,6 +170,12 @@ export function Sidebar() {
           label="Errors"
           active={isActive('/errors')}
         />
+        <NavItem
+          to="/logs"
+          icon={<ScrollText className="h-4 w-4" />}
+          label="Logs"
+          active={isActive('/logs')}
+        />
         {apiModeEnabled && isAdmin && (
           <>
             <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">

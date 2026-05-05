@@ -72,6 +72,13 @@ TypeScript type definitions matching Go API models. Contains 5 files.
 | `UpdateUserRequest` | `{ display_name?, role?, status? }` — all optional partial update |
 | `ResetPasswordRequest` | `{ new_password }` |
 
+## Agent Session Log Types (`agentSessionLogs.ts`)
+
+| Type | Description |
+|------|-------------|
+| `AgentSessionLogEntry` | Finished session row with `session_id`, `project_id`, `agent_type`, `model_id?`, `status`, `started_at?`, `ended_at?`, `duration_sec?`, `workflow_id`, `workflow_instance_id`, `scheduled`, `execution_mode?`, `workflow_final_result?` |
+| `AgentSessionLogsResponse` | `{ sessions: AgentSessionLogEntry[], total, page, per_page, total_pages }` — paginated list |
+
 ## Audit Types (`audit.ts`)
 
 | Type | Description |

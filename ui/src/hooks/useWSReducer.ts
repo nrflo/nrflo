@@ -8,6 +8,7 @@ import { scheduleKeys } from './useScheduledTasks'
 import { workflowChainKeys, workflowChainRunKeys } from './useWorkflowChains'
 import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
+import { agentSessionLogKeys } from './useAgentSessionLogs'
 import type { WSEventType } from './useWebSocket'
 
 // Module-level throttle state for tool.dispatched (1s leading+trailing)
@@ -167,6 +168,7 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.lists() })
     }
+    qc.invalidateQueries({ queryKey: agentSessionLogKeys.all })
   },
 
   'agent.continued': (event, qc, isProjectScope) => {

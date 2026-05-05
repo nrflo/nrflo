@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, Sun, Moon, Monitor } from 'lucide-react'
+import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, Sun, Moon, Monitor, LogOut } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
@@ -8,7 +8,7 @@ import { DailyStats } from '@/components/layout/DailyStats'
 import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
 import { useProjectStore } from '@/stores/projectStore'
 import { useThemeStore } from '@/stores/themeStore'
-import { useIsAdmin } from '@/stores/authStore'
+import { useAuthStore, useIsAdmin } from '@/stores/authStore'
 
 export function Header() {
   const navigate = useNavigate()
@@ -16,6 +16,19 @@ export function Header() {
   const { currentProject, setCurrentProject, projects } = useProjectStore()
   const { theme, setTheme } = useThemeStore()
   const isAdmin = useIsAdmin()
+  const logout = useAuthStore((s) => s.logout)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await logout()
+    } catch {
+      // ignore
+    } finally {
+      navigate('/login', { replace: true })
+    }
+  }
 
   const cycleTheme = () => {
     const next = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system'
@@ -123,6 +136,16 @@ export function Header() {
             <Settings className="h-5 w-5" />
           </Link>
         )}
+
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          aria-label="Log out"
+          title="Log out"
+          className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <LogOut className="h-5 w-5" />
+        </button>
       </div>
     </header>
   )

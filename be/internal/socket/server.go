@@ -264,6 +264,8 @@ type Handler struct {
 	wfChainRunSvc      *service.WorkflowChainRunService
 	wsHub              *ws.Hub
 	signaler           TerminalSignaler // optional; nil-safe
+	pool               *db.Pool
+	clk                clock.Clock
 
 	// codexJSONLOffsets tracks per-session byte offsets into the codex rollout
 	// JSONL so each `Stop` hook scan only reads new bytes since the last flush.
@@ -283,6 +285,8 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 		wfChainRunSvc:      service.NewWorkflowChainRunService(pool, clk),
 		wsHub:              hub,
 		signaler:           signaler,
+		pool:               pool,
+		clk:                clk,
 		codexJSONLOffsets:  make(map[string]int64),
 	}
 }

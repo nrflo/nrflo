@@ -96,8 +96,9 @@ be/
 │   │   ├── agent_manual.md      # Build artifact: gitignored, auto-copied from repo-root agent_manual.md by the `embed-assets` Make target (a prereq of every `make build*`/`make test*`). Do NOT edit, commit, or hand-copy — edit the root file and let make do the copy.
 │   │   └── dist/                # UI build output (populated by `make build-ui`)
 │   ├── socket/                  # Unix socket server
-│   │   ├── server.go            # Socket listener
-│   │   ├── handler.go           # Request routing
+│   │   ├── server.go            # Socket listener, Handler struct (stores pool+clk for repo construction)
+│   │   ├── handler.go           # Request routing (findings/project_findings/agent/workflow/ws/script)
+│   │   ├── handler_script_context.go # script.context — resolves session→wfi→ticket, returns 12-key dict
 │   │   └── protocol.go          # JSON-RPC protocol types
 │   ├── notify/                  # Notification dispatch subsystem
 │   │   ├── notify.go            # Dispatcher (ws.Listener): filters 5 events, inserts delivery rows
@@ -163,6 +164,10 @@ be/
 │   │   ├── review_item.go       # ReviewItem struct + status constants (pending|approved|rejected)
 │   │   ├── tool_dispatch.go     # ToolDispatch + DispatchSummary/EditRateRow/ThroughputPoint aggregates
 │   │   └── config_version.go    # ConfigVersion struct
+│   ├── sdk/                     # Embedded agent SDKs installed to $NRFLO_HOME/sdk/ on server startup
+│   │   └── python/              # Python SDK package (package pythonsdk)
+│   │       ├── nrflo_sdk.py     # Single-file Python SDK (pure stdlib, persistent socket)
+│   │       └── embed.go         # //go:embed nrflo_sdk.py + WriteSDK(dir) installer
 │   ├── manifest/                # Manifest parsing, python runtime, scaffolder (see internal/manifest/CLAUDE.md)
 │   │   ├── config/              # Manifest parsing, tool validation, JSON Schema compilation
 │   │   ├── python/              # Python script execution runtime (Runner, OSRunner, env scoping)

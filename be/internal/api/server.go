@@ -23,6 +23,7 @@ import (
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/scheduler"
+	pythonsdk "be/internal/sdk/python"
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/static"
@@ -63,6 +64,11 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	sdkDir := ""
 	if dataPath != "" {
 		sdkDir = filepath.Join(filepath.Dir(dataPath), "sdk")
+		if err := pythonsdk.WriteSDK(sdkDir); err != nil {
+			logger.Warn(context.Background(), "python SDK install failed (best-effort)", "error", err)
+		} else {
+			logger.Info(context.Background(), "python script SDK installed", "path", filepath.Join(sdkDir, "nrflo_sdk.py"))
+		}
 	}
 	orch := orchestrator.New(dataPath, hub, clk, errorSvc, apiMode, sdkDir)
 	ptyMgr := ptyPkg.NewManager()

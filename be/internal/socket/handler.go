@@ -49,6 +49,8 @@ func (h *Handler) Handle(req Request) Response {
 		return h.handleWorkflow(ctx, req, action)
 	case "ws":
 		return h.handleWS(ctx, req, action)
+	case "script":
+		return h.handleScript(ctx, req, action)
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", req.Method)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError(req.Method))

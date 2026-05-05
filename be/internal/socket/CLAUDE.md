@@ -55,6 +55,7 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `agent.record_event` | Record a Claude/codex hook event (PreToolUse/PostToolUse/UserPromptSubmit/Stop); no project required; inserts agent_messages row, broadcasts `messages.updated`. SessionEnd is silently ignored. Stop triggers a per-turn flush of new `event_msg/agent_message` records from the codex rollout JSONL (text category) so the model's spoken output is visible. |
 | `workflow.skip` | Add a skip tag to a workflow instance; validates tag against workflow groups; broadcasts `skip_tag.added` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
+| `script.context` | Return the auto-injectable variable dict for a script-mode agent session; no project required; params: `{session_id}`; resolves session → workflow_instance → ticket (when ticket-scoped); returns 12-key dict: `session_id`, `instance_id`, `project_id`, `agent_type`, `workflow_id`, `scope_type`, `ticket_id`, `ticket_title`, `ticket_description`, `user_instructions` (string, "" if unset), `callback` (null or `{instructions,from_agent,level}`), `previous_data` (string, "" if no `to_resume` finding). |
 
 ## Common Tasks
 
@@ -92,4 +93,5 @@ After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.
 | `handler_record_event.go` | `agent.record_event` handler: PreToolUse/PostToolUse → DB insert + WS broadcast + stall bump; opportunistic codex context update via `extractCodexContextLeft`; Stop → `flushCodexAgentMessages` to emit new agent text rows |
 | `handler_codex_context.go` | Codex JSONL extractors: `extractCodexContextLeft` (latest `token_count` → % context remaining) and `extractCodexNewAgentMessages` (new `event_msg/agent_message` bodies since the per-session offset). Reasoning blocks are NOT extracted — codex 0.125 emits only encrypted reasoning. |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
+| `handler_script_context.go` | `script.context` handler: resolve session → wfi → ticket, assemble 12-key context dict |
 | `handler_terminal_signal_test.go` | Terminal signal dispatch: fail/continue/callback dispatch, best-effort error handling, nil-guard |

@@ -148,9 +148,39 @@ The spawner supports injecting a `--settings` JSON flag into Claude CLI commands
 
 ## Execution Backend (T1 seam)
 
-`spawnSingle` is split into a pure prep step (`prepareSpawn`) and a process-start step (`(s *Spawner).startBackend(proc, prep)`). Each `processInfo` carries a `backend ExecutionBackend` (`backend.go`) implementing `Name/SupportsResume/SupportsTakeControl/Start/Kill`. The default `cliBackend` wraps the existing `exec.Cmd` flow (BuildCommand, stdin pipe, stdout/stderr pipes, output and wait goroutines). All process-signal call sites — graceful shutdown, take-control, stall_restart, context_save, completion — route through `proc.backend.Kill(ctx, proc, sig)` (SIGKILL → `Process.Kill()`, else `Process.Signal(sig)`; nil-safe). `Spawner.TrackMessage` is the exported message-coalescing entry point used by the runner package (T3).
+`spawnSingle` is split into a pure prep step (`prepareSpawn`) and a process-start step (`(s *Spawner).startBackend(proc, prep)`). Each `processInfo` carries a `backend ExecutionBackend` (`backend.go`) implementing six methods:
 
-`startBackend` selects the backend based on `prep.executionMode`: `"cli"` (default) instantiates `newCLIBackend(adapter, s)`; `"api"` instantiates `newAPIBackend(s)`. The execution mode is set in `prepareSpawn` from `agentDef.ExecutionMode` (loaded early so CLI prep is skipped for API agents).
+- `Name() string` — backend identifier ("cli", "api", "cli_interactive", "script")
+- `SupportsResume() bool` — whether the session can be resumed (Claude CLI only)
+- `SupportsTakeControl() bool` — whether interactive take-over is supported
+- `RequiresPrompt() bool` — gates prompt-template rendering in `prepareSpawn` (false → template load and file write are skipped)
+- `TracksContext() bool` — gates the low-context-save branch in `monitorAll` (false → context save is silently skipped)
+- `ParsesStructuredOutput() bool` — gates `processOutput` JSON parsing (false → each stdout line is tracked directly as a `"text"` message via `TrackMessage`)
+
+### Backend Capability Matrix
+
+| Backend | Name | SupportsResume | SupportsTakeControl | RequiresPrompt | TracksContext | ParsesStructuredOutput |
+|---------|------|----------------|---------------------|----------------|---------------|------------------------|
+| `cliBackend` | `"cli"` | adapter-dependent | adapter-dependent | true | true | true |
+| `apiBackend` | `"api"` | false | false | true | true | true |
+| `cliInteractiveBackend` | `"cli_interactive"` | adapter-dependent | adapter-dependent | true | true | true |
+| `scriptBackend` | `"script"` | false | false | false | false | false |
+
+All process-signal call sites — graceful shutdown, take-control, stall_restart, context_save, completion — route through `proc.backend.Kill(ctx, proc, sig)` (SIGKILL → `Process.Kill()`, else `Process.Signal(sig)`; nil-safe). `Spawner.TrackMessage` is the exported message-coalescing entry point used by the runner package (T3).
+
+### Backend Selection
+
+`startBackend` selects the backend based on `prep.executionMode`:
+
+```
+startBackend priority:
+  1. executionMode == "api"         → apiBackend
+  2. executionMode == "script"      → scriptBackend
+  3. InteractiveCLIMode && SupportsInteractive() → cliInteractiveBackend
+  4. (default)                      → cliBackend
+```
+
+The execution mode is set in `prepareSpawn` from `agentDef.ExecutionMode` (loaded early so CLI/prompt prep is skipped for API and script agents).
 
 ## API Backend (T3)
 
@@ -194,18 +224,44 @@ The orchestrator constructs all three at workflow start (`orchestrator/api_provi
 
 T4 wires tool dispatch on top of this seam (registry resolution in `prepareSpawn`, dispatch loop in `apirun.Runner`, terminal-tool short-circuit via `TerminalSignal`). See [apirun/CLAUDE.md](apirun/CLAUDE.md) for the tool dispatch architecture, builtins, HTTP handler, and registry rules.
 
+## Script Backend
+
+`scriptBackend` (`backend_script.go`) executes a stored Python script as an agent. There is no CLI adapter and no prompt template — the spawner loads the script code from the `python_scripts` DB row (linked via `agent_definitions.python_script_id`) and writes it directly to disk.
+
+### Start Sequence
+
+1. Creates `/tmp/nrflo/scripts/` directory (mode 0755) if needed.
+2. Writes `prep.scriptCode` to `/tmp/nrflo/scripts/<sessionID>.py` (mode 0600).
+3. Builds `exec.CommandContext(ctx, "python3", scriptPath)` with:
+   - `cmd.Dir = prep.opts.WorkDir` (git worktree for ticket-scope, project root for project-scope — same as cliBackend)
+   - `cmd.Env = prep.opts.Env` (standard spawner env) + `NRFLO_SDK_DIR=<config.SDKDir>` when `config.SDKDir != ""`
+4. Launches stdout/stderr pipes and starts the process.
+5. `go monitorOutput(proc, stdout)` — routes lines through `TrackMessage(..., "text")` because `ParsesStructuredOutput()=false`.
+6. Goroutine scans stderr: each line is logged via `warnAgent` and tracked as a `"text"` message.
+7. Wait goroutine: `proc.waitErr = cmd.Wait()` → `close(proc.doneCh)` → `os.Remove(scriptPath)`.
+
+### Exit Semantics
+
+Exit 0 → `handleCompletion` sets `PASS`. Non-zero → `handleCompletion` sets `FAIL` (same as CLI agents).
+
+### Kill
+
+`sig == SIGKILL` → `proc.cmd.Process.Kill()`. Other signals → `proc.cmd.Process.Signal(sig)`. Nil-safe (returns nil when `proc.cmd == nil`).
+
+### Unsupported Features
+
+- **No prompt template**: `RequiresPrompt()=false` → `prepareSpawn` skips template render, prompt file write, and suffix file.
+- **No context tracking**: `TracksContext()=false` → `monitorAll` skips the low-context save branch entirely; script agents always run to completion regardless of token usage.
+- **No take-control**: `SupportsTakeControl()=false` → the take-control flow returns HTTP 409 before reaching the spawner.
+- **No structured output**: `ParsesStructuredOutput()=false` → stdout is plain text; no JSON tool-use parsing.
+
+### Mode Compatibility
+
+`scriptBackend` is available in both `--mode=cli` and `--mode=api`. There is no API-mode gating for `execution_mode='script'` (unlike `execution_mode='api'`).
+
 ## Interactive CLI Backend
 
 `cliInteractiveBackend` (`backend_interactive.go`) spawns CLI agents inside a PTY without batch flags. Selected when `Config.InteractiveCLIMode && adapter.SupportsInteractive()` and execution mode is not `"api"`.
-
-### Backend Selection
-
-```
-startBackend priority:
-  1. executionMode == "api"         → apiBackend
-  2. InteractiveCLIMode && SupportsInteractive() → cliInteractiveBackend
-  3. (default)                      → cliBackend
-```
 
 System agents (conflict-resolver, context-saver) flow through the same selector — they use cliInteractiveBackend when the toggle is on and their adapter returns `SupportsInteractive() == true`. The context-saver ephemeral spawner inherits `InteractiveCLIMode` and `PTYManager` from the parent spawner config.
 
@@ -605,6 +661,8 @@ Two paths exist; selection is computed by `(*Spawner).shouldUseAgentSave(proc)` 
 3. `adapter.SupportsResume() == false` — covers codex (and any future non-resumable CLI). Without this clause, `contextSaveViaResume` would short-circuit with a warning and relaunch with empty `${PREVIOUS_DATA}`, silently dropping all carryover. The cost is one extra haiku invocation per low-context event for non-claude sessions; the previous default was silent data loss.
 
 Default: claude → resume; codex/opencode → agent; api-mode → agent.
+
+**Script-mode agents are exempt from low-context save entirely.** `scriptBackend.TracksContext()` returns `false`, so `monitorAll` never enters the low-context branch regardless of token usage. Script agents always run to completion (or until timeout/stall).
 
 ### Saver Selection (Backend-Aware)
 

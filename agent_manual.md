@@ -298,6 +298,168 @@ These fields are configured via the agent form on the **Workflows** page.
 
 ---
 
+## 6a. Python Script Agents
+
+Instead of prompting an AI model, a Python script agent runs a Python script you author — receiving workflow context via the `nrflo_sdk` module and signalling results via `c.agent.finished()` / `c.agent.fail(reason)`. This is useful for deterministic logic, external API calls, data transforms, or any task that shouldn't be handed to an LLM.
+
+### What It Is
+
+- A stored Python script (pure stdlib + `nrflo_sdk`) executes as an agent step.
+- Exit 0 (or `c.agent.finished()`) = pass. Non-zero exit (or `c.agent.fail(...)`) = fail.
+- The script has full access to findings, project findings, and workflow context via the SDK.
+- No prompt template, no model selection, no context window — the script runs from start to finish every time.
+
+### Authoring
+
+Go to **Python Scripts** (`/python-scripts`) in the web UI. Create a new script by giving it a name and pasting your Python code. The **Validate** button syntax-checks the code via `python3` without saving.
+
+Minimal script structure:
+
+```python
+import sys, os
+sys.path.insert(0, os.environ["NRFLO_SDK_DIR"])
+import nrflo_sdk
+
+c = nrflo_sdk.client()
+
+# read context
+ctx = c.context()
+ticket_id = ctx["ticket_id"]
+
+# read findings from a prior agent
+files = c.findings.get("setup-analyzer", "files_to_modify")
+
+# write own findings
+c.findings.add("result", "all checks passed")
+
+# signal success
+c.agent.finished()
+```
+
+### Wiring
+
+On the **Workflows** page, add or edit an agent definition and set **Execution Mode** to `Python Script`. A dropdown appears letting you pick one of your saved scripts. The `model` field is ignored for script agents.
+
+### Lifecycle
+
+1. The spawner writes the script to `/tmp/nrflo/scripts/<session-id>.py`.
+2. Runs `python3 <path>` inside the agent's working directory (git worktree for ticket-scope, project root for project-scope).
+3. Stdout lines are captured and shown in the agent message timeline.
+4. Stderr lines are shown as warnings in the timeline.
+5. Script exits → exit 0 = pass, non-zero = fail. Calling `c.agent.finished()` / `c.agent.fail()` internally exits with the appropriate code.
+
+There is no low-context restart, no resume, and no take-control for script agents.
+
+### nrflo_sdk Reference
+
+Import and create a client at the top of every script:
+
+```python
+import sys, os
+sys.path.insert(0, os.environ["NRFLO_SDK_DIR"])
+import nrflo_sdk
+c = nrflo_sdk.client()
+```
+
+**Agent control:**
+
+| Method | Description |
+|--------|-------------|
+| `c.agent.finished()` | Signal success and exit |
+| `c.agent.fail(reason="")` | Signal failure and exit |
+| `c.agent.continue_()` | Signal context exhaustion (triggers relaunch; rarely needed in scripts) |
+| `c.agent.callback(level)` | Trigger callback to re-run an earlier layer |
+
+**Findings (own session):**
+
+| Method | Description |
+|--------|-------------|
+| `c.findings.add(key, value)` | Set a finding |
+| `c.findings.add_bulk({key: value, ...})` | Set multiple findings |
+| `c.findings.get(key=None)` | Get own findings (all or by key) |
+| `c.findings.append(key, value)` | Append to a finding (creates array) |
+| `c.findings.append_bulk({...})` | Append multiple |
+| `c.findings.delete(*keys)` | Delete findings |
+
+**Cross-agent read** — pass agent type as first arg to `.get()`:
+
+```python
+c.findings.get("setup-analyzer", "files_to_modify")
+```
+
+**Project findings:**
+
+| Method | Description |
+|--------|-------------|
+| `c.project_findings.add(key, value)` | Set project-level finding |
+| `c.project_findings.add_bulk({...})` | Set multiple |
+| `c.project_findings.get(key=None)` | Get project findings |
+| `c.project_findings.append(key, value)` | Append to project finding |
+| `c.project_findings.append_bulk({...})` | Append multiple |
+| `c.project_findings.delete(*keys)` | Delete |
+
+**Workflow context:**
+
+| Method | Description |
+|--------|-------------|
+| `c.context(refresh=False)` | Return 12-key dict (cached; pass `refresh=True` to refetch) |
+| `c.user_instructions()` | Return user-supplied instructions string ("" if none) |
+| `c.callback_info()` | Return callback dict or `None` |
+| `c.previous_data()` | Return `to_resume` string from a prior relaunched session ("" if none) |
+| `c.skip(tag)` | Add a skip tag to the workflow instance |
+
+### Auto-injectable Context Variables
+
+`c.context()` returns a dict with these 12 keys:
+
+| Key | Description |
+|-----|-------------|
+| `session_id` | This agent's session UUID |
+| `instance_id` | Workflow instance UUID |
+| `project_id` | Project identifier |
+| `agent_type` | Agent type identifier (e.g., `"gate-checker"`) |
+| `workflow_id` | Workflow definition UUID |
+| `scope_type` | `"ticket"` or `"project"` |
+| `ticket_id` | Ticket ID (empty string for project-scope) |
+| `ticket_title` | Ticket title (empty string for project-scope) |
+| `ticket_description` | Ticket description (empty string for project-scope) |
+| `user_instructions` | User-supplied instructions (empty string if none) |
+| `callback` | `None` or `{"instructions": "...", "from_agent": "...", "level": N}` |
+| `previous_data` | Content of the `to_resume` finding from the prior session (empty string if none) |
+
+### Errors
+
+The SDK raises `nrflo_sdk.NrfloError(code, message)` for socket errors (e.g., server unreachable, finding not found). SDK calls retry with exponential backoff up to ~1 second before raising. Unhandled exceptions cause a non-zero exit, which marks the agent layer as failed.
+
+### Worked Example: Gate That Fails When No Files Were Found
+
+```python
+import sys, os, json
+sys.path.insert(0, os.environ["NRFLO_SDK_DIR"])
+import nrflo_sdk
+
+c = nrflo_sdk.client()
+
+# Read what the setup-analyzer found
+files_raw = c.findings.get("setup-analyzer", "files_to_modify")
+if not files_raw:
+    c.agent.fail(reason="setup-analyzer did not set files_to_modify")
+
+try:
+    files = json.loads(files_raw)
+except Exception:
+    c.agent.fail(reason="files_to_modify is not valid JSON")
+
+if not files:
+    c.agent.fail(reason="files_to_modify is empty — nothing to implement")
+
+# All good
+c.findings.add("validated_files", files_raw)
+c.agent.finished()
+```
+
+---
+
 ## 7. Workflow & Phase Configuration
 
 ### Phase Configuration

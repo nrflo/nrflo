@@ -315,6 +315,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
 | `internal/manifest/` | [manifest/CLAUDE.md](internal/manifest/CLAUDE.md) | Manifest parsing, python script runtime, init-customer scaffold |
+| `internal/sdk/python/` | [sdk/python/CLAUDE.md](internal/sdk/python/CLAUDE.md) | Embedded Python SDK for `execution_mode='script'` agents (auto-installed to `$NRFLO_HOME/sdk/`) |
 | `internal/configeditor/` | [configeditor/CLAUDE.md](internal/configeditor/CLAUDE.md) | Versioned config file editing service + forward-only migration runner |
 
 ## Running Tests

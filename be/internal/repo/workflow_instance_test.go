@@ -3,6 +3,7 @@ package repo
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"be/internal/clock"
 	"be/internal/model"
@@ -62,6 +63,105 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 	if wi2.Status != model.WorkflowInstanceProjectCompleted {
 		t.Fatalf("expected status 'project_completed', got %v", wi2.Status)
 	}
+}
+
+func TestCreate_ScheduledTaskID_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("with_scheduled_task_id", func(t *testing.T) {
+		t.Parallel()
+		pool := newTestPool(t)
+
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		_, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+			"proj-sched", "Sched Project", t.TempDir(), now, now)
+		if err != nil {
+			t.Fatalf("seed project: %v", err)
+		}
+		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			"wf-sched", "proj-sched", "Sched Workflow", "project", now, now)
+		if err != nil {
+			t.Fatalf("seed workflow: %v", err)
+		}
+		_, err = pool.Exec(`INSERT INTO scheduled_tasks (id, project_id, name, description, cron_expression, workflows, enabled, created_at, updated_at)
+			VALUES (?, ?, ?, '', '* * * * *', '[]', 1, ?, ?)`,
+			"task-abc", "proj-sched", "task-abc", now, now)
+		if err != nil {
+			t.Fatalf("seed scheduled_task: %v", err)
+		}
+
+		repo := NewWorkflowInstanceRepo(pool, clock.Real())
+		wi := &model.WorkflowInstance{
+			ID:              "wfi-sched-1",
+			ProjectID:       "proj-sched",
+			WorkflowID:      "wf-sched",
+			ScopeType:       "project",
+			Status:          model.WorkflowInstanceActive,
+			Findings:        "{}",
+			ScheduledTaskID: "task-abc",
+		}
+		if err := repo.Create(wi); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+
+		got, err := repo.Get("wfi-sched-1")
+		if err != nil {
+			t.Fatalf("Get: %v", err)
+		}
+		if got.ScheduledTaskID != "task-abc" {
+			t.Errorf("ScheduledTaskID = %q, want %q", got.ScheduledTaskID, "task-abc")
+		}
+	})
+
+	t.Run("empty_scheduled_task_id_is_null", func(t *testing.T) {
+		t.Parallel()
+		pool := newTestPool(t)
+
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		_, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+			"proj-nosched", "No Sched", t.TempDir(), now, now)
+		if err != nil {
+			t.Fatalf("seed project: %v", err)
+		}
+		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+			"wf-nosched", "proj-nosched", "No Sched Workflow", "project", now, now)
+		if err != nil {
+			t.Fatalf("seed workflow: %v", err)
+		}
+
+		repo := NewWorkflowInstanceRepo(pool, clock.Real())
+		wi := &model.WorkflowInstance{
+			ID:         "wfi-nosched-1",
+			ProjectID:  "proj-nosched",
+			WorkflowID: "wf-nosched",
+			ScopeType:  "project",
+			Status:     model.WorkflowInstanceActive,
+			Findings:   "{}",
+			// ScheduledTaskID intentionally empty
+		}
+		if err := repo.Create(wi); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+
+		// Verify NULL via raw query
+		var isNull bool
+		row := pool.QueryRow(`SELECT scheduled_task_id IS NULL FROM workflow_instances WHERE id = ?`, "wfi-nosched-1")
+		if scanErr := row.Scan(&isNull); scanErr != nil {
+			t.Fatalf("raw NULL check: %v", scanErr)
+		}
+		if !isNull {
+			t.Error("scheduled_task_id should be NULL when ScheduledTaskID is empty, but is not")
+		}
+
+		// Verify repo.Get returns empty string
+		got, err := repo.Get("wfi-nosched-1")
+		if err != nil {
+			t.Fatalf("Get: %v", err)
+		}
+		if got.ScheduledTaskID != "" {
+			t.Errorf("ScheduledTaskID = %q, want empty string", got.ScheduledTaskID)
+		}
+	})
 }
 
 func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {

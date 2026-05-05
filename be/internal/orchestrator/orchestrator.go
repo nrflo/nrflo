@@ -38,8 +38,9 @@ type RunRequest struct {
 	Interactive           bool   `json:"interactive"`   // If true, start with interactive PTY session before layer execution
 	PlanMode              bool   `json:"plan_mode"`     // If true, start with planning PTY session, read plan file after
 	CloseTicketOnComplete bool   `json:"close_ticket_on_complete"`
-	Force                 bool   `json:"force"`        // If true, bypass concurrent ticket workflow guard
-	EndlessLoop           bool   `json:"endless_loop"` // Project-scope only: auto re-run on successful completion until stopped or failed
+	Force                 bool   `json:"force"`           // If true, bypass concurrent ticket workflow guard
+	EndlessLoop           bool   `json:"endless_loop"`    // Project-scope only: auto re-run on successful completion until stopped or failed
+	ScheduledTaskID       string `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -257,13 +258,15 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	var wi *model.WorkflowInstance
 	if req.IsProjectScope() {
 		wi, err = wfService.InitProjectWorkflow(req.ProjectID, &types.ProjectWorkflowRunRequest{
-			Workflow:     req.WorkflowName,
-			Instructions: req.Instructions,
-			EndlessLoop:  req.EndlessLoop,
+			Workflow:        req.WorkflowName,
+			Instructions:    req.Instructions,
+			EndlessLoop:     req.EndlessLoop,
+			ScheduledTaskID: req.ScheduledTaskID,
 		})
 	} else {
 		wi, err = wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{
-			Workflow: req.WorkflowName,
+			Workflow:        req.WorkflowName,
+			ScheduledTaskID: req.ScheduledTaskID,
 		})
 	}
 	if err != nil {

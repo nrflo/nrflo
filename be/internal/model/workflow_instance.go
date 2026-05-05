@@ -39,6 +39,7 @@ type WorkflowInstance struct {
 	BranchName    sql.NullString         `json:"-"`
 	EndlessLoop                   bool   `json:"endless_loop"`
 	StopEndlessLoopAfterIteration bool   `json:"stop_endless_loop_after_iteration"`
+	ScheduledTaskID               string `json:"scheduled_task_id,omitempty"`
 	CreatedAt     time.Time              `json:"created_at"`
 	UpdatedAt     time.Time              `json:"updated_at"`
 }
@@ -137,6 +138,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		BranchName    *string                `json:"branch_name,omitempty"`
 		EndlessLoop                   bool   `json:"endless_loop"`
 		StopEndlessLoopAfterIteration bool   `json:"stop_endless_loop_after_iteration"`
+		ScheduledTaskID               string `json:"scheduled_task_id,omitempty"`
 		CreatedAt     time.Time              `json:"created_at"`
 		UpdatedAt     time.Time              `json:"updated_at"`
 	}{
@@ -154,6 +156,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		BranchName:    branchName,
 		EndlessLoop:                   wi.EndlessLoop,
 		StopEndlessLoopAfterIteration: wi.StopEndlessLoopAfterIteration,
+		ScheduledTaskID:               wi.ScheduledTaskID,
 		CreatedAt:     wi.CreatedAt,
 		UpdatedAt:     wi.UpdatedAt,
 	})

@@ -302,3 +302,36 @@ func TestDispatch_RunNow_InsertsPersistentRun(t *testing.T) {
 		t.Error("DB run.Status is still 'pending', expected final status")
 	}
 }
+
+func TestDispatch_StampsScheduledTaskID(t *testing.T) {
+	sched, pool, _ := setupDispatchEnv(t)
+	seedDispatchProject(t, pool, "proj-stamp")
+	seedProjectWorkflowWithAgent(t, pool, "proj-stamp", "wf-stamp")
+
+	task := makeDispatchTask("task-stamp", "proj-stamp", []string{"wf-stamp"})
+	insertDispatchTask(t, pool, task)
+
+	run, err := sched.dispatch(context.Background(), task)
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if run.Status != "triggered" {
+		t.Fatalf("run.Status = %q, want 'triggered'", run.Status)
+	}
+	if len(run.Workflows) != 1 {
+		t.Fatalf("len(run.Workflows) = %d, want 1", len(run.Workflows))
+	}
+	instanceID := run.Workflows[0].InstanceID
+	if instanceID == "" {
+		t.Fatal("run.Workflows[0].InstanceID is empty, want non-empty on success")
+	}
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clock.Real())
+	wi, wiErr := wfiRepo.Get(instanceID)
+	if wiErr != nil {
+		t.Fatalf("wfiRepo.Get(%q): %v", instanceID, wiErr)
+	}
+	if wi.ScheduledTaskID != task.ID {
+		t.Errorf("wi.ScheduledTaskID = %q, want %q", wi.ScheduledTaskID, task.ID)
+	}
+}

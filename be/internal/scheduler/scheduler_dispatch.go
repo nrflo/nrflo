@@ -53,9 +53,10 @@ func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*m
 		go func() {
 			defer wg.Done()
 			req := orchestrator.RunRequest{
-				ProjectID:    task.ProjectID,
-				WorkflowName: wfName,
-				ScopeType:    "project",
+				ProjectID:       task.ProjectID,
+				WorkflowName:    wfName,
+				ScopeType:       "project",
+				ScheduledTaskID: task.ID,
 			}
 			runResult, err := s.orch.Start(ctx, req)
 			if err != nil {

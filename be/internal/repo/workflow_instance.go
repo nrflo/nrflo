@@ -24,16 +24,18 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 
 const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
 	findings, skip_tags, retry_count, parent_session, worktree_path, branch_name,
-	endless_loop, stop_endless_loop_after_iteration, created_at, updated_at`
+	endless_loop, stop_endless_loop_after_iteration, created_at, updated_at, scheduled_task_id`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
 	wi := &model.WorkflowInstance{}
 	var createdAt, updatedAt string
+	var scheduledTaskID sql.NullString
 	err := scanner.Scan(
 		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
 		&wi.Status, &wi.Findings, &wi.SkipTags,
 		&wi.RetryCount, &wi.ParentSession, &wi.WorktreePath, &wi.BranchName,
 		&wi.EndlessLoop, &wi.StopEndlessLoopAfterIteration, &createdAt, &updatedAt,
+		&scheduledTaskID,
 	)
 	if err != nil {
 		return nil, err
@@ -43,6 +45,7 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 	}
 	wi.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	wi.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+	wi.ScheduledTaskID = scheduledTaskID.String
 	return wi, nil
 }
 
@@ -57,13 +60,14 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
 		wi.Findings, wi.SkipTags, wi.RetryCount, wi.ParentSession,
 		wi.WorktreePath, wi.BranchName,
 		wi.EndlessLoop, wi.StopEndlessLoopAfterIteration,
 		now, now,
+		sql.NullString{String: wi.ScheduledTaskID, Valid: wi.ScheduledTaskID != ""},
 	)
 	return err
 }

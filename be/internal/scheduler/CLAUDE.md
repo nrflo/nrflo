@@ -13,7 +13,7 @@ Cron-driven scheduled workflow triggers using `github.com/robfig/cron/v3`.
 ## Dispatch Flow (`scheduler_dispatch.go`)
 
 1. Insert `schedule_runs` row with `status=pending` (includes `chain_runs=[]`)
-2. Fan out one goroutine per workflow calling `orchestrator.Start(ctx, RunRequest{ScopeType:"project"})`
+2. Fan out one goroutine per workflow calling `orchestrator.Start(ctx, RunRequest{ScopeType:"project", ScheduledTaskID:task.ID})` — `ScheduledTaskID` is propagated to the `workflow_instances` row so the run is linked to its originating scheduled task
 3. Fan out one goroutine per chain ID calling `wfChainRunSvc.CreateRun(projectID, chainID, "", "schedule:<taskID>")` then `wfChainRunner.Start(ctx, runID)`
 4. Join all goroutines via WaitGroup
 5. Build `[]ScheduleRunWorkflow` and `[]ScheduleRunChain` slices

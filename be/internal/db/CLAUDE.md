@@ -85,10 +85,15 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                    (project scope; auto-restart on success)          │
 │    stop_endless_loop_after_iteration INTEGER NOT NULL DEFAULT 0      │
 │                    (graceful stop toggle for endless_loop)           │
+│    scheduled_task_id TEXT          (FK → scheduled_tasks.id          │
+│                    ON DELETE SET NULL; set by scheduler, NULL for    │
+│                    UI/API-triggered runs; mig 000088)                │
 │    created_at      TEXT NOT NULL                                     │
 │    updated_at      TEXT NOT NULL                                     │
 │    INDEX idx_wfi_lookup (project_id, ticket_id, workflow_id,         │
 │          scope_type) — non-unique, for query performance             │
+│    INDEX idx_workflow_instances_scheduled (scheduled_task_id,        │
+│          mig 000088)                                                 │
 │    (idx_wfi_ticket_unique dropped by migration 000040 to allow       │
 │     multiple instances per ticket+workflow)                          │
 │    FK (project_id, workflow_id) → workflows(project_id, id)         │
@@ -515,7 +520,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000087** (agent_session_spawn_token — adds `agent_sessions.spawn_token` column + unique partial index for per-session HTTP bearer auth)
+Current highest migration: **000088** (workflow_instance_scheduled — adds `workflow_instances.scheduled_task_id` column + index `idx_workflow_instances_scheduled` to link runs to their originating scheduled task)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

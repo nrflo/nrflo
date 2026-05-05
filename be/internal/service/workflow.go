@@ -85,6 +85,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	wi := s.buildWorkflowInstance(projectID, workflowName, wf)
 	wi.TicketID = ticketID
 	wi.ScopeType = "ticket"
+	wi.ScheduledTaskID = req.ScheduledTaskID
 
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err
@@ -111,6 +112,7 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf)
 	wi.ScopeType = "project"
 	wi.EndlessLoop = req.EndlessLoop
+	wi.ScheduledTaskID = req.ScheduledTaskID
 
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err

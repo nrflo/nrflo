@@ -202,6 +202,10 @@ Failure (`markFailed`), `Stop()` (cancelled context), and any layer callback err
 
 The `/api/v1/projects/{id}/workflow/stop-endless-loop` handler toggles `stop_endless_loop_after_iteration` via `repo.UpdateStopEndlessLoopAfterIteration`; only affects the next restart check and never interrupts the in-flight iteration.
 
+## Scheduled Task Origin Tracking
+
+`RunRequest.ScheduledTaskID` (string, empty for UI/API-triggered runs) is forwarded through `Start()` into both `service.WorkflowService.Init` (ticket-scope) and `service.WorkflowService.InitProjectWorkflow` (project-scope) via the corresponding request types. The service sets `wi.ScheduledTaskID` before `wfiRepo.Create`, so the resulting `workflow_instances` row carries the trigger origin as a nullable FK to `scheduled_tasks`. The scheduler sets this field in `scheduler_dispatch.go` before calling `orch.Start`. All non-scheduler entrypoints leave it empty (persisted as NULL).
+
 ## Ticket Status Management
 
 The orchestrator manages ticket status transitions for ticket-scoped workflows:

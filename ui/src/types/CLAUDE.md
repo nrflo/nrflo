@@ -66,7 +66,7 @@ TypeScript type definitions matching Go API models. Contains 5 files.
 
 | Type | Description |
 |------|-------------|
-| `User` | User record with id, email, display_name, role (admin\|viewer), status (active\|disabled), must_change_password, timestamps, optional last_login_at, optional system (bool — seeded system users; Delete button hidden in UsersPage when true) |
+| `User` | User record with id, email, display_name, role (admin\|viewer), status (active\|disabled), must_change_password, timestamps, optional last_login_at, optional system (bool — seeded system users; Delete button hidden in UsersSection when true) |
 | `UserListResponse` | `{ users: User[] }` — list endpoint response |
 | `CreateUserRequest` | `{ email, display_name, password, role }` |
 | `UpdateUserRequest` | `{ display_name?, role?, status? }` — all optional partial update |

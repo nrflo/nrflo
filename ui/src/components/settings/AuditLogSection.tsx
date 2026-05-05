@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ScrollText, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -17,7 +17,7 @@ const PER_PAGE_OPTIONS = [
   { value: '200', label: '200 per page' },
 ]
 
-export function AuditLogPage() {
+export function AuditLogSection() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(50)
   const [actionFilter, setActionFilter] = useState('')
@@ -66,13 +66,10 @@ export function AuditLogPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-4">
+    <div className="space-y-4">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <ScrollText className="h-6 w-6" />
-          Audit Log
-        </h1>
-        <p className="text-muted-foreground">{total} total entries</p>
+        <h2 className="text-lg font-semibold">Audit Log</h2>
+        <p className="text-sm text-muted-foreground">{total} total entries</p>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">

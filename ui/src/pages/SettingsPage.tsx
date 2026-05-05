@@ -10,8 +10,11 @@ import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesS
 import { CLIModelsSection } from '@/components/settings/CLIModelsSection'
 import { LogsSection } from '@/components/settings/LogsSection'
 import { NotificationsSection } from '@/components/settings/NotificationsSection'
+import { UsersSection } from '@/components/settings/UsersSection'
+import { AuditLogSection } from '@/components/settings/AuditLogSection'
 
-type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'notifications'
+type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'notifications' | 'administration'
+type AdministrationSubTab = 'users' | 'audit'
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
@@ -21,6 +24,12 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'cli-models', label: 'CLI Models' },
   { id: 'logs', label: 'Logs' },
   { id: 'notifications', label: 'Notifications' },
+  { id: 'administration', label: 'Administration' },
+]
+
+const SUB_TABS: { id: AdministrationSubTab; label: string }[] = [
+  { id: 'users', label: 'Users' },
+  { id: 'audit', label: 'Audit Log' },
 ]
 
 const tabIds = new Set<string>(tabs.map((t) => t.id))
@@ -51,8 +60,19 @@ export function SettingsPage() {
   const tabParam = searchParams.get('tab')
   const activeTab: SettingsTab = isValidTab(tabParam) ? tabParam : 'general'
 
+  const subParam = searchParams.get('sub')
+  const activeSub: AdministrationSubTab = subParam === 'audit' ? 'audit' : 'users'
+
   const handleTabClick = (id: SettingsTab) => {
-    setSearchParams({ tab: id }, { replace: true })
+    if (id === 'administration') {
+      setSearchParams({ tab: id, sub: activeSub }, { replace: true })
+    } else {
+      setSearchParams({ tab: id }, { replace: true })
+    }
+  }
+
+  const handleSubTabClick = (sub: AdministrationSubTab) => {
+    setSearchParams({ tab: 'administration', sub }, { replace: true })
   }
 
   return (
@@ -85,6 +105,27 @@ export function SettingsPage() {
         </div>
       </div>
 
+      {activeTab === 'administration' && (
+        <div className="border-b border-border">
+          <div className="flex gap-1">
+            {SUB_TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => handleSubTabClick(id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1 text-xs font-medium border-b-2 transition-colors',
+                  activeSub === id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'general' && <GlobalSettingsSection />}
       {activeTab === 'projects' && <ProjectsSection />}
       {activeTab === 'system-agents' && <SystemAgentsSection />}
@@ -92,6 +133,8 @@ export function SettingsPage() {
       {activeTab === 'cli-models' && <CLIModelsSection />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
       {activeTab === 'notifications' && <NotificationsSection />}
+      {activeTab === 'administration' && activeSub === 'users' && <UsersSection />}
+      {activeTab === 'administration' && activeSub === 'audit' && <AuditLogSection />}
     </div>
   )
 }

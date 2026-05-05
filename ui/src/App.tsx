@@ -6,8 +6,6 @@ import { Layout } from '@/components/layout/Layout'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { RequireAuth } from '@/components/auth/RequireAuth'
 import { RequireAdmin } from '@/components/auth/RequireAdmin'
-import { UsersPage } from '@/pages/admin/UsersPage'
-import { AuditLogPage } from '@/pages/admin/AuditLogPage'
 import { Dashboard } from '@/pages/Dashboard'
 import { TicketListPage } from '@/pages/TicketListPage'
 import { TicketDetailPage } from '@/pages/TicketDetailPage'
@@ -96,8 +94,6 @@ function AppRoutes() {
               {apiModeEnabled && <Route path="insights" element={<InsightsDashboard />} />}
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
-              <Route path="admin/users" element={<RequireAdmin><UsersPage /></RequireAdmin>} />
-              <Route path="admin/audit" element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />
               <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />
             </Route>
           </Routes>

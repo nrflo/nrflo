@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2, Plus, KeyRound, Users } from 'lucide-react'
+import { Pencil, Trash2, Plus, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { ApiError } from '@/api/client'
 import { useUsers, useDeleteUser } from '@/hooks/useUsers'
 import { formatRelativeTime } from '@/lib/utils'
-import { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from './UsersPageDialogs'
+import { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from './UsersSectionDialogs'
 import type { User } from '@/types/user'
 
 // TODO(test-writer): smoke test: mock useUsers + mutations; assert table renders rows; clicking Create opens modal; submit triggers createUser mutation
@@ -22,7 +22,7 @@ function mapDeleteError(e: unknown): string {
   return 'Failed to delete user.'
 }
 
-export function UsersPage() {
+export function UsersSection() {
   const [showCreate, setShowCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<User | null>(null)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
@@ -45,14 +45,11 @@ export function UsersPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Users className="h-6 w-6" />
-            Users
-          </h1>
-          <p className="text-muted-foreground">{users.length} user{users.length !== 1 ? 's' : ''}</p>
+          <h2 className="text-lg font-semibold">Users</h2>
+          <p className="text-sm text-muted-foreground">{users.length} user{users.length !== 1 ? 's' : ''}</p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-2" />

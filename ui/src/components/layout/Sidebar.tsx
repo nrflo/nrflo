@@ -19,7 +19,6 @@ import {
   ClipboardList,
   FileEdit,
   BarChart3,
-  Users,
   ScrollText,
   ListOrdered,
   FileCode,
@@ -213,25 +212,6 @@ export function Sidebar() {
               icon={<BarChart3 className="h-4 w-4" />}
               label="Insights"
               active={isActive('/insights')}
-            />
-          </>
-        )}
-        {isAdmin && (
-          <>
-            <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Administration
-            </div>
-            <NavItem
-              to="/admin/users"
-              icon={<Users className="h-4 w-4" />}
-              label="Users"
-              active={isActive('/admin/users')}
-            />
-            <NavItem
-              to="/admin/audit"
-              icon={<ScrollText className="h-4 w-4" />}
-              label="Audit Log"
-              active={isActive('/admin/audit')}
             />
           </>
         )}

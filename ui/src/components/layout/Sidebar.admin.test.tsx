@@ -53,31 +53,11 @@ describe('Sidebar - Admin Role', () => {
     expect(screen.getByRole('link', { name: 'Schedules' })).toBeInTheDocument()
   })
 
-  it('shows Administration section heading', () => {
+  it('does not show Administration section in sidebar (moved to Settings page)', () => {
     renderSidebar()
-    expect(screen.getByText('Administration')).toBeInTheDocument()
-  })
-
-  it('shows Users nav item linking to /admin/users', () => {
-    renderSidebar()
-    const usersLink = screen.getByRole('link', { name: 'Users' })
-    expect(usersLink).toBeInTheDocument()
-    expect(usersLink).toHaveAttribute('href', '/admin/users')
-  })
-
-  it('shows Audit Log nav item linking to /admin/audit', () => {
-    renderSidebar()
-    const auditLink = screen.getByRole('link', { name: 'Audit Log' })
-    expect(auditLink).toBeInTheDocument()
-    expect(auditLink).toHaveAttribute('href', '/admin/audit')
-  })
-
-  it('shows Administration section even when API mode is disabled', () => {
-    mockUseAPIModeEnabled.mockReturnValue(false)
-    renderSidebar()
-    expect(screen.getByText('Administration')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Users' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Audit Log' })).toBeInTheDocument()
+    expect(screen.queryByText('Administration')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Audit Log' })).not.toBeInTheDocument()
   })
 })
 

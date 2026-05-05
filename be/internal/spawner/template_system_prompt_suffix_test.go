@@ -39,6 +39,11 @@ func TestExpandInjectable_SystemPromptSuffix(t *testing.T) {
 		t.Errorf("system-prompt-suffix body missing 'nrflo agent fail'; got: %q", body)
 	}
 
+	// Must contain the no-env-diagnostics rule (migration 000089)
+	if !strings.Contains(body, "Do not run diagnostic commands") {
+		t.Errorf("system-prompt-suffix body missing 'Do not run diagnostic commands'; got: %q", body)
+	}
+
 	// Must not contain unresolved placeholders (vars not relevant to suffix, but no stray ${...})
 	if strings.Contains(body, "${AGENT}") || strings.Contains(body, "${TICKET_ID}") {
 		t.Errorf("system-prompt-suffix has unresolved placeholder: %q", body)
@@ -58,6 +63,11 @@ func TestExpandInjectable_SystemPromptSuffix_EmptyVarsNoPanel(t *testing.T) {
 	if body == "" {
 		t.Fatal("system-prompt-suffix returned empty with nil vars; template missing from DB")
 	}
+	// Must contain the no-env-diagnostics rule (migration 000089)
+	if !strings.Contains(body, "Do not run diagnostic commands") {
+		t.Errorf("system-prompt-suffix body missing 'Do not run diagnostic commands' with nil vars; got: %q", body)
+	}
+
 	// No stray ${...} placeholders (the template itself doesn't use them)
 	if strings.Contains(body, "${") {
 		t.Errorf("system-prompt-suffix has unresolved placeholder with nil vars: %q", body)

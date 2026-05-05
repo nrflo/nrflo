@@ -520,7 +520,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000088** (workflow_instance_scheduled — adds `workflow_instances.scheduled_task_id` column + index `idx_workflow_instances_scheduled` to link runs to their originating scheduled task)
+Current highest migration: **000089** (system_prompt_suffix_no_env_diagnostics — appends a "no env diagnostics" bullet to the `system-prompt-suffix` default_template row, keeping both `template` and `default_template` columns in sync)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

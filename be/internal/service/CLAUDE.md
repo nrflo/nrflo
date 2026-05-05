@@ -35,6 +35,8 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `insights.go` | Insights service for review/dispatch dashboards: `Summary`, `EditRate`, `Throughput`; wraps `DispatchRepo` and `ReviewRepo`. Helpers: `ParseRange` (7d/30d → time.Time), `ParseBucket` (1h/6h/1d → time.Duration). |
 | `workflow_chain.go` | WorkflowChainService: CreateChain/GetChain/ListChains/UpdateChain/DeleteChain + AppendStep/UpdateStep/DeleteStep/ReorderSteps. Validates dense step positions, step 0 project-scope, workflow_name resolves via WorkflowService.GetWorkflowDef, require_ticket_handoff only when scope_type=ticket. Constructor: `NewWorkflowChainService(pool, clk, wfSvc)`. |
 | `workflow_chain_run.go` | WorkflowChainRunService: CreateRun (create run + materialize steps), GetRunDetail (run + steps), ListRuns (by project/chain), SetNextStepInstructions (update next pending step's instructions_used from instance_id), SetNextStepTicket (update next pending step's ticket_id from instance_id). Constructor: `NewWorkflowChainRunService(pool, clk)`. |
+| `python_script.go` | PythonScriptService: Create (auto-generates `ps-xxxxxx` ID, requires name), Get/List/Update/Delete scoped by projectID. Constructor: `NewPythonScriptService(pool, clk)`. Wraps `repo.PythonScriptRepo`. |
+| `python_script_validate.go` | PythonScriptValidator: `Validate(ctx, code) ValidationResult{OK,Error,Line,Col}`. Writes code to `/tmp/nrflo/validate-*.py`, runs `python3 -c <ast-parse-script>` with 5s timeout. Gracefully degrades to `{OK:true}` when `python3` is not in PATH. `lookPath`/`cmdFactory` are injectable for testing. |
 
 ## Workflow Types
 

@@ -224,9 +224,10 @@ type AgentDefCreateRequest struct {
 	StallRunningTimeoutSec *int   `json:"stall_running_timeout_sec,omitempty"`
 	Tag                    string `json:"tag,omitempty"`
 	LowConsumptionModel    string `json:"low_consumption_model,omitempty"`
-	ExecutionMode          string `json:"execution_mode,omitempty"`
-	Tools                  string `json:"tools,omitempty"`
-	APIMaxIterations       *int   `json:"api_max_iterations,omitempty"`
+	ExecutionMode          string  `json:"execution_mode,omitempty"`
+	Tools                  string  `json:"tools,omitempty"`
+	APIMaxIterations       *int    `json:"api_max_iterations,omitempty"`
+	PythonScriptID         *string `json:"python_script_id,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -244,6 +245,7 @@ type AgentDefUpdateRequest struct {
 	ExecutionMode          *string `json:"execution_mode,omitempty"`
 	Tools                  *string `json:"tools,omitempty"`
 	APIMaxIterations       *int    `json:"api_max_iterations,omitempty"`
+	PythonScriptID         *string `json:"python_script_id,omitempty"`
 }
 
 // SystemAgentDefCreateRequest is the request for creating a system agent definition

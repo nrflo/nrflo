@@ -490,12 +490,27 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    updated_at           TEXT NOT NULL                                 │
 │    INDEX idx_workflow_chain_run_steps_run (chain_run_id, position)    │
 │                                                                      │
+│  PYTHON_SCRIPTS                               (mig 000085)           │
+│    id          TEXT PRIMARY KEY (ps-xxxxxx)                           │
+│    project_id  TEXT NOT NULL (FK → projects.id CASCADE)              │
+│    name        TEXT NOT NULL                                          │
+│    description TEXT NOT NULL DEFAULT ''                               │
+│    code        TEXT NOT NULL DEFAULT ''                               │
+│    created_at  TEXT NOT NULL                                          │
+│    updated_at  TEXT NOT NULL                                          │
+│    UNIQUE INDEX python_scripts_project_id_id (project_id, id)        │
+│                                                                      │
+│  AGENT_DEFINITIONS (mig 000085 additions)                            │
+│    python_script_id TEXT (nullable, FK reference to python_scripts;  │
+│                     no DB FK constraint — application-level only)    │
+│    execution_mode CHECK now includes 'script' (cli|api|script)       │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Adding a Database Migration
 
-Current highest migration: **000084** (scheduler_chain_ids — adds `workflow_chain_ids` to `scheduled_tasks` and `chain_runs` to `schedule_runs`)
+Current highest migration: **000085** (python_scripts — adds `python_scripts` table, `agent_definitions.python_script_id` column, extends `execution_mode` CHECK to include `script`)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

@@ -20,6 +20,7 @@ type AgentDefinition struct {
 	ExecutionMode          string    `json:"execution_mode"`
 	Tools                  string    `json:"tools"`
 	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
+	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

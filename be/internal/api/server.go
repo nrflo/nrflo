@@ -558,6 +558,14 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/workflow-chains/{id}/runs/{runId}", s.handleGetChainRun)
 	admin("POST /api/v1/workflow-chains/{id}/runs/{runId}/cancel", s.handleCancelChainRun)
 
+	// Python scripts (project-scoped) — writes are admin-only
+	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)
+	admin("POST /api/v1/python-scripts", s.handleCreatePythonScript)
+	protected("POST /api/v1/python-scripts/validate", s.handleValidatePythonScript)
+	protected("GET /api/v1/python-scripts/{id}", s.handleGetPythonScript)
+	admin("PATCH /api/v1/python-scripts/{id}", s.handleUpdatePythonScript)
+	admin("DELETE /api/v1/python-scripts/{id}", s.handleDeletePythonScript)
+
 	// Default templates (global) — writes are admin-only
 	protected("GET /api/v1/default-templates", s.handleListDefaultTemplates)
 	admin("POST /api/v1/default-templates", s.handleCreateDefaultTemplate)

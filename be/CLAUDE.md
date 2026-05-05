@@ -60,6 +60,7 @@ be/
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_system_agent_def.go # System agent definition CRUD (global)
 │   │   ├── handlers_default_template.go # Default template CRUD (global)
+│   │   ├── handlers_python_scripts.go # Python script CRUD + validate (project-scoped; writes admin-only)
 │   │   ├── handlers_cli_models.go # CLI model CRUD (global)
 │   │   ├── handlers_global_settings.go # Global settings GET/PATCH (no project scope)
 │   │   ├── handlers_safety_hook_check.go # Safety hook dry-run check (POST /api/v1/safety-hook/check, global)
@@ -106,6 +107,8 @@ be/
 │   │   ├── queue.go             # Worker: drain queue, exponential backoff, WS events
 │   │   └── payload.go           # renderSlack/renderTelegram per event type
 │   ├── service/                 # Business logic layer
+│   │   ├── python_script.go     # PythonScriptService: Create/Get/List/Update/Delete (project-scoped)
+│   │   ├── python_script_validate.go # PythonScriptValidator: syntax check via python3 -c (injectable lookPath/cmdFactory)
 │   │   ├── project.go           # Project operations
 │   │   ├── ticket.go            # Ticket operations
 │   │   ├── workflow.go          # Workflow operations (ticket + project scope)
@@ -139,6 +142,7 @@ be/
 │   │   └── migrations/          # SQL files (embedded via //go:embed)
 │   │       └── embed.go         # Go embed directive
 │   ├── model/                   # Data models
+│   │   ├── python_script.go     # PythonScript struct (id, project_id, name, description, code, timestamps)
 │   │   ├── project.go
 │   │   ├── ticket.go
 │   │   ├── agent_session.go
@@ -167,6 +171,7 @@ be/
 │   │   └── migrate/             # Forward-only config migration runner
 │   │       └── migrations/      # Migration implementations
 │   ├── repo/                    # Repository pattern
+│   │   ├── python_script.go     # PythonScriptRepo: Create/Get/List/Update/Delete (project+id scoped, clock-driven timestamps)
 │   │   ├── project.go
 │   │   ├── ticket.go
 │   │   ├── dependency.go
@@ -193,6 +198,7 @@ be/
 │   │   └── audit_repo.go        # AuditRepo: Append/List (with AuditFilter + pagination + total count)
 │   ├── types/                   # Shared request/response types
 │   │   ├── request.go
+│   │   ├── python_script.go     # PythonScriptCreateRequest, PythonScriptUpdateRequest, ValidatePythonScriptRequest
 │   │   ├── chain_request.go     # Chain create/update request types
 │   │   └── scheduled_task_request.go # ScheduledTaskCreate/UpdateRequest types
 │   ├── clock/                   # Time abstraction for testability

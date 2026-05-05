@@ -93,7 +93,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	if executionMode == "" {
 		executionMode = "cli"
 	}
-	if executionMode != "cli" && executionMode != "api" {
+	if executionMode != "cli" && executionMode != "api" && executionMode != "script" {
 		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
 	}
 	if executionMode == "api" && !s.apiMode {
@@ -101,9 +101,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	}
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.PythonScriptID, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -130,6 +130,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		ExecutionMode:          executionMode,
 		Tools:                  req.Tools,
 		APIMaxIterations:       req.APIMaxIterations,
+		PythonScriptID:         req.PythonScriptID,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil
@@ -140,9 +141,10 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 	def := &model.AgentDefinition{}
 	var createdAt, updatedAt string
 	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter sql.NullInt64
+	var pythonScriptID sql.NullString
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -150,7 +152,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		&def.Model, &def.Timeout, &def.Prompt,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 		&def.LowConsumptionModel, &def.Layer,
-		&def.ExecutionMode, &def.Tools, &apiMaxIter,
+		&def.ExecutionMode, &def.Tools, &apiMaxIter, &pythonScriptID,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -182,13 +184,17 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		v := int(apiMaxIter.Int64)
 		def.APIMaxIterations = &v
 	}
+	if pythonScriptID.Valid {
+		s := pythonScriptID.String
+		def.PythonScriptID = &s
+	}
 	return def, nil
 }
 
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -202,13 +208,14 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
 		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter sql.NullInt64
+		var pythonScriptID sql.NullString
 
 		err := rows.Scan(
 			&def.ID, &def.ProjectID, &def.WorkflowID,
 			&def.Model, &def.Timeout, &def.Prompt,
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 			&def.LowConsumptionModel, &def.Layer,
-			&def.ExecutionMode, &def.Tools, &apiMaxIter,
+			&def.ExecutionMode, &def.Tools, &apiMaxIter, &pythonScriptID,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -236,6 +243,10 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 		if apiMaxIter.Valid {
 			v := int(apiMaxIter.Int64)
 			def.APIMaxIterations = &v
+		}
+		if pythonScriptID.Valid {
+			s := pythonScriptID.String
+			def.PythonScriptID = &s
 		}
 		defs = append(defs, def)
 	}
@@ -317,7 +328,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	}
 	if req.ExecutionMode != nil {
 		mode := *req.ExecutionMode
-		if mode != "cli" && mode != "api" {
+		if mode != "cli" && mode != "api" && mode != "script" {
 			return fmt.Errorf("invalid execution_mode: %q", mode)
 		}
 		if mode == "api" && !s.apiMode {
@@ -333,6 +344,10 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.APIMaxIterations != nil {
 		updates = append(updates, "api_max_iterations = ?")
 		args = append(args, *req.APIMaxIterations)
+	}
+	if req.PythonScriptID != nil {
+		updates = append(updates, "python_script_id = ?")
+		args = append(args, *req.PythonScriptID)
 	}
 
 	if len(updates) == 0 {

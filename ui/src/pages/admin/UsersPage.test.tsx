@@ -206,3 +206,43 @@ describe('UsersPage - action buttons', () => {
     expect(screen.getByText(/Reset Password — Alice/)).toBeInTheDocument()
   })
 })
+
+describe('UsersPage - system user', () => {
+  it('hides Delete button for system users', () => {
+    setupLoaded([makeUser({ id: 'user-sys', system: true })])
+    render(<UsersPage />)
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument()
+  })
+
+  it('shows Edit and Reset Password buttons for system users', () => {
+    setupLoaded([makeUser({ id: 'user-sys', system: true })])
+    render(<UsersPage />)
+    expect(screen.getByTitle('Edit')).toBeInTheDocument()
+    expect(screen.getByTitle('Reset password')).toBeInTheDocument()
+  })
+
+  it('shows Delete button for non-system users', () => {
+    setupLoaded([makeUser({ system: false })])
+    render(<UsersPage />)
+    expect(screen.getByTitle('Delete')).toBeInTheDocument()
+  })
+
+  it('shows Delete button when system is unset', () => {
+    setupLoaded([makeUser()])
+    render(<UsersPage />)
+    expect(screen.getByTitle('Delete')).toBeInTheDocument()
+  })
+
+  it('renders System badge for system users', () => {
+    setupLoaded([makeUser({ system: true })])
+    render(<UsersPage />)
+    expect(screen.getByText('System')).toBeInTheDocument()
+  })
+
+  it('does not render System badge for non-system users', () => {
+    setupLoaded([makeUser({ system: false })])
+    render(<UsersPage />)
+    expect(screen.queryByText('System')).not.toBeInTheDocument()
+  })
+
+})

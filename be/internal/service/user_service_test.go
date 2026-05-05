@@ -90,10 +90,17 @@ func TestUserService_Update_LastAdmin_AllowedWhenSecondAdminExists(t *testing.T)
 
 func TestUserService_Delete_LastAdmin_Rejected(t *testing.T) {
 	t.Parallel()
-	svc, _ := setupUserSvcEnv(t)
+	svc, pool := setupUserSvcEnv(t)
 
-	// Use a different acting user ID so it's not a self-delete.
-	err := svc.Delete("some-viewer-id", svcSeedAdminID)
+	// Seed admin is system=1, so it returns ErrSystemUser, not ErrLastAdmin.
+	// Insert a non-system admin and disable the seed admin so u-laststop is the sole active admin.
+	insertUserSvcUser(t, pool, "u-laststop", "laststop@test.com", "admin", "active")
+	if _, err := pool.Exec(`UPDATE users SET status='disabled' WHERE id=?`, svcSeedAdminID); err != nil {
+		t.Fatalf("disable seed admin: %v", err)
+	}
+
+	// u-laststop is now the only active admin; deleting it must return ErrLastAdmin.
+	err := svc.Delete("some-viewer-id", "u-laststop")
 	if err != ErrLastAdmin {
 		t.Errorf("Delete last admin = %v, want ErrLastAdmin", err)
 	}
@@ -103,18 +110,20 @@ func TestUserService_Delete_LastAdmin_AllowedWhenSecondAdminExists(t *testing.T)
 	t.Parallel()
 	svc, pool := setupUserSvcEnv(t)
 
+	// Two admins: seed admin (system=1) and u-admin3 (non-system).
+	// Deleting u-admin3 should succeed; seed admin remains as active admin.
 	insertUserSvcUser(t, pool, "u-admin3", "admin3@test.com", "admin", "active")
 
-	err := svc.Delete("u-admin3", svcSeedAdminID)
+	err := svc.Delete(svcSeedAdminID, "u-admin3")
 	if err != nil {
-		t.Errorf("Delete admin with two admins = %v, want nil", err)
+		t.Errorf("Delete non-system admin with two admins = %v, want nil", err)
 	}
 
-	// Verify seed admin is gone.
+	// Verify u-admin3 is gone.
 	var count int
-	pool.QueryRow(`SELECT COUNT(*) FROM users WHERE id = ?`, svcSeedAdminID).Scan(&count)
+	pool.QueryRow(`SELECT COUNT(*) FROM users WHERE id = ?`, "u-admin3").Scan(&count)
 	if count != 0 {
-		t.Errorf("seed admin count = %d, want 0 after Delete", count)
+		t.Errorf("u-admin3 count = %d, want 0 after Delete", count)
 	}
 }
 

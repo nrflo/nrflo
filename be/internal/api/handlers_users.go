@@ -193,6 +193,8 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case service.ErrSelfDelete:
 			writeError(w, http.StatusBadRequest, "cannot_delete_self")
+		case service.ErrSystemUser:
+			writeError(w, http.StatusBadRequest, "system_user")
 		case service.ErrLastAdmin:
 			writeError(w, http.StatusBadRequest, "last_admin")
 		default:

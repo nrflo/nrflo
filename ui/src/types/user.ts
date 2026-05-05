@@ -8,6 +8,7 @@ export interface User {
   created_at: string
   updated_at: string
   last_login_at?: string
+  system?: boolean
 }
 
 export interface UserListResponse {

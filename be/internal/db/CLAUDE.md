@@ -410,6 +410,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    role                TEXT NOT NULL CHECK (admin|viewer)             │
 │    status              TEXT NOT NULL CHECK (active|disabled)          │
 │    must_change_password INTEGER NOT NULL DEFAULT 0                    │
+│    system              INTEGER NOT NULL DEFAULT 0 (mig 000086)        │
+│                        usr_admin_seed is flagged system=1             │
 │    created_at          TEXT NOT NULL                                  │
 │    updated_at          TEXT NOT NULL                                  │
 │    last_login_at       TEXT (nullable)                                │

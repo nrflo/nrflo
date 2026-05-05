@@ -107,7 +107,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 GET    /api/v1/users                       # List all users (password_hash never serialized)
 POST   /api/v1/users                       # Create user; body: {email, display_name, password, role}; 409 email_exists
 PATCH  /api/v1/users/{id}                  # Partial update; body: {display_name?, role?, status?}; 400 last_admin
-DELETE /api/v1/users/{id}                  # Delete; 400 cannot_delete_self | last_admin; 404 not found
+DELETE /api/v1/users/{id}                  # Delete; 400 cannot_delete_self | system_user | last_admin; 404 not found
 POST   /api/v1/users/{id}/reset-password   # Force-reset password; body: {new_password}; sets must_change_password=1
 
 # Audit log (admin-only)

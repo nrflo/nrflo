@@ -21,7 +21,7 @@ func NewUserRepo(database db.Querier, clk clock.Clock) *UserRepo {
 	return &UserRepo{db: database, clock: clk}
 }
 
-const userCols = `id, email, display_name, password_hash, role, status, must_change_password, created_at, updated_at, last_login_at`
+const userCols = `id, email, display_name, password_hash, role, status, must_change_password, created_at, updated_at, last_login_at, system`
 
 func scanUser(s interface{ Scan(...interface{}) error }) (*model.User, error) {
 	u := &model.User{}
@@ -30,7 +30,7 @@ func scanUser(s interface{ Scan(...interface{}) error }) (*model.User, error) {
 	err := s.Scan(
 		&u.ID, &u.Email, &u.DisplayName, &u.PasswordHash,
 		&u.Role, &u.Status, &u.MustChangePassword,
-		&createdAt, &updatedAt, &lastLoginAt,
+		&createdAt, &updatedAt, &lastLoginAt, &u.System,
 	)
 	if err != nil {
 		return nil, err
@@ -90,10 +90,10 @@ func (r *UserRepo) Create(u *model.User) error {
 	u.UpdatedAt = u.CreatedAt
 
 	_, err := r.db.Exec(
-		`INSERT INTO users (`+userCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO users (`+userCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		u.ID, u.Email, u.DisplayName, u.PasswordHash,
 		u.Role, u.Status, u.MustChangePassword,
-		now, now, nil,
+		now, now, nil, u.System,
 	)
 	return err
 }

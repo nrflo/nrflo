@@ -16,6 +16,7 @@ function mapDeleteError(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.message === 'last_admin') return 'Cannot delete the last admin user.'
     if (e.message === 'cannot_delete_self') return 'You cannot delete your own account.'
+    if (e.message === 'system_user') return 'This is a system user and cannot be deleted.'
     return e.message
   }
   return 'Failed to delete user.'
@@ -86,13 +87,20 @@ export function UsersPage() {
                 <TableCell className="font-medium">{user.email}</TableCell>
                 <TableCell>{user.display_name}</TableCell>
                 <TableCell>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${
-                    user.role === 'admin'
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {user.role}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      user.role === 'admin'
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {user.role}
+                    </span>
+                    {user.system && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        System
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <span className={`text-xs px-1.5 py-0.5 rounded ${
@@ -129,13 +137,15 @@ export function UsersPage() {
                     >
                       <KeyRound className="h-3.5 w-3.5" />
                     </button>
-                    <button
-                      onClick={() => { setDeleteTargetId(user.id); setDeleteError(null) }}
-                      className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {!user.system && (
+                      <button
+                        onClick={() => { setDeleteTargetId(user.id); setDeleteError(null) }}
+                        className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

@@ -4,8 +4,6 @@
 
 nrflo is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents. Supports multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), and real-time WebSocket updates.
 
-The server runs as `nrflo_server serve` and provides an HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. Spawned agents use the `nrflo` CLI binary (`agent fail/continue`, `findings add/append/get/delete`) to report results.
-
 ## New features
 Do not keep old / deprecated / backward compat / legacy code
 Remove it right away.
@@ -182,23 +180,6 @@ Concrete prior case: codex-only setup leaked into `backend_interactive.go` as th
 45. **Python SDK and script.context socket method**: A single-file Python SDK (`nrflo_sdk.py`, pure stdlib, <300 lines) is embedded in the server binary via `//go:embed` in `be/internal/sdk/python/embed.go` (package `pythonsdk`). On every `nrflo_server serve` startup, `pythonsdk.WriteSDK(sdkDir)` writes it to `$NRFLO_HOME/sdk/nrflo_sdk.py` (best-effort; WARN logged on failure). The spawner sets `NRFLO_SDK_DIR` for script-mode agents so they can `sys.path.insert(0, os.environ["NRFLO_SDK_DIR"])` before importing. SDK entry point: `import nrflo_sdk; c = nrflo_sdk.client()`. Exposes `c.findings.*`, `c.project_findings.*`, `c.agent.{finished,fail,continue_,callback}`, `c.context(refresh=False)` (cached call to `script.context`), `c.user_instructions()`, `c.callback_info()`, `c.previous_data()`, `c.skip(tag)`. The underlying `script.context` Unix-socket method (handler in `be/internal/socket/handler_script_context.go`) takes `{session_id}` in params, resolves `agent_sessions` → `workflow_instances` → `tickets` (ticket-scoped only), and returns a 12-key dict: `session_id`, `instance_id`, `project_id`, `agent_type`, `workflow_id`, `scope_type`, `ticket_id`, `ticket_title`, `ticket_description`, `user_instructions` (string, "" if absent), `callback` (null or `{instructions,from_agent,level}`), `previous_data` (string, "" if no `to_resume` session finding). No project field required at the top level — project is derived from the session row.
 46. **Python script execution mode (execution_mode=script)**: Agent definitions with `execution_mode='script'` are driven by `scriptBackend` (`be/internal/spawner/backend_script.go`). At spawn time the script code (loaded from the linked `python_scripts` row) is written to `/tmp/nrflo/scripts/<sessionID>.py` and executed via `python3`. The `ExecutionBackend` interface exposes three capability methods that gate behaviour: `RequiresPrompt() bool` (false for scriptBackend — no prompt template is rendered or injected), `TracksContext() bool` (false — low-context save is silently skipped; script agents always run to completion), and `ParsesStructuredOutput() bool` (false — stdout lines are routed directly to `TrackMessage` as plain `"text"` rather than parsed as JSON). These three methods follow root CLAUDE.md rule #6 — divergence lives in the backend implementation, not at the call site. `scriptBackend` works in both `--mode=cli` and `--mode=api`; no API gating applies. The model column on `agent_definitions` is unused for script agents (value ignored by the spawner). The spawner adds `NRFLO_SDK_DIR=<config.SDKDir>` to the process env when set; scripts import the SDK via `sys.path.insert(0, os.environ["NRFLO_SDK_DIR"])`. Take-control and context tracking are unsupported (`SupportsTakeControl()=false`, `TracksContext()=false`). See [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) for the full backend capability matrix and Script Backend subsection.
 
-## Quick Start
-
-Install via Homebrew: `brew tap nrflo/tap && brew install nrflo`. Upgrade: `brew update && brew upgrade nrflo`.
-
-Or build from source: `make build && make install`.
-
-Or run the Linux container (api-mode only, no agent CLIs in image):
-```bash
-docker run -d -p 6587:6587 -v nrflo-data:/data \
-  -e ANTHROPIC_API_KEY=sk-ant-... \
-  ghcr.io/nrflo/nrflo-server:latest
-```
-
-Then `nrflo_server serve` and open `http://localhost:6587`.
-
-By default the server binds to `127.0.0.1` (localhost only). To make it accessible on the local network: `nrflo_server serve --host 0.0.0.0`
-
 ### nrflo_server subcommands
 
 | Command | Description |
@@ -206,63 +187,6 @@ By default the server binds to `127.0.0.1` (localhost only). To make it accessib
 | `serve` | Start the HTTP/WebSocket server (default when no subcommand given) |
 | `version` | Print version information |
 | `init-customer` | Scaffold a starter customer config directory for manifest-driven api-mode workflows. See [be/internal/manifest/CLAUDE.md](be/internal/manifest/CLAUDE.md). |
-
-```bash
-nrflo_server init-customer --out /path/to/my-customer --name MyCustomer --git
-```
-
-## Agent CLI Commands
-
-Spawned agents use these commands to report results (via Unix socket to the server). Exit 0 = implicit pass; `agent finished` is the explicit equivalent. `agent continue` is reserved for context-exhaustion relaunch (NOT a success signal).
-
-```bash
-# All context derived from NRF_SESSION_ID + NRF_WORKFLOW_INSTANCE_ID env vars (set by spawner)
-nrflo agent finished                 # explicit success — proceed to next phase
-nrflo agent fail [--reason <text>]
-nrflo agent continue                 # context exhausted — relaunch with fresh context
-nrflo agent callback --level <N>
-
-nrflo skip <tag>  # Add skip tag to running workflow instance (reads NRF_WORKFLOW_INSTANCE_ID from env)
-
-# Own-session findings (write to current agent's session)
-nrflo findings add <key> <value>
-nrflo findings add key1:val1 [key2:val2...]
-nrflo findings append <key> <value>
-nrflo findings append key1:val1 [key2:val2...]
-nrflo findings get [key] [-k <key>...]
-nrflo findings delete <key1> [key2...]
-
-# Cross-agent read (provide target agent-type; uses NRF_WORKFLOW_INSTANCE_ID to scope)
-nrflo findings get <agent-type> [key] [-k <key>...]
-
-# Project-level findings (scoped to NRFLO_PROJECT)
-nrflo findings project-add <key> <value>
-nrflo findings project-add key1:val1 [key2:val2...]
-nrflo findings project-get [key] [-k <key>...]
-nrflo findings project-append <key> <value>
-nrflo findings project-append key1:val1 [key2:val2...]
-nrflo findings project-delete <key1> [key2...]
-```
-
-## Ticket CLI Commands
-
-Manage tickets and dependencies via the HTTP API (requires server running):
-
-```bash
-nrflo tickets list [--status <status>] [--type <type>] [--parent <id>] [--json]
-nrflo tickets get <id> [--json]
-nrflo tickets create --title <title> [--id <id>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>] [--created-by <name>] [--json]
-nrflo tickets update <id> [--title <title>] [--description <text>] [--type <type>] [--priority <1-4>] [--parent <id>]
-nrflo tickets close <id> [--reason <text>]
-nrflo tickets reopen <id>
-nrflo tickets delete <id>
-
-nrflo deps list <ticket-id> [--json]
-nrflo deps add <ticket-id> <blocker-id>
-nrflo deps remove <ticket-id> <blocker-id>
-```
-
-All ticket/deps commands use `--server` (default `NRFLO_API_URL` or `http://localhost:6587`) and require `NRFLO_PROJECT` env variable.
 
 ## Workflows
 

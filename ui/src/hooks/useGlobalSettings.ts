@@ -13,3 +13,7 @@ export function useGlobalSettings(): UseQueryResult<GlobalSettings> {
 export function useAPIModeEnabled(): boolean {
   return useGlobalSettings().data?.api_mode_enabled ?? false
 }
+
+export function useExperimentalEnabled(): boolean {
+  return useGlobalSettings().data?.experimental ?? false
+}

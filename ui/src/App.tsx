@@ -31,7 +31,7 @@ import { AccountPage } from '@/pages/auth/AccountPage'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { useProjectStore } from '@/stores/projectStore'
 import { useAuthStore } from '@/stores/authStore'
-import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
+import { useAPIModeEnabled, useExperimentalEnabled } from '@/hooks/useGlobalSettings'
 
 const ReviewPage = lazy(() =>
   import('@/pages/review/Review').then((m) => ({ default: m.ReviewPage }))
@@ -60,6 +60,7 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   const apiModeEnabled = useAPIModeEnabled()
+  const experimentalEnabled = useExperimentalEnabled()
   return (
     <BrowserRouter>
       <AuthGate>
@@ -80,11 +81,11 @@ function AppRoutes() {
               <Route path="chains" element={<ChainListPage />} />
               <Route path="chains/:id" element={<ChainDetailPage />} />
               <Route path="schedules" element={<SchedulesPage />} />
-              <Route path="workflow-chains" element={<WorkflowChainsPage />} />
-              <Route path="workflow-chains/:id" element={<WorkflowChainEditorPage />} />
+              {experimentalEnabled && <Route path="workflow-chains" element={<WorkflowChainsPage />} />}
+              {experimentalEnabled && <Route path="workflow-chains/:id" element={<WorkflowChainEditorPage />} />}
               <Route path="errors" element={<ErrorsPage />} />
               <Route path="logs" element={<LogsPage />} />
-              <Route path="python-scripts" element={<PythonScriptsPage />} />
+              {experimentalEnabled && <Route path="python-scripts" element={<PythonScriptsPage />} />}
               {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
               {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
               {apiModeEnabled && <Route path="review" element={<ReviewPage />} />}

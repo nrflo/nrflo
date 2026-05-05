@@ -14,8 +14,10 @@ vi.mock('@/hooks/useTickets', () => ({
 }))
 
 const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)
+const mockUseExperimentalEnabled = vi.fn().mockReturnValue(false)
 vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => mockUseAPIModeEnabled(),
+  useExperimentalEnabled: () => mockUseExperimentalEnabled(),
 }))
 
 const mockUseIsAdmin = vi.fn().mockReturnValue(true)
@@ -61,6 +63,8 @@ describe('Sidebar - Spinner Visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
+    mockUseAPIModeEnabled.mockReturnValue(true)
+    mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -414,6 +418,8 @@ describe('Sidebar - Project Workflow Spinner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
+    mockUseAPIModeEnabled.mockReturnValue(true)
+    mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -507,6 +513,8 @@ describe('Sidebar - Chain Execution Spinner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
+    mockUseAPIModeEnabled.mockReturnValue(true)
+    mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
   })
@@ -604,6 +612,7 @@ describe('Sidebar - API Mode Gating', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
+    mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })
@@ -636,5 +645,38 @@ describe('Sidebar - API Mode Gating', () => {
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /documentation/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /errors/i })).toBeInTheDocument()
+  })
+})
+
+describe('Sidebar - Experimental Gating', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseIsAdmin.mockReturnValue(true)
+    mockUseAPIModeEnabled.mockReturnValue(false)
+    mockUseStatus.mockReturnValue({ data: createMockStatus() })
+    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    mockUseChainList.mockReturnValue({ data: [] })
+  })
+
+  it('hides Workflow Chains and Python Scripts when experimentalEnabled=false', () => {
+    mockUseExperimentalEnabled.mockReturnValue(false)
+    renderSidebar()
+    expect(screen.queryByRole('link', { name: /workflow chains/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /python scripts/i })).not.toBeInTheDocument()
+  })
+
+  it('shows Workflow Chains and Python Scripts when experimentalEnabled=true', () => {
+    mockUseExperimentalEnabled.mockReturnValue(true)
+    renderSidebar()
+    expect(screen.getByRole('link', { name: /workflow chains/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /python scripts/i })).toBeInTheDocument()
+  })
+
+  it('other nav items always render regardless of experimentalEnabled', () => {
+    mockUseExperimentalEnabled.mockReturnValue(false)
+    renderSidebar()
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /chain executions/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /documentation/i })).toBeInTheDocument()
   })
 })

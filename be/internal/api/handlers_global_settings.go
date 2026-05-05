@@ -44,6 +44,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	experimentalVal, err := svc.Get("experimental")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	stallStartVal, err := svc.Get("stall_start_timeout_sec")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -59,6 +65,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"low_consumption_mode":     val == "true",
 		"context_save_via_agent":   contextSaveViaAgentVal == "true",
 		"simplified_agents_graph":  simplifiedAgentsGraphVal == "true",
+		"experimental":             experimentalVal == "true",
 		"session_retention_limit":  retentionLimit,
 		"api_mode_enabled":         s.apiMode,
 	}
@@ -87,6 +94,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		LowConsumptionMode     *bool           `json:"low_consumption_mode"`
 		ContextSaveViaAgent    *bool           `json:"context_save_via_agent"`
 		SimplifiedAgentsGraph  *bool           `json:"simplified_agents_graph"`
+		Experimental           *bool           `json:"experimental"`
 		SessionRetentionLimit  *int            `json:"session_retention_limit"`
 		StallStartTimeoutSec   json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec json.RawMessage `json:"stall_running_timeout_sec"`
@@ -126,6 +134,17 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			val = "true"
 		}
 		if err := svc.Set("simplified_agents_graph", val); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	if req.Experimental != nil {
+		val := "false"
+		if *req.Experimental {
+			val = "true"
+		}
+		if err := svc.Set("experimental", val); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

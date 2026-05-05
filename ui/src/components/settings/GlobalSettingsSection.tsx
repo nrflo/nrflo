@@ -53,6 +53,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const experimentalMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ experimental: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   const retentionMutation = useMutation({
     mutationFn: (val: number) => updateGlobalSettings({ session_retention_limit: val }),
     onSuccess: () => {
@@ -163,6 +170,20 @@ export function GlobalSettingsSection() {
                 checked={settings.simplified_agents_graph ?? false}
                 onChange={(val) => simplifiedGraphMutation.mutate(val)}
                 disabled={simplifiedGraphMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Experimental features</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Show experimental UI sections (Workflow Chains, Python Scripts).
+                </p>
+              </div>
+              <Toggle
+                checked={settings.experimental ?? false}
+                onChange={(val) => experimentalMutation.mutate(val)}
+                disabled={experimentalMutation.isPending}
               />
             </div>
             <div className="border-t border-border" />

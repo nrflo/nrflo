@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils'
 import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
 import { useChainList } from '@/hooks/useChains'
 import { useProjectStore } from '@/stores/projectStore'
-import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
+import { useAPIModeEnabled, useExperimentalEnabled } from '@/hooks/useGlobalSettings'
 import { useIsAdmin } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -67,6 +67,7 @@ export function Sidebar() {
   const currentProject = useProjectStore((s) => s.currentProject)
   const projects = useProjectStore((s) => s.projects)
   const apiModeEnabled = useAPIModeEnabled()
+  const experimentalEnabled = useExperimentalEnabled()
   const isAdmin = useIsAdmin()
 
   const { data: projectWorkflowData } = useProjectWorkflow(currentProject)
@@ -145,18 +146,22 @@ export function Sidebar() {
             active={isActive('/schedules')}
           />
         )}
-        <NavItem
-          to="/workflow-chains"
-          icon={<ListOrdered className="h-4 w-4" />}
-          label="Workflow Chains"
-          active={isActive('/workflow-chains')}
-        />
-        <NavItem
-          to="/python-scripts"
-          icon={<FileCode className="h-4 w-4" />}
-          label="Python Scripts"
-          active={isActive('/python-scripts')}
-        />
+        {experimentalEnabled && (
+          <NavItem
+            to="/workflow-chains"
+            icon={<ListOrdered className="h-4 w-4" />}
+            label="Workflow Chains"
+            active={isActive('/workflow-chains')}
+          />
+        )}
+        {experimentalEnabled && (
+          <NavItem
+            to="/python-scripts"
+            icon={<FileCode className="h-4 w-4" />}
+            label="Python Scripts"
+            active={isActive('/python-scripts')}
+          />
+        )}
         <NavItem
           to="/documentation"
           icon={<BookOpen className="h-4 w-4" />}

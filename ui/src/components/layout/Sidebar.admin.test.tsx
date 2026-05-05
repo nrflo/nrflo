@@ -13,8 +13,10 @@ vi.mock('@/hooks/useTickets', () => ({
 }))
 
 const mockUseAPIModeEnabled = vi.fn().mockReturnValue(false)
+const mockUseExperimentalEnabled = vi.fn().mockReturnValue(false)
 vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => mockUseAPIModeEnabled(),
+  useExperimentalEnabled: () => mockUseExperimentalEnabled(),
 }))
 
 const mockUseIsAdmin = vi.fn().mockReturnValue(true)

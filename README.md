@@ -17,13 +17,13 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
 - **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
 - **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
-- **Mixed-agent compatible** — run workflows across Claude CLI, Opencode, and Codex without changing the workflow model
-- **Uses your existing CLI subscriptions. No API billing.** NRFLO drives Claude CLI, Opencode, and Codex in two flavours — as non-interactive batch invocations for headless layered runs, or as PTY-attached interactive sessions you can take over live in the browser. Both flavours reuse each tool's local login, so runs go through your Claude Pro / Max, ChatGPT, or Opencode provider plan. Nothing new to pay for, no API keys to rotate, no per-token surprises.
+- **Mixed-agent compatible** — run workflows across Claude Code, Opencode, and Codex without changing the workflow model
+- **Uses your existing CLI subscriptions. No API billing.** NRFLO drives Claude Code, Opencode, and Codex in two flavours — as non-interactive batch invocations for headless layered runs, or as PTY-attached interactive sessions you can take over live in the browser. Both flavours reuse each tool's local login, so runs go through your Claude Pro / Max, ChatGPT, or Opencode provider plan. Nothing new to pay for, no API keys to rotate, no per-token surprises.
 
 ## Core capabilities
 
 ### Orchestration
-- Vendor-agnostic orchestration across Claude CLI, Opencode, and Codex
+- Vendor-agnostic orchestration across Claude Code, Opencode, and Codex
 - Layered execution with same-layer parallelism and validated fan-in progression
 - Ticket-scoped and project-scoped workflows
 - Dependency-aware sequential ticket chains
@@ -221,6 +221,4 @@ Logs are written to `$NRFLO_HOME/logs/be.log`.
 
 ## License
 
-NRFLO is released under the MIT License.
-
-See [LICENSE](LICENSE) for the full text.
+Released under the [MIT License](LICENSE).

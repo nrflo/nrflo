@@ -132,6 +132,37 @@ func (r *Runner) WaitAll(timeout time.Duration) {
 	}
 }
 
+// FailAllRunning marks any runs that are stuck in 'running' status as failed.
+// Called during server shutdown to ensure clean state.
+func (r *Runner) FailAllRunning() {
+	ctx := context.Background()
+	pool, err := db.NewPool(r.dataPath, db.DefaultPoolConfig())
+	if err != nil {
+		logger.Error(ctx, "chainrunner: failed to open DB for shutdown sweep", "err", err)
+		return
+	}
+	defer pool.Close()
+
+	rr := repo.NewWorkflowChainRunRepo(pool, r.clock)
+	runs, err := rr.GetActiveRuns()
+	if err != nil {
+		logger.Error(ctx, "chainrunner: failed to query active runs", "err", err)
+		return
+	}
+
+	for _, run := range runs {
+		logger.Warn(ctx, "chainrunner: marking run failed on shutdown", "run_id", run.ID)
+		steps, _ := rr.ListRunSteps(run.ID)
+		for _, s := range steps {
+			if s.Status == "running" || s.Status == "pending" {
+				rr.UpdateRunStepStatus(s.ID, "canceled") //nolint:errcheck
+			}
+		}
+		rr.UpdateRunStatus(run.ID, "failed") //nolint:errcheck
+		r.broadcast(ws.EventChainRunFailed, run.ProjectID, run.ID, map[string]interface{}{"reason": "server_shutdown"})
+	}
+}
+
 func (r *Runner) broadcast(eventType, projectID, runID string, extra map[string]interface{}) {
 	if r.wsHub == nil {
 		return

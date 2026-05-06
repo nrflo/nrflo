@@ -491,7 +491,7 @@ func TestChainRunner_ZombieRecovery(t *testing.T) {
 
 	// Run zombie recovery
 	runner := orchestrator.NewChainRunner(nil, env.Pool.Path, env.Hub, clock.Real())
-	runner.RecoverZombieChains()
+	runner.FailAllRunning()
 
 	// Verify chain marked as failed
 	recovered, err := chainRepo.Get(chain.ID)

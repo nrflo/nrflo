@@ -136,6 +136,18 @@ func (r *ScheduleRunRepo) ListByTask(taskID string, limit, offset int) ([]*model
 	return runs, nil
 }
 
+// FailRunning marks all running or triggered schedule runs as failed with the given reason.
+func (r *ScheduleRunRepo) FailRunning(reason string) (int64, error) {
+	result, err := r.db.Exec(
+		`UPDATE schedule_runs SET status='failed', error=? WHERE status IN ('running', 'triggered')`,
+		reason,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // Get retrieves a single schedule run by ID
 func (r *ScheduleRunRepo) Get(id string) (*model.ScheduleRun, error) {
 	row := r.db.QueryRow(`SELECT `+scheduleRunCols+` FROM schedule_runs WHERE id=?`, id)

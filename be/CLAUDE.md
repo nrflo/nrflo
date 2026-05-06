@@ -46,9 +46,8 @@ be/
 │   │   ├── plan_reader.go       # Plan file reader for plan-before-execute mode
 │   │   └── chain_runner.go      # Sequential chain execution runner (old chain_executions system)
 │   ├── chainrunner/             # Workflow chain run execution engine (workflow_chain_runs system)
-│   │   ├── chainrunner.go       # Runner struct, Start/Cancel/IsRunning/WaitAll, pollInstance
-│   │   ├── loop.go              # runLoop, executeStep, cancelRun, failRun
-│   │   └── recovery.go         # RecoverZombieRuns (crash recovery on startup)
+│   │   ├── chainrunner.go       # Runner struct, Start/Cancel/IsRunning/WaitAll, FailAllRunning, pollInstance
+│   │   └── loop.go              # runLoop, executeStep, cancelRun, failRun
 │   ├── api/                     # HTTP API
 │   │   ├── server.go            # Server setup, CORS, WebSocket hub, orchestrator, PTY manager
 │   │   ├── handlers_tickets.go  # Ticket list/create/get endpoints

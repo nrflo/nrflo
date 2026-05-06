@@ -67,7 +67,8 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_audit.go` | Audit log: `GET /audit-log` with pagination and user_id/action filters (admin-only) |
 | `auth_ratelimit.go` | Per-IP+email login rate limiter (5 req/5 min) |
 | `handlers_auth.go` | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` |
-| `server.go` | Server setup, CORS, route registration, orchestrator init |
+| `server.go` | Server setup, CORS, route registration, orchestrator init. `Stop()` ordering: cancel notifyWorker → stop scheduler → `orchestrator.StopAll()` → `ptyManager.CloseAll()` → `shutdownCleanup(ctx)` → `wsHub.Stop()` → `httpServer.Shutdown()`. `Start()` no longer recovers state on startup. |
+| `server_shutdown.go` | `shutdownCleanup(ctx)` — DB sweep in fixed order: (1) `agent_sessions` → failed (tokens auto-invalidate), (2) `workflow_instances` → failed per-row via `FailIfActive`, ticket reopen for ticket-scope + `EventOrchestrationFailed`, (3) `wfChainRunner.FailAllRunning()` (workflow_chain_runs), (4) `chainRunner.FailAllRunning()` (chain_executions), (5) `schedule_runs` → failed. Each pass logs counts. Broadcasts reach connected clients because sweep runs before `wsHub.Stop()`. |
 | `handlers_tickets.go` | Ticket list/create/get |
 | `handlers_tickets_update.go` | Ticket update/delete/close/reopen |
 | `handlers_workflow.go` | Workflow state get/patch |

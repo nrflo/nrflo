@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -69,7 +70,7 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 	hub.Subscribe(wsClient, projectID, ticketID)
 
 	t.Cleanup(func() {
-		srv.Stop(nil)
+		srv.Stop(context.Background())
 	})
 
 	return baseURL, wsClient, ch, loginAdminClient(t, baseURL)
@@ -522,7 +523,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	hub.Subscribe(client2, projectID, ticket2ID)
 
 	t.Cleanup(func() {
-		srv.Stop(nil)
+		srv.Stop(context.Background())
 	})
 
 	// Update ticket1

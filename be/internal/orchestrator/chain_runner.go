@@ -144,12 +144,12 @@ func (cr *ChainRunner) WaitAll(timeout time.Duration) {
 	}
 }
 
-// RecoverZombieChains marks running chains as failed on startup (crash recovery)
-func (cr *ChainRunner) RecoverZombieChains() {
+// FailAllRunning marks running chains as failed during server shutdown.
+func (cr *ChainRunner) FailAllRunning() {
 	ctx := context.Background()
 	pool, err := db.NewPool(cr.dataPath, db.DefaultPoolConfig())
 	if err != nil {
-		logger.Error(ctx, "failed to open DB for chain recovery", "err", err)
+		logger.Error(ctx, "failed to open DB for chain shutdown sweep", "err", err)
 		return
 	}
 	defer pool.Close()
@@ -159,7 +159,7 @@ func (cr *ChainRunner) RecoverZombieChains() {
 
 	rows, err := pool.Query(`SELECT id, project_id FROM chain_executions WHERE status = 'running'`)
 	if err != nil {
-		logger.Error(ctx, "failed to query zombie chains", "err", err)
+		logger.Error(ctx, "failed to query running chains", "err", err)
 		return
 	}
 	defer rows.Close()
@@ -169,7 +169,7 @@ func (cr *ChainRunner) RecoverZombieChains() {
 		if err := rows.Scan(&id, &projectID); err != nil {
 			continue
 		}
-		logger.Warn(ctx, "recovering zombie chain", "chain_id", id)
+		logger.Warn(ctx, "marking chain failed on shutdown", "chain_id", id)
 		chainRepo.UpdateStatus(id, model.ChainStatusFailed)
 		lockRepo.DeleteLocksByChain(id)
 
@@ -180,6 +180,10 @@ func (cr *ChainRunner) RecoverZombieChains() {
 				itemRepo.UpdateItemStatus(item.ID, model.ChainItemCanceled)
 			}
 		}
+		cr.wsHub.Broadcast(ws.NewEvent(ws.EventChainUpdated, projectID, "", "", map[string]interface{}{
+			"chain_id": id,
+			"reason":   "server_shutdown",
+		}))
 	}
 }
 

@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -62,7 +63,7 @@ func startAPIServer(t *testing.T, dbPath string) (string, *http.Client) {
 	}
 
 	t.Cleanup(func() {
-		srv.Stop(nil)
+		srv.Stop(context.Background())
 	})
 
 	return baseURL, loginAdminClient(t, baseURL)

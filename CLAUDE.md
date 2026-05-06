@@ -227,7 +227,7 @@ Workflow runtime state is stored in two main tables: `workflow_instances` (one r
 
 ## Chain Execution
 
-Chains allow sequential execution of multiple tickets with a single workflow. Tickets are expanded with transitive dependency blockers, topologically sorted, and locked to prevent overlapping runs. Items execute one at a time via the orchestrator. Zombie running chains are marked failed on server startup (crash recovery). See [be/internal/orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) for chain runner details and [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for chain API endpoints.
+Chains allow sequential execution of multiple tickets with a single workflow. Tickets are expanded with transitive dependency blockers, topologically sorted, and locked to prevent overlapping runs. Items execute one at a time via the orchestrator. Running chains are marked failed during graceful shutdown via `shutdownCleanup`; SIGKILL leaves orphans unrecovered. See [be/internal/orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) for chain runner details and [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for chain API endpoints.
 
 ## Workflow Chain Definitions and Runs
 

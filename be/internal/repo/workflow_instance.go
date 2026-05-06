@@ -167,6 +167,41 @@ func (r *WorkflowInstanceRepo) ListActiveByProject(projectID string) (map[string
 	return result, nil
 }
 
+// ListActive returns all active workflow instances across all projects, ordered by updated_at DESC.
+func (r *WorkflowInstanceRepo) ListActive() ([]*model.WorkflowInstance, error) {
+	rows, err := r.pool.Query(`
+		SELECT `+wfiCols+` FROM workflow_instances
+		WHERE status = ?
+		ORDER BY updated_at DESC`, model.WorkflowInstanceActive)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var instances []*model.WorkflowInstance
+	for rows.Next() {
+		wi, err := scanWFI(rows)
+		if err != nil {
+			return nil, err
+		}
+		instances = append(instances, wi)
+	}
+	return instances, nil
+}
+
+// FailIfActive conditionally marks a workflow instance as failed only if it is currently active.
+// Returns 1 if transitioned, 0 if already in a terminal state (idempotent).
+func (r *WorkflowInstanceRepo) FailIfActive(id string) (int64, error) {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.pool.Exec(
+		`UPDATE workflow_instances SET status = 'failed', updated_at = ? WHERE id = ? AND status = ?`,
+		now, id, model.WorkflowInstanceActive)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // ListByTicket retrieves all workflow instances for a ticket
 func (r *WorkflowInstanceRepo) ListByTicket(projectID, ticketID string) ([]*model.WorkflowInstance, error) {
 	rows, err := r.pool.Query(`

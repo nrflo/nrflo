@@ -129,23 +129,11 @@ func (s *Server) GetOrchestrator() *orchestrator.Orchestrator {
 
 // Start starts the HTTP server
 func (s *Server) Start(host string, port int) error {
-	// Recover zombie chains from previous crash
-	if s.chainRunner != nil {
-		s.chainRunner.RecoverZombieChains()
-	}
-	if s.wfChainRunner != nil {
-		s.wfChainRunner.RecoverZombieRuns()
-	}
-
 	// Initialize event log for durable WS event persistence
 	s.initEventLog()
 
 	// Start retention cleanup for workflow instances and agent sessions
 	s.startRetentionCleanup()
-
-	// Reclaim orphaned prompt / system-suffix files and codex profile dirs
-	// left behind by previous server processes that were killed mid-run.
-	spawner.CleanupOrphanedTempFiles(1 * time.Hour)
 
 	// Start WebSocket hub
 	go s.wsHub.Run()
@@ -216,6 +204,9 @@ func (s *Server) Stop(ctx context.Context) error {
 	if s.ptyManager != nil {
 		s.ptyManager.CloseAll()
 	}
+	// Sweep in-flight DB rows to terminal state before stopping the hub
+	// so WS broadcasts still reach connected clients.
+	s.shutdownCleanup(ctx)
 	// Stop WebSocket hub
 	if s.wsHub != nil {
 		s.wsHub.Stop()

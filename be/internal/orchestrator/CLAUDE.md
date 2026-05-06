@@ -118,7 +118,7 @@ The resolver agent's session is tracked under the existing workflow instance (`w
 - Each item is a ticket+workflow pair
 - On item completion: marks item done, starts next
 - On item failure: marks chain failed, releases locks
-- Crash recovery: zombie running chains marked failed on server startup
+- Graceful shutdown sweep: `FailAllRunning()` marks running chains failed via `shutdownCleanup()`; SIGKILL leaves orphans
 - Uses `ws.EventChainUpdated` constant for WebSocket broadcasts
 
 ## Files

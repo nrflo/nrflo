@@ -80,7 +80,7 @@ func seedChainRunWithSteps(t *testing.T, pool *db.Pool, runID, status string, nu
 	}
 }
 
-func TestRecoverZombieRuns_MarksRunningAsFailed(t *testing.T) {
+func TestFailAllRunning_MarksRunningAsFailed(t *testing.T) {
 	t.Parallel()
 	dbPath, pool := newChainRunnerTestDB(t)
 
@@ -92,7 +92,7 @@ func TestRecoverZombieRuns_MarksRunningAsFailed(t *testing.T) {
 	t.Cleanup(hub.Stop)
 
 	runner := New(nil, dbPath, hub, clock.Real())
-	runner.RecoverZombieRuns()
+	runner.FailAllRunning()
 
 	rr := repo.NewWorkflowChainRunRepo(pool, clock.Real())
 	run, err := rr.GetRun("zombie-run-1")
@@ -114,7 +114,7 @@ func TestRecoverZombieRuns_MarksRunningAsFailed(t *testing.T) {
 	}
 }
 
-func TestRecoverZombieRuns_SkipsNonRunning(t *testing.T) {
+func TestFailAllRunning_SkipsNonRunning(t *testing.T) {
 	t.Parallel()
 	dbPath, pool := newChainRunnerTestDB(t)
 
@@ -122,7 +122,7 @@ func TestRecoverZombieRuns_SkipsNonRunning(t *testing.T) {
 	seedChainRunWithSteps(t, pool, "completed-run", "completed", 1)
 
 	runner := New(nil, dbPath, nil, clock.Real())
-	runner.RecoverZombieRuns() // should be a no-op for non-running runs
+	runner.FailAllRunning() // should be a no-op for non-running runs
 
 	rr := repo.NewWorkflowChainRunRepo(pool, clock.Real())
 
@@ -137,7 +137,7 @@ func TestRecoverZombieRuns_SkipsNonRunning(t *testing.T) {
 	}
 }
 
-func TestRecoverZombieRuns_MultipleZombies(t *testing.T) {
+func TestFailAllRunning_MultipleZombies(t *testing.T) {
 	t.Parallel()
 	dbPath, pool := newChainRunnerTestDB(t)
 
@@ -145,7 +145,7 @@ func TestRecoverZombieRuns_MultipleZombies(t *testing.T) {
 	seedChainRunWithSteps(t, pool, "zombie-b", "running", 2)
 
 	runner := New(nil, dbPath, nil, clock.Real())
-	runner.RecoverZombieRuns()
+	runner.FailAllRunning()
 
 	rr := repo.NewWorkflowChainRunRepo(pool, clock.Real())
 	for _, runID := range []string{"zombie-a", "zombie-b"} {

@@ -271,6 +271,19 @@ func (r *AgentSessionRepo) FailRunningByInstance(wfiID string) (int64, error) {
 	return result.RowsAffected()
 }
 
+// FailAllRunning marks all running or user_interactive sessions as failed with reason=server_shutdown.
+func (r *AgentSessionRepo) FailAllRunning() (int64, error) {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.Exec(
+		`UPDATE agent_sessions SET status = 'failed', result = 'fail', result_reason = 'server_shutdown', ended_at = ?, updated_at = ?
+		WHERE status IN ('running', 'user_interactive')`,
+		now, now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // UpdateResult updates the result and result_reason fields
 func (r *AgentSessionRepo) UpdateResult(id, resultVal, reason string) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)

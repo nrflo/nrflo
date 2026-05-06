@@ -175,17 +175,17 @@ func TestChainRunnerStart_TrxPropagation(t *testing.T) {
 	}
 }
 
-func TestChainRunner_LogsRecovery(t *testing.T) {
+func TestChainRunner_LogsShutdownSweep(t *testing.T) {
 	env := newTestEnv(t)
 
-	// Create a zombie chain (status = running but no goroutine)
+	// Create a running chain (status = running but no goroutine)
 	chainRepo := repo.NewChainRepo(env.pool, clock.Real())
 	chainID := "chain-zombie-1"
 	err := chainRepo.Create(&model.ChainExecution{
 		ID:           chainID,
 		ProjectID:    env.project,
 		WorkflowName: "test",
-		Status:       model.ChainStatusRunning, // Zombie state
+		Status:       model.ChainStatusRunning,
 	})
 	if err != nil {
 		t.Fatalf("failed to create chain: %v", err)
@@ -194,15 +194,15 @@ func TestChainRunner_LogsRecovery(t *testing.T) {
 	logBuf := setupLogCapture(t)
 
 	cr := NewChainRunner(env.orch, env.dbPath, env.hub, clock.Real())
-	cr.RecoverZombieChains()
+	cr.FailAllRunning()
 
 	output := logBuf.String()
 
 	if !strings.Contains(output, "WARN") {
 		t.Errorf("log output missing WARN level: %s", output)
 	}
-	if !strings.Contains(output, "recovering zombie chain") {
-		t.Errorf("log output missing recovery message: %s", output)
+	if !strings.Contains(output, "marking chain failed on shutdown") {
+		t.Errorf("log output missing shutdown message: %s", output)
 	}
 	if !strings.Contains(output, "chain_id="+chainID) {
 		t.Errorf("log output missing chain_id: %s", output)

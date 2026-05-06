@@ -243,16 +243,7 @@ func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	// Track full message content
 	s.TrackMessage(proc, text, "text")
 
-	// Log with truncation for long messages
-	maxLen := 500
-	if len(text) <= maxLen {
-		s.logAgent(proc, text)
-	} else {
-		startLen := 300
-		endLen := 150
-		truncated := fmt.Sprintf("%s ... [%d chars truncated] ... %s", text[:startLen], len(text)-startLen-endLen, text[len(text)-endLen:])
-		s.logAgent(proc, truncated)
-	}
+	s.logAgent(proc, text)
 }
 
 // ToolCategory returns the message category for a tool invocation.
@@ -469,15 +460,9 @@ func FormatToolDetail(toolName string, input map[string]interface{}) string {
 		return "[" + toolName + "]"
 	}
 
-	// Format output: [ToolName] detail (truncated if needed)
+	// Format output: [ToolName] detail
 	if detail == "" {
 		return "[" + toolName + "]"
-	}
-
-	// Truncate long details
-	maxLen := 200
-	if len(detail) > maxLen {
-		detail = detail[:maxLen] + "..."
 	}
 
 	return "[" + toolName + "] " + detail

@@ -865,8 +865,7 @@ Template warnings (`template.go`) use `context.Background()` without trx since t
 │    └── skill: Skill tool invocations                                │
 │                                                                      │
 │  Text message handling:                                              │
-│    ├── Short (≤500 chars): Displayed in full                        │
-│    └── Long (>500 chars): Truncated as START...END (single line)    │
+│    └── Full text always logged and stored (no truncation)           │
 │                                                                      │
 │  Codex CLI format (type: "thread.started", "item.*", "turn.*"):    │
 │    thread.started → extracts thread_id as externalSessionID        │

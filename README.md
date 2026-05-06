@@ -198,19 +198,6 @@ All agents in the same layer run concurrently. The next layer starts only after 
 
 At runtime, the server owns orchestration, process spawning, websocket updates, and persistent workflow state.
 
-```mermaid
-flowchart LR
-    Browser["Web UI"]
-    Server["nrflo_server<br/>HTTP API · WebSocket · Orchestrator · Spawner · Unix Socket"]
-    Agents["Agent processes<br/>Claude · Opencode · Codex"]
-    DB[("SQLite<br/>~/.nrflo/nrflo.data")]
-
-    Browser <-->|HTTP / WebSocket| Server
-    Server -->|spawn| Agents
-    Agents -->|Unix socket| Server
-    Server <--> DB
-```
-
 The server runs everything in-process: the orchestrator groups phases by layer, the spawner launches agent processes, and the WebSocket hub broadcasts real-time updates to connected clients. Agent definitions (prompts, models, timeouts) and workflow definitions are stored in the database and managed through the web UI.
 
 ## Build & Test

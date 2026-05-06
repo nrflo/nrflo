@@ -183,7 +183,7 @@ func handleToolPart(ctx context.Context, part map[string]interface{}, sessionID 
 		input, _ := partState["input"].(map[string]interface{})
 		content := FormatToolDetail(toolName, input)
 		category := ToolCategory(toolName)
-		projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, content, category)
+		projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, content, category, "")
 		if err == nil && projectID != "" {
 			sink.BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID)
 		}
@@ -197,7 +197,7 @@ func handleToolPart(ctx context.Context, part map[string]interface{}, sessionID 
 			content = "[" + capitalize(toolName) + " result] " + truncateStr(output, 200)
 		}
 		category := ToolCategory(toolName)
-		projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, content, category)
+		projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, content, category, "")
 		if err == nil && projectID != "" {
 			sink.BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID)
 		}
@@ -252,7 +252,7 @@ func handleMessageUpdated(ctx context.Context, props map[string]interface{}, ses
 		state.mu.Unlock()
 
 		if text := strings.TrimSpace(combined.String()); text != "" {
-			projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, text, "text")
+			projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, text, "text", "")
 			if err == nil && projectID != "" {
 				sink.BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID)
 			}
@@ -293,7 +293,7 @@ func handleSessionError(ctx context.Context, props map[string]interface{}, sessi
 			}
 		}
 	}
-	projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, msg, "text")
+	projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, msg, "text", "")
 	if err == nil && projectID != "" {
 		sink.BroadcastMessagesUpdated(projectID, ticketID, workflow, sessionID)
 		sink.RecordError(projectID, "agent", sessionID, msg)

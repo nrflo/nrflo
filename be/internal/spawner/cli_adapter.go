@@ -106,7 +106,7 @@ type InteractiveSpawnOptions struct {
 // All methods are best-effort: implementations must not panic on errors.
 type Sink interface {
 	// RecordHookMessage inserts one agent_messages row + returns IDs for broadcast.
-	RecordHookMessage(sessionID, content, category string) (projectID, ticketID, workflowName string, err error)
+	RecordHookMessage(sessionID, content, category, payload string) (projectID, ticketID, workflowName string, err error)
 	// UpdateContextLeft updates context_left percentage for a session.
 	UpdateContextLeft(sessionID string, pct int) (projectID, ticketID, workflowName string, err error)
 	// BumpLastMessage resets stall/idle detection timestamp for the session.

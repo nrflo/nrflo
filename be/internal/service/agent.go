@@ -353,7 +353,7 @@ func (s *AgentService) IncrementNudgeCount(sessionID string) (int, error) {
 // (e.g. PreToolUse/PostToolUse from Claude --settings hooks). Returns the
 // project/ticket/workflow IDs needed by the caller for WS broadcast.
 // Returns empty strings (no error) when the session is not found.
-func (s *AgentService) RecordHookMessage(sessionID, content, category string) (projectID, ticketID, workflowName string, err error) {
+func (s *AgentService) RecordHookMessage(sessionID, content, category, payload string) (projectID, ticketID, workflowName string, err error) {
 	// Compute next seq from existing rows
 	var seq int
 	if err = s.pool.QueryRow(
@@ -364,7 +364,7 @@ func (s *AgentService) RecordHookMessage(sessionID, content, category string) (p
 	}
 
 	msgRepo := repo.NewAgentMessagePoolRepo(s.pool, s.clock)
-	if err = msgRepo.InsertBatch(sessionID, seq, []repo.MessageEntry{{Content: content, Category: category}}); err != nil {
+	if err = msgRepo.InsertBatch(sessionID, seq, []repo.MessageEntry{{Content: content, Category: category, Payload: payload}}); err != nil {
 		return "", "", "", err
 	}
 

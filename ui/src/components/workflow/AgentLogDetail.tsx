@@ -32,6 +32,8 @@ const CATEGORY_TABS: { value: MessageCategory | 'all'; label: string }[] = [
   { value: 'subagent', label: 'Sub-agents' },
   { value: 'skill', label: 'Skills' },
   { value: 'user_input', label: 'User input' },
+  { value: 'error', label: 'Errors' },
+  { value: 'result', label: 'Results' },
 ]
 
 function formatDuration(durationSec?: number): string {
@@ -81,7 +83,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const messages = messagesData?.messages ?? []
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0 }
+    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0, error: 0, result: 0 }
     for (const m of messages) {
       const cat = m.category || 'text'
       counts[cat] = (counts[cat] || 0) + 1
@@ -283,12 +285,16 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                 {[...filteredMessages].reverse().map((msg, i) => {
                   const { toolName, rest } = parseToolName(msg.content)
                   const isUserInput = msg.category === 'user_input'
+                  const isError = msg.category === 'error'
+                  const isResult = msg.category === 'result'
                   return (
                     <TableRow
                       key={i}
                       className={cn(
                         toolName === 'rate_limit' && "bg-orange-50 dark:bg-orange-950/20",
                         isUserInput && "border-l-4 border-l-primary bg-primary/5 dark:bg-primary/10",
+                        isError && "border-l-4 border-l-destructive bg-destructive/5 dark:bg-destructive/10",
+                        isResult && "border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
                       )}
                       data-testid="message-row"
                     >
@@ -296,10 +302,17 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                         {formatTime(msg.created_at)}
                       </TableCell>
                       <TableCell className="py-1 w-[100px] overflow-hidden">
-                        {/* user_input badge — not a tool name, kept inline outside TOOL_COLORS */}
                         {isUserInput ? (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-primary/10 text-primary border border-primary/40">
                             User
+                          </span>
+                        ) : isError ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-destructive/10 text-destructive border border-destructive/40">
+                            Error
+                          </span>
+                        ) : isResult ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
+                            Result
                           </span>
                         ) : (
                           toolName && <ToolBadge name={toolName} />
@@ -307,6 +320,14 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                       </TableCell>
                       <TableCell className="py-1 whitespace-pre-wrap break-words text-foreground/90 align-top">
                         {rest}
+                        {msg.payload && (
+                          <details className="mt-1">
+                            <summary className="text-[10px] text-muted-foreground cursor-pointer select-none">payload</summary>
+                            <pre className="text-[10px] mt-1 p-1 bg-muted rounded overflow-auto whitespace-pre-wrap break-words not-prose">
+                              {JSON.stringify(msg.payload, null, 2)}
+                            </pre>
+                          </details>
+                        )}
                       </TableCell>
                     </TableRow>
                   )

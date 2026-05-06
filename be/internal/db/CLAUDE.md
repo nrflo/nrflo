@@ -144,6 +144,9 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    content       TEXT NOT NULL       (message text)                  │
 │    category      TEXT NOT NULL DEFAULT 'text'                        │
 │                  (text|tool|subagent|skill)                          │
+│    payload       TEXT               (optional JSON value; mig 000093;│
+│                                      NULL for hook/CLI messages;     │
+│                                      set by agent.log from scripts)  │
 │    created_at    TEXT NOT NULL                                       │
 │    INDEX idx_agent_messages_session (session_id, seq)                │
 │                                                                      │
@@ -540,7 +543,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000092** (python_scripts_file_path — ALTER TABLE python_scripts ADD COLUMN file_path TEXT NOT NULL DEFAULT "")
+Current highest migration: **000093** (agent_messages_payload — ALTER TABLE agent_messages ADD COLUMN payload TEXT)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

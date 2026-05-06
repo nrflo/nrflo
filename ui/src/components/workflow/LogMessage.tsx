@@ -47,6 +47,8 @@ interface LogMessageProps {
 export function LogMessage({ message, category, variant = 'compact', className }: LogMessageProps) {
   const { toolName, rest } = parseToolName(message)
   const isUserInput = category === 'user_input'
+  const isError = category === 'error'
+  const isResult = category === 'result'
 
   return (
     <div
@@ -55,14 +57,23 @@ export function LogMessage({ message, category, variant = 'compact', className }
           ? 'px-2 py-1 rounded-md border bg-muted/30 font-mono text-xs text-foreground/90'
           : 'p-3 rounded-lg border bg-muted/30 font-mono text-sm text-foreground/90',
         'whitespace-pre-wrap break-words',
-        // user_input gets a left-rail accent — not a tool, kept inline outside TOOL_COLORS
         isUserInput && 'border-l-4 border-l-primary bg-primary/5',
+        isError && 'border-l-4 border-l-destructive bg-destructive/5',
+        isResult && 'border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20',
         className,
       )}
     >
       {isUserInput ? (
         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-primary/10 text-primary border border-primary/40">
           User
+        </span>
+      ) : isError ? (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-destructive/10 text-destructive border border-destructive/40">
+          Error
+        </span>
+      ) : isResult ? (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
+          Result
         </span>
       ) : (
         toolName && <ToolBadge name={toolName} />

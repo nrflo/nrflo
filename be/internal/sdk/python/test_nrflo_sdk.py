@@ -110,7 +110,7 @@ class TestClientStructure(unittest.TestCase):
     def test_top_level_methods_exist(self):
         c = self._make_client()
         for method in ("context", "user_instructions", "callback_info",
-                       "previous_data", "skip", "close"):
+                       "previous_data", "skip", "log", "close"):
             self.assertTrue(callable(getattr(c, method, None)),
                             f"Client.{method} missing or not callable")
         c.close()
@@ -193,6 +193,65 @@ class TestFindingsGetValidation(unittest.TestCase):
             pass  # expected: no server
         except ValueError as e:
             self.fail(f"ValueError raised but agent_type is None: {e}")
+        finally:
+            c.close()
+
+
+class TestClientLog(unittest.TestCase):
+    """Structural and validation tests for Client.log() — no running server needed."""
+
+    _SOCK = "/tmp/nrflo-sdk-unit-test-no-server.sock"
+
+    def _make_client(self):
+        return nrflo_sdk.client(
+            sock_path=self._SOCK,
+            session_id="s",
+            instance_id="i",
+            project="p",
+            trx="t",
+        )
+
+    def test_log_method_callable(self):
+        c = self._make_client()
+        self.assertTrue(callable(getattr(c, "log", None)), "Client.log must be callable")
+        c.close()
+
+    def test_log_raises_nrflo_error_without_server(self):
+        """log() with no server raises NrfloError (socket absent), not TypeError."""
+        c = self._make_client()
+        try:
+            c.log("text", "hello")
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass  # expected
+        except TypeError as e:
+            self.fail(f"TypeError raised — signature mismatch: {e}")
+        finally:
+            c.close()
+
+    def test_log_with_payload_raises_nrflo_error_not_type_error(self):
+        """log(type, message, payload=...) signature is valid; error comes from socket."""
+        c = self._make_client()
+        try:
+            c.log("tool", "ran bash", payload={"k": "v"})
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass
+        except TypeError as e:
+            self.fail(f"TypeError on log with payload — signature broken: {e}")
+        finally:
+            c.close()
+
+    def test_log_default_type_text_no_type_error(self):
+        """Calling log with only message (type defaults to 'text') has correct signature."""
+        c = self._make_client()
+        try:
+            c.log(message="just a message")
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass
+        except TypeError as e:
+            self.fail(f"TypeError for log(message=...) — signature wrong: {e}")
         finally:
             c.close()
 

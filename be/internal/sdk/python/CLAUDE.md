@@ -50,6 +50,7 @@ Socket path defaults to `/tmp/nrflo/nrflo.sock`; override via `NRFLO_SOCK_PATH`.
 | `c.callback_info()` | Convenience: `c.context()["callback"]` (or `None`) |
 | `c.previous_data()` | Convenience: `c.context()["previous_data"]` (set on relaunch via `to_resume`) |
 | `c.skip(tag)` | Forwards to the `workflow.skip` socket method |
+| `c.log(type, message, payload=None)` | Insert a message row via `agent.log`; no project required. `type` defaults to `"text"` — accepted values: `text`, `tool`, `subagent`, `skill`, `user_input`, `error`, `result`. `payload` is an optional Python value serialised to JSON. Output appears in the Logs UI Messages tab and server log. |
 
 Underlying `_Connection` class keeps a persistent Unix socket open and reconnects on broken pipe (up to 1s of retries). All errors map to `NrfloError(code, message)`.
 

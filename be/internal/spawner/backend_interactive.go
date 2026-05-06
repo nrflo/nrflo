@@ -199,11 +199,11 @@ type spawnerSink struct {
 	s *Spawner
 }
 
-func (ss *spawnerSink) RecordHookMessage(sessionID, content, category string) (string, string, string, error) {
+func (ss *spawnerSink) RecordHookMessage(sessionID, content, category, payload string) (string, string, string, error) {
 	if ss.s.config.AgentSvcReal == nil {
 		return "", "", "", nil
 	}
-	return ss.s.config.AgentSvcReal.RecordHookMessage(sessionID, content, category)
+	return ss.s.config.AgentSvcReal.RecordHookMessage(sessionID, content, category, payload)
 }
 
 func (ss *spawnerSink) UpdateContextLeft(sessionID string, pct int) (string, string, string, error) {

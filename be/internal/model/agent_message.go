@@ -8,5 +8,6 @@ type AgentMessage struct {
 	SessionID string    `json:"session_id"`
 	Seq       int       `json:"seq"`
 	Content   string    `json:"content"`
+	Payload   string    `json:"payload,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }

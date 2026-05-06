@@ -183,12 +183,13 @@ export interface AgentSession {
   updated_at: string
 }
 
-export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill' | 'user_input'
+export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill' | 'user_input' | 'error' | 'result'
 
 export interface MessageWithTime {
   content: string
   category: MessageCategory
   created_at: string
+  payload?: Record<string, unknown>
 }
 
 export interface SessionMessagesResponse {

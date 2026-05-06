@@ -282,3 +282,57 @@ describe('LogMessage - user_input category', () => {
     expect(screen.queryByText('User')).not.toBeInTheDocument()
   })
 })
+
+describe('LogMessage - error category', () => {
+  it('renders an Error badge when category is error', () => {
+    render(<LogMessage message="something went wrong" category="error" />)
+    expect(screen.getByText('Error')).toBeInTheDocument()
+    expect(screen.getByText('something went wrong')).toBeInTheDocument()
+  })
+
+  it('outer container has red left-rail accent for error', () => {
+    render(<LogMessage message="error msg" category="error" />)
+    const container = screen.getByText('Error').closest('div')!
+    expect(container.className).toContain('border-l-4')
+    expect(container.className).toContain('border-l-destructive')
+    expect(container.className).toContain('bg-destructive/5')
+  })
+
+  it('no tool badge rendered even when error message has [Tool] prefix', () => {
+    render(<LogMessage message="[Bash] failed" category="error" />)
+    expect(screen.getByText('Error')).toBeInTheDocument()
+    expect(screen.queryByText('Bash')).not.toBeInTheDocument()
+  })
+
+  it('non-error message does not render Error badge', () => {
+    render(<LogMessage message="plain text" category="text" />)
+    expect(screen.queryByText('Error')).not.toBeInTheDocument()
+  })
+})
+
+describe('LogMessage - result category', () => {
+  it('renders a Result badge when category is result', () => {
+    render(<LogMessage message="task completed" category="result" />)
+    expect(screen.getByText('Result')).toBeInTheDocument()
+    expect(screen.getByText('task completed')).toBeInTheDocument()
+  })
+
+  it('outer container has emerald left-rail accent for result', () => {
+    render(<LogMessage message="result msg" category="result" />)
+    const container = screen.getByText('Result').closest('div')!
+    expect(container.className).toContain('border-l-4')
+    expect(container.className).toContain('border-l-emerald-500')
+    expect(container.className).toContain('bg-emerald-50/50')
+  })
+
+  it('no tool badge rendered even when result message has [Tool] prefix', () => {
+    render(<LogMessage message="[TaskResult] done" category="result" />)
+    expect(screen.getByText('Result')).toBeInTheDocument()
+    expect(screen.queryByText('TaskResult')).not.toBeInTheDocument()
+  })
+
+  it('non-result message does not render Result badge', () => {
+    render(<LogMessage message="plain text" category="text" />)
+    expect(screen.queryByText('Result')).not.toBeInTheDocument()
+  })
+})

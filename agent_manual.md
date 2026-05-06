@@ -446,6 +446,21 @@ c.findings.get("setup-analyzer", "files_to_modify")
 | `c.callback_info()` | Return callback dict or `None` |
 | `c.previous_data()` | Return `to_resume` string from a prior relaunched session ("" if none) |
 | `c.skip(tag)` | Add a skip tag to the workflow instance |
+| `c.log(type, message, payload=None)` | Insert a message row visible in the Logs UI Messages tab |
+
+**`c.log()` accepted types:**
+
+| Type | Meaning |
+|------|---------|
+| `text` (default) | Plain agent output |
+| `tool` | Tool invocation or result |
+| `subagent` | Sub-agent activity |
+| `skill` | Skill invocation |
+| `user_input` | User-supplied input |
+| `error` | Error or exception |
+| `result` | Final script result |
+
+`payload` is an optional Python value (dict, list, str, etc.) that is JSON-serialised and stored alongside the message. Output appears in the Logs UI Messages tab and the server log.
 
 ### Auto-injectable Context Variables
 

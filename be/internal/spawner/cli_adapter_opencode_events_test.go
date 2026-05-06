@@ -27,7 +27,7 @@ type recordedMsg struct {
 	category string
 }
 
-func (s *opencodeTestSink) RecordHookMessage(sessionID, content, category string) (string, string, string, error) {
+func (s *opencodeTestSink) RecordHookMessage(sessionID, content, category, payload string) (string, string, string, error) {
 	s.mu.Lock()
 	s.recordedMsgs = append(s.recordedMsgs, recordedMsg{content, category})
 	s.mu.Unlock()

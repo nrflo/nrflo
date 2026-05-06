@@ -13,12 +13,14 @@ import (
 type MessageEntry struct {
 	Content  string
 	Category string // text, tool, subagent, skill
+	Payload  string
 }
 
 // MessageWithTime represents a message with its creation timestamp
 type MessageWithTime struct {
 	Content   string `json:"content"`
 	Category  string `json:"category"`
+	Payload   string `json:"payload,omitempty"`
 	CreatedAt string `json:"created_at"`
 }
 
@@ -45,7 +47,7 @@ func (r *AgentMessageRepo) InsertBatch(sessionID string, seqStart int, messages 
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`INSERT INTO agent_messages (session_id, seq, content, category, created_at) VALUES (?, ?, ?, ?, ?)`)
+	stmt, err := tx.Prepare(`INSERT INTO agent_messages (session_id, seq, content, category, created_at, payload) VALUES (?, ?, ?, ?, ?, NULLIF(?, ""))`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
@@ -57,7 +59,7 @@ func (r *AgentMessageRepo) InsertBatch(sessionID string, seqStart int, messages 
 		if cat == "" {
 			cat = "text"
 		}
-		_, err := stmt.Exec(sessionID, seqStart+i, msg.Content, cat, now)
+		_, err := stmt.Exec(sessionID, seqStart+i, msg.Content, cat, now, msg.Payload)
 		if err != nil {
 			return fmt.Errorf("failed to insert message %d: %w", seqStart+i, err)
 		}
@@ -91,7 +93,7 @@ func (r *AgentMessageRepo) GetBySession(sessionID string) ([]string, error) {
 // GetBySessionPaginated returns messages with timestamps, with limit and offset
 func (r *AgentMessageRepo) GetBySessionPaginated(sessionID string, limit, offset int) ([]MessageWithTime, error) {
 	rows, err := r.db.Query(
-		`SELECT content, category, created_at FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
+		`SELECT content, category, COALESCE(payload, ""), created_at FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
 		sessionID, limit, offset,
 	)
 	if err != nil {
@@ -102,7 +104,7 @@ func (r *AgentMessageRepo) GetBySessionPaginated(sessionID string, limit, offset
 	var messages []MessageWithTime
 	for rows.Next() {
 		var msg MessageWithTime
-		if err := rows.Scan(&msg.Content, &msg.Category, &msg.CreatedAt); err != nil {
+		if err := rows.Scan(&msg.Content, &msg.Category, &msg.Payload, &msg.CreatedAt); err != nil {
 			return nil, err
 		}
 		messages = append(messages, msg)
@@ -113,7 +115,7 @@ func (r *AgentMessageRepo) GetBySessionPaginated(sessionID string, limit, offset
 // GetBySessionPaginatedFiltered returns messages filtered by category
 func (r *AgentMessageRepo) GetBySessionPaginatedFiltered(sessionID, category string, limit, offset int) ([]MessageWithTime, error) {
 	rows, err := r.db.Query(
-		`SELECT content, category, created_at FROM agent_messages WHERE session_id = ? AND category = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
+		`SELECT content, category, COALESCE(payload, ""), created_at FROM agent_messages WHERE session_id = ? AND category = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
 		sessionID, category, limit, offset,
 	)
 	if err != nil {
@@ -124,7 +126,7 @@ func (r *AgentMessageRepo) GetBySessionPaginatedFiltered(sessionID, category str
 	var messages []MessageWithTime
 	for rows.Next() {
 		var msg MessageWithTime
-		if err := rows.Scan(&msg.Content, &msg.Category, &msg.CreatedAt); err != nil {
+		if err := rows.Scan(&msg.Content, &msg.Category, &msg.Payload, &msg.CreatedAt); err != nil {
 			return nil, err
 		}
 		messages = append(messages, msg)
@@ -211,7 +213,7 @@ func (r *AgentMessagePoolRepo) InsertBatch(sessionID string, seqStart int, messa
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`INSERT INTO agent_messages (session_id, seq, content, category, created_at) VALUES (?, ?, ?, ?, ?)`)
+	stmt, err := tx.Prepare(`INSERT INTO agent_messages (session_id, seq, content, category, created_at, payload) VALUES (?, ?, ?, ?, ?, NULLIF(?, ""))`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
@@ -223,7 +225,7 @@ func (r *AgentMessagePoolRepo) InsertBatch(sessionID string, seqStart int, messa
 		if cat == "" {
 			cat = "text"
 		}
-		_, err := stmt.Exec(sessionID, seqStart+i, msg.Content, cat, now)
+		_, err := stmt.Exec(sessionID, seqStart+i, msg.Content, cat, now, msg.Payload)
 		if err != nil {
 			return fmt.Errorf("failed to insert message %d: %w", seqStart+i, err)
 		}
@@ -257,7 +259,7 @@ func (r *AgentMessagePoolRepo) GetBySession(sessionID string) ([]string, error) 
 // GetBySessionPaginated returns messages with timestamps, with limit and offset
 func (r *AgentMessagePoolRepo) GetBySessionPaginated(sessionID string, limit, offset int) ([]MessageWithTime, error) {
 	rows, err := r.pool.Query(
-		`SELECT content, category, created_at FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
+		`SELECT content, category, COALESCE(payload, ""), created_at FROM agent_messages WHERE session_id = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
 		sessionID, limit, offset,
 	)
 	if err != nil {
@@ -268,7 +270,7 @@ func (r *AgentMessagePoolRepo) GetBySessionPaginated(sessionID string, limit, of
 	var messages []MessageWithTime
 	for rows.Next() {
 		var msg MessageWithTime
-		if err := rows.Scan(&msg.Content, &msg.Category, &msg.CreatedAt); err != nil {
+		if err := rows.Scan(&msg.Content, &msg.Category, &msg.Payload, &msg.CreatedAt); err != nil {
 			return nil, err
 		}
 		messages = append(messages, msg)
@@ -279,7 +281,7 @@ func (r *AgentMessagePoolRepo) GetBySessionPaginated(sessionID string, limit, of
 // GetBySessionPaginatedFiltered returns messages filtered by category
 func (r *AgentMessagePoolRepo) GetBySessionPaginatedFiltered(sessionID, category string, limit, offset int) ([]MessageWithTime, error) {
 	rows, err := r.pool.Query(
-		`SELECT content, category, created_at FROM agent_messages WHERE session_id = ? AND category = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
+		`SELECT content, category, COALESCE(payload, ""), created_at FROM agent_messages WHERE session_id = ? AND category = ? ORDER BY seq ASC LIMIT ? OFFSET ?`,
 		sessionID, category, limit, offset,
 	)
 	if err != nil {
@@ -290,7 +292,7 @@ func (r *AgentMessagePoolRepo) GetBySessionPaginatedFiltered(sessionID, category
 	var messages []MessageWithTime
 	for rows.Next() {
 		var msg MessageWithTime
-		if err := rows.Scan(&msg.Content, &msg.Category, &msg.CreatedAt); err != nil {
+		if err := rows.Scan(&msg.Content, &msg.Category, &msg.Payload, &msg.CreatedAt); err != nil {
 			return nil, err
 		}
 		messages = append(messages, msg)

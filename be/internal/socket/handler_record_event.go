@@ -268,7 +268,7 @@ func (h *Handler) flushCodexAgentMessages(ctx context.Context, req Request, sess
 // recordSimpleEvent inserts a single agent_messages row with the given content +
 // category, broadcasts messages.updated, and bumps stall detection.
 func (h *Handler) recordSimpleEvent(ctx context.Context, req Request, sessionID, content, category string) Response {
-	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category)
+	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category, "")
 	if err != nil {
 		logger.Error(ctx, "record_event: failed to record hook message", "error", err, "content", content)
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
@@ -303,7 +303,7 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 	content := spawner.FormatToolDetail(toolName, toolInput)
 	category := spawner.ToolCategory(toolName)
 
-	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category)
+	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category, "")
 	if err != nil {
 		logger.Error(ctx, "record_event: failed to record pre-tool message", "error", err)
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))

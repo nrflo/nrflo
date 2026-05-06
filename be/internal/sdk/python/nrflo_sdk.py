@@ -245,6 +245,15 @@ class Client:
             "params": {"instance_id": self._iid, "tag": tag},
         }))
 
+    def log(self, type: str = "text", message: str = "", payload=None):
+        params = {"session_id": self._sid, "type": type or "text", "message": message}
+        if payload is not None:
+            params["payload"] = payload
+        _check(self._conn.send({
+            "id": str(uuid.uuid4()), "method": "agent.log",
+            "trx": self._trx, "params": params,
+        }))
+
     def close(self):
         self._conn.close()
 

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"be/internal/repo"
 )
 
 // validateLayerConfigForWorkflow validates layer bounds for a workflow when adding/updating an agent definition.
@@ -57,8 +59,48 @@ func validateTagInGroups(tag, groupsStr string) error {
 	return fmt.Errorf("tag '%s' is not in workflow groups %v", tag, groups)
 }
 
+// validatePolicyNotViolatedByLayerChange returns an error if reducing agentCount in
+// layer would violate any existing quorum policy. Called before delete or layer move.
+func (s *AgentDefinitionService) validatePolicyNotViolatedByLayerChange(projectID, workflowID string, layer, remainingCount int) error {
+	r := repo.NewWorkflowLayerPolicyRepo(s.pool, s.clock)
+	rows, err := r.ListByWorkflow(projectID, workflowID)
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if row.Layer != layer {
+			continue
+		}
+		if err := ValidateLayerPolicy(row.PassPolicy, remainingCount); err != nil {
+			return fmt.Errorf("layer %d has policy %q but would have only %d agent(s): %w", layer, row.PassPolicy, remainingCount, err)
+		}
+	}
+	return nil
+}
+
 // DeleteAgentDef deletes an agent definition
 func (s *AgentDefinitionService) DeleteAgentDef(projectID, workflowID, id string) error {
+	// Find the agent's current layer
+	var currentLayer int
+	err := s.pool.QueryRow(
+		"SELECT layer FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+		projectID, workflowID, id).Scan(&currentLayer)
+	if err != nil {
+		return fmt.Errorf("agent definition not found: %s", id)
+	}
+
+	// Count remaining agents in this layer after deletion
+	var remaining int
+	s.pool.QueryRow(
+		`SELECT COUNT(*) FROM agent_definitions
+		 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
+		   AND layer = ? AND LOWER(id) != LOWER(?)`,
+		projectID, workflowID, currentLayer, id).Scan(&remaining)
+
+	if err := s.validatePolicyNotViolatedByLayerChange(projectID, workflowID, currentLayer, remaining); err != nil {
+		return err
+	}
+
 	result, err := s.pool.Exec(
 		"DELETE FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
 		projectID, workflowID, id)

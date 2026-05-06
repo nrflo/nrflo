@@ -322,6 +322,21 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		if err := s.validateLayerConfigForWorkflow(projectID, workflowID, id, *req.Layer); err != nil {
 			return err
 		}
+		// If layer changes, ensure the old layer's policy remains valid
+		var oldLayer int
+		if scanErr := s.pool.QueryRow(
+			"SELECT layer FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+			projectID, workflowID, id).Scan(&oldLayer); scanErr == nil && oldLayer != *req.Layer {
+			var remaining int
+			s.pool.QueryRow(
+				`SELECT COUNT(*) FROM agent_definitions
+				 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
+				   AND layer = ? AND LOWER(id) != LOWER(?)`,
+				projectID, workflowID, oldLayer, id).Scan(&remaining)
+			if err := s.validatePolicyNotViolatedByLayerChange(projectID, workflowID, oldLayer, remaining); err != nil {
+				return err
+			}
+		}
 		updates = append(updates, "layer = ?")
 		args = append(args, *req.Layer)
 	}

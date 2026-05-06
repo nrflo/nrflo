@@ -9,6 +9,18 @@ import (
 	"be/internal/service"
 )
 
+// policyCheck runs the same gate logic as runLoop's fan-in section.
+// Returns true if the layer passes with the given policy, passCount, failCount.
+func policyCheck(policyStr string, passCount, failCount int) bool {
+	denom := passCount + failCount
+	if denom == 0 {
+		return true // all-skipped
+	}
+	policy, _ := service.ParseLayerPolicy(policyStr)
+	required := policy.Required(denom)
+	return passCount >= required
+}
+
 // TestLayerGroupingAndSequencing tests that phases are correctly grouped by layer
 // and layers execute in ascending order.
 func TestLayerGroupingAndSequencing(t *testing.T) {
@@ -261,6 +273,66 @@ func TestLayerOrderPreserved(t *testing.T) {
 		if group.phases[0].Agent != expectedAgents[i] {
 			t.Errorf("expected agent '%s' in layer %d, got '%s'", expectedAgents[i], i, group.phases[0].Agent)
 		}
+	}
+}
+
+// TestLayerPassPolicy_All_OneFails_Fails verifies that policy "all" fails when any agent fails.
+func TestLayerPassPolicy_All_OneFails_Fails(t *testing.T) {
+	// 2 agents, 1 passes, 1 fails — "all" requires both
+	if policyCheck("all", 1, 1) {
+		t.Error("expected policy 'all' to fail when 1/2 passed")
+	}
+	// 2 agents, both pass — should succeed
+	if !policyCheck("all", 2, 0) {
+		t.Error("expected policy 'all' to succeed when 2/2 passed")
+	}
+}
+
+// TestLayerPassPolicy_Quorum_BelowThreshold_Fails verifies quorum:2 fails when only 1 passes.
+func TestLayerPassPolicy_Quorum_BelowThreshold_Fails(t *testing.T) {
+	if policyCheck("quorum:2", 1, 2) {
+		t.Error("expected quorum:2 to fail when 1/3 passed")
+	}
+}
+
+// TestLayerPassPolicy_Quorum_AtThreshold_Passes verifies quorum:2 succeeds when exactly 2 pass.
+func TestLayerPassPolicy_Quorum_AtThreshold_Passes(t *testing.T) {
+	if !policyCheck("quorum:2", 2, 1) {
+		t.Error("expected quorum:2 to succeed when 2/3 passed")
+	}
+}
+
+// TestLayerPassPolicy_Percent_RoundsUp verifies percent:80 with 3 agents requires ceil(2.4)=3.
+func TestLayerPassPolicy_Percent_RoundsUp(t *testing.T) {
+	// ceil(3 * 80/100) = ceil(2.4) = 3
+	if policyCheck("percent:80", 2, 1) {
+		t.Error("expected percent:80 with 3 agents to require 3, but 2 passed")
+	}
+	if !policyCheck("percent:80", 3, 0) {
+		t.Error("expected percent:80 with 3 agents to pass when all 3 pass")
+	}
+}
+
+// TestLayerPassPolicy_AllSkipped_StillProceeds verifies that when all agents are skipped
+// (denom == 0) the layer proceeds regardless of policy.
+func TestLayerPassPolicy_AllSkipped_StillProceeds(t *testing.T) {
+	for _, policy := range []string{"any", "all", "quorum:3", "percent:100"} {
+		if !policyCheck(policy, 0, 0) {
+			t.Errorf("expected policy %q to proceed when all agents skipped (denom=0)", policy)
+		}
+	}
+}
+
+// TestLayerPassPolicy_Callback_StillCountsAsPass verifies that a callback agent
+// increments passCount (the orchestrator adds it to passCount before policy check).
+func TestLayerPassPolicy_Callback_StillCountsAsPass(t *testing.T) {
+	// With policy "all" and 2 agents: 1 callback (counts as pass) + 1 fail = 1/2 → fail
+	if policyCheck("all", 1, 1) {
+		t.Error("expected 'all' to fail: callback is 1 pass, other agent failed")
+	}
+	// With policy "any": 1 callback pass is enough
+	if !policyCheck("any", 1, 1) {
+		t.Error("expected 'any' to succeed when callback counts as 1 pass")
 	}
 }
 

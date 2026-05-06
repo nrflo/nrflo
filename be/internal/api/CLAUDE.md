@@ -76,6 +76,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_project_workflow.go` | Project-scoped run/stop/restart/retry-failed/take-control/resume-session/exit-interactive/state/agents |
 | `handlers_pty.go` | PTY WebSocket handler: upgrade, validate session, spawn/relay PTY, handle resize, exit-interactive on process exit. Also supports viewer-attach for `status=running` sessions when a PTY session already exists (interactive CLI backend); disconnect does not trigger exit-interactive in that case. |
 | `handlers_workflow_def.go` | Workflow definition CRUD (no `phases` field; phases derived from agent_definitions) |
+| `handlers_workflow_layer_policies.go` | Per-layer pass policy CRUD: GET/PUT/DELETE `/api/v1/workflows/{wid}/layer-policies[/{layer}]` |
 | `handlers_agent_def.go` | Agent definition CRUD (accepts `layer` field for phase execution order) |
 | `handlers_system_agent_def.go` | System agent definition CRUD (global, no project scope) |
 | `handlers_cli_models.go` | CLI model CRUD (global, no project scope, readonly delete enforcement, enabled toggle: 400 on system model, 409 on in-use) |
@@ -153,6 +154,12 @@ POST   /api/v1/workflows              # Create (accepts id, description, scope_t
 GET    /api/v1/workflows/:id          # Get one (response includes phases derived from agent_definitions)
 PATCH  /api/v1/workflows/:id          # Update (accepts description, scope_type, groups, close_ticket_on_complete; no phases)
 DELETE /api/v1/workflows/:id          # Delete
+
+# Per-layer pass policies (project-scoped, nested under workflows; writes admin-only)
+# Policies are included in v4 workflow state as `layer_policies: map[int]string`
+GET    /api/v1/workflows/:wid/layer-policies            # List all policies (returns map[int]string, empty when none)
+PUT    /api/v1/workflows/:wid/layer-policies/:layer     # Upsert; body: {pass_policy}; 400 on invalid policy or quorum > agent count; broadcasts workflow_def.updated
+DELETE /api/v1/workflows/:wid/layer-policies/:layer     # Reset layer to default "any"; broadcasts workflow_def.updated
 
 # Project-scoped workflow operations
 POST /api/v1/projects/:id/workflow/run      # Start project workflow; body accepts `interactive` (bool) and `plan_mode` (bool), mutually exclusive (400 if both true). When set, response includes `session_id` and status `"interactive"` or `"planning"`

@@ -344,6 +344,14 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Read customer config dir (once at workflow start; used by api-mode manifest tools)
 	customerConfigDir, _ := pool.GetProjectConfig(req.ProjectID, "customer_config_dir")
 
+	// Load per-layer pass policies for this workflow
+	layerPolicySvc := service.NewWorkflowLayerPolicyService(pool, o.clock)
+	layerPolicies, err := layerPolicySvc.GetLayerPolicies(req.ProjectID, dbWorkflow.ID)
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to load layer policies: %w", err)
+	}
+
 	// Set parent session
 	parentSession := uuid.New().String()
 	pool.Close()
@@ -404,7 +412,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, interactiveCLIMode, customerConfigDir)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, interactiveCLIMode, customerConfigDir, layerPolicies)
 
 	status := "started"
 	sessionID := ""
@@ -776,6 +784,13 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	// Read customer config dir (once at workflow retry)
 	customerConfigDir, _ := pool.GetProjectConfig(projectID, "customer_config_dir")
 
+	// Load per-layer pass policies for this workflow
+	layerPolicySvc := service.NewWorkflowLayerPolicyService(pool, o.clock)
+	layerPolicies, err := layerPolicySvc.GetLayerPolicies(projectID, dbWorkflow.ID)
+	if err != nil {
+		return fmt.Errorf("failed to load layer policies: %w", err)
+	}
+
 	parentSession := uuid.New().String()
 
 	// Build run request
@@ -803,7 +818,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}))
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, interactiveCLIMode, customerConfigDir)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, interactiveCLIMode, customerConfigDir, layerPolicies)
 
 	return nil
 }
@@ -1144,7 +1159,7 @@ func (o *Orchestrator) StopAll() {
 
 // runLoop executes workflow phases grouped by layer.
 // All agents in the same layer run concurrently. Layers execute in ascending order.
-// Fan-in: proceed to next layer if pass_count >= 1. All-skipped continues.
+// Fan-in: consults layerPolicies[layer] (default "any"). All-skipped continues.
 // All-fail stops the workflow. startLayerIdx skips layers before that index (for retry).
 func (o *Orchestrator) runLoop(
 	ctx context.Context,
@@ -1168,6 +1183,7 @@ func (o *Orchestrator) runLoop(
 	pushAfterMerge bool,
 	interactiveCLIMode bool,
 	customerConfigDir string,
+	layerPolicies map[int]string,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -1445,11 +1461,20 @@ func (o *Orchestrator) runLoop(
 			continue
 		}
 
-		// Layer aggregation: at least one pass required to proceed
-		if passCount == 0 {
-			logger.Error(ctx, "all agents failed in layer", "layer", lg.layer, "fail_count", failCount)
-			o.markFailed(wfiID, req, fmt.Sprintf("layer %d: all agents failed", lg.layer))
-			return
+		// Layer aggregation: consult pass_policy (default "any" = at least one pass).
+		// denom == 0 means all agents were skipped — continue regardless of policy.
+		denom := passCount + failCount
+		if denom > 0 {
+			policy, _ := service.ParseLayerPolicy(layerPolicies[lg.layer])
+			required := policy.Required(denom)
+			if passCount < required {
+				logger.Error(ctx, "layer pass_policy not satisfied", "layer", lg.layer,
+					"policy", policy.String(), "passed", passCount, "total", denom, "required", required)
+				o.markFailed(wfiID, req, fmt.Sprintf(
+					"layer %d: pass_policy %q not satisfied (%d/%d passed, %d required)",
+					lg.layer, policy.String(), passCount, denom, required))
+				return
+			}
 		}
 
 		// Clear callback metadata after the callback target layer completes successfully

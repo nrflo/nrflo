@@ -49,7 +49,18 @@ Do not document in [agent_manual.md](agent_manual.md):
 
 Agents are grouped by `layer` number. All agents in the same layer run concurrently; layers execute in ascending order. The spawner validates:
 - All agents in prior layers are completed or skipped before the current layer starts
-- At least one agent in a layer must pass for the workflow to proceed (all-skipped continues)
+- Fan-in uses the layer's `pass_policy` (default `any`): at least `policy.Required(denom)` agents must pass
+
+**Pass policies** (stored per-layer in `workflow_layer_policies`):
+
+| Policy | Required passes |
+|--------|----------------|
+| `any` (default) | 1 |
+| `all` | all non-skipped agents |
+| `quorum:N` | exactly N |
+| `percent:P` | `ceil(denom × P / 100)` |
+
+Skipped agents are excluded from `denom`. When all agents in a layer are skipped, the layer proceeds regardless of policy. Callbacks count as pass.
 
 Parallel-to-parallel topologies (e.g., [A,B] → [C,D]) are fully supported — no restriction on agent count across adjacent layers.
 

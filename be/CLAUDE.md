@@ -56,6 +56,7 @@ be/
 │   │   ├── handlers_orchestrate.go # Ticket-scoped orchestration run/stop/restart endpoints
 │   │   ├── handlers_project_workflow.go # Project-scoped workflow run/stop/restart/delete/state
 │   │   ├── handlers_workflow_def.go # Workflow definition endpoints
+│   │   ├── handlers_workflow_layer_policies.go # Per-layer pass policy GET/PUT/DELETE (admin writes)
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_system_agent_def.go # System agent definition CRUD (global)
 │   │   ├── handlers_default_template.go # Default template CRUD (global)

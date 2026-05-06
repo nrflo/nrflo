@@ -480,8 +480,21 @@ produces the phase order: setup-analyzer -> test-writer -> implementor -> qa-ver
 - **Concurrent execution:** All agents in the same layer run concurrently
 - **Sequential layers:** Layers execute in ascending order (0, 1, 2, ...)
 - **Parallel-to-parallel:** Multiple agents in layer N can feed into multiple agents in layer N+1 — no convergence restriction
-- **Pass condition:** At least 1 agent in a layer must pass for the workflow to proceed
-- **All skipped:** If all agents in a layer are skipped, the workflow continues
+- **Pass condition:** Determined by the layer's `pass_policy` (see below)
+- **All skipped:** If all agents in a layer are skipped, the workflow continues regardless of policy
+
+### Layer Pass Policies
+
+Each layer can have a `pass_policy` configured (default: `any`). Skipped agents are excluded from the count.
+
+| Policy | Required passes |
+|--------|----------------|
+| `any` | At least 1 |
+| `all` | All non-skipped agents |
+| `quorum:N` | At least N |
+| `percent:P` | `ceil(count × P / 100)` |
+
+Policies are set via `PUT /api/v1/workflows/{id}/layer-policies/{layer}` (admin only). A `quorum:N` policy is rejected if N exceeds the current number of agents in that layer, and deleting/moving an agent that would violate an existing quorum policy is also rejected.
 
 ### Workflow Groups (Skip Tags)
 

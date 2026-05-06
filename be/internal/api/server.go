@@ -483,6 +483,11 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("PATCH /api/v1/workflows/{id}", s.handleUpdateWorkflowDef)
 	protected("DELETE /api/v1/workflows/{id}", s.handleDeleteWorkflowDef)
 
+	// Per-layer pass policies (reads open, writes admin-only)
+	protected("GET /api/v1/workflows/{wid}/layer-policies", s.handleListLayerPolicies)
+	admin("PUT /api/v1/workflows/{wid}/layer-policies/{layer}", s.handleSetLayerPolicy)
+	admin("DELETE /api/v1/workflows/{wid}/layer-policies/{layer}", s.handleDeleteLayerPolicy)
+
 	// Project-scoped workflow operations
 	protected("POST /api/v1/projects/{id}/workflow/run", s.handleRunProjectWorkflow)
 	protected("POST /api/v1/projects/{id}/workflow/stop", s.handleStopProjectWorkflow)

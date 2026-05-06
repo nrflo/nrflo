@@ -221,6 +221,10 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	if phaseLayers != nil {
 		result["phase_layers"] = phaseLayers
 	}
+	// Include per-layer pass policies so the UI can render policy badges
+	if policies, err := NewWorkflowLayerPolicyService(s.pool, s.clock).GetLayerPolicies(wi.ProjectID, wi.WorkflowID); err == nil && len(policies) > 0 {
+		result["layer_policies"] = policies
+	}
 	if wi.ParentSession.Valid {
 		result["parent_session"] = wi.ParentSession.String
 	}

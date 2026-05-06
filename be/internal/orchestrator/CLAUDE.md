@@ -20,10 +20,10 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 │  │    └───────┬────────┘  └───────┬────────┘                    │    │
 │  │            └───────────┬───────┘                              │    │
 │  │                        ▼                                      │    │
-│  │  Layer aggregation: wait for ALL agents in layer to finish    │    │
-│  │    ├── pass_count >= 1 → proceed to next layer               │    │
-│  │    ├── all skipped → proceed to next layer                   │    │
-│  │    └── pass_count == 0 → fail workflow, stop                 │    │
+│  │  Layer aggregation: consult pass_policy (default "any")       │    │
+│  │    ├── all skipped (denom=0) → proceed regardless of policy  │    │
+│  │    ├── pass_count >= required → proceed to next layer        │    │
+│  │    └── pass_count < required → fail workflow, stop           │    │
 │  └────────────────────────┬────────────────────────────────────┘    │
 │                           ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -48,10 +48,22 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 
 - All agents in a layer run concurrently (one goroutine per `spawner.Spawn()` call)
 - Layer completes when ALL agents finish
-- `pass_count >= 1` → layer passes, proceed to next
-- All agents skipped → layer passes
-- `pass_count == 0` → workflow fails
+- **Denominator rule**: `denom = passCount + failCount` (skipped agents excluded from denom)
+- **All-skipped** (`denom == 0`) → layer passes regardless of policy
+- **Callback agents** count as pass (added to `passCount` before policy check)
+- **Policy check** (`denom > 0`): `passCount >= policy.Required(denom)` or workflow fails
 - Parallel-to-parallel topologies (multi-agent layer → multi-agent layer) are fully supported
+
+### Fan-In Pass Policies (per-layer, stored in `workflow_layer_policies`)
+
+| Policy | Required passes |
+|--------|----------------|
+| `any` (default) | 1 |
+| `all` | all agents (denom) |
+| `quorum:N` | exactly N |
+| `percent:P` | `ceil(denom * P / 100)` |
+
+Policies are loaded from DB once at workflow start in `Start()` and `retryFailed()` via `WorkflowLayerPolicyService.GetLayerPolicies`, passed as `layerPolicies map[int]string` to `runLoop`. Missing entries default to `"any"`. Failure message includes policy string, pass counts, and required count for debuggability.
 
 ## Error Capture
 

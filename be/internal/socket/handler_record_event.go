@@ -332,41 +332,7 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 	return MakeResponse(req.ID, map[string]string{"status": "recorded"})
 }
 
-func (h *Handler) recordPostToolUse(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
-	toolName, _ := event["tool_name"].(string)
-	category := spawner.ToolCategory(toolName)
-
-	content := "[" + toolName + " result]"
-	if body := extractToolResultBody(event); body != "" {
-		content = "[" + toolName + " result] " + truncate(body, 200)
-	}
-
-	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category)
-	if err != nil {
-		logger.Error(ctx, "record_event: failed to record post-tool message", "error", err)
-		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
-	}
-
-	if projectID != "" {
-		service.BroadcastFromCtx(h.wsHub, ws.EventMessagesUpdated, service.BroadcastCtx{
-			ProjectID: projectID,
-			TicketID:  ticketID,
-			Workflow:  workflowName,
-		}, map[string]interface{}{
-			"session_id": sessionID,
-		})
-	}
-
-	// Bump stall detection (best-effort) and surface tool result in status log
-	if h.signaler != nil {
-		if sigErr := h.signaler.BumpLastMessage(projectID, ticketID, workflowName, sessionID); sigErr != nil {
-			logger.Info(ctx, "record_event: BumpLastMessage error (best-effort)", "error", sigErr)
-		}
-		if sigErr := h.signaler.SetLastMessage(projectID, ticketID, workflowName, sessionID, content); sigErr != nil {
-			logger.Info(ctx, "record_event: SetLastMessage error (best-effort)", "error", sigErr)
-		}
-	}
-
-	return MakeResponse(req.ID, map[string]string{"status": "recorded"})
+func (h *Handler) recordPostToolUse(_ context.Context, req Request, _ string, _ map[string]interface{}) Response {
+	return MakeResponse(req.ID, map[string]string{"status": "ignored"})
 }
 

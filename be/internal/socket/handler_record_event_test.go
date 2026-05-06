@@ -2,7 +2,6 @@ package socket
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
@@ -137,16 +136,19 @@ func TestRecordEvent_PreToolUse_InsertsMsgAndBroadcasts(t *testing.T) {
 	}
 }
 
-// TestRecordEvent_PostToolUse_InsertsResult verifies PostToolUse inserts "[Tool result] response".
-func TestRecordEvent_PostToolUse_InsertsResult(t *testing.T) {
+// TestRecordEvent_PostToolUse_NoOpNoMessages verifies PostToolUse is a no-op:
+// no agent_messages row is inserted, no BumpLastMessage is called, and the
+// response returns status="ignored" so the hook subprocess exits 0.
+func TestRecordEvent_PostToolUse_NoOpNoMessages(t *testing.T) {
 	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "RE-POST-1")
-	wfiID := queryWFIID(t, env, "RE-POST-1")
-	sessionID := "sess-re-post-1"
-	insertAgentSession(t, env, "RE-POST-1", sessionID, wfiID)
+	env.createTicketAndWorkflow(t, "RE-POST-NOOP")
+	wfiID := queryWFIID(t, env, "RE-POST-NOOP")
+	sessionID := "sess-re-post-noop"
+	insertAgentSession(t, env, "RE-POST-NOOP", sessionID, wfiID)
 
-	h := NewHandler(env.pool, env.hub, clock.Real(), nil)
-	req := buildRecordEventReq(t, "req-re-post", sessionID, map[string]interface{}{
+	sig := &bumpRecordSignaler{}
+	h := NewHandler(env.pool, env.hub, clock.Real(), sig)
+	req := buildRecordEventReq(t, "req-re-post-noop", sessionID, map[string]interface{}{
 		"hook_event_name": "PostToolUse",
 		"tool_name":       "Read",
 		"tool_response":   "file content here",
@@ -156,52 +158,18 @@ func TestRecordEvent_PostToolUse_InsertsResult(t *testing.T) {
 	if resp.Error != nil {
 		t.Fatalf("expected no error, got: %v", resp.Error)
 	}
-	if n := countAgentMessages(t, env, sessionID); n != 1 {
-		t.Fatalf("agent_messages count = %d, want 1", n)
+	var result map[string]string
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
 	}
-	content, category := lastAgentMessage(t, env, sessionID)
-	if content != "[Read result] file content here" {
-		t.Errorf("content = %q, want %q", content, "[Read result] file content here")
+	if result["status"] != "ignored" {
+		t.Errorf("status = %q, want %q", result["status"], "ignored")
 	}
-	if category != "tool" {
-		t.Errorf("category = %q, want %q", category, "tool")
+	if n := countAgentMessages(t, env, sessionID); n != 0 {
+		t.Errorf("agent_messages count = %d, want 0 (PostToolUse is a no-op)", n)
 	}
-}
-
-// TestRecordEvent_PostToolUse_LongResponseTruncated verifies tool_response > 200 chars is truncated.
-func TestRecordEvent_PostToolUse_LongResponseTruncated(t *testing.T) {
-	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "RE-TRUNC-1")
-	wfiID := queryWFIID(t, env, "RE-TRUNC-1")
-	sessionID := "sess-re-trunc-1"
-	insertAgentSession(t, env, "RE-TRUNC-1", sessionID, wfiID)
-
-	longResp := make([]byte, 250)
-	for i := range longResp {
-		longResp[i] = 'x'
-	}
-
-	h := NewHandler(env.pool, env.hub, clock.Real(), nil)
-	req := buildRecordEventReq(t, "req-re-trunc", sessionID, map[string]interface{}{
-		"hook_event_name": "PostToolUse",
-		"tool_name":       "Bash",
-		"tool_response":   string(longResp),
-	})
-
-	resp := h.Handle(req)
-	if resp.Error != nil {
-		t.Fatalf("expected no error, got: %v", resp.Error)
-	}
-	content, _ := lastAgentMessage(t, env, sessionID)
-	// Expected: "[Bash result] " + 200 x's + "…" (UTF-8 ellipsis, 3 bytes)
-	const prefix = "[Bash result] "
-	const ellipsis = "…"
-	wantLen := len(prefix) + 200 + len(ellipsis)
-	if len(content) != wantLen {
-		t.Errorf("content length = %d, want %d\ncontent prefix: %q", len(content), wantLen, content[:min(40, len(content))])
-	}
-	if !strings.HasSuffix(content, ellipsis) {
-		t.Errorf("expected content to end with %q, got: %q", ellipsis, content[max(0, len(content)-10):])
+	if len(sig.bumps) != 0 {
+		t.Errorf("BumpLastMessage call count = %d, want 0 (PostToolUse must not bump stall detection)", len(sig.bumps))
 	}
 }
 
@@ -393,32 +361,6 @@ func TestRecordEvent_BumpLastMessage_CalledOnPreToolUse(t *testing.T) {
 	}
 	if sig.bumps[0] != sessionID {
 		t.Errorf("bumped session_id = %q, want %q", sig.bumps[0], sessionID)
-	}
-}
-
-// TestRecordEvent_BumpLastMessage_CalledOnPostToolUse verifies BumpLastMessage is called after a
-// successful PostToolUse record.
-func TestRecordEvent_BumpLastMessage_CalledOnPostToolUse(t *testing.T) {
-	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "RE-BUMP-2")
-	wfiID := queryWFIID(t, env, "RE-BUMP-2")
-	sessionID := "sess-re-bump-2"
-	insertAgentSession(t, env, "RE-BUMP-2", sessionID, wfiID)
-
-	sig := &bumpRecordSignaler{}
-	h := NewHandler(env.pool, env.hub, clock.Real(), sig)
-	req := buildRecordEventReq(t, "req-bump2", sessionID, map[string]interface{}{
-		"hook_event_name": "PostToolUse",
-		"tool_name":       "Bash",
-		"tool_response":   "done",
-	})
-
-	resp := h.Handle(req)
-	if resp.Error != nil {
-		t.Fatalf("expected no error, got: %v", resp.Error)
-	}
-	if len(sig.bumps) != 1 {
-		t.Fatalf("BumpLastMessage call count = %d, want 1", len(sig.bumps))
 	}
 }
 

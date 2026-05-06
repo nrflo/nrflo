@@ -92,6 +92,24 @@ describe('LogsPage', () => {
       expect(screen.getByText('api')).toBeInTheDocument()
     })
 
+    it('renders CLI interactive badge with distinct label for cli_interactive mode', () => {
+      mockUseAgentSessionLogs.mockReturnValue({
+        data: makeResponse({
+          sessions: [
+            makeLogEntry({ session_id: 'sess1111aaaabbbb', execution_mode: 'cli_interactive' }),
+            makeLogEntry({ session_id: 'sess2222aaaabbbb', execution_mode: 'cli' }),
+          ],
+          total: 2,
+          total_pages: 1,
+        }),
+        isLoading: false,
+      })
+      renderPage()
+      expect(screen.getByText('CLI interactive')).toBeInTheDocument()
+      expect(screen.getByText('cli')).toBeInTheDocument()
+      expect(screen.queryByText('cli_interactive')).not.toBeInTheDocument()
+    })
+
     it('renders CalendarClock icon only for the scheduled row', () => {
       renderPage()
       const icons = document.querySelectorAll('[class*="lucide-calendar-clock"]')

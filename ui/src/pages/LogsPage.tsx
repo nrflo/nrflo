@@ -8,12 +8,12 @@ import { StatusCell } from '@/components/ui/StatusCell'
 import { formatDateTime, formatElapsedTime, formatDurationSec } from '@/lib/utils'
 import { useAgentSessionLogs } from '@/hooks/useAgentSessionLogs'
 
-// TODO(test-writer): Test LogsPage with mocked useAgentSessionLogs — loading/empty states,
-// two-row render (scheduled+workflow_final_result vs not), pagination footer, execution_mode badge,
-// CalendarClock + "Triggered by scheduler" tooltip only in row 1, result tooltip only in row 1,
-// em-dash in row 2.
-
 const PAGE_SIZE = 20
+
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success'
+const executionModeMap: Record<string, { label: string; variant: BadgeVariant }> = {
+  cli_interactive: { label: 'CLI interactive', variant: 'outline' },
+}
 
 export function LogsPage() {
   const [page, setPage] = useState(1)
@@ -67,9 +67,12 @@ export function LogsPage() {
                     {session.model_id ?? <span>{'—'}</span>}
                   </TableCell>
                   <TableCell>
-                    {session.execution_mode ? (
-                      <Badge>{session.execution_mode}</Badge>
-                    ) : (
+                    {session.execution_mode ? (() => {
+                      const m = executionModeMap[session.execution_mode]
+                      return m
+                        ? <Badge variant={m.variant}>{m.label}</Badge>
+                        : <Badge>{session.execution_mode}</Badge>
+                    })() : (
                       <span className="text-muted-foreground">{'—'}</span>
                     )}
                   </TableCell>

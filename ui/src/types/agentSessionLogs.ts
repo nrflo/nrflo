@@ -10,7 +10,7 @@ export interface AgentSessionLogEntry {
   workflow_id: string
   workflow_instance_id: string
   scheduled: boolean
-  execution_mode?: string
+  execution_mode?: 'cli' | 'cli_interactive' | 'api' | 'script' | string
   workflow_final_result?: string
 }
 

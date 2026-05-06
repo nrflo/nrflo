@@ -125,6 +125,13 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    spawn_token   TEXT                (per-session HTTP bearer token; │
 │                                       set by spawner, NULL on legacy │
 │                                       rows; UNIQUE INDEX, mig 000087)│
+│    effective_mode TEXT               (effective execution backend:   │
+│                                       cli|cli_interactive|api|script │
+│                                       written at spawn time, mig     │
+│                                       000090; NULL on legacy rows —  │
+│                                       logs API falls back to         │
+│                                       agent_definitions.execution_   │
+│                                       mode for those)               │
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    FK workflow_instance_id → workflow_instances(id) CASCADE          │
@@ -520,7 +527,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000089** (system_prompt_suffix_no_env_diagnostics — appends a "no env diagnostics" bullet to the `system-prompt-suffix` default_template row, keeping both `template` and `default_template` columns in sync)
+Current highest migration: **000090** (agent_session_effective_mode — adds nullable `effective_mode TEXT` column to `agent_sessions`; stores the effective execution backend: `cli`, `cli_interactive`, `api`, or `script`; written at spawn time; NULL on legacy rows)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

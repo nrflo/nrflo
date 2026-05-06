@@ -342,7 +342,7 @@ POST   /api/v1/workflow-chains/{id}/runs/{runId}/cancel       # Cancel run (admi
 GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|workflow|system)
 
 # Agent Session Logs (require X-Project header or ?project= param)
-GET /api/v1/agent-session-logs     # Paginated finished sessions: ?page=&per_page= (default 1/20, max 100); joins workflow_instances (workflow_id, scheduled_task_id) and agent_definitions (execution_mode); includes workflow_final_result parsed from findings, duration_sec, scheduled bool
+GET /api/v1/agent-session-logs     # Paginated finished sessions: ?page=&per_page= (default 1/20, max 100); joins workflow_instances (workflow_id, scheduled_task_id) and agent_definitions (execution_mode); includes workflow_final_result parsed from findings, duration_sec, scheduled bool; execution_mode field prefers agent_sessions.effective_mode (cli|cli_interactive|api|script, set at spawn time) and falls back to agent_definitions.execution_mode for legacy rows
 
 # Other
 GET /api/v1/search?q=              # Full-text search

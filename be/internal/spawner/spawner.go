@@ -1186,6 +1186,18 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	}
 	proc.backend = backend
 
+	var effectiveMode string
+	switch {
+	case prep.executionMode == "api":
+		effectiveMode = "api"
+	case prep.executionMode == "script":
+		effectiveMode = "script"
+	case s.config.InteractiveCLIMode && prep.adapter != nil && prep.adapter.SupportsInteractive():
+		effectiveMode = "cli_interactive"
+	default:
+		effectiveMode = "cli"
+	}
+
 	// Register sessionProc BEFORE backend.Start so a fast SessionStart hook
 	// (or any other socket lookup keyed by sessionID) can find the proc the
 	// moment Claude posts back, not after we've returned from Start.
@@ -1202,7 +1214,7 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	}
 	s.registerAgentStart(proc.projectID, proc.ticketID, proc.workflowName, proc.workflowInstanceID,
 		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
-		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", proc.spawnToken, 0, proc.restartThreshold)
+		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", proc.spawnToken, effectiveMode, 0, proc.restartThreshold)
 	return nil
 }
 

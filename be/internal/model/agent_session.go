@@ -47,6 +47,7 @@ type AgentSession struct {
 	StartedAt          sql.NullString     `json:"-"`
 	EndedAt            sql.NullString     `json:"-"`
 	SpawnToken         sql.NullString     `json:"-"` // Bearer token for spawned agent's HTTP API access (valid while session is running/user_interactive)
+	EffectiveMode      sql.NullString     `json:"-"` // Effective execution backend: cli|cli_interactive|api|script (set at spawn time)
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`
 
@@ -90,6 +91,7 @@ type AgentSessionLogRow struct {
 	WorkflowInstanceID string
 	ScheduledTaskID    sql.NullString
 	ExecutionMode      sql.NullString
+	EffectiveMode      sql.NullString
 }
 
 // MarshalJSON implements custom JSON marshaling for AgentSession

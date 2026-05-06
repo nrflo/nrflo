@@ -68,7 +68,9 @@ func mapLogRow(row *model.AgentSessionLogRow) AgentSessionLogResponse {
 	if row.ModelID.Valid {
 		resp.ModelID = row.ModelID.String
 	}
-	if row.ExecutionMode.Valid {
+	if row.EffectiveMode.Valid && row.EffectiveMode.String != "" {
+		resp.ExecutionMode = row.EffectiveMode.String
+	} else if row.ExecutionMode.Valid {
 		resp.ExecutionMode = row.ExecutionMode.String
 	}
 	if row.StartedAt.Valid {

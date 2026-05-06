@@ -6,25 +6,45 @@ import type { ValidationResult } from '@/types/pythonScript'
 
 // Stub CodeMirror editor — jsdom cannot run it
 vi.mock('@/components/ui/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange, placeholder }: {
+  CodeEditor: ({ value, onChange, placeholder, readOnly }: {
     value: string
     onChange: (v: string) => void
     placeholder?: string
+    readOnly?: boolean
   }) => (
     <textarea
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => !readOnly && onChange(e.target.value)}
       placeholder={placeholder}
       aria-label="Code editor"
+      readOnly={readOnly}
     />
   ),
 }))
 
 vi.mock('@/hooks/usePythonScripts', () => ({
   useValidatePythonScript: vi.fn(),
+  useReadPythonFile: vi.fn().mockReturnValue({
+    data: undefined, isLoading: false, isFetching: false, isError: false, refetch: vi.fn(), error: null,
+  }),
+  useBrowsePythonDir: vi.fn().mockReturnValue({
+    data: undefined, isLoading: false, isError: false, error: null,
+  }),
 }))
 
-import { useValidatePythonScript } from '@/hooks/usePythonScripts'
+// Stub FilePickerModal so we can trigger onSelect without modal internals
+vi.mock('./FilePickerModal', () => ({
+  FilePickerModal: ({ open, onSelect }: {
+    open: boolean
+    onSelect: (p: string) => void
+    onClose: () => void
+  }) => {
+    if (!open) return null
+    return <button onClick={() => onSelect('/scripts/foo.py')}>Select foo.py</button>
+  },
+}))
+
+import { useValidatePythonScript, useReadPythonFile } from '@/hooks/usePythonScripts'
 
 function setupValidate(result: ValidationResult, isPending = false) {
   vi.mocked(useValidatePythonScript).mockReturnValue({
@@ -157,9 +177,109 @@ describe('PythonScriptForm — Submit', () => {
       isCreate: false,
       initial: {
         id: 'x', project_id: 'p', name: 'existing-script', description: 'desc',
-        code: 'pass', created_at: '', updated_at: '',
+        code: 'pass', file_path: '', created_at: '', updated_at: '',
       },
     })
     expect(screen.getByDisplayValue('existing-script')).toBeInTheDocument()
+  })
+})
+
+const INITIAL_WITH_PATH = {
+  id: 'x', project_id: 'p', name: 'myscript', description: '',
+  code: '', file_path: '/scripts/foo.py', created_at: '', updated_at: '',
+}
+
+describe('PythonScriptForm — file_path mode', () => {
+  const mockRefetch = vi.fn()
+
+  beforeEach(() => {
+    setupValidate({ ok: true })
+    vi.mocked(useReadPythonFile).mockReturnValue({
+      data: undefined, isLoading: false, isFetching: false, isError: false, refetch: mockRefetch, error: null,
+    } as unknown as ReturnType<typeof useReadPythonFile>)
+  })
+
+  it('shows editable editor and Check Syntax when file_path is empty', () => {
+    renderForm()
+    expect(screen.getByRole('button', { name: /check syntax/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/code editor/i)).not.toHaveAttribute('readonly')
+  })
+
+  it('renders read-only mode immediately when initial file_path is set', () => {
+    renderForm({ isCreate: false, initial: INITIAL_WITH_PATH })
+    expect(screen.getByLabelText(/code editor/i)).toHaveAttribute('readonly')
+    expect(screen.queryByRole('button', { name: /check syntax/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('/scripts/foo.py')).toBeInTheDocument()
+  })
+
+  it('Browse → select switches to read-only mode with path shown', async () => {
+    vi.mocked(useReadPythonFile).mockReturnValue({
+      data: { content: 'print("hello")', path: '/scripts/foo.py' },
+      isLoading: false, isFetching: false, isError: false, refetch: mockRefetch, error: null,
+    } as unknown as ReturnType<typeof useReadPythonFile>)
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: /browse/i }))
+    await user.click(screen.getByRole('button', { name: /select foo\.py/i }))
+
+    expect(screen.getByDisplayValue('/scripts/foo.py')).toBeInTheDocument()
+    expect(screen.getByLabelText(/code editor/i)).toHaveAttribute('readonly')
+    expect(screen.queryByRole('button', { name: /check syntax/i })).not.toBeInTheDocument()
+  })
+
+  it('Reload from file calls refetch', async () => {
+    renderForm({ isCreate: false, initial: INITIAL_WITH_PATH })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /reload from file/i }))
+    expect(mockRefetch).toHaveBeenCalledOnce()
+  })
+
+  it('Clear restores editable editor and Check Syntax', async () => {
+    renderForm({ isCreate: false, initial: INITIAL_WITH_PATH })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /clear/i }))
+
+    expect(screen.getByRole('button', { name: /check syntax/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/code editor/i)).not.toHaveAttribute('readonly')
+    expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument()
+  })
+
+  it('submit with file_path skips validation and sends file_path', async () => {
+    const onSubmit = vi.fn()
+    const mutateAsync = vi.fn().mockResolvedValue({ ok: true })
+    vi.mocked(useValidatePythonScript).mockReturnValue({
+      mutateAsync, mutate: vi.fn(), isPending: false,
+    } as unknown as ReturnType<typeof useValidatePythonScript>)
+
+    renderForm({ isCreate: false, onSubmit, initial: INITIAL_WITH_PATH })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    expect(mutateAsync).not.toHaveBeenCalled()
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ file_path: '/scripts/foo.py' }))
+  })
+
+  it('submit after Clear sends empty file_path', async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    renderForm({ isCreate: false, onSubmit, initial: INITIAL_WITH_PATH })
+
+    await user.click(screen.getByRole('button', { name: /clear/i }))
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await screen.findByText(/syntax ok/i)
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ file_path: '' }))
+  })
+
+  it('shows error message when file read fails', () => {
+    vi.mocked(useReadPythonFile).mockReturnValue({
+      data: undefined, isLoading: false, isFetching: false, isError: true, refetch: mockRefetch, error: null,
+    } as unknown as ReturnType<typeof useReadPythonFile>)
+
+    renderForm({ isCreate: false, initial: INITIAL_WITH_PATH })
+    expect(screen.getByText(/failed to read file/i)).toBeInTheDocument()
   })
 })

@@ -6,6 +6,8 @@ import {
   updatePythonScript,
   deletePythonScript,
   validatePythonScript,
+  browseDirectory,
+  readPythonFile,
 } from '@/api/pythonScripts'
 import type { PythonScriptCreateRequest, PythonScriptUpdateRequest } from '@/types/pythonScript'
 
@@ -58,5 +60,21 @@ export function useDeletePythonScript() {
 export function useValidatePythonScript() {
   return useMutation({
     mutationFn: validatePythonScript,
+  })
+}
+
+export function useBrowsePythonDir(path?: string) {
+  return useQuery({
+    queryKey: [...pythonScriptKeys.all, 'browse', path ?? ''] as const,
+    queryFn: () => browseDirectory(path),
+    staleTime: 0,
+  })
+}
+
+export function useReadPythonFile(path: string | null) {
+  return useQuery({
+    queryKey: [...pythonScriptKeys.all, 'file', path ?? ''] as const,
+    queryFn: () => readPythonFile(path!),
+    enabled: !!path,
   })
 }

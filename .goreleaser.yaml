@@ -21,6 +21,21 @@ builds:
       - -s -w -X be/internal/cli.version={{ .Version }}
     goos:
       - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+  - id: nrflo_server_linux
+    binary: nrflo_server
+    dir: be
+    main: ./cmd/server
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X be/internal/cli.version={{ .Version }}
+    goos:
+      - linux
     goarch:
       - amd64
       - arm64
@@ -54,6 +69,7 @@ archives:
     ids:
       - nrflo
       - nrflo_server
+      - nrflo_server_linux
     name_template: "nrflo_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:

@@ -1,5 +1,6 @@
 .PHONY: all build build-cli build-server build-server-only build-ui \
        build-release build-release-cli build-release-server \
+       build-server-notray build-release-server-notray \
        install clean test test-ui test-integration test-pkg test-verbose \
        test-coverage test-race tidy release-check release-dry-run help \
        embed-assets docker-build docker-buildx docker-login
@@ -72,6 +73,15 @@ build-release-cli: embed-assets
 build-release-server: build-ui
 	cd $(BE_DIR) && CGO_ENABLED=$(CGO_SERVER) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		$(GO) build -tags tray -ldflags="$(LDFLAGS)" -o nrflo_server ./cmd/server
+
+## build-server-notray: Build server binary without tray (CGO-free, for Linux)
+build-server-notray: build-ui
+	cd $(BE_DIR) && CGO_ENABLED=0 $(GO) build -o nrflo_server ./cmd/server
+
+## build-release-server-notray: Release build server without tray (CGO-free cross-compile)
+build-release-server-notray: build-ui
+	cd $(BE_DIR) && CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		$(GO) build -ldflags="$(LDFLAGS)" -o nrflo_server ./cmd/server
 
 # --- Install ---
 

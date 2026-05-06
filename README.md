@@ -96,6 +96,28 @@ To upgrade:
 brew update && brew upgrade nrflo
 ```
 
+### Install on Linux
+
+Download the tarball for your architecture from the [releases page](https://github.com/nrflo/nrflo/releases) and extract both binaries to `/usr/local/bin`:
+
+**amd64:**
+
+```bash
+curl -L https://github.com/nrflo/nrflo/releases/download/<VERSION>/nrflo_<VERSION>_linux_amd64.tar.gz \
+  | sudo tar -xz -C /usr/local/bin nrflo nrflo_server
+```
+
+**arm64:**
+
+```bash
+curl -L https://github.com/nrflo/nrflo/releases/download/<VERSION>/nrflo_<VERSION>_linux_arm64.tar.gz \
+  | sudo tar -xz -C /usr/local/bin nrflo nrflo_server
+```
+
+Replace `<VERSION>` with the desired release tag (e.g. `v1.2.3`).
+
+On Linux there is no system tray; the server runs headless and is reached at http://localhost:6587.
+
 ### Build from source
 
 ```bash

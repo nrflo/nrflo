@@ -55,7 +55,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=nrflo workflow orchestrator (api-mode, linux)
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=Apache-2.0
 
       - name: Build & push (linux/amd64,arm64)
         uses: docker/build-push-action@v6

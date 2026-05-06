@@ -5,7 +5,7 @@ class Nrflo < Formula
   homepage "https://github.com/nrflo/nrflo"
   url "https://github.com/nrflo/nrflo/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "PLACEHOLDER"
-  license "MIT"
+  license "Apache-2.0"
 
   depends_on "go" => :build
   depends_on "node" => :build

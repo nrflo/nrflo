@@ -99,6 +99,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_agent_session_logs.go` | Agent session log list (GET /api/v1/agent-session-logs, paginated, project-scoped, finished sessions only joined with workflow_instances + agent_definitions) |
 | `handlers_logs.go` | Backend log file viewer |
 | `handlers_python_scripts.go` | Python script CRUD (list, create, get, update, delete) + validate; project-scoped via X-Project header; writes admin-only |
+| `handlers_python_scripts_files.go` | Python script file browser (browse dir, read file); project-scoped via X-Project header; read-only, protected |
 | `handlers_review.go` | Review item CRUD (list, create, get with diff, patch draft, approve, reject); project-scoped via X-Project header; api-mode only |
 | `handlers_review_diff.go` | `diffJSON` helper: key-by-key JSON object comparison returning {added, removed, changed} |
 | `handlers_config_files.go` | Config editor (list files, get content, put content, get history, rollback); project-scoped; api-mode only; builds configeditor.Service per-request from customer_config_dir project setting |
@@ -203,11 +204,13 @@ DELETE /api/v1/system-agents/:id       # Delete system agent definition
 
 # Python scripts (project-scoped, require X-Project header; writes admin-only)
 GET    /api/v1/python-scripts              # List all scripts for project (ordered by name)
-POST   /api/v1/python-scripts              # Create script; body: {name, description?, code?}; 201 on success
+POST   /api/v1/python-scripts              # Create script; body: {name, description?, code?, file_path?}; 201 on success; 400 on file_path validation error
 GET    /api/v1/python-scripts/{id}         # Get one; 404 cross-project
-PATCH  /api/v1/python-scripts/{id}         # Partial update; body: {name?,description?,code?}; 404 if not found
+PATCH  /api/v1/python-scripts/{id}         # Partial update; body: {name?,description?,code?,file_path?}; 404 if not found; 400 on file_path validation error
 DELETE /api/v1/python-scripts/{id}         # Delete; 404 if not found
 POST   /api/v1/python-scripts/validate     # Syntax-check Python code; body: {code}; returns {ok,error?,line?,col?}; no DB write
+GET    /api/v1/python-scripts/browse       # Browse directory; ?path= (absolute; default: project root_path or home dir); returns {path, entries:[{name,is_dir,is_python,size,modified_at}]}; dirs and .py files only, no dotfiles
+GET    /api/v1/python-scripts/read-file    # Read .py file; ?path= (absolute, must exist, .py extension, ≤1 MiB); returns {path, content}; 404 missing, 413 oversized
 
 # Default templates (global, no project scope)
 GET    /api/v1/default-templates           # List all default templates (?type= filter: agent, injectable)

@@ -507,12 +507,15 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    updated_at           TEXT NOT NULL                                 │
 │    INDEX idx_workflow_chain_run_steps_run (chain_run_id, position)    │
 │                                                                      │
-│  PYTHON_SCRIPTS                               (mig 000085)           │
+│  PYTHON_SCRIPTS                               (mig 000085, 000092)   │
 │    id          TEXT PRIMARY KEY (ps-xxxxxx)                           │
 │    project_id  TEXT NOT NULL (FK → projects.id CASCADE)              │
 │    name        TEXT NOT NULL                                          │
 │    description TEXT NOT NULL DEFAULT ''                               │
 │    code        TEXT NOT NULL DEFAULT ''                               │
+│    file_path   TEXT NOT NULL DEFAULT ''  (abs path to .py file;      │
+│                when non-empty, read at spawn time instead of code;   │
+│                mig 000092)                                            │
 │    created_at  TEXT NOT NULL                                          │
 │    updated_at  TEXT NOT NULL                                          │
 │    UNIQUE INDEX python_scripts_project_id_id (project_id, id)        │
@@ -537,7 +540,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000091** (workflow_layer_policies — new table storing per-layer pass policy overrides keyed by project_id+workflow_id+layer with FK CASCADE to workflows)
+Current highest migration: **000092** (python_scripts_file_path — ALTER TABLE python_scripts ADD COLUMN file_path TEXT NOT NULL DEFAULT "")
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

@@ -569,6 +569,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)
 	admin("POST /api/v1/python-scripts", s.handleCreatePythonScript)
 	protected("POST /api/v1/python-scripts/validate", s.handleValidatePythonScript)
+	protected("GET /api/v1/python-scripts/browse", s.handleBrowsePythonScriptDir)
+	protected("GET /api/v1/python-scripts/read-file", s.handleReadPythonScriptFile)
 	protected("GET /api/v1/python-scripts/{id}", s.handleGetPythonScript)
 	admin("PATCH /api/v1/python-scripts/{id}", s.handleUpdatePythonScript)
 	admin("DELETE /api/v1/python-scripts/{id}", s.handleDeletePythonScript)

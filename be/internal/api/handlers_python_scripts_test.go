@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -163,5 +164,116 @@ func TestHandleCreatePythonScript_Valid(t *testing.T) {
 	}
 	if script.Description != "desc" {
 		t.Errorf("Description = %q, want desc", script.Description)
+	}
+}
+
+// --- file_path on Create ---
+
+func TestHandleCreatePythonScript_InvalidFilePath(t *testing.T) {
+	s, projectID := newPythonScriptServer(t)
+	body := `{"name":"X","file_path":"relative/script.py"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/python-scripts?project="+projectID, strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	s.handleCreatePythonScript(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
+	}
+	assertErrorContains(t, rr, "file_path")
+}
+
+func TestHandleCreatePythonScript_ValidFilePath(t *testing.T) {
+	s, projectID := newPythonScriptServer(t)
+	dir := t.TempDir()
+	pyFile := filepath.Join(dir, "script.py")
+	if err := os.WriteFile(pyFile, []byte("x=1"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	body := `{"name":"FileScript","file_path":"` + pyFile + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/python-scripts?project="+projectID, strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	s.handleCreatePythonScript(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body: %s", rr.Code, rr.Body.String())
+	}
+	script := decodePythonScript(t, rr)
+	if script.FilePath != pyFile {
+		t.Errorf("FilePath = %q, want %q", script.FilePath, pyFile)
+	}
+}
+
+// --- file_path on Update ---
+
+func TestHandleUpdatePythonScript_InvalidFilePath(t *testing.T) {
+	s, projectID := newPythonScriptServer(t)
+	script := createPythonScript(t, s, projectID, "Script", "x=1")
+
+	body := `{"file_path":"relative/script.py"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, strings.NewReader(body))
+	req.SetPathValue("id", script.ID)
+	rr := httptest.NewRecorder()
+	s.handleUpdatePythonScript(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
+	}
+	assertErrorContains(t, rr, "file_path")
+}
+
+func TestHandleUpdatePythonScript_ValidFilePath(t *testing.T) {
+	s, projectID := newPythonScriptServer(t)
+	script := createPythonScript(t, s, projectID, "Script", "x=1")
+
+	dir := t.TempDir()
+	pyFile := filepath.Join(dir, "v2.py")
+	if err := os.WriteFile(pyFile, []byte("x=2"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	body := `{"file_path":"` + pyFile + `"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, strings.NewReader(body))
+	req.SetPathValue("id", script.ID)
+	rr := httptest.NewRecorder()
+	s.handleUpdatePythonScript(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleUpdatePythonScript_ClearFilePath(t *testing.T) {
+	s, projectID := newPythonScriptServer(t)
+	dir := t.TempDir()
+	pyFile := filepath.Join(dir, "script.py")
+	if err := os.WriteFile(pyFile, []byte("x=1"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	createBody := `{"name":"S","file_path":"` + pyFile + `"}`
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/python-scripts?project="+projectID, strings.NewReader(createBody))
+	createRR := httptest.NewRecorder()
+	s.handleCreatePythonScript(createRR, createReq)
+	if createRR.Code != http.StatusCreated {
+		t.Fatalf("create status = %d", createRR.Code)
+	}
+	script := decodePythonScript(t, createRR)
+
+	updateBody := `{"file_path":""}`
+	updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, strings.NewReader(updateBody))
+	updateReq.SetPathValue("id", script.ID)
+	updateRR := httptest.NewRecorder()
+	s.handleUpdatePythonScript(updateRR, updateReq)
+	if updateRR.Code != http.StatusOK {
+		t.Errorf("update status = %d, want 200; body: %s", updateRR.Code, updateRR.Body.String())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, nil)
+	getReq.SetPathValue("id", script.ID)
+	getRR := httptest.NewRecorder()
+	s.handleGetPythonScript(getRR, getReq)
+	if getRR.Code != http.StatusOK {
+		t.Fatalf("get status = %d", getRR.Code)
+	}
+	var got model.PythonScript
+	if err := json.NewDecoder(getRR.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.FilePath != "" {
+		t.Errorf("FilePath = %q, want empty after clear", got.FilePath)
 	}
 }

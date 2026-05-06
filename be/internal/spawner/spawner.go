@@ -722,6 +722,28 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		return nil, nil, fmt.Errorf("python_script_not_found: %w", err)
 	}
 
+	scriptCode := script.Code
+	if script.FilePath != "" {
+		if !filepath.IsAbs(script.FilePath) {
+			return nil, nil, fmt.Errorf("python_script_file_path_invalid: file_path must be absolute")
+		}
+		info, err := os.Stat(script.FilePath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("python_script_file_path_invalid: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, nil, fmt.Errorf("python_script_file_path_invalid: file_path must be a regular file")
+		}
+		if !strings.HasSuffix(script.FilePath, ".py") {
+			return nil, nil, fmt.Errorf("python_script_file_path_invalid: file_path must end in .py")
+		}
+		data, err := os.ReadFile(script.FilePath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("python_script_file_path_read: %w", err)
+		}
+		scriptCode = string(data)
+	}
+
 	// Resolve timeout from agent config or agent definition.
 	timeout := 40
 	if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.Timeout > 0 {
@@ -792,7 +814,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 
 	prep := &prepResult{
 		executionMode: "script",
-		scriptCode:    script.Code,
+		scriptCode:    scriptCode,
 		scriptID:      script.ID,
 		phase:         phase,
 		opts: SpawnOptions{

@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"be/internal/clock"
@@ -23,10 +25,44 @@ func NewPythonScriptService(pool *db.Pool, clk clock.Clock) *PythonScriptService
 	return &PythonScriptService{pool: pool, clock: clk}
 }
 
+// validateFilePath checks that a file path is valid for script use.
+// Empty string is allowed (means no file-path override). Non-empty must be
+// absolute, exist, be a regular file, and end in .py.
+func validateFilePath(path string) error {
+	if path == "" {
+		return nil
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("file_path must be absolute")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("file_path does not exist")
+		}
+		return fmt.Errorf("file_path: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("file_path must be a regular file")
+	}
+	if !strings.HasSuffix(path, ".py") {
+		return fmt.Errorf("file_path must end in .py")
+	}
+	return nil
+}
+
 // Create creates a new python script for a project
 func (s *PythonScriptService) Create(projectID string, req *types.PythonScriptCreateRequest) (*model.PythonScript, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("name is required")
+	}
+
+	fp := ""
+	if req.FilePath != nil {
+		fp = *req.FilePath
+	}
+	if err := validateFilePath(fp); err != nil {
+		return nil, err
 	}
 
 	gen := id.New("ps")
@@ -42,6 +78,7 @@ func (s *PythonScriptService) Create(projectID string, req *types.PythonScriptCr
 		Name:        req.Name,
 		Description: req.Description,
 		Code:        req.Code,
+		FilePath:    fp,
 	}
 
 	if err := r.Create(script); err != nil {
@@ -77,6 +114,11 @@ func (s *PythonScriptService) List(projectID string) ([]*model.PythonScript, err
 func (s *PythonScriptService) Update(projectID, id string, req *types.PythonScriptUpdateRequest) error {
 	if req.Name != nil && *req.Name == "" {
 		return fmt.Errorf("name cannot be empty")
+	}
+	if req.FilePath != nil {
+		if err := validateFilePath(*req.FilePath); err != nil {
+			return err
+		}
 	}
 	r := repo.NewPythonScriptRepo(s.pool, s.clock)
 	return r.Update(projectID, id, req)

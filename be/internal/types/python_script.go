@@ -2,9 +2,10 @@ package types
 
 // PythonScriptCreateRequest is the request for creating a Python script
 type PythonScriptCreateRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Code        string `json:"code,omitempty"`
+	Name        string  `json:"name"`
+	Description string  `json:"description,omitempty"`
+	Code        string  `json:"code,omitempty"`
+	FilePath    *string `json:"file_path,omitempty"`
 }
 
 // PythonScriptUpdateRequest is the request for updating a Python script
@@ -12,6 +13,7 @@ type PythonScriptUpdateRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Code        *string `json:"code,omitempty"`
+	FilePath    *string `json:"file_path,omitempty"`
 }
 
 // ValidatePythonScriptRequest is the request for validating Python code syntax

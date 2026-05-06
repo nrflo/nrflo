@@ -9,6 +9,7 @@ type PythonScript struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Code        string    `json:"code"`
+	FilePath    string    `json:"file_path"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

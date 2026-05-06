@@ -52,6 +52,10 @@ func (s *Server) handleCreatePythonScript(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "file_path") {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -105,7 +109,7 @@ func (s *Server) handleUpdatePythonScript(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "cannot be empty") {
+		if strings.Contains(err.Error(), "cannot be empty") || strings.Contains(err.Error(), "file_path") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

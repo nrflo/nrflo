@@ -30,13 +30,14 @@ func (r *PythonScriptRepo) Create(script *model.PythonScript) error {
 	script.UpdatedAt = script.CreatedAt
 
 	_, err := r.db.Exec(`
-		INSERT INTO python_scripts (id, project_id, name, description, code, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO python_scripts (id, project_id, name, description, code, file_path, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(script.ID),
 		strings.ToLower(script.ProjectID),
 		script.Name,
 		script.Description,
 		script.Code,
+		script.FilePath,
 		now,
 		now,
 	)
@@ -49,7 +50,7 @@ func (r *PythonScriptRepo) Get(projectID, id string) (*model.PythonScript, error
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, project_id, name, description, code, created_at, updated_at
+		SELECT id, project_id, name, description, code, file_path, created_at, updated_at
 		FROM python_scripts
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, id).Scan(
@@ -58,6 +59,7 @@ func (r *PythonScriptRepo) Get(projectID, id string) (*model.PythonScript, error
 		&script.Name,
 		&script.Description,
 		&script.Code,
+		&script.FilePath,
 		&createdAt,
 		&updatedAt,
 	)
@@ -76,7 +78,7 @@ func (r *PythonScriptRepo) Get(projectID, id string) (*model.PythonScript, error
 // List retrieves all python scripts for a project, ordered by name
 func (r *PythonScriptRepo) List(projectID string) ([]*model.PythonScript, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, name, description, code, created_at, updated_at
+		SELECT id, project_id, name, description, code, file_path, created_at, updated_at
 		FROM python_scripts
 		WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY name ASC`, projectID)
@@ -96,6 +98,7 @@ func (r *PythonScriptRepo) List(projectID string) ([]*model.PythonScript, error)
 			&script.Name,
 			&script.Description,
 			&script.Code,
+			&script.FilePath,
 			&createdAt,
 			&updatedAt,
 		)
@@ -127,6 +130,10 @@ func (r *PythonScriptRepo) Update(projectID, id string, req *types.PythonScriptU
 	if req.Code != nil {
 		updates = append(updates, "code = ?")
 		args = append(args, *req.Code)
+	}
+	if req.FilePath != nil {
+		updates = append(updates, "file_path = ?")
+		args = append(args, *req.FilePath)
 	}
 
 	if len(updates) == 0 {

@@ -228,6 +228,10 @@ T4 wires tool dispatch on top of this seam (registry resolution in `prepareSpawn
 
 `scriptBackend` (`backend_script.go`) executes a stored Python script as an agent. There is no CLI adapter and no prompt template — the spawner loads the script code from the `python_scripts` DB row (linked via `agent_definitions.python_script_id`) and writes it directly to disk.
 
+### FilePath Override
+
+When the `python_scripts` row has a non-empty `file_path`, `prepareScriptSpawn` re-validates the path (absolute, regular file, `.py` extension) and calls `os.ReadFile` on it. The file bytes replace `script.Code` as the `prep.scriptCode` written to disk at spawn time. Validation failures return a spawn error with prefix `python_script_file_path_invalid:`; read failures use `python_script_file_path_read:`. When `file_path` is empty, behavior is unchanged (uses stored `code`).
+
 ### Start Sequence
 
 1. Creates `/tmp/nrflo/scripts/` directory (mode 0755) if needed.

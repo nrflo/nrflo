@@ -281,14 +281,17 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
   'workflow_def.created': (_event, qc) => {
     qc.invalidateQueries({ queryKey: ['workflow-defs'] })
     qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    qc.invalidateQueries({ queryKey: ['workflow-layer-policies'] })
   },
   'workflow_def.updated': (_event, qc) => {
     qc.invalidateQueries({ queryKey: ['workflow-defs'] })
     qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    qc.invalidateQueries({ queryKey: ['workflow-layer-policies'] })
   },
   'workflow_def.deleted': (_event, qc) => {
     qc.invalidateQueries({ queryKey: ['workflow-defs'] })
     qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
+    qc.invalidateQueries({ queryKey: ['workflow-layer-policies'] })
   },
 
   'agent_def.created': (_event, qc) => {

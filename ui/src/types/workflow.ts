@@ -96,6 +96,7 @@ export interface WorkflowState {
   agent_history?: AgentHistoryEntry[]
   endless_loop?: boolean
   stop_endless_loop_after_iteration?: boolean
+  layer_policies?: Record<number, LayerPassPolicy>
 }
 
 export interface WorkflowResponse {
@@ -208,6 +209,16 @@ export interface ProjectAgentSessionsResponse {
 
 // Workflow definition types (DB-stored)
 
+/** Pass policy for a workflow layer: any | all | quorum:N | percent:P */
+export type LayerPassPolicy = string
+
+export interface WorkflowLayerPolicy {
+  project_id: string
+  workflow_id: string
+  layer: number
+  pass_policy: LayerPassPolicy
+}
+
 export interface PhaseDef {
   id: string
   agent: string
@@ -221,6 +232,7 @@ export interface WorkflowDefSummary {
   groups?: string[]
   close_ticket_on_complete?: boolean
   phases: PhaseDef[]
+  layer_policies?: Record<number, LayerPassPolicy>
 }
 
 /** Full WorkflowDef as returned by get/create endpoints */
@@ -232,6 +244,7 @@ export interface WorkflowDef {
   groups?: string[]
   close_ticket_on_complete?: boolean
   phases: PhaseDef[]
+  layer_policies?: Record<number, LayerPassPolicy>
   created_at: string
   updated_at: string
 }

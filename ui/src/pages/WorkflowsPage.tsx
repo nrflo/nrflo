@@ -50,7 +50,14 @@ function WorkflowCard({
     return Object.keys(byLayer)
       .map(Number)
       .sort((a, b) => a - b)
-      .map((l) => byLayer[l].length > 1 ? `[${byLayer[l].join(' | ')}]` : byLayer[l][0])
+      .map((l) => {
+        if (byLayer[l].length > 1) {
+          const policy = def.layer_policies?.[l]
+          const suffix = policy ? `·${policy}` : ''
+          return `[${byLayer[l].join(' | ')}]${suffix}`
+        }
+        return byLayer[l][0]
+      })
       .join(' -> ')
   })()
 

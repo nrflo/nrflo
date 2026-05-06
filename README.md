@@ -118,6 +118,14 @@ Replace `<VERSION>` with the desired release tag (e.g. `v1.2.3`).
 
 On Linux there is no system tray; the server runs headless and is reached at http://localhost:6587.
 
+When serving over plain HTTP (e.g. localhost or a LAN), start the server with `--insecure-cookies` so the session cookie is not marked `Secure` and login works in the browser:
+
+```bash
+nrflo_server serve --host 0.0.0.0 --insecure-cookies
+```
+
+Drop `--insecure-cookies` once the server is fronted by HTTPS.
+
 ### Build from source
 
 ```bash

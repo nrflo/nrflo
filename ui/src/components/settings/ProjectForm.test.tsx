@@ -184,6 +184,10 @@ describe('buildSafetyHookJSON', () => {
     expect(buildSafetyHookJSON({ ...emptyProjectForm, safety_hook_enabled: false })).toBe('')
   })
 
+  it('returns empty string for unmodified emptyProjectForm', () => {
+    expect(buildSafetyHookJSON(emptyProjectForm)).toBe('')
+  })
+
   it('builds correct JSON when enabled', () => {
     const formData = {
       ...emptyProjectForm,
@@ -229,6 +233,16 @@ describe('buildSafetyHookJSON', () => {
 describe('ProjectForm — safety hook section', () => {
   it('hides safety hook fields when disabled', () => {
     render(<ProjectForm {...makeProps({ safety_hook_enabled: false })} />)
+    expect(screen.queryByRole('switch', { name: /allow git operations/i })).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/node_modules/i)).not.toBeInTheDocument()
+  })
+
+  it('emptyProjectForm has safety_hook_enabled false', () => {
+    expect(emptyProjectForm.safety_hook_enabled).toBe(false)
+  })
+
+  it('hides safety hook details with default emptyProjectForm', () => {
+    render(<ProjectForm {...makeProps()} />)
     expect(screen.queryByRole('switch', { name: /allow git operations/i })).not.toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/node_modules/i)).not.toBeInTheDocument()
   })

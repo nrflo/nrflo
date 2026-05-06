@@ -41,7 +41,7 @@ export const emptyProjectForm: ProjectFormData = {
   use_git_worktrees: false,
   push_after_merge: false,
   interactive_cli_mode: false,
-  safety_hook_enabled: true,
+  safety_hook_enabled: false,
   safety_hook_allow_git: true,
   safety_hook_allowed_rm_paths: DEFAULT_RM_PATHS,
   safety_hook_dangerous_patterns: DEFAULT_DANGEROUS_PATTERNS,

@@ -249,18 +249,18 @@ describe('SettingsPage — create project safety hook defaults', () => {
     vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject()] })
   })
 
-  it('shows safety hook enabled by default in create form', async () => {
+  it('shows safety hook disabled by default in create form', async () => {
     const user = userEvent.setup()
     renderPage()
     await goToProjectsTab()
     await screen.findByText('Test Project')
     await user.click(screen.getByRole('button', { name: /new project/i }))
 
-    expect(screen.getByRole('switch', { name: /enable safety hook/i })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('switch', { name: /allow git operations/i })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: /enable safety hook/i })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByRole('switch', { name: /allow git operations/i })).not.toBeInTheDocument()
   })
 
-  it('create mutation includes claude_safety_hook with default dangerous patterns', async () => {
+  it('create mutation omits claude_safety_hook when safety hook is disabled by default', async () => {
     const user = userEvent.setup()
     vi.mocked(projectsApi.createProject).mockResolvedValue(makeProject({ id: 'new-proj' }))
 
@@ -273,13 +273,7 @@ describe('SettingsPage — create project safety hook defaults', () => {
 
     await waitFor(() => {
       const createData = vi.mocked(projectsApi.createProject).mock.calls[0][0]
-      expect(createData.claude_safety_hook).toBeTruthy()
-      const parsed = JSON.parse(createData.claude_safety_hook!)
-      expect(parsed.enabled).toBe(true)
-      expect(parsed.allow_git).toBe(true)
-      expect(parsed.dangerous_patterns).toContain('rm -rf /')
-      expect(parsed.dangerous_patterns).toContain('DROP TABLE')
-      expect(parsed.rm_rf_allowed_paths).toContain('node_modules')
+      expect(createData.claude_safety_hook).toBeUndefined()
     })
   })
 })

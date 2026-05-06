@@ -15,7 +15,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
 		SELECT s.id, s.phase, s.agent_type, s.model_id, s.pid, s.result, s.started_at, s.context_left, s.restart_count,
-		       ad.restart_threshold, s.ancestor_session_id, ad.tag, s.nudge_count
+		       ad.restart_threshold, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode
 		FROM agent_sessions s
 		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
@@ -29,10 +29,10 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 
 	for rows.Next() {
 		var id, agentType string
-		var phase, modelID, agentResult, startedAt, ancestorSessionID, tag sql.NullString
+		var phase, modelID, agentResult, startedAt, ancestorSessionID, tag, effectiveMode sql.NullString
 		var pid, contextLeft, restartThreshold sql.NullInt64
 		var restartCount, nudgeCount int
-		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID, &tag, &nudgeCount)
+		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode)
 
 		key := agentType
 		agent := map[string]interface{}{
@@ -73,6 +73,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 		if tag.Valid && tag.String != "" {
 			agent["tag"] = tag.String
 		}
+		if effectiveMode.Valid && effectiveMode.String != "" {
+			agent["effective_mode"] = effectiveMode.String
+		}
 		if restartCount > 0 {
 			chainRoot := id
 			if ancestorSessionID.Valid {
@@ -90,7 +93,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string][]RestartDetail) []interface{} {
 	history := []interface{}{}
 	rows, err := s.pool.Query(`
-		SELECT s.id, s.phase, s.agent_type, s.model_id, s.status, s.result, s.result_reason, s.pid, s.started_at, s.ended_at, s.context_left, s.restart_count, s.ancestor_session_id, ad.tag, s.nudge_count
+		SELECT s.id, s.phase, s.agent_type, s.model_id, s.status, s.result, s.result_reason, s.pid, s.started_at, s.ended_at, s.context_left, s.restart_count, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode
 		FROM agent_sessions s
 		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
@@ -105,10 +108,10 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 
 	for rows.Next() {
 		var id, agentType string
-		var phase, modelID, status, agentResult, resultReason, startedAt, endedAt, ancestorSessionID, tag sql.NullString
+		var phase, modelID, status, agentResult, resultReason, startedAt, endedAt, ancestorSessionID, tag, effectiveMode sql.NullString
 		var pid, contextLeft sql.NullInt64
 		var restartCount, nudgeCount int
-		rows.Scan(&id, &phase, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft, &restartCount, &ancestorSessionID, &tag, &nudgeCount)
+		rows.Scan(&id, &phase, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft, &restartCount, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode)
 
 		entry := map[string]interface{}{
 			"agent_id":   id,
@@ -152,6 +155,9 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 		}
 		if tag.Valid && tag.String != "" {
 			entry["tag"] = tag.String
+		}
+		if effectiveMode.Valid && effectiveMode.String != "" {
+			entry["effective_mode"] = effectiveMode.String
 		}
 		entry["restart_count"] = restartCount
 		entry["nudge_count"] = nudgeCount

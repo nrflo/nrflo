@@ -345,6 +345,12 @@ GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|wo
 # Agent Session Logs (require X-Project header or ?project= param)
 GET /api/v1/agent-session-logs     # Paginated finished sessions: ?page=&per_page= (default 1/20, max 100); joins workflow_instances (workflow_id, scheduled_task_id) and agent_definitions (execution_mode); includes workflow_final_result parsed from findings, duration_sec, scheduled bool; execution_mode field prefers agent_sessions.effective_mode (cli|cli_interactive|api|script, set at spawn time) and falls back to agent_definitions.execution_mode for legacy rows
 
+# V4 Workflow Response — active_agents and agent_history entries
+# Each entry in active_agents (map) and agent_history (array) includes an optional effective_mode
+# field (cli|cli_interactive|api|script) when the agent_sessions.effective_mode column is non-empty.
+# The field is omitted entirely for legacy rows where effective_mode is NULL or blank.
+# Values are written at spawn time by spawner.startBackend via repo.SetEffectiveMode.
+
 # Other
 GET /api/v1/search?q=              # Full-text search
 GET /api/v1/status                 # Dashboard summary

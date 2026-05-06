@@ -35,6 +35,7 @@ export interface ActiveAgentV4 {
   restart_details?: RestartDetail[]
   nudge_count?: number
   tag?: string
+  effective_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
 }
 
 export interface AgentHistoryEntry {
@@ -53,6 +54,7 @@ export interface AgentHistoryEntry {
   restart_details?: RestartDetail[]
   nudge_count?: number
   tag?: string
+  effective_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
 }
 
 export interface CompletedAgentRow extends AgentHistoryEntry {

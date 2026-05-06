@@ -121,11 +121,20 @@ func (s *FindingsService) AddBulk(req *types.FindingsAddBulkRequest) (BroadcastC
 // Get gets findings for an agent.
 // If AgentType is omitted, reads the current session's own findings (requires SessionID).
 // If AgentType is provided, reads cross-agent findings (requires InstanceID).
+// If Layer is provided, reads findings keyed by agent_type for all agents in that layer (mutually exclusive with AgentType).
 func (s *FindingsService) Get(req *types.FindingsGetRequest) (interface{}, error) {
 	// Normalize: if single Key is set, add to Keys slice
 	keys := req.Keys
 	if req.Key != "" && len(keys) == 0 {
 		keys = []string{req.Key}
+	}
+
+	// Layer-keyed read — returns map[agent_type]findings for all agents in the layer
+	if req.Layer != nil {
+		if req.AgentType != "" {
+			return nil, fmt.Errorf("agent_type and layer are mutually exclusive")
+		}
+		return s.getByLayer(req.InstanceID, *req.Layer)
 	}
 
 	// Own-session read (no agent_type provided)
@@ -329,6 +338,62 @@ func (s *FindingsService) Delete(req *types.FindingsDeleteRequest) (BroadcastCtx
 		return BroadcastCtx{}, 0, err
 	}
 	return bctx, deleted, nil
+}
+
+// getByLayer returns a flat map[agent_type]interface{} for all agent_definitions in the
+// given layer. Values are parsed findings from the latest terminal session, or nil when
+// no terminal session exists for that agent yet.
+func (s *FindingsService) getByLayer(instanceID string, layer int) (interface{}, error) {
+	wfiID, err := s.resolveWorkflowInstance(instanceID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.pool.Query(`
+		WITH wfi AS (
+			SELECT id, project_id, workflow_id FROM workflow_instances WHERE id = ?
+		),
+		latest AS (
+			SELECT s.agent_type, s.findings,
+				ROW_NUMBER() OVER (PARTITION BY s.agent_type ORDER BY s.created_at DESC) AS rn
+			FROM agent_sessions s, wfi
+			WHERE s.workflow_instance_id = wfi.id
+			  AND s.status != 'callback'
+			  AND s.findings IS NOT NULL
+			  AND s.findings != ''
+		)
+		SELECT ad.id, latest.findings
+		FROM agent_definitions ad, wfi
+		LEFT JOIN latest ON latest.agent_type = ad.id AND latest.rn = 1
+		WHERE ad.project_id = wfi.project_id
+		  AND ad.workflow_id = wfi.workflow_id
+		  AND ad.layer = ?
+		ORDER BY ad.id`,
+		wfiID, layer)
+	if err != nil {
+		return nil, fmt.Errorf("layer findings query failed: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]interface{})
+	for rows.Next() {
+		var agentType string
+		var findingsStr sql.NullString
+		if err := rows.Scan(&agentType, &findingsStr); err != nil {
+			continue
+		}
+		if !findingsStr.Valid || findingsStr.String == "" {
+			result[agentType] = nil
+			continue
+		}
+		var m map[string]interface{}
+		if json.Unmarshal([]byte(findingsStr.String), &m) != nil {
+			result[agentType] = nil
+			continue
+		}
+		result[agentType] = m
+	}
+	return result, nil
 }
 
 // appendValue implements the append logic:

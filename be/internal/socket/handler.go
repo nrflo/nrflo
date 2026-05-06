@@ -110,6 +110,9 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
+		if params.AgentType != "" && params.Layer != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError("agent_type and layer are mutually exclusive"))
+		}
 		findings, err := h.findingsSvc.Get(&params)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {

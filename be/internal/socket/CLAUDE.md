@@ -35,7 +35,7 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 |--------|---------|
 | `findings.add` | Add a single finding |
 | `findings.add-bulk` | Add multiple findings at once |
-| `findings.get` | Get findings for an agent |
+| `findings.get` | Get findings for an agent. Optional `layer` int returns `map[agent_type]findings\|null` for all agents in that layer (requires `instance_id`; mutually exclusive with `agent_type` — returns `INVALID_PARAMS` if both are set) |
 | `findings.append` | Append to an existing finding value |
 | `findings.append-bulk` | Append multiple findings at once |
 | `findings.delete` | Delete specific finding keys |

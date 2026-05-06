@@ -88,6 +88,7 @@ type FindingsGetRequest struct {
 	Key        string   `json:"key,omitempty"`
 	Keys       []string `json:"keys,omitempty"` // Multiple keys to fetch
 	Model      string   `json:"model,omitempty"`
+	Layer      *int     `json:"layer,omitempty"`       // layer-keyed read; mutually exclusive with agent_type
 	InstanceID string   `json:"instance_id,omitempty"` // required for cross-agent reads
 	SessionID  string   `json:"session_id,omitempty"`  // required for own-session reads
 }

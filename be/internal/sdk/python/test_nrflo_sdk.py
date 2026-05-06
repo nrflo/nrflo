@@ -137,5 +137,65 @@ class TestClientStructure(unittest.TestCase):
         c.close()
 
 
+class TestFindingsGetValidation(unittest.TestCase):
+    """Client-side validation in _Findings.get() — no running server needed."""
+
+    _SOCK = "/tmp/nrflo-sdk-unit-test-no-server.sock"
+
+    def _make_client(self):
+        return nrflo_sdk.client(
+            sock_path=self._SOCK,
+            session_id="s",
+            instance_id="i",
+            project="p",
+            trx="t",
+        )
+
+    def test_agent_type_and_layer_raises_value_error(self):
+        """Both agent_type and layer raises ValueError before the socket is touched."""
+        c = self._make_client()
+        with self.assertRaises(ValueError) as cm:
+            c.findings.get(agent_type="implementor", layer=1)
+        self.assertIn("mutually exclusive", str(cm.exception).lower())
+        c.close()
+
+    def test_layer_zero_raises_nrflo_error_not_value_error(self):
+        """layer=0 is valid (0 is not None); error is NrfloError (no server), not ValueError."""
+        c = self._make_client()
+        try:
+            c.findings.get(layer=0)
+            self.fail("expected NrfloError (no server), got no exception")
+        except nrflo_sdk.NrfloError:
+            pass  # expected: socket missing, but validation passed
+        except ValueError as e:
+            self.fail(f"ValueError raised for layer=0 (0 is a valid layer): {e}")
+        finally:
+            c.close()
+
+    def test_agent_type_alone_no_value_error(self):
+        """Setting only agent_type (no layer) does not raise ValueError."""
+        c = self._make_client()
+        try:
+            c.findings.get(agent_type="setup-analyzer")
+        except nrflo_sdk.NrfloError:
+            pass  # expected: no server
+        except ValueError as e:
+            self.fail(f"ValueError raised but layer is None: {e}")
+        finally:
+            c.close()
+
+    def test_layer_alone_no_value_error(self):
+        """Setting only layer (no agent_type) does not raise ValueError."""
+        c = self._make_client()
+        try:
+            c.findings.get(layer=3)
+        except nrflo_sdk.NrfloError:
+            pass  # expected: no server
+        except ValueError as e:
+            self.fail(f"ValueError raised but agent_type is None: {e}")
+        finally:
+            c.close()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -111,12 +111,18 @@ class _Findings:
     def add_bulk(self, kv: dict):
         self._call("add-bulk", {"key_values": kv})
 
-    def get(self, key: str = None, *, keys: list = None) -> dict:
+    def get(self, agent_type: str = None, *, key: str = None, keys: list = None, layer: int = None) -> dict:
+        if agent_type is not None and layer is not None:
+            raise ValueError("agent_type and layer are mutually exclusive")
         extra = {}
-        if key:
+        if agent_type is not None:
+            extra["agent_type"] = agent_type
+        if key is not None:
             extra["key"] = key
-        if keys:
+        if keys is not None:
             extra["keys"] = keys
+        if layer is not None:
+            extra["layer"] = layer
         return self._call("get", extra)
 
     def append(self, key: str, value: str):

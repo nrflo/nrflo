@@ -233,6 +233,7 @@ nrflo findings get -k key1 -k key2    # multiple keys
 nrflo findings get <agent-type>             # all findings for agent
 nrflo findings get <agent-type> <key>      # single key
 nrflo findings get <agent-type> -k key1    # multiple keys
+nrflo findings get --layer 1               # all findings for every agent at layer 1
 
 # Delete findings
 nrflo findings delete <key1> [key2...]

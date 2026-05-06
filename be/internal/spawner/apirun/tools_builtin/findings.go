@@ -200,14 +200,15 @@ type findingsGetHandler struct{}
 func (findingsGetHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "findings_get",
-		Description: "Read findings. Omit agent_type for own session, or pass another agent_type for cross-agent reads.",
+		Description: "Read findings. Omit agent_type for own session, pass agent_type for cross-agent reads, or pass layer to read all findings for every agent at that layer (returns a flat {agent_type: findings|null} map).",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"agent_type":{"type":"string","description":"Cross-agent read target (omit for own session)"},
+"agent_type":{"type":"string","description":"Cross-agent read target (omit for own session; mutually exclusive with layer)"},
 "key":{"type":"string","description":"Single finding key"},
 "keys":{"type":"array","items":{"type":"string"},"description":"Multiple finding keys"},
-"model":{"type":"string","description":"Optional specific model_id when reading cross-agent"}
+"model":{"type":"string","description":"Optional specific model_id when reading cross-agent"},
+"layer":{"type":"integer","description":"Read all findings for agents at this layer (mutually exclusive with agent_type)"}
 },
 "additionalProperties":false
 }`),
@@ -220,11 +221,15 @@ func (findingsGetHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input 
 		Key       string   `json:"key"`
 		Keys      []string `json:"keys"`
 		Model     string   `json:"model"`
+		Layer     *int     `json:"layer"`
 	}
 	if len(input) > 0 {
 		if err := json.Unmarshal(input, &args); err != nil {
 			return invalidArgs(err)
 		}
+	}
+	if args.AgentType != "" && args.Layer != nil {
+		return "agent_type and layer are mutually exclusive", true, nil
 	}
 	if env.Findings == nil {
 		return missingService("findings")
@@ -234,6 +239,7 @@ func (findingsGetHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input 
 		Key:        args.Key,
 		Keys:       args.Keys,
 		Model:      args.Model,
+		Layer:      args.Layer,
 		SessionID:  env.SessionID,
 		InstanceID: env.WorkflowInstanceID,
 	})

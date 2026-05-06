@@ -153,3 +153,84 @@ func TestFindingsAdd_InvalidArgs(t *testing.T) {
 		t.Errorf("expected no broadcasts on validation error, got %+v", env.hub.events)
 	}
 }
+
+func TestFindingsGet_Layer(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+
+	const ts = "2026-01-01T00:00:00Z"
+	// Seed two agent_definitions at layer 2: implementor (has a running session with findings)
+	// and qa-verifier (sibling with no session → should appear as nil in result).
+	mustExec(t, env.pool,
+		`INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, created_at, updated_at)
+		 VALUES (?, ?, ?, '', 2, ?, ?)`,
+		testAgentType, testProjectID, testWorkflow, ts, ts)
+	mustExec(t, env.pool,
+		`INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, created_at, updated_at)
+		 VALUES (?, ?, ?, '', 2, ?, ?)`,
+		"qa-verifier", testProjectID, testWorkflow, ts, ts)
+
+	// Give the running implementor session some findings.
+	mustExec(t, env.pool,
+		`UPDATE agent_sessions SET findings = '{"status":"ok","score":9}' WHERE id = ?`,
+		testSessionID)
+
+	out, isErr, err := invoke(t, env.env, "findings_get", `{"layer": 2}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Fatalf("isErr=true, output=%q", out)
+	}
+
+	var result map[string]interface{}
+	if jsonErr := json.Unmarshal([]byte(out), &result); jsonErr != nil {
+		t.Fatalf("unmarshal result: %v, raw=%q", jsonErr, out)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 entries in layer map, got %d: %v", len(result), result)
+	}
+
+	implF, ok := result[testAgentType]
+	if !ok {
+		t.Fatalf("result missing key %q", testAgentType)
+	}
+	if implF == nil {
+		t.Errorf("%q findings should not be nil (running session with findings)", testAgentType)
+	} else if fm, fok := implF.(map[string]interface{}); !fok {
+		t.Errorf("%q value should be map, got %T", testAgentType, implF)
+	} else if fm["status"] != "ok" {
+		t.Errorf("%q[status] = %v, want \"ok\"", testAgentType, fm["status"])
+	}
+
+	siblingV, ok := result["qa-verifier"]
+	if !ok {
+		t.Error("result missing key \"qa-verifier\"")
+	}
+	if siblingV != nil {
+		t.Errorf("\"qa-verifier\" should be nil (no session), got %v", siblingV)
+	}
+
+	// Layer reads do not broadcast events.
+	if len(env.hub.events) != 0 {
+		t.Errorf("expected no broadcasts for layer read, got %d events", len(env.hub.events))
+	}
+}
+
+func TestFindingsGet_AgentTypeAndLayerMutuallyExclusive(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+
+	out, isErr, err := invoke(t, env.env, "findings_get", `{"agent_type":"implementor","layer":1}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if !isErr {
+		t.Errorf("isErr=false, want true for agent_type+layer combination")
+	}
+	if !strings.Contains(out, "mutually exclusive") {
+		t.Errorf("output = %q, want \"mutually exclusive\" substring", out)
+	}
+	if len(env.hub.events) != 0 {
+		t.Errorf("expected no broadcasts for validation error, got %d events", len(env.hub.events))
+	}
+}

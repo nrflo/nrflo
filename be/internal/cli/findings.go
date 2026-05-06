@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ var findingsCmd = &cobra.Command{
 
 // Findings get flags
 var findingsGetKeys []string
+var findingsGetLayer int
 
 var findingsAddCmd = &cobra.Command{
 	Use:   "add <key:value>... | <key> <value>",
@@ -135,6 +137,7 @@ var findingsGetCmd = &cobra.Command{
 If no agent-type is given, returns findings from the current session (env NRF_SESSION_ID).
 If agent-type is given, reads cross-agent findings (env NRF_WORKFLOW_INSTANCE_ID required).
 Use -k/--key to filter specific keys (can be repeated).
+Use --layer to read all findings for every agent at a layer (returns a flat roster).
 
 Examples:
   # Own session — all findings
@@ -147,7 +150,10 @@ Examples:
   nrflo findings get setup-analyzer
 
   # Cross-agent — specific key
-  nrflo findings get setup-analyzer summary`,
+  nrflo findings get setup-analyzer summary
+
+  # Layer — all findings for every agent at layer 1
+  nrflo findings get --layer 1`,
 	Args: cobra.RangeArgs(0, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := RequireProject(); err != nil {
@@ -157,12 +163,18 @@ Examples:
 			return err
 		}
 
+		layerSet := cmd.Flags().Changed("layer")
+
 		var agentType, positionalKey string
 		if len(args) >= 1 {
 			agentType = args[0]
 		}
 		if len(args) >= 2 {
 			positionalKey = args[1]
+		}
+
+		if layerSet && agentType != "" {
+			return fmt.Errorf("--layer cannot be combined with agent-type positional argument")
 		}
 
 		// Collect keys: from positional arg and/or -k flags
@@ -176,6 +188,9 @@ Examples:
 		reqParams := map[string]interface{}{}
 		if agentType != "" {
 			reqParams["agent_type"] = agentType
+		}
+		if layerSet {
+			reqParams["layer"] = findingsGetLayer
 		}
 
 		// Use single key for backward compat, or keys array for multiple
@@ -192,9 +207,49 @@ Examples:
 			return err
 		}
 
+		if layerSet {
+			if layerMap, ok := result.(map[string]interface{}); ok {
+				fmt.Println(formatLayerFindingsCLI(layerMap))
+				return nil
+			}
+		}
+
 		fmt.Println(client.FormatValue(result))
 		return nil
 	},
+}
+
+// formatLayerFindingsCLI renders a layer findings map matching spawner.formatLayerFindings output.
+func formatLayerFindingsCLI(layerMap map[string]interface{}) string {
+	var agentTypes []string
+	for k := range layerMap {
+		agentTypes = append(agentTypes, k)
+	}
+	sort.Strings(agentTypes)
+
+	var lines []string
+	for _, agentType := range agentTypes {
+		lines = append(lines, agentType+":")
+		val := layerMap[agentType]
+		if val == nil {
+			lines = append(lines, "  _No findings_")
+			continue
+		}
+		agentFindings, ok := val.(map[string]interface{})
+		if !ok || len(agentFindings) == 0 {
+			lines = append(lines, "  _No findings_")
+			continue
+		}
+		var fkeys []string
+		for k := range agentFindings {
+			fkeys = append(fkeys, k)
+		}
+		sort.Strings(fkeys)
+		for _, k := range fkeys {
+			lines = append(lines, fmt.Sprintf("  %s:%v", k, agentFindings[k]))
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 var findingsAppendCmd = &cobra.Command{
@@ -323,6 +378,7 @@ Examples:
 
 func init() {
 	findingsGetCmd.Flags().StringArrayVarP(&findingsGetKeys, "key", "k", nil, "Key(s) to fetch (can be repeated)")
+	findingsGetCmd.Flags().IntVar(&findingsGetLayer, "layer", 0, "Read all findings for agents at this layer (mutually exclusive with agent-type)")
 
 	findingsCmd.AddCommand(findingsAddCmd)
 	findingsCmd.AddCommand(findingsGetCmd)

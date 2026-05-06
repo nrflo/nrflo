@@ -24,7 +24,7 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 
 ### Orchestration
 - Vendor-agnostic orchestration across Claude Code, Opencode, and Codex
-- Layered execution with same-layer parallelism and validated fan-in progression
+- Layered execution with same-layer parallelism and sequential layer progression
 - Ticket-scoped and project-scoped workflows
 - Dependency-aware sequential ticket chains
 - Endless loop mode for project-scoped workflows that re-spawn after completion
@@ -184,7 +184,7 @@ Workflows are stored in the database and edited through the web UI. A workflow i
 | `docs` | L0: setup-analyzer &rarr; L1: doc-updater | Documentation only |
 | `refactor` | L0: setup-analyzer &rarr; L1: implementor &rarr; L2: qa-verifier | Code refactoring |
 
-All agents in the same layer run concurrently. The next layer starts only after the current layer completes (at least one agent must pass). If a layer has multiple agents, the next layer must have exactly one agent (fan-in rule).
+All agents in the same layer run concurrently. The next layer starts only after the current layer completes (at least one agent must pass). Parallel-to-parallel topologies are supported — no restriction on the agent count of the next layer.
 
 ## Architecture
 

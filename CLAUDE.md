@@ -49,8 +49,9 @@ Do not document in [agent_manual.md](agent_manual.md):
 
 Agents are grouped by `layer` number. All agents in the same layer run concurrently; layers execute in ascending order. The spawner validates:
 - All agents in prior layers are completed or skipped before the current layer starts
-- Fan-in: if a layer has multiple agents, the next layer must have exactly 1 agent
 - At least one agent in a layer must pass for the workflow to proceed (all-skipped continues)
+
+Parallel-to-parallel topologies (e.g., [A,B] → [C,D]) are fully supported — no restriction on agent count across adjacent layers.
 
 ### 3. State is Stored in Database Tables
 
@@ -152,7 +153,7 @@ Rules every change must respect. (Mandatory Rules above cover layer execution, s
 Where to look when working on a feature. Each entry is a one-line pointer; full detail lives in the linked downstream `CLAUDE.md`.
 
 ### Workflow execution
-- **Layer-based concurrent execution + fan-in + agent callbacks** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
+- **Layer-based concurrent execution + layer aggregation + agent callbacks** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 - **Manual restart, retry-failed, server-side orchestration entry points** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Low-context relaunch** (resume vs system-agent path, `to_resume` finding, `${PREVIOUS_DATA}`) → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **Stall detection / global stall timeouts / restart cap** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)

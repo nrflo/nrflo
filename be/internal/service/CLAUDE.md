@@ -12,11 +12,11 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `workflow_defs.go` | Workflow definitions CRUD (no phases in create/update; phases derived from agent_definitions at read time) |
 | `workflow_config.go` | Workflow config loading: `BuildSpawnerConfig` and `parseWorkflowDefFromDB` derive phases from agent_definitions (layer field), sorted by layer ASC, id ASC |
 | `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef`, `RestartDetail` |
-| `workflow_validation.go` | Validation: `validateLayerConfig` (layer ordering, fan-in rules), `ValidateProjectScope`, `ValidateScopeType`, `ValidateGroups` |
+| `workflow_validation.go` | Validation: `validateLayerConfig` (layer >= 0 bound), `ValidateProjectScope`, `ValidateScopeType`, `ValidateGroups` |
 | `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status derivation from agent_sessions |
 | `workflow_restart_details.go` | Restart detail loading: queries continued sessions for per-restart enrichment (duration, context, message count) |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |
-| `agent_definition.go` | Agent definition CRUD (includes `layer` field; create/update validates fan-in rules via `validateLayerConfigForWorkflow` in `agent_definition_helpers.go`). `execution_mode` accepts `"cli"` (default), `"api"`, or `"script"`. When `execution_mode="script"`, `python_script_id` must be non-empty and must reference an existing row in `python_scripts` belonging to the same project. |
+| `agent_definition.go` | Agent definition CRUD (includes `layer` field; create/update validates layer >= 0 via `validateLayerConfigForWorkflow` in `agent_definition_helpers.go`). `execution_mode` accepts `"cli"` (default), `"api"`, or `"script"`. When `execution_mode="script"`, `python_script_id` must be non-empty and must reference an existing row in `python_scripts` belonging to the same project. |
 | `findings.go` | Findings add/append/get/delete operations |
 | `chain.go` | Chain build, delete, dependency expansion, topological sort, cycle detection |
 | `chain_preview.go` | Chain preview, custom order validation (validateCustomOrder, validateSameSet, computeDeps, PreviewChain) |

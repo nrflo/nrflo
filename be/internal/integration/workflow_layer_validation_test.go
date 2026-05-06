@@ -34,63 +34,6 @@ func TestAgentDefRejectNegativeLayer(t *testing.T) {
 	}
 }
 
-// TestAgentDefFanInValidation tests that service enforces fan-in rules via agent definitions
-func TestAgentDefFanInValidation(t *testing.T) {
-	env := NewTestEnv(t)
-
-	t.Run("valid fan-in: 2 agents in layer 0, 1 in layer 1", func(t *testing.T) {
-		_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-			ID: "fanin-valid",
-		})
-		if err != nil {
-			t.Fatalf("failed to create workflow: %v", err)
-		}
-		agentDefSvc := env.getAgentDefService(t)
-		for _, ad := range []types.AgentDefCreateRequest{
-			{ID: "analyzer-a", Prompt: "a", Layer: 0},
-			{ID: "analyzer-b", Prompt: "b", Layer: 0},
-			{ID: "builder", Prompt: "c", Layer: 1},
-		} {
-			if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "fanin-valid", &ad); err != nil {
-				t.Fatalf("failed to create agent def %s: %v", ad.ID, err)
-			}
-		}
-	})
-
-	t.Run("invalid fan-in: 2 agents in layer 0, 2 in layer 1", func(t *testing.T) {
-		_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
-			ID: "fanin-invalid",
-		})
-		if err != nil {
-			t.Fatalf("failed to create workflow: %v", err)
-		}
-		agentDefSvc := env.getAgentDefService(t)
-		// First create two agents in layer 0
-		for _, ad := range []types.AgentDefCreateRequest{
-			{ID: "analyzer-a", Prompt: "a", Layer: 0},
-			{ID: "analyzer-b", Prompt: "b", Layer: 0},
-		} {
-			if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "fanin-invalid", &ad); err != nil {
-				t.Fatalf("failed to create agent def %s: %v", ad.ID, err)
-			}
-		}
-		// Adding a second agent in layer 1 should fail (first one should succeed)
-		if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "fanin-invalid", &types.AgentDefCreateRequest{
-			ID: "builder-a", Prompt: "c", Layer: 1,
-		}); err != nil {
-			t.Fatalf("first agent in layer 1 should succeed: %v", err)
-		}
-		_, err = agentDefSvc.CreateAgentDef(env.ProjectID, "fanin-invalid", &types.AgentDefCreateRequest{
-			ID: "builder-b", Prompt: "d", Layer: 1,
-		})
-		if err == nil {
-			t.Error("expected fan-in error, got nil")
-		} else if !strings.Contains(err.Error(), "fan-in violation") {
-			t.Errorf("expected error to contain 'fan-in violation', got: %s", err.Error())
-		}
-	})
-}
-
 // TestAgentDefValidLayerConfig tests that valid layer configurations are accepted via agent definitions
 func TestAgentDefValidLayerConfig(t *testing.T) {
 	env := NewTestEnv(t)
@@ -129,6 +72,15 @@ func TestAgentDefValidLayerConfig(t *testing.T) {
 				{ID: "hotfix", Prompt: "h", Layer: 0},
 			},
 		},
+		{
+			name: "parallel to parallel [A,B]->[C,D]",
+			agents: []types.AgentDefCreateRequest{
+				{ID: "setup-a", Prompt: "a", Layer: 0},
+				{ID: "setup-b", Prompt: "b", Layer: 0},
+				{ID: "verify-a", Prompt: "c", Layer: 1},
+				{ID: "verify-b", Prompt: "d", Layer: 1},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -154,11 +106,61 @@ func TestAgentDefValidLayerConfig(t *testing.T) {
 				t.Errorf("failed to retrieve created workflow: %v", err)
 			}
 
+			if len(retrieved.Phases) != len(tt.agents) {
+				t.Errorf("expected %d phases, got %d", len(tt.agents), len(retrieved.Phases))
+			}
+
 			for _, phase := range retrieved.Phases {
 				if phase.Layer < 0 {
 					t.Errorf("phase has invalid layer value: %+v", phase)
 				}
 			}
 		})
+	}
+}
+
+// TestAgentDefParallelToParallelAllowed explicitly validates that [A,B]->[C,D]
+// topologies (parallel agents followed by parallel agents) are accepted and produce
+// the correct phase count.
+func TestAgentDefParallelToParallelAllowed(t *testing.T) {
+	env := NewTestEnv(t)
+
+	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
+		ID: "p2p-wf",
+	})
+	if err != nil {
+		t.Fatalf("create workflow: %v", err)
+	}
+
+	agentDefSvc := env.getAgentDefService(t)
+	agents := []types.AgentDefCreateRequest{
+		{ID: "setup-a", Prompt: "a", Layer: 0},
+		{ID: "setup-b", Prompt: "b", Layer: 0},
+		{ID: "verify-a", Prompt: "c", Layer: 1},
+		{ID: "verify-b", Prompt: "d", Layer: 1},
+	}
+	for _, a := range agents {
+		if _, err := agentDefSvc.CreateAgentDef(env.ProjectID, "p2p-wf", &a); err != nil {
+			t.Fatalf("parallel-to-parallel topology must be accepted, agent %s: %v", a.ID, err)
+		}
+	}
+
+	wf, err := env.WorkflowSvc.GetWorkflowDef(env.ProjectID, "p2p-wf")
+	if err != nil {
+		t.Fatalf("GetWorkflowDef: %v", err)
+	}
+	if len(wf.Phases) != 4 {
+		t.Errorf("expected 4 phases, got %d", len(wf.Phases))
+	}
+	// Verify L0 agents come before L1 agents
+	for i := 0; i < 2; i++ {
+		if wf.Phases[i].Layer != 0 {
+			t.Errorf("phases[%d].Layer = %d, want 0", i, wf.Phases[i].Layer)
+		}
+	}
+	for i := 2; i < 4; i++ {
+		if wf.Phases[i].Layer != 1 {
+			t.Errorf("phases[%d].Layer = %d, want 1", i, wf.Phases[i].Layer)
+		}
 	}
 }

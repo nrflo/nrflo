@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// validateLayerConfigForWorkflow validates fan-in rules for a workflow when adding/updating an agent definition.
+// validateLayerConfigForWorkflow validates layer bounds for a workflow when adding/updating an agent definition.
 // agentID is the agent being created or updated; newLayer is its proposed layer value.
 func (s *AgentDefinitionService) validateLayerConfigForWorkflow(projectID, workflowID, agentID string, newLayer int) error {
 	// Load all existing agent definitions for this workflow

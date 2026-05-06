@@ -56,12 +56,11 @@ func TestAgentDefLayer_CRUDAndPhaseDerivation(t *testing.T) {
 		}
 	}
 
-	// Update verifier layer to 1 → should fail (fan-in: builder already at L1, single agent required after multi-agent layer would be needed)
-	// Actually L0=1 agent, L1 would have 2 agents, no next layer → valid (no fan-in needed)
+	// Update verifier layer to 1 → L1 would have 2 agents (builder + verifier), no next layer → valid
 	newLayer := 1
 	err = adSvc.UpdateAgentDef(env.ProjectID, "layered", "verifier", &types.AgentDefUpdateRequest{Layer: &newLayer})
 	if err != nil {
-		t.Fatalf("update verifier to L1 should be valid (no next layer needs fan-in): %v", err)
+		t.Fatalf("update verifier to L1 should be valid: %v", err)
 	}
 
 	// Verify phases re-derived after update

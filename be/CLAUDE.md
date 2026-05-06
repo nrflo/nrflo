@@ -115,7 +115,7 @@ be/
 │   │   ├── workflow_defs.go     # Workflow definitions CRUD (phases derived from agent_definitions)
 │   │   ├── workflow_config.go   # Workflow config loading (phases built from agent_definitions layer field)
 │   │   ├── workflow_types.go    # Workflow type definitions (WorkflowDef, PhaseDef)
-│   │   ├── workflow_validation.go # Validation (layer, fan-in, project scope)
+│   │   ├── workflow_validation.go # Validation (layer >= 0, project scope)
 │   │   ├── workflow_response.go # V4 response building (active agents, history)
 │   │   ├── workflow_restart_details.go # Restart detail loading (duration, context, message count)
 │   │   ├── agent.go             # Agent operations
@@ -308,7 +308,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/notify/` | (inline docs) | Notification subsystem: Dispatcher (ws.Listener), Slack/Telegram transports, async retry queue with backoff 15s/60s/300s, secret masking, error tracking on giving_up |
 | `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, findings auto-population, output format. T1 introduces an `ExecutionBackend` seam (`backend.go`). T2 added the provider abstraction + Anthropic streaming impl. T3 wires `apirun.Runner` and `apiBackend` into the seam for text-only API-mode execution; tools/continuation arrive in T4-T5. `Config` adds `DispatchRepo`, `ReviewRepo`, `PythonRunner`, `CustomerConfigDir` for manifest-tool dispatch. `scriptBackend` (root CLAUDE.md principle 46) handles `execution_mode='script'` agents — see spawner/CLAUDE.md Backend Capability Matrix and Script Backend section. |
 | `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler, sink (streaming bridge), take-control rejection, low-context save override, stall detection behavior. Three registry sources: builtins → manifest tools (`tools_manifest`) → HTTP defs. |
-| `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, fan-in rules, callback flow, chain runner |
+| `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, layer aggregation, callback flow, chain runner |
 | `internal/api/` | [api/CLAUDE.md](internal/api/CLAUDE.md) | HTTP endpoints, handler mapping, CORS, WebSocket |
 | `internal/auth/` | [auth/CLAUDE.md](internal/auth/CLAUDE.md) | Argon2id password hashing (PHC format), SCS session manager constructor, seedhash tool |
 | `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Database schema, migrations (000001–000078), connection pool |

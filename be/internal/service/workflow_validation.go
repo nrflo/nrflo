@@ -2,42 +2,16 @@ package service
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
 // validateLayerConfig validates layer-based phase configuration rules:
 // - layer must be >= 0
-// - fan-in: if layer N has >1 agent, the next non-empty layer must have exactly 1 agent
 func validateLayerConfig(phases []PhaseDef) error {
 	// Validate layer values
 	for _, p := range phases {
 		if p.Layer < 0 {
 			return fmt.Errorf("agent '%s': layer must be >= 0, got %d", p.Agent, p.Layer)
-		}
-	}
-
-	// Group agents by layer for fan-in validation
-	layerCounts := make(map[int]int)
-	for _, p := range phases {
-		layerCounts[p.Layer]++
-	}
-
-	// Get sorted layer numbers
-	var layers []int
-	for l := range layerCounts {
-		layers = append(layers, l)
-	}
-	sort.Ints(layers)
-
-	// Fan-in check: if layer N has >1 agent, next non-empty layer must have exactly 1 agent
-	for i, layer := range layers {
-		if layerCounts[layer] > 1 && i+1 < len(layers) {
-			nextLayer := layers[i+1]
-			if layerCounts[nextLayer] != 1 {
-				return fmt.Errorf("fan-in violation: layer %d has %d agents, so layer %d must have exactly 1 agent (has %d). Parallel layers must converge to a single downstream agent",
-					layer, layerCounts[layer], nextLayer, layerCounts[nextLayer])
-			}
 		}
 	}
 

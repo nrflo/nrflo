@@ -150,65 +150,6 @@ func TestUpdateAgentDef_UpdatesLayer(t *testing.T) {
 	}
 }
 
-func TestCreateAgentDef_FanInValidation(t *testing.T) {
-	t.Parallel()
-	_, svc, _ := setupLayerTestEnv(t)
-
-	// L0: two parallel agents
-	for _, id := range []string{"a", "b"} {
-		if _, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
-			ID: id, Prompt: "p", Layer: 0,
-		}); err != nil {
-			t.Fatalf("create %s: %v", id, err)
-		}
-	}
-
-	// L1 single agent (valid fan-in after parallel L0)
-	if _, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
-		ID: "merger", Prompt: "p", Layer: 1,
-	}); err != nil {
-		t.Fatalf("expected fan-in to be valid, got: %v", err)
-	}
-
-	// Adding second L1 agent should fail (fan-in violation: L0 has 2 agents)
-	_, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
-		ID: "extra", Prompt: "p", Layer: 1,
-	})
-	if err == nil {
-		t.Fatal("expected fan-in violation error, got nil")
-	}
-}
-
-func TestUpdateAgentDef_FanInValidation(t *testing.T) {
-	t.Parallel()
-	_, svc, _ := setupLayerTestEnv(t)
-
-	// L0: solo, L1: solo, L2: solo
-	for i, id := range []string{"a", "b", "c"} {
-		if _, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
-			ID: id, Prompt: "p", Layer: i,
-		}); err != nil {
-			t.Fatalf("create %s: %v", id, err)
-		}
-	}
-
-	// Move 'b' to L0 (making L0 have 2 agents). L1 must have 1 agent (c is at L2, not L1).
-	// After move: L0={a,b}, L2={c}. L0 has 2 agents, next layer is L2 with 1 agent → valid.
-	newLayer := 0
-	if err := svc.UpdateAgentDef("proj1", "wf1", "b", &types.AgentDefUpdateRequest{
-		Layer: &newLayer,
-	}); err != nil {
-		t.Fatalf("expected valid move to L0: %v", err)
-	}
-
-	// Now move 'c' to L0 too → L0={a,b,c}, no next layer → valid (no fan-in needed)
-	if err := svc.UpdateAgentDef("proj1", "wf1", "c", &types.AgentDefUpdateRequest{
-		Layer: &newLayer,
-	}); err != nil {
-		t.Fatalf("expected valid: all agents in same layer: %v", err)
-	}
-}
-
 func TestCreateAgentDef_NegativeLayerRejected(t *testing.T) {
 	t.Parallel()
 	_, svc, _ := setupLayerTestEnv(t)
@@ -295,5 +236,46 @@ func TestListWorkflowDefs_PhasesDerivedFromAgentDefs(t *testing.T) {
 	}
 	if wf.Phases[0].Agent != "analyzer" || wf.Phases[0].Layer != 0 {
 		t.Errorf("Phases[0] = {%s, L%d}, want {analyzer, L0}", wf.Phases[0].Agent, wf.Phases[0].Layer)
+	}
+}
+
+// TestAgentDefParallelToParallelAllowed verifies that [A,B]->[C,D] topologies are accepted.
+// Parallel agents feeding into parallel agents was previously forbidden; the restriction
+// has been removed and all layer->=0 topologies are valid.
+func TestAgentDefParallelToParallelAllowed(t *testing.T) {
+	t.Parallel()
+	_, svc, _ := setupLayerTestEnv(t)
+
+	agents := []types.AgentDefCreateRequest{
+		{ID: "setup-a", Prompt: "p", Layer: 0},
+		{ID: "setup-b", Prompt: "p", Layer: 0},
+		{ID: "verify-a", Prompt: "p", Layer: 1},
+		{ID: "verify-b", Prompt: "p", Layer: 1},
+	}
+	for _, a := range agents {
+		if _, err := svc.CreateAgentDef("proj1", "wf1", &a); err != nil {
+			t.Errorf("parallel-to-parallel topology must be accepted, agent %s: %v", a.ID, err)
+		}
+	}
+}
+
+// TestUpdateAgentDef_NegativeLayerRejected verifies that updating an agent to a
+// negative layer value is rejected.
+func TestUpdateAgentDef_NegativeLayerRejected(t *testing.T) {
+	t.Parallel()
+	_, svc, _ := setupLayerTestEnv(t)
+
+	if _, err := svc.CreateAgentDef("proj1", "wf1", &types.AgentDefCreateRequest{
+		ID: "agent", Prompt: "p", Layer: 1,
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	neg := -1
+	err := svc.UpdateAgentDef("proj1", "wf1", "agent", &types.AgentDefUpdateRequest{
+		Layer: &neg,
+	})
+	if err == nil {
+		t.Fatal("expected error when updating to negative layer, got nil")
 	}
 }

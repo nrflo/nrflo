@@ -177,9 +177,9 @@ GET  /api/v1/projects/:id/git/commits/:hash     # Single commit detail with diff
 # Agent definitions (nested under workflows)
 # Each agent definition includes a `layer` field that determines phase execution order
 GET    /api/v1/workflows/:wid/agents           # List agents for workflow (ordered by layer ASC, id ASC)
-POST   /api/v1/workflows/:wid/agents           # Create agent definition (accepts `layer` field; validates fan-in rules)
+POST   /api/v1/workflows/:wid/agents           # Create agent definition (accepts `layer` field; validates layer >= 0)
 GET    /api/v1/workflows/:wid/agents/:id       # Get agent definition
-PATCH  /api/v1/workflows/:wid/agents/:id       # Update agent definition (accepts `layer` field; validates fan-in rules)
+PATCH  /api/v1/workflows/:wid/agents/:id       # Update agent definition (accepts `layer` field; validates layer >= 0)
 DELETE /api/v1/workflows/:wid/agents/:id       # Delete agent definition
 
 # System agent definitions (global, no project scope)

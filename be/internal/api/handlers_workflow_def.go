@@ -161,9 +161,8 @@ func (s *Server) handleDeleteWorkflowDef(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
-// isLayerValidationError checks if an error is a layer validation error (fan-in violation, invalid layer).
+// isLayerValidationError checks if an error is a layer validation error (invalid layer).
 func isLayerValidationError(err error) bool {
 	msg := err.Error()
-	return strings.Contains(msg, "fan-in") ||
-		strings.Contains(msg, "layer must be")
+	return strings.Contains(msg, "layer must be")
 }

@@ -20,38 +20,38 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 │  │    └───────┬────────┘  └───────┬────────┘                    │    │
 │  │            └───────────┬───────┘                              │    │
 │  │                        ▼                                      │    │
-│  │  Fan-in: wait for ALL agents in layer to finish               │    │
+│  │  Layer aggregation: wait for ALL agents in layer to finish    │    │
 │  │    ├── pass_count >= 1 → proceed to next layer               │    │
 │  │    ├── all skipped → proceed to next layer                   │    │
 │  │    └── pass_count == 0 → fail workflow, stop                 │    │
 │  └────────────────────────┬────────────────────────────────────┘    │
 │                           ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  LAYER 1: [agent-c]  (single, fan-in convergence)            │    │
-│  │    ┌────────────────┐                                        │    │
-│  │    │ spawner.Spawn  │                                        │    │
-│  │    │ (agent-c)      │                                        │    │
-│  │    └───────┬────────┘                                        │    │
-│  └────────────┼────────────────────────────────────────────────┘    │
+│  │  LAYER 1: [agent-c, agent-d]  (parallel-to-parallel OK)      │    │
+│  │    ┌────────────────┐  ┌────────────────┐                    │    │
+│  │    │ spawner.Spawn  │  │ spawner.Spawn  │                    │    │
+│  │    │ (agent-c)      │  │ (agent-d)      │                    │    │
+│  │    └───────┬────────┘  └───────┬────────┘                    │    │
+│  └────────────┴────────────────────────────────────────────────┘    │
 │               ▼                                                      │
 │  All layers done → workflow completed                                │
 │                                                                      │
 │  VALIDATION RULES:                                                   │
 │    - layer field required (integer >= 0)                             │
 │    - parallel field rejected (breaking change)                       │
-│    - fan-in: multi-agent layer → next layer must have 1 agent       │
 │    - string-only phase entries rejected                              │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Fan-In Rules
+## Layer Aggregation
 
 - All agents in a layer run concurrently (one goroutine per `spawner.Spawn()` call)
 - Layer completes when ALL agents finish
 - `pass_count >= 1` → layer passes, proceed to next
 - All agents skipped → layer passes
 - `pass_count == 0` → workflow fails
+- Parallel-to-parallel topologies (multi-agent layer → multi-agent layer) are fully supported
 
 ## Error Capture
 
@@ -90,7 +90,7 @@ Before spawning agents for each layer, the orchestrator checks if the layer shou
 1. `shouldSkipLayer()` reloads skip_tags from DB each layer (agents may add tags concurrently)
 2. Creates `agent_sessions` with `status=skipped`, `result=skipped` for each agent
 3. Broadcasts `EventAgentCompleted` (result=skipped) per agent and `EventLayerSkipped` per layer
-4. Skipped layers count as passed for fan-in (loop continues to next layer)
+4. Skipped layers count as passed for layer aggregation (loop continues to next layer)
 
 Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `shouldSkipLayer()`, `createSkippedSessions()`.
 

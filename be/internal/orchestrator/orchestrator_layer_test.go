@@ -178,7 +178,7 @@ func TestMixedOutcomesLayerPassCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Simulate orchestrator's fan-in check
+			// Simulate orchestrator's layer aggregation check
 			shouldProceed := tt.passCount > 0
 
 			if shouldProceed != tt.shouldPass {

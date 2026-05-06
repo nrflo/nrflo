@@ -479,7 +479,7 @@ produces the phase order: setup-analyzer -> test-writer -> implementor -> qa-ver
 
 - **Concurrent execution:** All agents in the same layer run concurrently
 - **Sequential layers:** Layers execute in ascending order (0, 1, 2, ...)
-- **Fan-in validation:** If layer N has >1 agent, layer N+1 must have exactly 1 agent
+- **Parallel-to-parallel:** Multiple agents in layer N can feed into multiple agents in layer N+1 — no convergence restriction
 - **Pass condition:** At least 1 agent in a layer must pass for the workflow to proceed
 - **All skipped:** If all agents in a layer are skipped, the workflow continues
 

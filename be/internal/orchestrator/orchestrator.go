@@ -1404,7 +1404,7 @@ func (o *Orchestrator) runLoop(
 		for range runnableAgents {
 			result := <-results
 			if result.isCallback {
-				passCount++ // callback counts as pass for fan-in
+				passCount++ // callback counts as pass for layer aggregation
 				callbackDetected = true
 				// Use lowest callback level if multiple agents request callback
 				if callbackLevel < 0 || result.cbLevel < callbackLevel {
@@ -1426,7 +1426,7 @@ func (o *Orchestrator) runLoop(
 			}
 		}
 
-		// Handle callback before fan-in failure check
+		// Handle callback before layer aggregation failure check
 		if callbackDetected {
 			callbackCount++
 			if callbackCount > maxCallbacks {
@@ -1445,7 +1445,7 @@ func (o *Orchestrator) runLoop(
 			continue
 		}
 
-		// Fan-in: at least one pass required to proceed
+		// Layer aggregation: at least one pass required to proceed
 		if passCount == 0 {
 			logger.Error(ctx, "all agents failed in layer", "layer", lg.layer, "fail_count", failCount)
 			o.markFailed(wfiID, req, fmt.Sprintf("layer %d: all agents failed", lg.layer))

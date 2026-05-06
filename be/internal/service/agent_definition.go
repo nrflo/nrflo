@@ -117,7 +117,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
-	// Validate layer config (fan-in) with existing agents + new agent
+	// Validate layer config (layer >= 0) with existing agents + new agent
 	if err := s.validateLayerConfigForWorkflow(projectID, workflowID, req.ID, req.Layer); err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		args = append(args, *req.Prompt)
 	}
 	if req.Layer != nil {
-		// Validate layer config (fan-in) with updated layer value
+		// Validate layer config (layer >= 0) with updated layer value
 		if err := s.validateLayerConfigForWorkflow(projectID, workflowID, id, *req.Layer); err != nil {
 			return err
 		}

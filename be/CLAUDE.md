@@ -107,6 +107,8 @@ be/
 │   │   ├── queue.go             # Worker: drain queue, exponential backoff, WS events
 │   │   └── payload.go           # renderSlack/renderTelegram per event type
 │   ├── service/                 # Business logic layer
+│   │   ├── layer_policy.go      # ParseLayerPolicy, LayerPolicy.Required/String, ValidateLayerPolicy
+│   │   ├── workflow_layer_policy.go # WorkflowLayerPolicyService: GetLayerPolicies/SetLayerPolicy/DeleteLayerPolicy
 │   │   ├── python_script.go     # PythonScriptService: Create/Get/List/Update/Delete (project-scoped)
 │   │   ├── python_script_validate.go # PythonScriptValidator: syntax check via python3 -c (injectable lookPath/cmdFactory)
 │   │   ├── project.go           # Project operations
@@ -142,6 +144,7 @@ be/
 │   │   └── migrations/          # SQL files (embedded via //go:embed)
 │   │       └── embed.go         # Go embed directive
 │   ├── model/                   # Data models
+│   │   ├── workflow_layer_policy.go # WorkflowLayerPolicy struct (project_id, workflow_id, layer, pass_policy, timestamps)
 │   │   ├── python_script.go     # PythonScript struct (id, project_id, name, description, code, timestamps)
 │   │   ├── project.go
 │   │   ├── ticket.go
@@ -175,6 +178,7 @@ be/
 │   │   └── migrate/             # Forward-only config migration runner
 │   │       └── migrations/      # Migration implementations
 │   ├── repo/                    # Repository pattern
+│   │   ├── workflow_layer_policy.go # WorkflowLayerPolicyRepo: Upsert/Delete/ListByWorkflow (clock-driven, lowercase keys)
 │   │   ├── python_script.go     # PythonScriptRepo: Create/Get/List/Update/Delete (project+id scoped, clock-driven timestamps)
 │   │   ├── project.go
 │   │   ├── ticket.go

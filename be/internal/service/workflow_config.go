@@ -66,6 +66,7 @@ type SpawnerWorkflowDef struct {
 	CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
 	Phases                []SpawnerPhaseDef `json:"phases"`
 	Groups                []string          `json:"groups"`
+	LayerPolicies         map[int]string    `json:"layer_policies,omitempty"`
 }
 
 // SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building
@@ -80,6 +81,28 @@ type SpawnerAgentConfig struct {
 	Model   string `json:"model"`
 	Timeout int    `json:"timeout"`
 	Tag     string `json:"tag"`
+}
+
+// BuildSpawnerConfigWithPolicies is like BuildSpawnerConfig but attaches per-layer
+// pass policies to each workflow definition. policiesByWorkflow maps workflow ID →
+// (layer → policy string). Entries absent from the map are left unset (callers
+// default to "any"). BuildSpawnerConfig remains unchanged so existing callers compile.
+func BuildSpawnerConfigWithPolicies(
+	dbWorkflows []*model.Workflow,
+	dbAgentDefs []*model.AgentDefinition,
+	policiesByWorkflow map[string]map[int]string,
+) (map[string]SpawnerWorkflowDef, map[string]SpawnerAgentConfig) {
+	workflows, agents := BuildSpawnerConfig(dbWorkflows, dbAgentDefs)
+	for wfID, policies := range policiesByWorkflow {
+		if len(policies) == 0 {
+			continue
+		}
+		if def, ok := workflows[wfID]; ok {
+			def.LayerPolicies = policies
+			workflows[wfID] = def
+		}
+	}
+	return workflows, agents
 }
 
 // parseWorkflowDefFromDB builds a WorkflowDef from agent definitions

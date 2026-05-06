@@ -10,8 +10,10 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `ticket.go` | Ticket CRUD, close/reopen, search, `ValidateRunnable` (rejects blocked tickets) |
 | `workflow.go` | Workflow operations (ticket + project scope): init, start/complete phase, state queries |
 | `workflow_defs.go` | Workflow definitions CRUD (no phases in create/update; phases derived from agent_definitions at read time) |
-| `workflow_config.go` | Workflow config loading: `BuildSpawnerConfig` and `parseWorkflowDefFromDB` derive phases from agent_definitions (layer field), sorted by layer ASC, id ASC |
+| `workflow_config.go` | Workflow config loading: `BuildSpawnerConfig` and `parseWorkflowDefFromDB` derive phases from agent_definitions (layer field), sorted by layer ASC, id ASC. `BuildSpawnerConfigWithPolicies` wraps `BuildSpawnerConfig` and attaches `LayerPolicies` per workflow. |
 | `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef`, `RestartDetail` |
+| `layer_policy.go` | Parser/validator for pass_policy strings: `ParseLayerPolicy`, `LayerPolicy.Required(denom)`, `LayerPolicy.String()`, `ValidateLayerPolicy(s, agentCount)`. Supported kinds: `any`, `all`, `quorum:N`, `percent:P`. |
+| `workflow_layer_policy.go` | `WorkflowLayerPolicyService`: `GetLayerPolicies(projectID, workflowID)` → `map[int]string`; `SetLayerPolicy` (counts agents, validates, upserts); `DeleteLayerPolicy`. Constructor: `NewWorkflowLayerPolicyService(pool, clk)`. |
 | `workflow_validation.go` | Validation: `validateLayerConfig` (layer >= 0 bound), `ValidateProjectScope`, `ValidateScopeType`, `ValidateGroups` |
 | `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status derivation from agent_sessions |
 | `workflow_restart_details.go` | Restart detail loading: queries continued sessions for per-restart enrichment (duration, context, message count) |

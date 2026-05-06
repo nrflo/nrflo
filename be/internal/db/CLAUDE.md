@@ -522,12 +522,22 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                     no DB FK constraint — application-level only)    │
 │    execution_mode CHECK now includes 'script' (cli|api|script)       │
 │                                                                      │
+│  WORKFLOW_LAYER_POLICIES                              (mig 000091)   │
+│    project_id   TEXT    NOT NULL                                      │
+│    workflow_id  TEXT    NOT NULL                                      │
+│    layer        INTEGER NOT NULL                                      │
+│    pass_policy  TEXT    NOT NULL DEFAULT 'any'                        │
+│    created_at   TEXT    NOT NULL                                      │
+│    updated_at   TEXT    NOT NULL                                      │
+│    PRIMARY KEY (project_id, workflow_id, layer)                       │
+│    FK (project_id, workflow_id) → workflows(project_id, id) CASCADE  │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Adding a Database Migration
 
-Current highest migration: **000090** (agent_session_effective_mode — adds nullable `effective_mode TEXT` column to `agent_sessions`; stores the effective execution backend: `cli`, `cli_interactive`, `api`, or `script`; written at spawn time; NULL on legacy rows)
+Current highest migration: **000091** (workflow_layer_policies — new table storing per-layer pass policy overrides keyed by project_id+workflow_id+layer with FK CASCADE to workflows)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

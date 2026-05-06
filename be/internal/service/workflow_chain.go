@@ -36,7 +36,7 @@ type WorkflowChainWithSteps struct {
 // all workflow names resolve, and require_ticket_handoff is only set for ticket-scope steps.
 func (s *WorkflowChainService) validate(projectID string, steps []*model.WorkflowChainStep) error {
 	if len(steps) == 0 {
-		return fmt.Errorf("at least one step is required")
+		return nil
 	}
 
 	sorted := make([]*model.WorkflowChainStep, len(steps))

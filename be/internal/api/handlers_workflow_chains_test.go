@@ -173,12 +173,12 @@ func TestHandleCreateWorkflowChain_BadJSON(t *testing.T) {
 func TestHandleCreateWorkflowChain_EmptySteps(t *testing.T) {
 	s := newWorkflowChainServer(t)
 	seedChainProject(t, s, "proj-wc-es", "", "")
+	// Empty step lists are accepted at create time; rejected at run time by CreateRun.
 	rr := doChainReq(t, s, s.handleCreateWorkflowChain, http.MethodPost, "/api/v1/workflow-chains",
 		"proj-wc-es", `{"name":"X","steps":[]}`, nil)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+	if rr.Code != http.StatusCreated {
+		t.Errorf("status = %d, want 201", rr.Code)
 	}
-	assertErrorContains(t, rr, "at least one step")
 }
 
 func TestHandleCreateWorkflowChain_Step0NotProject(t *testing.T) {

@@ -18,6 +18,9 @@ var findingsPattern = regexp.MustCompile(`#\{FINDINGS:([^:}]+)(?::([^}]*))?\}`)
 // projectFindingsPattern matches #{PROJECT_FINDINGS:key} or #{PROJECT_FINDINGS:k1,k2}
 var projectFindingsPattern = regexp.MustCompile(`#\{PROJECT_FINDINGS:([^}]+)\}`)
 
+// layerFindingsPattern matches #{LAYER_FINDINGS:N} or #{PRIOR_LAYER_FINDINGS}
+var layerFindingsPattern = regexp.MustCompile(`#\{LAYER_FINDINGS:(\d+)\}|#\{PRIOR_LAYER_FINDINGS\}`)
+
 // Preview generates the prompt without spawning
 func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (string, error) {
 	model := "opus_4_7"
@@ -28,7 +31,11 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	}
 	cliName := s.cliForModel(model)
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
-	body, _, err := s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil)
+	currentLayer := 0
+	if def := s.loadAgentDefinition(agentType, projectID, workflowName); def != nil {
+		currentLayer = def.Layer
+	}
+	body, _, err := s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil, currentLayer)
 	return body, err
 }
 
@@ -185,15 +192,17 @@ func (s *Spawner) fetchCallbackRaw(projectID, ticketID, workflowName, wfiID stri
 // an agent template from DB. Used by the orchestrator to build PTY command prompts.
 // Returns (body, suffix, error). The suffix is the rendered system-prompt-suffix injectable
 // intended for --append-system-prompt-file; callers that don't use it can ignore it.
-func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, string, error) {
-	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID, extraVars)
+// currentLayer is the agent's layer number (0 for system agents and L0 interactive starts).
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, error) {
+	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID, extraVars, currentLayer)
 }
 
 // loadTemplate loads and expands an agent template from DB.
 // wfiID is optional — when set, used for instance-specific lookups (user instructions, callbacks).
 // extraVars is optional — when set, expanded after standard ${VAR} substitution.
+// currentLayer is the agent's layer number; used to resolve #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS}.
 // Returns (body, suffix, error). The suffix is the rendered system-prompt-suffix injectable.
-func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, string, error) {
+func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {
 		return "", "", err
@@ -272,6 +281,12 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	}
 	if len(prepend) > 0 {
 		template = strings.Join(prepend, "\n") + "\n" + template
+	}
+
+	// Expand layer findings patterns (after variable substitution, before agent findings)
+	template, err = s.expandLayerFindings(template, currentLayer, projectID, wfiID)
+	if err != nil {
+		logger.Warn(context.Background(), "layer findings expansion failed", "error", err)
 	}
 
 	// Expand findings patterns (after variable substitution)

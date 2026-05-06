@@ -901,7 +901,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	// Load agent template
-	prompt, suffix, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars)
+	agentLayer := 0
+	if agentDef != nil {
+		agentLayer = agentDef.Layer
+	}
+	prompt, suffix, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars, agentLayer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load template: %w", err)
 	}

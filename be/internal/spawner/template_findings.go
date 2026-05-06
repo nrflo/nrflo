@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"be/internal/service"
@@ -191,6 +192,94 @@ func (s *Spawner) formatValue(v interface{}, indent string) string {
 // formatFindingsError returns a placeholder for missing findings
 func (s *Spawner) formatFindingsError(agentType string) string {
 	return fmt.Sprintf("_No findings yet available from %s_", agentType)
+}
+
+// expandLayerFindings replaces #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS} patterns.
+// #{PRIOR_LAYER_FINDINGS} expands to layer currentLayer-1 (or "_No prior layer_" when currentLayer==0).
+// #{LAYER_FINDINGS:N} expands to a flat sibling roster for layer N sorted by agent_type.
+func (s *Spawner) expandLayerFindings(template string, currentLayer int, projectID, wfiID string) (string, error) {
+	if !layerFindingsPattern.MatchString(template) {
+		return template, nil
+	}
+
+	pool := s.pool()
+	if pool == nil {
+		return template, fmt.Errorf("failed to get database pool")
+	}
+
+	findingsSvc := service.NewFindingsService(pool, s.config.Clock)
+
+	var lastErr error
+	result := layerFindingsPattern.ReplaceAllStringFunc(template, func(match string) string {
+		if match == "#{PRIOR_LAYER_FINDINGS}" {
+			if currentLayer == 0 {
+				return "_No prior layer_"
+			}
+			target := currentLayer - 1
+			return s.fetchAndFormatLayerFindings(findingsSvc, target, wfiID, &lastErr)
+		}
+		// #{LAYER_FINDINGS:N}
+		sub := layerFindingsPattern.FindStringSubmatch(match)
+		if len(sub) < 2 || sub[1] == "" {
+			return match
+		}
+		n, err := strconv.Atoi(sub[1])
+		if err != nil {
+			return match
+		}
+		return s.fetchAndFormatLayerFindings(findingsSvc, n, wfiID, &lastErr)
+	})
+
+	return result, lastErr
+}
+
+// fetchAndFormatLayerFindings fetches layer findings from the service and formats them.
+func (s *Spawner) fetchAndFormatLayerFindings(svc *service.FindingsService, layer int, wfiID string, lastErr *error) string {
+	result, err := svc.Get(&types.FindingsGetRequest{Layer: &layer, InstanceID: wfiID})
+	if err != nil {
+		*lastErr = err
+		return fmt.Sprintf("_Error fetching layer %d findings_", layer)
+	}
+	layerMap, ok := result.(map[string]interface{})
+	if !ok || len(layerMap) == 0 {
+		return fmt.Sprintf("_No findings for layer %d_", layer)
+	}
+	return s.formatLayerFindings(layerMap)
+}
+
+// formatLayerFindings renders a flat agent_type-keyed roster sorted by agent_type.
+// Each agent_type gets a header line; its findings are indented two spaces.
+// Agents with nil or empty findings get "  _No findings_".
+func (s *Spawner) formatLayerFindings(layerMap map[string]interface{}) string {
+	var agentTypes []string
+	for k := range layerMap {
+		agentTypes = append(agentTypes, k)
+	}
+	sort.Strings(agentTypes)
+
+	var lines []string
+	for _, agentType := range agentTypes {
+		lines = append(lines, agentType+":")
+		val := layerMap[agentType]
+		if val == nil {
+			lines = append(lines, "  _No findings_")
+			continue
+		}
+		agentFindings, ok := val.(map[string]interface{})
+		if !ok || len(agentFindings) == 0 {
+			lines = append(lines, "  _No findings_")
+			continue
+		}
+		var keys []string
+		for k := range agentFindings {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			lines = append(lines, "  "+k+":"+s.formatValue(agentFindings[k], "  "))
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // fetchPreviousDataAndReason retrieves to_resume data and result_reason from the most

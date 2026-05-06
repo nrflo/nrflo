@@ -21,7 +21,7 @@ func TestLoadTemplate_LowContextPrepended(t *testing.T) {
 
 	sp := env.newSpawner()
 	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "test-phase", "", nil)
+		"p", "c", "test", "claude:sonnet", "test-phase", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
 
 			sp := env.newSpawner()
 			result, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-				"p", "c", "test", "claude:sonnet", "test-phase", "", nil)
+				"p", "c", "test", "claude:sonnet", "test-phase", "", nil, 0)
 			if err != nil {
 				t.Fatalf("loadTemplate failed: %v", err)
 			}
@@ -95,7 +95,7 @@ func TestLoadTemplate_PrependOrdering(t *testing.T) {
 
 	sp := env.newSpawner()
 	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "test-phase", "", nil)
+		"p", "c", "test", "claude:sonnet", "test-phase", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

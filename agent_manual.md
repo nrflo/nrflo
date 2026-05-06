@@ -130,6 +130,44 @@ _No project finding for key 'architecture'_
 
 For multiple keys, each missing key gets its own placeholder while found keys display normally.
 
+### Layer Findings (`#{LAYER_FINDINGS:N}` / `#{PRIOR_LAYER_FINDINGS}`)
+
+Pull a flat sibling roster for an entire layer into prompts — useful for merger or aggregator agents that summarise what earlier-layer siblings produced.
+
+**Syntax:**
+
+```markdown
+#{LAYER_FINDINGS:1}
+#{PRIOR_LAYER_FINDINGS}
+```
+
+`#{PRIOR_LAYER_FINDINGS}` is shorthand for the layer immediately before the current agent's layer. It renders `_No prior layer_` when the current agent is on layer 0.
+
+**Output format** (agents sorted alphabetically, findings two-space-indented):
+
+```
+analyzer:
+  recommendation: Use database-level constraints
+  risk_level: low
+intel-merger:
+  _No findings_
+researcher:
+  sources:
+    - RFC 9110
+    - internal design doc
+```
+
+**Example use — layer-2 merger reading layer-1 siblings:**
+
+```markdown
+## Layer 1 Results
+#{PRIOR_LAYER_FINDINGS}
+
+Synthesise the above into a final recommendation.
+```
+
+**No findings placeholder:** Agents that have no session row for the workflow instance render as `  _No findings_` under their agent_type header.
+
 ---
 
 ## 3. Agent Lifecycle Commands

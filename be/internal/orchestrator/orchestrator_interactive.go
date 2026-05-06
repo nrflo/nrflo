@@ -193,7 +193,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 			},
 		})
 
-		tmpl, _, err := sp.LoadTemplate(l0Agent, req.TicketID, req.ProjectID, "", sessionID, req.WorkflowName, modelID, l0Agent, wi.ID, nil)
+		tmpl, _, err := sp.LoadTemplate(l0Agent, req.TicketID, req.ProjectID, "", sessionID, req.WorkflowName, modelID, l0Agent, wi.ID, nil, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load L0 template: %w", err)
 		}

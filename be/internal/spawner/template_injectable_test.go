@@ -67,7 +67,7 @@ func TestLoadTemplate_LegacyPlaceholderStripping(t *testing.T) {
 
 	sp := env.newSpawner()
 	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil)
+		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestLoadTemplate_UserInstructionsPrepended(t *testing.T) {
 
 	sp := env.newSpawner()
 	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil)
+		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestLoadTemplate_UserInstructionsAbsent_NoPrepend(t *testing.T) {
 
 	sp := env.newSpawner()
 	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil)
+		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestLoadTemplate_InjectableMissingFromDB(t *testing.T) {
 
 	sp := env.newSpawner()
 	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil)
+		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate should not crash with missing injectable: %v", err)
 	}

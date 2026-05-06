@@ -68,7 +68,7 @@ func TestLoadTemplate_ExtraVars_BasicExpansion(t *testing.T) {
 		"BRANCH_NAME": "feat/my-branch",
 		"MERGE_ERROR": "conflict in main.go",
 	}
-	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars)
+	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestLoadTemplate_ExtraVars_MultipleVars(t *testing.T) {
 		"DEFAULT_BRANCH": "main",
 		"MERGE_ERROR":    "merge failed",
 	}
-	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars)
+	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestLoadTemplate_ExtraVars_Nil_NoPanic(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "Static template with no extra vars")
 
 	sp := env.newSpawner()
-	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", nil)
+	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate with nil extraVars failed: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestLoadTemplate_ExtraVars_EmptyMap_NoPanic(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "Static template")
 
 	sp := env.newSpawner()
-	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", map[string]string{})
+	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", map[string]string{}, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate with empty extraVars failed: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestLoadTemplate_ExtraVars_StandardVarsRunFirst(t *testing.T) {
 	sp := env.newSpawner()
 	// ExtraVars key "AGENT" – but ${AGENT} is already replaced before ExtraVars runs.
 	extraVars := map[string]string{"AGENT": "overridden"}
-	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars)
+	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestLoadTemplate_ExtraVars_UnusedVarsIgnored(t *testing.T) {
 		"BRANCH_NAME":    "unused",
 		"DEFAULT_BRANCH": "also-unused",
 	}
-	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars)
+	result, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -284,7 +284,7 @@ func TestLoadTemplate_SystemDefFallback_WithExtraVars(t *testing.T) {
 		"DEFAULT_BRANCH": "main",
 		"MERGE_ERROR":    "CONFLICT in main.go",
 	}
-	result, _, err := sp.loadTemplate("conflict-resolver", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars)
+	result, _, err := sp.loadTemplate("conflict-resolver", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate with system def fallback + extraVars failed: %v", err)
 	}

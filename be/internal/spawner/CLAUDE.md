@@ -696,6 +696,8 @@ Templates use placeholders injected by the spawner:
 - `${MERGE_ERROR}` - Merge error message (ExtraVars only, system agents)
 - `#{PROJECT_FINDINGS:key}` - Single project finding value from `project_findings` table. Returns `"_No project finding for key 'keyname'_"` if missing.
 - `#{PROJECT_FINDINGS:k1,k2}` - Multiple project findings as `key: value` lines. Missing keys get individual placeholders.
+- `#{LAYER_FINDINGS:N}` - Flat sibling roster for layer N, sorted by agent_type. Each agent_type gets a header line; findings are two-space-indented. Agents with no session row render `  _No findings_`.
+- `#{PRIOR_LAYER_FINDINGS}` - Same as `#{LAYER_FINDINGS:currentLayer-1}`. Renders `_No prior layer_` when the current agent is on layer 0.
 
 Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}` placeholders are stripped to empty if present in templates. Their content is now delivered via auto-prepended injectable blocks (see below).
 

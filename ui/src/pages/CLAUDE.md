@@ -17,7 +17,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |
 | `/chains/:id` | `ChainDetailPage.tsx` | Chain items table, start/cancel/edit, useTickingClock for 1s elapsed time updates + 10s refetchInterval fallback when running |
 | `/errors` | `ErrorsPage.tsx` | Paginated error log table with type filter tabs (All/Agent/Workflow/System), server-side pagination, WS auto-refresh |
-| `/logs` | `LogsPage.tsx` | Paginated finished agent session table (Finished/SID/Agent/Model/Mode/Workflow/Duration/Status/Result columns); WS auto-refresh on `agent.completed` via `agentSessionLogKeys.all` invalidation |
+| `/logs` | `LogsPage.tsx` | Agent sessions page (sidebar label "Agent sessions") — Paginated finished agent session table (Finished/SID/Agent/Model/Mode/Workflow/Duration/Status/Result columns); WS auto-refresh on `agent.completed` via `agentSessionLogKeys.all` invalidation |
 | `/schedules` | `SchedulesPage.tsx` | Scheduled tasks table; write controls (New/Edit/Delete/Run-now/Toggle) hidden for non-admins via `useIsAdmin()`; ReadOnlyHint shown at top |
 | `/workflow-chains` | `WorkflowChainsPage.tsx` | Workflow chain list; New/Delete admin-only; ReadOnlyHint at top for non-admins; clicking row navigates to editor |
 | `/workflow-chains/:id` | `WorkflowChainEditorPage.tsx` | Chain editor — chain metadata form + ordered step list with Up/Down reorder, per-step inline form, Add/Delete step |

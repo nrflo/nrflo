@@ -29,7 +29,7 @@ export function LogsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Logs</h1>
+      <h1 className="text-2xl font-bold">Agent sessions</h1>
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Loading...</div>

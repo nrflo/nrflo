@@ -230,6 +230,7 @@ describe('Sidebar - Navigation', () => {
     expect(screen.getByRole('link', { name: /in progress/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /closed/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /blocked/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /agent sessions/i })).toBeInTheDocument()
   })
 
   it('highlights active route on dashboard', () => {

@@ -177,7 +177,7 @@ export function Sidebar() {
         <NavItem
           to="/logs"
           icon={<ScrollText className="h-4 w-4" />}
-          label="Logs"
+          label="Agent sessions"
           active={isActive('/logs')}
         />
         {apiModeEnabled && isAdmin && (

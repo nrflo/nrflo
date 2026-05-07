@@ -60,6 +60,7 @@ describe('LogsPage', () => {
   it('shows empty state when no sessions', () => {
     mockUseAgentSessionLogs.mockReturnValue({ data: makeResponse(), isLoading: false })
     renderPage()
+    expect(screen.getByRole('heading', { name: 'Agent sessions' })).toBeInTheDocument()
     expect(screen.getByText('No agent sessions yet')).toBeInTheDocument()
   })
 

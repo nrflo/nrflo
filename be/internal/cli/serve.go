@@ -99,10 +99,8 @@ func setupServer() (*serverComponents, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	dataDir := db.DefaultDataDir()
-	if DataPath != "" {
-		dataDir = filepath.Dir(DataPath)
-	}
+	resolvedDataPath := db.GetDBPath(DataPath)
+	dataDir := filepath.Dir(resolvedDataPath)
 	logsDir := filepath.Join(dataDir, "logs")
 	if err := logger.Init(filepath.Join(logsDir, "be.log")); err != nil {
 		return nil, fmt.Errorf("failed to init logger: %w", err)
@@ -125,12 +123,12 @@ func setupServer() (*serverComponents, error) {
 	}
 	migrateDB.Close()
 
-	pool, err := db.NewPool(DataPath, db.DefaultPoolConfig())
+	pool, err := db.NewPool(resolvedDataPath, db.DefaultPoolConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database pool: %w", err)
 	}
 
-	httpServer := api.NewServer(cfg, DataPath, logsDir, pool, apiMode, insecureCookies)
+	httpServer := api.NewServer(cfg, resolvedDataPath, logsDir, pool, apiMode, insecureCookies)
 
 	clk := clock.Real()
 	socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator())

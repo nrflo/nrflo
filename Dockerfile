@@ -46,7 +46,7 @@ RUN cd be && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
 # ---------------------------------------------------------------------------
 FROM alpine:3.20 AS runtime
 
-RUN apk add --no-cache python3 ca-certificates git tini \
+RUN apk add --no-cache python3 py3-pip ca-certificates git tini \
  && addgroup -S nrflo \
  && adduser -S -G nrflo -u 65532 -h /data nrflo \
  && mkdir -p /data \

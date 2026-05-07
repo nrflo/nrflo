@@ -232,11 +232,19 @@ T4 wires tool dispatch on top of this seam (registry resolution in `prepareSpawn
 
 When the `python_scripts` row has a non-empty `file_path`, `prepareScriptSpawn` re-validates the path (absolute, regular file, `.py` extension) and calls `os.ReadFile` on it. The file bytes replace `script.Code` as the `prep.scriptCode` written to disk at spawn time. Validation failures return a spawn error with prefix `python_script_file_path_invalid:`; read failures use `python_script_file_path_read:`. When `file_path` is empty, behavior is unchanged (uses stored `code`).
 
+### Python Interpreter Resolution
+
+`resolvePythonBin(prep *prepResult) string` returns the python binary to invoke:
+- `prep.pythonPath` non-empty → that path (venv python resolved by the orchestrator before spawn)
+- `prep.pythonPath` empty → `"python3"` (falls back to PATH)
+
+`prep.pythonPath` is populated from `Config.PythonPath`, which the orchestrator sets to the result of `venvMgr.Ensure(ctx, projectID, projectRoot)` once per workflow run before the layer loop. Failures in `Ensure` return `""` so the fallback is automatic.
+
 ### Start Sequence
 
 1. Creates `/tmp/nrflo/scripts/` directory (mode 0755) if needed.
 2. Writes `prep.scriptCode` to `/tmp/nrflo/scripts/<sessionID>.py` (mode 0600).
-3. Builds `exec.CommandContext(ctx, "python3", scriptPath)` with:
+3. Resolves python binary via `resolvePythonBin(prep)` and builds `exec.CommandContext(ctx, pyBin, scriptPath)` with:
    - `cmd.Dir = prep.opts.WorkDir` (git worktree for ticket-scope, project root for project-scope — same as cliBackend)
    - `cmd.Env = prep.opts.Env` (standard spawner env) + `NRFLO_SDK_DIR=<config.SDKDir>` when `config.SDKDir != ""`
 4. Launches stdout/stderr pipes and starts the process.

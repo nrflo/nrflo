@@ -51,6 +51,7 @@ type prepResult struct {
 	// Script-mode fields.
 	scriptCode string
 	scriptID   string
+	pythonPath string // resolved venv python; empty → fall back to "python3" on PATH
 
 	// API-mode fields. executionMode is "cli" (default), "api", or "script".
 	executionMode    string

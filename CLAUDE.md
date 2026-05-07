@@ -183,6 +183,7 @@ Where to look when working on a feature. Each entry is a one-line pointer; full 
 - **`api` — in-process Anthropic runner + gating + tool registry + sink** → [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
 - **`cli` interactive backend (Claude/Codex/Opencode in PTY) + idle/nudge loop** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **`script` — Python scriptBackend + capability matrix** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
+- **Per-project venv** — per-project venv at `$NRFLO_HOME/project/<id>/venv`, kept in sync with `<projectRoot>/requirements.txt` (hash-keyed, atomic); non-blocking fallback to PATH `python3` → [venv/](be/internal/venv/)
 - **Manifest tools (api-mode only)** → [manifest/CLAUDE.md](be/internal/manifest/CLAUDE.md) + [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
 - **Python SDK + `script.context` socket method** → [sdk/python/CLAUDE.md](be/internal/sdk/python/CLAUDE.md) + [socket/CLAUDE.md](be/internal/socket/CLAUDE.md)
 

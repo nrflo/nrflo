@@ -144,6 +144,20 @@ The resolver agent's session is tracked under the existing workflow instance (`w
 | `plan_reader.go` | Plan file reader for plan-before-execute mode |
 | `chain_runner.go` | Sequential chain execution runner |
 
+## Per-Project Python Venv
+
+`Orchestrator.venvMgr` (`*venv.Manager`, wired in `New()` via `venv.New(filepath.Dir(dataPath), clk)`) resolves a per-project Python venv before any agents spawn in a workflow run.
+
+**Wiring in `runLoop`:** Called once, outside the per-agent goroutines, right after "workflow started" is logged:
+
+```go
+pythonPath, _ := o.venvMgr.Ensure(ctx, req.ProjectID, projectRoot)
+```
+
+`pythonPath` is then passed as `spawner.Config.PythonPath` to every spawner created in the layer loop. Script-mode agents use this as the python binary; empty means fall back to PATH `python3`.
+
+**Non-blocking:** Any failure in `Ensure` (no `python3` in PATH, failed venv create, failed pip install) returns `"", nil` — the orchestrator logs a warn and the agent falls back to system python. CLI and API agents are not affected (they never read `Config.PythonPath`).
+
 ## Git Worktree Lifecycle
 
 Worktrees are only used for **ticket-scoped** workflows. Project-scoped workflows always run in the original project root, regardless of `use_git_worktrees` setting.

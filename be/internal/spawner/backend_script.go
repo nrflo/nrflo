@@ -47,11 +47,12 @@ func (b *scriptBackend) Start(ctx context.Context, proc *processInfo, prep *prep
 	if b.s.config.SDKDir != "" {
 		env = append(env, "NRFLO_SDK_DIR="+b.s.config.SDKDir)
 	}
-	cmd := exec.CommandContext(ctx, "python3", scriptPath)
+	pyBin := resolvePythonBin(prep)
+	cmd := exec.CommandContext(ctx, pyBin, scriptPath)
 	cmd.Dir = prep.opts.WorkDir
 	cmd.Env = env
 
-	proc.spawnCommand = fmt.Sprintf("python3 %s", scriptPath)
+	proc.spawnCommand = fmt.Sprintf("%s %s", pyBin, scriptPath)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -88,6 +89,16 @@ func (b *scriptBackend) Start(ctx context.Context, proc *processInfo, prep *prep
 	}()
 
 	return nil
+}
+
+// resolvePythonBin returns the python binary to use for a script-mode agent.
+// When prep.pythonPath is non-empty (venv resolved by orchestrator), it is used.
+// Otherwise falls back to "python3" on PATH.
+func resolvePythonBin(prep *prepResult) string {
+	if prep.pythonPath != "" {
+		return prep.pythonPath
+	}
+	return "python3"
 }
 
 // Kill sends a signal to the running python3 process. SIGKILL routes to

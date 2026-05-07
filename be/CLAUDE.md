@@ -218,6 +218,8 @@ be/
 │   │   └── testdata/            # Test config, agent templates
 │   ├── logger/                  # Structured logging with trx propagation and size-based rotation
 │   │   └── logger.go            # Init, Info/Warn/Error, NewTrx, WithTrx/TrxFromContext, rotate (10MB). HTTP requests get trx injected via requestIDMiddleware
+│   ├── venv/                    # Per-project Python venv manager for script-mode agents
+│   │   └── manager.go           # Manager.Ensure(ctx, projectID, projectRoot) → python bin path; hash-keyed sync with requirements.txt; non-blocking fallback to PATH python3
 │   └── id/                      # ID generation
 │       └── generator.go
 ├── go.mod
@@ -322,6 +324,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers, running tests |
 | `internal/manifest/` | [manifest/CLAUDE.md](internal/manifest/CLAUDE.md) | Manifest parsing, python script runtime, init-customer scaffold |
 | `internal/sdk/python/` | [sdk/python/CLAUDE.md](internal/sdk/python/CLAUDE.md) | Embedded Python SDK for `execution_mode='script'` agents (auto-installed to `$NRFLO_HOME/sdk/`) |
+| `internal/venv/` | (inline docs) | Per-project Python venv manager: `Ensure(ctx, projectID, projectRoot)` syncs `$NRFLO_HOME/project/<id>/venv` with `requirements.txt` (sha256 hash-keyed, atomic rename). Non-blocking — failures return `"", nil` so callers fall back to PATH `python3`. Docker image requires `py3-pip` apk package for `python3 -m venv` to include pip. |
 | `internal/configeditor/` | [configeditor/CLAUDE.md](internal/configeditor/CLAUDE.md) | Versioned config file editing service + forward-only migration runner |
 
 ## Running Tests

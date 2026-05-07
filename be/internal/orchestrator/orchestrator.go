@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/types"
+	"be/internal/venv"
 	"be/internal/ws"
 )
 
@@ -78,6 +80,7 @@ type Orchestrator struct {
 	runs     map[string]*runState // wfi_id → state
 	dataPath string
 	sdkDir   string
+	venvMgr  *venv.Manager
 	wsHub    *ws.Hub
 	clock    clock.Clock
 	errorSvc spawner.ErrorRecorder
@@ -98,6 +101,7 @@ func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.Error
 		runs:     make(map[string]*runState),
 		dataPath: dataPath,
 		sdkDir:   sdkDir,
+		venvMgr:  venv.New(filepath.Dir(dataPath), clk),
 		wsHub:    wsHub,
 		clock:    clk,
 		errorSvc: errorSvc,
@@ -1244,6 +1248,10 @@ func (o *Orchestrator) runLoop(
 	}
 	logger.Info(ctx, "workflow started", "workflow", req.WorkflowName, "target", target, "phases", len(svcWf.Phases))
 
+	// Resolve per-project venv once for all script-mode agents in this run.
+	// Non-blocking: failures return "" and agents fall back to PATH python3.
+	pythonPath, _ := o.venvMgr.Ensure(ctx, req.ProjectID, projectRoot)
+
 	// Group phases by layer
 	layerGroups := groupPhasesByLayer(svcWf.Phases)
 
@@ -1369,6 +1377,7 @@ func (o *Orchestrator) runLoop(
 					PythonRunner:              pythonRunner,
 					CustomerConfigDir:         customerConfigDir,
 					SDKDir:                    o.sdkDir,
+					PythonPath:                pythonPath,
 					PythonScriptRepo:          repo.NewPythonScriptRepo(pool, o.clock),
 					OnSessionRegister: func(sid string, s *spawner.Spawner) {
 						o.mu.Lock()

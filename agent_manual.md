@@ -389,6 +389,12 @@ On the **Workflows** page, add or edit an agent definition and set **Execution M
 
 There is no low-context restart, no resume, and no take-control for script agents.
 
+### Python Dependencies (requirements.txt)
+
+If your project root contains a `requirements.txt`, nrflo automatically creates and maintains a per-project Python virtual environment before each workflow run. The venv is stored at `$NRFLO_HOME/project/<projectID>/venv` and pip-installed packages are kept in sync with `requirements.txt` (re-installed only when the file changes). Script agents run inside this venv automatically — no manual activation is needed.
+
+If `requirements.txt` is absent or the venv cannot be created, agents fall back to the system `python3` on PATH.
+
 ### nrflo_sdk Reference
 
 Import and create a client at the top of every script:

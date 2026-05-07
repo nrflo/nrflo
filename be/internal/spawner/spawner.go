@@ -183,6 +183,10 @@ type Config struct {
 	// When non-empty, NRFLO_SDK_DIR is injected into script-mode agent environments.
 	// T3 writes the embedded SDK file; T2 only plumbs the directory.
 	SDKDir string
+	// PythonPath is the absolute path to the python binary in the project venv.
+	// When non-empty, script-mode agents use this instead of "python3" from PATH.
+	// Empty string means fall back to "python3" on PATH.
+	PythonPath string
 	// PythonScriptRepo loads python_scripts rows for script-mode agents.
 	// Required when any agent definition uses execution_mode='script'.
 	PythonScriptRepo *repo.PythonScriptRepo
@@ -816,6 +820,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		executionMode: "script",
 		scriptCode:    scriptCode,
 		scriptID:      script.ID,
+		pythonPath:    s.config.PythonPath,
 		phase:         phase,
 		opts: SpawnOptions{
 			WorkDir: workDir,

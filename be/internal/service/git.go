@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -63,19 +64,26 @@ func validateHash(hash string) error {
 	return nil
 }
 
-func validateRepoPath(path string) error {
+func resolveRepoPath(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("repo path does not exist: %s", path)
+		return "", fmt.Errorf("repo path does not exist: %s", path)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("repo path is not a directory: %s", path)
+		return "", fmt.Errorf("repo path is not a directory: %s", path)
 	}
-	gitDir := path + "/.git"
-	if _, err := os.Stat(gitDir); err != nil {
-		return fmt.Errorf("not a git repository: %s", path)
+	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
+		return path, nil
 	}
-	return nil
+	parent := filepath.Dir(path)
+	if parent != path {
+		if pi, err := os.Stat(parent); err == nil && pi.IsDir() {
+			if _, err := os.Stat(filepath.Join(parent, ".git")); err == nil {
+				return parent, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("not a git repository: %s (also checked parent %s)", path, parent)
 }
 
 func runGit(repoPath string, args ...string) (string, error) {
@@ -94,7 +102,8 @@ func runGit(repoPath string, args ...string) (string, error) {
 // ListCommits returns paginated commits from the given branch.
 // Returns commits, total count, and any error.
 func (s *GitService) ListCommits(repoPath, branch string, page, perPage int) ([]GitCommit, int, error) {
-	if err := validateRepoPath(repoPath); err != nil {
+	resolved, err := resolveRepoPath(repoPath)
+	if err != nil {
 		return nil, 0, err
 	}
 	if err := validateBranch(branch); err != nil {
@@ -102,7 +111,7 @@ func (s *GitService) ListCommits(repoPath, branch string, page, perPage int) ([]
 	}
 
 	// Get total count
-	countOut, err := runGit(repoPath, "rev-list", "--count", branch)
+	countOut, err := runGit(resolved, "rev-list", "--count", branch)
 	if err != nil {
 		return nil, 0, fmt.Errorf("counting commits: %w", err)
 	}
@@ -114,7 +123,7 @@ func (s *GitService) ListCommits(repoPath, branch string, page, perPage int) ([]
 	offset := (page - 1) * perPage
 	format := strings.Join([]string{"%H", "%h", "%an", "%ae", "%aI", "%s"}, sep)
 
-	logOut, err := runGit(repoPath,
+	logOut, err := runGit(resolved,
 		"log",
 		"--format="+format,
 		"--max-count="+strconv.Itoa(perPage),
@@ -150,7 +159,8 @@ func (s *GitService) ListCommits(repoPath, branch string, page, perPage int) ([]
 
 // GetCommitDetail returns full details for a single commit.
 func (s *GitService) GetCommitDetail(repoPath, hash string) (*GitCommitDetail, error) {
-	if err := validateRepoPath(repoPath); err != nil {
+	resolved, err := resolveRepoPath(repoPath)
+	if err != nil {
 		return nil, err
 	}
 	if err := validateHash(hash); err != nil {
@@ -159,7 +169,7 @@ func (s *GitService) GetCommitDetail(repoPath, hash string) (*GitCommitDetail, e
 
 	// Get commit metadata (use %x00 to separate body from stats)
 	format := strings.Join([]string{"%H", "%h", "%an", "%ae", "%aI", "%B"}, sep)
-	showOut, err := runGit(repoPath, "show", "--no-patch", "--format="+format, hash)
+	showOut, err := runGit(resolved, "show", "--no-patch", "--format="+format, hash)
 	if err != nil {
 		if strings.Contains(err.Error(), "unknown revision") || strings.Contains(err.Error(), "bad object") {
 			return nil, ErrCommitNotFound
@@ -185,7 +195,7 @@ func (s *GitService) GetCommitDetail(repoPath, hash string) (*GitCommitDetail, e
 	}
 
 	// Get per-file stats
-	numstatOut, err := runGit(repoPath, "diff-tree", "--no-commit-id", "-r", "--numstat", hash)
+	numstatOut, err := runGit(resolved, "diff-tree", "--no-commit-id", "-r", "--numstat", hash)
 	if err != nil {
 		return nil, fmt.Errorf("getting file stats: %w", err)
 	}
@@ -193,7 +203,7 @@ func (s *GitService) GetCommitDetail(repoPath, hash string) (*GitCommitDetail, e
 	detail.Files = parseNumstat(numstatOut)
 
 	// Get status info to determine added/modified/deleted/renamed
-	statusOut, err := runGit(repoPath, "diff-tree", "--no-commit-id", "-r", "--name-status", hash)
+	statusOut, err := runGit(resolved, "diff-tree", "--no-commit-id", "-r", "--name-status", hash)
 	if err != nil {
 		return nil, fmt.Errorf("getting file statuses: %w", err)
 	}
@@ -206,7 +216,7 @@ func (s *GitService) GetCommitDetail(repoPath, hash string) (*GitCommitDetail, e
 	}
 
 	// Get full diff
-	diffOut, err := runGit(repoPath, "diff-tree", "-p", hash)
+	diffOut, err := runGit(resolved, "diff-tree", "-p", hash)
 	if err != nil {
 		return nil, fmt.Errorf("getting diff: %w", err)
 	}

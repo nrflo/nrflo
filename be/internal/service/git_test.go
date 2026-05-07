@@ -270,7 +270,13 @@ func TestListCommits_NotGitRepo(t *testing.T) {
 	}
 
 	if !strings.Contains(err.Error(), "not a git repository") {
-		t.Errorf("expected 'not a git repository' error, got: %v", err)
+		t.Errorf("expected 'not a git repository' in error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), tmpDir) {
+		t.Errorf("expected error to contain path %q, got: %v", tmpDir, err)
+	}
+	if !strings.Contains(err.Error(), "also checked parent") {
+		t.Errorf("expected 'also checked parent' in error, got: %v", err)
 	}
 }
 
@@ -650,33 +656,40 @@ func TestValidateHash(t *testing.T) {
 	}
 }
 
-// TestValidateRepoPath verifies repo path validation.
-func TestValidateRepoPath(t *testing.T) {
+// TestResolveRepoPath verifies repo path resolution including the returned resolved path.
+func TestResolveRepoPath(t *testing.T) {
 	t.Parallel()
-	// Create a valid git repo
 	validRepo := setupTestGitRepo(t)
 	defer os.RemoveAll(validRepo)
 
-	// Create a directory that's not a git repo
-	notGitDir := filepath.Join("/tmp", "not_git_"+t.Name())
+	notGitDir := filepath.Join("/tmp", "not_git_resolve_"+t.Name())
 	os.MkdirAll(notGitDir, 0755)
 	defer os.RemoveAll(notGitDir)
 
+	tmpFile := filepath.Join("/tmp", "not_a_dir_"+t.Name()+".txt")
+	os.WriteFile(tmpFile, []byte("test"), 0644)
+	defer os.Remove(tmpFile)
+
 	testCases := []struct {
-		name    string
-		path    string
-		wantErr bool
+		name         string
+		path         string
+		wantErr      bool
+		wantResolved string
 	}{
-		{"valid git repo", validRepo, false},
-		{"not git repo", notGitDir, true},
-		{"nonexistent path", "/nonexistent/path", true},
+		{"valid git repo", validRepo, false, validRepo},
+		{"not git repo", notGitDir, true, ""},
+		{"nonexistent path", "/nonexistent/path", true, ""},
+		{"not a directory", tmpFile, true, ""},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateRepoPath(tc.path)
+			resolved, err := resolveRepoPath(tc.path)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("validateRepoPath(%q) error = %v, wantErr = %v", tc.path, err, tc.wantErr)
+				t.Errorf("resolveRepoPath(%q) error = %v, wantErr = %v", tc.path, err, tc.wantErr)
+			}
+			if !tc.wantErr && tc.wantResolved != "" && resolved != tc.wantResolved {
+				t.Errorf("resolveRepoPath(%q) = %q, want %q", tc.path, resolved, tc.wantResolved)
 			}
 		})
 	}

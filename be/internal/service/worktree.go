@@ -20,7 +20,7 @@ const worktreeBasePath = "/tmp/nrflo/worktrees"
 // Setup creates a git branch from defaultBranch and a worktree for it.
 // Returns the absolute path to the worktree directory.
 func (s *WorktreeService) Setup(projectRoot, defaultBranch, branchName string) (string, error) {
-	if err := validateRepoPath(projectRoot); err != nil {
+	if _, err := resolveRepoPath(projectRoot); err != nil {
 		return "", fmt.Errorf("worktree setup: %w", err)
 	}
 	if err := validateBranch(defaultBranch); err != nil {
@@ -79,7 +79,7 @@ var mergeRetryDelay = 500 * time.Millisecond
 // (with retry for transient index.lock contention), and deletes the branch.
 // If merge fails, returns an error and preserves the branch for manual resolution.
 func (s *WorktreeService) MergeAndCleanup(projectRoot, defaultBranch, branchName, worktreePath string) error {
-	if err := validateRepoPath(projectRoot); err != nil {
+	if _, err := resolveRepoPath(projectRoot); err != nil {
 		return fmt.Errorf("worktree merge: %w", err)
 	}
 

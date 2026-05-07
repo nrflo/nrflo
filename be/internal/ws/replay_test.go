@@ -157,17 +157,22 @@ func TestReplayWithPrunedEvents(t *testing.T) {
 	client := newTestClient(hub, "test-1")
 	hub.Register(client)
 
-	// Subscribe with cursor=5 (all events were pruned, latestSeq=0)
-	// sinceSeq=5 > latestSeq=0, but since no events exist and sinceSeq > 0,
-	// this should be caught up (no snapshot needed)
+	// Subscribe with cursor=5 — all events were pruned (latestSeq=0).
+	// sinceSeq=5 > latestSeq=0 indicates the client is "ahead" of the server,
+	// which happens after a server reset / DB wipe while the browser still
+	// holds a high seq from a previous server. Without a snapshot/resync the
+	// client would silently drop every future event because its local seq
+	// remains higher than every newly broadcast seq. So the server must
+	// trigger a snapshot here (or resync.required if no provider).
 	handleReplay(client, "proj-1", "ticket-1", 5, hub)
 
-	// Should not receive any events (treated as caught up)
-	select {
-	case msg := <-client.send:
-		t.Fatalf("expected no events for caught-up cursor, got: %s", string(msg))
-	case <-time.After(200 * time.Millisecond):
-		// Expected - no events
+	// Should receive snapshot events (begin/chunk/end)
+	events := collectEvents(client, 3, time.Second)
+	if len(events) == 0 {
+		t.Fatalf("expected snapshot for future-cursor case, got nothing")
+	}
+	if events[0].Type != EventSnapshotBegin {
+		t.Fatalf("expected first event to be snapshot.begin, got %q", events[0].Type)
 	}
 }
 
@@ -320,6 +325,52 @@ func TestReplayDifferentScope(t *testing.T) {
 	}
 	if events[1].Sequence != 5 {
 		t.Fatalf("expected seq=5, got %d", events[1].Sequence)
+	}
+}
+
+// TestReplayFutureCursorWithoutSnapshotResyncs reproduces the bug where a
+// browser persisted a high seq from a prior server instance, the server's
+// event log was reset, and no snapshot provider is configured. Without the
+// fix, the server silently treated this as "caught up" and the client
+// dropped every future event as a duplicate (seq <= last). With the fix,
+// the server must send resync.required so the client clears its cursor.
+func TestReplayFutureCursorWithoutSnapshotResyncs(t *testing.T) {
+	dbDir := t.TempDir()
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+	defer pool.Close()
+
+	hub := NewHub(clock.Real())
+	eventLog := repo.NewEventLogRepo(pool, clock.Real())
+	hub.SetEventLog(eventLog)
+	// No snapshot provider configured — must fall back to resync.required.
+
+	go hub.Run()
+	defer hub.Stop()
+
+	// Append a few events so the server has a low latestSeq.
+	for i := 0; i < 3; i++ {
+		if _, err := eventLog.Append("proj-1", "", EventTestEcho, "wf", nil); err != nil {
+			t.Fatalf("append: %v", err)
+		}
+	}
+
+	client := newTestClient(hub, "test-1")
+	hub.Register(client)
+
+	// Project-wide subscription (empty ticket_id) with a stale-future cursor.
+	handleReplay(client, "proj-1", "", 999999, hub)
+
+	events := collectEvents(client, 1, time.Second)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 control event, got %d", len(events))
+	}
+	if events[0].Type != EventResyncRequired {
+		t.Fatalf("expected %q, got %q", EventResyncRequired, events[0].Type)
 	}
 }
 

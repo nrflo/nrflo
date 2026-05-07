@@ -11,6 +11,7 @@ import { isControlEvent, subscriptionKey } from './useWSProtocol'
 import {
   dispatchV2Event,
   getLastSeq,
+  setLastSeq,
   persistSeqs,
   restoreSeqs,
 } from './useWSReducer'
@@ -153,10 +154,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }, HEARTBEAT_TIMEOUT)
   }, [])
 
-  // Request resync for a subscription
+  // Request resync for a subscription. Clears the cached seq so any events
+  // arriving before the snapshot's current_seq are not dropped as duplicates.
   const requestResync = useCallback((projectId: string, ticketId: string) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return
     if (isDev) console.debug('[ws] requesting resync for', projectId, ticketId)
+    setLastSeq(subscriptionKey(projectId, ticketId), 0)
     const message: WSSubscribeMessage = {
       action: 'subscribe',
       project_id: projectId,

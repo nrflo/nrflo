@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -918,6 +919,30 @@ func (o *Orchestrator) takeControlByInstance(wfiID, workflowName, target, sessio
 
 	sp.RequestTakeControl(sessionID)
 	return sessionID, nil
+}
+
+// WaitTakeControlReady blocks until the spawner has finished the synchronous
+// portion of a previously-requested take-control (kill + status flip to
+// user_interactive, viewer-attach broadcast, or rejection), or until timeout.
+// Returns true if the ready signal fired before timeout. Best-effort: returns
+// false when the session/spawner can't be located.
+func (o *Orchestrator) WaitTakeControlReady(sessionID string, timeout time.Duration) bool {
+	o.mu.Lock()
+	var sp *spawner.Spawner
+	for _, rs := range o.runs {
+		if rs == nil {
+			continue
+		}
+		if found, ok := rs.spawners[sessionID]; ok {
+			sp = found
+			break
+		}
+	}
+	o.mu.Unlock()
+	if sp == nil {
+		return false
+	}
+	return sp.WaitForTakeControlReady(sessionID, timeout)
 }
 
 // SignalSessionReady marks the matching running proc as TUI-ready, releasing

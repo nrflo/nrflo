@@ -295,6 +295,8 @@ type Spawner struct {
 	config             Config
 	restartCh          chan string             // carries sessionID of agent to restart
 	takeControlCh      chan string             // carries sessionID of agent to take control of
+	takeControlReadies map[string]chan struct{} // sessionID → closed when status is user_interactive (or take-control rejected/attached)
+	takeControlReadiesMu sync.Mutex             // protects takeControlReadies
 	terminalSignals    map[string]chan terminalSignal // sessionID → its monitorAll's receive channel
 	terminalSignalsMu  sync.Mutex              // protects terminalSignals
 	bumpMessageCh      chan string             // carries sessionID to bump lastMessageTime (hook events)
@@ -327,14 +329,15 @@ func (r SpawnRequest) IsProjectScope() bool {
 // New creates a new spawner
 func New(config Config) *Spawner {
 	return &Spawner{
-		config:           config,
-		restartCh:        make(chan string, 1),
-		takeControlCh:    make(chan string, 1),
-		terminalSignals:  make(map[string]chan terminalSignal),
-		bumpMessageCh:    make(chan string, 1),
-		interactiveWaits: make(map[string]chan struct{}),
-		sessionProcs:     make(map[string]*processInfo),
-		manifestCache:    make(map[string]*manifestCacheEntry),
+		config:             config,
+		restartCh:          make(chan string, 1),
+		takeControlCh:      make(chan string, 1),
+		takeControlReadies: make(map[string]chan struct{}),
+		terminalSignals:    make(map[string]chan terminalSignal),
+		bumpMessageCh:      make(chan string, 1),
+		interactiveWaits:   make(map[string]chan struct{}),
+		sessionProcs:       make(map[string]*processInfo),
+		manifestCache:      make(map[string]*manifestCacheEntry),
 	}
 }
 
@@ -381,12 +384,58 @@ func (s *Spawner) RequestRestart(sessionID string) {
 	}
 }
 
-// RequestTakeControl sends a take-control signal for the given session ID.
-// Non-blocking: if a take-control is already pending, this is a no-op.
+// RequestTakeControl sends a take-control signal for the given session ID and
+// registers a readiness channel that closes once monitorAll has finished
+// killing the agent and flipped the session to user_interactive (or rejected
+// the take-control request, or attached as a viewer for cli_interactive).
+// Callers can wait for readiness via WaitForTakeControlReady. Non-blocking on
+// the channel send: if a take-control is already pending, the existing
+// readiness entry is reused.
 func (s *Spawner) RequestTakeControl(sessionID string) {
+	s.takeControlReadiesMu.Lock()
+	if _, exists := s.takeControlReadies[sessionID]; !exists {
+		s.takeControlReadies[sessionID] = make(chan struct{})
+	}
+	s.takeControlReadiesMu.Unlock()
+
 	select {
 	case s.takeControlCh <- sessionID:
 	default:
+	}
+}
+
+// WaitForTakeControlReady blocks until the take-control flow for the given
+// session ID has completed its synchronous setup (kill + status flip to
+// user_interactive, or reject, or viewer-attach), or until the timeout
+// elapses. Returns true if the ready signal fired, false on timeout or when
+// no readiness was registered for this session.
+func (s *Spawner) WaitForTakeControlReady(sessionID string, timeout time.Duration) bool {
+	s.takeControlReadiesMu.Lock()
+	ch, ok := s.takeControlReadies[sessionID]
+	s.takeControlReadiesMu.Unlock()
+	if !ok {
+		return false
+	}
+	select {
+	case <-ch:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+// signalTakeControlReady closes the readiness channel for the given session
+// (idempotent) and removes it from the map. Called by monitorAll once the
+// take-control flow has reached a state where a PTY connection can succeed.
+func (s *Spawner) signalTakeControlReady(sessionID string) {
+	s.takeControlReadiesMu.Lock()
+	ch, ok := s.takeControlReadies[sessionID]
+	if ok {
+		delete(s.takeControlReadies, sessionID)
+	}
+	s.takeControlReadiesMu.Unlock()
+	if ok {
+		close(ch)
 	}
 }
 
@@ -1329,10 +1378,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			}
 		case takeControlSessionID := <-s.takeControlCh:
 			// Take-control requested — find matching proc, validate, kill, and block
+			tcMatched := false
 			for i, proc := range running {
 				if proc.sessionID != takeControlSessionID {
 					continue
 				}
+				tcMatched = true
 				// Validate backend supports take-control
 				if proc.backend == nil || !proc.backend.SupportsTakeControl() {
 					cliName, _ := parseModelID(proc.modelID)
@@ -1343,6 +1394,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						"model_id":   proc.modelID,
 						"reason":     "api_mode_unsupported",
 					})
+					s.signalTakeControlReady(takeControlSessionID)
 					break
 				}
 
@@ -1356,6 +1408,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						"agent_type": proc.agentType,
 						"model_id":   proc.modelID,
 					})
+					s.signalTakeControlReady(takeControlSessionID)
 					break
 				}
 
@@ -1386,6 +1439,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					"model_id":   proc.modelID,
 				})
 
+				// Status is now user_interactive and the agent is killed — the
+				// PTY handler can safely accept a connection. Unblock any HTTP
+				// caller waiting in WaitForTakeControlReady before we settle
+				// into the interactive wait.
+				s.signalTakeControlReady(takeControlSessionID)
+
 				// Remove from running
 				running = append(running[:i], running[i+1:]...)
 
@@ -1412,6 +1471,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				proc.elapsed = time.Since(proc.startTime)
 				completed = append(completed, proc)
 				break
+			}
+			if !tcMatched {
+				// Session is not in our running list (already finished, or
+				// owned by a different spawner). Unblock any caller waiting
+				// on the readiness channel so it doesn't hang to its timeout.
+				s.signalTakeControlReady(takeControlSessionID)
 			}
 		case sig := <-ownTerminalCh:
 			// Terminal signal: DB result already written by socket handler.

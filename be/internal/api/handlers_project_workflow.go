@@ -236,6 +236,10 @@ func (s *Server) handleTakeControlProject(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Wait until the spawner has killed the agent and flipped the session to
+	// user_interactive before returning. See handleTakeControl for context.
+	s.orchestrator.WaitTakeControlReady(sessionID, takeControlReadyTimeout)
+
 	writeJSON(w, http.StatusOK, map[string]string{"status": "interactive", "session_id": sessionID})
 }
 

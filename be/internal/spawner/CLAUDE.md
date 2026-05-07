@@ -546,21 +546,34 @@ agent.take_control_rejected) directly via the in-process WebSocket hub.
 messages.updated events are coalesced to one per session per 2s window.
 
 7. TAKE-CONTROL (interactive session)
-   - `takeControlCh` receives session ID from orchestrator
+   - `takeControlCh` receives session ID from orchestrator. `RequestTakeControl`
+     also registers a readiness entry in `takeControlReadies[sessionID]` (a
+     `chan struct{}`) before sending so callers can synchronously wait for the
+     post-kill state via `WaitForTakeControlReady(sessionID, timeout)`.
    - Backend gate: proc.backend.SupportsTakeControl() must return true
    - If false (API backends): broadcasts agent.take_control_rejected with
-     session_id, agent_type, model_id, reason="api_mode_unsupported" and
-     breaks — agent is NOT killed and continues running normally
+     session_id, agent_type, model_id, reason="api_mode_unsupported", closes
+     the readiness channel, and breaks — agent is NOT killed and continues
+     running normally
    - If true: kills agent (SIGTERM → grace period → SIGKILL), sets session
-     status to user_interactive, broadcasts agent.take_control event, blocks
-     monitorAll on interactiveWaitCh
-   - `CompleteInteractive(sessionID)` closes the channel, unblocking
+     status to user_interactive, broadcasts agent.take_control event, closes
+     the readiness channel, then blocks monitorAll on interactiveWaitCh
+   - For `cli_interactive` backends the take-control case is viewer-attach:
+     no kill, no status flip, broadcast `agent.viewer_attached`, close the
+     readiness channel, and continue. The PTY handler accepts `status=running`
+     when a PTY session already exists for that ID.
+   - If the requested session is not found in this monitorAll's `running`
+     list (already finished, or owned by a different spawner), the readiness
+     channel is closed at end-of-case so callers don't hang to timeout.
+   - `CompleteInteractive(sessionID)` closes interactiveWaitCh, unblocking
    - Proc treated as PASS for finalizePhase
    - Only works for CLIs with SupportsResume() == true
    - HTTP handlers (ticket + project take-control) pre-screen via
      isAPISession() and return HTTP 409 api_mode_unsupported before
      dispatching to the orchestrator, so the spawner rejection path is a
-     belt-and-suspenders fallback
+     belt-and-suspenders fallback. After dispatch, the handlers wait on
+     `WaitTakeControlReady` (default 10s) before responding so the UI's
+     PTY WebSocket connection doesn't race the kill window.
 
 8. TERMINAL SIGNAL (kill accelerator after DB write)
    - Per-session registry `terminalSignals map[sessionID]chan terminalSignal`

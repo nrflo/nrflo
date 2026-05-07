@@ -4,12 +4,20 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
 	"be/internal/ws"
 )
+
+// takeControlReadyTimeout bounds how long the take-control HTTP handlers will
+// wait for the spawner to finish killing the agent and flip the session to
+// user_interactive before responding. The kill itself is SIGTERM with a
+// configurable grace (default 5s) so 10s leaves headroom; on timeout the
+// handler still returns 200 and the UI's PTY connection may have to retry.
+const takeControlReadyTimeout = 10 * time.Second
 
 // handleRunWorkflow starts an orchestrated workflow run.
 // POST /api/v1/tickets/:id/workflow/run
@@ -237,6 +245,12 @@ func (s *Server) handleTakeControl(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
+
+	// Wait until the spawner has killed the agent and flipped the session to
+	// user_interactive before returning, so the UI's PTY WebSocket connection
+	// (opened immediately after this response) doesn't race the kill window
+	// and get rejected with "session status is running".
+	s.orchestrator.WaitTakeControlReady(sessionID, takeControlReadyTimeout)
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "interactive", "session_id": sessionID})
 }

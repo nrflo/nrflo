@@ -143,7 +143,7 @@ POST /api/v1/tickets/:id/workflow/run      # Start orchestrated run; body accept
 POST /api/v1/tickets/:id/workflow/stop     # Stop running orchestration (optional instance_id in body)
 POST /api/v1/tickets/:id/workflow/restart       # Restart agent (context save + relaunch)
 POST /api/v1/tickets/:id/workflow/retry-failed  # Retry failed workflow from failed layer
-POST /api/v1/tickets/:id/workflow/take-control     # Kill agent, return session ID for interactive use
+POST /api/v1/tickets/:id/workflow/take-control     # Kill agent, wait for status flip to user_interactive (up to 10s), then return session ID for interactive use
 POST /api/v1/tickets/:id/workflow/resume-session   # Resume finished Claude session (set to user_interactive)
 POST /api/v1/tickets/:id/workflow/exit-interactive  # Signal interactive session completed, unblock spawner
 POST /api/v1/tickets/:id/workflow/run-epic    # Create chain from epic children, optionally start
@@ -167,7 +167,7 @@ POST /api/v1/projects/:id/workflow/run      # Start project workflow; body accep
 POST /api/v1/projects/:id/workflow/stop     # Stop project workflow
 POST /api/v1/projects/:id/workflow/restart       # Restart project agent
 POST /api/v1/projects/:id/workflow/retry-failed  # Retry failed project workflow
-POST /api/v1/projects/:id/workflow/take-control     # Kill project agent, return session ID
+POST /api/v1/projects/:id/workflow/take-control     # Kill project agent, wait for status flip to user_interactive (up to 10s), then return session ID
 POST /api/v1/projects/:id/workflow/resume-session   # Resume finished project Claude session
 POST /api/v1/projects/:id/workflow/exit-interactive  # Signal project interactive session completed
 POST /api/v1/projects/:id/workflow/stop-endless-loop # Toggle endless-loop stop flag on an active instance

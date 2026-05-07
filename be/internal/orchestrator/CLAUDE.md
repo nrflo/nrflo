@@ -176,10 +176,13 @@ The `worktreeInfo` struct in `runLoop` tracks original project root, worktree pa
 The orchestrator supports taking interactive control of a running agent:
 
 1. `TakeControl(projectID, ticketID, workflow, sessionID)` — finds the active spawner and sends `RequestTakeControl`
-2. Spawner kills the agent (SIGTERM → grace → SIGKILL), sets session status to `user_interactive`
-3. Spawner blocks `monitorAll` on an `interactiveWaitCh` — the workflow does not advance
-4. `CompleteInteractive(sessionID)` — updates DB to `interactive_completed` with `result=pass`, closes the wait channel
-5. Spawner unblocks, treats the proc as PASS, and `finalizePhase` proceeds normally
+2. Spawner kills the agent (SIGTERM → grace → SIGKILL), sets session status to `user_interactive`, and closes a per-session readiness channel
+3. The HTTP handler calls `WaitTakeControlReady(sessionID, 10s)` so the response only returns once status is `user_interactive` — this prevents the UI's PTY WebSocket connection (opened immediately on response) from racing the kill window and getting rejected with "session status is running"
+4. Spawner blocks `monitorAll` on an `interactiveWaitCh` — the workflow does not advance
+5. `CompleteInteractive(sessionID)` — updates DB to `interactive_completed` with `result=pass`, closes the wait channel
+6. Spawner unblocks, treats the proc as PASS, and `finalizePhase` proceeds normally
+
+The same readiness channel is also closed on the viewer-attach branch (`cli_interactive` backends) and the `api_mode_unsupported` rejection branch, so the HTTP handler never blocks past `takeControlReadyTimeout` regardless of which branch fires.
 
 Only works for Claude CLI agents (`SupportsResume() == true`). Project-scoped equivalents: `TakeControlProject`, same `CompleteInteractive`.
 

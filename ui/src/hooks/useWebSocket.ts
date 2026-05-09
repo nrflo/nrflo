@@ -80,6 +80,7 @@ export type WSEventType =
   | 'chain.step_completed'
   | 'chain.run_completed'
   | 'chain.run_failed'
+  | 'project.env_vars_updated'
   | 'test.echo'
 
 export interface WSEvent {

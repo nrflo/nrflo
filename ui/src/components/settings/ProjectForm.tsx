@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Toggle } from '@/components/ui/Toggle'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { SafetyHookCheckDialog } from './SafetyHookCheckDialog'
+import { ProjectEnvVarsEditor } from './ProjectEnvVarsEditor'
 
 export interface ProjectFormData {
   id: string
@@ -279,6 +280,9 @@ export function ProjectForm({
           </div>
         )}
       </div>
+      {!isCreate && disabledId && (
+        <ProjectEnvVarsEditor projectId={disabledId} />
+      )}
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>
           {isCreate ? 'Cancel' : <><X className="h-4 w-4 mr-1" />Cancel</>}

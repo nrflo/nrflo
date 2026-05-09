@@ -9,6 +9,7 @@ import { workflowChainKeys, workflowChainRunKeys } from './useWorkflowChains'
 import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
 import { agentSessionLogKeys } from './useAgentSessionLogs'
+import { projectEnvVarKeys } from './useProjectEnvVars'
 import type { WSEventType } from './useWebSocket'
 
 // Module-level throttle state for tool.dispatched (1s leading+trailing)
@@ -252,6 +253,10 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
   'project_findings.updated': (event, qc) => {
     qc.invalidateQueries({ queryKey: projectWorkflowKeys.findings(event.project_id) })
     qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+  },
+
+  'project.env_vars_updated': (event, qc) => {
+    qc.invalidateQueries({ queryKey: projectEnvVarKeys.list(event.project_id) })
   },
 
   'messages.updated': (event, qc, isProjectScope) => {

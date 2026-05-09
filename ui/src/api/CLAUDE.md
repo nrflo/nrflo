@@ -35,6 +35,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `scheduledTasks.ts` | Scheduled task CRUD + run history (`GET/POST/PATCH/DELETE /api/v1/scheduled-tasks`, `GET /api/v1/scheduled-tasks/:id/runs`, `POST /api/v1/scheduled-tasks/:id/run-now`; requires X-Project header) |
 | `users.ts` | User management (admin-only, no X-Project header): `listUsers()→{users:User[]}`, `createUser(req)→User`, `updateUser(id,req)→User`, `resetUserPassword(id,req)→void`, `deleteUser(id)→void`. Errors: 409 `email_exists`, 400 `last_admin`/`cannot_delete_self`. |
 | `auditLog.ts` | Audit log (admin-only, no X-Project header): `listAuditLog({page,per_page,user_id,action})→AuditListResponse`. Returns `{items,total,page,per_page}`. |
+| `projectEnvVars.ts` | Per-project env var CRUD: `listEnvVars(projectId)`, `putEnvVar(projectId,name,value)` (body `{value}`), `deleteEnvVar(projectId,name)`; path segments encoded via `encodeURIComponent`; requires X-Project header |
 | `notifications.ts` | Per-workflow notification channel CRUD + test + deliveries (nested under `/api/v1/workflows/:wid/…`); requires X-Project header |
 | `review.ts` | Review item API: listReviewItems/getReviewItem/updateReviewDraft/approveReview/rejectReview against `/api/v1/review[/...]` |
 | `configFiles.ts` | Config file API: listConfigFiles/getConfigFile/putConfigFile/getConfigHistory/rollbackConfig against `/api/v1/config-files[/...]`. `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
@@ -202,6 +203,11 @@ GET    /api/v1/docs/agent-manual    # Agent manual markdown content
 
 # Safety Hook
 POST   /api/v1/safety-hook/check    # Dry-run check command against safety hook config (no X-Project header)
+
+# Per-project env vars (require X-Project header; writes admin-only)
+GET    /api/v1/projects/{id}/env-vars           # List all env vars for project
+PUT    /api/v1/projects/{id}/env-vars/{name}    # Upsert env var; body: {value}
+DELETE /api/v1/projects/{id}/env-vars/{name}    # Delete env var by name
 
 # Agent Session Logs (require X-Project header)
 GET    /api/v1/agent-session-logs   # Paginated finished sessions; ?page=&per_page=

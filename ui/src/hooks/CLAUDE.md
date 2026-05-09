@@ -75,6 +75,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `agent.context_saving` | session_id, agent_type | Context-saver system agent spawned for low-context save |
 | `findings.updated` | agent_type, key, action | Findings changed |
 | `project_findings.updated` | | Project findings changed |
+| `project.env_vars_updated` | | Project env vars changed; invalidates `projectEnvVarKeys.list(project_id)` |
 | `messages.updated` | session_id, agent_type, model_id | Messages changed (~2s) |
 | `workflow.updated` | action (init, set) | Workflow state changed |
 | `workflow_def.*` | workflow_id | Workflow def CRUD |
@@ -137,6 +138,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `usePythonScripts.ts` | TanStack Query hooks for Python scripts. Key factory: `pythonScriptKeys`. Exports: `usePythonScripts()`, `usePythonScript(id)`, `useCreatePythonScript()`, `useUpdatePythonScript()`, `useDeletePythonScript()`, `useValidatePythonScript()`. All write mutations invalidate `pythonScriptKeys.all`. |
 | `useUsers.ts` | TanStack Query hooks for user management (admin-only, no X-Project): `userKeys` factory; `useUsers()`, `useCreateUser()`, `useUpdateUser()`, `useResetUserPassword()`, `useDeleteUser()`. All mutations invalidate `userKeys.all`. Errors propagate as `ApiError` for `email_exists`/`last_admin`/`cannot_delete_self` mapping at call site. |
 | `useAuditLog.ts` | TanStack Query hook for paginated audit log (admin-only): `auditKeys` factory; `useAuditLog({page,per_page,user_id,action})`. Keyed by all params so filter changes trigger refetch. |
+| `useProjectEnvVars.ts` | TanStack Query hooks for per-project env vars. Key factory: `projectEnvVarKeys` (`all`, `list(projectId)`). Exports: `useProjectEnvVars(projectId)`, `usePutProjectEnvVar()`, `useDeleteProjectEnvVar()`. Mutations invalidate `projectEnvVarKeys.list(projectId)` on success. Invalidated by `project.env_vars_updated` WS event. |
 
 ## Testing
 

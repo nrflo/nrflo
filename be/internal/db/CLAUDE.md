@@ -355,7 +355,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                                                                      │
 │  NOTIFICATION_CHANNELS                                               │
 │    id          TEXT PRIMARY KEY                                      │
-│    project_id  TEXT NOT NULL (FK → projects.id, CASCADE)             │
+│    project_id  TEXT NOT NULL                                         │
+│    workflow_id TEXT NOT NULL                                         │
 │    name        TEXT NOT NULL                                         │
 │    kind        TEXT NOT NULL CHECK (kind IN ('slack','telegram'))    │
 │    enabled     INTEGER NOT NULL DEFAULT 1                            │
@@ -363,7 +364,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    event_types TEXT NOT NULL DEFAULT '[]' (JSON: watched event list) │
 │    created_at  TEXT NOT NULL                                         │
 │    updated_at  TEXT NOT NULL                                         │
-│    INDEX idx_notification_channels_project (project_id)              │
+│    FK (project_id, workflow_id) → workflows(project_id, id) CASCADE  │
+│    INDEX idx_notification_channels_workflow (project_id, workflow_id)│
 │                                                                      │
 │  NOTIFICATION_DELIVERIES                                             │
 │    id              TEXT PRIMARY KEY                                  │
@@ -543,7 +545,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000093** (agent_messages_payload — ALTER TABLE agent_messages ADD COLUMN payload TEXT)
+Current highest migration: **000094** (notification_channels_per_workflow — drop and recreate notification_channels with workflow_id composite FK to workflows; drop and recreate notification_deliveries unchanged)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

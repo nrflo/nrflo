@@ -39,17 +39,18 @@ type NotificationService struct {
 	clk   clock.Clock
 	hub   *ws.Hub
 	waker NotificationWaker
+	wfSvc *WorkflowService
 }
 
 // NewNotificationService creates a new NotificationService.
-func NewNotificationService(pool *db.Pool, clk clock.Clock, hub *ws.Hub, waker NotificationWaker) *NotificationService {
-	return &NotificationService{pool: pool, clk: clk, hub: hub, waker: waker}
+func NewNotificationService(pool *db.Pool, clk clock.Clock, hub *ws.Hub, waker NotificationWaker, wfSvc *WorkflowService) *NotificationService {
+	return &NotificationService{pool: pool, clk: clk, hub: hub, waker: waker, wfSvc: wfSvc}
 }
 
-// List returns all notification channels for a project (configs masked).
-func (s *NotificationService) List(projectID string) ([]*model.NotificationChannel, error) {
+// List returns all notification channels for a project+workflow (configs masked).
+func (s *NotificationService) List(projectID, workflowID string) ([]*model.NotificationChannel, error) {
 	r := repo.NewNotificationChannelRepo(s.pool, s.clk)
-	channels, err := r.ListByProject(projectID)
+	channels, err := r.ListByWorkflow(projectID, workflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +74,19 @@ func (s *NotificationService) Get(id string) (*model.NotificationChannel, error)
 	return ch, nil
 }
 
-// Create validates and persists a new notification channel.
-func (s *NotificationService) Create(projectID string, req *types.NotificationChannelCreateRequest) (*model.NotificationChannel, error) {
+// Create validates and persists a new notification channel for a specific workflow.
+func (s *NotificationService) Create(projectID, workflowID string, req *types.NotificationChannelCreateRequest) (*model.NotificationChannel, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("name is required")
 	}
 	if req.Kind != "slack" && req.Kind != "telegram" {
 		return nil, fmt.Errorf("kind must be slack or telegram")
+	}
+
+	if s.wfSvc != nil {
+		if _, err := s.wfSvc.GetWorkflowDef(projectID, workflowID); err != nil {
+			return nil, fmt.Errorf("workflow not found: %s", workflowID)
+		}
 	}
 
 	enabled := true
@@ -103,6 +110,7 @@ func (s *NotificationService) Create(projectID string, req *types.NotificationCh
 
 	ch := &model.NotificationChannel{
 		ProjectID:  projectID,
+		WorkflowID: workflowID,
 		Name:       req.Name,
 		Kind:       model.ChannelKind(req.Kind),
 		Enabled:    enabled,
@@ -118,7 +126,7 @@ func (s *NotificationService) Create(projectID string, req *types.NotificationCh
 		return nil, err
 	}
 
-	s.broadcast(ws.EventNotificationChannelCreated, projectID, ch.ID)
+	s.broadcast(ws.EventNotificationChannelCreated, projectID, workflowID, ch.ID)
 
 	result := *ch
 	result.Config = maskConfig(string(ch.Kind), ch.Config)
@@ -157,7 +165,7 @@ func (s *NotificationService) Update(id string, req *types.NotificationChannelUp
 		return nil, err
 	}
 
-	s.broadcast(ws.EventNotificationChannelUpdated, ch.ProjectID, ch.ID)
+	s.broadcast(ws.EventNotificationChannelUpdated, ch.ProjectID, ch.WorkflowID, ch.ID)
 
 	result := *ch
 	result.Config = maskConfig(string(ch.Kind), ch.Config)
@@ -172,10 +180,11 @@ func (s *NotificationService) Delete(id string) (string, error) {
 		return "", err
 	}
 	projectID := ch.ProjectID
+	workflowID := ch.WorkflowID
 	if err := r.Delete(id); err != nil {
 		return "", err
 	}
-	s.broadcast(ws.EventNotificationChannelDeleted, projectID, id)
+	s.broadcast(ws.EventNotificationChannelDeleted, projectID, workflowID, id)
 	return projectID, nil
 }
 
@@ -191,7 +200,7 @@ func (s *NotificationService) TestSend(id string) error {
 		ChannelID: ch.ID,
 		ProjectID: ch.ProjectID,
 		EventType: "test",
-		Payload:   `{"message":"test notification from nrflo"}`,
+		Payload:   fmt.Sprintf(`{"message":"test notification from nrflo","workflow_id":%q}`, ch.WorkflowID),
 		Status:    model.DeliveryStatusPending,
 	}
 
@@ -219,9 +228,9 @@ func (s *NotificationService) ListDeliveries(channelID string, limit int) ([]*mo
 	return deliveries, err
 }
 
-func (s *NotificationService) broadcast(eventType, projectID, channelID string) {
+func (s *NotificationService) broadcast(eventType, projectID, workflowID, channelID string) {
 	if s.hub != nil {
-		s.hub.Broadcast(ws.NewEvent(eventType, projectID, "", "", map[string]interface{}{
+		s.hub.Broadcast(ws.NewEvent(eventType, projectID, "", workflowID, map[string]interface{}{
 			"channel_id": channelID,
 		}))
 	}

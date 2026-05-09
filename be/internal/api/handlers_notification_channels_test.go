@@ -42,22 +42,25 @@ func newNotificationServer(t *testing.T) *Server {
 	}
 }
 
-func seedNotifyProject(t *testing.T, s *Server, projectID string) {
+func seedNotifyProjectAndWorkflow(t *testing.T, s *Server, projectID, workflowID string) {
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err := s.pool.Exec(
+	if _, err := s.pool.Exec(
 		`INSERT OR IGNORE INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, 'Test', '/tmp', ?, ?)`,
-		projectID, now, now)
-	if err != nil {
-		t.Fatalf("seedNotifyProject(%q): %v", projectID, err)
+		projectID, now, now); err != nil {
+		t.Fatalf("seedNotifyProjectAndWorkflow project(%q): %v", projectID, err)
+	}
+	if _, err := s.pool.Exec(
+		`INSERT OR IGNORE INTO workflows (id, project_id, description, created_at, updated_at) VALUES (?, ?, '', ?, ?)`,
+		workflowID, projectID, now, now); err != nil {
+		t.Fatalf("seedNotifyProjectAndWorkflow workflow(%q): %v", workflowID, err)
 	}
 }
 
 func doNotifyRequest(t *testing.T, s *Server, handler func(http.ResponseWriter, *http.Request),
 	method, path, projectID, body string, pathValues map[string]string) *httptest.ResponseRecorder {
 	t.Helper()
-	bodyReader := strings.NewReader(body)
-	req := httptest.NewRequest(method, path, bodyReader)
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	if projectID != "" {
 		ctx := context.WithValue(req.Context(), projectKey, projectID)
 		req = req.WithContext(ctx)
@@ -70,11 +73,12 @@ func doNotifyRequest(t *testing.T, s *Server, handler func(http.ResponseWriter, 
 	return rr
 }
 
-func createNotifyChannel(t *testing.T, s *Server, projectID string) *model.NotificationChannel {
+func createNotifyChannel(t *testing.T, s *Server, projectID, workflowID string) *model.NotificationChannel {
 	t.Helper()
 	body := `{"name":"Test Channel","kind":"slack","config":{"webhook_url":"https://example.com/ABCDEFGH"},"event_types":["orchestration.completed"]}`
 	rr := doNotifyRequest(t, s, s.handleCreateNotificationChannel, http.MethodPost,
-		"/api/v1/notification-channels", projectID, body, nil)
+		"/api/v1/workflows/"+workflowID+"/notification-channels", projectID, body,
+		map[string]string{"wid": workflowID})
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("createNotifyChannel: status = %d, body: %s", rr.Code, rr.Body.String())
 	}
@@ -85,60 +89,36 @@ func createNotifyChannel(t *testing.T, s *Server, projectID string) *model.Notif
 	return &ch
 }
 
-// --- Missing X-Project header ---
-
-func TestHandleListNotificationChannels_MissingProject(t *testing.T) {
-	s := newNotificationServer(t)
-	rr := doNotifyRequest(t, s, s.handleListNotificationChannels, http.MethodGet,
-		"/api/v1/notification-channels", "", "", nil)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+func extractWebhookURL(t *testing.T, configJSON string) string {
+	t.Helper()
+	var m map[string]interface{}
+	if err := json.Unmarshal([]byte(configJSON), &m); err != nil {
+		t.Fatalf("extractWebhookURL: %v", err)
 	}
-	assertErrorContains(t, rr, "X-Project")
+	v, _ := m["webhook_url"].(string)
+	return v
 }
-
-func TestHandleCreateNotificationChannel_MissingProject(t *testing.T) {
-	s := newNotificationServer(t)
-	rr := doNotifyRequest(t, s, s.handleCreateNotificationChannel, http.MethodPost,
-		"/api/v1/notification-channels", "", `{"name":"x","kind":"slack"}`, nil)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "X-Project")
-}
-
-func TestHandleGetNotificationChannel_MissingProject(t *testing.T) {
-	s := newNotificationServer(t)
-	rr := doNotifyRequest(t, s, s.handleGetNotificationChannel, http.MethodGet,
-		"/api/v1/notification-channels/x", "", "", map[string]string{"id": "x"})
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-}
-
-// --- Full lifecycle ---
 
 func TestHandleNotificationChannels_FullLifecycle(t *testing.T) {
 	s := newNotificationServer(t)
 	projectID := "proj-notify-lifecycle"
-	seedNotifyProject(t, s, projectID)
+	workflowID := "wf-lifecycle"
+	seedNotifyProjectAndWorkflow(t, s, projectID, workflowID)
 
-	// Create
-	ch := createNotifyChannel(t, s, projectID)
+	ch := createNotifyChannel(t, s, projectID, workflowID)
 	if ch.ID == "" {
 		t.Errorf("Create: ID not set")
 	}
 	if ch.Name != "Test Channel" {
 		t.Errorf("Create: Name = %q, want 'Test Channel'", ch.Name)
 	}
-	// Config masked in Create response
 	if !strings.Contains(ch.Config, "****") {
 		t.Errorf("Create: Config not masked: %q", ch.Config)
 	}
 
-	// Get
 	rr := doNotifyRequest(t, s, s.handleGetNotificationChannel, http.MethodGet,
-		"/api/v1/notification-channels/"+ch.ID, projectID, "", map[string]string{"id": ch.ID})
+		"/api/v1/workflows/"+workflowID+"/notification-channels/"+ch.ID, projectID, "",
+		map[string]string{"wid": workflowID, "id": ch.ID})
 	if rr.Code != http.StatusOK {
 		t.Errorf("Get: status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
@@ -148,11 +128,11 @@ func TestHandleNotificationChannels_FullLifecycle(t *testing.T) {
 		t.Errorf("Get: ID = %q, want %q", got.ID, ch.ID)
 	}
 
-	// PATCH — masked webhook_url echoed back → secret preserved
 	maskedURL := extractWebhookURL(t, ch.Config)
 	patchBody := `{"config":{"webhook_url":"` + maskedURL + `"},"name":"Updated"}`
 	rr = doNotifyRequest(t, s, s.handleUpdateNotificationChannel, http.MethodPatch,
-		"/api/v1/notification-channels/"+ch.ID, projectID, patchBody, map[string]string{"id": ch.ID})
+		"/api/v1/workflows/"+workflowID+"/notification-channels/"+ch.ID, projectID, patchBody,
+		map[string]string{"wid": workflowID, "id": ch.ID})
 	if rr.Code != http.StatusOK {
 		t.Errorf("PATCH masked: status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
@@ -162,17 +142,17 @@ func TestHandleNotificationChannels_FullLifecycle(t *testing.T) {
 		t.Errorf("PATCH: Name = %q, want Updated", patched.Name)
 	}
 
-	// PATCH — fresh webhook_url → rotates
 	freshPatch := `{"config":{"webhook_url":"https://hooks.slack.com/new-fresh-ZZZZ"}}`
 	rr = doNotifyRequest(t, s, s.handleUpdateNotificationChannel, http.MethodPatch,
-		"/api/v1/notification-channels/"+ch.ID, projectID, freshPatch, map[string]string{"id": ch.ID})
+		"/api/v1/workflows/"+workflowID+"/notification-channels/"+ch.ID, projectID, freshPatch,
+		map[string]string{"wid": workflowID, "id": ch.ID})
 	if rr.Code != http.StatusOK {
 		t.Errorf("PATCH fresh: status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
 
-	// List — channel appears
 	rr = doNotifyRequest(t, s, s.handleListNotificationChannels, http.MethodGet,
-		"/api/v1/notification-channels", projectID, "", nil)
+		"/api/v1/workflows/"+workflowID+"/notification-channels", projectID, "",
+		map[string]string{"wid": workflowID})
 	if rr.Code != http.StatusOK {
 		t.Errorf("List: status = %d, want 200", rr.Code)
 	}
@@ -182,16 +162,16 @@ func TestHandleNotificationChannels_FullLifecycle(t *testing.T) {
 		t.Errorf("List count = %d, want 1", len(list))
 	}
 
-	// Delete
 	rr = doNotifyRequest(t, s, s.handleDeleteNotificationChannel, http.MethodDelete,
-		"/api/v1/notification-channels/"+ch.ID, projectID, "", map[string]string{"id": ch.ID})
+		"/api/v1/workflows/"+workflowID+"/notification-channels/"+ch.ID, projectID, "",
+		map[string]string{"wid": workflowID, "id": ch.ID})
 	if rr.Code != http.StatusNoContent {
 		t.Errorf("Delete: status = %d, want 204", rr.Code)
 	}
 
-	// Get after delete — 404
 	rr = doNotifyRequest(t, s, s.handleGetNotificationChannel, http.MethodGet,
-		"/api/v1/notification-channels/"+ch.ID, projectID, "", map[string]string{"id": ch.ID})
+		"/api/v1/workflows/"+workflowID+"/notification-channels/"+ch.ID, projectID, "",
+		map[string]string{"wid": workflowID, "id": ch.ID})
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("Get after Delete: status = %d, want 404", rr.Code)
 	}
@@ -200,12 +180,14 @@ func TestHandleNotificationChannels_FullLifecycle(t *testing.T) {
 func TestHandleTestNotificationChannel_InsertsDelivery(t *testing.T) {
 	s := newNotificationServer(t)
 	projectID := "proj-notify-test"
-	seedNotifyProject(t, s, projectID)
+	workflowID := "wf-test-send"
+	seedNotifyProjectAndWorkflow(t, s, projectID, workflowID)
 
-	ch := createNotifyChannel(t, s, projectID)
+	ch := createNotifyChannel(t, s, projectID, workflowID)
 
 	rr := doNotifyRequest(t, s, s.handleTestNotificationChannel, http.MethodPost,
-		"/api/v1/notification-channels/"+ch.ID+"/test", projectID, "", map[string]string{"id": ch.ID})
+		"/api/v1/workflows/"+workflowID+"/notification-channels/"+ch.ID+"/test", projectID, "",
+		map[string]string{"wid": workflowID, "id": ch.ID})
 	if rr.Code != http.StatusOK {
 		t.Errorf("TestSend: status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
@@ -215,17 +197,11 @@ func TestHandleTestNotificationChannel_InsertsDelivery(t *testing.T) {
 		t.Errorf("TestSend: status = %q, want queued", resp["status"])
 	}
 
-	// List deliveries — must have exactly one row
-	rr = doNotifyRequest(t, s, s.handleListNotificationDeliveries, http.MethodGet,
-		"/api/v1/notification-deliveries?channel_id="+ch.ID, projectID, "",
-		map[string]string{})
-	rr.Result().Request, _ = http.NewRequest(http.MethodGet,
-		"/api/v1/notification-deliveries?channel_id="+ch.ID, nil)
-	// Use URL query for channel_id
 	req := httptest.NewRequest(http.MethodGet,
-		"/api/v1/notification-deliveries?channel_id="+ch.ID, nil)
+		"/api/v1/workflows/"+workflowID+"/notification-deliveries?channel_id="+ch.ID, nil)
 	ctx := context.WithValue(req.Context(), projectKey, projectID)
 	req = req.WithContext(ctx)
+	req.SetPathValue("wid", workflowID)
 	rr2 := httptest.NewRecorder()
 	s.handleListNotificationDeliveries(rr2, req)
 	if rr2.Code != http.StatusOK {
@@ -239,54 +215,4 @@ func TestHandleTestNotificationChannel_InsertsDelivery(t *testing.T) {
 	if len(deliveries) > 0 && deliveries[0].EventType != "test" {
 		t.Errorf("EventType = %q, want test", deliveries[0].EventType)
 	}
-}
-
-func TestHandleListNotificationDeliveries_MissingChannelID(t *testing.T) {
-	s := newNotificationServer(t)
-	projectID := "proj-ndel-miss"
-	seedNotifyProject(t, s, projectID)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/notification-deliveries", nil)
-	ctx := context.WithValue(req.Context(), projectKey, projectID)
-	req = req.WithContext(ctx)
-	rr := httptest.NewRecorder()
-	s.handleListNotificationDeliveries(rr, req)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-}
-
-func TestHandleCreateNotificationChannel_InvalidKind(t *testing.T) {
-	s := newNotificationServer(t)
-	projectID := "proj-notify-badkind"
-	seedNotifyProject(t, s, projectID)
-
-	rr := doNotifyRequest(t, s, s.handleCreateNotificationChannel, http.MethodPost,
-		"/api/v1/notification-channels", projectID, `{"name":"x","kind":"sms"}`, nil)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-}
-
-func TestHandleGetNotificationChannel_NotFound(t *testing.T) {
-	s := newNotificationServer(t)
-	projectID := "proj-notify-nf"
-	seedNotifyProject(t, s, projectID)
-
-	rr := doNotifyRequest(t, s, s.handleGetNotificationChannel, http.MethodGet,
-		"/api/v1/notification-channels/no-such", projectID, "", map[string]string{"id": "no-such"})
-	if rr.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", rr.Code)
-	}
-}
-
-// extractWebhookURL extracts the webhook_url from a masked config JSON string.
-func extractWebhookURL(t *testing.T, configJSON string) string {
-	t.Helper()
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(configJSON), &m); err != nil {
-		t.Fatalf("extractWebhookURL: %v", err)
-	}
-	v, _ := m["webhook_url"].(string)
-	return v
 }

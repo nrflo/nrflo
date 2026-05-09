@@ -49,6 +49,7 @@ type Server struct {
 	notifyWaker            service.NotificationWaker
 	notifyWorker           *notify.Worker
 	notifyWorkerCancel     context.CancelFunc
+	notifyWorkerDone       chan struct{}
 	sessionMgr             *scs.SessionManager
 	authSvc                *service.AuthService
 	userSvc                *service.UserService
@@ -142,7 +143,11 @@ func (s *Server) Start(host string, port int) error {
 	if s.notifyWorker != nil {
 		workerCtx, workerCancel := context.WithCancel(context.Background())
 		s.notifyWorkerCancel = workerCancel
-		go s.notifyWorker.Run(workerCtx)
+		s.notifyWorkerDone = make(chan struct{})
+		go func() {
+			defer close(s.notifyWorkerDone)
+			s.notifyWorker.Run(workerCtx)
+		}()
 	}
 
 	// Start cron scheduler
@@ -188,9 +193,12 @@ func (s *Server) withSessionForAPI(next http.Handler) http.Handler {
 
 // Stop gracefully stops the server
 func (s *Server) Stop(ctx context.Context) error {
-	// Stop notification delivery worker
+	// Stop notification delivery worker and wait for it to exit.
 	if s.notifyWorkerCancel != nil {
 		s.notifyWorkerCancel()
+		if s.notifyWorkerDone != nil {
+			<-s.notifyWorkerDone
+		}
 	}
 	// Stop cron scheduler
 	if s.scheduler != nil {
@@ -530,14 +538,14 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
 	protected("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
 
-	// Notification channels (project-scoped)
-	protected("GET /api/v1/notification-channels", s.handleListNotificationChannels)
-	protected("POST /api/v1/notification-channels", s.handleCreateNotificationChannel)
-	protected("GET /api/v1/notification-channels/{id}", s.handleGetNotificationChannel)
-	protected("PATCH /api/v1/notification-channels/{id}", s.handleUpdateNotificationChannel)
-	protected("DELETE /api/v1/notification-channels/{id}", s.handleDeleteNotificationChannel)
-	protected("POST /api/v1/notification-channels/{id}/test", s.handleTestNotificationChannel)
-	protected("GET /api/v1/notification-deliveries", s.handleListNotificationDeliveries)
+	// Notification channels (workflow-scoped)
+	protected("GET /api/v1/workflows/{wid}/notification-channels", s.handleListNotificationChannels)
+	protected("POST /api/v1/workflows/{wid}/notification-channels", s.handleCreateNotificationChannel)
+	protected("GET /api/v1/workflows/{wid}/notification-channels/{id}", s.handleGetNotificationChannel)
+	protected("PATCH /api/v1/workflows/{wid}/notification-channels/{id}", s.handleUpdateNotificationChannel)
+	protected("DELETE /api/v1/workflows/{wid}/notification-channels/{id}", s.handleDeleteNotificationChannel)
+	protected("POST /api/v1/workflows/{wid}/notification-channels/{id}/test", s.handleTestNotificationChannel)
+	protected("GET /api/v1/workflows/{wid}/notification-deliveries", s.handleListNotificationDeliveries)
 
 	// Scheduled tasks (project-scoped) — writes are admin-only
 	protected("GET /api/v1/scheduled-tasks", s.handleListScheduledTasks)

@@ -25,23 +25,24 @@ func NewNotificationChannelRepo(database db.Querier, clk clock.Clock) *Notificat
 	return &NotificationChannelRepo{db: database, clock: clk}
 }
 
-const notificationChannelCols = `id, project_id, name, kind, enabled, config, event_types, created_at, updated_at`
+const notificationChannelCols = `id, project_id, workflow_id, name, kind, enabled, config, event_types, created_at, updated_at`
 
 func (r *NotificationChannelRepo) scanRow(row interface{ Scan(...interface{}) error }) (*model.NotificationChannel, error) {
-	var id, projectID, name, kind, config, eventTypesJSON, createdAt, updatedAt string
+	var id, projectID, workflowID, name, kind, config, eventTypesJSON, createdAt, updatedAt string
 	var enabled int
 
-	if err := row.Scan(&id, &projectID, &name, &kind, &enabled, &config, &eventTypesJSON, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&id, &projectID, &workflowID, &name, &kind, &enabled, &config, &eventTypesJSON, &createdAt, &updatedAt); err != nil {
 		return nil, err
 	}
 
 	ch := &model.NotificationChannel{
-		ID:        id,
-		ProjectID: projectID,
-		Name:      name,
-		Kind:      model.ChannelKind(kind),
-		Enabled:   enabled != 0,
-		Config:    config,
+		ID:         id,
+		ProjectID:  projectID,
+		WorkflowID: workflowID,
+		Name:       name,
+		Kind:       model.ChannelKind(kind),
+		Enabled:    enabled != 0,
+		Config:     config,
 	}
 
 	if err := json.Unmarshal([]byte(eventTypesJSON), &ch.EventTypes); err != nil {
@@ -67,9 +68,10 @@ func (r *NotificationChannelRepo) Insert(ch *model.NotificationChannel) error {
 	}
 
 	_, err = r.db.Exec(
-		`INSERT INTO notification_channels (`+notificationChannelCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO notification_channels (`+notificationChannelCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(ch.ID),
 		strings.ToLower(ch.ProjectID),
+		strings.ToLower(ch.WorkflowID),
 		ch.Name,
 		string(ch.Kind),
 		boolToInt(ch.Enabled),
@@ -135,11 +137,11 @@ func (r *NotificationChannelRepo) Delete(id string) error {
 	return nil
 }
 
-// ListByProject returns all channels for a project.
-func (r *NotificationChannelRepo) ListByProject(projectID string) ([]*model.NotificationChannel, error) {
+// ListByWorkflow returns all channels for a project+workflow.
+func (r *NotificationChannelRepo) ListByWorkflow(projectID, workflowID string) ([]*model.NotificationChannel, error) {
 	rows, err := r.db.Query(
-		`SELECT `+notificationChannelCols+` FROM notification_channels WHERE LOWER(project_id) = LOWER(?) ORDER BY created_at ASC`,
-		projectID)
+		`SELECT `+notificationChannelCols+` FROM notification_channels WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) ORDER BY created_at ASC`,
+		projectID, workflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -156,14 +158,14 @@ func (r *NotificationChannelRepo) ListByProject(projectID string) ([]*model.Noti
 	return channels, rows.Err()
 }
 
-// ListEnabledForEvent returns enabled channels for a project that subscribe to eventType.
-func (r *NotificationChannelRepo) ListEnabledForEvent(projectID, eventType string) ([]*model.NotificationChannel, error) {
+// ListEnabledForEvent returns enabled channels for a project+workflow that subscribe to eventType.
+func (r *NotificationChannelRepo) ListEnabledForEvent(projectID, workflowID, eventType string) ([]*model.NotificationChannel, error) {
 	// Use JSON LIKE matching: event_types is stored as JSON array ["a","b","c"]
 	// Match substring `"eventType"` within the JSON.
 	pattern := `%"` + eventType + `"%`
 	rows, err := r.db.Query(
-		`SELECT `+notificationChannelCols+` FROM notification_channels WHERE LOWER(project_id) = LOWER(?) AND enabled = 1 AND event_types LIKE ?`,
-		projectID, pattern)
+		`SELECT `+notificationChannelCols+` FROM notification_channels WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND enabled = 1 AND event_types LIKE ?`,
+		projectID, workflowID, pattern)
 	if err != nil {
 		return nil, err
 	}

@@ -59,7 +59,12 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 		return
 	}
 
-	channels, err := d.channelRepo.ListEnabledForEvent(projectID, event.Type)
+	workflowID := event.Workflow
+	if workflowID == "" {
+		return
+	}
+
+	channels, err := d.channelRepo.ListEnabledForEvent(projectID, workflowID, event.Type)
 	if err != nil || len(channels) == 0 {
 		return
 	}

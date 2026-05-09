@@ -12,7 +12,8 @@ import (
 	"be/internal/ws"
 )
 
-func setupNotifyDB(t *testing.T) (db.Querier, string) {
+// setupNotifyDB seeds a project + workflow and returns (db, projectID, workflowID).
+func setupNotifyDB(t *testing.T) (db.Querier, string, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	database, err := db.OpenPath(dbPath)
@@ -20,18 +21,22 @@ func setupNotifyDB(t *testing.T) (db.Querier, string) {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { database.Close() })
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-n', 'Test', datetime('now'), datetime('now'))`)
-	if err != nil {
+	if _, err = database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-n', 'Test', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
-	return database, "proj-n"
+	if _, err = database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-n', 'proj-n', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
+	return database, "proj-n", "wf-n"
 }
 
-func insertNotifyChannel(t *testing.T, channelRepo *repo.NotificationChannelRepo, projectID, name string, enabled bool, eventTypes []string) *model.NotificationChannel {
+func insertNotifyChannel(t *testing.T, channelRepo *repo.NotificationChannelRepo, projectID, workflowID, name string, enabled bool, eventTypes []string) *model.NotificationChannel {
 	t.Helper()
 	ch := &model.NotificationChannel{
 		ProjectID:  projectID,
+		WorkflowID: workflowID,
 		Name:       name,
 		Kind:       model.ChannelKindSlack,
 		Enabled:    enabled,
@@ -45,17 +50,16 @@ func insertNotifyChannel(t *testing.T, channelRepo *repo.NotificationChannelRepo
 }
 
 func TestDispatcher_OnEvent_IgnoresNonWatchedEventType(t *testing.T) {
-	database, projectID := setupNotifyDB(t)
+	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
 
-	ch := insertNotifyChannel(t, channelRepo, projectID, "ch1", true, []string{"orchestration.completed"})
+	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch1", true, []string{"orchestration.completed"})
 
-	// Non-watched event — should produce no deliveries
-	d.OnEvent(ws.NewEvent("ticket.updated", projectID, "", "", nil))
+	d.OnEvent(ws.NewEvent("ticket.updated", projectID, "", workflowID, nil))
 
 	results, err := deliveryRepo.ListByChannel(ch.ID, 10)
 	if err != nil {
@@ -67,24 +71,22 @@ func TestDispatcher_OnEvent_IgnoresNonWatchedEventType(t *testing.T) {
 }
 
 func TestDispatcher_OnEvent_AgentCompleted_PassDoesNotNotify(t *testing.T) {
-	database, projectID := setupNotifyDB(t)
+	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
 
-	ch := insertNotifyChannel(t, channelRepo, projectID, "ch2", true, []string{ws.EventAgentCompleted})
+	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch2", true, []string{ws.EventAgentCompleted})
 
-	// result=pass: must NOT trigger delivery
-	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", "", map[string]interface{}{"result": "pass"}))
+	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", workflowID, map[string]interface{}{"result": "pass"}))
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)
 	if len(results) != 0 {
 		t.Errorf("deliveries on pass = %d, want 0", len(results))
 	}
 
-	// result=fail: MUST trigger delivery
-	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", "", map[string]interface{}{"result": "fail"}))
+	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", workflowID, map[string]interface{}{"result": "fail"}))
 	results2, _ := deliveryRepo.ListByChannel(ch.ID, 10)
 	if len(results2) != 1 {
 		t.Errorf("deliveries on fail = %d, want 1", len(results2))
@@ -92,17 +94,17 @@ func TestDispatcher_OnEvent_AgentCompleted_PassDoesNotNotify(t *testing.T) {
 }
 
 func TestDispatcher_OnEvent_WatchedEvent_InsertsDelivery(t *testing.T) {
-	database, projectID := setupNotifyDB(t)
+	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
 
-	ch := insertNotifyChannel(t, channelRepo, projectID, "slack-ch", true, []string{ws.EventOrchestrationCompleted})
+	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "slack-ch", true, []string{ws.EventOrchestrationCompleted})
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", "feature", map[string]interface{}{
-		"workflow": "feature",
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, map[string]interface{}{
+		"workflow": workflowID,
 	}))
 
 	results, err := deliveryRepo.ListByChannel(ch.ID, 10)
@@ -121,45 +123,60 @@ func TestDispatcher_OnEvent_WatchedEvent_InsertsDelivery(t *testing.T) {
 }
 
 func TestDispatcher_OnEvent_WakeCh_NonBlockingWhenFull(t *testing.T) {
-	database, projectID := setupNotifyDB(t)
+	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 
-	// Pre-fill channel so it cannot accept another signal
 	wakeCh := make(chan struct{}, 1)
 	wakeCh <- struct{}{}
 
-	insertNotifyChannel(t, channelRepo, projectID, "ch3", true, []string{ws.EventOrchestrationCompleted})
+	insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch3", true, []string{ws.EventOrchestrationCompleted})
 	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
 
-	// Must not block or panic
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", "", nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
 }
 
 func TestDispatcher_OnEvent_EmptyProjectID_Ignored(t *testing.T) {
-	database, _ := setupNotifyDB(t)
+	database, _, _ := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
 
-	// Event with no project ID must not panic or produce deliveries
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, "", "", "", nil))
 }
 
-func TestDispatcher_OnEvent_DisabledChannel_SkipsDelivery(t *testing.T) {
-	database, projectID := setupNotifyDB(t)
+func TestDispatcher_OnEvent_EmptyWorkflowID_Ignored(t *testing.T) {
+	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
 
-	ch := insertNotifyChannel(t, channelRepo, projectID, "disabled", false, []string{ws.EventOrchestrationCompleted})
+	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch-wfempty", true, []string{ws.EventOrchestrationCompleted})
 
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", "", nil))
+
+	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)
+	if len(results) != 0 {
+		t.Errorf("empty workflow: deliveries = %d, want 0", len(results))
+	}
+}
+
+func TestDispatcher_OnEvent_DisabledChannel_SkipsDelivery(t *testing.T) {
+	database, projectID, workflowID := setupNotifyDB(t)
+	clk := clock.Real()
+	channelRepo := repo.NewNotificationChannelRepo(database, clk)
+	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
+	wakeCh := make(chan struct{}, 1)
+	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+
+	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "disabled", false, []string{ws.EventOrchestrationCompleted})
+
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
 
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)
 	if len(results) != 0 {
@@ -168,7 +185,7 @@ func TestDispatcher_OnEvent_DisabledChannel_SkipsDelivery(t *testing.T) {
 }
 
 func TestDispatcher_WatchedEvents_AllFiveTypes(t *testing.T) {
-	database, projectID := setupNotifyDB(t)
+	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
@@ -181,21 +198,19 @@ func TestDispatcher_WatchedEvents_AllFiveTypes(t *testing.T) {
 		ws.EventAgentContextSaving,
 		ws.EventAgentStallRestart,
 	}
-	ch := insertNotifyChannel(t, channelRepo, projectID, "all-events", true, eventTypes)
+	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "all-events", true, eventTypes)
 
 	for _, et := range eventTypes {
-		d.OnEvent(ws.NewEvent(et, projectID, "", "", nil))
+		d.OnEvent(ws.NewEvent(et, projectID, "", workflowID, nil))
 	}
-	// Also agent.completed with fail
-	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", "", map[string]interface{}{"result": "fail"}))
+	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", workflowID, map[string]interface{}{"result": "fail"}))
 
-	// Insert channel for agent.completed
-	ch2 := insertNotifyChannel(t, channelRepo, projectID, "agent-ch", true, []string{ws.EventAgentCompleted})
-	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", "", map[string]interface{}{"result": "fail"}))
+	ch2 := insertNotifyChannel(t, channelRepo, projectID, workflowID, "agent-ch", true, []string{ws.EventAgentCompleted})
+	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", workflowID, map[string]interface{}{"result": "fail"}))
 
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 20)
 	if len(results) != 4 {
-		t.Errorf("ch deliveries = %d, want 4 (one per watched non-agent-completed event)", len(results))
+		t.Errorf("ch deliveries = %d, want 4", len(results))
 	}
 	results2, _ := deliveryRepo.ListByChannel(ch2.ID, 20)
 	if len(results2) != 1 {
@@ -204,17 +219,17 @@ func TestDispatcher_WatchedEvents_AllFiveTypes(t *testing.T) {
 }
 
 func TestDispatcher_OnEvent_WorkflowFinalResultPreservedInPayload(t *testing.T) {
-	database, projectID := setupNotifyDB(t)
+	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
 
-	ch := insertNotifyChannel(t, channelRepo, projectID, "result-ch", true, []string{ws.EventOrchestrationCompleted})
+	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "result-ch", true, []string{ws.EventOrchestrationCompleted})
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", "feature", map[string]interface{}{
-		"workflow":              "feature",
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, map[string]interface{}{
+		"workflow":              workflowID,
 		"instance_id":          "wfi-123",
 		"workflow_final_result": "Build completed successfully",
 	}))
@@ -234,7 +249,54 @@ func TestDispatcher_OnEvent_WorkflowFinalResultPreservedInPayload(t *testing.T) 
 	if payload["workflow_final_result"] != "Build completed successfully" {
 		t.Errorf("workflow_final_result = %q, want %q", payload["workflow_final_result"], "Build completed successfully")
 	}
-	if payload["workflow"] != "feature" {
-		t.Errorf("workflow = %q, want %q", payload["workflow"], "feature")
+	if payload["workflow"] != workflowID {
+		t.Errorf("workflow = %q, want %q", payload["workflow"], workflowID)
+	}
+}
+
+// TestDispatcher_OnEvent_WorkflowIsolation verifies that events for wf-a only
+// enqueue deliveries for wf-a channels, not for wf-b channels watching the same event.
+func TestDispatcher_OnEvent_WorkflowIsolation(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "isolation.db")
+	database, err := db.OpenPath(dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { database.Close() })
+	if _, err = database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-iso', 'Iso', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+	for _, wfID := range []string{"wf-iso-a", "wf-iso-b"} {
+		if _, err = database.Exec(
+			`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES (?, 'proj-iso', '', datetime('now'), datetime('now'))`, wfID); err != nil {
+			t.Fatalf("insert workflow %s: %v", wfID, err)
+		}
+	}
+
+	clk := clock.Real()
+	channelRepo := repo.NewNotificationChannelRepo(database, clk)
+	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
+	wakeCh := make(chan struct{}, 10)
+	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+
+	chA := insertNotifyChannel(t, channelRepo, "proj-iso", "wf-iso-a", "ch-a", true, []string{ws.EventOrchestrationCompleted})
+	chB := insertNotifyChannel(t, channelRepo, "proj-iso", "wf-iso-b", "ch-b", true, []string{ws.EventOrchestrationCompleted})
+
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, "proj-iso", "", "wf-iso-a", nil))
+
+	resultsA, err := deliveryRepo.ListByChannel(chA.ID, 10)
+	if err != nil {
+		t.Fatalf("ListByChannel chA: %v", err)
+	}
+	if len(resultsA) != 1 {
+		t.Errorf("chA deliveries = %d, want 1", len(resultsA))
+	}
+	resultsB, err := deliveryRepo.ListByChannel(chB.ID, 10)
+	if err != nil {
+		t.Fatalf("ListByChannel chB: %v", err)
+	}
+	if len(resultsB) != 0 {
+		t.Errorf("chB deliveries = %d, want 0 (wf-iso-b not targeted)", len(resultsB))
 	}
 }

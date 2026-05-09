@@ -11,15 +11,17 @@ import (
 func setupNotificationDeliveryDB(t *testing.T) (*NotificationDeliveryRepo, string, string) {
 	t.Helper()
 	database := newTestDB(t)
-	var err error
 	clk := clock.Real()
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-d', 'Test', datetime('now'), datetime('now'))`)
-	if err != nil {
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-d', 'Test', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
+	if _, err := database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-d', 'proj-d', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
 	channelRepo := NewNotificationChannelRepo(database, clk)
-	ch := makeNotifyChannel("proj-d", "ch", model.ChannelKindSlack, true, []string{"orchestration.completed"})
+	ch := makeNotifyChannel("proj-d", "wf-d", "ch", model.ChannelKindSlack, true, []string{"orchestration.completed"})
 	if err := channelRepo.Insert(ch); err != nil {
 		t.Fatalf("insert channel: %v", err)
 	}
@@ -58,29 +60,28 @@ func TestNotificationDeliveryRepo_ListPending_ExcludesSentFailedGivingUp(t *test
 	clk := clock.NewTest(fixedTime)
 
 	database := newTestDB(t)
-	var err error
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`)
-	if err != nil {
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
+	if _, err := database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-p1', 'p1', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
 	channelRepo := NewNotificationChannelRepo(database, clk)
-	ch := makeNotifyChannel("p1", "ch", model.ChannelKindSlack, true, nil)
+	ch := makeNotifyChannel("p1", "wf-p1", "ch", model.ChannelKindSlack, true, nil)
 	channelRepo.Insert(ch)
 
 	dr := NewNotificationDeliveryRepo(database, clk)
 
 	d1 := makeDelivery(ch.ID, "p1", "e1-pending")
 	dr.Insert(d1)
-
 	d2 := makeDelivery(ch.ID, "p1", "e2-sent")
 	d2.Status = model.DeliveryStatusSent
 	dr.Insert(d2)
-
 	d3 := makeDelivery(ch.ID, "p1", "e3-failed")
 	d3.Status = model.DeliveryStatusFailed
 	dr.Insert(d3)
-
 	d4 := makeDelivery(ch.ID, "p1", "e4-givingup")
 	d4.Status = model.DeliveryStatusGivingUp
 	dr.Insert(d4)
@@ -103,25 +104,24 @@ func TestNotificationDeliveryRepo_ListPending_ExcludesFutureNextAttempt(t *testi
 	clk := clock.NewTest(fixedTime)
 
 	database := newTestDB(t)
-	var err error
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p2', 'T', datetime('now'), datetime('now'))`)
-	if err != nil {
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p2', 'T', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
+	if _, err := database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-p2', 'p2', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
 	channelRepo := NewNotificationChannelRepo(database, clk)
-	ch := makeNotifyChannel("p2", "ch", model.ChannelKindSlack, true, nil)
+	ch := makeNotifyChannel("p2", "wf-p2", "ch", model.ChannelKindSlack, true, nil)
 	channelRepo.Insert(ch)
-
 	dr := NewNotificationDeliveryRepo(database, clk)
 
-	// pending with next_attempt_at in the future — excluded
 	future := clk.Now().Add(60 * time.Second)
 	d1 := makeDelivery(ch.ID, "p2", "future-event")
 	dr.Insert(d1)
 	dr.UpdateStatus(d1.ID, model.DeliveryStatusPending, 1, "err", &future)
 
-	// pending with no next_attempt_at — included
 	d2 := makeDelivery(ch.ID, "p2", "ready-event")
 	dr.Insert(d2)
 
@@ -136,7 +136,6 @@ func TestNotificationDeliveryRepo_ListPending_ExcludesFutureNextAttempt(t *testi
 		t.Errorf("EventType = %q, want ready-event", results[0].EventType)
 	}
 
-	// Advance past future next_attempt_at — now d1 should appear too
 	clk.Advance(61 * time.Second)
 	results2, err := dr.ListPending(clk.Now(), 100)
 	if err != nil {
@@ -153,25 +152,25 @@ func TestNotificationDeliveryRepo_ListByChannel_NewestFirst(t *testing.T) {
 	clk := clock.NewTest(fixedTime)
 
 	database := newTestDB(t)
-	var err error
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p3', 'T', datetime('now'), datetime('now'))`)
-	if err != nil {
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p3', 'T', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
+	if _, err := database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-p3', 'p3', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
 	channelRepo := NewNotificationChannelRepo(database, clk)
-	ch := makeNotifyChannel("p3", "ch", model.ChannelKindSlack, true, nil)
+	ch := makeNotifyChannel("p3", "wf-p3", "ch", model.ChannelKindSlack, true, nil)
 	channelRepo.Insert(ch)
 	dr := NewNotificationDeliveryRepo(database, clk)
 
 	d1 := makeDelivery(ch.ID, "p3", "first")
 	dr.Insert(d1)
 	clk.Advance(time.Second)
-
 	d2 := makeDelivery(ch.ID, "p3", "second")
 	dr.Insert(d2)
 	clk.Advance(time.Second)
-
 	d3 := makeDelivery(ch.ID, "p3", "third")
 	dr.Insert(d3)
 

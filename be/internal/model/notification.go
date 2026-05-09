@@ -22,10 +22,11 @@ const (
 	DeliveryStatusGivingUp  DeliveryStatus = "giving_up"
 )
 
-// NotificationChannel is a project-scoped notification destination.
+// NotificationChannel is a workflow-scoped notification destination.
 type NotificationChannel struct {
 	ID         string      `json:"id"`
 	ProjectID  string      `json:"project_id"`
+	WorkflowID string      `json:"workflow_id"`
 	Name       string      `json:"name"`
 	Kind       ChannelKind `json:"kind"`
 	Enabled    bool        `json:"enabled"`

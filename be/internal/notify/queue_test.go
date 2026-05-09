@@ -27,7 +27,7 @@ func (s *stubErrorRecorder) RecordError(projectID, errorType, instanceID, messag
 	return nil
 }
 
-func setupQueueDB(t *testing.T) (db.Querier, string) {
+func setupQueueDB(t *testing.T) (db.Querier, string, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	database, err := db.OpenPath(dbPath)
@@ -35,18 +35,22 @@ func setupQueueDB(t *testing.T) (db.Querier, string) {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { database.Close() })
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-q', 'Test', datetime('now'), datetime('now'))`)
-	if err != nil {
+	if _, err = database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-q', 'Test', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
-	return database, "proj-q"
+	if _, err = database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-q', 'proj-q', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
+	return database, "proj-q", "wf-q"
 }
 
-func insertQueueChannel(t *testing.T, cr *repo.NotificationChannelRepo, projectID, webhookURL string) *model.NotificationChannel {
+func insertQueueChannel(t *testing.T, cr *repo.NotificationChannelRepo, projectID, workflowID, webhookURL string) *model.NotificationChannel {
 	t.Helper()
 	ch := &model.NotificationChannel{
 		ProjectID:  projectID,
+		WorkflowID: workflowID,
 		Name:       "test-ch",
 		Kind:       model.ChannelKindSlack,
 		Enabled:    true,
@@ -84,11 +88,11 @@ func TestWorker_HappyPath_StatusSent(t *testing.T) {
 
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
-	database, projectID := setupQueueDB(t)
+	database, projectID, workflowID := setupQueueDB(t)
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 
-	ch := insertQueueChannel(t, channelRepo, projectID, server.URL)
+	ch := insertQueueChannel(t, channelRepo, projectID, workflowID, server.URL)
 	insertPendingDelivery(t, deliveryRepo, ch.ID, projectID)
 
 	hub := ws.NewHub(clk)
@@ -128,11 +132,11 @@ func TestWorker_FailingServer_ExponentialBackoff(t *testing.T) {
 
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
-	database, projectID := setupQueueDB(t)
+	database, projectID, workflowID := setupQueueDB(t)
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 
-	ch := insertQueueChannel(t, channelRepo, projectID, server.URL)
+	ch := insertQueueChannel(t, channelRepo, projectID, workflowID, server.URL)
 	d := insertPendingDelivery(t, deliveryRepo, ch.ID, projectID)
 
 	hub := ws.NewHub(clk)
@@ -200,12 +204,12 @@ func TestWorker_FailingServer_ExponentialBackoff(t *testing.T) {
 func TestWorker_NoPendingDeliveries_NoOp(t *testing.T) {
 	fixedTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	clk := clock.NewTest(fixedTime)
-	database, projectID := setupQueueDB(t)
+	database, projectID, workflowID := setupQueueDB(t)
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 
 	// Channel with a sent delivery — worker should do nothing
-	ch := insertQueueChannel(t, channelRepo, projectID, "http://ignored")
+	ch := insertQueueChannel(t, channelRepo, projectID, workflowID, "http://ignored")
 	d := insertPendingDelivery(t, deliveryRepo, ch.ID, projectID)
 	deliveryRepo.UpdateStatus(d.ID, model.DeliveryStatusSent, 1, "", nil)
 

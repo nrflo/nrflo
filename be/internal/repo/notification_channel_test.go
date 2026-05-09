@@ -8,21 +8,25 @@ import (
 	"be/internal/model"
 )
 
-func setupNotificationChannelDB(t *testing.T) (*NotificationChannelRepo, string) {
+// setupNotificationChannelDB seeds a project + workflow and returns (repo, projectID, workflowID).
+func setupNotificationChannelDB(t *testing.T) (*NotificationChannelRepo, string, string) {
 	t.Helper()
 	database := newTestDB(t)
-	var err error
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`)
-	if err != nil {
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
-	return NewNotificationChannelRepo(database, clock.Real()), "proj-1"
+	if _, err := database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-1', 'proj-1', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
+	return NewNotificationChannelRepo(database, clock.Real()), "proj-1", "wf-1"
 }
 
-func makeNotifyChannel(projectID, name string, kind model.ChannelKind, enabled bool, eventTypes []string) *model.NotificationChannel {
+func makeNotifyChannel(projectID, workflowID, name string, kind model.ChannelKind, enabled bool, eventTypes []string) *model.NotificationChannel {
 	return &model.NotificationChannel{
 		ProjectID:  projectID,
+		WorkflowID: workflowID,
 		Name:       name,
 		Kind:       kind,
 		Enabled:    enabled,
@@ -33,9 +37,9 @@ func makeNotifyChannel(projectID, name string, kind model.ChannelKind, enabled b
 
 func TestNotificationChannelRepo_Insert_Get(t *testing.T) {
 	t.Parallel()
-	r, projectID := setupNotificationChannelDB(t)
+	r, projectID, workflowID := setupNotificationChannelDB(t)
 
-	ch := makeNotifyChannel(projectID, "slack-alerts", model.ChannelKindSlack, true,
+	ch := makeNotifyChannel(projectID, workflowID, "slack-alerts", model.ChannelKindSlack, true,
 		[]string{"orchestration.completed", "agent.completed"})
 	if err := r.Insert(ch); err != nil {
 		t.Fatalf("Insert: %v", err)
@@ -50,6 +54,9 @@ func TestNotificationChannelRepo_Insert_Get(t *testing.T) {
 	}
 	if got.ProjectID != projectID {
 		t.Errorf("ProjectID = %q, want %q", got.ProjectID, projectID)
+	}
+	if got.WorkflowID != workflowID {
+		t.Errorf("WorkflowID = %q, want %q", got.WorkflowID, workflowID)
 	}
 	if got.Name != "slack-alerts" {
 		t.Errorf("Name = %q, want slack-alerts", got.Name)
@@ -73,9 +80,8 @@ func TestNotificationChannelRepo_Insert_Get(t *testing.T) {
 
 func TestNotificationChannelRepo_Get_NotFound(t *testing.T) {
 	t.Parallel()
-	r, _ := setupNotificationChannelDB(t)
-	_, err := r.Get("no-such-id")
-	if err == nil {
+	r, _, _ := setupNotificationChannelDB(t)
+	if _, err := r.Get("no-such-id"); err == nil {
 		t.Fatalf("Get missing: expected error, got nil")
 	}
 }
@@ -86,14 +92,17 @@ func TestNotificationChannelRepo_Update_MutatesFields(t *testing.T) {
 	clk := clock.NewTest(fixedTime)
 
 	database := newTestDB(t)
-	var err error
 	if _, err := database.Exec(
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
+	if _, err := database.Exec(
+		`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES ('wf-upd', 'p1', '', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert workflow: %v", err)
+	}
 	r := NewNotificationChannelRepo(database, clk)
 
-	ch := makeNotifyChannel("p1", "old-name", model.ChannelKindSlack, true, []string{"a"})
+	ch := makeNotifyChannel("p1", "wf-upd", "old-name", model.ChannelKindSlack, true, []string{"a"})
 	if err := r.Insert(ch); err != nil {
 		t.Fatalf("Insert: %v", err)
 	}
@@ -127,7 +136,7 @@ func TestNotificationChannelRepo_Update_MutatesFields(t *testing.T) {
 
 func TestNotificationChannelRepo_Update_NotFound(t *testing.T) {
 	t.Parallel()
-	r, _ := setupNotificationChannelDB(t)
+	r, _, _ := setupNotificationChannelDB(t)
 	ch := &model.NotificationChannel{ID: "no-such", Name: "x", Kind: model.ChannelKindSlack}
 	if err := r.Update(ch); err == nil {
 		t.Fatalf("Update non-existent: expected error, got nil")
@@ -136,8 +145,8 @@ func TestNotificationChannelRepo_Update_NotFound(t *testing.T) {
 
 func TestNotificationChannelRepo_Delete(t *testing.T) {
 	t.Parallel()
-	r, projectID := setupNotificationChannelDB(t)
-	ch := makeNotifyChannel(projectID, "to-delete", model.ChannelKindSlack, true, nil)
+	r, projectID, workflowID := setupNotificationChannelDB(t)
+	ch := makeNotifyChannel(projectID, workflowID, "to-delete", model.ChannelKindSlack, true, nil)
 	if err := r.Insert(ch); err != nil {
 		t.Fatalf("Insert: %v", err)
 	}
@@ -149,90 +158,137 @@ func TestNotificationChannelRepo_Delete(t *testing.T) {
 	}
 }
 
-func TestNotificationChannelRepo_ListByProject_FiltersProject(t *testing.T) {
+func TestNotificationChannelRepo_ListByWorkflow_FiltersWorkflow(t *testing.T) {
 	t.Parallel()
 	database := newTestDB(t)
-	var err error
-	for _, id := range []string{"pa", "pb"} {
+	for _, proj := range []string{"pa", "pb"} {
 		if _, err := database.Exec(
-			`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, 'P', datetime('now'), datetime('now'))`, id); err != nil {
-			t.Fatalf("insert project %s: %v", id, err)
+			`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, 'P', datetime('now'), datetime('now'))`, proj); err != nil {
+			t.Fatalf("insert project %s: %v", proj, err)
+		}
+	}
+	for _, row := range [][2]string{{"wf-1", "pa"}, {"wf-2", "pa"}, {"wf-1", "pb"}} {
+		if _, err := database.Exec(
+			`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES (?, ?, '', datetime('now'), datetime('now'))`, row[0], row[1]); err != nil {
+			t.Fatalf("insert workflow %s/%s: %v", row[1], row[0], err)
 		}
 	}
 	r := NewNotificationChannelRepo(database, clock.Real())
 
-	r.Insert(makeNotifyChannel("pa", "c1", model.ChannelKindSlack, true, nil))
-	r.Insert(makeNotifyChannel("pa", "c2", model.ChannelKindTelegram, true, nil))
-	r.Insert(makeNotifyChannel("pb", "c3", model.ChannelKindSlack, true, nil))
+	r.Insert(makeNotifyChannel("pa", "wf-1", "c1", model.ChannelKindSlack, true, nil))
+	r.Insert(makeNotifyChannel("pa", "wf-1", "c2", model.ChannelKindTelegram, true, nil))
+	r.Insert(makeNotifyChannel("pa", "wf-2", "c3", model.ChannelKindSlack, true, nil))
+	r.Insert(makeNotifyChannel("pb", "wf-1", "c4", model.ChannelKindSlack, true, nil))
 
-	listA, err := r.ListByProject("pa")
-	if err != nil {
-		t.Fatalf("ListByProject pa: %v", err)
+	if list, err := r.ListByWorkflow("pa", "wf-1"); err != nil {
+		t.Fatalf("ListByWorkflow pa/wf-1: %v", err)
+	} else if len(list) != 2 {
+		t.Errorf("pa/wf-1 count = %d, want 2", len(list))
 	}
-	if len(listA) != 2 {
-		t.Errorf("ListByProject pa count = %d, want 2", len(listA))
+	if list, err := r.ListByWorkflow("pa", "wf-2"); err != nil {
+		t.Fatalf("ListByWorkflow pa/wf-2: %v", err)
+	} else if len(list) != 1 {
+		t.Errorf("pa/wf-2 count = %d, want 1", len(list))
 	}
-	listB, err := r.ListByProject("pb")
-	if err != nil {
-		t.Fatalf("ListByProject pb: %v", err)
+	if list, err := r.ListByWorkflow("pb", "wf-1"); err != nil {
+		t.Fatalf("ListByWorkflow pb/wf-1: %v", err)
+	} else if len(list) != 1 {
+		t.Errorf("pb/wf-1 count = %d, want 1", len(list))
 	}
-	if len(listB) != 1 {
-		t.Errorf("ListByProject pb count = %d, want 1", len(listB))
-	}
-	listC, err := r.ListByProject("none")
-	if err != nil {
-		t.Fatalf("ListByProject none: %v", err)
-	}
-	if len(listC) != 0 {
-		t.Errorf("ListByProject none count = %d, want 0", len(listC))
+	if list, _ := r.ListByWorkflow("pa", "none"); len(list) != 0 {
+		t.Errorf("pa/none count = %d, want 0", len(list))
 	}
 }
 
 func TestNotificationChannelRepo_ListEnabledForEvent(t *testing.T) {
 	t.Parallel()
-	r, projectID := setupNotificationChannelDB(t)
+	r, projectID, workflowID := setupNotificationChannelDB(t)
 
-	// enabled + subscribes to target event
-	ch1 := makeNotifyChannel(projectID, "ch1", model.ChannelKindSlack, true,
+	ch1 := makeNotifyChannel(projectID, workflowID, "ch1", model.ChannelKindSlack, true,
 		[]string{"orchestration.completed", "agent.completed"})
 	r.Insert(ch1)
-
-	// disabled — must be excluded
-	ch2 := makeNotifyChannel(projectID, "ch2", model.ChannelKindSlack, false,
-		[]string{"orchestration.completed"})
+	ch2 := makeNotifyChannel(projectID, workflowID, "ch2", model.ChannelKindSlack, false,
+		[]string{"orchestration.completed"}) // disabled
 	r.Insert(ch2)
-
-	// enabled but wrong events
-	ch3 := makeNotifyChannel(projectID, "ch3", model.ChannelKindSlack, true,
-		[]string{"agent.started"})
+	ch3 := makeNotifyChannel(projectID, workflowID, "ch3", model.ChannelKindSlack, true,
+		[]string{"agent.started"}) // wrong event
 	r.Insert(ch3)
-
-	// enabled telegram, watches target event
-	ch4 := makeNotifyChannel(projectID, "ch4", model.ChannelKindTelegram, true,
+	ch4 := makeNotifyChannel(projectID, workflowID, "ch4", model.ChannelKindTelegram, true,
 		[]string{"orchestration.completed"})
 	r.Insert(ch4)
 
-	results, err := r.ListEnabledForEvent(projectID, "orchestration.completed")
+	results, err := r.ListEnabledForEvent(projectID, workflowID, "orchestration.completed")
 	if err != nil {
 		t.Fatalf("ListEnabledForEvent: %v", err)
 	}
 	if len(results) != 2 {
 		t.Errorf("count = %d, want 2 (ch1, ch4)", len(results))
 	}
-
-	results2, err := r.ListEnabledForEvent(projectID, "agent.completed")
+	results2, err := r.ListEnabledForEvent(projectID, workflowID, "agent.completed")
 	if err != nil {
 		t.Fatalf("ListEnabledForEvent agent.completed: %v", err)
 	}
 	if len(results2) != 1 {
 		t.Errorf("count = %d, want 1 (ch1 only)", len(results2))
 	}
-
-	results3, err := r.ListEnabledForEvent(projectID, "agent.started")
+	results3, err := r.ListEnabledForEvent(projectID, workflowID, "agent.started")
 	if err != nil {
 		t.Fatalf("ListEnabledForEvent agent.started: %v", err)
 	}
 	if len(results3) != 1 {
 		t.Errorf("count = %d, want 1 (ch3 only)", len(results3))
+	}
+}
+
+func TestNotificationChannelRepo_ListEnabledForEvent_WorkflowIsolation(t *testing.T) {
+	t.Parallel()
+	database := newTestDB(t)
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-iso', 'Iso', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+	for _, wfID := range []string{"wf-a", "wf-b"} {
+		if _, err := database.Exec(
+			`INSERT INTO workflows (id, project_id, description, created_at, updated_at) VALUES (?, 'proj-iso', '', datetime('now'), datetime('now'))`, wfID); err != nil {
+			t.Fatalf("insert workflow %s: %v", wfID, err)
+		}
+	}
+	r := NewNotificationChannelRepo(database, clock.Real())
+	r.Insert(makeNotifyChannel("proj-iso", "wf-a", "ch-a", model.ChannelKindSlack, true, []string{"orchestration.completed"}))
+	r.Insert(makeNotifyChannel("proj-iso", "wf-b", "ch-b", model.ChannelKindSlack, true, []string{"orchestration.completed"}))
+
+	listA, err := r.ListEnabledForEvent("proj-iso", "wf-a", "orchestration.completed")
+	if err != nil {
+		t.Fatalf("ListEnabledForEvent wf-a: %v", err)
+	}
+	if len(listA) != 1 || listA[0].Name != "ch-a" {
+		t.Errorf("wf-a: got %d channels (want 1 named ch-a)", len(listA))
+	}
+
+	listB, err := r.ListEnabledForEvent("proj-iso", "wf-b", "orchestration.completed")
+	if err != nil {
+		t.Fatalf("ListEnabledForEvent wf-b: %v", err)
+	}
+	if len(listB) != 1 || listB[0].Name != "ch-b" {
+		t.Errorf("wf-b: got %d channels (want 1 named ch-b)", len(listB))
+	}
+}
+
+func TestNotificationChannelRepo_WorkflowDelete_CascadesChannels(t *testing.T) {
+	t.Parallel()
+	r, projectID, workflowID := setupNotificationChannelDB(t)
+
+	ch := makeNotifyChannel(projectID, workflowID, "cascade-ch", model.ChannelKindSlack, true, nil)
+	if err := r.Insert(ch); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	if _, err := r.db.Exec(`DELETE FROM workflows WHERE id = ? AND project_id = ?`, workflowID, projectID); err != nil {
+		t.Fatalf("delete workflow: %v", err)
+	}
+	if _, err := r.Get(ch.ID); err == nil {
+		t.Errorf("Get after cascade delete: expected not-found error, got nil")
+	}
+	if list, _ := r.ListByWorkflow(projectID, workflowID); len(list) != 0 {
+		t.Errorf("ListByWorkflow after cascade: got %d channels, want 0", len(list))
 	}
 }

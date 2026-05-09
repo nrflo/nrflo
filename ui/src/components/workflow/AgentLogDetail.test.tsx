@@ -888,4 +888,75 @@ describe('AgentLogDetail', () => {
     })
 
   })
+
+  describe('stale-agent-snapshot bug fix (isRunning from session.status)', () => {
+    // The status-circle spinner lives inside .rounded-full; the messages loading spinner does not.
+    // Use `.rounded-full .spin-sync` to target only the header status icon.
+
+    // Case A: stale agent snapshot (result=undefined) + live session already completed
+    it('shows green ring + no status-circle spinner when session.status=completed but agent.result is undefined', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: 'sess-1' }), // no result field → stale snapshot
+        session: makeSession({ id: 'sess-1', status: 'completed', result: 'pass' }),
+      })
+
+      expect(document.querySelector('.bg-yellow-100')).toBeNull()
+      expect(document.querySelector('.bg-green-100')).not.toBeNull()
+      // Status-circle must not contain a spinner
+      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+    })
+
+    // Case D: in-flight agent — spinner must still render in the status circle
+    it('shows Loader2 in status circle when session.status=running', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: 'sess-running' }),
+        session: makeSession({ id: 'sess-running', status: 'running' }),
+      })
+
+      expect(document.querySelector('.rounded-full .spin-sync')).not.toBeNull()
+      expect(document.querySelector('.bg-yellow-100')).not.toBeNull()
+      expect(document.querySelector('.bg-green-100')).toBeNull()
+    })
+
+    // Case B: user_interactive — blue ring, no status-circle spinner, no yellow
+    it('shows blue ring and no status-circle Loader2 when session.status=user_interactive', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: 'sess-interactive' }),
+        session: makeSession({ id: 'sess-interactive', status: 'user_interactive' }),
+      })
+
+      expect(document.querySelector('.bg-yellow-100')).toBeNull()
+      expect(document.querySelector('.bg-blue-100, .bg-blue-900\\/30')).not.toBeNull()
+      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+    })
+
+    // Case C: history entry with result=pass + session.status=completed — no agent object
+    it('shows green ring and no status-circle spinner for completed historyEntry', () => {
+      renderDetail({
+        phaseName: 'investigation',
+        historyEntry: makeHistoryEntry({ result: 'pass' }),
+        session: makeSession({ id: 'sess-hist', status: 'completed', result: 'pass' }),
+      })
+
+      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+      expect(document.querySelector('.bg-green-100')).not.toBeNull()
+      expect(document.querySelector('.bg-yellow-100')).toBeNull()
+    })
+
+    // session.result fallback: result comes only from session.result=fail (agent has no result)
+    it('shows red ring when result comes only from session.result=fail', () => {
+      renderDetail({
+        phaseName: 'implementation',
+        agent: makeRunningAgent({ session_id: 'sess-fail' }), // no result field
+        session: makeSession({ id: 'sess-fail', status: 'failed', result: 'fail' }),
+      })
+
+      expect(document.querySelector('.bg-red-100')).not.toBeNull()
+      expect(document.querySelector('.bg-yellow-100')).toBeNull()
+      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+    })
+  })
 })

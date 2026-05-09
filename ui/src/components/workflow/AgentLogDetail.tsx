@@ -66,8 +66,8 @@ interface AgentLogDetailProps {
 export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending, agentFindings, projectFindings, phaseLayers, workflowFindings, hideHeader, agentExecutionMode }: AgentLogDetailProps) {
   const { agent, historyEntry, session, phaseName } = selectedAgent
   const isInteractive = session?.status === 'user_interactive'
-  const isRunning = agent && !agent.result && !isInteractive
-  const result = agent?.result || historyEntry?.result
+  const isRunning = session?.status === 'running' && !isInteractive
+  const result = agent?.result || historyEntry?.result || session?.result
   const modelId = agent?.model_id || historyEntry?.model_id
   const modelName = modelId
     ? modelId.split('-').slice(-2).join('-') || modelId

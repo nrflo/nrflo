@@ -23,10 +23,10 @@ import {
 } from './NotificationChannelForm'
 
 const notificationKeys = {
-  all: ['notification-channels'] as const,
-  list: () => [...notificationKeys.all, 'list'] as const,
-  detail: (id: number) => [...notificationKeys.all, id] as const,
-  deliveries: (channelId: number) => ['notification-deliveries', channelId] as const,
+  all: (workflowId: string) => ['notification-channels', workflowId] as const,
+  list: (workflowId: string) => ['notification-channels', workflowId, 'list'] as const,
+  detail: (workflowId: string, id: string) => ['notification-channels', workflowId, id] as const,
+  deliveries: (workflowId: string, channelId: string) => ['notification-deliveries', workflowId, channelId] as const,
 }
 
 const KIND_LABELS: Record<string, string> = { slack: 'Slack', telegram: 'Telegram' }
@@ -43,22 +43,22 @@ function KindBadge({ kind }: { kind: string }) {
   )
 }
 
-export function NotificationsSection() {
+export function WorkflowNotificationsSection({ workflowId }: { workflowId: string }) {
   const queryClient = useQueryClient()
 
   const [isCreating, setIsCreating] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<ChannelFormData>(emptyChannelForm())
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const { data: channels = [], isLoading, error } = useQuery({
-    queryKey: notificationKeys.list(),
-    queryFn: listNotificationChannels,
+    queryKey: notificationKeys.list(workflowId),
+    queryFn: () => listNotificationChannels(workflowId),
   })
 
   const createMutation = useMutation({
     mutationFn: (data: ChannelFormData) =>
-      createNotificationChannel({
+      createNotificationChannel(workflowId, {
         name: data.name.trim(),
         kind: data.kind,
         enabled: data.enabled,
@@ -66,45 +66,45 @@ export function NotificationsSection() {
         event_types: data.eventTypes,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all(workflowId) })
       setIsCreating(false)
       setFormData(emptyChannelForm())
     },
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: ChannelFormData }) =>
-      updateNotificationChannel(id, {
+    mutationFn: ({ id, data }: { id: string; data: ChannelFormData }) =>
+      updateNotificationChannel(workflowId, id, {
         name: data.name.trim(),
         enabled: data.enabled,
         config: buildConfig(data),
         event_types: data.eventTypes,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all(workflowId) })
       setEditingId(null)
       setFormData(emptyChannelForm())
     },
   })
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
-      updateNotificationChannel(id, { enabled }),
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      updateNotificationChannel(workflowId, id, { enabled }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all(workflowId) })
     },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteNotificationChannel(id),
+    mutationFn: (id: string) => deleteNotificationChannel(workflowId, id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all(workflowId) })
       setDeleteConfirm(null)
     },
   })
 
   const testMutation = useMutation({
-    mutationFn: (id: number) => testNotificationChannel(id),
+    mutationFn: (id: string) => testNotificationChannel(workflowId, id),
     onSuccess: () => toast.success('Test notification sent'),
     onError: (err: Error) => toast.error(`Test failed: ${err.message}`),
   })
@@ -141,6 +141,7 @@ export function NotificationsSection() {
     <div key={ch.id} className="border rounded-lg p-4">
       {editingId === ch.id ? (
         <NotificationChannelForm
+          workflowId={workflowId}
           formData={formData}
           setFormData={setFormData}
           onCancel={handleCancel}
@@ -219,7 +220,7 @@ export function NotificationsSection() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Notifications</CardTitle>
-            <CardDescription>Per-project Slack and Telegram channel alerts</CardDescription>
+            <CardDescription>Slack and Telegram channel alerts for this workflow</CardDescription>
           </div>
           <Button onClick={handleStartCreate} disabled={isCreating}>
             <Plus className="h-4 w-4 mr-2" />
@@ -240,6 +241,7 @@ export function NotificationsSection() {
 
           {isCreating && (
             <NotificationChannelForm
+              workflowId={workflowId}
               formData={formData}
               setFormData={setFormData}
               onCancel={handleCancel}

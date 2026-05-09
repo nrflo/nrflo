@@ -97,8 +97,8 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `notification_channel.created` | | Channel created, invalidates notification-channels |
 | `notification_channel.updated` | | Channel updated, invalidates notification-channels |
 | `notification_channel.deleted` | | Channel deleted, invalidates notification-channels |
-| `notification.delivered` | channel_id | Delivery succeeded, invalidates notification-channels + notification-deliveries(channel_id) |
-| `notification.failed` | channel_id | Delivery failed, invalidates notification-channels + notification-deliveries(channel_id) |
+| `notification.delivered` | channel_id (string) | Delivery succeeded, invalidates notification-channels + notification-deliveries(channel_id) |
+| `notification.failed` | channel_id (string) | Delivery failed, invalidates notification-channels + notification-deliveries(channel_id) |
 | `review.created` | | New review item, invalidates `['review']` |
 | `review.updated` | | Review item updated, invalidates `['review']` |
 | `config_file.updated` | | Config file changed, invalidates `['config-files']` |

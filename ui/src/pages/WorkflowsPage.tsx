@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { AgentDefsSection } from '@/components/workflow/AgentDefsSection'
+import { WorkflowNotificationsSection } from '@/components/workflows/WorkflowNotificationsSection'
 import { WorkflowDefForm } from '@/components/workflow/WorkflowDefForm'
 import { listWorkflowDefs, createWorkflowDef, updateWorkflowDef, deleteWorkflowDef } from '@/api/workflows'
 import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateRequest, ScopeType } from '@/types/workflow'
@@ -128,6 +129,7 @@ function WorkflowCard({
           )}
 
           <AgentDefsSection workflowId={id} groups={def.groups || []} />
+          <WorkflowNotificationsSection workflowId={id} />
         </div>
       )}
     </div>

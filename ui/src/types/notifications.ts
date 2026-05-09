@@ -8,8 +8,9 @@ export type NotificationEventType =
   | 'agent.stall_restart'
 
 export interface NotificationChannel {
-  id: number
+  id: string
   project_id: string
+  workflow_id: string
   name: string
   kind: ChannelKind
   enabled: boolean
@@ -21,7 +22,7 @@ export interface NotificationChannel {
 
 export interface NotificationDelivery {
   id: number
-  channel_id: number
+  channel_id: string
   event_type: string
   status: string
   attempts: number

@@ -35,7 +35,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `scheduledTasks.ts` | Scheduled task CRUD + run history (`GET/POST/PATCH/DELETE /api/v1/scheduled-tasks`, `GET /api/v1/scheduled-tasks/:id/runs`, `POST /api/v1/scheduled-tasks/:id/run-now`; requires X-Project header) |
 | `users.ts` | User management (admin-only, no X-Project header): `listUsers()→{users:User[]}`, `createUser(req)→User`, `updateUser(id,req)→User`, `resetUserPassword(id,req)→void`, `deleteUser(id)→void`. Errors: 409 `email_exists`, 400 `last_admin`/`cannot_delete_self`. |
 | `auditLog.ts` | Audit log (admin-only, no X-Project header): `listAuditLog({page,per_page,user_id,action})→AuditListResponse`. Returns `{items,total,page,per_page}`. |
-| `notifications.ts` | Notification channel CRUD + test + deliveries (`GET/POST/PATCH/DELETE /api/v1/notification-channels(/:id)`, `POST /api/v1/notification-channels/:id/test`, `GET /api/v1/notification-deliveries?channel_id=&limit=`; requires X-Project header) |
+| `notifications.ts` | Per-workflow notification channel CRUD + test + deliveries (nested under `/api/v1/workflows/:wid/…`); requires X-Project header |
 | `review.ts` | Review item API: listReviewItems/getReviewItem/updateReviewDraft/approveReview/rejectReview against `/api/v1/review[/...]` |
 | `configFiles.ts` | Config file API: listConfigFiles/getConfigFile/putConfigFile/getConfigHistory/rollbackConfig against `/api/v1/config-files[/...]`. `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
 | `insights.ts` | Insights API: getSummary/getEditRate/getThroughput against `/api/v1/insights/{summary,edit-rate,throughput}` |
@@ -123,6 +123,17 @@ POST   /api/v1/workflows/:wid/agents
 GET    /api/v1/workflows/:wid/agents/:id
 PATCH  /api/v1/workflows/:wid/agents/:id
 DELETE /api/v1/workflows/:wid/agents/:id
+
+# Notification channels (nested under workflows, require X-Project header)
+GET    /api/v1/workflows/:wid/notification-channels         # List channels for workflow
+POST   /api/v1/workflows/:wid/notification-channels         # Create channel
+GET    /api/v1/workflows/:wid/notification-channels/:id     # Get channel
+PATCH  /api/v1/workflows/:wid/notification-channels/:id     # Update channel
+DELETE /api/v1/workflows/:wid/notification-channels/:id     # Delete channel
+POST   /api/v1/workflows/:wid/notification-channels/:id/test # Send test notification
+
+# Notification deliveries (nested under workflows, require X-Project header)
+GET    /api/v1/workflows/:wid/notification-deliveries       # ?channel_id=&limit= — recent deliveries
 
 # Python scripts (require X-Project header; writes admin-only)
 GET    /api/v1/python-scripts            # List all scripts for project

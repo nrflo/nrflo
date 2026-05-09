@@ -9,11 +9,10 @@ import { SystemAgentsSection } from '@/components/settings/SystemAgentsSection'
 import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesSection'
 import { CLIModelsSection } from '@/components/settings/CLIModelsSection'
 import { LogsSection } from '@/components/settings/LogsSection'
-import { NotificationsSection } from '@/components/settings/NotificationsSection'
 import { UsersSection } from '@/components/settings/UsersSection'
 import { AuditLogSection } from '@/components/settings/AuditLogSection'
 
-type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'notifications' | 'administration'
+type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'administration'
 type AdministrationSubTab = 'users' | 'audit'
 
 const tabs: { id: SettingsTab; label: string }[] = [
@@ -23,7 +22,6 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'default-templates', label: 'Default Templates' },
   { id: 'cli-models', label: 'CLI Models' },
   { id: 'logs', label: 'Logs' },
-  { id: 'notifications', label: 'Notifications' },
   { id: 'administration', label: 'Administration' },
 ]
 
@@ -132,7 +130,6 @@ export function SettingsPage() {
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'cli-models' && <CLIModelsSection />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
-      {activeTab === 'notifications' && <NotificationsSection />}
       {activeTab === 'administration' && activeSub === 'users' && <UsersSection />}
       {activeTab === 'administration' && activeSub === 'audit' && <AuditLogSection />}
     </div>

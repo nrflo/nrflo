@@ -433,13 +433,13 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
   'notification.delivered': (event, qc) => {
     qc.invalidateQueries({ queryKey: ['notification-channels'] })
     if (event.data?.channel_id) {
-      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as number] })
+      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as string] })
     }
   },
   'notification.failed': (event, qc) => {
     qc.invalidateQueries({ queryKey: ['notification-channels'] })
     if (event.data?.channel_id) {
-      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as number] })
+      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as string] })
     }
   },
 

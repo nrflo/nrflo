@@ -66,10 +66,11 @@ export function buildConfig(formData: ChannelFormData): string {
 }
 
 const deliveryKeys = {
-  list: (channelId: number) => ['notification-deliveries', channelId] as const,
+  list: (workflowId: string, channelId: string) => ['notification-deliveries', workflowId, channelId] as const,
 }
 
 export function NotificationChannelForm({
+  workflowId,
   formData,
   setFormData,
   onCancel,
@@ -78,6 +79,7 @@ export function NotificationChannelForm({
   isCreate,
   editingChannel,
 }: {
+  workflowId: string
   formData: ChannelFormData
   setFormData: (data: ChannelFormData) => void
   onCancel: () => void
@@ -88,14 +90,14 @@ export function NotificationChannelForm({
   editingChannel?: NotificationChannel
 }) {
   const testMutation = useMutation({
-    mutationFn: () => testNotificationChannel(editingChannel!.id),
+    mutationFn: () => testNotificationChannel(workflowId, editingChannel!.id),
     onSuccess: () => toast.success('Test notification sent'),
     onError: (err: Error) => toast.error(`Test failed: ${err.message}`),
   })
 
   const { data: deliveries = [] } = useQuery({
-    queryKey: deliveryKeys.list(editingChannel?.id ?? 0),
-    queryFn: () => listNotificationDeliveries({ channelId: editingChannel!.id, limit: 20 }),
+    queryKey: deliveryKeys.list(workflowId, editingChannel?.id ?? ''),
+    queryFn: () => listNotificationDeliveries({ workflowId, channelId: editingChannel!.id, limit: 20 }),
     enabled: !!editingChannel,
   })
 

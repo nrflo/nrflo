@@ -99,15 +99,16 @@ HTTP defs in scope: `project_id IS NULL OR project_id == agent.project_id` AND `
 
 ### Manifest Tool Source (tools_manifest)
 
-`tools_manifest.New(manifest, runner, projectID, sessionID, dispatchRepo, reviewRepo, hub, clk)` returns an `apirun.ManifestProvider` (interface defined in `registry.go`). Only constructed when `Config.APIMode && Config.CustomerConfigDir != "" && Config.PythonRunner != nil`.
+`tools_manifest.New(manifest, runner, projectID, sessionID, dispatchRepo, reviewRepo, hub, clk, projectEnv)` returns an `apirun.ManifestProvider` (interface defined in `registry.go`). Only constructed when `Config.APIMode && Config.CustomerConfigDir != "" && Config.PythonRunner != nil`. `projectEnv` is `Config.ProjectEnv` (loaded once at workflow start from `project_env_vars`).
 
 **Invocation flow per tool call:**
 1. Unmarshal `json.RawMessage` → `interface{}`, validate against tool's compiled `InputSchema`.
-2. `python.Runtime{runner, configDir}.Invoke(ctx, tool.Script, inputBytes, python.MatchEnv(tool.EnvAllow, os.Environ()), 30s)`.
-3. Insert `ToolDispatch` row (status=success|error, duration_ms, error_msg when applicable).
-4. Broadcast `tool.dispatched` with `{tool_name, status, duration_ms, dispatch_id}`.
-5. When `tool.Review && status==success`: insert `ReviewItem` (status=pending) and broadcast `review.created`.
-6. On runner error: return `isError=true` with the error message; no review item.
+2. Build `candidates := append(append([]string{}, os.Environ()...), deps.projectEnv...)` — project env trails so duplicates resolve last-wins. Pass to `python.MatchEnv(tool.EnvAllow, candidates)` — `env_allow` still gates which keys reach the python child process.
+3. `python.Runtime{runner, configDir}.Invoke(ctx, tool.Script, inputBytes, envVars, 30s)`.
+4. Insert `ToolDispatch` row (status=success|error, duration_ms, error_msg when applicable).
+5. Broadcast `tool.dispatched` with `{tool_name, status, duration_ms, dispatch_id}`.
+6. When `tool.Review && status==success`: insert `ReviewItem` (status=pending) and broadcast `review.created`.
+7. On runner error: return `isError=true` with the error message; no review item.
 
 **Per-project mtime cache:** `Spawner.loadManifestCached(configDir)` stats `tool_manifest.yaml` on every spawn and reloads only when mtime has changed. Cache is a `map[string]*manifestCacheEntry` guarded by `sync.Mutex` on the Spawner struct. Cache misses call `config.Load(configDir)`.
 

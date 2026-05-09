@@ -671,6 +671,7 @@ The spawner sets these env vars on every spawned agent process. Child processes 
 | `NRF_SPAWNED` | Set to `1` to indicate agent was spawned by the orchestrator |
 | `NRF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
 | `NRF_MAX_CONTEXT` | Max context window size in tokens (e.g., 200000 or 1000000 for opus_4_7_1m). Used by hooks to calculate context % |
+| *(per-project vars)* | `Config.ProjectEnv` entries (loaded once at workflow start from `project_env_vars`) are appended after the nrflo-controlled vars in both `prepareSpawn` and `prepareScriptSpawn`. Duplicate keys resolve last-wins via `exec.Cmd.Env` semantics; the reserved-name validator in the service layer is the primary defense. |
 
 On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` gets the new session's UUID. `NRF_WORKFLOW_INSTANCE_ID` stays the same. When using the system agent context saver, it writes findings to the original session via `NRF_SESSION_ID=${TARGET_SESSION_ID}` override in its CLI command, then the fresh spawn gets the new session ID.
 

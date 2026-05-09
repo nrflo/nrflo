@@ -37,6 +37,7 @@ func New(
 	reviewRepo *repo.ReviewRepo,
 	hub service.WSHub,
 	clk clock.Clock,
+	projectEnv []string,
 ) apirun.ManifestProvider {
 	return &manifestProvider{deps: deps{
 		manifest:     manifest,
@@ -47,6 +48,7 @@ func New(
 		reviewRepo:   reviewRepo,
 		hub:          hub,
 		clock:        clk,
+		projectEnv:   projectEnv,
 	}}
 }
 
@@ -102,9 +104,11 @@ func (h *manifestToolHandler) Invoke(ctx context.Context, env apirun.ToolEnv, in
 
 	start := h.d.clock.Now()
 
-	// Invoke the Python script.
+	// Invoke the Python script. Project env vars trail os.Environ() so duplicates resolve
+	// last-wins; env_allow still gates which keys reach the python child process.
 	rt := python.NewRuntime(h.d.runner, h.d.manifest.Dir)
-	envVars := python.MatchEnv(h.tool.EnvAllow, os.Environ())
+	candidates := append(append([]string{}, os.Environ()...), h.d.projectEnv...)
+	envVars := python.MatchEnv(h.tool.EnvAllow, candidates)
 	out, runErr := rt.Invoke(ctx, h.tool.Script, []byte(input), envVars, defaultScriptTimeout)
 
 	durationMs := h.d.clock.Now().Sub(start).Milliseconds()

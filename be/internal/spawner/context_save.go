@@ -201,6 +201,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		ToolDefRepo:        s.config.ToolDefRepo,
 		InteractiveCLIMode: s.config.InteractiveCLIMode,
 		PTYManager:         s.config.PTYManager,
+		ProjectEnv:         s.config.ProjectEnv,
 	})
 
 	saveCtx, cancel := context.WithTimeout(ctx, contextSaveTimeout)

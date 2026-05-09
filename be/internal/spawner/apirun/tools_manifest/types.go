@@ -22,4 +22,5 @@ type deps struct {
 	reviewRepo   *repo.ReviewRepo
 	hub          service.WSHub
 	clock        clock.Clock
+	projectEnv   []string
 }

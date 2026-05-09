@@ -28,6 +28,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	claudeSettingsJSON string,
 	interactiveCLIMode bool,
 	customerConfigDir string,
+	projectEnv []string,
 ) error {
 	// Load conflict-resolver system agent definition.
 	// API-mode conflict resolution is not yet supported — the resolver needs
@@ -72,6 +73,7 @@ func (o *Orchestrator) attemptConflictResolution(
 		DispatchRepo:      dispatchRepo,
 		ReviewRepo:        reviewRepo,
 		CustomerConfigDir: customerConfigDir,
+		ProjectEnv:        projectEnv,
 		SDKDir:            o.sdkDir,
 		PythonScriptRepo:  repo.NewPythonScriptRepo(pool, o.clock),
 		OnSessionRegister: func(sid string, s *spawner.Spawner) {

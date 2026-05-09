@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -13,6 +14,22 @@ import (
 	"be/internal/spawner/apirun/provider/anthropic"
 	"be/internal/ws"
 )
+
+// loadProjectEnv reads per-project env vars from DB and formats them as "KEY=value" strings.
+// On error, logs a warning and returns an empty slice — must not block workflow start.
+func loadProjectEnv(ctx context.Context, pool *db.Pool, projectID string, clk clock.Clock) []string {
+	svc := service.NewProjectEnvVarService(pool, clk)
+	vars, err := svc.List(projectID)
+	if err != nil {
+		logger.Warn(ctx, "failed to load project env vars, proceeding without them", "project_id", projectID, "err", err)
+		return nil
+	}
+	out := make([]string, 0, len(vars))
+	for _, v := range vars {
+		out = append(out, fmt.Sprintf("%s=%s", v.Name, v.Value))
+	}
+	return out
+}
 
 // buildAPIProvider resolves the project's Anthropic API key and constructs a
 // provider.Provider for API-mode agents. Returns nil if no key is configured —

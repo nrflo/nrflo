@@ -23,7 +23,7 @@ func TestManifestHandler_ScriptError(t *testing.T) {
 	since := clk.Now().Add(-time.Second)
 
 	// tool_with_review has review:true, but error path must skip review creation.
-	prov := New(manifest, runner, projectID, "sess-3", dispatchRepo, reviewRepo, hub, clk)
+	prov := New(manifest, runner, projectID, "sess-3", dispatchRepo, reviewRepo, hub, clk, nil)
 	h, ok := prov.Handler("tool_with_review")
 	if !ok {
 		t.Fatalf("Handler: tool_with_review not found")
@@ -83,7 +83,7 @@ func TestManifestHandler_ValidationError(t *testing.T) {
 	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
 	since := clk.Now().Add(-time.Second)
 
-	prov := New(manifest, runner, projectID, "sess-4", dispatchRepo, reviewRepo, hub, clk)
+	prov := New(manifest, runner, projectID, "sess-4", dispatchRepo, reviewRepo, hub, clk, nil)
 	h, ok := prov.Handler("tool_no_review")
 	if !ok {
 		t.Fatalf("Handler: tool_no_review not found")
@@ -128,7 +128,7 @@ func TestManifestHandler_InvalidJSON_Input(t *testing.T) {
 	hub := &fakeHub{}
 	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
 
-	prov := New(manifest, runner, projectID, "sess-5", dispatchRepo, reviewRepo, hub, clk)
+	prov := New(manifest, runner, projectID, "sess-5", dispatchRepo, reviewRepo, hub, clk, nil)
 	h, ok := prov.Handler("tool_no_review")
 	if !ok {
 		t.Fatalf("Handler: tool_no_review not found")
@@ -156,7 +156,7 @@ func TestManifestProvider_Specs(t *testing.T) {
 	runner := &fakeRunner{}
 	hub := &fakeHub{}
 
-	prov := New(manifest, runner, "proj-1", "sess-6", nil, nil, hub, clk)
+	prov := New(manifest, runner, "proj-1", "sess-6", nil, nil, hub, clk, nil)
 	specs := prov.Specs()
 
 	// Manifest has two tools.
@@ -180,7 +180,7 @@ func TestManifestProvider_Specs(t *testing.T) {
 
 func TestManifestProvider_Handler_NotFound(t *testing.T) {
 	manifest := newTestManifest(t)
-	prov := New(manifest, &fakeRunner{}, "proj-1", "sess-7", nil, nil, nil, clock.NewTest(time.Now()))
+	prov := New(manifest, &fakeRunner{}, "proj-1", "sess-7", nil, nil, nil, clock.NewTest(time.Now()), nil)
 	_, ok := prov.Handler("nonexistent_tool")
 	if ok {
 		t.Errorf("Handler returned true for unknown tool, want false")
@@ -194,7 +194,7 @@ func TestManifestHandler_NilRepos_NoRepoInsert(t *testing.T) {
 	runner := &fakeRunner{out: []byte(`"ok"`)}
 	hub := &fakeHub{}
 
-	prov := New(manifest, runner, "proj-1", "sess-8", nil, nil, hub, clk)
+	prov := New(manifest, runner, "proj-1", "sess-8", nil, nil, hub, clk, nil)
 	h, ok := prov.Handler("tool_with_review")
 	if !ok {
 		t.Fatalf("Handler: tool_with_review not found")

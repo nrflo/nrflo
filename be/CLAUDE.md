@@ -347,7 +347,7 @@ Stored in `project_env_vars` table (migration 000095). Schema: `project_id + nam
 
 On successful PUT/DELETE, broadcasts `project.env_vars_updated` (`EventProjectEnvVarsUpdated`) globally via `wsHub.BroadcastGlobal` with payload `{project_id}`.
 
-Spawner injection is a follow-up; these env vars are not yet passed to agent processes.
+Env vars are injected into all spawned agent processes via `spawner.Config.ProjectEnv`: loaded once at workflow start by `loadProjectEnv` in the orchestrator, appended after nrflo-controlled vars in `prepareSpawn` (cli/api paths) and `prepareScriptSpawn` (script path), and forwarded to manifest tool dispatch via `tools_manifest.New`. The reserved-name validator at the service layer is the primary protection against shadowing nrflo internals.
 
 ## Running Tests
 

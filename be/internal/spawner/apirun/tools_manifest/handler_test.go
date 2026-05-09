@@ -135,7 +135,7 @@ func TestManifestHandler_HappyPath_NoReview(t *testing.T) {
 	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
 	since := clk.Now().Add(-time.Second)
 
-	prov := New(manifest, runner, projectID, "sess-1", dispatchRepo, reviewRepo, hub, clk)
+	prov := New(manifest, runner, projectID, "sess-1", dispatchRepo, reviewRepo, hub, clk, nil)
 	h, ok := prov.Handler("tool_no_review")
 	if !ok {
 		t.Fatalf("Handler: tool_no_review not found")
@@ -200,7 +200,7 @@ func TestManifestHandler_HappyPath_WithReview(t *testing.T) {
 	hub := &fakeHub{}
 	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
 
-	prov := New(manifest, runner, projectID, "sess-2", dispatchRepo, reviewRepo, hub, clk)
+	prov := New(manifest, runner, projectID, "sess-2", dispatchRepo, reviewRepo, hub, clk, nil)
 	h, ok := prov.Handler("tool_with_review")
 	if !ok {
 		t.Fatalf("Handler: tool_with_review not found")

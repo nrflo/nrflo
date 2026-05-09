@@ -172,6 +172,10 @@ type Config struct {
 	// CustomerConfigDir is the absolute path to the customer config directory for this project.
 	// Used to load tool_manifest.yaml when APIMode is true and the dir is non-empty.
 	CustomerConfigDir string
+	// ProjectEnv holds per-project env vars as "KEY=value" strings, loaded once at workflow
+	// start from project_env_vars. Appended after nrflo-controlled vars in every spawn path
+	// so duplicates resolve last-wins (nrflo reserved names are also guarded at the service layer).
+	ProjectEnv []string
 	// OnSessionRegister is called after registerTerminalSignal adds sessionID to the registry.
 	// The callback fires outside terminalSignalsMu to avoid lock-order inversion.
 	// The orchestrator uses this to maintain its sessionID→*Spawner index.
@@ -839,6 +843,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		fmt.Sprintf("NRF_TRX=%s", logger.TrxFromContext(ctx)),
 		"NRF_SPAWNED=1",
 	)
+	env = append(env, s.config.ProjectEnv...)
 
 	proc := &processInfo{
 		agentID:             agentID,
@@ -1106,6 +1111,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 					s.config.ReviewRepo,
 					s.config.WSHub,
 					s.config.Clock,
+					s.config.ProjectEnv,
 				)
 			}
 		}
@@ -1226,7 +1232,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		ReasoningEffort:  reasoningEffort,
 		SettingsJSON:     s.config.ClaudeSettingsJSON,
 		SystemPromptFile: suffixFilePath,
-		Env: append(filterEnv(os.Environ(), "CLAUDECODE"),
+		Env: append(append(filterEnv(os.Environ(), "CLAUDECODE"),
 			fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 			fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),
@@ -1235,7 +1241,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			"NRF_SPAWNED=1",
 			fmt.Sprintf("NRF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
 			fmt.Sprintf("NRF_MAX_CONTEXT=%d", s.maxContextForModel(model)),
-		),
+		), s.config.ProjectEnv...),
 	}
 
 	prep.adapter = adapter

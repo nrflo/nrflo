@@ -39,6 +39,7 @@ Write operations on configuration resources require admin role:
 - `POST|PATCH|DELETE /api/v1/cli-models/{...}`
 - `POST|PATCH|DELETE /api/v1/default-templates/{...}` (including `/restore`)
 - `POST|PATCH|DELETE /api/v1/scheduled-tasks/{...}`
+- `PUT|DELETE /api/v1/projects/{id}/env-vars/{name}` (project-scoped)
 - `POST|PATCH|DELETE /api/v1/python-scripts/{...}` (project-scoped)
 - `POST|PUT|DELETE /api/v1/tool-definitions/{...}` (api-mode only)
 - `POST|PUT|DELETE /api/v1/api-credentials/{...}` (api-mode only)
@@ -98,6 +99,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_errors.go` | Error log list (paginated, type filter) |
 | `handlers_agent_session_logs.go` | Agent session log list (GET /api/v1/agent-session-logs, paginated, project-scoped, finished sessions only joined with workflow_instances + agent_definitions) |
 | `handlers_logs.go` | Backend log file viewer |
+| `handlers_project_env_vars.go` | Project env var List/Put/Delete (GET protected, PUT/DELETE admin); nested under /api/v1/projects/{id}/env-vars; broadcasts project.env_vars_updated globally on mutations |
 | `handlers_python_scripts.go` | Python script CRUD (list, create, get, update, delete) + validate; project-scoped via X-Project header; writes admin-only |
 | `handlers_python_scripts_files.go` | Python script file browser (browse dir, read file); project-scoped via X-Project header; read-only, protected |
 | `handlers_review.go` | Review item CRUD (list, create, get with diff, patch draft, approve, reject); project-scoped via X-Project header; api-mode only |
@@ -201,6 +203,11 @@ POST   /api/v1/system-agents           # Create system agent definition
 GET    /api/v1/system-agents/:id       # Get system agent definition
 PATCH  /api/v1/system-agents/:id       # Update system agent definition
 DELETE /api/v1/system-agents/:id       # Delete system agent definition
+
+# Project env vars (nested under projects; writes admin-only)
+GET    /api/v1/projects/{id}/env-vars              # List all env vars for project (ordered by name ASC)
+PUT    /api/v1/projects/{id}/env-vars/{name}       # Upsert; body: {value}; 400 on invalid name/reserved/oversized value; broadcasts project.env_vars_updated
+DELETE /api/v1/projects/{id}/env-vars/{name}       # Delete; 404 if missing; broadcasts project.env_vars_updated
 
 # Python scripts (project-scoped, require X-Project header; writes admin-only)
 GET    /api/v1/python-scripts              # List all scripts for project (ordered by name)

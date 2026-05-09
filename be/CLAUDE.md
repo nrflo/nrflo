@@ -60,6 +60,7 @@ be/
 │   │   ├── handlers_agent_def.go # Agent definition endpoints
 │   │   ├── handlers_system_agent_def.go # System agent definition CRUD (global)
 │   │   ├── handlers_default_template.go # Default template CRUD (global)
+│   │   ├── handlers_project_env_vars.go # Project env var List/Put/Delete (nested under /api/v1/projects/{id}/env-vars; writes admin-only)
 │   │   ├── handlers_python_scripts.go # Python script CRUD + validate (project-scoped; writes admin-only)
 │   │   ├── handlers_cli_models.go # CLI model CRUD (global)
 │   │   ├── handlers_global_settings.go # Global settings GET/PATCH (no project scope)
@@ -108,6 +109,7 @@ be/
 │   │   ├── queue.go             # Worker: drain queue, exponential backoff, WS events
 │   │   └── payload.go           # renderSlack/renderTelegram per event type
 │   ├── service/                 # Business logic layer
+│   │   ├── project_env_var.go   # ProjectEnvVarService: List/Upsert/Delete (validates name regex, reserved names, 4096-byte value cap)
 │   │   ├── layer_policy.go      # ParseLayerPolicy, LayerPolicy.Required/String, ValidateLayerPolicy
 │   │   ├── workflow_layer_policy.go # WorkflowLayerPolicyService: GetLayerPolicies/SetLayerPolicy/DeleteLayerPolicy
 │   │   ├── python_script.go     # PythonScriptService: Create/Get/List/Update/Delete (project-scoped)
@@ -145,6 +147,7 @@ be/
 │   │   └── migrations/          # SQL files (embedded via //go:embed)
 │   │       └── embed.go         # Go embed directive
 │   ├── model/                   # Data models
+│   │   ├── project_env_var.go   # ProjectEnvVar struct (project_id, name, value, created_at, updated_at)
 │   │   ├── workflow_layer_policy.go # WorkflowLayerPolicy struct (project_id, workflow_id, layer, pass_policy, timestamps)
 │   │   ├── python_script.go     # PythonScript struct (id, project_id, name, description, code, timestamps)
 │   │   ├── project.go
@@ -179,6 +182,7 @@ be/
 │   │   └── migrate/             # Forward-only config migration runner
 │   │       └── migrations/      # Migration implementations
 │   ├── repo/                    # Repository pattern
+│   │   ├── project_env_var.go   # ProjectEnvVarRepo: List/Upsert(ON CONFLICT)/Delete (project+name scoped, clock-driven timestamps)
 │   │   ├── workflow_layer_policy.go # WorkflowLayerPolicyRepo: Upsert/Delete/ListByWorkflow (clock-driven, lowercase keys)
 │   │   ├── python_script.go     # PythonScriptRepo: Create/Get/List/Update/Delete (project+id scoped, clock-driven timestamps)
 │   │   ├── project.go
@@ -326,6 +330,24 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/sdk/python/` | [sdk/python/CLAUDE.md](internal/sdk/python/CLAUDE.md) | Embedded Python SDK for `execution_mode='script'` agents (auto-installed to `$NRFLO_HOME/sdk/`) |
 | `internal/venv/` | (inline docs) | Per-project Python venv manager: `Ensure(ctx, projectID, projectRoot)` syncs `$NRFLO_HOME/project/<id>/venv` with `requirements.txt` (sha256 hash-keyed, atomic rename). Non-blocking — failures return `"", nil` so callers fall back to PATH `python3`. Docker image requires `py3-pip` apk package for `python3 -m venv` to include pip. |
 | `internal/configeditor/` | [configeditor/CLAUDE.md](internal/configeditor/CLAUDE.md) | Versioned config file editing service + forward-only migration runner |
+
+## Per-project env vars
+
+Stored in `project_env_vars` table (migration 000095). Schema: `project_id + name` composite PK (FK → projects ON DELETE CASCADE), `value TEXT`, `created_at/updated_at TEXT RFC3339Nano`.
+
+**Validation** (service layer, `be/internal/service/project_env_var.go`):
+- Name must match `^[A-Za-z_][A-Za-z0-9_]*$`
+- Name must not be in the reserved-names set: `NRFLO_PROJECT`, `NRFLO_AGENT_TOKEN`, `NRFLO_SDK_DIR`, `NRFLO_HOME`, `NRF_SESSION_ID`, `NRF_WORKFLOW_INSTANCE_ID`, `NRF_TRX`, `NRF_SPAWNED`, `NRF_CONTEXT_THRESHOLD`, `NRF_MAX_CONTEXT`, `CLAUDECODE`, `PATH`, `HOME`
+- Value length ≤ 4096 bytes
+
+**API** (admin-only writes):
+- `GET /api/v1/projects/{id}/env-vars` — list (protected)
+- `PUT /api/v1/projects/{id}/env-vars/{name}` — upsert; body `{value}` (admin)
+- `DELETE /api/v1/projects/{id}/env-vars/{name}` — delete; 404 on missing key (admin)
+
+On successful PUT/DELETE, broadcasts `project.env_vars_updated` (`EventProjectEnvVarsUpdated`) globally via `wsHub.BroadcastGlobal` with payload `{project_id}`.
+
+Spawner injection is a follow-up; these env vars are not yet passed to agent processes.
 
 ## Running Tests
 

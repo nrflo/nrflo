@@ -573,6 +573,11 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/workflow-chains/{id}/runs/{runId}", s.handleGetChainRun)
 	admin("POST /api/v1/workflow-chains/{id}/runs/{runId}/cancel", s.handleCancelChainRun)
 
+	// Project env vars (nested under projects) — writes are admin-only
+	protected("GET /api/v1/projects/{id}/env-vars", s.handleListProjectEnvVars)
+	admin("PUT /api/v1/projects/{id}/env-vars/{name}", s.handlePutProjectEnvVar)
+	admin("DELETE /api/v1/projects/{id}/env-vars/{name}", s.handleDeleteProjectEnvVar)
+
 	// Python scripts (project-scoped) — writes are admin-only
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)
 	admin("POST /api/v1/python-scripts", s.handleCreatePythonScript)

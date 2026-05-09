@@ -543,9 +543,22 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ PROJECT_ENV_VARS                                                     │
+│  project_id TEXT NOT NULL                                            │
+│  name       TEXT NOT NULL                                            │
+│  value      TEXT NOT NULL DEFAULT ''                                 │
+│  created_at TEXT NOT NULL                                            │
+│  updated_at TEXT NOT NULL                                            │
+│  PRIMARY KEY (project_id, name)                                      │
+│  FK project_id → projects(id) ON DELETE CASCADE                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 ## Adding a Database Migration
 
-Current highest migration: **000094** (notification_channels_per_workflow — drop and recreate notification_channels with workflow_id composite FK to workflows; drop and recreate notification_deliveries unchanged)
+Current highest migration: **000095** (project_env_vars — new table with composite PK project_id+name, FK to projects ON DELETE CASCADE)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

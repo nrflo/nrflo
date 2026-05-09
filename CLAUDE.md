@@ -158,6 +158,7 @@ Rules every change must respect. (Mandatory Rules above cover layer execution, s
 - **Spawned agents authenticate to the HTTP API via per-session bearer token**: the spawner mints a `spawn_token` per agent session, persists it on the `agent_sessions` row, and sets `NRFLO_AGENT_TOKEN` on the agent process env. The CLI's HTTPClient sends it as `Authorization: Bearer …`; `requireAuth` accepts it when the session's status is `running` or `user_interactive`, and enforces project scope against the `X-Project` header. Tokens are not admin-equivalent — `requireAdmin` routes always reject them. No SCS `Lifetime`/`IdleTimeout` cap applies; validity ends when the session reaches a terminal status.
 - **Agent CLI is a small subset**: `agent fail/finished/continue/callback`, `findings *`, `project_findings *`, `skip`. Anything else goes through the HTTP API.
 - **Clock abstraction for tests**: DB timestamps go through the `clock.Clock` interface (`internal/clock/`); tests use `clock.TestClock` with `Set()`/`Advance()` instead of `time.Sleep`.
+- **Per-project env vars**: stored in `project_env_vars` (migration 000095); managed via `GET|PUT|DELETE /api/v1/projects/{id}/env-vars[/{name}]`; will be injected into spawned agents in a follow-up ticket. See [be/CLAUDE.md](be/CLAUDE.md) and [be/internal/spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md).
 
 ## Feature Index
 

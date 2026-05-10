@@ -79,6 +79,8 @@ TypeScript type definitions matching Go API models. Contains 5 files.
 |------|-------------|
 | `AgentSessionLogEntry` | Finished session row with `session_id`, `project_id`, `agent_type`, `model_id?`, `status`, `started_at?`, `ended_at?`, `duration_sec?`, `workflow_id`, `workflow_instance_id`, `scheduled`, `execution_mode?`, `workflow_final_result?` |
 | `AgentSessionLogsResponse` | `{ sessions: AgentSessionLogEntry[], total, page, per_page, total_pages }` — paginated list |
+| `LiveAgentSession` | Live session row with `session_id`, `project_id`, `agent_type`, `model_id?`, `workflow_id`, `workflow_instance_id`, `scheduled`, `execution_mode?`, `started_at?`, `duration_sec`, `pid`, `rss_kb`, `cpu_pct`, `os_uptime_sec` |
+| `LiveAgentSessionsResponse` | `{ sessions: LiveAgentSession[] }` — live sessions list |
 
 ## Audit Types (`audit.ts`)
 

@@ -31,7 +31,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |
 | `cliModels.ts` | CLI model CRUD + health check test (global, no X-Project header) |
 | `errors.ts` | Paginated error log list (`GET /api/v1/errors?page=&per_page=&type=`) |
-| `agentSessionLogs.ts` | Paginated finished agent session list (`GET /api/v1/agent-session-logs?page=&per_page=`; requires X-Project header) |
+| `agentSessionLogs.ts` | Paginated finished agent session list (`GET /api/v1/agent-session-logs?page=&per_page=`; requires X-Project header); `fetchLiveAgentSessions()` (`GET /api/v1/agent-session-logs/live`); `killAgentSession(id)` (`POST /api/v1/agent-sessions/{id}/kill`) |
 | `scheduledTasks.ts` | Scheduled task CRUD + run history (`GET/POST/PATCH/DELETE /api/v1/scheduled-tasks`, `GET /api/v1/scheduled-tasks/:id/runs`, `POST /api/v1/scheduled-tasks/:id/run-now`; requires X-Project header) |
 | `users.ts` | User management (admin-only, no X-Project header): `listUsers()→{users:User[]}`, `createUser(req)→User`, `updateUser(id,req)→User`, `resetUserPassword(id,req)→void`, `deleteUser(id)→void`. Errors: 409 `email_exists`, 400 `last_admin`/`cannot_delete_self`. |
 | `auditLog.ts` | Audit log (admin-only, no X-Project header): `listAuditLog({page,per_page,user_id,action})→AuditListResponse`. Returns `{items,total,page,per_page}`. |
@@ -210,7 +210,9 @@ PUT    /api/v1/projects/{id}/env-vars/{name}    # Upsert env var; body: {value}
 DELETE /api/v1/projects/{id}/env-vars/{name}    # Delete env var by name
 
 # Agent Session Logs (require X-Project header)
-GET    /api/v1/agent-session-logs   # Paginated finished sessions; ?page=&per_page=
+GET    /api/v1/agent-session-logs        # Paginated finished sessions; ?page=&per_page=
+GET    /api/v1/agent-session-logs/live   # Live (running/user_interactive) sessions with host metrics
+POST   /api/v1/agent-sessions/{id}/kill  # Force-kill a running agent session
 
 # Other
 GET    /api/v1/search?q=            # Full-text search

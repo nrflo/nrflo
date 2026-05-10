@@ -97,6 +97,10 @@ export function formatDurationSec(totalSec: number): string {
   return `${secs}s`
 }
 
+export function formatMB(mb: number): string {
+  return `${mb.toFixed(1)} MB`
+}
+
 export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }

@@ -231,6 +231,21 @@ Failure (`markFailed`), `Stop()` (cancelled context), and any layer callback err
 
 The `/api/v1/projects/{id}/workflow/stop-endless-loop` handler toggles `stop_endless_loop_after_iteration` via `repo.UpdateStopEndlessLoopAfterIteration`; only affects the next restart check and never interrupts the in-flight iteration.
 
+## Next Workflow on Success
+
+When a workflow def has `next_workflow_on_success` set, the orchestrator automatically spawns the target workflow after the current one completes successfully. The hook fires in `runLoop` between `markCompleted` and `maybeRestartEndlessLoop` — both can fire on the same successful completion, neither suppresses the other.
+
+**`maybeStartNextOnSuccess(ctx, req, finalResult)`** is called with the return value of `markCompleted` (the `workflow_final_result` finding):
+
+- Returns immediately if `finalResult == ""` — skipped when the agent never wrote a `workflow_final_result` finding.
+- Returns immediately if `ctx.Err() != nil` — skipped when the run was stopped/cancelled.
+- Warns and returns if `req.ChainDepth >= maxNextWorkflowOnSuccessDepth` (10) — in-memory guard, not persisted.
+- Opens a short-lived DB connection, calls `GetWorkflowDef` on the source workflow, then closes it.
+- Returns silently if `sourceDef.NextWorkflowOnSuccess == ""`.
+- Spawns a detached goroutine calling `o.Start(context.Background(), nextReq)` where `nextReq` has `ScopeType="project"`, `Instructions=finalResult`, and `ChainDepth=req.ChainDepth+1`. Uses `context.Background()` so source ctx cancellation does not affect the child.
+
+`ChainDepth` is carried on `RunRequest` with `json:"-"` (never persisted or serialized); it starts at 0 for all UI/API/scheduler-triggered runs.
+
 ## Scheduled Task Origin Tracking
 
 `RunRequest.ScheduledTaskID` (string, empty for UI/API-triggered runs) is forwarded through `Start()` into both `service.WorkflowService.Init` (ticket-scope) and `service.WorkflowService.InitProjectWorkflow` (project-scope) via the corresponding request types. The service sets `wi.ScheduledTaskID` before `wfiRepo.Create`, so the resulting `workflow_instances` row carries the trigger origin as a nullable FK to `scheduled_tasks`. The scheduler sets this field in `scheduler_dispatch.go` before calling `orch.Start`. All non-scheduler entrypoints leave it empty (persisted as NULL).

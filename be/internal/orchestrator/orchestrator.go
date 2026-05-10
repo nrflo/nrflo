@@ -31,6 +31,8 @@ import (
 	"be/internal/ws"
 )
 
+const maxNextWorkflowOnSuccessDepth = 10
+
 // RunRequest contains parameters for starting an orchestrated workflow run.
 type RunRequest struct {
 	ProjectID             string `json:"project_id"`
@@ -44,6 +46,7 @@ type RunRequest struct {
 	Force                 bool   `json:"force"`           // If true, bypass concurrent ticket workflow guard
 	EndlessLoop           bool   `json:"endless_loop"`    // Project-scope only: auto re-run on successful completion until stopped or failed
 	ScheduledTaskID       string `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
+	ChainDepth            int    `json:"-"`               // next_workflow_on_success recursion depth (not persisted)
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -1558,7 +1561,8 @@ func (o *Orchestrator) runLoop(
 		worktreeHandled = true
 	}
 
-	o.markCompleted(wfiID, req)
+	finalResult := o.markCompleted(wfiID, req)
+	o.maybeStartNextOnSuccess(ctx, req, finalResult)
 
 	// Endless loop: re-run a fresh instance if enabled and not stopped
 	if req.IsProjectScope() && req.EndlessLoop && ctx.Err() == nil {
@@ -1603,6 +1607,61 @@ func (o *Orchestrator) maybeRestartEndlessLoop(wfiID string, req RunRequest) {
 		}
 		if _, err := o.Start(context.Background(), nextReq); err != nil {
 			logger.Error(context.Background(), "endless loop: auto-restart failed", "workflow", req.WorkflowName, "err", err)
+		}
+	}()
+}
+
+// maybeStartNextOnSuccess spawns the workflow named in next_workflow_on_success for the
+// source workflow def when finalResult is non-empty. Runs in a detached goroutine so
+// source teardown cannot cancel the child. Skipped on empty finalResult, cancelled ctx,
+// or when ChainDepth >= maxNextWorkflowOnSuccessDepth.
+func (o *Orchestrator) maybeStartNextOnSuccess(ctx context.Context, req RunRequest, finalResult string) {
+	if finalResult == "" {
+		return
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	if req.ChainDepth >= maxNextWorkflowOnSuccessDepth {
+		logger.Warn(ctx, "next_workflow_on_success depth cap reached, skipping",
+			"workflow", req.WorkflowName, "depth", req.ChainDepth)
+		return
+	}
+
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		logger.Error(context.Background(), "next_workflow_on_success: failed to open DB", "err", err)
+		return
+	}
+	pool := db.WrapAsPool(database)
+	wfSvc := service.NewWorkflowService(pool, o.clock)
+	sourceDef, err := wfSvc.GetWorkflowDef(req.ProjectID, req.WorkflowName)
+	database.Close()
+	if err != nil {
+		logger.Error(context.Background(), "next_workflow_on_success: failed to load source def",
+			"workflow", req.WorkflowName, "err", err)
+		return
+	}
+	if sourceDef.NextWorkflowOnSuccess == "" {
+		return
+	}
+
+	nextWorkflow := sourceDef.NextWorkflowOnSuccess
+	nextDepth := req.ChainDepth + 1
+	logger.Info(context.Background(), "next_workflow_on_success: spawning next workflow",
+		"source", req.WorkflowName, "next", nextWorkflow, "depth", nextDepth)
+
+	go func() {
+		nextReq := RunRequest{
+			ProjectID:    req.ProjectID,
+			WorkflowName: nextWorkflow,
+			ScopeType:    "project",
+			Instructions: finalResult,
+			ChainDepth:   nextDepth,
+		}
+		if _, err := o.Start(context.Background(), nextReq); err != nil {
+			logger.Error(context.Background(), "next_workflow_on_success: auto-start failed",
+				"workflow", nextWorkflow, "err", err)
 		}
 	}()
 }
@@ -1733,7 +1792,8 @@ func groupPhasesByLayer(phases []service.SpawnerPhaseDef) []layerGroup {
 }
 
 // markCompleted marks the workflow instance as completed and broadcasts.
-func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
+// Returns the workflow_final_result finding value (empty string if not set).
+func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) (finalResult string) {
 	o.updateOrchestrationStatus(wfiID, "completed")
 
 	database, err := db.Open(o.dataPath)
@@ -1774,11 +1834,13 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) {
 		}
 	}
 
+	finalResult = service.ExtractWorkflowFinalResultByInstanceID(pool, wfiID)
 	data := map[string]interface{}{"instance_id": wfiID}
-	if summary := service.ExtractWorkflowFinalResultByInstanceID(pool, wfiID); summary != "" {
-		data["workflow_final_result"] = summary
+	if finalResult != "" {
+		data["workflow_final_result"] = finalResult
 	}
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, data))
+	return
 }
 
 // markFailed marks the workflow instance as failed and broadcasts.

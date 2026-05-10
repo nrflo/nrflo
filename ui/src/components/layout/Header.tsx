@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, Sun, Moon, Monitor, LogOut } from 'lucide-react'
+import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, ScrollText, Sun, Moon, Monitor, LogOut } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
@@ -86,6 +86,10 @@ export function Header() {
           <Link to="/errors" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Errors">
             <AlertTriangle className="h-5 w-5" />
             <span className="hidden md:inline ml-1 text-xs">Errors</span>
+          </Link>
+          <Link to="/logs" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Sessions">
+            <ScrollText className="h-5 w-5" />
+            <span className="hidden md:inline ml-1 text-xs">Sessions</span>
           </Link>
         </nav>
 

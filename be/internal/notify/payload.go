@@ -7,11 +7,14 @@ import (
 	"be/internal/ws"
 )
 
+// NotificationBaseURL is the URL prefix used for ticket / project-workflow links
+// embedded in notification bodies. Overridable in tests or via wiring.
+var NotificationBaseURL = "http://localhost:6587"
+
 // renderSlack builds a Slack mrkdwn message for the given event.
 func renderSlack(eventType string, data map[string]interface{}) string {
-	label := eventLabel(eventType, data)
+	header := buildHeader(eventType, data, slackLink, func(s string) string { return s })
 	details := eventDetails(data)
-	header := fmt.Sprintf("*nrflo* — %s", label)
 
 	if eventType == ws.EventOrchestrationCompleted {
 		if summary, ok := data["workflow_final_result"].(string); ok && summary != "" {
@@ -31,9 +34,8 @@ func renderSlack(eventType string, data map[string]interface{}) string {
 
 // renderTelegram builds a Telegram MarkdownV2 message for the given event.
 func renderTelegram(eventType string, data map[string]interface{}) string {
-	label := escapeTelegramV2(eventLabel(eventType, data))
+	header := buildHeader(eventType, data, telegramLink, escapeTelegramV2)
 	details := escapeTelegramV2(eventDetails(data))
-	header := fmt.Sprintf("*nrflo* — %s", label)
 
 	if eventType == ws.EventOrchestrationCompleted {
 		if summary, ok := data["workflow_final_result"].(string); ok && summary != "" {
@@ -49,6 +51,45 @@ func renderTelegram(eventType string, data map[string]interface{}) string {
 		return header + "\n" + details
 	}
 	return header
+}
+
+// buildHeader produces the first line: "*nrflo* — <event-type> <scope-link>".
+// linkFn formats a (text, url) pair into the platform-specific markup; escape
+// is applied to non-link text segments.
+func buildHeader(eventType string, data map[string]interface{}, linkFn func(text, url string) string, escape func(string) string) string {
+	scope := scopeLink(data, linkFn, escape)
+	header := "*nrflo* — " + escape(eventType)
+	if scope != "" {
+		header = header + " " + scope
+	}
+	return header
+}
+
+// scopeLink returns the markup for the ticket or project-workflow link, or "".
+// For ticket-scoped events, links to /tickets/<id>; for project-scoped, links
+// to /project-workflows?instance_id=<id> when instance_id is present.
+func scopeLink(data map[string]interface{}, linkFn func(text, url string) string, escape func(string) string) string {
+	if ticketID, _ := data["ticket_id"].(string); ticketID != "" {
+		url := fmt.Sprintf("%s/tickets/%s", NotificationBaseURL, ticketID)
+		return linkFn(escape(ticketID), url)
+	}
+	if instanceID, _ := data["instance_id"].(string); instanceID != "" {
+		url := fmt.Sprintf("%s/project-workflows?instance_id=%s", NotificationBaseURL, instanceID)
+		return linkFn(escape("project"), url)
+	}
+	return ""
+}
+
+// slackLink renders <url|text> for Slack mrkdwn.
+func slackLink(text, url string) string {
+	return fmt.Sprintf("<%s|%s>", url, text)
+}
+
+// telegramLink renders [text](url) for Telegram MarkdownV2. Inside the URL, only
+// '\' and ')' need escaping. The text is expected to be already escaped.
+func telegramLink(text, url string) string {
+	r := strings.NewReplacer(`\`, `\\`, `)`, `\)`)
+	return fmt.Sprintf("[%s](%s)", text, r.Replace(url))
 }
 
 // renderSummaryBlock truncates, optionally escapes, and formats a summary as > -prefixed lines.
@@ -76,39 +117,15 @@ func truncateRunes(s string, max int) string {
 	return string(runes[:max]) + "…"
 }
 
-// eventLabel returns a human-readable summary line for the event type.
-func eventLabel(eventType string, data map[string]interface{}) string {
-	ticketID, _ := data["ticket_id"].(string)
-	workflow, _ := data["workflow"].(string)
-	agentType, _ := data["agent_type"].(string)
-	scope := ticketID
-	if scope == "" {
-		scope = "project-scoped"
-	}
-
-	switch eventType {
-	case "workflow.completed":
-		return fmt.Sprintf("Workflow *%s* completed for %s", workflow, scope)
-	case "workflow.failed":
-		reason, _ := data["reason"].(string)
-		if reason != "" {
-			return fmt.Sprintf("Workflow *%s* failed for %s: %s", workflow, scope, reason)
-		}
-		return fmt.Sprintf("Workflow *%s* failed for %s", workflow, scope)
-	case "agent.completed":
-		return fmt.Sprintf("Agent *%s* failed in workflow *%s* (%s)", agentType, workflow, scope)
-	case "agent.context_saving":
-		return fmt.Sprintf("Agent *%s* saving context in workflow *%s* (%s)", agentType, workflow, scope)
-	case "agent.stall_restart":
-		return fmt.Sprintf("Agent *%s* stall-restarted in workflow *%s* (%s)", agentType, workflow, scope)
-	default:
-		return eventType
-	}
-}
-
 // eventDetails extracts extra detail fields into a readable string.
 func eventDetails(data map[string]interface{}) string {
 	var parts []string
+	if v, ok := data["agent_type"].(string); ok && v != "" {
+		parts = append(parts, "agent: "+v)
+	}
+	if v, ok := data["workflow"].(string); ok && v != "" {
+		parts = append(parts, "workflow: "+v)
+	}
 	if v, ok := data["reason"].(string); ok && v != "" {
 		parts = append(parts, "reason: "+v)
 	}

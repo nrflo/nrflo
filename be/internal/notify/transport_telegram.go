@@ -42,14 +42,22 @@ func (t *telegramTransport) Send(n *Notification) error {
 	}
 	defer resp.Body.Close()
 
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 
 	var result struct {
 		OK          bool   `json:"ok"`
 		Description string `json:"description"`
 	}
-	if jsonErr := json.Unmarshal(raw, &result); jsonErr != nil {
-		return fmt.Errorf("telegram: status %d, body: %s", resp.StatusCode, string(raw))
+	jsonErr := json.Unmarshal(raw, &result)
+	if jsonErr != nil {
+		if resp.StatusCode == 200 {
+			return nil
+		}
+		snippet := raw
+		if len(snippet) > 256 {
+			snippet = snippet[:256]
+		}
+		return fmt.Errorf("telegram: status %d, body: %s", resp.StatusCode, string(snippet))
 	}
 	if !result.OK {
 		return fmt.Errorf("telegram: %s", result.Description)

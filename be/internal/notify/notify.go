@@ -69,7 +69,20 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 		return
 	}
 
-	payloadBytes, _ := json.Marshal(event.Data)
+	enriched := make(map[string]interface{}, len(event.Data)+3)
+	for k, v := range event.Data {
+		enriched[k] = v
+	}
+	if event.TicketID != "" {
+		enriched["ticket_id"] = event.TicketID
+	}
+	if event.ProjectID != "" {
+		enriched["project_id"] = event.ProjectID
+	}
+	if event.Workflow != "" {
+		enriched["workflow"] = event.Workflow
+	}
+	payloadBytes, _ := json.Marshal(enriched)
 	payloadStr := string(payloadBytes)
 
 	for _, ch := range channels {

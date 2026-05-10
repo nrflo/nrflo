@@ -13,29 +13,28 @@ func TestRenderSlack_AllWatchedEventTypes(t *testing.T) {
 		data      map[string]interface{}
 		wantSub   string
 	}{
-		// payload.go switch uses "workflow.completed" / "workflow.failed" labels
 		{
-			"workflow.completed",
+			ws.EventOrchestrationCompleted,
 			map[string]interface{}{"ticket_id": "TICK-1", "workflow": "feature"},
 			"feature",
 		},
 		{
-			"workflow.failed",
+			ws.EventOrchestrationFailed,
 			map[string]interface{}{"ticket_id": "TICK-2", "workflow": "bugfix", "reason": "timeout"},
 			"bugfix",
 		},
 		{
-			"agent.completed",
+			ws.EventAgentCompleted,
 			map[string]interface{}{"agent_type": "implementor", "workflow": "feature"},
 			"implementor",
 		},
 		{
-			"agent.context_saving",
+			ws.EventAgentContextSaving,
 			map[string]interface{}{"agent_type": "qa-verifier", "workflow": "feature"},
 			"qa-verifier",
 		},
 		{
-			"agent.stall_restart",
+			ws.EventAgentStallRestart,
 			map[string]interface{}{"agent_type": "doc-updater", "workflow": "docs"},
 			"doc-updater",
 		},
@@ -46,6 +45,9 @@ func TestRenderSlack_AllWatchedEventTypes(t *testing.T) {
 			result := renderSlack(tc.eventType, tc.data)
 			if !strings.Contains(result, "*nrflo*") {
 				t.Errorf("renderSlack(%q): missing '*nrflo*', got %q", tc.eventType, result)
+			}
+			if !strings.Contains(result, tc.eventType) {
+				t.Errorf("renderSlack(%q): missing event type in header, got %q", tc.eventType, result)
 			}
 			if !strings.Contains(result, tc.wantSub) {
 				t.Errorf("renderSlack(%q): missing %q in %q", tc.eventType, tc.wantSub, result)
@@ -61,28 +63,27 @@ func TestRenderTelegram_AllWatchedEventTypes(t *testing.T) {
 		wantSub   string
 	}{
 		{
-			// payload.go switch uses "workflow.completed" label
-			"workflow.completed",
+			ws.EventOrchestrationCompleted,
 			map[string]interface{}{"ticket_id": "TICK-1", "workflow": "feature"},
 			"feature",
 		},
 		{
-			"workflow.failed",
+			ws.EventOrchestrationFailed,
 			map[string]interface{}{"workflow": "bugfix"},
 			"bugfix",
 		},
 		{
-			"agent.completed",
+			ws.EventAgentCompleted,
 			map[string]interface{}{"agent_type": "implementor", "workflow": "feature"},
 			"implementor",
 		},
 		{
-			"agent.context_saving",
+			ws.EventAgentContextSaving,
 			map[string]interface{}{"agent_type": "qa", "workflow": "feature"},
 			"qa",
 		},
 		{
-			"agent.stall_restart",
+			ws.EventAgentStallRestart,
 			map[string]interface{}{"agent_type": "setup", "workflow": "refactor"},
 			"setup",
 		},
@@ -102,7 +103,6 @@ func TestRenderTelegram_AllWatchedEventTypes(t *testing.T) {
 }
 
 func TestEscapeTelegramV2_AllSpecialChars(t *testing.T) {
-	// All MarkdownV2 special chars that must be escaped
 	special := []rune{'_', '[', ']', '(', ')', '~', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'}
 	for _, ch := range special {
 		input := string(ch)
@@ -123,13 +123,11 @@ func TestEscapeTelegramV2_Passthrough_NoSpecialChars(t *testing.T) {
 }
 
 func TestRenderTelegram_SpecialCharsEscaped(t *testing.T) {
-	// Use "workflow.completed" which the payload switch handles to produce a label
-	// containing both the workflow name and ticket scope.
-	result := renderTelegram("workflow.completed", map[string]interface{}{
+	result := renderTelegram(ws.EventOrchestrationCompleted, map[string]interface{}{
 		"ticket_id": "TICK_1",
 		"workflow":  "my-workflow",
 	})
-	// Underscore in ticket_id (used as scope) should be escaped as \_
+	// Underscore in ticket_id link text should be escaped as \_
 	if !strings.Contains(result, `\_`) {
 		t.Errorf("underscore not escaped in: %q", result)
 	}
@@ -144,14 +142,13 @@ func TestRenderSlack_UnknownEventType(t *testing.T) {
 	if !strings.Contains(result, "*nrflo*") {
 		t.Errorf("missing '*nrflo*' for unknown event: %q", result)
 	}
-	// Unknown event type uses the type string as label
 	if !strings.Contains(result, "unknown.event") {
-		t.Errorf("missing event type in unknown-event label: %q", result)
+		t.Errorf("missing event type in header: %q", result)
 	}
 }
 
 func TestRenderSlack_WithReason(t *testing.T) {
-	result := renderSlack("orchestration.failed", map[string]interface{}{
+	result := renderSlack(ws.EventOrchestrationFailed, map[string]interface{}{
 		"workflow": "feature",
 		"reason":   "agent timeout",
 	})
@@ -160,13 +157,45 @@ func TestRenderSlack_WithReason(t *testing.T) {
 	}
 }
 
-func TestRenderSlack_ProjectScoped(t *testing.T) {
-	// No ticket_id → "project-scoped" in label (uses "workflow.completed" which has scope handling)
-	result := renderSlack("workflow.completed", map[string]interface{}{
+func TestRenderSlack_TicketLink(t *testing.T) {
+	result := renderSlack(ws.EventOrchestrationCompleted, map[string]interface{}{
+		"ticket_id": "TICK-1",
+		"workflow":  "feature",
+	})
+	wantLink := "<" + NotificationBaseURL + "/tickets/TICK-1|TICK-1>"
+	if !strings.Contains(result, wantLink) {
+		t.Errorf("expected ticket link %q in: %q", wantLink, result)
+	}
+}
+
+func TestRenderTelegram_TicketLink(t *testing.T) {
+	result := renderTelegram(ws.EventOrchestrationCompleted, map[string]interface{}{
+		"ticket_id": "TICK-1",
+		"workflow":  "feature",
+	})
+	wantLink := "[TICK\\-1](" + NotificationBaseURL + "/tickets/TICK-1)"
+	if !strings.Contains(result, wantLink) {
+		t.Errorf("expected ticket link %q in: %q", wantLink, result)
+	}
+}
+
+func TestRenderSlack_ProjectScopedLink(t *testing.T) {
+	result := renderSlack(ws.EventOrchestrationCompleted, map[string]interface{}{
+		"workflow":    "deploy",
+		"instance_id": "wfi-abc",
+	})
+	wantLink := "<" + NotificationBaseURL + "/project-workflows?instance_id=wfi-abc|project>"
+	if !strings.Contains(result, wantLink) {
+		t.Errorf("expected project link %q in: %q", wantLink, result)
+	}
+}
+
+func TestRenderSlack_NoLinkWhenNoTicketAndNoInstance(t *testing.T) {
+	result := renderSlack(ws.EventOrchestrationCompleted, map[string]interface{}{
 		"workflow": "deploy",
 	})
-	if !strings.Contains(result, "project-scoped") {
-		t.Errorf("project-scoped missing from: %q", result)
+	if strings.Contains(result, NotificationBaseURL) {
+		t.Errorf("expected no link when no scope: %q", result)
 	}
 }
 
@@ -229,7 +258,7 @@ func TestRenderSlack_NoSummaryOnOrchestrationFailed(t *testing.T) {
 	data := map[string]interface{}{
 		"workflow_final_result": "hi",
 	}
-	result := renderSlack("orchestration.failed", data)
+	result := renderSlack(ws.EventOrchestrationFailed, data)
 	if strings.Contains(result, "> hi") {
 		t.Errorf("expected no summary block for orchestration.failed, but got '> hi' in %q", result)
 	}

@@ -189,7 +189,7 @@ export function GlobalSettingsSection() {
             <div className="border-t border-border" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <div className="text-sm font-medium">Session retention limit</div>
+                <div className="text-sm font-medium">Workflow session retention limit</div>
                 <Tooltip
                   placement="right"
                   text="Maximum number of completed agent sessions to keep per cleanup cycle (every 20 min). Associated agent messages are automatically removed with their sessions. Minimum: 10, Default: 1000."

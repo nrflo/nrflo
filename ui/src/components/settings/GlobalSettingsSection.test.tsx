@@ -96,7 +96,7 @@ describe('GlobalSettingsSection', () => {
     renderWithQuery(<GlobalSettingsSection />)
     const input = await screen.findByRole('spinbutton')
     expect(input).toHaveValue(1000)
-    expect(screen.getByText('Session retention limit')).toBeInTheDocument()
+    expect(screen.getByText('Workflow session retention limit')).toBeInTheDocument()
   })
 
   it('blur with valid new value calls updateGlobalSettings with session_retention_limit', async () => {
@@ -152,7 +152,7 @@ describe('GlobalSettingsSection', () => {
     renderWithQuery(<GlobalSettingsSection />)
 
     await screen.findByRole('spinbutton')
-    const retentionLabel = screen.getByText('Session retention limit')
+    const retentionLabel = screen.getByText('Workflow session retention limit')
     // Radix Tooltip.Trigger renders with data-state; find the trigger span near the label
     const tooltipTrigger = retentionLabel.closest('.flex')?.querySelector('[data-state]') as HTMLElement
 

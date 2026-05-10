@@ -5,14 +5,14 @@ export interface CreateNotificationChannelRequest {
   name: string
   kind: string
   enabled: boolean
-  config: string
+  config: Record<string, unknown>
   event_types: string[]
 }
 
 export interface UpdateNotificationChannelRequest {
   name?: string
   enabled?: boolean
-  config?: string
+  config?: Record<string, unknown>
   event_types?: string[]
 }
 

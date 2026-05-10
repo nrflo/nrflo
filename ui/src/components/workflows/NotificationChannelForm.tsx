@@ -58,11 +58,11 @@ export function channelToFormData(ch: NotificationChannel): ChannelFormData {
   }
 }
 
-export function buildConfig(formData: ChannelFormData): string {
+export function buildConfig(formData: ChannelFormData): Record<string, unknown> {
   if (formData.kind === 'slack') {
-    return JSON.stringify({ webhook_url: formData.webhookUrl })
+    return { webhook_url: formData.webhookUrl }
   }
-  return JSON.stringify({ bot_token: formData.botToken, chat_id: formData.chatId })
+  return { bot_token: formData.botToken, chat_id: formData.chatId }
 }
 
 const deliveryKeys = {

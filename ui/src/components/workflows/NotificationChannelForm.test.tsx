@@ -86,14 +86,14 @@ describe('channelToFormData + buildConfig round-trip', () => {
     expect(fd.webhookUrl).toBe('')
   })
 
-  it('buildConfig produces correct JSON for slack', () => {
+  it('buildConfig produces correct object for slack', () => {
     const fd: ChannelFormData = { ...emptyChannelForm(), kind: 'slack', webhookUrl: 'https://x.com/h' }
-    expect(JSON.parse(buildConfig(fd))).toEqual({ webhook_url: 'https://x.com/h' })
+    expect(buildConfig(fd)).toEqual({ webhook_url: 'https://x.com/h' })
   })
 
-  it('buildConfig produces correct JSON for telegram', () => {
+  it('buildConfig produces correct object for telegram', () => {
     const fd: ChannelFormData = { ...emptyChannelForm(), kind: 'telegram', botToken: 'tok', chatId: '-9' }
-    expect(JSON.parse(buildConfig(fd))).toEqual({ bot_token: 'tok', chat_id: '-9' })
+    expect(buildConfig(fd)).toEqual({ bot_token: 'tok', chat_id: '-9' })
   })
 })
 

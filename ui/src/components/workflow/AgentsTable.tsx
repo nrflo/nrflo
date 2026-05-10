@@ -58,8 +58,8 @@ export function AgentsTable({
   const hasRunning = Object.values(activeAgents).some(a => !a.result)
   useTickingClock(hasRunning)
 
-  const rows = useMemo<AgentRow[]>(() => {
-    return Object.keys(phases)
+  const { rows, currentRunningLayer } = useMemo(() => {
+    const rows = Object.keys(phases)
       .map(phaseName => {
         const active = Object.values(activeAgents).find(a => a.phase === phaseName)
         const phaseHistory = agentHistory
@@ -102,6 +102,11 @@ export function AgentsTable({
         const bi = b.orderIndex < 0 ? Infinity : b.orderIndex
         return ai - bi
       })
+
+    const runningLayers = rows.filter(r => r.status === 'running').map(r => r.layer)
+    const currentRunningLayer: number | null = runningLayers.length > 0 ? Math.min(...runningLayers) : null
+
+    return { rows, currentRunningLayer }
   }, [phases, activeAgents, agentHistory, sessions, phaseLayers, phaseOrder])
 
   const handleClick = (row: AgentRow) => {
@@ -162,12 +167,13 @@ export function AgentsTable({
               const isInteractive = row.session?.status === 'user_interactive'
               const showRetry = row.history?.result === 'fail' && workflowStatus === 'failed' && !!onRetryFailed && !!row.history?.session_id
               const tag = row.active?.tag ?? row.history?.tag
+              const isCurrentRunningLayer = currentRunningLayer !== null && row.layer === currentRunningLayer && row.status === 'running'
 
               return (
                 <TableRow
                   key={row.phaseName}
                   onClick={() => handleClick(row)}
-                  className="cursor-pointer"
+                  className={cn('cursor-pointer', isCurrentRunningLayer && 'bg-yellow-50 dark:bg-yellow-950/30')}
                 >
                   <TableCell>
                     <span className="text-primary hover:underline">

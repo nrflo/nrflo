@@ -97,7 +97,8 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_docs.go` | Documentation (agent manual) |
 | `handlers_session_prompt.go` | Session prompt context (GET /api/v1/sessions/:id/prompt) |
 | `handlers_errors.go` | Error log list (paginated, type filter) |
-| `handlers_agent_session_logs.go` | Agent session log list (GET /api/v1/agent-session-logs, paginated, project-scoped, finished sessions only joined with workflow_instances + agent_definitions) |
+| `handlers_agent_session_logs.go` | Agent session log list (GET /api/v1/agent-session-logs, paginated, project-scoped, finished sessions only joined with workflow_instances + agent_definitions) + live list (GET /api/v1/agent-session-logs/live, runtime-only, project-scoped, enriched with host metrics via be/internal/proc) |
+| `handlers_agent_session_kill.go` | Kill handler (POST /api/v1/agent-sessions/{id}/kill, project-scoped, 403 cross-project, 409 not_alive, forwards to orchestrator.RequestTerminalSignal with "manual_kill") |
 | `handlers_logs.go` | Backend log file viewer |
 | `handlers_project_env_vars.go` | Project env var List/Put/Delete (GET protected, PUT/DELETE admin); nested under /api/v1/projects/{id}/env-vars; broadcasts project.env_vars_updated globally on mutations |
 | `handlers_python_scripts.go` | Python script CRUD (list, create, get, update, delete) + validate; project-scoped via X-Project header; writes admin-only |
@@ -361,6 +362,8 @@ GET /api/v1/errors                 # Paginated: ?page=&per_page=&type= (agent|wo
 
 # Agent Session Logs (require X-Project header or ?project= param)
 GET /api/v1/agent-session-logs     # Paginated finished sessions: ?page=&per_page= (default 1/20, max 100); joins workflow_instances (workflow_id, scheduled_task_id) and agent_definitions (execution_mode); includes workflow_final_result parsed from findings, duration_sec, scheduled bool; execution_mode field prefers agent_sessions.effective_mode (cli|cli_interactive|api|script, set at spawn time) and falls back to agent_definitions.execution_mode for legacy rows
+GET /api/v1/agent-session-logs/live  # Runtime-only live sessions: returns running/user_interactive sessions with pid>0 that pass PidAlive check; enriched with rss_kb, cpu_pct, os_uptime_sec from ps; {sessions:[...], count:N}; no pagination
+POST /api/v1/agent-sessions/{id}/kill  # Kill a running/user_interactive session; requires X-Project (403 cross-project); 409 {error:"not_alive"} if status not running/user_interactive; calls orchestrator.RequestTerminalSignal with "manual_kill"; returns {status:"killed", session_id}
 
 # V4 Workflow Response — active_agents and agent_history entries
 # Each entry in active_agents (map) and agent_history (array) includes an optional effective_mode

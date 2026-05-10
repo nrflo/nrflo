@@ -668,6 +668,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Agent session logs
 	protected("GET /api/v1/agent-session-logs", s.handleListAgentSessionLogs)
+	protected("GET /api/v1/agent-session-logs/live", s.handleListLiveAgentSessions)
+	protected("POST /api/v1/agent-sessions/{id}/kill", s.handleKillAgentSession)
 
 	// Search
 	protected("GET /api/v1/search", s.handleSearch)

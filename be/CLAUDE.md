@@ -35,7 +35,10 @@ be/
 │   │   ├── database.go          # DB operations: register start/stop, phase management
 │   │   ├── output.go            # Output monitoring, message formatting
 │   │   ├── template.go          # Template loading, variable expansion
-│   │   └── template_findings.go # Findings expansion, ${PREVIOUS_DATA}, formatting
+│   │   ├── template_findings.go # Findings expansion, ${PREVIOUS_DATA}, formatting
+│   │   └── proc_status.go       # PidAlive/PidMetrics thin wrappers over be/internal/proc
+│   ├── proc/                    # Standalone host process probing (no circular deps)
+│   │   └── proc_status.go       # PidAlive (syscall.Kill(pid,0)) + PidMetrics (ps -o rss=,%cpu=,etime=)
 │   ├── scheduler/               # Cron-driven scheduled task runner (robfig/cron/v3)
 │   │   ├── scheduler.go         # New/Start/Reload/Stop/RunNow lifecycle
 │   │   ├── scheduler_dispatch.go # dispatch(): fan-out per workflow, update run row, broadcast

@@ -127,6 +127,14 @@ type ModelConfig struct {
 - `MappedModel string` — if set, adapters skip their `MapModel()` call
 - `ReasoningEffort string` — if set, adapters skip their `GetReasoningEffort()` call
 
+## Host Process Probing
+
+`proc_status.go` — thin wrappers over `be/internal/proc` for use within the spawner package:
+- `PidAlive(pid int64) bool` — delegates to `proc.PidAlive`; returns false for pid ≤ 0 or dead pid
+- `PidMetrics(pid int64) (rssKB int64, cpuPct float64, etimeSec int64, ok bool)` — delegates to `proc.PidMetrics`
+
+The actual implementation lives in `be/internal/proc/proc_status.go` (standalone package to avoid the spawner→service import cycle). The `service.AgentSessionLogService` injects these as function vars (`pidAlive`, `pidMetrics`) for the live-sessions endpoint.
+
 ## Safety Hook (Claude --settings)
 
 The spawner supports injecting a `--settings` JSON flag into Claude CLI commands via `Config.ClaudeSettingsJSON`. This is used for project-scoped safety hooks that block dangerous commands.

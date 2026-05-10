@@ -92,6 +92,7 @@ type AgentSessionLogRow struct {
 	ScheduledTaskID    sql.NullString
 	ExecutionMode      sql.NullString
 	EffectiveMode      sql.NullString
+	PID                sql.NullInt64
 }
 
 // MarshalJSON implements custom JSON marshaling for AgentSession

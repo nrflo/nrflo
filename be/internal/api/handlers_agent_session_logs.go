@@ -8,6 +8,31 @@ import (
 	"be/internal/service"
 )
 
+// handleListLiveAgentSessions returns currently running agent sessions for a project.
+func (s *Server) handleListLiveAgentSessions(w http.ResponseWriter, r *http.Request) {
+	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project is required (use X-Project header or ?project= query param)")
+		return
+	}
+
+	svc := service.NewAgentSessionLogService(s.pool, s.clock)
+	sessions, err := svc.ListLive(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if sessions == nil {
+		sessions = []service.LiveAgentSessionResponse{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"sessions": sessions,
+		"count":    len(sessions),
+	})
+}
+
 // handleListAgentSessionLogs returns paginated finished agent session logs for a project.
 func (s *Server) handleListAgentSessionLogs(w http.ResponseWriter, r *http.Request) {
 	projectID := getProjectID(r)

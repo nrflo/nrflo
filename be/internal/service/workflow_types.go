@@ -32,12 +32,13 @@ type AgentConfig struct {
 
 // WorkflowDef represents a workflow definition (parsed from DB)
 type WorkflowDef struct {
-	Description           string            `json:"description"`
-	ScopeType             string            `json:"scope_type"` // "ticket" or "project"
-	CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
-	Groups                []string          `json:"groups"`
-	Phases                []PhaseDef        `json:"-"`
-	LayerPolicies         map[int]string    `json:"layer_policies,omitempty"`
+	Description           string         `json:"description"`
+	ScopeType             string         `json:"scope_type"` // "ticket" or "project"
+	CloseTicketOnComplete bool           `json:"close_ticket_on_complete"`
+	Groups                []string       `json:"groups"`
+	NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
+	Phases                []PhaseDef     `json:"-"`
+	LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
 }
 
 // MarshalJSON serializes WorkflowDef with parsed phases
@@ -47,6 +48,7 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		ScopeType             string         `json:"scope_type"`
 		CloseTicketOnComplete bool           `json:"close_ticket_on_complete"`
 		Groups                []string       `json:"groups"`
+		NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
 		Phases                []PhaseDef     `json:"phases"`
 		LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
 	}
@@ -67,6 +69,7 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		ScopeType:             scopeType,
 		CloseTicketOnComplete: wf.CloseTicketOnComplete,
 		Groups:                groups,
+		NextWorkflowOnSuccess: wf.NextWorkflowOnSuccess,
 		Phases:                phases,
 		LayerPolicies:         wf.LayerPolicies,
 	})
@@ -78,6 +81,7 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 		Description           string         `json:"description"`
 		ScopeType             string         `json:"scope_type"`
 		CloseTicketOnComplete bool           `json:"close_ticket_on_complete"`
+		NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
 		Phases                []PhaseDef     `json:"phases"`
 		LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
 	}
@@ -87,6 +91,7 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	wf.Description = raw.Description
 	wf.ScopeType = raw.ScopeType
 	wf.CloseTicketOnComplete = raw.CloseTicketOnComplete
+	wf.NextWorkflowOnSuccess = raw.NextWorkflowOnSuccess
 	wf.Phases = raw.Phases
 	wf.LayerPolicies = raw.LayerPolicies
 	return nil

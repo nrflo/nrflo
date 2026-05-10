@@ -117,7 +117,7 @@ be/
 │   │   ├── project.go           # Project operations
 │   │   ├── ticket.go            # Ticket operations
 │   │   ├── workflow.go          # Workflow operations (ticket + project scope)
-│   │   ├── workflow_defs.go     # Workflow definitions CRUD (phases derived from agent_definitions)
+│   │   ├── workflow_defs.go     # Workflow definitions CRUD (phases derived from agent_definitions); next_workflow_on_success field with self-ref/scope/existence validation
 │   │   ├── workflow_config.go   # Workflow config loading (phases built from agent_definitions layer field)
 │   │   ├── workflow_types.go    # Workflow type definitions (WorkflowDef, PhaseDef)
 │   │   ├── workflow_validation.go # Validation (layer >= 0, project scope)

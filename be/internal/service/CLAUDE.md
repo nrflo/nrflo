@@ -9,7 +9,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `project.go` | Project CRUD operations |
 | `ticket.go` | Ticket CRUD, close/reopen, search, `ValidateRunnable` (rejects blocked tickets) |
 | `workflow.go` | Workflow operations (ticket + project scope): init, start/complete phase, state queries |
-| `workflow_defs.go` | Workflow definitions CRUD (no phases in create/update; phases derived from agent_definitions at read time) |
+| `workflow_defs.go` | Workflow definitions CRUD (no phases in create/update; phases derived from agent_definitions at read time). `WorkflowDefCreateRequest` accepts `next_workflow_on_success string` (omitempty); `WorkflowDefUpdateRequest` uses `*string` for tri-state semantics (nil = skip, &"" = clear, &"id" = set). `validateNextWorkflowOnSuccess` rejects: self-reference (case-insensitive), non-existent target in same project, and non-project-scoped target — each returns a specific error string mapped to HTTP 400 by the handler. |
 | `workflow_config.go` | Workflow config loading: `BuildSpawnerConfig` and `parseWorkflowDefFromDB` derive phases from agent_definitions (layer field), sorted by layer ASC, id ASC. `BuildSpawnerConfigWithPolicies` wraps `BuildSpawnerConfig` and attaches `LayerPolicies` per workflow. |
 | `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef`, `RestartDetail` |
 | `layer_policy.go` | Parser/validator for pass_policy strings: `ParseLayerPolicy`, `LayerPolicy.Required(denom)`, `LayerPolicy.String()`, `ValidateLayerPolicy(s, agentCount)`. Supported kinds: `any`, `all`, `quorum:N`, `percent:P`. |

@@ -158,6 +158,8 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │                  CHECK (scope_type IN ('ticket', 'project'))         │
 │    groups        TEXT NOT NULL DEFAULT '[]' (JSON: tag groups)      │
 │    close_ticket_on_complete INTEGER NOT NULL DEFAULT 1               │
+│    next_workflow_on_success TEXT NOT NULL DEFAULT ''                 │
+│                  (mig 000096; free-form workflow ID; empty = no hook)│
 │    created_at    TEXT NOT NULL                                       │
 │    updated_at    TEXT NOT NULL                                       │
 │    PRIMARY KEY (project_id, id)                                      │
@@ -558,7 +560,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000095** (project_env_vars — new table with composite PK project_id+name, FK to projects ON DELETE CASCADE)
+Current highest migration: **000096** (workflows.next_workflow_on_success — `ALTER TABLE workflows ADD COLUMN next_workflow_on_success TEXT NOT NULL DEFAULT ''`)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

@@ -37,6 +37,12 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		groupsJSON = []byte("[]")
 	}
 
+	if req.NextWorkflowOnSuccess != "" {
+		if err := s.validateNextWorkflowOnSuccess(projectID, req.ID, req.NextWorkflowOnSuccess); err != nil {
+			return nil, err
+		}
+	}
+
 	closeTicketOnComplete := true
 	if req.CloseTicketOnComplete != nil {
 		closeTicketOnComplete = *req.CloseTicketOnComplete
@@ -49,15 +55,16 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		Description:           req.Description,
 		ScopeType:             scopeType,
 		CloseTicketOnComplete: closeTicketOnComplete,
+		NextWorkflowOnSuccess: req.NextWorkflowOnSuccess,
 		Groups:                string(groupsJSON),
 		CreatedAt:             s.clock.Now().UTC(),
 		UpdatedAt:             s.clock.Now().UTC(),
 	}
 
 	_, err := s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, now, now)
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, wf.NextWorkflowOnSuccess, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "PRIMARY KEY") {
 			return nil, fmt.Errorf("workflow '%s' already exists", req.ID)
@@ -70,13 +77,13 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 
 // GetWorkflowDef gets a single workflow definition from the database
 func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*WorkflowDef, error) {
-	var description, scopeType, groupsStr string
+	var description, scopeType, groupsStr, nextWorkflowOnSuccess string
 	var closeTicketOnComplete bool
 
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, groups, close_ticket_on_complete
+		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete)
+		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &nextWorkflowOnSuccess)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -93,6 +100,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	wf := parseWorkflowDefFromDB(description, agentDefs)
 	wf.ScopeType = scopeType
 	wf.CloseTicketOnComplete = closeTicketOnComplete
+	wf.NextWorkflowOnSuccess = nextWorkflowOnSuccess
 	var groups []string
 	if groupsStr != "" {
 		json.Unmarshal([]byte(groupsStr), &groups)
@@ -107,7 +115,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, scope_type, groups, close_ticket_on_complete
+		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -117,13 +125,13 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 
 	// Collect workflow metadata
 	type wfMeta struct {
-		id, description, scopeType, groupsStr string
-		closeTicketOnComplete                  bool
+		id, description, scopeType, groupsStr, nextWorkflowOnSuccess string
+		closeTicketOnComplete                                          bool
 	}
 	var metas []wfMeta
 	for rows.Next() {
 		var m wfMeta
-		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete); err != nil {
+		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.nextWorkflowOnSuccess); err != nil {
 			return nil, err
 		}
 		metas = append(metas, m)
@@ -146,6 +154,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		wf := parseWorkflowDefFromDB(m.description, agentsByWorkflow[m.id])
 		wf.ScopeType = m.scopeType
 		wf.CloseTicketOnComplete = m.closeTicketOnComplete
+		wf.NextWorkflowOnSuccess = m.nextWorkflowOnSuccess
 		var groups []string
 		if m.groupsStr != "" {
 			json.Unmarshal([]byte(m.groupsStr), &groups)
@@ -188,6 +197,15 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 		updates = append(updates, "close_ticket_on_complete = ?")
 		args = append(args, *req.CloseTicketOnComplete)
 	}
+	if req.NextWorkflowOnSuccess != nil {
+		if *req.NextWorkflowOnSuccess != "" {
+			if err := s.validateNextWorkflowOnSuccess(projectID, workflowID, *req.NextWorkflowOnSuccess); err != nil {
+				return err
+			}
+		}
+		updates = append(updates, "next_workflow_on_success = ?")
+		args = append(args, *req.NextWorkflowOnSuccess)
+	}
 
 	if len(updates) == 0 {
 		return nil
@@ -224,6 +242,29 @@ func (s *WorkflowService) DeleteWorkflowDef(projectID, workflowID string) error 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+	return nil
+}
+
+// validateNextWorkflowOnSuccess validates that the target workflow is valid for use as next_workflow_on_success.
+// It rejects self-references, non-existent targets, and non-project-scoped targets.
+func (s *WorkflowService) validateNextWorkflowOnSuccess(projectID, sourceWorkflowID, target string) error {
+	if strings.EqualFold(target, sourceWorkflowID) {
+		return fmt.Errorf("next_workflow_on_success cannot reference itself")
+	}
+	var scopeType string
+	err := s.pool.QueryRow(`
+		SELECT scope_type FROM workflows
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
+		projectID, target).Scan(&scopeType)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("next_workflow_on_success target %q does not exist in project", target)
+	}
+	if err != nil {
+		return err
+	}
+	if scopeType != "project" {
+		return fmt.Errorf("next_workflow_on_success target %q is not project-scoped", target)
 	}
 	return nil
 }

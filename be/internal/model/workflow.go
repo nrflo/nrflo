@@ -13,6 +13,7 @@ type Workflow struct {
 	ScopeType              string    `json:"scope_type"` // "ticket" or "project"
 	CloseTicketOnComplete  bool      `json:"close_ticket_on_complete"`
 	Groups                 string    `json:"-"`           // JSON array of tag strings
+	NextWorkflowOnSuccess  string    `json:"-"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }
@@ -48,12 +49,13 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
-		ID                    string   `json:"id"`
-		ProjectID             string   `json:"project_id"`
-		Description           string   `json:"description"`
-		ScopeType             string   `json:"scope_type"`
-		CloseTicketOnComplete bool     `json:"close_ticket_on_complete"`
-		Groups                []string `json:"groups"`
+		ID                    string    `json:"id"`
+		ProjectID             string    `json:"project_id"`
+		Description           string    `json:"description"`
+		ScopeType             string    `json:"scope_type"`
+		CloseTicketOnComplete bool      `json:"close_ticket_on_complete"`
+		Groups                []string  `json:"groups"`
+		NextWorkflowOnSuccess string    `json:"next_workflow_on_success"`
 		CreatedAt             time.Time `json:"created_at"`
 		UpdatedAt             time.Time `json:"updated_at"`
 	}{
@@ -63,6 +65,7 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		ScopeType:             scopeType,
 		CloseTicketOnComplete: w.CloseTicketOnComplete,
 		Groups:                groups,
+		NextWorkflowOnSuccess: w.NextWorkflowOnSuccess,
 		CreatedAt:             w.CreatedAt,
 		UpdatedAt:             w.UpdatedAt,
 	})

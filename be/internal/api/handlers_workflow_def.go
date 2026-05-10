@@ -54,6 +54,10 @@ func (s *Server) handleCreateWorkflowDef(w http.ResponseWriter, r *http.Request)
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "next_workflow_on_success") {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -114,6 +118,10 @@ func (s *Server) handleUpdateWorkflowDef(w http.ResponseWriter, r *http.Request)
 	if err := svc.UpdateWorkflowDef(projectID, id, &req); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "next_workflow_on_success") {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err.Error())

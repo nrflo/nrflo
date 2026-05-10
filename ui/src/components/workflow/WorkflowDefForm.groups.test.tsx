@@ -1,7 +1,19 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowDefForm } from './WorkflowDefForm'
+import { renderWithQuery } from '@/test/utils'
+import * as workflowApi from '@/api/workflows'
+
+vi.mock('@/api/workflows', () => ({
+  listWorkflowDefs: vi.fn(),
+}))
+
+vi.mock('@/stores/projectStore', () => ({
+  useProjectStore: vi.fn((selector) =>
+    selector({ currentProject: 'test-project', projectsLoaded: true })
+  ),
+}))
 
 function renderForm(
   props: Partial<React.ComponentProps<typeof WorkflowDefForm>> = {}
@@ -13,7 +25,7 @@ function renderForm(
     ...props,
   }
   return {
-    ...render(
+    ...renderWithQuery(
       <>
         <WorkflowDefForm {...defaultProps} />
         <button type="submit" form="test-form">Submit</button>
@@ -30,6 +42,11 @@ const chipRemoveButtons = () =>
   Array.from(document.querySelectorAll('button[aria-label^="Remove "]'))
 
 describe('WorkflowDefForm - groups chip input', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue({})
+  })
+
   describe('adding chips', () => {
     it('adds chip on Enter key', async () => {
       const user = userEvent.setup()

@@ -141,6 +141,8 @@ interface EditingWorkflow {
   description?: string
   scope_type?: ScopeType
   groups?: string[]
+  close_ticket_on_complete?: boolean
+  next_workflow_on_success?: string
 }
 
 export function WorkflowsPage() {

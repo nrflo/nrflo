@@ -232,6 +232,7 @@ export interface WorkflowDefSummary {
   scope_type?: ScopeType
   groups?: string[]
   close_ticket_on_complete?: boolean
+  next_workflow_on_success?: string
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
 }
@@ -244,6 +245,7 @@ export interface WorkflowDef {
   scope_type?: ScopeType
   groups?: string[]
   close_ticket_on_complete?: boolean
+  next_workflow_on_success?: string
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
   created_at: string
@@ -256,6 +258,7 @@ export interface WorkflowDefCreateRequest {
   scope_type?: ScopeType
   groups?: string[]
   close_ticket_on_complete?: boolean
+  next_workflow_on_success?: string
 }
 
 export interface WorkflowDefUpdateRequest {
@@ -263,6 +266,7 @@ export interface WorkflowDefUpdateRequest {
   scope_type?: ScopeType
   groups?: string[]
   close_ticket_on_complete?: boolean
+  next_workflow_on_success?: string
 }
 
 // Agent definition types (DB-stored)

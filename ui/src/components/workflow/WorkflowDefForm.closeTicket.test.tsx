@@ -1,8 +1,20 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowDefForm } from './WorkflowDefForm'
+import { renderWithQuery } from '@/test/utils'
+import * as workflowApi from '@/api/workflows'
 import type { WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
+
+vi.mock('@/api/workflows', () => ({
+  listWorkflowDefs: vi.fn(),
+}))
+
+vi.mock('@/stores/projectStore', () => ({
+  useProjectStore: vi.fn((selector) =>
+    selector({ currentProject: 'test-project', projectsLoaded: true })
+  ),
+}))
 
 function renderForm(
   props: Partial<React.ComponentProps<typeof WorkflowDefForm>> = {}
@@ -14,7 +26,7 @@ function renderForm(
     ...props,
   }
   return {
-    ...render(
+    ...renderWithQuery(
       <>
         <WorkflowDefForm {...defaultProps} />
         <button type="submit" form="test-form">Submit</button>
@@ -25,6 +37,11 @@ function renderForm(
 }
 
 describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(workflowApi.listWorkflowDefs).mockResolvedValue({})
+  })
+
   describe('visibility', () => {
     it('shows checkbox when scope is ticket (default)', () => {
       renderForm({ isCreate: true })

@@ -68,7 +68,7 @@ The panel collapses to a thin bar (w-10) with "Agent Log" label. Uses `PanelShel
 
 | Component | Purpose |
 |-----------|---------|
-| `WorkflowDefForm.tsx` | Workflow definition create/edit form (includes groups chip input) |
+| `WorkflowDefForm.tsx` | Workflow definition create/edit form (includes groups chip input, `close_ticket_on_complete` checkbox, and `next_workflow_on_success` checkbox+Dropdown for chaining to a project-scoped workflow on success; Dropdown lists project-scoped defs excluding self in edit mode) |
 | `AgentDefForm.tsx` | Agent definition create/edit form (includes layer input, tag dropdown when groups available, "Apply Template" button opens TemplatePickerDialog). Execution Mode dropdown always visible; `api` option only included when `apiModeEnabled`. When `executionMode==='script'`: hides Model, Low consumption model, AgentDefAPIModeFields, and Prompt Template; renders `PythonScriptPickerField` (required). On mode switch away from script, clears `pythonScriptId`. Script-mode submit sends `{python_script_id, layer, timeout, max_fail_restarts, tag, execution_mode:'script'}` omitting prompt/model/tools/api_max_iterations/low_consumption_model. |
 | `TemplatePickerDialog.tsx` | Dialog for selecting and applying a default template to an agent's prompt. Fetches from default-templates API, shows dropdown + preview, warns on non-empty prompt replacement. |
 | `AgentDefCard.tsx` | Agent definition card with edit/delete (shows tag badge) |

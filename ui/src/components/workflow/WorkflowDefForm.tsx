@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
+import { listWorkflowDefs } from '@/api/workflows'
+import { Dropdown } from '@/components/ui/Dropdown'
+import { useProjectStore } from '@/stores/projectStore'
 import type { ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
 
 const TAG_PATTERN = /^[a-zA-Z0-9-]+$/
 
 interface WorkflowDefFormProps {
-  initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; close_ticket_on_complete?: boolean }
+  initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; close_ticket_on_complete?: boolean; next_workflow_on_success?: string }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
   formId?: string
@@ -18,6 +22,21 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   const [groups, setGroups] = useState<string[]>(initial?.groups || [])
   const [groupInput, setGroupInput] = useState('')
   const [closeTicketOnComplete, setCloseTicketOnComplete] = useState(initial?.close_ticket_on_complete ?? true)
+  const [nextWorkflowOnSuccess, setNextWorkflowOnSuccess] = useState(initial?.next_workflow_on_success || '')
+
+  const project = useProjectStore((s) => s.currentProject)
+
+  const { data: workflowDefs } = useQuery({
+    queryKey: ['workflows', 'defs', project],
+    queryFn: listWorkflowDefs,
+  })
+
+  const projectWorkflowOptions = useMemo(() => {
+    if (!workflowDefs) return []
+    return Object.entries(workflowDefs)
+      .filter(([id, def]) => def.scope_type === 'project' && id !== initial?.id)
+      .map(([id, def]) => ({ value: id, label: id + (def.description ? ` — ${def.description}` : '') }))
+  }, [workflowDefs, initial?.id])
 
   const addGroup = (raw: string) => {
     const tag = raw.trim().toLowerCase()
@@ -42,6 +61,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         scope_type: scopeType,
         groups,
         close_ticket_on_complete: closeTicketOnComplete,
+        next_workflow_on_success: nextWorkflowOnSuccess || undefined,
       } as WorkflowDefCreateRequest)
     } else {
       onSubmit({
@@ -49,6 +69,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         scope_type: scopeType,
         groups,
         close_ticket_on_complete: closeTicketOnComplete,
+        next_workflow_on_success: nextWorkflowOnSuccess || undefined,
       } as WorkflowDefUpdateRequest)
     }
   }
@@ -130,6 +151,39 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
           <span className="text-muted-foreground">Close ticket after workflow finished</span>
         </label>
       )}
+
+      <div>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={nextWorkflowOnSuccess !== ''}
+            disabled={projectWorkflowOptions.length === 0}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setNextWorkflowOnSuccess(projectWorkflowOptions[0]?.value ?? '')
+              } else {
+                setNextWorkflowOnSuccess('')
+              }
+            }}
+            className="rounded border-border"
+          />
+          <span className="text-muted-foreground">Run another workflow on success</span>
+        </label>
+        {projectWorkflowOptions.length === 0 ? (
+          <p className="text-xs text-muted-foreground mt-1">Create a project-scoped workflow first.</p>
+        ) : nextWorkflowOnSuccess !== '' ? (
+          <div className="mt-2">
+            <Dropdown
+              value={nextWorkflowOnSuccess}
+              onChange={setNextWorkflowOnSuccess}
+              options={projectWorkflowOptions}
+            />
+          </div>
+        ) : null}
+        <p className="text-xs text-muted-foreground mt-1">
+          Pipes <code>workflow_final_result</code> into the next workflow&apos;s instructions. Skipped when no result is produced.
+        </p>
+      </div>
 
       <div>
         <label className="block text-xs font-medium text-muted-foreground mb-1">

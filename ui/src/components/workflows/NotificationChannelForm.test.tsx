@@ -26,7 +26,7 @@ function makeChannel(overrides: Partial<NotificationChannel> = {}): Notification
     kind: 'slack',
     enabled: true,
     config: JSON.stringify({ webhook_url: 'https://hooks.slack.com/masked' }),
-    event_types: ['workflow.completed'],
+    event_types: ['orchestration.completed'],
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -196,7 +196,7 @@ describe('NotificationChannelForm', () => {
       {
         id: 1,
         channel_id: 'ch-99',
-        event_type: 'workflow.completed',
+        event_type: 'orchestration.completed',
         status: 'delivered',
         attempts: 1,
         last_error: '',
@@ -210,7 +210,7 @@ describe('NotificationChannelForm', () => {
       <TestForm editingChannel={ch} initial={channelToFormData(ch)} />
     )
     expect(await screen.findByText('Recent Deliveries')).toBeInTheDocument()
-    expect(screen.getByText('workflow.completed')).toBeInTheDocument()
+    expect(screen.getByText('orchestration.completed')).toBeInTheDocument()
     expect(screen.getByText('delivered')).toBeInTheDocument()
   })
 

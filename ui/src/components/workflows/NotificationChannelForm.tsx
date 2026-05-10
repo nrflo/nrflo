@@ -16,9 +16,9 @@ const kindOptions = [
 ]
 
 const ALL_EVENT_TYPES: { value: NotificationEventType; label: string }[] = [
-  { value: 'workflow.completed', label: 'Workflow Completed' },
-  { value: 'workflow.failed', label: 'Workflow Failed' },
-  { value: 'agent.completed', label: 'Agent Completed' },
+  { value: 'orchestration.completed', label: 'Workflow Completed' },
+  { value: 'orchestration.failed', label: 'Workflow Failed' },
+  { value: 'agent.completed', label: 'Agent Failed' },
   { value: 'agent.context_saving', label: 'Agent Context Saving' },
   { value: 'agent.stall_restart', label: 'Agent Stall Restart' },
 ]

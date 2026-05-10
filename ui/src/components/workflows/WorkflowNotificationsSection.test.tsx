@@ -19,7 +19,7 @@ function makeChannel(overrides: Partial<NotificationChannel> = {}): Notification
     kind: 'slack',
     enabled: true,
     config: JSON.stringify({ webhook_url: 'https://hooks.slack.com/xxx' }),
-    event_types: ['workflow.completed', 'workflow.failed'],
+    event_types: ['orchestration.completed', 'orchestration.failed'],
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -46,8 +46,8 @@ describe('WorkflowNotificationsSection', () => {
     renderWithQuery(<WorkflowNotificationsSection workflowId={WF_ID} />)
     expect(await screen.findByText('#alerts')).toBeInTheDocument()
     expect(screen.getByText('Slack')).toBeInTheDocument()
-    expect(screen.getByText('workflow.completed')).toBeInTheDocument()
-    expect(screen.getByText('workflow.failed')).toBeInTheDocument()
+    expect(screen.getByText('orchestration.completed')).toBeInTheDocument()
+    expect(screen.getByText('orchestration.failed')).toBeInTheDocument()
   })
 
   it('shows Telegram badge for telegram kind channels', async () => {
@@ -163,7 +163,7 @@ describe('WorkflowNotificationsSection', () => {
         expect.objectContaining({
           name: '#my-ch',
           kind: 'slack',
-          event_types: ['workflow.completed'],
+          event_types: ['orchestration.completed'],
         })
       )
     })

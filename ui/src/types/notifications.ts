@@ -1,8 +1,8 @@
 export type ChannelKind = 'slack' | 'telegram'
 
 export type NotificationEventType =
-  | 'workflow.completed'
-  | 'workflow.failed'
+  | 'orchestration.completed'
+  | 'orchestration.failed'
   | 'agent.completed'
   | 'agent.context_saving'
   | 'agent.stall_restart'

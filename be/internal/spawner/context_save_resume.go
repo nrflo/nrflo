@@ -40,7 +40,7 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 		SessionID:       proc.sessionID,
 		Prompt:          savePrompt,
 		WorkDir:         s.config.ProjectRoot,
-		Env:             proc.cmd.Env,
+		Env:             proc.env,
 		SettingsJSON:    s.config.ClaudeSettingsJSON,
 		ReasoningEffort: reasoningEffort,
 	})

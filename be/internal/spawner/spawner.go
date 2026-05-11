@@ -209,6 +209,10 @@ type processInfo struct {
 	cmd           *exec.Cmd
 	backend       ExecutionBackend
 	pid           int // OS pid; set by backends when proc.cmd is nil (e.g. PTY-owned process)
+	// env is the full process env assembled in prepareSpawn (nrflo-controlled vars +
+	// per-project vars). Stored separately from cmd.Env so contextSaveViaResume can
+	// reach it for PTY-owned processes where cmd is nil by design.
+	env []string
 	// sessionStartCh is closed (idempotently) when Claude's SessionStart hook
 	// fires — the canonical readiness signal. firstByteCh is closed on the
 	// first non-empty PTY read — used only as a fallback when SessionStart
@@ -868,6 +872,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		stallRunningTimeout: stallRunningTimeout,
 		maxContext:          0,
 		restartThreshold:    defaultContextThreshold,
+		env:                 env,
 	}
 
 	prep := &prepResult{
@@ -1248,6 +1253,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	prep.opts = opts
 	prep.promptFile = promptFile.Name()
 	prep.suffixFile = suffixFilePath
+	proc.env = opts.Env
 	return proc, prep, nil
 }
 

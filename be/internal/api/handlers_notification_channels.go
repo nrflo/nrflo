@@ -5,9 +5,21 @@ import (
 	"strconv"
 	"strings"
 
+	"be/internal/model"
+	"be/internal/notify"
 	"be/internal/service"
 	"be/internal/types"
 )
+
+func (s *Server) handleGetNotificationVariables(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"variables": notify.AvailableVariables(),
+		"defaults": map[string]string{
+			string(model.ChannelKindSlack):    notify.DefaultTemplate(model.ChannelKindSlack),
+			string(model.ChannelKindTelegram): notify.DefaultTemplate(model.ChannelKindTelegram),
+		},
+	})
+}
 
 func (s *Server) handleListNotificationChannels(w http.ResponseWriter, r *http.Request) {
 	projectID := getProjectID(r)

@@ -203,7 +203,7 @@ Where to look when working on a feature. Each entry is a one-line pointer; full 
 - **Error tracking (`errors` table + `error.created` events)** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Agent session logs (paginated finished sessions with joined workflow/schedule metadata)** → `GET /api/v1/agent-session-logs` in [api/CLAUDE.md](be/internal/api/CLAUDE.md); handler `be/internal/api/handlers_agent_session_logs.go`; service `be/internal/service/agent_session_log.go`
 - **Live agent sessions (running/user_interactive with host metrics)** → `GET /api/v1/agent-session-logs/live` + `POST /api/v1/agent-sessions/{id}/kill`; handlers `be/internal/api/handlers_agent_session_logs.go` + `be/internal/api/handlers_agent_session_kill.go`; host probing via `be/internal/proc/proc_status.go` (PidAlive+PidMetrics)
-- **Notification channels (Slack/Telegram dispatch + retry; workflow-scoped, one channel belongs to exactly one workflow)** → [be/CLAUDE.md](be/CLAUDE.md) (notify section)
+- **Notification channels (Slack/Telegram dispatch + retry; workflow-scoped, one channel belongs to exactly one workflow)** → [be/CLAUDE.md](be/CLAUDE.md) (notify section). Per-channel message templates (`${var}` syntax) with default backfill — see be/internal/notify/render.go.
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
 - **Versioned config-file editor (manifest workflows)** → [configeditor/CLAUDE.md](be/internal/configeditor/CLAUDE.md)
 

@@ -210,11 +210,28 @@ func (s *NotificationService) TestSend(id string) error {
 		return err
 	}
 
+	samplePayload := map[string]interface{}{
+		"event_type":            "test",
+		"project_id":            ch.ProjectID,
+		"project_name":          "Demo Project",
+		"workflow":              ch.WorkflowID,
+		"ticket_id":             "DEMO-1",
+		"ticket_name":           "Sample ticket",
+		"instance_id":           "wfi-sample",
+		"agent_type":            "sample-agent",
+		"reason":                "sample reason",
+		"workflow_final_result": "Lorem ipsum sample summary…",
+	}
+	payloadBytes, err := json.Marshal(samplePayload)
+	if err != nil {
+		return fmt.Errorf("failed to build test payload: %w", err)
+	}
+
 	delivery := &model.NotificationDelivery{
 		ChannelID: ch.ID,
 		ProjectID: ch.ProjectID,
 		EventType: "test",
-		Payload:   fmt.Sprintf(`{"message":"test notification from nrflo","workflow_id":%q}`, ch.WorkflowID),
+		Payload:   string(payloadBytes),
 		Status:    model.DeliveryStatusPending,
 	}
 

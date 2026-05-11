@@ -167,3 +167,29 @@ func TestNotificationService_Update_MessageTemplate_ExplicitSets(t *testing.T) {
 		t.Errorf("MessageTemplate after update = %q, want %q", raw.MessageTemplate, newTpl)
 	}
 }
+
+func TestNotificationService_Create_EmptyStringMessageTemplate(t *testing.T) {
+	t.Parallel()
+	pool, projectID, workflowID := setupNotificationServicePool(t)
+	svc := NewNotificationService(pool, clock.Real(), nil, nil, nil)
+
+	empty := ""
+	enabled := true
+	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+		Name:            "empty-tpl",
+		Kind:            "slack",
+		Enabled:         &enabled,
+		MessageTemplate: &empty,
+	})
+	if err != nil {
+		t.Fatalf("Create with &\"\": %v", err)
+	}
+
+	raw, err := svc.Get(ch.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if raw.MessageTemplate != "" {
+		t.Errorf("MessageTemplate = %q, want empty string (persisted as-is)", raw.MessageTemplate)
+	}
+}

@@ -13,6 +13,7 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
+	"be/internal/notify"
 	"be/internal/service"
 	"be/internal/ws"
 )
@@ -174,6 +175,44 @@ func TestHandleNotificationChannels_FullLifecycle(t *testing.T) {
 		map[string]string{"wid": workflowID, "id": ch.ID})
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("Get after Delete: status = %d, want 404", rr.Code)
+	}
+}
+
+func TestHandleGetNotificationVariables(t *testing.T) {
+	s := newNotificationServer(t) // no project/workflow seed required
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/notification-channels/variables", nil)
+	rr := httptest.NewRecorder()
+	s.handleGetNotificationVariables(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp struct {
+		Variables []string          `json:"variables"`
+		Defaults  map[string]string `json:"defaults"`
+	}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	// variables must be a superset of notify.AvailableVariables()
+	varSet := make(map[string]bool, len(resp.Variables))
+	for _, v := range resp.Variables {
+		varSet[v] = true
+	}
+	for _, v := range notify.AvailableVariables() {
+		if !varSet[v] {
+			t.Errorf("variables missing %q", v)
+		}
+	}
+
+	if resp.Defaults[string(model.ChannelKindSlack)] == "" {
+		t.Errorf("defaults[\"slack\"] is empty")
+	}
+	if resp.Defaults[string(model.ChannelKindTelegram)] == "" {
+		t.Errorf("defaults[\"telegram\"] is empty")
 	}
 }
 

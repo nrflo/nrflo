@@ -8,6 +8,9 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/model"
+	"be/internal/notify"
+	"be/internal/repo"
 	"be/internal/types"
 	"be/internal/ws"
 )
@@ -205,6 +208,65 @@ func TestNotificationService_Create_Validation(t *testing.T) {
 				t.Errorf("Create(%q): expected error, got nil", tc.name)
 			}
 		})
+	}
+}
+
+func TestNotificationService_TestSend_PayloadCoversAllVariables(t *testing.T) {
+	t.Parallel()
+	pool, projectID, workflowID := setupNotificationServicePool(t)
+	clk := clock.Real()
+	svc := NewNotificationService(pool, clk, nil, nil, nil)
+
+	enabled := true
+	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+		Name: "payload-vars", Kind: "slack", Enabled: &enabled,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := svc.TestSend(ch.ID); err != nil {
+		t.Fatalf("TestSend: %v", err)
+	}
+
+	dr := repo.NewNotificationDeliveryRepo(pool, clk)
+	deliveries, err := dr.ListByChannel(ch.ID, 50)
+	if err != nil {
+		t.Fatalf("ListByChannel: %v", err)
+	}
+	if len(deliveries) != 1 {
+		t.Fatalf("deliveries count = %d, want 1", len(deliveries))
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(deliveries[0].Payload), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+
+	// "link" and "summary" are render-time computed from ticket_id and workflow_final_result;
+	// all other AvailableVariables() keys must be direct non-empty payload fields.
+	for _, key := range notify.AvailableVariables() {
+		if key == "link" || key == "summary" {
+			continue
+		}
+		val, ok := payload[key]
+		if !ok {
+			t.Errorf("payload missing key %q", key)
+			continue
+		}
+		s, isStr := val.(string)
+		if !isStr || s == "" {
+			t.Errorf("payload[%q] = %v, want non-empty string", key, val)
+		}
+	}
+
+	// Rendering the default template with this payload should resolve all placeholders.
+	rendered := notify.Render(model.ChannelKindSlack, notify.DefaultTemplate(model.ChannelKindSlack), payload)
+	if strings.Contains(rendered, "${") {
+		t.Errorf("rendered template has unresolved placeholders: %q", rendered)
+	}
+	if rendered == "" {
+		t.Errorf("rendered template is empty")
 	}
 }
 

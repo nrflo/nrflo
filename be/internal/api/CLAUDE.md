@@ -85,7 +85,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_default_template.go` | Default template CRUD (global, no project scope, readonly enforcement) |
 | `handlers_scheduled_tasks.go` | Scheduled task CRUD + run-now + list-runs (project-scoped via X-Project header) |
 | `handlers_workflow_chains.go` | Workflow chain definition CRUD + step append/update/delete/reorder (project-scoped via X-Project header; writes admin-only) |
-| `handlers_notification_channels.go` | Notification channel CRUD + /test + deliveries list (workflow-scoped, nested under /api/v1/workflows/{wid}/...; X-Project header required); secrets masked in responses |
+| `handlers_notification_channels.go` | Notification channel CRUD + /test + deliveries list (workflow-scoped, nested under /api/v1/workflows/{wid}/...; X-Project header required); secrets masked in responses. Also: GET /api/v1/notification-channels/variables (global, no project scope) |
 | `handlers_chains.go` | Chain preview/list/get/create/update/start/cancel/delete/append/remove-items |
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
@@ -321,6 +321,9 @@ POST   /api/v1/config-files/rollback/{file...}     # Rollback; body: {version: i
 GET    /api/v1/insights/summary          # Dispatch stats + review counts; ?range=7d|30d (default 7d)
 GET    /api/v1/insights/edit-rate        # Per-tool review outcomes with edit_rate_pct; ?range=7d|30d
 GET    /api/v1/insights/throughput       # Bucketed dispatch counts; ?range=7d|30d; ?bucket=1h|6h|1d (default 1h for 7d, 6h for 30d)
+
+# Notification channel variables (global, no project scope)
+GET    /api/v1/notification-channels/variables    # Returns {variables:[...], defaults:{slack,telegram}}; protected, no admin, no X-Project header
 
 # Notification channels (workflow-scoped; require X-Project header)
 GET    /api/v1/workflows/{wid}/notification-channels              # List channels for workflow (configs masked)

@@ -558,6 +558,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
 	protected("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
 
+	// Notification variables (global, no project scope)
+	protected("GET /api/v1/notification-channels/variables", s.handleGetNotificationVariables)
+
 	// Notification channels (workflow-scoped)
 	protected("GET /api/v1/workflows/{wid}/notification-channels", s.handleListNotificationChannels)
 	protected("POST /api/v1/workflows/{wid}/notification-channels", s.handleCreateNotificationChannel)

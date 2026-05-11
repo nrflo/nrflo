@@ -139,6 +139,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useUsers.ts` | TanStack Query hooks for user management (admin-only, no X-Project): `userKeys` factory; `useUsers()`, `useCreateUser()`, `useUpdateUser()`, `useResetUserPassword()`, `useDeleteUser()`. All mutations invalidate `userKeys.all`. Errors propagate as `ApiError` for `email_exists`/`last_admin`/`cannot_delete_self` mapping at call site. |
 | `useAuditLog.ts` | TanStack Query hook for paginated audit log (admin-only): `auditKeys` factory; `useAuditLog({page,per_page,user_id,action})`. Keyed by all params so filter changes trigger refetch. |
 | `useProjectEnvVars.ts` | TanStack Query hooks for per-project env vars. Key factory: `projectEnvVarKeys` (`all`, `list(projectId)`). Exports: `useProjectEnvVars(projectId)`, `usePutProjectEnvVar()`, `useDeleteProjectEnvVar()`. Mutations invalidate `projectEnvVarKeys.list(projectId)` on success. Invalidated by `project.env_vars_updated` WS event. |
+| `useEnvVarCatalog.ts` | TanStack Query hook for static env var catalog (`GET /api/v1/import/env-var-catalog`). Query key `["env-var-catalog"]`; `staleTime: Infinity`, `gcTime: Infinity` — catalog never refetches for process lifetime. |
 
 ## Testing
 

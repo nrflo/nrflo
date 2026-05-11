@@ -297,7 +297,7 @@ func TestHandleEnvVarCatalog_ReturnsAllVars(t *testing.T) {
 	}
 	for _, v := range vars {
 		m, _ := v.(map[string]interface{})
-		name, _ := m["Name"].(string)
+		name, _ := m["name"].(string)
 		delete(want, name)
 	}
 	if len(want) > 0 {

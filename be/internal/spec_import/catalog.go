@@ -2,10 +2,10 @@ package spec_import
 
 // EnvVarSpec describes a well-known env var used by spec_import adapters.
 type EnvVarSpec struct {
-	Name        string
-	Feature     string
-	Description string
-	Required    bool
+	Name        string `json:"name"`
+	Feature     string `json:"feature"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
 }
 
 // Catalog is the authoritative list of env vars consumed by this package.

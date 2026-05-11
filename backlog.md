@@ -76,26 +76,43 @@ const (
     RetryClassError
 )
 
-ClassifyExit(stdoutTail, stderrTail string, exitCode int) RetryClass
+ClassifyExit(recentText, stderrTail string, exitCode int) RetryClass
 ```
 
-Each adapter (`cli_adapter_claude.go`, `cli_adapter_codex.go`, `cli_adapter_opencode.go`, `apirun`'s in-process equivalent) owns its own pattern list. Anthropic API errors in api-mode get classified at the SDK error level, not via stdout regex.
+Each adapter (`cli_adapter_claude.go`, `cli_adapter_codex.go`, `cli_adapter_opencode.go`, `apirun`'s in-process equivalent) owns its own pattern list. Anthropic API errors in api-mode get classified at the SDK error level (typed errors), not via stdout regex.
+
+**Pattern scan must be windowed, not full-output.** Keep a ring buffer of the last ~10 text blocks per session and only match against the joined recent window. Matching against full output trips false positives when the agent earlier echoed text like "rate limit" while quoting code or docs. Maintain `recentBlocks` per session, scan only the joined tail.
+
+**Two pattern lists, with priority.** Split into `*_limit_patterns` (wait+retry) and `*_error_patterns` (graceful exit). Same string can appear in both: e.g. `"You've hit your org's monthly usage limit"` lives in both lists, and the limit check runs **first**, so when `rate_limit_enabled=true` it wins; when disabled the string still trips graceful exit instead of generic agent failure. This single mechanism handles both modes cleanly.
+
+**Matching is case-insensitive substring.** Not regex initially — vendors reword these messages frequently and regex tempts over-clever patterns that miss the next variant. Substring is more forgiving and cheaper to debug.
 
 When the spawner sees `RetryClassRateLimit`:
 1. Persist the limit hit on the `agent_sessions` row (new column `last_retry_class TEXT` or use an enum).
 2. Sleep for a configurable backoff (start 60s, exponential up to `rate_limit_max_wait`, default 1h). Sleep is via `clock.Clock` so tests can fast-forward.
 3. Re-spawn the **same** session with the same prompt and finding context. **Do not** decrement the restart counter.
-4. Emit a WS event `agent.rate_limited` with `{session_id, wait_seconds}` so the UI can show "waiting for quota… 47m" instead of "failed."
+4. Emit a WS event `agent.rate_limited` with `{session_id, wait_seconds, matched_pattern}` so the UI can show "waiting for quota… 47m" instead of "failed."
 
 If `rate_limit_max_wait` is exceeded across consecutive limit hits → fall through to normal failure path (so a permanently-broken account doesn't hang forever).
 
 ### Configuration
-Per-project (in `project_env_vars`-adjacent settings, or a new `project_settings` row):
+
+Per-project settings (new `project_settings` row or `project_env_vars`-adjacent):
 - `rate_limit_max_wait_sec` (default 3600)
 - `rate_limit_initial_backoff_sec` (default 60)
 - `rate_limit_enabled` (default true)
 
-Pattern lists are **adapter-owned**, not user-configurable initially (we control the defaults via code; revisit if users complain).
+**Pattern lists are user-overridable.** Adapter defaults shipped in code, but exposed in project settings as comma-separated overrides:
+- `claude_limit_patterns`, `claude_error_patterns`
+- `codex_limit_patterns`, `codex_error_patterns`
+- `opencode_limit_patterns`, `opencode_error_patterns`
+
+Rationale: these strings are user-facing English produced by third-party CLIs. When Anthropic/OpenAI rewords (e.g., `"You've hit your limit"` → `"Usage limit reached"`), users shouldn't need to wait for an nrflo release to keep working — they patch the pattern themselves. We ship reasonable defaults; they own the override.
+
+Seed defaults (validated against current CLI output as of 2026-05):
+- claude limit: `You've hit your limit`, `Your usage allocation has been disabled by your admin`, `You've hit your org's monthly usage limit`
+- claude error: same three, plus `API Error:`, `cannot be launched inside another Claude Code session`, `Not logged in`
+- codex limit: `Rate limit exceeded`, `rate limit reached`, `429 Too Many Requests`, `quota exceeded`, `insufficient_quota`, `You've hit your usage limit`
 
 ### UI surface
 - Live session view shows "Rate-limited, retrying in X" badge.
@@ -106,6 +123,8 @@ Pattern lists are **adapter-owned**, not user-configurable initially (we control
 - Should rate-limit waits respect `endless_loop` cancellation and graceful shutdown? Yes — `shutdownCleanup` must wake sleeping waiters.
 - Does the wait survive a server restart? Initially no (sleep is in-memory). If we need it durable, persist `rate_limit_until_ts` on the session and resume on startup. Defer.
 - Does the budget for `rate_limit_max_wait` reset on success? Yes — track consecutive limit hits only.
+- Ring-buffer size: start at 10 text blocks. For `script` and `cli_interactive` modes, "block" is less well-defined (no JSON event stream). Likely: last 10 stdout lines + last 10 stderr lines, concatenated. Validate during impl.
+- `api`-mode (apirun) classification: skip pattern matching entirely — Anthropic SDK surfaces `RateLimitError` / `OverloadedError` as typed errors. Map those directly to `RetryClassRateLimit` without going near string scans. Patterns only exist for the CLI-shell-out modes.
 
 ---
 

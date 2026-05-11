@@ -1,0 +1,39 @@
+name: brew-smoke
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Show brew and runner info
+        run: |
+          sw_vers
+          uname -m
+          brew --version
+          brew --prefix
+
+      - name: Ensure no prior nrflo state
+        run: |
+          brew uninstall --cask nrflo 2>/dev/null || true
+          brew untap nrflo/tap 2>/dev/null || true
+          rm -rf ~/Library/Caches/Homebrew/api/
+
+      - name: Tap nrflo/tap
+        run: brew tap nrflo/tap
+
+      - name: Install cask
+        run: brew install --cask nrflo
+
+      - name: Verify binaries on PATH
+        run: |
+          which nrflo
+          which nrflo_server
+          nrflo_server version

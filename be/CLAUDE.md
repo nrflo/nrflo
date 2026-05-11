@@ -336,6 +336,7 @@ Detailed documentation for each major package is in its own CLAUDE.md:
 | `internal/sdk/python/` | [sdk/python/CLAUDE.md](internal/sdk/python/CLAUDE.md) | Embedded Python SDK for `execution_mode='script'` agents (auto-installed to `$NRFLO_HOME/sdk/`) |
 | `internal/venv/` | (inline docs) | Per-project Python venv manager: `Ensure(ctx, projectID, projectRoot)` syncs `$NRFLO_HOME/project/<id>/venv` with `requirements.txt` (sha256 hash-keyed, atomic rename). Non-blocking — failures return `"", nil` so callers fall back to PATH `python3`. Docker image requires `py3-pip` apk package for `python3 -m venv` to include pip. |
 | `internal/configeditor/` | [configeditor/CLAUDE.md](internal/configeditor/CLAUDE.md) | Versioned config file editing service + forward-only migration runner |
+| `internal/spec_import/` | [spec_import/CLAUDE.md](internal/spec_import/CLAUDE.md) | Spec import adapters (GitHub Issue, Jira, Markdown passthrough) + env-var catalog (GITHUB_TOKEN, JIRA_*); normalizes external specs into FetchedSpec{RawText, AttachedRefs} |
 
 ## Per-project env vars
 

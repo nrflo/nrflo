@@ -363,20 +363,71 @@ func TestCapitalize(t *testing.T) {
 	}
 }
 
-func TestTruncateStr(t *testing.T) {
+// TestHandleToolPart_LargeOutputFullPassthrough verifies that a tool "completed"
+// event with a 5000-byte output is forwarded to the sink verbatim — no truncation.
+func TestHandleToolPart_LargeOutputFullPassthrough(t *testing.T) {
 	t.Parallel()
-	cases := []struct {
-		in   string
-		max  int
-		want string
-	}{
-		{"hello", 10, "hello"},
-		{"hello world", 5, "hello..."},
-		{"", 5, ""},
+	sink := &opencodeTestSink{}
+
+	largeOutput := strings.Repeat("x", 5000)
+	part := map[string]interface{}{
+		"type":      "tool",
+		"id":        "p-large",
+		"messageID": "m-large",
+		"tool":      "tool",
+		"state": map[string]interface{}{
+			"status": "completed",
+			"output": largeOutput,
+		},
 	}
-	for _, tc := range cases {
-		if got := truncateStr(tc.in, tc.max); got != tc.want {
-			t.Errorf("truncateStr(%q, %d) = %q, want %q", tc.in, tc.max, got, tc.want)
+	handleToolPart(context.Background(), part, "sess-large", sink)
+
+	sink.mu.Lock()
+	msgs := append([]recordedMsg{}, sink.recordedMsgs...)
+	sink.mu.Unlock()
+
+	if len(msgs) == 0 {
+		t.Fatal("RecordHookMessage not called for large tool completed event")
+	}
+	want := "[Tool result] " + largeOutput
+	if msgs[0].content != want {
+		t.Errorf("content len=%d, want len=%d; no truncation expected", len(msgs[0].content), len(want))
+		if strings.HasSuffix(msgs[0].content, "...") {
+			t.Error("content ends with '...' — truncation was applied but should not be")
 		}
 	}
 }
+
+// TestHandleSessionError_LargeMessageFullPassthrough verifies that a session.error
+// event with a 1000-byte data.message is forwarded to the sink without truncation.
+func TestHandleSessionError_LargeMessageFullPassthrough(t *testing.T) {
+	t.Parallel()
+	sink := &opencodeTestSink{}
+
+	largeMsg := strings.Repeat("e", 1000)
+	props := map[string]interface{}{
+		"error": map[string]interface{}{
+			"name": "BigError",
+			"data": map[string]interface{}{
+				"message": largeMsg,
+			},
+		},
+	}
+	handleSessionError(context.Background(), props, "sess-large-err", sink)
+
+	sink.mu.Lock()
+	msgs := append([]recordedMsg{}, sink.recordedMsgs...)
+	sink.mu.Unlock()
+
+	if len(msgs) == 0 {
+		t.Fatal("RecordHookMessage not called for large session.error event")
+	}
+	if !strings.Contains(msgs[0].content, largeMsg) {
+		t.Errorf("content len=%d, want full %d-byte message included; no truncation expected",
+			len(msgs[0].content), len(largeMsg))
+		if strings.HasSuffix(msgs[0].content, "...") {
+			t.Error("content ends with '...' — truncation was applied but should not be")
+		}
+	}
+}
+

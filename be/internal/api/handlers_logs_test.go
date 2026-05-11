@@ -204,7 +204,7 @@ func TestHandleGetLogs_InvalidType(t *testing.T) {
 	}
 }
 
-func TestHandleGetLogs_CapAt1000(t *testing.T) {
+func TestHandleGetLogs_NoCap_AllLinesReturned(t *testing.T) {
 	dir := t.TempDir()
 	var sb strings.Builder
 	for i := 1; i <= 1500; i++ {
@@ -224,21 +224,21 @@ func TestHandleGetLogs_CapAt1000(t *testing.T) {
 	resp := decodeLogsResponse(t, rr)
 	lines := getLines(t, resp)
 
-	if len(lines) != 1000 {
-		t.Errorf("len(lines) = %d, want 1000", len(lines))
+	if len(lines) != 1500 {
+		t.Errorf("len(lines) = %d, want 1500 (no cap)", len(lines))
 	}
 
 	first, _ := lines[0].(string)
 	if first != "line1500" {
 		t.Errorf("lines[0] = %q, want %q (latest line first)", first, "line1500")
 	}
-	last, _ := lines[999].(string)
-	if last != "line501" {
-		t.Errorf("lines[999] = %q, want %q", last, "line501")
+	last, _ := lines[1499].(string)
+	if last != "line1" {
+		t.Errorf("lines[1499] = %q, want %q", last, "line1")
 	}
 }
 
-func TestHandleGetLogs_ExactlyAtCap(t *testing.T) {
+func TestHandleGetLogs_ExactCount(t *testing.T) {
 	dir := t.TempDir()
 	var sb strings.Builder
 	for i := 1; i <= 1000; i++ {

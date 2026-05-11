@@ -8,13 +8,10 @@ import (
 	"strings"
 )
 
-const maxLogLines = 1000
-
 // handleGetLogs serves log file contents as JSON.
 // Query param "type" selects be.log (default: "be").
 // Query param "filter" searches the full file for matching lines (case-insensitive).
-// Without filter: returns lines in reverse order (latest first), capped at 1000 lines.
-// With filter: returns all matching lines in reverse order (no cap).
+// Lines are returned latest-first, with optional case-insensitive filtering.
 func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 	logType := r.URL.Query().Get("type")
 	if logType == "" {
@@ -62,11 +59,6 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 	// Reverse (latest first)
 	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
 		lines[i], lines[j] = lines[j], lines[i]
-	}
-
-	// Cap at maxLogLines only when not filtering
-	if filter == "" && len(lines) > maxLogLines {
-		lines = lines[:maxLogLines]
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

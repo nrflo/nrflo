@@ -10,11 +10,11 @@ import (
 )
 
 // TestHandleGetLogs_FilterMatchingLines verifies that when a filter is provided,
-// all matching lines from the entire file are returned with no 1000-line cap.
+// all matching lines from the entire file are returned.
 func TestHandleGetLogs_FilterMatchingLines(t *testing.T) {
 	dir := t.TempDir()
 	// Write 1500 lines; every 3rd line contains the target token.
-	// 500 lines will match — more than maxLogLines proves no cap applies.
+	// 500 lines will match.
 	var sb strings.Builder
 	for i := 1; i <= 1500; i++ {
 		if i%3 == 0 {
@@ -37,9 +37,9 @@ func TestHandleGetLogs_FilterMatchingLines(t *testing.T) {
 	resp := decodeLogsResponse(t, rr)
 	lines := getLines(t, resp)
 
-	// 500 matching lines (1500/3) — well above maxLogLines=1000
+	// 500 matching lines (1500/3)
 	if len(lines) != 500 {
-		t.Errorf("len(lines) = %d, want 500 (no 1000-line cap when filter set)", len(lines))
+		t.Errorf("len(lines) = %d, want 500", len(lines))
 	}
 }
 
@@ -141,9 +141,9 @@ func TestHandleGetLogs_FilterNoMatches(t *testing.T) {
 	}
 }
 
-// TestHandleGetLogs_FilterEmptyStringPreservesCap verifies that an explicit empty
-// filter= param still applies the 1000-line cap (same as no filter param).
-func TestHandleGetLogs_FilterEmptyStringPreservesCap(t *testing.T) {
+// TestHandleGetLogs_NoCapUnfiltered verifies that an unfiltered (or empty-filter)
+// request returns all lines with no cap.
+func TestHandleGetLogs_NoCapUnfiltered(t *testing.T) {
 	dir := t.TempDir()
 	var sb strings.Builder
 	for i := 1; i <= 1500; i++ {
@@ -163,8 +163,8 @@ func TestHandleGetLogs_FilterEmptyStringPreservesCap(t *testing.T) {
 	resp := decodeLogsResponse(t, rr)
 	lines := getLines(t, resp)
 
-	if len(lines) != maxLogLines {
-		t.Errorf("len(lines) = %d, want %d (cap applies for empty filter)", len(lines), maxLogLines)
+	if len(lines) != 1500 {
+		t.Errorf("len(lines) = %d, want 1500 (no cap)", len(lines))
 	}
 	// Latest line should be first
 	first, _ := lines[0].(string)

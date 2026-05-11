@@ -77,11 +77,7 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 		lineCount := 0
 		for scanner.Scan() {
 			lineCount++
-			line := scanner.Text()
-			if len(line) > 500 {
-				line = line[:250] + "..." + line[len(line)-250:]
-			}
-			logger.Info(ctx, "context save output", "line", lineCount, "content", line, "session_id", proc.sessionID)
+			logger.Info(ctx, "context save output", "line", lineCount, "content", scanner.Text(), "session_id", proc.sessionID)
 		}
 		logger.Info(ctx, "context save output finished", "total_lines", lineCount, "session_id", proc.sessionID)
 	}()

@@ -284,7 +284,7 @@ POST   /api/v1/chains/:id/remove-items # Remove pending items from running chain
 GET /api/v1/docs/agent-manual      # Agent manual markdown content
 
 # Logs
-GET /api/v1/logs                   # Log file contents (?type=be, default be; ?filter=<string> searches full file case-insensitive, no 1000-line cap)
+GET /api/v1/logs                   # Log file contents (?type=be, default be; ?filter=<string> searches full file case-insensitive; lines returned latest-first)
 
 # Tool definitions (global, no project scope; routes registered only when --mode=api; return 404 in cli mode)
 GET    /api/v1/tool-definitions           # ?project_id= and ?workflow_id= filter the list

@@ -194,7 +194,7 @@ func handleToolPart(ctx context.Context, part map[string]interface{}, sessionID 
 		output, _ := partState["output"].(string)
 		content := "[" + capitalize(toolName) + " result]"
 		if output != "" {
-			content = "[" + capitalize(toolName) + " result] " + truncateStr(output, 200)
+			content = "[" + capitalize(toolName) + " result] " + output
 		}
 		category := ToolCategory(toolName)
 		projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, content, category, "")
@@ -289,7 +289,7 @@ func handleSessionError(ctx context.Context, props map[string]interface{}, sessi
 		}
 		if data, _ := errObj["data"].(map[string]interface{}); data != nil {
 			if errMsg, _ := data["message"].(string); errMsg != "" {
-				msg = msg + ": " + truncateStr(errMsg, 300)
+				msg = msg + ": " + errMsg
 			}
 		}
 	}
@@ -306,14 +306,6 @@ func capitalize(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
-}
-
-// truncateStr returns s truncated to at most max runes.
-func truncateStr(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "..."
 }
 
 // asFloat safely converts an interface{} to float64 (returns 0 if not numeric).

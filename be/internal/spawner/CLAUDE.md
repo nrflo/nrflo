@@ -656,7 +656,7 @@ Agent definitions store model, timeout, and prompt template per agent type per w
 
 ### System Agent Definition Fallback
 
-`loadPromptContent()` first looks up the agent definition in the project-scoped `agent_definitions` table. If not found, it falls back to `system_agent_definitions` (global, no project/workflow scope). This allows system agents (e.g., conflict-resolver) to be defined once and used across all projects without per-project agent definition setup. The fallback only applies to prompt loading — agent config (model, timeout, stall settings) is loaded separately by the orchestrator via `Config.Agents`.
+`loadPromptContent()` first looks up the agent definition in the project-scoped `agent_definitions` table. If not found, or if the per-project prompt is empty (empty = inherit from system), it falls back to `system_agent_definitions` (global, no project/workflow scope). This allows workflows to have per-project agent_definition rows (for model/layer/timeout config) while inheriting the prompt from the system definition. The fallback only applies to prompt loading — agent config (model, timeout, stall settings) is loaded separately by the orchestrator via `Config.Agents`.
 
 | Template | Purpose | Model |
 |----------|---------|-------|

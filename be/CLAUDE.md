@@ -152,6 +152,7 @@ be/
 │   │       └── embed.go         # Go embed directive
 │   ├── model/                   # Data models
 │   │   ├── project_env_var.go   # ProjectEnvVar struct (project_id, name, value, created_at, updated_at)
+│   │   ├── ticket_ref.go        # TicketRef struct + TicketRefKind consts (KindSource/Related/PR/DesignDoc) + ValidKinds/IsValidKind
 │   │   ├── workflow_layer_policy.go # WorkflowLayerPolicy struct (project_id, workflow_id, layer, pass_policy, timestamps)
 │   │   ├── python_script.go     # PythonScript struct (id, project_id, name, description, code, timestamps)
 │   │   ├── project.go
@@ -187,6 +188,7 @@ be/
 │   │       └── migrations/      # Migration implementations
 │   ├── repo/                    # Repository pattern
 │   │   ├── project_env_var.go   # ProjectEnvVarRepo: List/Upsert(ON CONFLICT)/Delete (project+name scoped, clock-driven timestamps)
+│   │   ├── ticket_ref.go        # TicketRefRepo: Create/BulkCreate(tx)/ListByTicket (composite FK to tickets, clock-driven timestamps)
 │   │   ├── workflow_layer_policy.go # WorkflowLayerPolicyRepo: Upsert/Delete/ListByWorkflow (clock-driven, lowercase keys)
 │   │   ├── python_script.go     # PythonScriptRepo: Create/Get/List/Update/Delete (project+id scoped, clock-driven timestamps)
 │   │   ├── project.go
@@ -352,6 +354,18 @@ Stored in `project_env_vars` table (migration 000095). Schema: `project_id + nam
 On successful PUT/DELETE, broadcasts `project.env_vars_updated` (`EventProjectEnvVarsUpdated`) globally via `wsHub.BroadcastGlobal` with payload `{project_id}`.
 
 Env vars are injected into all spawned agent processes via `spawner.Config.ProjectEnv`: loaded once at workflow start by `loadProjectEnv` in the orchestrator, appended after nrflo-controlled vars in `prepareSpawn` (cli/api paths) and `prepareScriptSpawn` (script path), and forwarded to manifest tool dispatch via `tools_manifest.New`. The reserved-name validator at the service layer is the primary protection against shadowing nrflo internals.
+
+## Ticket refs
+
+External links (PR, design doc, source URL, etc.) keyed by ticket. Stored in `ticket_refs` table (migration 000098). Schema: `id INTEGER AUTOINCREMENT PK`, `project_id + ticket_id` (composite FK → tickets(project_id, id) ON DELETE CASCADE), `kind TEXT`, `url TEXT`, `label TEXT (nullable)`, `created_at TEXT`.
+
+Model: `be/internal/model/ticket_ref.go` — `TicketRef` struct + `TicketRefKind` typed-string consts (`KindSource`, `KindRelated`, `KindPR`, `KindDesignDoc`) + `ValidKinds()` / `IsValidKind()`.
+
+Repo: `be/internal/repo/ticket_ref.go` — `TicketRefRepo.Create` (single insert, sets ID/CreatedAt), `BulkCreate` (single tx), `ListByTicket` (ordered by created_at ASC).
+
+## SeedFindings on RunRequest
+
+`orchestrator.RunRequest.SeedFindings map[string]string` pre-populates `workflow_instances.findings` at workflow create time. Pass through chain: `RunRequest.SeedFindings` → `types.WorkflowInitRequest.SeedFindings` / `types.ProjectWorkflowRunRequest.SeedFindings` → `service.WorkflowService.buildWorkflowInstance(seed)` → JSON-marshalled as initial `Findings` value (default `{}` when nil/empty). The subsequent orchestrator findings merge (`user_instructions` + `_orchestration`) uses `wi.GetFindings()` which reads the already-seeded JSON, so seeded keys are preserved.
 
 ## Running Tests
 

@@ -559,9 +559,27 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ TICKET_REFS                                           (mig 000098)  │
+│  id         INTEGER PRIMARY KEY AUTOINCREMENT                        │
+│  project_id TEXT NOT NULL                                            │
+│  ticket_id  TEXT NOT NULL                                            │
+│  kind       TEXT NOT NULL (source|related|pr|design_doc)            │
+│  url        TEXT NOT NULL                                            │
+│  label      TEXT (nullable)                                          │
+│  created_at TEXT NOT NULL                                            │
+│  FK (project_id, ticket_id) → tickets(project_id, id) CASCADE       │
+│  INDEX idx_ticket_refs_ticket (project_id, ticket_id)               │
+│  INDEX idx_ticket_refs_url (url)                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Spec import seed** (mig 000099): Seeds `spec-normalizer` in `system_agent_definitions` (role=spec-normalizer, execution_mode=cli, model=haiku, timeout=5). For every existing project, inserts a hidden `__spec_import__` workflow row (scope_type=project, close_ticket_on_complete=0) and a matching `spec-normalizer` agent_definition row (layer=0). New projects also receive these rows via `service.ProjectService.Create` (best-effort, logged on failure).
+
 ## Adding a Database Migration
 
-Current highest migration: **000097** (notification_channels.message_template — `ALTER TABLE notification_channels ADD COLUMN message_template TEXT NOT NULL DEFAULT ''` + per-kind UPDATE backfill)
+Current highest migration: **000099** (spec_normalizer_seed — INSERT spec-normalizer system agent + __spec_import__ workflow + agent_definitions per project)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

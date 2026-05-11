@@ -237,18 +237,36 @@ func TestLoadPromptContent_BothMissing_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestLoadPromptContent_ProjectDefEmptyPrompt_ReturnsError(t *testing.T) {
+func TestLoadPromptContent_ProjectDefEmptyPrompt_FallsThroughToSystemDef(t *testing.T) {
 	t.Parallel()
 	env := newSpawnerTestEnv(t)
+	// Per-project def with empty prompt + system def with real prompt.
+	createAgentDef(t, env, "inherit-agent", "")
+	createSystemAgentDef(t, env, "inherit-agent", "inherited from system")
+
+	sp := env.newSpawner()
+	prompt, err := sp.loadPromptContent("inherit-agent", env.project, "test")
+	if err != nil {
+		t.Fatalf("expected system def fallback; got error: %v", err)
+	}
+	if prompt != "inherited from system" {
+		t.Errorf("expected system def prompt, got: %s", prompt)
+	}
+}
+
+func TestLoadPromptContent_ProjectDefEmptyPrompt_NoSystemDef_ReturnsError(t *testing.T) {
+	t.Parallel()
+	env := newSpawnerTestEnv(t)
+	// Per-project def with empty prompt, no system def → not found.
 	createAgentDef(t, env, "empty-agent", "")
 
 	sp := env.newSpawner()
 	_, err := sp.loadPromptContent("empty-agent", env.project, "test")
 	if err == nil {
-		t.Fatal("expected error for project def with empty prompt")
+		t.Fatal("expected error when no system def to fall back to")
 	}
-	if !strings.Contains(err.Error(), "empty prompt") {
-		t.Errorf("expected 'empty prompt' in error, got: %v", err)
+	if !strings.Contains(err.Error(), "agent definition not found") {
+		t.Errorf("expected 'agent definition not found' in error, got: %v", err)
 	}
 }
 

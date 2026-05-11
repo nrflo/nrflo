@@ -43,8 +43,9 @@ type ProjectCreateRequest struct {
 
 // WorkflowInitRequest is the request for initializing a workflow
 type WorkflowInitRequest struct {
-	Workflow        string `json:"workflow,omitempty"`
-	ScheduledTaskID string `json:"scheduled_task_id,omitempty"`
+	Workflow        string            `json:"workflow,omitempty"`
+	ScheduledTaskID string            `json:"scheduled_task_id,omitempty"`
+	SeedFindings    map[string]string `json:"seed_findings,omitempty"`
 }
 
 // WorkflowGetRequest is the request for getting workflow state
@@ -208,12 +209,13 @@ type WorkflowDefUpdateRequest struct {
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow
 type ProjectWorkflowRunRequest struct {
-	Workflow        string `json:"workflow"`
-	Instructions    string `json:"instructions,omitempty"`
-	Interactive     bool   `json:"interactive,omitempty"`
-	PlanMode        bool   `json:"plan_mode,omitempty"`
-	EndlessLoop     bool   `json:"endless_loop,omitempty"`
-	ScheduledTaskID string `json:"scheduled_task_id,omitempty"`
+	Workflow        string            `json:"workflow"`
+	Instructions    string            `json:"instructions,omitempty"`
+	Interactive     bool              `json:"interactive,omitempty"`
+	PlanMode        bool              `json:"plan_mode,omitempty"`
+	EndlessLoop     bool              `json:"endless_loop,omitempty"`
+	ScheduledTaskID string            `json:"scheduled_task_id,omitempty"`
+	SeedFindings    map[string]string `json:"seed_findings,omitempty"`
 }
 
 // AgentDefCreateRequest is the request for creating an agent definition

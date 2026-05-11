@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os/user"
 	"strconv"
@@ -82,7 +83,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 		return nil, fmt.Errorf("failed to query ticket: %w", err)
 	}
 
-	wi := s.buildWorkflowInstance(projectID, workflowName, wf)
+	wi := s.buildWorkflowInstance(projectID, workflowName, wf, req.SeedFindings)
 	wi.TicketID = ticketID
 	wi.ScopeType = "ticket"
 	wi.ScheduledTaskID = req.ScheduledTaskID
@@ -109,7 +110,7 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 		return nil, fmt.Errorf("workflow '%s' is not a project-scoped workflow", req.Workflow)
 	}
 
-	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf)
+	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf, req.SeedFindings)
 	wi.ScopeType = "project"
 	wi.EndlessLoop = req.EndlessLoop
 	wi.ScheduledTaskID = req.ScheduledTaskID
@@ -120,14 +121,21 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 	return wi, nil
 }
 
-// buildWorkflowInstance creates a WorkflowInstance from a workflow definition
-func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef) *model.WorkflowInstance {
+// buildWorkflowInstance creates a WorkflowInstance from a workflow definition.
+// seed is pre-populated as the initial Findings JSON; nil/empty seed produces "{}".
+func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef, seed map[string]string) *model.WorkflowInstance {
+	findings := "{}"
+	if len(seed) > 0 {
+		if b, err := json.Marshal(seed); err == nil {
+			findings = string(b)
+		}
+	}
 	return &model.WorkflowInstance{
 		ID:         uuid.New().String(),
 		ProjectID:  projectID,
 		WorkflowID: workflowName,
 		Status:     model.WorkflowInstanceActive,
-		Findings:   "{}",
+		Findings:   findings,
 		RetryCount: 0,
 	}
 }

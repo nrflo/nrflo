@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/types"
 )
@@ -74,7 +76,35 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 	project.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	project.UpdatedAt = project.CreatedAt
 
+	s.seedSpecImportWorkflow(projectID, now)
+
 	return project, nil
+}
+
+// seedSpecImportWorkflow inserts the hidden __spec_import__ workflow and its
+// spec-normalizer agent_definition for a newly created project. Best-effort:
+// failures are logged but do not fail the project create.
+func (s *ProjectService) seedSpecImportWorkflow(projectID, now string) {
+	_, err := s.pool.Exec(`
+		INSERT OR IGNORE INTO workflows
+			(id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at)
+		VALUES ('__spec_import__', ?, 'Spec import (internal)', 'project', '[]', 0, '', ?, ?)`,
+		projectID, now, now,
+	)
+	if err != nil {
+		logger.Warn(context.Background(), "seedSpecImportWorkflow: failed to insert workflow", "project_id", projectID, "err", err)
+		return
+	}
+
+	_, err = s.pool.Exec(`
+		INSERT OR IGNORE INTO agent_definitions
+			(id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
+		VALUES ('spec-normalizer', ?, '__spec_import__', 'haiku', 5, '', 0, ?, ?)`,
+		projectID, now, now,
+	)
+	if err != nil {
+		logger.Warn(context.Background(), "seedSpecImportWorkflow: failed to insert agent_definition", "project_id", projectID, "err", err)
+	}
 }
 
 // Get retrieves a project by ID

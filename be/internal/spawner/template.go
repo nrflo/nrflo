@@ -56,20 +56,19 @@ func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string)
 }
 
 // loadPromptContent loads the prompt content for an agent from the DB.
-// Falls back to system_agent_definitions when project-scoped lookup fails.
+// Falls back to system_agent_definitions when project-scoped lookup fails or
+// when the per-project prompt is empty (empty = inherit from system definition).
 func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (string, error) {
 	pool := s.pool()
 	if pool == nil {
 		return "", fmt.Errorf("failed to get database pool")
 	}
 
-	// Try project-scoped agent definition first
+	// Try project-scoped agent definition first; fall through to system
+	// agent definition when not found or when prompt is empty (inherit).
 	adRepo := repo.NewAgentDefinitionRepo(pool, s.config.Clock)
 	def, err := adRepo.Get(projectID, workflowName, agentType)
-	if err == nil {
-		if def.Prompt == "" {
-			return "", fmt.Errorf("agent definition '%s' has empty prompt", agentType)
-		}
+	if err == nil && def.Prompt != "" {
 		return def.Prompt, nil
 	}
 

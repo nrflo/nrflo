@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from './client'
-import type { NotificationChannel, NotificationDelivery } from '@/types/notifications'
+import type { NotificationChannel, NotificationDelivery, NotificationVariablesResponse } from '@/types/notifications'
 
 export interface CreateNotificationChannelRequest {
   name: string
@@ -7,6 +7,7 @@ export interface CreateNotificationChannelRequest {
   enabled: boolean
   config: Record<string, unknown>
   event_types: string[]
+  message_template?: string
 }
 
 export interface UpdateNotificationChannelRequest {
@@ -14,6 +15,7 @@ export interface UpdateNotificationChannelRequest {
   enabled?: boolean
   config?: Record<string, unknown>
   event_types?: string[]
+  message_template?: string
 }
 
 export async function listNotificationChannels(workflowId: string): Promise<NotificationChannel[]> {
@@ -42,4 +44,8 @@ export async function testNotificationChannel(workflowId: string, id: string): P
 
 export async function listNotificationDeliveries({ workflowId, channelId, limit = 20 }: { workflowId: string; channelId: string; limit?: number }): Promise<NotificationDelivery[]> {
   return apiGet<NotificationDelivery[]>(`/api/v1/workflows/${workflowId}/notification-deliveries?channel_id=${channelId}&limit=${limit}`)
+}
+
+export async function getNotificationVariables(): Promise<NotificationVariablesResponse> {
+  return apiGet<NotificationVariablesResponse>('/api/v1/notification-channels/variables')
 }

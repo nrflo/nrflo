@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -14,6 +14,18 @@ import { renderWithQuery } from '@/test/utils'
 import type { NotificationChannel } from '@/types/notifications'
 
 vi.mock('@/api/notifications')
+
+vi.mock('@/components/ui/MarkdownEditor', () => ({
+  MarkdownEditor: React.forwardRef(
+    (
+      { value, onChange, placeholder }: { value: string; onChange?: (v: string) => void; placeholder?: string; readOnly?: boolean; minHeight?: string; maxHeight?: string },
+      ref: React.Ref<{ insertAtCaret: (text: string) => void }>,
+    ) => {
+      React.useImperativeHandle(ref, () => ({ insertAtCaret: vi.fn() }))
+      return <textarea value={value} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} data-testid="markdown-editor" readOnly={!onChange} />
+    },
+  ),
+}))
 
 const WF_ID = 'wf-form-test'
 
@@ -101,6 +113,7 @@ describe('NotificationChannelForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(api.listNotificationDeliveries).mockResolvedValue([])
+    vi.mocked(api.getNotificationVariables).mockResolvedValue({ variables: [], defaults: { slack: '', telegram: '' } })
   })
 
   it('create mode: shows webhook URL field for slack, Create button, no Send Test', () => {

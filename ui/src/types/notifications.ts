@@ -16,8 +16,17 @@ export interface NotificationChannel {
   enabled: boolean
   config: string
   event_types: NotificationEventType[]
+  message_template?: string
   created_at: string
   updated_at: string
+}
+
+export interface NotificationVariablesResponse {
+  variables: string[]
+  defaults: {
+    slack: string
+    telegram: string
+  }
 }
 
 export interface NotificationDelivery {

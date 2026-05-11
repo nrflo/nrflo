@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import React from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowNotificationsSection } from './WorkflowNotificationsSection'
@@ -7,6 +8,18 @@ import { renderWithQuery } from '@/test/utils'
 import type { NotificationChannel } from '@/types/notifications'
 
 vi.mock('@/api/notifications')
+
+vi.mock('@/components/ui/MarkdownEditor', () => ({
+  MarkdownEditor: React.forwardRef(
+    (
+      { value, onChange, placeholder }: { value: string; onChange?: (v: string) => void; placeholder?: string; readOnly?: boolean; minHeight?: string; maxHeight?: string },
+      ref: React.Ref<{ insertAtCaret: (text: string) => void }>,
+    ) => {
+      React.useImperativeHandle(ref, () => ({ insertAtCaret: vi.fn() }))
+      return <textarea value={value} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} data-testid="markdown-editor" readOnly={!onChange} />
+    },
+  ),
+}))
 
 const WF_ID = 'wf-abc-123'
 
@@ -30,6 +43,7 @@ describe('WorkflowNotificationsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(api.listNotificationDeliveries).mockResolvedValue([])
+    vi.mocked(api.getNotificationVariables).mockResolvedValue({ variables: [], defaults: { slack: '', telegram: '' } })
   })
 
   it('shows empty state and passes workflowId to listNotificationChannels', async () => {
@@ -134,6 +148,83 @@ describe('WorkflowNotificationsSection', () => {
     await user.click(newBtn)
 
     expect(newBtn).toBeDisabled()
+  })
+
+  it('create includes message_template equal to prefilled slack default', async () => {
+    const slackDefault = 'Default: ${event_type} on ${workflow}'
+    vi.mocked(api.listNotificationChannels).mockResolvedValue([])
+    vi.mocked(api.getNotificationVariables).mockResolvedValue({
+      variables: ['event_type', 'workflow'],
+      defaults: { slack: slackDefault, telegram: 'tg-default' },
+    })
+    vi.mocked(api.createNotificationChannel).mockResolvedValue(makeChannel())
+
+    renderWithQuery(<WorkflowNotificationsSection workflowId={WF_ID} />)
+    await screen.findByText('No notification channels configured. Create one to get started.')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /New Channel/ }))
+
+    // Wait for the variables query + useEffect to prefill the template
+    await screen.findByDisplayValue(slackDefault)
+
+    await user.type(screen.getByPlaceholderText('e.g. #alerts'), '#template-ch')
+    await user.click(screen.getByRole('button', { name: 'Workflow Completed' }))
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(api.createNotificationChannel).toHaveBeenCalledWith(
+        WF_ID,
+        expect.objectContaining({ message_template: slackDefault })
+      )
+    })
+  })
+
+  it('update omits message_template when template is unchanged', async () => {
+    const ch = makeChannel({ id: 'ch-saved', message_template: 'saved template' })
+    vi.mocked(api.listNotificationChannels).mockResolvedValue([ch])
+    vi.mocked(api.updateNotificationChannel).mockResolvedValue(ch)
+
+    renderWithQuery(<WorkflowNotificationsSection workflowId={WF_ID} />)
+    await screen.findByText('#alerts')
+
+    const user = userEvent.setup()
+    // index 0=New Channel, 1=pencil edit, 2=send test, 3=trash
+    await user.click(screen.getAllByRole('button')[1])
+
+    // Edit form opens; click Save without touching the template
+    await user.click(screen.getByRole('button', { name: /Save/i }))
+
+    await waitFor(() => {
+      const [, , req] = vi.mocked(api.updateNotificationChannel).mock.calls[0]
+      expect(req).not.toHaveProperty('message_template')
+    })
+  })
+
+  it('update includes message_template when template is changed', async () => {
+    const ch = makeChannel({ id: 'ch-saved', message_template: 'saved template' })
+    vi.mocked(api.listNotificationChannels).mockResolvedValue([ch])
+    vi.mocked(api.updateNotificationChannel).mockResolvedValue(ch)
+
+    renderWithQuery(<WorkflowNotificationsSection workflowId={WF_ID} />)
+    await screen.findByText('#alerts')
+
+    const user = userEvent.setup()
+    await user.click(screen.getAllByRole('button')[1])
+
+    // Edit the template textarea
+    const textarea = screen.getByTestId('markdown-editor')
+    await user.clear(textarea)
+    await user.type(textarea, 'new template value')
+
+    await user.click(screen.getByRole('button', { name: /Save/i }))
+
+    await waitFor(() => {
+      expect(api.updateNotificationChannel).toHaveBeenCalledWith(
+        WF_ID, 'ch-saved',
+        expect.objectContaining({ message_template: 'new template value' })
+      )
+    })
   })
 
   it('create calls createNotificationChannel with workflowId and form payload', async () => {

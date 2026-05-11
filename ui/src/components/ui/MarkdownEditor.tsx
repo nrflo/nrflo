@@ -1,29 +1,38 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, placeholder as cmPlaceholder, lineNumbers } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { markdownTheme } from '@/components/ui/codemirror-theme'
+import { insertAtCaret as insertAtCaretUtil } from '@/utils/insertAtCaret'
 
-export function MarkdownEditor({
-  value,
-  onChange,
-  placeholder,
-  readOnly = false,
-  minHeight = '200px',
-  maxHeight = '400px',
-}: {
+export interface MarkdownEditorHandle {
+  insertAtCaret(text: string): void
+}
+
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, {
   value: string
   onChange?: (value: string) => void
   placeholder?: string
   readOnly?: boolean
   minHeight?: string
   maxHeight?: string
-}) {
+}>(function MarkdownEditor(
+  { value, onChange, placeholder, readOnly = false, minHeight = '200px', maxHeight = '400px' },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const isExternalUpdate = useRef(false)
+
+  useImperativeHandle(ref, () => ({
+    insertAtCaret(text: string) {
+      const view = viewRef.current
+      if (!view) return
+      insertAtCaretUtil(view, text)
+    },
+  }))
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -82,4 +91,4 @@ export function MarkdownEditor({
   }, [value])
 
   return <div ref={containerRef} />
-}
+})

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Check, X, Send } from 'lucide-react'
 import { toast } from 'sonner'
@@ -5,10 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Toggle } from '@/components/ui/Toggle'
-import { Badge } from '@/components/ui/Badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
-import { testNotificationChannel, listNotificationDeliveries } from '@/api/notifications'
-import type { NotificationChannel, NotificationEventType } from '@/types/notifications'
+import { testNotificationChannel, listNotificationDeliveries, getNotificationVariables } from '@/api/notifications'
+import { NotificationTemplateEditor } from './NotificationTemplateEditor'
+import { NotificationDeliveriesPanel } from './NotificationDeliveriesPanel'
+import type { NotificationChannel, NotificationEventType, ChannelKind } from '@/types/notifications'
 
 const kindOptions = [
   { value: 'slack', label: 'Slack' },
@@ -31,10 +32,11 @@ export interface ChannelFormData {
   botToken: string
   chatId: string
   eventTypes: NotificationEventType[]
+  messageTemplate: string
 }
 
 export function emptyChannelForm(): ChannelFormData {
-  return { name: '', kind: 'slack', enabled: true, webhookUrl: '', botToken: '', chatId: '', eventTypes: [] }
+  return { name: '', kind: 'slack', enabled: true, webhookUrl: '', botToken: '', chatId: '', eventTypes: [], messageTemplate: '' }
 }
 
 export function channelToFormData(ch: NotificationChannel): ChannelFormData {
@@ -55,6 +57,7 @@ export function channelToFormData(ch: NotificationChannel): ChannelFormData {
     botToken,
     chatId,
     eventTypes: ch.event_types ?? [],
+    messageTemplate: ch.message_template ?? '',
   }
 }
 
@@ -89,6 +92,23 @@ export function NotificationChannelForm({
   isCreate?: boolean
   editingChannel?: NotificationChannel
 }) {
+  const [lastPrefilledDefault, setLastPrefilledDefault] = useState('')
+
+  const { data: variablesData } = useQuery({
+    queryKey: ['notification-variables'],
+    queryFn: getNotificationVariables,
+    staleTime: Infinity,
+  })
+
+  // Prefill messageTemplate from kind-specific default when creating a new channel
+  useEffect(() => {
+    if (!isCreate || !variablesData || formData.messageTemplate !== '') return
+    const def = variablesData.defaults[formData.kind as ChannelKind] ?? ''
+    setFormData({ ...formData, messageTemplate: def })
+    setLastPrefilledDefault(def)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variablesData])
+
   const testMutation = useMutation({
     mutationFn: () => testNotificationChannel(workflowId, editingChannel!.id),
     onSuccess: () => toast.success('Test notification sent'),
@@ -110,6 +130,20 @@ export function NotificationChannelForm({
     setFormData({ ...formData, eventTypes: next })
   }
 
+  const handleKindChange = (val: string) => {
+    let messageTemplate = formData.messageTemplate
+    if (isCreate && variablesData) {
+      const newDefault = variablesData.defaults[val as ChannelKind] ?? ''
+      if (formData.messageTemplate === lastPrefilledDefault) {
+        messageTemplate = newDefault
+        setLastPrefilledDefault(newDefault)
+      }
+    }
+    setFormData({ ...formData, kind: val, webhookUrl: '', botToken: '', chatId: '', messageTemplate })
+  }
+
+  const showSyntaxHint = isCreate && !!variablesData && formData.messageTemplate !== lastPrefilledDefault && formData.messageTemplate !== ''
+
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
       <div className="grid grid-cols-2 gap-3">
@@ -128,7 +162,7 @@ export function NotificationChannelForm({
           {isCreate ? (
             <Dropdown
               value={formData.kind}
-              onChange={(val) => setFormData({ ...formData, kind: val, webhookUrl: '', botToken: '', chatId: '' })}
+              onChange={handleKindChange}
               options={kindOptions}
             />
           ) : (
@@ -213,6 +247,19 @@ export function NotificationChannelForm({
         )}
       </div>
 
+      <NotificationTemplateEditor
+        kind={formData.kind as ChannelKind}
+        value={formData.messageTemplate}
+        onChange={(v) => setFormData({ ...formData, messageTemplate: v })}
+        variables={variablesData?.variables ?? []}
+      />
+
+      {showSyntaxHint && (
+        <p className="text-xs text-muted-foreground">
+          Syntax may differ between Slack and Telegram — review your template when switching kinds.
+        </p>
+      )}
+
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>
           {isCreate ? 'Cancel' : <><X className="h-4 w-4 mr-1" />Cancel</>}
@@ -242,42 +289,7 @@ export function NotificationChannelForm({
         </p>
       )}
 
-      {editingChannel && deliveries.length > 0 && (
-        <div className="pt-2 border-t border-border">
-          <div className="text-sm font-semibold text-muted-foreground mb-2">Recent Deliveries</div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Attempts</TableHead>
-                <TableHead>Error</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deliveries.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell className="text-xs">{new Date(d.created_at).toLocaleString()}</TableCell>
-                  <TableCell className="text-xs font-mono">{d.event_type}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={d.status === 'delivered' ? 'success' : d.status === 'failed' ? 'destructive' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {d.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">{d.attempts}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]">
-                    {d.last_error || '—'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      {editingChannel && <NotificationDeliveriesPanel deliveries={deliveries} />}
     </div>
   )
 }

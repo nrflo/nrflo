@@ -50,6 +50,7 @@ export function WorkflowNotificationsSection({ workflowId }: { workflowId: strin
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<ChannelFormData>(emptyChannelForm())
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [originalMessageTemplate, setOriginalMessageTemplate] = useState<string>('')
 
   const { data: channels = [], isLoading, error } = useQuery({
     queryKey: notificationKeys.list(workflowId),
@@ -64,6 +65,7 @@ export function WorkflowNotificationsSection({ workflowId }: { workflowId: strin
         enabled: data.enabled,
         config: buildConfig(data),
         event_types: data.eventTypes,
+        message_template: data.messageTemplate,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all(workflowId) })
@@ -73,13 +75,18 @@ export function WorkflowNotificationsSection({ workflowId }: { workflowId: strin
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: ChannelFormData }) =>
-      updateNotificationChannel(workflowId, id, {
+    mutationFn: ({ id, data }: { id: string; data: ChannelFormData }) => {
+      const req: Parameters<typeof updateNotificationChannel>[2] = {
         name: data.name.trim(),
         enabled: data.enabled,
         config: buildConfig(data),
         event_types: data.eventTypes,
-      }),
+      }
+      if (data.messageTemplate !== originalMessageTemplate) {
+        req.message_template = data.messageTemplate
+      }
+      return updateNotificationChannel(workflowId, id, req)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all(workflowId) })
       setEditingId(null)
@@ -118,6 +125,7 @@ export function WorkflowNotificationsSection({ workflowId }: { workflowId: strin
   const handleStartEdit = (ch: NotificationChannel) => {
     setEditingId(ch.id)
     setIsCreating(false)
+    setOriginalMessageTemplate(ch.message_template ?? '')
     setFormData(channelToFormData(ch))
   }
 

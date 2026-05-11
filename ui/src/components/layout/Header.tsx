@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { DailyStats } from '@/components/layout/DailyStats'
 import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
+import { ClaudeLimitsBadge } from '@/components/layout/ClaudeLimitsBadge'
 import { useProjectStore } from '@/stores/projectStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useAuthStore, useIsAdmin } from '@/stores/authStore'
@@ -100,6 +101,7 @@ export function Header() {
         <div className="flex-1" />
 
         <RunningAgentsIndicator />
+        <ClaudeLimitsBadge />
 
         <form onSubmit={handleSearch} className="hidden sm:block">
           <div className="relative">

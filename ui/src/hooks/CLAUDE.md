@@ -93,6 +93,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `chain.updated` | chain_id | Chain state changed |
 | `ticket.updated` | | Ticket state changed |
 | `global.running_agents` | | Running agents changed (global broadcast, no subscription scope) |
+| `global.claude_limits_updated` | | Claude usage limits refreshed (global broadcast, no subscription scope); invalidates `claudeLimitsKeys.global()` |
 | `error.created` | | New error recorded, invalidates error query cache |
 | `schedule.created` | | Scheduled task created, invalidates scheduleKeys.all |
 | `schedule.updated` | | Scheduled task updated, invalidates scheduleKeys.all |
@@ -109,7 +110,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `tool.dispatched` | | Tool dispatch completed, invalidates `['insights']` with 1s leading+trailing throttle |
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`
-**Exception:** `global.running_agents` is a global broadcast with no project_id/ticket_id/seq. Handled as early return before `dispatchV2Event`.
+**Exception:** `global.running_agents` and `global.claude_limits_updated` are global broadcasts with no project_id/ticket_id/seq. Both handled as early returns before `dispatchV2Event`.
 
 ## Other Hooks
 
@@ -127,6 +128,7 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 | `useTakeControlProject()` | Project-scoped variant of useTakeControl |
 | `useExitInteractiveProject()` | Project-scoped variant of useExitInteractive |
 | `useRunningAgents.ts` | TanStack Query hook for global running agents (`GET /api/v1/agents/running`), 30s polling fallback, 5s stale time. WS `global.running_agents` invalidates cache. |
+| `useClaudeLimits.ts` | TanStack Query hook for Claude usage limits (`GET /api/v1/claude-limits`, global). Key factory: `claudeLimitsKeys.global()`. staleTime 60s; no polling (WS `global.claude_limits_updated` invalidates cache). |
 | `useIsMobile.ts` | Media query hook for mobile detection (`max-width: 639px`). Used by PhaseGraph for responsive layout and touch interactions. |
 | `useDeleteProjectWorkflowInstance()` | Mutation: delete a project workflow instance (failed or completed) |
 | `useSessionPrompt.ts` | TanStack Query hook for fetching session prompt context (lazy, staleTime: Infinity) |

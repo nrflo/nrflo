@@ -1,6 +1,6 @@
 # API Client
 
-API client modules for communicating with the nrflo backend. Contains 13 files.
+API client modules for communicating with the nrflo backend. Contains 14 files.
 
 ## Architecture
 
@@ -27,6 +27,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `docs.ts` | Documentation API functions (getAgentManual) |
 | `settings.ts` | Global settings API (GET/PATCH /api/v1/settings, low consumption mode, context save via agent, simplified agents graph toggle, experimental flag, session retention limit, stall start/running timeouts). `GlobalSettings.api_mode_enabled` (bool, read-only — server ignores on PATCH) reflects the `--mode=api` startup flag. `GlobalSettings.experimental` (bool, default false) gates Workflow Chains and Python Scripts sidebar items + routes. |
 | `agents.ts` | Agent API functions (fetchRecentAgents, fetchRunningAgents, fetchSessionMessages, fetchSessionPrompt) |
+| `claudeLimits.ts` | Claude usage limits API: `getClaudeLimits()` (`GET /api/v1/claude-limits`) — returns 5h/7d usage percentages and reset times |
 | `systemAgentDefs.ts` | System agent definition CRUD (global, no X-Project header) |
 | `defaultTemplates.ts` | Default template CRUD (global, no X-Project header) |
 | `cliModels.ts` | CLI model CRUD + health check test (global, no X-Project header) |
@@ -229,6 +230,7 @@ POST   /api/v1/dependencies         # Add dependency
 DELETE /api/v1/dependencies         # Remove dependency
 GET    /api/v1/status               # Dashboard summary
 GET    /api/v1/daily-stats          # Daily stats; ?range=today|week|month|all (default: today)
+GET    /api/v1/claude-limits        # Claude usage limits (5h/7d pct + reset times); global, no X-Project header
 GET    /api/v1/ws                   # WebSocket
 ```
 

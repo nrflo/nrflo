@@ -5,6 +5,7 @@ import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
 import { scheduleKeys } from './useScheduledTasks'
 import { runningAgentsKeys } from './useRunningAgents'
+import { claudeLimitsKeys } from './useClaudeLimits'
 import { errorKeys } from './useErrors'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
 import { isControlEvent, subscriptionKey } from './useWSProtocol'
@@ -58,6 +59,7 @@ export type WSEventType =
   | 'merge.conflict_failed'
   | 'ticket.updated'
   | 'global.running_agents'
+  | 'global.claude_limits_updated'
   | 'error.created'
   | 'schedule.created'
   | 'schedule.updated'
@@ -227,6 +229,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     // Handle global running agents signal (no subscription scope)
     if (event.type === 'global.running_agents') {
       qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
+      return
+    }
+
+    // Handle global claude limits updated signal (no subscription scope)
+    if (event.type === 'global.claude_limits_updated') {
+      qc.invalidateQueries({ queryKey: claudeLimitsKeys.global() })
       return
     }
 

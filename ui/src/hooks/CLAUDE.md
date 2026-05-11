@@ -76,6 +76,9 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 | `findings.updated` | agent_type, key, action | Findings changed |
 | `project_findings.updated` | | Project findings changed |
 | `project.env_vars_updated` | | Project env vars changed; invalidates `projectEnvVarKeys.list(project_id)` |
+| `spec_import.started` | instance_id | Import normalizer started for the given instance |
+| `spec_import.ready` | instance_id | Import preview ready; `ImportSpecPage` calls `getImportPreview(instance_id)` on receipt |
+| `spec_import.failed` | instance_id, error | Import normalization failed; `ImportSpecPage` shows inline error |
 | `messages.updated` | session_id, agent_type, model_id | Messages changed (~2s) |
 | `workflow.updated` | action (init, set) | Workflow state changed |
 | `workflow_def.*` | workflow_id | Workflow def CRUD |

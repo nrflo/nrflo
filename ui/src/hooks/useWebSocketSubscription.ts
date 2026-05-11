@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useWebSocketContext } from '@/providers/WebSocketProvider'
 import { useProjectStore } from '@/stores/projectStore'
+import type { WSEvent } from '@/hooks/useWebSocket'
 
 /**
  * Consumer hook for WebSocket subscriptions.
@@ -22,4 +23,21 @@ export function useWebSocketSubscription(ticketId = '') {
   }, [ticketId, projectsLoaded, currentProject, subscribe, unsubscribe])
 
   return { isConnected }
+}
+
+/**
+ * Register a per-component WS event handler without opening a second socket.
+ * The handler is called for every event dispatched through WebSocketProvider.
+ * Use this from pages/components instead of calling useWebSocket() directly.
+ */
+export function useWebSocketEvent(handler: (event: WSEvent) => void) {
+  const { addEventListener, removeEventListener } = useWebSocketContext()
+  const handlerRef = useRef(handler)
+  handlerRef.current = handler
+
+  useEffect(() => {
+    const fn = (event: WSEvent) => handlerRef.current(event)
+    addEventListener(fn)
+    return () => removeEventListener(fn)
+  }, [addEventListener, removeEventListener])
 }

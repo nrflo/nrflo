@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useMemo, type ReactNode } from 'react'
 import { useWebSocket, type WSEvent } from '@/hooks/useWebSocket'
 import { useProjectStore } from '@/stores/projectStore'
 
@@ -6,6 +6,8 @@ interface WebSocketContextValue {
   isConnected: boolean
   subscribe: (ticketId?: string) => void
   unsubscribe: (ticketId?: string) => void
+  addEventListener: (fn: (event: WSEvent) => void) => void
+  removeEventListener: (fn: (event: WSEvent) => void) => void
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null)
@@ -26,7 +28,14 @@ interface WebSocketProviderProps {
  * Wrap the app in this provider — components use useWebSocketSubscription() to subscribe.
  */
 export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps) {
-  const { isConnected, subscribe, unsubscribe } = useWebSocket({ onEvent })
+  const listenersRef = useRef<Set<(event: WSEvent) => void>>(new Set())
+
+  function handleEvent(event: WSEvent) {
+    onEvent?.(event)
+    listenersRef.current.forEach((fn) => fn(event))
+  }
+
+  const { isConnected, subscribe, unsubscribe } = useWebSocket({ onEvent: handleEvent })
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
   const currentProject = useProjectStore((s) => s.currentProject)
   const subscribedRef = useRef(false)
@@ -43,8 +52,23 @@ export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps)
     }
   }, [projectsLoaded, currentProject, subscribe, unsubscribe])
 
+  const ctxValue = useMemo(
+    () => ({
+      isConnected,
+      subscribe,
+      unsubscribe,
+      addEventListener: (fn: (event: WSEvent) => void) => {
+        listenersRef.current.add(fn)
+      },
+      removeEventListener: (fn: (event: WSEvent) => void) => {
+        listenersRef.current.delete(fn)
+      },
+    }),
+    [isConnected, subscribe, unsubscribe]
+  )
+
   return (
-    <WebSocketContext.Provider value={{ isConnected, subscribe, unsubscribe }}>
+    <WebSocketContext.Provider value={ctxValue}>
       {children}
     </WebSocketContext.Provider>
   )

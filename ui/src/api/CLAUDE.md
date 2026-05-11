@@ -36,7 +36,7 @@ API client modules for communicating with the nrflo backend. Contains 13 files.
 | `users.ts` | User management (admin-only, no X-Project header): `listUsers()→{users:User[]}`, `createUser(req)→User`, `updateUser(id,req)→User`, `resetUserPassword(id,req)→void`, `deleteUser(id)→void`. Errors: 409 `email_exists`, 400 `last_admin`/`cannot_delete_self`. |
 | `auditLog.ts` | Audit log (admin-only, no X-Project header): `listAuditLog({page,per_page,user_id,action})→AuditListResponse`. Returns `{items,total,page,per_page}`. |
 | `projectEnvVars.ts` | Per-project env var CRUD: `listEnvVars(projectId)`, `putEnvVar(projectId,name,value)` (body `{value}`), `deleteEnvVar(projectId,name)`; path segments encoded via `encodeURIComponent`; requires X-Project header |
-| `specImport.ts` | Spec import API client (initial subset): exports `EnvVarCatalogEntry` type `{name,feature,description,required}` and `getEnvVarCatalog()→EnvVarCatalogEntry[]` from `GET /api/v1/import/env-var-catalog` (unwraps `{vars:[...]}` response) |
+| `specImport.ts` | Spec import API client: `NotConfiguredError` class (thrown on 412 with `missing:string[]`); types `StartImportRequest/Response`, `ImportPreviewResponse`, `CommitImportRequest/Response`, `GitHubIssueSummary`, `JiraIssueSummary`; functions `startImport`, `getImportPreview`, `commitImport`, `searchGitHubIssues`, `searchJiraIssues` (last three use `apiFetchWith412` — detects 412 and throws `NotConfiguredError` instead of `ApiError`); also `getEnvVarCatalog()→EnvVarCatalogEntry[]` from `GET /api/v1/import/env-var-catalog` |
 | `notifications.ts` | Per-workflow notification channel CRUD + test + deliveries (nested under `/api/v1/workflows/:wid/…`); requires X-Project header |
 | `review.ts` | Review item API: listReviewItems/getReviewItem/updateReviewDraft/approveReview/rejectReview against `/api/v1/review[/...]` |
 | `configFiles.ts` | Config file API: listConfigFiles/getConfigFile/putConfigFile/getConfigHistory/rollbackConfig against `/api/v1/config-files[/...]`. `putConfigFile` sends raw text body with `Content-Type: text/plain`. Path segments encoded individually via `encodePathSegments`. |
@@ -209,6 +209,14 @@ POST   /api/v1/safety-hook/check    # Dry-run check command against safety hook 
 GET    /api/v1/projects/{id}/env-vars           # List all env vars for project
 PUT    /api/v1/projects/{id}/env-vars/{name}    # Upsert env var; body: {value}
 DELETE /api/v1/projects/{id}/env-vars/{name}    # Delete env var by name
+
+# Spec import (require X-Project header)
+POST   /api/v1/import/spec                      # Start import; body: {source, body}; returns {instance_id}; 412 on missing env vars
+GET    /api/v1/import/spec/{id}                 # Get preview; returns ImportPreviewResponse after spec_import.ready WS event
+POST   /api/v1/import/spec/{id}/commit          # Commit import; body: CommitImportRequest; returns {ticket_id}
+GET    /api/v1/import/github/search?q=          # Search GitHub issues; optional &repo=owner/repo; 412 if GITHUB_TOKEN missing
+GET    /api/v1/import/jira/search?q=            # Search Jira issues; 412 if JIRA_* env vars missing
+GET    /api/v1/import/env-var-catalog           # Static catalog of recognized env vars
 
 # Agent Session Logs (require X-Project header)
 GET    /api/v1/agent-session-logs        # Paginated finished sessions; ?page=&per_page=

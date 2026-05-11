@@ -1,5 +1,5 @@
 import { useSearchParams, Link } from 'react-router-dom'
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { TicketTable } from '@/components/tickets/TicketTable'
@@ -87,12 +87,20 @@ export function TicketListPage() {
             {isSearching ? 'found' : ''}
           </p>
         </div>
-        <Link to="/tickets/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Ticket
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/import">
+            <Button variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+          </Link>
+          <Link to="/tickets/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Ticket
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {!isSearching && (

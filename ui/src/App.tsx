@@ -26,6 +26,7 @@ import { WorkflowChainEditorPage } from '@/pages/WorkflowChainEditorPage'
 import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
 import { APICredentialsPage } from '@/pages/APICredentialsPage'
 import { PythonScriptsPage } from '@/pages/PythonScriptsPage'
+import { ImportSpecPage } from '@/pages/ImportSpecPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { AccountPage } from '@/pages/auth/AccountPage'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
@@ -72,6 +73,7 @@ function AppRoutes() {
               <Route index element={<Dashboard />} />
               <Route path="tickets" element={<TicketListPage />} />
               <Route path="tickets/new" element={<CreateTicketPage />} />
+              <Route path="import" element={<ImportSpecPage />} />
               <Route path="tickets/:id" element={<TicketDetailPage />} />
               <Route path="tickets/:id/edit" element={<EditTicketPage />} />
               <Route path="workflows" element={<WorkflowsPage />} />

@@ -746,13 +746,47 @@ nrflo deps remove TICKET-1 BLOCKER-1
 
 ---
 
-## 14. System Agents
+## 14. Spec Import
+
+The **Import** page (`/import`, reachable via the **Import** button on the Tickets list) lets you create a ticket from an external source without typing everything from scratch. The importer normalizes the source into a ticket title, description, and agent instructions that you can review and edit before committing.
+
+### Supported Sources
+
+| Source | How to use |
+|--------|-----------|
+| **GitHub Issue** | Search issues by keyword (scoped to an optional `owner/repo`) or paste a full issue URL directly into the URL field. |
+| **Jira Issue** | Search issues by keyword, or paste a bare key (`PROJ-123`) or full URL. |
+| **Markdown / Text** | Paste any raw markdown or plain text. |
+
+### Required Environment Variables
+
+Configure these in **Project Settings → Environment Variables** before using the corresponding source:
+
+| Source | Required variables |
+|--------|-------------------|
+| GitHub Issue | `GITHUB_TOKEN` — optional but avoids rate-limiting; omit for public repos |
+| Jira | `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — all required |
+| Markdown | None |
+
+If a required variable is missing the import page shows an inline **"Missing environment variables"** notice with a direct link to the project's env-var settings.
+
+### Workflow
+
+1. **Source** — Pick GitHub Issue, Jira Issue, or Markdown.
+2. **Input** — Provide the content (search/select or paste), then click **Normalize**.
+3. **Preview** — Once normalization finishes (async, WebSocket-driven), review and edit the generated title, description, and agent instructions, choose a workflow, then click **Create Ticket**.
+
+The system creates the ticket and immediately navigates to its detail page.
+
+---
+
+## 15. System Agents
 
 System agents are global agent definitions not tied to any specific project or workflow. They are managed on the **Settings** page. System agents are used for system-level tasks like automatic merge conflict resolution.
 
 ---
 
-## 15. How to Update This Document
+## 16. How to Update This Document
 
 - This file is `agent_manual.md` in the project root
 - Served by `GET /api/v1/docs/agent-manual`

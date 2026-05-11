@@ -51,6 +51,8 @@ func (h *Handler) Handle(req Request) Response {
 		return h.handleWS(ctx, req, action)
 	case "script":
 		return h.handleScript(ctx, req, action)
+	case "global":
+		return h.handleGlobal(ctx, req, action)
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", req.Method)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError(req.Method))
@@ -450,5 +452,60 @@ func (h *Handler) handleWS(ctx context.Context, req Request, action string) Resp
 
 	default:
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("ws."+action))
+	}
+}
+
+func (h *Handler) handleGlobal(ctx context.Context, req Request, action string) Response {
+	switch action {
+	case "claude_limits_update":
+		var params struct {
+			FiveHourPct      *float64 `json:"five_hour_pct"`
+			FiveHourResetsAt string   `json:"five_hour_resets_at"`
+			SevenDayPct      *float64 `json:"seven_day_pct"`
+			SevenDayResetsAt string   `json:"seven_day_resets_at"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.FiveHourPct == nil && params.SevenDayPct == nil {
+			return MakeErrorResponse(req.ID, NewValidationError("at least one of five_hour_pct or seven_day_pct is required"))
+		}
+		fiveHourPct := -1.0
+		if params.FiveHourPct != nil {
+			fiveHourPct = *params.FiveHourPct
+		}
+		sevenDayPct := -1.0
+		if params.SevenDayPct != nil {
+			sevenDayPct = *params.SevenDayPct
+		}
+		limits := service.ClaudeLimits{
+			FiveHourUsedPct:  fiveHourPct,
+			FiveHourResetsAt: params.FiveHourResetsAt,
+			SevenDayUsedPct:  sevenDayPct,
+			SevenDayResetsAt: params.SevenDayResetsAt,
+		}
+		if err := h.claudeLimitsSvc.Update(limits); err != nil {
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		if h.wsHub != nil {
+			payload := map[string]interface{}{
+				"five_hour_resets_at":  params.FiveHourResetsAt,
+				"seven_day_resets_at":  params.SevenDayResetsAt,
+			}
+			if params.FiveHourPct != nil {
+				payload["five_hour_pct"] = fiveHourPct
+			}
+			if params.SevenDayPct != nil {
+				payload["seven_day_pct"] = sevenDayPct
+			}
+			event := ws.NewEvent(ws.EventGlobalClaudeLimitsUpdated, "", "", "", payload)
+			h.wsHub.BroadcastGlobal(event)
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "updated"})
+
+	default:
+		logger.Warn(ctx, "unknown socket method", "method", "global."+action)
+		return MakeErrorResponse(req.ID, NewMethodNotFoundError("global."+action))
 	}
 }

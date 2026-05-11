@@ -90,6 +90,7 @@ All reads on those resources are `protected` (requireAuth only). All other route
 | `handlers_git.go` | Git commit history list/detail |
 | `handlers_daily_stats.go` | Daily stats endpoint |
 | `handlers_global_settings.go` | Global settings GET/PATCH (no project scope) |
+| `handlers_claude_limits.go` | Claude rate limits GET (no project scope) |
 | `handlers_tool_definitions.go` | Tool definitions CRUD (global, no project scope; ?project_id and ?workflow_id list filters) |
 | `handlers_api_credentials.go` | API credentials CRUD (global, no project scope; literal:* secret_ref redacted as literal:*** in responses) |
 | `handlers_safety_hook_check.go` | Safety hook dry-run check (POST /api/v1/safety-hook/check, global) |
@@ -239,6 +240,9 @@ POST   /api/v1/cli-models/:id/test  # Health check: spawn minimal agent, return 
 # Global settings (no project scope)
 GET    /api/v1/settings           # Returns {"low_consumption_mode": bool, "context_save_via_agent": bool, "simplified_agents_graph": bool, "experimental": bool, "session_retention_limit": int, "stall_start_timeout_sec": int|null, "stall_running_timeout_sec": int|null, "api_mode_enabled": bool (read-only, reflects --mode=api flag)}
 PATCH  /api/v1/settings           # Accepts {"low_consumption_mode": bool, "context_save_via_agent": bool, "simplified_agents_graph": bool, "experimental": bool, "session_retention_limit": int (>= 10), "stall_start_timeout_sec": int|null (>= 0), "stall_running_timeout_sec": int|null (>= 0)}; api_mode_enabled is silently ignored on PATCH
+
+# Claude rate limits (no project scope)
+GET    /api/v1/claude-limits      # Returns {five_hour_used_pct: float|null, five_hour_resets_at: string|null, seven_day_used_pct: float|null, seven_day_resets_at: string|null, updated_at: string|null}; null when no data has been received yet
 
 # Safety hook check (global, no project scope)
 POST   /api/v1/safety-hook/check  # Dry-run command against safety hook config. Body: {config: SafetyHookConfig, command: string}. Returns {allowed: bool, reason: string}

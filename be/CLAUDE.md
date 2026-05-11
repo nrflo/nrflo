@@ -133,6 +133,7 @@ be/
 │   │   ├── default_template.go  # Default template CRUD (global, readonly enforcement)
 │   │   ├── cli_model.go         # CLI model CRUD (global, readonly delete enforcement)
 │   │   ├── global_settings.go   # Global and project-scoped settings (wraps pool.GetConfig/SetConfig/GetProjectConfig/SetProjectConfig)
+│   │   ├── claude_limits.go     # ClaudeLimitsService: typed facade over global config table for Claude API rate limit state (5h + weekly pct + resets_at + updated_at)
 │   │   ├── error_service.go     # Error tracking (RecordError + ListErrors)
 │   │   ├── notification.go      # Notification channel CRUD + masking + TestSend
 │   │   ├── findings.go          # Findings operations

@@ -1,3 +1,6 @@
+// Package cli implements the agent statusLine command.
+// Note: api-mode (apirun) Claude sessions never invoke statusLine — this path
+// is only exercised by CLI-mode (claude --settings statusLine) agents.
 package cli
 
 import (
@@ -21,6 +24,16 @@ type statusLinePayload struct {
 	Workspace struct {
 		CurrentDir string `json:"current_dir"`
 	} `json:"workspace"`
+	RateLimits struct {
+		FiveHour struct {
+			UsedPercentage *float64 `json:"used_percentage"`
+			ResetsAt       string   `json:"resets_at"`
+		} `json:"five_hour"`
+		SevenDay struct {
+			UsedPercentage *float64 `json:"used_percentage"`
+			ResetsAt       string   `json:"resets_at"`
+		} `json:"seven_day"`
+	} `json:"rate_limits"`
 }
 
 var agentStatuslineCmd = &cobra.Command{
@@ -73,38 +86,55 @@ var agentStatuslineCmd = &cobra.Command{
 			}
 		}
 
-		// Skip socket dispatch if we don't have the required context.
-		if payload.ContextWindow.UsedPercentage == nil || GetSessionID() == "" {
-			return nil
+		// context_update dispatch: requires session_id, used_percentage, and server running.
+		if payload.ContextWindow.UsedPercentage != nil && GetSessionID() != "" && GetClient().IsServerRunning() {
+			pct := *payload.ContextWindow.UsedPercentage
+			contextLeft := int(100 - pct)
+			if contextLeft < 0 {
+				contextLeft = 0
+			}
+			if contextLeft > 100 {
+				contextLeft = 100
+			}
+			sid := GetSessionID()
+			reqParams := map[string]interface{}{
+				"session_id":   sid,
+				"context_left": contextLeft,
+			}
+			type result struct{ err error }
+			ch := make(chan result, 1)
+			go func() {
+				ch <- result{err: GetClient().ExecuteAndUnmarshal("agent.context_update", reqParams, nil)}
+			}()
+			select {
+			case <-ch:
+			case <-time.After(1 * time.Second):
+			}
 		}
 
-		if !GetClient().IsServerRunning() {
-			return nil
-		}
-
-		pct := *payload.ContextWindow.UsedPercentage
-		contextLeft := int(100 - pct)
-		if contextLeft < 0 {
-			contextLeft = 0
-		}
-		if contextLeft > 100 {
-			contextLeft = 100
-		}
-
-		sid := GetSessionID()
-		reqParams := map[string]interface{}{
-			"session_id":   sid,
-			"context_left": contextLeft,
-		}
-
-		type result struct{ err error }
-		ch := make(chan result, 1)
-		go func() {
-			ch <- result{err: GetClient().ExecuteAndUnmarshal("agent.context_update", reqParams, nil)}
-		}()
-		select {
-		case <-ch:
-		case <-time.After(1 * time.Second):
+		// Rate limits dispatch: does not require session_id; fires when at least one pct is present.
+		rl := payload.RateLimits
+		hasLimits := rl.FiveHour.UsedPercentage != nil || rl.SevenDay.UsedPercentage != nil
+		if hasLimits && GetClient().IsServerRunning() {
+			limitsParams := map[string]interface{}{
+				"five_hour_resets_at": rl.FiveHour.ResetsAt,
+				"seven_day_resets_at": rl.SevenDay.ResetsAt,
+			}
+			if rl.FiveHour.UsedPercentage != nil {
+				limitsParams["five_hour_pct"] = *rl.FiveHour.UsedPercentage
+			}
+			if rl.SevenDay.UsedPercentage != nil {
+				limitsParams["seven_day_pct"] = *rl.SevenDay.UsedPercentage
+			}
+			type result struct{ err error }
+			ch := make(chan result, 1)
+			go func() {
+				ch <- result{err: GetClient().ExecuteAndUnmarshal("global.claude_limits_update", limitsParams, nil)}
+			}()
+			select {
+			case <-ch:
+			case <-time.After(1 * time.Second):
+			}
 		}
 
 		return nil

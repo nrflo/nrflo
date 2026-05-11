@@ -56,6 +56,7 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `agent.log` | Insert an agent_messages row from a script agent; no project required. Params: `{session_id, type?, message, payload?}`. `type` defaults to `text`; accepted values: `text`, `tool`, `subagent`, `skill`, `user_input`, `error`, `result`. `payload` is an optional JSON value stored in the `payload` column. Broadcasts `messages.updated` when session resolves to a project. Returns `{status:"logged"}`. |
 | `workflow.skip` | Add a skip tag to a workflow instance; validates tag against workflow groups; broadcasts `skip_tag.added` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
+| `global.claude_limits_update` | Update Claude API rate limit state; no project or session required; params: `{five_hour_pct? float64, five_hour_resets_at string, seven_day_pct? float64, seven_day_resets_at string}`; at least one pct must be present; persists via ClaudeLimitsService; broadcasts `global.claude_limits_updated` |
 | `script.context` | Return the auto-injectable variable dict for a script-mode agent session; no project required; params: `{session_id}`; resolves session → workflow_instance → ticket (when ticket-scoped); returns 12-key dict: `session_id`, `instance_id`, `project_id`, `agent_type`, `workflow_id`, `scope_type`, `ticket_id`, `ticket_title`, `ticket_description`, `user_instructions` (string, "" if unset), `callback` (null or `{instructions,from_agent,level}`), `previous_data` (string, "" if no `to_resume` finding). |
 
 ## Common Tasks

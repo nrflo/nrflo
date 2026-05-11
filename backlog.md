@@ -229,11 +229,3 @@ Other adapters land behind the same interface as users ask.
 - Do we want a "watch this issue and re-import on update" mode? No — out of scope. One-shot only.
 - Is the normalizing agent a built-in system agent or a user-editable agent definition? Built-in system agent — users shouldn't have to author this to get import working, but they can override via the agent_definitions table by registering one with the canonical id.
 
----
-
-## Notes on rejected adjacent ideas
-
-- **Plan-as-source-of-truth (markdown checkboxes as state).** nrflo's DB-backed state is strictly more powerful for multi-user, multi-instance, and realtime. Not borrowing.
-- **"No tree changes across review→fix rounds = stop" termination.** nrflo workflows can legitimately complete with no tree changes (ticket creation, external API calls, Python scripts that don't touch files). The signal would produce false positives. Review-as-callbacks (including parallel) is already configurable in the layer model. Not borrowing.
-- **SIGQUIT mid-run steering by editing a plan file.** nrflo's user_interactive + take-control PTY relay covers the same use case with a richer UX (browser-attached terminal vs. local terminal only). Not borrowing.
-- **Provider translation shims (shell scripts that wrap non-Claude CLIs into Claude's event stream).** nrflo's per-adapter `CLIAdapter` interface is cleaner — adapters are first-class code, not shell shims. Not borrowing.

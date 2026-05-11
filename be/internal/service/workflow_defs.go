@@ -11,6 +11,15 @@ import (
 	"be/internal/types"
 )
 
+// reservedWorkflowName is the internal workflow used by the spec-import UI flow.
+const reservedWorkflowName = "__spec_import__"
+
+// IsReservedWorkflowName returns true for internal system workflow names like __spec_import__.
+// Reserved workflows are excluded from the workflow definition listing.
+func IsReservedWorkflowName(name string) bool {
+	return strings.HasPrefix(name, "__") && strings.HasSuffix(name, "__")
+}
+
 // --- Workflow Definition CRUD ---
 
 // CreateWorkflowDef creates a new workflow definition in the database
@@ -133,6 +142,9 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		var m wfMeta
 		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.nextWorkflowOnSuccess); err != nil {
 			return nil, err
+		}
+		if IsReservedWorkflowName(m.id) {
+			continue
 		}
 		metas = append(metas, m)
 	}

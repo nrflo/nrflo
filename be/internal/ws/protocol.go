@@ -16,6 +16,11 @@ const (
 	// Global event types (sent to all clients regardless of subscription)
 	EventGlobalRunningAgents    = "global.running_agents"
 	EventProjectEnvVarsUpdated  = "project.env_vars_updated"
+
+	// Spec import event types
+	EventSpecImportStarted = "spec_import.started"
+	EventSpecImportReady   = "spec_import.ready"
+	EventSpecImportFailed  = "spec_import.failed"
 )
 
 // Entity types used in snapshot chunks

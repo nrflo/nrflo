@@ -44,7 +44,8 @@ type Server struct {
 	ptyManager             *ptyPkg.Manager
 	clock                  clock.Clock
 	apiMode                bool
-	cliAdapterFunc         func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
+	cliAdapterFunc             func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
+	specImportAdapterFunc      func(src string) (interface{}, error)             // injectable for tests; nil = use spec_import.ResolveAdapter
 	scheduler              *scheduler.Scheduler
 	notifyWaker            service.NotificationWaker
 	notifyWorker           *notify.Worker
@@ -685,6 +686,14 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		protected("GET /api/v1/insights/edit-rate", s.handleInsightsEditRate)
 		protected("GET /api/v1/insights/throughput", s.handleInsightsThroughput)
 	}
+
+	// Spec import (project-scoped via X-Project header)
+	protected("POST /api/v1/import/spec", s.handleStartSpecImport)
+	protected("GET /api/v1/import/spec/{instance_id}", s.handleGetSpecImport)
+	protected("POST /api/v1/import/spec/{instance_id}/commit", s.handleCommitSpecImport)
+	protected("GET /api/v1/import/github/search", s.handleGitHubSearch)
+	protected("GET /api/v1/import/jira/search", s.handleJiraSearch)
+	protected("GET /api/v1/import/env-var-catalog", s.handleEnvVarCatalog)
 
 	// Errors
 	protected("GET /api/v1/errors", s.handleListErrors)

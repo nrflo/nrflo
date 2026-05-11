@@ -41,7 +41,7 @@ be/
 │   │   └── proc_status.go       # PidAlive (syscall.Kill(pid,0)) + PidMetrics (ps -o rss=,%cpu=,etime=)
 │   ├── scheduler/               # Cron-driven scheduled task runner (robfig/cron/v3)
 │   │   ├── scheduler.go         # New/Start/Reload/Stop/RunNow lifecycle
-│   │   ├── scheduler_dispatch.go # dispatch(): fan-out per workflow, update run row, broadcast
+│   │   ├── scheduler_dispatch.go # dispatch(): skip-if-fresh guard for claude-limits-refresh, fan-out per workflow, update run row, broadcast
 │   │   └── CLAUDE.md            # Package documentation
 │   ├── orchestrator/            # Server-side workflow orchestration
 │   │   ├── orchestrator.go      # Run workflows from UI (layer-grouped concurrent phases)

@@ -579,7 +579,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000099** (spec_normalizer_seed — INSERT spec-normalizer system agent + __spec_import__ workflow + agent_definitions per project)
+Current highest migration: **000100** (claude_limits_refresh_seed — INSERT claude-limits-refresher system agent + claude-limits-refresh workflow + agent_definitions per project)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

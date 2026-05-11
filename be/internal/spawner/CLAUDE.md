@@ -892,7 +892,15 @@ Template warnings (`template.go`) use `context.Background()` without trx since t
 │    │      content_block_start/delta/stop are emitted but ignored —   │
 │    │      the final assistant event is the single source of truth)  │
 │    ├── assistant/result usage: context % tracking via tokens         │
-│    └── rate_limit_event: [rate_limit] type status (non-allowed only)│
+│    ├── rate_limit_event: [rate_limit] type status (non-allowed only) │
+│    │     rate limit headers (5h / weekly pcts + resets_at) are      │
+│    │     forwarded to `ClaudeLimitsService.Update` via the output    │
+│    │     monitor; `claude_limits_updated_at` is refreshed on every  │
+│    │     rate_limit_event. The `claude-limits-refresh` project       │
+│    │     workflow runs `claude-limits-refresher` (haiku, timeout=1) │
+│    │     to force a fresh capture; the scheduler skip-if-fresh guard│
+│    │     short-circuits dispatch when updated_at is ≤20 min old.    │
+│    └── (see be/internal/scheduler/CLAUDE.md for skip-if-fresh spec) │
 │                                                                      │
 │  Message categories:                                                 │
 │    ├── text: plain text messages                                    │

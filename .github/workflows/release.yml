@@ -39,3 +39,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+  brew-smoke:
+    needs: release
+    uses: ./.github/workflows/brew-smoke.yml

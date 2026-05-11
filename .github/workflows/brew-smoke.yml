@@ -2,16 +2,11 @@ name: brew-smoke
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
+  workflow_call:
 
 jobs:
   install:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, macos-13]
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     steps:
       - name: Show brew and runner info
         run: |

@@ -55,7 +55,7 @@ func TestDispatcher_OnEvent_IgnoresNonWatchedEventType(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch1", true, []string{"orchestration.completed"})
 
@@ -76,7 +76,7 @@ func TestDispatcher_OnEvent_AgentCompleted_PassDoesNotNotify(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch2", true, []string{ws.EventAgentCompleted})
 
@@ -99,7 +99,7 @@ func TestDispatcher_OnEvent_WatchedEvent_InsertsDelivery(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "slack-ch", true, []string{ws.EventOrchestrationCompleted})
 
@@ -132,7 +132,7 @@ func TestDispatcher_OnEvent_WakeCh_NonBlockingWhenFull(t *testing.T) {
 	wakeCh <- struct{}{}
 
 	insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch3", true, []string{ws.EventOrchestrationCompleted})
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
 }
@@ -143,7 +143,7 @@ func TestDispatcher_OnEvent_EmptyProjectID_Ignored(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, "", "", "", nil))
 }
@@ -154,7 +154,7 @@ func TestDispatcher_OnEvent_EmptyWorkflowID_Ignored(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch-wfempty", true, []string{ws.EventOrchestrationCompleted})
 
@@ -172,7 +172,7 @@ func TestDispatcher_OnEvent_DisabledChannel_SkipsDelivery(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "disabled", false, []string{ws.EventOrchestrationCompleted})
 
@@ -190,7 +190,7 @@ func TestDispatcher_WatchedEvents_AllFiveTypes(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 10)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	eventTypes := []string{
 		ws.EventOrchestrationCompleted,
@@ -224,7 +224,7 @@ func TestDispatcher_OnEvent_WorkflowFinalResultPreservedInPayload(t *testing.T) 
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "result-ch", true, []string{ws.EventOrchestrationCompleted})
 
@@ -278,7 +278,7 @@ func TestDispatcher_OnEvent_WorkflowIsolation(t *testing.T) {
 	channelRepo := repo.NewNotificationChannelRepo(database, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
 	wakeCh := make(chan struct{}, 10)
-	d := NewDispatcher(channelRepo, deliveryRepo, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
 
 	chA := insertNotifyChannel(t, channelRepo, "proj-iso", "wf-iso-a", "ch-a", true, []string{ws.EventOrchestrationCompleted})
 	chB := insertNotifyChannel(t, channelRepo, "proj-iso", "wf-iso-b", "ch-b", true, []string{ws.EventOrchestrationCompleted})

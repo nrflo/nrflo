@@ -10,6 +10,7 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
+	"be/internal/notify"
 	"be/internal/repo"
 	"be/internal/types"
 	"be/internal/ws"
@@ -108,14 +109,20 @@ func (s *NotificationService) Create(projectID, workflowID string, req *types.No
 		eventTypes = []string{}
 	}
 
+	msgTemplate := notify.DefaultTemplate(model.ChannelKind(req.Kind))
+	if req.MessageTemplate != nil {
+		msgTemplate = *req.MessageTemplate
+	}
+
 	ch := &model.NotificationChannel{
-		ProjectID:  projectID,
-		WorkflowID: workflowID,
-		Name:       req.Name,
-		Kind:       model.ChannelKind(req.Kind),
-		Enabled:    enabled,
-		Config:     configJSON,
-		EventTypes: eventTypes,
+		ProjectID:       projectID,
+		WorkflowID:      workflowID,
+		Name:            req.Name,
+		Kind:            model.ChannelKind(req.Kind),
+		Enabled:         enabled,
+		Config:          configJSON,
+		MessageTemplate: msgTemplate,
+		EventTypes:      eventTypes,
 	}
 
 	r := repo.NewNotificationChannelRepo(s.pool, s.clk)
@@ -153,6 +160,13 @@ func (s *NotificationService) Update(id string, req *types.NotificationChannelUp
 			return nil, fmt.Errorf("invalid config: %w", err)
 		}
 		ch.Config = applyConfigPatch(string(ch.Kind), ch.Config, string(incoming))
+	}
+	if req.MessageTemplate != nil {
+		if *req.MessageTemplate == "" {
+			ch.MessageTemplate = notify.DefaultTemplate(ch.Kind)
+		} else {
+			ch.MessageTemplate = *req.MessageTemplate
+		}
 	}
 	if req.EventTypes != nil {
 		ch.EventTypes = *req.EventTypes

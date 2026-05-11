@@ -105,12 +105,13 @@ be/
 │   │   ├── handler_script_context.go # script.context — resolves session→wfi→ticket, returns 12-key dict
 │   │   └── protocol.go          # JSON-RPC protocol types
 │   ├── notify/                  # Notification dispatch subsystem
-│   │   ├── notify.go            # Dispatcher (ws.Listener): filters 5 events, inserts delivery rows
+│   │   ├── notify.go            # Dispatcher (ws.Listener): filters 5 events, enriches payload (project_name/ticket_name via ProjectLookup/TicketLookup), inserts delivery rows
 │   │   ├── transport.go         # Transport interface, registry, shared http.Client
 │   │   ├── transport_slack.go   # Slack webhook transport (init registers)
 │   │   ├── transport_telegram.go # Telegram Bot API transport (init registers)
 │   │   ├── queue.go             # Worker: drain queue, exponential backoff, WS events
-│   │   └── payload.go           # renderSlack/renderTelegram per event type
+│   │   ├── render.go            # Render(kind, template, data): ${var} substitution, Telegram escaping, link helpers
+│   │   └── defaults.go          # DefaultTemplate(kind) + AvailableVariables()
 │   ├── service/                 # Business logic layer
 │   │   ├── project_env_var.go   # ProjectEnvVarService: List/Upsert/Delete (validates name regex, reserved names, 4096-byte value cap)
 │   │   ├── layer_policy.go      # ParseLayerPolicy, LayerPolicy.Required/String, ValidateLayerPolicy

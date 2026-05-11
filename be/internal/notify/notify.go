@@ -5,8 +5,10 @@
 package notify
 
 import (
+	"context"
 	"encoding/json"
 
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/ws"
@@ -21,23 +23,51 @@ var watchedEvents = map[string]bool{
 	ws.EventAgentStallRestart:      true,
 }
 
-// Dispatcher implements ws.Listener and enqueues notification deliveries.
-type Dispatcher struct {
-	channelRepo  *repo.NotificationChannelRepo
-	deliveryRepo *repo.NotificationDeliveryRepo
-	wakeCh       chan struct{}
+// ProjectLookup resolves a project ID to its display name.
+type ProjectLookup interface {
+	Get(projectID string) (name string, ok bool, err error)
 }
 
-// NewDispatcher creates a Dispatcher.
+// TicketLookup resolves a ticket to its display title.
+type TicketLookup interface {
+	Get(projectID, ticketID string) (title string, ok bool, err error)
+}
+
+// ProjectLookupFunc is a function adapter implementing ProjectLookup.
+type ProjectLookupFunc func(projectID string) (string, bool, error)
+
+func (f ProjectLookupFunc) Get(projectID string) (string, bool, error) { return f(projectID) }
+
+// TicketLookupFunc is a function adapter implementing TicketLookup.
+type TicketLookupFunc func(projectID, ticketID string) (string, bool, error)
+
+func (f TicketLookupFunc) Get(projectID, ticketID string) (string, bool, error) {
+	return f(projectID, ticketID)
+}
+
+// Dispatcher implements ws.Listener and enqueues notification deliveries.
+type Dispatcher struct {
+	channelRepo   *repo.NotificationChannelRepo
+	deliveryRepo  *repo.NotificationDeliveryRepo
+	projectLookup ProjectLookup
+	ticketLookup  TicketLookup
+	wakeCh        chan struct{}
+}
+
+// NewDispatcher creates a Dispatcher. projectLookup and ticketLookup may be nil.
 func NewDispatcher(
 	channelRepo *repo.NotificationChannelRepo,
 	deliveryRepo *repo.NotificationDeliveryRepo,
+	projectLookup ProjectLookup,
+	ticketLookup TicketLookup,
 	wakeCh chan struct{},
 ) *Dispatcher {
 	return &Dispatcher{
-		channelRepo:  channelRepo,
-		deliveryRepo: deliveryRepo,
-		wakeCh:       wakeCh,
+		channelRepo:   channelRepo,
+		deliveryRepo:  deliveryRepo,
+		projectLookup: projectLookup,
+		ticketLookup:  ticketLookup,
+		wakeCh:        wakeCh,
 	}
 }
 
@@ -69,10 +99,11 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 		return
 	}
 
-	enriched := make(map[string]interface{}, len(event.Data)+3)
+	enriched := make(map[string]interface{}, len(event.Data)+6)
 	for k, v := range event.Data {
 		enriched[k] = v
 	}
+	enriched["event_type"] = event.Type
 	if event.TicketID != "" {
 		enriched["ticket_id"] = event.TicketID
 	}
@@ -82,6 +113,23 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 	if event.Workflow != "" {
 		enriched["workflow"] = event.Workflow
 	}
+
+	// Enrich with resolved names (best-effort; lookup errors are logged, not fatal).
+	if d.projectLookup != nil {
+		if name, ok, err := d.projectLookup.Get(event.ProjectID); err != nil {
+			logger.Warn(context.Background(), "notify: project lookup failed", "project_id", event.ProjectID, "error", err)
+		} else if ok {
+			enriched["project_name"] = name
+		}
+	}
+	if event.TicketID != "" && d.ticketLookup != nil {
+		if title, ok, err := d.ticketLookup.Get(event.ProjectID, event.TicketID); err != nil {
+			logger.Warn(context.Background(), "notify: ticket lookup failed", "project_id", event.ProjectID, "ticket_id", event.TicketID, "error", err)
+		} else if ok {
+			enriched["ticket_name"] = title
+		}
+	}
+
 	payloadBytes, _ := json.Marshal(enriched)
 	payloadStr := string(payloadBytes)
 

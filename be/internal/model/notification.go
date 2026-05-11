@@ -30,8 +30,9 @@ type NotificationChannel struct {
 	Name       string      `json:"name"`
 	Kind       ChannelKind `json:"kind"`
 	Enabled    bool        `json:"enabled"`
-	Config     string      `json:"config"`
-	EventTypes []string    `json:"event_types"`
+	Config          string      `json:"config"`
+	MessageTemplate string      `json:"message_template"`
+	EventTypes      []string    `json:"event_types"`
 	CreatedAt  time.Time   `json:"created_at"`
 	UpdatedAt  time.Time   `json:"updated_at"`
 }

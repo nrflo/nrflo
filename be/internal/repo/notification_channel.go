@@ -25,24 +25,25 @@ func NewNotificationChannelRepo(database db.Querier, clk clock.Clock) *Notificat
 	return &NotificationChannelRepo{db: database, clock: clk}
 }
 
-const notificationChannelCols = `id, project_id, workflow_id, name, kind, enabled, config, event_types, created_at, updated_at`
+const notificationChannelCols = `id, project_id, workflow_id, name, kind, enabled, config, message_template, event_types, created_at, updated_at`
 
 func (r *NotificationChannelRepo) scanRow(row interface{ Scan(...interface{}) error }) (*model.NotificationChannel, error) {
-	var id, projectID, workflowID, name, kind, config, eventTypesJSON, createdAt, updatedAt string
+	var id, projectID, workflowID, name, kind, config, messageTemplate, eventTypesJSON, createdAt, updatedAt string
 	var enabled int
 
-	if err := row.Scan(&id, &projectID, &workflowID, &name, &kind, &enabled, &config, &eventTypesJSON, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&id, &projectID, &workflowID, &name, &kind, &enabled, &config, &messageTemplate, &eventTypesJSON, &createdAt, &updatedAt); err != nil {
 		return nil, err
 	}
 
 	ch := &model.NotificationChannel{
-		ID:         id,
-		ProjectID:  projectID,
-		WorkflowID: workflowID,
-		Name:       name,
-		Kind:       model.ChannelKind(kind),
-		Enabled:    enabled != 0,
-		Config:     config,
+		ID:              id,
+		ProjectID:       projectID,
+		WorkflowID:      workflowID,
+		Name:            name,
+		Kind:            model.ChannelKind(kind),
+		Enabled:         enabled != 0,
+		Config:          config,
+		MessageTemplate: messageTemplate,
 	}
 
 	if err := json.Unmarshal([]byte(eventTypesJSON), &ch.EventTypes); err != nil {
@@ -68,7 +69,7 @@ func (r *NotificationChannelRepo) Insert(ch *model.NotificationChannel) error {
 	}
 
 	_, err = r.db.Exec(
-		`INSERT INTO notification_channels (`+notificationChannelCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO notification_channels (`+notificationChannelCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(ch.ID),
 		strings.ToLower(ch.ProjectID),
 		strings.ToLower(ch.WorkflowID),
@@ -76,6 +77,7 @@ func (r *NotificationChannelRepo) Insert(ch *model.NotificationChannel) error {
 		string(ch.Kind),
 		boolToInt(ch.Enabled),
 		ch.Config,
+		ch.MessageTemplate,
 		string(etJSON),
 		now,
 		now,
@@ -104,11 +106,12 @@ func (r *NotificationChannelRepo) Update(ch *model.NotificationChannel) error {
 	}
 
 	result, err := r.db.Exec(
-		`UPDATE notification_channels SET name=?, kind=?, enabled=?, config=?, event_types=?, updated_at=? WHERE LOWER(id) = LOWER(?)`,
+		`UPDATE notification_channels SET name=?, kind=?, enabled=?, config=?, message_template=?, event_types=?, updated_at=? WHERE LOWER(id) = LOWER(?)`,
 		ch.Name,
 		string(ch.Kind),
 		boolToInt(ch.Enabled),
 		ch.Config,
+		ch.MessageTemplate,
 		string(etJSON),
 		now,
 		ch.ID,

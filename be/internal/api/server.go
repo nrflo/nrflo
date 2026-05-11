@@ -86,7 +86,27 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	notifyWakeCh := make(chan struct{}, 8)
 	channelRepo := repo.NewNotificationChannelRepo(pool, clk)
 	deliveryRepo := repo.NewNotificationDeliveryRepo(pool, clk)
-	dispatcher := notify.NewDispatcher(channelRepo, deliveryRepo, notifyWakeCh)
+	projectRepoForNotify := repo.NewProjectRepo(pool, clk)
+	ticketRepoForNotify := repo.NewTicketRepo(pool, clk)
+	dispatcher := notify.NewDispatcher(
+		channelRepo,
+		deliveryRepo,
+		notify.ProjectLookupFunc(func(id string) (string, bool, error) {
+			p, err := projectRepoForNotify.Get(id)
+			if err != nil {
+				return "", false, err
+			}
+			return p.Name, true, nil
+		}),
+		notify.TicketLookupFunc(func(pid, tid string) (string, bool, error) {
+			t, err := ticketRepoForNotify.Get(pid, tid)
+			if err != nil {
+				return "", false, err
+			}
+			return t.Title, true, nil
+		}),
+		notifyWakeCh,
+	)
 	hub.RegisterListener(dispatcher)
 	waker := service.NewChanWaker(notifyWakeCh)
 	notifyWorker := notify.NewWorker(deliveryRepo, channelRepo, hub, errorSvc, clk, notifyWakeCh)

@@ -356,16 +356,17 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 │    INDEX idx_schedule_runs_project (project_id)                      │
 │                                                                      │
 │  NOTIFICATION_CHANNELS                                               │
-│    id          TEXT PRIMARY KEY                                      │
-│    project_id  TEXT NOT NULL                                         │
-│    workflow_id TEXT NOT NULL                                         │
-│    name        TEXT NOT NULL                                         │
-│    kind        TEXT NOT NULL CHECK (kind IN ('slack','telegram'))    │
-│    enabled     INTEGER NOT NULL DEFAULT 1                            │
-│    config      TEXT NOT NULL DEFAULT '{}' (JSON: secrets masked)    │
-│    event_types TEXT NOT NULL DEFAULT '[]' (JSON: watched event list) │
-│    created_at  TEXT NOT NULL                                         │
-│    updated_at  TEXT NOT NULL                                         │
+│    id               TEXT PRIMARY KEY                                 │
+│    project_id       TEXT NOT NULL                                    │
+│    workflow_id      TEXT NOT NULL                                    │
+│    name             TEXT NOT NULL                                    │
+│    kind             TEXT NOT NULL CHECK (kind IN ('slack','telegram'))│
+│    enabled          INTEGER NOT NULL DEFAULT 1                       │
+│    config           TEXT NOT NULL DEFAULT '{}' (JSON: secrets masked)│
+│    message_template TEXT NOT NULL DEFAULT '' (mig 000097)           │
+│    event_types      TEXT NOT NULL DEFAULT '[]' (JSON: event list)   │
+│    created_at       TEXT NOT NULL                                    │
+│    updated_at       TEXT NOT NULL                                    │
 │    FK (project_id, workflow_id) → workflows(project_id, id) CASCADE  │
 │    INDEX idx_notification_channels_workflow (project_id, workflow_id)│
 │                                                                      │
@@ -560,7 +561,7 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 
 ## Adding a Database Migration
 
-Current highest migration: **000096** (workflows.next_workflow_on_success — `ALTER TABLE workflows ADD COLUMN next_workflow_on_success TEXT NOT NULL DEFAULT ''`)
+Current highest migration: **000097** (notification_channels.message_template — `ALTER TABLE notification_channels ADD COLUMN message_template TEXT NOT NULL DEFAULT ''` + per-kind UPDATE backfill)
 
 1. Create `migrations/NNNNNN_description.up.sql` (next sequence number)
 2. The up file contains the schema change (e.g. `ALTER TABLE ... ADD COLUMN`)

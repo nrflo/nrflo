@@ -99,16 +99,7 @@ func (w *Worker) dispatch(d *model.NotificationDelivery) {
 	var eventData map[string]interface{}
 	_ = json.Unmarshal([]byte(d.Payload), &eventData)
 
-	var body string
-	switch ch.Kind {
-	case model.ChannelKindSlack:
-		body = renderSlack(d.EventType, eventData)
-	case model.ChannelKindTelegram:
-		body = renderTelegram(d.EventType, eventData)
-	default:
-		_ = w.deliveryRepo.UpdateStatus(d.ID, model.DeliveryStatusGivingUp, d.Attempts, fmt.Sprintf("unsupported kind: %s", ch.Kind), nil)
-		return
-	}
+	body := Render(ch.Kind, ch.MessageTemplate, eventData)
 
 	transport := Get(string(ch.Kind))
 	if transport == nil {

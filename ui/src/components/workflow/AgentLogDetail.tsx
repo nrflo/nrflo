@@ -67,7 +67,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const { agent, historyEntry, session, phaseName } = selectedAgent
   const isInteractive = session?.status === 'user_interactive'
   const isRunning = session?.status === 'running' && !isInteractive
-  const result = agent?.result || historyEntry?.result || session?.result
+  const result = isRunning || isInteractive ? undefined : (agent?.result || historyEntry?.result || session?.result)
   const modelId = agent?.model_id || historyEntry?.model_id
   const modelName = modelId
     ? modelId.split('-').slice(-2).join('-') || modelId

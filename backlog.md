@@ -248,3 +248,294 @@ Other adapters land behind the same interface as users ask.
 - Do we want a "watch this issue and re-import on update" mode? No — out of scope. One-shot only.
 - Is the normalizing agent a built-in system agent or a user-editable agent definition? Built-in system agent — users shouldn't have to author this to get import working, but they can override via the agent_definitions table by registering one with the canonical id.
 
+---
+
+## 5. Codex context-left tracking in `cli` (batch) mode
+
+### Motivation
+`cli_interactive` mode already tracks codex context-left and surfaces it in the UI / agent session row. In `cli` (batch) mode the same signal is missing — sessions show no remaining-context indicator, and the spawner can't make low-context relaunch decisions for codex batch runs the way it can for Claude.
+
+Claude tracks this uniformly across cli + cli_interactive; codex only does cli_interactive. Close the gap so batch codex runs surface the same telemetry and can participate in low-context relaunch.
+
+### Design
+- Locate where codex cli_interactive extracts context-left today (likely `be/internal/socket/handler_codex_context.go` and the codex JSONL event extractor).
+- Add the equivalent extractor on the batch `cli` output path in `be/internal/spawner/cli_adapter_codex.go` (or wherever codex stdout is parsed in batch mode).
+- Persist via the same `agent_sessions` context-usage columns Claude already writes.
+- Hook into low-context relaunch logic so codex/cli sessions become eligible (same threshold/policy as Claude).
+
+### Open questions
+- Does codex batch (`--json`?) emit the same `token_count` / context event that interactive does? Verify before designing — if batch output omits it, this is dead in the water and we should mark codex/cli as "no context telemetry" instead.
+- Should low-context relaunch be gated per-CLI or uniform once telemetry lands?
+
+---
+
+## 6. Bind the agent IPC socket eagerly at server startup (parity with DB open)
+
+### Motivation
+Today, the SQLite DB is opened, pinged, and migrated as part of `serve` boot before HTTP/WS listeners come up — the DB handle is a hard prerequisite and lives for the server's lifetime. The Unix socket used for spawned-agent IPC (`agent fail/finished/callback`, `findings *`, `skip`, `script.context`, etc.) is not on equal footing: it's brought up later / lazily, which means the server can be "running" without the agent IPC plane being usable. The first agent spawn discovers the problem instead of the operator at boot.
+
+The ask is not "add a healthcheck" — it's **make the socket a required, eagerly-bound startup resource**, same shape as the DB:
+- Open it during `serve` init, before HTTP/WS bind.
+- If it can't be bound, the server doesn't start. No fallback, no "we'll try later."
+- It lives for the lifetime of the process and is cleaned up on graceful shutdown.
+
+This eliminates the entire class of "server is up but agents can't talk to it" failures.
+
+### Design
+
+In the `serve` boot sequence, treat the socket like the DB:
+
+1. Resolve the socket path the runtime uses (confirm in `be/internal/socket/` — likely `$NRFLO_HOME/agent.sock`).
+2. `net.Listen("unix", path)` *before* HTTP bind. If a stale socket file exists (no listener attached), unlink and re-bind. If the path is a regular file/dir or the parent dir is unwritable, fail boot with the resolved path in the error — same shape as a DB-open failure.
+3. Hand the listener directly to the socket server (the same struct that today accepts/serves on the socket). No second `Listen` call, no lazy creation path remaining.
+4. Delete any code paths that create the socket lazily on first use — eager bind is the only path. Lazy creation is exactly the surface this entry is removing.
+5. Register a graceful-shutdown step that closes the listener and unlinks the socket file so the next boot starts from a clean state.
+6. Log a single INFO `socket ready path=...` line, parallel to the DB-ready line, so boot logs show both resources came up.
+
+### Surface area
+- `be/internal/socket/` — promote the listener to a constructor-time argument; remove any deferred-bind branches.
+- `be/internal/cli/serve*.go` — bind the socket immediately after DB init, before HTTP listener bind. Wire shutdown cleanup.
+- Boot log line + error messages.
+
+### Open questions
+- Stale-socket policy: silently unlink the leftover file, or require an explicit override flag? Silently unlinking is friendlier, but masks two-server races on the same `NRFLO_HOME`. A pidfile next to the socket would make this safer; defer until we actually see the race.
+- Two servers sharing `NRFLO_HOME` (intentional or accidental): with eager bind, the second one fails fast with `address already in use` — which is the correct behavior, not a regression. Document it.
+- Windows: project is darwin/linux today; out of scope. If/when Windows support comes up, decide between named pipes and TCP loopback then.
+- Does anything in test code rely on the lazy-create behavior (e.g., tests that spin up a partial server without the socket)? Audit and migrate those to the eager-bind path before removing the lazy branch.
+
+---
+
+## Manual-testing scenarios — Tier 3 (specialized backends + side channels)
+
+Candidate scenarios for `manual_testing/`. Each one needs extra plumbing beyond what the Tier 1+2 harness provides. Add only when the underlying feature ships or breaks.
+
+- **Script-mode agent (`execution_mode='script'`)** — create a `python_scripts` row, point an agent definition at it, run the workflow, assert the script-spawn path (`scriptBackend`) is taken and findings written via the embedded Python SDK land in `agent_sessions.findings`. Validates the per-project venv path resolution (`be/internal/venv/`) and the `script.context` socket method.
+- **API-mode agent (`execution_mode='api'`)** — needs the server booted with `--mode=api`, plus `api_credentials` and `tool_definitions` populated. Run a tool-using prompt end-to-end through `apirun.Runner`. Probably worth a separate `manual_testing/test_api_mode.py` so it can be skipped on CLI-only hosts.
+- **Notification channels (Slack/Telegram)** — spawn a tiny in-harness Python `http.server` that records inbound POSTs, create a channel with that URL as the webhook target, run any workflow that triggers `orchestration.completed`, assert the payload was POSTed within N seconds and matches the rendered template. Also covers the retry/backoff queue when the mock returns 500.
+- **Scheduled tasks (cron)** — create a `scheduled_tasks` row with a `* * * * *` (every minute) cron, sleep ~70s, assert at least one `schedule_runs` row exists with `status='triggered'` and a matching `workflow_instances` row. Slow — gate behind a `--slow` flag.
+- **Take-control / resume-session / exit-interactive** — kick off a workflow, `POST .../take-control`, assert session status flips to `user_interactive`, then `POST .../exit-interactive`. Cannot easily drive the PTY stream from REST; this is a partial end-to-end test.
+- **Plan-before-execute (`plan_mode=true`)** — start a run with plan mode, assert response status `planning` and a `session_id`. Validating the actual plan file requires a PTY client.
+- **Multi-instance same ticket** — run the same `ticket+workflow` twice, assert two `workflow_instances` rows exist (no UNIQUE constraint enforced after mig 000040). Low-signal but cheap.
+- **Custom `cli_models` row** — `POST /api/v1/cli-models`, use the new ID in an agent definition, assert the spawner resolves it to the right CLI binary via `cliForModel`.
+- **Workflow chain `require_ticket_handoff`** — chain with a ticket-scope step downstream of a project-scope step; agent uses `chain-next-ticket` to set the ticket; assert the downstream step ran against that ticket.
+
+---
+
+## Manual-testing scenarios — Tier 4 (skip — covered well by Go tests)
+
+These were considered for the harness and rejected. Recorded so future contributors don't re-litigate.
+
+- Authentication / SCS session lifecycle / login rate limiter (`be/internal/auth`, `be/internal/api/handlers_auth.go`, `auth_ratelimit.go`).
+- Role-based access (admin vs viewer) — covered by `requireAuth` / `requireAdmin` tests.
+- DB migration application — runs at every server boot already; a regression would surface as the harness server failing to start.
+- REST pagination shape / list endpoint envelopes — exercised by handler unit tests.
+- Field-level validation on REST request bodies (regex, length caps, reserved-name checks).
+- Per-handler error code mapping (404 vs 409 vs 400).
+- `agent_messages` cursor / WS replay — covered in `be/internal/ws/replay.go` tests.
+
+If any of these regresses in production, prefer adding/extending a Go test over thickening the manual harness.
+
+---
+
+## Backend issues surfaced by the manual-testing harness (2026-05-12)
+
+The first full provider × mode validation of `manual_testing/` (24 scenarios × 6 combos = claude/codex/opencode × cli/cli-interactive) surfaced three real backend issues plus one test-side issue. Recorded here verbatim so they get triaged independently of the harness PR.
+
+### Codex `cli_interactive` backend hangs when triggered via project-config — UI uses a different path (mechanism TBD)
+
+**Status:** unconfirmed backend bug. The harness reproduces it 100% via
+the project-config trigger; the user's UI runs land sessions with
+`effective_mode='cli_interactive'` via some other trigger we have not
+yet identified. Until that third trigger is found, the harness's only
+known lever (`interactive_cli_mode=true` PATCH on the project) drives
+codex into a hang. Don't change the spawner before locating the third
+trigger and ruling it in or out.
+
+#### Diagnostic update — 2026-05-12
+
+Inspection of the user's real `~/.nrflo/nrflo.data` after a successful
+UI codex interactive run (session `936acb2c-d822-455d-9677-93583cd6247b`,
+agent `scheduler-test-agent`, model `codex:codex_gpt_normal`,
+`status=project_completed`, `result=pass`,
+`effective_mode='cli_interactive'`, 3 `agent_messages` rows showing
+real Bash tool calls including `nrflo agent finished`) shows:
+
+1. The project (`nrworkflow`) has `config.interactive_cli_mode=''`
+   (empty/false). So the project-config flag is **not** what produced
+   `effective_mode='cli_interactive'` on that successful run.
+2. The agent_definition (`scheduler-test-agent`) has
+   `execution_mode='cli'` — also not a trigger.
+3. Per-run `interactive=true` was tested in the harness — it routes
+   through `orchestratorInteractive`'s pre-step flow (server log:
+   `waiting for interactive pre-step session_id=… mode=interactive`),
+   never spawns the agent, then cancels when no human takes control.
+   So that's not the trigger either.
+4. The `spawn_command` of the working UI session is byte-identical to
+   the harness's hanging session at the codex argv level (same model,
+   same hooks, same sandbox flag, prompt as argv positional). So the
+   codex invocation itself is not the difference.
+
+There exists a third trigger we have not located that maps a
+project-scope run to `effective_mode='cli_interactive'` and produces a
+working PTY-relayed codex session. The harness can't reproduce that
+working path until the trigger is found.
+
+#### Harness experiments run — 2026-05-12
+
+| Trigger | Result |
+|---|---|
+| `PATCH /projects/{id} interactive_cli_mode=true` then normal `/workflow/run` | Spawner picks `cli_interactive` backend → codex spawns (pid set, `Ss+`, 0% CPU), emits zero bytes to PTY for the full timeout; `agent_messages` count = 0; status stays `running` until shutdown. |
+| `POST /workflow/run {"interactive": true}` per-run | Workflow enters take-control pre-step; agent never spawns; cancels at timeout. |
+| Same harness with `--mode=cli` | 23/24 PASS. So the issue is specifically the `cli_interactive` backend path, not codex broadly. |
+
+#### Three unanswered questions
+
+1. **What triggered `effective_mode='cli_interactive'` on the user's
+   working UI session** if not the project-config flag, not per-run
+   `interactive`, and not `execution_mode` on the agent_def? Read
+   `be/internal/spawner/spawner.go` `startBackend` and find every
+   branch that selects the interactive backend.
+2. **Why does codex emit zero PTY bytes** when the spawner routes
+   through `cli_interactive` via the project-config flag, given the
+   codex argv is identical to the working path? Either the PTY wire-up
+   differs between code paths, or codex 0.128.0 needs an initial
+   `SIGWINCH` / winsize set that this path skips.
+3. **Does the harness need a different global setting to match the
+   working trigger?** User has `experimental=true` and
+   `simplified_agents_graph=true` set globally; harness defaults are
+   off.
+
+#### Files to inspect first
+
+- `be/internal/spawner/spawner.go` — `startBackend` / backend selection
+  branches; `SetEffectiveMode` callsites.
+- `be/internal/spawner/backend_interactive.go` — PTY setup, particularly
+  initial winsize / window resize signalling.
+- `be/internal/api/handlers_project_workflow.go` — does the run handler
+  set up something extra when the project's effective_mode would be
+  `cli_interactive` that the project-config path skips?
+- Diff orchestrator entry points: the interactive plan-before-execute
+  pre-step (`orchestrator_interactive.go`) vs the plain orchestration
+  flow (`orchestrator.go`).
+
+#### Symptoms (harness)
+- Every scenario in `codex/cli-interactive` times out at 180s.
+- `agent_sessions` rows have `pid` set (process spawned) but **zero rows
+  in `agent_messages`** for every session.
+- `server.log` shows the periodic agent-status line with `last_msg=`
+  empty across the whole run.
+- Affected sessions only end (`failed`/`cancelled`) when the harness
+  tears the server down.
+- `codex/cli` (batch) mode passes 23/24 in the same harness — only the
+  interactive PTY path goes silent.
+- Reproduces at `--parallel=1` too, so it isn't concurrency.
+
+#### Suspected harness/backend divergence (the actual question to answer)
+The harness enables interactive by `PATCH /api/v1/projects/{id}` with
+`{"interactive_cli_mode": true}` immediately after project creation,
+then runs the project workflow normally. The UI may instead pass
+`{"interactive": true}` as the run body flag — those are two different
+code paths in the orchestrator/spawner, and they may route to slightly
+different prompt-delivery / PTY-wire-up behaviour. Read
+`be/internal/api/handlers_project_workflow.go` to see what each flag
+does and check whether the harness is taking the path the UI doesn't.
+
+Other candidate divergences worth ruling out:
+- Working directory: harness uses a fresh `git init` dir in a tmp path;
+  UI uses the user's real project dir which has codex config / auth
+  state nearby.
+- `~/.codex/` auth state — both inherit the same env, but a fresh
+  NRFLO_HOME may interact with codex's per-project state differently.
+- Prompt delivery channel: the recorded `spawn_command` shows
+  `< /tmp/nrflo/…md` (stdin redirect). Codex interactive expects the
+  prompt as argv positional per the comment in
+  `be/internal/spawner/cli_adapter_codex.go`. Confirm the actual
+  delivery — `spawn_command` is a logged string, may not reflect the
+  real `exec.Cmd` wiring.
+
+#### Reproduction
+```
+make build
+python3 manual_testing/test_codex.py --mode=cli-interactive --parallel=1
+```
+`s01_findings_save` hangs for 180s. Compare with a UI-driven codex
+interactive run on the same machine and inspect both `spawn_command`
+strings side-by-side — the diff is the lead.
+
+#### Decision needed
+First: confirm whether `interactive_cli_mode=true` (project config) and
+`interactive=true` (per-run body) hit the same spawner code path. If
+they don't, the harness should switch to the per-run flag and re-test
+before any spawner change. If they do, then this is a real backend
+issue and the file-inspection list above applies.
+
+### Opencode via harness `cli-interactive` mode exits immediately — same caveat as codex above
+
+**Status:** unconfirmed backend bug. Same shape as the codex entry — the
+harness drives it and gets immediate exit; whether the UI's interactive
+path behaves the same is not yet verified. Likely shares a root cause
+with the codex entry (project-config `interactive_cli_mode=true` vs
+per-run `interactive=true` divergence).
+
+#### Symptoms (harness)
+- Every scenario in `opencode/cli-interactive` mode fails within 1-2s.
+- `agent_sessions.result='fail'`, `result_reason='exit_code'` — the
+  agent process exited non-zero immediately after spawn.
+- A handful of scenarios "accidentally" PASS (S11, S14, S18, S22, S24)
+  because their assertions only check spawn/DB plumbing, not agent work.
+- `opencode/cli` (batch) mode passes 22/24 in the same harness.
+- Tested with opencode 1.14.48.
+
+#### Reproduction
+```
+make build
+python3 manual_testing/test_opencode.py --mode=cli-interactive --parallel=1
+```
+
+#### Suspected divergence
+First test whether `interactive_cli_mode=true` project config and
+`interactive=true` per-run body hit the same spawner code path (same
+question as the codex entry — they may share the fix).
+
+If that's not it, look at `be/internal/spawner/cli_adapter_opencode.go`
+interactive `BuildCommand`:
+```
+opencode <workDir> --port <N> --hostname 127.0.0.1 --model <MAPPED> [--variant <level>]
+```
+- opencode 1.14.48 may have renamed/removed one of those flags.
+- May require a `--config` file or env var that neither harness nor
+  spawner provides.
+- The SSE event consumer at `:N/event` may need different auth.
+
+#### Decision needed
+Same as codex: confirm whether harness is on a path the UI doesn't take
+before changing the spawner. If the harness is wrong, fix the harness
+(switch to per-run flag) and re-validate.
+
+### Agent-callback prompt not reliably followed by codex/opencode models
+
+#### Symptoms
+- `s17_callback` consistently FAILs on `codex/cli` and `opencode/cli`: `L0 did not re-run (a_count=1)`.
+- The L1 prompt asks only for `nrflo agent callback --level 0`, which under haiku reliably runs. Under codex's default model and opencode's default model, the agent finishes without calling the callback.
+
+#### Status
+This is **not** a backend bug — it's a model instruction-following gap. The scenario has the `MODELS_BY_PROVIDER` override mechanism specifically for this. The fix is either:
+- `MODELS_BY_PROVIDER = {"codex": "codex_gpt_high", "opencode": "opencode_gpt54"}` in `s17_callback.py`, OR
+- a more directive L1 prompt that all three models follow reliably.
+
+Pick whichever produces a stable green on first try; document the choice in the scenario's docstring.
+
+#### Out of scope
+The callback orchestration mechanic itself is fine — it's verified end-to-end on `claude/cli` and `claude/cli-interactive`. This entry is only about the test-side flake.
+
+### Coverage gaps deferred from the 2026-05 batch
+
+Recorded so they don't get forgotten when the next harness iteration lands:
+
+- **WS event subscriber scenario** — open `/api/v1/ws`, run a workflow, assert `agent.completed` and `orchestration.completed` events fire with the expected payload shape. Adds runtime dep on `websockets`.
+- **Manual `restart` endpoint** — `POST /api/v1/projects/{id}/workflow/restart` while an agent is still running; assert a fresh `agent_sessions` row is spawned with `ancestor_session_id` linking back. Distinct from `retry-failed`.
+- **Ticket concurrency guard** — `POST /tickets/{id}/workflow/run` with one already running and no `force` body field; assert HTTP 409.
+- **Notification channels end-to-end** — spawn a tiny in-harness `http.server`, register a Slack channel with that URL, run a workflow, assert the delivery row + the inbound HTTP POST payload.
+- **`execution_mode=script`** — create a `python_scripts` row + agent_def pointing at it; assert `scriptBackend` is taken (`effective_mode='script'`) and findings written via the embedded Python SDK land in `agent_sessions.findings`.
+- **`execution_mode=api`** — boot server with `--mode=api`, configure an api_credentials row + tool_definitions; assert `apirun.Runner` runs the tool turn loop. Probably a separate `test_api_mode.py` so cli-only hosts can skip cleanly.
+- **Multi-skip-tag accumulation** — multiple `nrflo skip <tag>` calls; assert all land in `workflow_instances.skip_tags`.

@@ -51,7 +51,7 @@ The `finish-reminder` injectable is a second readonly template that can be refer
 
 ### Interactive Claude Telemetry
 
-When the project `interactive_cli_mode` setting is enabled, Claude agents run inside a PTY and nrflo automatically registers `--settings` hooks for `PreToolUse` and `PostToolUse` events. These hooks pipe structured tool-call data back to nrflo via the unix socket, populating the agent's message timeline and keeping context-usage tracking accurate. This is transparent — no agent prompt changes or explicit calls are needed. Opencode and Codex agents are unaffected.
+When an agent definition sets `execution_mode: cli_interactive`, Claude agents run inside a PTY and nrflo automatically registers `--settings` hooks for `PreToolUse` and `PostToolUse` events. These hooks pipe structured tool-call data back to nrflo via the unix socket, populating the agent's message timeline and keeping context-usage tracking accurate. This is transparent — no agent prompt changes or explicit calls are needed. Opencode and Codex agents are unaffected.
 
 ---
 

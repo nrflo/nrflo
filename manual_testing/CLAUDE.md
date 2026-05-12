@@ -175,8 +175,8 @@ Conventions:
 `Ctx.mode` is consumed by `make_project` (lib/runtime.py):
 
 - `cli` — default project settings.
-- `cli-interactive` — patches `interactive_cli_mode=true` on the project
-  immediately after creation, which routes the spawner through the PTY
+- `cli-interactive` — edits the relevant Claude agent definition to set
+  `execution_mode=cli_interactive`, which routes the spawner through the PTY
   interactive backend.
 
 Scenarios don't branch on mode. The exception is `s16_stall_detection`,
@@ -225,8 +225,8 @@ harness"):
   `be/internal/spawner/cli_adapter_opencode.go`.
 
 Both combos are not gated in the harness — run them yourself to see the
-failure. Fix the backend or gate `interactive_cli_mode=true` for those
-providers in the project PATCH handler; either resolution closes the
+failure. Fix the backend or skip those provider+mode combos until the
+upstream/adapter issue is resolved; either resolution closes the
 backlog entries.
 
 ## Common pitfalls

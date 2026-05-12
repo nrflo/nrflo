@@ -482,6 +482,8 @@ per-agent-def override; no per-run override. The per-run
 pre-step (`orchestrator.go:416`), orthogonal to `effective_mode`
 selection.
 
+_Superseded by per-agent execution_mode=cli_interactive (migration 000101)._
+
 `agent_sessions.effective_mode` is written at spawn time
 (`repo/agent_session.go:146`) and frozen — toggling
 `interactive_cli_mode` off after a successful run does NOT rewrite
@@ -489,6 +491,8 @@ historical session rows. (We chased a phantom "third trigger" earlier
 because a working UI session had `effective_mode='cli_interactive'`
 while the project config currently showed empty; that was just config
 drift, not a hidden code path.)
+
+_Superseded by per-agent execution_mode=cli_interactive (migration 000101)._
 
 #### Empirical hook-firing test results (2026-05-12, codex 0.130.0)
 

@@ -313,7 +313,6 @@ The socket uses a JSON-RPC style protocol (line-delimited JSON). Only `findings.
 |-----|------|-------------|
 | `claude_safety_hook` | string (JSON) | Safety hook config — blocks dangerous commands via `--settings` |
 | `push_after_merge` | bool | Push default branch to origin after successful worktree merge |
-| `interactive_cli_mode` | bool | Enable interactive terminal mode for CLI agents (consumed by T3) |
 | `customer_config_dir` | string (abs path) | Absolute path to an existing directory containing customer config files; validated on PATCH (must be absolute, must exist, must be a directory) |
 
 ## Package Documentation

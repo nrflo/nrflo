@@ -18,13 +18,13 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     context_save_via_agent: false,
     simplified_agents_graph: false,
     experimental: false,
+    sync_claude_limits: false,
     session_retention_limit: 1000,
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,
     ...overrides,
   }
 }
-
 describe('GlobalSettingsSection', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -330,6 +330,43 @@ describe('GlobalSettingsSection', () => {
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: false })
+    })
+  })
+
+  it('renders Sync Claude limits toggle reflecting server state (false)', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ sync_claude_limits: false }))
+    renderWithQuery(<GlobalSettingsSection />)
+    const toggles = await screen.findAllByRole('switch')
+    // sync_claude_limits is index 4 (0=low_consumption, 1=context_save, 2=simplified_graph, 3=experimental, 4=sync_claude_limits)
+    expect(toggles[4]).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('Sync Claude limits')).toBeInTheDocument()
+  })
+
+  it('clicking Sync Claude limits toggle calls updateGlobalSettings({ sync_claude_limits: true })', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ sync_claude_limits: false }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[4])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ sync_claude_limits: true })
+    })
+  })
+
+  it('clicking Sync Claude limits toggle when true sends false', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ sync_claude_limits: true }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[4])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ sync_claude_limits: false })
     })
   })
 })

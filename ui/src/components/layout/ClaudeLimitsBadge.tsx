@@ -145,7 +145,7 @@ export function ClaudeLimitsBadge() {
             )}
             {stale && (
               <div className="mt-2 text-yellow-400 dark:text-yellow-600">
-                Stale — set up periodic refresh in Settings → Scheduled Tasks
+                Stale — enable "Sync Claude limits" in Settings
               </div>
             )}
           </div>,

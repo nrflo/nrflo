@@ -1,74 +1,10 @@
 # Spawner Package
 
-The spawner manages agent lifecycle — spawning CLI processes, monitoring output, tracking context usage, and handling completion/continuation/callbacks.
+The spawner manages agent lifecycle — spawning CLI processes (or in-process API runners), monitoring output, tracking context usage, and handling completion/continuation/callbacks.
 
-## CLI Adapter Architecture
+## CLI Adapter
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      CLI ADAPTER PATTERN                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Interface: CLIAdapter                                               │
-│    ├── Name() string                                                │
-│    ├── BuildCommand(opts SpawnOptions) *exec.Cmd                    │
-│    ├── MapModel(model string) string                                │
-│    ├── SupportsSessionID() bool                                     │
-│    ├── SupportsSystemPromptFile() bool                              │
-│    ├── SupportsResume() bool                                        │
-│    ├── UsesStdinPrompt() bool                                       │
-│    ├── BuildResumeCommand(opts ResumeOptions) *exec.Cmd             │
-│    ├── SupportsInteractive() bool                                   │
-│    ├── BuildInteractiveCommand(InteractiveSpawnOptions) *exec.Cmd   │
-│    ├── PrepareInteractive(InteractivePrepOptions)                   │
-│    │      → (InteractiveExtras, cleanup func(), error)              │
-│    ├── DeliversPromptInline() bool                                  │
-│    └── NeedsTerminalQueryReplies() bool                             │
-│                                                                      │
-│  Implementations:                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │ ClaudeAdapter                                                │    │
-│  │   ├── Name: "claude"                                        │    │
-│  │   ├── Model: versioned IDs (opus_4_6, opus_4_6_1m, opus_4_7,│    │
-│  │   │          opus_4_7_1m, sonnet, haiku)                    │    │
-│  │   ├── Reasoning: --effort <level> when reasoning_effort set │    │
-│  │   ├── SessionID: ✓ (--session-id)                           │    │
-│  │   ├── SystemPromptFile: ✓ (--append-system-prompt-file)     │    │
-│  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
-│  │   ├── PartialMessages: ✓ (--include-partial-messages,       │    │
-│  │   │     BatchCommand+ResumeCommand only, NOT interactive)   │    │
-│  │   └── Resume: ✓ (--resume <session-id>)                     │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │ OpencodeAdapter                                              │    │
-│  │   ├── Name: "opencode"                                      │    │
-│  │   ├── Model: provider/model format                          │    │
-│  │   │   ├── opencode_minimax_m25_free → opencode/minimax-m2.5-free │  │
-│  │   │   ├── opencode_qwen36_plus_free → opencode/qwen3.6-plus-free│  │
-│  │   │   └── opencode_gpt54 → openai/gpt-5.4                   │    │
-│  │   ├── Reasoning: --variant high (opencode_gpt54 only)       │    │
-│  │   ├── SessionID: ✗ (generates own)                          │    │
-│  │   ├── SystemPromptFile: ✗                                   │    │
-│  │   ├── StdinPrompt: ✗ (prompt as positional arg)             │    │
-│  │   └── Resume: ✗                                             │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │ CodexAdapter                                                 │    │
-│  │   ├── Name: "codex"                                         │    │
-│  │   ├── Command: codex exec --json --model -c                 │    │
-│  │   ├── Model: codex_gpt_normal/high → gpt-5.3-codex          │    │
-│  │   │   └── Both use reasoning effort "high"                   │    │
-│  │   ├── SessionID: ✗ (generates own thread_id)                │    │
-│  │   ├── StdinPrompt: ✓ (prompt piped via stdin)               │    │
-│  │   └── Resume: ✗                                             │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                                      │
-│  Adding new CLI (e.g., cursor):                                      │
-│    1. Create CursorAdapter implementing CLIAdapter                  │
-│    2. Register in GetCLIAdapter(): case "cursor": return &Cursor... │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
+The `CLIAdapter` interface is defined at `cli_adapter.go:11`. Implementations: `ClaudeAdapter`, `OpencodeAdapter`, `CodexAdapter`. To add a new CLI, implement the interface in `cli_adapter_<name>.go` and register it in `GetCLIAdapter()` (`cli_adapter.go:211`) with a name-keyed case.
 
 ## Supported CLIs
 
@@ -78,878 +14,105 @@ The spawner manages agent lifecycle — spawning CLI processes, monitoring outpu
 | `opencode` | `OpencodeAdapter` | `provider/model` (auto-mapped) | Generated by CLI | ✓ (embedded SSE server) |
 | `codex` | `CodexAdapter` | Model aliases with reasoning levels | Generated by CLI | ✓ (-c hook injection) |
 
-**Model mapping for claude:**
-- `opus_4_6` → `claude-opus-4-6` (200k context)
-- `opus_4_6_1m` → `claude-opus-4-6[1m]` (1M context)
-- `opus_4_7` → `claude-opus-4-7` (200k context)
-- `opus_4_7_1m` → `claude-opus-4-7[1m]` (1M context)
-- `sonnet`, `haiku` → passed as-is (200k context)
-- Reasoning effort: `--effort <level>` is appended when `cli_models.reasoning_effort` is non-empty. Levels: `low`, `medium`, `high`, `xhigh` (Opus 4.7 only), `max`. Empty string means "use Claude CLI default" (no flag). The `xhigh + Opus 4.7` constraint is validated at the service layer (`service.validateReasoningEffort`).
+**claude model mapping:** `opus_4_6` → `claude-opus-4-6` (200k), `opus_4_6_1m` → `claude-opus-4-6[1m]` (1M), `opus_4_7` → `claude-opus-4-7` (200k), `opus_4_7_1m` → `claude-opus-4-7[1m]` (1M), `sonnet`/`haiku` passed as-is. Reasoning effort: `--effort <level>` when `cli_models.reasoning_effort` is non-empty.
 
-**Model mapping for opencode:**
-- `opencode_minimax_m25_free` → `opencode/minimax-m2.5-free` (no variant)
-- `opencode_qwen36_plus_free` → `opencode/qwen3.6-plus-free` (no variant)
-- `opencode_gpt54` → `openai/gpt-5.4` with `--variant high`
-- Full format (`openai/gpt-5.4`) → passed as-is (no variant)
+**opencode model mapping:** `opencode_minimax_m25_free` → `opencode/minimax-m2.5-free`, `opencode_qwen36_plus_free` → `opencode/qwen3.6-plus-free`, `opencode_gpt54` → `openai/gpt-5.4` with `--variant high`.
 
-**Model mapping for codex:**
-- `codex_gpt_normal` → `gpt-5.3-codex` with reasoning effort "high"
-- `codex_gpt_high` → `gpt-5.3-codex` with reasoning effort "high"
-- `codex_gpt54_normal` → `gpt-5.4` with reasoning effort "medium"
-- `codex_gpt54_high` → `gpt-5.4` with reasoning effort "high"
-- Custom model names → passed as-is with reasoning effort "high"
+**codex model mapping:** `codex_gpt_normal`/`codex_gpt_high` → `gpt-5.3-codex` (effort "high"), `codex_gpt54_normal` → `gpt-5.4` (effort "medium"), `codex_gpt54_high` → `gpt-5.4` (effort "high").
 
-## Model Resolution (DB-First with Hardcoded Fallback)
+## Model Resolution
 
-The `Config.ModelConfigs` field (`map[string]ModelConfig`) holds DB-sourced model configuration. When populated, the spawner uses it for model mapping, reasoning effort, context length, and CLI type before falling back to hardcoded adapter methods.
+`Config.ModelConfigs` (`map[string]ModelConfig`) holds DB-sourced model configuration used before falling back to hardcoded adapter methods. Helpers: `cliForModel(model)` checks `ModelConfigs[model].CLIType`; `maxContextForModel(model)` checks `ModelConfigs[model].ContextLength`. `SpawnOptions.MappedModel`/`ReasoningEffort` carry DB overrides; adapters skip their own lookup when these are set.
 
-**ModelConfig type** (spawner-internal, no DB metadata):
-```go
-type ModelConfig struct {
-    CLIType         string // "claude", "opencode", "codex"
-    MappedModel     string // actual CLI arg: "claude-opus-4-7[1m]", "gpt-5.3-codex"
-    ReasoningEffort string // "", "high", "medium"
-    ContextLength   int    // 200000, 1000000
-}
-```
+## Execution Backends
 
-**Resolution flow** (in `spawnSingle()`):
-1. Look up `s.config.ModelConfigs[model]` after `parseModelID`
-2. If found, set `opts.MappedModel` and `opts.ReasoningEffort` on `SpawnOptions`
-3. Adapter `BuildCommand()` methods check `opts.MappedModel`/`opts.ReasoningEffort` first
-4. If empty, adapters fall back to their own `MapModel()`/`GetReasoningEffort()` methods
+`ExecutionBackend` interface is at `backend.go:21`. `startBackend` selects based on `prep.executionMode`:
 
-**Helper methods:**
-- `(s *Spawner) cliForModel(model) string` — checks `ModelConfigs[model].CLIType`, falls back to `DefaultCLIForModel()`
-- `(s *Spawner) maxContextForModel(model) int` — checks `ModelConfigs[model].ContextLength` (if > 0), falls back to hardcoded values
+- **`cli`** — wraps an `exec.Cmd`; default path for standard batch CLI agents.
+- **`cli_interactive`** — spawns the CLI inside a PTY without batch flags; selected when `Config.InteractiveCLIMode && adapter.SupportsInteractive()`.
+- **`api`** — drives an in-process `apirun.Runner` (no child process). See [apirun/CLAUDE.md](apirun/CLAUDE.md).
+- **`script`** — executes a stored Python script; no prompt template, no context tracking.
 
-**SpawnOptions fields** for DB-sourced overrides:
-- `MappedModel string` — if set, adapters skip their `MapModel()` call
-- `ReasoningEffort string` — if set, adapters skip their `GetReasoningEffort()` call
+Selection precedence in `startBackend`: `api` → `script` → `cli_interactive` (when supported) → `cli`.
 
 ## Host Process Probing
 
-`proc_status.go` — thin wrappers over `be/internal/proc` for use within the spawner package:
-- `PidAlive(pid int64) bool` — delegates to `proc.PidAlive`; returns false for pid ≤ 0 or dead pid
-- `PidMetrics(pid int64) (rssKB int64, cpuPct float64, etimeSec int64, ok bool)` — delegates to `proc.PidMetrics`
+`proc_status.go` wraps `be/internal/proc` for `PidAlive`/`PidMetrics` without a spawner→service import cycle.
 
-The actual implementation lives in `be/internal/proc/proc_status.go` (standalone package to avoid the spawner→service import cycle). The `service.AgentSessionLogService` injects these as function vars (`pidAlive`, `pidMetrics`) for the live-sessions endpoint.
+## Safety Hook
 
-## Safety Hook (Claude --settings)
-
-The spawner supports injecting a `--settings` JSON flag into Claude CLI commands via `Config.ClaudeSettingsJSON`. This is used for project-scoped safety hooks that block dangerous commands.
-
-**Config flow:** The orchestrator reads `claude_safety_hook` from project config at workflow start, passes it through `BuildSafetySettingsJSON()` to generate the `--settings` JSON, and sets it on `Config.ClaudeSettingsJSON`. Read once at start — mid-workflow config changes have no effect.
-
-**Files:**
-- `safety_hook.go` — `SafetyHookConfig` type, `BuildSafetySettingsJSON()` (public), `buildSafetyCommand()` (generates inline bash PreToolUse hook)
-- `safety_hook_test.go` — Unit tests for config parsing, bash generation, pattern matching
-
-**Wiring:**
-- `SpawnOptions.SettingsJSON` / `ResumeOptions.SettingsJSON` — passed to adapter `BuildCommand`/`BuildResumeCommand`
-- `ClaudeAdapter` appends `--settings <json>` when non-empty; other adapters ignore it
-- `spawnSingle()` sets `opts.SettingsJSON = s.config.ClaudeSettingsJSON`
-- `context_save.go` passes `ClaudeSettingsJSON` to context-saver spawner config
-- `database.go` stores `ClaudeSettingsJSON` in `agent_sessions.config` column
-
-`DefaultCLIForModel()` remains a public package-level function for external callers (e.g., `orchestrator_interactive.go`).
-
-## Execution Backend (T1 seam)
-
-`spawnSingle` is split into a pure prep step (`prepareSpawn`) and a process-start step (`(s *Spawner).startBackend(proc, prep)`). Each `processInfo` carries a `backend ExecutionBackend` (`backend.go`) implementing six methods:
-
-- `Name() string` — backend identifier ("cli", "api", "cli_interactive", "script")
-- `SupportsResume() bool` — whether the session can be resumed (Claude CLI only)
-- `SupportsTakeControl() bool` — whether interactive take-over is supported
-- `RequiresPrompt() bool` — gates prompt-template rendering in `prepareSpawn` (false → template load and file write are skipped)
-- `TracksContext() bool` — gates the low-context-save branch in `monitorAll` (false → context save is silently skipped)
-- `ParsesStructuredOutput() bool` — gates `processOutput` JSON parsing (false → each stdout line is tracked directly as a `"text"` message via `TrackMessage`)
-
-### Backend Capability Matrix
-
-| Backend | Name | SupportsResume | SupportsTakeControl | RequiresPrompt | TracksContext | ParsesStructuredOutput |
-|---------|------|----------------|---------------------|----------------|---------------|------------------------|
-| `cliBackend` | `"cli"` | adapter-dependent | adapter-dependent | true | true | true |
-| `apiBackend` | `"api"` | false | false | true | true | true |
-| `cliInteractiveBackend` | `"cli_interactive"` | adapter-dependent | adapter-dependent | true | true | true |
-| `scriptBackend` | `"script"` | false | false | false | false | false |
-
-All process-signal call sites — graceful shutdown, take-control, stall_restart, context_save, completion — route through `proc.backend.Kill(ctx, proc, sig)` (SIGKILL → `Process.Kill()`, else `Process.Signal(sig)`; nil-safe). `Spawner.TrackMessage` is the exported message-coalescing entry point used by the runner package (T3).
-
-### Backend Selection
-
-`startBackend` selects the backend based on `prep.executionMode`:
-
-```
-startBackend priority:
-  1. executionMode == "api"         → apiBackend
-  2. executionMode == "script"      → scriptBackend
-  3. InteractiveCLIMode && SupportsInteractive() → cliInteractiveBackend
-  4. (default)                      → cliBackend
-```
-
-The execution mode is set in `prepareSpawn` from `agentDef.ExecutionMode` (loaded early so CLI/prompt prep is skipped for API and script agents).
-
-## API Backend (T3)
-
-`apiBackend` (`backend.go`) drives an in-process `apirun.Runner` (`apirun/runner.go`) instead of an `exec.Cmd`. There is no child process — `Start` launches a goroutine that:
-
-1. Runs the runner loop against `Config.Provider` (Anthropic).
-2. After the runner returns (PASS / FAIL / CANCELLED), persists messages and registers the session stop via `mapFinalStatus` → `(result, reason)`.
-3. Closes `proc.doneCh` so `monitorAll` unblocks; `monitorAll` skips `handleCompletion` because `proc.finalStatus` is already set (and `proc.cmd` is nil).
-
-`Kill` cancels the runner's stored context — the signal arg is ignored. `SupportsResume()` and `SupportsTakeControl()` return false; the resume + PTY paths are Claude-CLI-only.
-
-### Runner Loop (text-only, T3)
-
-`apirun.Runner.Run(ctx, ProcState)` drives one or more turns:
-
-- Builds an initial user message from `Config.InitialPrompt` (the rendered agent template). `Config.System` is a static prompt prefix.
-- Each turn calls `Provider.Run(ctx, Request{Tools: nil}, sink)` and switches on `StopReason`:
-  - `end_turn` → `PASS`
-  - `max_tokens` / `stop_sequence` → `FAIL` (system message includes stop_reason)
-  - `tool_use` → `FAIL` in T3 (no tool registry yet; T4 lifts this)
-  - default → `FAIL`
-- `ctx.Err()` → `CANCELLED`. Past `Config.Deadline` → `FAIL`. After `Config.MaxIterations` (default 50) → `FAIL`.
-- Per-turn context update: `pct = 100 - 100*(input + cache_read + cache_creation) / MaxContext` written to `proc.contextLeft` and broadcast via `Config.AgentSvc.UpdateContextLeft` (which fires `agent.context_updated`). `monitorAll`'s low-context branch sees this without modification.
-- Error classification (`apirun/errors.go`): 401/403 → auth_error, 429 → rate_limit, 5xx → provider_error, JSON parse → provider_protocol_error. Errors are recorded via `ErrorSvc` (when configured) and emitted as `system`-category messages.
-
-### Sink (Streaming Bridge)
-
-`runnerSink` (`apirun/sink.go`) implements `provider.EventSink`. Text deltas are coalesced into a buffer flushed on idle (200ms) or when the buffer exceeds 80 chars; tool-use start / input / usage events flush the buffer first and then emit categorised messages (`text`, `tool_use_start`, `tool_use_input`). Coalescing keeps the WS message volume comparable to CLI agents.
-
-### Context-Save Override
-
-`initiateContextSave` (`context_save.go`) routes via `shouldUseAgentSave` which forces the agent path for api-mode backends and any adapter where `SupportsResume() == false` (codex). See "Context Save Methods" below for the full decision matrix.
-
-### Required Spawner Config for API Agents
-
-- `Config.Provider` — `provider.Provider` (e.g. `anthropic.New(key)`). Spawner errors at start if missing.
-- `Config.AgentSvc` — `apirun.AgentSvc` (broadcasts context updates).
-- `Config.APICredentialRepo` — `anthropic.APICredentialRepo` for fail-fast key resolution in `prepareSpawn`.
-
-The orchestrator constructs all three at workflow start (`orchestrator/api_provider.go`) and threads them into every spawner created in the run.
-
-T4 wires tool dispatch on top of this seam (registry resolution in `prepareSpawn`, dispatch loop in `apirun.Runner`, terminal-tool short-circuit via `TerminalSignal`). See [apirun/CLAUDE.md](apirun/CLAUDE.md) for the tool dispatch architecture, builtins, HTTP handler, and registry rules.
-
-## Script Backend
-
-`scriptBackend` (`backend_script.go`) executes a stored Python script as an agent. There is no CLI adapter and no prompt template — the spawner loads the script code from the `python_scripts` DB row (linked via `agent_definitions.python_script_id`) and writes it directly to disk.
-
-### FilePath Override
-
-When the `python_scripts` row has a non-empty `file_path`, `prepareScriptSpawn` re-validates the path (absolute, regular file, `.py` extension) and calls `os.ReadFile` on it. The file bytes replace `script.Code` as the `prep.scriptCode` written to disk at spawn time. Validation failures return a spawn error with prefix `python_script_file_path_invalid:`; read failures use `python_script_file_path_read:`. When `file_path` is empty, behavior is unchanged (uses stored `code`).
-
-### Python Interpreter Resolution
-
-`resolvePythonBin(prep *prepResult) string` returns the python binary to invoke:
-- `prep.pythonPath` non-empty → that path (venv python resolved by the orchestrator before spawn)
-- `prep.pythonPath` empty → `"python3"` (falls back to PATH)
-
-`prep.pythonPath` is populated from `Config.PythonPath`, which the orchestrator sets to the result of `venvMgr.Ensure(ctx, projectID, projectRoot)` once per workflow run before the layer loop. Failures in `Ensure` return `""` so the fallback is automatic.
-
-### Start Sequence
-
-1. Creates `/tmp/nrflo/scripts/` directory (mode 0755) if needed.
-2. Writes `prep.scriptCode` to `/tmp/nrflo/scripts/<sessionID>.py` (mode 0600).
-3. Resolves python binary via `resolvePythonBin(prep)` and builds `exec.CommandContext(ctx, pyBin, scriptPath)` with:
-   - `cmd.Dir = prep.opts.WorkDir` (git worktree for ticket-scope, project root for project-scope — same as cliBackend)
-   - `cmd.Env = prep.opts.Env` (standard spawner env) + `NRFLO_SDK_DIR=<config.SDKDir>` when `config.SDKDir != ""`
-4. Launches stdout/stderr pipes and starts the process.
-5. `go monitorOutput(proc, stdout)` — routes lines through `TrackMessage(..., "text")` because `ParsesStructuredOutput()=false`.
-6. Goroutine scans stderr: each line is logged via `warnAgent` and tracked as a `"text"` message.
-7. Wait goroutine: `proc.waitErr = cmd.Wait()` → `close(proc.doneCh)` → `os.Remove(scriptPath)`.
-
-### Exit Semantics
-
-Exit 0 → `handleCompletion` sets `PASS`. Non-zero → `handleCompletion` sets `FAIL` (same as CLI agents).
-
-### Kill
-
-`sig == SIGKILL` → `proc.cmd.Process.Kill()`. Other signals → `proc.cmd.Process.Signal(sig)`. Nil-safe (returns nil when `proc.cmd == nil`).
-
-### Unsupported Features
-
-- **No prompt template**: `RequiresPrompt()=false` → `prepareSpawn` skips template render, prompt file write, and suffix file.
-- **No context tracking**: `TracksContext()=false` → `monitorAll` skips the low-context save branch entirely; script agents always run to completion regardless of token usage.
-- **No take-control**: `SupportsTakeControl()=false` → the take-control flow returns HTTP 409 before reaching the spawner.
-- **No structured output**: `ParsesStructuredOutput()=false` → stdout is plain text; no JSON tool-use parsing.
-
-### Mode Compatibility
-
-`scriptBackend` is available in both `--mode=cli` and `--mode=api`. There is no API-mode gating for `execution_mode='script'` (unlike `execution_mode='api'`).
+`Config.ClaudeSettingsJSON` injects `--settings <json>` into Claude commands. Built from the `claude_safety_hook` project config via `BuildSafetySettingsJSON()` in `safety_hook.go`. Read once at workflow start; mid-run config changes have no effect. Other adapters ignore `SettingsJSON`.
 
 ## Interactive CLI Backend
 
-`cliInteractiveBackend` (`backend_interactive.go`) spawns CLI agents inside a PTY without batch flags. Selected when `Config.InteractiveCLIMode && adapter.SupportsInteractive()` and execution mode is not `"api"`.
+`cliInteractiveBackend` (`backend_interactive.go`) spawns CLI agents in a PTY. Per-adapter divergence lives entirely in the adapter file — `backend_interactive.go` has no name-checks. Key `CLIAdapter` methods for interactive use (see `cli_adapter.go`):
 
-System agents (conflict-resolver, context-saver) flow through the same selector — they use cliInteractiveBackend when the toggle is on and their adapter returns `SupportsInteractive() == true`. The context-saver ephemeral spawner inherits `InteractiveCLIMode` and `PTYManager` from the parent spawner config.
+- `SupportsInteractive()` — true for Claude, Codex, Opencode.
+- `BuildInteractiveCommand(opts)` — PTY-friendly command without batch flags.
+- `PrepareInteractive(opts)` — returns `InteractiveExtras` (Codex: profile dir + hook list; Opencode: free localhost port).
+- `DeliversPromptInline()` — true for Codex (argv positional); false for Claude/Opencode (PTY stdin write after readiness delay).
+- `NeedsTerminalQueryReplies()` — true for Codex (TUI sends terminal capability probes during init).
+- `CapturesTUIBytes()` — opt-in raw-byte capture path for adapters without a working hook path.
+- `BumpsOnPTYBytes()` — opt-in heartbeat via PTY bytes; false for adapters whose hooks or SSE bus already call `BumpLastMessage`.
 
-### CLIAdapter Interactive Extensions
+Codex profile + `-c` hook injection: see `cli_adapter_codex_hooks.go`.
 
-`SupportsInteractive() bool` — returns true for Claude, Codex, and **Opencode** (opencode exposes an embedded HTTP event server via `--port`/`--hostname` flags that delivers structured SSE telemetry, replacing hook injection).
+Opencode SSE events: parsed in `cli_adapter_opencode_events.go`.
 
-`BuildInteractiveCommand(InteractiveSpawnOptions) *exec.Cmd` — builds a PTY-friendly command without batch-mode flags:
-- **Claude**: `claude --session-id <id> --model <m> --dangerously-skip-permissions [--effort] [--settings] [--append-system-prompt-file]` — no `--print/--verbose/--output-format/--disallowed-tools`
-- **Opencode**: `opencode <workDir> --port <N> --hostname 127.0.0.1 --model <m> [--variant <effort>]` — no `run/--format json`; the `--port`/`--hostname` flags start the embedded HTTP event server
-- **Codex**: `codex --model <m> --dangerously-bypass-approvals-and-sandbox` — no `exec/--json`
+Codex context tracking: parsed by `extractCodexContextLeft` in `be/internal/socket/handler_codex_context.go` — see `cli_adapter_codex_*.go` for the hook payload shape.
 
-### PTY Lifecycle
+### Settings Merge (Claude interactive)
 
-1. `BuildInteractiveCommand(opts)` — build *exec.Cmd (cmd.Path + cmd.Args only; PTY owns process)
-2. `ptyMgr.RegisterCommand(sessionID, cmd.Path, cmd.Args[1:])` — registers custom command so PTY uses it instead of default `claude --resume`
-3. `ptyMgr.Create(sessionID, workDir, env)` — spawns process in PTY; session auto-removed on exit
-4. `proc.cmd = nil` — PTY owns the process; `pid=0` recorded in DB (existing nil-guards handle this)
-5. After ~250ms readiness delay, `sess.Write(promptBody + "\n")` — delivers first user message via stdin
+`BuildInteractiveSettingsJSON` (`hooks_settings.go`) returns `--settings` JSON with `hooks` (PreToolUse/PostToolUse → `nrflo agent record-event`) and `statusLine`. `mergeInteractiveSettings` deep-merges safety JSON + hooks JSON, concatenating hook arrays on key conflict so `statusLine` survives.
 
-### Suffix Delivery Asymmetry
+## Context Save
 
-- **Claude**: suffix written to a tmp file; passed as `opts.SystemPromptFile` (`--append-system-prompt-file`)
-- **Codex / Opencode**: suffix prepended to `prep.prompt` in memory before delivery via PTY stdin Write; no file needed (these adapters don't support system prompt files)
+Two paths, selected by `shouldUseAgentSave(proc)` in `context_save.go`:
 
-### Settings Merge
+- **Resume-based** (`context_save_resume.go`): resumes the same Claude session with a save prompt. Requires `adapter.SupportsResume() == true` (Claude only).
+- **System agent** (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for all other CLIs, api-mode, and when `Config.ContextSaveViaAgent == true`.
 
-`BuildInteractiveSettingsJSON(proc)` (in `hooks_settings.go`) returns a Claude `--settings` JSON string with two top-level entries: (1) `hooks` — registering `PreToolUse` and `PostToolUse` hook arrays, each with `matcher: "*"` and `<absolute-nrflo-path> agent record-event`; (2) `statusLine` — a `{"type":"command","command":"<absolute-nrflo-path> agent statusline"}` block (Claude-only, interactive-only) that drives the Claude status line with live context info. The nrflo path is resolved via `os.Executable()` once (cached via `sync.Once`) with a fallback to `"nrflo"`. Returns `""` for non-Claude adapters. `mergeInteractiveSettings(safetyJSON, hooksJSON)` deep-merges by: (a) copying all top-level keys from safetyJSON into the result; (b) concatenating `hooks` sub-map arrays when both sides define the same event key; (c) copying all non-`hooks` top-level keys from hooksJSON into the result — **hooks side wins on conflict**. This ensures `statusLine` from `BuildInteractiveSettingsJSON` survives the merge even when a safety hook JSON is present. The merged result is passed as `opts.SettingsJSON` → `--settings <json>` (Claude only).
+Default: claude → resume; codex/opencode/api → agent. Script-mode agents are exempt (`TracksContext()=false`).
 
-### Codex Hook Profile + Hook Injection
+## Low-Context Relaunch
 
-Codex does not support `--settings`. Hook telemetry is delivered via two cooperating mechanisms:
+When context usage crosses the threshold, the spawner kills the agent, saves context via the path above, then calls `relaunchForContinuation`. The new session inherits `to_resume` findings via the `low-context` injectable block. Core logic lives in `context_save.go` and `context_save_resume.go`.
 
-**Profile dir** (per-session CODEX_HOME): carries auth, model/personality settings, and a workDir trust entry so codex doesn't block on its trust dialog or run unauthenticated. Hooks themselves are NOT written to this profile — codex 0.125's TUI ignores `<CODEX_HOME>/config.toml` hook tables in PTY contexts (verified empirically across many configs).
+## Stall Detection
 
-`(*CodexAdapter).PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error)` (`cli_adapter_codex.go`):
-- Creates `os.MkdirTemp("", "nrflo-codex-<SessionID>-*")`
-- Delegates to `writeCodexProfileForSession(dir, resolvedNrfloPath(), opts.SessionID, opts.WorkflowInstanceID, opts.ProjectID, opts.WorkDir)`
-- Builds the `[]HookEvent` list (one entry per `codexHookEvents` event, env-prefixed nrflo command)
-- Returns `InteractiveExtras{CodexHome: dir, Hooks: hooks}` plus a cleanup func that calls `os.RemoveAll(dir)` (best-effort)
-- On profile write failure, removes the dir before returning the error
+Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15). Config keys:
 
-The profile/hook helpers themselves live in `cli_adapter_codex_hooks.go` as package-internal functions (lowercase): `writeCodexProfile`, `writeCodexProfileForSession`, `buildCodexHookCommand`, `stripHookTables`, `hasFeaturesTable`, `hasProjectTrust`, `userCodexHome`, plus the `codexHookEvents` slice — used only by `CodexAdapter.PrepareInteractive`.
+- `stall_start_timeout_sec` (agent_definitions) — seconds with no output before a start-stall; NULL = global default (120s), 0 = disabled.
+- `stall_running_timeout_sec` (agent_definitions) — seconds with no output after first message; NULL = global default (480s), 0 = disabled.
+- `Config.GlobalStallStartTimeout` / `Config.GlobalStallRunningTimeout` — override hardcoded defaults when agent def has NULL. Priority: per-agent def > global config > hardcoded.
 
-`writeCodexProfileForSession(dir, nrfloPath, sessionID, instanceID, projectID, workDir string) error`:
-- Reads the user's `~/.codex/config.toml` (when present), strips any `[[hooks.…]]` / `[hooks.…]` blocks (so user-config hooks don't compete with our `-c`-injected ones), and writes the rest into `<dir>/config.toml` verbatim.
-- Ensures `[features] codex_hooks = true` is present (required for the codex_hooks feature to be enabled, per https://developers.openai.com/codex/hooks; appended only if user config doesn't already declare it). NOTE: codex 0.129.0-alpha.15+ has an upstream regression (openai/codex#21639) where hooks do not fire regardless of declaration — tracked in `backlog.md`.
-- Appends `[projects."<workDir>"] trust_level = "trusted"` so codex doesn't show its trust dialog (the `--dangerously-bypass-approvals-and-sandbox` flag does NOT skip the trust prompt).
-- Copies the user's `~/.codex/auth.json` into the per-session dir so the spawned codex stays logged in.
-- No `hooks.json` is written — codex 0.125 does not consume it.
+On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `result=continue reason=stall_restart_*`, 15s delay, relaunch.
 
-**TUI byte capture (openai/codex#21639 workaround)**: Because hooks do not fire in codex ≥ 0.129.0-alpha.15 PTY sessions, `CodexAdapter.CapturesTUIBytes()` returns `true`, enabling a raw-byte fallback path in `ferryPTYOutput`. Each PTY read chunk is passed to `captureTUIChunk` (`backend_interactive_tui_capture.go`), which appends to `proc.tuiLineBuf` (guarded by `messagesMutex`), splits on newlines, strips ANSI/control bytes via `stripANSI`, caps lines at 8 KB (with trailing `…`), caps the buffer at 64 KB (force-flush + reset on overflow), and emits each non-empty line via `s.TrackMessage`. On PTY close, `flushTUIBuffer` drains any partial line. Claude and Opencode return `false` from `CapturesTUIBytes()` and take their existing hook/SSE paths unchanged. Cleanup: flip `CodexAdapter.CapturesTUIBytes()` to `false` once upstream ships a fix; after one release delete `backend_interactive_tui_capture.go`, the `tuiLineBuf` field, the `captureTUI` ferryPTYOutput param, and the `CapturesTUIBytes` interface method.
+## Idle/Nudge Loop
 
-**Hook injection** (`-c hooks.<event>=…`): `CodexAdapter.BuildInteractiveCommand` translates `opts.Hooks` (a `[]HookEvent` populated upstream by `CodexAdapter.PrepareInteractive`, threaded through `InteractiveExtras.Hooks`) into repeated `-c` flags with inline-TOML array-of-tables values:
+Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 3 min, after first output). On idle: write `finish-reminder` injectable to PTY stdin, broadcast `agent.nudged`, persist `nudge_count` in DB. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.IdleAfterMessageTimeoutSec`, `Config.IdleStartTimeoutSec`, `Config.NudgeMax`.
 
-```
--c hooks.SessionStart=[{matcher="*",hooks=[{type="command",command="…",timeout=5}]}]
--c hooks.PostToolUse=[{matcher="*",hooks=[{type="command",command="…",timeout=5}]}]
--c hooks.PreToolUse=[…]
--c hooks.UserPromptSubmit=[…]
--c hooks.Stop=[…]
-```
+## Template Variables
 
-This is the **only** path that survives codex's TUI hook-config bypass. `-c` is a session-layer override applied last, after user/managed config layers.
+Full variable list (`${AGENT}`, `${TICKET_ID}`, `${MODEL}`, `#{FINDINGS:...}`, `#{PROJECT_FINDINGS:...}`, `#{LAYER_FINDINGS:N}`, `#{PRIOR_LAYER_FINDINGS}`, etc.) and expansion order are in `template.go`. Auto-prepended injectables (`user-instructions`, `low-context`, `callback`, `system-prompt-suffix`) are loaded from the `default_templates` table.
 
-Hook command shape: `/usr/bin/env NRF_SESSION_ID=<sess> NRF_WORKFLOW_INSTANCE_ID=<inst> NRFLO_PROJECT=<proj> nrflo agent record-event` (built by `buildCodexHookCommand`). The `env` wrapper is required because codex strips most env vars from hook subprocesses (only `CODEX_HOME, HOME, HOMEBREW_*, SHELL, TMPDIR, USER, PATH` survive); without it nrflo CLI sees no session and silently exits.
+`SpawnRequest.ExtraVars` (`map[string]string`) injects caller-supplied `${KEY}` variables; expanded after standard vars, before conditional DB fetches.
 
-Other codex flags relevant to interactive spawn:
-- `-c check_for_update_on_startup=false` — prevents codex from running `brew upgrade --cask codex` mid-session (which would consume the run as a self-upgrade)
-- `--dangerously-bypass-approvals-and-sandbox` — skips command approval prompts (does NOT bypass the project trust dialog — that's why we add the trust entry to the profile)
+## Per-project Venv
 
-`backend_interactive.go` wiring (adapter-name agnostic — no `Name() == "codex"` branches):
-- Calls `b.adapter.PrepareInteractive(InteractivePrepOptions{SessionID, WorkflowInstanceID, ProjectID, WorkDir})`; on error logs via `b.s.warnAgent` and continues with zero extras. Cleanup func is non-nil even on error (defensive).
-- Sets `opts.CodexHome = extras.CodexHome` and `opts.Hooks = extras.Hooks` unconditionally (zero values for non-codex adapters).
-- Selects prompt delivery via `b.adapter.DeliversPromptInline()`: when true, the backend passes an empty body to `deliverPrompt` (codex receives the prompt via argv positional in `BuildInteractiveCommand`); when false, the backend writes the prompt to PTY stdin after the readiness delay (Claude).
-- Selects PTY-stream terminal-query auto-replies via `b.adapter.NeedsTerminalQueryReplies()`: passed as a bool to `ferryPTYOutput`. True for codex (TUI sends DSR/DA/kitty/OSC probes during init); false for claude (skips the responder entirely).
-- On `b.ptyMgr.Create` error: calls `prepCleanup()` before returning.
-- In `<-sess.Done()` goroutine: calls `prepCleanup()` after suffix file removal.
+The orchestrator calls `venvMgr.Ensure(ctx, projectID, projectRoot)` once per workflow run and sets `Config.PythonPath` to the result. `prepareScriptSpawn` uses it as the Python binary; empty → falls back to `python3` in PATH. Venv manager: `be/internal/venv`.
 
-`CodexAdapter.BuildInteractiveCommand`:
-- Strips any pre-existing `CODEX_HOME=` from `opts.Env` before appending ours (macOS getenv returns first match; appended duplicates lose to anything inherited via shell)
-- Sets `TERM=xterm-256color` if not already set
-- Appends `opts.Prompt` as the final argv positional — codex pre-loads it as the first user message instead of running it through the TUI input box (the input box has a wrapping bug at `tui/src/wrapping.rs:52` that panics on multi-KB pasted bodies)
-
-`resolvedNrfloPath()` is shared with `hooks_settings.go` — no duplication.
-
-### CLIAdapter Interactive Surface
-
-The interactive sub-surface on `CLIAdapter` makes per-CLI divergence live entirely in the adapter file:
-
-| Method | Claude | Codex | Opencode |
-|--------|--------|-------|----------|
-| `SupportsInteractive()` | true | true | true |
-| `BuildInteractiveCommand(opts)` | --settings + suffix file | argv prompt + `-c hooks…` | workDir + --port + --hostname + --model [+ --variant] |
-| `PrepareInteractive(opts)` | zero extras, noop cleanup | profile dir + hook list | allocate free 127.0.0.1 port |
-| `DeliversPromptInline()` | false | true | false |
-| `NeedsTerminalQueryReplies()` | false | true | false |
-| `CapturesTUIBytes()` | false | true | false |
-| `BumpsOnPTYBytes()` | false | true | false |
-
-`CapturesTUIBytes` and `BumpsOnPTYBytes` both flip to false for Codex together once openai/codex#21639 is fixed and one release has cleared. After that, delete `backend_interactive_tui_capture.go`, the `tuiLineBuf` field, the `captureTUI` ferryPTYOutput param, and both interface methods.
-
-Adding a new interactive CLI: implement these seven methods in `cli_adapter_<name>.go` and register in `GetCLIAdapter`. No changes required to `backend_interactive.go`.
-
-### Output Ferry
-
-`ferryPTYOutput(spawner, proc, sess, respondToQueries, captureTUI, bumpOnPTYBytes bool)` runs in a goroutine reading PTY stdout. Bytes are always drained — the raw TUI stream is noise (cursor escapes, redraws, status bars). `firstByteCh` is closed unconditionally on the first chunk, regardless of adapter type (`deliverPrompt` depends on it).
-
-Heartbeat (`lastMessageTime` / `hasReceivedMessage` bump) is opt-in via `bumpOnPTYBytes`. Adapters whose hooks or SSE bus already call `BumpLastMessage` (Claude via PreToolUse/PostToolUse/Stop hooks; Opencode via `message.part.updated` / `session.idle` SSE events) pass `false` so the running-stall timer can accumulate while the TUI redraws — making stall detection reachable under `cli_interactive` mode. Adapters without a working hook path (Codex, while openai/codex#21639 keeps hooks unfired) pass `true` so PTY bytes remain the heartbeat signal. When `respondToQueries == true` (codex), the chunk is scanned for terminal capability queries and canned replies are written back to the PTY — see `respondToTerminalQueries`.
-
-### Codex Rollout JSONL Extraction
-
-Codex hook payloads carry `transcript_path` pointing at the rollout JSONL where codex writes the full turn record (token usage, model output, encrypted reasoning, tool I/O). Two extractors live in `socket/handler_codex_context.go`:
-
-**Context tracking** (`extractCodexContextLeft`): per-turn `token_count` events.
-
-```
-{"type":"event_msg","payload":{"type":"token_count","info":{
-   "last_token_usage":{"input_tokens":18389,"cached_input_tokens":11648,...},
-   "total_token_usage":{...},
-   "model_context_window":258400}}}
-```
-
-`extractCodexContextLeft` opens the file on every `agent.record_event` call, scans backwards for the most recent `token_count` record, and returns `100 - 100 * last_token_usage.input_tokens / model_context_window`. `cached_input_tokens` is a subset of `input_tokens` (no double-count). The handler in `handler_record_event.go` runs this opportunistically before the event-name switch and pipes the result through the same `agentSvc.UpdateContextLeft` + `EventAgentContextUpdated` broadcast path used for Claude. Claude hook payloads carry no `transcript_path` so the helper is a no-op for them. Best-effort: missing/unreadable file or no `token_count` record yet → silently skipped, no error to caller. Low-context restart now trips for codex interactive sessions on the next hook fire after a relaunch threshold is crossed. Opencode uses the SSE consumer path (see "Opencode SSE Consumer" below) instead of hooks for context tracking.
-
-**Agent text** (`extractCodexNewAgentMessages`): per-turn `event_msg/agent_message` records, flushed on `Stop`. Codex's hook events expose tool I/O (Pre/PostToolUse) and user input (UserPromptSubmit) but never the model's own spoken output — that lives in the JSONL only. On every `Stop` hook, `Handler.flushCodexAgentMessages` reads bytes since the per-session offset (in-memory `Handler.codexJSONLOffsets`, mutex-guarded) and emits each `agent_message` body as an `agent_messages` row (category `text`) via the same `recordSimpleEvent` path used for hooks. The body is stored in full — the previous 2000-byte cap silently clipped legitimate model output and never matched the non-interactive `TrackMessage` path which stores agent text untruncated. Phase tags (`commentary` / `final_answer`) are dropped — the body usually makes its role clear and the tag adds noise. Offsets are not persisted across server restarts; a re-flush after restart is acceptable noise. File rotation/truncation (file shorter than tracked offset) resets the offset to 0.
-
-**Reasoning is NOT extracted.** Codex 0.125 emits `response_item/reasoning` records with `summary: []`, `content: null`, and only an opaque `encrypted_content` blob (verified across 109 reasoning items in real sessions; 0/109 had plaintext). Reasoning text is encrypted server-side by OpenAI and not decryptable client-side. If codex eventually exposes a `reasoning_summary` text field, this extractor can be extended.
-
-### Opencode SSE Consumer
-
-Opencode does not support a hook plugin system, so structured visibility comes from its embedded HTTP server instead. When `BuildInteractiveCommand` launches opencode with `--port N --hostname 127.0.0.1`, opencode starts a TUI **and** an HTTP event server on the given port.
-
-**Port allocation** (`PrepareInteractive`): a free localhost port is allocated via `net.Listen("tcp","127.0.0.1:0") + ln.Close()`. The port is returned in `InteractiveExtras.Port`, threaded into `InteractiveSpawnOptions.Port`, and passed to `BuildInteractiveCommand`.
-
-**PostInteractiveStarter sub-interface**: `OpencodeAdapter` implements the optional `PostInteractiveStarter` interface (`cli_adapter.go`). `backend_interactive.go` asserts this interface after a successful `ptyMgr.Create`, calls `PostInteractiveStart`, and stores the returned cleanup func alongside `prepCleanup` — both are called in the wait goroutine after `sess.Done`.
-
-**SSE endpoint**: `GET http://127.0.0.1:<port>/event?directory=<workDir>` — text/event-stream, no client timeout. `startOpencodeEventStream` (`cli_adapter_opencode_events.go`) spawns a goroutine that reads SSE `data: <json>` frames with a 1MB scanner buffer. Reconnects with exponential backoff (cap 5s) while ctx is alive.
-
-**Event dispatch** (events observed via discovery ticket, field paths verified empirically):
-
-| Event type | Trigger condition | Sink call |
-|-----------|-------------------|-----------|
-| `message.part.updated` (type=tool, status=running) | Tool execution started | `RecordHookMessage(tool_use)` + `BroadcastMessagesUpdated` + `BumpLastMessage` |
-| `message.part.updated` (type=tool, status=completed) | Tool execution done | `RecordHookMessage(tool_result)` + `BroadcastMessagesUpdated` + `BumpLastMessage` |
-| `message.part.delta` (field=text) | Streaming text chunk | Accumulate in per-part-id buffer |
-| `message.part.updated` (type=text, non-empty) | Full text snapshot | Update per-part-id buffer |
-| `message.updated` | Message complete with tokens | Flush text buffer → `RecordHookMessage(text)` + `BroadcastMessagesUpdated` + `BumpLastMessage`; compute `ComputeContextLeftPct(tokens.total, 0)` → `UpdateContextLeft` |
-| `session.idle` | Assistant turn complete | `BumpLastMessage` + `OnTurnComplete` |
-| `session.error` | Provider/protocol error | `RecordHookMessage(text)` + `BroadcastMessagesUpdated` + `RecordError` |
-| `permission.asked` | Tool permission required | Logged + ignored (v1; `--dangerously-skip-permissions` is not on the TUI command) |
-
-**Context tracking**: `message.updated` carries `properties.info.tokens.total`. The consumer calls `ComputeContextLeftPct(total, 0)` (defaulting to 200000 when maxCtx ≤ 0) and passes the result to `sink.UpdateContextLeft`. The low-context restart threshold is evaluated by `monitorAll` on the next poll tick, same as Claude/Codex.
-
-**Idle/nudge + take-control**: inherited automatically — `checkIdleNudge` is gated on `proc.backend.Name() == "cli_interactive"` and `session.idle` resets the idle window via `OnTurnComplete → BumpLastMessage`. Take-control uses viewer-attach (no kill), same as Claude/Codex interactive.
-
-**Prompt delivery**: PTY stdin Write after the readiness delay (`DeliversPromptInline()=false`), same as Claude. Fallback to REST `POST /session/{id}/message` is not implemented in v1 (opencode serve mode only).
-
-### Wait Goroutine
-
-`<-sess.Done()` → `proc.waitErr` set if exit code ≠ 0 → `close(proc.doneCh)`. Same pattern as cliBackend so `monitorAll` unblocks normally.
-
-### Kill
-
-`sess.Close()` sends SIGTERM (PTY session handles escalation via its own `Kill()` method for SIGKILL if needed). The `Kill(ctx, proc, sig)` method on `cliInteractiveBackend` routes `SIGKILL` to `sess.Kill()` and other signals to `sess.Close()`.
-
-### Take-Control (Viewer Attach)
-
-When `proc.backend.Name() == "cli_interactive"`, the `monitorAll` take-control case does **not** kill the agent. Instead it:
-1. Broadcasts `agent.viewer_attached` with `session_id`, `agent_type`, `model_id`
-2. Leaves proc in the running list — agent continues normally
-3. Skips `interactiveWaits` registration
-
-The viewer connects via the existing `/api/v1/pty/{session_id}` endpoint (relaxed to allow `status=running` when a PTY session already exists for the session ID). Viewer disconnect does **not** trigger `completePtyInteractive` — that flow is reserved for `user_interactive` status.
-
-### Config Field
-
-`spawner.Config.PTYManager *pty.Manager` — must be set by the orchestrator (both `orchestrator.go` and `orchestrator_merge_resolve.go` pass `o.PTYManager`). `Orchestrator.PTYManager` is wired from the API server via `orch.PTYManager = ptyMgr` in `server.go`.
-
-## Error Capture
-
-The spawner records errors to the `errors` table via `Config.ErrorSvc` (implements `ErrorRecorder` interface). Nil-safe — no-op when not configured. Errors are recorded for:
-- **Agent timeout** (`completion.go:handleGracefulTimeout`): type=agent, message=`"<agent_type>: timeout after Ns"`
-- **Agent fail** (`completion.go:handleCompletion`): type=agent, message=`"<agent_type>: <result_reason>"`
-
-## Database Access
-
-The spawner uses a shared `*db.Pool` from `Config.Pool` for all database operations. The orchestrator creates one pool per workflow run and passes it to all spawners in that run. The `pool()` helper method provides access.
-
-The `Config.Clock` field (`clock.Clock`) provides time for DB timestamps (agent start time, message coalescing). Real-time operations (`time.Since`, poll intervals, grace periods) continue using `time.Now()` directly.
-
-Repos accept `db.Querier` interface (satisfied by both `*db.DB` and `*db.Pool`).
-
-## User Input Recording
-
-`Spawner.RecordUserInput(sessionID, text string) bool` (in `output.go`) persists a viewer keystroke line as a message with `category="user_input"`. The spawner maintains a `sessionProcs map[string]*processInfo` (protected by `sessionProcsMu`) that is populated on spawn (`registerSessionProc`) and cleared on completion (`unregisterSessionProcs`). When the session is found in the map it calls `TrackMessage(proc, text, "user_input")` + `saveMessages(proc)` and returns `true`. Returns `false` when no active proc is found (caller falls back to direct DB insert via `orchestrator.recordUserInputFallback`). The PTY handler in `api/handlers_pty.go` routes all binary WS frames through this path after sanitizing ANSI/control bytes and splitting on line endings; JSON resize messages are excluded.
-
-## Spawn Flow
-
-```
-1. VALIDATION
-   - Validate workflow is initialized on ticket
-   - Check layer ordering (all prior layers must be completed)
-
-2. DETERMINE MODEL
-   - Read model from agent definition (DB)
-   - Format as cli:model (e.g. claude:opus)
-   - Each Spawn() call handles exactly one agent
-
-2b. LOW CONSUMPTION MODEL OVERRIDE (if Config.LowConsumptionMode is true)
-   - Load agent definition for the original agent type
-   - If def.LowConsumptionModel is set (a valid model name like "sonnet", "haiku"):
-     - Override model = def.LowConsumptionModel
-     - Recalculate cliName via cliForModel(model) and modelID
-   - spawnSingle always uses req.AgentType for loadAgentDefinition, loadTemplate, timeout
-   - Session records (registerStart) still use the original AgentType
-
-3. SPAWN
-   - Assemble prompt with ${MODEL_ID}, ${MODEL} placeholders
-   - Spawn CLI process
-   - Register session with pid and model
-
-4. MONITOR (single poll loop per agent)
-   - Print status every 30 seconds
-   - Check process for completion or timeout
-   - Handle completion/timeout
-   - Broadcast messages.updated (coalesced to one per session per 2s window)
-
-5. AUTO-RESTART ON FAILURE (if configured)
-   - After handleCompletion sets FAIL, check maxFailRestarts > 0 && failRestartCount < maxFailRestarts
-   - Wait 15s (defaultFailRetryDelay) before retrying — context-aware via select{ctx.Done(), time.After()}
-   - Broadcast agent.retry_waiting WS event with delay_seconds, fail_restart_count, max_fail_restarts
-   - If context cancelled during wait, skip restart (agent stays failed)
-   - Override session: status=continued, result=continue, result_reason=fail_restart
-   - Increment failRestartCount, set finalStatus=CONTINUE → relaunchForContinuation handles relaunch
-   - Same delay applies to TIMEOUT auto-restart path (timeout_restart)
-   - failRestartCount is independent of restartCount (low-context restarts)
-
-5b. STALL DETECTION (in monitorAll poll loop)
-   - Checked for still-running procs before timeout check
-   - Skipped if lowContextSaving or stallRestartCount >= maxStallRestarts (15)
-   - Start stall: no messages received && stallStartTimeout > 0 && sinceLastMsg > stallStartTimeout (default 2min)
-   - Running stall: has messages && stallRunningTimeout > 0 && sinceLastMsg > stallRunningTimeout (default 8min)
-   - On stall: broadcast agent.stall_restart event, kill process (SIGTERM→grace→SIGKILL), flush messages,
-     register stop with result=continue reason=stall_restart_{start_stall|running_stall},
-     increment stallRestartCount, set finalStatus=CONTINUE → relaunchForContinuation
-   - No context save attempted (agent is frozen)
-   - 15s delay before retry (waitBeforeStallRetry, broadcasts agent.stall_waiting event)
-   - Stall timeouts configurable per agent_definition: stall_start_timeout_sec, stall_running_timeout_sec
-     (NULL = defaults, 0 = disabled)
-   - Global stall timeout override: when agent def has NULL, spawner checks Config.GlobalStallStartTimeout / GlobalStallRunningTimeout before falling back to hardcoded defaults. Priority: per-agent def > global config > hardcoded default.
-
-5c. IDLE/NUDGE LOOP (in monitorAll poll loop)
-   - Only active for cliInteractiveBackend agents (proc.nudgeMax > 0; 0 = disabled for cli/api backends)
-   - Idle window: idleStartTimeout (default 2min) when no output received yet; idleAfterMessageTimeout (default 3min) after first output
-   - On idle window exceeded and nudgeCount < nudgeMax (default 5):
-     - Expand "finish-reminder" injectable with stdVars and write body+"\n" to PTY stdin (best-effort, log error)
-     - Broadcast agent.nudged with {session_id, agent_type, model_id, attempt, max}
-     - Call AgentSvcReal.IncrementNudgeCount → persists nudge_count in DB
-     - Record lastNudgeAt and reset lastMessageTime (treats nudge as activity, restarting idle window)
-   - After nudgeMax nudges, if another full idle window passes since lastNudgeAt:
-     - Call AgentSvcReal.Fail(reason="unresponsive_after_nudges")
-     - Call RequestTerminalSignal(sessionID, "fail") → existing terminalSignal flow drives the kill
-     - Call ErrorSvc.RecordError(projectID, "agent", sessionID, "<type>: unresponsive after N reminders")
-   - Agent stays in running list throughout (no relaunch); terminalSignal drives the doneCh close
-   - System agents (context-saver, conflict-resolver) also use this path when interactive mode is on
-   - Configurable via Config.IdleAfterMessageTimeoutSec, Config.IdleStartTimeoutSec, Config.NudgeMax
-   - nudge_count persisted in agent_sessions table (migration 000065); surfaced in V4 response (active + history)
-
-6. FINALIZE PHASE
-   - pass_count >= 1 → layer passes (fan-in)
-   - all skipped → layer passes
-   - pass_count == 0 → layer fails
-
-BROADCAST: The spawner broadcasts WebSocket events (agent.started,
-messages.updated, agent.completed, agent.take_control,
-agent.take_control_rejected) directly via the in-process WebSocket hub.
-messages.updated events are coalesced to one per session per 2s window.
-
-7. TAKE-CONTROL (interactive session)
-   - `takeControlCh` receives session ID from orchestrator. `RequestTakeControl`
-     also registers a readiness entry in `takeControlReadies[sessionID]` (a
-     `chan struct{}`) before sending so callers can synchronously wait for the
-     post-kill state via `WaitForTakeControlReady(sessionID, timeout)`.
-   - Backend gate: proc.backend.SupportsTakeControl() must return true
-   - If false (API backends): broadcasts agent.take_control_rejected with
-     session_id, agent_type, model_id, reason="api_mode_unsupported", closes
-     the readiness channel, and breaks — agent is NOT killed and continues
-     running normally
-   - If true: kills agent (SIGTERM → grace period → SIGKILL), sets session
-     status to user_interactive, broadcasts agent.take_control event, closes
-     the readiness channel, then blocks monitorAll on interactiveWaitCh
-   - For `cli_interactive` backends the take-control case is viewer-attach:
-     no kill, no status flip, broadcast `agent.viewer_attached`, close the
-     readiness channel, and continue. The PTY handler accepts `status=running`
-     when a PTY session already exists for that ID.
-   - If the requested session is not found in this monitorAll's `running`
-     list (already finished, or owned by a different spawner), the readiness
-     channel is closed at end-of-case so callers don't hang to timeout.
-   - `CompleteInteractive(sessionID)` closes interactiveWaitCh, unblocking
-   - Proc treated as PASS for finalizePhase
-   - Only works for CLIs with SupportsResume() == true
-   - HTTP handlers (ticket + project take-control) pre-screen via
-     isAPISession() and return HTTP 409 api_mode_unsupported before
-     dispatching to the orchestrator, so the spawner rejection path is a
-     belt-and-suspenders fallback. After dispatch, the handlers wait on
-     `WaitTakeControlReady` (default 10s) before responding so the UI's
-     PTY WebSocket connection doesn't race the kill window.
-
-8. TERMINAL SIGNAL (kill accelerator after DB write)
-   - Per-session registry `terminalSignals map[sessionID]chan terminalSignal`
-     (protected by `terminalSignalsMu`). Each `monitorAll` creates one buffered
-     `ownTerminalCh` and registers all of its procs (initial + relaunched) against
-     it via `registerTerminalSignal(sessionID, ownTerminalCh)`.
-   - `RequestTerminalSignal(sessionID, result)` from the socket handler looks up
-     the channel for that exact session and sends to it (non-blocking). If the
-     session is not registered (already finished, or never started), the call is
-     a silent no-op — there is no shared channel that another `monitorAll` can
-     drain by mistake.
-   - `monitorAll` case: receive on `ownTerminalCh` (signal is guaranteed to be
-     for one of *our* procs); find the matching proc in `running`, kill with
-     SIGTERM → grace period → SIGKILL (same pattern as take-control), wait for
-     doneCh. No DB writes, no WS broadcasts, no finalStatus override —
-     handleCompletion reads the DB result on the next poll iteration.
-   - Continuation relaunches go through `relaunchAndRegister` which unregisters
-     the old session ID and registers the new one against the same `ownTerminalCh`.
-   - All backends supported (no SupportsTakeControl gate); the goal is just to
-     unblock monitorAll quickly instead of waiting for the agent process to
-     notice its own result.
-   - Why per-session and not a shared channel: with multiple agents in the same
-     layer running concurrently, each Spawn() call has its own `monitorAll`
-     goroutine, but they share the same Spawner. A shared `terminalSignalCh`
-     could be drained by any of those goroutines first; if the receiver did not
-     own the signal's session, the kill silently dropped and the agent waited
-     until idle/nudge or stall detection picked it up minutes later.
-   - **Orchestrator sessionID→*Spawner index**: `Config.OnSessionRegister(sid, sp)`
-     and `Config.OnSessionUnregister(sid)` are called by `registerTerminalSignal`
-     and `unregisterTerminalSignal` respectively, **after** releasing
-     `terminalSignalsMu` (to avoid lock-order inversion — the callback acquires
-     `orchestrator.mu`). The orchestrator uses these callbacks to maintain a
-     `runState.spawners map[string]*Spawner` keyed by session ID, replacing the
-     old single `runState.spawner` pointer that was overwritten last-writer-wins
-     in parallel-layer execution.
-```
-
-## Public Helper Methods
-
-### RegisterInteractiveWait
-
-```go
-func (s *Spawner) RegisterInteractiveWait(sessionID string) <-chan struct{}
-```
-
-Creates and returns a channel that blocks until `CompleteInteractive` is called for the given session ID. Used by the orchestrator to wait on interactive or plan PTY sessions before entering the layer execution loop. The returned channel is closed when the interactive session finishes, unblocking the caller. Fires `OnSessionRegister(sessionID, s)` after registering (outside the mutex, same discipline as `registerTerminalSignal`) so the orchestrator's `rs.spawners` index includes the pre-step spawner for the duration of the wait. This is the external entry point for the same interactive-wait mechanism used internally by the take-control flow (step 7 in the spawn flow above).
-
-### LoadTemplate
-
-```go
-func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string) (string, error)
-```
-
-Public wrapper around the private `loadTemplate`. Expands an agent definition's prompt template with the given parameters, performing all variable substitution (`${VAR}` placeholders), extra variables (`ExtraVars`), findings expansion (`#{FINDINGS:...}`), and project findings expansion (`#{PROJECT_FINDINGS:...}`). Used by the orchestrator to expand L0 agent templates for building interactive PTY command args without going through the full spawn flow. Pass `nil` for `extraVars` when no extra variables are needed.
-
-## ExtraVars (Caller-Injected Template Variables)
-
-`SpawnRequest.ExtraVars` (`map[string]string`) allows callers to inject arbitrary template variables into agent prompts. Variables are expanded as `${KEY}` after standard variable expansion but before conditional DB fetches (ticket info, user instructions, etc.).
-
-**Expansion order:** standard vars → ExtraVars → ticket context → user instructions → callback → previous data → findings patterns.
-
-If an ExtraVars key overlaps a standard variable (e.g., `AGENT`), the ExtraVars value overwrites (last-write-wins). Callers should not overlap with standard variable names.
-
-**Common ExtraVars** (used by system agents like conflict-resolver):
-- `BRANCH_NAME` — Git branch name
-- `DEFAULT_BRANCH` — Default branch (e.g., `main`)
-- `MERGE_ERROR` — Merge error message
-
-## Agent Definitions
-
-Agent definitions store model, timeout, and prompt template per agent type per workflow. Stored in `agent_definitions` DB table, managed via API (`/api/v1/workflows/{wid}/agents`) and UI (`/workflows`).
-
-### System Agent Definition Fallback
-
-`loadPromptContent()` first looks up the agent definition in the project-scoped `agent_definitions` table. If not found, or if the per-project prompt is empty (empty = inherit from system), it falls back to `system_agent_definitions` (global, no project/workflow scope). This allows workflows to have per-project agent_definition rows (for model/layer/timeout config) while inheriting the prompt from the system definition. The fallback only applies to prompt loading — agent config (model, timeout, stall settings) is loaded separately by the orchestrator via `Config.Agents`.
-
-| Template | Purpose | Model |
-|----------|---------|-------|
-| `setup-analyzer` | Investigation and context gathering | sonnet |
-| `implementor` | Code implementation | opus_4_7 |
-| `test-writer` | TDD test design | opus_4_7 |
-| `qa-verifier` | Verification and quality checks | opus_4_7 |
-| `doc-updater` | Documentation updates | sonnet |
-
-## Agent Environment Variables
-
-The spawner sets these env vars on every spawned agent process. Child processes (e.g., `nrflo` CLI calls) inherit them.
+## Agent Env Vars
 
 | Variable | Purpose |
 |----------|---------|
 | `NRFLO_PROJECT` | Project ID |
-| `NRF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID — used by CLI to target the correct instance directly (required for findings/agent commands) |
-| `NRF_SESSION_ID` | Agent session UUID — used by CLI to target the correct session directly (required for findings/agent commands) |
-| `NRFLO_AGENT_TOKEN` | Per-session bearer token (`MintSpawnToken()` → `agent_sessions.spawn_token`). Picked up by the CLI's HTTPClient and sent as `Authorization: Bearer …`; the API's `requireAuth` accepts it while the session is `running` or `user_interactive`. |
-| `NRF_SPAWNED` | Set to `1` to indicate agent was spawned by the orchestrator |
-| `NRF_CONTEXT_THRESHOLD` | Context usage threshold percentage for low-context detection |
-| `NRF_MAX_CONTEXT` | Max context window size in tokens (e.g., 200000 or 1000000 for opus_4_7_1m). Used by hooks to calculate context % |
-| *(per-project vars)* | `Config.ProjectEnv` entries (loaded once at workflow start from `project_env_vars`) are appended after the nrflo-controlled vars in both `prepareSpawn` and `prepareScriptSpawn`. Duplicate keys resolve last-wins via `exec.Cmd.Env` semantics; the reserved-name validator in the service layer is the primary defense. |
+| `NRF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID |
+| `NRF_SESSION_ID` | Agent session UUID |
+| `NRFLO_AGENT_TOKEN` | Per-session bearer token (`MintSpawnToken()`) |
+| `NRF_SPAWNED` | Set to `1` |
+| `NRF_CONTEXT_THRESHOLD` | Context usage threshold % |
+| `NRF_MAX_CONTEXT` | Max context window size in tokens |
+| *(per-project vars)* | `Config.ProjectEnv` entries appended last (last-wins) |
 
-On relaunch (continuation), `spawnSingle` is called again, so `NRF_SESSION_ID` gets the new session's UUID. `NRF_WORKFLOW_INSTANCE_ID` stays the same. When using the system agent context saver, it writes findings to the original session via `NRF_SESSION_ID=${TARGET_SESSION_ID}` override in its CLI command, then the fresh spawn gets the new session ID.
-
-## Context Save Methods
-
-Two paths exist; selection is computed by `(*Spawner).shouldUseAgentSave(proc)` (`context_save.go`):
-
-- **Resume-based** (`contextSaveViaResume`, `context_save_resume.go`): Resumes the same Claude session with a save prompt; the agent writes `to_resume` findings itself. Requires `adapter.SupportsResume() == true` — only Claude qualifies.
-- **System agent** (`contextSaveViaAgent`, `context_save.go`): Spawns a fresh `context-saver` system agent (haiku) that reads the killed agent's message history (120k char tail truncation) and writes a summary to `to_resume` findings. Works for all CLI types. Broadcasts `EventAgentContextSaving` WS event.
-
-`shouldUseAgentSave` returns `true` (forces the agent path) when ANY of:
-1. `Config.ContextSaveViaAgent == true` (global `context_save_via_agent` setting, default false — explicit user opt-in).
-2. `proc.backend.Name() == "api"` — the resume path is CLI-only and cannot resume an in-process API run.
-3. `adapter.SupportsResume() == false` — covers codex (and any future non-resumable CLI). Without this clause, `contextSaveViaResume` would short-circuit with a warning and relaunch with empty `${PREVIOUS_DATA}`, silently dropping all carryover. The cost is one extra haiku invocation per low-context event for non-claude sessions; the previous default was silent data loss.
-
-Default: claude → resume; codex/opencode → agent; api-mode → agent.
-
-**Script-mode agents are exempt from low-context save entirely.** `scriptBackend.TracksContext()` returns `false`, so `monitorAll` never enters the low-context branch regardless of token usage. Script agents always run to completion (or until timeout/stall).
-
-### Saver Selection (Backend-Aware)
-
-`spawnContextSaver` reads `proc.backend.Name()` (defaults to `"cli"` when backend is nil) and calls `svc.GetForBackend("context-saver", backendName)`. When an api backend kills its agent, this selects a `context-saver-api` row from `system_agent_definitions` (matched by `role="context-saver"` AND `execution_mode="api"`). On `sql.ErrNoRows` (no api variant exists), it falls back to `svc.Get("context-saver")` with a structured warn log including the backend name and session_id.
-
-The ephemeral child spawner created in `spawnContextSaver` is extended with:
-- `AgentConfig.ExecutionMode`, `AgentConfig.Tools`, `AgentConfig.APIMaxIterations` — sourced from the selected `sysDef` so the api variant runs via the in-process runner
-- `Provider`, `AgentSvc`, `FindingsSvc`, `ProjectFindingsSvc`, `AgentSvcReal`, `WorkflowSvc`, `APICredentialRepo`, `ToolDefRepo` — forwarded from the parent spawner's config so API-mode builtins function correctly
-
-The `AgentConfig` struct (`spawner.go`) carries these three new fields and `prepareSpawn` reads them as the fallback when `agentDef == nil` (the system-agent path where no project/workflow agent_definition row exists).
-
-## API Mode Gating (Config.APIMode)
-
-`Config.APIMode bool` — set from the `--mode=api` server flag (default `false`). When `false`, `prepareSpawn` rejects any agent whose `executionMode` resolves to `"api"` with error `"api_mode_disabled"` **before** any provider call, credential lookup, or tool registry resolution. This allows stale `execution_mode='api'` rows in the DB to fail cleanly at runtime rather than silently skipping or panicking. The orchestrator threads `APIMode: o.apiMode` into every `spawner.Config` it creates (main run loop, merge conflict resolution). When the server starts with `--mode=cli` (default), no API-mode agents can spawn regardless of what the database contains.
-
-## Template Variables
-
-Templates use placeholders injected by the spawner:
-- `${AGENT}` - Agent type (e.g., "setup-analyzer", "implementor")
-- `${TICKET_ID}` - Current ticket ID
-- `${TICKET_TITLE}` - Ticket title from the tickets table
-- `${TICKET_DESCRIPTION}` - Ticket description from the tickets table
-- `${PARENT_SESSION}` - Parent session UUID
-- `${CHILD_SESSION}` - This agent's session UUID
-- `${WORKFLOW}` - Current workflow name (e.g., "feature", "bugfix")
-- `${MODEL_ID}` - Full model identifier in cli:model format (e.g., "claude:sonnet")
-- `${MODEL}` - Just the model name (e.g., "sonnet")
-- `${BRANCH_NAME}` - Git branch name (ExtraVars only, system agents)
-- `${DEFAULT_BRANCH}` - Default branch e.g. "main" (ExtraVars only, system agents)
-- `${MERGE_ERROR}` - Merge error message (ExtraVars only, system agents)
-- `#{PROJECT_FINDINGS:key}` - Single project finding value from `project_findings` table. Returns `"_No project finding for key 'keyname'_"` if missing.
-- `#{PROJECT_FINDINGS:k1,k2}` - Multiple project findings as `key: value` lines. Missing keys get individual placeholders.
-- `#{LAYER_FINDINGS:N}` - Flat sibling roster for layer N, sorted by agent_type. Each agent_type gets a header line; findings are two-space-indented. Agents with no session row render `  _No findings_`.
-- `#{PRIOR_LAYER_FINDINGS}` - Same as `#{LAYER_FINDINGS:currentLayer-1}`. Renders `_No prior layer_` when the current agent is on layer 0.
-
-Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}` placeholders are stripped to empty if present in templates. Their content is now delivered via auto-prepended injectable blocks (see below).
-
-Ticket context variables (`${TICKET_TITLE}`, `${TICKET_DESCRIPTION}`) are only fetched from the database when the template contains them. Project findings are only queried when `#{PROJECT_FINDINGS:...}` patterns are present.
-
-For project-scoped workflows, `${TICKET_ID}` is empty, and `${TICKET_TITLE}`/`${TICKET_DESCRIPTION}` are replaced with empty strings. Validation at workflow creation rejects project-scoped workflows whose agent prompts use ticket-specific variables.
-
-## Auto-prepended Injectable Blocks
-
-Instead of inline `${VAR}` substitution for user instructions, callbacks, and continuation data, the spawner loads injectable templates from the `default_templates` table (type=`injectable`) and prepends them to the agent prompt. Users can edit injectable templates on the Default Templates page.
-
-| Injectable | Trigger | Inner Placeholders |
-|------------|---------|-------------------|
-| `user-instructions` | `workflow_instances.findings["user_instructions"]` is non-empty | `${USER_INSTRUCTIONS}` |
-| `low-context` | Continued session exists with `to_resume` data | `${PREVIOUS_DATA}` |
-| `callback` | `workflow_instances.findings["_callback"]` has non-empty instructions | `${CALLBACK_INSTRUCTIONS}`, `${CALLBACK_FROM_AGENT}` |
-
-**Prepend order:** user-instructions → low-context → callback. Most actionable information closest to the agent prompt.
-
-**Expansion:** `expandInjectable(id, vars)` loads the template body, replaces `${VAR}` placeholders from the vars map, strips any remaining `${...}` placeholders, and returns the expanded body. Returns `""` with a warning if the template is missing.
-
-### System Prompt Suffix
-
-The `system-prompt-suffix` injectable is delivered separately from the prepended blocks. `loadTemplate` returns it as a second string. Delivery depends on the CLI adapter:
-
-- **Claude** (`SupportsSystemPromptFile() == true`): written to `/tmp/nrflo/system-suffix-*.md` and passed as `--append-system-prompt-file`; the temp file is removed after spawn.
-- **Codex / Opencode** (`SupportsSystemPromptFile() == false`): prepended to the prompt body before writing the prompt file.
-- **API mode**: concatenated into `prep.apiSystem` (the Anthropic Messages API `system` parameter).
-
-The suffix always uses the same `stdVars` map as the main template body (`AGENT`, `TICKET_ID`, `PROJECT_ID`, `WORKFLOW`, `MODEL_ID`, `MODEL`). If the template is missing or empty, delivery is a no-op.
-
-The `finish-reminder` injectable is seeded as a readonly template but is not auto-delivered — it is available for user-configured workflows that reference it explicitly.
-
-## Findings Auto-Population
-
-Templates can include findings from previous phases using `#{FINDINGS:...}` pattern.
-
-**Syntax:**
-- `#{FINDINGS:agent}` - All findings for agent
-- `#{FINDINGS:agent:key}` - Single specific key
-- `#{FINDINGS:agent:key1,key2}` - Multiple specific keys
-
-**Example template:**
-```markdown
-## Prior Context
-### Investigation Results
-#{FINDINGS:setup-analyzer}
-### Test Specifications
-#{FINDINGS:test-writer:test_cases,coverage_plan}
-```
-
-**Output format (single agent):**
-```
-summary: Analysis found 3 files to modify
-files_to_modify:
-  - src/handler.go
-```
-
-**Output format (parallel agents):**
-```
-- setup-analyzer:claude:opus:
-  summary: Analysis found 3 files to modify
-- setup-analyzer:claude:sonnet:
-  summary: Found pattern in auth module
-```
-
-**Missing findings:** `_No findings yet available from setup-analyzer_`
-
-### Project Findings
-
-Templates can include project-level findings using `#{PROJECT_FINDINGS:...}` pattern. These are stored in the `project_findings` table (separate from agent-level findings).
-
-**Syntax:**
-- `#{PROJECT_FINDINGS:key}` - Single key value
-- `#{PROJECT_FINDINGS:k1,k2}` - Multiple keys as `key: value` lines
-
-**Example template:**
-```markdown
-## Project Context
-#{PROJECT_FINDINGS:architecture,conventions}
-```
-
-**Missing key:** `_No project finding for key 'architecture'_`
-
-## Message Output Format
-
-All agent output is routed through the structured logger (`logger.Info`/`logger.Warn`/`logger.Error`). The trx from the orchestrator context is threaded into `processInfo.trx` and used to create per-message contexts via `logger.WithTrx(context.Background(), proc.trx)`.
-
-**Log format:** `timestamp LEVEL [trx] [agent:model] message`
-
-Example:
-```
-2026-04-03 11:46:22 INFO [39592b1d] [ticket-creator:opus] [Grep] pattern in /path
-2026-04-03 11:46:23 WARN [39592b1d] [ticket-creator:opus] [stderr] some warning
-```
-
-**Helper methods on Spawner:**
-- `logAgent(proc, msg)` — INFO level with `[agent:model]` prefix
-- `warnAgent(proc, msg)` — WARN level (stderr, rate limits, scanner errors)
-- `errorAgent(proc, msg)` — ERROR level
-
-**Log levels by event type:**
-- INFO: tool use, text messages, init, codex thread, status updates
-- WARN: rate limits, stderr capture, template warnings (no trx)
-- ERROR: scanner errors
-
-Template warnings (`template.go`) use `context.Background()` without trx since they run at template-expansion time, not request-scoped.
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    TOOL OUTPUT FORMATTING                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  The spawner parses JSON stream output and formats tool details:    │
-│                                                                      │
-│  Claude CLI format (type: "assistant"):                             │
-│    {"type": "assistant", "message": {"content": [                   │
-│      {"type": "tool_use", "name": "Bash",                           │
-│       "input": {"command": "git status"}}                           │
-│    ]}}                                                               │
-│           ↓                                                          │
-│    [Bash] git status                                                │
-│                                                                      │
-│  Opencode format (type: "tool_use"):                                │
-│    {"type": "tool_use", "part": {"tool": "read",                    │
-│     "state": {"input": {"filePath": "/src/main.ts"}}}}              │
-│           ↓                                                          │
-│    [Read] /src/main.ts                                              │
-│                                                                      │
-│  CLI Differences (handled automatically):                            │
-│    ├── Tool names: Claude=Bash, Opencode=bash (normalized to Title) │
-│    ├── Input location: Claude=part.input, Opencode=part.state.input │
-│    ├── Field names: Claude=file_path, Opencode=filePath (both work) │
-│    └── Skill field: Claude=skill, Opencode=name (both work)         │
-│                                                                      │
-│  Tool detail extraction by type:                                     │
-│    ├── Bash: input.command                                          │
-│    ├── Read/Write/Edit: input.file_path OR input.filePath           │
-│    ├── Glob: input.pattern (+ input.path)                           │
-│    ├── Grep: input.pattern (+ "in" + input.path)                    │
-│    ├── Task: input.subagent_type + input.description                │
-│    ├── Skill: input.skill OR input.name + input.args                │
-│    ├── WebFetch: input.url                                          │
-│    ├── WebSearch: input.query                                       │
-│    └── Others: just [ToolName]                                      │
-│                                                                      │
-│  Task result tracking (Claude tool_result / user events):           │
-│    ├── tool_use items with name=Task are tracked in pendingTasks    │
-│    ├── tool_result and user (type=tool_result) correlate by id      │
-│    └── Matched: [TaskResult] subagent_type: description             │
-│                                                                      │
-│  Claude additional event types:                                      │
-│    ├── user: tool_result items → handleClaudeToolResult correlation  │
-│    ├── system (subtype=init): [init] v<ver> model=<model>           │
-│    ├── assistant thinking content: [thinking] prefix + text          │
-│    │     (--include-partial-messages ensures thinking blocks appear  │
-│    │      in the final assistant event; partial streaming events     │
-│    │      content_block_start/delta/stop are emitted but ignored —   │
-│    │      the final assistant event is the single source of truth)  │
-│    ├── assistant/result usage: context % tracking via tokens         │
-│    ├── rate_limit_event: [rate_limit] type status (non-allowed only) │
-│    │     rate limit headers (5h / weekly pcts + resets_at) are      │
-│    │     forwarded to `ClaudeLimitsService.Update` via the output    │
-│    │     monitor; `claude_limits_updated_at` is refreshed on every  │
-│    │     rate_limit_event. The `claude-limits-refresh` project       │
-│    │     workflow runs `claude-limits-refresher` (haiku, timeout=1) │
-│    │     to force a fresh capture; the scheduler skip-if-fresh guard│
-│    │     short-circuits dispatch when updated_at is ≤20 min old.    │
-│    └── (see be/internal/scheduler/CLAUDE.md for skip-if-fresh spec) │
-│                                                                      │
-│  Message categories:                                                 │
-│    ├── text: plain text messages                                    │
-│    ├── tool: Bash, Read, Edit, Grep, etc.                           │
-│    ├── subagent: Task and TaskResult messages                       │
-│    └── skill: Skill tool invocations                                │
-│                                                                      │
-│  Text message handling:                                              │
-│    └── Full text always logged and stored (no truncation)           │
-│                                                                      │
-│  Codex CLI format (type: "thread.started", "item.*", "turn.*"):    │
-│    thread.started → extracts thread_id as externalSessionID        │
-│    item.completed type=reasoning → [thinking] prefix + text         │
-│    item.completed type=agent_message → text message                 │
-│    item.completed type=command_execution → [Bash] tool use          │
-│    item.started type=command_execution → console log only           │
-│    turn.completed → ignored (context tracked via hook path)           │
-│                                                                      │
-│  Stderr capture: [stderr] Error message from CLI (WARN level)       │
-│  Scanner buffer: 10MB limit for large JSON outputs                  │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## Testing
-
-| File | Tests |
-|------|-------|
-| `cli_adapter_test.go` | CLI adapter unit tests (claude, opencode, codex) |
-| `output_test.go` | General output parsing tests |
-| `output_claude_test.go` | Claude category assignment, pendingTasks tracking, tool_result correlation |
-| `output_claude_advanced_test.go` | Nested content, user tool_result correlation, multiple in-flight tasks, TaskResult formatting |
-| `output_codex_test.go` | Codex output parsing: thread.started, item types, full sequence |
-| `context_test.go` | Context left DB read/write, updateContextLeft persistence and WS broadcast |
-| `template_project_findings_test.go` | Project findings template expansion tests |
-| `fail_restart_test.go` | Auto-restart on failure: boundary conditions, DB override, counter increments, field carryover |
-| `take_control_test.go` | Take-control channel, interactive wait, WS broadcast tests |
-| `terminal_signal_test.go` | Terminal signal channel capacity, non-blocking send, result values |
-| `stall_restart_test.go` | Stall detection: start stall, running stall, max restarts cap, disabled, custom timeouts |
-| `model_config_test.go` | DB-sourced ModelConfig: cliForModel/maxContextForModel with DB priority and fallback, adapter BuildCommand with opts.MappedModel/ReasoningEffort override |
-| `safety_hook_test.go` | Safety hook: config parsing (empty/invalid/disabled), bash generation (hardcoded rm patterns, user patterns, allowed paths, git ops), settings JSON structure |
-| `logging_structured_test.go` | Structured logging: logAgent/warnAgent/errorAgent with trx+prefix, empty trx, trx isolation, printStatus per-agent lines |
-
-Additional spawner behavior is covered by integration tests in `internal/integration/`.
+Run `make test-pkg PKG=spawner`.

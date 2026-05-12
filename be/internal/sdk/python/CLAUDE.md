@@ -1,6 +1,6 @@
 # be/internal/sdk/python
 
-Single-file Python SDK shipped with the server binary. Used by `execution_mode='script'` agents (root CLAUDE.md principle 46) to talk to the server's Unix socket.
+Single-file Python SDK shipped with the server binary. Used by `execution_mode=script` agents to talk to the server's Unix socket.
 
 ## Files
 

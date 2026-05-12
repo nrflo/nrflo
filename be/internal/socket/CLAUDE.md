@@ -4,30 +4,7 @@ Socket server for agent communication (Unix). Handles agent-facing methods only 
 
 ## Transport
 
-- **Unix socket** at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`) — used by agents
-
-The socket is eagerly bound at server startup via `BindListener()` before the HTTP listener comes up. The lazy-bind path has been removed. Clients connect via Unix socket.
-
-## Protocol
-
-The socket uses a **JSON-RPC style protocol** (line-delimited JSON).
-
-### Request Format
-
-All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set automatically from `NRF_WORKFLOW_INSTANCE_ID` and `NRF_SESSION_ID` env vars by the CLI). The service derives ticket, workflow, and agent_type from the session row — callers do not send them.
-
-```json
-{"method": "findings.add", "params": {"instance_id": "uuid", "session_id": "uuid", "key": "summary", "value": "..."}}
-{"method": "agent.fail", "params": {"instance_id": "uuid", "session_id": "uuid", "reason": "..."}}
-{"method": "agent.callback", "params": {"instance_id": "uuid", "session_id": "uuid", "level": 1}}
-```
-
-### Response Format
-
-```json
-{"success": true, "data": {...}}
-{"success": false, "error": {"code": "NOT_FOUND", "message": "..."}}
-```
+Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound at server startup via `BindListener()` before the HTTP listener. Protocol: line-delimited JSON-RPC; see `protocol.go` for `Request`, `Response`, and `Error` types.
 
 ## Supported Methods
 
@@ -35,9 +12,9 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 |--------|---------|
 | `findings.add` | Add a single finding |
 | `findings.add-bulk` | Add multiple findings at once |
-| `findings.get` | Get findings for an agent. Optional `layer` int returns `map[agent_type]findings\|null` for all agents in that layer (requires `instance_id`; mutually exclusive with `agent_type` — returns `INVALID_PARAMS` if both are set) |
+| `findings.get` | Get findings; `layer` int returns `{agent_type: findings\|null}` map (mutually exclusive with `agent_type`) |
 | `findings.append` | Append to an existing finding value |
-| `findings.append-bulk` | Append multiple findings at once |
+| `findings.append-bulk` | Append multiple findings |
 | `findings.delete` | Delete specific finding keys |
 | `project_findings.add` | Add a single project-level finding |
 | `project_findings.add-bulk` | Add multiple project-level findings |
@@ -45,46 +22,35 @@ All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (
 | `project_findings.append` | Append to a project-level finding |
 | `project_findings.append-bulk` | Append multiple project-level findings |
 | `project_findings.delete` | Delete project-level finding keys |
-| `agent.fail` | Mark agent as failed; broadcasts with `session_id`, `model_id`, `result` |
-| `agent.finished` | Mark agent as successfully finished (pass; proceed to next phase); broadcasts `agent.completed` with `session_id`, `model_id`, `result=pass` |
-| `agent.continue` | Mark agent for context-exhaustion relaunch; broadcasts with `session_id`, `model_id` |
-| `agent.callback` | Trigger callback to re-run earlier layer; broadcasts with `model_id`, `result` |
-| `agent.context_update` | Update context_left for a session; no project required; broadcasts `agent.context_updated` with `session_id`, `context_left` |
-| `agent.chain_next_instructions` | Set instructions for the next pending step in the workflow chain run associated with `instance_id`; requires `instance_id` and `instructions` params; returns `{status:"ok"}` |
-| `agent.chain_next_ticket` | Set the ticket ID for the next pending ticket-scope step in the workflow chain run associated with `instance_id`; requires `instance_id` and `ticket_id` params; returns `{status:"ok"}` |
-| `agent.record_event` | Record a Claude/codex hook event (PreToolUse/PostToolUse/UserPromptSubmit/Stop); no project required. PreToolUse inserts an agent_messages row and broadcasts `messages.updated`. PostToolUse is a no-op (returns `{"status":"ignored"}` so the hook subprocess exits 0). SessionEnd is silently ignored. Stop triggers a per-turn flush of new `event_msg/agent_message` records from the codex rollout JSONL (text category) so the model's spoken output is visible. |
-| `agent.log` | Insert an agent_messages row from a script agent; no project required. Params: `{session_id, type?, message, payload?}`. `type` defaults to `text`; accepted values: `text`, `tool`, `subagent`, `skill`, `user_input`, `error`, `result`. `payload` is an optional JSON value stored in the `payload` column. Broadcasts `messages.updated` when session resolves to a project. Returns `{status:"logged"}`. |
-| `workflow.skip` | Add a skip tag to a workflow instance; validates tag against workflow groups; broadcasts `skip_tag.added` |
+| `agent.fail` | Mark agent as failed; broadcasts `agent.completed` |
+| `agent.finished` | Mark agent as successfully finished; broadcasts `agent.completed` (result=pass) |
+| `agent.continue` | Mark agent for context-exhaustion relaunch |
+| `agent.callback` | Trigger callback to re-run earlier layer |
+| `agent.context_update` | Update `context_left` for a session; broadcasts `agent.context_updated` |
+| `agent.chain_next_instructions` | Set instructions for the next pending chain step |
+| `agent.chain_next_ticket` | Set ticket ID for the next pending ticket-scope chain step |
+| `agent.record_event` | Record Claude/codex hook event; PreToolUse inserts message row + WS broadcast; PostToolUse no-op; Stop flushes codex JSONL messages |
+| `agent.log` | Insert `agent_messages` row from script agent. Params: `{session_id, type?, message, payload?}` |
+| `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
-| `global.claude_limits_update` | Update Claude API rate limit state; no project or session required; params: `{five_hour_pct? float64, five_hour_resets_at string, seven_day_pct? float64, seven_day_resets_at string}`; at least one pct must be present; persists via ClaudeLimitsService; broadcasts `global.claude_limits_updated` |
-| `script.context` | Return the auto-injectable variable dict for a script-mode agent session; no project required; params: `{session_id}`; resolves session → workflow_instance → ticket (when ticket-scoped); returns 12-key dict: `session_id`, `instance_id`, `project_id`, `agent_type`, `workflow_id`, `scope_type`, `ticket_id`, `ticket_title`, `ticket_description`, `user_instructions` (string, "" if unset), `callback` (null or `{instructions,from_agent,level}`), `previous_data` (string, "" if no `to_resume` finding). |
+| `global.claude_limits_update` | Update Claude API rate limit state; broadcasts `global.claude_limits_updated` |
+| `script.context` | Return 12-key auto-injectable dict for script-mode session. Params: `{session_id}` |
 
-## Common Tasks
-
-### Changing Agent CLI Commands
-
-The socket only handles agent-facing methods:
-
-1. Update CLI command in `be/internal/cli/agent.go` or `findings.go`
-2. Update socket handler in `handler.go`
-3. Update service in `be/internal/service/`
-4. Rebuild: `cd be && make build`
-5. **Documentation updates:**
+All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set from `NRF_WORKFLOW_INSTANCE_ID`/`NRF_SESSION_ID` env vars by the CLI).
 
 ## Broadcast Helper
 
-All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, eventType, BroadcastCtx, data)` (defined in `be/internal/service/broadcast.go`). It is the single source of truth for the unpack-`BroadcastCtx`-and-broadcast pattern; the future API tool dispatcher (T4) calls the same helper. Do not reintroduce inline `ws.NewEvent(...)` + `hub.Broadcast(...)` pairs in socket handlers.
+All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, eventType, BroadcastCtx, data)` (`be/internal/service/broadcast.go`). Do not reintroduce inline `ws.NewEvent(...)` + `hub.Broadcast(...)` pairs in socket handlers.
 
 ## Terminal Signal Dispatch
 
-After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.continue`, and `agent.callback` cases each dispatch a best-effort terminal signal through an injected `TerminalSignaler` (defined in `server.go`). This kills the running agent immediately so `monitorAll` exits its natural-exit wait and `handleCompletion` reads the DB-written result, eliminating the latency between the agent calling `nrflo agent fail/finished/continue/callback` and the spawner acting on it.
+After the DB write and WS broadcast, `agent.fail`, `agent.finished`, `agent.continue`, and `agent.callback` dispatch a best-effort terminal signal through an injected `TerminalSignaler`:
 
-- **Interface**: four methods — `RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error`, `BumpLastMessage(projectID, ticketID, workflow, sessionID string) error`, `SetLastMessage(projectID, ticketID, workflow, sessionID, content string) error`, and `SignalSessionReady(sessionID string) error`.
-- **Wiring**: `BindListener()` returns `(net.Listener, string, error)`; `NewServerWithListener(pool, hub, clk, signaler, listener, socketPath)` takes the pre-bound listener; in production `cli/serve.go` passes `httpServer.GetOrchestrator()` as the signaler; pass `nil` in tests.
-- **Nil-safe**: `Handler` nil-guards before calling — passing `nil` disables the feature silently.
-- **Order**: DB write → WS broadcast → terminal signal (best-effort, error is logged at INFO level and does not affect the response).
-- **BumpLastMessage**: called by `agent.record_event` handler after inserting a hook message row. Forwards to `Orchestrator.BumpLastMessage` → `Spawner.BumpLastMessage`, which sends a session ID through `bumpMessageCh` so `monitorAll` updates `lastMessageTime`/`hasReceivedMessage` for the matching proc, preventing false-positive stall detection during active interactive CLI sessions.
-- **SetLastMessage**: called alongside BumpLastMessage with the recorded message body. Forwards to `Orchestrator.SetLastMessage` → `Spawner.SetLastMessage`, which looks up the proc directly via `sessionProcs` and updates `proc.lastMessage` under `messagesMutex`. This makes the periodic "agent status" log line (`last_msg=...`) populate for interactive CLI agents — the PTY ferry drops raw bytes, so without this the status line was always empty in interactive mode.
+- Interface: `RequestTerminalSignal`, `BumpLastMessage`, `SetLastMessage`, `SignalSessionReady` (defined in `server.go`).
+- Wiring: production `cli/serve.go` passes `httpServer.GetOrchestrator()` as signaler; `nil` in tests.
+- Nil-safe; order: DB write → WS broadcast → terminal signal (best-effort, error logged at INFO).
+- `BumpLastMessage`: updates `lastMessageTime`/`hasReceivedMessage` to prevent false-positive stall detection.
+- `SetLastMessage`: updates `proc.lastMessage` under `messagesMutex`; populates "agent status" log line for interactive CLI agents.
 
 ## Files
 
@@ -92,9 +58,8 @@ After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.
 |------|---------|
 | `server.go` | Socket listener, connection handling, `TerminalSignaler` interface |
 | `handler.go` | Request routing and method dispatch |
-| `handler_record_event.go` | `agent.record_event` handler: PreToolUse → DB insert + WS broadcast + stall bump; PostToolUse → no-op (returns `{"status":"ignored"}`); opportunistic codex context update via `extractCodexContextLeft`; Stop → `flushCodexAgentMessages` to emit new agent text rows |
-| `handler_codex_context.go` | Codex JSONL extractors: `extractCodexContextLeft` (latest `token_count` → % context remaining) and `extractCodexNewAgentMessages` (new `event_msg/agent_message` bodies since the per-session offset). Reasoning blocks are NOT extracted — codex 0.125 emits only encrypted reasoning. |
+| `handler_record_event.go` | `agent.record_event`: PreToolUse → DB insert + WS broadcast; Stop → codex JSONL flush |
+| `handler_codex_context.go` | Codex JSONL extractors: context left + new agent messages |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
-| `handler_script_context.go` | `script.context` handler: resolve session → wfi → ticket, assemble 12-key context dict |
-| `handler_agent_log.go` | `agent.log` handler: parse params, compact-marshal optional payload, call `RecordHookMessage`, broadcast `messages.updated`, structured log line |
-| `handler_terminal_signal_test.go` | Terminal signal dispatch: fail/continue/callback dispatch, best-effort error handling, nil-guard |
+| `handler_script_context.go` | `script.context` handler |
+| `handler_agent_log.go` | `agent.log` handler |

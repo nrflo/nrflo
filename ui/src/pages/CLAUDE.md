@@ -49,26 +49,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 ## ProjectWorkflowsPage
 
-5-tab layout for project-scoped workflows with multi-instance support:
-
-- **Run Workflow**: Inline workflow selector + instructions form
-- **Running**: Instance list chips with status (uses `InstanceList` + `WorkflowTabContent`)
-- **Failed**: `WorkflowInstanceTable` with delete column, plus `WorkflowTabContent` for phase timeline
-- **Completed**: `WorkflowInstanceTable` with delete column, plus `WorkflowTabContent` for phase timeline (same pattern as Failed tab)
-- **Findings**: Project-level findings CRUD via `ProjectFindingsTab` (Add/Edit/Delete, show/hide internal keys toggle)
-
-Sub-components in `ProjectWorkflowComponents.tsx`:
-- `ProjectWorkflowTabBar` — tab bar component
-- `RunWorkflowForm` — inline workflow selector + instructions
-- `InstanceList` — instance selector chips (used by Running tab and `TicketWorkflowTab`)
-
-Instance table in `WorkflowInstanceTable.tsx`:
-- `WorkflowInstanceTable` — paginated table (PAGE_SIZE=10) with Workflow, Instance, Status, Duration, Completed At, Delete columns (used by Completed and Failed tabs)
-
-Shared sub-component in `WorkflowSubTabBar.tsx`:
-- `WorkflowSubTabBar` — Running/Failed/Completed sub-tab switcher with counts (used by `TicketWorkflowTab`)
-
-Supports multiple concurrent instances keyed by `instance_id`.
+5-tab layout: Run Workflow / Running / Failed / Completed / Findings (project-level findings CRUD). Running tab uses `InstanceList` + `WorkflowTabContent`; Failed/Completed use `WorkflowInstanceTable` (paginated, PAGE_SIZE=10) + `WorkflowTabContent`. Sub-components in `ProjectWorkflowComponents.tsx` (`ProjectWorkflowTabBar`, `RunWorkflowForm`, `InstanceList`) and `WorkflowSubTabBar.tsx` (`WorkflowSubTabBar` — shared Running/Failed/Completed sub-tab switcher, used by `TicketWorkflowTab`).
 
 ## Real-Time Update Patterns
 

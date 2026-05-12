@@ -1,6 +1,6 @@
 # be/internal/auth
 
-Auth foundation: Argon2id password hashing and SCS session management. No HTTP handlers here — wiring lives in the API layer (T2).
+Auth foundation: Argon2id password hashing and SCS session management. No HTTP handlers here — wiring lives in the API layer.
 
 ## Files
 
@@ -30,7 +30,7 @@ PHC format: `$argon2id$v=19$m=65536,t=3,p=2$<salt-b64>$<key-b64>` (base64 raw st
 
 - Cookie name: `nrflo_session`
 - HttpOnly: `true`
-- Secure: `!dev` (T2 passes `dev=true` when binding to localhost)
+- Secure: `!dev` (`dev=true` is passed when binding to localhost)
 - SameSite: `Strict`
 - Lifetime: `24h`
 - IdleTimeout: `8h`

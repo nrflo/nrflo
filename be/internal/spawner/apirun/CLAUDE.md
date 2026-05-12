@@ -1,143 +1,50 @@
 # apirun Package
 
-> **Note:** This runner is only reachable when the server is started with `--mode=api`. In the default `--mode=cli` mode, `prepareSpawn` returns `api_mode_disabled` before ever constructing an `apirun.Runner`, so none of this code executes.
+> **Note:** Only reachable when the server starts with `--mode=api`. In default `--mode=cli`, `prepareSpawn` returns `api_mode_disabled` before constructing a Runner.
 
-In-process tool-use loop that drives API-mode agents through one or more provider turns. Replaces the CLI exec-and-parse path for agents whose `agent_definitions.execution_mode='api'`.
-
-## Components
-
-| File | Responsibility |
-|------|----------------|
-| `runner.go` | Turn loop: build initial user message, call `Provider.Run`, handle `end_turn`/`tool_use`/`max_tokens`, dispatch tools, append assistant + user messages, loop. |
-| `interfaces.go` | Small surfaces consumed by the runner: `MessageSink`, `ProcState`, `AgentSvc`, `ErrorRecorder`. Spawner supplies adapters wrapping `*processInfo` so apirun never imports spawner. |
-| `tool.go` | `ToolHandler` interface, `ToolEnv` struct, `TerminalSignal` (FAIL/CONTINUE/CALLBACK), `Registry` type alias. |
-| `registry.go` | `ResolveRegistry(toolsCSV, builtins, httpDefs, httpFactory)` — glob-matches CSV against builtins ∪ HTTP defs and returns specs+handlers map. |
-| `secret_resolver.go` | `DereferenceSecretRef("env:NAME" / "file:/path" / "literal:VALUE")` — shared by anthropic credentials and HTTP tool bearer auth. |
-| `sink.go` | Coalescing `provider.EventSink` adapter that flushes text deltas to `MessageSink` on idle (200ms) or buffer overflow (80 chars). |
-| `errors.go` | `classifyProviderError` mapping HTTP status / parse errors to (status, system message). |
-| `provider/` | Provider abstraction (`Provider`, `Request`, `EventSink`, `FinalResponse`). Anthropic streaming impl + mock for tests. |
-| `tools_builtin/` | Go-builtin tool handlers (findings.*, project_findings.*, agent_*, workflow_skip). Wraps existing services + `service.BroadcastFromCtx` for WS parity with the socket handler. |
-| `tools_http/` | Generic HTTP tool handler driven by `model.ToolDefinition`. Bearer auth (env / secret_ref), 30s default timeout, 5xx-retry-once, 16KB body cap. |
+In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry), `registry.go` (ResolveRegistry), `secret_resolver.go` (secret deref), `sink.go` (event coalescing), `errors.go` (error classification), `provider/` (Anthropic streaming impl + mock), `tools_builtin/` (builtin handlers), `tools_http/` (HTTP tool handler).
 
 ## Tool Dispatch Flow
 
-```
-Provider.Run → resp.StopReason
-  ├── end_turn         → SetFinalStatus("PASS")
-  ├── max_tokens/...   → fail with system message
-  └── tool_use:
-        for block in resp.Content where block.Type=="tool_use":
-            handler := registry[block.ToolName]
-            out, isErr, err := handler.Invoke(ctx, env, block.Input)
-            if errors.As(err, &TerminalSignal):
-                proc.SetFinalStatus(ts.Status)        # FAIL/CONTINUE/CALLBACK
-                if CALLBACK: proc.SetCallbackLevel(level)
-                return                                 # short-circuit loop
-            results.append(tool_result{output:out, is_error:isErr})
-        msgs.append(assistant=resp.Content)
-        msgs.append(user=results)
-        continue                                       # next turn
-```
-
-Sequential dispatch only in v1 (`runner.dispatchTools`). The for-range loop is the natural slot for parallel dispatch (TODO comment in code).
+- `Provider.Run` returns `StopReason`: `end_turn` → `SetFinalStatus("PASS")`; `max_tokens` → fail with system message.
+- On `tool_use`: `handler.Invoke(ctx, env, block.Input)` per content block; `TerminalSignal` → set `proc.finalStatus` and return early.
+- Non-terminal results appended as tool_result messages; loop continues for next turn.
 
 ## Terminal Signals
 
-Handlers self-declare terminal status by returning a `TerminalSignal` in the `err` slot. Runner detects via `errors.As`, sets `proc.finalStatus`, and exits before issuing another provider turn. Adding a new terminal tool requires no runner change.
+| Signal | Set By | Triggers |
+|--------|--------|----------|
+| `PASS` | `agent_finished` | spawner: result=pass, reason=finished |
+| `FAIL` | `agent_fail` | spawner: result=fail |
+| `CONTINUE` | `agent_continue` | `relaunchForContinuation` |
+| `CALLBACK` | `agent_callback` | `finalizePhase` reads `callback_level`, returns `CallbackError` |
 
-| Signal Status | Set By | Triggers |
-|---------------|--------|----------|
-| `PASS` | `agent_finished` | spawner registers stop with result=pass, reason=finished; finalizePhase advances |
-| `FAIL` | `agent_fail` | spawner registers stop with result=fail; finalizePhase does not pass |
-| `CONTINUE` | `agent_continue` | monitorAll calls `relaunchForContinuation` for the next session |
-| `CALLBACK` | `agent_callback` | finalizePhase reads `callback_level` finding and returns `CallbackError` |
+Each terminal handler also calls the corresponding `AgentService` method, so DB row + WS broadcast happen identically to CLI agents.
 
-Each terminal handler also calls the corresponding `AgentService` method first, so the DB row + WS broadcast happen identically to CLI agents (which call the same services via the Unix socket).
+## Builtins
 
-## Builtins (17 handlers)
-
-| Tool name | Service call | WS event |
-|-----------|-------------|----------|
-| `findings_add` / `findings_add_bulk` / `findings_append` / `findings_append_bulk` / `findings_get` / `findings_delete` | `FindingsService.*` | `findings.updated` |
-| `project_findings_add` / `..._add_bulk` / `..._append` / `..._append_bulk` / `..._get` / `..._delete` | `ProjectFindingsService.*` | `project_findings.updated` |
-| `agent_fail` / `agent_finished` / `agent_continue` / `agent_callback` | `AgentService.{Fail,Finished,Continue,Callback}` | `agent.completed` / `agent.completed` / `agent.continued` / `agent.completed` |
-| `agent_context_update` | `AgentService.UpdateContextLeft` | `agent.context_updated` |
-| `workflow_skip` | `WorkflowService.AddSkipTag` | `skip_tag.added` |
-
-`tools_builtin/builtins.go` exposes the canonical map via `Builtins()` for the registry resolver.
+Builtin tool handlers registered in `tools_builtin/builtins.go`; run `grep -n Register tools_builtin/*.go` for the canonical list.
 
 ## HTTP Tool Handler
 
-`tools_http.New(client) apirun.HTTPHandlerFactory` returns a factory bound to a shared `http.Client`. Each handler:
-
-1. POSTs `{"tool":<name>,"input":<input>,"context":{"project_id","workflow","session_id"}}` to `def.Endpoint`.
-2. Per-request timeout = `def.TimeoutSec` seconds (default 30s).
-3. Auth header per `def.AuthMethod`:
-   - `none` — no header
-   - `bearer_env` — `Authorization: Bearer ${ENV[def.AuthRef]}`
-   - `bearer_secret_ref` — `Authorization: Bearer <DereferenceSecretRef(def.AuthRef)>`
-4. 5xx → wait 500ms, retry once. 4xx → return immediately with `isError=true`.
-5. Response body capped at 16 KB; truncated bodies get a ` ... [truncated]` suffix.
+`tools_http.New(client)` returns a factory bound to a shared `http.Client`. Handlers POST `{"tool":<name>,"input":<input>,"context":{...}}` to `def.Endpoint` with timeout (`def.TimeoutSec`, default 30s), auth per `def.AuthMethod` (none/bearer_env/bearer_secret_ref), 5xx retry once, 16 KB body cap.
 
 ## Per-Agent Registry Resolution
 
-`apirun.ResolveRegistry(toolsCSV, builtins, httpDefs, httpFactory, manifestProvider)`:
+`ResolveRegistry(toolsCSV, builtins, httpDefs, httpFactory, manifestProvider)` composes builtins → manifest tools → HTTP defs. Glob matching: `""` = empty registry; `"*"` = all; `"findings.*"` = prefix glob. No match → spawn fails with `no tools matched`. Name collision → spawn fails with `collides with` error. HTTP scope: `project_id IS NULL OR == agent.project_id` AND `workflow_id IS NULL OR == agent.workflow_name`.
 
-Three sources compose in order: **builtins → manifest tools → HTTP defs**. Collision detection ensures no name appears in more than one source.
+Manifest tools (`tools_manifest/`): built when `APIMode && CustomerConfigDir != "" && PythonRunner != nil`. Per-tool: validate input → `python.Runtime.Invoke` → insert `ToolDispatch` row → broadcast `tool.dispatched` → optional `ReviewItem` insert when `tool.Review && status==success`. Manifest cached by `tool_manifest.yaml` mtime (`loadManifestCached` in spawner).
 
-- `""` (empty CSV) → empty registry; agent runs text-only (T3 path).
-- `"findings.*"` → all six findings builtins (matcher: `*` and `prefix.*`).
-- `"agent_*,workflow_skip"` → all four agent_* + workflow_skip.
-- `"*"` → every builtin + every manifest tool + every in-scope HTTP tool.
-- Exact name → only that handler.
-- No matches for any pattern → spawn fails with `no tools matched pattern "..."` (config error).
-- Builtin name collision with HTTP `def.Name` → spawn fails with `collides with builtin` error.
-- Manifest tool collision with HTTP `def.Name` → spawn fails with `collides with manifest tool` error.
-- `manifestProvider == nil` → manifest source is skipped (parity with pre-existing 3-source behavior).
+## Wiring
 
-HTTP defs in scope: `project_id IS NULL OR project_id == agent.project_id` AND `workflow_id IS NULL OR workflow_id == agent.workflow_name`. Project filter happens in the repo (`ListByProject`); workflow filter happens in `spawner.loadAPIHTTPToolDefs`.
-
-### Manifest Tool Source (tools_manifest)
-
-`tools_manifest.New(manifest, runner, projectID, sessionID, dispatchRepo, reviewRepo, hub, clk, projectEnv)` returns an `apirun.ManifestProvider` (interface defined in `registry.go`). Only constructed when `Config.APIMode && Config.CustomerConfigDir != "" && Config.PythonRunner != nil`. `projectEnv` is `Config.ProjectEnv` (loaded once at workflow start from `project_env_vars`).
-
-**Invocation flow per tool call:**
-1. Unmarshal `json.RawMessage` → `interface{}`, validate against tool's compiled `InputSchema`.
-2. Build `candidates := append(append([]string{}, os.Environ()...), deps.projectEnv...)` — project env trails so duplicates resolve last-wins. Pass to `python.MatchEnv(tool.EnvAllow, candidates)` — `env_allow` still gates which keys reach the python child process.
-3. `python.Runtime{runner, configDir}.Invoke(ctx, tool.Script, inputBytes, envVars, 30s)`.
-4. Insert `ToolDispatch` row (status=success|error, duration_ms, error_msg when applicable).
-5. Broadcast `tool.dispatched` with `{tool_name, status, duration_ms, dispatch_id}`.
-6. When `tool.Review && status==success`: insert `ReviewItem` (status=pending) and broadcast `review.created`.
-7. On runner error: return `isError=true` with the error message; no review item.
-
-**Per-project mtime cache:** `Spawner.loadManifestCached(configDir)` stats `tool_manifest.yaml` on every spawn and reloads only when mtime has changed. Cache is a `map[string]*manifestCacheEntry` guarded by `sync.Mutex` on the Spawner struct. Cache misses call `config.Load(configDir)`.
-
-## Wiring (Spawner ↔ apirun)
-
-Spawner-side (`be/internal/spawner/`):
-
-- `Config` carries `Provider`, `AgentSvc`, `APICredentialRepo`, `FindingsSvc`, `ProjectFindingsSvc`, `AgentSvcReal`, `WorkflowSvc`, `ToolDefRepo`, `DispatchRepo`, `ReviewRepo`, `PythonRunner`, `CustomerConfigDir`. Set by orchestrator at workflow start.
-- `prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + (optionally) `loadManifestCached` + `apirun.ResolveRegistry` and stuffs results into `prep.apiTools` / `prep.apiHandlers` / `prep.apiToolEnv`.
-- `apiBackend.Start` builds an `apirun.Runner` from the Config and runs it in a goroutine. On exit it persists messages and registers stop via `registerAgentStopWithReason(mapFinalStatus(proc.finalStatus))`.
-- `procStateAdapter` exposes `SetFinalStatus`, `SetContextLeft`, `SetCallbackLevel` over `*processInfo`.
-
-`mapFinalStatus` translates runner status to (result, reason):
-- `PASS` → (pass, implicit)
-- `FAIL` → (fail, api_error)
-- `CONTINUE` → (continue, api_continue)  → monitorAll relaunches
-- `CALLBACK` → (callback, callback)      → finalizePhase reads `callback_level` finding and returns `CallbackError`
-- `CANCELLED` → (fail, cancelled)
-
-## Take-Control Rejection
-
-`apiBackend.SupportsTakeControl()` returns `false`. When a take-control request arrives for a running API agent, `monitorAll` broadcasts `EventAgentTakeControlRejected` (`agent.take_control_rejected`) with `session_id`, `agent_type`, `model_id`, and `reason="api_mode_unsupported"`, then breaks out of the take-control branch — the agent is not killed and continues running normally. The HTTP take-control handlers (ticket-scoped and project-scoped) also perform an early check via `isAPISession()` and return HTTP 409 `api_mode_unsupported` before dispatching to the orchestrator, so the spawner-side broadcast is a belt-and-suspenders fallback for any path that bypasses the HTTP layer.
+`prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + (optionally) `loadManifestCached` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled). See `spawner/api_backend.go`.
 
 ## Low-Context Behavior
 
-When the per-turn context percentage drops below `restart_threshold`, `monitorAll` sets `proc.lowContextSaving = true` and calls `initiateContextSave`. For API agents, `context_save.go` forces `useAgentSave = true` regardless of the `context_save_via_agent` global setting — the resume path is Claude-CLI-only and cannot be used for an in-process runner. `apiBackend.Kill` cancels the runner's stored context; the `runner.Run` goroutine returns `CANCELLED`, persists messages, and closes `proc.doneCh`. `initiateContextSave` then detects `CANCELLED`, spawns a context-saver agent to summarize the killed agent's message history and write the summary to `to_resume` findings, then calls `relaunchForContinuation` — which sets `finalStatus = CONTINUE` and triggers `monitorAll` to launch a fresh `apirun.Runner` with `${PREVIOUS_DATA}` populated from `to_resume`.
-
-The saver itself can run via the in-process runner when the killed agent is API-mode: `spawnContextSaver` calls `GetForBackend("context-saver", "api")` and, if a `context-saver-api` system agent definition exists, the ephemeral child spawner is configured with `ExecutionMode="api"` and the appropriate `Tools` CSV (e.g., `findings_add`). All API-mode dependencies (`Provider`, `AgentSvc`, `FindingsSvc`, etc.) are forwarded from the parent spawner so the saver's builtin tools work correctly. When no api variant is found, the spawner falls back to the CLI context-saver (structured warn logged).
+`context_save.go` forces `useAgentSave=true` for API agents (resume path is Claude-CLI-only). `apiBackend.Kill` cancels runner ctx → saver agent summarizes history → `relaunchForContinuation` with `${PREVIOUS_DATA}`.
 
 ## Stall Detection
 
-API agents fully participate in stall detection because the `runner.go` + `sink.go` path calls `Spawner.TrackMessage` on every text delta and tool-use event, updating `proc.lastMessageTime` identically to CLI agents. `checkStall` in `stall_restart.go` polls `lastMessageTime` on each `monitorAll` tick and fires `handleStallRestart` when `stallStartTimeout` or `stallRunningTimeout` is exceeded. The stall handler broadcasts `agent.stall_restart`, calls `apiBackend.Kill` (cancels runner ctx), increments `stallRestartCount` (cap: 15), sets `finalStatus = CONTINUE`, and calls `relaunchForContinuation` after a 15s delay. No context save is attempted — the agent is frozen. Instant-stall logic was removed in migration 000061; only `stall_restart.go` remains and it is CLI-agnostic.
+`runner.go`/`sink.go` call `TrackMessage` on each text/tool-use event, identical to CLI agents. Stall detection in `stall_restart.go`; cap 15 restarts.
+
+Run `make test-pkg PKG=spawner/apirun`.

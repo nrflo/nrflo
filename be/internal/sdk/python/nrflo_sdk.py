@@ -2,7 +2,7 @@
 
 Auto-populates session_id, instance_id, project, and trx from env vars set by
 the spawner (NRF_SESSION_ID, NRF_WORKFLOW_INSTANCE_ID, NRFLO_PROJECT, NRF_TRX).
-Socket path defaults to /tmp/nrflo/nrflo.sock (override: NRFLO_SOCK_PATH).
+Socket path defaults to $NRFLO_HOME/agent.sock (override: NRFLO_SOCKET).
 
 Usage:
     import sys
@@ -258,6 +258,17 @@ class Client:
         self._conn.close()
 
 
+def _default_socket_path() -> str:
+    """Return socket path: NRFLO_SOCKET → $NRFLO_HOME/agent.sock → ~/.nrflo/agent.sock."""
+    explicit = os.environ.get("NRFLO_SOCKET")
+    if explicit:
+        return explicit
+    home = os.environ.get("NRFLO_HOME")
+    if home:
+        return os.path.join(home, "agent.sock")
+    return os.path.join(os.path.expanduser("~"), ".nrflo", "agent.sock")
+
+
 def client(
     sock_path: str = None,
     session_id: str = None,
@@ -266,7 +277,7 @@ def client(
     trx: str = None,
 ) -> Client:
     """Create a nrflo Client, defaulting all params from spawner env vars."""
-    path = sock_path or os.environ.get("NRFLO_SOCK_PATH", "/tmp/nrflo/nrflo.sock")
+    path = sock_path or _default_socket_path()
     sid = session_id or os.environ.get("NRF_SESSION_ID", "")
     iid = instance_id or os.environ.get("NRF_WORKFLOW_INSTANCE_ID", "")
     proj = project or os.environ.get("NRFLO_PROJECT", "")

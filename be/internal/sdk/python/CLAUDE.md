@@ -36,7 +36,7 @@ The `client()` constructor reads four env vars set by the spawner:
 | `NRFLO_PROJECT` | Project ID — derived for project-scoped findings |
 | `NRF_TRX` | Trace ID propagated to server logs |
 
-Socket path defaults to `/tmp/nrflo/nrflo.sock`; override via `NRFLO_SOCK_PATH`.
+Socket path defaults to `$NRFLO_HOME/agent.sock` (fallback `~/.nrflo/agent.sock` when `NRFLO_HOME` unset); override via `NRFLO_SOCKET`.
 
 ## Surface Area
 

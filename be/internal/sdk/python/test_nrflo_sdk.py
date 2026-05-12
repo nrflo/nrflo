@@ -2,6 +2,7 @@
 import os
 import sys
 import unittest
+import unittest.mock
 
 # Import from current directory (the Go test copies the SDK here).
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -254,6 +255,23 @@ class TestClientLog(unittest.TestCase):
             self.fail(f"TypeError for log(message=...) — signature wrong: {e}")
         finally:
             c.close()
+
+
+class TestDefaultSocketPath(unittest.TestCase):
+    def test_nrflo_socket_env_wins(self):
+        with unittest.mock.patch.dict(os.environ, {"NRFLO_SOCKET": "/custom/x.sock"}, clear=True):
+            self.assertEqual(nrflo_sdk._default_socket_path(), "/custom/x.sock")
+
+    def test_nrflo_home_fallback(self):
+        with unittest.mock.patch.dict(os.environ, {"NRFLO_HOME": "/h"}, clear=True):
+            self.assertEqual(nrflo_sdk._default_socket_path(), os.path.join("/h", "agent.sock"))
+
+    def test_default_home_dir(self):
+        with unittest.mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(
+                nrflo_sdk._default_socket_path(),
+                os.path.join(os.path.expanduser("~"), ".nrflo", "agent.sock"),
+            )
 
 
 if __name__ == "__main__":

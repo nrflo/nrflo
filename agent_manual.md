@@ -406,6 +406,8 @@ import nrflo_sdk
 c = nrflo_sdk.client()
 ```
 
+The socket path is resolved automatically (see [section 16 Agent IPC Socket](#16-agent-ipc-socket) for override details via `NRFLO_SOCKET`).
+
 **Agent control:**
 
 | Method | Description |

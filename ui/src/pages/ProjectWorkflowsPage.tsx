@@ -27,6 +27,8 @@ import { Repeat } from 'lucide-react'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 
+const HIDDEN_PROJECT_WORKFLOW_IDS = new Set(['claude-limits-refresh'])
+
 type TabId = ProjectWorkflowTabId
 
 export function ProjectWorkflowsPage() {
@@ -73,7 +75,7 @@ export function ProjectWorkflowsPage() {
 
   // Filter to project-scoped workflows only
   const projectWorkflows = workflowDefs
-    ? Object.entries(workflowDefs).filter(([, def]) => def.scope_type === 'project')
+    ? Object.entries(workflowDefs).filter(([id, def]) => def.scope_type === 'project' && !HIDDEN_PROJECT_WORKFLOW_IDS.has(id))
     : []
 
   // Auto-select first workflow def

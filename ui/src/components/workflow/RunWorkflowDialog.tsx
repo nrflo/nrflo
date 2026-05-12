@@ -50,7 +50,11 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
 
   const runMutation = useRunWorkflow()
 
-  const workflowIds = workflowDefs ? Object.keys(workflowDefs) : []
+  const workflowIds = workflowDefs
+    ? Object.entries(workflowDefs)
+        .filter(([, def]) => (def.scope_type ?? 'ticket') === 'ticket')
+        .map(([id]) => id)
+    : []
 
   // Auto-select first workflow
   useEffect(() => {

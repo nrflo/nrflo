@@ -13,6 +13,7 @@ import (
 	"be/internal/clock"
 	"be/internal/config"
 	"be/internal/db"
+	"be/internal/limitsrefresh"
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/socket"
@@ -145,6 +146,9 @@ func setupServer() (*serverComponents, error) {
 		pool.Close()
 		return nil, fmt.Errorf("failed to start socket server: %w", err)
 	}
+
+	limitsRunner := limitsrefresh.NewRunner(pool, clk)
+	limitsRunner.Start(context.Background())
 
 	return &serverComponents{
 		cfg:          cfg,

@@ -211,7 +211,6 @@ func TestSystemAgentDef_List(t *testing.T) {
 	_ = svc.Delete("context-saver")
 	_ = svc.Delete("context-saver-api")
 	_ = svc.Delete("spec-normalizer")
-	_ = svc.Delete("claude-limits-refresher")
 
 	// Initially empty.
 	defs, err := svc.List()

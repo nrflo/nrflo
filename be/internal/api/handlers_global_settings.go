@@ -61,6 +61,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	syncClaudeLimitsVal, err := svc.Get("sync_claude_limits")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	resp := map[string]interface{}{
 		"low_consumption_mode":     val == "true",
 		"context_save_via_agent":   contextSaveViaAgentVal == "true",
@@ -68,6 +74,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"experimental":             experimentalVal == "true",
 		"session_retention_limit":  retentionLimit,
 		"api_mode_enabled":         s.apiMode,
+		"sync_claude_limits":       syncClaudeLimitsVal == "true",
 	}
 	if stallStartVal != "" {
 		if parsed, parseErr := strconv.Atoi(stallStartVal); parseErr == nil {
@@ -98,6 +105,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		SessionRetentionLimit  *int            `json:"session_retention_limit"`
 		StallStartTimeoutSec   json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec json.RawMessage `json:"stall_running_timeout_sec"`
+		SyncClaudeLimits       *bool           `json:"sync_claude_limits"`
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -166,6 +174,17 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	}
 	if err := applyOptionalIntSetting(svc, req.StallRunningTimeoutSec, "stall_running_timeout_sec", w); err != nil {
 		return
+	}
+
+	if req.SyncClaudeLimits != nil {
+		val := "false"
+		if *req.SyncClaudeLimits {
+			val = "true"
+		}
+		if err := svc.Set("sync_claude_limits", val); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})

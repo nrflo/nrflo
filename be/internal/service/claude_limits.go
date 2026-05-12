@@ -28,16 +28,27 @@ func NewClaudeLimitsService(pool *db.Pool, clk clock.Clock) *ClaudeLimitsService
 	return &ClaudeLimitsService{pool: pool, clk: clk}
 }
 
-// Update writes all 5 config keys for Claude rate limits.
+// Update writes only non-sentinel fields. FiveHourUsedPct/SevenDayUsedPct < 0 and
+// empty resets_at strings are skipped. claude_limits_updated_at is only bumped when
+// at least one real field is written; all-sentinel input is a no-op.
 func (s *ClaudeLimitsService) Update(limits ClaudeLimits) error {
-	updatedAt := s.clk.Now().UTC().Format(time.RFC3339)
-	pairs := []struct{ k, v string }{
-		{"claude_5h_used_pct", strconv.FormatFloat(limits.FiveHourUsedPct, 'f', -1, 64)},
-		{"claude_5h_resets_at", limits.FiveHourResetsAt},
-		{"claude_weekly_used_pct", strconv.FormatFloat(limits.SevenDayUsedPct, 'f', -1, 64)},
-		{"claude_weekly_resets_at", limits.SevenDayResetsAt},
-		{"claude_limits_updated_at", updatedAt},
+	var pairs []struct{ k, v string }
+	if limits.FiveHourUsedPct >= 0 {
+		pairs = append(pairs, struct{ k, v string }{"claude_5h_used_pct", strconv.FormatFloat(limits.FiveHourUsedPct, 'f', -1, 64)})
 	}
+	if limits.FiveHourResetsAt != "" {
+		pairs = append(pairs, struct{ k, v string }{"claude_5h_resets_at", limits.FiveHourResetsAt})
+	}
+	if limits.SevenDayUsedPct >= 0 {
+		pairs = append(pairs, struct{ k, v string }{"claude_weekly_used_pct", strconv.FormatFloat(limits.SevenDayUsedPct, 'f', -1, 64)})
+	}
+	if limits.SevenDayResetsAt != "" {
+		pairs = append(pairs, struct{ k, v string }{"claude_weekly_resets_at", limits.SevenDayResetsAt})
+	}
+	if len(pairs) == 0 {
+		return nil
+	}
+	pairs = append(pairs, struct{ k, v string }{"claude_limits_updated_at", s.clk.Now().UTC().Format(time.RFC3339)})
 	for _, p := range pairs {
 		if err := s.pool.SetConfig(p.k, p.v); err != nil {
 			return err

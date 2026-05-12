@@ -396,35 +396,7 @@ describe('ProjectWorkflowsPage', () => {
       })
     })
 
-    it('excludes claude-limits-refresh from the workflow dropdown', async () => {
-      const user = userEvent.setup()
-      listWorkflowDefs.mockResolvedValue({
-        feature: {
-          description: 'Feature workflow',
-          scope_type: 'project',
-          phases: [{ id: 'setup', agent: 'setup', layer: 0 }],
-        },
-        'claude-limits-refresh': {
-          description: 'Limits refresher',
-          scope_type: 'project',
-          phases: [{ id: 'refresh', agent: 'refresh', layer: 0 }],
-        },
-      })
-
-      renderPage()
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /^Run$/ })).toBeInTheDocument()
-      })
-
-      // Open the workflow dropdown — auto-selected to feature
-      const dropdownTrigger = screen.getByRole('button', { name: /feature/ })
-      await user.click(dropdownTrigger)
-
-      // claude-limits-refresh must not appear in the open panel
-      expect(screen.queryByText(/claude-limits-refresh/)).not.toBeInTheDocument()
-    })
-  })
+})
 
   describe('Running Tab', () => {
     it('passes fetched sessions to WorkflowTabContent', async () => {
@@ -1053,6 +1025,18 @@ describe('ProjectWorkflowsPage', () => {
   describe('Empty States', () => {
     it('shows no project-scoped workflows message when workflows list is empty', async () => {
       listWorkflowDefs.mockResolvedValue({})
+
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText(/No project-scoped workflow definitions found/i)).toBeInTheDocument()
+      })
+    })
+
+    it('excludes ticket-scoped workflows — shows empty state when only ticket-scoped defs exist', async () => {
+      listWorkflowDefs.mockResolvedValue({
+        feature: { description: 'Feature workflow', scope_type: 'ticket', phases: [] },
+      })
 
       renderPage()
 

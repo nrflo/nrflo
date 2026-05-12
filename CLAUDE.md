@@ -120,7 +120,7 @@ Rules every change must respect.
 ### Storage & operations
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Notification channels** → [be/CLAUDE.md](be/CLAUDE.md)
-- **Claude usage limits** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
+- **Claude usage limits** — global setting `sync_claude_limits` enables hourly in-process runner (`be/internal/limitsrefresh/`); partial-update semantics in `ClaudeLimitsService.Update` → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
 - **Versioned config-file editor** → [configeditor/CLAUDE.md](be/internal/configeditor/CLAUDE.md)

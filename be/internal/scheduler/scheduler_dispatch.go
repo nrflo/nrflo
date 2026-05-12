@@ -14,7 +14,6 @@ import (
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
-	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -24,30 +23,6 @@ import (
 func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*model.ScheduleRun, error) {
 	runRepo := repo.NewScheduleRunRepo(s.pool, s.clock)
 	taskRepo := repo.NewScheduledTaskRepo(s.pool, s.clock)
-
-	// v1: workflow-name-keyed special case — generalise as min_interval_since_last_run on workflow_definitions later
-	for _, wfName := range task.Workflows {
-		if wfName == "claude-limits-refresh" {
-			svc := service.NewClaudeLimitsService(s.pool, s.clock)
-			limits, _ := svc.Get()
-			if limits.UpdatedAt != "" {
-				if updatedAt, parseErr := time.Parse(time.RFC3339, limits.UpdatedAt); parseErr == nil && !updatedAt.IsZero() && s.clock.Now().UTC().Sub(updatedAt) < 20*time.Minute {
-					logger.Info(ctx, "scheduler: claude-limits-refresh skipped, limits fresh", "updated_at", limits.UpdatedAt)
-					now := s.clock.Now().UTC()
-					var nextRunAt *time.Time
-					if sched, cronErr := cron.ParseStandard(task.CronExpression); cronErr == nil {
-						next := sched.Next(now)
-						nextRunAt = &next
-					}
-					if err := taskRepo.UpdateTriggerTimestamps(task.ID, &now, nextRunAt); err != nil {
-						logger.Info(ctx, "scheduler: failed to update task timestamps", "id", task.ID, "err", err)
-					}
-					return nil, nil
-				}
-			}
-			break
-		}
-	}
 
 	// 1. Insert ScheduleRun with status=pending
 	run := &model.ScheduleRun{

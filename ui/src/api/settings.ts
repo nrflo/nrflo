@@ -9,6 +9,7 @@ export interface GlobalSettings {
   session_retention_limit: number
   stall_start_timeout_sec: number | null
   stall_running_timeout_sec: number | null
+  sync_claude_limits: boolean
 }
 
 export const settingsKeys = {

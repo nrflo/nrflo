@@ -70,6 +70,18 @@ type CLIAdapter interface {
 	// then after one release delete backend_interactive_tui_capture.go,
 	// the tuiLineBuf field, the captureTUI ferryPTYOutput param, and this method.
 	CapturesTUIBytes() bool
+
+	// BumpsOnPTYBytes returns true when receiving PTY bytes should bump
+	// lastMessageTime / hasReceivedMessage for stall detection purposes.
+	// Hooks/SSE-driven adapters (Claude, Opencode) return false so the
+	// running-stall timer accumulates while the TUI redraws — heartbeat
+	// comes from PreToolUse/PostToolUse/Stop hooks (Claude) or SSE
+	// message.part.updated/session.idle events (Opencode) instead.
+	// PTY-only adapters (Codex, while openai/codex#21639 keeps hooks
+	// unfired) return true. Both BumpsOnPTYBytes and CapturesTUIBytes
+	// flip to false together once the upstream fix ships and one release
+	// has cleared.
+	BumpsOnPTYBytes() bool
 }
 
 // InteractiveExtras carries adapter-owned spawn-time outputs that the backend

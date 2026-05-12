@@ -121,22 +121,29 @@ func mergeInteractiveSettings(safetyJSON, hooksJSON string) string {
 	return string(out)
 }
 
-// ferryPTYOutput reads PTY output and drops it. Visibility for interactive
-// agents comes from hook events forwarded via `nrflo agent record-event` —
-// the TUI's raw bytes are noise (cursor escapes, redraws, status bars).
-// lastMessageTime is bumped on each chunk so stall detection doesn't fire
-// while the agent is actively redrawing. Returns when the session closes.
+// ferryPTYOutput reads PTY output and drops it. Returns when the session closes.
+//
+// firstByteCh is closed unconditionally on the first chunk received —
+// deliverPrompt depends on it regardless of adapter type.
+//
+// Heartbeat (lastMessageTime / hasReceivedMessage bump) is opt-in via
+// bumpOnPTYBytes. Adapters whose hooks or SSE bus already drive BumpLastMessage
+// (Claude via PreToolUse/PostToolUse/Stop, Opencode via message.part.updated /
+// session.idle) pass false so the running-stall timer can accumulate while the
+// TUI redraws. Adapters without a working hook path (Codex while
+// openai/codex#21639 keeps hooks unfired) pass true so PTY bytes remain the
+// heartbeat signal and stall detection doesn't trip prematurely.
 //
 // Terminal capability queries (DSR, DA, kitty keyboard, OSC color) are
 // auto-answered when respondToQueries is true (codex's TUI bails during init
-// otherwise). Adapters that don't probe (claude) pass false to skip the
-// scan entirely. See respondToTerminalQueries.
+// otherwise). Adapters that don't probe (claude, opencode) pass false to skip
+// the scan entirely. See respondToTerminalQueries.
 //
 // When captureTUI is true (temporary workaround for openai/codex#21639),
 // each chunk is also passed to captureTUIChunk which strips ANSI/control
 // bytes and emits non-empty lines as agent_messages. On exit, flushTUIBuffer
 // drains any partial line remaining.
-func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respondToQueries bool, captureTUI bool) {
+func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respondToQueries bool, captureTUI bool, bumpOnPTYBytes bool) {
 	buf := make([]byte, 4096)
 	for {
 		n, err := sess.Read(buf)
@@ -147,10 +154,12 @@ func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respond
 					close(proc.firstByteCh)
 				})
 			}
-			proc.messagesMutex.Lock()
-			proc.lastMessageTime = s.config.Clock.Now()
-			proc.hasReceivedMessage = true
-			proc.messagesMutex.Unlock()
+			if bumpOnPTYBytes {
+				proc.messagesMutex.Lock()
+				proc.lastMessageTime = s.config.Clock.Now()
+				proc.hasReceivedMessage = true
+				proc.messagesMutex.Unlock()
+			}
 
 			if respondToQueries {
 				if reply := respondToTerminalQueries(buf[:n]); len(reply) > 0 {

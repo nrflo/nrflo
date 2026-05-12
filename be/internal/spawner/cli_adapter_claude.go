@@ -113,6 +113,11 @@ func (a *ClaudeAdapter) NeedsTerminalQueryReplies() bool { return false }
 // raw PTY byte capture is not needed.
 func (a *ClaudeAdapter) CapturesTUIBytes() bool { return false }
 
+// BumpsOnPTYBytes returns false — PreToolUse/PostToolUse/Stop hooks drive
+// heartbeat via record_event → BumpLastMessage, so PTY bytes must not reset
+// the stall timer or stall detection becomes unreachable during idle redraws.
+func (a *ClaudeAdapter) BumpsOnPTYBytes() bool { return false }
+
 func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 	args := []string{
 		"--resume", opts.SessionID,

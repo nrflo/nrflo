@@ -38,20 +38,9 @@ then stop immediately.
 
 
 def run(ctx: Ctx) -> Result:
-    # Under cli-interactive (PTY) the Claude TUI emits a continuous byte
-    # stream (status-line / "Running (Ns)" indicator redraws) even while
-    # the underlying Bash subprocess sleeps. Measured 2026-05-12 with a
-    # temporary per-second byte counter in ferryPTYOutput:
-    #   - 11–25 PTY chunks/sec, 700–3000 bytes/sec, sustained for the
-    #     entire 30s `sleep 30` window. No quiet second.
-    # `proc.lastMessageTime` is bumped on every PTY read in ferryPTYOutput,
-    # so the running-stall timer never accumulates past the threshold.
-    # The stall code path itself isn't broken — it just isn't reachable
-    # through Claude's PTY. The interactive equivalent guarantee is the
-    # idle/nudge loop (`checkIdleNudge`).
-    if ctx.mode == "cli-interactive":
-        return ("S16 stall detection", "SKIP",
-                "stall semantics differ under PTY relay")
+    # cli-interactive is now reachable: ClaudeAdapter.BumpsOnPTYBytes()=false means
+    # PTY redraws no longer reset lastMessageTime, so the running-stall timer
+    # accumulates normally. codex/opencode cli_interactive skip at harness level.
 
     pid, _root = make_project(ctx)
     wid = next_id(ctx, "wf")

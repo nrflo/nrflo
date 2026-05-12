@@ -212,11 +212,10 @@ Why per-agent and not per-project: commits `a3305e3`, `53c9e84`, and
 made `cli_interactive` a first-class `execution_mode` alongside `cli`,
 `api`, and `script`. `make_project` no longer touches project config.
 
-Scenarios don't branch on mode. The exception is `s16_stall_detection`,
-which gracefully `SKIP`s under `cli-interactive` because PTY relay
-produces a steady byte stream that defeats the running-stall timer
-(see [be/internal/spawner/CLAUDE.md](../be/internal/spawner/CLAUDE.md)
-→ stall detection).
+Scenarios don't branch on mode. `s16_stall_detection` runs under both
+`cli` and `cli-interactive` for Claude — `ClaudeAdapter.BumpsOnPTYBytes()`
+returns false so PTY redraws no longer reset `lastMessageTime`, making
+the running-stall timer reachable in PTY sessions.
 
 ## Verbose output + timings
 

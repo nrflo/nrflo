@@ -148,7 +148,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	// capability queries only for adapters that need them (codex).
 	// CapturesTUIBytes enables raw byte capture for adapters where hooks don't
 	// fire (codex, openai/codex#21639 workaround).
-	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies(), b.adapter.CapturesTUIBytes())
+	// BumpsOnPTYBytes gates lastMessageTime / hasReceivedMessage updates so
+	// stall detection is reachable for hook/SSE-driven adapters (Claude, Opencode).
+	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies(), b.adapter.CapturesTUIBytes(), b.adapter.BumpsOnPTYBytes())
 
 	// Wait goroutine: close doneCh when PTY session exits, clean up temp files.
 	doneCh := proc.doneCh

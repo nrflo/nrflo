@@ -198,11 +198,17 @@ func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 // workaround until upstream ships a fix.
 //
 // Cleanup: once openai/codex#21639 is fixed and a patched codex version is
-// available, flip this to false. After one release, delete
-// backend_interactive_tui_capture.go, the tuiLineBuf field on processInfo,
-// the captureTUI param from ferryPTYOutput, and the CapturesTUIBytes method
-// from the CLIAdapter interface.
+// available, flip both CapturesTUIBytes and BumpsOnPTYBytes to false together.
+// After one release, delete backend_interactive_tui_capture.go, the tuiLineBuf
+// field on processInfo, the captureTUI param from ferryPTYOutput, and the
+// CapturesTUIBytes and BumpsOnPTYBytes methods from the CLIAdapter interface.
 func (a *CodexAdapter) CapturesTUIBytes() bool { return true }
+
+// BumpsOnPTYBytes returns true — while openai/codex#21639 keeps hooks unfired
+// in PTY/TUI sessions, PTY bytes are the only heartbeat signal available, so
+// they must bump lastMessageTime to prevent false stall detection. Flip this
+// to false together with CapturesTUIBytes once the upstream fix ships.
+func (a *CodexAdapter) BumpsOnPTYBytes() bool { return true }
 
 func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil

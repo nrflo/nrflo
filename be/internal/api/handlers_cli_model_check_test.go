@@ -40,6 +40,7 @@ func (m *mockCLIAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (s
 func (m *mockCLIAdapter) DeliversPromptInline() bool      { return false }
 func (m *mockCLIAdapter) NeedsTerminalQueryReplies() bool { return false }
 func (m *mockCLIAdapter) CapturesTUIBytes() bool          { return false }
+func (m *mockCLIAdapter) BumpsOnPTYBytes() bool           { return false }
 
 func mockGetCLIAdapter(cliType string) (spawner.CLIAdapter, error) {
 	return &mockCLIAdapter{name: cliType}, nil
@@ -233,6 +234,7 @@ func (a *failStartAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) 
 func (a *failStartAdapter) DeliversPromptInline() bool      { return false }
 func (a *failStartAdapter) NeedsTerminalQueryReplies() bool { return false }
 func (a *failStartAdapter) CapturesTUIBytes() bool          { return false }
+func (a *failStartAdapter) BumpsOnPTYBytes() bool           { return false }
 
 // hangingAdapter returns a command that runs indefinitely (sleep 999).
 // Used to test the timeout/kill path without waiting 40s: caller provides a
@@ -257,6 +259,7 @@ func (a *hangingAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (s
 func (a *hangingAdapter) DeliversPromptInline() bool      { return false }
 func (a *hangingAdapter) NeedsTerminalQueryReplies() bool { return false }
 func (a *hangingAdapter) CapturesTUIBytes() bool          { return false }
+func (a *hangingAdapter) BumpsOnPTYBytes() bool           { return false }
 
 // TestHandleTestCLIModel_TimeoutMessage exercises the timeout code path:
 // the response must be success=false with an error containing "40s", and the

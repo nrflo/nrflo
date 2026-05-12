@@ -379,12 +379,18 @@ The interactive sub-surface on `CLIAdapter` makes per-CLI divergence live entire
 | `PrepareInteractive(opts)` | zero extras, noop cleanup | profile dir + hook list | allocate free 127.0.0.1 port |
 | `DeliversPromptInline()` | false | true | false |
 | `NeedsTerminalQueryReplies()` | false | true | false |
+| `CapturesTUIBytes()` | false | true | false |
+| `BumpsOnPTYBytes()` | false | true | false |
 
-Adding a new interactive CLI: implement these five methods in `cli_adapter_<name>.go` and register in `GetCLIAdapter`. No changes required to `backend_interactive.go`.
+`CapturesTUIBytes` and `BumpsOnPTYBytes` both flip to false for Codex together once openai/codex#21639 is fixed and one release has cleared. After that, delete `backend_interactive_tui_capture.go`, the `tuiLineBuf` field, the `captureTUI` ferryPTYOutput param, and both interface methods.
+
+Adding a new interactive CLI: implement these seven methods in `cli_adapter_<name>.go` and register in `GetCLIAdapter`. No changes required to `backend_interactive.go`.
 
 ### Output Ferry
 
-`ferryPTYOutput(spawner, proc, sess, respondToQueries bool)` runs in a goroutine reading PTY stdout. Bytes are always dropped — visibility comes from hook events (Claude/Codex) or the SSE bus (Opencode); the raw TUI stream is noise (cursor escapes, redraws, status bars). `proc.lastMessageTime` is bumped on each chunk under `messagesMutex` so stall detection doesn't fire while the agent is redrawing. When `respondToQueries == true` (codex), the chunk is scanned for terminal capability queries and canned replies are written back to the PTY — see `respondToTerminalQueries`.
+`ferryPTYOutput(spawner, proc, sess, respondToQueries, captureTUI, bumpOnPTYBytes bool)` runs in a goroutine reading PTY stdout. Bytes are always drained — the raw TUI stream is noise (cursor escapes, redraws, status bars). `firstByteCh` is closed unconditionally on the first chunk, regardless of adapter type (`deliverPrompt` depends on it).
+
+Heartbeat (`lastMessageTime` / `hasReceivedMessage` bump) is opt-in via `bumpOnPTYBytes`. Adapters whose hooks or SSE bus already call `BumpLastMessage` (Claude via PreToolUse/PostToolUse/Stop hooks; Opencode via `message.part.updated` / `session.idle` SSE events) pass `false` so the running-stall timer can accumulate while the TUI redraws — making stall detection reachable under `cli_interactive` mode. Adapters without a working hook path (Codex, while openai/codex#21639 keeps hooks unfired) pass `true` so PTY bytes remain the heartbeat signal. When `respondToQueries == true` (codex), the chunk is scanned for terminal capability queries and canned replies are written back to the PTY — see `respondToTerminalQueries`.
 
 ### Codex Rollout JSONL Extraction
 

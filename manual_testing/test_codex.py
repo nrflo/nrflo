@@ -22,7 +22,7 @@ def main() -> int:
     ap.add_argument("--mode", default="cli",
                     choices=["cli", "cli-interactive"])
     ap.add_argument("--parallel", type=int, default=5)
-    ap.add_argument("--model", default="codex_gpt_normal")
+    ap.add_argument("--model", default="codex_gpt54_mini_low")
     ap.add_argument("--only", default=None,
                     help="comma-separated scenario substrings; e.g. s01,s07")
     ap.add_argument("--timeout", type=float, default=None,

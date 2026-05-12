@@ -165,10 +165,6 @@ func (a *OpencodeAdapter) DeliversPromptInline() bool { return false }
 // DSR/DA/kitty/OSC capability queries that require auto-replies.
 func (a *OpencodeAdapter) NeedsTerminalQueryReplies() bool { return false }
 
-// CapturesTUIBytes returns false — opencode delivers messages via its SSE
-// event bus; raw PTY byte capture is not needed.
-func (a *OpencodeAdapter) CapturesTUIBytes() bool { return false }
-
 // BumpsOnPTYBytes returns false — SSE bus message.part.updated /
 // session.idle events already call BumpLastMessage, so PTY bytes must not
 // reset the stall timer or stall detection becomes unreachable during redraws.

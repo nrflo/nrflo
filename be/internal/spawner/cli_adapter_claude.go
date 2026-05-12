@@ -109,10 +109,6 @@ func (a *ClaudeAdapter) DeliversPromptInline() bool { return false }
 // host terminal during init, so the PTY ferry skips the canned-reply responder.
 func (a *ClaudeAdapter) NeedsTerminalQueryReplies() bool { return false }
 
-// CapturesTUIBytes returns false — Claude delivers messages via hook events;
-// raw PTY byte capture is not needed.
-func (a *ClaudeAdapter) CapturesTUIBytes() bool { return false }
-
 // BumpsOnPTYBytes returns false — PreToolUse/PostToolUse/Stop hooks drive
 // heartbeat via record_event → BumpLastMessage, so PTY bytes must not reset
 // the stall timer or stall detection becomes unreachable during idle redraws.

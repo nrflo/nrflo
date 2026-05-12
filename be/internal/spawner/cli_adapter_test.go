@@ -89,30 +89,6 @@ func TestCodexAdapter_Capabilities(t *testing.T) {
 	}
 }
 
-// TestCapturesTUIBytes_* verify the temporary codex#21639 workaround flag per adapter.
-// Codex must return true (raw PTY capture active); Claude and Opencode return false.
-
-func TestCapturesTUIBytes_Codex(t *testing.T) {
-	t.Parallel()
-	if !(&CodexAdapter{}).CapturesTUIBytes() {
-		t.Error("CodexAdapter.CapturesTUIBytes() = false, want true (workaround for openai/codex#21639)")
-	}
-}
-
-func TestCapturesTUIBytes_Claude(t *testing.T) {
-	t.Parallel()
-	if (&ClaudeAdapter{}).CapturesTUIBytes() {
-		t.Error("ClaudeAdapter.CapturesTUIBytes() = true, want false")
-	}
-}
-
-func TestCapturesTUIBytes_Opencode(t *testing.T) {
-	t.Parallel()
-	if (&OpencodeAdapter{}).CapturesTUIBytes() {
-		t.Error("OpencodeAdapter.CapturesTUIBytes() = true, want false")
-	}
-}
-
 func TestCodexAdapter_MapModel(t *testing.T) {
 	t.Parallel()
 	adapter := &CodexAdapter{}

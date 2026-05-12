@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -42,10 +43,11 @@ func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
 
 func (a *CodexAdapter) MapModel(model string) string {
 	modelMap := map[string]string{
-		"codex_gpt_normal":   "gpt-5.3-codex",
-		"codex_gpt_high":     "gpt-5.3-codex",
-		"codex_gpt54_normal": "gpt-5.4",
-		"codex_gpt54_high":   "gpt-5.4",
+		"codex_gpt_normal":     "gpt-5.3-codex",
+		"codex_gpt_high":       "gpt-5.3-codex",
+		"codex_gpt54_normal":   "gpt-5.4",
+		"codex_gpt54_high":     "gpt-5.4",
+		"codex_gpt54_mini_low": "gpt-5.4-mini",
 	}
 	if mapped, ok := modelMap[model]; ok {
 		return mapped
@@ -62,6 +64,8 @@ func (a *CodexAdapter) GetReasoningEffort(model string) string {
 		return "medium"
 	case "codex_gpt54_high":
 		return "high"
+	case "codex_gpt54_mini_low":
+		return "low"
 	default:
 		return "high"
 	}
@@ -225,23 +229,33 @@ func (a *CodexAdapter) DeliversPromptInline() bool { return true }
 // PTY ferry must auto-answer them.
 func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 
-// CapturesTUIBytes returns true — codex hooks no longer fire in PTY/TUI
-// sessions due to upstream regression openai/codex#21639. Raw PTY bytes are
-// captured, ANSI-stripped, and emitted as agent_messages lines as a temporary
-// workaround until upstream ships a fix.
-//
-// Cleanup: once openai/codex#21639 is fixed and a patched codex version is
-// available, flip both CapturesTUIBytes and BumpsOnPTYBytes to false together.
-// After one release, delete backend_interactive_tui_capture.go, the tuiLineBuf
-// field on processInfo, the captureTUI param from ferryPTYOutput, and the
-// CapturesTUIBytes and BumpsOnPTYBytes methods from the CLIAdapter interface.
-func (a *CodexAdapter) CapturesTUIBytes() bool { return true }
+// BumpsOnPTYBytes returns false — the rollout JSONL tailer (started in
+// PostInteractiveStart) calls Sink.BumpLastMessage on every real agent event
+// (agent_message, function_call, function_call_output, token_count). PTY-byte
+// bumps are no longer the heartbeat; stall detection is reachable for
+// codex/cli_interactive at parity with Claude.
+func (a *CodexAdapter) BumpsOnPTYBytes() bool { return false }
 
-// BumpsOnPTYBytes returns true — while openai/codex#21639 keeps hooks unfired
-// in PTY/TUI sessions, PTY bytes are the only heartbeat signal available, so
-// they must bump lastMessageTime to prevent false stall detection. Flip this
-// to false together with CapturesTUIBytes once the upstream fix ships.
-func (a *CodexAdapter) BumpsOnPTYBytes() bool { return true }
+// PostInteractiveStart launches the codex rollout JSONL tailer goroutine.
+// codex 0.130 has an upstream regression (openai/codex#21639) where hooks
+// never fire in TUI/PTY sessions, so we read agent activity straight from
+// codex's own rollout JSONL.
+//
+// Codex writes rollouts under $HOME/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
+// regardless of CODEX_HOME (verified empirically 2026-05-12 on 0.130). The
+// tailer identifies OUR rollout by matching session_meta.payload.cwd against
+// our resolved workdir; that's deterministic per scenario because each
+// harness/agent run has a unique workdir.
+//
+// Returns a cleanup func that cancels the tailer goroutine (called by the
+// backend when the PTY session ends).
+func (a *CodexAdapter) PostInteractiveStart(ctx context.Context, opts PostInteractiveStartOptions) (func(), error) {
+	if opts.WorkDir == "" {
+		return func() {}, fmt.Errorf("codex PostInteractiveStart: empty WorkDir")
+	}
+	cancel := startCodexJSONLTail(ctx, opts.SessionID, opts.WorkDir, opts.Sink)
+	return func() { cancel() }, nil
+}
 
 func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil

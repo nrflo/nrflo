@@ -62,25 +62,13 @@ type CLIAdapter interface {
 	// false so the responder is skipped on their PTY ferry.
 	NeedsTerminalQueryReplies() bool
 
-	// CapturesTUIBytes returns true when raw PTY bytes should be captured,
-	// stripped of ANSI/control sequences, and emitted as agent_messages lines.
-	// This is a temporary workaround for openai/codex#21639 where hooks no
-	// longer fire in PTY/TUI sessions; only CodexAdapter returns true.
-	// Flip CodexAdapter's implementation to false once upstream ships a fix,
-	// then after one release delete backend_interactive_tui_capture.go,
-	// the tuiLineBuf field, the captureTUI ferryPTYOutput param, and this method.
-	CapturesTUIBytes() bool
-
 	// BumpsOnPTYBytes returns true when receiving PTY bytes should bump
 	// lastMessageTime / hasReceivedMessage for stall detection purposes.
-	// Hooks/SSE-driven adapters (Claude, Opencode) return false so the
-	// running-stall timer accumulates while the TUI redraws — heartbeat
-	// comes from PreToolUse/PostToolUse/Stop hooks (Claude) or SSE
-	// message.part.updated/session.idle events (Opencode) instead.
-	// PTY-only adapters (Codex, while openai/codex#21639 keeps hooks
-	// unfired) return true. Both BumpsOnPTYBytes and CapturesTUIBytes
-	// flip to false together once the upstream fix ships and one release
-	// has cleared.
+	// All current adapters return false: heartbeat comes from structured
+	// activity channels — PreToolUse/PostToolUse/Stop hooks (Claude), SSE
+	// message.part.updated/session.idle events (Opencode), or the rollout
+	// JSONL tailer (Codex). The method is kept on the interface so future
+	// adapters that lack a structured channel can opt back in.
 	BumpsOnPTYBytes() bool
 }
 
@@ -148,7 +136,8 @@ type Sink interface {
 type PostInteractiveStartOptions struct {
 	SessionID string
 	WorkDir   string
-	Port      int
+	Port      int    // opencode embedded HTTP event server port (0 for other adapters)
+	CodexHome string // codex per-session CODEX_HOME dir ("" for other adapters)
 	Sink      Sink
 }
 

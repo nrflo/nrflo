@@ -50,7 +50,7 @@ func TestFerryPTYOutput_BumpOnBytesEnabled(t *testing.T) {
 	sess.readChunks = []string{strings.Repeat("x", 100)}
 	sess.Kill() //nolint — always nil; pre-closes the done channel
 
-	ferryPTYOutput(s, proc, sess, false, false, true)
+	ferryPTYOutput(s, proc, sess, false, true)
 
 	proc.messagesMutex.Lock()
 	gotTime := proc.lastMessageTime
@@ -87,7 +87,7 @@ func TestFerryPTYOutput_BumpOnBytesDisabled(t *testing.T) {
 	sess.readChunks = []string{strings.Repeat("x", 100)}
 	sess.Kill() //nolint — always nil; pre-closes the done channel
 
-	ferryPTYOutput(s, proc, sess, false, false, false)
+	ferryPTYOutput(s, proc, sess, false, false)
 
 	proc.messagesMutex.Lock()
 	gotTime := proc.lastMessageTime
@@ -123,17 +123,20 @@ func TestFerryPTYOutput_NilFirstByteCh(t *testing.T) {
 	sess.Kill()
 
 	// Must not panic regardless of bumpOnPTYBytes value.
-	ferryPTYOutput(s, proc, sess, false, false, true)
+	ferryPTYOutput(s, proc, sess, false, true)
 }
 
 // === BumpsOnPTYBytes adapter contract ===
 
-// TestBumpsOnPTYBytes_Codex verifies CodexAdapter returns true — while
-// openai/codex#21639 keeps hooks unfired, PTY bytes are the only heartbeat.
+// TestBumpsOnPTYBytes_Codex verifies CodexAdapter returns false — the rollout
+// JSONL tailer (cli_adapter_codex_jsonl_tail.go, started by PostInteractiveStart)
+// calls Sink.BumpLastMessage on every real agent event (agent_message,
+// function_call, function_call_output, token_count), so PTY bytes must not
+// reset the stall timer or stall detection becomes unreachable during redraws.
 func TestBumpsOnPTYBytes_Codex(t *testing.T) {
 	t.Parallel()
-	if !(&CodexAdapter{}).BumpsOnPTYBytes() {
-		t.Error("CodexAdapter.BumpsOnPTYBytes() = false, want true (hooks unfired per openai/codex#21639)")
+	if (&CodexAdapter{}).BumpsOnPTYBytes() {
+		t.Error("CodexAdapter.BumpsOnPTYBytes() = true, want false (JSONL tailer drives heartbeat)")
 	}
 }
 

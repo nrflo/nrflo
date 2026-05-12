@@ -126,6 +126,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 			SessionID: proc.sessionID,
 			WorkDir:   workDir,
 			Port:      extras.Port,
+			CodexHome: extras.CodexHome,
 			Sink:      sink,
 		})
 		if startErr != nil {
@@ -144,13 +145,11 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 	go deliverPrompt(b.s, proc, sess, deliveryBody, b.adapter.Name(), proc.sessionStartCh, proc.firstByteCh)
 
-	// Ferry PTY output to the spawner's message tracker. Auto-answer terminal
-	// capability queries only for adapters that need them (codex).
-	// CapturesTUIBytes enables raw byte capture for adapters where hooks don't
-	// fire (codex, openai/codex#21639 workaround).
+	// Ferry PTY output (drop bytes). Auto-answer terminal capability queries
+	// only for adapters that need them (codex).
 	// BumpsOnPTYBytes gates lastMessageTime / hasReceivedMessage updates so
-	// stall detection is reachable for hook/SSE-driven adapters (Claude, Opencode).
-	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies(), b.adapter.CapturesTUIBytes(), b.adapter.BumpsOnPTYBytes())
+	// stall detection is reachable for hook/SSE/JSONL-driven adapters.
+	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies(), b.adapter.BumpsOnPTYBytes())
 
 	// Wait goroutine: close doneCh when PTY session exits, clean up temp files.
 	doneCh := proc.doneCh

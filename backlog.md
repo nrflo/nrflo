@@ -459,6 +459,8 @@ Downgrade codex on the host running `nrflo_server`:
 brew install codex@0.128 # or equivalent
 ```
 
+**Workaround live at:** `be/internal/spawner/backend_interactive_tui_capture.go` — raw PTY bytes are captured, ANSI-stripped, line-buffered, and emitted as `agent_messages` rows when `(*CodexAdapter).CapturesTUIBytes()` returns `true`. Flip that method to `false` once upstream ships a fix, then after one release delete the file + the `tuiLineBuf` field + the `captureTUI` ferryPTYOutput param + the `CapturesTUIBytes` CLIAdapter method.
+
 #### `effective_mode='cli_interactive'` selection — single code path
 
 While diagnosing this we verified the selection mechanism. Recorded

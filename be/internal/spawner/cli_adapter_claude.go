@@ -109,6 +109,10 @@ func (a *ClaudeAdapter) DeliversPromptInline() bool { return false }
 // host terminal during init, so the PTY ferry skips the canned-reply responder.
 func (a *ClaudeAdapter) NeedsTerminalQueryReplies() bool { return false }
 
+// CapturesTUIBytes returns false — Claude delivers messages via hook events;
+// raw PTY byte capture is not needed.
+func (a *ClaudeAdapter) CapturesTUIBytes() bool { return false }
+
 func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 	args := []string{
 		"--resume", opts.SessionID,

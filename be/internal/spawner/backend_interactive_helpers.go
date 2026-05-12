@@ -131,7 +131,12 @@ func mergeInteractiveSettings(safetyJSON, hooksJSON string) string {
 // auto-answered when respondToQueries is true (codex's TUI bails during init
 // otherwise). Adapters that don't probe (claude) pass false to skip the
 // scan entirely. See respondToTerminalQueries.
-func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respondToQueries bool) {
+//
+// When captureTUI is true (temporary workaround for openai/codex#21639),
+// each chunk is also passed to captureTUIChunk which strips ANSI/control
+// bytes and emits non-empty lines as agent_messages. On exit, flushTUIBuffer
+// drains any partial line remaining.
+func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respondToQueries bool, captureTUI bool) {
 	buf := make([]byte, 4096)
 	for {
 		n, err := sess.Read(buf)
@@ -152,8 +157,14 @@ func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respond
 					_, _ = sess.Write(reply)
 				}
 			}
+			if captureTUI {
+				captureTUIChunk(s, proc, buf[:n])
+			}
 		}
 		if err != nil {
+			if captureTUI {
+				flushTUIBuffer(s, proc)
+			}
 			return
 		}
 	}

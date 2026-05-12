@@ -165,6 +165,10 @@ func (a *OpencodeAdapter) DeliversPromptInline() bool { return false }
 // DSR/DA/kitty/OSC capability queries that require auto-replies.
 func (a *OpencodeAdapter) NeedsTerminalQueryReplies() bool { return false }
 
+// CapturesTUIBytes returns false — opencode delivers messages via its SSE
+// event bus; raw PTY byte capture is not needed.
+func (a *OpencodeAdapter) CapturesTUIBytes() bool { return false }
+
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil
 }

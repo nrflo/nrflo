@@ -192,6 +192,18 @@ func (a *CodexAdapter) DeliversPromptInline() bool { return true }
 // PTY ferry must auto-answer them.
 func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 
+// CapturesTUIBytes returns true — codex hooks no longer fire in PTY/TUI
+// sessions due to upstream regression openai/codex#21639. Raw PTY bytes are
+// captured, ANSI-stripped, and emitted as agent_messages lines as a temporary
+// workaround until upstream ships a fix.
+//
+// Cleanup: once openai/codex#21639 is fixed and a patched codex version is
+// available, flip this to false. After one release, delete
+// backend_interactive_tui_capture.go, the tuiLineBuf field on processInfo,
+// the captureTUI param from ferryPTYOutput, and the CapturesTUIBytes method
+// from the CLIAdapter interface.
+func (a *CodexAdapter) CapturesTUIBytes() bool { return true }
+
 func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil
 }

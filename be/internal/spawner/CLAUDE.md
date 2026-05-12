@@ -333,6 +333,8 @@ The profile/hook helpers themselves live in `cli_adapter_codex_hooks.go` as pack
 - Copies the user's `~/.codex/auth.json` into the per-session dir so the spawned codex stays logged in.
 - No `hooks.json` is written — codex 0.125 does not consume it.
 
+**TUI byte capture (openai/codex#21639 workaround)**: Because hooks do not fire in codex ≥ 0.129.0-alpha.15 PTY sessions, `CodexAdapter.CapturesTUIBytes()` returns `true`, enabling a raw-byte fallback path in `ferryPTYOutput`. Each PTY read chunk is passed to `captureTUIChunk` (`backend_interactive_tui_capture.go`), which appends to `proc.tuiLineBuf` (guarded by `messagesMutex`), splits on newlines, strips ANSI/control bytes via `stripANSI`, caps lines at 8 KB (with trailing `…`), caps the buffer at 64 KB (force-flush + reset on overflow), and emits each non-empty line via `s.TrackMessage`. On PTY close, `flushTUIBuffer` drains any partial line. Claude and Opencode return `false` from `CapturesTUIBytes()` and take their existing hook/SSE paths unchanged. Cleanup: flip `CodexAdapter.CapturesTUIBytes()` to `false` once upstream ships a fix; after one release delete `backend_interactive_tui_capture.go`, the `tuiLineBuf` field, the `captureTUI` ferryPTYOutput param, and the `CapturesTUIBytes` interface method.
+
 **Hook injection** (`-c hooks.<event>=…`): `CodexAdapter.BuildInteractiveCommand` translates `opts.Hooks` (a `[]HookEvent` populated upstream by `CodexAdapter.PrepareInteractive`, threaded through `InteractiveExtras.Hooks`) into repeated `-c` flags with inline-TOML array-of-tables values:
 
 ```

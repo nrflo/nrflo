@@ -61,6 +61,15 @@ type CLIAdapter interface {
 	// the TUI to proceed (codex). Adapters that don't probe (claude) return
 	// false so the responder is skipped on their PTY ferry.
 	NeedsTerminalQueryReplies() bool
+
+	// CapturesTUIBytes returns true when raw PTY bytes should be captured,
+	// stripped of ANSI/control sequences, and emitted as agent_messages lines.
+	// This is a temporary workaround for openai/codex#21639 where hooks no
+	// longer fire in PTY/TUI sessions; only CodexAdapter returns true.
+	// Flip CodexAdapter's implementation to false once upstream ships a fix,
+	// then after one release delete backend_interactive_tui_capture.go,
+	// the tuiLineBuf field, the captureTUI ferryPTYOutput param, and this method.
+	CapturesTUIBytes() bool
 }
 
 // InteractiveExtras carries adapter-owned spawn-time outputs that the backend

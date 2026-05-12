@@ -257,6 +257,8 @@ type processInfo struct {
 	failRestartCount  int    // How many times this agent has been auto-restarted on failure
 	// Low-context save state
 	lowContextSaving bool // True while initiateContextSave is running
+	// TUI byte capture (temporary workaround for openai/codex#21639; guarded by messagesMutex)
+	tuiLineBuf []byte
 	// Stall detection
 	lastMessageTime     time.Time     // set on spawn, updated on every trackMessage()
 	hasReceivedMessage  bool          // distinguishes "no messages yet" from "had messages, now stalled"
@@ -867,6 +869,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		maxContext:          0,
 		restartThreshold:    defaultContextThreshold,
 		env:                 env,
+		tuiLineBuf:          make([]byte, 0),
 	}
 
 	prep := &prepResult{
@@ -1022,6 +1025,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		stallStartTimeout:   stallStartTimeout,
 		stallRunningTimeout: stallRunningTimeout,
 		maxContext:          s.maxContextForModel(modelName),
+		tuiLineBuf:          make([]byte, 0),
 	}
 
 	// Populate idle/nudge fields only for cliInteractiveBackend agents.

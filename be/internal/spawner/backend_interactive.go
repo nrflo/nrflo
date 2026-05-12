@@ -146,7 +146,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 
 	// Ferry PTY output to the spawner's message tracker. Auto-answer terminal
 	// capability queries only for adapters that need them (codex).
-	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies())
+	// CapturesTUIBytes enables raw byte capture for adapters where hooks don't
+	// fire (codex, openai/codex#21639 workaround).
+	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies(), b.adapter.CapturesTUIBytes())
 
 	// Wait goroutine: close doneCh when PTY session exits, clean up temp files.
 	doneCh := proc.doneCh

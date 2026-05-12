@@ -11,7 +11,10 @@ import (
 // from cli_adapter_codex.go (PrepareInteractive). Codex's TUI in PTY contexts
 // ignores `<CODEX_HOME>/config.toml` hook tables entirely, so this profile
 // only carries auth, model/personality, the workDir trust entry, and the
-// `[features] codex_hooks = true` flag. Hooks themselves are injected via
+// `[features] codex_hooks = true` flag (documented in https://developers.openai.com/codex/hooks).
+// NOTE: codex 0.129.0-alpha.15+ has a regression where hooks do not fire
+// regardless of declaration mechanism (upstream issue openai/codex#21639,
+// open as of 2026-05). Tracked in backlog.md. Hooks themselves are injected via
 // repeated `-c hooks.<event>=…` flags from BuildInteractiveCommand.
 
 // writeCodexProfile is a convenience wrapper for tests that don't need

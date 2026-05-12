@@ -432,141 +432,140 @@ If any of these regresses in production, prefer adding/extending a Go test over 
 
 The first full provider × mode validation of `manual_testing/` (24 scenarios × 6 combos = claude/codex/opencode × cli/cli-interactive) surfaced three real backend issues plus one test-side issue. Recorded here verbatim so they get triaged independently of the harness PR.
 
-### Codex `cli_interactive` backend hangs when triggered via project-config — UI uses a different path (mechanism TBD)
+### Codex `cli_interactive` hooks never fire — upstream codex regression (openai/codex#21639)
 
-**Status:** unconfirmed backend bug. The harness reproduces it 100% via
-the project-config trigger; the user's UI runs land sessions with
-`effective_mode='cli_interactive'` via some other trigger we have not
-yet identified. Until that third trigger is found, the harness's only
-known lever (`interactive_cli_mode=true` PATCH on the project) drives
-codex into a hang. Don't change the spawner before locating the third
-trigger and ruling it in or out.
+**Status:** confirmed upstream bug. **Hold all nrflo-side changes.**
+Codex CLI versions ≥ `0.129.0-alpha.15` ship with a regression that
+breaks hook delivery in interactive sessions regardless of how hooks
+are declared (`-c hooks.X=…`, `[[hooks.X]]` blocks in
+`config.toml`, project-local or user-level `hooks.json`). Tracked at
+[openai/codex#21639](https://github.com/openai/codex/issues/21639);
+last known working codex = `0.128.0-alpha.1`. Local repro on `0.130.0`,
+2026-05-12.
 
-#### Diagnostic update — 2026-05-12
+Manifests in nrflo as: codex/cli_interactive sessions complete
+successfully (`result='pass'`, agent calls `nrflo agent finished` via
+HTTP) but `agent_messages` rows = 0 for the entire session. The PTY
+ferry sees codex's banner ("first PTY bytes received" in server log)
+then no hook event ever fires, so the spawner has zero
+visibility into the model's tool calls or text output. Workflow
+runtime is unaffected; only telemetry/observability is lost.
 
-Inspection of the user's real `~/.nrflo/nrflo.data` after a successful
-UI codex interactive run (session `936acb2c-d822-455d-9677-93583cd6247b`,
-agent `scheduler-test-agent`, model `codex:codex_gpt_normal`,
-`status=project_completed`, `result=pass`,
-`effective_mode='cli_interactive'`, 3 `agent_messages` rows showing
-real Bash tool calls including `nrflo agent finished`) shows:
+#### Workaround until upstream ships a fix
 
-1. The project (`nrworkflow`) has `config.interactive_cli_mode=''`
-   (empty/false). So the project-config flag is **not** what produced
-   `effective_mode='cli_interactive'` on that successful run.
-2. The agent_definition (`scheduler-test-agent`) has
-   `execution_mode='cli'` — also not a trigger.
-3. Per-run `interactive=true` was tested in the harness — it routes
-   through `orchestratorInteractive`'s pre-step flow (server log:
-   `waiting for interactive pre-step session_id=… mode=interactive`),
-   never spawns the agent, then cancels when no human takes control.
-   So that's not the trigger either.
-4. The `spawn_command` of the working UI session is byte-identical to
-   the harness's hanging session at the codex argv level (same model,
-   same hooks, same sandbox flag, prompt as argv positional). So the
-   codex invocation itself is not the difference.
+Downgrade codex on the host running `nrflo_server`:
 
-There exists a third trigger we have not located that maps a
-project-scope run to `effective_mode='cli_interactive'` and produces a
-working PTY-relayed codex session. The harness can't reproduce that
-working path until the trigger is found.
+```
+brew install codex@0.128 # or equivalent
+```
 
-#### Harness experiments run — 2026-05-12
+#### `effective_mode='cli_interactive'` selection — single code path
 
-| Trigger | Result |
-|---|---|
-| `PATCH /projects/{id} interactive_cli_mode=true` then normal `/workflow/run` | Spawner picks `cli_interactive` backend → codex spawns (pid set, `Ss+`, 0% CPU), emits zero bytes to PTY for the full timeout; `agent_messages` count = 0; status stays `running` until shutdown. |
-| `POST /workflow/run {"interactive": true}` per-run | Workflow enters take-control pre-step; agent never spawns; cancels at timeout. |
-| Same harness with `--mode=cli` | 23/24 PASS. So the issue is specifically the `cli_interactive` backend path, not codex broadly. |
+While diagnosing this we verified the selection mechanism. Recorded
+here so the next investigation doesn't re-litigate it.
 
-#### Three unanswered questions
+There is exactly one branch in `be/internal/spawner/spawner.go:1274`:
 
-1. **What triggered `effective_mode='cli_interactive'` on the user's
-   working UI session** if not the project-config flag, not per-run
-   `interactive`, and not `execution_mode` on the agent_def? Read
-   `be/internal/spawner/spawner.go` `startBackend` and find every
-   branch that selects the interactive backend.
-2. **Why does codex emit zero PTY bytes** when the spawner routes
-   through `cli_interactive` via the project-config flag, given the
-   codex argv is identical to the working path? Either the PTY wire-up
-   differs between code paths, or codex 0.128.0 needs an initial
-   `SIGWINCH` / winsize set that this path skips.
-3. **Does the harness need a different global setting to match the
-   working trigger?** User has `experimental=true` and
-   `simplified_agents_graph=true` set globally; harness defaults are
-   off.
+```go
+if s.config.InteractiveCLIMode && prep.adapter != nil && prep.adapter.SupportsInteractive() {
+    backend = newCLIInteractiveBackend(...); effectiveMode = "cli_interactive"
+}
+```
 
-#### Files to inspect first
+Gates: (a) `executionMode != "script"/"api"`, (b)
+`s.config.InteractiveCLIMode == true` — read once at workflow start
+from `project_config["interactive_cli_mode"]` (orchestrator.go:351,
+single write site `handlers_projects.go:244`), (c)
+`adapter.SupportsInteractive()` — true for claude/codex/opencode. No
+per-agent-def override; no per-run override. The per-run
+`interactive=true` body flag triggers a separate `user_interactive`
+pre-step (`orchestrator.go:416`), orthogonal to `effective_mode`
+selection.
 
-- `be/internal/spawner/spawner.go` — `startBackend` / backend selection
-  branches; `SetEffectiveMode` callsites.
-- `be/internal/spawner/backend_interactive.go` — PTY setup, particularly
-  initial winsize / window resize signalling.
-- `be/internal/api/handlers_project_workflow.go` — does the run handler
-  set up something extra when the project's effective_mode would be
-  `cli_interactive` that the project-config path skips?
-- Diff orchestrator entry points: the interactive plan-before-execute
-  pre-step (`orchestrator_interactive.go`) vs the plain orchestration
-  flow (`orchestrator.go`).
+`agent_sessions.effective_mode` is written at spawn time
+(`repo/agent_session.go:146`) and frozen — toggling
+`interactive_cli_mode` off after a successful run does NOT rewrite
+historical session rows. (We chased a phantom "third trigger" earlier
+because a working UI session had `effective_mode='cli_interactive'`
+while the project config currently showed empty; that was just config
+drift, not a hidden code path.)
 
-#### Symptoms (harness)
-- Every scenario in `codex/cli-interactive` times out at 180s.
-- `agent_sessions` rows have `pid` set (process spawned) but **zero rows
-  in `agent_messages`** for every session.
-- `server.log` shows the periodic agent-status line with `last_msg=`
-  empty across the whole run.
-- Affected sessions only end (`failed`/`cancelled`) when the harness
-  tears the server down.
-- `codex/cli` (batch) mode passes 23/24 in the same harness — only the
-  interactive PTY path goes silent.
-- Reproduces at `--parallel=1` too, so it isn't concurrency.
+#### Empirical hook-firing test results (2026-05-12, codex 0.130.0)
 
-#### Suspected harness/backend divergence (the actual question to answer)
-The harness enables interactive by `PATCH /api/v1/projects/{id}` with
-`{"interactive_cli_mode": true}` immediately after project creation,
-then runs the project workflow normally. The UI may instead pass
-`{"interactive": true}` as the run body flag — those are two different
-code paths in the orchestrator/spawner, and they may route to slightly
-different prompt-delivery / PTY-wire-up behaviour. Read
-`be/internal/api/handlers_project_workflow.go` to see what each flag
-does and check whether the harness is taking the path the UI doesn't.
+Isolated Python PTY harness — `pty.fork`, winsize 24×80, DSR/DA/kitty/
+OSC terminal-query auto-replies (matching nrflo's
+`ferryPTYOutput(respondToQueries=true)`):
 
-Other candidate divergences worth ruling out:
-- Working directory: harness uses a fresh `git init` dir in a tmp path;
-  UI uses the user's real project dir which has codex config / auth
-  state nearby.
-- `~/.codex/` auth state — both inherit the same env, but a fresh
-  NRFLO_HOME may interact with codex's per-project state differently.
-- Prompt delivery channel: the recorded `spawn_command` shows
-  `< /tmp/nrflo/…md` (stdin redirect). Codex interactive expects the
-  prompt as argv positional per the comment in
-  `be/internal/spawner/cli_adapter_codex.go`. Confirm the actual
-  delivery — `spawn_command` is a logged string, may not reflect the
-  real `exec.Cmd` wiring.
+| Hook declaration | PTY bytes | Hooks fired (of 5) |
+|---|---|---|
+| Inline `-c hooks.X=[…]`, bare PTY (no responder) | 84 | 0 |
+| Inline `-c hooks.X=[…]`, full responder + winsize | 1119 | 0 |
+| `[[hooks.X]]` array-of-tables in `CODEX_HOME/config.toml`, `[features] hooks=true` | 1119 | 0 |
+| `[[hooks.X]]` blocks, `[features] codex_hooks=true` (docs canonical) | 1119 | 0 |
+| `hooks.X = […]` inline-assignment in `config.toml`, `[features] hooks=true` | 397 | 0 |
 
-#### Reproduction
+The responder more than doubles byte volume → PTY plumbing itself is
+fine. No declaration mechanism causes a single hook event to fire,
+including `SessionStart` (which should fire immediately on TUI init).
+
+Stale-but-non-causal: `codex features list` reports the feature is
+now named `hooks` (default true), but official docs at
+https://developers.openai.com/codex/hooks still document `codex_hooks`
+as the required key. We keep `codex_hooks` in
+`cli_adapter_codex_hooks.go` to match docs. The feature toggle is
+irrelevant on 0.129+ because the underlying regression nukes hook
+delivery regardless.
+
+#### When upstream ships the fix
+
+Re-run `/tmp/codex_pty_full.py` (kept locally, not checked in)
+against the patched codex. If it shows non-zero hooks fired, two
+follow-ups become worthwhile (independent of the upstream fix):
+
+1. Move hook declaration from inline `-c hooks.X=…` flags
+   (undocumented, brittle) into `[[hooks.X]]` blocks in the per-session
+   `config.toml` written by `writeCodexProfileForSession`. Drop the
+   `-c` flags from `BuildInteractiveCommand`. This matches the
+   documented schema and survives future upstream changes better.
+2. Decide whether to drop the `[features] codex_hooks = true` block
+   entirely if/when codex officially makes hooks default-on. Right
+   now it's harmless either way.
+
+Until then, no nrflo-side code change reproduces the original problem
+or fixes it.
+
+#### Reproduction (for verification once upstream fix lands)
+
 ```
 make build
-python3 manual_testing/test_codex.py --mode=cli-interactive --parallel=1
+python3 manual_testing/test_codex.py --mode=cli-interactive --parallel=1 --only=s01
 ```
-`s01_findings_save` hangs for 180s. Compare with a UI-driven codex
-interactive run on the same machine and inspect both `spawn_command`
-strings side-by-side — the diff is the lead.
 
-#### Decision needed
-First: confirm whether `interactive_cli_mode=true` (project config) and
-`interactive=true` (per-run body) hit the same spawner code path. If
-they don't, the harness should switch to the per-run flag and re-test
-before any spawner change. If they do, then this is a real backend
-issue and the file-inspection list above applies.
+Inspect `~/.nrflo/nrflo.data`:
 
-### Opencode via harness `cli-interactive` mode exits immediately — same caveat as codex above
+```sql
+SELECT COUNT(*) FROM agent_messages
+WHERE session_id IN (
+  SELECT id FROM agent_sessions
+  WHERE model_id LIKE 'codex%' AND effective_mode='cli_interactive'
+  ORDER BY started_at DESC LIMIT 1
+);
+```
 
-**Status:** unconfirmed backend bug. Same shape as the codex entry — the
-harness drives it and gets immediate exit; whether the UI's interactive
-path behaves the same is not yet verified. Likely shares a root cause
-with the codex entry (project-config `interactive_cli_mode=true` vs
-per-run `interactive=true` divergence).
+Bug present → count = 0. Bug fixed → count > 0.
+
+### Opencode `cli_interactive` mode exits immediately on opencode 1.14.48
+
+**Status:** unconfirmed; the "shared root cause with codex" hypothesis
+was wrong — codex turned out to be an upstream hook regression, which
+doesn't apply here. Opencode uses an HTTP/SSE telemetry channel
+(`/event?directory=…`), not hooks. This entry needs its own
+investigation.
+
+`effective_mode='cli_interactive'` selection is the single code path
+documented in the codex entry above; harness and UI both reach the
+same `cliInteractiveBackend`. So the failure is real, not a
+harness-vs-UI divergence.
 
 #### Symptoms (harness)
 - Every scenario in `opencode/cli-interactive` mode fails within 1-2s.
@@ -583,25 +582,19 @@ make build
 python3 manual_testing/test_opencode.py --mode=cli-interactive --parallel=1
 ```
 
-#### Suspected divergence
-First test whether `interactive_cli_mode=true` project config and
-`interactive=true` per-run body hit the same spawner code path (same
-question as the codex entry — they may share the fix).
-
-If that's not it, look at `be/internal/spawner/cli_adapter_opencode.go`
-interactive `BuildCommand`:
+#### Where to look
+`be/internal/spawner/cli_adapter_opencode.go` interactive `BuildCommand`:
 ```
 opencode <workDir> --port <N> --hostname 127.0.0.1 --model <MAPPED> [--variant <level>]
 ```
-- opencode 1.14.48 may have renamed/removed one of those flags.
+- Opencode 1.14.48 may have renamed/removed one of those flags
+  (check `opencode --help`).
 - May require a `--config` file or env var that neither harness nor
   spawner provides.
-- The SSE event consumer at `:N/event` may need different auth.
-
-#### Decision needed
-Same as codex: confirm whether harness is on a path the UI doesn't take
-before changing the spawner. If the harness is wrong, fix the harness
-(switch to per-run flag) and re-validate.
+- The SSE event consumer at `:N/event?directory=<workDir>` may need
+  different auth or a different endpoint shape in 1.14.x.
+- Capture stderr from the failing opencode process (currently dropped
+  by the PTY ferry) to see the actual exit reason.
 
 ### Agent-callback prompt not reliably followed by codex/opencode models
 

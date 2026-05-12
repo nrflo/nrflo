@@ -328,7 +328,7 @@ The profile/hook helpers themselves live in `cli_adapter_codex_hooks.go` as pack
 
 `writeCodexProfileForSession(dir, nrfloPath, sessionID, instanceID, projectID, workDir string) error`:
 - Reads the user's `~/.codex/config.toml` (when present), strips any `[[hooks.…]]` / `[hooks.…]` blocks (so user-config hooks don't compete with our `-c`-injected ones), and writes the rest into `<dir>/config.toml` verbatim.
-- Ensures `[features] codex_hooks = true` is present (required for the codex_hooks feature to be enabled; appended only if user config doesn't already declare it).
+- Ensures `[features] codex_hooks = true` is present (required for the codex_hooks feature to be enabled, per https://developers.openai.com/codex/hooks; appended only if user config doesn't already declare it). NOTE: codex 0.129.0-alpha.15+ has an upstream regression (openai/codex#21639) where hooks do not fire regardless of declaration — tracked in `backlog.md`.
 - Appends `[projects."<workDir>"] trust_level = "trusted"` so codex doesn't show its trust dialog (the `--dangerously-bypass-approvals-and-sandbox` flag does NOT skip the trust prompt).
 - Copies the user's `~/.codex/auth.json` into the per-session dir so the spawned codex stays logged in.
 - No `hooks.json` is written — codex 0.125 does not consume it.

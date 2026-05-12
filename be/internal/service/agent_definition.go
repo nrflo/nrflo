@@ -55,6 +55,36 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 	return nil
 }
 
+// validateCLIInteractiveMode checks that the model's adapter supports PTY-based interactive
+// execution. Uses cliModelSvc for DB-sourced cli_type, falling back to string-prefix heuristics
+// (mirrors spawner.DefaultCLIForModel without importing the spawner package).
+// All current adapters (claude/opencode/codex) return SupportsInteractive()=true; this check
+// guards against future custom cli_models rows with unsupported CLI types.
+func (s *AgentDefinitionService) validateCLIInteractiveMode(model string) error {
+	cliType := ""
+	if s.cliModelSvc != nil {
+		if m, err := s.cliModelSvc.Get(model); err == nil {
+			cliType = m.CLIType
+		}
+	}
+	if cliType == "" {
+		switch {
+		case strings.HasPrefix(model, "opencode_"):
+			cliType = "opencode"
+		case strings.HasPrefix(model, "codex_gpt"):
+			cliType = "codex"
+		default:
+			cliType = "claude"
+		}
+	}
+	switch cliType {
+	case "claude", "opencode", "codex":
+		return nil
+	default:
+		return fmt.Errorf("cli_interactive_unsupported_by_adapter")
+	}
+}
+
 // CreateAgentDef creates a new agent definition
 func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, req *types.AgentDefCreateRequest) (*model.AgentDefinition, error) {
 	if req.ID == "" {
@@ -66,11 +96,16 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	if executionMode == "" {
 		executionMode = "cli"
 	}
-	if executionMode != "cli" && executionMode != "api" && executionMode != "script" {
+	if executionMode != "cli" && executionMode != "cli_interactive" && executionMode != "api" && executionMode != "script" {
 		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
 	}
 	if executionMode == "api" && !s.apiMode {
 		return nil, ErrAPIModeDisabled
+	}
+	if executionMode == "cli_interactive" {
+		if err := s.validateCLIInteractiveMode(req.Model); err != nil {
+			return nil, err
+		}
 	}
 
 	if executionMode != "script" && req.Prompt == "" {
@@ -389,11 +424,25 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	}
 	if req.ExecutionMode != nil {
 		mode := *req.ExecutionMode
-		if mode != "cli" && mode != "api" && mode != "script" {
+		if mode != "cli" && mode != "cli_interactive" && mode != "api" && mode != "script" {
 			return fmt.Errorf("invalid execution_mode: %q", mode)
 		}
 		if mode == "api" && !s.apiMode {
 			return ErrAPIModeDisabled
+		}
+		if mode == "cli_interactive" {
+			// Resolve model: prefer the incoming value, fall back to current DB value.
+			model := ""
+			if req.Model != nil {
+				model = *req.Model
+			} else {
+				s.pool.QueryRow(
+					"SELECT model FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+					projectID, workflowID, id).Scan(&model)
+			}
+			if err := s.validateCLIInteractiveMode(model); err != nil {
+				return err
+			}
 		}
 		if mode == "script" {
 			// When switching to script mode, validate script coupling rules.

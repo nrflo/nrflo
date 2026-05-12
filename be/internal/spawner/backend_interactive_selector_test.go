@@ -16,78 +16,74 @@ type mockNoInteractiveAdapter struct{ ClaudeAdapter }
 
 func (m *mockNoInteractiveAdapter) SupportsInteractive() bool { return false }
 
-// selectBackendForTest mirrors startBackend's selection logic without calling
-// Start() or registerAgentStart(), enabling clean unit tests of the selector.
+// selectBackendForTest mirrors startBackend's four-way switch on executionMode,
+// enabling clean unit tests of the selector without calling Start() or registerAgentStart().
 func selectBackendForTest(s *Spawner, executionMode string, adapter CLIAdapter) ExecutionBackend {
-	if executionMode == "api" {
+	switch executionMode {
+	case "api":
 		return newAPIBackend(s)
-	}
-	if s.config.InteractiveCLIMode && adapter != nil && adapter.SupportsInteractive() {
+	case "script":
+		return newScriptBackend(s)
+	case "cli_interactive":
 		return newCLIInteractiveBackend(adapter, s, nil)
+	default:
+		return newCLIBackend(adapter, nil)
 	}
-	return newCLIBackend(adapter, nil)
 }
 
-// TestStartBackend_SelectorMatrix exercises all five backend-selection branches:
+// TestStartBackend_SelectorMatrix exercises all four backend-selection branches:
 //
-//	(api, interactiveOff) → apiBackend
-//	(api, interactiveOn)  → apiBackend  (api takes priority)
-//	(cli, interactiveOff, supportsInteractive=true) → cliBackend
-//	(cli, interactiveOn,  supportsInteractive=true) → cliInteractiveBackend
-//	(cli, interactiveOn,  supportsInteractive=false) → cliBackend
+//	api            → apiBackend
+//	script         → scriptBackend
+//	cli_interactive → cliInteractiveBackend
+//	cli / default  → cliBackend
 func TestStartBackend_SelectorMatrix(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name            string
 		executionMode   string
-		interactiveCLI  bool
 		adapter         CLIAdapter
 		wantBackendName string
 	}{
 		{
-			name:            "api + interactiveOff → apiBackend",
+			name:            "api → apiBackend",
 			executionMode:   "api",
-			interactiveCLI:  false,
 			adapter:         &ClaudeAdapter{},
 			wantBackendName: "api",
 		},
 		{
-			name:            "api + interactiveOn → apiBackend (api beats interactive)",
-			executionMode:   "api",
-			interactiveCLI:  true,
-			adapter:         &ClaudeAdapter{},
-			wantBackendName: "api",
+			name:            "script → scriptBackend",
+			executionMode:   "script",
+			adapter:         nil,
+			wantBackendName: "script",
 		},
 		{
-			name:            "cli + interactiveOff + supportsInteractive → cliBackend",
-			executionMode:   "cli",
-			interactiveCLI:  false,
-			adapter:         &ClaudeAdapter{},
-			wantBackendName: "cli",
-		},
-		{
-			name:            "cli + interactiveOn + supportsInteractive → cliInteractiveBackend",
-			executionMode:   "cli",
-			interactiveCLI:  true,
+			name:            "cli_interactive → cliInteractiveBackend",
+			executionMode:   "cli_interactive",
 			adapter:         &ClaudeAdapter{},
 			wantBackendName: "cli_interactive",
 		},
 		{
-			name:            "cli + interactiveOn + !supportsInteractive → cliBackend",
+			name:            "cli → cliBackend",
 			executionMode:   "cli",
-			interactiveCLI:  true,
-			adapter:         &mockNoInteractiveAdapter{},
+			adapter:         &ClaudeAdapter{},
+			wantBackendName: "cli",
+		},
+		{
+			name:            "empty → cliBackend (default)",
+			executionMode:   "",
+			adapter:         &ClaudeAdapter{},
 			wantBackendName: "cli",
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := New(Config{Clock: clock.Real(), InteractiveCLIMode: tc.interactiveCLI})
+			s := New(Config{Clock: clock.Real()})
 			backend := selectBackendForTest(s, tc.executionMode, tc.adapter)
 			if got := backend.Name(); got != tc.wantBackendName {
-				t.Errorf("selectBackendForTest(%q, interactiveCLI=%v, adapter=%T) = %q, want %q",
-					tc.executionMode, tc.interactiveCLI, tc.adapter, got, tc.wantBackendName)
+				t.Errorf("selectBackendForTest(%q, adapter=%T) = %q, want %q",
+					tc.executionMode, tc.adapter, got, tc.wantBackendName)
 			}
 		})
 	}

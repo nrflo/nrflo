@@ -188,6 +188,39 @@ func TestHandleCreateSystemAgentDef_Duplicate(t *testing.T) {
 	assertErrorContains(t, rr2, "already exists")
 }
 
+// TestHandleCreateSystemAgentDef_CLIInteractiveAccepted verifies that
+// execution_mode="cli_interactive" is accepted for system agent definitions after migration 101.
+func TestHandleCreateSystemAgentDef_CLIInteractiveAccepted(t *testing.T) {
+	s := newSystemAgentServer(t)
+	body := `{"id":"interactive-sys-agent","execution_mode":"cli_interactive","prompt":"do stuff","model":"opus_4_7"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	s.handleCreateSystemAgentDef(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body: %s", rr.Code, rr.Body.String())
+	}
+	def := decodeSystemAgentDef(t, rr)
+	if def.ExecutionMode != "cli_interactive" {
+		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
+	}
+}
+
+// TestHandleCreateSystemAgentDef_ScriptModeRejected verifies that
+// execution_mode="script" is rejected for system agent definitions (system agents
+// do not support script mode; only cli|cli_interactive|api are valid).
+func TestHandleCreateSystemAgentDef_ScriptModeRejected(t *testing.T) {
+	s := newSystemAgentServer(t)
+	body := `{"id":"script-sys-agent","execution_mode":"script","prompt":"do stuff"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	s.handleCreateSystemAgentDef(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for script mode on system agent", rr.Code)
+	}
+}
+
 // --- Get ---
 
 func TestHandleGetSystemAgentDef_Valid(t *testing.T) {

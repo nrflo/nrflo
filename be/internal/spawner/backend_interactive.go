@@ -14,9 +14,9 @@ import (
 // The rendered prompt is delivered to the PTY via stdin Write after a short
 // readiness delay. Take-control attaches a viewer without killing the agent.
 //
-// Backend selection: chosen when Config.InteractiveCLIMode is true and the
-// adapter returns true for SupportsInteractive(). API-mode agents always use
-// apiBackend regardless of the toggle.
+// Backend selection: chosen when prep.executionMode == "cli_interactive".
+// The execution_mode is set per-agent via agent_definitions.execution_mode or
+// system_agent_definitions.execution_mode — no project-wide toggle is consulted.
 type cliInteractiveBackend struct {
 	adapter CLIAdapter
 	s       *Spawner

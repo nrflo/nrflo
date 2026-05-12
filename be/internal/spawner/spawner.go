@@ -143,13 +143,7 @@ type Config struct {
 	// APIMode enables execution_mode='api' agents. When false (default, --mode=cli),
 	// prepareSpawn rejects any agent with execution_mode='api' before making any provider call.
 	APIMode bool
-	// InteractiveCLIMode enables interactive terminal mode for CLI agents when set.
-	// Read once at workflow start from project config "interactive_cli_mode".
-	// When true, CLI agents whose adapter returns SupportsInteractive() use
-	// cliInteractiveBackend (PTY) instead of cliBackend (exec.Cmd).
-	InteractiveCLIMode bool
-	// PTYManager manages PTY sessions for interactive CLI mode. Required when
-	// InteractiveCLIMode is true and CLI agents are spawned.
+	// PTYManager manages PTY sessions for cli_interactive agents.
 	PTYManager *ptyPkg.Manager
 	// IdleAfterMessageTimeoutSec: idle window after last message before nudge (default 180s, 0 = use default).
 	// Only applies to cliInteractiveBackend agents.
@@ -912,10 +906,10 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// resolve a CLI adapter or skip CLI prep for api/script mode.
 	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
 	executionMode := "cli"
-	if agentDef != nil && (agentDef.ExecutionMode == "api" || agentDef.ExecutionMode == "script") {
+	if agentDef != nil && (agentDef.ExecutionMode == "api" || agentDef.ExecutionMode == "script" || agentDef.ExecutionMode == "cli_interactive") {
 		executionMode = agentDef.ExecutionMode
 	} else if agentDef == nil {
-		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && (agentCfg.ExecutionMode == "api" || agentCfg.ExecutionMode == "script") {
+		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && (agentCfg.ExecutionMode == "api" || agentCfg.ExecutionMode == "script" || agentCfg.ExecutionMode == "cli_interactive") {
 			executionMode = agentCfg.ExecutionMode
 		}
 	}
@@ -930,9 +924,9 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		return nil, nil, fmt.Errorf("api_mode_disabled")
 	}
 
-	// Get CLI adapter (api mode skips this — there is no CLI process)
+	// Get CLI adapter (api/script modes skip this — there is no CLI process)
 	var adapter CLIAdapter
-	if executionMode == "cli" {
+	if executionMode == "cli" || executionMode == "cli_interactive" {
 		var err error
 		adapter, err = GetCLIAdapter(cliName)
 		if err != nil {
@@ -1031,7 +1025,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	// Populate idle/nudge fields only for cliInteractiveBackend agents.
-	if executionMode != "api" && s.config.InteractiveCLIMode && adapter != nil && adapter.SupportsInteractive() {
+	if executionMode == "cli_interactive" {
 		nudgeMax := defaultNudgeMax
 		if s.config.NudgeMax > 0 {
 			nudgeMax = s.config.NudgeMax
@@ -1257,34 +1251,35 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	return proc, prep, nil
 }
 
-// startBackend selects an ExecutionBackend based on execution_mode, the
-// InteractiveCLIMode toggle, and adapter capability:
-//   - execution_mode=="api"                                          → apiBackend
-//   - InteractiveCLIMode && adapter.SupportsInteractive()           → cliInteractiveBackend (PTY)
-//   - otherwise                                                      → cliBackend (exec.Cmd)
+// startBackend selects an ExecutionBackend based purely on prep.executionMode:
+//   - "api"            → apiBackend (in-process Anthropic runner)
+//   - "script"         → scriptBackend (Python exec.Cmd)
+//   - "cli_interactive" → cliInteractiveBackend (PTY)
+//   - "cli" / default  → cliBackend (exec.Cmd with structured JSON output)
 //
 // System agents (conflict-resolver, context-saver) flow through the same
-// selector when their backend is CLI.
+// selector — their execution_mode is sourced from system_agent_definitions.execution_mode.
 func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	var backend ExecutionBackend
-	if prep.executionMode == "script" {
-		backend = newScriptBackend(s)
-	} else if prep.executionMode == "api" {
+	switch prep.executionMode {
+	case "api":
 		backend = newAPIBackend(s)
-	} else if s.config.InteractiveCLIMode && prep.adapter != nil && prep.adapter.SupportsInteractive() {
+	case "script":
+		backend = newScriptBackend(s)
+	case "cli_interactive":
 		backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
-	} else {
+	default:
 		backend = newCLIBackend(prep.adapter, s)
 	}
 	proc.backend = backend
 
 	var effectiveMode string
-	switch {
-	case prep.executionMode == "api":
+	switch prep.executionMode {
+	case "api":
 		effectiveMode = "api"
-	case prep.executionMode == "script":
+	case "script":
 		effectiveMode = "script"
-	case s.config.InteractiveCLIMode && prep.adapter != nil && prep.adapter.SupportsInteractive():
+	case "cli_interactive":
 		effectiveMode = "cli_interactive"
 	default:
 		effectiveMode = "cli"

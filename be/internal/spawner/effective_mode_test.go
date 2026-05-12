@@ -9,13 +9,13 @@ import (
 
 // selectEffectiveModeForTest mirrors the effectiveMode switch in startBackend,
 // enabling unit tests of mode-selection logic without spawning real backends.
-func selectEffectiveModeForTest(executionMode string, interactiveCLI bool, adapter CLIAdapter) string {
-	switch {
-	case executionMode == "api":
+func selectEffectiveModeForTest(executionMode string) string {
+	switch executionMode {
+	case "api":
 		return "api"
-	case executionMode == "script":
+	case "script":
 		return "script"
-	case interactiveCLI && adapter != nil && adapter.SupportsInteractive():
+	case "cli_interactive":
 		return "cli_interactive"
 	default:
 		return "cli"
@@ -25,84 +25,44 @@ func selectEffectiveModeForTest(executionMode string, interactiveCLI bool, adapt
 func TestEffectiveMode_SelectionMatrix(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name           string
-		executionMode  string
-		interactiveCLI bool
-		adapter        CLIAdapter
-		want           string
+		name          string
+		executionMode string
+		want          string
 	}{
 		{
-			name:           "api + interactiveOff → api",
-			executionMode:  "api",
-			interactiveCLI: false,
-			adapter:        &ClaudeAdapter{},
-			want:           "api",
+			name:          "api → api",
+			executionMode: "api",
+			want:          "api",
 		},
 		{
-			name:           "api + interactiveOn → api (api wins over interactive)",
-			executionMode:  "api",
-			interactiveCLI: true,
-			adapter:        &ClaudeAdapter{},
-			want:           "api",
+			name:          "script → script",
+			executionMode: "script",
+			want:          "script",
 		},
 		{
-			name:           "script → script",
-			executionMode:  "script",
-			interactiveCLI: false,
-			adapter:        nil,
-			want:           "script",
+			name:          "cli_interactive → cli_interactive",
+			executionMode: "cli_interactive",
+			want:          "cli_interactive",
 		},
 		{
-			name:           "script + interactiveOn → script (script wins)",
-			executionMode:  "script",
-			interactiveCLI: true,
-			adapter:        &ClaudeAdapter{},
-			want:           "script",
+			name:          "cli → cli",
+			executionMode: "cli",
+			want:          "cli",
 		},
 		{
-			name:           "cli + interactiveOn + SupportsInteractive → cli_interactive",
-			executionMode:  "cli",
-			interactiveCLI: true,
-			adapter:        &ClaudeAdapter{},
-			want:           "cli_interactive",
-		},
-		{
-			name:           "cli + interactiveOff + SupportsInteractive → cli",
-			executionMode:  "cli",
-			interactiveCLI: false,
-			adapter:        &ClaudeAdapter{},
-			want:           "cli",
-		},
-		{
-			name:           "cli + interactiveOn + !SupportsInteractive → cli",
-			executionMode:  "cli",
-			interactiveCLI: true,
-			adapter:        &mockNoInteractiveAdapter{},
-			want:           "cli",
-		},
-		{
-			name:           "cli + interactiveOn + nil adapter → cli",
-			executionMode:  "cli",
-			interactiveCLI: true,
-			adapter:        nil,
-			want:           "cli",
-		},
-		{
-			name:           "empty executionMode → cli (default)",
-			executionMode:  "",
-			interactiveCLI: false,
-			adapter:        &ClaudeAdapter{},
-			want:           "cli",
+			name:          "empty executionMode → cli (default)",
+			executionMode: "",
+			want:          "cli",
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := selectEffectiveModeForTest(tc.executionMode, tc.interactiveCLI, tc.adapter)
+			got := selectEffectiveModeForTest(tc.executionMode)
 			if got != tc.want {
-				t.Errorf("selectEffectiveModeForTest(%q, interactiveCLI=%v, adapter=%T) = %q, want %q",
-					tc.executionMode, tc.interactiveCLI, tc.adapter, got, tc.want)
+				t.Errorf("selectEffectiveModeForTest(%q) = %q, want %q",
+					tc.executionMode, got, tc.want)
 			}
 		})
 	}
@@ -110,34 +70,32 @@ func TestEffectiveMode_SelectionMatrix(t *testing.T) {
 
 // TestEffectiveMode_ConsistentWithBackendSelector verifies that the effectiveMode switch
 // and the backend selector (tested in backend_interactive_selector_test.go) agree on
-// which "bucket" a given combination falls into.
+// which "bucket" a given executionMode falls into.
 func TestEffectiveMode_ConsistentWithBackendSelector(t *testing.T) {
 	t.Parallel()
 	type pair struct {
-		executionMode  string
-		interactiveCLI bool
-		adapter        CLIAdapter
-		wantMode       string
-		wantBackend    string
+		executionMode string
+		adapter       CLIAdapter
+		wantMode      string
+		wantBackend   string
 	}
 	cases := []pair{
-		{"api", false, &ClaudeAdapter{}, "api", "api"},
-		{"api", true, &ClaudeAdapter{}, "api", "api"},
-		{"cli", true, &ClaudeAdapter{}, "cli_interactive", "cli_interactive"},
-		{"cli", false, &ClaudeAdapter{}, "cli", "cli"},
-		{"cli", true, &mockNoInteractiveAdapter{}, "cli", "cli"},
+		{"api", &ClaudeAdapter{}, "api", "api"},
+		{"script", nil, "script", "script"},
+		{"cli_interactive", &ClaudeAdapter{}, "cli_interactive", "cli_interactive"},
+		{"cli", &ClaudeAdapter{}, "cli", "cli"},
 	}
 	for _, c := range cases {
-		s := New(Config{Clock: clock.Real(), InteractiveCLIMode: c.interactiveCLI})
-		gotMode := selectEffectiveModeForTest(c.executionMode, c.interactiveCLI, c.adapter)
+		s := New(Config{Clock: clock.Real()})
+		gotMode := selectEffectiveModeForTest(c.executionMode)
 		gotBackend := selectBackendForTest(s, c.executionMode, c.adapter)
 		if gotMode != c.wantMode {
-			t.Errorf("mode(%q, interactive=%v, %T) = %q, want %q",
-				c.executionMode, c.interactiveCLI, c.adapter, gotMode, c.wantMode)
+			t.Errorf("mode(%q, %T) = %q, want %q",
+				c.executionMode, c.adapter, gotMode, c.wantMode)
 		}
 		if gotBackend.Name() != c.wantBackend {
-			t.Errorf("backend(%q, interactive=%v, %T) = %q, want %q",
-				c.executionMode, c.interactiveCLI, c.adapter, gotBackend.Name(), c.wantBackend)
+			t.Errorf("backend(%q, %T) = %q, want %q",
+				c.executionMode, c.adapter, gotBackend.Name(), c.wantBackend)
 		}
 	}
 }

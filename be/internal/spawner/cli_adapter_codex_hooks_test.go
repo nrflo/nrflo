@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,20 +63,34 @@ func TestWriteCodexProfile_EnablesCodexHooksFeature(t *testing.T) {
 	}
 }
 
-// TestwriteCodexProfileForSession_TrustsWorkDir verifies that the agent's
-// working directory is added to the project trust list. Without this, codex
-// 0.125 blocks on its trust dialog and the agent exits during init when no
-// one answers (the --dangerously-bypass-approvals-and-sandbox flag does NOT
-// skip this prompt).
-func TestWriteCodexProfileForSession_TrustsWorkDir(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	dir := t.TempDir()
-	workDir := "/Users/x/projects/my-app"
-	if err := writeCodexProfileForSession(dir, "/usr/local/bin/nrflo", "s", "i", "p", workDir); err != nil {
-		t.Fatalf("writeCodexProfileForSession() error: %v", err)
+// TestEnsureCodexUserTrust_AddsEntry verifies that the spawner appends a
+// `[projects."<workdir>"]` trust entry to ~/.codex/config.toml. Codex 0.130
+// reads trust ONLY from that file (per-session CODEX_HOME and `-c` overrides
+// for the nested `projects."<path>".trust_level` key are both silently
+// ignored), and the trust prompt blocks even under
+// `--dangerously-bypass-approvals-and-sandbox`. Confirmed empirically
+// 2026-05-12 on codex 0.130.0.
+func TestEnsureCodexUserTrust_AddsEntry(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	workDir := t.TempDir() // real dir so EvalSymlinks succeeds
+
+	added, resolved, err := ensureCodexUserTrust(workDir)
+	if err != nil {
+		t.Fatalf("ensureCodexUserTrust: %v", err)
 	}
-	body, _ := os.ReadFile(filepath.Join(dir, "config.toml"))
-	want := `[projects."/Users/x/projects/my-app"]`
+	if !added {
+		t.Errorf("added = false on first call, want true")
+	}
+	expectResolved, _ := filepath.EvalSymlinks(workDir)
+	if resolved != expectResolved {
+		t.Errorf("resolved = %q, want %q", resolved, expectResolved)
+	}
+	body, err := os.ReadFile(filepath.Join(fakeHome, ".codex", "config.toml"))
+	if err != nil {
+		t.Fatalf("read user config: %v", err)
+	}
+	want := fmt.Sprintf("[projects.%q]", resolved)
 	if !strings.Contains(string(body), want) {
 		t.Errorf("config.toml missing %s\nfull:\n%s", want, body)
 	}
@@ -84,30 +99,96 @@ func TestWriteCodexProfileForSession_TrustsWorkDir(t *testing.T) {
 	}
 }
 
-// TestwriteCodexProfileForSession_SkipsTrustWhenUserHasIt prevents a duplicate
-// `[projects."<path>"]` table when the user's main config already trusts the
-// directory.
-func TestWriteCodexProfileForSession_SkipsTrustWhenUserHasIt(t *testing.T) {
+// TestEnsureCodexUserTrust_Idempotent verifies that re-running with the same
+// workdir does NOT duplicate the entry (codex tolerates duplicates but we
+// shouldn't bloat the user's config on every spawn); subsequent calls also
+// return added=false so the caller knows not to clean up.
+func TestEnsureCodexUserTrust_Idempotent(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	workDir := t.TempDir()
+
+	for i := 0; i < 3; i++ {
+		added, _, err := ensureCodexUserTrust(workDir)
+		if err != nil {
+			t.Fatalf("ensureCodexUserTrust iter %d: %v", i, err)
+		}
+		want := i == 0
+		if added != want {
+			t.Errorf("iter %d: added = %v, want %v", i, added, want)
+		}
+	}
+	body, _ := os.ReadFile(filepath.Join(fakeHome, ".codex", "config.toml"))
+	resolved, _ := filepath.EvalSymlinks(workDir)
+	needle := fmt.Sprintf("[projects.%q]", resolved)
+	count := strings.Count(string(body), needle)
+	if count != 1 {
+		t.Errorf("trust entry appears %d times, want 1\nfull:\n%s", count, body)
+	}
+}
+
+// TestEnsureCodexUserTrust_PreservesExisting verifies that an existing
+// config.toml content (model setting, other project trust entries) is kept
+// when we append our entry.
+func TestEnsureCodexUserTrust_PreservesExisting(t *testing.T) {
 	fakeHome := t.TempDir()
 	t.Setenv("HOME", fakeHome)
 	codexHome := filepath.Join(fakeHome, ".codex")
-	if err := os.MkdirAll(codexHome, 0o755); err != nil {
+	if err := os.MkdirAll(codexHome, 0o700); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	workDir := "/Users/x/projects/my-app"
-	userConfig := "model = \"gpt-5.4\"\n\n[projects.\"/Users/x/projects/my-app\"]\ntrust_level = \"trusted\"\n"
-	if err := os.WriteFile(filepath.Join(codexHome, "config.toml"), []byte(userConfig), 0o644); err != nil {
-		t.Fatalf("write user config: %v", err)
+	existing := "model = \"gpt-5.4\"\n\n[projects.\"/other/dir\"]\ntrust_level = \"untrusted\"\n"
+	if err := os.WriteFile(filepath.Join(codexHome, "config.toml"), []byte(existing), 0o600); err != nil {
+		t.Fatalf("write existing: %v", err)
 	}
+	workDir := t.TempDir()
 
-	dir := t.TempDir()
-	if err := writeCodexProfileForSession(dir, "/usr/local/bin/nrflo", "s", "i", "p", workDir); err != nil {
-		t.Fatalf("writeCodexProfileForSession() error: %v", err)
+	if _, _, err := ensureCodexUserTrust(workDir); err != nil {
+		t.Fatalf("ensureCodexUserTrust: %v", err)
 	}
-	body, _ := os.ReadFile(filepath.Join(dir, "config.toml"))
-	count := strings.Count(string(body), `[projects."/Users/x/projects/my-app"]`)
-	if count != 1 {
-		t.Errorf("trust entry appears %d times, want 1\nfull:\n%s", count, body)
+	body, _ := os.ReadFile(filepath.Join(codexHome, "config.toml"))
+	if !strings.Contains(string(body), `model = "gpt-5.4"`) {
+		t.Errorf("model line lost from existing config\nfull:\n%s", body)
+	}
+	if !strings.Contains(string(body), `[projects."/other/dir"]`) {
+		t.Errorf("existing /other/dir entry lost\nfull:\n%s", body)
+	}
+}
+
+// TestRemoveCodexUserTrust_StripsOurEntry verifies that the cleanup pairing
+// for ensureCodexUserTrust removes the trust entry we wrote, leaving the rest
+// of the config intact.
+func TestRemoveCodexUserTrust_StripsOurEntry(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	codexHome := filepath.Join(fakeHome, ".codex")
+	if err := os.MkdirAll(codexHome, 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// Pre-existing user content that must survive cleanup.
+	existing := "model = \"gpt-5.4\"\n\n[projects.\"/keep/me\"]\ntrust_level = \"trusted\"\n"
+	if err := os.WriteFile(filepath.Join(codexHome, "config.toml"), []byte(existing), 0o600); err != nil {
+		t.Fatalf("write existing: %v", err)
+	}
+	workDir := t.TempDir()
+
+	added, resolved, err := ensureCodexUserTrust(workDir)
+	if err != nil || !added {
+		t.Fatalf("ensureCodexUserTrust: added=%v err=%v", added, err)
+	}
+	if err := removeCodexUserTrust(resolved); err != nil {
+		t.Fatalf("removeCodexUserTrust: %v", err)
+	}
+	body, _ := os.ReadFile(filepath.Join(codexHome, "config.toml"))
+	needle := fmt.Sprintf("[projects.%q]", resolved)
+	if strings.Contains(string(body), needle) {
+		t.Errorf("our trust entry was not removed\nfull:\n%s", body)
+	}
+	if !strings.Contains(string(body), `[projects."/keep/me"]`) {
+		t.Errorf("pre-existing /keep/me entry lost\nfull:\n%s", body)
+	}
+	if !strings.Contains(string(body), `model = "gpt-5.4"`) {
+		t.Errorf("model line lost\nfull:\n%s", body)
 	}
 }
 

@@ -103,6 +103,9 @@ func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *ex
 				h.Event, h.Command, h.TimeoutSec),
 		)
 	}
+	// Trust is persisted to `~/.codex/config.toml` from PrepareInteractive
+	// via ensureCodexUserTrust — codex 0.130 ignores `-c projects."<path>".trust_level=...`
+	// overrides (nested quoted-key keys are silently dropped by its parser).
 	// Codex's TUI input box has a wrapping bug (`tui/src/wrapping.rs:52`,
 	// usize subtraction underflow) that panics on multi-KB pasted bodies. We
 	// pass the prompt as an argv positional instead so codex pre-loads it as
@@ -159,9 +162,17 @@ func removeEnvKey(env []string, prefix string) []string {
 }
 
 // PrepareInteractive creates a per-session CODEX_HOME profile dir (auth +
-// model/personality + workDir trust + [features] codex_hooks=true) and builds
-// the hook event list the backend must inject via repeated `-c hooks.<event>=…`
-// flags. Returns a cleanup func that removes the temp dir (best-effort).
+// model/personality + [features] codex_hooks=true) and builds the hook event
+// list the backend must inject via repeated `-c hooks.<event>=…` flags. Also
+// idempotently appends a workDir trust entry to the user-level
+// `~/.codex/config.toml` — codex 0.130 reads trust ONLY from that file (the
+// per-session CODEX_HOME and the `-c projects."<path>".trust_level=...`
+// override are both silently ignored), and the trust prompt blocks even under
+// `--dangerously-bypass-approvals-and-sandbox`. Path is symlink-resolved so we
+// match codex's own canonicalization (e.g. `/var/folders` → `/private/var/folders`).
+// Returns a cleanup func that removes the temp dir (best-effort). The trust
+// entry is intentionally left in `~/.codex/config.toml` — codex itself writes
+// the same entry when a user clicks "yes", and self-pollution is normal.
 func (a *CodexAdapter) PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error) {
 	dir, err := os.MkdirTemp("", "nrflo-codex-"+opts.SessionID+"-*")
 	if err != nil {
@@ -171,13 +182,35 @@ func (a *CodexAdapter) PrepareInteractive(opts InteractivePrepOptions) (Interact
 		_ = os.RemoveAll(dir)
 		return InteractiveExtras{}, func() {}, fmt.Errorf("write codex profile: %w", err)
 	}
+	var trustAdded bool
+	var trustResolved string
+	if opts.WorkDir != "" {
+		added, resolved, err := ensureCodexUserTrust(opts.WorkDir)
+		if err != nil {
+			// Non-fatal: codex will prompt for trust at TUI startup and the
+			// session will hang waiting for an answer. The failure is loud
+			// (timeout at the harness/orchestrator deadline) so we don't
+			// fail the spawn here.
+			_ = err
+		}
+		trustAdded = added
+		trustResolved = resolved
+	}
 
 	cmd := buildCodexHookCommand(resolvedNrfloPath(), opts.SessionID, opts.WorkflowInstanceID, opts.ProjectID)
 	hooks := make([]HookEvent, 0, len(codexHookEvents))
 	for _, ev := range codexHookEvents {
 		hooks = append(hooks, HookEvent{Event: ev, Command: cmd, TimeoutSec: 5})
 	}
-	cleanup := func() { _ = os.RemoveAll(dir) }
+	cleanup := func() {
+		_ = os.RemoveAll(dir)
+		if trustAdded && trustResolved != "" {
+			// Only remove entries WE added — pre-existing user/codex-written
+			// entries (real projects where the user clicked "yes" once) stay
+			// put. Best-effort; failure leaves at most one stale entry.
+			_ = removeCodexUserTrust(trustResolved)
+		}
+	}
 	return InteractiveExtras{CodexHome: dir, Hooks: hooks}, cleanup, nil
 }
 

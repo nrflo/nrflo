@@ -33,6 +33,7 @@ from . import (
     s23_chain_next_ticket,
     s24_agent_session_logs,
     s25_findings_carryover,
+    s99_codex_real_repo,
 )
 
 
@@ -62,4 +63,5 @@ ALL_SCENARIOS = [
     s23_chain_next_ticket.run,
     s24_agent_session_logs.run,
     s25_findings_carryover.run,
+    s99_codex_real_repo.run,
 ]

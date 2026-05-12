@@ -143,14 +143,27 @@ describe('ClaudeLimitsBadge', () => {
     })
   })
 
-  describe('isPast — shows "?" when reset time has passed', () => {
-    it('shows "?" for 5h when five_hour_resets_at is in the past', () => {
+  describe('isPast — shows last-known percentage with muted styling when reset time has passed', () => {
+    it('shows last-known percentage for 5h when five_hour_resets_at is in the past', () => {
       const pastDate = new Date('2026-05-11T09:00:00Z').toISOString() // 1h ago
       mockUseClaudeLimits.mockReturnValue({
-        data: makeLimits({ five_hour_resets_at: pastDate }),
+        data: makeLimits({ five_hour_used_pct: 45, five_hour_resets_at: pastDate }),
       } as any)
       renderBadge()
-      expect(screen.getByText(/5h: \?/)).toBeInTheDocument()
+      expect(screen.getByText(/5h: 45%/)).toBeInTheDocument()
+    })
+
+    it('applies muted (gray) class on 5h pill when five_hour_resets_at is in the past', () => {
+      const pastDate = new Date('2026-05-11T09:00:00Z').toISOString()
+      mockUseClaudeLimits.mockReturnValue({
+        data: makeLimits({ five_hour_used_pct: 45, five_hour_resets_at: pastDate }),
+      } as any)
+      renderBadge()
+      const pill = screen.getByText(/5h:/)
+      expect(pill.className).toMatch(/muted/)
+      expect(pill.className).not.toMatch(/green/)
+      expect(pill.className).not.toMatch(/yellow/)
+      expect(pill.className).not.toMatch(/red/)
     })
 
     it('shows percentage for 5h when five_hour_resets_at is in the future', () => {
@@ -162,13 +175,26 @@ describe('ClaudeLimitsBadge', () => {
       expect(screen.getByText(/5h: 45%/)).toBeInTheDocument()
     })
 
-    it('shows "?" for wk when seven_day_resets_at is in the past', () => {
+    it('shows last-known percentage for wk when seven_day_resets_at is in the past', () => {
       const pastDate = new Date('2026-05-10T10:00:00Z').toISOString() // 1 day ago
       mockUseClaudeLimits.mockReturnValue({
-        data: makeLimits({ seven_day_resets_at: pastDate }),
+        data: makeLimits({ seven_day_used_pct: 30, seven_day_resets_at: pastDate }),
       } as any)
       renderBadge()
-      expect(screen.getByText(/wk: \?/)).toBeInTheDocument()
+      expect(screen.getByText(/wk: 30%/)).toBeInTheDocument()
+    })
+
+    it('applies muted (gray) class on wk pill when seven_day_resets_at is in the past', () => {
+      const pastDate = new Date('2026-05-10T10:00:00Z').toISOString()
+      mockUseClaudeLimits.mockReturnValue({
+        data: makeLimits({ seven_day_used_pct: 30, seven_day_resets_at: pastDate }),
+      } as any)
+      renderBadge()
+      const pill = screen.getByText(/wk:/)
+      expect(pill.className).toMatch(/muted/)
+      expect(pill.className).not.toMatch(/green/)
+      expect(pill.className).not.toMatch(/yellow/)
+      expect(pill.className).not.toMatch(/red/)
     })
 
     it('shows percentage for wk when seven_day_resets_at is in the future', () => {
@@ -180,13 +206,23 @@ describe('ClaudeLimitsBadge', () => {
       expect(screen.getByText(/wk: 30%/)).toBeInTheDocument()
     })
 
-    it('shows "?" for 5h when five_hour_resets_at is null', () => {
+    it('shows percentage for 5h when five_hour_resets_at is null', () => {
       mockUseClaudeLimits.mockReturnValue({
         data: makeLimits({ five_hour_resets_at: null }),
       } as any)
       renderBadge()
-      // null is treated as not-past by isPast, so shows pct
+      // null is treated as not-past by isPast, so shows pct with normal color
       expect(screen.getByText(/5h: 45%/)).toBeInTheDocument()
+    })
+
+    it('popover shows "(reset overdue)" when resets_at is in the past', () => {
+      const pastDate = new Date('2026-05-11T09:00:00Z').toISOString()
+      mockUseClaudeLimits.mockReturnValue({
+        data: makeLimits({ five_hour_resets_at: pastDate }),
+      } as any)
+      renderBadge()
+      fireEvent.mouseEnter(screen.getByText(/5h:/).closest('div')!)
+      expect(screen.getByText(/reset overdue/)).toBeInTheDocument()
     })
   })
 

@@ -77,8 +77,10 @@ export function ClaudeLimitsBadge() {
 
   const fivePct = data.five_hour_used_pct
   const weekPct = data.seven_day_used_pct
-  const fiveClass = stale ? grayClass() : fivePct !== null ? thresholdClass(fivePct) : grayClass()
-  const weekClass = stale ? grayClass() : weekPct !== null ? thresholdClass(weekPct) : grayClass()
+  const fivePastReset = isPast(data.five_hour_resets_at)
+  const weekPastReset = isPast(data.seven_day_resets_at)
+  const fiveClass = (stale || fivePastReset) ? grayClass() : fivePct !== null ? thresholdClass(fivePct) : grayClass()
+  const weekClass = (stale || weekPastReset) ? grayClass() : weekPct !== null ? thresholdClass(weekPct) : grayClass()
 
   return (
     <>
@@ -89,13 +91,19 @@ export function ClaudeLimitsBadge() {
         className="inline-flex items-center gap-1 cursor-default"
       >
         {fivePct !== null && (
-          <span className={`${baseClass} ${fiveClass}`}>
-            5h: {isPast(data.five_hour_resets_at) ? '?' : `${Math.round(fivePct)}%`}
+          <span
+            className={`${baseClass} ${fiveClass}`}
+            title={fivePastReset ? 'Reset window elapsed — value is the last reading before reset' : undefined}
+          >
+            5h: {Math.round(fivePct)}%
           </span>
         )}
         {weekPct !== null && (
-          <span className={`${baseClass} ${weekClass}`}>
-            wk: {isPast(data.seven_day_resets_at) ? '?' : `${Math.round(weekPct)}%`}
+          <span
+            className={`${baseClass} ${weekClass}`}
+            title={weekPastReset ? 'Reset window elapsed — value is the last reading before reset' : undefined}
+          >
+            wk: {Math.round(weekPct)}%
           </span>
         )}
       </div>

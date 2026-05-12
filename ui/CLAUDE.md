@@ -62,11 +62,8 @@ All dropdowns use the custom `Dropdown` component (not native `<select>`): butto
 
 ## Testing
 
-- **Framework:** Vitest + jsdom + React Testing Library
-- **Setup:** `src/test/setup.ts` — auto-cleanup, `window.location` mock, `VITE_API_URL` env stub
-- **Utilities:** `src/test/utils.tsx` — `renderWithQuery()`, `createTestQueryClient()`, `createWrapper()`
-- Full suite must complete in **≤60 seconds** wall time (`make test-ui`).
-- Never introduce `setTimeout` in tests; use a never-resolving `new Promise(() => {})` for in-flight pending states.
+Vitest + jsdom + React Testing Library. Run: `make test-ui`. Must complete in ≤60 s.
+Test helpers: `src/test/setup.ts` (auto-cleanup, env stubs), `src/test/utils.tsx` (`renderWithQuery`, wrappers).
 
 ## Styling
 

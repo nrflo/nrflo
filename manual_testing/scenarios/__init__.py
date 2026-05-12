@@ -32,6 +32,7 @@ from . import (
     s22_max_fail_restarts,
     s23_chain_next_ticket,
     s24_agent_session_logs,
+    s25_findings_carryover,
 )
 
 
@@ -60,4 +61,5 @@ ALL_SCENARIOS = [
     s22_max_fail_restarts.run,
     s23_chain_next_ticket.run,
     s24_agent_session_logs.run,
+    s25_findings_carryover.run,
 ]

@@ -29,6 +29,12 @@ class NrfloClient:
         self._opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(self._jar)
         )
+        # Process-wide default forwarded into every create_agent_def body.
+        # The runner sets this to "cli_interactive" when mode == cli-interactive
+        # so scenarios don't have to know about execution modes. Race-free
+        # because each test_<provider>.py subprocess has exactly one mode and
+        # sets this once before scenarios run.
+        self.default_execution_mode: str | None = None
 
     # ---- raw transport -------------------------------------------------
 
@@ -148,6 +154,7 @@ class NrfloClient:
         stall_start_timeout_sec: int | None = None,
         stall_running_timeout_sec: int | None = None,
         max_fail_restarts: int | None = None,
+        execution_mode: str | None = None,
     ) -> dict:
         body: dict[str, Any] = {
             "id": agent_id,
@@ -162,6 +169,10 @@ class NrfloClient:
             body["stall_running_timeout_sec"] = stall_running_timeout_sec
         if max_fail_restarts is not None:
             body["max_fail_restarts"] = max_fail_restarts
+        # Per-call override beats process default.
+        mode = execution_mode if execution_mode is not None else self.default_execution_mode
+        if mode is not None:
+            body["execution_mode"] = mode
         return self._request(
             "POST",
             f"/api/v1/workflows/{workflow_id}/agents",

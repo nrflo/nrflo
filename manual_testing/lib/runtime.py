@@ -3,8 +3,11 @@
 `Ctx` carries the running server, REST client, provider (claude/codex/
 opencode), execution mode (cli/cli-interactive), and the per-scenario
 label used in logs. Scenarios call `make_project(ctx)` to get a fresh
-isolated project; the runtime applies mode-specific project settings
-there (e.g. `interactive_cli_mode=true` for `mode='cli-interactive'`)."""
+isolated project; the runtime's `cli-interactive` mode is enforced
+via `NrfloClient.default_execution_mode='cli_interactive'` set by the
+runner so every `create_agent_def` call carries `execution_mode` to
+the API. The previous project-level `interactive_cli_mode` toggle was
+removed in favor of per-agent `execution_mode=cli_interactive`."""
 
 from __future__ import annotations
 
@@ -65,7 +68,9 @@ def resolve_model(ctx: Ctx, overrides: dict[str, str] | None) -> str:
 
 
 def make_project(ctx: Ctx) -> tuple[str, Path]:
-    """Create a fresh project and apply mode-specific settings."""
+    """Create a fresh project. Mode-specific behavior is now applied at
+    agent-definition time via `NrfloClient.default_execution_mode` (set
+    once by the runner) — no project-level toggle is needed."""
     pid = next_id(ctx, "p")
     root = ctx.server.home / "projects" / pid
     root.mkdir(parents=True, exist_ok=True)
@@ -79,13 +84,6 @@ def make_project(ctx: Ctx) -> tuple[str, Path]:
         check=False, capture_output=True,
     )
     ctx.client.create_project(pid, root_path=str(root))
-    if ctx.mode == "cli-interactive":
-        # CAVEAT: this is the project-config trigger for the cli_interactive
-        # backend. It hangs for codex (see backlog "Codex via harness
-        # cli-interactive mode produces zero PTY output"). The per-run
-        # `interactive=true` flag is a different path (take-control,
-        # waits for a human) and not equivalent.
-        ctx.client.patch_project(pid, interactive_cli_mode=True)
     return pid, root
 
 

@@ -19,7 +19,7 @@ real provider credentials — runtime cost is real money.
 
 ## What it covers
 
-24 scenarios spanning: findings save/get, agent fail/finished/callback,
+25 scenarios spanning: findings save/get, agent fail/finished/callback,
 project findings, message categories, context_left telemetry, skip tags,
 layer handoff (`#{FINDINGS:agent:key}` + `#{PRIOR_LAYER_FINDINGS}`),
 workflow_final_result, ticket scope + auto-close, parallel agents on a
@@ -28,7 +28,8 @@ pass_policy=all enforcement, stall detection, layer callback re-spawn,
 manual retry-failed, endless_loop bounded, workflow chain run +
 chain-next-instructions, chain-next-ticket, next_workflow_on_success
 auto-chaining, max_fail_restarts auto-restart loop, agent-session-logs
-REST endpoint.
+REST endpoint, findings carryover across fail-restart relaunch (same
+`copyFindingsForContinuation` path used by low-context relaunch).
 
 Each scenario is self-contained — prompt(s), workflow config, agent
 config, and assertions all live in one file.
@@ -50,8 +51,8 @@ manual_testing/
 ├── scenarios/
 │   ├── __init__.py         Explicit ALL_SCENARIOS list (comment out to skip)
 │   ├── s01_findings_save.py
-│   ├── …                   (24 files, one scenario each)
-│   └── s24_agent_session_logs.py
+│   ├── …                   (25 files, one scenario each)
+│   └── s25_findings_carryover.py
 ├── test_claude.py          --mode={cli,cli-interactive} --parallel --model
 ├── test_codex.py           same
 ├── test_opencode.py        same
@@ -90,6 +91,28 @@ the fresh SQLite DB (`nrflo.data`), the per-scenario project root dirs,
 and the captured server stdout/stderr (`server.log`). The directory is
 **kept on exit** for post-mortem; the harness prints its path at the
 end of each run.
+
+### Per-server isolation (NRFLO_HOME + NRFLO_SOCKET)
+
+`lib/server.py` gives every nrflo_server it boots its own:
+
+- **`NRFLO_HOME`** — fresh tempdir as above; this is also where the SQLite
+  DB lives.
+- **`NRFLO_SOCKET`** — short `/tmp/nrflo-manual-<cli_label>-<pid>.sock`
+  path, set explicitly on the server's env. Two reasons we don't rely on
+  the `$NRFLO_HOME/agent.sock` default:
+  1. macOS caps AF_UNIX paths at 104 bytes — `$NRFLO_HOME` under
+     `/var/folders/...` can push the joined path close to the limit.
+  2. Explicit per-server socket paths match the Go integration harness
+     (`be/internal/integration/testenv_test.go`), so a stale socket from
+     a crashed prior run can't make a fresh server fail its eager bind.
+
+Within a single (provider × mode) subprocess, all scenarios share one
+server (and therefore one socket — the socket routes by session_id, so
+parallel scenarios don't collide). Across subprocesses started by
+`run_all.py`, each has its own PID → its own socket. `RunningServer.stop`
+always removes the socket file even when keeping `NRFLO_HOME` for
+post-mortem.
 
 Exit codes: `0` = all PASS/SKIP, `1` = at least one FAIL, `2` = fatal
 interruption (KeyboardInterrupt).
@@ -170,19 +193,30 @@ Conventions:
 3. `python3 manual_testing/test_claude.py --parallel=1` to debug. The
    `--parallel=1` keeps log lines un-interleaved.
 
-## Modes & make_project
+## Modes & execution_mode propagation
 
-`Ctx.mode` is consumed by `make_project` (lib/runtime.py):
+`Ctx.mode` is `"cli"` or `"cli-interactive"`. Selection is enforced at
+the **agent_definition** level, not the project level:
 
-- `cli` — default project settings.
-- `cli-interactive` — edits the relevant Claude agent definition to set
-  `execution_mode=cli_interactive`, which routes the spawner through the PTY
-  interactive backend.
+- `cli` — agent_definitions are created without an `execution_mode`
+  field, so the backend defaults to `cli` (batch invocation).
+- `cli-interactive` — the runner sets
+  `client.default_execution_mode = "cli_interactive"` once after login
+  (in `lib/runner.py`). Every `create_agent_def` call in `lib/api.py`
+  reads that attr and adds `"execution_mode": "cli_interactive"` to its
+  POST body, so each spawned agent routes through the PTY interactive
+  backend (`be/internal/spawner/backend_interactive.go`).
+
+Why per-agent and not per-project: commits `a3305e3`, `53c9e84`, and
+`6849af7` removed the project-level `interactive_cli_mode` toggle and
+made `cli_interactive` a first-class `execution_mode` alongside `cli`,
+`api`, and `script`. `make_project` no longer touches project config.
 
 Scenarios don't branch on mode. The exception is `s16_stall_detection`,
 which gracefully `SKIP`s under `cli-interactive` because PTY relay
 produces a steady byte stream that defeats the running-stall timer
-(see CLAUDE.md → spawner / stall detection).
+(see [be/internal/spawner/CLAUDE.md](../be/internal/spawner/CLAUDE.md)
+→ stall detection).
 
 ## Verbose output + timings
 
@@ -223,11 +257,24 @@ harness"):
   `result_reason='exit_code'`; opencode 1.14.48 interactive invocation
   args drift suspected. Investigate
   `be/internal/spawner/cli_adapter_opencode.go`.
+- `claude/cli-interactive` — under suite-level `--parallel=5` load,
+  one PTY session (s10's first attempt observed it, but the bug is
+  load-sensitive, not s10-specific) reaches `deliverPrompt: submitted`
+  then produces zero further events until `server_shutdown` fails it.
+  Re-running the offending scenario in isolation (`--parallel=1
+  --only=…`) passes cleanly, so the trigger is **total concurrent PTY
+  count on the server**, not within-workflow concurrency. First
+  surfaced 2026-05-12 after `lib/runner.py` was fixed to set
+  `default_execution_mode = "cli_interactive"` (per-agent toggle, post
+  mig-101 / 6849af7 / a3305e3 / 53c9e84) — cli-interactive scenarios
+  had been silently running through plain `cli` since those commits
+  landed. See `backlog.md` section "Backend issues surfaced by the
+  manual-testing harness" for full triage notes.
 
-Both combos are not gated in the harness — run them yourself to see the
-failure. Fix the backend or skip those provider+mode combos until the
-upstream/adapter issue is resolved; either resolution closes the
-backlog entries.
+None of these combos is gated in the harness — run them yourself to
+see the failure. Fix the backend or skip those provider+mode combos
+until the upstream/adapter issue is resolved; either resolution closes
+the backlog entries.
 
 ## Common pitfalls
 

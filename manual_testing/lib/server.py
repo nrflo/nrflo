@@ -45,6 +45,7 @@ class RunningServer:
     proc: subprocess.Popen      # the live server process
     log_path: Path              # captured stdout+stderr
     nrflo_cli: Path             # path to the agent CLI binary
+    socket_path: Path           # NRFLO_SOCKET — short /tmp path, see start_server
 
     def stop(self, *, keep_dir: bool = True) -> None:
         if self.proc.poll() is None:
@@ -57,6 +58,12 @@ class RunningServer:
                     self.proc.wait(timeout=2)
             except ProcessLookupError:
                 pass
+        # Always remove the agent socket file — it lives outside NRFLO_HOME
+        # (short /tmp path to dodge macOS's 104-byte AF_UNIX cap).
+        try:
+            self.socket_path.unlink(missing_ok=True)
+        except OSError:
+            pass
         if not keep_dir:
             shutil.rmtree(self.home, ignore_errors=True)
         else:
@@ -71,8 +78,28 @@ def start_server(*, cli_label: str) -> RunningServer:
     port = _free_port()
     log_path = home / "server.log"
 
+    # NRFLO_SOCKET: short /tmp path so multiple manual-test runs (different
+    # provider+mode subprocesses, or different test invocations on the same
+    # machine) get their own AF_UNIX endpoint. Two reasons not to rely on
+    # the $NRFLO_HOME/agent.sock default:
+    #   1. NRFLO_HOME sits under /var/folders/... (macOS tempfile) or a
+    #      similarly long path; concatenating /agent.sock can flirt with
+    #      the 104-byte AF_UNIX cap on macOS.
+    #   2. Explicit-per-server isolation matches the Go integration harness
+    #      (be/internal/integration/testenv_test.go) so neither parallel
+    #      subprocesses nor a stale socket from a prior run can collide.
+    socket_path = Path(
+        f"/tmp/nrflo-manual-{cli_label}-{os.getpid()}.sock"
+    )
+    # Stale leftover from a crashed prior run would make BindListener fail.
+    try:
+        socket_path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
     env = os.environ.copy()
     env["NRFLO_HOME"] = str(home)
+    env["NRFLO_SOCKET"] = str(socket_path)
     # Make sure the spawned-agent processes can find the nrflo CLI.
     env["PATH"] = f"{cli_bin.parent}{os.pathsep}{env.get('PATH', '')}"
 
@@ -97,10 +124,16 @@ def start_server(*, cli_label: str) -> RunningServer:
     if not _wait_ready(base_url, proc, timeout_s=15.0):
         proc.kill()
         log_fh.close()
+        try:
+            socket_path.unlink(missing_ok=True)
+        except OSError:
+            pass
         tail = log_path.read_text(errors="replace").splitlines()[-40:]
         sys.exit(
             "manual_testing: server did not become ready within 15s.\n"
-            f"NRFLO_HOME={home}\n--- server.log tail ---\n" + "\n".join(tail)
+            f"NRFLO_HOME={home}\n"
+            f"NRFLO_SOCKET={socket_path}\n"
+            "--- server.log tail ---\n" + "\n".join(tail)
         )
 
     return RunningServer(
@@ -110,6 +143,7 @@ def start_server(*, cli_label: str) -> RunningServer:
         proc=proc,
         log_path=log_path,
         nrflo_cli=cli_bin,
+        socket_path=socket_path,
     )
 
 

@@ -38,9 +38,17 @@ then stop immediately.
 
 
 def run(ctx: Ctx) -> Result:
-    # Under cli-interactive (PTY) the spawner sees a steady byte stream
-    # while `sleep 30` runs, so the running-stall timer never expires.
-    # The stall path still exists — it just isn't reachable with this prompt.
+    # Under cli-interactive (PTY) the Claude TUI emits a continuous byte
+    # stream (status-line / "Running (Ns)" indicator redraws) even while
+    # the underlying Bash subprocess sleeps. Measured 2026-05-12 with a
+    # temporary per-second byte counter in ferryPTYOutput:
+    #   - 11–25 PTY chunks/sec, 700–3000 bytes/sec, sustained for the
+    #     entire 30s `sleep 30` window. No quiet second.
+    # `proc.lastMessageTime` is bumped on every PTY read in ferryPTYOutput,
+    # so the running-stall timer never accumulates past the threshold.
+    # The stall code path itself isn't broken — it just isn't reachable
+    # through Claude's PTY. The interactive equivalent guarantee is the
+    # idle/nudge loop (`checkIdleNudge`).
     if ctx.mode == "cli-interactive":
         return ("S16 stall detection", "SKIP",
                 "stall semantics differ under PTY relay")

@@ -101,6 +101,13 @@ def run_all(
     client = api_mod.NrfloClient(srv.base_url)
     client.login()
     _say(label, "logged in as admin")
+    # cli-interactive mode is per-agent now (commits a3305e3 / 53c9e84 /
+    # 6849af7 removed the project-level interactive_cli_mode toggle). Set
+    # the client default once so every scenario's create_agent_def carries
+    # execution_mode through.
+    if mode == "cli-interactive":
+        client.default_execution_mode = "cli_interactive"
+        _say(label, "client.default_execution_mode = cli_interactive")
     base_ctx = Ctx(
         server=srv, client=client,
         provider=provider, model=model, binary=binary, mode=mode,

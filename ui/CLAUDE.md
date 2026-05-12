@@ -2,136 +2,43 @@
 
 ## Overview
 
-This is the web UI for the nrflo ticket management system. It's a React + TypeScript application that communicates with the `nrflo_server serve` API.
+Web UI for the nrflo ticket management system: React 18 + TypeScript + Vite, TanStack Query, Zustand, Tailwind CSS v4, React Router v6. Communicates with `nrflo_server serve` API.
 
-## Key Directories
-
-| Directory | Purpose |
-|-----------|---------|
-| `src/api/` | API client modules with X-Project header support (see [api/CLAUDE.md](src/api/CLAUDE.md)) |
-| `src/types/` | TypeScript types matching Go models (see [types/CLAUDE.md](src/types/CLAUDE.md)) |
-| `src/hooks/` | TanStack Query hooks, WebSocket hook, utility hooks (see [hooks/CLAUDE.md](src/hooks/CLAUDE.md)). `useGlobalSettings.ts` exports `useGlobalSettings()` (UseQueryResult&lt;GlobalSettings&gt;), `useAPIModeEnabled(): boolean` (returns `false` until query resolves), and `useExperimentalEnabled(): boolean` (returns `false` until query resolves; gates Workflow Chains + Python Scripts sidebar items and routes). |
-| `src/stores/` | Zustand stores: project selection (`projectStore.ts`), theme preference (`themeStore.ts`), auth (`authStore.ts`) |
-| `src/components/auth/` | Auth components: `AuthGate` (boot wrapper; calls refresh before rendering routes), `RequireAuth` (route guard; redirects anon→/login, must_change_password→/account?force=1), `RequireAdmin` (extends RequireAuth; redirects non-admin→/forbidden), `MustChangePasswordBanner` (sticky banner in Layout), `ReadOnlyHint` (amber banner shown at top of admin-resource pages when `!useIsAdmin()`) |
-| `src/pages/auth/` | Auth pages: `LoginPage` (`/login`, public), `AccountPage` (`/account`, change-password form with force=1 banner) |
-| `src/lib/` | Utility functions (`cn`, `formatDate`, `statusColor`, etc.) |
-| `src/components/workflow/` | Workflow visualization components (see [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)) |
-| `src/components/ui/` | Reusable UI components: Badge, Button, Card, CodeEditor (CodeMirror 6 generic editor with `language: 'python'|'markdown'|'plain'` prop — wraps same theme + lineNumbers + history as MarkdownEditor), ConfirmDialog (variant-based), Dialog (modal with backdrop/ESC/click-outside), Dropdown (generic custom dropdown with click-outside/Escape/Check icon, supports flat and grouped options via `DropdownOptionGroup`), Input, MarkdownEditor (CodeMirror 6), codemirror-theme.ts, ProjectSelect (uses Dropdown internally), RenderedMarkdown (react-markdown with github-markdown-css, remark-gfm, rehype-highlight), Spinner, StatusCell (lucide-react icon + status text label with animate-pulse for running/in_progress), PriorityIcon (directional arrow icons for priority 1-4 with label), ResultIcon (check/x/minus icons for pass/fail/skip), Table (composable: Table, TableHeader, TableBody, TableRow, TableHead, TableCell with hover:bg-muted/50 on rows), Textarea, Toggle, Tooltip (Radix-based with keyboard accessibility) |
-| `src/components/layout/` | Layout components (Header, Sidebar, DailyStats, RunningAgentsIndicator) |
-| `src/components/review/` | Review UI components: DiffPreview (LCS line diff) |
-| `src/components/configeditor/` | Config editor UI components: ConfigFileList (directory-grouped), VersionHistory (rollback table) |
-| `src/components/insights/` | Insights UI components: RangeSelector, SummaryCards, ThroughputChart (recharts AreaChart), EditRateChart (recharts BarChart) |
-| `src/pages/review/` | Review pages: ReviewPage (`/review`), ReviewDetailPage (`/review/:id`). Gated by `apiModeEnabled`. |
-| `src/pages/configeditor/` | Config editor pages: ConfigFilesPage (`/config-files`), ConfigEditorPage (`/config-files/:file`). Gated by `apiModeEnabled`. |
-| `src/pages/insights/` | Insights page: InsightsDashboard (`/insights`). Gated by `apiModeEnabled`. |
-| `src/components/tickets/` | Ticket-specific components: IssueTypeIcon (Bug/Lightbulb/CheckSquare/Layers, sm/md sizes), TicketForm |
-| `src/components/chains/` | Chain execution components (CreateChainDialog, ChainTicketSelector, ChainOrderList, AppendToChainDialog) |
-| `src/components/git/` | Git commit detail dialog and diff viewer components |
-| `src/components/import/` | Spec import wizard sub-components: `IssueSearchCombo` (generic debounced search dropdown with 412/`NotConfiguredError` inline row, `onNotConfigured` callback), `GitHubSearchCombo` (wraps IssueSearchCombo; owns `repo` input and `url` output; catches NotConfiguredError and passes `notConfigured` prop with `/projects/{id}/edit#env-vars` settingsHref), `JiraSearchCombo` (wraps IssueSearchCombo; bypasses search for bare keys `^[A-Z][A-Z0-9_]+-[0-9]+$` or URLs) |
-| `src/components/settings/` | Settings page sections (tab layout): GlobalSettingsSection (low consumption mode toggle, context save via agent toggle with tooltip, simplified agents graph toggle — shows `AgentsTable` flat view instead of `PhaseGraph` when on, session retention limit number input with tooltip, stall start/running timeout inputs), ProjectsSection (project CRUD), SystemAgentsSection (system agent definitions CRUD), DefaultTemplatesSection (default template CRUD with readonly/built-in support, grouped by type: Agent Templates and Injectable Templates with help text, injectable badge), DefaultTemplateForm (template form with MarkdownEditor, type selector in create mode, read-only type in edit mode, injectable placeholder cheatsheet), CLIModelsSection (CLI model CRUD with readonly/built-in support, per-model health check button; built-in/read_only models expose only `reasoning_effort` as editable — Edit button is enabled, Delete button and enable/disable toggle remain disabled), CLIModelForm (CLI model form with cli_type warnings; when `readOnly` and not creating, shows a "Built-in model" hint and disables display_name/mapped_model/context_length while keeping reasoning_effort enabled), CLIModelCheckButton (self-contained health check button with idle/testing/success/error states), SafetyHookCheckDialog (dry-run command check against safety hook config with allowed/blocked result display), LogsSection (backend log viewer, extracted from former LogsPage), UsersSection (user management CRUD — Administration sub-tab in Settings), UsersSectionDialogs (CreateUserDialog, EditUserDialog, ResetPasswordDialog co-located with UsersSection), AuditLogSection (paginated audit log with action/user filters and per-page selector — Administration sub-tab in Settings), ProjectEnvVarsEditor (self-contained env var CRUD section: Table of name/value rows with per-row inline Edit + Delete via ConfirmDialog, sticky add-row at bottom; collapsible "Suggested variables" panel above the Table sourced from `GET /api/v1/import/env-var-catalog` via `useEnvVarCatalog` — each entry has click-to-prefill-name and Copy icon button with sonner toast, already-defined names show dimmed Set badge; mounted in `ProjectForm` edit mode only; backed by `useProjectEnvVars`/`usePutProjectEnvVar`/`useDeleteProjectEnvVar`; live-refreshes on `project.env_vars_updated` WS event via `projectEnvVarKeys.list(projectId)` invalidation) |
-| `src/components/workflows/` | Workflow page sections: WorkflowNotificationsSection (per-workflow Slack/Telegram channel CRUD: kind badge, enabled Toggle, event-type chips, Pencil/Send/Delete actions, inline delete confirm; mounted in expanded WorkflowCard after AgentDefsSection; accepts `workflowId:string` prop; uses workflow-scoped query keys `["notification-channels", workflowId, "list"]`), NotificationChannelForm (co-located; accepts `workflowId:string` prop; name+kind fields, enabled Toggle, kind-conditional secret fields webhook_url or bot_token+chat_id, 5 event-type pill checkboxes with at-least-one validation, Send Test button via testNotificationChannel with sonner toast, deliveries panel via NotificationDeliveriesPanel in edit mode with last 20 from `["notification-deliveries", workflowId, channelId]` query; includes `messageTemplate` field with auto-prefill from variables endpoint and NotificationTemplateEditor), NotificationTemplateEditor (MarkdownEditor with imperative ref + variable cheatsheet chips + live preview via renderTemplatePreview), NotificationDeliveriesPanel (extracted deliveries table component) |
-| `src/pages/DocumentationPage.tsx` | Agent documentation page — fetches and renders markdown from `/api/v1/docs/agent-manual` via `react-markdown` |
-| `src/pages/` | Route page components (see [pages/CLAUDE.md](src/pages/CLAUDE.md)) |
-| `src/assets/` | Static assets |
-| `src/test/` | Test infrastructure (`setup.ts`, `utils.tsx`) |
-
-## Module Documentation
-
-Detailed documentation for each major module is in its own CLAUDE.md:
-
-| Module | Documentation | Key Content |
-|--------|--------------|-------------|
-| `src/components/workflow/` | [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md) | Component tree, PhaseGraph features, findings display, agent panels, workflow definition management |
-| `src/pages/` | [pages/CLAUDE.md](src/pages/CLAUDE.md) | Routes, ticket detail tabs, ProjectWorkflowsPage layout, real-time patterns |
-| `src/hooks/` | [hooks/CLAUDE.md](src/hooks/CLAUDE.md) | WebSocket protocol, subscription patterns, event types, state management |
-| `src/api/` | [api/CLAUDE.md](src/api/CLAUDE.md) | REST endpoint listing, API client architecture, live tracking, message format |
-| `src/types/` | [types/CLAUDE.md](src/types/CLAUDE.md) | Key ticket/workflow/chain types, type safety notes |
-
-## Source File Size Limit
-
-Keep source files under 300 lines. If a newly created or modified file exceeds 300 lines, refactor it by splitting into logical sub-files before committing. This applies to all TypeScript/TSX source files.
+Source lives under `ui/src/`. Run `ls ui/src/` for top-level directories. Deep documentation: [api/CLAUDE.md](src/api/CLAUDE.md), [hooks/CLAUDE.md](src/hooks/CLAUDE.md), [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md), [pages/CLAUDE.md](src/pages/CLAUDE.md), [types/CLAUDE.md](src/types/CLAUDE.md).
 
 ## Development Commands
 
 ```bash
-npm run dev        # Start dev server (port 5175)
-npm run build      # Production build (includes tsc)
-npm run lint       # ESLint
-npx tsc --noEmit   # TypeScript check only
+make build-ui                         # Production build (includes tsc)
+make test-ui                          # Run UI tests (60s wall-time constraint)
+make test-ui ARGS="src/components/"   # Directory filter
+npm run dev                           # Vite dev server (port 5175, hot-reload)
+npx tsc --noEmit                      # TypeScript check only
 ```
 
 ## Architecture Patterns
 
-### API Communication
+- All API calls go through `src/api/client.ts`; project scope injected via `X-Project` header.
+- **Server state**: TanStack Query (`useQuery`, `useMutation`); query keys in `src/hooks/useTickets.ts`.
+- **Client state**: Zustand — project selection (`projectStore.ts`), theme (`themeStore.ts`), auth (`authStore.ts`).
+- Vite proxies `/api` to the backend in development (`ws: true` for WebSocket).
+- Projects loaded from `/api/v1/projects` when auth status becomes `authed` (see `App.tsx`).
 
-- All API calls go through `src/api/client.ts`
-- Project selection is managed via `X-Project` header
-- TanStack Query handles caching and refetching
-- Vite proxies `/api` to the backend in development (including WebSocket via `ws: true`)
-- Projects are loaded from `/api/v1/projects` endpoint
+## Real-Time Updates
 
-### State Management
+WebSocket-based; no REST polling. Single socket per tab: `WebSocketProvider` in `src/providers/WebSocketProvider.tsx:1`. Components subscribe via `useWebSocketSubscription(ticketId)`. Core connection hook with reconnect, cursor resume, snapshot hydration, and heartbeat: `ui/src/hooks/useWebSocket.ts`. Full protocol v2 specification and event-type list: [hooks/CLAUDE.md](src/hooks/CLAUDE.md).
 
-- **Server state**: TanStack Query (useQuery, useMutation)
-- **Client state**: Zustand (project selection via `projectStore.ts`, theme preference via `themeStore.ts`, auth via `authStore.ts`)
-- Query keys are in `src/hooks/useTickets.ts` — invalidate appropriately on mutations
-- Projects are loaded from API when auth status becomes `authed` (see `App.tsx` useEffect on `authStatus`)
+## Auth
 
-### Auth System
+`AuthGate` (`src/components/auth/`) wraps `<Routes>`; registers the apiFetch 401 handler then calls `refresh()`. `RequireAuth` redirects anonymous users to `/login`; also handles `must_change_password` → `/account?force=1`. `RequireAdmin` extends `RequireAuth` with a role check and is applied at route level for `/settings`. Public routes are `/login` and `/forbidden`; `/account` is inside `RequireAuth`. Selector hooks: `useIsAdmin()`, `useIsAuthed()`, `useMustChangePassword()` from `authStore.ts`.
 
-- `useAuthStore` — state: `{ user, status: 'loading'|'authed'|'anon' }`, actions: `refresh()`, `login()`, `logout()`, `clear()`. Selector hooks: `useIsAdmin()`, `useIsAuthed()`, `useMustChangePassword()`.
-- `AuthGate` — wraps `<Routes>` inside `BrowserRouter`. On mount: registers the apiFetch 401 handler (calls `clear()` + navigates to `/login?next=<encoded path>` via `window.history.pushState` + popstate event) then calls `refresh()`. Renders `null` while `status==='loading'`; renders children once resolved.
-- `RequireAuth` — if `status==='anon'` → `<Navigate to="/login?next=...">`. If `user.must_change_password` and not on `/account` or `/login` → `<Navigate to="/account?force=1">`. Otherwise renders `children` (or `<Outlet />` when used without children).
-- `RequireAdmin` — same as RequireAuth plus role check; non-admin → `<Navigate to="/forbidden">`. Applied at route level for `/settings`.
-- `useIsAdmin()` — selector from `authStore.ts`; use in-component for conditional rendering (hiding write buttons, showing `ReadOnlyHint`). Currently used by: `Header` (settings gear icon), `Sidebar` (Schedules, Configuration entries), `ToolDefinitionsPage`, `APICredentialsPage`, `SchedulesPage`.
-- `ReadOnlyHint` — amber banner (`src/components/auth/ReadOnlyHint.tsx`) rendered at page top when `!isAdmin`. Used by pages that are reachable by all authenticated users but restrict write operations to admins (ToolDefinitions, APICredentials, Schedules).
-- `MustChangePasswordBanner` — shown by Layout via `useMustChangePassword()`; links to `/account?force=1`.
-- `apiFetch` 401 handler — skips navigation when endpoint is `/api/v1/auth/login`; calls registered `on401` for all other endpoints. Register via `set401Handler()` (exported from `client.ts`).
-- Public routes (`/login`, `/forbidden`) are outside `RequireAuth`. `/account` is inside Layout/RequireAuth.
+## Source File Size Limit
 
-### Public Routes
-
-| Path | Page | Auth |
-|------|------|------|
-| `/login` | `LoginPage` | Public |
-| `/forbidden` | `ForbiddenPage` | Public |
-| `/account` | `AccountPage` | RequireAuth (no admin check) |
-| `/settings` | `SettingsPage` | RequireAdmin |
-| `/import` | `ImportSpecPage` | RequireAuth — three-step wizard: (1) source picker (GitHub/Jira/Markdown), (2) source input + Normalize button, (3) editable preview via `ImportPreviewForm`; WS subscription via `useWebSocket({onEvent})` filtered to `spec_import.ready/failed` keyed by `instance_id`; `NotConfiguredError` (412) surfaced as inline configuration row with link to project env-vars settings |
-
-### Real-Time Updates (Protocol v2)
-
-WebSocket-based, no REST polling. See [hooks/CLAUDE.md](src/hooks/CLAUDE.md) for full protocol, event types, and subscription patterns.
-
-- **Single socket per tab**: `WebSocketProvider` in `src/providers/WebSocketProvider.tsx` owns the sole WebSocket connection. Wrapped at `App.tsx` level.
-- **Consumer hook**: Components use `useWebSocketSubscription(ticketId)` to subscribe/unsubscribe. Project-wide subscription is automatic.
-- **No polling**: All `refetchInterval` has been removed. Updates arrive exclusively via WebSocket events.
-- **Protocol v2**: Events include `sequence` and `protocol_version` fields. Subscribe messages include optional `since_seq` for cursor-based replay on reconnect.
-- **Reducer dispatch**: Events are routed through `useWSReducer.ts` which tracks per-subscription seq for idempotency and cursor resume.
-- **Snapshot support**: Server can send `snapshot.begin/chunk/end` control events for full state hydration. Live events arriving during snapshot are buffered and replayed after.
-- **Heartbeat liveness**: If no message received in 60s, triggers reconnect.
-- **Cursor resume**: On reconnect, subscribe includes `since_seq` from last applied seq. Server replays missed events or sends snapshot if cursor is too old.
-- **sessionStorage persistence**: Last applied seq per subscription persisted across tab refresh.
-
-### Component Structure
-
-```
-Layout
-├── Header (project selector, search, navigation: Dashboard/Tickets/Workflows/Git/Documentation/Errors/Sessions, daily stats, theme toggle, settings link)
-├── Sidebar (navigation, status counts)
-└── Outlet (page content via React Router)
-```
-
-### Styling
-
-- Tailwind CSS v4 (uses `@theme` for CSS variables)
-- Class-based dark mode via `@custom-variant dark (&:where(.dark, .dark *))` — `.dark` class on `<html>` controls all `dark:` utilities and CSS variable overrides in `.dark {}` selector
-- Three-state theme toggle (light/dark/system) in Header, persisted to `localStorage` key `nrf_theme`, with FOUC prevention inline script in `index.html`
-- Custom utility `cn()` for conditional class merging
+Keep source files under 300 lines. Split files exceeding 300 lines into logical sub-files before committing (TypeScript/TSX source).
 
 ## UI Component Standards
 
-All UI elements must use the shared components from `src/components/ui/`. Do not use raw HTML elements (`<select>`, `<input>`, `<button>`, `<textarea>`) directly — use the corresponding wrapper components instead.
+All UI elements must use the shared components from `src/components/ui/`. Do not use raw HTML elements (`<select>`, `<input>`, `<button>`, `<textarea>`) directly.
 
 ### Standard Components
 
@@ -144,142 +51,33 @@ All UI elements must use the shared components from `src/components/ui/`. Do not
 
 ### Dropdown Pattern
 
-All dropdowns use the custom `Dropdown` component (not native `<select>`). This renders a button trigger with a floating panel, matching the ProjectSelect style:
-- Button with chevron icon, border, and hover state
-- Floating panel with shadow and border
-- Checkmark on selected option
-- Click-outside and Escape key to close
-
-For searchable dropdowns, use `TicketSearchDropdown` which follows the same panel styling.
+All dropdowns use the custom `Dropdown` component (not native `<select>`): button trigger with floating panel, checkmark on selected option, click-outside and Escape to close. For searchable dropdowns, use `TicketSearchDropdown`.
 
 ### Adding New UI Components
 
-When creating a new reusable UI component:
-1. Place it in `src/components/ui/`
+1. Place in `src/components/ui/`
 2. Use `cn()` for class merging
 3. Follow existing component patterns (forwardRef, consistent prop naming)
-4. Match the project's design tokens (CSS variables from `src/index.css`)
-
-## Common Tasks
-
-### Adding a New API Endpoint
-
-1. Add types in `src/types/`
-2. Add API function in `src/api/tickets.ts` or new file
-3. Add query hook in `src/hooks/` if needed
-4. Use in components with the hook
-
-### Adding a New Page
-
-1. Create page component in `src/pages/`
-2. Add route in `src/App.tsx`
-3. Add navigation link in `src/components/layout/Sidebar.tsx` if needed
-
-### Adding a New UI Component
-
-1. Create in `src/components/ui/`
-2. Use `cn()` for class merging
-3. Use CSS variables for theming (see `src/index.css`)
-
-## Type Safety
-
-- Types in `src/types/` must match the Go API models
-- Use `z.infer<typeof schema>` for form types (see TicketForm)
-- API responses are typed — check `src/api/tickets.ts`
+4. Match design tokens (CSS variables from `src/index.css`)
 
 ## Testing
 
-### Infrastructure
-
 - **Framework:** Vitest + jsdom + React Testing Library
-- **Setup:** `src/test/setup.ts` — auto-cleanup after each test, `window.location` mock, `VITE_API_URL` env stub
+- **Setup:** `src/test/setup.ts` — auto-cleanup, `window.location` mock, `VITE_API_URL` env stub
 - **Utilities:** `src/test/utils.tsx` — `renderWithQuery()`, `createTestQueryClient()`, `createWrapper()`
-- **Matchers:** `@testing-library/jest-dom/vitest` (toBeInTheDocument, toHaveTextContent, etc.)
-- **User events:** `@testing-library/user-event` — always use `const user = userEvent.setup()`
+- Full suite must complete in **≤60 seconds** wall time (`make test-ui`).
+- Never introduce `setTimeout` in tests; use a never-resolving `new Promise(() => {})` for in-flight pending states.
 
-### Commands
+## Styling
 
-```bash
-make test-ui                          # all tests (60s wall-time constraint)
-make test-ui ARGS="src/components/"   # directory
-make test-ui ARGS="path/to/file.test.tsx"  # single file
-```
+Tailwind CSS v4 with `@theme` CSS variables. Class-based dark mode via `.dark` on `<html>`. Three-state theme toggle (light/dark/system) in Header, persisted to `localStorage` key `nrf_theme`, with FOUC prevention inline script in `index.html`.
 
-### Performance Constraint
+## Feature Index
 
-The full test suite (`vitest run`) must complete in **≤60 seconds wall time**. Enforced by `make test-ui`.
+Features are documented where their primary component or hook lives:
 
-**Never introduce:**
-- `setTimeout` in test bodies or mock implementations — use a never-resolving promise `new Promise(() => {})` to keep a mutation in-flight for `isPending` tests
-- `vi.advanceTimersByTime()` with real timer dependencies — use `vi.useFakeTimers()` instead
-- Arbitrary delays or polling loops with sleeps
-
-### File Organization
-
-- Co-located with source: `Component.test.tsx` next to `Component.tsx`
-- Variant tests use descriptive suffixes: `Component.feature.test.tsx`
-- Some directories use `__tests__/` subdirectories
-- 300-line max per test file — split by feature area if exceeded
-
-### Patterns
-
-- **Factory functions** with override pattern: `makeAgent({status: "failed"})`
-- **QueryClient isolation:** fresh `createTestQueryClient()` per test (retry: false, gcTime: 0)
-- **Mock at boundaries:** mock hooks/API modules (`vi.mock('@/hooks/useTickets')`), not internals
-- **Queries:** prefer `getByRole` / `getByText` over `getByTestId`
-- **Async:** use `findBy*` queries (auto-wait) over `waitFor` with `getBy*`
-
-### What NOT to Test
-
-- Third-party library internals (React Router, TanStack Query, Zustand)
-- Implementation details (internal state, CSS class names)
-- Trivial renders without meaningful assertions
-- Simple pass-through props or basic HTML structure
-- Every prop combination — use representative samples
-
-## Important Notes
-
-- The backend (`nrflo_server serve`) must be running for the UI to work
-- Default port is 6587 (single-process serves API + embedded UI); port 5175 is used only for `npm run dev` hot-reload during development
-- Projects are loaded from `/api/v1/projects` endpoint
-- Multi-project support uses `X-Project` header
-- Database is at `~/.nrflo/nrflo.data` (global; override with `NRFLO_HOME`)
-
-## Starting Servers
-
-The server binary embeds the UI and serves everything on a single port (default 6587).
-
-```bash
-nrflo_server serve              # Start server (port 6587, serves API + embedded UI)
-cd ui && npm run dev             # Optional: Vite dev server with hot-reload (port 5175)
-```
-
-## Web UI Features
-
-- Dashboard with ticket counts and status overview
-- Ticket list with filtering and search
-- Ticket detail view with workflow timeline
-- Live tracking with real-time agent stdout messages
-- Findings display with workflow-level and agent findings separated
-- Create/edit/close tickets
-- Multi-project support via project selector
-- API-mode gating: `useAPIModeEnabled()` (from `src/hooks/useGlobalSettings.ts`) reads `api_mode_enabled` from `GET /api/v1/settings`. When false (cli mode, default): Tool Definitions and API Credentials sidebar entries hidden, corresponding routes not registered, Execution Mode dropdown hidden in `AgentDefForm`. `AgentDefCard` API badge remains visible for orphan-def detection; existing api-mode defs' `AgentDefAPIModeFields` block remains reachable in edit form regardless of api_mode_enabled. `App.tsx` uses an inner `AppRoutes` component (inside QueryClientProvider) to call the hook at route-render time.
-- Experimental gating: `useExperimentalEnabled()` (from `src/hooks/useGlobalSettings.ts`) reads `experimental` (default `false`) from `GET /api/v1/settings`. When false: Workflow Chains and Python Scripts sidebar NavItems hidden; `/workflow-chains`, `/workflow-chains/:id`, and `/python-scripts` routes not registered (stale URLs fall through to the wildcard 404). Toggled via "Experimental features" in `GlobalSettingsSection`. Helper coalesces to `false` during initial query resolve so links never flash visible.
-- Settings page with tabbed layout (General, Projects, System Agents, Default Templates, CLI Models, Logs, Administration): project management (create/update/delete, Toggle for git worktrees), system agent definitions CRUD (global agents like conflict-resolver), default template CRUD (readonly built-in templates + user-created templates with MarkdownEditor), CLI model CRUD (readonly built-in models + user-created models with cli_type badges and warnings), Administration tab with Users / Audit Log sub-tabs (controlled by `?tab=administration&sub=users|audit`) containing user management CRUD and paginated audit log
-- Per-workflow notification channels: Slack/Telegram channel CRUD is workflow-scoped, mounted in the expanded WorkflowCard on `/workflows` (via `WorkflowNotificationsSection` after `AgentDefsSection`). Channels use per-workflow query keys and call `/api/v1/workflows/:wid/notification-channels` + `/api/v1/workflows/:wid/notification-deliveries` endpoints. Each channel carries its own `message_template`; the form prefills a kind-specific default from `GET /api/v1/notification-channels/variables` (staleTime Infinity, global cache key `["notification-variables"]`), offers a clickable variable cheatsheet via `NotificationTemplateEditor`, and shows a live client-side preview rendered by `renderTemplatePreview` against a fixed sample object.
-- Documentation page with agent manual (rendered markdown from API)
-- Running agents indicator: `RunningAgentsIndicator` in header shows animated spinner with count badge when agents are running across any project. Hover popover lists agents grouped by project with clickable links. Data fetched via `useRunningAgents` hook (`GET /api/v1/agents/running`, not project-scoped). WS event `global.running_agents` invalidates the query for real-time updates. Types in `src/types/agents.ts`, API in `src/api/agents.ts`.
-- Claude usage limits badge: `ClaudeLimitsBadge` in header shows two color-coded pills (5h and 7-day usage %) adjacent to `RunningAgentsIndicator`. Returns null when both percentages are null. Colors: green <60%, yellow 60-85%, red ≥85%, gray when data is stale (updated_at > 25 min old). After the reset window elapses, continues to show the last-known percentage in muted styling and "(reset overdue)" in the popover. Hover popover shows reset times and last-updated timestamp, with stale warning. Data fetched via `useClaudeLimits` hook (`GET /api/v1/claude-limits`, global, no X-Project header). WS event `global.claude_limits_updated` invalidates the query. Types in `src/types/claudeLimits.ts`, API in `src/api/claudeLimits.ts`, hook in `src/hooks/useClaudeLimits.ts`.
-- Conflict resolver banner: `ConflictResolverBanner` component displays merge conflict resolution status in workflow detail view. Shows amber spinner while resolver is running, green note on pass, orange warning on fail. Reacts to `merge.conflict_resolving`, `merge.conflict_resolved`, `merge.conflict_failed` WS events. Suppresses the "Completed" banner while resolver is actively running. Clickable to open resolver session in AgentLogPanel.
-- Interactive agent control: "Take Control" button kills a running Claude agent and opens an xterm.js terminal dialog connected to the PTY WebSocket (`/api/v1/pty/{sessionId}`). Components: `XTerminal` (lazy-loaded xterm.js + WebSocket relay), `AgentTerminalDialog` (Dialog wrapper). Hooks: `useTakeControl`, `useExitInteractive` (+ project-scoped variants). WS event: `agent.take_control`. Agent status `user_interactive` shows blue glow in AgentCard and blue "User controlling" badge in AgentLogDetail.
-- User input capture: Keystrokes typed into the PTY browser terminal (take-control, viewer-attach, resume-session) are buffered per WS connection, split on line endings or 500ms idle, sanitized (ANSI/control bytes stripped), and persisted as `category="user_input"` messages. `AgentLogDetail` exposes a **User input** filter tab alongside All/Text/Tools/Sub-agents/Skills. `LogMessage` renders `user_input` rows with a primary-color `[User]` badge and a left-rail `border-l-primary` accent. `MessageCategory` type union in `src/types/workflow.ts` includes `'user_input'`.
-- Interactive start & plan mode: `RunWorkflowDialog` and `RunWorkflowForm` support "Start Interactive" and "Plan Before Execution" checkboxes (mutually exclusive). Interactive mode sends `interactive: true` in the run request; plan mode sends `plan_mode: true`. Both return a `session_id` in `RunWorkflowResponse` that triggers `AgentTerminalDialog` via `onInteractiveStart` callback. "Start Interactive" is only available when L0 has exactly 1 Claude-based agent AND the workflow has more than one layer. "Plan Before Execution" is only available when L0 has exactly 1 Claude-based agent. "Plan Before Execution" hides the instructions textarea.
-- Endless loop mode (project-scoped only): `RunWorkflowForm` on `ProjectWorkflowsPage` exposes an "Endless loop" checkbox for project-scoped workflow defs (mutually exclusive with Start Interactive / Plan Before Execution; hides and clears the Instructions textarea). Sends `endless_loop: true` in the run request (no `instructions`). The running-instance view renders an "Endless loop" badge plus a "Stop endless loop after current iteration" checkbox when `workflowState.endless_loop === true && status === 'active'`, wired to `useSetStopEndlessLoopAfterIteration` (POST `/api/v1/projects/:id/workflow/stop-endless-loop`). Server broadcasts `workflow.updated` for confirmation; types `WorkflowState.endless_loop` / `WorkflowState.stop_endless_loop_after_iteration` in `src/types/workflow.ts`.
-- Python Scripts page: `PythonScriptsPage` at `/python-scripts` — CRUD for project-scoped Python scripts. Write controls admin-only (enforced server-side); `ReadOnlyHint` shown for non-admins. `PythonScriptForm` dialog (Name/Description/File path/CodeEditor[python]) supports two modes: (1) **template mode** (`file_path` empty) — editable CodeEditor + Check Syntax button (`validatePythonScript`), save validates on submit with ConfirmDialog "Save anyway" on syntax error; (2) **file_path mode** (`file_path` set) — `FilePickerModal` (Dialog listing dirs+.py files via `browseDirectory`) selects a path, editor is read-only showing content from `readPythonFile`, Reload from file button triggers `refetch()`, Check Syntax hidden. Clear button reverts to template mode. Submit always includes `file_path` (empty string clears it). Uses `usePythonScripts`, `useCreatePythonScript`, `useUpdatePythonScript`, `useDeletePythonScript`, `useReadPythonFile`, `useBrowsePythonDir`. API client adds `browseDirectory` (`GET /api/v1/python-scripts/browse?path=`) and `readPythonFile` (`GET /api/v1/python-scripts/read-file?path=`). Types: `BrowseEntry`, `BrowseResponse`, `ReadFileResponse` in `src/types/pythonScript.ts`.
-- Python Scripts page: `PythonScriptsPage` at `/python-scripts` sidebar NavItem (FileCode icon) visible to all authed users.
-- Errors page: `ErrorsPage` at `/errors` shows paginated error logs (agent/workflow/system) with type filter tabs, badge-styled type column, truncated instance ID, and auto-refresh via `error.created` WS event. Types in `src/types/errors.ts`, API in `src/api/errors.ts`, hook in `src/hooks/useErrors.ts`.
-- Agent sessions page: `LogsPage` at `/logs` is a two-tab shell (Finished sessions / Live processes). **Finished sessions tab** (`LogsFinishedTab`): paginated finished agent sessions (Finished/SID/Agent/Model/Mode/Workflow/Duration/Status/Result columns); CalendarClock icon in Workflow cell when `scheduled=true`; CheckCircle2 result icon with Tooltip when `workflow_final_result` present; auto-refreshes on `agent.completed` WS event via `agentSessionLogKeys.all` invalidation. **Live processes tab** (`LogsLiveTab`): fetches `GET /api/v1/agent-session-logs/live` via `useLiveAgentSessions` (no auto-refresh, staleTime Infinity); manual Refresh button; 10 columns (SID/Agent/Model/Mode/Workflow/Uptime/PID/Memory/CPU %/Actions); per-row Kill action POSTs `POST /api/v1/agent-sessions/{id}/kill` via `useKillAgentSession` mutation with ConfirmDialog; SID is monospace span (not a link) with title=full id. Types in `src/types/agentSessionLogs.ts`, API in `src/api/agentSessionLogs.ts`, hooks in `src/hooks/useAgentSessionLogs.ts`.
-- Schedules page: `SchedulesPage` at `/schedules` shows a table of scheduled tasks with cron expression + cronstrue description, workflow count badge, last/next run timestamps, enabled toggle, and per-row actions (run now, edit, delete, view runs). `ScheduleForm` dialog handles create/edit with live cronstrue preview and project-workflow multi-select. `ScheduleRunsDialog` shows paginated run history with per-workflow instance links to `/project-workflows?instance_id=`. WS events `schedule.created/updated/deleted/triggered` invalidate `scheduleKeys.all`. Types in `src/types/schedules.ts`, API in `src/api/scheduledTasks.ts`, hooks in `src/hooks/useScheduledTasks.ts`.
-- Workflow chains page: `WorkflowChainsPage` at `/workflow-chains` lists named sequences of workflow steps. New/Delete write controls admin-only; `ReadOnlyHint` shown for non-admins. `WorkflowChainEditorPage` at `/workflow-chains/:id` shows two tabs — **Definition** (chain metadata form + ordered step list with Up/Down reorder, per-step inline form with workflow Dropdown, scope Dropdown, base instructions Textarea, require_ticket_handoff Toggle, Add/Delete step) and **Runs** (`WorkflowChainRunsTab`). Client-side validation: step 0 must be project-scoped. `WorkflowChainRunsTab` lists active/recent runs with step-level status badges, Start Run dialog (posts to `/workflow-chains/{id}/runs`), Cancel button (admin-only). WS events `chain_def.created/updated/deleted` invalidate `workflowChainKeys.all`; WS events `chain.run_started/step_started/step_completed/run_completed/run_failed` invalidate chain run query cache (handled in `useWSReducer`). Types in `src/types/workflowChain.ts` (`WorkflowChainRun`, `WorkflowChainRunStep`, `WorkflowChainRunDetail`, `StartChainRunRequest`), API in `src/api/workflowChains.ts` (`listChainRuns`, `getChainRun`, `startChainRun`, `cancelChainRun`), hooks in `src/hooks/useWorkflowChains.ts` (`useListChainRuns`, `useGetChainRun`, `useStartChainRun`, `useCancelChainRun`).
-- Nudge badge: `AgentCard` renders an amber `⏰X/5` badge at `absolute bottom-1 left-1` when `nudge_count > 0`. Tooltip: "Idle reminder sent — agent has not called nrflo agent continue/fail". Badge hidden when `nudge_count` is 0 or undefined. `agent.nudged` WS event invalidates workflow + agentSessions queries so the count updates live.
-- Project findings management: `ProjectWorkflowsPage` exposes a **Findings** tab (5th tab) with full CRUD for project-level findings. `ProjectFindingsTab` renders a table of key/value pairs with Add/Edit/Delete actions, a "Show internal keys" toggle (hidden by default), and toasts on mutation errors. Uses `useUpsertProjectFinding` and `useDeleteProjectFinding` hooks backed by the POST upsert and DELETE single-key endpoints.
+- Workflow visualization, phase graph, findings, agent panels → [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)
+- WebSocket protocol v2, event types, subscription patterns → [hooks/CLAUDE.md](src/hooks/CLAUDE.md)
+- REST API modules and client conventions → [api/CLAUDE.md](src/api/CLAUDE.md)
+- Page routes, ticket tabs, project workflows layout → [pages/CLAUDE.md](src/pages/CLAUDE.md)
+- Shared TypeScript types → [types/CLAUDE.md](src/types/CLAUDE.md)

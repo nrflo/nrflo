@@ -1176,14 +1176,27 @@ func (o *Orchestrator) IsInstanceRunning(instanceID string) bool {
 	return running
 }
 
-// StopAll cancels all running orchestrations (for server shutdown).
+// StopAll cancels all running orchestrations and waits for them to exit (for server shutdown).
 func (o *Orchestrator) StopAll() {
 	o.mu.Lock()
 	logger.Warn(context.Background(), "stopping all orchestrations", "count", len(o.runs))
+	doneChans := make([]chan struct{}, 0, len(o.runs))
 	for _, rs := range o.runs {
 		rs.cancel()
+		if rs.done != nil {
+			doneChans = append(doneChans, rs.done)
+		}
 	}
 	o.mu.Unlock()
+
+	deadline := time.After(10 * time.Second)
+	for _, done := range doneChans {
+		select {
+		case <-done:
+		case <-deadline:
+			return
+		}
+	}
 }
 
 // runLoop executes workflow phases grouped by layer.

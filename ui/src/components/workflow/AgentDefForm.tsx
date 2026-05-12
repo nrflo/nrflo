@@ -10,7 +10,7 @@ import { useModelOptions } from '@/hooks/useCLIModels'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
-type ExecutionMode = 'cli' | 'api' | 'script'
+type ExecutionMode = 'cli' | 'cli_interactive' | 'api' | 'script'
 
 export function AgentDefForm({
   initial,
@@ -73,6 +73,7 @@ export function AgentDefForm({
 
   const executionModeOptions = [
     { value: 'cli', label: 'CLI (default)' },
+    { value: 'cli_interactive', label: 'CLI Interactive (PTY)' },
     ...(apiModeEnabled ? [{ value: 'api', label: 'API (in-process Anthropic runner)' }] : []),
     { value: 'script', label: 'Script (Python)' },
   ]

@@ -283,7 +283,7 @@ export interface AgentDef {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode: 'cli' | 'api' | 'script'
+  execution_mode: 'cli' | 'cli_interactive' | 'api' | 'script'
   tools: string
   api_max_iterations?: number
   python_script_id?: string
@@ -301,7 +301,7 @@ export interface AgentDefCreateRequest {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode?: 'cli' | 'api' | 'script'
+  execution_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
   python_script_id?: string
@@ -316,7 +316,7 @@ export interface AgentDefUpdateRequest {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode?: 'cli' | 'api' | 'script'
+  execution_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
   python_script_id?: string

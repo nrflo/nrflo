@@ -15,7 +15,6 @@ export interface ProjectFormData {
   default_branch: string
   use_git_worktrees: boolean
   push_after_merge: boolean
-  interactive_cli_mode: boolean
   safety_hook_enabled: boolean
   safety_hook_allow_git: boolean
   safety_hook_allowed_rm_paths: string
@@ -41,7 +40,6 @@ export const emptyProjectForm: ProjectFormData = {
   default_branch: '',
   use_git_worktrees: false,
   push_after_merge: false,
-  interactive_cli_mode: false,
   safety_hook_enabled: false,
   safety_hook_allow_git: true,
   safety_hook_allowed_rm_paths: DEFAULT_RM_PATHS,
@@ -209,19 +207,6 @@ export function ProjectForm({
               onChange={(checked) => setFormData({ ...formData, push_after_merge: checked })}
               label="Push after merge"
               disabled={!formData.default_branch.trim()}
-            />
-          </Tooltip>
-        </div>
-        <div className="flex items-end pb-1">
-          <Tooltip
-            text="Spawns CLI agents in PTY mode for subscription-eligible runs"
-            placement="top"
-            className="max-w-sm"
-          >
-            <Toggle
-              checked={formData.interactive_cli_mode}
-              onChange={(checked) => setFormData({ ...formData, interactive_cli_mode: checked })}
-              label="Interactive CLI mode"
             />
           </Tooltip>
         </div>

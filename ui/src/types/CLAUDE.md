@@ -36,7 +36,7 @@ TypeScript type definitions matching Go API models. Contains 5 files.
 | `AgentSession` | Session record with `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left` |
 | `WorkflowFindings` | `Record<string, Record<string, unknown>>` (agent_type → field → value) |
 | `ActiveAgentV4` | Active agent record. Optional `effective_mode?: 'cli'\|'cli_interactive'\|'api'\|'script'` sourced from `agent_sessions.effective_mode`; omitted for legacy rows. |
-| `AgentDef` | Agent definition. `execution_mode` is `'cli'\|'api'\|'script'`; includes optional `python_script_id?: string` |
+| `AgentDef` | Agent definition. `execution_mode` is `'cli'\|'cli_interactive'\|'api'\|'script'`; includes optional `python_script_id?: string` |
 
 ## Chain Types (`chain.ts`)
 

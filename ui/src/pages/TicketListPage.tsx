@@ -91,7 +91,7 @@ export function TicketListPage() {
           <Link to="/import">
             <Button variant="outline">
               <Upload className="h-4 w-4 mr-2" />
-              Import
+              Import Spec
             </Button>
           </Link>
           <Link to="/tickets/new">

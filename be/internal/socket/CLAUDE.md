@@ -4,9 +4,9 @@ Socket server for agent communication (Unix). Handles agent-facing methods only 
 
 ## Transport
 
-- **Unix socket** at `/tmp/nrflo/nrflo.sock` — used by agents
+- **Unix socket** at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`) — used by agents
 
-Clients connect via Unix socket.
+The socket is eagerly bound at server startup via `BindListener()` before the HTTP listener comes up. The lazy-bind path has been removed. Clients connect via Unix socket.
 
 ## Protocol
 
@@ -80,7 +80,7 @@ All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, e
 After the DB write and WS broadcast, the `agent.fail`, `agent.finished`, `agent.continue`, and `agent.callback` cases each dispatch a best-effort terminal signal through an injected `TerminalSignaler` (defined in `server.go`). This kills the running agent immediately so `monitorAll` exits its natural-exit wait and `handleCompletion` reads the DB-written result, eliminating the latency between the agent calling `nrflo agent fail/finished/continue/callback` and the spawner acting on it.
 
 - **Interface**: four methods — `RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error`, `BumpLastMessage(projectID, ticketID, workflow, sessionID string) error`, `SetLastMessage(projectID, ticketID, workflow, sessionID, content string) error`, and `SignalSessionReady(sessionID string) error`.
-- **Wiring**: `NewServerWithHub` accepts a `TerminalSignaler`; in production `cli/serve.go` passes `httpServer.GetOrchestrator()`; pass `nil` in tests.
+- **Wiring**: `BindListener()` returns `(net.Listener, string, error)`; `NewServerWithListener(pool, hub, clk, signaler, listener, socketPath)` takes the pre-bound listener; in production `cli/serve.go` passes `httpServer.GetOrchestrator()` as the signaler; pass `nil` in tests.
 - **Nil-safe**: `Handler` nil-guards before calling — passing `nil` disables the feature silently.
 - **Order**: DB write → WS broadcast → terminal signal (best-effort, error is logged at INFO level and does not affect the response).
 - **BumpLastMessage**: called by `agent.record_event` handler after inserting a hook message row. Forwards to `Orchestrator.BumpLastMessage` → `Spawner.BumpLastMessage`, which sends a session ID through `bumpMessageCh` so `monitorAll` updates `lastMessageTime`/`hasReceivedMessage` for the matching proc, preventing false-positive stall detection during active interactive CLI sessions.

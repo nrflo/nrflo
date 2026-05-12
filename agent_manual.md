@@ -786,7 +786,13 @@ System agents are global agent definitions not tied to any specific project or w
 
 ---
 
-## 16. How to Update This Document
+## 16. Agent IPC Socket
+
+Spawned agents communicate with the server over a Unix socket at `$NRFLO_HOME/agent.sock` (override with `NRFLO_SOCKET`). The `nrflo` CLI reads this env var automatically — no manual wiring is needed in agent prompts.
+
+---
+
+## 17. How to Update This Document
 
 - This file is `agent_manual.md` in the project root
 - Served by `GET /api/v1/docs/agent-manual`

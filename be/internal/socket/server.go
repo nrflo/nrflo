@@ -18,19 +18,50 @@ import (
 	"be/internal/ws"
 )
 
-const (
-	// DefaultSocketDir is the default directory for the socket file
-	DefaultSocketDir = "/tmp/nrflo"
-	// DefaultSocketName is the default socket file name
-	DefaultSocketName = "nrflo.sock"
-)
-
-// GetSocketPath returns the socket path from env or default
+// GetSocketPath returns the socket path from env or default ($NRFLO_HOME/agent.sock).
 func GetSocketPath() string {
 	if path := os.Getenv("NRFLO_SOCKET"); path != "" {
 		return path
 	}
-	return filepath.Join(DefaultSocketDir, DefaultSocketName)
+	return filepath.Join(db.DefaultDataDir(), "agent.sock")
+}
+
+// BindListener resolves the socket path via GetSocketPath, performs pre-flight checks
+// (path length, directory-at-path detection, stale-file removal, parent-dir creation),
+// binds the Unix listener, and sets 0600 permissions. Returns the bound listener and
+// resolved path; callers pass both to NewServerWithListener.
+func BindListener() (net.Listener, string, error) {
+	path := GetSocketPath()
+
+	// sun_path limit: 104 bytes on macOS, 108 on Linux; pre-flight with a clear message.
+	if len(path) > 100 {
+		return nil, "", fmt.Errorf("socket path too long (%d bytes): %s", len(path), path)
+	}
+
+	if fi, statErr := os.Stat(path); statErr == nil {
+		if fi.IsDir() {
+			return nil, "", fmt.Errorf("socket path is a directory: %s", path)
+		}
+		if removeErr := os.Remove(path); removeErr != nil {
+			return nil, "", fmt.Errorf("failed to remove stale socket file at %s: %w", path, removeErr)
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return nil, "", fmt.Errorf("failed to create socket directory for %s: %w", path, err)
+	}
+
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to bind agent socket at %s: %w", path, err)
+	}
+
+	if err := os.Chmod(path, 0600); err != nil {
+		ln.Close()
+		return nil, "", fmt.Errorf("failed to set socket permissions at %s: %w", path, err)
+	}
+
+	return ln, path, nil
 }
 
 // GetServerAddr returns the network and address for connecting to the server.
@@ -72,64 +103,34 @@ type TerminalSignaler interface {
 	SignalSessionReady(sessionID string) error
 }
 
-// NewServer creates a new socket server
-func NewServer(pool *db.Pool, clk clock.Clock) *Server {
+// NewServerWithListener creates a socket server with a pre-bound listener from BindListener.
+func NewServerWithListener(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler, listener net.Listener, socketPath string) *Server {
 	return &Server{
 		pool:       pool,
-		socketPath: GetSocketPath(),
-		shutdown:   make(chan struct{}),
-		handler:    NewHandler(pool, nil, clk, nil),
-	}
-}
-
-// NewServerWithHub creates a new socket server with WebSocket hub
-func NewServerWithHub(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler) *Server {
-	return &Server{
-		pool:       pool,
-		socketPath: GetSocketPath(),
+		socketPath: socketPath,
+		listener:   listener,
 		shutdown:   make(chan struct{}),
 		handler:    NewHandler(pool, hub, clk, signaler),
 		wsHub:      hub,
 	}
 }
 
-// Start starts the socket server
+// Start starts the socket server accept loop. The listener must be pre-bound via BindListener.
 func (s *Server) Start() error {
 	s.mu.Lock()
 	if s.running {
 		s.mu.Unlock()
 		return fmt.Errorf("server already running")
 	}
+	if s.listener == nil {
+		s.mu.Unlock()
+		return fmt.Errorf("socket server has no listener: use NewServerWithListener")
+	}
 	s.running = true
 	s.mu.Unlock()
 
-	// Ensure socket directory exists
-	dir := filepath.Dir(s.socketPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create socket directory: %w", err)
-	}
-
-	// Remove existing socket file
-	if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove existing socket: %w", err)
-	}
-
-	// Create Unix socket listener
-	listener, err := net.Listen("unix", s.socketPath)
-	if err != nil {
-		return fmt.Errorf("failed to create socket listener: %w", err)
-	}
-	s.listener = listener
-
-	// Set socket permissions (owner only)
-	if err := os.Chmod(s.socketPath, 0600); err != nil {
-		s.listener.Close()
-		return fmt.Errorf("failed to set socket permissions: %w", err)
-	}
-
 	logger.Info(context.Background(), "socket server listening", "path", s.socketPath)
 
-	// Accept connections
 	go s.acceptLoop(s.listener)
 
 	return nil

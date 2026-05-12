@@ -274,7 +274,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 `nrflo_server serve` provides:
 - **HTTP API** on `127.0.0.1:6587` by default — web UI, REST API, WebSocket. Use `--host 0.0.0.0` for LAN access
-- **Unix socket** at `/tmp/nrflo/nrflo.sock` — agent communication only (findings, agent completion, ws.broadcast)
+- **Unix socket** at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`) — agent communication only (findings, agent completion, ws.broadcast); eagerly bound at startup before HTTP listener
 - **Auto-migration** — database schema is automatically migrated on startup
 
 ### Serve Flags

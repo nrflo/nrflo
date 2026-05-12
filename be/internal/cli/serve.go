@@ -127,12 +127,21 @@ func setupServer() (*serverComponents, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database pool: %w", err)
 	}
+	logger.Info(context.Background(), "db ready", "path", resolvedDataPath)
+
+	sockListener, sockPath, err := socket.BindListener()
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to bind agent socket: %w", err)
+	}
+	logger.Info(context.Background(), "socket ready", "path", sockPath)
 
 	httpServer := api.NewServer(cfg, resolvedDataPath, logsDir, pool, apiMode, insecureCookies)
 
 	clk := clock.Real()
-	socketServer := socket.NewServerWithHub(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator())
+	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath)
 	if err := socketServer.Start(); err != nil {
+		sockListener.Close()
 		pool.Close()
 		return nil, fmt.Errorf("failed to start socket server: %w", err)
 	}

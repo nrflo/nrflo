@@ -70,8 +70,15 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	go hub.Run()
 
 	// 6. Socket server
-	srv := socket.NewServerWithHub(pool, hub, clk, nil)
+	sockListener, sockPath, err := socket.BindListener()
+	if err != nil {
+		pool.Close()
+		hub.Stop()
+		t.Fatalf("failed to bind socket: %v", err)
+	}
+	srv := socket.NewServerWithListener(pool, hub, clk, nil, sockListener, sockPath)
 	if err := srv.Start(); err != nil {
+		sockListener.Close()
 		pool.Close()
 		hub.Stop()
 		t.Fatalf("failed to start server: %v", err)

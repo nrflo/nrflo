@@ -269,43 +269,7 @@ Claude tracks this uniformly across cli + cli_interactive; codex only does cli_i
 
 ---
 
-## 6. Bind the agent IPC socket eagerly at server startup (parity with DB open)
-
-### Motivation
-Today, the SQLite DB is opened, pinged, and migrated as part of `serve` boot before HTTP/WS listeners come up — the DB handle is a hard prerequisite and lives for the server's lifetime. The Unix socket used for spawned-agent IPC (`agent fail/finished/callback`, `findings *`, `skip`, `script.context`, etc.) is not on equal footing: it's brought up later / lazily, which means the server can be "running" without the agent IPC plane being usable. The first agent spawn discovers the problem instead of the operator at boot.
-
-The ask is not "add a healthcheck" — it's **make the socket a required, eagerly-bound startup resource**, same shape as the DB:
-- Open it during `serve` init, before HTTP/WS bind.
-- If it can't be bound, the server doesn't start. No fallback, no "we'll try later."
-- It lives for the lifetime of the process and is cleaned up on graceful shutdown.
-
-This eliminates the entire class of "server is up but agents can't talk to it" failures.
-
-### Design
-
-In the `serve` boot sequence, treat the socket like the DB:
-
-1. Resolve the socket path the runtime uses (confirm in `be/internal/socket/` — likely `$NRFLO_HOME/agent.sock`).
-2. `net.Listen("unix", path)` *before* HTTP bind. If a stale socket file exists (no listener attached), unlink and re-bind. If the path is a regular file/dir or the parent dir is unwritable, fail boot with the resolved path in the error — same shape as a DB-open failure.
-3. Hand the listener directly to the socket server (the same struct that today accepts/serves on the socket). No second `Listen` call, no lazy creation path remaining.
-4. Delete any code paths that create the socket lazily on first use — eager bind is the only path. Lazy creation is exactly the surface this entry is removing.
-5. Register a graceful-shutdown step that closes the listener and unlinks the socket file so the next boot starts from a clean state.
-6. Log a single INFO `socket ready path=...` line, parallel to the DB-ready line, so boot logs show both resources came up.
-
-### Surface area
-- `be/internal/socket/` — promote the listener to a constructor-time argument; remove any deferred-bind branches.
-- `be/internal/cli/serve*.go` — bind the socket immediately after DB init, before HTTP listener bind. Wire shutdown cleanup.
-- Boot log line + error messages.
-
-### Open questions
-- Stale-socket policy: silently unlink the leftover file, or require an explicit override flag? Silently unlinking is friendlier, but masks two-server races on the same `NRFLO_HOME`. A pidfile next to the socket would make this safer; defer until we actually see the race.
-- Two servers sharing `NRFLO_HOME` (intentional or accidental): with eager bind, the second one fails fast with `address already in use` — which is the correct behavior, not a regression. Document it.
-- Windows: project is darwin/linux today; out of scope. If/when Windows support comes up, decide between named pipes and TCP loopback then.
-- Does anything in test code rely on the lazy-create behavior (e.g., tests that spin up a partial server without the socket)? Audit and migrate those to the eager-bind path before removing the lazy branch.
-
----
-
-## 7. ACP execution mode — uniform adapter for ~14 extra providers
+## 6. ACP execution mode — uniform adapter for ~14 extra providers
 
 ### Motivation
 Today nrflo ships a hand-written `CLIAdapter` per vendor (Claude, Codex, OpenCode). Adding a new provider (Gemini, Copilot, Cursor, Qwen, Amp, Auggie, Droid, Kimi, Kiro, Qoder, Trae, iFlow, Pi, Kilocode) means a new adapter file, new prompt-delivery quirks, new stdout parser. The cost per vendor is real and the long tail is large.

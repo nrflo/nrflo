@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"syscall"
 	"time"
@@ -152,6 +153,9 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 		sessionRepo.UpdateRestartCount(newProc.sessionID, newProc.restartCount)
 	}
 
+	// Copy findings from old session so relaunched agents do not lose keys other than to_resume.
+	s.copyFindingsForContinuation(ctx, oldProc.sessionID, newProc.sessionID)
+
 	// Broadcast continuation event
 	s.broadcast(ws.EventAgentContinued, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"old_session_id":     oldProc.sessionID,
@@ -201,6 +205,52 @@ func (s *Spawner) getAgentResultReason(proc *processInfo) string {
 		return session.ResultReason.String
 	}
 	return ""
+}
+
+// copyFindingsForContinuation merges findings from oldSessionID into newSessionID non-destructively
+// (new-session keys win on conflict). Covers both low-context and fail-restart relaunches.
+// All errors are logged as warnings so they never block the relaunch.
+func (s *Spawner) copyFindingsForContinuation(ctx context.Context, oldSessionID, newSessionID string) {
+	pool := s.pool()
+	if pool == nil {
+		return
+	}
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+
+	oldSession, err := sessionRepo.Get(oldSessionID)
+	if err != nil {
+		logger.Warn(ctx, "findings carryover: failed to load old session", "old_session_id", oldSessionID, "err", err)
+		return
+	}
+
+	oldMap := oldSession.GetFindings()
+	if len(oldMap) == 0 {
+		return
+	}
+
+	newSession, err := sessionRepo.Get(newSessionID)
+	if err != nil {
+		logger.Warn(ctx, "findings carryover: failed to load new session", "new_session_id", newSessionID, "err", err)
+		return
+	}
+
+	newMap := newSession.GetFindings()
+
+	for k, v := range oldMap {
+		if _, exists := newMap[k]; !exists {
+			newMap[k] = v
+		}
+	}
+
+	jsonBytes, err := json.Marshal(newMap)
+	if err != nil {
+		logger.Warn(ctx, "findings carryover: failed to marshal merged findings", "new_session_id", newSessionID, "err", err)
+		return
+	}
+
+	if err := sessionRepo.UpdateFindings(newSessionID, string(jsonBytes)); err != nil {
+		logger.Warn(ctx, "findings carryover: failed to persist merged findings", "new_session_id", newSessionID, "err", err)
+	}
 }
 
 // maybeFlushMessages flushes messages to DB if interval elapsed

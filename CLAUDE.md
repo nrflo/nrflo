@@ -121,6 +121,7 @@ Rules every change must respect.
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Notification channels** → [be/CLAUDE.md](be/CLAUDE.md)
 - **Claude usage limits** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
+- **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
 - **Versioned config-file editor** → [configeditor/CLAUDE.md](be/internal/configeditor/CLAUDE.md)
 
@@ -135,10 +136,6 @@ See `be/cmd/server/main.go` for subcommands.
 | `hotfix` | L0: implementor | Urgent fixes |
 | `docs` | L0: setup-analyzer -> L1: doc-updater | Documentation only |
 | `refactor` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Code refactoring |
-
-## State Storage
-
-Workflow runtime state lives in `workflow_instances` (per-run) and `agent_sessions` (per-agent execution). Phases are derived at read time from agent_sessions + agent_definitions.layer. See [be/internal/db/CLAUDE.md](be/internal/db/CLAUDE.md).
 
 ## API Response Format
 

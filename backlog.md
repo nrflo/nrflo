@@ -327,114 +327,11 @@ then no hook event ever fires, so the spawner has zero
 visibility into the model's tool calls or text output. Workflow
 runtime is unaffected; only telemetry/observability is lost.
 
-#### Workaround until upstream ships a fix
+#### Workaround
 
-Downgrade codex on the host running `nrflo_server`:
+`cli_adapter_codex_jsonl_tail.go` tails codex's rollout JSONL file and emits `agent_messages` rows from `function_call` / `function_call_output` / `agent_message` records, bypassing the broken hook path. Delete the tailer and re-enable hooks once upstream ships a fix.
 
-```
-brew install codex@0.128 # or equivalent
-```
-
-**Workaround live at:** `be/internal/spawner/backend_interactive_tui_capture.go` — raw PTY bytes are captured, ANSI-stripped, line-buffered, and emitted as `agent_messages` rows when `(*CodexAdapter).CapturesTUIBytes()` returns `true`. Flip that method to `false` once upstream ships a fix, then after one release delete the file + the `tuiLineBuf` field + the `captureTUI` ferryPTYOutput param + the `CapturesTUIBytes` CLIAdapter method.
-
-#### `effective_mode='cli_interactive'` selection — single code path
-
-While diagnosing this we verified the selection mechanism. Recorded
-here so the next investigation doesn't re-litigate it.
-
-There is exactly one branch in `be/internal/spawner/spawner.go:1274`:
-
-```go
-if s.config.InteractiveCLIMode && prep.adapter != nil && prep.adapter.SupportsInteractive() {
-    backend = newCLIInteractiveBackend(...); effectiveMode = "cli_interactive"
-}
-```
-
-Gates: (a) `executionMode != "script"/"api"`, (b)
-`s.config.InteractiveCLIMode == true` — read once at workflow start
-from `project_config["interactive_cli_mode"]` (orchestrator.go:351,
-single write site `handlers_projects.go:244`), (c)
-`adapter.SupportsInteractive()` — true for claude/codex/opencode. No
-per-agent-def override; no per-run override. The per-run
-`interactive=true` body flag triggers a separate `user_interactive`
-pre-step (`orchestrator.go:416`), orthogonal to `effective_mode`
-selection.
-
-_Superseded by per-agent execution_mode=cli_interactive (migration 000101)._
-
-`agent_sessions.effective_mode` is written at spawn time
-(`repo/agent_session.go:146`) and frozen — toggling
-`interactive_cli_mode` off after a successful run does NOT rewrite
-historical session rows. (We chased a phantom "third trigger" earlier
-because a working UI session had `effective_mode='cli_interactive'`
-while the project config currently showed empty; that was just config
-drift, not a hidden code path.)
-
-_Superseded by per-agent execution_mode=cli_interactive (migration 000101)._
-
-#### Empirical hook-firing test results (2026-05-12, codex 0.130.0)
-
-Isolated Python PTY harness — `pty.fork`, winsize 24×80, DSR/DA/kitty/
-OSC terminal-query auto-replies (matching nrflo's
-`ferryPTYOutput(respondToQueries=true)`):
-
-| Hook declaration | PTY bytes | Hooks fired (of 5) |
-|---|---|---|
-| Inline `-c hooks.X=[…]`, bare PTY (no responder) | 84 | 0 |
-| Inline `-c hooks.X=[…]`, full responder + winsize | 1119 | 0 |
-| `[[hooks.X]]` array-of-tables in `CODEX_HOME/config.toml`, `[features] hooks=true` | 1119 | 0 |
-| `[[hooks.X]]` blocks, `[features] codex_hooks=true` (docs canonical) | 1119 | 0 |
-| `hooks.X = […]` inline-assignment in `config.toml`, `[features] hooks=true` | 397 | 0 |
-
-The responder more than doubles byte volume → PTY plumbing itself is
-fine. No declaration mechanism causes a single hook event to fire,
-including `SessionStart` (which should fire immediately on TUI init).
-
-Stale-but-non-causal: `codex features list` reports the feature is
-now named `hooks` (default true), but official docs at
-https://developers.openai.com/codex/hooks still document `codex_hooks`
-as the required key. We keep `codex_hooks` in
-`cli_adapter_codex_hooks.go` to match docs. The feature toggle is
-irrelevant on 0.129+ because the underlying regression nukes hook
-delivery regardless.
-
-#### When upstream ships the fix
-
-Re-run `/tmp/codex_pty_full.py` (kept locally, not checked in)
-against the patched codex. If it shows non-zero hooks fired, two
-follow-ups become worthwhile (independent of the upstream fix):
-
-1. Move hook declaration from inline `-c hooks.X=…` flags
-   (undocumented, brittle) into `[[hooks.X]]` blocks in the per-session
-   `config.toml` written by `writeCodexProfileForSession`. Drop the
-   `-c` flags from `BuildInteractiveCommand`. This matches the
-   documented schema and survives future upstream changes better.
-2. Decide whether to drop the `[features] codex_hooks = true` block
-   entirely if/when codex officially makes hooks default-on. Right
-   now it's harmless either way.
-
-Until then, no nrflo-side code change reproduces the original problem
-or fixes it.
-
-#### Reproduction (for verification once upstream fix lands)
-
-```
-make build
-python3 manual_testing/test_codex.py --mode=cli-interactive --parallel=1 --only=s01
-```
-
-Inspect `~/.nrflo/nrflo.data`:
-
-```sql
-SELECT COUNT(*) FROM agent_messages
-WHERE session_id IN (
-  SELECT id FROM agent_sessions
-  WHERE model_id LIKE 'codex%' AND effective_mode='cli_interactive'
-  ORDER BY started_at DESC LIMIT 1
-);
-```
-
-Bug present → count = 0. Bug fixed → count > 0.
+When upstream fixes hooks, also consider moving hook declaration from inline `-c hooks.X=…` flags into `[[hooks.X]]` blocks in the per-session `config.toml` written by `writeCodexProfileForSession` (documented schema, more robust than the undocumented `-c` form).
 
 ### Opencode `cli_interactive` not supported on opencode 1.14.48
 
@@ -447,38 +344,9 @@ opencode should use `execution_mode=cli` (batch) — fully functional,
 Re-enabling requires confirming opencode publishes chat events via
 an observable channel (see "What to verify before re-enabling" below).
 
-#### Why disabled — investigation 2026-05-13
+#### Why disabled
 
-Opencode 1.14.48 doesn't surface interactive chat activity through
-any channel we can reach from outside the TUI process:
-
-- **`/event` SSE bus** — only emits `{"type":"server.connected"}` on
-  connect, then no more events. Same when filtered by `?directory=…`,
-  same with no filter. Same on `/global/event`.
-- **`/api/session/{id}/message`** — discovery via `/api/session` finds
-  the right session (its `time.created` matches our spawn), but the
-  messages endpoint returns 0 items even mid-chat. Storage on disk
-  (`~/.local/share/opencode/storage/message/<sid>/`) is never written
-  for `--port`-launched TUI sessions.
-- **`POST /api/session/{id}/prompt`** — returns 400 BadRequest despite
-  matching the published OpenAPI schema.
-
-The workflow still PASSes (the model invokes `nrflo agent finished`
-via Bash → our socket), but the spawner records 0 `agent_messages`
-rows for the entire run — no tool-category visibility, no text
-capture, no context_left, no take-control viewport content. Stall
-detection only sees PTY redraw bytes if `BumpsOnPTYBytes=true`, which
-makes redraws spam the heartbeat (s16 unreachable). Net: cli_interactive
-provides zero observability over batch and breaks several scenarios.
-
-`cli_adapter_opencode.go` keeps no-op stubs for the interactive
-methods (`BuildInteractiveCommand`, `PrepareInteractive`,
-`DeliversPromptInline`, `NeedsTerminalQueryReplies`, `BumpsOnPTYBytes`)
-so the CLIAdapter interface contract is satisfied; they're never
-reached because `SupportsInteractive()=false` short-circuits in
-`startBackend`. The deleted SSE consumer (`cli_adapter_opencode_events.go`)
-and the message-poll fallback (`cli_adapter_opencode_poll.go`) are
-both gone — neither could produce data against this opencode version.
+Opencode 1.14.48 doesn't surface interactive chat activity through any channel we can reach from outside the TUI process: `/event` SSE emits only `server.connected`; `/api/session/{id}/message` returns 0 items mid-chat; `POST /api/session/{id}/prompt` returns 400. The workflow still PASSes (the model calls `nrflo agent finished` via Bash → our socket) but the spawner records 0 `agent_messages` rows — no tool visibility, no context_left, no take-control viewport. Net: cli_interactive provides zero observability over batch.
 
 #### What to verify before re-enabling
 
@@ -537,18 +405,7 @@ in place — its shared handler interface is the integration point.
 make build
 python3 manual_testing/test_claude.py --mode=cli-interactive --parallel=5
 ```
-Full Claude suite, claude/cli-interactive, parallel=5: 1/25 stalled
-in `s10_parallel_agents`. Re-run of just s10 with `--parallel=1`:
-passes. So the bug is sensitive to **total PTY sessions alive on the
-server simultaneously**, not to s10's two-PTY layer specifically.
-2026-05-12, claude CLI version current at time, haiku model.
-
-First surfaced after `manual_testing/lib/runner.py` was fixed to set
-`client.default_execution_mode = "cli_interactive"` (the previous
-project-level `interactive_cli_mode` toggle had been silently no-op'd
-by migration 000101 / commits 6849af7, a3305e3, 53c9e84, so
-cli-interactive scenarios had been running through plain `cli` for
-months). The harness fix exposed the latent backend issue.
+The bug is sensitive to **total PTY sessions alive on the server simultaneously**, not within-workflow concurrency — re-running the failed scenario alone passes cleanly.
 
 #### Suspect surface area
 - `be/internal/pty/manager.go` — concurrent `Create` calls under

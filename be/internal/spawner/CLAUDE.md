@@ -68,10 +68,10 @@ Opencode batch-mode tool/text decoding lives in `opencode_dispatch.go` (`dispatc
 
 Two paths, selected by `shouldUseAgentSave(proc)` in `context_save.go`:
 
-- **Resume-based** (`context_save_resume.go`): resumes the same Claude session with a save prompt. Requires `adapter.SupportsResume() == true` (Claude only).
-- **System agent** (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for all other CLIs, api-mode, and when `Config.ContextSaveViaAgent == true`.
+- **Resume-based** (`context_save_resume.go`): resumes the same session with a save prompt. Requires `adapter.SupportsResume() == true` (Claude + Codex). Falls back to the agent path on any failure (missing external session ID, start error, non-zero exit, timeout, missing `to_resume` findings).
+- **System agent** (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for opencode, api-mode, and when `Config.ContextSaveViaAgent == true`.
 
-Default: claude → resume; codex/opencode/api → agent. Script-mode agents are exempt (`TracksContext()=false`).
+Default: claude + codex → resume (with agent-path fallback); opencode/api → agent. Script-mode agents are exempt (`TracksContext()=false`).
 
 ## Low-Context Relaunch
 

@@ -11,48 +11,63 @@ import (
 
 const resumeSaveTimeout = 3 * time.Minute
 
+// sessionIDForResume returns the session ID to pass to BuildResumeCommand.
+// Uses proc.sessionID when the adapter tracks custom session IDs (Claude),
+// and proc.externalSessionID (codex-assigned thread_id) otherwise.
+func sessionIDForResume(adapter CLIAdapter, proc *processInfo) string {
+	if adapter.SupportsSessionID() {
+		return proc.sessionID
+	}
+	return proc.externalSessionID
+}
+
 // contextSaveViaResume handles the resume-based context save flow.
-// Resumes the same Claude session with a save prompt so the agent writes its own
-// to_resume findings. Only works for Claude CLI (SupportsResume); other CLIs skip
-// context save and relaunch without previous data.
+// Resumes the same session with a save prompt so the agent writes its own
+// to_resume findings. Falls back to contextSaveViaAgent on any failure.
 //
 // Called after kill+flush in initiateContextSave when ContextSaveViaAgent is false.
 func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, req SpawnRequest) {
 	cliName, model := parseModelID(proc.modelID)
 	adapter, err := GetCLIAdapter(cliName)
 	if err != nil || !adapter.SupportsResume() {
-		logger.Warn(ctx, "CLI does not support resume, relaunching without save", "cli", cliName, "session_id", proc.sessionID)
-		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
-		proc.finalStatus = "CONTINUE"
+		logger.Warn(ctx, "CLI does not support resume, falling back to agent save", "cli", cliName, "session_id", proc.sessionID)
+		s.contextSaveViaAgent(ctx, proc, req)
+		return
+	}
+
+	resumeSessionID := sessionIDForResume(adapter, proc)
+	if resumeSessionID == "" {
+		logger.Warn(ctx, "no resume session ID available, falling back to agent save", "cli", cliName, "session_id", proc.sessionID)
+		s.contextSaveViaAgent(ctx, proc, req)
 		return
 	}
 
 	savePrompt := buildSavePrompt()
 	logger.Info(ctx, "context save prompt", "prompt", savePrompt, "session_id", proc.sessionID)
 
-	var reasoningEffort string
+	var reasoningEffort, mappedModel string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
 		reasoningEffort = cfg.ReasoningEffort
+		mappedModel = cfg.MappedModel
 	}
 
 	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
-		SessionID:       proc.sessionID,
+		SessionID:       resumeSessionID,
 		Prompt:          savePrompt,
 		WorkDir:         s.config.ProjectRoot,
 		Env:             proc.env,
 		SettingsJSON:    s.config.ClaudeSettingsJSON,
 		ReasoningEffort: reasoningEffort,
+		Model:           model,
+		MappedModel:     mappedModel,
 	})
 
 	resumeCmd.Stdin = strings.NewReader(savePrompt)
 
 	stdout, err := resumeCmd.StdoutPipe()
 	if err != nil {
-		logger.Error(ctx, "context save failed to create stdout pipe", "err", err, "session_id", proc.sessionID)
-		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
-		proc.finalStatus = "CONTINUE"
+		logger.Error(ctx, "context save failed to create stdout pipe, falling back to agent save", "err", err, "session_id", proc.sessionID)
+		s.contextSaveViaAgent(ctx, proc, req)
 		return
 	}
 	stderr, stderrErr := resumeCmd.StderrPipe()
@@ -61,10 +76,8 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 	}
 
 	if err := resumeCmd.Start(); err != nil {
-		logger.Error(ctx, "context save failed to start resume", "err", err, "session_id", proc.sessionID)
-		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-			proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
-		proc.finalStatus = "CONTINUE"
+		logger.Error(ctx, "context save failed to start resume, falling back to agent save", "err", err, "session_id", proc.sessionID)
+		s.contextSaveViaAgent(ctx, proc, req)
 		return
 	}
 	logger.Info(ctx, "context save resume started", "pid", resumeCmd.Process.Pid, "cmd", resumeCmd.Args, "session_id", proc.sessionID)
@@ -100,30 +113,33 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 	}()
 
 	startTime := time.Now()
-	resumeSucceeded := false
 	select {
 	case <-resumeDone:
 		exitCode := 0
 		if resumeCmd.ProcessState != nil {
 			exitCode = resumeCmd.ProcessState.ExitCode()
 		}
-		resumeSucceeded = exitCode == 0
-		if !resumeSucceeded {
-			logger.Error(ctx, "context save resume exited with error", "exit_code", exitCode, "duration", time.Since(startTime).Round(time.Millisecond), "session_id", proc.sessionID)
-		} else {
-			logger.Info(ctx, "context save completed", "exit_code", exitCode, "duration", time.Since(startTime).Round(time.Millisecond), "session_id", proc.sessionID)
+		if exitCode != 0 {
+			logger.Error(ctx, "context save resume exited with error, falling back to agent save", "exit_code", exitCode, "duration", time.Since(startTime).Round(time.Millisecond), "session_id", proc.sessionID)
+			s.contextSaveViaAgent(ctx, proc, req)
+			return
 		}
+		logger.Info(ctx, "context save completed", "exit_code", exitCode, "duration", time.Since(startTime).Round(time.Millisecond), "session_id", proc.sessionID)
 	case <-time.After(resumeSaveTimeout):
-		logger.Error(ctx, "context save timed out", "timeout", resumeSaveTimeout, "session_id", proc.sessionID)
+		logger.Error(ctx, "context save timed out, falling back to agent save", "timeout", resumeSaveTimeout, "session_id", proc.sessionID)
 		if resumeCmd.Process != nil {
 			resumeCmd.Process.Kill()
 		}
 		<-resumeDone
+		s.contextSaveViaAgent(ctx, proc, req)
+		return
 	}
 
 	findingsSaved := s.checkToResumeFindings(ctx, proc)
-	if resumeSucceeded && !findingsSaved {
-		logger.Warn(ctx, "resume succeeded but to_resume findings not saved, previous data will be empty on relaunch", "session_id", proc.sessionID)
+	if !findingsSaved {
+		logger.Warn(ctx, "resume succeeded but to_resume findings not saved, falling back to agent save", "session_id", proc.sessionID)
+		s.contextSaveViaAgent(ctx, proc, req)
+		return
 	}
 
 	s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,

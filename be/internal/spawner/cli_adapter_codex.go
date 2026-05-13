@@ -80,7 +80,7 @@ func (a *CodexAdapter) SupportsSystemPromptFile() bool {
 }
 
 func (a *CodexAdapter) SupportsResume() bool {
-	return false
+	return true
 }
 
 func (a *CodexAdapter) UsesStdinPrompt() bool {
@@ -261,6 +261,28 @@ func (a *CodexAdapter) PostStart(ctx context.Context, opts PostStartOptions) (fu
 	return func() { cancel() }, nil
 }
 
-func (a *CodexAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
-	return nil
+func (a *CodexAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
+	model := opts.MappedModel
+	if model == "" {
+		model = a.MapModel(opts.Model)
+	}
+	reasoningEffort := opts.ReasoningEffort
+	if reasoningEffort == "" {
+		reasoningEffort = a.GetReasoningEffort(opts.Model)
+	}
+
+	args := []string{
+		"exec", "resume", opts.SessionID,
+		"--json",
+		"--model", model,
+		"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", reasoningEffort),
+		"-c", "check_for_update_on_startup=false",
+		"--dangerously-bypass-approvals-and-sandbox",
+	}
+
+	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
+	cmd := exec.Command("codex", args...)
+	cmd.Dir = opts.WorkDir
+	cmd.Env = opts.Env
+	return cmd
 }

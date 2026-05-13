@@ -428,19 +428,17 @@ func TestShouldUseAgentSave_APIBackendForcesAgent(t *testing.T) {
 	}
 }
 
-// TestShouldUseAgentSave_CodexForcesAgent is the regression test for the
-// codex-interactive low-context fix: codex's adapter returns SupportsResume()=
-// false, so the resume path would silently skip the save and relaunch with
-// empty PREVIOUS_DATA. shouldUseAgentSave must route around that.
-func TestShouldUseAgentSave_CodexForcesAgent(t *testing.T) {
+// TestShouldUseAgentSave_CodexUsesResume verifies that codex routes through the
+// resume path (SupportsResume=true) rather than the agent-save path.
+func TestShouldUseAgentSave_CodexUsesResume(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "codex:gpt-5.3-codex",
 		backend: fakeBackend{name: "cli_interactive"},
 	}
-	if !s.shouldUseAgentSave(proc) {
-		t.Error("codex must force agent save (SupportsResume=false would otherwise short-circuit)")
+	if s.shouldUseAgentSave(proc) {
+		t.Error("codex must use resume path (SupportsResume=true), not agent save")
 	}
 }
 

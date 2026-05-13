@@ -27,7 +27,7 @@ func TestCLIBackend_SupportsResume_MirrorsAdapter(t *testing.T) {
 	}{
 		{name: "claude", adapter: &ClaudeAdapter{}, want: true},
 		{name: "opencode", adapter: &OpencodeAdapter{}, want: false},
-		{name: "codex", adapter: &CodexAdapter{}, want: false},
+		{name: "codex", adapter: &CodexAdapter{}, want: true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -168,8 +168,10 @@ type ResumeOptions struct {
 	WorkDir          string
 	Env              []string
 	SettingsJSON     string // Claude --settings JSON (ignored by non-Claude adapters)
-	ReasoningEffort  string // Claude --effort level (ignored by non-Claude adapters)
+	ReasoningEffort  string // Claude --effort level; codex uses it for model_reasoning_effort
 	SystemPromptFile string // Path to system prompt suffix file (--append-system-prompt-file)
+	Model            string // Raw model alias; codex-only (Claude ignores)
+	MappedModel      string // Resolved CLI model arg; codex-only (Claude ignores)
 }
 
 // SpawnOptions contains parameters for building a spawn command

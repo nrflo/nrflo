@@ -75,6 +75,12 @@ func TestStartBackend_SelectorMatrix(t *testing.T) {
 			adapter:         &ClaudeAdapter{},
 			wantBackendName: "cli",
 		},
+		{
+			name:            "cli_interactive + opencode → cliInteractiveBackend",
+			executionMode:   "cli_interactive",
+			adapter:         &OpencodeAdapter{},
+			wantBackendName: "cli_interactive",
+		},
 	}
 
 	for _, tc := range cases {

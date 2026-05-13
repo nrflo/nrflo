@@ -333,48 +333,6 @@ runtime is unaffected; only telemetry/observability is lost.
 
 When upstream fixes hooks, also consider moving hook declaration from inline `-c hooks.X=…` flags into `[[hooks.X]]` blocks in the per-session `config.toml` written by `writeCodexProfileForSession` (documented schema, more robust than the undocumented `-c` form).
 
-### Opencode `cli_interactive` not supported on opencode 1.14.48
-
-**Status:** disabled in spawner. `OpencodeAdapter.SupportsInteractive()`
-returns false; `startBackend` errors out when an opencode agent is
-configured with `execution_mode=cli_interactive`. Workflows wanting
-opencode should use `execution_mode=cli` (batch) — fully functional,
-~85s wall on the full harness, 25/26 PASS.
-
-Re-enabling requires confirming opencode publishes chat events via
-an observable channel (see "What to verify before re-enabling" below).
-
-#### Why disabled
-
-Opencode 1.14.48 doesn't surface interactive chat activity through any channel we can reach from outside the TUI process: `/event` SSE emits only `server.connected`; `/api/session/{id}/message` returns 0 items mid-chat; `POST /api/session/{id}/prompt` returns 400. The workflow still PASSes (the model calls `nrflo agent finished` via Bash → our socket) but the spawner records 0 `agent_messages` rows — no tool visibility, no take-control viewport.
-
-Note: the opencode SQLite DB (`$XDG_DATA_HOME/opencode/opencode.db`) IS populated during both batch and TUI runs with `tokens.{input,output,reasoning,cache.read}` per message. The batch SQLite tail (`cli_adapter_opencode_sqlite_tail.go`) already reads this for context tracking in `cli` mode. When `cli_interactive` is re-enabled, the same tail will provide `context_left` updates — no additional work needed for context tracking.
-
-#### What to verify before re-enabling
-
-1. `curl -sN http://localhost:PORT/event` against a live `opencode --port N`
-   TUI: does the SSE stream emit any event beyond `server.connected`
-   after the user types a prompt? If yes, re-introduce the SSE consumer
-   (the pre-deletion code in git is correct against an opencode that
-   emits messages).
-2. `curl http://localhost:PORT/api/session/{id}/message` while the same
-   TUI is mid-chat: does `items` populate? If yes, re-introduce the
-   poll module (the pre-deletion code in git correctly diff-state-tracks
-   text+tool content[]).
-3. If neither (1) nor (2) populates, look for opencode flags like
-   `--api-mode`, `--headless`, or env vars (`OPENCODE_ENABLE_API`,
-   etc.) — the TUI may have an opt-in that wires up the API surface
-   that's documented but inert by default.
-
-Once any path works end-to-end, flip `SupportsInteractive()` back to
-`true` and restore the consumer module. Keep `opencode_dispatch.go`
-in place — its shared handler interface is the integration point.
-
-#### Out of scope
-- opencode batch (`opencode run --format json`) is fully working; full
-  harness 25/26 PASS at ~85s, 4× parallel speedup. Don't touch.
-- Take-control viewport for opencode goes away with this. It wasn't
-  useful when the agent activity was invisible anyway.
 
 ### Claude `cli_interactive` high PTY concurrency — sessions go dormant after prompt delivery
 

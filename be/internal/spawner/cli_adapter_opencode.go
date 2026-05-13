@@ -3,7 +3,9 @@ package spawner
 import (
 	"context"
 	"fmt"
+	"net"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -97,20 +99,14 @@ func (a *OpencodeAdapter) UsesStdinPrompt() bool {
 	return false // opencode reads message from positional args
 }
 
-// SupportsInteractive returns false. opencode 1.14.48's TUI does not surface
-// chat activity through any observable channel (SSE, REST, PTY hooks). The
-// SQLite DB IS populated during batch runs (see PostStart / startOpencodeSQLiteTail)
-// but cli_interactive support requires a separate follow-up ticket.
-// Workflows requesting `execution_mode=cli_interactive` on an opencode agent
-// fail at startBackend with a clear error — fall back to cli batch instead.
-// See backlog.md for the full investigation.
-func (a *OpencodeAdapter) SupportsInteractive() bool { return false }
+// SupportsInteractive returns true. Interactive runs launch the opencode TUI
+// against a free localhost port; agent activity is observed via the SQLite
+// tailer started by PostStart.
+func (a *OpencodeAdapter) SupportsInteractive() bool { return true }
 
 // PostStart launches the opencode SQLite DB tailer goroutine for context
-// tracking. Called by cliBackend.Start (cli batch mode) and
-// cliInteractiveBackend.Start (cli_interactive, currently guarded by
-// SupportsInteractive()=false — wired now so the follow-up ticket only needs
-// to flip SupportsInteractive without touching this layer).
+// tracking. Called by both cliBackend.Start (cli batch) and
+// cliInteractiveBackend.Start (cli_interactive).
 func (a *OpencodeAdapter) PostStart(ctx context.Context, opts PostStartOptions) (func(), error) {
 	if opts.WorkDir == "" {
 		return func() {}, fmt.Errorf("opencode PostStart: empty WorkDir")
@@ -119,25 +115,51 @@ func (a *OpencodeAdapter) PostStart(ctx context.Context, opts PostStartOptions) 
 	return func() { cancel() }, nil
 }
 
-// BuildInteractiveCommand is a no-op stub. SupportsInteractive()=false means
-// this method is never reached at runtime; it exists only to satisfy the
-// CLIAdapter interface contract.
-func (a *OpencodeAdapter) BuildInteractiveCommand(_ InteractiveSpawnOptions) *exec.Cmd {
-	return nil
+// BuildInteractiveCommand builds the PTY command for opencode TUI mode.
+// Invocation form: opencode <workdir> --port <port> --hostname 127.0.0.1 --model <model>
+// The port is pre-allocated by PrepareInteractive.
+func (a *OpencodeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
+	args := []string{
+		opts.WorkDir,
+		"--port", strconv.Itoa(opts.Port),
+		"--hostname", "127.0.0.1",
+		"--model", opts.Model,
+	}
+	if opts.ReasoningEffort != "" {
+		args = append(args, "--variant", opts.ReasoningEffort)
+	}
+	cmd := exec.Command("opencode", args...)
+	cmd.Dir = opts.WorkDir
+	env := opts.Env
+	if !envHasKey(env, "TERM=") {
+		env = append(env, "TERM=xterm-256color")
+	}
+	cmd.Env = env
+	return cmd
 }
 
-// PrepareInteractive is a no-op stub. See BuildInteractiveCommand.
+// PrepareInteractive picks a free localhost port for the opencode TUI.
+// opencode owns the port lifecycle; cleanup is a no-op.
 func (a *OpencodeAdapter) PrepareInteractive(_ InteractivePrepOptions) (InteractiveExtras, func(), error) {
-	return InteractiveExtras{}, func() {}, nil
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return InteractiveExtras{}, func() {}, err
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+	return InteractiveExtras{Port: port}, func() {}, nil
 }
 
-// DeliversPromptInline is a no-op stub. See BuildInteractiveCommand.
+// DeliversPromptInline returns false: prompt is delivered via PTY stdin after
+// readiness.
 func (a *OpencodeAdapter) DeliversPromptInline() bool { return false }
 
-// NeedsTerminalQueryReplies is a no-op stub. See BuildInteractiveCommand.
+// NeedsTerminalQueryReplies returns false: the opencode TUI does not probe
+// terminal capabilities.
 func (a *OpencodeAdapter) NeedsTerminalQueryReplies() bool { return false }
 
-// BumpsOnPTYBytes is a no-op stub. See BuildInteractiveCommand.
+// BumpsOnPTYBytes returns false: context tracking flows through the SQLite
+// tailer and ferry heartbeat, not PTY bytes.
 func (a *OpencodeAdapter) BumpsOnPTYBytes() bool { return false }
 
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {

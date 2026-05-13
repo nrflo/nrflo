@@ -8,9 +8,8 @@ import (
 // TestAllAdapters_SupportsInteractive pins each adapter's interactive policy.
 // Claude opts in via --settings hooks; Codex via -c hook injection (with the
 // rollout JSONL tailer fallback for the openai/codex#21639 regression).
-// Opencode opts out — opencode 1.14.48 surfaces no chat events through any
-// observable channel, so PTY runs would silently drop tool/text messages.
-// See backlog.md "Opencode `cli_interactive` not supported".
+// Opencode interactive observability flows through the SQLite tailer (wired
+// via PostStart for both cli and cli_interactive).
 func TestAllAdapters_SupportsInteractive(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -19,7 +18,7 @@ func TestAllAdapters_SupportsInteractive(t *testing.T) {
 		want    bool
 	}{
 		{"claude", &ClaudeAdapter{}, true},
-		{"opencode", &OpencodeAdapter{}, false},
+		{"opencode", &OpencodeAdapter{}, true},
 		{"codex", &CodexAdapter{}, true},
 	}
 	for _, tc := range cases {

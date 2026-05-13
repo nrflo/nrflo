@@ -230,13 +230,17 @@ func (a *CodexAdapter) DeliversPromptInline() bool { return true }
 func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 
 // BumpsOnPTYBytes returns false — the rollout JSONL tailer (started in
-// PostInteractiveStart) calls Sink.BumpLastMessage on every real agent event
+// PostStart) calls Sink.BumpLastMessage on every real agent event
 // (agent_message, function_call, function_call_output, token_count). PTY-byte
 // bumps are no longer the heartbeat; stall detection is reachable for
 // codex/cli_interactive at parity with Claude.
 func (a *CodexAdapter) BumpsOnPTYBytes() bool { return false }
 
-// PostInteractiveStart launches the codex rollout JSONL tailer goroutine.
+// PostStart launches the codex rollout JSONL tailer goroutine. Called by both
+// cliBackend.Start (cli batch mode) and cliInteractiveBackend.Start
+// (cli_interactive mode) — the rollout JSONL signal is identical in both modes
+// (verified on codex 0.130.0).
+//
 // codex 0.130 has an upstream regression (openai/codex#21639) where hooks
 // never fire in TUI/PTY sessions, so we read agent activity straight from
 // codex's own rollout JSONL.
@@ -248,10 +252,10 @@ func (a *CodexAdapter) BumpsOnPTYBytes() bool { return false }
 // harness/agent run has a unique workdir.
 //
 // Returns a cleanup func that cancels the tailer goroutine (called by the
-// backend when the PTY session ends).
-func (a *CodexAdapter) PostInteractiveStart(ctx context.Context, opts PostInteractiveStartOptions) (func(), error) {
+// backend when the session ends).
+func (a *CodexAdapter) PostStart(ctx context.Context, opts PostStartOptions) (func(), error) {
 	if opts.WorkDir == "" {
-		return func() {}, fmt.Errorf("codex PostInteractiveStart: empty WorkDir")
+		return func() {}, fmt.Errorf("codex PostStart: empty WorkDir")
 	}
 	cancel := startCodexJSONLTail(ctx, opts.SessionID, opts.WorkDir, opts.Sink)
 	return func() { cancel() }, nil

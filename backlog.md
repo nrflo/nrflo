@@ -181,25 +181,6 @@ Semantics:
 
 ---
 
-## 4. Codex context-left tracking in `cli` (batch) mode
-
-### Motivation
-`cli_interactive` mode already tracks codex context-left and surfaces it in the UI / agent session row. In `cli` (batch) mode the same signal is missing — sessions show no remaining-context indicator, and the spawner can't make low-context relaunch decisions for codex batch runs the way it can for Claude.
-
-Claude tracks this uniformly across cli + cli_interactive; codex only does cli_interactive. Close the gap so batch codex runs surface the same telemetry and can participate in low-context relaunch.
-
-### Design
-- Locate where codex cli_interactive extracts context-left today (likely `be/internal/socket/handler_codex_context.go` and the codex JSONL event extractor).
-- Add the equivalent extractor on the batch `cli` output path in `be/internal/spawner/cli_adapter_codex.go` (or wherever codex stdout is parsed in batch mode).
-- Persist via the same `agent_sessions` context-usage columns Claude already writes.
-- Hook into low-context relaunch logic so codex/cli sessions become eligible (same threshold/policy as Claude).
-
-### Open questions
-- Does codex batch (`--json`?) emit the same `token_count` / context event that interactive does? Verify before designing — if batch output omits it, this is dead in the water and we should mark codex/cli as "no context telemetry" instead.
-- Should low-context relaunch be gated per-CLI or uniform once telemetry lands?
-
----
-
 ## 5. ACP execution mode — uniform adapter for ~14 extra providers
 
 ### Motivation

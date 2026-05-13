@@ -121,12 +121,12 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 	proc.pid = sess.Pid()
 
-	// Optional post-spawn setup (e.g., opencode SSE consumer).
+	// Optional post-spawn setup (e.g., opencode SSE consumer, codex JSONL tailer).
 	// Interface-asserted so adapters that don't need it are unaffected.
 	postCleanup := func() {}
-	if starter, ok := b.adapter.(PostInteractiveStarter); ok {
+	if starter, ok := b.adapter.(PostStarter); ok {
 		sink := &spawnerSink{s: b.s}
-		cu, startErr := starter.PostInteractiveStart(ctx, PostInteractiveStartOptions{
+		cu, startErr := starter.PostStart(ctx, PostStartOptions{
 			SessionID: proc.sessionID,
 			WorkDir:   workDir,
 			Port:      extras.Port,
@@ -135,7 +135,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 			Sink:      sink,
 		})
 		if startErr != nil {
-			b.s.warnAgent(proc, "PostInteractiveStart failed: "+startErr.Error())
+			b.s.warnAgent(proc, "PostStart failed: "+startErr.Error())
 		} else if cu != nil {
 			postCleanup = cu
 		}

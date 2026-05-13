@@ -129,7 +129,7 @@ func TestFerryPTYOutput_NilFirstByteCh(t *testing.T) {
 // === BumpsOnPTYBytes adapter contract ===
 
 // TestBumpsOnPTYBytes_Codex verifies CodexAdapter returns false — the rollout
-// JSONL tailer (cli_adapter_codex_jsonl_tail.go, started by PostInteractiveStart)
+// JSONL tailer (cli_adapter_codex_jsonl_tail.go, started by PostStart)
 // calls Sink.BumpLastMessage on every real agent event (agent_message,
 // function_call, function_call_output, token_count), so PTY bytes must not
 // reset the stall timer or stall detection becomes unreachable during redraws.

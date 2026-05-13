@@ -133,22 +133,23 @@ type Sink interface {
 	RecordError(projectID, errType, sessionID, msg string)
 }
 
-// PostInteractiveStartOptions holds parameters for PostInteractiveStart.
-type PostInteractiveStartOptions struct {
+// PostStartOptions holds parameters for PostStart.
+type PostStartOptions struct {
 	SessionID string
 	WorkDir   string
 	Port      int       // opencode embedded HTTP event server port (0 for other adapters)
 	CodexHome string    // codex per-session CODEX_HOME dir ("" for other adapters)
-	StartedAt time.Time // wall-clock right before PTY launch; opencode uses it to disambiguate our session from prior history
+	StartedAt time.Time // wall-clock right before launch; opencode uses it to disambiguate our session from prior history
 	Sink      Sink
 }
 
-// PostInteractiveStarter is an optional sub-interface for CLIAdapter
-// implementations that need to run additional setup after the PTY session is
-// created. Asserted at the call site via interface assertion — NOT added to
-// CLIAdapter itself — so adapters that don't need it are unaffected.
-type PostInteractiveStarter interface {
-	PostInteractiveStart(ctx context.Context, opts PostInteractiveStartOptions) (cleanup func(), err error)
+// PostStarter is an optional sub-interface for CLIAdapter implementations that
+// need to run additional setup after the process or PTY session starts. Asserted
+// at the call site via interface assertion in both cliBackend.Start and
+// cliInteractiveBackend.Start — NOT added to CLIAdapter itself — so adapters
+// that don't need it (claude, opencode) are unaffected.
+type PostStarter interface {
+	PostStart(ctx context.Context, opts PostStartOptions) (cleanup func(), err error)
 }
 
 // HookEvent describes one hook event registration the spawner wants codex to

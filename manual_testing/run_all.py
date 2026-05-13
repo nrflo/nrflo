@@ -23,9 +23,15 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-PROVIDERS = ["claude", "codex", "opencode"]
+PROVIDERS = ["claude", "codex", "opencode", "script"]
 MODES = ["cli", "cli-interactive"]
-BINARIES = {"claude": "claude", "codex": "codex", "opencode": "opencode"}
+BINARIES = {"claude": "claude", "codex": "codex", "opencode": "opencode",
+            "script": "python3"}
+
+# `script` is the synthetic provider for `execution_mode='script'` agents:
+# no LLM, no provider CLI, just python3. It runs a separate scenario list
+# (scenarios_script/), so it ignores the --mode axis.
+PROVIDER_SCRIPTS_NO_MODE = {"script"}
 
 
 def main() -> int:
@@ -47,16 +53,21 @@ def main() -> int:
     grid_start = time.monotonic()
     for provider in providers:
         if not shutil.which(BINARIES[provider]):
-            for mode in modes:
+            local_modes = ["native"] if provider in PROVIDER_SCRIPTS_NO_MODE else modes
+            for mode in local_modes:
                 print(f"\n========== {provider} × {mode} — SKIPPED "
                       f"(binary not on PATH) ==========", flush=True)
                 summary.append((provider, mode, 0, 0.0))
             continue
         script = HERE / f"test_{provider}.py"
-        for mode in modes:
+        # script provider has no --mode axis; run once.
+        local_modes = ["native"] if provider in PROVIDER_SCRIPTS_NO_MODE else modes
+        for mode in local_modes:
             print(f"\n========== {provider} × {mode} ==========", flush=True)
             t0 = time.monotonic()
-            cmd = [sys.executable, str(script), f"--mode={mode}"]
+            cmd = [sys.executable, str(script)]
+            if provider not in PROVIDER_SCRIPTS_NO_MODE:
+                cmd.append(f"--mode={mode}")
             if args.parallel is not None:
                 cmd.append(f"--parallel={args.parallel}")
             rc = subprocess.run(cmd, cwd=str(HERE)).returncode

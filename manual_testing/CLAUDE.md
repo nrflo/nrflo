@@ -10,20 +10,25 @@ Provider/mode-agnostic Python harness that exercises the full path "real REST AP
 
 ## What it covers
 
-25 scenarios across findings, callbacks, pass policies, stall detection, endless loops, chains, and more. See `scenarios/__init__.py` for the full `ALL_SCENARIOS` list.
+CLI-provider scenarios (claude/codex/opencode × cli/cli-interactive): 27 scenarios across findings, callbacks, pass policies, stall detection, endless loops, chains, context save/resume, and more. See `scenarios/__init__.py` for the full `ALL_SCENARIOS` list.
+
+Script-backend scenarios (`execution_mode='script'`, no provider CLI, no LLM): 16 scenarios exercising every method of the embedded `nrflo_sdk` (findings, project_findings, agent control, context/user_instructions/callback_info/previous_data, skip, log with each category) plus project env vars, exception → fail, stderr capture. See `scenarios_script/__init__.py` for the full `ALL_SCRIPT_SCENARIOS` list.
 
 ## Layout
 
 - `lib/api.py` — Cookie-based REST client (admin/admin login)
 - `lib/db.py` — Read-only SQLite helpers
-- `lib/runner.py` — run_all(provider, model, binary, mode, parallel)
-- `lib/runtime.py` — Ctx dataclass + make_project + wait_for_workflow helpers
+- `lib/runner.py` — `run_all(provider, model, binary, mode, parallel)` for CLI providers; `run_scripts(parallel)` for script-mode
+- `lib/runtime.py` — `Ctx` dataclass + `make_project` + `wait_for_workflow` helpers
+- `lib/script_helpers.py` — `make_script` / `make_script_agent` helpers + `SDK_BOOTSTRAP` prelude
 - `lib/server.py` — Spawns nrflo_server on fresh NRFLO_HOME
-- `scenarios/__init__.py` — ALL_SCENARIOS list (comment out to skip)
-- `scenarios/s01_findings_save.py`, `s25_findings_carryover.py` — example scenarios
-- `test_claude.py` — --mode={cli,cli-interactive} --parallel --model
-- `test_codex.py`, `test_opencode.py` — provider entry points
-- `run_all.py` — iterates provider × mode grid
+- `scenarios/__init__.py` — `ALL_SCENARIOS` (CLI providers; comment out to skip)
+- `scenarios_script/__init__.py` — `ALL_SCRIPT_SCENARIOS` (script backend)
+- `scenarios/s01_findings_save.py`, `s25_findings_carryover.py` — example CLI scenarios
+- `scenarios_script/ps01_findings_basic.py`, `ps12_log_categories.py` — example script scenarios
+- `test_claude.py`, `test_codex.py`, `test_opencode.py` — CLI-provider entry points (`--mode={cli,cli-interactive} --parallel --model`)
+- `test_script.py` — script-mode entry point (`--parallel`); no `--mode` / `--model`
+- `run_all.py` — iterates provider × mode grid; `script` is a synthetic provider with one mode (`native`)
 
 ## Concepts
 
@@ -40,7 +45,10 @@ python3 manual_testing/test_claude.py                  # mode=cli, parallel=5
 python3 manual_testing/test_claude.py --mode=cli-interactive
 python3 manual_testing/test_claude.py --parallel=1     # sequential, easier to debug
 python3 manual_testing/test_claude.py --model=sonnet
-python3 manual_testing/run_all.py                      # provider × mode grid
+python3 manual_testing/test_script.py                  # script backend, no LLM
+python3 manual_testing/test_script.py --only=ps01,ps12 # subset
+python3 manual_testing/run_all.py                      # provider × mode grid (incl. script)
+python3 manual_testing/run_all.py --provider=script    # script only
 python3 manual_testing/run_all.py --provider=claude --mode=cli
 ```
 
@@ -50,6 +58,7 @@ Each run creates `/tmp/nrflo-manual-<provider>-<mode>-XXXX/` with the SQLite DB,
 
 ## Adding a new scenario
 
+CLI-provider:
 1. Create `scenarios/sNN_<short_name>.py` from the template at `scenarios/s01_findings_save.py`.
 2. Append to `scenarios/__init__.py`:
    ```python
@@ -57,6 +66,11 @@ Each run creates `/tmp/nrflo-manual-<provider>-<mode>-XXXX/` with the SQLite DB,
    ALL_SCENARIOS.append(sNN_short_name.run)
    ```
 3. `python3 manual_testing/test_claude.py --parallel=1` to debug.
+
+Script-backend:
+1. Create `scenarios_script/psNN_<short_name>.py` from the template at `scenarios_script/ps01_findings_basic.py`. Use `lib.script_helpers.make_script_agent(...)` to wire the agent; the SDK bootstrap (`import nrflo_sdk; c = nrflo_sdk.client()`) is prepended automatically.
+2. Append to `scenarios_script/__init__.py`.
+3. `python3 manual_testing/test_script.py --parallel=1 --only=psNN` to debug.
 
 ## Debugging
 

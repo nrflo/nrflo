@@ -100,18 +100,19 @@ func (b *cliBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 
 	proc.cmd = cmd
 
-	// Optional post-spawn setup (e.g., codex rollout JSONL tailer).
-	// Interface-asserted so adapters that don't need it (claude, opencode) are unaffected.
+	// Optional post-spawn setup (e.g., codex rollout JSONL tailer, opencode SQLite tail).
+	// Interface-asserted so adapters that don't need it (claude) are unaffected.
 	postCleanup := func() {}
 	if starter, ok := b.adapter.(PostStarter); ok {
 		sink := &spawnerSink{s: b.s}
 		cu, startErr := starter.PostStart(ctx, PostStartOptions{
-			SessionID: proc.sessionID,
-			WorkDir:   prep.opts.WorkDir,
-			Port:      0,
-			CodexHome: "",
-			StartedAt: spawnStartedAt,
-			Sink:      sink,
+			SessionID:  proc.sessionID,
+			WorkDir:    prep.opts.WorkDir,
+			Port:       0,
+			CodexHome:  "",
+			StartedAt:  spawnStartedAt,
+			MaxContext: b.s.maxContextForModel(prep.opts.Model),
+			Sink:       sink,
 		})
 		if startErr != nil {
 			b.s.warnAgent(proc, "PostStart failed: "+startErr.Error())

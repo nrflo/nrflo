@@ -121,18 +121,19 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 	proc.pid = sess.Pid()
 
-	// Optional post-spawn setup (e.g., opencode SSE consumer, codex JSONL tailer).
+	// Optional post-spawn setup (e.g., codex JSONL tailer, opencode SQLite tail).
 	// Interface-asserted so adapters that don't need it are unaffected.
 	postCleanup := func() {}
 	if starter, ok := b.adapter.(PostStarter); ok {
 		sink := &spawnerSink{s: b.s}
 		cu, startErr := starter.PostStart(ctx, PostStartOptions{
-			SessionID: proc.sessionID,
-			WorkDir:   workDir,
-			Port:      extras.Port,
-			CodexHome: extras.CodexHome,
-			StartedAt: spawnStartedAt,
-			Sink:      sink,
+			SessionID:  proc.sessionID,
+			WorkDir:    workDir,
+			Port:       extras.Port,
+			CodexHome:  extras.CodexHome,
+			StartedAt:  spawnStartedAt,
+			MaxContext: b.s.maxContextForModel(prep.opts.Model),
+			Sink:       sink,
 		})
 		if startErr != nil {
 			b.s.warnAgent(proc, "PostStart failed: "+startErr.Error())

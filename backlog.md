@@ -245,7 +245,7 @@ What you genuinely **cannot** do (single-process stdio constraint):
 - File ops (`fs/read_text_file`, `fs/write_text_file`) and terminal ops (`terminal/create|output|release|wait_for_exit|kill`) — if we want to back them with nrflo logic.
 
 **ACP does NOT carry — has to live above the protocol (already does in nrflo):**
-- Token usage / context size / context-window remaining. ACP's `session/update` schema has no usage field. Per-message token counts are blind in the `acp` lane unless the underlying CLI prints them to stderr/log. **This is the main reason to keep native `cli` adapters for Claude/Codex/OpenCode** — they expose stream-json with usage; the ACP lane is the breadth lane, not the depth lane.
+- Token usage / context size / context-window remaining. ACP's `session/update` schema has no usage field. Per-message token counts are blind in the `acp` lane unless the underlying CLI writes them elsewhere. **This is the main reason to keep native `cli` adapters for Claude/Codex/OpenCode** — Claude exposes stream-json with usage; Codex uses the rollout JSONL tail; OpenCode batch writes `tokens.{input,output,reasoning,cache.read}` to its SQLite DB (`$XDG_DATA_HOME/opencode/opencode.db`) which the sqlite tail reads. The ACP lane is the breadth lane, not the depth lane.
 - Context exhaustion signal / compaction events. No equivalent. `to_resume` finding + `${PREVIOUS_DATA}` template var stay nrflo-owned.
 - Workflow concepts: findings, callbacks, layer fan-in, pass policy, chains, next_workflow_on_success, endless loop, stall detection, restart cap, low-context relaunch. All orchestrator-level; unaffected.
 - Cost / pricing.
@@ -346,7 +346,9 @@ an observable channel (see "What to verify before re-enabling" below).
 
 #### Why disabled
 
-Opencode 1.14.48 doesn't surface interactive chat activity through any channel we can reach from outside the TUI process: `/event` SSE emits only `server.connected`; `/api/session/{id}/message` returns 0 items mid-chat; `POST /api/session/{id}/prompt` returns 400. The workflow still PASSes (the model calls `nrflo agent finished` via Bash → our socket) but the spawner records 0 `agent_messages` rows — no tool visibility, no context_left, no take-control viewport. Net: cli_interactive provides zero observability over batch.
+Opencode 1.14.48 doesn't surface interactive chat activity through any channel we can reach from outside the TUI process: `/event` SSE emits only `server.connected`; `/api/session/{id}/message` returns 0 items mid-chat; `POST /api/session/{id}/prompt` returns 400. The workflow still PASSes (the model calls `nrflo agent finished` via Bash → our socket) but the spawner records 0 `agent_messages` rows — no tool visibility, no take-control viewport.
+
+Note: the opencode SQLite DB (`$XDG_DATA_HOME/opencode/opencode.db`) IS populated during both batch and TUI runs with `tokens.{input,output,reasoning,cache.read}` per message. The batch SQLite tail (`cli_adapter_opencode_sqlite_tail.go`) already reads this for context tracking in `cli` mode. When `cli_interactive` is re-enabled, the same tail will provide `context_left` updates — no additional work needed for context tracking.
 
 #### What to verify before re-enabling
 

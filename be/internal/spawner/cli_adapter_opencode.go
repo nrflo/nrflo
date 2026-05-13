@@ -1,6 +1,8 @@
 package spawner
 
 import (
+	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 )
@@ -96,15 +98,26 @@ func (a *OpencodeAdapter) UsesStdinPrompt() bool {
 }
 
 // SupportsInteractive returns false. opencode 1.14.48's TUI does not surface
-// chat activity through any observable channel: /event and /global/event SSE
-// streams emit only `server.connected`; /api/session/{id}/message returns 0
-// items even for an actively-running TUI session; storage on disk is never
-// populated for `--port`-launched TUI sessions. With no way to capture text
-// or tool events, cli_interactive provides zero value over cli batch.
+// chat activity through any observable channel (SSE, REST, PTY hooks). The
+// SQLite DB IS populated during batch runs (see PostStart / startOpencodeSQLiteTail)
+// but cli_interactive support requires a separate follow-up ticket.
 // Workflows requesting `execution_mode=cli_interactive` on an opencode agent
 // fail at startBackend with a clear error — fall back to cli batch instead.
 // See backlog.md for the full investigation.
 func (a *OpencodeAdapter) SupportsInteractive() bool { return false }
+
+// PostStart launches the opencode SQLite DB tailer goroutine for context
+// tracking. Called by cliBackend.Start (cli batch mode) and
+// cliInteractiveBackend.Start (cli_interactive, currently guarded by
+// SupportsInteractive()=false — wired now so the follow-up ticket only needs
+// to flip SupportsInteractive without touching this layer).
+func (a *OpencodeAdapter) PostStart(ctx context.Context, opts PostStartOptions) (func(), error) {
+	if opts.WorkDir == "" {
+		return func() {}, fmt.Errorf("opencode PostStart: empty WorkDir")
+	}
+	cancel := startOpencodeSQLiteTail(ctx, opts.SessionID, opts.WorkDir, opts.StartedAt, opts.MaxContext, opts.Sink)
+	return func() { cancel() }, nil
+}
 
 // BuildInteractiveCommand is a no-op stub. SupportsInteractive()=false means
 // this method is never reached at runtime; it exists only to satisfy the

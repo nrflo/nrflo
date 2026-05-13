@@ -135,12 +135,13 @@ type Sink interface {
 
 // PostStartOptions holds parameters for PostStart.
 type PostStartOptions struct {
-	SessionID string
-	WorkDir   string
-	Port      int       // opencode embedded HTTP event server port (0 for other adapters)
-	CodexHome string    // codex per-session CODEX_HOME dir ("" for other adapters)
-	StartedAt time.Time // wall-clock right before launch; opencode uses it to disambiguate our session from prior history
-	Sink      Sink
+	SessionID  string
+	WorkDir    string
+	Port       int       // opencode embedded HTTP event server port (0 for other adapters)
+	CodexHome  string    // codex per-session CODEX_HOME dir ("" for other adapters)
+	StartedAt  time.Time // wall-clock right before launch; opencode uses it to disambiguate our session from prior history
+	MaxContext int       // max context window tokens; 0 falls back to ComputeContextLeftPct default (200k)
+	Sink       Sink
 }
 
 // PostStarter is an optional sub-interface for CLIAdapter implementations that

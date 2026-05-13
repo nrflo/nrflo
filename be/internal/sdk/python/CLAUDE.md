@@ -44,7 +44,7 @@ Socket path defaults to `$NRFLO_HOME/agent.sock` (fallback `~/.nrflo/agent.sock`
 |-------|---------|
 | `c.findings` | `add(key, value)`, `add_bulk(dict)`, `append(key, value)`, `append_bulk(dict)`, `get(agent_type=None, *, key=None, keys=None, layer=None)`, `delete(*keys)` — `layer=N` returns a flat `{agent_type: findings_dict\|None}` map; `agent_type` and `layer` are mutually exclusive |
 | `c.project_findings` | Same shape as `c.findings` but scoped to project |
-| `c.agent` | `finished()`, `fail(reason="")`, `continue_()`, `callback(level)` |
+| `c.agent` | `finished()`, `fail(reason="")`, `continue_()`, `callback(level)`, `chain_next_ticket(ticket_id)` |
 | `c.context(refresh=False)` | Cached call to the `script.context` socket method (12-key dict — see [be/internal/socket/CLAUDE.md](../../socket/CLAUDE.md)) |
 | `c.user_instructions()` | Convenience: `c.context()["user_instructions"]` |
 | `c.callback_info()` | Convenience: `c.context()["callback"]` (or `None`) |

@@ -28,6 +28,8 @@ from . import (
     ps14_project_env_var,
     ps15_exception_failure,
     ps16_stderr_captured,
+    ps17_multi_skip_tag,
+    ps18_chain_require_ticket_handoff,
 )
 
 
@@ -48,4 +50,6 @@ ALL_SCRIPT_SCENARIOS = [
     ps14_project_env_var.run,
     ps15_exception_failure.run,
     ps16_stderr_captured.run,
+    ps17_multi_skip_tag.run,
+    ps18_chain_require_ticket_handoff.run,
 ]

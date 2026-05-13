@@ -10,9 +10,9 @@ Provider/mode-agnostic Python harness that exercises the full path "real REST AP
 
 ## What it covers
 
-CLI-provider scenarios (claude/codex/opencode × cli/cli-interactive): 27 scenarios across findings, callbacks, pass policies, stall detection, endless loops, chains, context save/resume, and more. See `scenarios/__init__.py` for the full `ALL_SCENARIOS` list.
+CLI-provider scenarios (claude/codex/opencode × cli/cli-interactive): 37 scenarios across findings, callbacks, pass policies, stall detection, endless loops, chains, context save/resume (both resume and agent-saver branches), manual restart, ticket concurrency 409, take-control/exit-interactive, plan_mode, multi-instance-same-ticket, custom cli_models, WS subscriber, and notification webhook. One scenario (s28) is a SKIP stub for the codex resume-fallback path — see `backlog.md` §7. See `scenarios/__init__.py` for the full `ALL_SCENARIOS` list.
 
-Script-backend scenarios (`execution_mode='script'`, no provider CLI, no LLM): 16 scenarios exercising every method of the embedded `nrflo_sdk` (findings, project_findings, agent control, context/user_instructions/callback_info/previous_data, skip, log with each category) plus project env vars, exception → fail, stderr capture. See `scenarios_script/__init__.py` for the full `ALL_SCRIPT_SCENARIOS` list.
+Script-backend scenarios (`execution_mode='script'`, no provider CLI, no LLM): 18 scenarios exercising every method of the embedded `nrflo_sdk` (findings, project_findings, agent control incl. `chain_next_ticket`, context/user_instructions/callback_info/previous_data, skip incl. multi-tag accumulation, log with each category) plus project env vars, exception → fail, stderr capture, chain handoff via SDK. See `scenarios_script/__init__.py` for the full `ALL_SCRIPT_SCENARIOS` list.
 
 ## Layout
 
@@ -22,6 +22,8 @@ Script-backend scenarios (`execution_mode='script'`, no provider CLI, no LLM): 1
 - `lib/runtime.py` — `Ctx` dataclass + `make_project` + `wait_for_workflow` helpers
 - `lib/script_helpers.py` — `make_script` / `make_script_agent` helpers + `SDK_BOOTSTRAP` prelude
 - `lib/server.py` — Spawns nrflo_server on fresh NRFLO_HOME
+- `lib/ws_client.py` — Sync WebSocket subscriber (cookie-authed) — used by s37
+- `lib/http_mock.py` — `WebhookCapture` in-process httpserver — used by s38
 - `scenarios/__init__.py` — `ALL_SCENARIOS` (CLI providers; comment out to skip)
 - `scenarios_script/__init__.py` — `ALL_SCRIPT_SCENARIOS` (script backend)
 - `scenarios/s01_findings_save.py`, `s25_findings_carryover.py` — example CLI scenarios
@@ -36,6 +38,11 @@ Script-backend scenarios (`execution_mode='script'`, no provider CLI, no LLM): 1
 - **Mode**: `cli` (batch invocation) or `cli-interactive` (PTY relay).
 - **`Ctx`** (`lib/runtime.py`): carries server handle, REST client, provider, model, binary, mode, and a per-scenario log label.
 - **`ALL_SCENARIOS`** (`scenarios/__init__.py`): explicit list of callables; each is `run(ctx: Ctx) -> Result` where `Result = (name, "PASS"|"FAIL"|"SKIP", details)`.
+
+## Runtime deps
+
+Stdlib only, except `websockets` (required by `s37_ws_event_subscriber`).
+Install via `pip install websockets` before running the CLI suites.
 
 ## How to run
 

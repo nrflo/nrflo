@@ -1,12 +1,17 @@
 """S05 — context_left populated.
 
 Tests:
-  - The CLI integration reports remaining context % to the server via
-    `agent.context_update`, populating agent_sessions.context_left.
+  - The CLI integration reports remaining context % to the server,
+    populating agent_sessions.context_left.
+  - claude: PreToolUse/PostToolUse hooks via `agent.context_update`.
+  - codex: rollout JSONL tailer (`cli_adapter_codex_jsonl_tail.go`).
+  - opencode: SQLite tailer (`cli_adapter_opencode_sqlite_tail.go`).
 
 Expected result:
   - PASS  agent_sessions.context_left ∈ [0, 100]
-  - SKIP  if NULL (some CLIs/modes don't ship context telemetry)
+  - SKIP  script backend only (scriptBackend.TracksContext() = false)
+  - FAIL  any CLI provider × mode that leaves it NULL — tailers wire it
+          for every cli/cli_interactive combo.
 """
 
 from __future__ import annotations
@@ -45,8 +50,12 @@ def run(ctx: Ctx) -> Result:
     sess = first_session(db_mod.agent_sessions_for_instance(ctx.server.home, wfi))
     cl = sess.get("context_left")
     if cl is None:
-        return ("S05 context_left", "SKIP",
-                f"{ctx.provider}/{ctx.mode} did not populate context_left")
+        if ctx.provider == "script":
+            return ("S05 context_left", "SKIP",
+                    "script backend does not track context")
+        return ("S05 context_left", "FAIL",
+                f"{ctx.provider}/{ctx.mode} left context_left NULL — "
+                "tailer/hook not wired?")
     if not (0 <= cl <= 100):
         return ("S05 context_left", "FAIL", f"context_left out of range: {cl}")
     return ("S05 context_left", "PASS", f"context_left={cl}")

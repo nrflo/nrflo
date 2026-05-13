@@ -204,6 +204,9 @@ class _Agent:
     def callback(self, level: int):
         self._call("callback", {"level": level})
 
+    def chain_next_ticket(self, ticket_id: str):
+        self._call("chain_next_ticket", {"ticket_id": ticket_id})
+
 
 class Client:
     """nrflo script-mode client. Obtain via nrflo_sdk.client()."""

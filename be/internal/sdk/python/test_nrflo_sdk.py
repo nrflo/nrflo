@@ -103,7 +103,7 @@ class TestClientStructure(unittest.TestCase):
     def test_agent_namespace_exists(self):
         c = self._make_client()
         self.assertTrue(hasattr(c, "agent"))
-        for method in ("finished", "fail", "continue_", "callback"):
+        for method in ("finished", "fail", "continue_", "callback", "chain_next_ticket"):
             self.assertTrue(callable(getattr(c.agent, method, None)),
                             f"agent.{method} missing or not callable")
         c.close()

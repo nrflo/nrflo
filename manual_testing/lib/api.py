@@ -11,6 +11,15 @@ from dataclasses import dataclass
 from typing import Any
 
 
+def _maybe_json(raw: str) -> Any:
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+
 @dataclass
 class APIError(Exception):
     status: int
@@ -45,7 +54,12 @@ class NrfloClient:
         *,
         body: Any = None,
         project: str | None = None,
+        expect_status: int | None = None,
     ) -> Any:
+        """Issue a request. When `expect_status` is set, return
+        `(status, decoded_body)` for *any* HTTP status and never raise —
+        callers asserting negative paths (e.g. 409) use this.
+        Otherwise non-2xx raises APIError."""
         url = self.base_url + path
         data = None
         headers: dict[str, str] = {"Accept": "application/json"}
@@ -58,19 +72,21 @@ class NrfloClient:
         try:
             with self._opener.open(req, timeout=30) as resp:
                 raw = resp.read().decode("utf-8")
+                status = resp.status
         except urllib.error.HTTPError as e:
+            err_raw = e.read().decode("utf-8", errors="replace")
+            if expect_status is not None:
+                return e.code, _maybe_json(err_raw)
             raise APIError(
                 status=e.code,
-                body=e.read().decode("utf-8", errors="replace"),
+                body=err_raw,
                 method=method,
                 path=path,
             ) from None
-        if not raw:
-            return None
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            return raw
+        decoded = _maybe_json(raw)
+        if expect_status is not None:
+            return status, decoded
+        return decoded
 
     # ---- auth ----------------------------------------------------------
 
@@ -217,6 +233,7 @@ class NrfloClient:
         instructions: str = "",
         endless_loop: bool = False,
         interactive: bool = False,
+        plan_mode: bool = False,
     ) -> dict:
         body: dict[str, Any] = {"workflow": workflow_id}
         if endless_loop:
@@ -225,10 +242,89 @@ class NrfloClient:
             body["instructions"] = instructions
         if interactive:
             body["interactive"] = True
+        if plan_mode:
+            body["plan_mode"] = True
         return self._request(
             "POST",
             f"/api/v1/projects/{project_id}/workflow/run",
             body=body,
+            project=project_id,
+        )
+
+    def create_notification_channel(
+        self, project_id: str, workflow_id: str, *,
+        name: str, kind: str, config: dict,
+        event_types: list[str] | None = None,
+    ) -> dict:
+        body: dict[str, Any] = {
+            "name": name,
+            "kind": kind,
+            "config": config,
+        }
+        if event_types is not None:
+            body["event_types"] = event_types
+        return self._request(
+            "POST",
+            f"/api/v1/workflows/{workflow_id}/notification-channels",
+            body=body,
+            project=project_id,
+        )
+
+    def create_cli_model(
+        self, *, id: str, cli_type: str, display_name: str,
+        mapped_model: str, context_length: int,
+        reasoning_effort: str = "",
+    ) -> dict:
+        return self._request(
+            "POST",
+            "/api/v1/cli-models",
+            body={
+                "id": id,
+                "cli_type": cli_type,
+                "display_name": display_name,
+                "mapped_model": mapped_model,
+                "reasoning_effort": reasoning_effort,
+                "context_length": context_length,
+            },
+        )
+
+    def take_control_project(
+        self, project_id: str, *, workflow: str, session_id: str,
+        instance_id: str,
+    ) -> dict:
+        return self._request(
+            "POST",
+            f"/api/v1/projects/{project_id}/workflow/take-control",
+            body={
+                "workflow": workflow,
+                "session_id": session_id,
+                "instance_id": instance_id,
+            },
+            project=project_id,
+        )
+
+    def exit_interactive_project(
+        self, project_id: str, *, workflow: str, session_id: str,
+    ) -> dict:
+        return self._request(
+            "POST",
+            f"/api/v1/projects/{project_id}/workflow/exit-interactive",
+            body={"workflow": workflow, "session_id": session_id},
+            project=project_id,
+        )
+
+    def restart_project_workflow(
+        self, project_id: str, *, workflow: str, session_id: str,
+        instance_id: str,
+    ) -> dict:
+        return self._request(
+            "POST",
+            f"/api/v1/projects/{project_id}/workflow/restart",
+            body={
+                "workflow": workflow,
+                "session_id": session_id,
+                "instance_id": instance_id,
+            },
             project=project_id,
         )
 
@@ -342,12 +438,25 @@ class NrfloClient:
         ticket_id: str,
         *,
         workflow_id: str,
-    ) -> dict:
+        instructions: str = "",
+        force: bool = True,
+        interactive: bool = False,
+        plan_mode: bool = False,
+        expect_status: int | None = None,
+    ) -> Any:
+        body: dict[str, Any] = {"workflow": workflow_id, "force": force}
+        if instructions:
+            body["instructions"] = instructions
+        if interactive:
+            body["interactive"] = True
+        if plan_mode:
+            body["plan_mode"] = True
         return self._request(
             "POST",
             f"/api/v1/tickets/{ticket_id}/workflow/run",
-            body={"workflow": workflow_id, "force": True},
+            body=body,
             project=project_id,
+            expect_status=expect_status,
         )
 
     def get_ticket_workflow_state(

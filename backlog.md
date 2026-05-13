@@ -418,13 +418,90 @@ The callback orchestration mechanic itself is fine — it's verified end-to-end 
 
 Recorded so they don't get forgotten when the next harness iteration lands:
 
-- **WS event subscriber scenario** — open `/api/v1/ws`, run a workflow, assert `agent.completed` and `orchestration.completed` events fire with the expected payload shape. Adds runtime dep on `websockets`.
-- **Manual `restart` endpoint** — `POST /api/v1/projects/{id}/workflow/restart` while an agent is still running; assert a fresh `agent_sessions` row is spawned with `ancestor_session_id` linking back. Distinct from `retry-failed`.
-- **Ticket concurrency guard** — `POST /tickets/{id}/workflow/run` with one already running and no `force` body field; assert HTTP 409.
-- **Notification channels end-to-end** — spawn a tiny in-harness `http.server`, register a Slack channel with that URL, run a workflow, assert the delivery row + the inbound HTTP POST payload.
-- **`execution_mode=script`** — create a `python_scripts` row + agent_def pointing at it; assert `scriptBackend` is taken (`effective_mode='script'`) and findings written via the embedded Python SDK land in `agent_sessions.findings`.
 - **`execution_mode=api`** — boot server with `--mode=api`, configure an api_credentials row + tool_definitions; assert `apirun.Runner` runs the tool turn loop. Probably a separate `test_api_mode.py` so cli-only hosts can skip cleanly.
-- **Multi-skip-tag accumulation** — multiple `nrflo skip <tag>` calls; assert all land in `workflow_instances.skip_tags`.
+
+## 6. Opencode SQLite tailer schema mismatch (real bug surfaced 2026-05-13)
+
+### Symptom
+
+`scenarios/s05_context_left.py` FAILs on `opencode/cli` (and by transitive dependency, `s27_context_save_agent_saver.py` FAILs because the low-context branch never trips). `agent_sessions.context_left` stays NULL across the entire opencode session despite the tailer being wired via `PostStarter`.
+
+### Root cause
+
+The opencode schema as of opencode `1.14.48` is:
+
+```sql
+CREATE TABLE session (id, project_id, parent_id, slug, directory, title,
+                      version, share_url, ..., time_created, time_updated, ...);
+CREATE TABLE message (id, session_id, time_created, time_updated, data);
+```
+
+`be/internal/spawner/cli_adapter_opencode_sqlite_tail.go` queries against a different schema:
+
+- `session.created_at` (line 121) — actual column is `time_created`.
+- `message.role = 'assistant'` (queryOpencodeTokensUsed) — actual schema has no `role` column.
+- `message.tokens` JSON column (queryOpencodeTokensUsed) — actual schema has no `tokens` column; the per-message JSON lives inside `message.data`.
+
+The unit test (`cli_adapter_opencode_sqlite_tail_test.go`) builds its own fixture with the *imagined* schema, so it passes locally — but never validates against a real opencode binary. Net effect: production tailer never matches a session and never reads a token count, so `context_left` is never written.
+
+Additionally, observed during repro: opencode v1.14.48 records `directory` as the surrounding git repo root (e.g. `/Users/.../nrflo`), not the cwd it was launched in. The current `directory = ?` exact match in `waitForOpencodeSession` will not match the per-project worktree path even after the column rename.
+
+### Fix sketch
+
+1. Rename column references: `created_at` → `time_created` in queries; update unit-test fixture.
+2. Replace `message.tokens` + `message.role` with `json_extract(message.data, '$.tokens.input')` etc. and `json_extract(message.data, '$.role')`. Validate against real DB.
+3. Reconsider the `directory = ?` match: either match by latest session with `time_created >= startedAt` and skip the directory filter, or normalize to the git repo root before comparing.
+4. Cover both s05 and s27 on opencode/cli with the manual harness — both are already in place and will start passing once the fix lands.
+
+### Out of scope
+
+Codex/claude tailers are unaffected. Bug is opencode-specific.
+
+---
+
+## 7. Codex resume-fallback test seam (`NRFLO_FORCE_RESUME_FAIL`)
+
+### Motivation
+
+`be/internal/spawner/context_save_resume.go:29-150` falls back to the
+agent-saver path (`contextSaveViaAgent`) on any failure of the
+resume-based context save: missing external thread_id, `resume` start
+error, non-zero exit, 3-minute timeout, or a clean exit without a
+`to_resume` finding. The fallback is unit-tested but has no
+manual_testing integration scenario — the harness can't reliably
+trigger any of the failure modes from outside the process.
+
+`scenarios/s28_codex_resume_fallback.py` is a SKIP stub today because
+of this gap.
+
+### Design
+
+Add a 3-line env-gated short-circuit in
+`contextSaveViaResume`:
+
+```go
+if os.Getenv("NRFLO_FORCE_RESUME_FAIL") == "1" {
+    return s.contextSaveViaAgent(ctx, proc, req)
+}
+```
+
+The harness scenario then flips s28 from SKIP to a real run: set the
+env var on the project (`put_project_env_var`), force a low-context
+save (s26-style restart_threshold=100 on codex/cli), and assert both
+the main session's `result_reason='low_context'` and presence of a
+`context-saver` row — proving the agent-saver branch fired instead of
+the resume branch.
+
+### Cost / open questions
+
+- Permanent ~3-line production surface for a manual-only scenario.
+- Alternative: keep the SKIP stub. The fallback path lives in
+  `context_save_resume_test.go` and a regression there will surface in
+  `make test`.
+
+Decision deferred. Re-evaluate when the resume fallback is touched.
+
+---
 
 ## 8. `s16_stall_detection` skip for `codex/cli_interactive`
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // CLIAdapter defines the interface for different CLI backends
@@ -136,8 +137,9 @@ type Sink interface {
 type PostInteractiveStartOptions struct {
 	SessionID string
 	WorkDir   string
-	Port      int    // opencode embedded HTTP event server port (0 for other adapters)
-	CodexHome string // codex per-session CODEX_HOME dir ("" for other adapters)
+	Port      int       // opencode embedded HTTP event server port (0 for other adapters)
+	CodexHome string    // codex per-session CODEX_HOME dir ("" for other adapters)
+	StartedAt time.Time // wall-clock right before PTY launch; opencode uses it to disambiguate our session from prior history
 	Sink      Sink
 }
 

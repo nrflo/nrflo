@@ -1267,6 +1267,9 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	case "script":
 		backend = newScriptBackend(s)
 	case "cli_interactive":
+		if !prep.adapter.SupportsInteractive() {
+			return fmt.Errorf("agent %q uses execution_mode=cli_interactive but adapter %q does not support PTY interactive mode; switch to execution_mode=cli (batch)", proc.agentType, prep.adapter.Name())
+		}
 		backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
 	default:
 		backend = newCLIBackend(prep.adapter, s)

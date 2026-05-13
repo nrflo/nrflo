@@ -1,10 +1,7 @@
 package spawner
 
 import (
-	"context"
-	"net"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
@@ -58,6 +55,7 @@ func (a *OpencodeAdapter) MapModel(model string) string {
 		"opencode_minimax_m25_free": "opencode/minimax-m2.5-free",
 		"opencode_qwen36_plus_free": "opencode/qwen3.6-plus-free",
 		"opencode_gpt54":            "openai/gpt-5.4",
+		"opencode_gpt54_mini_low":   "openai/gpt-5.4-mini",
 	}
 
 	if mapped, ok := modelMap[model]; ok {
@@ -74,6 +72,8 @@ func (a *OpencodeAdapter) GetReasoningEffort(model string) string {
 	switch model {
 	case "opencode_gpt54":
 		return "high"
+	case "opencode_gpt54_mini_low":
+		return "low"
 	default:
 		return ""
 	}
@@ -95,79 +95,36 @@ func (a *OpencodeAdapter) UsesStdinPrompt() bool {
 	return false // opencode reads message from positional args
 }
 
-// SupportsInteractive returns true for Opencode: the embedded HTTP server
-// (started via --port / --hostname flags) exposes an SSE /event bus that
-// replaces hook telemetry, giving the same structured visibility as Claude's
-// --settings hooks or Codex's -c hook injection.
-func (a *OpencodeAdapter) SupportsInteractive() bool { return true }
+// SupportsInteractive returns false. opencode 1.14.48's TUI does not surface
+// chat activity through any observable channel: /event and /global/event SSE
+// streams emit only `server.connected`; /api/session/{id}/message returns 0
+// items even for an actively-running TUI session; storage on disk is never
+// populated for `--port`-launched TUI sessions. With no way to capture text
+// or tool events, cli_interactive provides zero value over cli batch.
+// Workflows requesting `execution_mode=cli_interactive` on an opencode agent
+// fail at startBackend with a clear error — fall back to cli batch instead.
+// See backlog.md for the full investigation.
+func (a *OpencodeAdapter) SupportsInteractive() bool { return false }
 
-// BuildInteractiveCommand builds the PTY command for an opencode TUI session
-// with the embedded HTTP server enabled. The first positional arg is the
-// working directory; --port and --hostname start the embedded event server.
-// Prompt delivery is via PTY stdin (DeliversPromptInline=false).
-func (a *OpencodeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
-	args := []string{
-		opts.WorkDir,
-		"--port", strconv.Itoa(opts.Port),
-		"--hostname", "127.0.0.1",
-		"--model", opts.Model,
-	}
-	if opts.ReasoningEffort != "" {
-		args = append(args, "--variant", opts.ReasoningEffort)
-	}
-
-	cmd := exec.Command("opencode", args...)
-	cmd.Dir = opts.WorkDir
-
-	// Ensure TERM is set so the TUI can initialize inside the PTY.
-	hasTERM := false
-	for _, e := range opts.Env {
-		if strings.HasPrefix(e, "TERM=") {
-			hasTERM = true
-			break
-		}
-	}
-	if hasTERM {
-		cmd.Env = opts.Env
-	} else {
-		cmd.Env = append(opts.Env, "TERM=xterm-256color")
-	}
-	return cmd
+// BuildInteractiveCommand is a no-op stub. SupportsInteractive()=false means
+// this method is never reached at runtime; it exists only to satisfy the
+// CLIAdapter interface contract.
+func (a *OpencodeAdapter) BuildInteractiveCommand(_ InteractiveSpawnOptions) *exec.Cmd {
+	return nil
 }
 
-// PrepareInteractive allocates a free localhost port for the embedded HTTP
-// server by binding and immediately releasing a TCP listener. The port is
-// returned in InteractiveExtras.Port; opencode will bind it on startup.
+// PrepareInteractive is a no-op stub. See BuildInteractiveCommand.
 func (a *OpencodeAdapter) PrepareInteractive(_ InteractivePrepOptions) (InteractiveExtras, func(), error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return InteractiveExtras{}, func() {}, err
-	}
-	port := ln.Addr().(*net.TCPAddr).Port
-	ln.Close()
-	return InteractiveExtras{Port: port}, func() {}, nil
+	return InteractiveExtras{}, func() {}, nil
 }
 
-// PostInteractiveStart launches the in-process SSE consumer goroutine that
-// subscribes to opencode's embedded HTTP /event bus and dispatches events
-// into the spawner's message/context tracking pipelines. Returns a cleanup
-// func that stops the consumer goroutine.
-func (a *OpencodeAdapter) PostInteractiveStart(ctx context.Context, opts PostInteractiveStartOptions) (func(), error) {
-	cancel := startOpencodeEventStream(ctx, opts.Port, opts.SessionID, opts.WorkDir, opts.Sink)
-	return cancel, nil
-}
-
-// DeliversPromptInline returns false: prompt is delivered via PTY stdin Write
-// after the readiness delay, identical to Claude's interactive path.
+// DeliversPromptInline is a no-op stub. See BuildInteractiveCommand.
 func (a *OpencodeAdapter) DeliversPromptInline() bool { return false }
 
-// NeedsTerminalQueryReplies returns false: opencode's TUI does not send
-// DSR/DA/kitty/OSC capability queries that require auto-replies.
+// NeedsTerminalQueryReplies is a no-op stub. See BuildInteractiveCommand.
 func (a *OpencodeAdapter) NeedsTerminalQueryReplies() bool { return false }
 
-// BumpsOnPTYBytes returns false — SSE bus message.part.updated /
-// session.idle events already call BumpLastMessage, so PTY bytes must not
-// reset the stall timer or stall detection becomes unreachable during redraws.
+// BumpsOnPTYBytes is a no-op stub. See BuildInteractiveCommand.
 func (a *OpencodeAdapter) BumpsOnPTYBytes() bool { return false }
 
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {

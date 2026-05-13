@@ -233,40 +233,6 @@ func TestInteractiveBackend_CodexCleanup_OnPTYCreateError(t *testing.T) {
 	}
 }
 
-// TestInteractiveBackend_OpencodesNoCodexProfile verifies that Opencode's backend
-// does not create a Codex profile dir (CODEX_HOME is Codex-adapter-only).
-func TestInteractiveBackend_OpencodesNoCodexProfile(t *testing.T) {
-	s := New(Config{Clock: clock.Real()})
-	mgr := newMockPtyManager()
-	b := newCLIInteractiveBackend(&OpencodeAdapter{}, s, mgr)
-
-	sessionID := "sess-opencode-noprofile"
-	proc := &processInfo{sessionID: sessionID, doneCh: make(chan struct{})}
-	prep := &prepResult{
-		prompt: "test",
-		opts:   SpawnOptions{Model: "opencode_gpt54", WorkDir: "/tmp"},
-	}
-
-	t.Cleanup(func() {
-		mgr.mu.Lock()
-		sess := mgr.sessions[sessionID]
-		mgr.mu.Unlock()
-		if sess != nil {
-			_ = sess.Close()
-		}
-	})
-
-	if err := b.Start(context.Background(), proc, prep); err != nil {
-		t.Fatalf("Start() error: %v", err)
-	}
-
-	pattern := filepath.Join(os.TempDir(), "nrflo-codex-"+sessionID+"-*")
-	matches, _ := filepath.Glob(pattern)
-	if len(matches) > 0 {
-		t.Errorf("Opencode backend must not create a codex profile dir, found: %v", matches)
-	}
-}
-
 // TestInteractiveBackend_CodexDirNameContainsSessionID verifies the profile dir
 // basename embeds the session ID so it's attributable per-agent-run.
 func TestInteractiveBackend_CodexDirNameContainsSessionID(t *testing.T) {

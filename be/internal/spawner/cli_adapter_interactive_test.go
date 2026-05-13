@@ -6,8 +6,11 @@ import (
 )
 
 // TestAllAdapters_SupportsInteractive pins each adapter's interactive policy.
-// All three opt in: Claude via --settings hooks, Codex via -c hook injection,
-// and Opencode via its embedded HTTP SSE server (--port/--hostname flags).
+// Claude opts in via --settings hooks; Codex via -c hook injection (with the
+// rollout JSONL tailer fallback for the openai/codex#21639 regression).
+// Opencode opts out — opencode 1.14.48 surfaces no chat events through any
+// observable channel, so PTY runs would silently drop tool/text messages.
+// See backlog.md "Opencode `cli_interactive` not supported".
 func TestAllAdapters_SupportsInteractive(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -16,7 +19,7 @@ func TestAllAdapters_SupportsInteractive(t *testing.T) {
 		want    bool
 	}{
 		{"claude", &ClaudeAdapter{}, true},
-		{"opencode", &OpencodeAdapter{}, true},
+		{"opencode", &OpencodeAdapter{}, false},
 		{"codex", &CodexAdapter{}, true},
 	}
 	for _, tc := range cases {
@@ -163,61 +166,6 @@ func TestClaudeAdapter_BuildInteractiveCommand_EmptySystemPromptFileOmitsFlag(t 
 	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
 	if strings.Contains(args, "--append-system-prompt-file") {
 		t.Errorf("BuildInteractiveCommand must not contain --append-system-prompt-file when not set: %s", args)
-	}
-}
-
-// TestOpencodeAdapter_BuildInteractiveCommand_NoBatchFlags verifies that Opencode's
-// interactive command omits run, --format, and json batch flags.
-func TestOpencodeAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
-	t.Parallel()
-	a := &OpencodeAdapter{}
-	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", WorkDir: "/tmp"}
-	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
-
-	for _, flag := range []string{"run", "--format json"} {
-		if strings.Contains(args, flag) {
-			t.Errorf("OpencodeAdapter.BuildInteractiveCommand must not contain %q: %s", flag, args)
-		}
-	}
-}
-
-// TestOpencodeAdapter_BuildInteractiveCommand_HasModel verifies --model is present.
-func TestOpencodeAdapter_BuildInteractiveCommand_HasModel(t *testing.T) {
-	t.Parallel()
-	a := &OpencodeAdapter{}
-	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", WorkDir: "/work"}
-	cmd := a.BuildInteractiveCommand(opts)
-	args := strings.Join(cmd.Args, " ")
-
-	if !strings.Contains(args, "--model openai/gpt-5.4") {
-		t.Errorf("BuildInteractiveCommand missing --model openai/gpt-5.4: %s", args)
-	}
-	if cmd.Dir != "/work" {
-		t.Errorf("cmd.Dir = %q, want /work", cmd.Dir)
-	}
-}
-
-// TestOpencodeAdapter_BuildInteractiveCommand_WithVariant verifies --variant is added
-// when ReasoningEffort is non-empty.
-func TestOpencodeAdapter_BuildInteractiveCommand_WithVariant(t *testing.T) {
-	t.Parallel()
-	a := &OpencodeAdapter{}
-	opts := InteractiveSpawnOptions{Model: "openai/gpt-5.4", ReasoningEffort: "high", WorkDir: "/tmp"}
-	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
-	if !strings.Contains(args, "--variant high") {
-		t.Errorf("BuildInteractiveCommand missing --variant high: %s", args)
-	}
-}
-
-// TestOpencodeAdapter_BuildInteractiveCommand_NoVariantWhenEmpty verifies --variant
-// is absent when ReasoningEffort is empty.
-func TestOpencodeAdapter_BuildInteractiveCommand_NoVariantWhenEmpty(t *testing.T) {
-	t.Parallel()
-	a := &OpencodeAdapter{}
-	opts := InteractiveSpawnOptions{Model: "opencode/minimax-m2.5-free", WorkDir: "/tmp"}
-	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
-	if strings.Contains(args, "--variant") {
-		t.Errorf("BuildInteractiveCommand must not contain --variant when ReasoningEffort empty: %s", args)
 	}
 }
 

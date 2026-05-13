@@ -139,40 +139,11 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			}
 		}
 
-	// === Opencode format ===
-	case "text":
-		// Text content from opencode
-		part, _ := data["part"].(map[string]interface{})
-		if part != nil {
-			text, _ := part["text"].(string)
-			if text != "" {
-				s.handleTextMessage(proc, text)
-			}
-		}
-
-	case "tool_use":
-		// Tool execution from opencode
-		part, _ := data["part"].(map[string]interface{})
-		if part != nil {
-			toolName, _ := part["tool"].(string)
-			if toolName != "" {
-				// Opencode puts input under state.input, not part.input
-				var input map[string]interface{}
-				state, _ := part["state"].(map[string]interface{})
-				if state != nil {
-					input, _ = state["input"].(map[string]interface{})
-				}
-				// Fallback to part.input if state.input not found
-				if input == nil {
-					input, _ = part["input"].(map[string]interface{})
-				}
-				s.handleToolUse(proc, toolName, input)
-			}
-		}
-
-	case "tool_result":
-		// Tool result from opencode or Claude (both use type=tool_result)
-		s.handleClaudeToolResult(proc, data)
+	// === Opencode format (and Claude tool_result, which shares the type) ===
+	// Decoding lives in dispatchOpencodeEvent so the cli_interactive HTTP-poll
+	// path (cli_adapter_opencode_poll.go) reuses the same handler logic.
+	case "text", "tool_use", "tool_result":
+		dispatchOpencodeEvent(eventType, data, &spawnerProcHandler{s: s, proc: proc})
 
 	case "step_finish":
 		// Step completion from opencode

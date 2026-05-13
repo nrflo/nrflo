@@ -17,6 +17,7 @@ func TestOpencodeAdapterModelMapping(t *testing.T) {
 		{"opencode_minimax_m25_free", "opencode/minimax-m2.5-free"},
 		{"opencode_qwen36_plus_free", "opencode/qwen3.6-plus-free"},
 		{"opencode_gpt54", "openai/gpt-5.4"},
+		{"opencode_gpt54_mini_low", "openai/gpt-5.4-mini"},
 
 		// Already provider/model format (pass-through)
 		{"anthropic/claude-opus-4-5", "anthropic/claude-opus-4-5"},
@@ -107,6 +108,7 @@ func TestOpencodeReasoningEffort(t *testing.T) {
 		expected string
 	}{
 		{"opencode_gpt54", "high"},
+		{"opencode_gpt54_mini_low", "low"},
 		{"opencode_minimax_m25_free", ""},
 		{"opencode_qwen36_plus_free", ""},
 		{"opus_4_7", ""},
@@ -170,6 +172,7 @@ func TestModelMappingRoundTrip(t *testing.T) {
 		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"opencode_qwen36_plus_free", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"opencode_gpt54", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_gpt54_mini_low", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
@@ -241,6 +244,7 @@ func TestDefaultCLIForModel(t *testing.T) {
 		{"opencode_minimax_m25_free", "opencode"},
 		{"opencode_qwen36_plus_free", "opencode"},
 		{"opencode_gpt54", "opencode"},
+		{"opencode_gpt54_mini_low", "opencode"},
 		{"codex_gpt_normal", "codex"},
 		{"codex_gpt_high", "codex"},
 		{"codex_gpt54_normal", "codex"},
@@ -276,6 +280,7 @@ func TestAllSupportedModelsAreValid(t *testing.T) {
 		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"opencode_qwen36_plus_free", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"opencode_gpt54", &OpencodeAdapter{}, "OpencodeAdapter"},
+		{"opencode_gpt54_mini_low", &OpencodeAdapter{}, "OpencodeAdapter"},
 		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},

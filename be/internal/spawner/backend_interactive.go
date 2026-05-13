@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"be/internal/ws"
 )
@@ -106,6 +107,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	proc.spawnCommand = spawnCommand
 
 	// Register the command with the PTY manager then create the session.
+	// Capture wall-clock just before launch — opencode poller uses this to
+	// disambiguate our session_id from prior history entries.
+	spawnStartedAt := time.Now()
 	b.ptyMgr.RegisterCommand(sessionID, cmd.Path, cmd.Args[1:])
 	sess, err := b.ptyMgr.Create(sessionID, workDir, env)
 	if err != nil {
@@ -127,6 +131,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 			WorkDir:   workDir,
 			Port:      extras.Port,
 			CodexHome: extras.CodexHome,
+			StartedAt: spawnStartedAt,
 			Sink:      sink,
 		})
 		if startErr != nil {

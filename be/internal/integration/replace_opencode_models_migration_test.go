@@ -61,8 +61,8 @@ func TestMigration051NewOpencodeModelsSeeded(t *testing.T) {
 }
 
 // TestMigration051TotalReadonlyModelCount verifies the read-only seeded model
-// count after migrations 000043 + 000051 + 000057 (4 versioned Opus rows
-// replace the 2 unversioned opus/opus_1m rows, net +2 → 13).
+// count after all current migrations (000043 + 000051 + 000057 → 13;
+// 000103 codex_gpt54_mini_low → 14; 000104 opencode_gpt54_mini_low → 15).
 func TestMigration051TotalReadonlyModelCount(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -71,8 +71,8 @@ func TestMigration051TotalReadonlyModelCount(t *testing.T) {
 		`SELECT COUNT(*) FROM cli_models WHERE read_only = 1`).Scan(&count); err != nil {
 		t.Fatalf("count readonly cli_models: %v", err)
 	}
-	if count != 13 {
-		t.Errorf("readonly model count = %d, want 13", count)
+	if count != 15 {
+		t.Errorf("readonly model count = %d, want 15", count)
 	}
 }
 

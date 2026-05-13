@@ -629,47 +629,75 @@ WHERE session_id IN (
 
 Bug present → count = 0. Bug fixed → count > 0.
 
-### Opencode `cli_interactive` mode exits immediately on opencode 1.14.48
+### Opencode `cli_interactive` not supported on opencode 1.14.48
 
-**Status:** unconfirmed; the "shared root cause with codex" hypothesis
-was wrong — codex turned out to be an upstream hook regression, which
-doesn't apply here. Opencode uses an HTTP/SSE telemetry channel
-(`/event?directory=…`), not hooks. This entry needs its own
-investigation.
+**Status:** disabled in spawner. `OpencodeAdapter.SupportsInteractive()`
+returns false; `startBackend` errors out when an opencode agent is
+configured with `execution_mode=cli_interactive`. Workflows wanting
+opencode should use `execution_mode=cli` (batch) — fully functional,
+~85s wall on the full harness, 25/26 PASS.
 
-`effective_mode='cli_interactive'` selection is the single code path
-documented in the codex entry above; harness and UI both reach the
-same `cliInteractiveBackend`. So the failure is real, not a
-harness-vs-UI divergence.
+Re-enabling requires confirming opencode publishes chat events via
+an observable channel (see "What to verify before re-enabling" below).
 
-#### Symptoms (harness)
-- Every scenario in `opencode/cli-interactive` mode fails within 1-2s.
-- `agent_sessions.result='fail'`, `result_reason='exit_code'` — the
-  agent process exited non-zero immediately after spawn.
-- A handful of scenarios "accidentally" PASS (S11, S14, S18, S22, S24)
-  because their assertions only check spawn/DB plumbing, not agent work.
-- `opencode/cli` (batch) mode passes 22/24 in the same harness.
-- Tested with opencode 1.14.48.
+#### Why disabled — investigation 2026-05-13
 
-#### Reproduction
-```
-make build
-python3 manual_testing/test_opencode.py --mode=cli-interactive --parallel=1
-```
+Opencode 1.14.48 doesn't surface interactive chat activity through
+any channel we can reach from outside the TUI process:
 
-#### Where to look
-`be/internal/spawner/cli_adapter_opencode.go` interactive `BuildCommand`:
-```
-opencode <workDir> --port <N> --hostname 127.0.0.1 --model <MAPPED> [--variant <level>]
-```
-- Opencode 1.14.48 may have renamed/removed one of those flags
-  (check `opencode --help`).
-- May require a `--config` file or env var that neither harness nor
-  spawner provides.
-- The SSE event consumer at `:N/event?directory=<workDir>` may need
-  different auth or a different endpoint shape in 1.14.x.
-- Capture stderr from the failing opencode process (currently dropped
-  by the PTY ferry) to see the actual exit reason.
+- **`/event` SSE bus** — only emits `{"type":"server.connected"}` on
+  connect, then no more events. Same when filtered by `?directory=…`,
+  same with no filter. Same on `/global/event`.
+- **`/api/session/{id}/message`** — discovery via `/api/session` finds
+  the right session (its `time.created` matches our spawn), but the
+  messages endpoint returns 0 items even mid-chat. Storage on disk
+  (`~/.local/share/opencode/storage/message/<sid>/`) is never written
+  for `--port`-launched TUI sessions.
+- **`POST /api/session/{id}/prompt`** — returns 400 BadRequest despite
+  matching the published OpenAPI schema.
+
+The workflow still PASSes (the model invokes `nrflo agent finished`
+via Bash → our socket), but the spawner records 0 `agent_messages`
+rows for the entire run — no tool-category visibility, no text
+capture, no context_left, no take-control viewport content. Stall
+detection only sees PTY redraw bytes if `BumpsOnPTYBytes=true`, which
+makes redraws spam the heartbeat (s16 unreachable). Net: cli_interactive
+provides zero observability over batch and breaks several scenarios.
+
+`cli_adapter_opencode.go` keeps no-op stubs for the interactive
+methods (`BuildInteractiveCommand`, `PrepareInteractive`,
+`DeliversPromptInline`, `NeedsTerminalQueryReplies`, `BumpsOnPTYBytes`)
+so the CLIAdapter interface contract is satisfied; they're never
+reached because `SupportsInteractive()=false` short-circuits in
+`startBackend`. The deleted SSE consumer (`cli_adapter_opencode_events.go`)
+and the message-poll fallback (`cli_adapter_opencode_poll.go`) are
+both gone — neither could produce data against this opencode version.
+
+#### What to verify before re-enabling
+
+1. `curl -sN http://localhost:PORT/event` against a live `opencode --port N`
+   TUI: does the SSE stream emit any event beyond `server.connected`
+   after the user types a prompt? If yes, re-introduce the SSE consumer
+   (the pre-deletion code in git is correct against an opencode that
+   emits messages).
+2. `curl http://localhost:PORT/api/session/{id}/message` while the same
+   TUI is mid-chat: does `items` populate? If yes, re-introduce the
+   poll module (the pre-deletion code in git correctly diff-state-tracks
+   text+tool content[]).
+3. If neither (1) nor (2) populates, look for opencode flags like
+   `--api-mode`, `--headless`, or env vars (`OPENCODE_ENABLE_API`,
+   etc.) — the TUI may have an opt-in that wires up the API surface
+   that's documented but inert by default.
+
+Once any path works end-to-end, flip `SupportsInteractive()` back to
+`true` and restore the consumer module. Keep `opencode_dispatch.go`
+in place — its shared handler interface is the integration point.
+
+#### Out of scope
+- opencode batch (`opencode run --format json`) is fully working; full
+  harness 25/26 PASS at ~85s, 4× parallel speedup. Don't touch.
+- Take-control viewport for opencode goes away with this. It wasn't
+  useful when the agent activity was invisible anyway.
 
 ### Claude `cli_interactive` high PTY concurrency — sessions go dormant after prompt delivery
 

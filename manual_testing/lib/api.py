@@ -148,27 +148,38 @@ class NrfloClient:
         agent_id: str,
         *,
         model: str,
-        prompt: str,
+        prompt: str = "",
         layer: int = 0,
         timeout: int = 5,
         stall_start_timeout_sec: int | None = None,
         stall_running_timeout_sec: int | None = None,
         max_fail_restarts: int | None = None,
+        restart_threshold: int | None = None,
         execution_mode: str | None = None,
+        python_script_id: str | None = None,
     ) -> dict:
         body: dict[str, Any] = {
             "id": agent_id,
             "model": model,
             "timeout": timeout,
-            "prompt": prompt,
             "layer": layer,
         }
+        # Script-mode agents must NOT carry a prompt (service rejects it).
+        # Everything else: send prompt, empty string is fine for codepaths
+        # that don't require it.
+        effective_mode = execution_mode if execution_mode is not None else self.default_execution_mode
+        if effective_mode != "script":
+            body["prompt"] = prompt
+        if python_script_id is not None:
+            body["python_script_id"] = python_script_id
         if stall_start_timeout_sec is not None:
             body["stall_start_timeout_sec"] = stall_start_timeout_sec
         if stall_running_timeout_sec is not None:
             body["stall_running_timeout_sec"] = stall_running_timeout_sec
         if max_fail_restarts is not None:
             body["max_fail_restarts"] = max_fail_restarts
+        if restart_threshold is not None:
+            body["restart_threshold"] = restart_threshold
         # Per-call override beats process default.
         mode = execution_mode if execution_mode is not None else self.default_execution_mode
         if mode is not None:
@@ -176,6 +187,22 @@ class NrfloClient:
         return self._request(
             "POST",
             f"/api/v1/workflows/{workflow_id}/agents",
+            body=body,
+            project=project_id,
+        )
+
+    # ---- python scripts (project-scoped) ------------------------------
+
+    def create_python_script(
+        self, project_id: str, *, name: str, code: str = "",
+        description: str = "", file_path: str | None = None,
+    ) -> dict:
+        body: dict[str, Any] = {"name": name, "code": code, "description": description}
+        if file_path is not None:
+            body["file_path"] = file_path
+        return self._request(
+            "POST",
+            "/api/v1/python-scripts",
             body=body,
             project=project_id,
         )

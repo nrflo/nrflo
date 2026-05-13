@@ -18,17 +18,33 @@ func setupOpencodeTestDB(t *testing.T, dbPath string) *sql.DB {
 		t.Fatalf("setupOpencodeTestDB: open: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
+	// Mirror the real opencode 1.14.x schema: session is keyed by project_id
+	// (worktree match), session.time_created is the creation timestamp, and
+	// per-message JSON lives in message.data (role + tokens nested inside).
 	_, err = db.Exec(`
+		CREATE TABLE project (
+			id TEXT PRIMARY KEY,
+			worktree TEXT NOT NULL,
+			time_created INTEGER NOT NULL
+		);
 		CREATE TABLE session (
 			id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL,
 			directory TEXT NOT NULL,
-			created_at INTEGER NOT NULL
+			time_created INTEGER NOT NULL
 		);
 		CREATE TABLE message (
 			id TEXT PRIMARY KEY,
 			session_id TEXT NOT NULL,
-			role TEXT NOT NULL,
-			tokens TEXT
+			time_created INTEGER NOT NULL,
+			data TEXT NOT NULL
+		);
+		CREATE TABLE part (
+			id TEXT PRIMARY KEY,
+			message_id TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			time_created INTEGER NOT NULL,
+			data TEXT NOT NULL
 		);
 	`)
 	if err != nil {
@@ -37,11 +53,22 @@ func setupOpencodeTestDB(t *testing.T, dbPath string) *sql.DB {
 	return db
 }
 
-func insertOpencodeSession(t *testing.T, db *sql.DB, id, directory string, createdAtMS int64) {
+// insertOpencodeSession seeds matching project + session rows so the tailer's
+// `project.worktree = ?` lookup succeeds. `worktree` matches the spawner's
+// cmd.Dir; `session.directory` is opencode-derived (often a git root) and is
+// not what the tailer joins on.
+func insertOpencodeSession(t *testing.T, db *sql.DB, id, worktree string, createdAtMS int64) {
 	t.Helper()
+	projectID := "proj-" + id
+	if _, err := db.Exec(
+		`INSERT INTO project (id, worktree, time_created) VALUES (?, ?, ?)`,
+		projectID, worktree, createdAtMS,
+	); err != nil {
+		t.Fatalf("insertOpencodeSession: project: %v", err)
+	}
 	_, err := db.Exec(
-		`INSERT INTO session (id, directory, created_at) VALUES (?, ?, ?)`,
-		id, directory, createdAtMS,
+		`INSERT INTO session (id, project_id, directory, time_created) VALUES (?, ?, ?, ?)`,
+		id, projectID, worktree, createdAtMS,
 	)
 	if err != nil {
 		t.Fatalf("insertOpencodeSession: %v", err)
@@ -50,11 +77,12 @@ func insertOpencodeSession(t *testing.T, db *sql.DB, id, directory string, creat
 
 func insertOpencodeAssistantMsg(t *testing.T, db *sql.DB, msgID, sessionID string, inputTokens, outputTokens int) {
 	t.Helper()
-	tokens := fmt.Sprintf(`{"input":%d,"output":%d,"reasoning":0,"cache":{"read":0}}`,
+	data := fmt.Sprintf(
+		`{"role":"assistant","tokens":{"input":%d,"output":%d,"reasoning":0,"cache":{"read":0}}}`,
 		inputTokens, outputTokens)
 	_, err := db.Exec(
-		`INSERT INTO message (id, session_id, role, tokens) VALUES (?, ?, 'assistant', ?)`,
-		msgID, sessionID, tokens,
+		`INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)`,
+		msgID, sessionID, time.Now().UnixNano(), data,
 	)
 	if err != nil {
 		t.Fatalf("insertOpencodeAssistantMsg: %v", err)

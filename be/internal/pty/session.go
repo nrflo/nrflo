@@ -26,7 +26,12 @@ func NewSession(sessionID, workDir string, env []string, command string, args []
 	cmd.Dir = workDir
 	cmd.Env = env
 
-	ptmx, err := creackpty.Start(cmd)
+	// Allocate a sane default window size up front. Without this the PTY
+	// starts at 0x0, and TUIs that probe TIOCGWINSZ on startup (opencode
+	// in particular) immediately exit with code 1 before any client
+	// attaches to send a real resize. 80x24 matches POSIX defaults and
+	// is harmless for non-TUI adapters (claude/codex) which ignore it.
+	ptmx, err := creackpty.StartWithSize(cmd, &creackpty.Winsize{Rows: 24, Cols: 80})
 	if err != nil {
 		return nil, fmt.Errorf("pty start: %w", err)
 	}

@@ -147,9 +147,16 @@ func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respond
 					close(proc.firstByteCh)
 				})
 			}
+			// Always record PTY activity time for the quiescence gate in
+			// deliverPrompt — this is decoupled from stall-detection bumps
+			// (those are opt-in via bumpOnPTYBytes).
+			now := s.config.Clock.Now()
+			proc.messagesMutex.Lock()
+			proc.lastPTYByteAt = now
+			proc.messagesMutex.Unlock()
 			if bumpOnPTYBytes {
 				proc.messagesMutex.Lock()
-				proc.lastMessageTime = s.config.Clock.Now()
+				proc.lastMessageTime = now
 				proc.hasReceivedMessage = true
 				proc.messagesMutex.Unlock()
 			}
@@ -318,10 +325,38 @@ func waitForReady(s *Spawner, proc *processInfo, start time.Time, sessionStartCh
 		s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached — writing anyway", totalDeadline))
 		return
 	}
-	// Bootstrap floor: ensure TUI has had bootstrapFloor since spawn to set
-	// up raw mode after first paint.
-	if rem := bootstrapFloor - time.Since(start); rem > 0 {
-		s.logAgent(proc, fmt.Sprintf("deliverPrompt: bootstrap floor — sleeping %s", rem.Round(time.Millisecond)))
-		time.Sleep(rem)
+	// Quiescence gate (PTY byte stream idle ≥ quietWindow). When the
+	// adapter has no precise readiness hook (opencode), the TUI is still
+	// painting its splash at first-byte time and won't interpret a
+	// submitted prompt yet. Waiting for the byte stream to fall silent
+	// is a universal "TUI ready for input" signal: once no new chunks
+	// arrive for quietWindow continuously, the TUI has finished its
+	// initial render and is parked on its input loop. Bounded by
+	// totalDeadline so a chatty TUI can't hang us forever; also clamped
+	// to a minimum equivalent of the legacy bootstrap floor so the path
+	// stays at least as conservative as before.
+	const quietWindow = 750 * time.Millisecond
+	const quietPoll = 100 * time.Millisecond
+	deadlineLeft := totalDeadline - time.Since(start)
+	if deadlineLeft <= 0 {
+		return
+	}
+	quietDeadline := time.Now().Add(deadlineLeft)
+	floorEnd := start.Add(bootstrapFloor)
+	for {
+		proc.messagesMutex.Lock()
+		last := proc.lastPTYByteAt
+		proc.messagesMutex.Unlock()
+		idleFor := time.Since(last)
+		if !last.IsZero() && idleFor >= quietWindow && time.Now().After(floorEnd) {
+			s.logAgent(proc, fmt.Sprintf("deliverPrompt: ready via PTY quiescence after %s (idle for %s)",
+				time.Since(start).Round(time.Millisecond), idleFor.Round(time.Millisecond)))
+			return
+		}
+		if time.Now().After(quietDeadline) {
+			s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached during quiescence wait — writing anyway", totalDeadline))
+			return
+		}
+		time.Sleep(quietPoll)
 	}
 }

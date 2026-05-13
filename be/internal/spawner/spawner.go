@@ -211,12 +211,17 @@ type processInfo struct {
 	// fires — the canonical readiness signal. firstByteCh is closed on the
 	// first non-empty PTY read — used only as a fallback when SessionStart
 	// does not arrive (older Claude builds, codex/opencode without hooks).
-	// deliverPrompt prefers sessionStartCh; firstByteCh + a bootstrap floor
+	// deliverPrompt prefers sessionStartCh; firstByteCh + a quiescence gate
 	// only kick in if SessionStart never appears within ~3s.
 	sessionStartCh   chan struct{}
 	sessionStartOnce sync.Once
 	firstByteCh      chan struct{}
 	firstByteOnce    sync.Once
+	// lastPTYByteAt is the wall-clock of the most recent PTY chunk read by
+	// ferryPTYOutput. Read by deliverPrompt's quiescence gate to wait for
+	// the TUI to finish its splash render before submitting the prompt.
+	// Protected by messagesMutex. Zero-valued for non-PTY backends.
+	lastPTYByteAt time.Time
 	agentID       string
 	agentType     string
 	modelID       string

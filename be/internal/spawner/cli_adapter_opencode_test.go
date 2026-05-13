@@ -1,28 +1,26 @@
 package spawner
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 )
 
 // TestOpencodeAdapter_BuildInteractiveCommand_RequiredArgv verifies that the
-// positional workdir, --port, --hostname 127.0.0.1, and --model appear in the
-// built command's argument list.
+// positional workdir, --port 0 (opencode self-allocates), --hostname
+// 127.0.0.1, and --model appear in the built command's argument list.
 func TestOpencodeAdapter_BuildInteractiveCommand_RequiredArgv(t *testing.T) {
 	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:   "anthropic/claude-sonnet",
 		WorkDir: "/projects/myrepo",
-		Port:    54321,
 	}
 	cmd := a.BuildInteractiveCommand(opts)
 	args := strings.Join(cmd.Args, " ")
 
 	for _, want := range []string{
 		"/projects/myrepo",
-		"--port", "54321",
+		"--port", "0",
 		"--hostname", "127.0.0.1",
 		"--model", "anthropic/claude-sonnet",
 	} {
@@ -32,21 +30,23 @@ func TestOpencodeAdapter_BuildInteractiveCommand_RequiredArgv(t *testing.T) {
 	}
 }
 
-// TestOpencodeAdapter_BuildInteractiveCommand_PortValueInArgv verifies the port
-// number appears exactly once as a numeric token after --port.
-func TestOpencodeAdapter_BuildInteractiveCommand_PortValueInArgv(t *testing.T) {
+// TestOpencodeAdapter_BuildInteractiveCommand_PortIsZero verifies that
+// --port is always emitted as "0" so opencode itself picks a free port.
+// Pre-allocating from nrflo's side caused a TOCTOU race under parallel
+// spawning where the just-closed listener's port was grabbed by another
+// process before opencode bound.
+func TestOpencodeAdapter_BuildInteractiveCommand_PortIsZero(t *testing.T) {
 	t.Parallel()
 	a := &OpencodeAdapter{}
 	opts := InteractiveSpawnOptions{
 		Model:   "anthropic/claude-sonnet",
 		WorkDir: "/tmp",
-		Port:    9999,
 	}
 	raw := a.BuildInteractiveCommand(opts).Args
 	for i, arg := range raw {
 		if arg == "--port" && i+1 < len(raw) {
-			if raw[i+1] != strconv.Itoa(9999) {
-				t.Errorf("--port value = %q, want %q", raw[i+1], "9999")
+			if raw[i+1] != "0" {
+				t.Errorf("--port value = %q, want %q", raw[i+1], "0")
 			}
 			return
 		}
@@ -54,36 +54,24 @@ func TestOpencodeAdapter_BuildInteractiveCommand_PortValueInArgv(t *testing.T) {
 	t.Errorf("--port flag not found in argv: %v", raw)
 }
 
-// TestOpencodeAdapter_BuildInteractiveCommand_WithVariant verifies --variant
-// is appended when ReasoningEffort is non-empty.
-func TestOpencodeAdapter_BuildInteractiveCommand_WithVariant(t *testing.T) {
+// TestOpencodeAdapter_BuildInteractiveCommand_NoVariantFlag verifies that
+// --variant is NEVER passed to the TUI subcommand, regardless of
+// ReasoningEffort. The TUI subcommand (`opencode [project]`) doesn't
+// accept --variant — only `opencode run` (batch) does. Passing it makes
+// opencode print help to stderr and exit 1 before any prompt arrives.
+func TestOpencodeAdapter_BuildInteractiveCommand_NoVariantFlag(t *testing.T) {
 	t.Parallel()
 	a := &OpencodeAdapter{}
-	opts := InteractiveSpawnOptions{
-		Model:           "openai/gpt-5.4",
-		WorkDir:         "/tmp",
-		Port:            1234,
-		ReasoningEffort: "high",
-	}
-	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
-	if !strings.Contains(args, "--variant high") {
-		t.Errorf("BuildInteractiveCommand with ReasoningEffort=high missing --variant high: %s", args)
-	}
-}
-
-// TestOpencodeAdapter_BuildInteractiveCommand_EmptyVariantOmitted verifies
-// --variant is absent when ReasoningEffort is empty.
-func TestOpencodeAdapter_BuildInteractiveCommand_EmptyVariantOmitted(t *testing.T) {
-	t.Parallel()
-	a := &OpencodeAdapter{}
-	opts := InteractiveSpawnOptions{
-		Model:   "anthropic/claude-sonnet",
-		WorkDir: "/tmp",
-		Port:    1234,
-	}
-	args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
-	if strings.Contains(args, "--variant") {
-		t.Errorf("BuildInteractiveCommand with empty ReasoningEffort must not contain --variant: %s", args)
+	for _, effort := range []string{"", "low", "medium", "high"} {
+		opts := InteractiveSpawnOptions{
+			Model:           "openai/gpt-5.4",
+			WorkDir:         "/tmp",
+			ReasoningEffort: effort,
+		}
+		args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
+		if strings.Contains(args, "--variant") {
+			t.Errorf("BuildInteractiveCommand(ReasoningEffort=%q) contained --variant; TUI subcommand rejects it: %s", effort, args)
+		}
 	}
 }
 
@@ -180,9 +168,11 @@ func TestOpencodeAdapter_BuildInteractiveCommand_CallerEnvPreserved(t *testing.T
 	}
 }
 
-// TestOpencodeAdapter_PrepareInteractive_PortNonZero verifies that
-// PrepareInteractive picks a free port (Port > 0).
-func TestOpencodeAdapter_PrepareInteractive_PortNonZero(t *testing.T) {
+// TestOpencodeAdapter_PrepareInteractive_NoOp verifies that
+// PrepareInteractive returns empty extras + non-nil cleanup. Port
+// selection moved to opencode itself (`--port 0`) after the pre-allocate
+// path was found to race under parallel spawning.
+func TestOpencodeAdapter_PrepareInteractive_NoOp(t *testing.T) {
 	t.Parallel()
 	a := &OpencodeAdapter{}
 	extras, cleanup, err := a.PrepareInteractive(InteractivePrepOptions{
@@ -192,82 +182,32 @@ func TestOpencodeAdapter_PrepareInteractive_PortNonZero(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PrepareInteractive: %v", err)
 	}
-	defer cleanup()
-	if extras.Port == 0 {
-		t.Error("PrepareInteractive returned Port=0, want a free port > 0")
-	}
-}
-
-// TestOpencodeAdapter_PrepareInteractive_CleanupNonNil verifies that the
-// returned cleanup func is non-nil and calling it does not panic.
-func TestOpencodeAdapter_PrepareInteractive_CleanupNonNil(t *testing.T) {
-	t.Parallel()
-	a := &OpencodeAdapter{}
-	_, cleanup, err := a.PrepareInteractive(InteractivePrepOptions{
-		SessionID: "sess-pi-2",
-		WorkDir:   "/tmp",
-	})
-	if err != nil {
-		t.Fatalf("PrepareInteractive: %v", err)
-	}
 	if cleanup == nil {
 		t.Fatal("PrepareInteractive returned nil cleanup func")
+	}
+	if extras.Port != 0 {
+		t.Errorf("PrepareInteractive Port = %d, want 0 (opencode self-allocates)", extras.Port)
 	}
 	cleanup() // must not panic
 }
 
-// TestOpencodeAdapter_PrepareInteractive_PortInValidRange verifies that the
-// picked port is within the valid TCP port range [1, 65535].
-func TestOpencodeAdapter_PrepareInteractive_PortInValidRange(t *testing.T) {
+// TestOpencodeAdapter_BuildInteractiveCommand_VariantNeverEmitted covers
+// the full ReasoningEffort table and asserts --variant is omitted in
+// every case. The TUI subcommand rejects the flag; only `opencode run`
+// accepts it (see TestOpencodeAdapter_BuildCommand_* for batch).
+func TestOpencodeAdapter_BuildInteractiveCommand_VariantNeverEmitted(t *testing.T) {
 	t.Parallel()
 	a := &OpencodeAdapter{}
-	extras, cleanup, err := a.PrepareInteractive(InteractivePrepOptions{
-		SessionID: "sess-pi-3",
-		WorkDir:   "/tmp",
-	})
-	if err != nil {
-		t.Fatalf("PrepareInteractive: %v", err)
-	}
-	defer cleanup()
-	if extras.Port < 1 || extras.Port > 65535 {
-		t.Errorf("PrepareInteractive Port = %d, want in [1, 65535]", extras.Port)
-	}
-}
-
-// TestOpencodeAdapter_VariantTableDriven covers the full BuildInteractiveCommand
-// variant-injection table: present when effort is set, absent when empty.
-func TestOpencodeAdapter_BuildInteractiveCommand_VariantTableDriven(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name            string
-		reasoningEffort string
-		wantVariant     bool
-	}{
-		{"high effort", "high", true},
-		{"medium effort", "medium", true},
-		{"low effort", "low", true},
-		{"empty effort", "", false},
-	}
-	a := &OpencodeAdapter{}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			opts := InteractiveSpawnOptions{
-				Model:           "openai/gpt-5.4",
-				WorkDir:         "/tmp",
-				Port:            1234,
-				ReasoningEffort: tc.reasoningEffort,
-			}
-			args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
-			hasVariant := strings.Contains(args, "--variant")
-			if hasVariant != tc.wantVariant {
-				t.Errorf("ReasoningEffort=%q: --variant present=%v, want %v; args: %s",
-					tc.reasoningEffort, hasVariant, tc.wantVariant, args)
-			}
-			if tc.wantVariant && !strings.Contains(args, "--variant "+tc.reasoningEffort) {
-				t.Errorf("ReasoningEffort=%q: --variant value wrong; args: %s",
-					tc.reasoningEffort, args)
-			}
-		})
+	for _, effort := range []string{"high", "medium", "low", ""} {
+		opts := InteractiveSpawnOptions{
+			Model:           "openai/gpt-5.4",
+			WorkDir:         "/tmp",
+			ReasoningEffort: effort,
+		}
+		args := strings.Join(a.BuildInteractiveCommand(opts).Args, " ")
+		if strings.Contains(args, "--variant") {
+			t.Errorf("ReasoningEffort=%q: --variant must not appear (TUI rejects it): %s",
+				effort, args)
+		}
 	}
 }

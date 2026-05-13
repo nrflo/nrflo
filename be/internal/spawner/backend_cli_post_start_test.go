@@ -31,6 +31,7 @@ func (a *stubCLIAdapter) PrepareInteractive(_ InteractivePrepOptions) (Interacti
 func (a *stubCLIAdapter) DeliversPromptInline() bool      { return false }
 func (a *stubCLIAdapter) NeedsTerminalQueryReplies() bool { return false }
 func (a *stubCLIAdapter) BumpsOnPTYBytes() bool           { return false }
+func (a *stubCLIAdapter) NaturalExitGrace() time.Duration { return 0 }
 
 // postStartStubAdapter wraps stubCLIAdapter and adds PostStarter. Atomic flags
 // record whether PostStart was called and whether its cleanup was invoked.

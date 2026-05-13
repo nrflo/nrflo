@@ -60,9 +60,14 @@ func finalOpencodeTokensProbe(sessionID, workDir string, startedAt time.Time, ma
 		resolvedDir = workDir
 	}
 
-	probeCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	// Wait up to 4s for opencode's project/session row to land — under
+	// high parallel load (parallel=5+) opencode's async write pool can
+	// delay the session-insert by several seconds after the process
+	// exits. Without this wait the final probe gives up before opencode
+	// finishes flushing.
+	probeCtx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
-	opencodeSessID, err := waitForOpencodeSession(probeCtx, db, resolvedDir, startedAt, 1500*time.Millisecond)
+	opencodeSessID, err := waitForOpencodeSession(probeCtx, db, resolvedDir, startedAt, 4*time.Second)
 	if err != nil || opencodeSessID == "" {
 		return
 	}
@@ -72,7 +77,7 @@ func finalOpencodeTokensProbe(sessionID, workDir string, startedAt time.Time, ma
 	// the tailer already wrote. The token probe below handles the lazy
 	// final-token flush — that's a single dedup'd field, not append-only.
 
-	deadline := time.Now().Add(1500 * time.Millisecond)
+	deadline := time.Now().Add(4 * time.Second)
 	for {
 		used, qerr := queryOpencodeTokensUsed(db, opencodeSessID)
 		if qerr == nil && used > 0 {

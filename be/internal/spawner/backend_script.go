@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 // scriptBackend executes a stored Python script as an agent. The script code is
@@ -27,7 +28,11 @@ func (b *scriptBackend) SupportsResume() bool          { return false }
 func (b *scriptBackend) SupportsTakeControl() bool     { return false }
 func (b *scriptBackend) RequiresPrompt() bool          { return false }
 func (b *scriptBackend) TracksContext() bool           { return false }
-func (b *scriptBackend) ParsesStructuredOutput() bool  { return false }
+func (b *scriptBackend) ParsesStructuredOutput() bool   { return false }
+// NaturalExitGrace returns 0 — script backend is a one-shot python3
+// invocation that exits as soon as its main returns; no end-of-turn
+// flush to wait for.
+func (b *scriptBackend) NaturalExitGrace() time.Duration { return 0 }
 
 // Start writes the script to a temp file and spawns python3. Stdout is piped
 // through monitorOutput (which routes to TrackMessage because

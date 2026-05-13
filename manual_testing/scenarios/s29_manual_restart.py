@@ -25,7 +25,10 @@ from lib.runtime import (
 MODELS_BY_PROVIDER: dict[str, str] = {}
 
 POLL_INTERVAL_S = 0.5
-DETECT_TIMEOUT_S = 120.0
+# Under parallel=5 grid load the spawner's monitor loop + context-save
+# flow + relaunch can easily take 60-90s end-to-end. Keep generous so a
+# slow scheduler doesn't false-FAIL.
+DETECT_TIMEOUT_S = 180.0
 
 
 PROMPT = """\

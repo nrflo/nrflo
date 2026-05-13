@@ -34,6 +34,9 @@ func (b *cliInteractiveBackend) SupportsTakeControl() bool     { return true }
 func (b *cliInteractiveBackend) RequiresPrompt() bool          { return true }
 func (b *cliInteractiveBackend) TracksContext() bool           { return true }
 func (b *cliInteractiveBackend) ParsesStructuredOutput() bool  { return false }
+func (b *cliInteractiveBackend) NaturalExitGrace() time.Duration {
+	return b.adapter.NaturalExitGrace()
+}
 
 // Start creates the PTY session, registers the command, delivers the rendered
 // prompt body via stdin after a ~250ms readiness delay, and launches the ferry

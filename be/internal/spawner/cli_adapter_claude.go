@@ -1,6 +1,9 @@
 package spawner
 
-import "os/exec"
+import (
+	"os/exec"
+	"time"
+)
 
 // ClaudeAdapter implements CLIAdapter for Claude Code CLI
 type ClaudeAdapter struct{}
@@ -113,6 +116,13 @@ func (a *ClaudeAdapter) NeedsTerminalQueryReplies() bool { return false }
 // heartbeat via record_event → BumpLastMessage, so PTY bytes must not reset
 // the stall timer or stall detection becomes unreachable during idle redraws.
 func (a *ClaudeAdapter) BumpsOnPTYBytes() bool { return false }
+
+// NaturalExitGrace returns 2s — uniform default. Claude doesn't strictly
+// need it (hook events fire on every tool call), but waiting on doneCh
+// is harmless: if claude exits naturally first, the wait returns
+// immediately. Keeping the grace consistent across adapters avoids
+// surprises when adapters' telemetry-flush timing changes upstream.
+func (a *ClaudeAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
 func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
 	args := []string{

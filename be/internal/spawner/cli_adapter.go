@@ -71,6 +71,15 @@ type CLIAdapter interface {
 	// JSONL tailer (Codex). The method is kept on the interface so future
 	// adapters that lack a structured channel can opt back in.
 	BumpsOnPTYBytes() bool
+
+	// NaturalExitGrace is how long the terminal-signal handler should
+	// wait for the CLI process to exit on its own before sending SIGTERM
+	// when the agent reported `nrflo agent finished`. Adapters whose CLI
+	// writes critical telemetry at end-of-turn (opencode flushes its
+	// `step-finish` part with token usage *after* the agent's last tool
+	// call returns) return a non-zero value here so the wrap-up has time
+	// to land. Default 0 = no wait (kill immediately).
+	NaturalExitGrace() time.Duration
 }
 
 // InteractiveExtras carries adapter-owned spawn-time outputs that the backend

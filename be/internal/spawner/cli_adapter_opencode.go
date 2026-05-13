@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // OpencodeAdapter implements CLIAdapter for Opencode CLI
@@ -192,6 +193,15 @@ func (a *OpencodeAdapter) NeedsTerminalQueryReplies() bool { return false }
 // BumpsOnPTYBytes returns false: context tracking flows through the SQLite
 // tailer and ferry heartbeat, not PTY bytes.
 func (a *OpencodeAdapter) BumpsOnPTYBytes() bool { return false }
+
+// NaturalExitGrace returns 5s. opencode writes its `step-finish` part
+// (carrying the turn's token usage) AFTER the agent's final tool call
+// returns and the model emits its closing assistant chunk; the SQLite
+// commit happens via an async write pool. Under high parallel load,
+// opencode sometimes needs 3-4 seconds to flush. If opencode exits
+// earlier the kill-loop's doneCh check exits the wait immediately,
+// so the ceiling is harmless in the common case.
+func (a *OpencodeAdapter) NaturalExitGrace() time.Duration { return 5 * time.Second }
 
 func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
 	return nil

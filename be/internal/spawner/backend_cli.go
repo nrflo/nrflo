@@ -25,6 +25,9 @@ func (b *cliBackend) SupportsTakeControl() bool    { return b.adapter.SupportsRe
 func (b *cliBackend) RequiresPrompt() bool         { return true }
 func (b *cliBackend) TracksContext() bool          { return true }
 func (b *cliBackend) ParsesStructuredOutput() bool { return true }
+func (b *cliBackend) NaturalExitGrace() time.Duration {
+	return b.adapter.NaturalExitGrace()
+}
 
 // Start builds the exec.Cmd, wires stdin/stdout/stderr pipes, starts the process,
 // and launches the output and wait goroutines. Sets proc.cmd and proc.spawnCommand.

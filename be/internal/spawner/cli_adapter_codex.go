@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 )
 
 // CodexAdapter implements CLIAdapter for OpenAI Codex CLI
@@ -235,6 +236,12 @@ func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 // bumps are no longer the heartbeat; stall detection is reachable for
 // codex/cli_interactive at parity with Claude.
 func (a *CodexAdapter) BumpsOnPTYBytes() bool { return false }
+
+// NaturalExitGrace returns 2s — uniform default. Codex's JSONL tailer
+// emits records as they happen so a SIGTERM wouldn't strictly drop
+// telemetry, but the wait is bounded by doneCh — codex exits naturally
+// in well under 2s after its last function_call_output.
+func (a *CodexAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
 // PostStart launches the codex rollout JSONL tailer goroutine. Called by both
 // cliBackend.Start (cli batch mode) and cliInteractiveBackend.Start

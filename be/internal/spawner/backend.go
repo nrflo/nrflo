@@ -27,6 +27,13 @@ type ExecutionBackend interface {
 	// ParsesStructuredOutput reports whether processOutput should parse stdout as JSON.
 	// When false, each stdout line is tracked as a "text" message directly.
 	ParsesStructuredOutput() bool
+	// NaturalExitGrace is how long the terminal-signal handler should wait
+	// for the process to exit on its own before sending SIGTERM. Backends
+	// whose CLI writes critical telemetry (token usage, final assistant
+	// message) at end-of-turn — opencode batch in particular — return a
+	// small non-zero value so the post-tool-call wrap-up has time to land
+	// on disk before nrflo forces a kill. Default 0 = kill immediately.
+	NaturalExitGrace() time.Duration
 	Start(ctx context.Context, proc *processInfo, prep *prepResult) error
 	Kill(ctx context.Context, proc *processInfo, sig syscall.Signal) error
 }
@@ -85,12 +92,15 @@ func newAPIBackend(s *Spawner) *apiBackend {
 	}
 }
 
-func (b *apiBackend) Name() string                  { return "api" }
-func (b *apiBackend) SupportsResume() bool          { return false }
-func (b *apiBackend) SupportsTakeControl() bool     { return false }
-func (b *apiBackend) RequiresPrompt() bool          { return true }
-func (b *apiBackend) TracksContext() bool           { return true }
-func (b *apiBackend) ParsesStructuredOutput() bool  { return false }
+func (b *apiBackend) Name() string                   { return "api" }
+func (b *apiBackend) SupportsResume() bool           { return false }
+func (b *apiBackend) SupportsTakeControl() bool      { return false }
+func (b *apiBackend) RequiresPrompt() bool           { return true }
+func (b *apiBackend) TracksContext() bool            { return true }
+func (b *apiBackend) ParsesStructuredOutput() bool   { return false }
+// NaturalExitGrace returns 0 — api backend is in-process; there's no
+// child to wait for, doneCh closes synchronously with the runner exit.
+func (b *apiBackend) NaturalExitGrace() time.Duration { return 0 }
 
 // Start launches the runner goroutine. The goroutine flushes messages and
 // registers the session stop before closing proc.doneCh, so monitorAll can

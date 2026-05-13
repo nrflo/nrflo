@@ -1501,6 +1501,22 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if proc.sessionID != sig.SessionID {
 					continue
 				}
+				// Some backends (opencode batch) write their final telemetry —
+				// token usage, step-finish part — only AFTER the agent's last
+				// tool call returns and the model emits its closing chunk. Give
+				// the process a brief window to exit on its own before SIGTERM
+				// so that telemetry lands on disk. If the process is already
+				// done or exits early, the wait returns immediately.
+				if grace := proc.backend.NaturalExitGrace(); grace > 0 {
+					select {
+					case <-proc.doneCh:
+						logger.Info(ctx, "terminal signal: process exited naturally before kill",
+							"session_id", sig.SessionID, "result", sig.Result)
+					case <-time.After(grace):
+						logger.Info(ctx, "terminal signal: natural-exit grace elapsed, sending SIGTERM",
+							"session_id", sig.SessionID, "grace", grace)
+					}
+				}
 				logger.Info(ctx, "terminal signal: killing agent", "session_id", sig.SessionID, "result", sig.Result)
 				proc.backend.Kill(ctx, proc, syscall.SIGTERM)
 				gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second

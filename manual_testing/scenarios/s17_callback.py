@@ -32,11 +32,35 @@ then stop immediately.
 2. Run: `nrflo agent finished`
 """
 
+# Models under provider rate-limit pressure sometimes "optimise" a
+# one-line prompt by skipping the tool call entirely and just emitting
+# "OK, done." This prompt is deliberately written as a contract — the
+# model is told the test is asserting on the callback row and given a
+# brief context-setting step to keep it engaged. Empirically this is
+# the smallest L1 prompt that all three providers follow reliably under
+# parallel=5 load (claude haiku, codex gpt-mini, opencode gpt54-mini).
 L1_PROMPT = """\
-You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Run the command via the Bash tool, then stop.
+You are the L1 verifier agent in a layered integration test. The L0
+agent produced a single finding called `greet` and you must send the
+work back to L0 by calling the callback CLI.
 
-1. Run: `nrflo agent callback --level 0`
+The grader of this test is a Go program that asserts:
+  * your session's result column is exactly `callback`
+  * L0 was re-spawned a second time
+
+Both assertions ONLY pass if you invoke `nrflo agent callback --level 0`
+as your tool call. Do NOT call `nrflo agent finished`. Do NOT output a
+plain-text summary in place of the tool call. The callback CLI is the
+single, contractual action this layer performs.
+
+Step 1: Use the Bash tool to read what L0 left for you:
+    `nrflo findings get greet`
+    Acknowledge in one sentence what you saw.
+
+Step 2: Use the Bash tool to issue the callback:
+    `nrflo agent callback --level 0`
+
+Stop after step 2. Do not run any other command.
 """
 
 

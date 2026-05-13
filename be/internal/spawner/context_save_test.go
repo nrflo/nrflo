@@ -404,6 +404,7 @@ func (b fakeBackend) SupportsTakeControl() bool                                 
 func (b fakeBackend) RequiresPrompt() bool                                                { return false }
 func (b fakeBackend) TracksContext() bool                                                 { return false }
 func (b fakeBackend) ParsesStructuredOutput() bool                                        { return false }
+func (b fakeBackend) NaturalExitGrace() time.Duration                                     { return 0 }
 func (b fakeBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) error        { return nil }
 func (b fakeBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error      { return nil }
 

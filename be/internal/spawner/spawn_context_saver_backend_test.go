@@ -18,6 +18,7 @@ func (m *mockBackend) SupportsTakeControl() bool                                
 func (m *mockBackend) RequiresPrompt() bool                                            { return false }
 func (m *mockBackend) TracksContext() bool                                             { return false }
 func (m *mockBackend) ParsesStructuredOutput() bool                                    { return false }
+func (m *mockBackend) NaturalExitGrace() time.Duration                                 { return 0 }
 func (m *mockBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) error   { return nil }
 func (m *mockBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error { return nil }
 

@@ -16,9 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-
-
 def _free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -27,14 +24,14 @@ def _free_port() -> int:
 
 def _resolve_binaries() -> tuple[Path, Path]:
     """Return (nrflo_server, nrflo) absolute paths or die with a clear message."""
-    server = REPO_ROOT / "be" / "nrflo_server"
-    cli = REPO_ROOT / "be" / "nrflo"
-    if not server.exists() or not cli.exists():
+    server = shutil.which("nrflo_server")
+    cli = shutil.which("nrflo")
+    if not server or not cli:
         sys.exit(
-            "manual_testing: nrflo_server or nrflo binary missing from be/. "
-            "Run `make build` first."
+            "manual_testing: nrflo_server or nrflo not on PATH. "
+            "Run `make install` (or add ./be to PATH) first."
         )
-    return server, cli
+    return Path(server), Path(cli)
 
 
 @dataclass

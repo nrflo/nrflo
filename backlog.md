@@ -181,76 +181,7 @@ Semantics:
 
 ---
 
-## 4. Spec adoption: import external spec formats into a workflow
-
-### Motivation
-Today, work enters nrflo as a ticket created in the UI or via the API. The ticket has a title and description; everything else is built up by the L0 setup-analyzer agent at run time.
-
-A lot of upstream context already lives in structured formats elsewhere:
-- GitHub Issues (with labels, linked PRs, comments).
-- OpenSpec / spec-kit Markdown specs.
-- Linear / Jira tickets.
-- Plain feature plan documents in repos (`docs/plans/foo.md`).
-
-We want a one-shot import path that turns an external artifact into a populated ticket + pre-loaded findings + chosen workflow, ready to spawn. The user clicks "import," picks a source, and gets a ticket with the right scope and instructions wired up.
-
-### Design
-
-Two layers:
-
-**Layer A — Import adapters.** A small interface:
-```go
-type SpecImporter interface {
-    Name() string                // "github_issue", "openspec", "spec_kit", "markdown"
-    CanHandle(input ImportInput) bool
-    Import(ctx context.Context, input ImportInput) (ImportedSpec, error)
-}
-
-type ImportInput struct {
-    URL          string   // for issue URLs
-    Body         string   // for raw paste
-    FilePath     string   // for repo-relative paths
-    ProjectID    int64
-}
-
-type ImportedSpec struct {
-    TicketTitle       string
-    TicketDescription string
-    Instructions      string
-    WorkflowName      string                 // suggested
-    Findings          map[string]string      // pre-seed `workflow_instances.findings`
-    AttachedRefs      []string               // URLs preserved as ticket metadata
-}
-```
-
-Initial adapters:
-- `github_issue` — `gh api` fetch by issue URL, parse body + labels.
-- `markdown` — paste-in or file path; treats H2 sections as well-known fields if recognized.
-- `openspec` / `spec_kit` — recognize the format from headers, map sections to ticket fields.
-
-The **normalization step itself uses an agent** (system agent, api-mode, low-context) — an LLM does the messy parsing rather than us writing a brittle parser per format.
-
-**Layer B — UI + API.**
-- `POST /api/v1/import/spec` with `{source, url|body|file, project_id}` returns an `ImportedSpec` preview.
-- UI shows the preview, lets the user edit any field, pick the workflow, then "Create ticket" → standard ticket creation + workflow spawn.
-- For project-scoped imports, skip ticket creation; pass `Instructions` directly to a project-scoped workflow start.
-
-### Surface to ship first
-- One adapter: `github_issue` (highest ROI, common entry point).
-- One UI route: "Import from GitHub issue" on the tickets page.
-- The agent-based normalization is the same `apirun` path used elsewhere — no new infra.
-
-Other adapters land behind the same interface as users ask.
-
-### Open questions
-- Where do the imported `AttachedRefs` live on the ticket? New `ticket_metadata` table or just stuff them into the description? Probably a `ticket_refs` table — also useful for linking back from PRs created by workflows.
-- Authentication for `github_issue` — does the server use a project-level GitHub token (new setting) or the user's? Project-level token in `project_env_vars` (read-only).
-- Do we want a "watch this issue and re-import on update" mode? No — out of scope. One-shot only.
-- Is the normalizing agent a built-in system agent or a user-editable agent definition? Built-in system agent — users shouldn't have to author this to get import working, but they can override via the agent_definitions table by registering one with the canonical id.
-
----
-
-## 5. Codex context-left tracking in `cli` (batch) mode
+## 4. Codex context-left tracking in `cli` (batch) mode
 
 ### Motivation
 `cli_interactive` mode already tracks codex context-left and surfaces it in the UI / agent session row. In `cli` (batch) mode the same signal is missing — sessions show no remaining-context indicator, and the spawner can't make low-context relaunch decisions for codex batch runs the way it can for Claude.
@@ -269,7 +200,7 @@ Claude tracks this uniformly across cli + cli_interactive; codex only does cli_i
 
 ---
 
-## 6. ACP execution mode — uniform adapter for ~14 extra providers
+## 5. ACP execution mode — uniform adapter for ~14 extra providers
 
 ### Motivation
 Today nrflo ships a hand-written `CLIAdapter` per vendor (Claude, Codex, OpenCode). Adding a new provider (Gemini, Copilot, Cursor, Qwen, Amp, Auggie, Droid, Kimi, Kiro, Qoder, Trae, iFlow, Pi, Kilocode) means a new adapter file, new prompt-delivery quirks, new stdout parser. The cost per vendor is real and the long tail is large.
@@ -360,7 +291,7 @@ What you genuinely **cannot** do (single-process stdio constraint):
 
 ---
 
-## 7. Codex resume support (resume-based context save)
+## 6. Codex resume support (resume-based context save)
 
 ### Motivation
 `CodexAdapter.SupportsResume()` returns `false` (`be/internal/spawner/cli_adapter_codex.go:78`), so every low-context event on codex falls through to the agent-path (haiku `context-saver` reads message history → writes `to_resume`). This was a deliberate choice when the adapter was written — codex generates its own `thread_id` and we weren't capturing it cleanly — but the CLI itself supports resume:
@@ -390,7 +321,7 @@ Implementing resume gives us a faster, cheaper context save for codex (skip the 
 
 ---
 
-## 8. Drop PTY-byte bump for Claude `cli_interactive`; rely on hooks for stall heartbeat
+## 7. Drop PTY-byte bump for Claude `cli_interactive`; rely on hooks for stall heartbeat
 
 ### Motivation
 
@@ -801,3 +732,32 @@ Recorded so they don't get forgotten when the next harness iteration lands:
 - **`execution_mode=script`** — create a `python_scripts` row + agent_def pointing at it; assert `scriptBackend` is taken (`effective_mode='script'`) and findings written via the embedded Python SDK land in `agent_sessions.findings`.
 - **`execution_mode=api`** — boot server with `--mode=api`, configure an api_credentials row + tool_definitions; assert `apirun.Runner` runs the tool turn loop. Probably a separate `test_api_mode.py` so cli-only hosts can skip cleanly.
 - **Multi-skip-tag accumulation** — multiple `nrflo skip <tag>` calls; assert all land in `workflow_instances.skip_tags`.
+
+## 8. `s16_stall_detection` skip for `codex/cli_interactive`
+
+### Motivation
+
+`scenarios/s16_stall_detection.py` returns SKIP for `codex × cli_interactive`. Without the skip the scenario is ~50% flaky in pure isolation (10 standalone runs, parallel=1: 5 PASS / 5 FAIL). Investigation 2026-05-13 (`/tmp/pre-release-codex-int-rerun.log` and agent_messages of FAIL data dirs) traced this to codex CLI behavior, not a spawner bug.
+
+The prompt asks the agent to run `sleep 30`. Codex's `exec_command` tool wraps the shell command and the TUI then polls the child via `write_stdin` calls. Each poll's `yield_time_ms` is chosen by the model on the fly:
+
+- **PASS runs**: codex picks `yield_time_ms=31000` (one large block, > 15 s stall window). No JSONL events for 31 s → `BumpLastMessage` doesn't fire → `stall_running_timeout` trips at 15 s → `result=continue reason=stall_restart_running_stall`.
+- **FAIL runs**: codex picks `yield_time_ms=1000` and polls every 1–5 s. Each poll emits `function_call` + `function_call_output` JSONL records, which `dispatchCodexJSONL` (`be/internal/spawner/cli_adapter_codex_jsonl_tail.go:257`) translates into `emitMessage → BumpLastMessage`. The 15 s heartbeat window never accumulates, the agent completes normally with `result=pass reason=finished`, and the scenario times out at 120 s.
+
+The spawner is doing the right thing — there genuinely IS activity from codex (5–14 tool calls / second-class polls). The scenario's premise ("`sleep 30` produces no tool/result events") is wrong for codex's `exec_command` polling wrapper.
+
+Stall detection itself is still covered end-to-end on:
+- `claude/cli` — hooks-driven heartbeat, agent really blocks
+- `claude/cli_interactive` — same path via interactive hooks
+- `codex/cli` (batch) — codex emits no events during the bash `sleep`
+- `opencode/cli` (batch) — same
+
+### Options for re-enabling
+
+1. **Provider-specific prompt** — find a payload codex's `exec_command` wrapper *can't* poll inside. Untrusted: any future codex release could re-wrap. Possibly: run a tool that detaches into the background (`disown` + sleep) so the bash invocation returns immediately but the spawner observes no further activity. Needs experimentation.
+2. **Stub-tool stall** — register an in-process tool (api-mode style) that blocks for 30 s without emitting intermediate events. Doesn't apply to cli_interactive without major surgery.
+3. **Codex CLI flag** — upstream may expose a way to disable `yield_time_ms` polling. Track codex release notes.
+
+### Decision criteria
+
+Re-enable only when isolation passes 20/20 consecutive runs at parallel=1. Document the chosen prompt in the scenario's docstring.

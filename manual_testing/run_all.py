@@ -34,7 +34,9 @@ def main() -> int:
                     help="restrict to one or more providers (default: all)")
     ap.add_argument("--mode", action="append", choices=MODES,
                     help="restrict to one or more modes (default: all)")
-    ap.add_argument("--parallel", type=int, default=5)
+    # Default None → let each test_<provider>.py choose its own parallelism
+    # (codex/cli-interactive runs narrower because of PTY+reasoning latency).
+    ap.add_argument("--parallel", type=int, default=None)
     args = ap.parse_args()
 
     providers = args.provider or PROVIDERS
@@ -54,11 +56,10 @@ def main() -> int:
         for mode in modes:
             print(f"\n========== {provider} × {mode} ==========", flush=True)
             t0 = time.monotonic()
-            rc = subprocess.run(
-                [sys.executable, str(script),
-                 f"--mode={mode}", f"--parallel={args.parallel}"],
-                cwd=str(HERE),
-            ).returncode
+            cmd = [sys.executable, str(script), f"--mode={mode}"]
+            if args.parallel is not None:
+                cmd.append(f"--parallel={args.parallel}")
+            rc = subprocess.run(cmd, cwd=str(HERE)).returncode
             wall = time.monotonic() - t0
             summary.append((provider, mode, rc, wall))
             if rc != 0:

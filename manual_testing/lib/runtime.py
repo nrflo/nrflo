@@ -1,13 +1,12 @@
 """Shared runtime types + helpers for scenarios.
 
 `Ctx` carries the running server, REST client, provider (claude/codex/
-opencode), execution mode (cli/cli-interactive), and the per-scenario
-label used in logs. Scenarios call `make_project(ctx)` to get a fresh
-isolated project; the runtime's `cli-interactive` mode is enforced
-via `NrfloClient.default_execution_mode='cli_interactive'` set by the
-runner so every `create_agent_def` call carries `execution_mode` to
-the API. The previous project-level `interactive_cli_mode` toggle was
-removed in favor of per-agent `execution_mode=cli_interactive`."""
+opencode), model, binary, and a per-scenario label used in logs.
+Scenarios call `make_project(ctx)` to get a fresh isolated project.
+The runner sets `NrfloClient.default_execution_mode='cli_interactive'`
+once so every `create_agent_def` call carries `execution_mode` to the
+API without per-scenario boilerplate. All CLI providers run under
+`cli_interactive` (PTY relay)."""
 
 from __future__ import annotations
 
@@ -28,7 +27,7 @@ TERMINAL = {"completed", "failed", "project_completed"}
 RUN_TIMEOUT_S = 180.0
 POLL_INTERVAL_S = 0.5  # halved from 1.0 — REST cost is negligible vs wall-time savings
 
-VALID_MODES = ("cli", "cli-interactive")
+MODE = "cli_interactive"
 
 
 @dataclass
@@ -38,7 +37,7 @@ class Ctx:
     provider: str           # claude | codex | opencode
     model: str              # cli_models row id (e.g. "haiku")
     binary: str             # PATH binary name
-    mode: str = "cli"       # cli | cli-interactive | (api/script TBD)
+    mode: str = "cli_interactive"
     scenario: str = ""      # set per-scenario for log prefixing
 
 

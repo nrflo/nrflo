@@ -9,7 +9,7 @@ Entry points: `be/cmd/nrflo/main.go` (CLI) and `be/cmd/server/main.go` (server).
 Top-level packages under `be/internal/`:
 
 - `cli/` — Cobra commands: serve, agent, findings, tickets, deps, skip, chain
-- `spawner/` — Agent spawner, execution backends (cli/api/script), low-context save, template engine
+- `spawner/` — Agent spawner, execution backends (cli_interactive/api/script), low-context save, template engine
 - `proc/` — Host process probing (no circular deps)
 - `scheduler/` — Cron-driven scheduled task runner
 - `limitsrefresh/` — In-process hourly Claude limits ticker (gated by `sync_claude_limits` global setting)
@@ -97,7 +97,7 @@ The Unix socket uses JSON-RPC line-delimited protocol. Supported methods: `findi
 |---------|--------------|-------------|
 | `internal/scheduler/` | [scheduler/CLAUDE.md](internal/scheduler/CLAUDE.md) | Cron scheduler: lifecycle, dispatch flow |
 | `internal/notify/` | (inline docs) | Dispatcher (ws.Listener): Slack/Telegram transports, async retry queue (backoff 15s/60s/300s), secret masking, error tracking |
-| `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, execution backends (cli/cli_interactive/api/script), `Config.ProjectEnv` |
+| `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, execution backends (cli_interactive/api/script), `Config.ProjectEnv` |
 | `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, layer aggregation, callback flow, chain runner |
 | `internal/api/` | [api/CLAUDE.md](internal/api/CLAUDE.md) | HTTP endpoints, CORS, WebSocket, authentication middleware |

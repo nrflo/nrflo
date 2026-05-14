@@ -4,7 +4,7 @@ Tests:
   - `POST /api/v1/cli-models` with a brand-new ID + cli_type=claude
     inserts the row. An agent_def using that ID must resolve through
     `spawner.cliForModel` to the claude binary and complete normally.
-  - claude/cli only — the scenario asserts the resolution path for one
+  - claude only — the scenario asserts the resolution path for one
     provider; codex/opencode share the same code (validated by their
     seed cli_models rows already exercised by every other scenario).
 """
@@ -27,9 +27,9 @@ tool, then stop.
 
 
 def run(ctx: Ctx) -> Result:
-    if ctx.provider != "claude" or ctx.mode != "cli":
+    if ctx.provider != "claude":
         return ("S35 custom cli_model", "SKIP",
-                f"{ctx.provider}/{ctx.mode} — claude/cli only by design")
+                f"{ctx.provider} — claude only by design")
 
     pid, _root = make_project(ctx)
     model_id = next_id(ctx, "cm-haiku")

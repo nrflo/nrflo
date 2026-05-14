@@ -19,7 +19,7 @@ from typing import Callable
 
 from . import api as api_mod
 from . import server as server_mod
-from .runtime import Ctx, Result, VALID_MODES
+from .runtime import Ctx, Result
 
 
 def _ts() -> str:
@@ -62,15 +62,12 @@ def run_all(
     provider: str,
     model: str,
     binary: str,
-    mode: str = "cli",
+    mode: str = "cli_interactive",
     parallel: int = 1,
     only: list[str] | None = None,
     timeout: float | None = None,
 ) -> int:
     """Returns 0 (all PASS/SKIP), 1 (any FAIL), 2 (fatal interruption)."""
-    if mode not in VALID_MODES:
-        raise ValueError(f"invalid mode {mode!r}; want one of {VALID_MODES}")
-
     if timeout is not None:
         from . import runtime as _runtime
         _runtime.RUN_TIMEOUT_S = float(timeout)
@@ -106,13 +103,7 @@ def run_all(
     client = api_mod.NrfloClient(srv.base_url)
     client.login()
     _say(label, "logged in as admin")
-    # cli-interactive mode is per-agent now (commits a3305e3 / 53c9e84 /
-    # 6849af7 removed the project-level interactive_cli_mode toggle). Set
-    # the client default once so every scenario's create_agent_def carries
-    # execution_mode through.
-    if mode == "cli-interactive":
-        client.default_execution_mode = "cli_interactive"
-        _say(label, "client.default_execution_mode = cli_interactive")
+    client.default_execution_mode = "cli_interactive"
     base_ctx = Ctx(
         server=srv, client=client,
         provider=provider, model=model, binary=binary, mode=mode,

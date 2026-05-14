@@ -1,4 +1,4 @@
-"""S99 — DIAGNOSTIC: codex/cli-interactive with an existing real repo as workdir.
+"""S99 — DIAGNOSTIC: codex/cli_interactive with an existing real repo as workdir.
 
 Hypothesis: the regular harness's `make_project` creates a fresh `git init`
 with only `.gitkeep` committed; codex 0.130.0 in PTY hangs silently on that
@@ -9,7 +9,7 @@ This scenario bypasses `make_project` and points the project at
 `~/projects/2026/3dgmcv` directly (a real repo, trusted in the user's
 ~/.codex/config.toml). Run it manually:
 
-  python3 manual_testing/test_codex.py --mode=cli-interactive \
+  python3 manual_testing/test_codex.py \
       --only=s99_codex_real_repo --parallel=1
 
 NOT part of ALL_SCENARIOS — diagnostic only. Delete after the codex

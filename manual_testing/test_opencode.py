@@ -5,7 +5,8 @@ LAUNCH MANUALLY ONLY. Not wired into make test / CI. Spawns a real
 `opencode` process against its configured provider credentials.
 
 Usage:
-    python3 manual_testing/test_opencode.py                  # mode=cli (default)
+    python3 manual_testing/test_opencode.py
+    python3 manual_testing/test_opencode.py --parallel=1
 """
 
 from __future__ import annotations
@@ -18,8 +19,6 @@ from lib.runner import run_all
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", default="cli",
-                    choices=["cli"])
     ap.add_argument("--parallel", type=int, default=5)
     ap.add_argument("--model", default="opencode_gpt54_mini_low")
     ap.add_argument("--only", default=None,
@@ -31,7 +30,6 @@ def main() -> int:
         provider="opencode",
         model=args.model,
         binary="opencode",
-        mode=args.mode,
         parallel=args.parallel,
         only=args.only.split(",") if args.only else None,
         timeout=args.timeout,

@@ -5,8 +5,8 @@ LAUNCH MANUALLY ONLY. Not wired into make test / CI. Spawns a real
 `claude` process against real Anthropic credentials.
 
 Usage:
-    python3 manual_testing/test_claude.py                  # mode=cli (default)
-    python3 manual_testing/test_claude.py --mode=cli-interactive
+    python3 manual_testing/test_claude.py
+    python3 manual_testing/test_claude.py --parallel=1
 """
 
 from __future__ import annotations
@@ -19,8 +19,6 @@ from lib.runner import run_all
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", default="cli",
-                    choices=["cli", "cli-interactive"])
     ap.add_argument("--parallel", type=int, default=5)
     ap.add_argument("--model", default="haiku")
     ap.add_argument("--only", default=None,
@@ -32,7 +30,6 @@ def main() -> int:
         provider="claude",
         model=args.model,
         binary="claude",
-        mode=args.mode,
         parallel=args.parallel,
         only=args.only.split(",") if args.only else None,
         timeout=args.timeout,

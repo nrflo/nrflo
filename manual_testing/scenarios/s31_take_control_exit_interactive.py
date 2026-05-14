@@ -2,17 +2,13 @@
 
 Tests:
   - `POST /api/v1/projects/{pid}/workflow/take-control` on a running
-    batch session kills the agent and flips
+    cli_interactive session kills the agent and flips
     `agent_sessions.status` to `user_interactive`.
   - `POST .../workflow/exit-interactive` flips status to
     `interactive_completed`.
   - REST/DB only — no PTY drive-through (the harness does not attach
     a terminal). The PTY-bound behavior (resize, input relay) is not
     covered here.
-
-Skips:
-  - `cli-interactive` mode — the session is already PTY-bound, so
-    take-control is not the transition under test.
 """
 
 from __future__ import annotations
@@ -52,9 +48,6 @@ def _wait_for_status(ctx: Ctx, wfi: str, want: str,
 
 
 def run(ctx: Ctx) -> Result:
-    if ctx.mode == "cli-interactive":
-        return ("S31 take-control exit-interactive", "SKIP",
-                "cli-interactive starts in PTY mode; take-control transition n/a")
     pid, _root = make_project(ctx)
     wid = next_id(ctx, "wf")
     ctx.client.create_workflow(pid, wid, scope_type="project")

@@ -39,14 +39,13 @@ then stop immediately.
 
 
 def run(ctx: Ctx) -> Result:
-    # cli-interactive is reachable for claude (hooks-driven heartbeat, idle when
-    # the agent really blocks). codex/cli_interactive does NOT stall here: its
-    # exec_command tool wraps `sleep` and the TUI polls it via write_stdin
-    # every 1-5s with `yield_time_ms` set short. Each poll surfaces as a
+    # codex/cli_interactive does NOT stall here: its exec_command tool wraps
+    # `sleep` and the TUI polls it via write_stdin every 1-5s with
+    # `yield_time_ms` set short. Each poll surfaces as a
     # function_call/function_call_output JSONL record, which bumps
     # lastMessageTime and resets the 15s stall window. The spawner is correct;
     # there genuinely is activity. Skip rather than chase a model-behavior flake.
-    if ctx.provider == "codex" and ctx.mode == "cli-interactive":
+    if ctx.provider == "codex":
         return ("S16 stall detection", "SKIP",
                 "codex exec_command polls during sleep, never trips stall")
 

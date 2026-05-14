@@ -102,7 +102,7 @@ Rules every change must respect.
 
 ### Execution backends (`execution_mode`)
 - **`api` — in-process Anthropic runner** → [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
-- **`cli` interactive backend** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
+- **`cli_interactive` backend** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **`script` — Python scriptBackend** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **Per-project venv** → [venv/](be/internal/venv/)
 - **Manifest tools (api-mode only)** → [manifest/CLAUDE.md](be/internal/manifest/CLAUDE.md) + [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)

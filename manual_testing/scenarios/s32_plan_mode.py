@@ -33,10 +33,6 @@ You are an integration-test agent. Run `nrflo agent finished` and stop.
 
 
 def run(ctx: Ctx) -> Result:
-    if ctx.mode == "cli-interactive":
-        return ("S32 plan_mode", "SKIP",
-                "cli-interactive overlaps with plan_mode PTY pre-step path")
-
     pid, _root = make_project(ctx)
     wid = next_id(ctx, "wf")
     ctx.client.create_workflow(pid, wid, scope_type="project")

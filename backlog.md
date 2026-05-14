@@ -195,7 +195,7 @@ One ACP adapter in nrflo subsumes the entire long tail.
 Add a fifth peer to `execution_mode`:
 
 ```
-execution_mode ∈ {cli, cli_interactive, api, script, acp}
+execution_mode ∈ {cli_interactive, api, script, acp}
                                                     ↑ new
 ```
 
@@ -226,12 +226,12 @@ Everything **above** `execution_mode` is unchanged: layer execution, pass polici
 
 These are real and useful — and follow naturally from `execution_mode` being per-agent:
 
-1. **Per workflow.** A layered workflow can mix lanes: L0 setup-analyzer on `acp` (Gemini), L1 implementor on `cli` (Claude native, for usage capture), L2 qa-verifier on `cli_interactive` (human review), L3 doc-updater on `api`.
-2. **Per provider.** Keep `cli` for Claude/Codex/OpenCode (depth path — stream-json, usage, cost); use `acp` only for providers without a native nrflo adapter.
+1. **Per workflow.** A layered workflow can mix lanes: L0 setup-analyzer on `acp` (Gemini), L1 implementor on `cli_interactive` (Claude native, for usage capture + PTY), L2 qa-verifier on `cli_interactive` (human review), L3 doc-updater on `api`.
+2. **Per provider.** Keep `cli_interactive` for Claude/Codex/OpenCode (depth path — stream-json, usage, cost); use `acp` only for providers without a native nrflo adapter.
 3. **Per session — mode swap on take-control.** Start an agent in `acp`; when user clicks take-control, kill the ACP adapter and re-spawn the same vendor CLI in `cli_interactive` (PTY) with the CLI's native `--resume <session>` flag. Functionally gives users "ACP by default, PTY when needed." Session boundary, not co-existence.
 
 What you genuinely **cannot** do (single-process stdio constraint):
-- Run `cli` parser **and** ACP on the same process. Single stdio owner.
+- Run the `cli_interactive` adapter **and** ACP on the same process. Single stdio owner.
 - Attach a human PTY **and** ACP to the same vendor CLI. The adapter sits between human and CLI — no terminal to attach.
 - Drive `cli_interactive`'s idle/nudge loop from ACP "for free." You'd redefine idle as "no `session/update` for N seconds" and any nudge becomes a synthetic `session/prompt`, not a keypress. Doable but distinct logic.
 
@@ -245,7 +245,7 @@ What you genuinely **cannot** do (single-process stdio constraint):
 - File ops (`fs/read_text_file`, `fs/write_text_file`) and terminal ops (`terminal/create|output|release|wait_for_exit|kill`) — if we want to back them with nrflo logic.
 
 **ACP does NOT carry — has to live above the protocol (already does in nrflo):**
-- Token usage / context size / context-window remaining. ACP's `session/update` schema has no usage field. Per-message token counts are blind in the `acp` lane unless the underlying CLI writes them elsewhere. **This is the main reason to keep native `cli` adapters for Claude/Codex/OpenCode** — Claude exposes stream-json with usage; Codex uses the rollout JSONL tail; OpenCode batch writes `tokens.{input,output,reasoning,cache.read}` to its SQLite DB (`$XDG_DATA_HOME/opencode/opencode.db`) which the sqlite tail reads. The ACP lane is the breadth lane, not the depth lane.
+- Token usage / context size / context-window remaining. ACP's `session/update` schema has no usage field. Per-message token counts are blind in the `acp` lane unless the underlying CLI writes them elsewhere. **This is the main reason to keep native `cli_interactive` adapters for Claude/Codex/OpenCode** — Claude exposes stream-json with usage; Codex uses the rollout JSONL tail; OpenCode writes `tokens.{input,output,reasoning,cache.read}` to its SQLite DB (`$XDG_DATA_HOME/opencode/opencode.db`) which the sqlite tail reads. The ACP lane is the breadth lane, not the depth lane.
 - Context exhaustion signal / compaction events. No equivalent. `to_resume` finding + `${PREVIOUS_DATA}` template var stay nrflo-owned.
 - Workflow concepts: findings, callbacks, layer fan-in, pass policy, chains, next_workflow_on_success, endless loop, stall detection, restart cap, low-context relaunch. All orchestrator-level; unaffected.
 - Cost / pricing.
@@ -257,7 +257,7 @@ What you genuinely **cannot** do (single-process stdio constraint):
 - No new WS event types — map onto existing `agent.*` events.
 
 ### Open questions
-- **Per-message usage in ACP lane.** Accept the blind spot (document it), or wrap each adapter's stderr and grep for usage lines (fragile, per-vendor)? Default: accept it; nudge users to native `cli` mode when they need cost telemetry.
+- **Per-message usage in ACP lane.** Accept the blind spot (document it), or wrap each adapter's stderr and grep for usage lines (fragile, per-vendor)? Default: accept it; nudge users to `cli_interactive` mode when they need cost telemetry.
 - **Auto-approve vs UI-approve for `session/request_permission`.** Auto-approve matches kandev's default and current nrflo behavior. UI-approve is a future option; gate behind a per-agent flag.
 - **Provider catalog management.** Hard-coded Go seed (kandev's approach), `cli_models` rows (extensible, fits existing surface), or a new admin-CRUD table? Lean toward `cli_models` extension to avoid a new table.
 - **`fs/*` and `terminal/*` client methods.** Implement nrflo-side, or refuse (let the agent fall back to shell)? Refuse initially; implement only if a provider misbehaves without them.
@@ -266,6 +266,6 @@ What you genuinely **cannot** do (single-process stdio constraint):
 - **Stall detection.** Redefine "stalled" as `time.Since(lastUpdate) > N` where `lastUpdate` is the last `session/update`. Simpler than today's stdout-silence heuristic.
 
 ### Out of scope
-- Replacing native `cli` adapters for Claude/Codex/OpenCode. ACP is additive, not a replacement.
+- Replacing native `cli_interactive` adapters for Claude/Codex/OpenCode. ACP is additive, not a replacement.
 - ACP for `cli_interactive`. PTY users want a real terminal; ACP has no terminal.
 - ACP for `api` mode. In-process Anthropic Messages is orthogonal.

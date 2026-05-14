@@ -64,7 +64,7 @@ describe('LogsFinishedTab', () => {
     const row1 = makeLogEntry({
       session_id: 'row1aaaa12345678',
       agent_type: 'implementor',
-      execution_mode: 'cli',
+      execution_mode: 'cli_interactive',
       scheduled: true,
       workflow_final_result: 'All tests passed',
     })
@@ -85,26 +85,8 @@ describe('LogsFinishedTab', () => {
 
     it('renders execution_mode badge for both rows', () => {
       renderTab()
-      expect(screen.getByText('cli')).toBeInTheDocument()
-      expect(screen.getByText('api')).toBeInTheDocument()
-    })
-
-    it('renders CLI interactive badge with distinct label for cli_interactive mode', () => {
-      mockUseAgentSessionLogs.mockReturnValue({
-        data: makeResponse({
-          sessions: [
-            makeLogEntry({ session_id: 'sess1111aaaabbbb', execution_mode: 'cli_interactive' }),
-            makeLogEntry({ session_id: 'sess2222aaaabbbb', execution_mode: 'cli' }),
-          ],
-          total: 2,
-          total_pages: 1,
-        }),
-        isLoading: false,
-      })
-      renderTab()
       expect(screen.getByText('CLI interactive')).toBeInTheDocument()
-      expect(screen.getByText('cli')).toBeInTheDocument()
-      expect(screen.queryByText('cli_interactive')).not.toBeInTheDocument()
+      expect(screen.getByText('api')).toBeInTheDocument()
     })
 
     it('renders CalendarClock icon only for the scheduled row', () => {

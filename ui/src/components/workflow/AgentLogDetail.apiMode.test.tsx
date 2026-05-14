@@ -81,14 +81,14 @@ describe('AgentLogDetail — agentExecutionMode gate on Resume button', () => {
     expect(screen.queryByRole('button', { name: /Resume/i })).not.toBeInTheDocument()
   })
 
-  it('shows Resume button when agentExecutionMode=cli', () => {
+  it('shows Resume button when agentExecutionMode=cli_interactive', () => {
     renderDetail(
       {
         phaseName: 'implementation',
         historyEntry: makeHistoryEntry({ result: 'pass', model_id: 'claude:sonnet-4-5' }),
         session: makeSession({ status: 'completed' }),
       },
-      { onResumeSession: vi.fn(), agentExecutionMode: 'cli' },
+      { onResumeSession: vi.fn(), agentExecutionMode: 'cli_interactive' },
     )
     expect(screen.getByRole('button', { name: /Resume/i })).toBeInTheDocument()
   })

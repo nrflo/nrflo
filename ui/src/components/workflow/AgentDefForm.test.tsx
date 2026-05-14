@@ -530,4 +530,34 @@ describe('AgentDefForm', () => {
       )
     })
   })
+
+  describe('execution mode parity across providers', () => {
+    function getExecutionModeButton() {
+      return screen.getByText('Execution Mode')
+        .parentElement!
+        .querySelector('button[type="button"]') as HTMLButtonElement
+    }
+
+    const expectedModes = [
+      'CLI Interactive (PTY)',
+      'API (in-process Anthropic runner)',
+      'Script (Python)',
+    ]
+
+    it.each([
+      ['claude', 'sonnet'],
+      ['codex', 'codex_gpt_high'],
+      ['opencode', 'opencode_gpt54'],
+    ])('shows same execution mode options for %s (%s)', async (_, model) => {
+      const user = userEvent.setup()
+      renderForm({ isCreate: false, initial: { model, prompt: 'test' } })
+
+      expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
+
+      await user.click(getExecutionModeButton())
+      const optionsContainer = getExecutionModeButton().parentElement!.querySelector('.absolute')!
+      const optionLabels = Array.from(optionsContainer.querySelectorAll('span.truncate')).map(el => el.textContent)
+      expect(optionLabels).toEqual(expectedModes)
+    })
+  })
 })

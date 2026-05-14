@@ -70,7 +70,6 @@ describe('AgentsTable parity signals', () => {
     })
 
     it.each([
-      ['cli', 'cli'],
       ['api', 'api'],
       ['script', 'script'],
     ] as const)('renders effective_mode="%s" as "%s" for running agent', (mode, label) => {

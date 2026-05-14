@@ -22,7 +22,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/workflow-chains` | `WorkflowChainsPage.tsx` | Workflow chain list; New/Delete admin-only; ReadOnlyHint at top for non-admins; clicking row navigates to editor |
 | `/workflow-chains/:id` | `WorkflowChainEditorPage.tsx` | Chain editor — chain metadata form + ordered step list with Up/Down reorder, per-step inline form, Add/Delete step |
 | `/python-scripts` | `PythonScriptsPage.tsx` | Python script CRUD — list with edit/delete, New button (admin-only), ConfirmDialog for delete, PythonScriptForm dialog for create/edit, save-anyway flow for syntax errors, ReadOnlyHint for non-admins |
-| `/settings` | `SettingsPage.tsx` | Tabbed settings page (General, Projects, System Agents, Default Templates, Providers, Logs, Administration) — admin-only, gated via `RequireAdmin` at route level; Administration tab has Users / Audit Log sub-tabs via `?sub=users\|audit`; Providers tab has Claude / OpenCode / Codex sub-tabs via `?sub=claude\|opencode\|codex`; section components in `src/components/settings/` |
+| `/settings` | `SettingsPage.tsx` | Tabbed settings page (General, Projects, System Agents, Default Templates, Logs, Administration) — admin-only, gated via `RequireAdmin` at route level; Administration tab has Users / Audit Log sub-tabs via `?sub=users\|audit`; section components in `src/components/settings/` |
 
 Routes are defined in `src/App.tsx`.
 

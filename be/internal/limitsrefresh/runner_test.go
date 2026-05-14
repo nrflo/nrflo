@@ -105,7 +105,7 @@ func TestRunner_Tick_FreshLimits_Skips(t *testing.T) {
 
 	// Seed limits at fixedTime so UpdatedAt == fixedTime RFC3339.
 	limits := service.NewClaudeLimitsService(pool, clk)
-	if err := limits.Update(service.ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
+	if _, err := limits.Update(service.ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
 		t.Fatalf("seed limits: %v", err)
 	}
 
@@ -137,7 +137,7 @@ func TestRunner_Tick_StaleLimits_Runs(t *testing.T) {
 
 	// Seed limits at fixedTime.
 	limits := service.NewClaudeLimitsService(pool, clk)
-	if err := limits.Update(service.ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
+	if _, err := limits.Update(service.ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
 		t.Fatalf("seed limits: %v", err)
 	}
 

@@ -484,20 +484,24 @@ func (h *Handler) handleGlobal(ctx context.Context, req Request, action string) 
 			SevenDayUsedPct:  sevenDayPct,
 			SevenDayResetsAt: params.SevenDayResetsAt,
 		}
-		if err := h.claudeLimitsSvc.Update(limits); err != nil {
+		result, err := h.claudeLimitsSvc.Update(limits)
+		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
+		if !result.Changed {
+			return MakeResponse(req.ID, map[string]string{"status": "unchanged"})
+		}
 		if h.wsHub != nil {
 			payload := map[string]interface{}{
-				"five_hour_resets_at":  params.FiveHourResetsAt,
-				"seven_day_resets_at":  params.SevenDayResetsAt,
+				"five_hour_resets_at": result.Stored.FiveHourResetsAt,
+				"seven_day_resets_at": result.Stored.SevenDayResetsAt,
 			}
 			if params.FiveHourPct != nil {
-				payload["five_hour_pct"] = fiveHourPct
+				payload["five_hour_pct"] = result.Stored.FiveHourUsedPct
 			}
 			if params.SevenDayPct != nil {
-				payload["seven_day_pct"] = sevenDayPct
+				payload["seven_day_pct"] = result.Stored.SevenDayUsedPct
 			}
 			event := ws.NewEvent(ws.EventGlobalClaudeLimitsUpdated, "", "", "", payload)
 			h.wsHub.BroadcastGlobal(event)

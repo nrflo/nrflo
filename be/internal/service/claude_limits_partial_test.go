@@ -16,7 +16,7 @@ func TestClaudeLimitsService_PartialUpdate_PreservesUnsetFields(t *testing.T) {
 		SevenDayUsedPct:  60.0,
 		SevenDayResetsAt: "2026-01-07T00:00:00Z",
 	}
-	if err := svc.Update(first); err != nil {
+	if _, err := svc.Update(first); err != nil {
 		t.Fatalf("first Update: %v", err)
 	}
 
@@ -27,7 +27,7 @@ func TestClaudeLimitsService_PartialUpdate_PreservesUnsetFields(t *testing.T) {
 		SevenDayUsedPct:  -1,
 		SevenDayResetsAt: "",
 	}
-	if err := svc.Update(second); err != nil {
+	if _, err := svc.Update(second); err != nil {
 		t.Fatalf("second Update: %v", err)
 	}
 
@@ -65,7 +65,7 @@ func TestClaudeLimitsService_AllSentinel_NoOp(t *testing.T) {
 	t.Parallel()
 	svc, settingsSvc, _ := setupClaudeLimitsTestEnv(t)
 
-	if err := svc.Update(ClaudeLimits{
+	if _, err := svc.Update(ClaudeLimits{
 		FiveHourUsedPct:  -1,
 		SevenDayUsedPct:  -1,
 		FiveHourResetsAt: "",
@@ -90,7 +90,7 @@ func TestClaudeLimitsService_ResetOnly_WritesResetsAtAndUpdatedAt(t *testing.T) 
 	t.Parallel()
 	svc, settingsSvc, _ := setupClaudeLimitsTestEnv(t)
 
-	if err := svc.Update(ClaudeLimits{
+	if _, err := svc.Update(ClaudeLimits{
 		FiveHourUsedPct:  -1,
 		SevenDayUsedPct:  -1,
 		FiveHourResetsAt: "2026-06-01T00:00:00Z",

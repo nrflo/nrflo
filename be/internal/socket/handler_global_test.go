@@ -211,6 +211,57 @@ func TestHandleGlobal_ClaudeLimitsUpdate_ServicePersists(t *testing.T) {
 	}
 }
 
+// TestHandleGlobal_ClaudeLimitsUpdate_MonotonicRejection_NoWsBroadcast verifies that a
+// monotonic pct decrease rejection returns {"status":"unchanged"} and does not emit a WS event.
+func TestHandleGlobal_ClaudeLimitsUpdate_MonotonicRejection_NoWsBroadcast(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	sendCh := globalTestClient(t, env.hub, "global-listener-monotonic")
+
+	// First call: seed 5h:50% with a far-future resets_at (active window).
+	futureResetsAt := "2027-01-01T00:00:00Z"
+	firstParams, _ := json.Marshal(map[string]interface{}{
+		"five_hour_pct":       50.0,
+		"five_hour_resets_at": futureResetsAt,
+	})
+	firstResp := env.handler.Handle(Request{ID: "req-mono-1", Method: "global.claude_limits_update", Params: firstParams})
+	if firstResp.Error != nil {
+		t.Fatalf("first Handle error: %v", firstResp.Error)
+	}
+
+	// Drain the WS event from the first (accepted) call.
+	select {
+	case <-sendCh:
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for first broadcast to drain")
+	}
+
+	// Second call: pct-only decrease 50→20 (no resetsAt) → monotonic guard rejects.
+	// Omitting five_hour_resets_at keeps pairs empty when pct is rejected → Changed==false.
+	secondParams, _ := json.Marshal(map[string]interface{}{
+		"five_hour_pct": 20.0,
+	})
+	secondResp := env.handler.Handle(Request{ID: "req-mono-2", Method: "global.claude_limits_update", Params: secondParams})
+	if secondResp.Error != nil {
+		t.Fatalf("second Handle error: %v", secondResp.Error)
+	}
+
+	var result map[string]string
+	if err := json.Unmarshal(secondResp.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result["status"] != "unchanged" {
+		t.Errorf("status = %q, want %q", result["status"], "unchanged")
+	}
+
+	// No WS event should be emitted for the rejected update.
+	select {
+	case msg := <-sendCh:
+		t.Errorf("unexpected WS event on monotonic rejection: %s", msg)
+	case <-time.After(100 * time.Millisecond):
+		// Good: no event within drain window.
+	}
+}
+
 // TestHandleGlobal_UnknownAction verifies unknown global actions return MethodNotFound.
 func TestHandleGlobal_UnknownAction(t *testing.T) {
 	env := newHandlerTestEnv(t)

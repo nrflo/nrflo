@@ -31,7 +31,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
 | `cli_model.go` | CLI model CRUD; `validateReasoningEffort` enforces allowed values (`xhigh` only for claude-opus-4-7); readonly rows only accept `reasoning_effort` updates |
 | `global_settings.go` | Key-value settings (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
-| `claude_limits.go` | `ClaudeLimitsService`: typed facade for Claude API rate limit state (5h + weekly + resets_at); `Update` uses partial-update semantics: sentinel values (-1 pct, empty resets_at) skip writes; `updated_at` advances only when at least one real field is written |
+| `claude_limits.go` | `ClaudeLimitsService`: typed facade for Claude rate-limit state; `Update` applies a per-window monotonic guard (rejects pct decreases within an active reset window, epsilon 0.5) and returns `UpdateResult{Changed}` so callers can suppress no-op broadcasts. |
 | `error_service.go` | `RecordError` (UUID, clock, DB insert, WS broadcast), `ListErrors` (paginated) |
 | `notification.go` | Notification channel CRUD + secret masking + TestSend + ListDeliveries |
 | `snapshot.go` | WS snapshot provider |

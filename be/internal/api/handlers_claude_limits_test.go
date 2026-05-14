@@ -73,7 +73,7 @@ func TestHandleGetClaudeLimits_AfterUpdate(t *testing.T) {
 	fixedTime := time.Date(2026, 5, 11, 12, 0, 0, 0, time.UTC)
 	testClock := clock.NewTest(fixedTime)
 	svc := service.NewClaudeLimitsService(s.pool, testClock)
-	if err := svc.Update(service.ClaudeLimits{
+	if _, err := svc.Update(service.ClaudeLimits{
 		FiveHourUsedPct:  42.5,
 		FiveHourResetsAt: "2026-05-11T05:00:00Z",
 		SevenDayUsedPct:  75.0,
@@ -120,7 +120,7 @@ func TestHandleGetClaudeLimits_Persistence(t *testing.T) {
 
 	// Write limits through the first server's service.
 	svc := service.NewClaudeLimitsService(s1.pool, clock.Real())
-	if err := svc.Update(service.ClaudeLimits{
+	if _, err := svc.Update(service.ClaudeLimits{
 		FiveHourUsedPct:  88.0,
 		FiveHourResetsAt: "2026-05-11T06:00:00Z",
 		SevenDayUsedPct:  66.0,

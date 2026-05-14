@@ -61,7 +61,7 @@ func TestClaudeLimitsService_Update_WritesAllFiveKeys(t *testing.T) {
 		SevenDayUsedPct:  75.0,
 		SevenDayResetsAt: "2026-01-07T00:00:00Z",
 	}
-	if err := svc.Update(limits); err != nil {
+	if _, err := svc.Update(limits); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
@@ -119,7 +119,7 @@ func TestClaudeLimitsService_RoundTrip(t *testing.T) {
 		SevenDayUsedPct:  20.25,
 		SevenDayResetsAt: "2026-03-21T12:00:00Z",
 	}
-	if err := svc.Update(want); err != nil {
+	if _, err := svc.Update(want); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
@@ -161,7 +161,7 @@ func TestClaudeLimitsService_Update_ClockStampsUpdatedAt(t *testing.T) {
 	testClock := clock.NewTest(fixedTime)
 	svc := NewClaudeLimitsService(pool, testClock)
 
-	if err := svc.Update(ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
+	if _, err := svc.Update(ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
@@ -180,7 +180,7 @@ func TestClaudeLimitsService_Update_NegativeSentinel(t *testing.T) {
 	t.Parallel()
 	svc, _, _ := setupClaudeLimitsTestEnv(t)
 
-	if err := svc.Update(ClaudeLimits{
+	if _, err := svc.Update(ClaudeLimits{
 		FiveHourUsedPct: -1,
 		SevenDayUsedPct: 80.0,
 	}); err != nil {
@@ -204,10 +204,10 @@ func TestClaudeLimitsService_Update_Idempotent(t *testing.T) {
 	t.Parallel()
 	svc, _, _ := setupClaudeLimitsTestEnv(t)
 
-	if err := svc.Update(ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
+	if _, err := svc.Update(ClaudeLimits{FiveHourUsedPct: 10, SevenDayUsedPct: 20}); err != nil {
 		t.Fatalf("first Update() error: %v", err)
 	}
-	if err := svc.Update(ClaudeLimits{FiveHourUsedPct: 90, SevenDayUsedPct: 95}); err != nil {
+	if _, err := svc.Update(ClaudeLimits{FiveHourUsedPct: 90, SevenDayUsedPct: 95}); err != nil {
 		t.Fatalf("second Update() error: %v", err)
 	}
 

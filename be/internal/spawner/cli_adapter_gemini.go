@@ -71,7 +71,12 @@ func (a *GeminiAdapter) NeedsTerminalQueryReplies() bool { return false }
 func (a *GeminiAdapter) BumpsOnPTYBytes() bool           { return false }
 func (a *GeminiAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
-// PostStart is a noop stub. JSONL tailer implementation is tracked separately.
-func (a *GeminiAdapter) PostStart(_ context.Context, _ PostStartOptions) (func(), error) {
-	return func() {}, nil
+// PostStart wires up the per-session JSONL transcript tailer. No-op when prep
+// did not produce a GeminiHome (e.g. PrepareInteractive failed).
+func (a *GeminiAdapter) PostStart(ctx context.Context, opts PostStartOptions) (func(), error) {
+	if opts.GeminiHome == "" || opts.WorkDir == "" || opts.SessionID == "" {
+		return func() {}, nil
+	}
+	cancel := startGeminiJSONLTail(ctx, opts.SessionID, opts.GeminiHome, opts.WorkDir, opts.MaxContext, opts.Sink)
+	return func() { cancel() }, nil
 }

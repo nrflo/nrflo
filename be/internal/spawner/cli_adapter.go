@@ -73,9 +73,10 @@ type CLIAdapter interface {
 // forwards into InteractiveSpawnOptions. Fields are zero for adapters with no
 // extras.
 type InteractiveExtras struct {
-	CodexHome string      // per-session CODEX_HOME dir (codex only)
-	Hooks     []HookEvent // event-keyed hook commands (codex only)
-	Port      int         // embedded HTTP server port (opencode only; 0 = not used)
+	CodexHome  string      // per-session CODEX_HOME dir (codex only)
+	GeminiHome string      // per-session GEMINI_HOME dir (gemini only)
+	Hooks      []HookEvent // event-keyed hook commands (codex only)
+	Port       int         // embedded HTTP server port (opencode only; 0 = not used)
 }
 
 // InteractivePrepOptions carries the per-spawn context the adapter needs for
@@ -102,6 +103,7 @@ type InteractiveSpawnOptions struct {
 	SystemPromptFile string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
 	SettingsJSON     string // Claude: --settings JSON; others: ignored
 	CodexHome        string // CODEX_HOME dir path; Codex only — ignored by other adapters
+	GeminiHome       string // GEMINI_HOME dir path; Gemini only — ignored by other adapters
 	Prompt           string // initial user prompt; Codex passes this as argv positional, others ignore
 	Hooks            []HookEvent // event-keyed hook commands; Codex injects via repeated `-c hooks.<event>=…` (TUI ignores config.toml hooks); other adapters ignore
 	Port             int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
@@ -136,6 +138,7 @@ type PostStartOptions struct {
 	WorkDir    string
 	Port       int       // opencode embedded HTTP event server port (0 for other adapters)
 	CodexHome  string    // codex per-session CODEX_HOME dir ("" for other adapters)
+	GeminiHome string    // gemini per-session GEMINI_HOME dir ("" for other adapters)
 	StartedAt  time.Time // wall-clock right before launch; opencode uses it to disambiguate our session from prior history
 	MaxContext int       // max context window tokens; 0 falls back to ComputeContextLeftPct default (200k)
 	Sink       Sink

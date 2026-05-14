@@ -40,8 +40,8 @@ func TestCLIModel_List(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(models) != 15 {
-		t.Fatalf("List len = %d, want 15", len(models))
+	if len(models) != 18 {
+		t.Fatalf("List len = %d, want 18", len(models))
 	}
 
 	// Verify ORDER BY id ascending — first and last entries.

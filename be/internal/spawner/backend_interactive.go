@@ -84,6 +84,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		SystemPromptFile: prep.suffixFile, // non-empty for Claude (written by prepareSpawn)
 		SettingsJSON:     settingsJSON,
 		CodexHome:        extras.CodexHome,
+		GeminiHome:       extras.GeminiHome,
 		Prompt:           prep.prompt, // Codex pre-loads via argv; other adapters ignore
 		Hooks:            extras.Hooks,
 		Port:             extras.Port, // embedded server port (opencode only; 0 for others)
@@ -134,6 +135,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 			WorkDir:    workDir,
 			Port:       extras.Port,
 			CodexHome:  extras.CodexHome,
+			GeminiHome: extras.GeminiHome,
 			StartedAt:  spawnStartedAt,
 			MaxContext: b.s.maxContextForModel(prep.opts.Model),
 			Sink:       sink,

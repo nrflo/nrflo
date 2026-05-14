@@ -62,7 +62,8 @@ func TestMigration051NewOpencodeModelsSeeded(t *testing.T) {
 
 // TestMigration051TotalReadonlyModelCount verifies the read-only seeded model
 // count after all current migrations (000043 + 000051 + 000057 → 13;
-// 000103 codex_gpt54_mini_low → 14; 000104 opencode_gpt54_mini_low → 15).
+// 000103 codex_gpt54_mini_low → 14; 000104 opencode_gpt54_mini_low → 15;
+// 000106 gemini_pro/flash/flash_lite → 18).
 func TestMigration051TotalReadonlyModelCount(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -71,8 +72,8 @@ func TestMigration051TotalReadonlyModelCount(t *testing.T) {
 		`SELECT COUNT(*) FROM cli_models WHERE read_only = 1`).Scan(&count); err != nil {
 		t.Fatalf("count readonly cli_models: %v", err)
 	}
-	if count != 15 {
-		t.Errorf("readonly model count = %d, want 15", count)
+	if count != 18 {
+		t.Errorf("readonly model count = %d, want 18", count)
 	}
 }
 

@@ -107,6 +107,7 @@ Rules every change must respect.
 - **Per-project venv** → [venv/](be/internal/venv/)
 - **Manifest tools (api-mode only)** → [manifest/CLAUDE.md](be/internal/manifest/CLAUDE.md) + [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
 - **Python SDK + `script.context` socket method** → [sdk/python/CLAUDE.md](be/internal/sdk/python/CLAUDE.md) + [socket/CLAUDE.md](be/internal/socket/CLAUDE.md)
+- **Provider capability matrix** → [capabilities.md](capabilities.md)
 
 ### Project-scoped & scheduled work
 - **Project-scoped workflows** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
@@ -140,10 +141,6 @@ See `be/cmd/server/main.go` for subcommands.
 ## API Response Format
 
 `GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with workflow state, findings, and agent history. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full details.
-
-## Chain Execution
-
-Chains and workflow chain definitions allow sequential execution of multiple tickets or steps. See [be/internal/orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) and [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Building & Installing
 

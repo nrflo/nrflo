@@ -63,6 +63,15 @@ def main() -> int:
         # script provider has no --mode axis; run once.
         local_modes = ["native"] if provider in PROVIDER_SCRIPTS_NO_MODE else modes
         for mode in local_modes:
+            # Effective June 15, `claude -p` will be billed per API token usage;
+            # disabled for now in the grid — only manual run is allowed
+            # (`python3 manual_testing/test_claude.py --mode=cli`).
+            if provider == "claude" and mode == "cli":
+                print(f"\n========== {provider} × {mode} — SKIPPED "
+                      f"(claude -p billing change effective June 15; "
+                      f"manual run only) ==========", flush=True)
+                summary.append((provider, mode, 0, 0.0))
+                continue
             print(f"\n========== {provider} × {mode} ==========", flush=True)
             t0 = time.monotonic()
             cmd = [sys.executable, str(script)]

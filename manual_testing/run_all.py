@@ -24,9 +24,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-PROVIDERS = ["claude", "codex", "opencode", "script"]
+PROVIDERS = ["claude", "codex", "opencode", "gemini", "script"]
 BINARIES = {"claude": "claude", "codex": "codex", "opencode": "opencode",
-            "script": "python3"}
+            "gemini": "gemini", "script": "python3"}
 
 # `script` is the synthetic provider for `execution_mode='script'` agents:
 # no LLM, no provider CLI, just python3. It runs a separate scenario list

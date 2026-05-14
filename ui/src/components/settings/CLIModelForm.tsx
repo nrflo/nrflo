@@ -25,6 +25,7 @@ const CLI_TYPE_OPTIONS = [
   { value: 'claude', label: 'Claude' },
   { value: 'opencode', label: 'OpenCode' },
   { value: 'codex', label: 'Codex' },
+  { value: 'gemini', label: 'Gemini' },
 ]
 
 const REASONING_EFFORT_OPTIONS = [

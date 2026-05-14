@@ -124,6 +124,19 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
     expect(within(panel).queryByText('Extra High (Opus 4.7 only)')).not.toBeInTheDocument()
   })
 
+  it('gemini cli_type: xhigh option is NOT rendered; other five are', async () => {
+    renderForm({ cli_type: 'gemini', mapped_model: 'gemini-2.0-flash-lite' })
+    const { panel } = await openAndGetPanel()
+    const panelUtils = within(panel)
+
+    expect(panelUtils.getByText('Default')).toBeInTheDocument()
+    expect(panelUtils.getByText('Low')).toBeInTheDocument()
+    expect(panelUtils.getByText('Medium')).toBeInTheDocument()
+    expect(panelUtils.getByText('High')).toBeInTheDocument()
+    expect(panelUtils.getByText('Max')).toBeInTheDocument()
+    expect(panelUtils.queryByText('Extra High (Opus 4.7 only)')).not.toBeInTheDocument()
+  })
+
   it('selecting High calls setFormData with reasoning_effort="high"', async () => {
     const { setFormData, formData } = renderForm({ reasoning_effort: '' })
     const { user, panel } = await openAndGetPanel()
@@ -150,6 +163,30 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
 
     await user.click(within(panel).getByText('Extra High (Opus 4.7 only)'))
     expect(setFormData).toHaveBeenCalledWith({ ...formData, reasoning_effort: 'xhigh' })
+  })
+})
+
+describe('CLIModelForm — CLI Type dropdown (isCreate)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('lists Gemini as a selectable cli_type option', async () => {
+    const user = userEvent.setup()
+    const setFormData = vi.fn()
+    render(
+      <CLIModelForm
+        formData={makeFormData({ cli_type: 'claude' })}
+        setFormData={setFormData}
+        onCancel={vi.fn()}
+        onSave={vi.fn()}
+        mutation={{ isPending: false, isError: false, error: null }}
+        isCreate
+      />
+    )
+    const cliTypeLabel = screen.getByText('CLI Type')
+    const cliTypeWrapper = cliTypeLabel.parentElement!.querySelector('.relative') as HTMLElement
+    await user.click(cliTypeWrapper.querySelector('button')!)
+    const panel = await within(cliTypeWrapper).findByText('Gemini')
+    expect(panel).toBeInTheDocument()
   })
 })
 

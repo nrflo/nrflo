@@ -9,8 +9,6 @@ Source of truth for provider capability claims. If you add or remove a capabilit
 | claude | ✅ | ✅ | N/A | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
 | codex | ✅ | ❌ | N/A | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | N/A |
 | opencode | ✅ | ❌ | N/A | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ | N/A |
-| gemini [planned] | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| gemini | ✅ | ❌ | N/A | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | N/A |
 
-Sources: `cli_adapter_claude.go:77` (claude SupportsInteractive), `cli_adapter_codex.go:91` (codex SupportsInteractive), `cli_adapter_opencode.go:129` (opencode SupportsInteractive=false), `cli_adapter_opencode.go:118` (opencode resume-session ❌), `cli_adapter_codex_jsonl_tail.go` (codex telemetry), `cli_adapter_opencode_sqlite_tail.go` (opencode telemetry), `spawner/apirun/CLAUDE.md` (claude api-mode + MCP tools), `manifest/CLAUDE.md` (MCP tools api-mode only).
-
-[planned] Gemini adapter is not yet implemented; row listed for visibility only. Once shipped, flip cells in the same commit as the adapter.
+Sources: `cli_adapter_claude.go:77` (claude SupportsInteractive), `cli_adapter_codex.go:91` (codex SupportsInteractive), `cli_adapter_opencode.go:129` (opencode SupportsInteractive=false), `cli_adapter_opencode.go:118` (opencode resume-session ❌), `cli_adapter_codex_jsonl_tail.go` (codex telemetry), `cli_adapter_opencode_sqlite_tail.go` (opencode telemetry), `cli_adapter_gemini.go:28` (gemini SupportsResume), `cli_adapter_gemini_jsonl_tail.go` (gemini telemetry + agent messages), `cli_adapter_gemini_hooks.go` (PostStart hooks), `spawner/apirun/CLAUDE.md` (claude api-mode + MCP tools), `manifest/CLAUDE.md` (MCP tools api-mode only).

@@ -177,6 +177,9 @@ func TestModelMappingRoundTrip(t *testing.T) {
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_high", &CodexAdapter{}, "CodexAdapter"},
+		{"gemini_pro", &GeminiAdapter{}, "GeminiAdapter"},
+		{"gemini_flash", &GeminiAdapter{}, "GeminiAdapter"},
+		{"gemini_flash_lite", &GeminiAdapter{}, "GeminiAdapter"},
 	}
 
 	for _, tt := range tests {
@@ -249,6 +252,9 @@ func TestDefaultCLIForModel(t *testing.T) {
 		{"codex_gpt_high", "codex"},
 		{"codex_gpt54_normal", "codex"},
 		{"codex_gpt54_high", "codex"},
+		{"gemini_pro", "gemini"},
+		{"gemini_flash", "gemini"},
+		{"gemini_flash_lite", "gemini"},
 		{"unknown", "claude"},
 	}
 
@@ -285,6 +291,9 @@ func TestAllSupportedModelsAreValid(t *testing.T) {
 		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
 		{"codex_gpt54_high", &CodexAdapter{}, "CodexAdapter"},
+		{"gemini_pro", &GeminiAdapter{}, "GeminiAdapter"},
+		{"gemini_flash", &GeminiAdapter{}, "GeminiAdapter"},
+		{"gemini_flash_lite", &GeminiAdapter{}, "GeminiAdapter"},
 	}
 
 	for _, tt := range tests {

@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 // CLIAdapter defines the interface for different CLI backends
 type CLIAdapter interface {
 	// Name returns the CLI identifier (e.g., "claude", "opencode")
@@ -184,6 +183,9 @@ func DefaultCLIForModel(model string) string {
 	if strings.HasPrefix(model, "codex_gpt") {
 		return "codex"
 	}
+	if strings.HasPrefix(model, "gemini_") {
+		return "gemini"
+	}
 	return "claude"
 }
 
@@ -196,6 +198,8 @@ func GetCLIAdapter(name string) (CLIAdapter, error) {
 		return &OpencodeAdapter{}, nil
 	case "codex":
 		return &CodexAdapter{}, nil
+	case "gemini":
+		return &GeminiAdapter{}, nil
 	default:
 		return nil, fmt.Errorf("unknown CLI: %s", name)
 	}

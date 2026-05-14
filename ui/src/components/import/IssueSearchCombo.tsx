@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
@@ -107,12 +108,12 @@ export function IssueSearchCombo<Result>({
         <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
           Missing environment variables:{' '}
           <span className="font-mono">{notConfigured.missing.join(', ')}</span>.{' '}
-          <a
-            href={notConfigured.settingsHref}
+          <Link
+            to={notConfigured.settingsHref}
             className="underline hover:no-underline font-medium"
           >
             Configure in project settings
-          </a>
+          </Link>
         </div>
       )}
 

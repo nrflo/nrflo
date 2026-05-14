@@ -23,7 +23,7 @@ export function GitHubSearchCombo({ url, onUrlChange }: GitHubSearchComboProps) 
   function handleNotConfigured(missing: string[]) {
     setNotConfigured({
       missing,
-      settingsHref: `/projects/${currentProject}/edit#env-vars`,
+      settingsHref: `/settings?tab=projects&project=${encodeURIComponent(currentProject ?? '')}#env-vars`,
     })
   }
 

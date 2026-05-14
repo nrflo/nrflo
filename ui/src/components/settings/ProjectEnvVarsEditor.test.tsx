@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { ProjectEnvVarsEditor } from './ProjectEnvVarsEditor'
 import * as api from '@/api/projectEnvVars'
 import { renderWithQuery } from '@/test/utils'
@@ -29,7 +30,7 @@ describe('ProjectEnvVarsEditor', () => {
       makeVar({ name: 'DB_URL', value: 'postgres://localhost' }),
     ])
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
 
     expect(await screen.findByText('API_KEY')).toBeInTheDocument()
     expect(screen.getByText('abc123')).toBeInTheDocument()
@@ -40,7 +41,7 @@ describe('ProjectEnvVarsEditor', () => {
   it('shows loading spinner then hides it after load', async () => {
     vi.mocked(api.listEnvVars).mockResolvedValue([])
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
 
     // After load, spinner is gone and add row inputs are visible
     expect(await screen.findByPlaceholderText('VAR_NAME')).toBeInTheDocument()
@@ -53,7 +54,7 @@ describe('ProjectEnvVarsEditor', () => {
       .mockResolvedValue([makeVar({ name: 'NEW_VAR', value: 'newval' })])
     vi.mocked(api.putEnvVar).mockResolvedValue(makeVar({ name: 'NEW_VAR', value: 'newval' }))
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByPlaceholderText('VAR_NAME')
 
     const user = userEvent.setup()
@@ -75,7 +76,7 @@ describe('ProjectEnvVarsEditor', () => {
       .mockResolvedValue([makeVar({ name: 'API_KEY', value: 'new' })])
     vi.mocked(api.putEnvVar).mockResolvedValue(makeVar({ name: 'API_KEY', value: 'new' }))
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByText('API_KEY')
 
     const user = userEvent.setup()
@@ -102,7 +103,7 @@ describe('ProjectEnvVarsEditor', () => {
       .mockResolvedValue([])
     vi.mocked(api.deleteEnvVar).mockResolvedValue(undefined)
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByText('OLD_KEY')
 
     const user = userEvent.setup()
@@ -124,7 +125,7 @@ describe('ProjectEnvVarsEditor', () => {
     vi.mocked(api.listEnvVars).mockResolvedValue([])
     vi.mocked(api.putEnvVar).mockRejectedValue(new Error('name NRF_SESSION_ID is reserved'))
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByPlaceholderText('VAR_NAME')
 
     const user = userEvent.setup()

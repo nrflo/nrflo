@@ -26,21 +26,25 @@ type stubSpecImportAdapter struct {
 	ghErr        error
 	jiraResults  []spec_import.JiraIssueSummary
 	jiraErr      error
+	capturedEnv  map[string]string
 }
 
 func (s *stubSpecImportAdapter) Source() spec_import.Source { return s.src }
 func (s *stubSpecImportAdapter) Fetch(_ context.Context, _ spec_import.Input) (spec_import.FetchedSpec, error) {
 	return s.fetchResult, s.fetchErr
 }
-func (s *stubSpecImportAdapter) Search(_ context.Context, q, _ string, _ map[string]string) ([]spec_import.GitHubIssueSummary, error) {
+func (s *stubSpecImportAdapter) Search(_ context.Context, q, _ string, env map[string]string) ([]spec_import.GitHubIssueSummary, error) {
+	s.capturedEnv = env
 	return s.ghResults, s.ghErr
 }
 
 type stubJiraAdapter struct {
 	stubSpecImportAdapter
+	capturedEnv map[string]string
 }
 
-func (s *stubJiraAdapter) Search(_ context.Context, _ string, _ map[string]string) ([]spec_import.JiraIssueSummary, error) {
+func (s *stubJiraAdapter) Search(_ context.Context, _ string, env map[string]string) ([]spec_import.JiraIssueSummary, error) {
+	s.capturedEnv = env
 	return s.jiraResults, s.jiraErr
 }
 

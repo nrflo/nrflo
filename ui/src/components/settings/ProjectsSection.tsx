@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -26,7 +26,11 @@ const projectKeys = {
   list: () => [...projectKeys.all, 'list'] as const,
 }
 
-export function ProjectsSection() {
+interface ProjectsSectionProps {
+  initialEditProjectId?: string
+}
+
+export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps = {}) {
   const queryClient = useQueryClient()
   const { currentProject, setCurrentProject, loadProjects } = useProjectStore()
 
@@ -103,6 +107,12 @@ export function ProjectsSection() {
     setEditingId(null)
     setFormData(emptyProjectForm)
   }
+
+  useEffect(() => {
+    if (!initialEditProjectId || editingId !== null) return
+    const match = projects.find((p) => p.id === initialEditProjectId)
+    if (match) handleStartEdit(match)
+  }, [projects, initialEditProjectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveCreate = () => {
     if (!formData.id.trim()) return

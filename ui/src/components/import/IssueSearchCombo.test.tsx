@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { IssueSearchCombo } from './IssueSearchCombo'
 import { NotConfiguredError } from '@/api/specImport'
 
@@ -14,14 +15,16 @@ function renderCombo(overrides: {
   const search = overrides.search ?? vi.fn().mockResolvedValue([])
   const onSelect = overrides.onSelect ?? vi.fn()
   render(
-    <IssueSearchCombo<Item>
-      placeholder="Search…"
-      search={search}
-      renderItem={(r) => <span>{r.label}</span>}
-      onSelect={onSelect}
-      notConfigured={overrides.notConfigured}
-      onNotConfigured={overrides.onNotConfigured}
-    />
+    <MemoryRouter>
+      <IssueSearchCombo<Item>
+        placeholder="Search…"
+        search={search}
+        renderItem={(r) => <span>{r.label}</span>}
+        onSelect={onSelect}
+        notConfigured={overrides.notConfigured}
+        onNotConfigured={overrides.onNotConfigured}
+      />
+    </MemoryRouter>
   )
   return { search, onSelect }
 }
@@ -116,7 +119,7 @@ describe('IssueSearchCombo', () => {
     renderCombo({
       notConfigured: {
         missing: ['JIRA_BASE_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'],
-        settingsHref: '/projects/p/edit#env-vars',
+        settingsHref: '/settings?tab=projects&project=p#env-vars',
       },
     })
 
@@ -125,6 +128,6 @@ describe('IssueSearchCombo', () => {
     expect(screen.getByText(/JIRA_API_TOKEN/)).toBeInTheDocument()
 
     const link = screen.getByRole('link', { name: /configure in project settings/i })
-    expect(link).toHaveAttribute('href', '/projects/p/edit#env-vars')
+    expect(link).toHaveAttribute('href', '/settings?tab=projects&project=p#env-vars')
   })
 })

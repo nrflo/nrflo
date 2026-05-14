@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { ProjectEnvVarsEditor } from './ProjectEnvVarsEditor'
 import * as api from '@/api/projectEnvVars'
 import * as catalogHook from '@/hooks/useEnvVarCatalog'
@@ -50,7 +51,7 @@ beforeEach(() => {
 
 describe('ProjectEnvVarsEditor catalog panel', () => {
   it('shows suggested variables when expanded', async () => {
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByPlaceholderText('VAR_NAME')
 
     expect(screen.queryByText('GITHUB_TOKEN')).not.toBeInTheDocument()
@@ -62,7 +63,7 @@ describe('ProjectEnvVarsEditor catalog panel', () => {
   })
 
   it('click row prefills add-form name input', async () => {
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByPlaceholderText('VAR_NAME')
 
     const user = userEvent.setup()
@@ -73,7 +74,7 @@ describe('ProjectEnvVarsEditor catalog panel', () => {
   })
 
   it('copy button writes name to clipboard and shows toast', async () => {
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByPlaceholderText('VAR_NAME')
 
     // Call userEvent.setup() first so its clipboard stub is in place, then spy on it
@@ -97,7 +98,7 @@ describe('ProjectEnvVarsEditor catalog panel', () => {
       makeVar({ name: 'GITHUB_TOKEN', value: 'ghp_xxx' }),
     ])
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByText('GITHUB_TOKEN') // wait for table row
 
     await userEvent.setup().click(screen.getByText('Suggested variables'))
@@ -108,7 +109,7 @@ describe('ProjectEnvVarsEditor catalog panel', () => {
   it('panel not rendered when catalog is empty', async () => {
     vi.mocked(catalogHook.useEnvVarCatalog).mockReturnValue({ data: [], isLoading: false } as any)
 
-    renderWithQuery(<ProjectEnvVarsEditor projectId={PROJECT_ID} />)
+    renderWithQuery(<MemoryRouter><ProjectEnvVarsEditor projectId={PROJECT_ID} /></MemoryRouter>)
     await screen.findByPlaceholderText('VAR_NAME')
 
     expect(screen.queryByText('Suggested variables')).not.toBeInTheDocument()

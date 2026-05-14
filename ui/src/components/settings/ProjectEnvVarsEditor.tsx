@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Pencil, Trash2, Plus, X, Check, ChevronRight, ChevronDown, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +19,15 @@ export function ProjectEnvVarsEditor({ projectId }: { projectId: string }) {
   const putMutation = usePutProjectEnvVar()
   const deleteMutation = useDeleteProjectEnvVar()
   const { data: catalog } = useEnvVarCatalog()
+  const location = useLocation()
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const addNameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (location.hash !== '#env-vars') return
+    wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    addNameRef.current?.focus()
+  }, [location.hash])
 
   const [catalogOpen, setCatalogOpen] = useState(false)
   const [editingName, setEditingName] = useState<string | null>(null)
@@ -77,7 +87,7 @@ export function ProjectEnvVarsEditor({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="border-t border-border pt-3 space-y-3">
+    <div id="env-vars" ref={wrapperRef} className="border-t border-border pt-3 space-y-3">
       <div className="text-sm font-medium text-muted-foreground">Environment Variables</div>
       {isLoading ? (
         <Spinner size="sm" />
@@ -193,6 +203,7 @@ export function ProjectEnvVarsEditor({ projectId }: { projectId: string }) {
             <TableRow>
               <TableCell>
                 <Input
+                  ref={addNameRef}
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
                   placeholder="VAR_NAME"

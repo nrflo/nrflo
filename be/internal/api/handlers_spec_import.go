@@ -209,6 +209,10 @@ func (s *Server) handleGitHubSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	ownerRepo := r.URL.Query().Get("repo")
 	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required (X-Project header)")
+		return
+	}
 	env := s.loadProjectEnvMap(projectID)
 
 	adapter, err := s.resolveSpecImportAdapter(spec_import.SourceGitHubIssue)
@@ -246,6 +250,10 @@ func (s *Server) handleJiraSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectID := getProjectID(r)
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required (X-Project header)")
+		return
+	}
 	env := s.loadProjectEnvMap(projectID)
 
 	adapter, err := s.resolveSpecImportAdapter(spec_import.SourceJira)

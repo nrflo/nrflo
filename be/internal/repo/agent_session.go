@@ -536,6 +536,25 @@ func (r *AgentSessionRepo) UpdateStatusToInteractiveCompleted(id string) error {
 	return nil
 }
 
+// UpdateStatusToFailedWithReason sets status=failed, result=fail, result_reason=reason, ended_at=now.
+func (r *AgentSessionRepo) UpdateStatusToFailedWithReason(id string, reason string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.Exec(
+		`UPDATE agent_sessions SET status = ?, result = ?, result_reason = ?, ended_at = ?, updated_at = ? WHERE id = ?`,
+		model.AgentSessionFailed,
+		sql.NullString{String: "fail", Valid: true},
+		sql.NullString{String: reason, Valid: true},
+		now, now, id)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("agent session not found: %s", id)
+	}
+	return nil
+}
+
 // CountRunning returns the number of currently running agent sessions across all projects.
 func (r *AgentSessionRepo) CountRunning() (int, error) {
 	var count int

@@ -42,6 +42,7 @@ const (
 	EventProjectFindingsUpdated      = "project_findings.updated"
 	EventAgentContextUpdated         = "agent.context_updated"
 	EventAgentTakeControl            = "agent.take_control"
+	EventAgentKilled                 = "agent.killed"
 	EventAgentTakeControlRejected    = "agent.take_control_rejected"
 	EventAgentViewerAttached         = "agent.viewer_attached"
 	EventLayerSkipped                = "layer.skipped"

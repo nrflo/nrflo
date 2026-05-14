@@ -97,6 +97,7 @@ When `use_git_worktrees=true` and `default_branch` configured:
 - `CompleteInteractive(sessionID)` → updates DB to `interactive_completed` (result=pass), advances workflow.
 - Only works for `SupportsResume() == true` agents (Claude CLI). Project-scoped: `TakeControlProject`.
 - `runState.spawners` is a `map[string]*spawner.Spawner` keyed by session ID; maintained via `OnSessionRegister`/`OnSessionUnregister` callbacks (`orchestrator.go`).
+- `KillInteractive(sessionID)` → closes PTY, marks session failed (reason=user_killed), folds as agent failure in layer aggregation.
 
 ## Interactive Start & Plan Mode
 

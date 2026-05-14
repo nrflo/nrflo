@@ -345,6 +345,53 @@ func (s *Server) handleExitInteractiveProject(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, map[string]string{"status": "completed"})
 }
 
+// handleKillInteractiveProject fails the interactive session for a project-scoped workflow.
+// POST /api/v1/projects/{id}/workflow/kill-interactive
+func (s *Server) handleKillInteractiveProject(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	if s.orchestrator == nil {
+		writeError(w, http.StatusServiceUnavailable, "orchestrator not available")
+		return
+	}
+
+	var body struct {
+		Workflow  string `json:"workflow"`
+		SessionID string `json:"session_id"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.Workflow == "" {
+		writeError(w, http.StatusBadRequest, "workflow name is required")
+		return
+	}
+	if body.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "session_id is required")
+		return
+	}
+
+	_ = projectID
+
+	err := s.orchestrator.KillInteractive(body.SessionID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "killed", "session_id": body.SessionID})
+}
+
 // handleDeleteProjectWorkflowInstance deletes a completed or failed project-scoped workflow instance.
 // DELETE /api/v1/projects/{id}/workflow/{instance_id}
 func (s *Server) handleDeleteProjectWorkflowInstance(w http.ResponseWriter, r *http.Request) {

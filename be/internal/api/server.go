@@ -77,6 +77,12 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
 		ptyMgr.RegisterCommand(sessionID, cmd, args)
 	}
+	orch.OnClosePtySession = func(sessionID string) {
+		if sess := ptyMgr.Get(sessionID); sess != nil {
+			_ = sess.Close()
+			ptyMgr.Remove(sessionID)
+		}
+	}
 	orch.PTYManager = ptyMgr
 
 	wfChainRunner := chainrunner.New(orch, dataPath, hub, clk)
@@ -503,6 +509,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("POST /api/v1/tickets/{id}/workflow/take-control", s.handleTakeControl)
 	protected("POST /api/v1/tickets/{id}/workflow/resume-session", s.handleResumeSession)
 	protected("POST /api/v1/tickets/{id}/workflow/exit-interactive", s.handleExitInteractive)
+	protected("POST /api/v1/tickets/{id}/workflow/kill-interactive", s.handleKillInteractive)
 	protected("POST /api/v1/tickets/{id}/workflow/run-epic", s.handleRunEpicWorkflow)
 
 	// Workflow definitions (project-scoped)
@@ -525,6 +532,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("POST /api/v1/projects/{id}/workflow/take-control", s.handleTakeControlProject)
 	protected("POST /api/v1/projects/{id}/workflow/resume-session", s.handleResumeSessionProject)
 	protected("POST /api/v1/projects/{id}/workflow/exit-interactive", s.handleExitInteractiveProject)
+	protected("POST /api/v1/projects/{id}/workflow/kill-interactive", s.handleKillInteractiveProject)
 	protected("POST /api/v1/projects/{id}/workflow/stop-endless-loop", s.handleStopEndlessLoop)
 	protected("DELETE /api/v1/projects/{id}/workflow/{instance_id}", s.handleDeleteProjectWorkflowInstance)
 	protected("GET /api/v1/projects/{id}/workflow", s.handleGetProjectWorkflow)

@@ -314,7 +314,8 @@ type Spawner struct {
 	terminalSignalsMu  sync.Mutex              // protects terminalSignals
 	bumpMessageCh      chan string             // carries sessionID to bump lastMessageTime (hook events)
 	interactiveWaits   map[string]chan struct{} // sessionID → closed when interactive session completes
-	mu                 sync.Mutex              // protects interactiveWaits
+	killedInteractive  map[string]struct{}     // sessionID → killed by KillInteractive (checked after wait)
+	mu                 sync.Mutex              // protects interactiveWaits and killedInteractive
 	sessionProcsMu     sync.Mutex              // protects sessionProcs
 	sessionProcs       map[string]*processInfo // sessionID → live proc for RecordUserInput lookups
 	manifestCache      map[string]*manifestCacheEntry // configDir → cached manifest (mtime-keyed)
@@ -349,6 +350,7 @@ func New(config Config) *Spawner {
 		terminalSignals:    make(map[string]chan terminalSignal),
 		bumpMessageCh:      make(chan string, 1),
 		interactiveWaits:   make(map[string]chan struct{}),
+		killedInteractive:  make(map[string]struct{}),
 		sessionProcs:       make(map[string]*processInfo),
 		manifestCache:      make(map[string]*manifestCacheEntry),
 	}
@@ -564,6 +566,26 @@ func (s *Spawner) CompleteInteractive(sessionID string) {
 		// callback would deadlock. Pre-step spawners remain in rs.spawners as
 		// harmless orphans until the runState is GC'd; take-control spawners are
 		// cleaned up by unregisterTerminalSignal when monitorAll unblocks.
+	}
+}
+
+// KillInteractive signals that the interactive session should be treated as a failure,
+// unblocking the spawner's monitorAll wait and marking the session as FAIL.
+func (s *Spawner) KillInteractive(sessionID string) {
+	s.mu.Lock()
+	s.killedInteractive[sessionID] = struct{}{}
+	ch, ok := s.interactiveWaits[sessionID]
+	if ok {
+		delete(s.interactiveWaits, sessionID)
+	}
+	s.mu.Unlock()
+	if ok {
+		select {
+		case <-ch:
+			// already closed
+		default:
+			close(ch)
+		}
 	}
 }
 
@@ -1494,10 +1516,17 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 
 				s.mu.Lock()
 				delete(s.interactiveWaits, proc.sessionID)
+				_, wasKilled := s.killedInteractive[proc.sessionID]
+				if wasKilled {
+					delete(s.killedInteractive, proc.sessionID)
+				}
 				s.mu.Unlock()
 
-				// Mark as PASS so finalizePhase proceeds
-				proc.finalStatus = "PASS"
+				if wasKilled {
+					proc.finalStatus = "FAIL"
+				} else {
+					proc.finalStatus = "PASS"
+				}
 				proc.elapsed = time.Since(proc.startTime)
 				completed = append(completed, proc)
 				break

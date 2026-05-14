@@ -95,6 +95,10 @@ type Orchestrator struct {
 	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.
 	OnRegisterPtyCommand func(sessionID string, cmd string, args []string)
 
+	// OnClosePtySession is called when an interactive session is killed to close and
+	// remove its PTY session. The API server wires this to ptyManager.Get+Close+Remove.
+	OnClosePtySession func(sessionID string)
+
 	// PTYManager is the shared PTY session manager. Passed to spawner.Config.PTYManager
 	// so the interactive CLI backend can create and manage PTY sessions directly.
 	PTYManager *ptyPkg.Manager
@@ -1115,6 +1119,63 @@ func (o *Orchestrator) CompleteInteractive(sessionID string) error {
 		}
 	}
 	o.mu.Unlock()
+
+	return nil
+}
+
+// KillInteractive marks the interactive session as failed and unblocks the spawner wait.
+func (o *Orchestrator) KillInteractive(sessionID string) error {
+	logger.Info(context.Background(), "killing interactive session", "session_id", sessionID)
+
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	session, err := asRepo.Get(sessionID)
+	if err != nil {
+		return fmt.Errorf("agent session not found: %s", sessionID)
+	}
+	if session.Status != model.AgentSessionUserInteractive {
+		return fmt.Errorf("session %s is not user_interactive (status=%s)", sessionID, session.Status)
+	}
+
+	if err := asRepo.UpdateStatusToFailedWithReason(sessionID, "user_killed"); err != nil {
+		return fmt.Errorf("failed to update session: %w", err)
+	}
+
+	if o.OnClosePtySession != nil {
+		o.OnClosePtySession(sessionID)
+	}
+
+	pool := db.WrapAsPool(database)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
+	workflowName := ""
+	if wfi, err := wfiRepo.Get(session.WorkflowInstanceID); err == nil {
+		workflowName = wfi.WorkflowID
+	}
+
+	o.mu.Lock()
+	seen := make(map[*spawner.Spawner]struct{})
+	for _, rs := range o.runs {
+		for _, sp := range rs.spawners {
+			if _, ok := seen[sp]; ok {
+				continue
+			}
+			seen[sp] = struct{}{}
+			sp.KillInteractive(sessionID)
+		}
+	}
+	o.mu.Unlock()
+
+	o.wsHub.Broadcast(ws.NewEvent(ws.EventAgentKilled, session.ProjectID, session.TicketID, workflowName, map[string]interface{}{
+		"session_id": sessionID,
+		"agent_type": session.AgentType,
+		"model_id":   session.ModelID.String,
+		"reason":     "user_killed",
+	}))
 
 	return nil
 }

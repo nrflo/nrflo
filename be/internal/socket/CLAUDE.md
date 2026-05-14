@@ -59,6 +59,7 @@ After the DB write and WS broadcast, `agent.fail`, `agent.finished`, `agent.cont
 | `server.go` | Socket listener, connection handling, `TerminalSignaler` interface |
 | `handler.go` | Request routing and method dispatch |
 | `handler_record_event.go` | `agent.record_event`: PreToolUse → DB insert + WS broadcast; Stop → codex JSONL flush |
+| `handler_gemini_normalize.go` | In-place rename of Gemini hook event names to Claude equivalents before the switch |
 | `handler_codex_context.go` | Codex JSONL extractors: context left + new agent messages |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
 | `handler_script_context.go` | `script.context` handler |

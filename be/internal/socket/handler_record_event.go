@@ -35,6 +35,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		return MakeErrorResponse(req.ID, NewInvalidParamsError("invalid event JSON: "+err.Error()))
 	}
 
+	normalizeGeminiHookEvent(event)
 	hookEventName, _ := event["hook_event_name"].(string)
 
 	// Codex interactive sessions don't include token usage in hook payloads,

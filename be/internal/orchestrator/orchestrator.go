@@ -334,6 +334,13 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, err
 	}
 
+	// Load provider mode allowlists from DB (once at workflow start)
+	providerModes, err := service.NewProviderSettingsService(service.NewGlobalSettingsService(pool, o.clock)).GetAll()
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to load provider modes: %w", err)
+	}
+
 	// Read claude safety hook config (once at workflow start)
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(req.ProjectID, "claude_safety_hook"); raw != "" {
@@ -408,7 +415,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Setup interactive/plan pre-step if requested
 	var pre *interactivePreStep
 	if req.Interactive || req.PlanMode {
-		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs, claudeSettingsJSON)
+		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs, claudeSettingsJSON, providerModes)
 		if err != nil {
 			cancel()
 			o.mu.Lock()
@@ -420,7 +427,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, customerConfigDir, projectEnv, layerPolicies)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, customerConfigDir, projectEnv, layerPolicies, providerModes)
 
 	status := "started"
 	sessionID := ""
@@ -771,6 +778,12 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		return err
 	}
 
+	// Load provider mode allowlists from DB (once at workflow retry)
+	providerModes, err := service.NewProviderSettingsService(service.NewGlobalSettingsService(pool, o.clock)).GetAll()
+	if err != nil {
+		return fmt.Errorf("failed to load provider modes: %w", err)
+	}
+
 	// Read claude safety hook config (once at workflow retry)
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(projectID, "claude_safety_hook"); raw != "" {
@@ -823,7 +836,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}))
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, customerConfigDir, projectEnv, layerPolicies)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, customerConfigDir, projectEnv, layerPolicies, providerModes)
 
 	return nil
 }
@@ -1226,6 +1239,7 @@ func (o *Orchestrator) runLoop(
 	customerConfigDir string,
 	projectEnv []string,
 	layerPolicies map[int]string,
+	providerModes map[string][]string,
 ) {
 	// Grab done channel before any race can occur
 	o.mu.Lock()
@@ -1398,6 +1412,7 @@ func (o *Orchestrator) runLoop(
 					GlobalStallRunningTimeout: globalStallRunningTimeout,
 					ClaudeSettingsJSON:        claudeSettingsJSON,
 					ModelConfigs:              modelConfigs,
+					ProviderModes:             providerModes,
 					ErrorSvc:                  o.errorSvc,
 					Provider:                  apiProvider,
 					AgentSvc:                  apiAgentSvc,
@@ -1542,7 +1557,7 @@ func (o *Orchestrator) runLoop(
 		wtService := &service.WorktreeService{}
 		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
 			// Attempt automatic conflict resolution
-			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs, claudeSettingsJSON, customerConfigDir, projectEnv); resolveErr != nil {
+			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs, claudeSettingsJSON, customerConfigDir, projectEnv, providerModes); resolveErr != nil {
 				// Resolution failed or no resolver configured — fall through to manual resolution
 				logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
 					"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)

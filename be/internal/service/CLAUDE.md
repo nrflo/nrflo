@@ -42,6 +42,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `user_service.go` | `UserService.Delete`: self-delete → system-user → last-admin checks; system users flagged via `users.system=1` |
 | `python_script_validate.go` | `Validate(ctx, code)`: runs `python3` AST parse with 5s timeout; degrades gracefully if python3 absent |
 | `project_env_var.go` | `ProjectEnvVarService`: List/Upsert/Delete; validates name regex, reserved names, 4096-byte value cap |
+| `provider_settings.go` | `ProviderSettingsService`: GetModes/SetModes/GetAll; per-provider CLI execution-mode allowlist stored as comma-joined values under `provider_<name>_modes` keys; defaults to `[cli, cli_interactive]` when absent |
 
 ## Per-project env vars
 

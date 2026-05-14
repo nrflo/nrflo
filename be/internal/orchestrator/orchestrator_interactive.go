@@ -40,6 +40,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	projectRoot string,
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
+	providerModes map[string][]string,
 ) (*interactivePreStep, error) {
 	sessionID := uuid.New().String()
 
@@ -91,7 +92,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	}
 
 	// Build PTY command args
-	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, claudeSettingsJSON)
+	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, claudeSettingsJSON, providerModes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build interactive PTY args: %w", err)
 	}
@@ -105,12 +106,13 @@ func (o *Orchestrator) setupInteractivePreStep(
 	// Manifest fields are not needed here (CLI-only, no API spawn).
 	wfiID := wi.ID
 	sp := spawner.New(spawner.Config{
-		Workflows:    workflows,
-		Agents:       agents,
-		DataPath:     o.dataPath,
-		WSHub:        o.wsHub,
-		Clock:        o.clock,
-		ModelConfigs: modelConfigs,
+		Workflows:     workflows,
+		Agents:        agents,
+		DataPath:      o.dataPath,
+		WSHub:         o.wsHub,
+		Clock:         o.clock,
+		ModelConfigs:  modelConfigs,
+		ProviderModes: providerModes,
 		OnSessionRegister: func(sid string, s *spawner.Spawner) {
 			o.mu.Lock()
 			if rs, ok := o.runs[wfiID]; ok {
@@ -147,6 +149,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	projectRoot string,
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
+	providerModes map[string][]string,
 ) ([]string, error) {
 	var prompt string
 
@@ -170,13 +173,14 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		// Callbacks wired for uniformity; this spawner never registers sessions.
 		tmplWfiID := wi.ID
 		sp := spawner.New(spawner.Config{
-			Workflows:    workflows,
-			Agents:       agents,
-			DataPath:     o.dataPath,
-			WSHub:        o.wsHub,
-			Pool:         pool,
-			Clock:        o.clock,
-			ModelConfigs: modelConfigs,
+			Workflows:     workflows,
+			Agents:        agents,
+			DataPath:      o.dataPath,
+			WSHub:         o.wsHub,
+			Pool:          pool,
+			Clock:         o.clock,
+			ModelConfigs:  modelConfigs,
+			ProviderModes: providerModes,
 			OnSessionRegister: func(sid string, s *spawner.Spawner) {
 				o.mu.Lock()
 				if rs, ok := o.runs[tmplWfiID]; ok {

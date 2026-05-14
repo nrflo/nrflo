@@ -28,6 +28,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	claudeSettingsJSON string,
 	customerConfigDir string,
 	projectEnv []string,
+	providerModes map[string][]string,
 ) error {
 	// Load conflict-resolver system agent definition.
 	// API-mode conflict resolution is not yet supported — the resolver needs
@@ -65,6 +66,7 @@ func (o *Orchestrator) attemptConflictResolution(
 		Clock:              o.clock,
 		ClaudeSettingsJSON: claudeSettingsJSON,
 		ModelConfigs:       modelConfigs,
+		ProviderModes:      providerModes,
 		ErrorSvc:           o.errorSvc,
 		APIMode:    o.apiMode,
 		PTYManager: o.PTYManager,

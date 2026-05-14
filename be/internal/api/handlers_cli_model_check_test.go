@@ -37,10 +37,11 @@ func (m *mockCLIAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptio
 func (m *mockCLIAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
 	return spawner.InteractiveExtras{}, func() {}, nil
 }
-func (m *mockCLIAdapter) DeliversPromptInline() bool      { return false }
-func (m *mockCLIAdapter) NeedsTerminalQueryReplies() bool { return false }
-func (m *mockCLIAdapter) CapturesTUIBytes() bool          { return false }
-func (m *mockCLIAdapter) BumpsOnPTYBytes() bool           { return false }
+func (m *mockCLIAdapter) DeliversPromptInline() bool        { return false }
+func (m *mockCLIAdapter) NeedsTerminalQueryReplies() bool   { return false }
+func (m *mockCLIAdapter) CapturesTUIBytes() bool            { return false }
+func (m *mockCLIAdapter) BumpsOnPTYBytes() bool             { return false }
+func (m *mockCLIAdapter) NaturalExitGrace() time.Duration   { return 0 }
 
 func mockGetCLIAdapter(cliType string) (spawner.CLIAdapter, error) {
 	return &mockCLIAdapter{name: cliType}, nil
@@ -231,14 +232,13 @@ func (a *failStartAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOpt
 func (a *failStartAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
 	return spawner.InteractiveExtras{}, func() {}, nil
 }
-func (a *failStartAdapter) DeliversPromptInline() bool      { return false }
-func (a *failStartAdapter) NeedsTerminalQueryReplies() bool { return false }
-func (a *failStartAdapter) CapturesTUIBytes() bool          { return false }
-func (a *failStartAdapter) BumpsOnPTYBytes() bool           { return false }
+func (a *failStartAdapter) DeliversPromptInline() bool        { return false }
+func (a *failStartAdapter) NeedsTerminalQueryReplies() bool   { return false }
+func (a *failStartAdapter) CapturesTUIBytes() bool            { return false }
+func (a *failStartAdapter) BumpsOnPTYBytes() bool             { return false }
+func (a *failStartAdapter) NaturalExitGrace() time.Duration   { return 0 }
 
-// hangingAdapter returns a command that runs indefinitely (sleep 999).
-// Used to test the timeout/kill path without waiting 40s: caller provides a
-// short-lived request context so the handler's derived context expires quickly.
+// hangingAdapter simulates a long-running CLI command to exercise the timeout kill path.
 type hangingAdapter struct{ name string }
 
 func (a *hangingAdapter) Name() string                                    { return a.name }
@@ -256,10 +256,11 @@ func (a *hangingAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptio
 func (a *hangingAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
 	return spawner.InteractiveExtras{}, func() {}, nil
 }
-func (a *hangingAdapter) DeliversPromptInline() bool      { return false }
-func (a *hangingAdapter) NeedsTerminalQueryReplies() bool { return false }
-func (a *hangingAdapter) CapturesTUIBytes() bool          { return false }
-func (a *hangingAdapter) BumpsOnPTYBytes() bool           { return false }
+func (a *hangingAdapter) DeliversPromptInline() bool        { return false }
+func (a *hangingAdapter) NeedsTerminalQueryReplies() bool   { return false }
+func (a *hangingAdapter) CapturesTUIBytes() bool            { return false }
+func (a *hangingAdapter) BumpsOnPTYBytes() bool             { return false }
+func (a *hangingAdapter) NaturalExitGrace() time.Duration   { return 0 }
 
 // TestHandleTestCLIModel_TimeoutMessage exercises the timeout code path:
 // the response must be success=false with an error containing "40s", and the

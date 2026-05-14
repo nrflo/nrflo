@@ -559,6 +559,10 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
 	protected("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
 
+	// Provider settings (global) — writes are admin-only
+	protected("GET /api/v1/providers", s.handleListProviders)
+	admin("PATCH /api/v1/providers/{name}", s.handlePatchProvider)
+
 	// Notification variables (global, no project scope)
 	protected("GET /api/v1/notification-channels/variables", s.handleGetNotificationVariables)
 

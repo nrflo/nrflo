@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -120,6 +121,11 @@ type Config struct {
 	// uses these for model mapping, reasoning effort, context length, and CLI type
 	// instead of hardcoded adapter methods. nil map is safe (lookup returns zero value).
 	ModelConfigs map[string]ModelConfig
+	// ProviderModes is an optional per-provider allowlist of CLI execution modes
+	// (cli/cli_interactive). Loaded once at workflow start via ProviderSettingsService.GetAll.
+	// If the map has an entry for the CLI name and the agent's resolved mode is not
+	// in the allowlist, the mode is coerced to allowed[0]. nil map is safe.
+	ProviderModes map[string][]string
 	// ErrorSvc records agent errors (optional, nil-safe).
 	ErrorSvc ErrorRecorder
 	// Provider is the provider abstraction used by API-mode agents
@@ -916,6 +922,15 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	} else if agentDef == nil {
 		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && (agentCfg.ExecutionMode == "api" || agentCfg.ExecutionMode == "script" || agentCfg.ExecutionMode == "cli_interactive") {
 			executionMode = agentCfg.ExecutionMode
+		}
+	}
+
+	// Coerce execution mode to provider allowlist if configured.
+	if (executionMode == "cli" || executionMode == "cli_interactive") && s.config.ProviderModes != nil {
+		if allowed, ok := s.config.ProviderModes[cliName]; ok && len(allowed) > 0 {
+			if !slices.Contains(allowed, executionMode) {
+				executionMode = allowed[0]
+			}
 		}
 	}
 

@@ -60,6 +60,8 @@ export function AgentsTable({
 
   const { rows, currentRunningLayer } = useMemo(() => {
     const rows = Object.keys(phases)
+      // Belt-and-suspenders: backend already excludes planner phases; skip them here too.
+      .filter(phaseName => phaseName !== 'planner' && phaseName !== 'planning')
       .map(phaseName => {
         const active = Object.values(activeAgents).find(a => a.phase === phaseName)
         const phaseHistory = agentHistory

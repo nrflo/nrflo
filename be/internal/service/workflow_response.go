@@ -21,7 +21,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
 			AND LOWER(ad.workflow_id) = LOWER(wi.workflow_id)
 			AND LOWER(ad.id) = LOWER(s.agent_type)
-		WHERE s.workflow_instance_id = ? AND s.status = 'running'`, wfiID)
+		WHERE s.workflow_instance_id = ? AND s.status = 'running' AND s.agent_type != 'planner'`, wfiID)
 	if err != nil {
 		return agents
 	}
@@ -99,7 +99,7 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
 			AND LOWER(ad.workflow_id) = LOWER(wi.workflow_id)
 			AND LOWER(ad.id) = LOWER(s.agent_type)
-		WHERE s.workflow_instance_id = ? AND s.status NOT IN ('running', 'continued')
+		WHERE s.workflow_instance_id = ? AND s.status NOT IN ('running', 'continued') AND s.agent_type != 'planner'
 		ORDER BY s.created_at`, wfiID)
 	if err != nil {
 		return history
@@ -188,7 +188,7 @@ func (s *WorkflowService) derivePhaseStatuses(wfiID string, phases []PhaseDef) m
 	// Query latest non-continued/callback session per agent_type
 	rows, err := s.pool.Query(`
 		SELECT agent_type, status, result FROM agent_sessions
-		WHERE workflow_instance_id = ? AND status NOT IN ('continued', 'callback')
+		WHERE workflow_instance_id = ? AND status NOT IN ('continued', 'callback') AND agent_type != 'planner'
 		ORDER BY created_at DESC`, wfiID)
 	if err != nil {
 		return result

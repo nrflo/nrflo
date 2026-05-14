@@ -299,6 +299,11 @@ func handlePlanModePostStep(sessionID, projectRoot string, pool *db.Pool, wfiID 
 	findingsJSON, _ := json.Marshal(findings)
 	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
 
+	if err := repo.NewAgentSessionRepo(pool, clk).UpdateStatusToInteractiveCompleted(sessionID); err != nil {
+		logger.Error(context.Background(), "failed to mark planner session interactive_completed", "session_id", sessionID, "err", err)
+		return err
+	}
+
 	logger.Info(context.Background(), "plan file stored as user_instructions", "wfi_id", wfiID, "plan_length", len(planContent))
 	return nil
 }

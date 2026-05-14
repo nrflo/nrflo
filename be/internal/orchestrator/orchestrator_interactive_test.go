@@ -135,6 +135,18 @@ func TestHandlePlanModePostStep_StoresPlanContent(t *testing.T) {
 	projectRoot := "/test/project/root"
 	setupPlanModeHome(t, sessionID, projectRoot, planContent)
 
+	// Insert planner session so UpdateStatusToInteractiveCompleted can find it.
+	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+	if _, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+			status, result, result_reason, pid, findings, context_left, ancestor_session_id,
+			spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
+		VALUES (?, 'test-project', '', ?, 'planning', 'planner', 'user_interactive',
+			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		sessionID, wfiID, now, now, now); err != nil {
+		t.Fatalf("insert planner session: %v", err)
+	}
+
 	err := handlePlanModePostStep(sessionID, projectRoot, env.pool, wfiID, clock.Real())
 	if err != nil {
 		t.Fatalf("handlePlanModePostStep() error: %v", err)

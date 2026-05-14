@@ -5,8 +5,10 @@ LAUNCH MANUALLY ONLY. Each sub-invocation spawns a real CLI against real
 provider credentials. Missing binaries are SKIPPED. Exits non-zero if
 any sub-invocation reports failure.
 
+Grid: claude/codex × {cli,cli-interactive} + opencode × {cli} + script × {native}
+
 Usage:
-    python3 manual_testing/run_all.py                  # all 3 × 2 = 6 combos
+    python3 manual_testing/run_all.py                  # all combos
     python3 manual_testing/run_all.py --mode=cli       # cli only
     python3 manual_testing/run_all.py --provider=claude
 """
@@ -55,6 +57,10 @@ def main() -> int:
         if not shutil.which(BINARIES[provider]):
             local_modes = ["native"] if provider in PROVIDER_SCRIPTS_NO_MODE else modes
             for mode in local_modes:
+                if provider == "opencode" and mode == "cli-interactive":
+                    print(f"\n========== {provider} × {mode} — EXCLUDED "
+                          f"(opencode is cli-only by design) ==========", flush=True)
+                    continue
                 print(f"\n========== {provider} × {mode} — SKIPPED "
                       f"(binary not on PATH) ==========", flush=True)
                 summary.append((provider, mode, 0, 0.0))
@@ -63,6 +69,10 @@ def main() -> int:
         # script provider has no --mode axis; run once.
         local_modes = ["native"] if provider in PROVIDER_SCRIPTS_NO_MODE else modes
         for mode in local_modes:
+            if provider == "opencode" and mode == "cli-interactive":
+                print(f"\n========== {provider} × {mode} — EXCLUDED "
+                      f"(opencode is cli-only by design) ==========", flush=True)
+                continue
             # Effective June 15, `claude -p` will be billed per API token usage;
             # disabled for now in the grid — only manual run is allowed
             # (`python3 manual_testing/test_claude.py --mode=cli`).

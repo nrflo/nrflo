@@ -10,7 +10,7 @@ Provider/mode-agnostic Python harness that exercises the full path "real REST AP
 
 ## What it covers
 
-CLI-provider scenarios (claude/codex/opencode × cli/cli-interactive): 37 scenarios across findings, callbacks, pass policies, stall detection, endless loops, chains, context save/resume (both resume and agent-saver branches), manual restart, ticket concurrency 409, take-control/exit-interactive, plan_mode, multi-instance-same-ticket, custom cli_models, WS subscriber, and notification webhook. One scenario (s28) is a SKIP stub for the codex resume-fallback path — see `backlog.md` §7. See `scenarios/__init__.py` for the full `ALL_SCENARIOS` list.
+CLI-provider scenarios (claude/codex × cli/cli-interactive plus opencode × cli): 37 scenarios across findings, callbacks, pass policies, stall detection, endless loops, chains, context save/resume (both resume and agent-saver branches), manual restart, ticket concurrency 409, take-control/exit-interactive, plan_mode, multi-instance-same-ticket, custom cli_models, WS subscriber, and notification webhook. One scenario (s28) is a SKIP stub for the codex resume-fallback path — see `backlog.md` §7. See `scenarios/__init__.py` for the full `ALL_SCENARIOS` list.
 
 Script-backend scenarios (`execution_mode='script'`, no provider CLI, no LLM): 18 scenarios exercising every method of the embedded `nrflo_sdk` (findings, project_findings, agent control incl. `chain_next_ticket`, context/user_instructions/callback_info/previous_data, skip incl. multi-tag accumulation, log with each category) plus project env vars, exception → fail, stderr capture, chain handoff via SDK. See `scenarios_script/__init__.py` for the full `ALL_SCRIPT_SCENARIOS` list.
 

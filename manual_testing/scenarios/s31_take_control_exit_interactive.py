@@ -13,13 +13,6 @@ Tests:
 Skips:
   - `cli-interactive` mode — the session is already PTY-bound, so
     take-control is not the transition under test.
-  - opencode — `cliBackend.SupportsTakeControl()` returns
-    `adapter.SupportsResume()`; opencode's adapter returns false. The
-    handler currently accepts the request (HTTP 200) but the spawner
-    logs `take-control: backend does not support take-control` and
-    silently no-ops. Tracked in backlog as a separate item: the
-    handler should 409 unsupported-backend up front (same shape as
-    the existing `api_mode_unsupported` guard).
 """
 
 from __future__ import annotations
@@ -62,11 +55,6 @@ def run(ctx: Ctx) -> Result:
     if ctx.mode == "cli-interactive":
         return ("S31 take-control exit-interactive", "SKIP",
                 "cli-interactive starts in PTY mode; take-control transition n/a")
-    if ctx.provider == "opencode":
-        return ("S31 take-control exit-interactive", "SKIP",
-                "opencode cliBackend.SupportsTakeControl() = false "
-                "(no SupportsResume); product gap, see backlog")
-
     pid, _root = make_project(ctx)
     wid = next_id(ctx, "wf")
     ctx.client.create_workflow(pid, wid, scope_type="project")

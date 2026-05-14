@@ -6,7 +6,6 @@ LAUNCH MANUALLY ONLY. Not wired into make test / CI. Spawns a real
 
 Usage:
     python3 manual_testing/test_opencode.py                  # mode=cli (default)
-    python3 manual_testing/test_opencode.py --mode=cli-interactive
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ from lib.runner import run_all
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="cli",
-                    choices=["cli", "cli-interactive"])
+                    choices=["cli"])
     ap.add_argument("--parallel", type=int, default=5)
     ap.add_argument("--model", default="opencode_gpt54_mini_low")
     ap.add_argument("--only", default=None,

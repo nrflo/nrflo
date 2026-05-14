@@ -20,7 +20,10 @@ func setupClaudeLimitsTestEnv(t *testing.T) (*ClaudeLimitsService, *GlobalSettin
 		t.Fatalf("failed to open pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
-	clk := clock.Real()
+	// Pinned clock so reset times used in fixtures (2026-01-...) stay in the
+	// future relative to test time; otherwise Update's stale-window auto-clear
+	// would correctly wipe them.
+	clk := clock.NewTest(time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC))
 	return NewClaudeLimitsService(pool, clk), NewGlobalSettingsService(pool, clk), pool
 }
 

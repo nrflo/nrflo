@@ -43,25 +43,25 @@ func TestGetForBackend_API(t *testing.T) {
 	}
 }
 
-// TestGetForBackend_CLI verifies GetForBackend returns the cli-mode context-saver.
+// TestGetForBackend_CLIInteractive verifies GetForBackend returns the cli_interactive-mode context-saver.
 func TestGetForBackend_CLI(t *testing.T) {
 	t.Parallel()
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
-	def, err := svc.GetForBackend("context-saver", "cli")
+	def, err := svc.GetForBackend("context-saver", "cli_interactive")
 	if err != nil {
-		t.Fatalf("GetForBackend(context-saver, cli): %v", err)
+		t.Fatalf("GetForBackend(context-saver, cli_interactive): %v", err)
 	}
 
-	if def.ExecutionMode != "cli" {
-		t.Errorf("ExecutionMode = %q, want cli", def.ExecutionMode)
+	if def.ExecutionMode != "cli_interactive" {
+		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
 	}
 	if def.Role != "context-saver" {
 		t.Errorf("Role = %q, want context-saver", def.Role)
 	}
 	if def.Tools != "" {
-		t.Errorf("Tools = %q, want empty for cli row", def.Tools)
+		t.Errorf("Tools = %q, want empty for cli_interactive row", def.Tools)
 	}
 }
 
@@ -93,8 +93,8 @@ func TestSystemAgentDef_BackfillRolePopulated(t *testing.T) {
 	if def.Role != "conflict-resolver" {
 		t.Errorf("Role = %q, want %q", def.Role, "conflict-resolver")
 	}
-	if def.ExecutionMode != "cli" {
-		t.Errorf("ExecutionMode = %q, want cli (default)", def.ExecutionMode)
+	if def.ExecutionMode != "cli_interactive" {
+		t.Errorf("ExecutionMode = %q, want cli_interactive (default)", def.ExecutionMode)
 	}
 }
 
@@ -164,8 +164,8 @@ func TestSystemAgentDef_CreateDefaultRole(t *testing.T) {
 	if def.Role != "no-role-agent" {
 		t.Errorf("Role = %q, want %q (defaults to id)", def.Role, "no-role-agent")
 	}
-	if def.ExecutionMode != "cli" {
-		t.Errorf("ExecutionMode = %q, want cli (default)", def.ExecutionMode)
+	if def.ExecutionMode != "cli_interactive" {
+		t.Errorf("ExecutionMode = %q, want cli_interactive (default)", def.ExecutionMode)
 	}
 }
 
@@ -261,7 +261,7 @@ func TestSystemAgentDef_DuplicateRoleMode_Conflict(t *testing.T) {
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:            "role-agent-1",
 		Role:          "shared-role",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 		Prompt:        "p",
 	}); err != nil {
 		t.Fatalf("Create first: %v", err)
@@ -270,7 +270,7 @@ func TestSystemAgentDef_DuplicateRoleMode_Conflict(t *testing.T) {
 	_, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:            "role-agent-2",
 		Role:          "shared-role",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 		Prompt:        "p",
 	})
 	if err == nil {

@@ -24,8 +24,8 @@ func NewSystemAgentDefinitionService(pool *db.Pool, clk clock.Clock) *SystemAgen
 }
 
 func validateExecutionMode(mode string) error {
-	if mode != "cli" && mode != "cli_interactive" && mode != "api" {
-		return fmt.Errorf("invalid execution_mode: must be 'cli', 'cli_interactive', or 'api'")
+	if mode != "cli_interactive" && mode != "api" {
+		return fmt.Errorf("invalid execution_mode: must be 'cli_interactive' or 'api'")
 	}
 	return nil
 }
@@ -47,7 +47,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 
 	executionMode := req.ExecutionMode
 	if executionMode == "" {
-		executionMode = "cli"
+		executionMode = "cli_interactive"
 	} else if err := validateExecutionMode(executionMode); err != nil {
 		return nil, err
 	}

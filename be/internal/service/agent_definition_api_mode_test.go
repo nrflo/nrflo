@@ -57,27 +57,27 @@ func TestCreateAgentDef_APIMode_Succeeds(t *testing.T) {
 	}
 }
 
-// TestCreateAgentDef_CLIMode_SucceedsWhenAPIModeOff verifies that execution_mode="cli"
+// TestCreateAgentDef_CLIInteractiveMode_SucceedsWhenAPIModeOff verifies that execution_mode="cli_interactive"
 // agents are always accepted regardless of the service apiMode flag.
-func TestCreateAgentDef_CLIMode_SucceedsWhenAPIModeOff(t *testing.T) {
+func TestCreateAgentDef_CLIInteractiveMode_SucceedsWhenAPIModeOff(t *testing.T) {
 	t.Parallel()
 	svcOff, _, wfID := setupAgentDefAPIModeEnv(t)
 
 	def, err := svcOff.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "agent-cli",
 		Prompt:        "do stuff",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 	})
 	if err != nil {
-		t.Fatalf("CreateAgentDef with execution_mode=cli and apiMode=false: %v", err)
+		t.Fatalf("CreateAgentDef with execution_mode=cli_interactive and apiMode=false: %v", err)
 	}
-	if def.ExecutionMode != "cli" {
-		t.Errorf("ExecutionMode = %q, want %q", def.ExecutionMode, "cli")
+	if def.ExecutionMode != "cli_interactive" {
+		t.Errorf("ExecutionMode = %q, want %q", def.ExecutionMode, "cli_interactive")
 	}
 }
 
 // TestCreateAgentDef_DefaultExecutionMode verifies that omitting execution_mode
-// defaults to "cli" and succeeds regardless of apiMode.
+// defaults to "cli_interactive" and succeeds regardless of apiMode.
 func TestCreateAgentDef_DefaultExecutionMode(t *testing.T) {
 	t.Parallel()
 	svcOff, _, wfID := setupAgentDefAPIModeEnv(t)
@@ -90,8 +90,8 @@ func TestCreateAgentDef_DefaultExecutionMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAgentDef with default execution_mode and apiMode=false: %v", err)
 	}
-	if def.ExecutionMode != "cli" {
-		t.Errorf("default ExecutionMode = %q, want %q", def.ExecutionMode, "cli")
+	if def.ExecutionMode != "cli_interactive" {
+		t.Errorf("default ExecutionMode = %q, want %q", def.ExecutionMode, "cli_interactive")
 	}
 }
 
@@ -101,11 +101,11 @@ func TestUpdateAgentDef_ErrAPIModeDisabled(t *testing.T) {
 	t.Parallel()
 	svcOff, svcOn, wfID := setupAgentDefAPIModeEnv(t)
 
-	// Create a CLI agent using the apiMode=true service so it succeeds
+	// Create a cli_interactive agent using the apiMode=true service so it succeeds
 	_, err := svcOn.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "upd-to-api",
 		Prompt:        "do stuff",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 	})
 	if err != nil {
 		t.Fatalf("create agent: %v", err)
@@ -132,7 +132,7 @@ func TestUpdateAgentDef_APIMode_Succeeds(t *testing.T) {
 	_, err := svcOn.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "upd-to-api-on",
 		Prompt:        "do stuff",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 	})
 	if err != nil {
 		t.Fatalf("create agent: %v", err)

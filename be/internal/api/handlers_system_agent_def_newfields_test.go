@@ -86,8 +86,8 @@ func TestHandleListSystemAgentDefs_HiddenInCLIMode(t *testing.T) {
 	if cliRow.Role != "context-saver" {
 		t.Errorf("context-saver Role = %q, want %q", cliRow.Role, "context-saver")
 	}
-	if cliRow.ExecutionMode != "cli" {
-		t.Errorf("context-saver ExecutionMode = %q, want cli", cliRow.ExecutionMode)
+	if cliRow.ExecutionMode != "cli_interactive" {
+		t.Errorf("context-saver ExecutionMode = %q, want cli_interactive", cliRow.ExecutionMode)
 	}
 }
 
@@ -244,8 +244,8 @@ func TestHandleUpdate_InvalidExecutionMode_400(t *testing.T) {
 func TestHandleCreate_DuplicateRoleMode_Conflict(t *testing.T) {
 	s := newSystemAgentServer(t)
 
-	// First row with role=shared-role, execution_mode=cli.
-	body1 := `{"id":"role-agent-1","role":"shared-role","execution_mode":"cli","prompt":"p"}`
+	// First row with role=shared-role, execution_mode=cli_interactive.
+	body1 := `{"id":"role-agent-1","role":"shared-role","execution_mode":"cli_interactive","prompt":"p"}`
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body1))
 	rr1 := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr1, req1)
@@ -254,7 +254,7 @@ func TestHandleCreate_DuplicateRoleMode_Conflict(t *testing.T) {
 	}
 
 	// Second row with different id but same role+mode → unique index violation → 409.
-	body2 := `{"id":"role-agent-2","role":"shared-role","execution_mode":"cli","prompt":"p"}`
+	body2 := `{"id":"role-agent-2","role":"shared-role","execution_mode":"cli_interactive","prompt":"p"}`
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body2))
 	rr2 := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr2, req2)

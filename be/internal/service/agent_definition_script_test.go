@@ -206,7 +206,7 @@ func TestCreateAgentDef_CLIMode_PythonScriptIDRejected(t *testing.T) {
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:             "agent-cli-with-script",
-		ExecutionMode:  "cli",
+		ExecutionMode:  "cli_interactive",
 		Prompt:         "do stuff",
 		PythonScriptID: &scriptID,
 	})
@@ -248,10 +248,10 @@ func TestUpdateAgentDef_SwitchToScriptMode_Success(t *testing.T) {
 	t.Parallel()
 	svc, wfID, scriptID := setupAgentDefScriptEnv(t)
 
-	// Create a CLI agent first.
+	// Create a cli_interactive agent first.
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "upd-to-script",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 		Prompt:        "do stuff",
 	})
 	if err != nil {
@@ -291,7 +291,7 @@ func TestUpdateAgentDef_PythonScriptID_OnNonScriptMode_Fails(t *testing.T) {
 
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "upd-cli-scriptid",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 		Prompt:        "do stuff",
 	})
 	if err != nil {
@@ -300,7 +300,7 @@ func TestUpdateAgentDef_PythonScriptID_OnNonScriptMode_Fails(t *testing.T) {
 
 	err = svc.UpdateAgentDef("proj1", wfID, "upd-cli-scriptid", &types.AgentDefUpdateRequest{
 		PythonScriptID: &scriptID,
-		// ExecutionMode intentionally not set — stays "cli"
+		// ExecutionMode intentionally not set — stays "cli_interactive"
 	})
 	if err == nil {
 		t.Fatal("expected error when setting python_script_id on cli mode, got nil")

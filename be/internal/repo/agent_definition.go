@@ -30,7 +30,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 
 	executionMode := def.ExecutionMode
 	if executionMode == "" {
-		executionMode = "cli"
+		executionMode = "cli_interactive"
 	}
 	_, err := r.db.Exec(`
 		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at)

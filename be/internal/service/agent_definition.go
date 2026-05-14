@@ -95,9 +95,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	// Determine execution mode early so we can skip prompt requirement for scripts.
 	executionMode := req.ExecutionMode
 	if executionMode == "" {
-		executionMode = "cli"
+		executionMode = "cli_interactive"
 	}
-	if executionMode != "cli" && executionMode != "cli_interactive" && executionMode != "api" && executionMode != "script" {
+	if executionMode != "cli_interactive" && executionMode != "api" && executionMode != "script" {
 		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
 	}
 	if executionMode == "api" && !s.apiMode {

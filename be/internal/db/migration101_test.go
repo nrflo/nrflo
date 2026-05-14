@@ -37,7 +37,7 @@ func TestMigration101_AgentDefinitionsAcceptsCLIInteractive(t *testing.T) {
 		mode   string
 		wantOK bool
 	}{
-		{"cli", true},
+		{"cli", false},
 		{"cli_interactive", true},
 		{"api", true},
 		{"script", true},
@@ -76,7 +76,7 @@ func TestMigration101_SystemAgentDefinitionsAcceptsCLIInteractive(t *testing.T) 
 		mode   string
 		wantOK bool
 	}{
-		{"cli", true},
+		{"cli", false},
 		{"cli_interactive", true},
 		{"api", true},
 		{"script", false},

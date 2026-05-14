@@ -257,22 +257,19 @@ func TestCreateAgentDef_CLIInteractive_OpencodeModelRejected(t *testing.T) {
 	}
 }
 
-// TestCreateAgentDef_CLICLISucceeds_OpencodeModel verifies that cli mode (not cli_interactive)
-// with an opencode model succeeds.
+// TestCreateAgentDef_CLIInteractiveSucceeds_OpencodeModel verifies that cli_interactive mode
+// with an opencode model is rejected (opencode only supports cli/batch).
 func TestCreateAgentDef_CLISucceeds_OpencodeModel(t *testing.T) {
 	t.Parallel()
 	svc, wfID := setupAgentDefCLIInteractiveEnv(t)
 
-	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "oc-cli-ok",
 		Prompt:        "do stuff",
-		ExecutionMode: "cli",
+		ExecutionMode: "cli_interactive",
 		Model:         "opencode_minimax_m25_free",
 	})
-	if err != nil {
-		t.Fatalf("CreateAgentDef(cli, opencode_minimax_m25_free): %v", err)
-	}
-	if def.ExecutionMode != "cli" {
-		t.Errorf("ExecutionMode = %q, want cli", def.ExecutionMode)
+	if err == nil {
+		t.Fatal("CreateAgentDef(cli_interactive, opencode_minimax_m25_free): expected error (opencode does not support cli_interactive)")
 	}
 }

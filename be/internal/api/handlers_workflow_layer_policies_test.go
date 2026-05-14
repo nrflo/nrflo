@@ -55,7 +55,7 @@ func seedLayerPolicyWorkflow(t *testing.T, s *Server, projectID, workflowID stri
 		_, err = s.pool.Exec(
 			`INSERT OR IGNORE INTO agent_definitions
 			 (id, workflow_id, project_id, model, timeout, prompt, layer, execution_mode, created_at, updated_at)
-			 VALUES (?, ?, ?, 'sonnet', 300, '', ?, 'cli', ?, ?)`,
+			 VALUES (?, ?, ?, 'sonnet', 300, '', ?, 'cli_interactive', ?, ?)`,
 			agentID, workflowID, projectID, layer, now, now)
 		if err != nil {
 			t.Fatalf("seed agent %s: %v", agentID, err)

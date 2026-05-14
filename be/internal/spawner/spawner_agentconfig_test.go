@@ -86,14 +86,14 @@ func TestAgentConfigPrecedence_FallsBackToConfigWhenNoAgentDef(t *testing.T) {
 	defer env.cleanup()
 
 	// Seed a system_agent_definitions row so loadPromptContent("my-agent") can
-	// find a prompt. The execution_mode here is "cli" but prepareSpawn sets
+	// find a prompt. The execution_mode here is cli_interactive but prepareSpawn sets
 	// executionMode from Config.Agents (not from system_agent_definitions) when
 	// the project-scoped agent_definitions row is absent (agentDef==nil).
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := env.database.Exec(
 		`INSERT INTO system_agent_definitions
 			(id, role, model, timeout, prompt, tools, execution_mode, created_at, updated_at)
-		VALUES ('my-agent', 'my-agent', 'sonnet', 20, '# Test prompt', '', 'cli', ?, ?)`,
+		VALUES ('my-agent', 'my-agent', 'sonnet', 20, '# Test prompt', '', 'cli_interactive', ?, ?)`,
 		now, now,
 	); err != nil {
 		t.Fatalf("insert system_agent_definitions: %v", err)

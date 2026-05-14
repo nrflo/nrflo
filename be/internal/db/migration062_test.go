@@ -69,7 +69,8 @@ func TestMigration062_AgentDefinitionsColumns(t *testing.T) {
 	}
 }
 
-// TestMigration062_AgentDefinitionsDefaults verifies legacy rows get cli/empty/null.
+// TestMigration062_AgentDefinitionsDefaults verifies legacy rows get cli_interactive/empty/null.
+// Note: migration 105 coerced the original 'cli' default to 'cli_interactive'.
 func TestMigration062_AgentDefinitionsDefaults(t *testing.T) {
 	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
 	if err != nil {
@@ -94,8 +95,8 @@ func TestMigration062_AgentDefinitionsDefaults(t *testing.T) {
 	if err := row.Scan(&execMode, &tools, &apiMax); err != nil {
 		t.Fatalf("scan: %v", err)
 	}
-	if execMode != "cli" {
-		t.Errorf("execution_mode = %q, want %q", execMode, "cli")
+	if execMode != "cli_interactive" {
+		t.Errorf("execution_mode = %q, want %q", execMode, "cli_interactive")
 	}
 	if tools != "" {
 		t.Errorf("tools = %q, want empty", tools)
@@ -121,11 +122,11 @@ func TestMigration062_ExecutionModeCheck(t *testing.T) {
 	}
 
 	cases := []struct {
-		name    string
-		value   string
-		wantOK  bool
+		name   string
+		value  string
+		wantOK bool
 	}{
-		{"cli accepted", "cli", true},
+		{"cli rejected", "cli", false},
 		{"api accepted", "api", true},
 		{"foo rejected", "foo", false},
 		{"empty rejected", "", false},

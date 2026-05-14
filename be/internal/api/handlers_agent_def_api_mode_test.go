@@ -102,13 +102,13 @@ func TestHandleCreateAgentDef_APIModeEnabled_Succeeds(t *testing.T) {
 	}
 }
 
-// TestHandleCreateAgentDef_CLIMode_UnaffectedByAPIMode verifies that creating
-// a cli-mode agent succeeds even when the server was not started with --mode=api.
-func TestHandleCreateAgentDef_CLIMode_UnaffectedByAPIMode(t *testing.T) {
+// TestHandleCreateAgentDef_CLIInteractiveMode_UnaffectedByAPIMode verifies that creating
+// a cli_interactive-mode agent succeeds even when the server was not started with --mode=api.
+func TestHandleCreateAgentDef_CLIInteractiveMode_UnaffectedByAPIMode(t *testing.T) {
 	s, pid, wid := newAgentDefAPIModeServer(t, false)
 
 	rr := postAgentDefRequest(t, s, pid, wid,
-		`{"id":"cli-agent","prompt":"do stuff","execution_mode":"cli"}`)
+		`{"id":"cli-agent","prompt":"do stuff","execution_mode":"cli_interactive"}`)
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want 201; body=%s", rr.Code, rr.Body.String())
@@ -120,9 +120,9 @@ func TestHandleCreateAgentDef_CLIMode_UnaffectedByAPIMode(t *testing.T) {
 func TestHandleUpdateAgentDef_APIModeDisabled(t *testing.T) {
 	s, pid, wid := newAgentDefAPIModeServer(t, false)
 
-	// First create a CLI agent to update
+	// First create a cli_interactive agent to update
 	if rr := postAgentDefRequest(t, s, pid, wid,
-		`{"id":"upd-to-api","prompt":"do stuff","execution_mode":"cli"}`); rr.Code != http.StatusCreated {
+		`{"id":"upd-to-api","prompt":"do stuff","execution_mode":"cli_interactive"}`); rr.Code != http.StatusCreated {
 		t.Fatalf("setup: create agent status = %d, body=%s", rr.Code, rr.Body.String())
 	}
 

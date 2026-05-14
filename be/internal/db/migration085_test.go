@@ -74,7 +74,7 @@ func TestMigration085_ExecutionModeCheckIncludesScript(t *testing.T) {
 		value  string
 		wantOK bool
 	}{
-		{"cli accepted", "cli", true},
+		{"cli rejected", "cli", false},
 		{"api accepted", "api", true},
 		{"script accepted", "script", true},
 		{"foo rejected", "foo", false},

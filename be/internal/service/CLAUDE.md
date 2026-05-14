@@ -18,7 +18,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status |
 | `workflow_restart_details.go` | Restart detail loading: duration, context, message count from continued sessions |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |
-| `agent_definition.go` | Agent definition CRUD; validates `layer >= 0`; `execution_mode` cli/api/script; script requires `python_script_id` in same project |
+| `agent_definition.go` | Agent definition CRUD; validates `layer >= 0`; `execution_mode` cli_interactive/api/script (default cli_interactive); script requires `python_script_id` in same project |
 | `findings.go` | Findings add/append/get/delete |
 | `chain.go` | Chain build, dependency expansion, topological sort, cycle detection |
 | `chain_preview.go` | `PreviewChain`, custom order validation |

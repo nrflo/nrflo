@@ -5,33 +5,8 @@ import (
 	"testing"
 )
 
-// TestAllAdapters_SupportsInteractive pins each adapter's interactive policy.
-// Claude opts in via --settings hooks; Codex via -c hook injection (with the
-// rollout JSONL tailer fallback for the openai/codex#21639 regression).
-// Opencode interactive observability flows through the SQLite tailer (wired
-// via PostStart for both cli and cli_interactive).
-func TestAllAdapters_SupportsInteractive(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name    string
-		adapter CLIAdapter
-		want    bool
-	}{
-		{"claude", &ClaudeAdapter{}, true},
-		{"opencode", &OpencodeAdapter{}, false},
-		{"codex", &CodexAdapter{}, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.adapter.SupportsInteractive(); got != tc.want {
-				t.Errorf("%s.SupportsInteractive() = %v, want %v", tc.name, got, tc.want)
-			}
-		})
-	}
-}
-
 // TestClaudeAdapter_BuildInteractiveCommand_NoBatchFlags verifies that the
-// interactive command omits all batch-mode flags present in BuildCommand.
+// interactive command omits batch-mode flags (--print, --output-format, etc.).
 func TestClaudeAdapter_BuildInteractiveCommand_NoBatchFlags(t *testing.T) {
 	t.Parallel()
 	a := &ClaudeAdapter{}

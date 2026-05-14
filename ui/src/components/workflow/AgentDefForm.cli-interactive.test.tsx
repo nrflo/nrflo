@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
@@ -53,7 +53,8 @@ async function selectDropdownOption(
   label: string
 ) {
   await user.click(trigger)
-  await user.click(screen.getByText(label))
+  const panel = trigger.parentElement!.querySelector('.absolute') as HTMLElement
+  await user.click(within(panel).getByText(label))
 }
 
 beforeEach(() => {
@@ -62,7 +63,7 @@ beforeEach(() => {
 
 describe('AgentDefForm — cli_interactive execution mode', () => {
   describe('dropdown option list when apiModeEnabled=true', () => {
-    it('renders 4 options in order', async () => {
+    it('renders 3 options in order', async () => {
       const user = userEvent.setup()
       renderForm()
 
@@ -72,14 +73,13 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
       const container = trigger.parentElement!.querySelector('.absolute')!
       const texts = Array.from(container.querySelectorAll('.truncate')).map(el => el.textContent)
       expect(texts).toEqual([
-        'CLI (default)',
         'CLI Interactive (PTY)',
         'API (in-process Anthropic runner)',
         'Script (Python)',
       ])
     })
 
-    it('cli_interactive is at position 2 (index 1)', async () => {
+    it('cli_interactive is at position 1 (index 0)', async () => {
       const user = userEvent.setup()
       renderForm()
 
@@ -88,7 +88,7 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
 
       const container = trigger.parentElement!.querySelector('.absolute')!
       const options = container.querySelectorAll('.cursor-pointer')
-      expect(options[1].querySelector('.truncate')?.textContent).toBe('CLI Interactive (PTY)')
+      expect(options[0].querySelector('.truncate')?.textContent).toBe('CLI Interactive (PTY)')
     })
   })
 
@@ -182,7 +182,7 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
   })
 
   describe('dropdown option list when apiModeEnabled=false', () => {
-    it('renders 3 options with cli_interactive at index 1', async () => {
+    it('renders 2 options with cli_interactive at index 0', async () => {
       mockUseAPIModeEnabled.mockReturnValue(false)
       const user = userEvent.setup()
       renderForm()
@@ -193,17 +193,12 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
       const container = trigger.parentElement!.querySelector('.absolute')!
       const texts = Array.from(container.querySelectorAll('.truncate')).map(el => el.textContent)
       expect(texts).toEqual([
-        'CLI (default)',
         'CLI Interactive (PTY)',
         'Script (Python)',
       ])
 
       const options = container.querySelectorAll('.cursor-pointer')
-      expect(options[1].querySelector('.truncate')?.textContent).toBe('CLI Interactive (PTY)')
+      expect(options[0].querySelector('.truncate')?.textContent).toBe('CLI Interactive (PTY)')
     })
   })
 })
-
-// TODO(test-writer): create AgentDefForm.opencode.test.tsx — mock useCLIModels with both claude and opencode models;
-// test (a) initial sonnet shows cli_interactive; (b) selecting opencode_* model removes cli_interactive from dropdown;
-// (c) switching from sonnet (execution_mode=cli_interactive) to opencode_* auto-resets to cli.

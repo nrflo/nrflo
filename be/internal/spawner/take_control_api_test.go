@@ -96,13 +96,13 @@ func TestTakeControlRejected_APIBackend_SupportsTakeControlFalse(t *testing.T) {
 	}
 }
 
-// TestTakeControlRejected_CLIBackend_ClaudeSupportsTrue verifies that Claude's
-// cliBackend supports take-control, contrasting with the API rejection path.
-func TestTakeControlRejected_CLIBackend_ClaudeSupportsTrue(t *testing.T) {
+// TestTakeControlRejected_CLIInteractiveBackend_AlwaysTrue verifies that the
+// cli_interactive backend always supports take-control (for all adapters).
+func TestTakeControlRejected_CLIInteractiveBackend_AlwaysTrue(t *testing.T) {
 	t.Parallel()
-	b := newCLIBackend(&ClaudeAdapter{}, nil)
+	b := newCLIInteractiveBackend(&ClaudeAdapter{}, nil, nil)
 	if !b.SupportsTakeControl() {
-		t.Error("cliBackend(Claude).SupportsTakeControl() = false, want true")
+		t.Error("cliInteractiveBackend(Claude).SupportsTakeControl() = false, want true")
 	}
 }
 

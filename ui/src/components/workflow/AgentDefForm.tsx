@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { FileText } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -6,11 +6,11 @@ import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
-import { useModelOptions, useCLIModels } from '@/hooks/useCLIModels'
+import { useModelOptions } from '@/hooks/useCLIModels'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
-type ExecutionMode = 'cli' | 'cli_interactive' | 'api' | 'script'
+type ExecutionMode = 'cli_interactive' | 'api' | 'script'
 
 export function AgentDefForm({
   initial,
@@ -35,7 +35,7 @@ export function AgentDefForm({
   const [lowConsumptionModel, setLowConsumptionModel] = useState(initial?.low_consumption_model || '')
   const [prompt, setPrompt] = useState(initial?.prompt || '')
   const [executionMode, setExecutionMode] = useState<ExecutionMode>(
-    (initial?.execution_mode as ExecutionMode) || 'cli'
+    (initial?.execution_mode as ExecutionMode) || 'cli_interactive'
   )
   const [pythonScriptId, setPythonScriptId] = useState(initial?.python_script_id || '')
   const [tools, setTools] = useState(initial?.tools || '')
@@ -43,20 +43,11 @@ export function AgentDefForm({
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
   const apiModeEnabled = useAPIModeEnabled()
-  const { data: models = [] } = useCLIModels()
-  const selectedCliType = useMemo(() => models.find(m => m.id === model)?.cli_type, [models, model])
-
   const handleExecutionModeChange = (v: string) => {
     const next = v as ExecutionMode
     if (next !== 'script') setPythonScriptId('')
     setExecutionMode(next)
   }
-
-  useEffect(() => {
-    if (selectedCliType === 'opencode' && executionMode === 'cli_interactive') {
-      setExecutionMode('cli')
-    }
-  }, [selectedCliType])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,15 +70,11 @@ export function AgentDefForm({
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
-  const executionModeOptions = useMemo(() => {
-    const opts = [
-      { value: 'cli', label: 'CLI (default)' },
-      { value: 'cli_interactive', label: 'CLI Interactive (PTY)' },
-      ...(apiModeEnabled ? [{ value: 'api', label: 'API (in-process Anthropic runner)' }] : []),
-      { value: 'script', label: 'Script (Python)' },
-    ]
-    return selectedCliType === 'opencode' ? opts.filter(o => o.value !== 'cli_interactive') : opts
-  }, [selectedCliType, apiModeEnabled])
+  const executionModeOptions = useMemo(() => [
+    { value: 'cli_interactive', label: 'CLI Interactive (PTY)' },
+    ...(apiModeEnabled ? [{ value: 'api', label: 'API (in-process Anthropic runner)' }] : []),
+    { value: 'script', label: 'Script (Python)' },
+  ], [apiModeEnabled])
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 p-4 border border-border rounded-lg bg-muted/30">

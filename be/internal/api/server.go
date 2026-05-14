@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,7 +26,6 @@ import (
 	"be/internal/scheduler"
 	pythonsdk "be/internal/sdk/python"
 	"be/internal/service"
-	"be/internal/spawner"
 	"be/internal/static"
 	"be/internal/ws"
 )
@@ -44,7 +44,7 @@ type Server struct {
 	ptyManager             *ptyPkg.Manager
 	clock                  clock.Clock
 	apiMode                bool
-	cliAdapterFunc             func(cliType string) (spawner.CLIAdapter, error) // defaults to spawner.GetCLIAdapter
+	cliAdapterFunc             func(cliType, mappedModel, reasoningEffort string) (*exec.Cmd, bool) // nil = buildModelCheckCommand
 	specImportAdapterFunc      func(src string) (interface{}, error)             // injectable for tests; nil = use spec_import.ResolveAdapter
 	scheduler              *scheduler.Scheduler
 	notifyWaker            service.NotificationWaker
@@ -566,10 +566,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
 	admin("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
 	protected("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
-
-	// Provider settings (global) — writes are admin-only
-	protected("GET /api/v1/providers", s.handleListProviders)
-	admin("PATCH /api/v1/providers/{name}", s.handlePatchProvider)
 
 	// Notification variables (global, no project scope)
 	protected("GET /api/v1/notification-channels/variables", s.handleGetNotificationVariables)

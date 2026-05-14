@@ -31,7 +31,7 @@ func TestHandleStallRestart_BroadcastsEvent(t *testing.T) {
 
 	proc := &processInfo{
 		cmd:               &exec.Cmd{},
-		backend:           &cliBackend{}, // cmd.Process == nil
+		backend:           fakeBackend{name: "cli_interactive"}, // cmd.Process == nil
 		doneCh:            doneCh,
 		sessionID:         "sess-stall-event",
 		agentType:         "implementor",
@@ -89,7 +89,7 @@ func TestHandleStallRestart_RunningStall_EventType(t *testing.T) {
 
 	proc := &processInfo{
 		cmd:               &exec.Cmd{},
-		backend:           &cliBackend{},
+		backend:           fakeBackend{name: "cli_interactive"},
 		doneCh:            doneCh,
 		sessionID:         "sess-running-stall",
 		agentType:         "qa-verifier",

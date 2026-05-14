@@ -15,33 +15,6 @@ func (a *CodexAdapter) Name() string {
 	return "codex"
 }
 
-func (a *CodexAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	model := opts.MappedModel
-	if model == "" {
-		model = a.MapModel(opts.Model)
-	}
-	reasoningEffort := opts.ReasoningEffort
-	if reasoningEffort == "" {
-		reasoningEffort = a.GetReasoningEffort(opts.Model)
-	}
-
-	args := []string{
-		"exec",
-		"--json",
-		"--model", model,
-		"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", reasoningEffort),
-		"-c", "check_for_update_on_startup=false",
-		"--dangerously-bypass-approvals-and-sandbox",
-	}
-
-	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
-
-	cmd := exec.Command("codex", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}
-
 func (a *CodexAdapter) MapModel(model string) string {
 	modelMap := map[string]string{
 		"codex_gpt_normal":     "gpt-5.3-codex",
@@ -84,17 +57,15 @@ func (a *CodexAdapter) SupportsResume() bool {
 	return true
 }
 
-func (a *CodexAdapter) UsesStdinPrompt() bool {
-	return true
-}
-
-func (a *CodexAdapter) SupportsInteractive() bool { return true }
-
 func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
 		"--model", opts.Model,
 		"-c", "check_for_update_on_startup=false",
 		"--dangerously-bypass-approvals-and-sandbox",
+	}
+	if opts.ResumeSessionID != "" {
+		// Prepend `resume <id>` subcommand so codex resumes the existing session.
+		args = append([]string{"resume", opts.ResumeSessionID}, args...)
 	}
 	// Codex's TUI in PTY contexts ignores `<CODEX_HOME>/config.toml` hooks
 	// entirely. The `-c` flag is documented as a session-layer override
@@ -243,10 +214,9 @@ func (a *CodexAdapter) BumpsOnPTYBytes() bool { return false }
 // in well under 2s after its last function_call_output.
 func (a *CodexAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
-// PostStart launches the codex rollout JSONL tailer goroutine. Called by both
-// cliBackend.Start (cli batch mode) and cliInteractiveBackend.Start
-// (cli_interactive mode) — the rollout JSONL signal is identical in both modes
-// (verified on codex 0.130.0).
+// PostStart launches the codex rollout JSONL tailer goroutine. Called by
+// cliInteractiveBackend.Start — the rollout JSONL signal is produced in all
+// interactive sessions (verified on codex 0.130.0).
 //
 // codex 0.130 has an upstream regression (openai/codex#21639) where hooks
 // never fire in TUI/PTY sessions, so we read agent activity straight from
@@ -268,28 +238,3 @@ func (a *CodexAdapter) PostStart(ctx context.Context, opts PostStartOptions) (fu
 	return func() { cancel() }, nil
 }
 
-func (a *CodexAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
-	model := opts.MappedModel
-	if model == "" {
-		model = a.MapModel(opts.Model)
-	}
-	reasoningEffort := opts.ReasoningEffort
-	if reasoningEffort == "" {
-		reasoningEffort = a.GetReasoningEffort(opts.Model)
-	}
-
-	args := []string{
-		"exec", "resume", opts.SessionID,
-		"--json",
-		"--model", model,
-		"-c", fmt.Sprintf("model_reasoning_effort=\"%s\"", reasoningEffort),
-		"-c", "check_for_update_on_startup=false",
-		"--dangerously-bypass-approvals-and-sandbox",
-	}
-
-	// Prompt is piped via stdin (UsesStdinPrompt=true), no positional arg
-	cmd := exec.Command("codex", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}

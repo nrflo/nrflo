@@ -134,7 +134,7 @@ describe('AgentDefForm — script mode submission', () => {
     expect(payload).not.toHaveProperty('api_max_iterations')
   })
 
-  it('clears python_script_id when switching from script back to cli', async () => {
+  it('clears python_script_id when switching from script back to cli_interactive', async () => {
     const onSubmit = vi.fn()
     const user = userEvent.setup()
     renderForm({ onSubmit })
@@ -143,9 +143,9 @@ describe('AgentDefForm — script mode submission', () => {
     await switchToScriptMode(user)
     await user.selectOptions(screen.getByRole('combobox', { name: /python script/i }), 'script-2')
 
-    // Switch back to CLI — python_script_id must be cleared
+    // Switch back to CLI Interactive — python_script_id must be cleared
     await user.click(getExecutionModeButton())
-    await user.click(screen.getByText('CLI (default)'))
+    await user.click(screen.getByText('CLI Interactive (PTY)'))
 
     // Fill CLI-required fields and submit
     await user.type(screen.getByPlaceholderText(/e\.g\., setup-analyzer/i), 'my-agent')
@@ -153,7 +153,7 @@ describe('AgentDefForm — script mode submission', () => {
     await user.click(screen.getByRole('button', { name: /create/i }))
 
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ execution_mode: 'cli' })
+      expect.objectContaining({ execution_mode: 'cli_interactive' })
     )
     const payload = onSubmit.mock.calls[0][0] as Record<string, unknown>
     expect(payload).not.toHaveProperty('python_script_id')

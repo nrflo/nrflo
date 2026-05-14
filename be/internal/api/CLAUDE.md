@@ -42,7 +42,6 @@ Write operations on configuration resources require admin role:
 - `POST|PUT|DELETE /api/v1/tool-definitions/{...}` (api-mode only)
 - `POST|PUT|DELETE /api/v1/api-credentials/{...}` (api-mode only)
 - `PATCH /api/v1/settings`
-- `PATCH /api/v1/providers/{name}`
 
 All reads on those resources are `protected` (requireAuth only). All other routes are `protected`.
 

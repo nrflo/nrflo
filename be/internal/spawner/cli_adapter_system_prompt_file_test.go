@@ -5,71 +5,71 @@ import (
 	"testing"
 )
 
-// TestClaudeAdapter_BuildCommand_SystemPromptFile verifies that BuildCommand
-// emits --append-system-prompt-file <path> exactly when SystemPromptFile != "".
-func TestClaudeAdapter_BuildCommand_SystemPromptFile(t *testing.T) {
+// TestClaudeAdapter_BuildInteractiveCommand_SystemPromptFile verifies that
+// BuildInteractiveCommand emits --append-system-prompt-file <path> when
+// SystemPromptFile is set.
+func TestClaudeAdapter_BuildInteractiveCommand_SystemPromptFile(t *testing.T) {
 	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
-	opts := SpawnOptions{
+	opts := InteractiveSpawnOptions{
 		Model:            "sonnet",
 		SessionID:        "sess-1",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/foo.md",
 	}
 
-	cmd := adapter.BuildCommand(opts)
-	args := strings.Join(cmd.Args, " ")
+	args := strings.Join(adapter.BuildInteractiveCommand(opts).Args, " ")
 
 	if !strings.Contains(args, "--append-system-prompt-file") {
-		t.Errorf("BuildCommand with SystemPromptFile missing --append-system-prompt-file: %s", args)
+		t.Errorf("BuildInteractiveCommand with SystemPromptFile missing --append-system-prompt-file: %s", args)
 	}
 	if !strings.Contains(args, "/tmp/nrflo/foo.md") {
-		t.Errorf("BuildCommand args missing SystemPromptFile path: %s", args)
+		t.Errorf("BuildInteractiveCommand args missing SystemPromptFile path: %s", args)
 	}
 }
 
-// TestClaudeAdapter_BuildCommand_NoSystemPromptFile verifies that BuildCommand
-// does NOT emit --append-system-prompt-file when SystemPromptFile is empty.
-func TestClaudeAdapter_BuildCommand_NoSystemPromptFile(t *testing.T) {
+// TestClaudeAdapter_BuildInteractiveCommand_NoSystemPromptFile verifies that
+// BuildInteractiveCommand does NOT emit --append-system-prompt-file when empty.
+func TestClaudeAdapter_BuildInteractiveCommand_NoSystemPromptFile(t *testing.T) {
 	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
-	opts := SpawnOptions{
+	opts := InteractiveSpawnOptions{
 		Model:     "sonnet",
 		SessionID: "sess-1",
 		WorkDir:   "/tmp",
 	}
 
-	cmd := adapter.BuildCommand(opts)
-	args := strings.Join(cmd.Args, " ")
+	args := strings.Join(adapter.BuildInteractiveCommand(opts).Args, " ")
 
 	if strings.Contains(args, "--append-system-prompt-file") {
-		t.Errorf("BuildCommand with empty SystemPromptFile should not emit --append-system-prompt-file: %s", args)
+		t.Errorf("BuildInteractiveCommand with empty SystemPromptFile should not emit --append-system-prompt-file: %s", args)
 	}
 }
 
-// TestClaudeAdapter_BuildResumeCommand_SystemPromptFile verifies that
-// BuildResumeCommand emits --append-system-prompt-file when SystemPromptFile != "".
-func TestClaudeAdapter_BuildResumeCommand_SystemPromptFile(t *testing.T) {
+// TestClaudeAdapter_ResumeWithSystemPromptFile verifies that resuming a session
+// via BuildInteractiveCommand (ResumeSessionID set) still includes
+// --append-system-prompt-file when SystemPromptFile is non-empty.
+func TestClaudeAdapter_ResumeWithSystemPromptFile(t *testing.T) {
 	t.Parallel()
 	adapter := &ClaudeAdapter{}
 
-	opts := ResumeOptions{
-		SessionID:        "sess-resume",
-		Prompt:           "Continue",
+	opts := InteractiveSpawnOptions{
+		SessionID:        "sess-new",
+		ResumeSessionID:  "sess-resume",
+		Model:            "sonnet",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/foo.md",
 	}
 
-	cmd := adapter.BuildResumeCommand(opts)
-	args := strings.Join(cmd.Args, " ")
+	args := strings.Join(adapter.BuildInteractiveCommand(opts).Args, " ")
 
 	if !strings.Contains(args, "--append-system-prompt-file") {
-		t.Errorf("BuildResumeCommand with SystemPromptFile missing --append-system-prompt-file: %s", args)
+		t.Errorf("BuildInteractiveCommand (resume) with SystemPromptFile missing --append-system-prompt-file: %s", args)
 	}
 	if !strings.Contains(args, "/tmp/nrflo/foo.md") {
-		t.Errorf("BuildResumeCommand args missing SystemPromptFile path: %s", args)
+		t.Errorf("BuildInteractiveCommand (resume) args missing SystemPromptFile path: %s", args)
 	}
 }
 
@@ -82,23 +82,22 @@ func TestClaudeAdapter_SupportsSystemPromptFile(t *testing.T) {
 	}
 }
 
-// TestOpencodeAdapter_BuildCommand_IgnoresSystemPromptFile verifies that
+// TestOpencodeAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile verifies
 // OpencodeAdapter never emits --append-system-prompt-file even when set.
-func TestOpencodeAdapter_BuildCommand_IgnoresSystemPromptFile(t *testing.T) {
+func TestOpencodeAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile(t *testing.T) {
 	t.Parallel()
 	adapter := &OpencodeAdapter{}
 
-	opts := SpawnOptions{
-		Model:            "sonnet",
+	opts := InteractiveSpawnOptions{
+		Model:            "opencode_minimax_m25_free",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/foo.md",
 	}
 
-	cmd := adapter.BuildCommand(opts)
-	args := strings.Join(cmd.Args, " ")
+	args := strings.Join(adapter.BuildInteractiveCommand(opts).Args, " ")
 
 	if strings.Contains(args, "--append-system-prompt-file") {
-		t.Errorf("OpencodeAdapter.BuildCommand should not emit --append-system-prompt-file: %s", args)
+		t.Errorf("OpencodeAdapter.BuildInteractiveCommand should not emit --append-system-prompt-file: %s", args)
 	}
 }
 
@@ -111,22 +110,21 @@ func TestOpencodeAdapter_SupportsSystemPromptFile(t *testing.T) {
 	}
 }
 
-// TestCodexAdapter_BuildCommand_IgnoresSystemPromptFile verifies that
+// TestCodexAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile verifies
 // CodexAdapter never emits --append-system-prompt-file even when set.
-func TestCodexAdapter_BuildCommand_IgnoresSystemPromptFile(t *testing.T) {
+func TestCodexAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile(t *testing.T) {
 	t.Parallel()
 	adapter := &CodexAdapter{}
 
-	opts := SpawnOptions{
+	opts := InteractiveSpawnOptions{
 		Model:            "codex_gpt_high",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/foo.md",
 	}
 
-	cmd := adapter.BuildCommand(opts)
-	args := strings.Join(cmd.Args, " ")
+	args := strings.Join(adapter.BuildInteractiveCommand(opts).Args, " ")
 
 	if strings.Contains(args, "--append-system-prompt-file") {
-		t.Errorf("CodexAdapter.BuildCommand should not emit --append-system-prompt-file: %s", args)
+		t.Errorf("CodexAdapter.BuildInteractiveCommand should not emit --append-system-prompt-file: %s", args)
 	}
 }

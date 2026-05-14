@@ -40,7 +40,7 @@ function makeAgent(overrides: Partial<AgentDef> = {}): AgentDef {
     model: 'sonnet',
     timeout: 600,
     prompt: 'test prompt',
-    execution_mode: 'cli',
+    execution_mode: 'cli_interactive',
     tools: '',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',

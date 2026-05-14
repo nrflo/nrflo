@@ -89,15 +89,16 @@ func TestCheckIdleNudge_SkipsNilBackend(t *testing.T) {
 	}
 }
 
-// TestCheckIdleNudge_SkipsCLIBackend verifies cliBackend (Name()="cli") is skipped.
-func TestCheckIdleNudge_SkipsCLIBackend(t *testing.T) {
+// TestCheckIdleNudge_SkipsNonInteractiveBackend verifies any backend whose Name()
+// is not "cli_interactive" is skipped by idle-nudge (api, script, etc.).
+func TestCheckIdleNudge_SkipsNonInteractiveBackend(t *testing.T) {
 	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	s := New(Config{Clock: clk})
 
 	proc := &processInfo{
 		nudgeMax:         5,
-		backend:          &cliBackend{},
+		backend:          fakeBackend{name: "script"},
 		lastMessageTime:  clk.Now().Add(-10 * time.Minute),
 		idleStartTimeout: 2 * time.Minute,
 	}
@@ -105,7 +106,7 @@ func TestCheckIdleNudge_SkipsCLIBackend(t *testing.T) {
 	s.checkIdleNudge(context.Background(), proc, SpawnRequest{})
 
 	if proc.nudgeCount != 0 {
-		t.Errorf("nudgeCount = %d, want 0 (cliBackend Name()=cli is skipped)", proc.nudgeCount)
+		t.Errorf("nudgeCount = %d, want 0 (non-interactive backend is skipped)", proc.nudgeCount)
 	}
 }
 

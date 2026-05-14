@@ -12,38 +12,6 @@ func (a *ClaudeAdapter) Name() string {
 	return "claude"
 }
 
-func (a *ClaudeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	model := opts.MappedModel
-	if model == "" {
-		model = a.MapModel(opts.Model)
-	}
-	args := []string{
-		"--print",
-		"--verbose",
-		"--dangerously-skip-permissions",
-		"--output-format", "stream-json",
-		"--include-partial-messages",
-		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
-		"--model", model,
-		"--session-id", opts.SessionID,
-		// prompt piped via stdin — no PromptFile arg, no InitialPrompt
-	}
-	if opts.ReasoningEffort != "" {
-		args = append(args, "--effort", opts.ReasoningEffort)
-	}
-	if opts.SettingsJSON != "" {
-		args = append(args, "--settings", opts.SettingsJSON)
-	}
-	if opts.SystemPromptFile != "" {
-		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
-	}
-
-	cmd := exec.Command("claude", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}
-
 func (a *ClaudeAdapter) MapModel(model string) string {
 	switch model {
 	case "opus_4_6":
@@ -70,17 +38,14 @@ func (a *ClaudeAdapter) SupportsResume() bool {
 	return true
 }
 
-func (a *ClaudeAdapter) UsesStdinPrompt() bool {
-	return true
-}
-
-func (a *ClaudeAdapter) SupportsInteractive() bool { return true }
-
 func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
 		"--session-id", opts.SessionID,
 		"--model", opts.Model,
 		"--dangerously-skip-permissions",
+	}
+	if opts.ResumeSessionID != "" {
+		args = append([]string{"--resume", opts.ResumeSessionID}, args...)
 	}
 	if opts.ReasoningEffort != "" {
 		args = append(args, "--effort", opts.ReasoningEffort)
@@ -124,28 +89,3 @@ func (a *ClaudeAdapter) BumpsOnPTYBytes() bool { return false }
 // surprises when adapters' telemetry-flush timing changes upstream.
 func (a *ClaudeAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
-func (a *ClaudeAdapter) BuildResumeCommand(opts ResumeOptions) *exec.Cmd {
-	args := []string{
-		"--resume", opts.SessionID,
-		"--print",
-		"--dangerously-skip-permissions",
-		"--verbose",
-		"--output-format", "stream-json",
-		"--include-partial-messages",
-		"--disallowed-tools", "AskUserQuestion,EnterPlanMode,ExitPlanMode",
-		// prompt piped via stdin (same as BuildCommand)
-	}
-	if opts.ReasoningEffort != "" {
-		args = append(args, "--effort", opts.ReasoningEffort)
-	}
-	if opts.SettingsJSON != "" {
-		args = append(args, "--settings", opts.SettingsJSON)
-	}
-	if opts.SystemPromptFile != "" {
-		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
-	}
-	cmd := exec.Command("claude", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = opts.Env
-	return cmd
-}

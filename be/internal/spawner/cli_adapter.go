@@ -8,13 +8,11 @@ import (
 	"time"
 )
 
+
 // CLIAdapter defines the interface for different CLI backends
 type CLIAdapter interface {
 	// Name returns the CLI identifier (e.g., "claude", "opencode")
 	Name() string
-
-	// BuildCommand creates the exec.Cmd for spawning an agent
-	BuildCommand(opts SpawnOptions) *exec.Cmd
 
 	// MapModel converts a short model name to the CLI's expected format
 	MapModel(model string) string
@@ -28,20 +26,9 @@ type CLIAdapter interface {
 	// SupportsResume returns true if the CLI supports resuming a session
 	SupportsResume() bool
 
-	// UsesStdinPrompt returns true if the CLI reads the prompt from stdin
-	// instead of a positional argument (e.g., opencode run < prompt.txt)
-	UsesStdinPrompt() bool
-
-	// BuildResumeCommand creates the exec.Cmd for resuming a session with a prompt
-	BuildResumeCommand(opts ResumeOptions) *exec.Cmd
-
-	// SupportsInteractive returns true if the CLI supports PTY-based interactive execution
-	// without batch flags (--print, --verbose, --output-format, etc.).
-	SupportsInteractive() bool
-
 	// BuildInteractiveCommand creates the exec.Cmd for interactive PTY execution.
-	// Unlike BuildCommand, it omits all batch/output-format flags so the CLI
-	// runs in its normal interactive terminal UI mode.
+	// When opts.ResumeSessionID is non-empty, the CLI resumes that session with
+	// opts.Prompt delivered as the first turn's input.
 	BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd
 
 	// PrepareInteractive performs adapter-owned spawn-time setup for interactive
@@ -118,6 +105,7 @@ type InteractiveSpawnOptions struct {
 	Prompt           string // initial user prompt; Codex passes this as argv positional, others ignore
 	Hooks            []HookEvent // event-keyed hook commands; Codex injects via repeated `-c hooks.<event>=…` (TUI ignores config.toml hooks); other adapters ignore
 	Port             int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
+	ResumeSessionID  string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
 }
 
 // Sink is a spawner-internal interface the SSE event consumer uses to report
@@ -154,10 +142,9 @@ type PostStartOptions struct {
 }
 
 // PostStarter is an optional sub-interface for CLIAdapter implementations that
-// need to run additional setup after the process or PTY session starts. Asserted
-// at the call site via interface assertion in both cliBackend.Start and
-// cliInteractiveBackend.Start — NOT added to CLIAdapter itself — so adapters
-// that don't need it (claude, opencode) are unaffected.
+// need to run additional setup after the PTY session starts. Asserted at the call
+// site via interface assertion in cliInteractiveBackend.Start — NOT added to
+// CLIAdapter itself — so adapters that don't need it (claude, opencode) are unaffected.
 type PostStarter interface {
 	PostStart(ctx context.Context, opts PostStartOptions) (cleanup func(), err error)
 }
@@ -171,26 +158,12 @@ type HookEvent struct {
 	TimeoutSec int // hook timeout in seconds
 }
 
-// ResumeOptions contains parameters for resuming a CLI session
-type ResumeOptions struct {
-	SessionID        string
-	Prompt           string
-	WorkDir          string
-	Env              []string
-	SettingsJSON     string // Claude --settings JSON (ignored by non-Claude adapters)
-	ReasoningEffort  string // Claude --effort level; codex uses it for model_reasoning_effort
-	SystemPromptFile string // Path to system prompt suffix file (--append-system-prompt-file)
-	Model            string // Raw model alias; codex-only (Claude ignores)
-	MappedModel      string // Resolved CLI model arg; codex-only (Claude ignores)
-}
-
 // SpawnOptions contains parameters for building a spawn command
 type SpawnOptions struct {
 	Model            string
 	SessionID        string
 	PromptFile       string // Path to system prompt file
 	Prompt           string // Full prompt content (for CLIs without file support)
-	InitialPrompt    string
 	WorkDir          string
 	Env              []string
 	MappedModel      string // DB-sourced mapped model name; if set, adapters skip their own MapModel()

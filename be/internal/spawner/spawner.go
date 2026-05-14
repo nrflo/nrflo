@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -121,11 +120,6 @@ type Config struct {
 	// uses these for model mapping, reasoning effort, context length, and CLI type
 	// instead of hardcoded adapter methods. nil map is safe (lookup returns zero value).
 	ModelConfigs map[string]ModelConfig
-	// ProviderModes is an optional per-provider allowlist of CLI execution modes
-	// (cli/cli_interactive). Loaded once at workflow start via ProviderSettingsService.GetAll.
-	// If the map has an entry for the CLI name and the agent's resolved mode is not
-	// in the allowlist, the mode is coerced to allowed[0]. nil map is safe.
-	ProviderModes map[string][]string
 	// ErrorSvc records agent errors (optional, nil-safe).
 	ErrorSvc ErrorRecorder
 	// Provider is the provider abstraction used by API-mode agents
@@ -938,21 +932,12 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// Load agent definition early — execution_mode determines whether we
 	// resolve a CLI adapter or skip CLI prep for api/script mode.
 	agentDef := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
-	executionMode := "cli"
+	executionMode := "cli_interactive"
 	if agentDef != nil && (agentDef.ExecutionMode == "api" || agentDef.ExecutionMode == "script" || agentDef.ExecutionMode == "cli_interactive") {
 		executionMode = agentDef.ExecutionMode
 	} else if agentDef == nil {
 		if agentCfg, ok := s.config.Agents[req.AgentType]; ok && (agentCfg.ExecutionMode == "api" || agentCfg.ExecutionMode == "script" || agentCfg.ExecutionMode == "cli_interactive") {
 			executionMode = agentCfg.ExecutionMode
-		}
-	}
-
-	// Coerce execution mode to provider allowlist if configured.
-	if (executionMode == "cli" || executionMode == "cli_interactive") && s.config.ProviderModes != nil {
-		if allowed, ok := s.config.ProviderModes[cliName]; ok && len(allowed) > 0 {
-			if !slices.Contains(allowed, executionMode) {
-				executionMode = allowed[0]
-			}
 		}
 	}
 
@@ -968,7 +953,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 
 	// Get CLI adapter (api/script modes skip this — there is no CLI process)
 	var adapter CLIAdapter
-	if executionMode == "cli" || executionMode == "cli_interactive" {
+	if executionMode == "cli_interactive" {
 		var err error
 		adapter, err = GetCLIAdapter(cliName)
 		if err != nil {
@@ -1245,16 +1230,6 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 	}
 
-	// Initial prompt (skipped for stdin-based adapters — the template IS the full prompt)
-	var initialPrompt string
-	if !adapter.UsesStdinPrompt() {
-		if req.IsProjectScope() {
-			initialPrompt = fmt.Sprintf(`Begin working on project %s. Follow the workflow steps in your system prompt.`, req.ProjectID)
-		} else {
-			initialPrompt = fmt.Sprintf(`Begin working on ticket %s. Follow the workflow steps in your system prompt.`, req.TicketID)
-		}
-	}
-
 	// DB-sourced mapped model + reasoning effort
 	var mappedModel, reasoningEffort string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
@@ -1267,7 +1242,6 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		SessionID:        sessionID,
 		PromptFile:       promptFile.Name(),
 		Prompt:           promptBody,
-		InitialPrompt:    initialPrompt,
 		WorkDir:          workDir,
 		MappedModel:      mappedModel,
 		ReasoningEffort:  reasoningEffort,
@@ -1297,7 +1271,6 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 //   - "api"            → apiBackend (in-process Anthropic runner)
 //   - "script"         → scriptBackend (Python exec.Cmd)
 //   - "cli_interactive" → cliInteractiveBackend (PTY)
-//   - "cli" / default  → cliBackend (exec.Cmd with structured JSON output)
 //
 // System agents (conflict-resolver, context-saver) flow through the same
 // selector — their execution_mode is sourced from system_agent_definitions.execution_mode.
@@ -1309,12 +1282,9 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	case "script":
 		backend = newScriptBackend(s)
 	case "cli_interactive":
-		if !prep.adapter.SupportsInteractive() {
-			return fmt.Errorf("agent %q uses execution_mode=cli_interactive but adapter %q does not support PTY interactive mode; switch to execution_mode=cli (batch)", proc.agentType, prep.adapter.Name())
-		}
 		backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
 	default:
-		backend = newCLIBackend(prep.adapter, s)
+		return fmt.Errorf("unknown execution_mode %q for agent %q", prep.executionMode, proc.agentType)
 	}
 	proc.backend = backend
 
@@ -1324,10 +1294,8 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 		effectiveMode = "api"
 	case "script":
 		effectiveMode = "script"
-	case "cli_interactive":
-		effectiveMode = "cli_interactive"
 	default:
-		effectiveMode = "cli"
+		effectiveMode = "cli_interactive"
 	}
 
 	// Register sessionProc BEFORE backend.Start so a fast SessionStart hook

@@ -15,39 +15,6 @@ func (a *OpencodeAdapter) Name() string {
 	return "opencode"
 }
 
-func (a *OpencodeAdapter) BuildCommand(opts SpawnOptions) *exec.Cmd {
-	// Opencode uses provider/model format
-	model := opts.MappedModel
-	if model == "" {
-		model = a.MapModel(opts.Model)
-	}
-	reasoningEffort := opts.ReasoningEffort
-	if reasoningEffort == "" {
-		reasoningEffort = a.GetReasoningEffort(opts.Model)
-	}
-
-	args := []string{
-		"run",
-		"--format", "json",
-		"--model", model,
-	}
-
-	// Add reasoning effort variant if specified
-	if reasoningEffort != "" {
-		args = append(args, "--variant", reasoningEffort)
-	}
-
-	// Opencode reads message from positional args, not stdin
-	if opts.Prompt != "" {
-		args = append(args, opts.Prompt)
-	}
-
-	cmd := exec.Command("opencode", args...)
-	cmd.Dir = opts.WorkDir
-	cmd.Env = overridePWD(opts.Env, opts.WorkDir)
-	return cmd
-}
-
 // overridePWD replaces or appends PWD=<workDir> in env. opencode resolves
 // its project_root via $PWD (Bun runtime), not os.Getwd(); without this
 // override the child inherits the server's PWD and registers all sessions
@@ -119,18 +86,8 @@ func (a *OpencodeAdapter) SupportsResume() bool {
 	return false
 }
 
-func (a *OpencodeAdapter) UsesStdinPrompt() bool {
-	return false // opencode reads message from positional args
-}
-
-// SupportsInteractive returns false. Opencode runs cli (batch) mode only by
-// design. The SQLite tailer (PostStart) is still invoked from cliBackend.Start
-// for context tracking in batch mode.
-func (a *OpencodeAdapter) SupportsInteractive() bool { return false }
-
 // PostStart launches the opencode SQLite DB tailer goroutine for context
-// tracking. Called by both cliBackend.Start (cli batch) and
-// cliInteractiveBackend.Start (cli_interactive).
+// tracking. Called by cliInteractiveBackend.Start.
 func (a *OpencodeAdapter) PostStart(ctx context.Context, opts PostStartOptions) (func(), error) {
 	if opts.WorkDir == "" {
 		return func() {}, fmt.Errorf("opencode PostStart: empty WorkDir")
@@ -142,22 +99,13 @@ func (a *OpencodeAdapter) PostStart(ctx context.Context, opts PostStartOptions) 
 // BuildInteractiveCommand builds the PTY command for opencode TUI mode.
 // Invocation form: opencode <workdir> --port 0 --hostname 127.0.0.1 --model <model>
 //
-// `--port 0` lets opencode pick its own free port. We used to pre-allocate
-// in PrepareInteractive and pass the bound port here, but that introduced
-// a TOCTOU race: under parallel spawning, the just-closed listener's port
-// could be grabbed by another process before opencode binds, and opencode
-// would exit with code 1 within a second. Nothing nrflo-side needs to
-// know the port (the SQLite tailer reads the local DB, not the HTTP
-// server), so handing port selection to opencode is both simpler and
-// race-free.
+// `--port 0` lets opencode pick its own free port (race-free).
 //
-// `--variant` is intentionally NOT passed here: the TUI subcommand
-// (`opencode [project]`) does not accept it — that flag is exclusive to
-// `opencode run` (batch mode). Passing it makes opencode print its help
-// and exit 1 before any prompt is delivered. Reasoning-effort selection
-// in TUI mode happens via the model alias resolution (e.g.
-// `openai/gpt-5.4-mini` already carries the "low" profile in opencode's
-// own catalogue).
+// `--variant` is not passed: the TUI subcommand does not accept it.
+// Reasoning-effort selection happens via model alias resolution.
+//
+// ResumeSessionID is not supported by opencode; context carryover uses the
+// agent-saver path instead.
 func (a *OpencodeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
 		opts.WorkDir,
@@ -203,7 +151,4 @@ func (a *OpencodeAdapter) BumpsOnPTYBytes() bool { return false }
 // so the ceiling is harmless in the common case.
 func (a *OpencodeAdapter) NaturalExitGrace() time.Duration { return 5 * time.Second }
 
-func (a *OpencodeAdapter) BuildResumeCommand(_ ResumeOptions) *exec.Cmd {
-	return nil
-}
 

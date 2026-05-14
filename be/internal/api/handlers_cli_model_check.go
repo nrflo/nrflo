@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
 	"time"
 
 	"be/internal/logger"
 	"be/internal/service"
-	"be/internal/spawner"
-
-	"github.com/google/uuid"
 )
 
 // handleTestCLIModel spawns a minimal agent process to verify a CLI model config works.
@@ -33,32 +31,23 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	getAdapter := s.cliAdapterFunc
-	if getAdapter == nil {
-		getAdapter = spawner.GetCLIAdapter
-	}
-	adapter, err := getAdapter(m.CLIType)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("cli binary not found: %s", m.CLIType))
-		return
+	buildCmd := s.cliAdapterFunc
+	if buildCmd == nil {
+		buildCmd = buildModelCheckCommand
 	}
 
 	prompt := "Reply with exactly: NRFLO_CHECK_OK"
 
-	opts := spawner.SpawnOptions{
-		Model:           m.ID,
-		MappedModel:     m.MappedModel,
-		ReasoningEffort: m.ReasoningEffort,
-		SessionID:       uuid.New().String(),
-		WorkDir:         os.TempDir(),
-		Prompt:          prompt,
-		Env:             os.Environ(),
+	cmd, usesStdin := buildCmd(m.CLIType, m.MappedModel, m.ReasoningEffort)
+	if cmd == nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("unsupported cli type: %s", m.CLIType))
+		return
 	}
-
-	cmd := adapter.BuildCommand(opts)
+	cmd.Dir = os.TempDir()
+	cmd.Env = os.Environ()
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	if adapter.UsesStdinPrompt() {
+	if usesStdin {
 		cmd.Stdin = strings.NewReader(prompt)
 	}
 
@@ -84,7 +73,6 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info(r.Context(), "cli model check started", "model", id, "cli_type", m.CLIType, "cmd", strings.Join(cmd.Args, " "))
 
-	// BuildCommand uses exec.Command (no context), so we manually kill on timeout.
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 
@@ -92,7 +80,7 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 	case err = <-done:
 	case <-ctx.Done():
 		syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		<-done // wait for Wait() to release resources
+		<-done
 	}
 	elapsed := time.Since(start).Milliseconds()
 
@@ -125,4 +113,41 @@ func (s *Server) handleTestCLIModel(w http.ResponseWriter, r *http.Request) {
 		Success:    true,
 		DurationMs: elapsed,
 	})
+}
+
+// buildModelCheckCommand returns the batch command for a one-shot model check
+// and whether to pipe the prompt via stdin (true) or argv (false).
+func buildModelCheckCommand(cliType, mappedModel, reasoningEffort string) (*exec.Cmd, bool) {
+	switch cliType {
+	case "claude":
+		args := []string{
+			"--print",
+			"--verbose",
+			"--dangerously-skip-permissions",
+			"--output-format", "stream-json",
+			"--model", mappedModel,
+		}
+		return exec.Command("claude", args...), true
+	case "codex":
+		args := []string{
+			"exec",
+			"--json",
+			"--model", mappedModel,
+			"--dangerously-bypass-approvals-and-sandbox",
+		}
+		if reasoningEffort != "" {
+			args = append(args, "-c", fmt.Sprintf(`model_reasoning_effort="%s"`, reasoningEffort))
+		}
+		return exec.Command("codex", args...), true
+	case "opencode":
+		args := []string{
+			"run",
+			"--format", "json",
+			"--model", mappedModel,
+			"Reply with exactly: NRFLO_CHECK_OK",
+		}
+		return exec.Command("opencode", args...), false
+	default:
+		return nil, false
+	}
 }

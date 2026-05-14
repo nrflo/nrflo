@@ -11,7 +11,7 @@ import (
 // TestCodexAdapter_PostStart_Batch_PopulatesContextLeft verifies that PostStart
 // launches the rollout JSONL tailer and that a token_count record (50% of
 // context used) causes Sink.UpdateContextLeft to be called with pct==50.
-// This exercises the cli-batch path wired from cliBackend.Start in backend_cli.go.
+// Wired from cliInteractiveBackend.Start via PostStarter.
 func TestCodexAdapter_PostStart_Batch_PopulatesContextLeft(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)

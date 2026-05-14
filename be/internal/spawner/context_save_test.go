@@ -448,7 +448,7 @@ func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "claude:sonnet",
-		backend: fakeBackend{name: "cli"},
+		backend: fakeBackend{name: "cli_interactive"},
 	}
 	if s.shouldUseAgentSave(proc) {
 		t.Error("claude with default settings must use resume path; got forced agent save")
@@ -460,7 +460,7 @@ func TestShouldUseAgentSave_OpencodeForcesAgent(t *testing.T) {
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "opencode:openai/gpt-5.4",
-		backend: fakeBackend{name: "cli"},
+		backend: fakeBackend{name: "cli_interactive"},
 	}
 	if !s.shouldUseAgentSave(proc) {
 		t.Error("opencode must force agent save (SupportsResume=false)")

@@ -14,38 +14,7 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/service"
-	"be/internal/spawner"
 )
-
-// mockCLIAdapter returns a CLIAdapter that runs "echo ok" instead of a real CLI binary.
-type mockCLIAdapter struct {
-	name string
-}
-
-func (m *mockCLIAdapter) Name() string                                    { return m.name }
-func (m *mockCLIAdapter) BuildCommand(_ spawner.SpawnOptions) *exec.Cmd   { return exec.Command("echo", "ok") }
-func (m *mockCLIAdapter) MapModel(model string) string                    { return model }
-func (m *mockCLIAdapter) SupportsSessionID() bool                         { return false }
-func (m *mockCLIAdapter) SupportsSystemPromptFile() bool                  { return false }
-func (m *mockCLIAdapter) SupportsResume() bool                            { return false }
-func (m *mockCLIAdapter) UsesStdinPrompt() bool                           { return false }
-func (m *mockCLIAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd   { return nil }
-func (m *mockCLIAdapter) SupportsInteractive() bool                              { return false }
-func (m *mockCLIAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
-	return nil
-}
-func (m *mockCLIAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
-	return spawner.InteractiveExtras{}, func() {}, nil
-}
-func (m *mockCLIAdapter) DeliversPromptInline() bool        { return false }
-func (m *mockCLIAdapter) NeedsTerminalQueryReplies() bool   { return false }
-func (m *mockCLIAdapter) CapturesTUIBytes() bool            { return false }
-func (m *mockCLIAdapter) BumpsOnPTYBytes() bool             { return false }
-func (m *mockCLIAdapter) NaturalExitGrace() time.Duration   { return 0 }
-
-func mockGetCLIAdapter(cliType string) (spawner.CLIAdapter, error) {
-	return &mockCLIAdapter{name: cliType}, nil
-}
 
 // newCLIModelCheckServer creates a minimal Server with mocked CLI adapter for tests.
 func newCLIModelCheckServer(t *testing.T) *Server {
@@ -59,7 +28,12 @@ func newCLIModelCheckServer(t *testing.T) *Server {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
-	return &Server{pool: pool, clock: clock.Real(), cliAdapterFunc: mockGetCLIAdapter}
+	s := &Server{pool: pool, clock: clock.Real()}
+	// Default: run "echo ok" to simulate a successful check.
+	s.cliAdapterFunc = func(_, _, _ string) (*exec.Cmd, bool) {
+		return exec.Command("echo", "ok"), false
+	}
+	return s
 }
 
 func decodeCLIModelCheckResult(t *testing.T, rr *httptest.ResponseRecorder) service.TestCLIModelResult {
@@ -192,9 +166,8 @@ func TestHandleTestCLIModel_EmptyIDNotFound(t *testing.T) {
 
 func TestHandleTestCLIModel_FailedStart(t *testing.T) {
 	s := newCLIModelCheckServer(t)
-	// Override adapter to return a command that will fail to start
-	s.cliAdapterFunc = func(cliType string) (spawner.CLIAdapter, error) {
-		return &failStartAdapter{name: cliType}, nil
+	s.cliAdapterFunc = func(_, _, _ string) (*exec.Cmd, bool) {
+		return exec.Command("__nrflo_nonexistent_binary__"), false
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/cli-models/sonnet/test", nil)
@@ -214,67 +187,13 @@ func TestHandleTestCLIModel_FailedStart(t *testing.T) {
 	}
 }
 
-// failStartAdapter returns a command for a nonexistent binary.
-type failStartAdapter struct{ name string }
-
-func (a *failStartAdapter) Name() string                                    { return a.name }
-func (a *failStartAdapter) BuildCommand(_ spawner.SpawnOptions) *exec.Cmd   { return exec.Command("__nrflo_nonexistent_binary__") }
-func (a *failStartAdapter) MapModel(model string) string                    { return model }
-func (a *failStartAdapter) SupportsSessionID() bool                         { return false }
-func (a *failStartAdapter) SupportsSystemPromptFile() bool                  { return false }
-func (a *failStartAdapter) SupportsResume() bool                            { return false }
-func (a *failStartAdapter) UsesStdinPrompt() bool                           { return false }
-func (a *failStartAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd   { return nil }
-func (a *failStartAdapter) SupportsInteractive() bool                              { return false }
-func (a *failStartAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
-	return nil
-}
-func (a *failStartAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
-	return spawner.InteractiveExtras{}, func() {}, nil
-}
-func (a *failStartAdapter) DeliversPromptInline() bool        { return false }
-func (a *failStartAdapter) NeedsTerminalQueryReplies() bool   { return false }
-func (a *failStartAdapter) CapturesTUIBytes() bool            { return false }
-func (a *failStartAdapter) BumpsOnPTYBytes() bool             { return false }
-func (a *failStartAdapter) NaturalExitGrace() time.Duration   { return 0 }
-
-// hangingAdapter simulates a long-running CLI command to exercise the timeout kill path.
-type hangingAdapter struct{ name string }
-
-func (a *hangingAdapter) Name() string                                    { return a.name }
-func (a *hangingAdapter) BuildCommand(_ spawner.SpawnOptions) *exec.Cmd   { return exec.Command("sleep", "999") }
-func (a *hangingAdapter) MapModel(model string) string                    { return model }
-func (a *hangingAdapter) SupportsSessionID() bool                         { return false }
-func (a *hangingAdapter) SupportsSystemPromptFile() bool                  { return false }
-func (a *hangingAdapter) SupportsResume() bool                            { return false }
-func (a *hangingAdapter) UsesStdinPrompt() bool                           { return false }
-func (a *hangingAdapter) BuildResumeCommand(_ spawner.ResumeOptions) *exec.Cmd   { return nil }
-func (a *hangingAdapter) SupportsInteractive() bool                              { return false }
-func (a *hangingAdapter) BuildInteractiveCommand(_ spawner.InteractiveSpawnOptions) *exec.Cmd {
-	return nil
-}
-func (a *hangingAdapter) PrepareInteractive(_ spawner.InteractivePrepOptions) (spawner.InteractiveExtras, func(), error) {
-	return spawner.InteractiveExtras{}, func() {}, nil
-}
-func (a *hangingAdapter) DeliversPromptInline() bool        { return false }
-func (a *hangingAdapter) NeedsTerminalQueryReplies() bool   { return false }
-func (a *hangingAdapter) CapturesTUIBytes() bool            { return false }
-func (a *hangingAdapter) BumpsOnPTYBytes() bool             { return false }
-func (a *hangingAdapter) NaturalExitGrace() time.Duration   { return 0 }
-
-// TestHandleTestCLIModel_TimeoutMessage exercises the timeout code path:
-// the response must be success=false with an error containing "40s", and the
-// process-group kill must unblock cmd.Wait() so the handler returns promptly.
+// TestHandleTestCLIModel_TimeoutMessage exercises the timeout code path.
 func TestHandleTestCLIModel_TimeoutMessage(t *testing.T) {
 	s := newCLIModelCheckServer(t)
-	s.cliAdapterFunc = func(cliType string) (spawner.CLIAdapter, error) {
-		return &hangingAdapter{name: cliType}, nil
+	s.cliAdapterFunc = func(_, _, _ string) (*exec.Cmd, bool) {
+		return exec.Command("sleep", "999"), false
 	}
 
-	// A 100ms parent context expires long before the 40s handler timeout, but
-	// gives cmd.Start() enough time to fork sleep(1).  SIGKILL then terminates
-	// the process group immediately so cmd.Wait() unblocks and the test stays
-	// well under the 5s single-test budget.
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 

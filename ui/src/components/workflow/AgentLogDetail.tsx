@@ -60,7 +60,7 @@ interface AgentLogDetailProps {
   phaseLayers?: Record<string, number>
   workflowFindings?: Record<string, unknown>
   hideHeader?: boolean
-  agentExecutionMode?: 'cli' | 'api'
+  agentExecutionMode?: 'cli_interactive' | 'api'
 }
 
 export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumePending, agentFindings, projectFindings, phaseLayers, workflowFindings, hideHeader, agentExecutionMode }: AgentLogDetailProps) {

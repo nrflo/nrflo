@@ -189,7 +189,7 @@ describe('AgentDefForm', () => {
         max_fail_restarts: undefined,
         tag: undefined,
         low_consumption_model: undefined,
-        execution_mode: 'cli',
+        execution_mode: 'cli_interactive',
         tools: '',
         api_max_iterations: undefined,
       })
@@ -220,7 +220,7 @@ describe('AgentDefForm', () => {
         max_fail_restarts: undefined,
         tag: undefined,
         low_consumption_model: undefined,
-        execution_mode: 'cli',
+        execution_mode: 'cli_interactive',
         tools: '',
         api_max_iterations: undefined,
       })

@@ -18,7 +18,7 @@ func selectEffectiveModeForTest(executionMode string) string {
 	case "cli_interactive":
 		return "cli_interactive"
 	default:
-		return "cli"
+		return "unknown"
 	}
 }
 
@@ -45,14 +45,14 @@ func TestEffectiveMode_SelectionMatrix(t *testing.T) {
 			want:          "cli_interactive",
 		},
 		{
-			name:          "cli → cli",
+			name:          "unknown mode → unknown",
 			executionMode: "cli",
-			want:          "cli",
+			want:          "unknown",
 		},
 		{
-			name:          "empty executionMode → cli (default)",
+			name:          "empty executionMode → unknown",
 			executionMode: "",
-			want:          "cli",
+			want:          "unknown",
 		},
 	}
 
@@ -69,8 +69,7 @@ func TestEffectiveMode_SelectionMatrix(t *testing.T) {
 }
 
 // TestEffectiveMode_ConsistentWithBackendSelector verifies that the effectiveMode switch
-// and the backend selector (tested in backend_interactive_selector_test.go) agree on
-// which "bucket" a given executionMode falls into.
+// and the backend selector agree on which "bucket" a given executionMode falls into.
 func TestEffectiveMode_ConsistentWithBackendSelector(t *testing.T) {
 	t.Parallel()
 	type pair struct {
@@ -83,7 +82,6 @@ func TestEffectiveMode_ConsistentWithBackendSelector(t *testing.T) {
 		{"api", &ClaudeAdapter{}, "api", "api"},
 		{"script", nil, "script", "script"},
 		{"cli_interactive", &ClaudeAdapter{}, "cli_interactive", "cli_interactive"},
-		{"cli", &ClaudeAdapter{}, "cli", "cli"},
 	}
 	for _, c := range cases {
 		s := New(Config{Clock: clock.Real()})
@@ -92,6 +90,11 @@ func TestEffectiveMode_ConsistentWithBackendSelector(t *testing.T) {
 		if gotMode != c.wantMode {
 			t.Errorf("mode(%q, %T) = %q, want %q",
 				c.executionMode, c.adapter, gotMode, c.wantMode)
+		}
+		if gotBackend == nil {
+			t.Errorf("backend(%q, %T) = nil, want %q",
+				c.executionMode, c.adapter, c.wantBackend)
+			continue
 		}
 		if gotBackend.Name() != c.wantBackend {
 			t.Errorf("backend(%q, %T) = %q, want %q",
@@ -127,13 +130,13 @@ func TestRegisterAgentStart_EffectiveModePersisted(t *testing.T) {
 	}
 }
 
-// TestRegisterAgentStart_AllEffectiveModes verifies all four mode values are
+// TestRegisterAgentStart_AllEffectiveModes verifies all three valid mode values are
 // persisted correctly by registerAgentStart.
 func TestRegisterAgentStart_AllEffectiveModes(t *testing.T) {
 	t.Parallel()
 	pool := setupTestDB(t)
 
-	modes := []string{"cli", "cli_interactive", "api", "script"}
+	modes := []string{"cli_interactive", "api", "script"}
 	for i, mode := range modes {
 		sessionID := "sess-allmode-" + mode
 		spawnToken := "tok-allmode-" + mode

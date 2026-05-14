@@ -1,19 +1,22 @@
 package spawner
 
 import (
-	"bufio"
 	"context"
-	"strings"
+	"syscall"
 	"time"
+
+	"github.com/creack/pty"
+	"github.com/google/uuid"
 
 	"be/internal/logger"
 )
 
 const resumeSaveTimeout = 3 * time.Minute
 
-// sessionIDForResume returns the session ID to pass to BuildResumeCommand.
-// Uses proc.sessionID when the adapter tracks custom session IDs (Claude),
-// and proc.externalSessionID (codex-assigned thread_id) otherwise.
+// sessionIDForResume returns the session ID to pass as ResumeSessionID to
+// BuildInteractiveCommand. Uses proc.sessionID when the adapter tracks custom
+// session IDs (Claude), and proc.externalSessionID (codex-assigned thread_id)
+// otherwise.
 func sessionIDForResume(adapter CLIAdapter, proc *processInfo) string {
 	if adapter.SupportsSessionID() {
 		return proc.sessionID
@@ -22,8 +25,9 @@ func sessionIDForResume(adapter CLIAdapter, proc *processInfo) string {
 }
 
 // contextSaveViaResume handles the resume-based context save flow.
-// Resumes the same session with a save prompt so the agent writes its own
-// to_resume findings. Falls back to contextSaveViaAgent on any failure.
+// Spawns a one-shot cli_interactive PTY session that resumes the original
+// session with the save prompt. Falls back to contextSaveViaAgent on any
+// failure.
 //
 // Called after kill+flush in initiateContextSave when ContextSaveViaAgent is false.
 func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, req SpawnRequest) {
@@ -45,76 +49,71 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 	savePrompt := buildSavePrompt()
 	logger.Info(ctx, "context save prompt", "prompt", savePrompt, "session_id", proc.sessionID)
 
-	var reasoningEffort, mappedModel string
+	var mappedModel, reasoningEffort string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
-		reasoningEffort = cfg.ReasoningEffort
 		mappedModel = cfg.MappedModel
+		reasoningEffort = cfg.ReasoningEffort
+	}
+	if mappedModel == "" {
+		mappedModel = adapter.MapModel(model)
 	}
 
-	resumeCmd := adapter.BuildResumeCommand(ResumeOptions{
-		SessionID:       resumeSessionID,
-		Prompt:          savePrompt,
+	spawnOpts := InteractiveSpawnOptions{
+		SessionID:       uuid.New().String(),
+		Model:           mappedModel,
+		ReasoningEffort: reasoningEffort,
 		WorkDir:         s.config.ProjectRoot,
 		Env:             proc.env,
 		SettingsJSON:    s.config.ClaudeSettingsJSON,
-		ReasoningEffort: reasoningEffort,
-		Model:           model,
-		MappedModel:     mappedModel,
-	})
+		ResumeSessionID: resumeSessionID,
+	}
+	// Adapters that deliver the prompt via argv (codex) get it in Prompt;
+	// others receive it via PTY stdin write below.
+	if adapter.DeliversPromptInline() {
+		spawnOpts.Prompt = savePrompt
+	}
 
-	resumeCmd.Stdin = strings.NewReader(savePrompt)
+	resumeCmd := adapter.BuildInteractiveCommand(spawnOpts)
+	resumeCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	stdout, err := resumeCmd.StdoutPipe()
+	ptyCh, err := pty.Start(resumeCmd)
 	if err != nil {
-		logger.Error(ctx, "context save failed to create stdout pipe, falling back to agent save", "err", err, "session_id", proc.sessionID)
-		s.contextSaveViaAgent(ctx, proc, req)
-		return
-	}
-	stderr, stderrErr := resumeCmd.StderrPipe()
-	if stderrErr != nil {
-		logger.Error(ctx, "context save failed to create stderr pipe", "err", stderrErr, "session_id", proc.sessionID)
-	}
-
-	if err := resumeCmd.Start(); err != nil {
-		logger.Error(ctx, "context save failed to start resume, falling back to agent save", "err", err, "session_id", proc.sessionID)
+		logger.Error(ctx, "context save failed to start resume PTY, falling back to agent save", "err", err, "session_id", proc.sessionID)
 		s.contextSaveViaAgent(ctx, proc, req)
 		return
 	}
 	logger.Info(ctx, "context save resume started", "pid", resumeCmd.Process.Pid, "cmd", resumeCmd.Args, "session_id", proc.sessionID)
 
-	// Capture and log resume stdout
+	// Drain PTY output to prevent blocking when the buffer fills.
 	go func() {
-		scanner := bufio.NewScanner(stdout)
-		buf := make([]byte, 0, 1024*1024)
-		scanner.Buffer(buf, 10*1024*1024)
-		lineCount := 0
-		for scanner.Scan() {
-			lineCount++
-			logger.Info(ctx, "context save output", "line", lineCount, "content", scanner.Text(), "session_id", proc.sessionID)
+		buf := make([]byte, 4096)
+		for {
+			if _, err := ptyCh.Read(buf); err != nil {
+				return
+			}
 		}
-		logger.Info(ctx, "context save output finished", "total_lines", lineCount, "session_id", proc.sessionID)
 	}()
 
-	if stderrErr == nil {
+	// For adapters that deliver the prompt via PTY stdin, write after a short
+	// bootstrap delay to let the TUI initialise.
+	if !adapter.DeliversPromptInline() {
 		go func() {
-			scanner := bufio.NewScanner(stderr)
-			scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-			for scanner.Scan() {
-				logger.Warn(ctx, "context save stderr", "content", scanner.Text(), "session_id", proc.sessionID)
-			}
+			time.Sleep(2 * time.Second)
+			_, _ = ptyCh.Write([]byte(savePrompt + "\r"))
 		}()
 	}
 
-	// Wait for resume process with timeout
+	// Wait for resume process with timeout.
 	resumeDone := make(chan struct{})
 	go func() {
-		resumeCmd.Wait()
+		resumeCmd.Wait() //nolint:errcheck
 		close(resumeDone)
 	}()
 
 	startTime := time.Now()
 	select {
 	case <-resumeDone:
+		ptyCh.Close()
 		exitCode := 0
 		if resumeCmd.ProcessState != nil {
 			exitCode = resumeCmd.ProcessState.ExitCode()
@@ -128,8 +127,9 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 	case <-time.After(resumeSaveTimeout):
 		logger.Error(ctx, "context save timed out, falling back to agent save", "timeout", resumeSaveTimeout, "session_id", proc.sessionID)
 		if resumeCmd.Process != nil {
-			resumeCmd.Process.Kill()
+			_ = syscall.Kill(-resumeCmd.Process.Pid, syscall.SIGKILL)
 		}
+		ptyCh.Close()
 		<-resumeDone
 		s.contextSaveViaAgent(ctx, proc, req)
 		return

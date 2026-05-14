@@ -14,8 +14,8 @@ import (
 )
 
 // ExecutionBackend abstracts how an agent process is started, signaled, and tracked.
-// CLI agents use cliBackend (current behavior). API agents (T2-T5) plug in their own
-// backend without touching monitorAll.
+// CLI agents use cliInteractiveBackend. API agents plug in their own backend without
+// touching monitorAll.
 type ExecutionBackend interface {
 	Name() string
 	SupportsResume() bool

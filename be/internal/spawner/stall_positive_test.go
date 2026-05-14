@@ -14,13 +14,13 @@ import (
 
 // stallPositiveProc builds a processInfo whose doneCh is pre-closed so
 // handleStallRestart (called internally by checkStall) does not block.
-// The cliBackend with nil cmd is nil-safe on Kill.
+// processInfo with a non-nil exec.Cmd and fakeBackend is nil-safe on Kill.
 func stallPositiveProc(clk *clock.TestClock, hasMsg bool, lastMsgOffset time.Duration, count int) *processInfo {
 	doneCh := make(chan struct{})
 	close(doneCh)
 	return &processInfo{
 		cmd:                 &exec.Cmd{},
-		backend:             &cliBackend{},
+		backend:             fakeBackend{name: "cli_interactive"},
 		doneCh:              doneCh,
 		hasReceivedMessage:  hasMsg,
 		lastMessageTime:     clk.Now().Add(lastMsgOffset),
@@ -145,7 +145,7 @@ func TestCheckStall_StallEventBroadcast(t *testing.T) {
 	close(doneCh)
 	proc := &processInfo{
 		cmd:                &exec.Cmd{},
-		backend:            &cliBackend{},
+		backend:            fakeBackend{name: "cli_interactive"},
 		doneCh:             doneCh,
 		sessionID:          "stall-pos-sess",
 		agentType:          "implementor",
@@ -206,7 +206,7 @@ func TestCheckStall_RunningStall_EventBroadcast(t *testing.T) {
 	close(doneCh)
 	proc := &processInfo{
 		cmd:                 &exec.Cmd{},
-		backend:             &cliBackend{},
+		backend:             fakeBackend{name: "cli_interactive"},
 		doneCh:              doneCh,
 		sessionID:           "running-stall-pos",
 		agentType:           "qa-verifier",

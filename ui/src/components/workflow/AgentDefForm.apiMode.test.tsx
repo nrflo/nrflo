@@ -44,10 +44,10 @@ function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = 
 }
 
 describe('AgentDefForm — execution mode', () => {
-  describe('default CLI mode', () => {
-    it('defaults to CLI mode', () => {
+  describe('default CLI Interactive mode', () => {
+    it('defaults to CLI Interactive mode', () => {
       renderForm()
-      expect(getExecutionModeButton().textContent).toContain('CLI (default)')
+      expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
     })
 
     it('does not show API fields in cli mode', () => {
@@ -108,7 +108,7 @@ describe('AgentDefForm — execution mode', () => {
       expect(screen.getByPlaceholderText(/findings_add/i)).toBeInTheDocument()
 
       await user.click(getExecutionModeButton())
-      await user.click(screen.getByText('CLI (default)'))
+      await user.click(screen.getByText('CLI Interactive (PTY)'))
 
       expect(screen.queryByPlaceholderText(/findings_add/i)).not.toBeInTheDocument()
     })
@@ -182,7 +182,7 @@ describe('AgentDefForm — execution mode', () => {
       )
     })
 
-    it('cli submit includes execution_mode=cli and empty tools', async () => {
+    it('cli_interactive submit includes execution_mode=cli_interactive and empty tools', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
       renderForm({ onSubmit })
@@ -193,7 +193,7 @@ describe('AgentDefForm — execution mode', () => {
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ execution_mode: 'cli', tools: '' })
+        expect.objectContaining({ execution_mode: 'cli_interactive', tools: '' })
       )
     })
   })
@@ -219,7 +219,7 @@ describe('AgentDefForm — apiModeEnabled=false gate', () => {
     expect(screen.getByText('Script (Python)')).toBeInTheDocument()
   })
 
-  it('cli submit still produces execution_mode=cli and tools=empty', async () => {
+  it('cli_interactive submit still produces execution_mode=cli_interactive and tools=empty', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     renderForm({ onSubmit })
@@ -229,7 +229,7 @@ describe('AgentDefForm — apiModeEnabled=false gate', () => {
     await user.click(screen.getByRole('button', { name: /create/i }))
 
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ execution_mode: 'cli', tools: '' })
+      expect.objectContaining({ execution_mode: 'cli_interactive', tools: '' })
     )
   })
 

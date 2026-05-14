@@ -35,7 +35,7 @@ export interface ActiveAgentV4 {
   restart_details?: RestartDetail[]
   nudge_count?: number
   tag?: string
-  effective_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
+  effective_mode?: 'cli_interactive' | 'api' | 'script'
 }
 
 export interface AgentHistoryEntry {
@@ -54,7 +54,7 @@ export interface AgentHistoryEntry {
   restart_details?: RestartDetail[]
   nudge_count?: number
   tag?: string
-  effective_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
+  effective_mode?: 'cli_interactive' | 'api' | 'script'
 }
 
 export interface CompletedAgentRow extends AgentHistoryEntry {
@@ -283,7 +283,7 @@ export interface AgentDef {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode: 'cli' | 'cli_interactive' | 'api' | 'script'
+  execution_mode: 'cli_interactive' | 'api' | 'script'
   tools: string
   api_max_iterations?: number
   python_script_id?: string
@@ -301,7 +301,7 @@ export interface AgentDefCreateRequest {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
+  execution_mode?: 'cli_interactive' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
   python_script_id?: string
@@ -316,7 +316,7 @@ export interface AgentDefUpdateRequest {
   max_fail_restarts?: number
   tag?: string
   low_consumption_model?: string
-  execution_mode?: 'cli' | 'cli_interactive' | 'api' | 'script'
+  execution_mode?: 'cli_interactive' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
   python_script_id?: string

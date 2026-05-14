@@ -60,13 +60,6 @@ export function GlobalSettingsSection() {
     },
   })
 
-  const syncClaudeLimitsMutation = useMutation({
-    mutationFn: (val: boolean) => updateGlobalSettings({ sync_claude_limits: val }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
-    },
-  })
-
   const retentionMutation = useMutation({
     mutationFn: (val: number) => updateGlobalSettings({ session_retention_limit: val }),
     onSuccess: () => {
@@ -191,20 +184,6 @@ export function GlobalSettingsSection() {
                 checked={settings.experimental ?? false}
                 onChange={(val) => experimentalMutation.mutate(val)}
                 disabled={experimentalMutation.isPending}
-              />
-            </div>
-            <div className="border-t border-border" />
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Sync Claude limits</div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Periodically run a tiny haiku CLI request once an hour to refresh the 5-hour and weekly Claude usage counters shown in the header. Skips when the cached limits are less than 30 minutes old.
-                </p>
-              </div>
-              <Toggle
-                checked={settings.sync_claude_limits ?? false}
-                onChange={(val) => syncClaudeLimitsMutation.mutate(val)}
-                disabled={syncClaudeLimitsMutation.isPending}
               />
             </div>
             <div className="border-t border-border" />

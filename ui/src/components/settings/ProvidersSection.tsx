@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Toggle } from '@/components/ui/Toggle'
 import { useProviders, useUpdateProvider } from '@/hooks/useProviders'
 import { ProviderModelsList } from './ProviderModelsList'
+import { getGlobalSettings, updateGlobalSettings, settingsKeys } from '@/api/settings'
 import type { ProviderName, CLIMode } from '@/api/providers'
 
 
@@ -15,6 +17,17 @@ export function ProvidersSection({ activeProvider }: Props) {
   const { data: providers, isLoading, error } = useProviders()
   const updateProvider = useUpdateProvider()
   const [modeError, setModeError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: settingsKeys.global(),
+    queryFn: getGlobalSettings,
+  })
+  const syncClaudeLimitsMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ sync_claude_limits: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
 
   const currentModes: CLIMode[] = providers?.[activeProvider]?.modes ?? []
   const cliEnabled = currentModes.includes('cli')
@@ -81,6 +94,29 @@ export function ProvidersSection({ activeProvider }: Props) {
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>Claude Code CLI (batch) will be billed at API rate starting June 15, 2026.</span>
         </div>
+      )}
+
+      {activeProvider === 'claude' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Claude limits sync</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Sync Claude limits</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Periodically run a tiny haiku CLI request once an hour to refresh the 5-hour and weekly Claude usage counters shown in the header. Skips when the cached limits are less than 30 minutes old.
+                </p>
+              </div>
+              <Toggle
+                checked={settings?.sync_claude_limits ?? false}
+                onChange={(val) => syncClaudeLimitsMutation.mutate(val)}
+                disabled={syncClaudeLimitsMutation.isPending || settingsLoading}
+              />
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <ProviderModelsList provider={activeProvider} />

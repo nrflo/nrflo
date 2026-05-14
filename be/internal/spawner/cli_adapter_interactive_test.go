@@ -18,7 +18,7 @@ func TestAllAdapters_SupportsInteractive(t *testing.T) {
 		want    bool
 	}{
 		{"claude", &ClaudeAdapter{}, true},
-		{"opencode", &OpencodeAdapter{}, true},
+		{"opencode", &OpencodeAdapter{}, false},
 		{"codex", &CodexAdapter{}, true},
 	}
 	for _, tc := range cases {

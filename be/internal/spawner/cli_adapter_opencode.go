@@ -123,10 +123,10 @@ func (a *OpencodeAdapter) UsesStdinPrompt() bool {
 	return false // opencode reads message from positional args
 }
 
-// SupportsInteractive returns true. Interactive runs launch the opencode TUI
-// against a free localhost port; agent activity is observed via the SQLite
-// tailer started by PostStart.
-func (a *OpencodeAdapter) SupportsInteractive() bool { return true }
+// SupportsInteractive returns false. Opencode runs cli (batch) mode only by
+// design. The SQLite tailer (PostStart) is still invoked from cliBackend.Start
+// for context tracking in batch mode.
+func (a *OpencodeAdapter) SupportsInteractive() bool { return false }
 
 // PostStart launches the opencode SQLite DB tailer goroutine for context
 // tracking. Called by both cliBackend.Start (cli batch) and

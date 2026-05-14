@@ -28,22 +28,29 @@ func TestProviderSettings_GetModes_DefaultWhenAbsent(t *testing.T) {
 	t.Parallel()
 	svc := setupProviderSettingsTestEnv(t)
 
-	for _, provider := range AllProviders {
-		provider := provider
-		t.Run(provider, func(t *testing.T) {
+	cases := []struct {
+		provider    string
+		wantModes   []string
+	}{
+		{"claude", []string{"cli", "cli_interactive"}},
+		{"codex", []string{"cli", "cli_interactive"}},
+		{"opencode", []string{"cli"}},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.provider, func(t *testing.T) {
 			t.Parallel()
-			modes, err := svc.GetModes(provider)
+			modes, err := svc.GetModes(tc.provider)
 			if err != nil {
-				t.Fatalf("GetModes(%q): %v", provider, err)
+				t.Fatalf("GetModes(%q): %v", tc.provider, err)
 			}
-			if len(modes) != 2 {
-				t.Fatalf("GetModes(%q) len = %d, want 2", provider, len(modes))
+			if len(modes) != len(tc.wantModes) {
+				t.Fatalf("GetModes(%q) = %v, want %v", tc.provider, modes, tc.wantModes)
 			}
-			if modes[0] != "cli" {
-				t.Errorf("GetModes(%q)[0] = %q, want %q", provider, modes[0], "cli")
-			}
-			if modes[1] != "cli_interactive" {
-				t.Errorf("GetModes(%q)[1] = %q, want %q", provider, modes[1], "cli_interactive")
+			for i, m := range tc.wantModes {
+				if modes[i] != m {
+					t.Errorf("GetModes(%q)[%d] = %q, want %q", tc.provider, i, modes[i], m)
+				}
 			}
 		})
 	}
@@ -57,7 +64,7 @@ func TestProviderSettings_SetGetModes_RoundTrip(t *testing.T) {
 	}{
 		{"claude", []string{"cli"}},
 		{"codex", []string{"cli_interactive"}},
-		{"opencode", []string{"cli", "cli_interactive"}},
+		{"opencode", []string{"cli"}},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -193,14 +200,25 @@ func TestProviderSettings_GetAll_DefaultsAllThree(t *testing.T) {
 	if len(all) != len(AllProviders) {
 		t.Fatalf("GetAll len = %d, want %d", len(all), len(AllProviders))
 	}
-	for _, p := range AllProviders {
+	wantDefaults := map[string][]string{
+		"claude":   {"cli", "cli_interactive"},
+		"codex":    {"cli", "cli_interactive"},
+		"opencode": {"cli"},
+	}
+	for p, want := range wantDefaults {
 		modes, ok := all[p]
 		if !ok {
 			t.Errorf("GetAll missing provider %q", p)
 			continue
 		}
-		if len(modes) != 2 || modes[0] != "cli" || modes[1] != "cli_interactive" {
-			t.Errorf("GetAll[%q] = %v, want [cli cli_interactive]", p, modes)
+		if len(modes) != len(want) {
+			t.Errorf("GetAll[%q] = %v, want %v", p, modes, want)
+			continue
+		}
+		for i, m := range want {
+			if modes[i] != m {
+				t.Errorf("GetAll[%q][%d] = %q, want %q", p, i, modes[i], m)
+			}
 		}
 	}
 }
@@ -212,7 +230,8 @@ func TestProviderSettings_GetAll_ReflectsSetModes(t *testing.T) {
 	if err := svc.SetModes("claude", []string{"cli"}); err != nil {
 		t.Fatalf("SetModes claude: %v", err)
 	}
-	if err := svc.SetModes("opencode", []string{"cli_interactive"}); err != nil {
+	// opencode only accepts cli; cli_interactive is rejected.
+	if err := svc.SetModes("opencode", []string{"cli"}); err != nil {
 		t.Fatalf("SetModes opencode: %v", err)
 	}
 
@@ -224,10 +243,12 @@ func TestProviderSettings_GetAll_ReflectsSetModes(t *testing.T) {
 	if got := all["claude"]; len(got) != 1 || got[0] != "cli" {
 		t.Errorf("GetAll[claude] = %v, want [cli]", got)
 	}
-	if got := all["opencode"]; len(got) != 1 || got[0] != "cli_interactive" {
-		t.Errorf("GetAll[opencode] = %v, want [cli_interactive]", got)
+	if got := all["opencode"]; len(got) != 1 || got[0] != "cli" {
+		t.Errorf("GetAll[opencode] = %v, want [cli]", got)
 	}
 	if got := all["codex"]; len(got) != 2 || got[0] != "cli" || got[1] != "cli_interactive" {
 		t.Errorf("GetAll[codex] = %v, want [cli cli_interactive] (unchanged default)", got)
 	}
 }
+
+// Opencode-specific mode enforcement tests are in provider_settings_opencode_test.go.

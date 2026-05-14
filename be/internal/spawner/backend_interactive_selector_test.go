@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,12 +76,9 @@ func TestStartBackend_SelectorMatrix(t *testing.T) {
 			adapter:         &ClaudeAdapter{},
 			wantBackendName: "cli",
 		},
-		{
-			name:            "cli_interactive + opencode → cliInteractiveBackend",
-			executionMode:   "cli_interactive",
-			adapter:         &OpencodeAdapter{},
-			wantBackendName: "cli_interactive",
-		},
+		// cli_interactive + opencode is intentionally absent from this selector matrix:
+		// startBackend rejects it via the SupportsInteractive() guard (see TestStartBackend_RejectsOpencodeInteractive).
+		// selectBackendForTest bypasses that guard, so including it here would be misleading.
 	}
 
 	for _, tc := range cases {
@@ -175,5 +173,25 @@ func TestCLIInteractiveBackend_SupportsTakeControl_AlwaysTrue(t *testing.T) {
 		if !b.SupportsTakeControl() {
 			t.Errorf("cliInteractiveBackend(%T).SupportsTakeControl() = false, want true", adapter)
 		}
+	}
+}
+
+// TestStartBackend_RejectsOpencodeInteractive verifies the SupportsInteractive guard
+// at startBackend: OpencodeAdapter.SupportsInteractive() returns false, so requesting
+// cli_interactive execution mode must return an error.
+func TestStartBackend_RejectsOpencodeInteractive(t *testing.T) {
+	t.Parallel()
+	s := New(Config{Clock: clock.Real()})
+	proc := &processInfo{agentType: "test-agent"}
+	prep := &prepResult{
+		executionMode: "cli_interactive",
+		adapter:       &OpencodeAdapter{},
+	}
+	err := s.startBackend(proc, prep)
+	if err == nil {
+		t.Fatal("startBackend(opencode, cli_interactive): expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "does not support PTY interactive mode") {
+		t.Errorf("startBackend error = %q, want to contain %q", err.Error(), "does not support PTY interactive mode")
 	}
 }

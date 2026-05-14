@@ -41,7 +41,8 @@ func (s *Server) handlePatchProvider(w http.ResponseWriter, r *http.Request) {
 	if err := svc.SetModes(name, body.Modes); err != nil {
 		if strings.Contains(err.Error(), "invalid provider") ||
 			strings.Contains(err.Error(), "must not be empty") ||
-			strings.Contains(err.Error(), "invalid mode") {
+			strings.Contains(err.Error(), "invalid mode") ||
+			strings.Contains(err.Error(), "does not support cli_interactive") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

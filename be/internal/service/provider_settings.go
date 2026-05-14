@@ -28,13 +28,16 @@ func NewProviderSettingsService(gs *GlobalSettingsService) *ProviderSettingsServ
 }
 
 // GetModes returns the allowed CLI execution modes for a provider.
-// Returns [cli, cli_interactive] when no setting is stored.
+// Returns [cli] for opencode and [cli, cli_interactive] for claude/codex when no setting is stored.
 func (s *ProviderSettingsService) GetModes(provider string) ([]string, error) {
 	val, err := s.gs.Get("provider_" + provider + "_modes")
 	if err != nil {
 		return nil, err
 	}
 	if val == "" {
+		if provider == ProviderOpencode {
+			return []string{"cli"}, nil
+		}
 		return []string{"cli", "cli_interactive"}, nil
 	}
 	return strings.Split(val, ","), nil
@@ -59,6 +62,9 @@ func (s *ProviderSettingsService) SetModes(provider string, modes []string) erro
 			seen[m] = true
 			deduped = append(deduped, m)
 		}
+	}
+	if provider == ProviderOpencode && slices.Contains(deduped, "cli_interactive") {
+		return fmt.Errorf("opencode does not support cli_interactive mode")
 	}
 	return s.gs.Set("provider_"+provider+"_modes", strings.Join(deduped, ","))
 }

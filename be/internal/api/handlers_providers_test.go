@@ -36,6 +36,11 @@ func TestHandleListProviders_Defaults(t *testing.T) {
 	if len(resp) != len(wantProviders) {
 		t.Fatalf("response has %d providers, want %d", len(resp), len(wantProviders))
 	}
+	wantModes := map[string][]string{
+		"claude":   {"cli", "cli_interactive"},
+		"codex":    {"cli", "cli_interactive"},
+		"opencode": {"cli"},
+	}
 	for _, p := range wantProviders {
 		entry, ok := resp[p]
 		if !ok {
@@ -52,12 +57,15 @@ func TestHandleListProviders_Defaults(t *testing.T) {
 			t.Errorf("provider %q: modes is not array, got %T", p, modesRaw)
 			continue
 		}
-		if len(modeSlice) != 2 {
-			t.Errorf("provider %q: len(modes) = %d, want 2", p, len(modeSlice))
+		want := wantModes[p]
+		if len(modeSlice) != len(want) {
+			t.Errorf("provider %q: len(modes) = %d, want %d", p, len(modeSlice), len(want))
 			continue
 		}
-		if modeSlice[0].(string) != "cli" || modeSlice[1].(string) != "cli_interactive" {
-			t.Errorf("provider %q: modes = %v, want [cli cli_interactive]", p, modeSlice)
+		for i, m := range want {
+			if modeSlice[i].(string) != m {
+				t.Errorf("provider %q: modes[%d] = %q, want %q", p, i, modeSlice[i], m)
+			}
 		}
 	}
 }
@@ -94,12 +102,14 @@ func TestHandlePatchProvider_HappyPath_ThenGetReflects(t *testing.T) {
 	if len(modesRaw) != 1 || modesRaw[0].(string) != "cli_interactive" {
 		t.Errorf("after PATCH claude modes = %v, want [cli_interactive]", modesRaw)
 	}
-	// Other providers should be unchanged defaults.
-	for _, p := range []string{"codex", "opencode"} {
-		m := resp[p]["modes"].([]interface{})
-		if len(m) != 2 {
-			t.Errorf("%s modes after claude PATCH = %v, want 2 defaults", p, m)
-		}
+	// Other providers should be unchanged defaults: codex has 2 modes, opencode has 1.
+	codexModes := resp["codex"]["modes"].([]interface{})
+	if len(codexModes) != 2 {
+		t.Errorf("codex modes after claude PATCH = %v, want 2 defaults", codexModes)
+	}
+	opencodeModes := resp["opencode"]["modes"].([]interface{})
+	if len(opencodeModes) != 1 || opencodeModes[0].(string) != "cli" {
+		t.Errorf("opencode modes after claude PATCH = %v, want [cli]", opencodeModes)
 	}
 }
 
@@ -169,6 +179,18 @@ func TestHandlePatchProvider_ValidationErrors(t *testing.T) {
 			body:    `{"modes":["cli","script"]}`,
 			wantErr: "invalid mode",
 		},
+		{
+			name:    "opencode rejects cli_interactive",
+			pname:   "opencode",
+			body:    `{"modes":["cli","cli_interactive"]}`,
+			wantErr: "does not support cli_interactive",
+		},
+		{
+			name:    "opencode rejects cli_interactive only",
+			pname:   "opencode",
+			body:    `{"modes":["cli_interactive"]}`,
+			wantErr: "does not support cli_interactive",
+		},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -185,6 +207,37 @@ func TestHandlePatchProvider_ValidationErrors(t *testing.T) {
 			assertErrorContains(t, rr, tc.wantErr)
 		})
 	}
+}
+
+// TestHandlePatchProvider_OpencodeRejectsCLIInteractive verifies end-to-end that
+// PATCH /api/v1/providers/opencode with cli_interactive returns 400, while cli succeeds.
+func TestHandlePatchProvider_OpencodeRejectsCLIInteractive(t *testing.T) {
+	t.Parallel()
+
+	t.Run("cli_interactive rejected 400", func(t *testing.T) {
+		t.Parallel()
+		s := newProvidersServer(t)
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/providers/opencode", strings.NewReader(`{"modes":["cli","cli_interactive"]}`))
+		req.SetPathValue("name", "opencode")
+		rr := httptest.NewRecorder()
+		s.handlePatchProvider(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
+		}
+		assertErrorContains(t, rr, "does not support cli_interactive")
+	})
+
+	t.Run("cli accepted 200", func(t *testing.T) {
+		t.Parallel()
+		s := newProvidersServer(t)
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/providers/opencode", strings.NewReader(`{"modes":["cli"]}`))
+		req.SetPathValue("name", "opencode")
+		rr := httptest.NewRecorder()
+		s.handlePatchProvider(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+		}
+	})
 }
 
 func TestHandlePatchProvider_NonAdmin_Returns403(t *testing.T) {

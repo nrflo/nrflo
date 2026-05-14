@@ -61,22 +61,22 @@ func TestCreateAgentDef_CLIInteractive_CodexModel(t *testing.T) {
 }
 
 // TestCreateAgentDef_CLIInteractive_OpencodeModel verifies that cli_interactive with an opencode
-// model (opencode_gpt54) succeeds. The "opencode_" prefix maps to the opencode adapter.
+// model (opencode_gpt54) is rejected: opencode does not support cli_interactive.
 func TestCreateAgentDef_CLIInteractive_OpencodeModel(t *testing.T) {
 	t.Parallel()
 	svc, wfID := setupAgentDefCLIInteractiveEnv(t)
 
-	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "agent-cli-int-opencode",
 		Prompt:        "do stuff",
 		ExecutionMode: "cli_interactive",
 		Model:         "opencode_gpt54",
 	})
-	if err != nil {
-		t.Fatalf("CreateAgentDef(cli_interactive, opencode_gpt54): %v", err)
+	if err == nil {
+		t.Fatal("CreateAgentDef(cli_interactive, opencode_gpt54): expected error, got nil")
 	}
-	if def.ExecutionMode != "cli_interactive" {
-		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
+	if !strings.Contains(err.Error(), "opencode does not support") {
+		t.Errorf("CreateAgentDef error = %q, want to contain %q", err.Error(), "opencode does not support")
 	}
 }
 
@@ -203,7 +203,7 @@ func TestCreateAgentDef_CLIInteractive_ModelValidation(t *testing.T) {
 	}{
 		{"claude default", "ag-claude", "opus_4_7", true},
 		{"codex prefix", "ag-codex", "codex_gpt_high", true},
-		{"opencode prefix", "ag-opencode", "opencode_minimax_m25_free", true},
+		{"opencode prefix rejected", "ag-opencode", "opencode_minimax_m25_free", false},
 		{"unknown prefix falls back to claude", "ag-unknown", "mycompany_model_v1", true},
 	}
 
@@ -222,5 +222,57 @@ func TestCreateAgentDef_CLIInteractive_ModelValidation(t *testing.T) {
 				t.Errorf("CreateAgentDef(cli_interactive, %q): expected error, got nil", tc.model)
 			}
 		})
+	}
+}
+
+// TestCreateAgentDef_CLIInteractive_OpencodeModelRejected verifies that multiple opencode
+// models are all rejected for cli_interactive, while cli mode succeeds.
+func TestCreateAgentDef_CLIInteractive_OpencodeModelRejected(t *testing.T) {
+	t.Parallel()
+	svc, wfID := setupAgentDefCLIInteractiveEnv(t)
+
+	opencodeModels := []string{
+		"opencode_minimax_m25_free",
+		"opencode_qwen36_plus_free",
+		"opencode_gpt54",
+		"opencode_gpt54_mini_low",
+	}
+	for i, model := range opencodeModels {
+		model := model
+		agentID := "oc-reject-" + string(rune('a'+i))
+		t.Run(model, func(t *testing.T) {
+			_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+				ID:            agentID,
+				Prompt:        "do stuff",
+				ExecutionMode: "cli_interactive",
+				Model:         model,
+			})
+			if err == nil {
+				t.Fatalf("CreateAgentDef(cli_interactive, %q): expected error, got nil", model)
+			}
+			if !strings.Contains(err.Error(), "opencode does not support") {
+				t.Errorf("error = %q, want to contain %q", err.Error(), "opencode does not support")
+			}
+		})
+	}
+}
+
+// TestCreateAgentDef_CLICLISucceeds_OpencodeModel verifies that cli mode (not cli_interactive)
+// with an opencode model succeeds.
+func TestCreateAgentDef_CLISucceeds_OpencodeModel(t *testing.T) {
+	t.Parallel()
+	svc, wfID := setupAgentDefCLIInteractiveEnv(t)
+
+	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID:            "oc-cli-ok",
+		Prompt:        "do stuff",
+		ExecutionMode: "cli",
+		Model:         "opencode_minimax_m25_free",
+	})
+	if err != nil {
+		t.Fatalf("CreateAgentDef(cli, opencode_minimax_m25_free): %v", err)
+	}
+	if def.ExecutionMode != "cli" {
+		t.Errorf("ExecutionMode = %q, want cli", def.ExecutionMode)
 	}
 }

@@ -58,8 +58,7 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 // validateCLIInteractiveMode checks that the model's adapter supports PTY-based interactive
 // execution. Uses cliModelSvc for DB-sourced cli_type, falling back to string-prefix heuristics
 // (mirrors spawner.DefaultCLIForModel without importing the spawner package).
-// All current adapters (claude/opencode/codex) return SupportsInteractive()=true; this check
-// guards against future custom cli_models rows with unsupported CLI types.
+// Opencode does not support cli_interactive; claude and codex do.
 func (s *AgentDefinitionService) validateCLIInteractiveMode(model string) error {
 	cliType := ""
 	if s.cliModelSvc != nil {
@@ -78,7 +77,9 @@ func (s *AgentDefinitionService) validateCLIInteractiveMode(model string) error 
 		}
 	}
 	switch cliType {
-	case "claude", "opencode", "codex":
+	case "opencode":
+		return fmt.Errorf("opencode does not support cli_interactive execution mode")
+	case "claude", "codex":
 		return nil
 	default:
 		return fmt.Errorf("cli_interactive_unsupported_by_adapter")

@@ -238,6 +238,9 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 	if !strings.Contains(argsStr, pre.sessionID) {
 		t.Errorf("args missing session ID: %v", registeredArgs)
 	}
+	if !strings.Contains(argsStr, "--model claude-opus-4-7") {
+		t.Errorf("args missing mapped model --model claude-opus-4-7 (got nrflo ID instead): %v", registeredArgs)
+	}
 
 	// Wait a bit for the DB write to be visible (pool commits synchronously, but let's be safe)
 	var status, agentType string
@@ -261,6 +264,97 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 	}
 	if agentType != "planner" {
 		t.Errorf("session agent_type = %q, want 'planner'", agentType)
+	}
+}
+
+func TestSetupInteractivePreStep_PlanMode_UsesL0AgentModel(t *testing.T) {
+	env := newTestEnv(t)
+	env.createTicket(t, "TKT-SIP-L0", "Plan mode reads L0 model")
+	wfiID := env.initWorkflow(t, "TKT-SIP-L0")
+	wi := env.getWorkflowInstance(t, wfiID)
+
+	svcWf := service.SpawnerWorkflowDef{
+		Phases: []service.SpawnerPhaseDef{
+			{Agent: "analyzer", Layer: 0},
+			{Agent: "builder", Layer: 1},
+		},
+	}
+	svcAgents := map[string]service.SpawnerAgentConfig{
+		"analyzer": {Model: "sonnet"},
+		"builder":  {Model: "opus_4_7"},
+	}
+
+	var registeredArgs []string
+	env.orch.OnRegisterPtyCommand = func(_, _ string, args []string) {
+		registeredArgs = args
+	}
+
+	pre, err := env.orch.setupInteractivePreStep(
+		RunRequest{ProjectID: env.project, TicketID: "TKT-SIP-L0", WorkflowName: "test", PlanMode: true},
+		wi, svcWf, svcAgents,
+		map[string]spawner.WorkflowDef{},
+		map[string]spawner.AgentConfig{},
+		t.TempDir(),
+		nil,
+		"",
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("setupInteractivePreStep() error: %v", err)
+	}
+	t.Cleanup(func() { pre.spawner.CompleteInteractive(pre.sessionID) })
+
+	argsStr := strings.Join(registeredArgs, " ")
+	// "sonnet" passes through ClaudeAdapter.MapModel unchanged
+	if !strings.Contains(argsStr, "--model sonnet") {
+		t.Errorf("plan mode should use L0 agent's model (sonnet), got args: %v", registeredArgs)
+	}
+	if strings.Contains(argsStr, "claude-opus-4-7") {
+		t.Errorf("plan mode should not fall back to opus_4_7 when L0 has a model: %v", registeredArgs)
+	}
+}
+
+func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
+	env := newTestEnv(t)
+	env.createTicket(t, "TKT-SIP-MM", "DB mapped model override")
+	wfiID := env.initWorkflow(t, "TKT-SIP-MM")
+	wi := env.getWorkflowInstance(t, wfiID)
+
+	svcWf := service.SpawnerWorkflowDef{
+		Phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}},
+	}
+
+	var registeredArgs []string
+	env.orch.OnRegisterPtyCommand = func(_, _ string, args []string) {
+		registeredArgs = args
+	}
+
+	modelConfigs := map[string]spawner.ModelConfig{
+		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-db-override"},
+	}
+
+	pre, err := env.orch.setupInteractivePreStep(
+		RunRequest{ProjectID: env.project, TicketID: "TKT-SIP-MM", WorkflowName: "test", PlanMode: true},
+		wi, svcWf,
+		map[string]service.SpawnerAgentConfig{},
+		map[string]spawner.WorkflowDef{},
+		map[string]spawner.AgentConfig{},
+		t.TempDir(),
+		modelConfigs,
+		"",
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("setupInteractivePreStep() error: %v", err)
+	}
+	t.Cleanup(func() { pre.spawner.CompleteInteractive(pre.sessionID) })
+
+	argsStr := strings.Join(registeredArgs, " ")
+	if !strings.Contains(argsStr, "--model claude-opus-db-override") {
+		t.Errorf("DB MappedModel should override hardcoded mapping; got args: %v", registeredArgs)
+	}
+	if strings.Contains(argsStr, "--model opus_4_7") {
+		t.Errorf("raw nrflo ID leaked to --model: %v", registeredArgs)
 	}
 }
 

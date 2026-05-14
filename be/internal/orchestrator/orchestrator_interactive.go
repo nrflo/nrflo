@@ -44,24 +44,30 @@ func (o *Orchestrator) setupInteractivePreStep(
 ) (*interactivePreStep, error) {
 	sessionID := uuid.New().String()
 
-	// Determine agent type and model for the session
+	// Determine agent type and model for the session. Both modes derive the
+	// model from the workflow's L0 agent (Phases[0] is the tie-breaker when
+	// L0 has multiple agents) so plan capability tracks workflow capability.
+	// opus_4_7 is the last-resort fallback when the workflow has no phases
+	// or the L0 agent has no configured model.
 	var agentType, modelName, phase string
-	if req.PlanMode {
-		agentType = "planner"
-		modelName = "opus_4_7"
-		phase = "planning"
-	} else {
-		// Interactive: use the L0 agent's model
-		if len(svcWf.Phases) == 0 {
-			return nil, fmt.Errorf("workflow has no phases")
-		}
+	modelName = "opus_4_7"
+	if len(svcWf.Phases) > 0 {
 		l0Agent := svcWf.Phases[0].Agent
-		agentType = l0Agent
-		phase = l0Agent
-		modelName = "opus_4_7"
 		if cfg, ok := svcAgents[l0Agent]; ok && cfg.Model != "" {
 			modelName = cfg.Model
 		}
+		if req.PlanMode {
+			agentType = "planner"
+			phase = "planning"
+		} else {
+			agentType = l0Agent
+			phase = l0Agent
+		}
+	} else if req.PlanMode {
+		agentType = "planner"
+		phase = "planning"
+	} else {
+		return nil, fmt.Errorf("workflow has no phases")
 	}
 
 	cliName := cliNameFromModelConfigs(modelConfigs, modelName)
@@ -219,9 +225,19 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	}
 	promptFile.Close()
 
+	// Resolve mapped model: DB-sourced MappedModel wins, else fall back to
+	// the Claude adapter's hardcoded mapping. Without this, the raw nrflo ID
+	// (e.g. "opus_4_7") reaches `claude --model` and the CLI rejects it.
+	ptyModel := modelName
+	if cfg, ok := modelConfigs[modelName]; ok && cfg.MappedModel != "" {
+		ptyModel = cfg.MappedModel
+	} else {
+		ptyModel = (&spawner.ClaudeAdapter{}).MapModel(modelName)
+	}
+
 	args := []string{
 		"--session-id", sessionID,
-		"--model", modelName,
+		"--model", ptyModel,
 		"--append-system-prompt-file", promptFile.Name(),
 	}
 	if req.PlanMode {

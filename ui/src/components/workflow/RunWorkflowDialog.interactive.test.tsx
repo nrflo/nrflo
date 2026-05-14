@@ -8,6 +8,7 @@ import * as agentDefsApi from '@/api/agentDefs'
 import type { WorkflowDefSummary, AgentDef } from '@/types/workflow'
 
 const mockMutateAsync = vi.fn()
+const mockAddSession = vi.fn()
 
 vi.mock('@/hooks/useTickets', () => ({
   useRunWorkflow: () => ({
@@ -29,6 +30,12 @@ vi.mock('@/api/agentDefs', () => ({
 vi.mock('@/stores/projectStore', () => ({
   useProjectStore: vi.fn((selector) =>
     selector({ currentProject: 'test-project', projectsLoaded: true })
+  ),
+}))
+
+vi.mock('@/stores/interactiveSessionsStore', () => ({
+  useInteractiveSessionsStore: vi.fn((selector) =>
+    selector({ add: mockAddSession })
   ),
 }))
 
@@ -250,42 +257,43 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
       )
     })
 
-    it('calls onInteractiveStart with session_id and l0 agent type for interactive mode', async () => {
+    it('adds session to store with session_id and l0 agent type for interactive mode', async () => {
       const user = userEvent.setup()
-      const onInteractiveStart = vi.fn()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active', session_id: 'sess-123' })
       vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
-      renderDialog({ onInteractiveStart })
+      renderDialog()
 
       await user.click(await screen.findByLabelText(/start interactive/i))
       await user.click(screen.getByRole('button', { name: /^run$/i }))
 
       await waitFor(() =>
-        expect(onInteractiveStart).toHaveBeenCalledWith('sess-123', 'setup-analyzer')
+        expect(mockAddSession).toHaveBeenCalledWith(
+          expect.objectContaining({ sessionId: 'sess-123', agentType: 'setup-analyzer' })
+        )
       )
     })
 
-    it('calls onInteractiveStart with "planner" agent type for plan mode', async () => {
+    it('adds session to store with "planner" agent type for plan mode', async () => {
       const user = userEvent.setup()
-      const onInteractiveStart = vi.fn()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active', session_id: 'sess-456' })
       vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
-      renderDialog({ onInteractiveStart })
+      renderDialog()
 
       await user.click(await screen.findByLabelText(/plan before execution/i))
       await user.click(screen.getByRole('button', { name: /^run$/i }))
 
       await waitFor(() =>
-        expect(onInteractiveStart).toHaveBeenCalledWith('sess-456', 'planner')
+        expect(mockAddSession).toHaveBeenCalledWith(
+          expect.objectContaining({ sessionId: 'sess-456', agentType: 'planner' })
+        )
       )
     })
 
-    it('does not call onInteractiveStart in normal mode', async () => {
+    it('does not add session to store in normal mode', async () => {
       const user = userEvent.setup()
-      const onInteractiveStart = vi.fn()
       mockMutateAsync.mockResolvedValue({ instance_id: 'i1', status: 'active' })
       vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([makeAgentDef(), makeAgentDef({ id: 'implementor' })])
-      renderDialog({ onInteractiveStart })
+      renderDialog()
 
       // Wait for workflows to load (Run button becomes enabled)
       await waitFor(() =>
@@ -294,7 +302,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
       await user.click(screen.getByRole('button', { name: /^run$/i }))
 
       await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled())
-      expect(onInteractiveStart).not.toHaveBeenCalled()
+      expect(mockAddSession).not.toHaveBeenCalled()
     })
   })
 })

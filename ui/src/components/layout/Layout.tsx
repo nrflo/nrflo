@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { MustChangePasswordBanner } from '@/components/auth/MustChangePasswordBanner'
+import { InteractiveSessionsTray } from '@/components/interactive/InteractiveSessionsTray'
 import { useProjectStore } from '@/stores/projectStore'
 
 export function Layout() {
@@ -27,6 +28,7 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      <InteractiveSessionsTray />
     </div>
   )
 }

@@ -5,7 +5,6 @@ import type { WorkflowSubTab } from './WorkflowSubTabBar'
 import { InstanceList } from './ProjectWorkflowComponents'
 import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
-import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import type { WorkflowResponse, WorkflowState, AgentSessionsResponse, CompletedAgentRow } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
@@ -13,9 +12,9 @@ import {
   useStopWorkflow,
   useRetryFailedAgent,
   useTakeControl,
-  useExitInteractive,
   useResumeSession,
 } from '@/hooks/useTickets'
+import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
 
 interface TicketWorkflowTabProps {
   ticketId: string | undefined
@@ -23,9 +22,6 @@ interface TicketWorkflowTabProps {
   sessionsData: AgentSessionsResponse | undefined
   issueType: string | undefined
   activeChainId: string | null
-  interactiveSession: { sessionId: string; agentType: string } | null
-  onInteractiveStart: (session: { sessionId: string; agentType: string }) => void
-  onInteractiveEnd: () => void
   onShowRunDialog: () => void
   onShowEpicRunDialog: () => void
   onExpandedChange: (expanded: boolean) => void
@@ -39,9 +35,6 @@ export function TicketWorkflowTab({
   sessionsData,
   issueType,
   activeChainId,
-  interactiveSession,
-  onInteractiveStart,
-  onInteractiveEnd,
   onShowRunDialog,
   onShowEpicRunDialog,
   onExpandedChange,
@@ -53,10 +46,11 @@ export function TicketWorkflowTab({
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
 
+  const addSession = useInteractiveSessionsStore((s) => s.add)
+
   const stopMutation = useStopWorkflow()
   const retryFailedMutation = useRetryFailedAgent()
   const takeControlMutation = useTakeControl()
-  const exitInteractiveMutation = useExitInteractive()
   const resumeSessionMutation = useResumeSession()
 
   const workflows = workflowData?.workflows ?? []
@@ -165,6 +159,18 @@ export function TicketWorkflowTab({
     setSelectedPanelAgent(null)
   }
 
+  const pushToStore = (sessionId: string, agentType: string) => {
+    if (!ticketId) return
+    addSession({
+      sessionId,
+      agentType,
+      scope: { type: 'ticket', ticketId },
+      workflow: displayedWorkflowName,
+      instanceId: resolvedInstanceId || undefined,
+      startedAt: Date.now(),
+    })
+  }
+
   // --- Completed sub-tab rendering ---
   const isCompletedTab = showSubTabs && !singleNonRunningOnly && activeSubTab === 'completed'
 
@@ -216,7 +222,7 @@ export function TicketWorkflowTab({
                 if (!ticketId) return
                 resumeSessionMutation.mutate(
                   { ticketId, params: { session_id: sessionId } },
-                  { onSuccess: (data) => onInteractiveStart({ sessionId: data.session_id, agentType: 'agent' }) }
+                  { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
                 )
               }}
               resumePending={resumeSessionMutation.isPending}
@@ -227,7 +233,6 @@ export function TicketWorkflowTab({
             />
           )}
         </div>
-        {renderTerminalDialog()}
       </>
     )
   }
@@ -296,7 +301,7 @@ export function TicketWorkflowTab({
           const agent = Object.values(activeAgents).find((a) => a.session_id === sessionId)
           takeControlMutation.mutate(
             { ticketId, params: { workflow: displayedWorkflowName, session_id: sessionId, instance_id: resolvedInstanceId || undefined } },
-            { onSuccess: (data) => onInteractiveStart({ sessionId: data.session_id, agentType: agent?.agent_type ?? 'agent' }) }
+            { onSuccess: (data) => pushToStore(data.session_id, agent?.agent_type ?? 'agent') }
           )
         }}
         takeControlPending={isFailedTab ? false : takeControlMutation.isPending}
@@ -304,34 +309,13 @@ export function TicketWorkflowTab({
           if (!ticketId) return
           resumeSessionMutation.mutate(
             { ticketId, params: { session_id: sessionId } },
-            { onSuccess: (data) => onInteractiveStart({ sessionId: data.session_id, agentType: 'agent' }) }
+            { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
           )
         }}
         resumeSessionPending={resumeSessionMutation.isPending}
         projectFindings={projectFindings}
         blockedReason={blockedReason}
       />
-      {renderTerminalDialog()}
     </>
   )
-
-  function renderTerminalDialog() {
-    if (!interactiveSession || !ticketId) return null
-    return (
-      <AgentTerminalDialog
-        open={!!interactiveSession}
-        onClose={onInteractiveEnd}
-        onExitSession={() => {
-          exitInteractiveMutation.mutate(
-            { ticketId, params: { workflow: displayedWorkflowName, session_id: interactiveSession.sessionId, instance_id: resolvedInstanceId || undefined } },
-            { onSuccess: onInteractiveEnd }
-          )
-        }}
-        exitPending={exitInteractiveMutation.isPending}
-        sessionId={interactiveSession.sessionId}
-        agentType={interactiveSession.agentType}
-      />
-    )
-  }
 }
-

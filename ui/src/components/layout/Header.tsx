@@ -7,6 +7,7 @@ import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { DailyStats } from '@/components/layout/DailyStats'
 import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
 import { ClaudeLimitsBadge } from '@/components/layout/ClaudeLimitsBadge'
+import { InteractiveSessionsTab } from '@/components/interactive/InteractiveSessionsTab'
 import { useProjectStore } from '@/stores/projectStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useAuthStore, useIsAdmin } from '@/stores/authStore'
@@ -92,6 +93,7 @@ export function Header() {
             <ScrollText className="h-5 w-5" />
             <span className="hidden md:inline ml-1 text-xs">Sessions</span>
           </Link>
+          <InteractiveSessionsTab />
         </nav>
 
         <div className="flex-1" />

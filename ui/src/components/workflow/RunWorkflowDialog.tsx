@@ -11,6 +11,7 @@ import { listWorkflowDefs } from '@/api/workflows'
 import { listAgentDefs } from '@/api/agentDefs'
 import { useRunWorkflow } from '@/hooks/useTickets'
 import { useProjectStore } from '@/stores/projectStore'
+import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
 import type { AgentDef } from '@/types/workflow'
 
 type StartMode = 'normal' | 'interactive' | 'plan'
@@ -23,11 +24,10 @@ interface RunWorkflowDialogProps {
   open: boolean
   onClose: () => void
   ticketId: string
-  onInteractiveStart?: (sessionId: string, agentType: string) => void
   blockedReason?: string
 }
 
-export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart, blockedReason }: RunWorkflowDialogProps) {
+export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: RunWorkflowDialogProps) {
   const [selectedWorkflow, setSelectedWorkflow] = useState('')
   const [instructions, setInstructions] = useState('')
   const [startMode, setStartMode] = useState<StartMode>('normal')
@@ -35,6 +35,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
 
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  const addSession = useInteractiveSessionsStore((s) => s.add)
 
   const { data: workflowDefs, isLoading } = useQuery({
     queryKey: ['workflows', 'defs', project],
@@ -100,6 +101,17 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
     })
   }, [workflowDefs, selectedWorkflow, agents])
 
+  const pushToStore = (sessionId: string, agentType: string, instanceId: string) => {
+    addSession({
+      sessionId,
+      agentType,
+      scope: { type: 'ticket', ticketId },
+      workflow: selectedWorkflow,
+      instanceId,
+      startedAt: Date.now(),
+    })
+  }
+
   const handleRun = async () => {
     if (!selectedWorkflow) return
     try {
@@ -113,10 +125,11 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
         },
       })
 
-      if ((startMode === 'interactive' || startMode === 'plan') && result.session_id && onInteractiveStart) {
-        onInteractiveStart(
+      if ((startMode === 'interactive' || startMode === 'plan') && result.session_id) {
+        pushToStore(
           result.session_id,
           startMode === 'plan' ? 'planner' : l0AgentType,
+          result.instance_id,
         )
       }
 
@@ -145,10 +158,11 @@ export function RunWorkflowDialog({ open, onClose, ticketId, onInteractiveStart,
         },
       })
 
-      if ((startMode === 'interactive' || startMode === 'plan') && result.session_id && onInteractiveStart) {
-        onInteractiveStart(
+      if ((startMode === 'interactive' || startMode === 'plan') && result.session_id) {
+        pushToStore(
           result.session_id,
           startMode === 'plan' ? 'planner' : l0AgentType,
+          result.instance_id,
         )
       }
 

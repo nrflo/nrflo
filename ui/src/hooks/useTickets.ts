@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query'
-import { runWorkflow, stopWorkflow, restartAgent, retryFailedAgent, takeControl, exitInteractive, resumeSession } from '@/api/workflows'
+import { runWorkflow, stopWorkflow, restartAgent, retryFailedAgent, takeControl, exitInteractive, killInteractive, resumeSession } from '@/api/workflows'
 import {
   getProjectWorkflow,
   getProjectAgentSessions,
@@ -17,6 +17,7 @@ import {
   retryFailedProjectAgent,
   takeControlProject,
   exitInteractiveProject,
+  killInteractiveProject,
   resumeSessionProject,
   deleteProjectWorkflowInstance,
   setStopEndlessLoopAfterIteration,
@@ -330,6 +331,18 @@ export function useExitInteractive() {
   })
 }
 
+export function useKillInteractive() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, params }: { ticketId: string; params: ExitInteractiveRequest }) =>
+      killInteractive(ticketId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.workflow(variables.ticketId) })
+      queryClient.invalidateQueries({ queryKey: ticketKeys.agentSessions(variables.ticketId) })
+    },
+  })
+}
+
 export function useSessionMessages(
   sessionId: string | undefined,
   // isRunning is accepted for call-site compatibility but no longer affects staleTime
@@ -460,6 +473,18 @@ export function useExitInteractiveProject() {
   return useMutation({
     mutationFn: ({ projectId, params }: { projectId: string; params: ExitInteractiveRequest }) =>
       exitInteractiveProject(projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })
+    },
+  })
+}
+
+export function useKillInteractiveProject() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, params }: { projectId: string; params: ExitInteractiveRequest }) =>
+      killInteractiveProject(projectId, params),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
       queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(variables.projectId) })

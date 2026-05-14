@@ -39,7 +39,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 | Component | Content |
 |-----------|---------|
-| `TicketWorkflowTab.tsx` | Workflow tab with Running/Failed/Completed sub-tabs, three-way instance partitioning, `InstanceList` chips, `CompletedAgentsTable` for completed tab, `AgentTerminalDialog`. Manages workflow mutations. |
+| `TicketWorkflowTab.tsx` | Workflow tab with Running/Failed/Completed sub-tabs, three-way instance partitioning, `InstanceList` chips, `CompletedAgentsTable` for completed tab. Pushes interactive sessions into `interactiveSessionsStore`. Manages workflow mutations. |
 | `HierarchyTabContent.tsx` | Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics) |
 | `DescriptionTabContent.tsx` | Ticket title as h2, metadata grid, description text |
 | `DetailsTabContent.tsx` | Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid |

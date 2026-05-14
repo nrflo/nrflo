@@ -53,7 +53,6 @@ export function TicketDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showEpicRunDialog, setShowEpicRunDialog] = useState(false)
-  const [interactiveSession, setInteractiveSession] = useState<{ sessionId: string; agentType: string } | null>(null)
   const [workflowExpanded, setWorkflowExpanded] = useState(false)
 
   // WebSocket subscription for this ticket's real-time updates
@@ -289,9 +288,6 @@ export function TicketDetailPage() {
             sessionsData={sessionsData}
             issueType={ticket?.issue_type}
             activeChainId={activeEpicChain?.id ?? null}
-            interactiveSession={interactiveSession}
-            onInteractiveStart={setInteractiveSession}
-            onInteractiveEnd={() => setInteractiveSession(null)}
             onShowRunDialog={() => setShowRunDialog(true)}
             onShowEpicRunDialog={() => setShowEpicRunDialog(true)}
             onExpandedChange={handleExpandedChange}
@@ -328,10 +324,6 @@ export function TicketDetailPage() {
           onClose={() => setShowRunDialog(false)}
           ticketId={id}
           blockedReason={blockedReason}
-          onInteractiveStart={(sessionId, agentType) => {
-            setShowRunDialog(false)
-            setInteractiveSession({ sessionId, agentType })
-          }}
         />
       )}
 

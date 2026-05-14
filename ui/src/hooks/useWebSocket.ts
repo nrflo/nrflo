@@ -51,6 +51,7 @@ export type WSEventType =
   | 'orchestration.callback'
   | 'agent.take_control'
   | 'agent.take_control_rejected'
+  | 'agent.killed'
   | 'agent.stall_waiting'
   | 'chain.updated'
   | 'layer.skipped'

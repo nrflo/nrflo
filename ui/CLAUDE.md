@@ -20,7 +20,7 @@ npx tsc --noEmit                      # TypeScript check only
 
 - All API calls go through `src/api/client.ts`; project scope injected via `X-Project` header.
 - **Server state**: TanStack Query (`useQuery`, `useMutation`); query keys in `src/hooks/useTickets.ts`.
-- **Client state**: Zustand — project selection (`projectStore.ts`), theme (`themeStore.ts`), auth (`authStore.ts`).
+- **Client state**: Zustand — project selection (`projectStore.ts`), theme (`themeStore.ts`), auth (`authStore.ts`), interactive PTY sessions (`interactiveSessionsStore.ts`).
 - Vite proxies `/api` to the backend in development (`ws: true` for WebSocket).
 - Projects loaded from `/api/v1/projects` when auth status becomes `authed` (see `App.tsx`).
 
@@ -73,6 +73,7 @@ Tailwind CSS v4 with `@theme` CSS variables. Class-based dark mode via `.dark` o
 
 Features are documented where their primary component or hook lives:
 
+- Interactive PTY sessions tray (docked, multi-tab, route-persistent) → `src/components/interactive/`, `src/stores/interactiveSessionsStore.ts`
 - Workflow visualization, phase graph, findings, agent panels → [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)
 - WebSocket protocol v2, event types, subscription patterns → [hooks/CLAUDE.md](src/hooks/CLAUDE.md)
 - REST API modules and client conventions → [api/CLAUDE.md](src/api/CLAUDE.md)

@@ -9,7 +9,6 @@ import {
   useStopProjectWorkflow,
   useRetryFailedProjectAgent,
   useTakeControlProject,
-  useExitInteractiveProject,
   useResumeSessionProject,
   useDeleteProjectWorkflowInstance,
   useSetStopEndlessLoopAfterIteration,
@@ -19,13 +18,13 @@ import { WorkflowTabContent } from './WorkflowTabContent'
 import { RunWorkflowForm, InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
 import { WorkflowInstanceTable } from './WorkflowInstanceTable'
 import type { ProjectWorkflowTabId, StartMode } from './ProjectWorkflowComponents'
-import { AgentTerminalDialog } from '@/components/workflow/AgentTerminalDialog'
 import { ProjectFindingsTab } from '@/components/workflow/ProjectFindingsTab'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Badge } from '@/components/ui/Badge'
 import { Repeat } from 'lucide-react'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
+import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
 
 type TabId = ProjectWorkflowTabId
 
@@ -37,12 +36,13 @@ export function ProjectWorkflowsPage() {
   const [selectedInstanceId, setSelectedInstanceId] = useState('')
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
-  const [interactiveSession, setInteractiveSession] = useState<{ sessionId: string; agentType: string } | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   // Run Workflow form state
   const [selectedWorkflowDef, setSelectedWorkflowDef] = useState('')
   const [instructions, setInstructions] = useState('')
+
+  const addSession = useInteractiveSessionsStore((s) => s.add)
 
   // WebSocket subscription is handled by WebSocketProvider (project-wide)
 
@@ -67,7 +67,6 @@ export function ProjectWorkflowsPage() {
   const retryFailedMutation = useRetryFailedProjectAgent()
   const takeControlMutation = useTakeControlProject()
   const resumeSessionMutation = useResumeSessionProject()
-  const exitInteractiveMutation = useExitInteractiveProject()
   const deleteMutation = useDeleteProjectWorkflowInstance()
   const stopEndlessLoopMutation = useSetStopEndlessLoopAfterIteration()
 
@@ -164,6 +163,18 @@ export function ProjectWorkflowsPage() {
     setSelectedPanelAgent(null)
   }
 
+  const pushToStore = (sessionId: string, agentType: string, instanceId?: string) => {
+    if (!currentProject) return
+    addSession({
+      sessionId,
+      agentType,
+      scope: { type: 'project', projectId: currentProject },
+      workflow: displayedState?.workflow ?? selectedWorkflowDef,
+      instanceId: (instanceId ?? resolvedInstanceId) || undefined,
+      startedAt: Date.now(),
+    })
+  }
+
   const handleRun = async (startMode: StartMode = 'normal') => {
     if (!selectedWorkflowDef || !currentProject) return
     try {
@@ -179,10 +190,11 @@ export function ProjectWorkflowsPage() {
       })
 
       if ((startMode === 'interactive' || startMode === 'plan') && result.session_id) {
-        setInteractiveSession({
-          sessionId: result.session_id,
-          agentType: startMode === 'plan' ? 'planner' : selectedWorkflowDef,
-        })
+        pushToStore(
+          result.session_id,
+          startMode === 'plan' ? 'planner' : selectedWorkflowDef,
+          result.instance_id,
+        )
       }
 
       setInstructions('')
@@ -265,7 +277,7 @@ export function ProjectWorkflowsPage() {
               if (!currentProject) return
               resumeSessionMutation.mutate(
                 { projectId: currentProject, params: { session_id: sessionId } },
-                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+                { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
               )
             }}
             resumeSessionPending={resumeSessionMutation.isPending}
@@ -325,7 +337,7 @@ export function ProjectWorkflowsPage() {
               if (!currentProject) return
               resumeSessionMutation.mutate(
                 { projectId: currentProject, params: { session_id: sessionId } },
-                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+                { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
               )
             }}
             resumeSessionPending={resumeSessionMutation.isPending}
@@ -428,7 +440,7 @@ export function ProjectWorkflowsPage() {
                     instance_id: resolvedInstanceId || undefined,
                   },
                 },
-                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: agent?.agent_type ?? 'agent' }) }
+                { onSuccess: (data) => pushToStore(data.session_id, agent?.agent_type ?? 'agent') }
               )
             }}
             takeControlPending={takeControlMutation.isPending}
@@ -436,7 +448,7 @@ export function ProjectWorkflowsPage() {
               if (!currentProject) return
               resumeSessionMutation.mutate(
                 { projectId: currentProject, params: { session_id: sessionId } },
-                { onSuccess: (data) => setInteractiveSession({ sessionId: data.session_id, agentType: 'agent' }) }
+                { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
               )
             }}
             resumeSessionPending={resumeSessionMutation.isPending}
@@ -459,30 +471,6 @@ export function ProjectWorkflowsPage() {
         confirmLabel="Delete"
         variant="destructive"
       />
-
-      {/* Interactive Terminal Dialog */}
-      {interactiveSession && currentProject && (
-        <AgentTerminalDialog
-          open={!!interactiveSession}
-          onClose={() => setInteractiveSession(null)}
-          onExitSession={() => {
-            exitInteractiveMutation.mutate(
-              {
-                projectId: currentProject,
-                params: {
-                  workflow: displayedState?.workflow ?? '',
-                  session_id: interactiveSession.sessionId,
-                  instance_id: resolvedInstanceId || undefined,
-                },
-              },
-              { onSuccess: () => setInteractiveSession(null) }
-            )
-          }}
-          exitPending={exitInteractiveMutation.isPending}
-          sessionId={interactiveSession.sessionId}
-          agentType={interactiveSession.agentType}
-        />
-      )}
     </div>
   )
 }

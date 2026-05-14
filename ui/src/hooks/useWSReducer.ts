@@ -198,6 +198,17 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     toast.error('Take-control is not supported for API-mode agents.')
   },
 
+  'agent.killed': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    }
+  },
+
   'agent.retry_waiting': (event, qc, isProjectScope) => {
     if (isProjectScope) {
       qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })

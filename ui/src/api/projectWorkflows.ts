@@ -160,3 +160,14 @@ export async function exitInteractiveProject(
     params
   )
 }
+
+/** Kill an interactive session (project-scoped, force-terminate without resuming workflow) */
+export async function killInteractiveProject(
+  projectId: string,
+  params: ExitInteractiveRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/kill-interactive`,
+    params
+  )
+}

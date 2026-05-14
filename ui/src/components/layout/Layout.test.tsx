@@ -12,6 +12,10 @@ vi.mock('./Sidebar', () => ({
   Sidebar: () => <div data-testid="sidebar">Sidebar</div>,
 }))
 
+vi.mock('@/components/interactive/InteractiveSessionsTray', () => ({
+  InteractiveSessionsTray: () => null,
+}))
+
 const mockUseProjectStore = vi.fn()
 
 vi.mock('@/stores/projectStore', () => ({

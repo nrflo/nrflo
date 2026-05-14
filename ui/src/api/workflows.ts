@@ -127,3 +127,14 @@ export async function exitInteractive(
     params
   )
 }
+
+/** Kill an interactive session (force-terminate without resuming workflow) */
+export async function killInteractive(
+  ticketId: string,
+  params: ExitInteractiveRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/kill-interactive`,
+    params
+  )
+}

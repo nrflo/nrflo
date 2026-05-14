@@ -11,6 +11,7 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
 
 vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [],
+  useCLIModels: () => ({ data: [{ id: 'sonnet', cli_type: 'claude', enabled: true, display_name: 'Sonnet' }] }),
 }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
@@ -202,3 +203,7 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
     })
   })
 })
+
+// TODO(test-writer): create AgentDefForm.opencode.test.tsx — mock useCLIModels with both claude and opencode models;
+// test (a) initial sonnet shows cli_interactive; (b) selecting opencode_* model removes cli_interactive from dropdown;
+// (c) switching from sonnet (execution_mode=cli_interactive) to opencode_* auto-resets to cli.

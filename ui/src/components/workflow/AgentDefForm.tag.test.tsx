@@ -14,6 +14,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
       { value: 'sonnet', label: 'Claude: Sonnet' },
     ]},
   ],
+  useCLIModels: () => ({ data: [] }),
 }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({

@@ -65,27 +65,31 @@ export function ProvidersSection({ activeProvider }: Props) {
           <CardTitle>Modes</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Allow cli</span>
-              <Toggle
-                checked={cliEnabled}
-                disabled={updateProvider.isPending}
-                onChange={(checked) => handleToggleMode('cli', checked)}
-              />
+          {activeProvider === 'opencode' ? (
+            <p className="text-sm text-muted-foreground">opencode runs cli mode only by design.</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Allow cli</span>
+                <Toggle
+                  checked={cliEnabled}
+                  disabled={updateProvider.isPending}
+                  onChange={(checked) => handleToggleMode('cli', checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Allow cli interactive</span>
+                <Toggle
+                  checked={cliInteractiveEnabled}
+                  disabled={updateProvider.isPending}
+                  onChange={(checked) => handleToggleMode('cli_interactive', checked)}
+                />
+              </div>
+              {modeError && (
+                <p className="text-sm text-destructive">{modeError}</p>
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Allow cli interactive</span>
-              <Toggle
-                checked={cliInteractiveEnabled}
-                disabled={updateProvider.isPending}
-                onChange={(checked) => handleToggleMode('cli_interactive', checked)}
-              />
-            </div>
-            {modeError && (
-              <p className="text-sm text-destructive">{modeError}</p>
-            )}
-          </div>
+          )}
         </CardContent>
       </Card>
 

@@ -176,13 +176,14 @@ describe('ProvidersSection', () => {
     })
 
     it('toggling when provider has no saved modes still validates', async () => {
-      setup('opencode', [])
-      renderWithQuery(<ProvidersSection activeProvider="opencode" />)
+      setup('codex', [])
+      renderWithQuery(<ProvidersSection activeProvider="codex" />)
       const [cliSwitch] = screen.getAllByRole('switch')
       // enabling a mode when none enabled calls mutate (nextModes = [cli])
       await userEvent.setup().click(cliSwitch)
-      expect(mockMutate).toHaveBeenCalledWith({ name: 'opencode', modes: ['cli'] })
+      expect(mockMutate).toHaveBeenCalledWith({ name: 'codex', modes: ['cli'] })
     })
+    // TODO(test-writer): add test — opencode tab renders static note and queryAllByRole('switch') for Modes card returns []
   })
 
   describe('Billing banner', () => {

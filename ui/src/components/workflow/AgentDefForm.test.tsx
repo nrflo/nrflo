@@ -27,6 +27,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
       { value: 'opencode_qwen36_plus_free', label: 'OpenCode: Qwen 3.6 Plus Free' },
     ]},
   ],
+  useCLIModels: () => ({ data: [] }),
 }))
 
 // Mock MarkdownEditor to avoid CodeMirror dependencies

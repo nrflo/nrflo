@@ -7,6 +7,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [
     { label: 'Claude', options: [{ value: 'sonnet', label: 'Claude: Sonnet' }] },
   ],
+  useCLIModels: () => ({ data: [] }),
 }))
 
 const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)

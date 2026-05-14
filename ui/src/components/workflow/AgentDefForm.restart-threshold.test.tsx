@@ -15,6 +15,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
       { value: 'sonnet', label: 'Claude: Sonnet' },
     ]},
   ],
+  useCLIModels: () => ({ data: [] }),
 }))
 
 function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {

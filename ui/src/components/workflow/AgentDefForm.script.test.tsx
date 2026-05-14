@@ -5,6 +5,7 @@ import { AgentDefForm } from './AgentDefForm'
 
 vi.mock('@/hooks/useCLIModels', () => ({
   useModelOptions: () => [],
+  useCLIModels: () => ({ data: [] }),
 }))
 
 vi.mock('@/hooks/useGlobalSettings', () => ({

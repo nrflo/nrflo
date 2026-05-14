@@ -57,9 +57,9 @@ func (h *Handler) handleAgentLog(ctx context.Context, req Request) Response {
 		})
 	}
 
-	logFields := []interface{}{"session_id", params.SessionID, "type", category, "message", truncate(params.Message, 500)}
+	logFields := []interface{}{"session_id", params.SessionID, "type", category, "message", params.Message}
 	if payloadJSON != "" {
-		logFields = append(logFields, "payload", truncate(payloadJSON, 200))
+		logFields = append(logFields, "payload", payloadJSON)
 	}
 	logger.Info(ctx, "agent.log", logFields...)
 

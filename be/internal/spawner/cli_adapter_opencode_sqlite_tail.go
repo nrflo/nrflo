@@ -201,9 +201,6 @@ func flushOpencodeParts(db *sql.DB, opencodeSessID string, cursor int64, nrfloSe
 
 // classifyOpencodePart parses one part.data JSON blob and returns
 // (content, category, payload, ok). ok=false means skip this part.
-//
-// Truncates `content` to a sane length (1 KB) so the live log stays
-// readable; `payload` preserves the full JSON for downstream consumers.
 func classifyOpencodePart(raw string) (content, category, payload string, ok bool) {
 	var probe struct {
 		Type  string `json:"type"`
@@ -221,12 +218,12 @@ func classifyOpencodePart(raw string) (content, category, payload string, ok boo
 		if probe.Text == "" {
 			return "", "", "", false
 		}
-		return truncate(probe.Text, 1024), "text", raw, true
+		return probe.Text, "text", raw, true
 	case "reasoning":
 		if probe.Text == "" {
 			return "", "", "", false
 		}
-		return truncate(probe.Text, 1024), "thinking", raw, true
+		return probe.Text, "thinking", raw, true
 	case "tool":
 		head := probe.Tool
 		if head == "" {
@@ -238,7 +235,7 @@ func classifyOpencodePart(raw string) (content, category, payload string, ok boo
 		if summary != "" {
 			head = head + ": " + summary
 		}
-		return truncate(head, 1024), "tool", raw, true
+		return head, "tool", raw, true
 	default:
 		return "", "", "", false
 	}
@@ -256,13 +253,6 @@ func summarizeOpencodeToolInput(input map[string]any) string {
 		}
 	}
 	return ""
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "…"
 }
 
 // waitForOpencodeDB polls for the opencode SQLite DB file every 250ms until

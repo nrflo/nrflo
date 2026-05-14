@@ -67,7 +67,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 	case "PostToolUseFailure":
 		return h.recordPostToolFailure(ctx, req, params.SessionID, event)
 	case "UserPromptSubmit":
-		return h.recordSimpleEvent(ctx, req, params.SessionID, truncate(asString(event["prompt"]), 500), "user_input")
+		return h.recordSimpleEvent(ctx, req, params.SessionID, asString(event["prompt"]), "user_input")
 	case "UserPromptExpansion":
 		cmd := asString(event["command_name"])
 		args := asString(event["command_args"])
@@ -80,7 +80,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		return h.recordSimpleEvent(ctx, req, params.SessionID, asString(event["message"]), "text")
 	case "SubagentStart":
 		agentType := asString(event["agent_type"])
-		prompt := truncate(asString(event["prompt"]), 200)
+		prompt := asString(event["prompt"])
 		msg := "subagent started"
 		if agentType != "" {
 			msg = "[" + agentType + "] subagent started"
@@ -94,7 +94,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 	case "StopFailure":
 		msg := "turn failed (api error)"
 		if errStr := extractErrorMessage(event); errStr != "" {
-			msg = "turn failed: " + truncate(errStr, 300)
+			msg = "turn failed: " + errStr
 		}
 		return h.recordSimpleEvent(ctx, req, params.SessionID, msg, "text")
 	case "PreCompact":
@@ -186,14 +186,6 @@ func extractToolResultBody(event map[string]interface{}) string {
 	return ""
 }
 
-// truncate caps s at n bytes, appending "…" when over.
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "…"
-}
-
 // recordPostToolFailure inserts a "[Tool failed] <error>" row when a tool
 // invocation errored. PostToolUse only fires on success per Claude docs, so
 // we'd otherwise miss tool failures entirely.
@@ -202,9 +194,9 @@ func (h *Handler) recordPostToolFailure(ctx context.Context, req Request, sessio
 	category := spawner.ToolCategory(toolName)
 	content := "[" + toolName + " failed]"
 	if msg := extractErrorMessage(event); msg != "" {
-		content += " " + truncate(msg, 300)
+		content += " " + msg
 	} else if body := extractToolResultBody(event); body != "" {
-		content += " " + truncate(body, 300)
+		content += " " + body
 	}
 	return h.recordSimpleEvent(ctx, req, sessionID, content, category)
 }

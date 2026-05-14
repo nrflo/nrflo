@@ -7,20 +7,22 @@ import { GlobalSettingsSection } from '@/components/settings/GlobalSettingsSecti
 import { ProjectsSection } from '@/components/settings/ProjectsSection'
 import { SystemAgentsSection } from '@/components/settings/SystemAgentsSection'
 import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesSection'
-import { CLIModelsSection } from '@/components/settings/CLIModelsSection'
+import { ProvidersSection } from '@/components/settings/ProvidersSection'
 import { LogsSection } from '@/components/settings/LogsSection'
 import { UsersSection } from '@/components/settings/UsersSection'
 import { AuditLogSection } from '@/components/settings/AuditLogSection'
+import type { ProviderName } from '@/api/providers'
 
-type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'administration'
+type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'providers' | 'logs' | 'administration'
 type AdministrationSubTab = 'users' | 'audit'
+type ProviderSubTab = ProviderName
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'projects', label: 'Projects' },
   { id: 'system-agents', label: 'System Agents' },
   { id: 'default-templates', label: 'Default Templates' },
-  { id: 'cli-models', label: 'CLI Models' },
+  { id: 'providers', label: 'Providers' },
   { id: 'logs', label: 'Logs' },
   { id: 'administration', label: 'Administration' },
 ]
@@ -30,10 +32,20 @@ const SUB_TABS: { id: AdministrationSubTab; label: string }[] = [
   { id: 'audit', label: 'Audit Log' },
 ]
 
+const PROVIDER_SUB_TABS: { id: ProviderSubTab; label: string }[] = [
+  { id: 'claude', label: 'Claude' },
+  { id: 'opencode', label: 'OpenCode' },
+  { id: 'codex', label: 'Codex' },
+]
+
 const tabIds = new Set<string>(tabs.map((t) => t.id))
 
 function isValidTab(value: string | null): value is SettingsTab {
   return value !== null && tabIds.has(value)
+}
+
+function isValidProviderSub(value: string | null): value is ProviderSubTab {
+  return value === 'claude' || value === 'opencode' || value === 'codex'
 }
 
 function NoProjectsBanner() {
@@ -60,10 +72,13 @@ export function SettingsPage() {
 
   const subParam = searchParams.get('sub')
   const activeSub: AdministrationSubTab = subParam === 'audit' ? 'audit' : 'users'
+  const activeProviderSub: ProviderSubTab = isValidProviderSub(subParam) ? subParam : 'claude'
 
   const handleTabClick = (id: SettingsTab) => {
     if (id === 'administration') {
       setSearchParams({ tab: id, sub: activeSub }, { replace: true })
+    } else if (id === 'providers') {
+      setSearchParams({ tab: id, sub: activeProviderSub }, { replace: true })
     } else {
       setSearchParams({ tab: id }, { replace: true })
     }
@@ -71,6 +86,10 @@ export function SettingsPage() {
 
   const handleSubTabClick = (sub: AdministrationSubTab) => {
     setSearchParams({ tab: 'administration', sub }, { replace: true })
+  }
+
+  const handleProviderSubTabClick = (sub: ProviderSubTab) => {
+    setSearchParams({ tab: 'providers', sub }, { replace: true })
   }
 
   return (
@@ -124,11 +143,32 @@ export function SettingsPage() {
         </div>
       )}
 
+      {activeTab === 'providers' && (
+        <div className="border-b border-border">
+          <div className="flex gap-1">
+            {PROVIDER_SUB_TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => handleProviderSubTabClick(id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1 text-xs font-medium border-b-2 transition-colors',
+                  activeProviderSub === id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'general' && <GlobalSettingsSection />}
       {activeTab === 'projects' && <ProjectsSection />}
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
-      {activeTab === 'cli-models' && <CLIModelsSection />}
+      {activeTab === 'providers' && <ProvidersSection activeProvider={activeProviderSub} />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
       {activeTab === 'administration' && activeSub === 'users' && <UsersSection />}
       {activeTab === 'administration' && activeSub === 'audit' && <AuditLogSection />}

@@ -14,9 +14,8 @@ const (
 	EventHeartbeat      = "heartbeat"
 
 	// Global event types (sent to all clients regardless of subscription)
-	EventGlobalRunningAgents      = "global.running_agents"
-	EventGlobalClaudeLimitsUpdated = "global.claude_limits_updated"
-	EventProjectEnvVarsUpdated    = "project.env_vars_updated"
+	EventGlobalRunningAgents   = "global.running_agents"
+	EventProjectEnvVarsUpdated = "project.env_vars_updated"
 
 	// Spec import event types
 	EventSpecImportStarted = "spec_import.started"

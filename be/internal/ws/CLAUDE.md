@@ -52,8 +52,6 @@ v1 clients (no `since_seq`) continue working unchanged — no replay, no snapsho
 
 The spawner emits `global.running_agents` whenever an agent starts or completes. The frontend refetches running agents via `GET /api/v1/agents/running` on receipt.
 
-`global.claude_limits_updated` (`EventGlobalClaudeLimitsUpdated`) is emitted by the socket handler when `global.claude_limits_update` is received from a CLI agent's statusLine. Payload: `{five_hour_pct?, five_hour_resets_at, seven_day_pct?, seven_day_resets_at}`. Ephemeral — not persisted.
-
 ## Architecture
 
 Events flow: Producer → Hub.Broadcast → EventLogRepo.Append (assigns seq) → broadcastEvent → clients.

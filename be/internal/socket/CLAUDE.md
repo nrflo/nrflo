@@ -33,7 +33,6 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `agent.log` | Insert `agent_messages` row from script agent. Params: `{session_id, type?, message, payload?}` |
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
-| `global.claude_limits_update` | Update Claude API rate limit state; broadcasts `global.claude_limits_updated` |
 | `script.context` | Return 12-key auto-injectable dict for script-mode session. Params: `{session_id}` |
 
 All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set from `NRF_WORKFLOW_INSTANCE_ID`/`NRF_SESSION_ID` env vars by the CLI).

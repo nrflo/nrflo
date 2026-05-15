@@ -12,7 +12,6 @@ Top-level packages under `be/internal/`:
 - `spawner/` — Agent spawner, execution backends (cli_interactive/api/script), low-context save, template engine
 - `proc/` — Host process probing (no circular deps)
 - `scheduler/` — Cron-driven scheduled task runner
-- `limitsrefresh/` — In-process hourly Claude limits ticker (gated by `sync_claude_limits` global setting)
 - `orchestrator/` — Layer-based workflow execution, interactive/plan mode, chain runner
 - `chainrunner/` — Workflow chain run execution engine
 - `api/` — HTTP API handlers, CORS, WebSocket hub, PTY relay (`handlers_*.go`)

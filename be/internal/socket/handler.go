@@ -457,57 +457,6 @@ func (h *Handler) handleWS(ctx context.Context, req Request, action string) Resp
 
 func (h *Handler) handleGlobal(ctx context.Context, req Request, action string) Response {
 	switch action {
-	case "claude_limits_update":
-		var params struct {
-			FiveHourPct      *float64 `json:"five_hour_pct"`
-			FiveHourResetsAt string   `json:"five_hour_resets_at"`
-			SevenDayPct      *float64 `json:"seven_day_pct"`
-			SevenDayResetsAt string   `json:"seven_day_resets_at"`
-		}
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
-		}
-		if params.FiveHourPct == nil && params.SevenDayPct == nil {
-			return MakeErrorResponse(req.ID, NewValidationError("at least one of five_hour_pct or seven_day_pct is required"))
-		}
-		fiveHourPct := -1.0
-		if params.FiveHourPct != nil {
-			fiveHourPct = *params.FiveHourPct
-		}
-		sevenDayPct := -1.0
-		if params.SevenDayPct != nil {
-			sevenDayPct = *params.SevenDayPct
-		}
-		limits := service.ClaudeLimits{
-			FiveHourUsedPct:  fiveHourPct,
-			FiveHourResetsAt: params.FiveHourResetsAt,
-			SevenDayUsedPct:  sevenDayPct,
-			SevenDayResetsAt: params.SevenDayResetsAt,
-		}
-		result, err := h.claudeLimitsSvc.Update(limits)
-		if err != nil {
-			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
-			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
-		}
-		if !result.Changed {
-			return MakeResponse(req.ID, map[string]string{"status": "unchanged"})
-		}
-		if h.wsHub != nil {
-			payload := map[string]interface{}{
-				"five_hour_resets_at": result.Stored.FiveHourResetsAt,
-				"seven_day_resets_at": result.Stored.SevenDayResetsAt,
-			}
-			if params.FiveHourPct != nil {
-				payload["five_hour_pct"] = result.Stored.FiveHourUsedPct
-			}
-			if params.SevenDayPct != nil {
-				payload["seven_day_pct"] = result.Stored.SevenDayUsedPct
-			}
-			event := ws.NewEvent(ws.EventGlobalClaudeLimitsUpdated, "", "", "", payload)
-			h.wsHub.BroadcastGlobal(event)
-		}
-		return MakeResponse(req.ID, map[string]string{"status": "updated"})
-
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", "global."+action)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("global."+action))

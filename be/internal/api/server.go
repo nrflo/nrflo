@@ -632,9 +632,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/settings", s.handleGetGlobalSettings)
 	admin("PATCH /api/v1/settings", s.handlePatchGlobalSettings)
 
-	// Claude rate limits — GET is protected
-	protected("GET /api/v1/claude-limits", s.handleGetClaudeLimits)
-
 	// Safety hook check
 	protected("POST /api/v1/safety-hook/check", s.handleCheckSafetyHook)
 

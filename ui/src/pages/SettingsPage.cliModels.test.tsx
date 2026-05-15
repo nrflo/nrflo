@@ -24,7 +24,6 @@ vi.mock('@/api/settings', () => ({
   getGlobalSettings: vi.fn().mockResolvedValue({
     low_consumption_mode: false,
     api_mode_enabled: false,
-    sync_claude_limits: false,
   }),
   updateGlobalSettings: vi.fn(),
 }))

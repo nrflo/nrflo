@@ -16,7 +16,7 @@ All responses use `{error: {code, message}}` for error bodies. Backend route enu
 ## Request / Response Conventions
 
 - All mutating requests include `Content-Type: application/json` (except `putConfigFile` which sends `text/plain`).
-- `X-Project` header is required for project-scoped endpoints; omitted for global endpoints (users, audit log, system agents, default templates, CLI models, Claude limits, settings, docs).
+- `X-Project` header is required for project-scoped endpoints; omitted for global endpoints (users, audit log, system agents, default templates, CLI models, settings, docs).
 - Path segments containing special characters are encoded via `encodeURIComponent` (env var names, config file paths).
 - `apiFetchWith412` detects 412 and throws `NotConfiguredError` instead of `ApiError` (spec import, GitHub/Jira search).
 

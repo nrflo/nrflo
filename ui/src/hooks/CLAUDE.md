@@ -80,7 +80,7 @@ Representative sample — canonical list in [be/internal/api/CLAUDE.md](../../..
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`.
 
-`global.running_agents` and `global.claude_limits_updated` are global broadcasts handled as early returns before `dispatchV2Event`.
+`global.running_agents` is a global broadcast handled as an early return before `dispatchV2Event`.
 
 ## Testing
 

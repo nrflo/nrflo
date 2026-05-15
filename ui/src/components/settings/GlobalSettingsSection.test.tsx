@@ -18,7 +18,6 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     context_save_via_agent: false,
     simplified_agents_graph: false,
     experimental: false,
-    sync_claude_limits: false,
     session_retention_limit: 1000,
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,

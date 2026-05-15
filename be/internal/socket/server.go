@@ -263,7 +263,6 @@ type Handler struct {
 	agentSvc           *service.AgentService
 	workflowSvc        *service.WorkflowService
 	wfChainRunSvc      *service.WorkflowChainRunService
-	claudeLimitsSvc    *service.ClaudeLimitsService
 	wsHub              *ws.Hub
 	signaler           TerminalSignaler // optional; nil-safe
 	pool               *db.Pool
@@ -285,7 +284,6 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 		agentSvc:           service.NewAgentService(pool, clk),
 		workflowSvc:        service.NewWorkflowService(pool, clk),
 		wfChainRunSvc:      service.NewWorkflowChainRunService(pool, clk),
-		claudeLimitsSvc:    service.NewClaudeLimitsService(pool, clk),
 		wsHub:              hub,
 		signaler:           signaler,
 		pool:               pool,

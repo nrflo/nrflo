@@ -19,7 +19,7 @@ import (
 // where PreToolUse/PostToolUse/Stop hooks never fire in TUI-PTY sessions. The
 // rollout JSONL is the only complete, structured event channel codex still
 // emits — it has agent_message text, token_count for context%, and
-// function_call/function_call_output for tool I/O.
+// function_call records for tool invocations.
 //
 // The tailer is the source of truth for codex/cli_interactive visibility.
 // Once running, codex's BumpsOnPTYBytes() returns false: the captureTUI
@@ -248,7 +248,6 @@ type codexResponseItemPayload struct {
 	Type      string `json:"type"`
 	Name      string `json:"name"`      // function_call.name
 	Arguments string `json:"arguments"` // function_call.arguments (JSON-encoded string)
-	Output    string `json:"output"`    // function_call_output.output
 	CallID    string `json:"call_id"`
 }
 
@@ -280,18 +279,18 @@ func dispatchCodexJSONL(sessionID string, line []byte, sink Sink) {
 		if err := json.Unmarshal(rec.Payload, &p); err != nil {
 			return
 		}
-		switch p.Type {
-		case "function_call":
-			body := formatCodexToolUse(p.Name, p.Arguments)
+		if p.Type == "function_call" {
 			// "tool" matches the category Claude/opencode emit for tool
 			// invocations (see ToolCategory in output.go — default branch).
 			// Keeping a single category across backends lets UI filters and
 			// scenario assertions work uniformly.
-			emitMessage(sessionID, body, "tool", sink)
-		case "function_call_output":
-			if p.Output != "" {
-				emitMessage(sessionID, p.Output, "tool", sink)
-			}
+			//
+			// function_call_output records (tool results) are intentionally
+			// dropped to match Claude/opencode behavior: handleClaudeToolResult
+			// in output.go discards every tool_result except Task/Agent
+			// subagent results. The agent still sees outputs in its own
+			// rollout context — we just don't persist or broadcast them.
+			emitMessage(sessionID, formatCodexToolUse(p.Name, p.Arguments), "tool", sink)
 		}
 	}
 }

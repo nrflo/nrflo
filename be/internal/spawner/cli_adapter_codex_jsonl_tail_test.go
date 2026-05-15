@@ -135,11 +135,12 @@ func TestDispatchCodexJSONL_FunctionCall(t *testing.T) {
 	}
 }
 
-// TestDispatchCodexJSONL_FunctionCallOutput verifies
-// response_item/function_call_output lands as a "tool" agent_message
-// containing the output text (same category as function_call — UI/test
-// assertions don't distinguish tool_use vs tool_result).
-func TestDispatchCodexJSONL_FunctionCallOutput(t *testing.T) {
+// TestDispatchCodexJSONL_FunctionCallOutputDropped verifies
+// response_item/function_call_output records are silently dropped: tool
+// results are not surfaced to the UI, matching Claude/opencode behavior
+// (handleClaudeToolResult in output.go also drops all tool_results except
+// Task/Agent subagent results).
+func TestDispatchCodexJSONL_FunctionCallOutputDropped(t *testing.T) {
 	t.Parallel()
 	sink := &codexJSONLTestSink{}
 	line := []byte(`{"type":"response_item","payload":{"type":"function_call_output","output":"exit 0\nfile.txt","call_id":"c1"}}`)
@@ -147,11 +148,11 @@ func TestDispatchCodexJSONL_FunctionCallOutput(t *testing.T) {
 
 	sink.mu.Lock()
 	defer sink.mu.Unlock()
-	if len(sink.msgs) != 1 || sink.msgs[0].category != "tool" {
-		t.Errorf("msgs = %+v, want one tool", sink.msgs)
+	if len(sink.msgs) != 0 {
+		t.Errorf("msgs = %+v, want none (tool_result dropped)", sink.msgs)
 	}
-	if sink.msgs[0].content != "exit 0\nfile.txt" {
-		t.Errorf("content = %q, want raw output text", sink.msgs[0].content)
+	if sink.bumps != 0 {
+		t.Errorf("bumps = %d, want 0", sink.bumps)
 	}
 }
 

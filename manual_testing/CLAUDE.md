@@ -1,6 +1,6 @@
 # Manual integration testing harness
 
-Provider-agnostic Python harness that exercises the full path "real REST API → real DB → real spawner → real CLI binary → real agent CLI writes back via socket". Lives outside the Go test pyramid — each run spawns real `claude` / `codex` / `opencode` processes against real provider credentials.
+Per-provider Python harness that exercises the full path "real REST API → real DB → real spawner → real CLI binary → real agent CLI writes back via socket". Lives outside the Go test pyramid — each run spawns real CLI processes against real provider credentials.
 
 ## Hard rules
 
@@ -8,35 +8,34 @@ Provider-agnostic Python harness that exercises the full path "real REST API →
 - **No Go test files or vitest test files** live here.
 - **No Makefile changes** to expose it.
 
-## What it covers
-
-CLI-provider scenarios ({claude,codex,opencode} × cli_interactive): 37 scenarios across findings, callbacks, pass policies, stall detection, endless loops, chains, context save/resume (both resume and agent-saver branches), manual restart, ticket concurrency 409, take-control/exit-interactive, plan_mode, multi-instance-same-ticket, custom cli_models, WS subscriber, and notification webhook. One scenario (s28) is a SKIP stub for the codex resume-fallback path — see `backlog.md` §7. See `scenarios/__init__.py` for the full `ALL_SCENARIOS` list.
-
-Script-backend scenarios (`execution_mode='script'`, no provider CLI, no LLM): 18 scenarios exercising every method of the embedded `nrflo_sdk` (findings, project_findings, agent control incl. `chain_next_ticket`, context/user_instructions/callback_info/previous_data, skip incl. multi-tag accumulation, log with each category) plus project env vars, exception → fail, stderr capture, chain handoff via SDK. See `scenarios_script/__init__.py` for the full `ALL_SCRIPT_SCENARIOS` list.
-
 ## Layout
 
-- `lib/api.py` — Cookie-based REST client (admin/admin login)
-- `lib/db.py` — Read-only SQLite helpers
-- `lib/runner.py` — `run_all(provider, model, binary, parallel)` for CLI providers; `run_scripts(parallel)` for script-mode
-- `lib/runtime.py` — `Ctx` dataclass + `make_project` + `wait_for_workflow` helpers
-- `lib/script_helpers.py` — `make_script` / `make_script_agent` helpers + `SDK_BOOTSTRAP` prelude
-- `lib/server.py` — Spawns nrflo_server on fresh NRFLO_HOME
-- `lib/ws_client.py` — Sync WebSocket subscriber (cookie-authed) — used by s37
-- `lib/http_mock.py` — `WebhookCapture` in-process httpserver — used by s38
-- `scenarios/__init__.py` — `ALL_SCENARIOS` (CLI providers; comment out to skip)
-- `scenarios_script/__init__.py` — `ALL_SCRIPT_SCENARIOS` (script backend)
-- `scenarios/s01_findings_save.py`, `s25_findings_carryover.py` — example CLI scenarios
-- `scenarios_script/ps01_findings_basic.py`, `ps12_log_categories.py` — example script scenarios
-- `test_claude.py`, `test_codex.py`, `test_opencode.py` — CLI-provider entry points (`--parallel --model`)
-- `test_script.py` — script-mode entry point (`--parallel`); no `--model`
-- `run_all.py` — iterates over providers; `script` is a synthetic provider with one mode (`native`)
+```
+manual_testing/
+├── suite.md                 # canonical scenario catalogue (numbers + descriptions)
+├── run_suite.py             # cross-provider orchestrator (5 providers parallel, scenarios sequential)
+├── lib/                     # shared infra: api, db, runner, runtime, server, ws_client, http_mock, script_helpers, versions
+├── claude/                  # per-provider scenarios, __init__.py, test.py
+├── codex/
+├── gemini/
+├── opencode/
+└── python/                  # execution_mode='script' scenarios (no CLI, no LLM)
+```
+
+- `lib/runner.py` — `run_all(scenarios=…, provider=…, model=…, binary=…, mode=…, results_path=…)`
+- `lib/runtime.py` — `Ctx` dataclass + `make_project` + `wait_for_workflow`
+- `lib/server.py` — spawns `nrflo_server` on a fresh `NRFLO_HOME`
+- `lib/versions.py` — probes `<binary> --version` for the capability matrix
+- `<provider>/__init__.py` — explicit `ALL_SCENARIOS` list for that provider
+- `<provider>/test.py` — entry point (`--parallel`, `--model`, `--only`, `--timeout`, `--results`)
+
+Per-provider applicability is recorded in `suite.md` and verified by file presence in each provider folder. Cross-provider gates (`if ctx.provider == …`) are forbidden — if a scenario does not apply to a provider, omit the file.
 
 ## Concepts
 
-- **Provider**: which CLI binary the agent runs in — `claude`, `codex`, or `opencode`.
-- **`Ctx`** (`lib/runtime.py`): carries server handle, REST client, provider, model, binary, and a per-scenario log label. All CLI providers run under `cli_interactive` (PTY relay).
-- **`ALL_SCENARIOS`** (`scenarios/__init__.py`): explicit list of callables; each is `run(ctx: Ctx) -> Result` where `Result = (name, "PASS"|"FAIL"|"SKIP", details)`.
+- **Provider**: `claude`, `codex`, `gemini`, `opencode`, or `python`. CLI providers run under `cli_interactive` (PTY relay); python runs under `script` (execution_mode='script').
+- **`Ctx`** (`lib/runtime.py:33`): carries server handle, REST client, provider, model, binary, mode, scenario label.
+- **Scenario**: `run(ctx: Ctx) -> Result` where `Result = (name, "PASS"|"FAIL"|"SKIP", details)`. One function per file. Self-contained — no shared fixtures beyond `lib/runtime.py` helpers and `lib/script_helpers.py` for python scenarios.
 
 ## Runtime deps
 
@@ -47,38 +46,34 @@ Install via `pip install websockets` before running the CLI suites.
 
 ```bash
 make build
-python3 manual_testing/test_claude.py                  # parallel=5
-python3 manual_testing/test_claude.py --parallel=1     # sequential, easier to debug
-python3 manual_testing/test_claude.py --model=sonnet
-python3 manual_testing/test_script.py                  # script backend, no LLM
-python3 manual_testing/test_script.py --only=ps01,ps12 # subset
-python3 manual_testing/run_all.py                      # all providers (incl. script)
-python3 manual_testing/run_all.py --provider=script    # script only
-python3 manual_testing/run_all.py --provider=claude
+
+# full suite — 5 providers in parallel, scenarios sequential, overwrites /capabilities.md
+python3 manual_testing/run_suite.py
+
+# subset of providers
+python3 manual_testing/run_suite.py --only=claude,python
+
+# single provider directly (useful for debugging)
+python3 manual_testing/claude/test.py --only=s01 --parallel=1
+python3 manual_testing/python/test.py --only=P01
 ```
 
-Each run creates `/tmp/nrflo-manual-<provider>-cli_interactive-XXXX/` with the SQLite DB, per-scenario project roots, and `server.log`. Directory is kept on exit. Exit codes: `0` = all PASS/SKIP, `1` = any FAIL, `2` = fatal interruption.
+Each provider subprocess creates `/tmp/nrflo-manual-<provider>-<mode>-XXXX/` with the SQLite DB, per-scenario project roots, and `server.log`. The orchestrator collects results under `/tmp/nrflo-suite-<ts>/`. Directories are kept on exit.
 
-`lib/server.py` gives each server its own `NRFLO_HOME` and `NRFLO_SOCKET` (short `/tmp/...` path; avoids macOS 104-byte AF_UNIX cap and stale-socket conflicts from prior crashes). All scenarios within one subprocess share one server; across subprocesses started by `run_all.py`, each has its own PID and socket.
+Exit codes: `0` = all PASS/SKIP, `1` = any FAIL, `2` = fatal interruption.
+
+`lib/server.py` gives each server its own `NRFLO_HOME` and `NRFLO_SOCKET` (short `/tmp/...` path; avoids macOS 104-byte AF_UNIX cap and stale-socket conflicts from prior crashes).
 
 ## Adding a new scenario
 
-CLI-provider:
-1. Create `scenarios/sNN_<short_name>.py` from the template at `scenarios/s01_findings_save.py`.
-2. Append to `scenarios/__init__.py`:
-   ```python
-   from . import sNN_short_name
-   ALL_SCENARIOS.append(sNN_short_name.run)
-   ```
-3. `python3 manual_testing/test_claude.py --parallel=1` to debug.
-
-Script-backend:
-1. Create `scenarios_script/psNN_<short_name>.py` from the template at `scenarios_script/ps01_findings_basic.py`. Use `lib.script_helpers.make_script_agent(...)` to wire the agent; the SDK bootstrap (`import nrflo_sdk; c = nrflo_sdk.client()`) is prepended automatically.
-2. Append to `scenarios_script/__init__.py`.
-3. `python3 manual_testing/test_script.py --parallel=1 --only=psNN` to debug.
+1. Pick the next free id in `suite.md` (`sNN` for CLI, `PNN` for python). Add a one-line description.
+2. Create `<provider>/<id>_<short_name>.py` in every provider folder that should run it. Use `claude/s01_findings_save.py` (CLI) or `python/P01_findings_basic.py` (script) as the template. Do not branch on `ctx.provider` inside the file.
+3. Append the module to that provider's `__init__.py::ALL_SCENARIOS`.
+4. `python3 manual_testing/<provider>/test.py --only=<id> --parallel=1` to debug.
+5. Run `python3 manual_testing/run_suite.py` once to regenerate `/capabilities.md`.
 
 ## Debugging
 
 - Data dir (`/tmp/nrflo-manual-…`): open `nrflo.data`, query `agent_sessions` and `agent_messages` for the failing workflow instance.
 - `server.log` in the same dir: search `ERROR` / `WARN` / `panic`.
-- Known provider-specific issues are tracked in `backlog.md`.
+- Suite log dir (`/tmp/nrflo-suite-…`): contains `<provider>.json` results and `<provider>.log` stdout.

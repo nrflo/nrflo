@@ -1,12 +1,11 @@
 """Shared runtime types + helpers for scenarios.
 
-`Ctx` carries the running server, REST client, provider (claude/codex/
-opencode), model, binary, and a per-scenario label used in logs.
-Scenarios call `make_project(ctx)` to get a fresh isolated project.
-The runner sets `NrfloClient.default_execution_mode='cli_interactive'`
-once so every `create_agent_def` call carries `execution_mode` to the
-API without per-scenario boilerplate. All CLI providers run under
-`cli_interactive` (PTY relay)."""
+`Ctx` carries the running server, REST client, provider, model, binary,
+and a per-scenario label used in logs. Scenarios call `make_project(ctx)`
+to get a fresh isolated project. The runner sets
+`NrfloClient.default_execution_mode` to the current mode once so every
+`create_agent_def` call carries `execution_mode` to the API without
+per-scenario boilerplate."""
 
 from __future__ import annotations
 
@@ -34,10 +33,10 @@ MODE = "cli_interactive"
 class Ctx:
     server: server_mod.RunningServer
     client: api_mod.NrfloClient
-    provider: str           # claude | codex | opencode
+    provider: str           # claude | codex | gemini | opencode | python
     model: str              # cli_models row id (e.g. "haiku")
     binary: str             # PATH binary name
-    mode: str = "cli_interactive"
+    mode: str = "cli_interactive"   # "cli_interactive" for CLI; "script" for python
     scenario: str = ""      # set per-scenario for log prefixing
 
 

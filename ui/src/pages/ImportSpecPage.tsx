@@ -112,7 +112,21 @@ export function ImportSpecPage() {
         body,
       })
       setInstanceId(resp.instance_id)
-      // Wait for spec_import.ready / spec_import.failed via WebSocket
+      // Fallback for the test/no-orchestrator path that completes synchronously.
+      if (resp.status === 'ready') {
+        try {
+          const p = await getImportPreview(resp.instance_id)
+          setPreview(p)
+          setStatus('ready')
+          setStep(3)
+        } catch (e) {
+          setErrorMsg(e instanceof Error ? e.message : 'Failed to load preview')
+          setStatus('failed')
+        }
+        return
+      }
+      // Real path: spec-normalizer agent runs asynchronously; the
+      // spec_import.ready / spec_import.failed WS event drives the next step.
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Failed to start import')
       setStatus('failed')

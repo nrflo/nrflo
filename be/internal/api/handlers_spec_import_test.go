@@ -122,8 +122,8 @@ func TestHandleStartSpecImport_Markdown_HappyPath(t *testing.T) {
 	if resp["instance_id"] == "" {
 		t.Error("instance_id should be non-empty")
 	}
-	if resp["status"] != "running" {
-		t.Errorf("status = %v, want running", resp["status"])
+	if resp["status"] != "ready" {
+		t.Errorf("status = %v, want ready", resp["status"])
 	}
 
 	// Verify findings were seeded in DB.
@@ -248,18 +248,17 @@ func TestHandleGetSpecImport_CompletedWithFindings(t *testing.T) {
 	}
 	var getResp map[string]interface{}
 	json.NewDecoder(getRR.Body).Decode(&getResp)
-	if getResp["status"] != "completed" {
-		t.Errorf("status = %v, want completed", getResp["status"])
+	if getResp["status"] != "ready" {
+		t.Errorf("status = %v, want ready", getResp["status"])
 	}
-	if getResp["preview"] == nil {
-		t.Error("preview should not be nil for completed status")
+	if getResp["raw_spec"] == "" {
+		t.Error("raw_spec should be non-empty")
 	}
-	preview, _ := getResp["preview"].(map[string]interface{})
-	if preview["raw_spec"] == "" {
-		t.Error("preview.raw_spec should be non-empty")
+	if getResp["source"] != "markdown" {
+		t.Errorf("source = %v, want markdown", getResp["source"])
 	}
-	if preview["source"] != "markdown" {
-		t.Errorf("preview.source = %v, want markdown", preview["source"])
+	if getResp["title"] == nil || getResp["title"] == "" {
+		t.Errorf("title should be derived from raw_spec, got %v", getResp["title"])
 	}
 }
 

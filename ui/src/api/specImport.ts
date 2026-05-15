@@ -30,6 +30,7 @@ export interface StartImportRequest {
 
 export interface StartImportResponse {
   instance_id: string
+  status?: 'ready' | 'running' | 'failed'
 }
 
 export interface AttachedRef {
@@ -39,11 +40,12 @@ export interface AttachedRef {
 
 export interface ImportPreviewResponse {
   instance_id: string
+  status: 'pending' | 'ready' | 'failed'
   title: string
   description: string
   instructions: string
-  priority?: number
-  issue_type?: string
+  raw_spec?: string
+  source?: string
   suggested_workflow?: string
   attached_refs?: AttachedRef[]
 }
@@ -51,8 +53,6 @@ export interface ImportPreviewResponse {
 export interface CommitImportRequest {
   title: string
   description: string
-  workflow_name: string
-  instructions: string
 }
 
 export interface CommitImportResponse {
@@ -140,10 +140,16 @@ export async function searchGitHubIssues(
 ): Promise<GitHubIssueSummary[]> {
   const params = new URLSearchParams({ q })
   if (repo) params.set('repo', repo)
-  return apiFetchWith412<GitHubIssueSummary[]>(`/api/v1/import/github/search?${params}`)
+  const resp = await apiFetchWith412<{ results: GitHubIssueSummary[] | null }>(
+    `/api/v1/import/github/search?${params}`
+  )
+  return resp.results ?? []
 }
 
 export async function searchJiraIssues(q: string): Promise<JiraIssueSummary[]> {
   const params = new URLSearchParams({ q })
-  return apiFetchWith412<JiraIssueSummary[]>(`/api/v1/import/jira/search?${params}`)
+  const resp = await apiFetchWith412<{ results: JiraIssueSummary[] | null }>(
+    `/api/v1/import/jira/search?${params}`
+  )
+  return resp.results ?? []
 }

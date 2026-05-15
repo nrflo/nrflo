@@ -35,7 +35,7 @@ type Adapter interface {
 - `Fetch` and `Search` both call `checkEnv` first; any of `JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN` missing → `MissingEnvError` with no network call.
 - Auth: `Authorization: Basic base64(email:token)`.
 - `Fetch`: GET `/rest/api/3/issue/{key}`; ADF description → plain text via `adfToText`; appends `KindSource` ref.
-- `Search`: POST `/rest/api/3/search/jql`; user query escaped and capped at 64 bytes; returns `[]JiraIssueSummary`.
+- `Search`: POST `/rest/api/3/search/jql`. If the query matches `issueKeyRE` (`PROJ-123`-shaped), JQL is `key = "..."`; otherwise `text ~ "..." ORDER BY updated DESC` with the query escaped and capped at 64 runes. Returns `[]JiraIssueSummary`.
 - 401 → `ErrAdapterAuth`, 404 → `ErrAdapterNotFound`.
 
 ### MarkdownAdapter

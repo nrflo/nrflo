@@ -516,7 +516,7 @@ describe('useWSReducer', () => {
       expect(queryClient.invalidateQueries).toHaveBeenCalled()
     })
 
-    it('routes messages.updated event and invalidates session-messages, agentSessions, and workflow (ticket scope)', () => {
+    it('routes messages.updated event and only invalidates the session-messages query', () => {
       const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
       const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
 
@@ -533,18 +533,11 @@ describe('useWSReducer', () => {
       dispatchV2Event(event, localQueryClient)
 
       const calls = spy.mock.calls
-      expect(calls.some((call: any) =>
-        JSON.stringify(call[0].queryKey).includes('session-messages')
-      )).toBe(true)
-      expect(calls.some((call: any) =>
-        JSON.stringify(call[0].queryKey).includes('agents')
-      )).toBe(true)
-      expect(calls.some((call: any) =>
-        JSON.stringify(call[0].queryKey).includes('workflow')
-      )).toBe(true)
+      expect(calls.length).toBe(1)
+      expect(JSON.stringify(calls[0][0].queryKey)).toContain('session-messages')
     })
 
-    it('routes messages.updated event and invalidates project workflow (project scope)', () => {
+    it('does not invalidate the project workflow query on messages.updated', () => {
       const localQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
       const spy = vi.spyOn(localQueryClient, 'invalidateQueries')
 
@@ -562,8 +555,8 @@ describe('useWSReducer', () => {
 
       const calls = spy.mock.calls
       expect(calls.some((call: any) =>
-        JSON.stringify(call[0].queryKey).includes('workflow')
-      )).toBe(true)
+        JSON.stringify(call[0].queryKey).includes('project-workflows')
+      )).toBe(false)
     })
 
     it('routes chain.updated event', () => {

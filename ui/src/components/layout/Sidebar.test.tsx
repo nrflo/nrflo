@@ -4,14 +4,29 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Sidebar } from './Sidebar'
 import type { StatusResponse } from '@/types/ticket'
+import { useProjectStore } from '@/stores/projectStore'
 
-// Mock useStatus and useProjectWorkflow hooks
+// Mock useStatus
 const mockUseStatus = vi.fn()
-const mockUseProjectWorkflow = vi.fn()
 vi.mock('@/hooks/useTickets', () => ({
   useStatus: () => mockUseStatus(),
-  useProjectWorkflow: () => mockUseProjectWorkflow(),
 }))
+
+// Sidebar derives "project workflow active" from the lightweight running-agents
+// list now (project-scoped agent → no ticket_id).
+const mockUseRunningAgents = vi.fn()
+vi.mock('@/hooks/useRunningAgents', () => ({
+  useRunningAgents: () => mockUseRunningAgents(),
+}))
+
+function setProjectWorkflowActive(active: boolean) {
+  useProjectStore.setState({ currentProject: 'proj-test' })
+  mockUseRunningAgents.mockReturnValue({
+    data: active
+      ? { agents: [{ session_id: 's1', project_id: 'proj-test', ticket_id: '', agent_type: 'a', model_id: 'm', phase: 'p', started_at: '', elapsed_sec: 0, workflow_id: 'w', project_name: 'p' }], count: 1 }
+      : { agents: [], count: 0 },
+  })
+}
 
 const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)
 const mockUseExperimentalEnabled = vi.fn().mockReturnValue(false)
@@ -65,7 +80,7 @@ describe('Sidebar - Spinner Visibility', () => {
     mockUseIsAdmin.mockReturnValue(true)
     mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
   })
 
@@ -205,7 +220,7 @@ describe('Sidebar - Spinner Visibility', () => {
 describe('Sidebar - Navigation', () => {
   beforeEach(() => {
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
     mockUseStatus.mockReturnValue({
       data: createMockStatus({
@@ -277,7 +292,7 @@ describe('Sidebar - Navigation', () => {
 describe('Sidebar - Spinner Component Properties', () => {
   beforeEach(() => {
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
   })
 
@@ -328,7 +343,7 @@ describe('Sidebar - Spinner Component Properties', () => {
 describe('Sidebar - Edge Cases', () => {
   beforeEach(() => {
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
   })
 
@@ -426,9 +441,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
   })
 
   it('shows spinner on Project Workflows nav item when a workflow is active', () => {
-    mockUseProjectWorkflow.mockReturnValue({
-      data: { all_workflows: { 'inst-1': { status: 'active' } } },
-    })
+    setProjectWorkflowActive(true)
 
     const { container } = renderSidebar()
 
@@ -438,15 +451,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
   })
 
   it('hides spinner on Project Workflows nav item when all workflows are completed', () => {
-    mockUseProjectWorkflow.mockReturnValue({
-      data: {
-        all_workflows: {
-          'inst-1': { status: 'completed' },
-          'inst-2': { status: 'failed' },
-          'inst-3': { status: 'project_completed' },
-        },
-      },
-    })
+    setProjectWorkflowActive(false)
 
     const { container } = renderSidebar()
 
@@ -456,7 +461,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
   })
 
   it('hides spinner when all_workflows is undefined', () => {
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
 
     const { container } = renderSidebar()
 
@@ -466,7 +471,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
   })
 
   it('hides spinner when all_workflows is empty', () => {
-    mockUseProjectWorkflow.mockReturnValue({ data: { all_workflows: {} } })
+    setProjectWorkflowActive(false)
 
     const { container } = renderSidebar()
 
@@ -476,15 +481,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
   })
 
   it('shows spinner when at least one workflow is active among mixed statuses', () => {
-    mockUseProjectWorkflow.mockReturnValue({
-      data: {
-        all_workflows: {
-          'inst-1': { status: 'completed' },
-          'inst-2': { status: 'active' },
-          'inst-3': { status: 'failed' },
-        },
-      },
-    })
+    setProjectWorkflowActive(true)
 
     renderSidebar()
 
@@ -499,9 +496,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
         counts: { open: 0, in_progress: 1, closed: 0, blocked: 0, total: 1 },
       }),
     })
-    mockUseProjectWorkflow.mockReturnValue({
-      data: { all_workflows: { 'inst-1': { status: 'active' } } },
-    })
+    setProjectWorkflowActive(true)
 
     const { container } = renderSidebar()
 
@@ -517,7 +512,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
   })
 
   it('shows spinner and remaining count on Chain Executions nav item when chains are running', () => {
@@ -597,9 +592,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
         counts: { open: 0, in_progress: 1, closed: 0, blocked: 0, total: 1 },
       }),
     })
-    mockUseProjectWorkflow.mockReturnValue({
-      data: { all_workflows: { 'inst-1': { status: 'active' } } },
-    })
+    setProjectWorkflowActive(true)
     mockUseChainList.mockReturnValue({ data: [{ id: 'c1', status: 'running', total_items: 5, completed_items: 2 }] })
 
     const { container } = renderSidebar()
@@ -615,7 +608,7 @@ describe('Sidebar - API Mode Gating', () => {
     mockUseIsAdmin.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
   })
 
@@ -655,7 +648,7 @@ describe('Sidebar - Experimental Gating', () => {
     mockUseIsAdmin.mockReturnValue(true)
     mockUseAPIModeEnabled.mockReturnValue(false)
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
-    mockUseProjectWorkflow.mockReturnValue({ data: undefined })
+    setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
   })
 

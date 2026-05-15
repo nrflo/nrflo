@@ -170,21 +170,26 @@ type JiraIssueSummary struct {
 	Status  string `json:"status"`
 }
 
-// Search executes a JQL text search and returns up to 20 results.
+// Search executes a JQL search and returns up to 20 results.
+// If the query looks like an issue key (e.g. PROJ-123) we look it up by key
+// instead of running a full-text search, since `text ~` never matches keys.
 func (j *JiraAdapter) Search(ctx context.Context, q string, env map[string]string) ([]JiraIssueSummary, error) {
 	base, email, token, err := j.checkEnv(env)
 	if err != nil {
 		return nil, err
 	}
 
-	// Sanitize and cap the query.
-	q = escapeJQL(q)
-	if utf8.RuneCountInString(q) > 64 {
-		runes := []rune(q)
-		q = string(runes[:64])
+	var jql string
+	if key := strings.TrimSpace(q); issueKeyRE.MatchString(key) {
+		jql = fmt.Sprintf(`key = "%s"`, key)
+	} else {
+		q = escapeJQL(q)
+		if utf8.RuneCountInString(q) > 64 {
+			runes := []rune(q)
+			q = string(runes[:64])
+		}
+		jql = fmt.Sprintf(`text ~ "%s" ORDER BY updated DESC`, q)
 	}
-
-	jql := fmt.Sprintf(`text ~ "%s" ORDER BY updated DESC`, q)
 
 	payload, _ := json.Marshal(map[string]interface{}{
 		"jql":        jql,

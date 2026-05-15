@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"be/internal/model"
+	"be/internal/orchestrator"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spec_import"
@@ -124,36 +126,70 @@ func (s *Server) handleStartSpecImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create workflow instance for this import session.
-	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
-	instanceID := uuid.New().String()
-	wfi := &model.WorkflowInstance{
-		ID:         instanceID,
-		ProjectID:  projectID,
-		WorkflowID: specImportWorkflowID,
-		ScopeType:  "project",
-		Status:     model.WorkflowInstanceActive,
-	}
 	refsJSON, _ := json.Marshal(spec.AttachedRefs)
-	wfi.SetFindings(map[string]interface{}{
+	// SeedFindings live in workflow_instances.findings — readable by handlers
+	// but NOT by the agent's findings_get tool. The raw spec text is therefore
+	// passed via RunRequest.Instructions so it is auto-prepended to the agent
+	// prompt as the User Instructions block.
+	seed := map[string]string{
 		"_spec_source":        body.Source,
-		"_raw_spec":           spec.RawText,
 		"_spec_attached_refs": string(refsJSON),
-	})
-	if err := wfiRepo.Create(wfi); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create import session: "+err.Error())
-		return
+		"raw_spec":            spec.RawText,
+	}
+
+	var instanceID string
+	status := "running"
+	if s.orchestrator != nil {
+		result, startErr := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
+			ProjectID:    projectID,
+			WorkflowName: specImportWorkflowID,
+			ScopeType:    "project",
+			SeedFindings: seed,
+			Instructions: spec.RawText,
+		})
+		if startErr != nil || result == nil {
+			writeError(w, http.StatusInternalServerError, "failed to start spec import workflow: "+startErr.Error())
+			return
+		}
+		instanceID = result.InstanceID
+	} else {
+		// Test path / orchestrator unavailable: persist raw spec directly so
+		// the GET preview returns the fallback (un-normalized) fields.
+		wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
+		instanceID = uuid.New().String()
+		wfi := &model.WorkflowInstance{
+			ID:         instanceID,
+			ProjectID:  projectID,
+			WorkflowID: specImportWorkflowID,
+			ScopeType:  "project",
+			Status:     model.WorkflowInstanceActive,
+		}
+		wfi.SetFindings(map[string]interface{}{
+			"_spec_source":        body.Source,
+			"_spec_attached_refs": string(refsJSON),
+			"raw_spec":            spec.RawText,
+		})
+		if err := wfiRepo.Create(wfi); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to create import session: "+err.Error())
+			return
+		}
+		status = "ready"
 	}
 
 	if s.wsHub != nil {
 		s.wsHub.Broadcast(ws.NewEvent(ws.EventSpecImportStarted, projectID, "", specImportWorkflowID, map[string]interface{}{
 			"instance_id": instanceID,
 		}))
+		if status == "ready" {
+			s.wsHub.Broadcast(ws.NewEvent(ws.EventSpecImportReady, projectID, "", specImportWorkflowID, map[string]interface{}{
+				"instance_id": instanceID,
+			}))
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"instance_id": instanceID,
-		"status":      "running",
+		"status":      status,
 	})
 }
 
@@ -174,29 +210,113 @@ func (s *Server) handleGetSpecImport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	findings := wfi.GetFindings()
-	rawSpec, _ := findings["_raw_spec"].(string)
-
-	var preview interface{} // null when pending
-	status := "pending"
-	if rawSpec != "" {
-		status = "completed"
-		attachedRefsStr, _ := findings["_spec_attached_refs"].(string)
-		var refs []interface{}
-		if attachedRefsStr != "" {
-			json.Unmarshal([]byte(attachedRefsStr), &refs) //nolint:errcheck
-		}
-		preview = map[string]interface{}{
-			"raw_spec":      rawSpec,
-			"attached_refs": refs,
-			"source":        findings["_spec_source"],
-		}
+	rawSpec, _ := findings["raw_spec"].(string)
+	if rawSpec == "" {
+		// Backward-compat with previously persisted instances.
+		rawSpec, _ = findings["_raw_spec"].(string)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	resp := map[string]interface{}{
 		"instance_id": instanceID,
-		"status":      status,
-		"preview":     preview,
-	})
+		"status":      "pending",
+	}
+	if rawSpec == "" {
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	switch wfi.Status {
+	case model.WorkflowInstanceFailed:
+		resp["status"] = "failed"
+	case model.WorkflowInstanceCompleted, model.WorkflowInstanceProjectCompleted, model.WorkflowInstanceActive:
+		// Active is still reported as "ready" when raw_spec is set in the
+		// fallback (no-orchestrator) path. The normalizer agent fills in
+		// import_* findings before the workflow flips to project_completed;
+		// either way, what matters is whether title is present.
+		resp["status"] = "ready"
+	default:
+		resp["status"] = "running"
+	}
+
+	title, _ := findings["import_ticket_title"].(string)
+	description, _ := findings["import_ticket_description"].(string)
+	instructions, _ := findings["import_workflow_instructions"].(string)
+	if title == "" && description == "" {
+		// Normalizer hasn't produced structured fields yet (or it's the
+		// fallback path). Derive title/description from raw_spec so the
+		// preview always has something to render.
+		title, description = splitRawSpec(rawSpec)
+	}
+	if instructions == "" {
+		instructions = rawSpec
+	}
+
+	// Prefer the normalizer's merged attached_refs list when present.
+	refs := buildAttachedRefs(findings)
+
+	resp["title"] = title
+	resp["description"] = description
+	resp["instructions"] = instructions
+	resp["raw_spec"] = rawSpec
+	resp["attached_refs"] = refs
+	resp["source"] = findings["_spec_source"]
+	if v, _ := findings["import_suggested_workflow"].(string); v != "" {
+		resp["suggested_workflow"] = v
+	}
+	if v, _ := findings["import_priority"].(string); v != "" {
+		resp["priority"] = v
+	}
+	if v, _ := findings["import_issue_type"].(string); v != "" {
+		resp["issue_type"] = v
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// buildAttachedRefs returns refs in the cleaned `{kind,url,label?}` shape.
+// Prefers `import_attached_refs` (normalizer output) over `_spec_attached_refs`.
+func buildAttachedRefs(findings map[string]interface{}) []map[string]interface{} {
+	src, _ := findings["import_attached_refs"].(string)
+	if src == "" {
+		src, _ = findings["_spec_attached_refs"].(string)
+	}
+	if src == "" {
+		return []map[string]interface{}{}
+	}
+	// Try the structured shape first, then fall back to a permissive parse.
+	var stored []model.TicketRef
+	if err := json.Unmarshal([]byte(src), &stored); err == nil && len(stored) > 0 {
+		out := make([]map[string]interface{}, 0, len(stored))
+		for _, r := range stored {
+			item := map[string]interface{}{"url": r.URL, "kind": r.Kind}
+			if r.Label.Valid {
+				item["label"] = r.Label.String
+			}
+			out = append(out, item)
+		}
+		return out
+	}
+	var generic []map[string]interface{}
+	json.Unmarshal([]byte(src), &generic) //nolint:errcheck
+	if generic == nil {
+		return []map[string]interface{}{}
+	}
+	return generic
+}
+
+// splitRawSpec extracts a title (first `# heading` or first non-empty line)
+// and returns the remaining body as the description.
+func splitRawSpec(raw string) (title, description string) {
+	lines := strings.SplitN(strings.TrimSpace(raw), "\n", 2)
+	if len(lines) == 0 {
+		return "", ""
+	}
+	first := strings.TrimSpace(lines[0])
+	title = strings.TrimSpace(strings.TrimPrefix(first, "#"))
+	if len(lines) == 2 {
+		description = strings.TrimSpace(lines[1])
+	}
+	return title, description
 }
 
 // handleGitHubSearch searches GitHub issues.

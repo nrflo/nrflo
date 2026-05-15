@@ -48,7 +48,7 @@ func TestHandleCommitSpecImport_HappyPath(t *testing.T) {
 		"_raw_spec":    "# Feature\n\nDo the thing.",
 	})
 
-	body := `{"title":"My Feature","workflow_name":"feature","instructions":"custom instructions"}`
+	body := `{"title":"My Feature","description":"Do the thing."}`
 	rr := doCommit(t, s, instanceID, body)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
@@ -101,7 +101,7 @@ func TestHandleCommitSpecImport_WithAttachedRefs(t *testing.T) {
 		"_spec_attached_refs": string(refsJSON),
 	})
 
-	body := `{"title":"From Issue 42","workflow_name":"feature"}`
+	body := `{"title":"From Issue 42"}`
 	rr := doCommit(t, s, instanceID, body)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
@@ -129,7 +129,7 @@ func TestHandleCommitSpecImport_WithAttachedRefs(t *testing.T) {
 
 func TestHandleCommitSpecImport_NotFound_404(t *testing.T) {
 	s, _ := newSpecImportServer(t)
-	rr := doCommit(t, s, "nonexistent-id", `{"title":"T","workflow_name":"feature"}`)
+	rr := doCommit(t, s, "nonexistent-id", `{"title":"T"}`)
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", rr.Code)
 	}
@@ -147,7 +147,7 @@ func TestHandleCommitSpecImport_WrongWorkflow_404(t *testing.T) {
 		`INSERT INTO workflow_instances (id, project_id, workflow_id, scope_type, status, findings, created_at, updated_at)
 		 VALUES ('wfi-wrong-wf', ?, 'feature', 'ticket', 'active', '{}', ?, ?)`, projectID, now, now)
 
-	rr := doCommit(t, s, "wfi-wrong-wf", `{"title":"T","workflow_name":"feature"}`)
+	rr := doCommit(t, s, "wfi-wrong-wf", `{"title":"T"}`)
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", rr.Code)
 	}
@@ -158,7 +158,7 @@ func TestHandleCommitSpecImport_AlreadyCompleted_409(t *testing.T) {
 	instanceID := seedSpecImportWFI(t, s, projectID, model.WorkflowInstanceProjectCompleted, map[string]interface{}{
 		"_archived": true,
 	})
-	rr := doCommit(t, s, instanceID, `{"title":"T","workflow_name":"feature"}`)
+	rr := doCommit(t, s, instanceID, `{"title":"T"}`)
 	if rr.Code != http.StatusConflict {
 		t.Errorf("status = %d, want 409", rr.Code)
 	}
@@ -169,18 +169,7 @@ func TestHandleCommitSpecImport_MissingTitle_400(t *testing.T) {
 	instanceID := seedSpecImportWFI(t, s, projectID, model.WorkflowInstanceActive, map[string]interface{}{
 		"_raw_spec": "x",
 	})
-	rr := doCommit(t, s, instanceID, `{"workflow_name":"feature"}`)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-}
-
-func TestHandleCommitSpecImport_MissingWorkflowName_400(t *testing.T) {
-	s, projectID := newSpecImportServer(t)
-	instanceID := seedSpecImportWFI(t, s, projectID, model.WorkflowInstanceActive, map[string]interface{}{
-		"_raw_spec": "x",
-	})
-	rr := doCommit(t, s, instanceID, `{"title":"Title"}`)
+	rr := doCommit(t, s, instanceID, `{}`)
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)
 	}
@@ -220,34 +209,12 @@ func TestHandleListWorkflowDefs_ExcludesSpecImport(t *testing.T) {
 	}
 }
 
-// TestHandleCommitSpecImport_UsesRawSpecWhenNoInstructions verifies that
-// when instructions are not provided, _raw_spec is used as the fallback
-// instructions for the orchestrator (visible in the returned response).
-func TestHandleCommitSpecImport_UsesRawSpecWhenNoInstructions(t *testing.T) {
-	s, projectID := newSpecImportServer(t)
-	instanceID := seedSpecImportWFI(t, s, projectID, model.WorkflowInstanceActive, map[string]interface{}{
-		"_raw_spec": "raw spec text",
-	})
-
-	body := `{"title":"T","workflow_name":"feature"}`
-	rr := doCommit(t, s, instanceID, body)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
-	}
-	// With no orchestrator, instance_id is empty; ticket_id is set.
-	var resp map[string]interface{}
-	json.NewDecoder(rr.Body).Decode(&resp)
-	if resp["ticket_id"] == "" {
-		t.Error("ticket_id should be set even when orchestrator is nil")
-	}
-}
-
 // TestHandleCommitSpecImport_MissingInstanceID_400 verifies that an empty
 // path value returns 400 before any DB access.
 func TestHandleCommitSpecImport_MissingInstanceID_400(t *testing.T) {
 	s, _ := newSpecImportServer(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/import/spec//commit",
-		strings.NewReader(`{"title":"T","workflow_name":"feature"}`))
+		strings.NewReader(`{"title":"T"}`))
 	// instance_id path value intentionally not set — falls back to empty string.
 	req = req.WithContext(context.Background())
 	rr := httptest.NewRecorder()

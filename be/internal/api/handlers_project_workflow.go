@@ -503,7 +503,16 @@ func (s *Server) handleGetProjectWorkflow(w http.ResponseWriter, r *http.Request
 
 	workflowSvc := s.workflowService()
 
-	instances, err := workflowSvc.ListProjectWorkflowInstances(projectID)
+	allInstances, err := workflowSvc.ListProjectWorkflowInstances(projectID)
+	// Drop internal workflows (spec import etc.) — they are never shown in
+	// the project workflow UI and their findings can be very large.
+	instances := allInstances[:0]
+	for _, wi := range allInstances {
+		if wi.WorkflowID == specImportWorkflowID {
+			continue
+		}
+		instances = append(instances, wi)
+	}
 	if err != nil || len(instances) == 0 {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"project_id":   projectID,

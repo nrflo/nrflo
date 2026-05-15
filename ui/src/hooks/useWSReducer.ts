@@ -270,16 +270,15 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     qc.invalidateQueries({ queryKey: projectEnvVarKeys.list(event.project_id) })
   },
 
-  'messages.updated': (event, qc, isProjectScope) => {
+  'messages.updated': (event, qc, _isProjectScope) => {
+    // Fires roughly every 2s while an agent is running. Only invalidate the
+    // narrow per-session messages cache; the heavy workflow/agent-sessions
+    // queries are refetched on lifecycle events (agent.*, workflow.updated)
+    // — refetching them on every message tick is what made the Sidebar
+    // re-pull the multi-MB /projects/{id}/workflow endpoint dozens of times
+    // per run.
     if (event.data?.session_id) {
       qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })
-    }
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
     }
   },
 

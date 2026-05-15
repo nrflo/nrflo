@@ -15,6 +15,9 @@ interface IssueSearchComboProps<Result> {
   search: (q: string) => Promise<Result[]>
   renderItem: (r: Result) => ReactNode
   onSelect: (r: Result) => void
+  // When provided, the input is set to this value after a result is picked
+  // so the user can see what they selected.
+  formatSelection?: (r: Result) => string
   notConfigured?: NotConfiguredInfo
   onNotConfigured?: (missing: string[]) => void
 }
@@ -25,6 +28,7 @@ export function IssueSearchCombo<Result>({
   search,
   renderItem,
   onSelect,
+  formatSelection,
   notConfigured,
   onNotConfigured,
 }: IssueSearchComboProps<Result>) {
@@ -33,6 +37,7 @@ export function IssueSearchCombo<Result>({
   const [pending, setPending] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const requestSeqRef = useRef(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -65,24 +70,29 @@ export function IssueSearchCombo<Result>({
 
     if (value.trim().length < 2) return
 
+    const fired = value.trim()
     debounceRef.current = setTimeout(async () => {
       setPending(true)
+      const seq = ++requestSeqRef.current
       try {
-        const data = await search(value.trim())
+        const data = await search(fired)
+        if (seq !== requestSeqRef.current) return
         setResults(data)
         setOpen(data.length > 0)
       } catch (e) {
+        if (seq !== requestSeqRef.current) return
         if (e instanceof NotConfiguredError) {
           onNotConfigured?.(e.missing)
         }
       } finally {
-        setPending(false)
+        if (seq === requestSeqRef.current) setPending(false)
       }
-    }, 250)
+    }, 500)
   }
 
   function handleSelect(result: Result) {
     onSelect(result)
+    if (formatSelection) setQuery(formatSelection(result))
     setOpen(false)
     setResults([])
   }

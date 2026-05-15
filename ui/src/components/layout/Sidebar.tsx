@@ -24,8 +24,9 @@ import {
   FileCode,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useStatus, useProjectWorkflow } from '@/hooks/useTickets'
+import { useStatus } from '@/hooks/useTickets'
 import { useChainList } from '@/hooks/useChains'
+import { useRunningAgents } from '@/hooks/useRunningAgents'
 import { useProjectStore } from '@/stores/projectStore'
 import { useAPIModeEnabled, useExperimentalEnabled } from '@/hooks/useGlobalSettings'
 import { useIsAdmin } from '@/stores/authStore'
@@ -70,13 +71,13 @@ export function Sidebar() {
   const experimentalEnabled = useExperimentalEnabled()
   const isAdmin = useIsAdmin()
 
-  const { data: projectWorkflowData } = useProjectWorkflow(currentProject)
+  const { data: runningAgentsData } = useRunningAgents()
   const hasRunningProjectWorkflow = useMemo(
     () =>
-      Object.values(projectWorkflowData?.all_workflows ?? {}).some(
-        (w) => w.status === 'active'
+      (runningAgentsData?.agents ?? []).some(
+        (a) => a.project_id === currentProject && !a.ticket_id
       ),
-    [projectWorkflowData]
+    [runningAgentsData, currentProject]
   )
 
   const { data: runningChains } = useChainList({ status: 'running' })

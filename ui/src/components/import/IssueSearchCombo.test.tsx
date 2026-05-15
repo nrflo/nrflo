@@ -33,22 +33,22 @@ describe('IssueSearchCombo', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers() })
 
-  it('does not call search before 250ms', () => {
+  it('does not call search before debounce fires', () => {
     const { search } = renderCombo()
     const input = screen.getByPlaceholderText('Search…')
 
     fireEvent.change(input, { target: { value: 'ab' } })
-    act(() => { vi.advanceTimersByTime(200) })
+    act(() => { vi.advanceTimersByTime(400) })
 
     expect(search).not.toHaveBeenCalled()
   })
 
-  it('calls search with trimmed query at 250ms', async () => {
+  it('calls search with trimmed query after debounce', async () => {
     const { search } = renderCombo()
     const input = screen.getByPlaceholderText('Search…')
 
     fireEvent.change(input, { target: { value: 'ab' } })
-    act(() => { vi.advanceTimersByTime(200) })
+    act(() => { vi.advanceTimersByTime(400) })
     expect(search).not.toHaveBeenCalled()
 
     await act(async () => { await vi.runAllTimersAsync() })

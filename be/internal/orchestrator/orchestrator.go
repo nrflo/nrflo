@@ -1903,6 +1903,11 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) (finalResult 
 		data["workflow_final_result"] = finalResult
 	}
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, data))
+	if req.WorkflowName == ws.SpecImportWorkflowID {
+		o.wsHub.Broadcast(ws.NewEvent(ws.EventSpecImportReady, req.ProjectID, "", req.WorkflowName, map[string]interface{}{
+			"instance_id": wfiID,
+		}))
+	}
 	return
 }
 
@@ -1937,6 +1942,12 @@ func (o *Orchestrator) markFailed(wfiID string, req RunRequest, reason string) {
 		"instance_id": wfiID,
 		"reason":      reason,
 	}))
+	if req.WorkflowName == ws.SpecImportWorkflowID {
+		o.wsHub.Broadcast(ws.NewEvent(ws.EventSpecImportFailed, req.ProjectID, "", req.WorkflowName, map[string]interface{}{
+			"instance_id": wfiID,
+			"error":       reason,
+		}))
+	}
 }
 
 // updateOrchestrationStatus updates the _orchestration key in findings.

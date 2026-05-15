@@ -3,9 +3,8 @@ import { IssueSearchCombo } from './IssueSearchCombo'
 import { searchJiraIssues, type JiraIssueSummary } from '@/api/specImport'
 import { useProjectStore } from '@/stores/projectStore'
 
-// Matches bare Jira keys like "PROJ-123" or full URLs
-const JIRA_KEY_RE = /^[A-Z][A-Z0-9_]+-[0-9]+$/
-const URL_RE = /^https?:\/\//
+// /browse/PROJ-123 inside a Jira URL.
+const BROWSE_KEY_RE = /\/browse\/([A-Z][A-Z0-9_]+-[0-9]+)/
 
 interface JiraSearchComboProps {
   value: string
@@ -29,14 +28,10 @@ export function JiraSearchCombo({ value: _value, onChange }: JiraSearchComboProp
     })
   }
 
-  // Skip search when input looks like a bare key or full URL
-  function shouldBypassSearch(q: string): boolean {
-    return JIRA_KEY_RE.test(q.trim()) || URL_RE.test(q.trim())
-  }
-
   async function doSearch(q: string): Promise<JiraIssueSummary[]> {
-    if (shouldBypassSearch(q)) return []
-    return searchJiraIssues(q)
+    // Pasted browse URL → extract the key so the backend `key = …` branch hits.
+    const m = q.match(BROWSE_KEY_RE)
+    return searchJiraIssues(m ? m[1] : q)
   }
 
   return (
@@ -50,6 +45,7 @@ export function JiraSearchCombo({ value: _value, onChange }: JiraSearchComboProp
         </span>
       )}
       onSelect={handleSelect}
+      formatSelection={(issue) => issue.key}
       notConfigured={notConfigured}
       onNotConfigured={handleNotConfigured}
     />

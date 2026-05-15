@@ -4,17 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"be/internal/model"
-	"be/internal/orchestrator"
 	"be/internal/repo"
 	"be/internal/types"
 )
 
 // handleCommitSpecImport creates a ticket from a completed spec-import session,
-// persists ticket_refs, archives the import wfi, and starts the target workflow.
+// persists ticket_refs, and archives the import wfi. Workflow selection and
+// execution happen separately from the ticket page after commit.
 // POST /api/v1/import/spec/{instance_id}/commit
 func (s *Server) handleCommitSpecImport(w http.ResponseWriter, r *http.Request) {
 	instanceID := r.PathValue("instance_id")
@@ -24,10 +23,8 @@ func (s *Server) handleCommitSpecImport(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var body struct {
-		Title        string `json:"title"`
-		Description  string `json:"description"`
-		WorkflowName string `json:"workflow_name"`
-		Instructions string `json:"instructions"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -37,10 +34,6 @@ func (s *Server) handleCommitSpecImport(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
-	if body.WorkflowName == "" {
-		writeError(w, http.StatusBadRequest, "workflow_name is required")
-		return
-	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 	wfi, err := wfiRepo.Get(instanceID)
@@ -48,13 +41,18 @@ func (s *Server) handleCommitSpecImport(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusNotFound, "import session not found")
 		return
 	}
-	if wfi.Status != model.WorkflowInstanceActive {
-		writeError(w, http.StatusConflict, "import session is not active")
-		return
-	}
-
 	projectID := wfi.ProjectID
 	findings := wfi.GetFindings()
+	if archived, _ := findings["_archived"].(bool); archived {
+		writeError(w, http.StatusConflict, "import session already committed")
+		return
+	}
+	// active = fallback path (no orchestrator); project_completed = normalizer
+	// agent finished. Anything else means the session is failed or still running.
+	if wfi.Status != model.WorkflowInstanceActive && wfi.Status != model.WorkflowInstanceProjectCompleted {
+		writeError(w, http.StatusConflict, "import session is not ready: "+string(wfi.Status))
+		return
+	}
 
 	// Parse attached refs from findings.
 	var attachedRefs []*model.TicketRef
@@ -109,28 +107,7 @@ func (s *Server) handleCommitSpecImport(w http.ResponseWriter, r *http.Request) 
 		_ = fmt.Errorf("archive spec import wfi %s: %w", instanceID, archiveErr)
 	}
 
-	// Start the target workflow via the orchestrator.
-	instructions := body.Instructions
-	if instructions == "" {
-		instructions, _ = findings["_raw_spec"].(string)
-	}
-
-	var newInstanceID string
-	if s.orchestrator != nil {
-		result, startErr := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
-			ProjectID:    projectID,
-			TicketID:     ticket.ID,
-			WorkflowName: body.WorkflowName,
-			Instructions: strings.TrimSpace(instructions),
-			ScopeType:    "ticket",
-		})
-		if startErr == nil && result != nil {
-			newInstanceID = result.InstanceID
-		}
-	}
-
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ticket_id":   ticket.ID,
-		"instance_id": newInstanceID,
+		"ticket_id": ticket.ID,
 	})
 }

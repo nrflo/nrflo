@@ -21,6 +21,11 @@ const (
 	EventSpecImportStarted = "spec_import.started"
 	EventSpecImportReady   = "spec_import.ready"
 	EventSpecImportFailed  = "spec_import.failed"
+
+	// SpecImportWorkflowID is the well-known workflow definition ID used to
+	// run the spec-normalizer agent. Defined here so packages that should not
+	// depend on `api` (e.g. orchestrator) can still recognize the workflow.
+	SpecImportWorkflowID = "__spec_import__"
 )
 
 // Entity types used in snapshot chunks

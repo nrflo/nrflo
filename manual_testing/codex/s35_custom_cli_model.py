@@ -1,12 +1,10 @@
-"""S35 — Custom cli_models row resolves to a real CLI binary.
+"""S35 — Custom cli_models row resolves to a real CLI binary (codex).
 
-Tests:
-  - `POST /api/v1/cli-models` with a brand-new ID + cli_type=claude
-    inserts the row. An agent_def using that ID must resolve through
-    `spawner.cliForModel` to the claude binary and complete normally.
-  - claude only — the scenario asserts the resolution path for one
-    provider; codex/opencode share the same code (validated by their
-    seed cli_models rows already exercised by every other scenario).
+Mirrors claude/s35: registers a brand-new cli_models row with
+`cli_type=codex` and a known codex model name as `mapped_model`. The
+spawner must resolve the agent_def through `spawner.cliForModel` to the
+codex binary and complete normally; `agent_sessions.model_id` is stored
+as `<cli_type>:<id>` (spawner.go:898).
 """
 
 from __future__ import annotations
@@ -27,17 +25,14 @@ tool, then stop.
 
 
 def run(ctx: Ctx) -> Result:
-    if ctx.provider != "claude":
-        return ("S35 custom cli_model", "SKIP",
-                f"{ctx.provider} — claude only by design")
-
     pid, _root = make_project(ctx)
-    model_id = next_id(ctx, "cm-haiku")
+    model_id = next_id(ctx, "cm-codex-mini")
     ctx.client.create_cli_model(
         id=model_id,
-        cli_type="claude",
-        display_name=f"Custom Haiku ({model_id})",
-        mapped_model="haiku",
+        cli_type="codex",
+        display_name=f"Custom Codex Mini ({model_id})",
+        mapped_model="gpt-5.4-mini",
+        reasoning_effort="low",
         context_length=200000,
     )
 
@@ -45,7 +40,7 @@ def run(ctx: Ctx) -> Result:
     ctx.client.create_workflow(pid, wid, scope_type="project")
     ctx.client.create_agent_def(
         pid, wid, "main",
-        model=model_id, layer=0, timeout=5, prompt=PROMPT,
+        model=model_id, layer=0, timeout=120, prompt=PROMPT,
     )
     wfi = ctx.client.run_project_workflow(
         pid, wid, instructions="custom cli model",
@@ -56,11 +51,10 @@ def run(ctx: Ctx) -> Result:
     if sess["status"] not in PASS_STATUSES or sess["result"] != "pass":
         return ("S35 custom cli_model", "FAIL",
                 f"session status/result = {sess['status']}/{sess['result']}")
-    # The spawner stores model_id as "<cli_type>:<id>" (spawner.go:898).
     sess_model = sess.get("model_id") or ""
     if not sess_model.endswith(model_id):
         return ("S35 custom cli_model", "FAIL",
                 f"agent_sessions.model_id = {sess_model!r}, "
                 f"want suffix {model_id!r}")
     return ("S35 custom cli_model", "PASS",
-            f"resolved {sess_model} → claude/haiku, session={sess['id'][:8]}")
+            f"resolved {sess_model} → codex/gpt-5.4-mini, session={sess['id'][:8]}")

@@ -41,7 +41,7 @@ When you add or remove a scenario, edit this file in the same commit.
 | s27 | low-context relaunch via agent-saver branch (no native resume) |
 | s29 | manual restart flow via REST |
 | s30 | concurrency guard rejects 2nd run on a ticket (409) |
-| s31 | take-control + exit-interactive PTY takeover |
+| s31 | take-control on cli_interactive broadcasts viewer-attach (no DB flip) |
 | s32 | plan_mode=true passes plan context to agent |
 | s34 | multiple workflow instances per ticket allowed |
 | s35 | POST /cli-models registers custom model |
@@ -80,6 +80,17 @@ When you add or remove a scenario, edit this file in the same commit.
 | `gemini/`   | every s-id except s27 |
 | `opencode/` | every s-id except s26; plus s27 |
 | `python/`   | P01..P18 |
+
+`codex` omits **s16** by design. The stall detector implementation is shared
+with the other adapters, but exercising it requires the agent CLI to go
+silent for `stall_*_timeout_sec` seconds. Codex's `exec_command` tool polls
+spawned processes every 1–5 s and emits a tool chunk per poll, so a plain
+`sleep` prompt resets the stall timer continuously. Attempts to silence
+codex from inside its own session (SIGSTOP via `pkill`, etc.) fail because
+codex's haiku-tier model reliably issues `nrflo agent finished` as a separate
+exec_command before the signal lands. The stall detector still protects
+against real codex hangs (process crash, kernel-level freeze) — those just
+aren't reproducible from a prompt.
 
 Adding a new scenario:
 1. Pick a new id (next free `sNN` or `PNN`).

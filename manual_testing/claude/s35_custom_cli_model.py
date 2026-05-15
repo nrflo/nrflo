@@ -5,8 +5,8 @@ Tests:
     inserts the row. An agent_def using that ID must resolve through
     `spawner.cliForModel` to the claude binary and complete normally.
   - claude only — the scenario asserts the resolution path for one
-    provider; codex/opencode share the same code (validated by their
-    seed cli_models rows already exercised by every other scenario).
+    provider; codex/gemini/opencode share the same code (validated by
+    their seed cli_models rows already exercised by every other scenario).
 """
 
 from __future__ import annotations
@@ -27,10 +27,6 @@ tool, then stop.
 
 
 def run(ctx: Ctx) -> Result:
-    if ctx.provider != "claude":
-        return ("S35 custom cli_model", "SKIP",
-                f"{ctx.provider} — claude only by design")
-
     pid, _root = make_project(ctx)
     model_id = next_id(ctx, "cm-haiku")
     ctx.client.create_cli_model(

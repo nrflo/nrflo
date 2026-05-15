@@ -2,8 +2,6 @@ package spawner
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,13 +9,12 @@ import (
 	"time"
 )
 
-// geminiChatsDir creates <geminiHome>/.gemini/tmp/<sha256(resolvedWorkDir)>/chats/
-// and returns the path. Used by waitForGeminiTranscript tests.
-func geminiChatsDir(t *testing.T, geminiHome, resolvedWorkDir string) string {
+// geminiChatsDir creates <geminiHome>/.gemini/tmp/<alias>/chats/ and returns
+// the path. The alias is opaque to the tailer (it globs across all subdirs);
+// tests just pick a fixed string.
+func geminiChatsDir(t *testing.T, geminiHome, alias string) string {
 	t.Helper()
-	h := sha256.Sum256([]byte(resolvedWorkDir))
-	hash := hex.EncodeToString(h[:])
-	dir := filepath.Join(geminiHome, ".gemini", "tmp", hash, "chats")
+	dir := filepath.Join(geminiHome, ".gemini", "tmp", alias, "chats")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("geminiChatsDir MkdirAll: %v", err)
 	}
@@ -32,7 +29,7 @@ func TestDispatchGeminiJSONL_AssistantFirstLine(t *testing.T) {
 	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := &geminiTailState{seenContent: make(map[string]int)}
-	line := []byte(`{"id":"t1","role":"assistant","content":"hello"}`)
+	line := []byte(`{"id":"t1","type":"gemini","content":"hello"}`)
 	dispatchGeminiJSONL("sess-1", line, sink, 200000, state)
 
 	sink.mu.Lock()
@@ -56,10 +53,10 @@ func TestDispatchGeminiJSONL_CumulativeDeltaPerID(t *testing.T) {
 	sink := &opencodeTestSink{}
 	state := &geminiTailState{seenContent: make(map[string]int)}
 
-	line1 := []byte(`{"id":"t1","role":"assistant","content":"hello"}`)
+	line1 := []byte(`{"id":"t1","type":"gemini","content":"hello"}`)
 	dispatchGeminiJSONL("sess-1", line1, sink, 200000, state)
 
-	line2 := []byte(`{"id":"t1","role":"assistant","content":"hello world"}`)
+	line2 := []byte(`{"id":"t1","type":"gemini","content":"hello world"}`)
 	dispatchGeminiJSONL("sess-1", line2, sink, 200000, state)
 
 	sink.mu.Lock()
@@ -82,7 +79,7 @@ func TestDispatchGeminiJSONL_SetSentinelFiltered(t *testing.T) {
 	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := &geminiTailState{seenContent: make(map[string]int)}
-	line := []byte(`{"$set":{"key":"value"},"role":"assistant","content":"ignored"}`)
+	line := []byte(`{"$set":{"key":"value"},"type":"gemini","content":"ignored"}`)
 	dispatchGeminiJSONL("sess-1", line, sink, 200000, state)
 
 	sink.mu.Lock()
@@ -94,12 +91,12 @@ func TestDispatchGeminiJSONL_SetSentinelFiltered(t *testing.T) {
 }
 
 // TestDispatchGeminiJSONL_ToolCalls verifies that an assistant line with
-// tool_calls emits a "tool" message prefixed with [<name>].
+// toolCalls emits a "tool" message prefixed with [<name>].
 func TestDispatchGeminiJSONL_ToolCalls(t *testing.T) {
 	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := &geminiTailState{seenContent: make(map[string]int)}
-	line := []byte(`{"id":"t1","role":"assistant","content":"","tool_calls":[{"name":"shell","args":{"cmd":"ls"}}]}`)
+	line := []byte(`{"id":"t1","type":"gemini","content":"","toolCalls":[{"name":"shell","args":{"cmd":"ls"}}]}`)
 	dispatchGeminiJSONL("sess-1", line, sink, 200000, state)
 
 	sink.mu.Lock()
@@ -143,7 +140,7 @@ func TestDispatchGeminiJSONL_TokensTotal_UpdatesContext(t *testing.T) {
 	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := &geminiTailState{seenContent: make(map[string]int)}
-	line := []byte(`{"id":"t1","role":"assistant","content":"","tokens":{"total":250000}}`)
+	line := []byte(`{"id":"t1","type":"gemini","content":"","tokens":{"total":250000}}`)
 	dispatchGeminiJSONL("sess-1", line, sink, 1000000, state)
 
 	sink.mu.Lock()
@@ -156,15 +153,15 @@ func TestDispatchGeminiJSONL_TokensTotal_UpdatesContext(t *testing.T) {
 	}
 }
 
-// TestDispatchGeminiJSONL_RoleUserSystemSkipped verifies that user and system
-// role lines produce no emits — only assistant lines are actionable.
-func TestDispatchGeminiJSONL_RoleUserSystemSkipped(t *testing.T) {
+// TestDispatchGeminiJSONL_NonGeminiTypeSkipped verifies that user and metadata
+// lines produce no emits — only `type:"gemini"` lines are actionable.
+func TestDispatchGeminiJSONL_NonGeminiTypeSkipped(t *testing.T) {
 	t.Parallel()
 	sink := &opencodeTestSink{}
 	state := &geminiTailState{seenContent: make(map[string]int)}
 	for _, line := range [][]byte{
-		[]byte(`{"id":"t1","role":"user","content":"hello"}`),
-		[]byte(`{"id":"t2","role":"system","content":"system prompt"}`),
+		[]byte(`{"id":"t1","type":"user","content":[{"text":"hello"}]}`),
+		[]byte(`{"sessionId":"abc","projectHash":"def","kind":"main"}`),
 	} {
 		dispatchGeminiJSONL("sess-1", line, sink, 200000, state)
 	}
@@ -180,28 +177,22 @@ func TestDispatchGeminiJSONL_RoleUserSystemSkipped(t *testing.T) {
 // --- waitForGeminiTranscript tests ---
 
 // TestWaitForGeminiTranscript_FindsUUIDMatchingFile verifies the discovery
-// loop returns the transcript path whose suffix matches sessionID. A decoy
-// file with a different session suffix must not be returned.
+// loop matches the first-8-char prefix of the session UUID (which is what
+// Gemini bakes into the transcript filename). A decoy file with a different
+// session suffix must not be returned.
 func TestWaitForGeminiTranscript_FindsUUIDMatchingFile(t *testing.T) {
 	geminiHome := t.TempDir()
-	workDir := t.TempDir()
-	// macOS t.TempDir returns /var/... which resolves to /private/var/...;
-	// compute the hash from the resolved path to match the tailer.
-	resolvedWorkDir, err := filepath.EvalSymlinks(workDir)
-	if err != nil {
-		resolvedWorkDir = workDir
-	}
-
-	sessionID := "test-session-abc123"
-	chatsDir := geminiChatsDir(t, geminiHome, resolvedWorkDir)
+	sessionID := "abc12345-ffff-1111-2222-3333deadbeef"
+	suffix := sessionID[:8] // "abc12345"
+	chatsDir := geminiChatsDir(t, geminiHome, "any-project-alias")
 
 	// Decoy: different session UUID suffix — glob must not match it.
-	decoy := filepath.Join(chatsDir, "session-1700000000-decoy-session.jsonl")
+	decoy := filepath.Join(chatsDir, "session-1700000000-decoyses.jsonl")
 	if err := os.WriteFile(decoy, []byte("{}\n"), 0o600); err != nil {
 		t.Fatalf("decoy write: %v", err)
 	}
 
-	wanted := filepath.Join(chatsDir, "session-1700000000-"+sessionID+".jsonl")
+	wanted := filepath.Join(chatsDir, "session-1700000000-"+suffix+".jsonl")
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		_ = os.WriteFile(wanted, []byte("{}\n"), 0o600)
@@ -209,12 +200,12 @@ func TestWaitForGeminiTranscript_FindsUUIDMatchingFile(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	t.Cleanup(cancel)
-	path, err := waitForGeminiTranscript(ctx, sessionID, geminiHome, resolvedWorkDir, 2*time.Second)
+	path, err := waitForGeminiTranscript(ctx, sessionID, geminiHome, 2*time.Second)
 	if err != nil {
 		t.Fatalf("waitForGeminiTranscript: %v", err)
 	}
-	if !strings.HasSuffix(path, "-"+sessionID+".jsonl") {
-		t.Errorf("path = %q, want suffix '-%s.jsonl'; decoy must not match", path, sessionID)
+	if !strings.HasSuffix(path, "-"+suffix+".jsonl") {
+		t.Errorf("path = %q, want suffix '-%s.jsonl'; decoy must not match", path, suffix)
 	}
 }
 
@@ -222,15 +213,11 @@ func TestWaitForGeminiTranscript_FindsUUIDMatchingFile(t *testing.T) {
 // file appears within the deadline, a non-nil error is returned.
 func TestWaitForGeminiTranscript_DeadlineExceeded(t *testing.T) {
 	geminiHome := t.TempDir()
-	// Use a stable path we control — no symlink ambiguity needed for the hash.
-	resolvedWorkDir := "/private/var/folders/x/test-gemini-deadline"
-
-	// Create the chats dir but put no matching file.
-	_ = geminiChatsDir(t, geminiHome, resolvedWorkDir)
+	_ = geminiChatsDir(t, geminiHome, "empty-alias")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	t.Cleanup(cancel)
-	_, err := waitForGeminiTranscript(ctx, "sess-deadline", geminiHome, resolvedWorkDir, 200*time.Millisecond)
+	_, err := waitForGeminiTranscript(ctx, "sess-deadline", geminiHome, 200*time.Millisecond)
 	if err == nil {
 		t.Error("expected non-nil error on deadline exceeded, got nil")
 	}
@@ -240,12 +227,10 @@ func TestWaitForGeminiTranscript_DeadlineExceeded(t *testing.T) {
 // causes the function to return ctx.Err() immediately.
 func TestWaitForGeminiTranscript_CtxCanceled(t *testing.T) {
 	geminiHome := t.TempDir()
-	resolvedWorkDir := "/private/var/folders/x/test-gemini-cancel"
-
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel before calling — ctx.Done() is already closed
 
-	_, err := waitForGeminiTranscript(ctx, "sess-cancel", geminiHome, resolvedWorkDir, 5*time.Second)
+	_, err := waitForGeminiTranscript(ctx, "sess-cancel", geminiHome, 5*time.Second)
 	if err == nil {
 		t.Fatal("expected non-nil error from canceled ctx, got nil")
 	}

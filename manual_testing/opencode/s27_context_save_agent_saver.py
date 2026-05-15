@@ -33,7 +33,9 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 MAIN_AGENT = "main"
 POLL_INTERVAL_S = 0.5
-DETECT_TIMEOUT_S = 180.0
+# Mirrors s26's headroom: the context-saver runs a real haiku turn (with
+# a possible stall-restart) before relaunch. 300s keeps slow machines green.
+DETECT_TIMEOUT_S = 300.0
 
 
 PROMPT = """\
@@ -72,7 +74,10 @@ def run(ctx: Ctx) -> Result:
     ctx.client.create_agent_def(
         pid, wid, MAIN_AGENT,
         model=resolve_model(ctx, MODELS_BY_PROVIDER),
-        layer=0, timeout=5, prompt=PROMPT,
+        # Generous timeout — the agent must reach its first context_left
+        # report (which trips restart_threshold=100) before the per-agent
+        # timer would otherwise kill it.
+        layer=0, timeout=120, prompt=PROMPT,
         restart_threshold=100,
     )
     wfi = ctx.client.run_project_workflow(

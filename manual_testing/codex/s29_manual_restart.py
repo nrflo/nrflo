@@ -25,10 +25,12 @@ from lib.runtime import (
 MODELS_BY_PROVIDER: dict[str, str] = {}
 
 POLL_INTERVAL_S = 0.5
-# Under parallel=5 grid load the spawner's monitor loop + context-save
-# flow + relaunch can easily take 60-90s end-to-end. Keep generous so a
-# slow scheduler doesn't false-FAIL.
-DETECT_TIMEOUT_S = 180.0
+# Manual restart routes through initiateContextSave, which can fall back
+# from the resume-PTY path to a system-agent saver if the resume exec
+# fails (e.g. macOS provenance/EPERM on claude). The fallback runs a real
+# haiku turn and may stall-restart once before completing. 300s gives
+# comfortable headroom for the worst-case path.
+DETECT_TIMEOUT_S = 300.0
 
 
 PROMPT = """\
@@ -47,7 +49,11 @@ def run(ctx: Ctx) -> Result:
     ctx.client.create_agent_def(
         pid, wid, "main",
         model=resolve_model(ctx, MODELS_BY_PROVIDER),
-        layer=0, timeout=5, prompt=PROMPT,
+        # Generous per-agent timeout — the test issues the manual restart while
+        # the agent is sleeping. A short timeout would kill the agent before
+        # the restart signal is processed and the spawner would silently drop
+        # the request because the proc is no longer in the running list.
+        layer=0, timeout=120, prompt=PROMPT,
     )
     wfi = ctx.client.run_project_workflow(
         pid, wid, instructions="manual restart",

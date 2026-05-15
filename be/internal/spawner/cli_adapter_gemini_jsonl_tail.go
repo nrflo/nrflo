@@ -2,10 +2,9 @@ package spawner
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -16,22 +15,20 @@ import (
 //
 // Gemini writes transcripts to:
 //
-//	<GeminiHome>/.gemini/tmp/<sha256(resolvedWorkDir)>/chats/session-*-<sessionID>.jsonl
+//	<userHome>/.gemini/tmp/<projectAlias>/chats/session-*-<sessionID>.jsonl
 //
-// The tailer discovers the file (up to 30s), then tails it every 250ms,
-// emitting assistant text deltas, tool calls, and context usage updates.
+// Although the spawner overrides HOME to a per-session tempdir for hooks/auth,
+// Gemini's transcript writer uses os.homedir() (getpwuid) and ignores HOME.
+// We therefore search both locations and the unique session UUID picks the
+// right file out of the glob.
 func startGeminiJSONLTail(ctx context.Context, sessionID, geminiHome, workDir string, maxCtx int, sink Sink) context.CancelFunc {
 	cctx, cancel := context.WithCancel(ctx)
-	go geminiJSONLTailLoop(cctx, sessionID, geminiHome, workDir, maxCtx, sink)
+	go geminiJSONLTailLoop(cctx, sessionID, geminiHome, maxCtx, sink)
 	return cancel
 }
 
-func geminiJSONLTailLoop(ctx context.Context, sessionID, geminiHome, workDir string, maxCtx int, sink Sink) {
-	resolvedWorkDir, err := filepath.EvalSymlinks(workDir)
-	if err != nil {
-		resolvedWorkDir = workDir
-	}
-	path, err := waitForGeminiTranscript(ctx, sessionID, geminiHome, resolvedWorkDir, 30*time.Second)
+func geminiJSONLTailLoop(ctx context.Context, sessionID, geminiHome string, maxCtx int, sink Sink) {
+	path, err := waitForGeminiTranscript(ctx, sessionID, geminiHome, 30*time.Second)
 	if err != nil {
 		return
 	}
@@ -39,18 +36,43 @@ func geminiJSONLTailLoop(ctx context.Context, sessionID, geminiHome, workDir str
 	tailGeminiTranscript(ctx, sessionID, path, maxCtx, sink, state)
 }
 
+// geminiTranscriptSearchRoots returns the directory roots under which the
+// per-session JSONL file may appear. The override is included for forward-
+// compatibility; the user's real home is where current Gemini versions write.
+func geminiTranscriptSearchRoots(geminiHome string) []string {
+	roots := make([]string, 0, 2)
+	if geminiHome != "" {
+		roots = append(roots, geminiHome)
+	}
+	if real, err := os.UserHomeDir(); err == nil && real != "" && real != geminiHome {
+		roots = append(roots, real)
+	}
+	return roots
+}
+
+// geminiSessionSuffix returns the suffix Gemini uses for the transcript
+// filename: an 8-character prefix of the UUID. Filenames look like
+// `session-<UTC-timestamp>-<first8>.jsonl`.
+func geminiSessionSuffix(sessionID string) string {
+	if len(sessionID) >= 8 {
+		return sessionID[:8]
+	}
+	return sessionID
+}
+
 // waitForGeminiTranscript polls for the per-session JSONL file every 250ms.
-// The file path encodes a sha256 of the resolved workdir and the session UUID
-// as a suffix: session-*-<sessionID>.jsonl.
-func waitForGeminiTranscript(ctx context.Context, sessionID, geminiHome, resolvedWorkDir string, deadline time.Duration) (string, error) {
-	h := sha256.Sum256([]byte(resolvedWorkDir))
-	projectHash := hex.EncodeToString(h[:])
-	pattern := filepath.Join(geminiHome, ".gemini", "tmp", projectHash, "chats", "session-*-"+sessionID+".jsonl")
+// The filename suffix is the first 8 characters of the session UUID.
+func waitForGeminiTranscript(ctx context.Context, sessionID, geminiHome string, deadline time.Duration) (string, error) {
+	roots := geminiTranscriptSearchRoots(geminiHome)
+	suffix := geminiSessionSuffix(sessionID)
 	end := time.Now().Add(deadline)
 	for {
-		matches, _ := filepath.Glob(pattern)
-		if len(matches) > 0 {
-			return matches[0], nil
+		for _, root := range roots {
+			pattern := filepath.Join(root, ".gemini", "tmp", "*", "chats", "session-*-"+suffix+".jsonl")
+			matches, _ := filepath.Glob(pattern)
+			if len(matches) > 0 {
+				return matches[0], nil
+			}
 		}
 		if time.Now().After(end) {
 			return "", fmt.Errorf("gemini jsonl tail: transcript did not appear within %s for session=%s", deadline, sessionID)
@@ -91,16 +113,18 @@ type geminiTailState struct {
 }
 
 // geminiTranscriptLine is the minimal shape for one JSONL record. The $set
-// sentinel field marks advisory records that must be skipped.
+// sentinel field marks advisory records that must be skipped. Gemini emits
+// `"type":"gemini"` for assistant turns (not `"role":"assistant"`) and uses
+// camelCase `toolCalls`.
 type geminiTranscriptLine struct {
 	Set     *json.RawMessage `json:"$set"`
 	ID      string           `json:"id"`
-	Role    string           `json:"role"`
+	Type    string           `json:"type"`
 	Content string           `json:"content"`
 	Tokens  struct {
 		Total int `json:"total"`
 	} `json:"tokens"`
-	ToolCalls []geminiToolCall `json:"tool_calls"`
+	ToolCalls []geminiToolCall `json:"toolCalls"`
 }
 
 type geminiToolCall struct {
@@ -109,7 +133,7 @@ type geminiToolCall struct {
 }
 
 // dispatchGeminiJSONL parses one JSONL line and routes it to Sink methods.
-// $set advisory records, non-assistant roles, and malformed JSON are silently
+// $set advisory records, non-assistant turns, and malformed JSON are silently
 // dropped — mirroring dispatchCodexJSONL.
 func dispatchGeminiJSONL(sessionID string, line []byte, sink Sink, maxCtx int, state *geminiTailState) {
 	var rec geminiTranscriptLine
@@ -119,7 +143,7 @@ func dispatchGeminiJSONL(sessionID string, line []byte, sink Sink, maxCtx int, s
 	if rec.Set != nil {
 		return
 	}
-	if rec.Role != "assistant" {
+	if rec.Type != "gemini" {
 		return
 	}
 

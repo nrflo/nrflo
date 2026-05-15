@@ -30,11 +30,10 @@ STALL_TIMEOUT_SEC = 15
 
 PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
-then stop immediately.
+nothing else. Use the Bash tool to run the single combined command
+below as one Bash invocation. Do NOT split it into two tool calls.
 
-1. Run: `sleep 30`
-2. Run: `nrflo agent finished`
+1. Run: `sleep 30 && nrflo agent finished`
 """
 
 
@@ -44,7 +43,10 @@ def run(ctx: Ctx) -> Result:
     ctx.client.create_workflow(pid, wid, scope_type="project")
     ctx.client.create_agent_def(
         pid, wid, "main",
-        model=resolve_model(ctx, MODELS_BY_PROVIDER), layer=0, timeout=5, prompt=PROMPT,
+        # Per-agent timeout must comfortably exceed stall_*_timeout_sec, otherwise
+        # the timeout-kill races the stall detector and the test ends with
+        # `cancelled` instead of `stall_restart_*`.
+        model=resolve_model(ctx, MODELS_BY_PROVIDER), layer=0, timeout=120, prompt=PROMPT,
         stall_running_timeout_sec=STALL_TIMEOUT_SEC,
         stall_start_timeout_sec=STALL_TIMEOUT_SEC,
     )

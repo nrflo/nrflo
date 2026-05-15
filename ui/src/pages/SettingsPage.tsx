@@ -10,8 +10,10 @@ import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesS
 import { LogsSection } from '@/components/settings/LogsSection'
 import { UsersSection } from '@/components/settings/UsersSection'
 import { AuditLogSection } from '@/components/settings/AuditLogSection'
+import { ProvidersSection } from '@/components/settings/ProvidersSection'
+import type { ProviderName } from '@/api/providers'
 
-type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'logs' | 'administration'
+type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'administration'
 type AdministrationSubTab = 'users' | 'audit'
 
 const tabs: { id: SettingsTab; label: string }[] = [
@@ -19,6 +21,7 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'projects', label: 'Projects' },
   { id: 'system-agents', label: 'System Agents' },
   { id: 'default-templates', label: 'Default Templates' },
+  { id: 'cli-models', label: 'CLI Models' },
   { id: 'logs', label: 'Logs' },
   { id: 'administration', label: 'Administration' },
 ]
@@ -27,6 +30,15 @@ const SUB_TABS: { id: AdministrationSubTab; label: string }[] = [
   { id: 'users', label: 'Users' },
   { id: 'audit', label: 'Audit Log' },
 ]
+
+const PROVIDER_SUB_TABS: { id: ProviderName; label: string }[] = [
+  { id: 'claude', label: 'Claude' },
+  { id: 'opencode', label: 'OpenCode' },
+  { id: 'codex', label: 'Codex' },
+  { id: 'gemini', label: 'Gemini' },
+]
+
+const PROVIDER_IDS = new Set<string>(['claude', 'opencode', 'codex', 'gemini'])
 
 const tabIds = new Set<string>(tabs.map((t) => t.id))
 
@@ -62,11 +74,14 @@ export function SettingsPage() {
       : 'general'
 
   const subParam = searchParams.get('sub')
-  const activeSub: AdministrationSubTab = subParam === 'audit' ? 'audit' : 'users'
+  const activeAdminSub: AdministrationSubTab = subParam === 'audit' ? 'audit' : 'users'
+  const activeProvider: ProviderName = (subParam && PROVIDER_IDS.has(subParam)) ? subParam as ProviderName : 'claude'
 
   const handleTabClick = (id: SettingsTab) => {
     if (id === 'administration') {
-      setSearchParams({ tab: id, sub: activeSub }, { replace: true })
+      setSearchParams({ tab: id, sub: activeAdminSub }, { replace: true })
+    } else if (id === 'cli-models') {
+      setSearchParams({ tab: id, sub: activeProvider }, { replace: true })
     } else {
       setSearchParams({ tab: id }, { replace: true })
     }
@@ -74,6 +89,10 @@ export function SettingsPage() {
 
   const handleSubTabClick = (sub: AdministrationSubTab) => {
     setSearchParams({ tab: 'administration', sub }, { replace: true })
+  }
+
+  const handleProviderSubTabClick = (provider: ProviderName) => {
+    setSearchParams({ tab: 'cli-models', sub: provider }, { replace: true })
   }
 
   return (
@@ -115,7 +134,28 @@ export function SettingsPage() {
                 onClick={() => handleSubTabClick(id)}
                 className={cn(
                   'flex items-center gap-2 px-3 py-1 text-xs font-medium border-b-2 transition-colors',
-                  activeSub === id
+                  activeAdminSub === id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'cli-models' && (
+        <div className="border-b border-border">
+          <div className="flex gap-1">
+            {PROVIDER_SUB_TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => handleProviderSubTabClick(id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1 text-xs font-medium border-b-2 transition-colors',
+                  activeProvider === id
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 )}
@@ -131,9 +171,10 @@ export function SettingsPage() {
       {activeTab === 'projects' && <ProjectsSection initialEditProjectId={projectParam ?? undefined} />}
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
+      {activeTab === 'cli-models' && <ProvidersSection activeProvider={activeProvider} />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
-      {activeTab === 'administration' && activeSub === 'users' && <UsersSection />}
-      {activeTab === 'administration' && activeSub === 'audit' && <AuditLogSection />}
+      {activeTab === 'administration' && activeAdminSub === 'users' && <UsersSection />}
+      {activeTab === 'administration' && activeAdminSub === 'audit' && <AuditLogSection />}
     </div>
   )
 }

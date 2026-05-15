@@ -1,1 +1,1 @@
-export type ProviderName = 'claude' | 'codex' | 'opencode'
+export type ProviderName = 'claude' | 'codex' | 'opencode' | 'gemini'

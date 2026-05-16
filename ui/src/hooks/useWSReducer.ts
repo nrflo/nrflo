@@ -10,6 +10,7 @@ import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
 import { agentSessionLogKeys } from './useAgentSessionLogs'
 import { projectEnvVarKeys } from './useProjectEnvVars'
+import { serviceTokenKeys } from './useServiceTokens'
 import type { WSEventType } from './useWebSocket'
 
 // Module-level throttle state for tool.dispatched (1s leading+trailing)
@@ -268,6 +269,10 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
 
   'project.env_vars_updated': (event, qc) => {
     qc.invalidateQueries({ queryKey: projectEnvVarKeys.list(event.project_id) })
+  },
+
+  'service_tokens.updated': (_event, qc) => {
+    qc.invalidateQueries({ queryKey: serviceTokenKeys.all })
   },
 
   'messages.updated': (event, qc, _isProjectScope) => {

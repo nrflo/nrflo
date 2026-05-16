@@ -25,6 +25,8 @@ Per-route auth is applied at registration time via three helpers in `registerRou
 
 `requireAuth` also accepts `Authorization: Bearer <agent_token>` (the spawned-agent path). The token is looked up via `AgentSessionRepo.GetByToken`, which only returns rows with `status IN ('running','user_interactive')`. On match, the session is stashed under `agentSessionKey` (helper: `getAgentSession(r)`). When `X-Project` is present it must equal the session's `project_id` (case-insensitive) — otherwise 403. The user context is **not** populated for bearer requests, so `requireAdmin` always 403s them.
 
+`requireAuth` additionally accepts long-lived **service tokens** minted via Settings → Administration → Service Tokens (`service_tokens` table, sha256-hashed at rest). Lookup is `ServiceTokenService.LookupByPlaintext`; on match the principal is stashed under `servicePrincipalKey` (helper: `getServicePrincipal(r)`) and `last_used_at` is touched in a background goroutine. Like agent tokens, an X-Project mismatch is 403. Service principals satisfy `requireProjectAdmin` (admin-or-principal-with-matching-project — used for project-scoped admin writes such as env-vars PUT/DELETE) but not the global `requireAdmin`.
+
 `requireAdmin` wraps `requireAuth` and additionally 403s when `user.Role != admin`. Helpers `getUser(r)` / `getUserID(r)` retrieve the stashed user from context; both defined in `auth_middleware.go`.
 
 ### Admin-gated Routes

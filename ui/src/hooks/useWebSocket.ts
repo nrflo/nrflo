@@ -82,6 +82,7 @@ export type WSEventType =
   | 'chain.run_completed'
   | 'chain.run_failed'
   | 'project.env_vars_updated'
+  | 'service_tokens.updated'
   | 'spec_import.started'
   | 'spec_import.ready'
   | 'spec_import.failed'

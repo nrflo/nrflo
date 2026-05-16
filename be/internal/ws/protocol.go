@@ -16,6 +16,7 @@ const (
 	// Global event types (sent to all clients regardless of subscription)
 	EventGlobalRunningAgents   = "global.running_agents"
 	EventProjectEnvVarsUpdated = "project.env_vars_updated"
+	EventServiceTokensUpdated  = "service_tokens.updated"
 
 	// Spec import event types
 	EventSpecImportStarted = "spec_import.started"

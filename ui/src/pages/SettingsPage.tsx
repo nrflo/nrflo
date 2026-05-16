@@ -10,11 +10,12 @@ import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesS
 import { LogsSection } from '@/components/settings/LogsSection'
 import { UsersSection } from '@/components/settings/UsersSection'
 import { AuditLogSection } from '@/components/settings/AuditLogSection'
+import { ServiceTokensSection } from '@/components/settings/ServiceTokensSection'
 import { ProvidersSection } from '@/components/settings/ProvidersSection'
 import type { ProviderName } from '@/api/providers'
 
 type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'administration'
-type AdministrationSubTab = 'users' | 'audit'
+type AdministrationSubTab = 'users' | 'audit' | 'tokens'
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
@@ -29,7 +30,10 @@ const tabs: { id: SettingsTab; label: string }[] = [
 const SUB_TABS: { id: AdministrationSubTab; label: string }[] = [
   { id: 'users', label: 'Users' },
   { id: 'audit', label: 'Audit Log' },
+  { id: 'tokens', label: 'Service Tokens' },
 ]
+
+const ADMIN_SUB_TAB_IDS = new Set<string>(SUB_TABS.map((t) => t.id))
 
 const PROVIDER_SUB_TABS: { id: ProviderName; label: string }[] = [
   { id: 'claude', label: 'Claude' },
@@ -74,7 +78,8 @@ export function SettingsPage() {
       : 'general'
 
   const subParam = searchParams.get('sub')
-  const activeAdminSub: AdministrationSubTab = subParam === 'audit' ? 'audit' : 'users'
+  const activeAdminSub: AdministrationSubTab =
+    subParam && ADMIN_SUB_TAB_IDS.has(subParam) ? (subParam as AdministrationSubTab) : 'users'
   const activeProvider: ProviderName = (subParam && PROVIDER_IDS.has(subParam)) ? subParam as ProviderName : 'claude'
 
   const handleTabClick = (id: SettingsTab) => {
@@ -175,6 +180,7 @@ export function SettingsPage() {
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
       {activeTab === 'administration' && activeAdminSub === 'users' && <UsersSection />}
       {activeTab === 'administration' && activeAdminSub === 'audit' && <AuditLogSection />}
+      {activeTab === 'administration' && activeAdminSub === 'tokens' && <ServiceTokensSection />}
     </div>
   )
 }

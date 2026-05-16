@@ -8,10 +8,21 @@ import (
 	"be/internal/auth"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 )
 
 const userKey contextKey = "user"
 const agentSessionKey contextKey = "agent_session"
+const servicePrincipalKey contextKey = "service_principal"
+
+// ServicePrincipal represents a request authenticated by a long-lived service
+// token. The token grants project-scoped access to the API; principals never
+// satisfy `requireAdmin` (which is reserved for human admin users) but may
+// satisfy `requireProjectAdmin` when the project_id matches the route.
+type ServicePrincipal struct {
+	TokenID   string
+	ProjectID string
+}
 
 // requireAuth ensures the request has a valid, active session.
 // Accepts either an SCS session cookie (operator/UI) or an Authorization:
@@ -22,10 +33,26 @@ const agentSessionKey contextKey = "agent_session"
 // on the session manager.
 func (s *Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Bearer-token path (spawned agents). Tokens are short-lived and
-		// scoped to a single agent_session row; we treat them as project-
-		// scoped credentials and reject any X-Project mismatch.
+		// Bearer-token path. Two kinds of tokens are accepted:
+		//   1. service tokens — long-lived, admin-minted, project-scoped
+		//   2. agent_sessions.spawn_token — short-lived, valid while the
+		//      agent_session row is running/user_interactive
+		// X-Project, if present, must match the token's project_id.
 		if token := bearerToken(r.Header.Get("Authorization")); token != "" {
+			svcTok := service.NewServiceTokenService(s.pool, s.clock)
+			if t, _ := svcTok.LookupByPlaintext(token); t != nil {
+				if hp := r.Header.Get("X-Project"); hp != "" && !strings.EqualFold(hp, t.ProjectID) {
+					writeError(w, http.StatusForbidden, "service token project mismatch")
+					return
+				}
+				ctx := context.WithValue(r.Context(), servicePrincipalKey, &ServicePrincipal{
+					TokenID:   t.ID,
+					ProjectID: t.ProjectID,
+				})
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
 			sessRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
 			sess, err := sessRepo.GetByToken(token)
 			if err == nil && sess != nil {
@@ -79,6 +106,13 @@ func getAgentSession(r *http.Request) *model.AgentSession {
 	return s
 }
 
+// getServicePrincipal retrieves the service-token principal for a bearer-token
+// authenticated request, or nil for cookie/agent-token requests.
+func getServicePrincipal(r *http.Request) *ServicePrincipal {
+	p, _ := r.Context().Value(servicePrincipalKey).(*ServicePrincipal)
+	return p
+}
+
 // requireAdmin composes requireAuth and returns 403 if the user is not an admin.
 func (s *Server) requireAdmin(next http.Handler) http.Handler {
 	return s.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +122,33 @@ func (s *Server) requireAdmin(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	}))
+}
+
+// requireProjectAdmin allows either an admin user OR a service principal whose
+// project_id matches the route's project context. Project context is resolved
+// from the {id} path parameter when present, otherwise from the X-Project
+// header. Non-admin human users always get 403. Used for project-scoped
+// administrative endpoints (env-vars writes, scheduled tasks, python scripts).
+func (s *Server) requireProjectAdmin(next http.Handler) http.Handler {
+	return s.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if u := getUser(r); u != nil && u.Role == model.UserRoleAdmin {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if sp := getServicePrincipal(r); sp != nil {
+			scope := r.PathValue("id")
+			if scope == "" {
+				scope = r.Header.Get("X-Project")
+			}
+			if scope != "" && strings.EqualFold(scope, sp.ProjectID) {
+				next.ServeHTTP(w, r.WithContext(r.Context()))
+				return
+			}
+			writeError(w, http.StatusForbidden, "project scope required")
+			return
+		}
+		writeError(w, http.StatusForbidden, "admin access required")
 	}))
 }
 

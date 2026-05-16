@@ -453,6 +453,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin := func(pat string, h http.HandlerFunc) {
 		mux.Handle(pat, s.requireAdmin(h))
 	}
+	projectAdmin := func(pat string, h http.HandlerFunc) {
+		mux.Handle(pat, s.requireProjectAdmin(h))
+	}
 
 	// Auth endpoints
 	mux.HandleFunc("POST /api/v1/auth/login", s.handleAuthLogin)           // public (login page)
@@ -469,6 +472,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Audit log (admin-only)
 	admin("GET /api/v1/audit-log", s.handleListAuditLog)
+
+	// Service tokens (admin-only). Issuing/revoking tokens stays gated to
+	// human admins; service tokens themselves cannot mint or revoke peers.
+	admin("GET /api/v1/service-tokens", s.handleListServiceTokens)
+	admin("POST /api/v1/service-tokens", s.handleCreateServiceToken)
+	admin("DELETE /api/v1/service-tokens/{id}", s.handleDeleteServiceToken)
 
 	// WebSocket endpoints — gated on session before upgrade
 	wsHandler := ws.NewHandler(s.wsHub)
@@ -605,10 +614,11 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/workflow-chains/{id}/runs/{runId}", s.handleGetChainRun)
 	admin("POST /api/v1/workflow-chains/{id}/runs/{runId}/cancel", s.handleCancelChainRun)
 
-	// Project env vars (nested under projects) — writes are admin-only
+	// Project env vars (nested under projects) — writes accept admin users or
+	// service tokens whose project_id matches the {id} path param.
 	protected("GET /api/v1/projects/{id}/env-vars", s.handleListProjectEnvVars)
-	admin("PUT /api/v1/projects/{id}/env-vars/{name}", s.handlePutProjectEnvVar)
-	admin("DELETE /api/v1/projects/{id}/env-vars/{name}", s.handleDeleteProjectEnvVar)
+	projectAdmin("PUT /api/v1/projects/{id}/env-vars/{name}", s.handlePutProjectEnvVar)
+	projectAdmin("DELETE /api/v1/projects/{id}/env-vars/{name}", s.handleDeleteProjectEnvVar)
 
 	// Python scripts (project-scoped) — writes are admin-only
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)

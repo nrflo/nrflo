@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 #
-# Linux multi-arch image for nrflo_server in api-mode only.
-# Hard-bakes `serve --mode=api`. Ships with git but no agent CLIs
-# (no claude/codex/opencode) — api-mode runs the Anthropic Messages API
-# in-process via be/internal/spawner/apirun and never spawns child agents.
+# Linux multi-arch image for nrflo_server.
+# Ships with api-mode off by default; admin enables it via Settings UI.
+# Ships with git but no agent CLIs (no claude/codex/opencode) — cli-mode
+# would have nothing to spawn, so api-mode is the practical execution backend.
 
 # ---------------------------------------------------------------------------
 # Stage 1 — UI build (Node, host-arch, runs once for both target arches)
@@ -60,7 +60,6 @@ EXPOSE 6587
 USER nrflo:nrflo
 WORKDIR /data
 
-# `--mode=api` is hard-baked; the image deliberately ships no agent CLIs,
-# so cli-mode would have nothing to spawn anyway.
+# The image ships no agent CLIs; enable api-mode via Settings UI after deploy.
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/nrflo_server", "serve", \
-            "--mode=api", "--host", "0.0.0.0", "--port", "6587"]
+            "--host", "0.0.0.0", "--port", "6587"]

@@ -28,17 +28,18 @@ describe('GlobalSettingsSection', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('renders toggle reflecting server state (false)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[0]).toHaveAttribute('aria-checked', 'false')
+    // toggles[0]=api_mode, toggles[1]=low_consumption
+    expect(toggles[1]).toHaveAttribute('aria-checked', 'false')
   })
 
   it('renders toggle reflecting server state (true)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: true, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: true }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[0]).toHaveAttribute('aria-checked', 'true')
+    expect(toggles[1]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('shows loading state while fetching', () => {
@@ -54,7 +55,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('renders section title and field label', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     renderWithQuery(<GlobalSettingsSection />)
     await screen.findAllByRole('switch')
     expect(screen.getByText('Global Settings')).toBeInTheDocument()
@@ -63,13 +64,14 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('clicking toggle calls updateGlobalSettings with toggled value (false → true)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: false }))
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[0])
+    // toggles[1] = low_consumption (toggles[0] = api_mode)
+    await user.click(toggles[1])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: true })
@@ -77,13 +79,13 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('clicking toggle when true sends false', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: true, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: true }))
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[0])
+    await user.click(toggles[1])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: false })
@@ -91,7 +93,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('renders number input with server value and label', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     renderWithQuery(<GlobalSettingsSection />)
     const input = await screen.findByRole('spinbutton')
     expect(input).toHaveValue(1000)
@@ -99,7 +101,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('blur with valid new value calls updateGlobalSettings with session_retention_limit', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
@@ -115,7 +117,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('blur with value below minimum resets to server value without calling API', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     renderWithQuery(<GlobalSettingsSection />)
 
     const user = userEvent.setup()
@@ -131,7 +133,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('Enter key submits valid retention value', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
@@ -147,7 +149,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('shows tooltip text on hover over info icon', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     renderWithQuery(<GlobalSettingsSection />)
 
     await screen.findByRole('spinbutton')
@@ -164,7 +166,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('renders stall start input empty when server returns null', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     renderWithQuery(<GlobalSettingsSection />)
     const input = await screen.findByPlaceholderText('120')
     expect(input).toHaveValue('')
@@ -172,14 +174,14 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('renders stall start input with numeric server value', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: 60, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ stall_start_timeout_sec: 60 }))
     renderWithQuery(<GlobalSettingsSection />)
     const input = await screen.findByPlaceholderText('120')
     expect(input).toHaveValue('60')
   })
 
   it('blur with positive value calls updateGlobalSettings with stall_start_timeout_sec', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
@@ -194,7 +196,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('blur with "0" calls updateGlobalSettings with stall_start_timeout_sec: 0 (disabled)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
@@ -209,7 +211,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('blur with empty string calls updateGlobalSettings with stall_start_timeout_sec: null', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: 60, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ stall_start_timeout_sec: 60 }))
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
@@ -224,7 +226,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('negative stall start value resets to server value without calling API', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: 60, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ stall_start_timeout_sec: 60 }))
     renderWithQuery(<GlobalSettingsSection />)
 
     const user = userEvent.setup()
@@ -238,7 +240,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('Enter key submits stall start value', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
@@ -253,7 +255,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('shows stall start tooltip with two paragraphs including Claude CLI bug note', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: null })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
     renderWithQuery(<GlobalSettingsSection />)
 
     await screen.findByPlaceholderText('120')
@@ -270,7 +272,7 @@ describe('GlobalSettingsSection', () => {
   })
 
   it('renders stall running input with server value and submits on blur', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue({ low_consumption_mode: false, context_save_via_agent: false, session_retention_limit: 1000, stall_start_timeout_sec: null, stall_running_timeout_sec: 300 })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ stall_running_timeout_sec: 300 }))
     vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
     renderWithQuery(<GlobalSettingsSection />)
 
@@ -288,12 +290,55 @@ describe('GlobalSettingsSection', () => {
     })
   })
 
+  it('renders API mode toggle reflecting server state (false)', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: false }))
+    renderWithQuery(<GlobalSettingsSection />)
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[0]).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('Enable API mode')).toBeInTheDocument()
+  })
+
+  it('renders API mode toggle reflecting server state (true)', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: true }))
+    renderWithQuery(<GlobalSettingsSection />)
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[0]).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('clicking API mode toggle (false→true) calls updateGlobalSettings({ api_mode_enabled: true })', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: false }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[0])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_mode_enabled: true })
+    })
+  })
+
+  it('clicking API mode toggle (true→false) calls updateGlobalSettings({ api_mode_enabled: false })', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: true }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[0])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_mode_enabled: false })
+    })
+  })
+
   it('renders Experimental features toggle reflecting server state (false)', async () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    // Experimental is the 4th toggle (0=low_consumption, 1=context_save, 2=simplified_graph, 3=experimental)
-    expect(toggles[3]).toHaveAttribute('aria-checked', 'false')
+    // toggles[0]=api_mode, [1]=low_consumption, [2]=context_save, [3]=simplified_graph, [4]=experimental
+    expect(toggles[4]).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText('Experimental features')).toBeInTheDocument()
   })
 
@@ -301,7 +346,7 @@ describe('GlobalSettingsSection', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: true }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[3]).toHaveAttribute('aria-checked', 'true')
+    expect(toggles[4]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('clicking Experimental toggle calls updateGlobalSettings({ experimental: true })', async () => {
@@ -311,7 +356,7 @@ describe('GlobalSettingsSection', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[3])
+    await user.click(toggles[4])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: true })
@@ -325,7 +370,7 @@ describe('GlobalSettingsSection', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[3])
+    await user.click(toggles[4])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: false })

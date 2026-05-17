@@ -81,6 +81,7 @@ Rules every change must respect.
 - **Agents identify via env**: spawner sets `NRF_SESSION_ID` + `NRF_WORKFLOW_INSTANCE_ID`.
 - **Spawned agents authenticate via per-session bearer token in `NRFLO_AGENT_TOKEN`**: see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 - **Agent CLI is a small subset** — see [agent_manual.md](agent_manual.md).
+- **API mode is a runtime admin toggle** (`api_mode_enabled` global setting); see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Feature Index
 
@@ -155,6 +156,6 @@ make help           # Show all targets
 
 ### Docker image
 
-Distributed as `ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile) and [.github/workflows/docker.yml](.github/workflows/docker.yml)). Api-mode only; non-root user `nrflo`; `/data` as the `NRFLO_HOME` volume.
+Distributed as `ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile) and [.github/workflows/docker.yml](.github/workflows/docker.yml)). Ships with api-mode off by default; admin enables via Settings UI. Non-root user `nrflo`; `/data` as the `NRFLO_HOME` volume.
 
 Logs are written to `~/.nrflo/logs/be.log` (or `$NRFLO_HOME/logs/be.log`).

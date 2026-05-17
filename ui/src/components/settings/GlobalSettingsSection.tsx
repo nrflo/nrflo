@@ -32,6 +32,13 @@ export function GlobalSettingsSection() {
     }
   }, [settings?.stall_start_timeout_sec, settings?.stall_running_timeout_sec])
 
+  const apiModeMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ api_mode_enabled: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   const toggleMutation = useMutation({
     mutationFn: (val: boolean) => updateGlobalSettings({ low_consumption_mode: val }),
     onSuccess: () => {
@@ -122,6 +129,20 @@ export function GlobalSettingsSection() {
         )}
         {settings && (
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Enable API mode</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  When enabled, agents with execution_mode=api can run; toggles visibility of API-mode-only tabs (Tool Definitions, API Credentials, Review, Config Files, Insights)
+                </p>
+              </div>
+              <Toggle
+                checked={settings.api_mode_enabled}
+                onChange={(val) => apiModeMutation.mutate(val)}
+                disabled={apiModeMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium">Low consumption mode</div>

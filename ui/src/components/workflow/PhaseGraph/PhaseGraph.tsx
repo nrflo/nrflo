@@ -2,6 +2,8 @@ import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { ReactFlow, Background, useReactFlow, useStore, MarkerType, type Node, type Edge, type NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
+import { MergedFromBadge } from './MergedFromBadge'
+import { buildCallbackEdges } from './callbackEdges'
 import { getLayoutedElements, BASE_HEIGHT } from './layout'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { AutoCenterInterval, PhaseGraphControls } from './PhaseGraphControls'
@@ -11,6 +13,7 @@ import type { ActiveAgentV4, AgentSession, AgentHistoryEntry } from '@/types/wor
 
 const nodeTypes: NodeTypes = {
   agent: AgentFlowNode,
+  mergedFromBadge: MergedFromBadge as NodeTypes[string],
 }
 
 // 4 vertical ControlButtons at 28px each + 8px top offset + safety padding.
@@ -296,59 +299,9 @@ export function PhaseGraph({
       })
     }
 
-    // Callback edge: blue animated arrow from callback source to target layer
+    // Callback edges: multi-step plan or legacy single level
     if (callbackInfo) {
-      // Find source node: match from_agent at from_layer
-      let sourceNode: Node<AgentFlowNodeData> | undefined
-      for (const nodes of Object.values(nodesByPhase)) {
-        for (const node of nodes) {
-          if (node.data.phaseIndex === callbackInfo.from_layer) {
-            const agentType = node.data.agent?.agent_type || node.data.historyEntry?.agent_type
-            if (agentType === callbackInfo.from_agent) {
-              sourceNode = node
-              break
-            }
-            // Track as fallback (any node at from_layer)
-            if (!sourceNode) sourceNode = node
-          }
-        }
-        if (sourceNode) {
-          const agentType = sourceNode.data.agent?.agent_type || sourceNode.data.historyEntry?.agent_type
-          if (agentType === callbackInfo.from_agent) break
-        }
-      }
-
-      // Find target node: last node (rightmost proxy) at target layer
-      let targetNode: Node<AgentFlowNodeData> | undefined
-      for (const nodes of Object.values(nodesByPhase)) {
-        for (const node of nodes) {
-          if (node.data.phaseIndex === callbackInfo.level) {
-            targetNode = node // last one wins = rightmost proxy
-          }
-        }
-      }
-
-      if (sourceNode && targetNode) {
-        const label = callbackInfo.instructions.length > 60
-          ? callbackInfo.instructions.slice(0, 57) + '...'
-          : callbackInfo.instructions
-        edges.push({
-          id: 'callback-edge',
-          source: sourceNode.id,
-          target: targetNode.id,
-          sourceHandle: 'callback-source',
-          targetHandle: 'callback-target',
-          type: 'smoothstep',
-          animated: true,
-          style: { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '6 4' },
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 20, height: 20 },
-          label,
-          labelStyle: { fill: '#3b82f6', fontSize: 11, fontWeight: 500 },
-          labelBgStyle: { fill: '#eff6ff', stroke: '#3b82f6', strokeWidth: 0.5 },
-          labelBgPadding: [6, 4] as [number, number],
-          labelBgBorderRadius: 4,
-        })
-      }
+      edges.push(...buildCallbackEdges(callbackInfo, nodesByPhase))
     }
 
     return edges
@@ -362,12 +315,24 @@ export function PhaseGraph({
     let cancelled = false
     getLayoutedElements(initialNodes, initialEdges, null, isMobile).then(result => {
       if (!cancelled) {
-        setLayoutedNodes(result.nodes)
+        let finalNodes = result.nodes
+        if (callbackInfo?.requests && callbackInfo.requests.length > 1) {
+          const srcNode = result.nodes.find(n => n.data.phaseIndex === (callbackInfo.from_layer ?? 0))
+          if (srcNode) {
+            finalNodes = [...result.nodes, {
+              id: 'merged-from-badge',
+              type: 'mergedFromBadge',
+              position: { x: srcNode.position.x, y: (srcNode.position.y ?? 0) - 30 },
+              data: { agentIds: callbackInfo.requests.map(r => r.from_agent) },
+            } as unknown as Node<AgentFlowNodeData>]
+          }
+        }
+        setLayoutedNodes(finalNodes)
         setLayoutedEdges(result.edges)
       }
     })
     return () => { cancelled = true }
-  }, [initialNodes, initialEdges, isMobile])
+  }, [initialNodes, initialEdges, isMobile, callbackInfo])
 
   // Stable key derived from node IDs to trigger fitView on node set changes
   const nodeKey = useMemo(

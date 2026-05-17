@@ -45,7 +45,9 @@ Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to a
 
 ## Callback Flow
 
-Agents trigger callbacks via `nrflo agent callback` with `--level`, `--agent`, or `--chain`. All callbacks from a settled layer are collected and processed through the plan engine (`orchestrator_callback_plan.go`):
+Agents trigger callbacks via `nrflo agent callback` with `--level` (whole-layer), `--agent` (single-agent), or `--chain` (sequential named agents). CLI flag shapes, mutual-exclusion rules, instructions-placement, and the v1 no-further-callbacks restriction are documented in [agent_manual.md](../../../../../agent_manual.md#8-callback-mechanism).
+
+All callbacks from a settled layer are collected and processed through the plan engine (`orchestrator_callback_plan.go`):
 
 1. **Decompose**: each `CallbackError` → `decomposedRequest` (mode-specific step list, resetScope, resumeLayer).
 2. **Merge**: `mergeCallbackPlans` unions steps by layer (whole-layer wins over per-agent), dedupes resetScope, takes max resumeLayer.

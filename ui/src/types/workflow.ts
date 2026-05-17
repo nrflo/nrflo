@@ -64,11 +64,28 @@ export interface CompletedAgentRow extends AgentHistoryEntry {
 // Findings structure: agent_type -> findings (field -> value)
 export type WorkflowFindings = Record<string, Record<string, unknown>>
 
-export interface CallbackInfo {
-  level: number
-  instructions: string
-  from_layer: number
+export interface CallbackPlanStep {
+  layer: number
+  mode: 'agents' | 'whole_layer'
+  agents?: string[]
+  instructions?: string
+}
+
+export interface CallbackRequest {
   from_agent: string
+  mode: 'level' | 'agent' | 'chain'
+  [k: string]: unknown
+}
+
+export interface CallbackInfo {
+  level?: number
+  instructions?: string
+  from_layer?: number
+  from_agent?: string
+  to_layer?: number
+  resume_layer?: number
+  plan?: CallbackPlanStep[]
+  requests?: CallbackRequest[]
 }
 
 export type ScopeType = 'ticket' | 'project'

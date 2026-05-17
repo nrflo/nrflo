@@ -184,8 +184,10 @@ nrflo agent fail [--reason <text>]
 # Signal context exhaustion — triggers relaunch with fresh context
 nrflo agent continue
 
-# Callback to re-run an earlier layer
-nrflo agent callback --level <N>
+# Callback to re-run earlier layers — exactly one flag required
+nrflo agent callback --level <N>            # whole layer N
+nrflo agent callback --agent <agent-id>     # single agent
+nrflo agent callback --chain <a,b,...>      # sequential named agents
 
 # Skip a workflow group tag
 nrflo skip <tag>
@@ -200,7 +202,7 @@ nrflo agent chain-next-ticket --ticket-id "<id>"
 | `finished` | Task completed successfully; orchestrator advances to the next phase. Equivalent to exit 0 but explicit |
 | `fail` | Task cannot be completed; `--reason` is optional but recommended |
 | `continue` | Context window exhausted; save progress to `to_resume` first — agent will be relaunched with `${PREVIOUS_DATA}` |
-| `callback` | Issue found that requires re-running an earlier layer; `--level` (0-based layer index) is required |
+| `callback` | Issue found requiring re-run; supply exactly one of: `--level N` (whole layer), `--agent <id>` (single agent), `--chain a,b,...` (sequential named agents) |
 | `skip <tag>` | Skip a workflow group in subsequent layers; tag must be in workflow's `groups` |
 | `chain-next-instructions` | When running inside a workflow chain, pass instructions to the next step. Call before `finished` or exit 0 |
 | `chain-next-ticket` | When running inside a workflow chain, set the ticket ID for the next ticket-scope step. Call before `finished` or exit 0 |
@@ -575,27 +577,40 @@ Workflows can define `groups` — an array of strings (e.g., `["be", "fe", "docs
 
 ## 8. Callback Mechanism
 
-Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of an earlier layer.
+Allows a later-layer agent (e.g., qa-verifier) to trigger re-execution of earlier layers. Exactly one flag must be supplied:
 
-### Flow
+| Flag | Effect |
+|------|--------|
+| `--level N` | Re-runs all agents in layer N, then every layer between N and the calling layer, then resumes forward |
+| `--agent <id>` | Re-runs only the named agent at its layer, then re-runs every higher layer whole, then resumes forward |
+| `--chain a,b,...` | Re-runs named agents sequentially in listed order; layers must be strictly ascending and the last ≤ calling layer; unlisted intermediate layers are not re-run |
 
-1. Verifier agent detects an issue
-2. Verifier saves callback instructions as a finding:
+### Instructions Placement
+
+`${CALLBACK_INSTRUCTIONS}` is expanded for:
+- **`--level`** — every agent in the target layer
+- **`--agent`** — the named agent only
+- **`--chain`** — the first agent in the chain only
+
+### How to Trigger
+
+1. Save callback instructions:
    ```bash
    nrflo findings add callback_instructions:"Fix the auth bug in middleware/auth.go"
    ```
-3. Verifier triggers callback:
+2. Trigger with the desired mode:
    ```bash
-   nrflo agent callback --level 2
+   nrflo agent callback --level 2                          # whole layer
+   nrflo agent callback --agent implementor                # single agent
+   nrflo agent callback --chain implementor,test-writer    # sequential
    ```
-4. The system resets phases/sessions from the target layer forward
-5. Target agent (implementor at layer 2) re-runs with `${CALLBACK_INSTRUCTIONS}` expanded
-6. After the target layer completes successfully, callback metadata is cleared
+3. The system resets and re-runs sessions per the chosen mode, then resumes forward.
+4. After the callback plan completes, `${CALLBACK_INSTRUCTIONS}` is cleared.
 
 ### Limits
 
-- Maximum **3 callbacks** per workflow run
-- All layers between the calling layer and target layer are reset
+- Maximum **10** cumulative agent spawns across all callback plan steps per workflow run.
+- `--agent` and `--chain` steps cannot themselves issue further callbacks (v1 restriction).
 
 ---
 

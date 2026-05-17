@@ -45,15 +45,15 @@ Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to a
 
 ## Callback Flow
 
-A later-layer agent can trigger a callback to re-run an earlier layer:
+Agents trigger callbacks via `nrflo agent callback` with `--level`, `--agent`, or `--chain`. All callbacks from a settled layer are collected and processed through the plan engine (`orchestrator_callback_plan.go`):
 
-1. Agent calls `nrflo agent callback` with `--level <N>`
-2. Orchestrator saves `_callback` metadata to workflow instance findings
-3. Phases/sessions from the target layer forward are reset
-4. Execution loop jumps back to the target layer
-5. Target agent's prompt includes `${CALLBACK_INSTRUCTIONS}`
-6. After target layer succeeds, `_callback` is cleared
-7. Max 3 callbacks per workflow run
+1. **Decompose**: each `CallbackError` → `decomposedRequest` (mode-specific step list, resetScope, resumeLayer).
+2. **Merge**: `mergeCallbackPlans` unions steps by layer (whole-layer wins over per-agent), dedupes resetScope, takes max resumeLayer.
+3. **Reset once**: `asRepo.ResetAgentSessionsInWorkflow(wfiID, plan.resetScope)` — single call excludes running/continued sessions.
+4. **Execute steps**: `runLoop` drains `plan.steps[callbackPlanIdx]` via `spawnPhases` before forward iteration; each whole-layer step uses the pass policy; non-whole-layer steps (agent/chain) fail the workflow if they return a callback.
+5. **Resume**: when `callbackPlanIdx` reaches `len(plan.steps)`, `layerIdx` advances to `layerIndexOf(plan.resumeLayer)`, `_callback` findings are cleared, and forward iteration resumes.
+
+Cap: `maxCallbacks = 10` cumulative agent spawns across all callback plan steps per workflow run (whole-layer steps count len(phases), per-agent steps count len(agents)). Exceeding the cap fails the workflow. Subset/chain plan steps cannot themselves emit callbacks (v1 restriction).
 
 ## Layer-Skip Logic
 

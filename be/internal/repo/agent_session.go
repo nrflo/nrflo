@@ -375,29 +375,6 @@ func (r *AgentSessionRepo) DeleteByTicket(projectID, ticketID string) error {
 	return err
 }
 
-// ResetSessionsForCallback marks sessions as callback and clears their findings
-// for the given workflow instance and phase names. Excludes running and continued sessions.
-func (r *AgentSessionRepo) ResetSessionsForCallback(wfiID string, phases []string) error {
-	if len(phases) == 0 {
-		return nil
-	}
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	// Build placeholders for IN clause
-	placeholders := make([]string, len(phases))
-	args := make([]interface{}, 0, len(phases)+3)
-	args = append(args, now, now, wfiID)
-	for i, p := range phases {
-		placeholders[i] = "?"
-		args = append(args, p)
-	}
-	query := fmt.Sprintf(
-		`UPDATE agent_sessions SET status = 'callback', findings = '{}', ended_at = COALESCE(ended_at, ?), updated_at = ?
-		WHERE workflow_instance_id = ? AND phase IN (%s) AND status NOT IN ('running', 'continued')`,
-		strings.Join(placeholders, ","))
-	_, err := r.db.Exec(query, args...)
-	return err
-}
-
 // ResetSingleAgentSession resets a single agent session (by phase/agent ID) to callback state,
 // clearing findings and ended_at. Excludes running and continued sessions.
 func (r *AgentSessionRepo) ResetSingleAgentSession(wfiID, phaseAgentID string) error {

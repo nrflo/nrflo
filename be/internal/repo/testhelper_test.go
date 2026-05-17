@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/db"
 )
 
@@ -60,6 +61,26 @@ func newTestPool(t *testing.T) *db.Pool {
 	}
 	t.Cleanup(func() { pool.Close() })
 	return pool
+}
+
+// setupTestDB creates a test database with required FK dependencies for agent session tests.
+func setupTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
+	t.Helper()
+	database := newTestDB(t)
+	if _, err := database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj', 'Test Project', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("failed to create project: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
+		VALUES ('proj', 'test-workflow', 'Test Workflow', 'ticket', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("failed to create workflow: %v", err)
+	}
+	wfiID := "wfi-test-123"
+	if _, err := database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
+		VALUES (?, 'proj', '', 'test-workflow', 'active', 'ticket', '{}', datetime('now'), datetime('now'))`, wfiID); err != nil {
+		t.Fatalf("failed to create workflow instance: %v", err)
+	}
+	r := NewAgentSessionRepo(database, clock.Real())
+	return database, r, wfiID
 }
 
 func copyDBFile(src, dst string) error {

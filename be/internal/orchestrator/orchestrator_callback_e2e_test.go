@@ -6,129 +6,89 @@ import (
 	"testing"
 
 	"be/internal/service"
+	"be/internal/spawner"
 )
 
 // TestCallback_EndToEnd_ClearingAfterLayerComplete tests the full callback flow:
-// 1. Callback is triggered and _callback metadata is saved
-// 2. Target layer runs and completes successfully
-// 3. wasCallback flag is set and _callback metadata is cleared after layer completes
-// 4. Subsequent layers do not see stale callback metadata
-//
-// This is a critical end-to-end test to ensure callback metadata doesn't leak.
+// callback triggered → metadata saved → target layer notionally completes → metadata cleared.
 func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	env := newTestEnv(t)
-
-	// Create 3-layer workflow
 	env.createWorkflowWithAgents(t, "callback-e2e", "Callback E2E workflow", "", []struct{ ID string; Layer int }{
 		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
-
 	env.createTicket(t, "CB-E2E", "End-to-end callback test")
-
-	// Create workflow instance: layer 0 and 1 completed, layer 2 active
-	var wfiID string
-	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-e2e', ?, 'CB-E2E', 'callback-e2e', 'active',
-		        '{}', 0, datetime('now'), datetime('now'))
-		RETURNING id`, env.project).Scan(&wfiID)
-	if err != nil {
-		t.Fatalf("failed to create workflow instance: %v", err)
-	}
+	wfiID := insertWFI(t, env, "wfi-e2e", "CB-E2E", "callback-e2e")
 
 	layerGroups := []layerGroup{
 		{layer: 0, phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}}},
 		{layer: 1, phases: []service.SpawnerPhaseDef{{Agent: "builder", Layer: 1}}},
 		{layer: 2, phases: []service.SpawnerPhaseDef{{Agent: "verifier", Layer: 2}}},
 	}
+	req := RunRequest{ProjectID: env.project, TicketID: "CB-E2E", WorkflowName: "callback-e2e", ScopeType: "ticket"}
 
-	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "CB-E2E",
-		WorkflowName: "callback-e2e",
-		ScopeType:    "ticket",
+	// Step 1: trigger callback from layer 2 to level 1
+	count := 0
+	cbErrs := []*spawner.CallbackError{{Level: 1, AgentType: "verifier", Instructions: "Builder needs to fix the implementation"}}
+	ok := env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 2, cbErrs, &count)
+	if !ok {
+		t.Fatalf("expected handleCallback to return true")
 	}
 
-	// === Step 1: Trigger callback from layer 2 to layer 1 ===
-	targetIdx := env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 1, "verifier", "Builder needs to fix the implementation")
-
-	if targetIdx != 1 {
-		t.Fatalf("expected targetIdx=1, got %d", targetIdx)
-	}
-
-	// Verify _callback metadata is saved
+	// Verify _callback metadata is saved with new shape
 	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
-	callback, ok := findings["_callback"].(map[string]interface{})
+	cb, ok := wi.GetFindings()["_callback"].(map[string]interface{})
 	if !ok {
 		t.Fatal("expected _callback metadata after handleCallback")
 	}
-	if callback["level"] != float64(1) {
-		t.Errorf("expected callback level=1, got %v", callback["level"])
+	if cb["from_layer"] != float64(2) {
+		t.Errorf("from_layer = %v, want 2", cb["from_layer"])
 	}
-	if callback["instructions"] != "Builder needs to fix the implementation" {
-		t.Errorf("expected callback instructions, got %v", callback["instructions"])
+	if cb["instructions"] != "Builder needs to fix the implementation" {
+		t.Errorf("instructions = %v", cb["instructions"])
+	}
+	if cb["resume_layer"] != float64(3) {
+		t.Errorf("resume_layer = %v, want 3", cb["resume_layer"])
+	}
+	// plan should have 2 steps (layers 1 and 2)
+	plan := cb["plan"].([]interface{})
+	if len(plan) != 2 {
+		t.Errorf("plan len = %d, want 2", len(plan))
 	}
 
-	// === Step 2: Simulate layer 1 (builder) completing successfully ===
-	// In the real runLoop, after layer 1 completes, wasCallback would be set to true
-	// and clearCallbackMetadata would be called.
-	// Phase statuses are now derived from agent_sessions, so no phases column to update.
-
-	// === Step 3: Clear callback metadata (as runLoop does after callback layer completes) ===
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
+	// Step 2: simulate callback layer completing → clear metadata
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
 	// Verify _callback is cleared
 	wi = env.getWorkflowInstance(t, wfiID)
-	findings = wi.GetFindings()
-	if _, ok := findings["_callback"]; ok {
+	if _, ok := wi.GetFindings()["_callback"]; ok {
 		t.Error("expected _callback to be cleared after callback target layer completes")
 	}
 
-	// === Step 4: Verify subsequent layers won't see stale callback metadata ===
-	// If we were to run layer 2 (verifier) again, it should not see the callback instructions
-	// This simulates what happens in runLoop when wasCallback=true triggers clearing before the next layer
-
-	// Add some other findings to verify they're preserved
-	findings["layer2_result"] = "success"
-	findingsJSON, _ := json.Marshal(findings)
-	_, err = env.pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(findingsJSON), wfiID)
+	// Step 3: verify other findings survive
+	otherFindings := map[string]interface{}{"layer2_result": "success"}
+	findingsJSON, _ := json.Marshal(otherFindings)
+	_, err := env.pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(findingsJSON), wfiID)
 	if err != nil {
 		t.Fatalf("failed to update findings: %v", err)
 	}
-
-	// Verify other findings are preserved but _callback is gone
 	wi = env.getWorkflowInstance(t, wfiID)
-	findings = wi.GetFindings()
+	findings := wi.GetFindings()
 	if _, ok := findings["_callback"]; ok {
-		t.Error("_callback should still be cleared")
+		t.Error("_callback should not reappear")
 	}
 	if findings["layer2_result"] != "success" {
-		t.Error("expected other findings to be preserved")
+		t.Error("expected other findings preserved")
 	}
 }
 
-// TestCallback_EndToEnd_MultipleCallbacksWithClearing tests that callback metadata
-// is cleared and can be re-set in a later callback (simulating multiple callback cycles).
+// TestCallback_EndToEnd_MultipleCallbacksWithClearing tests two sequential callback cycles.
 func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	env := newTestEnv(t)
-
-	// Create 4-layer workflow
 	env.createWorkflowWithAgents(t, "multi-cb", "Multiple callback workflow", "", []struct{ ID string; Layer int }{
 		{"analyzer", 0}, {"builder", 1}, {"tester", 2}, {"verifier", 3},
 	})
-
-	env.createTicket(t, "CB-MULTI", "Multiple callback cycles")
-
-	var wfiID string
-	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-multi', ?, 'CB-MULTI', 'multi-cb', 'active',
-		        '{}', 0, datetime('now'), datetime('now'))
-		RETURNING id`, env.project).Scan(&wfiID)
-	if err != nil {
-		t.Fatalf("failed to create workflow instance: %v", err)
-	}
+	env.createTicket(t, "CB-MULTI2", "Multiple callback cycles")
+	wfiID := insertWFI(t, env, "wfi-multi2", "CB-MULTI2", "multi-cb")
 
 	layerGroups := []layerGroup{
 		{layer: 0, phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}}},
@@ -136,80 +96,51 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 		{layer: 2, phases: []service.SpawnerPhaseDef{{Agent: "tester", Layer: 2}}},
 		{layer: 3, phases: []service.SpawnerPhaseDef{{Agent: "verifier", Layer: 3}}},
 	}
+	req := RunRequest{ProjectID: env.project, TicketID: "CB-MULTI2", WorkflowName: "multi-cb", ScopeType: "ticket"}
 
-	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "CB-MULTI",
-		WorkflowName: "multi-cb",
-		ScopeType:    "ticket",
-	}
+	// First callback: verifier → builder (layer 3 → level 1)
+	count := 0
+	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 3,
+		[]*spawner.CallbackError{{Level: 1, AgentType: "verifier", Instructions: "First callback: fix builder"}}, &count)
 
-	// === First callback: verifier -> builder (layer 3 -> 1) ===
-	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 3, 1, "verifier", "First callback: fix builder")
-
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
-	callback := findings["_callback"].(map[string]interface{})
-	if callback["instructions"] != "First callback: fix builder" {
+	cb := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	if cb["instructions"] != "First callback: fix builder" {
 		t.Error("expected first callback instructions")
 	}
 
-	// Clear after layer 1 completes
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
-
-	wi = env.getWorkflowInstance(t, wfiID)
-	if _, ok := wi.GetFindings()["_callback"]; ok {
-		t.Error("expected _callback to be cleared after first callback completes")
+	// Clear after first callback
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
+	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
+		t.Error("expected _callback cleared after first cycle")
 	}
 
-	// === Second callback: tester -> analyzer (layer 2 -> 0) ===
-	// This simulates a second callback happening later in the workflow
-	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 0, "tester", "Second callback: restart from analyzer")
+	// Second callback: tester → analyzer (layer 2 → level 0)
+	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 2,
+		[]*spawner.CallbackError{{Level: 0, AgentType: "tester", Instructions: "Second callback: restart from analyzer"}}, &count)
 
-	wi = env.getWorkflowInstance(t, wfiID)
-	findings = wi.GetFindings()
-	callback = findings["_callback"].(map[string]interface{})
-	if callback["instructions"] != "Second callback: restart from analyzer" {
+	cb = env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	if cb["instructions"] != "Second callback: restart from analyzer" {
 		t.Error("expected second callback instructions")
 	}
-	if callback["level"] != float64(0) {
-		t.Error("expected second callback level=0")
-	}
-	if callback["from_agent"] != "tester" {
-		t.Error("expected second callback from_agent=tester")
+	if cb["from_layer"] != float64(2) {
+		t.Errorf("from_layer = %v, want 2", cb["from_layer"])
 	}
 
-	// Clear after layer 0 completes
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
-
-	wi = env.getWorkflowInstance(t, wfiID)
-	if _, ok := wi.GetFindings()["_callback"]; ok {
-		t.Error("expected _callback to be cleared after second callback completes")
+	// Clear after second callback
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
+	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
+		t.Error("expected _callback cleared after second cycle")
 	}
 }
 
-// TestCallback_EndToEnd_NoLeakToNextLayer tests that when a callback is triggered,
-// cleared, and workflow continues, the next layer that was NOT part of the callback
-// does NOT see any callback metadata.
+// TestCallback_EndToEnd_NoLeakToNextLayer verifies cleared callback metadata does not appear.
 func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 	env := newTestEnv(t)
-
-	// Create 4-layer workflow
-	env.createWorkflowWithAgents(t, "leak-test", "Leak test workflow", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "leak-test", "Leak test", "", []struct{ ID string; Layer int }{
 		{"analyzer", 0}, {"builder", 1}, {"tester", 2}, {"deployer", 3},
 	})
-
-	env.createTicket(t, "CB-LEAK", "No leak test")
-
-	var wfiID string
-	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-leak', ?, 'CB-LEAK', 'leak-test', 'active',
-		        '{}', 0, datetime('now'), datetime('now'))
-		RETURNING id`, env.project).Scan(&wfiID)
-	if err != nil {
-		t.Fatalf("failed to create workflow instance: %v", err)
-	}
+	env.createTicket(t, "CB-LEAK2", "No leak test")
+	wfiID := insertWFI(t, env, "wfi-leak2", "CB-LEAK2", "leak-test")
 
 	layerGroups := []layerGroup{
 		{layer: 0, phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}}},
@@ -217,89 +148,101 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 		{layer: 2, phases: []service.SpawnerPhaseDef{{Agent: "tester", Layer: 2}}},
 		{layer: 3, phases: []service.SpawnerPhaseDef{{Agent: "deployer", Layer: 3}}},
 	}
+	req := RunRequest{ProjectID: env.project, TicketID: "CB-LEAK2", WorkflowName: "leak-test", ScopeType: "ticket"}
 
-	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "CB-LEAK",
-		WorkflowName: "leak-test",
-		ScopeType:    "ticket",
-	}
+	count := 0
+	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 2,
+		[]*spawner.CallbackError{{Level: 1, AgentType: "tester", Instructions: "Fix builder"}}, &count)
 
-	// Callback from layer 2 (tester) to layer 1 (builder)
-	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 2, 1, "tester", "Builder callback instructions")
-
-	// Verify callback metadata is set
-	wi := env.getWorkflowInstance(t, wfiID)
-	if _, ok := wi.GetFindings()["_callback"]; !ok {
+	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; !ok {
 		t.Fatal("expected _callback to be set")
 	}
 
-	// Simulate layer 1 completing and callback metadata being cleared
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
-	// Now simulate layer 2 (tester) running again - should NOT see callback metadata
-	wi = env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
-	if _, ok := findings["_callback"]; ok {
-		t.Error("layer 2 (tester) should NOT see callback metadata after it was cleared")
-	}
-
-	// Now simulate layer 3 (deployer) running - should DEFINITELY NOT see callback metadata
-	// (it was never part of the callback loop)
-	wi = env.getWorkflowInstance(t, wfiID)
-	findings = wi.GetFindings()
-	if _, ok := findings["_callback"]; ok {
-		t.Error("layer 3 (deployer) should NOT see stale callback metadata")
+	for _, lbl := range []string{"tester-layer", "deployer-layer"} {
+		_ = lbl
+		if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
+			t.Errorf("_callback should not be visible after clear")
+		}
 	}
 }
 
 // TestCallback_EndToEnd_ProjectScope tests the full callback flow for project-scoped workflows.
 func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 	env := newTestEnv(t)
-
-	// Create project-scoped workflow
-	env.createWorkflowWithAgents(t, "proj-cb", "Project callback workflow", "project", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "proj-cb-e2e", "Project callback E2E", "project", []struct{ ID string; Layer int }{
 		{"analyzer", 0}, {"builder", 1},
 	})
 
 	var wfiID string
 	err := env.pool.QueryRow(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-proj', ?, '', 'proj-cb', 'active', 'project',
-		        '{}', 0, datetime('now'), datetime('now'))
+		VALUES ('wfi-proj-e2e', ?, '', 'proj-cb-e2e', 'active', 'project', '{}', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
-		t.Fatalf("failed to create project workflow instance: %v", err)
+		t.Fatalf("create project WFI: %v", err)
 	}
 
 	layerGroups := []layerGroup{
 		{layer: 0, phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}}},
 		{layer: 1, phases: []service.SpawnerPhaseDef{{Agent: "builder", Layer: 1}}},
 	}
+	req := RunRequest{ProjectID: env.project, TicketID: "", WorkflowName: "proj-cb-e2e", ScopeType: "project"}
 
-	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "",
-		WorkflowName: "proj-cb",
-		ScopeType:    "project",
-	}
+	count := 0
+	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 1,
+		[]*spawner.CallbackError{{Level: 0, AgentType: "builder", Instructions: "Project callback instructions"}}, &count)
 
-	// Trigger callback
-	env.orch.handleCallback(context.Background(),wfiID, req, layerGroups, 1, 0, "builder", "Project callback instructions")
-
-	// Verify callback metadata
-	wi := env.getWorkflowInstance(t, wfiID)
-	callback := wi.GetFindings()["_callback"].(map[string]interface{})
-	if callback["instructions"] != "Project callback instructions" {
+	cb := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	if cb["instructions"] != "Project callback instructions" {
 		t.Error("expected project callback instructions")
 	}
 
-	// Clear callback metadata
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
-
-	// Verify cleared
-	wi = env.getWorkflowInstance(t, wfiID)
-	if _, ok := wi.GetFindings()["_callback"]; ok {
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
+	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
 		t.Error("expected project workflow _callback to be cleared")
+	}
+}
+
+// TestCallback_EndToEnd_MultipleRequestsMerged verifies that multiple concurrent callback
+// requests from the same layer are merged into one plan.
+func TestCallback_EndToEnd_MultipleRequestsMerged(t *testing.T) {
+	env := newTestEnv(t)
+	env.createWorkflowWithAgents(t, "merge-cb", "Merge callback", "", []struct{ ID string; Layer int }{
+		{"analyzer", 0}, {"impl-a", 1}, {"impl-b", 1}, {"verifier", 2},
+	})
+	env.createTicket(t, "CB-MERGE", "Merge test")
+	wfiID := insertWFI(t, env, "wfi-merge", "CB-MERGE", "merge-cb")
+
+	layerGroups := []layerGroup{
+		{layer: 0, phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}}},
+		{layer: 1, phases: []service.SpawnerPhaseDef{{Agent: "impl-a", Layer: 1}, {Agent: "impl-b", Layer: 1}}},
+		{layer: 2, phases: []service.SpawnerPhaseDef{{Agent: "verifier", Layer: 2}}},
+	}
+	req := RunRequest{ProjectID: env.project, TicketID: "CB-MERGE", WorkflowName: "merge-cb", ScopeType: "ticket"}
+
+	// Both impl-a and impl-b request callback to level 0 (from originator layer 1)
+	count := 0
+	cbErrs := []*spawner.CallbackError{
+		{Level: 0, AgentType: "impl-a", Instructions: "impl-a says: fix analyzer"},
+		{Level: 0, AgentType: "impl-b", Instructions: "impl-b says: fix analyzer"},
+	}
+	ok := env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 1, cbErrs, &count)
+	if !ok {
+		t.Fatal("expected true for merged callbacks")
+	}
+
+	cb := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	plan := cb["plan"].([]interface{})
+	// level 0 from originatorLayer 1 → layers 0 and 1 → 2 steps
+	if len(plan) != 2 {
+		t.Errorf("merged plan len = %d, want 2", len(plan))
+	}
+
+	// instructions should be joined (sorted by agentID: impl-a before impl-b)
+	wantInstr := "impl-a says: fix analyzer\n---\nimpl-b says: fix analyzer"
+	if cb["instructions"] != wantInstr {
+		t.Errorf("instructions = %q, want %q", cb["instructions"], wantInstr)
 	}
 }

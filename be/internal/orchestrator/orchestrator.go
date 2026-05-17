@@ -6,7 +6,6 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -32,6 +31,7 @@ import (
 )
 
 const maxNextWorkflowOnSuccessDepth = 10
+const maxCallbacks = 10 // max cumulative agent spawns via callback plans per workflow run
 
 // RunRequest contains parameters for starting an orchestrated workflow run.
 type RunRequest struct {
@@ -74,9 +74,11 @@ type worktreeInfo struct {
 // spawners is a sessionID→*Spawner index maintained via spawner-side
 // OnSessionRegister/OnSessionUnregister callbacks.
 type runState struct {
-	cancel   context.CancelFunc
-	spawners map[string]*spawner.Spawner
-	done     chan struct{} // closed when runLoop goroutine exits
+	cancel          context.CancelFunc
+	spawners        map[string]*spawner.Spawner
+	done            chan struct{} // closed when runLoop goroutine exits
+	callbackPlan    callbackPlan // active callback plan; zero value = no plan
+	callbackPlanIdx int          // index of the next unexecuted plan step
 }
 
 // Orchestrator manages server-side workflow runs.
@@ -1382,24 +1384,162 @@ func (o *Orchestrator) runLoop(
 		logger.Info(ctx, "interactive pre-step completed", "start_layer", startLayerIdx)
 	}
 
-	const maxCallbacks = 3
 	callbackCount := 0
-	wasCallback := false // tracks if current layer is a callback re-run
 
-	// Use index-based loop to support backward jumps on callback
+	// Build shared spawner config used by all phases in this run.
+	// OnSessionRegister/Unregister are set per-spawn in spawnPhases.
+	baseCfg := spawner.Config{
+		Workflows:                 workflows,
+		Agents:                    agents,
+		DataPath:                  o.dataPath,
+		ProjectRoot:               projectRoot,
+		WSHub:                     o.wsHub,
+		Pool:                      pool,
+		Clock:                     o.clock,
+		LowConsumptionMode:        lowConsumptionMode,
+		ContextSaveViaAgent:       contextSaveViaAgent,
+		GlobalStallStartTimeout:   globalStallStartTimeout,
+		GlobalStallRunningTimeout: globalStallRunningTimeout,
+		ClaudeSettingsJSON:        claudeSettingsJSON,
+		ModelConfigs:              modelConfigs,
+		ErrorSvc:                  o.errorSvc,
+		Provider:                  apiProvider,
+		AgentSvc:                  apiAgentSvc,
+		APICredentialRepo:         apiCredRepo,
+		FindingsSvc:               findingsSvc,
+		ProjectFindingsSvc:        projectFindingsSvc,
+		AgentSvcReal:              agentSvcReal,
+		WorkflowSvc:               workflowSvcReal,
+		ToolDefRepo:               toolDefRepo,
+		APIMode:                   o.apiMode,
+		PTYManager:                o.PTYManager,
+		DispatchRepo:              dispatchRepo,
+		ReviewRepo:                reviewRepo,
+		PythonRunner:              pythonRunner,
+		CustomerConfigDir:         customerConfigDir,
+		ProjectEnv:                projectEnv,
+		SDKDir:                    o.sdkDir,
+		PythonPath:                pythonPath,
+		PythonScriptRepo:          repo.NewPythonScriptRepo(pool, o.clock),
+	}
+
+	// Use index-based loop to support plan-driven jumps and forward iteration.
 	layerIdx := startLayerIdx
 	for layerIdx < len(layerGroups) {
-		lg := layerGroups[layerIdx]
-
-		// Check cancellation
+		// Cancellation check
 		select {
 		case <-ctx.Done():
-			logger.Warn(ctx, "workflow cancelled", "layer", lg.layer)
+			logger.Warn(ctx, "workflow cancelled", "layer_idx", layerIdx)
 			o.markFailed(wfiID, req, "cancelled")
 			return
 		default:
 		}
 
+		// === Plan execution: drain active plan steps before forward iteration ===
+		o.mu.Lock()
+		var planStep callbackPlanStep
+		hasPlanStep := false
+		if rs := o.runs[wfiID]; rs != nil && rs.callbackPlanIdx < len(rs.callbackPlan.steps) {
+			planStep = rs.callbackPlan.steps[rs.callbackPlanIdx]
+			hasPlanStep = true
+		}
+		o.mu.Unlock()
+
+		if hasPlanStep {
+			stepIdx := layerIndexOf(planStep.layer, layerGroups)
+			var stepPhases []service.SpawnerPhaseDef
+			if stepIdx >= 0 {
+				if planStep.wholeLayer {
+					stepPhases = layerGroups[stepIdx].phases
+				} else {
+					agentSet := make(map[string]bool, len(planStep.agents))
+					for _, a := range planStep.agents {
+						agentSet[a] = true
+					}
+					for _, p := range layerGroups[stepIdx].phases {
+						if agentSet[p.Agent] {
+							stepPhases = append(stepPhases, p)
+						}
+					}
+				}
+			}
+
+			logger.Info(ctx, "executing plan step", "layer", planStep.layer, "whole_layer", planStep.wholeLayer, "agents", len(stepPhases))
+			stepResults := o.spawnPhases(ctx, wfiID, req, stepPhases, parentSession, baseCfg)
+
+			passCount, failCount := 0, 0
+			var stepCBErrs []*spawner.CallbackError
+			for _, r := range stepResults {
+				switch {
+				case r.callbackErr != nil:
+					if !planStep.wholeLayer {
+						o.markFailed(wfiID, req, "callback within agent/chain plan step is not supported in v1")
+						return
+					}
+					passCount++
+					stepCBErrs = append(stepCBErrs, r.callbackErr)
+				case r.err != nil:
+					if ctx.Err() != nil {
+						o.markFailed(wfiID, req, "cancelled")
+						return
+					}
+					logger.Error(ctx, "plan step agent failed", "layer", planStep.layer, "agent", r.agent, "err", r.err)
+					failCount++
+				default:
+					logger.Info(ctx, "plan step agent completed", "layer", planStep.layer, "agent", r.agent)
+					passCount++
+				}
+			}
+
+			if len(stepCBErrs) > 0 {
+				// Whole-layer plan step triggered another callback: re-enter handleCallback
+				if !o.handleCallback(ctx, wfiID, req, layerGroups, stepIdx, stepCBErrs, &callbackCount) {
+					return
+				}
+				continue
+			}
+
+			denom := passCount + failCount
+			if denom > 0 {
+				policy, _ := service.ParseLayerPolicy(layerPolicies[planStep.layer])
+				required := policy.Required(denom)
+				if passCount < required {
+					logger.Error(ctx, "plan step pass_policy not satisfied", "layer", planStep.layer,
+						"policy", policy.String(), "passed", passCount, "total", denom, "required", required)
+					o.markFailed(wfiID, req, fmt.Sprintf(
+						"plan step layer %d: pass_policy %q not satisfied (%d/%d passed, %d required)",
+						planStep.layer, policy.String(), passCount, denom, required))
+					return
+				}
+			}
+
+			// Advance plan index; finalize plan when all steps are done
+			o.mu.Lock()
+			rs := o.runs[wfiID]
+			if rs != nil {
+				rs.callbackPlanIdx++
+				if rs.callbackPlanIdx >= len(rs.callbackPlan.steps) {
+					resumeLayer := rs.callbackPlan.resumeLayer
+					rs.callbackPlan = callbackPlan{}
+					rs.callbackPlanIdx = 0
+					o.mu.Unlock()
+					o.clearCallbackMetadata(ctx, wfiID)
+					newIdx := layerIndexOf(resumeLayer, layerGroups)
+					if newIdx < 0 {
+						newIdx = len(layerGroups) // resumeLayer past end → exit loop
+					}
+					layerIdx = newIdx
+				} else {
+					o.mu.Unlock()
+				}
+			} else {
+				o.mu.Unlock()
+			}
+			continue
+		}
+
+		// === Forward iteration ===
+		lg := layerGroups[layerIdx]
 		runnableAgents := lg.phases
 
 		// Check if layer should be skipped based on workflow instance skip_tags
@@ -1432,140 +1572,33 @@ func (o *Orchestrator) runLoop(
 
 		logger.Info(ctx, "running layer", "layer_idx", layerIdx+1, "total", len(layerGroups), "agents", len(runnableAgents))
 
-		// Spawn all agents in this layer concurrently
-		type spawnResult struct {
-			agent           string
-			err             error
-			isCallback      bool
-			cbLevel         int
-			cbInstructions  string
-		}
-		results := make(chan spawnResult, len(runnableAgents))
+		results := o.spawnPhases(ctx, wfiID, req, runnableAgents, parentSession, baseCfg)
 
-		for _, phase := range runnableAgents {
-			phase := phase // capture for goroutine
-			go func() {
-				sp := spawner.New(spawner.Config{
-					Workflows:                 workflows,
-					Agents:                    agents,
-					DataPath:                  o.dataPath,
-					ProjectRoot:               projectRoot,
-					WSHub:                     o.wsHub,
-					Pool:                      pool,
-					Clock:                     o.clock,
-					LowConsumptionMode:        lowConsumptionMode,
-					ContextSaveViaAgent:       contextSaveViaAgent,
-					GlobalStallStartTimeout:   globalStallStartTimeout,
-					GlobalStallRunningTimeout: globalStallRunningTimeout,
-					ClaudeSettingsJSON:        claudeSettingsJSON,
-					ModelConfigs:              modelConfigs,
-					ErrorSvc:                  o.errorSvc,
-					Provider:                  apiProvider,
-					AgentSvc:                  apiAgentSvc,
-					APICredentialRepo:         apiCredRepo,
-					FindingsSvc:               findingsSvc,
-					ProjectFindingsSvc:        projectFindingsSvc,
-					AgentSvcReal:              agentSvcReal,
-					WorkflowSvc:               workflowSvcReal,
-					ToolDefRepo:               toolDefRepo,
-					APIMode:                   o.apiMode,
-					PTYManager:                o.PTYManager,
-					DispatchRepo:              dispatchRepo,
-					ReviewRepo:                reviewRepo,
-					PythonRunner:              pythonRunner,
-					CustomerConfigDir:         customerConfigDir,
-					ProjectEnv:                projectEnv,
-					SDKDir:                    o.sdkDir,
-					PythonPath:                pythonPath,
-					PythonScriptRepo:          repo.NewPythonScriptRepo(pool, o.clock),
-					OnSessionRegister: func(sid string, s *spawner.Spawner) {
-						o.mu.Lock()
-						if rs, ok := o.runs[wfiID]; ok {
-							rs.spawners[sid] = s
-						}
-						o.mu.Unlock()
-					},
-					OnSessionUnregister: func(sid string) {
-						o.mu.Lock()
-						if rs, ok := o.runs[wfiID]; ok {
-							delete(rs.spawners, sid)
-						}
-						o.mu.Unlock()
-					},
-				})
-
-				err := sp.Spawn(ctx, spawner.SpawnRequest{
-					AgentType:          phase.Agent,
-					TicketID:           req.TicketID,
-					ProjectID:          req.ProjectID,
-					WorkflowName:       req.WorkflowName,
-					ParentSession:      parentSession,
-					ScopeType:          req.ScopeType,
-					WorkflowInstanceID: wfiID,
-				})
-
-				sp.Close()
-
-				sr := spawnResult{agent: phase.Agent, err: err}
-				var cbErr *spawner.CallbackError
-				if errors.As(err, &cbErr) {
-					sr.isCallback = true
-					sr.cbLevel = cbErr.Level
-					sr.cbInstructions = cbErr.Instructions
-					sr.err = nil // callback is not a failure
-				}
-				results <- sr
-			}()
-		}
-
-		// Wait for all agents in this layer to finish
 		passCount := 0
 		failCount := 0
-		callbackDetected := false
-		callbackLevel := -1
-		callbackAgent := ""
-		callbackInstructions := ""
-		for range runnableAgents {
-			result := <-results
-			if result.isCallback {
+		var cbErrs []*spawner.CallbackError
+		for _, r := range results {
+			if r.callbackErr != nil {
 				passCount++ // callback counts as pass for layer aggregation
-				callbackDetected = true
-				// Use lowest callback level if multiple agents request callback
-				if callbackLevel < 0 || result.cbLevel < callbackLevel {
-					callbackLevel = result.cbLevel
-					callbackAgent = result.agent
-					callbackInstructions = result.cbInstructions
-				}
-			} else if result.err != nil {
+				cbErrs = append(cbErrs, r.callbackErr)
+			} else if r.err != nil {
 				if ctx.Err() != nil {
 					logger.Warn(ctx, "cancelled during layer", "layer", lg.layer)
 					o.markFailed(wfiID, req, "cancelled")
 					return
 				}
-				logger.Error(ctx, "layer agent failed", "layer", lg.layer, "agent", result.agent, "err", result.err)
+				logger.Error(ctx, "layer agent failed", "layer", lg.layer, "agent", r.agent, "err", r.err)
 				failCount++
 			} else {
-				logger.Info(ctx, "layer agent completed", "layer", lg.layer, "agent", result.agent)
+				logger.Info(ctx, "layer agent completed", "layer", lg.layer, "agent", r.agent)
 				passCount++
 			}
 		}
 
-		// Handle callback before layer aggregation failure check
-		if callbackDetected {
-			callbackCount++
-			if callbackCount > maxCallbacks {
-				logger.Error(ctx, "max callbacks exceeded", "max", maxCallbacks)
-				o.markFailed(wfiID, req, fmt.Sprintf("max callbacks (%d) exceeded", maxCallbacks))
+		if len(cbErrs) > 0 {
+			if !o.handleCallback(ctx, wfiID, req, layerGroups, layerIdx, cbErrs, &callbackCount) {
 				return
 			}
-
-			targetIdx := o.handleCallback(ctx, wfiID, req, layerGroups, layerIdx, callbackLevel, callbackAgent, callbackInstructions)
-			if targetIdx < 0 {
-				o.markFailed(wfiID, req, fmt.Sprintf("callback target layer %d not found", callbackLevel))
-				return
-			}
-			wasCallback = true
-			layerIdx = targetIdx
 			continue
 		}
 
@@ -1583,12 +1616,6 @@ func (o *Orchestrator) runLoop(
 					lg.layer, policy.String(), passCount, denom, required))
 				return
 			}
-		}
-
-		// Clear callback metadata after the callback target layer completes successfully
-		if wasCallback {
-			o.clearCallbackMetadata(ctx, wfiID)
-			wasCallback = false
 		}
 
 		logger.Info(ctx, "layer completed", "layer", lg.layer, "passed", passCount, "failed", failCount)
@@ -1729,38 +1756,56 @@ func (o *Orchestrator) maybeStartNextOnSuccess(ctx context.Context, req RunReque
 	}()
 }
 
-// handleCallback processes a callback: resets phases and sessions for layers between
-// target and current (inclusive), saves callback metadata to WFI findings, and broadcasts.
-// Returns the target layer index, or -1 if the target layer number is not found.
+// handleCallback builds a callback plan from reqs, enforces the agent-spawn cap,
+// resets sessions, persists findings, broadcasts, and stores the plan on runState.
+// Returns false if the workflow was marked failed.
 func (o *Orchestrator) handleCallback(
 	ctx context.Context,
 	wfiID string,
 	req RunRequest,
 	layerGroups []layerGroup,
-	currentIdx int,
-	callbackLevel int,
-	callbackAgent string,
-	callbackInstructions string,
-) int {
-	// Map callback_level (layer field value) to layerGroups index
-	targetIdx := -1
-	for i, lg := range layerGroups {
-		if lg.layer == callbackLevel {
-			targetIdx = i
-			break
+	originatorLayerIdx int,
+	reqs []*spawner.CallbackError,
+	callbackCount *int,
+) bool {
+	originatorLayer := layerGroups[originatorLayerIdx].layer
+
+	// Validate all requests before touching any state
+	for _, r := range reqs {
+		if err := validateCallbackRequest(r, originatorLayer, layerGroups); err != nil {
+			o.markFailed(wfiID, req, fmt.Sprintf("invalid callback from %s: %v", r.AgentType, err))
+			return false
 		}
 	}
-	if targetIdx < 0 {
-		logger.Error(ctx, "callback target layer not found", "target_layer", callbackLevel)
-		return -1
-	}
 
-	logger.Info(ctx, "callback detected", "from_layer", layerGroups[currentIdx].layer, "to_layer", callbackLevel, "agent", callbackAgent)
+	// Decompose and merge into a single plan
+	parts := make([]decomposedRequest, len(reqs))
+	for i, r := range reqs {
+		parts[i] = decomposeCallback(r, originatorLayer, layerGroups)
+	}
+	plan := mergeCallbackPlans(parts)
+
+	// Enforce cumulative agent-spawn cap
+	agentCount := cumulativeAgentCount(plan, layerGroups)
+	if *callbackCount+agentCount > maxCallbacks {
+		o.markFailed(wfiID, req, fmt.Sprintf(
+			"max callbacks (%d) exceeded: cumulative=%d, limit=%d",
+			maxCallbacks, *callbackCount+agentCount, maxCallbacks))
+		return false
+	}
+	*callbackCount += agentCount
+
+	logger.Info(ctx, "callback detected",
+		"from_layer", originatorLayer,
+		"resume_layer", plan.resumeLayer,
+		"plan_size", len(plan.steps),
+		"reset_scope_size", len(plan.resetScope))
 
 	database, err := db.Open(o.dataPath)
 	if err != nil {
 		logger.Error(ctx, "failed to open DB for callback", "err", err)
-		return -1
+		o.markFailed(wfiID, req, "db_open_failed")
+		return false
 	}
 	defer database.Close()
 
@@ -1768,40 +1813,66 @@ func (o *Orchestrator) handleCallback(
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	asRepo := repo.NewAgentSessionRepo(database, o.clock)
 
-	// Save _callback metadata to workflow instance findings
+	// Reset all sessions in the plan's scope (single call)
+	asRepo.ResetAgentSessionsInWorkflow(wfiID, plan.resetScope)
+
+	// Build serialisable summaries for findings and broadcast
+	planData := make([]map[string]interface{}, len(plan.steps))
+	for i, s := range plan.steps {
+		sd := map[string]interface{}{"layer": s.layer, "whole_layer": s.wholeLayer}
+		if !s.wholeLayer {
+			sd["agents"] = s.agents
+		}
+		planData[i] = sd
+	}
+	reqData := make([]map[string]interface{}, len(reqs))
+	for i, r := range reqs {
+		reqData[i] = map[string]interface{}{"agent": r.AgentType, "mode": r.Mode}
+	}
+
+	// Legacy fields for backward-compat (first plan step)
+	legacyToLayer := originatorLayer
+	legacyInstr := ""
+	if len(plan.steps) > 0 {
+		legacyToLayer = plan.steps[0].layer
+		legacyInstr = plan.steps[0].layerInstr
+	}
+
+	// Persist _callback finding
 	wi, err := wfiRepo.Get(wfiID)
 	if err == nil {
 		findings := wi.GetFindings()
 		findings["_callback"] = map[string]interface{}{
-			"level":        callbackLevel,
-			"instructions": callbackInstructions,
-			"from_layer":   layerGroups[currentIdx].layer,
-			"from_agent":   callbackAgent,
+			"plan":         planData,
+			"resume_layer": plan.resumeLayer,
+			"requests":     reqData,
+			"from_layer":   originatorLayer,
+			"instructions": legacyInstr, // template variable ${CALLBACK_INSTRUCTIONS}
 		}
 		findingsJSON, _ := json.Marshal(findings)
 		wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
 	}
 
-	// Collect phase names for agent session reset
-	var resetPhases []string
-	for i := targetIdx; i <= currentIdx; i++ {
-		for _, p := range layerGroups[i].phases {
-			resetPhases = append(resetPhases, p.Agent)
-		}
-	}
-
-	// Reset agent sessions for those phases
-	asRepo.ResetSessionsForCallback(wfiID, resetPhases)
-
-	// Broadcast callback event
+	// Broadcast single enriched event
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCallback, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"instance_id":  wfiID,
-		"from_layer":   layerGroups[currentIdx].layer,
-		"to_layer":     callbackLevel,
-		"instructions": callbackInstructions,
+		"from_layer":   originatorLayer,
+		"to_layer":     legacyToLayer,
+		"instructions": legacyInstr,
+		"plan":         planData,
+		"resume_layer": plan.resumeLayer,
+		"requests":     reqData,
 	}))
 
-	return targetIdx
+	// Store plan on runState for the execution loop
+	o.mu.Lock()
+	if rs, ok := o.runs[wfiID]; ok {
+		rs.callbackPlan = plan
+		rs.callbackPlanIdx = 0
+	}
+	o.mu.Unlock()
+
+	return true
 }
 
 // clearCallbackMetadata removes the _callback key from workflow instance findings

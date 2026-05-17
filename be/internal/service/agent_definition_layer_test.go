@@ -37,7 +37,7 @@ func setupLayerTestEnv(t *testing.T) (*db.Pool, *AgentDefinitionService, *Workfl
 	}
 
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, nil, false)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, nil)
 	return pool, svc, wfSvc
 }
 

@@ -41,8 +41,8 @@ Write operations on configuration resources require admin role:
 - `POST|PATCH|DELETE /api/v1/scheduled-tasks/{...}`
 - `PUT|DELETE /api/v1/projects/{id}/env-vars/{name}` (project-scoped)
 - `POST|PATCH|DELETE /api/v1/python-scripts/{...}` (project-scoped)
-- `POST|PUT|DELETE /api/v1/tool-definitions/{...}` (api-mode only)
-- `POST|PUT|DELETE /api/v1/api-credentials/{...}` (api-mode only)
+- `POST|PUT|DELETE /api/v1/tool-definitions/{...}` (api-mode only; registered always, gated at request time by `api_mode_enabled` setting — returns 400 `api_mode_disabled` when off)
+- `POST|PUT|DELETE /api/v1/api-credentials/{...}` (api-mode only; same gate)
 - `PATCH /api/v1/settings`
 
 All reads on those resources are `protected` (requireAuth only). All other routes are `protected`.

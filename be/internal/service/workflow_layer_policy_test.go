@@ -36,7 +36,7 @@ func setupLayerPolicySvc(t *testing.T) (*WorkflowLayerPolicyService, *AgentDefin
 	}
 
 	cliModelSvc := NewCLIModelService(pool, clk)
-	agentSvc := NewAgentDefinitionService(pool, clk, cliModelSvc, nil, false)
+	agentSvc := NewAgentDefinitionService(pool, clk, cliModelSvc, nil)
 	lpSvc := NewWorkflowLayerPolicyService(pool, clk)
 	return lpSvc, agentSvc, "proj1", "wf1"
 }

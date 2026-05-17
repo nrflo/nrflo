@@ -118,7 +118,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	}
 
 	// 11b. Seed agent definitions for the test workflow
-	agentDefSvc := service.NewAgentDefinitionService(pool, clk, service.NewCLIModelService(pool, clk), nil, false)
+	agentDefSvc := service.NewAgentDefinitionService(pool, clk, service.NewCLIModelService(pool, clk), nil)
 	for _, ad := range []types.AgentDefCreateRequest{
 		{ID: "analyzer", Prompt: "analyze", Layer: 0},
 		{ID: "builder", Prompt: "build", Layer: 1},
@@ -129,17 +129,17 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	}
 
 	env := &TestEnv{
-		Pool:        pool,
-		Hub:         hub,
-		Server:      srv,
-		Client:      c,
-		Clock:       clk,
-		SocketPath:  socketPath,
-		ProjectDir:  projectDir,
-		ProjectID:   projectID,
-		ProjectSvc:  projectSvc,
-		TicketSvc:   ticketSvc,
-		WorkflowSvc: workflowSvc,
+		Pool:               pool,
+		Hub:                hub,
+		Server:             srv,
+		Client:             c,
+		Clock:              clk,
+		SocketPath:         socketPath,
+		ProjectDir:         projectDir,
+		ProjectID:          projectID,
+		ProjectSvc:         projectSvc,
+		TicketSvc:          ticketSvc,
+		WorkflowSvc:        workflowSvc,
 		AgentSvc:           agentSvc,
 		FindingsSvc:        findingsSvc,
 		ProjectFindingsSvc: projectFindingsSvc,
@@ -293,7 +293,7 @@ func nullStr(s string) interface{} {
 // getAgentDefService returns the AgentDefinitionService for testing.
 func (e *TestEnv) getAgentDefService(t *testing.T) *service.AgentDefinitionService {
 	t.Helper()
-	return service.NewAgentDefinitionService(e.Pool, e.Clock, service.NewCLIModelService(e.Pool, e.Clock), nil, false)
+	return service.NewAgentDefinitionService(e.Pool, e.Clock, service.NewCLIModelService(e.Pool, e.Clock), nil)
 }
 
 // CreateAdminUser creates an active admin user in the DB and returns the user ID.

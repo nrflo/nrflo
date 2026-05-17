@@ -81,8 +81,9 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 | `--host` | `127.0.0.1` | Host/IP to bind to |
 | `--port` | `6587` | HTTP port |
 | `--no-tray` | `false` | Disable macOS menu bar tray icon |
-| `--mode` | `cli` | Execution mode: `cli` (default) or `api`. In `cli` mode, api-mode routes return 404 and api-mode agent defs return HTTP 400 `api_mode_disabled`. |
 | `--insecure-cookies` | `false` | Disable `Secure` flag on `nrflo_session` cookie. |
+
+API mode is toggled per-server via the `api_mode_enabled` global setting (Settings → Admin) and read freshly at request/spawn time.
 
 ## Authentication
 

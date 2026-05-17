@@ -24,10 +24,9 @@ func shortTempSocket(t *testing.T) string {
 // Must be called (and restore deferred) at the start of any test that mutates these vars.
 func saveServeFlags(t *testing.T) func() {
 	t.Helper()
-	dp, sm, sh, sp, ic, nt := DataPath, serveMode, serveHost, servePort, insecureCookies, noTray
+	dp, sh, sp, ic, nt := DataPath, serveHost, servePort, insecureCookies, noTray
 	return func() {
 		DataPath = dp
-		serveMode = sm
 		serveHost = sh
 		servePort = sp
 		insecureCookies = ic
@@ -43,50 +42,31 @@ func cleanupSetupServer(sc *serverComponents) {
 	sc.pool.Close()
 }
 
-// TestSetupServer_InvalidMode verifies setupServer rejects unsupported mode strings.
-func TestSetupServer_InvalidMode(t *testing.T) {
+// TestSetupServer_StartsSuccessfully verifies that setupServer completes without error
+// given a valid home dir and socket path. api_mode is controlled via the DB at runtime.
+func TestSetupServer_StartsSuccessfully(t *testing.T) {
 	restore := saveServeFlags(t)
 	defer restore()
 
-	serveMode = "invalid"
+	tmpHome := t.TempDir()
+	t.Setenv("NRFLO_HOME", tmpHome)
+	t.Setenv("NRFLO_SOCKET", shortTempSocket(t))
+
+	DataPath = ""
 
 	sc, err := setupServer()
-	if err == nil {
-		t.Error("setupServer() with invalid mode should return an error, got nil")
-		cleanupSetupServer(sc)
-		return
+	if err != nil {
+		t.Fatalf("setupServer() unexpected error: %v", err)
 	}
-}
-
-// TestSetupServer_ValidModes verifies setupServer accepts the two supported mode values.
-func TestSetupServer_ValidModes(t *testing.T) {
-	for _, mode := range []string{"cli", "api"} {
-		t.Run("mode_"+mode, func(t *testing.T) {
-			restore := saveServeFlags(t)
-			defer restore()
-
-			tmpHome := t.TempDir()
-			t.Setenv("NRFLO_HOME", tmpHome)
-			t.Setenv("NRFLO_SOCKET", shortTempSocket(t))
-
-			DataPath = ""
-			serveMode = mode
-
-			sc, err := setupServer()
-			if err != nil {
-				t.Fatalf("setupServer(mode=%q) unexpected error: %v", mode, err)
-			}
-			defer cleanupSetupServer(sc)
-		})
-	}
+	defer cleanupSetupServer(sc)
 }
 
 // TestSetupServer_SDKInstalled verifies the Python SDK is written to <dataDir>/sdk/nrflo_sdk.py
 // for both the default-path (empty DataPath + NRFLO_HOME) and the explicit-DataPath cases.
 func TestSetupServer_SDKInstalled(t *testing.T) {
 	cases := []struct {
-		name    string
-		setup   func(t *testing.T) (dataPath, wantSDK string)
+		name  string
+		setup func(t *testing.T) (dataPath, wantSDK string)
 	}{
 		{
 			name: "empty_datapath_uses_nrflo_home",
@@ -118,7 +98,6 @@ func TestSetupServer_SDKInstalled(t *testing.T) {
 
 			dp, wantSDK := tc.setup(t)
 			DataPath = dp
-			serveMode = "cli"
 
 			sc, err := setupServer()
 			if err != nil {
@@ -144,7 +123,6 @@ func TestSetupServer_PoolPathMatchesResolvedDataPath(t *testing.T) {
 	defer restore()
 
 	DataPath = ""
-	serveMode = "cli"
 
 	sc, err := setupServer()
 	if err != nil {

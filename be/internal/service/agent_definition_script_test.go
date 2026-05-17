@@ -28,7 +28,7 @@ func setupAgentDefScriptEnv(t *testing.T) (*AgentDefinitionService, string, stri
 
 	scriptRepo := repo.NewPythonScriptRepo(pool, clock.Real())
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, scriptRepo, false)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, scriptRepo)
 	return svc, wfID, scriptID
 }
 
@@ -183,7 +183,7 @@ func TestCreateAgentDef_ScriptMode_Success_APIModeTrue(t *testing.T) {
 	}
 	scriptRepo := repo.NewPythonScriptRepo(pool, clock.Real())
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, scriptRepo, true)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, scriptRepo)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:             "agent-script-on",

@@ -32,34 +32,33 @@ import (
 
 // Server represents the HTTP API server
 type Server struct {
-	config                 *config.Config
-	dataPath               string
-	logsDir                string
-	pool                   *db.Pool
-	httpServer             *http.Server
-	wsHub                  *ws.Hub
-	orchestrator           *orchestrator.Orchestrator
-	chainRunner            *orchestrator.ChainRunner
-	wfChainRunner          *chainrunner.Runner
-	ptyManager             *ptyPkg.Manager
-	clock                  clock.Clock
-	apiMode                bool
-	cliAdapterFunc             func(cliType, mappedModel, reasoningEffort string) (*exec.Cmd, bool) // nil = buildModelCheckCommand
-	specImportAdapterFunc      func(src string) (interface{}, error)             // injectable for tests; nil = use spec_import.ResolveAdapter
-	scheduler              *scheduler.Scheduler
-	notifyWaker            service.NotificationWaker
-	notifyWorker           *notify.Worker
-	notifyWorkerCancel     context.CancelFunc
-	notifyWorkerDone       chan struct{}
-	sessionMgr             *scs.SessionManager
-	authSvc                *service.AuthService
-	userSvc                *service.UserService
-	rateLimiter            *loginRateLimiter
+	config                *config.Config
+	dataPath              string
+	logsDir               string
+	pool                  *db.Pool
+	httpServer            *http.Server
+	wsHub                 *ws.Hub
+	orchestrator          *orchestrator.Orchestrator
+	chainRunner           *orchestrator.ChainRunner
+	wfChainRunner         *chainrunner.Runner
+	ptyManager            *ptyPkg.Manager
+	clock                 clock.Clock
+	cliAdapterFunc        func(cliType, mappedModel, reasoningEffort string) (*exec.Cmd, bool) // nil = buildModelCheckCommand
+	specImportAdapterFunc func(src string) (interface{}, error)                                // injectable for tests; nil = use spec_import.ResolveAdapter
+	scheduler             *scheduler.Scheduler
+	notifyWaker           service.NotificationWaker
+	notifyWorker          *notify.Worker
+	notifyWorkerCancel    context.CancelFunc
+	notifyWorkerDone      chan struct{}
+	sessionMgr            *scs.SessionManager
+	authSvc               *service.AuthService
+	userSvc               *service.UserService
+	rateLimiter           *loginRateLimiter
 }
 
 // NewServer creates a new API server.
 // insecureCookies=true disables the Secure cookie flag (for local HTTP dev/testing).
-func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool, apiMode bool, insecureCookies bool) *Server {
+func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Pool, insecureCookies bool) *Server {
 	clk := clock.Real()
 	hub := ws.NewHub(clk)
 	errorSvc := service.NewErrorService(pool, clk, hub)
@@ -72,7 +71,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 			logger.Info(context.Background(), "python script SDK installed", "path", filepath.Join(sdkDir, "nrflo_sdk.py"))
 		}
 	}
-	orch := orchestrator.New(dataPath, hub, clk, errorSvc, apiMode, sdkDir)
+	orch := orchestrator.New(dataPath, hub, clk, errorSvc, sdkDir)
 	ptyMgr := ptyPkg.NewManager()
 	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
 		ptyMgr.RegisterCommand(sessionID, cmd, args)
@@ -134,7 +133,6 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		wfChainRunner: wfChainRunner,
 		ptyManager:    ptyMgr,
 		clock:         clk,
-		apiMode:       apiMode,
 		scheduler:     sched,
 		notifyWaker:   waker,
 		notifyWorker:  notifyWorker,
@@ -502,7 +500,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	}
 
 	// Auth endpoints
-	mux.HandleFunc("POST /api/v1/auth/login", s.handleAuthLogin)           // public (login page)
+	mux.HandleFunc("POST /api/v1/auth/login", s.handleAuthLogin) // public (login page)
 	protected("POST /api/v1/auth/logout", s.handleAuthLogout)
 	protected("GET /api/v1/auth/me", s.handleAuthMe)
 	protected("POST /api/v1/auth/change-password", s.handleAuthChangePassword)
@@ -719,41 +717,49 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
 	protected("POST /api/v1/chains/{id}/remove-items", s.handleRemoveFromChain)
 
-	if s.apiMode {
-		// Tool definitions (global; only in --mode=api) — writes are admin-only
-		protected("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
-		admin("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
-		protected("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
-		admin("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
-		admin("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
-
-		// API credentials (global; only in --mode=api) — writes are admin-only
-		protected("GET /api/v1/api-credentials", s.handleListAPICredentials)
-		admin("POST /api/v1/api-credentials", s.handleCreateAPICredential)
-		protected("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
-		admin("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
-		admin("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
-
-		// review items (project-scoped; only in --mode=api)
-		protected("GET /api/v1/review", s.handleListReviews)
-		protected("POST /api/v1/review", s.handleCreateReview)
-		protected("GET /api/v1/review/{id}", s.handleGetReview)
-		protected("PATCH /api/v1/review/{id}", s.handlePatchReview)
-		protected("POST /api/v1/review/{id}/approve", s.handleApproveReview)
-		protected("POST /api/v1/review/{id}/reject", s.handleRejectReview)
-
-		// config editor (project-scoped; only in --mode=api)
-		protected("GET /api/v1/config-files", s.handleListConfigFiles)
-		protected("GET /api/v1/config-files/content/{file...}", s.handleGetConfigFile)
-		protected("PUT /api/v1/config-files/content/{file...}", s.handlePutConfigFile)
-		protected("GET /api/v1/config-files/history/{file...}", s.handleGetConfigHistory)
-		protected("POST /api/v1/config-files/rollback/{file...}", s.handleRollbackConfig)
-
-		// insights (project-scoped; only in --mode=api)
-		protected("GET /api/v1/insights/summary", s.handleInsightsSummary)
-		protected("GET /api/v1/insights/edit-rate", s.handleInsightsEditRate)
-		protected("GET /api/v1/insights/throughput", s.handleInsightsThroughput)
+	apiModeOnly := func(h http.HandlerFunc) http.Handler {
+		return s.apiModeOnly(h)
 	}
+	apiModeProtected := func(pat string, h http.HandlerFunc) {
+		mux.Handle(pat, s.requireAuth(s.apiModeOnly(h)))
+	}
+	apiModeAdmin := func(pat string, h http.HandlerFunc) {
+		mux.Handle(pat, s.requireAdmin(apiModeOnly(h)))
+	}
+
+	// Tool definitions (global; api-mode only) — writes are admin-only
+	apiModeProtected("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
+	apiModeAdmin("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
+	apiModeProtected("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
+	apiModeAdmin("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
+	apiModeAdmin("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
+
+	// API credentials (global; api-mode only) — writes are admin-only
+	apiModeProtected("GET /api/v1/api-credentials", s.handleListAPICredentials)
+	apiModeAdmin("POST /api/v1/api-credentials", s.handleCreateAPICredential)
+	apiModeProtected("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
+	apiModeAdmin("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
+	apiModeAdmin("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
+
+	// review items (project-scoped; api-mode only)
+	apiModeProtected("GET /api/v1/review", s.handleListReviews)
+	apiModeProtected("POST /api/v1/review", s.handleCreateReview)
+	apiModeProtected("GET /api/v1/review/{id}", s.handleGetReview)
+	apiModeProtected("PATCH /api/v1/review/{id}", s.handlePatchReview)
+	apiModeProtected("POST /api/v1/review/{id}/approve", s.handleApproveReview)
+	apiModeProtected("POST /api/v1/review/{id}/reject", s.handleRejectReview)
+
+	// config editor (project-scoped; api-mode only)
+	apiModeProtected("GET /api/v1/config-files", s.handleListConfigFiles)
+	apiModeProtected("GET /api/v1/config-files/content/{file...}", s.handleGetConfigFile)
+	apiModeProtected("PUT /api/v1/config-files/content/{file...}", s.handlePutConfigFile)
+	apiModeProtected("GET /api/v1/config-files/history/{file...}", s.handleGetConfigHistory)
+	apiModeProtected("POST /api/v1/config-files/rollback/{file...}", s.handleRollbackConfig)
+
+	// insights (project-scoped; api-mode only)
+	apiModeProtected("GET /api/v1/insights/summary", s.handleInsightsSummary)
+	apiModeProtected("GET /api/v1/insights/edit-rate", s.handleInsightsEditRate)
+	apiModeProtected("GET /api/v1/insights/throughput", s.handleInsightsThroughput)
 
 	// Spec import (project-scoped via X-Project header)
 	protected("POST /api/v1/import/spec", s.handleStartSpecImport)

@@ -14,7 +14,7 @@ import (
 	"be/internal/types"
 )
 
-// ErrAPIModeDisabled is returned when execution_mode="api" is used but the server was not started with --mode=api.
+// ErrAPIModeDisabled is returned when execution_mode="api" is used but api_mode_enabled is not set.
 var ErrAPIModeDisabled = errors.New("api mode disabled")
 
 // AgentDefinitionService handles agent definition business logic
@@ -23,12 +23,11 @@ type AgentDefinitionService struct {
 	pool             *db.Pool
 	cliModelSvc      *CLIModelService
 	pythonScriptRepo *repo.PythonScriptRepo
-	apiMode          bool
 }
 
 // NewAgentDefinitionService creates a new agent definition service
-func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, pythonScriptRepo *repo.PythonScriptRepo, apiMode bool) *AgentDefinitionService {
-	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, pythonScriptRepo: pythonScriptRepo, apiMode: apiMode}
+func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, pythonScriptRepo *repo.PythonScriptRepo) *AgentDefinitionService {
+	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, pythonScriptRepo: pythonScriptRepo}
 }
 
 // validateScriptMode enforces coupling rules for execution_mode="script":
@@ -70,8 +69,12 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	if executionMode != "cli_interactive" && executionMode != "api" && executionMode != "script" {
 		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
 	}
-	if executionMode == "api" && !s.apiMode {
-		return nil, ErrAPIModeDisabled
+	if executionMode == "api" {
+		settingsSvc := NewGlobalSettingsService(s.pool, s.clock)
+		apiModeVal, _ := settingsSvc.Get("api_mode_enabled")
+		if apiModeVal != "true" {
+			return nil, ErrAPIModeDisabled
+		}
 	}
 
 	if executionMode != "script" && req.Prompt == "" {
@@ -161,12 +164,12 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 
 	ts, _ := time.Parse(time.RFC3339Nano, now)
 	return &model.AgentDefinition{
-		ID:               id,
-		ProjectID:        pid,
-		WorkflowID:       wid,
-		Model:            modelName,
-		Timeout:          timeout,
-		Prompt:           req.Prompt,
+		ID:                     id,
+		ProjectID:              pid,
+		WorkflowID:             wid,
+		Model:                  modelName,
+		Timeout:                timeout,
+		Prompt:                 req.Prompt,
 		RestartThreshold:       req.RestartThreshold,
 		MaxFailRestarts:        req.MaxFailRestarts,
 		StallStartTimeoutSec:   stallStartTimeout,
@@ -393,8 +396,12 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		if mode != "cli_interactive" && mode != "api" && mode != "script" {
 			return fmt.Errorf("invalid execution_mode: %q", mode)
 		}
-		if mode == "api" && !s.apiMode {
-			return ErrAPIModeDisabled
+		if mode == "api" {
+			settingsSvc := NewGlobalSettingsService(s.pool, s.clock)
+			apiModeVal, _ := settingsSvc.Get("api_mode_enabled")
+			if apiModeVal != "true" {
+				return ErrAPIModeDisabled
+			}
 		}
 		if mode == "script" {
 			// When switching to script mode, validate script coupling rules.

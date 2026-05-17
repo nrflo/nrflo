@@ -49,7 +49,7 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 	}
 
 	// Create orchestrator and start two instances
-	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, false, "")
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, "")
 	ctx := context.Background()
 
 	result1, err := orch.Start(ctx, orchestrator.RunRequest{
@@ -131,7 +131,7 @@ func TestStopAllProjectWorkflowInstances(t *testing.T) {
 	}
 
 	// Create orchestrator and start three instances
-	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, false, "")
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, "")
 	ctx := context.Background()
 
 	var instanceIDs []string
@@ -222,7 +222,7 @@ func TestRestartProjectAgentWithInstanceID(t *testing.T) {
 	}
 
 	// Create orchestrator
-	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, false, "")
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, "")
 
 	// Restart the agent with instance_id
 	err = orch.RestartProjectAgent(env.ProjectID, "restart-test", "sess-restart-1", wi.ID)
@@ -312,7 +312,7 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 	}
 
 	// Create orchestrator
-	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, false, "")
+	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, "")
 	ctx := context.Background()
 
 	// Retry with instance_id - this should accept the instance_id parameter

@@ -24,7 +24,6 @@ var (
 	serveHost       string
 	servePort       int
 	noTray          bool
-	serveMode       string
 	insecureCookies bool
 )
 
@@ -89,11 +88,6 @@ Example usage:
 }
 
 func setupServer() (*serverComponents, error) {
-	if serveMode != "cli" && serveMode != "api" {
-		return nil, fmt.Errorf("invalid --mode value %q: must be cli or api", serveMode)
-	}
-	apiMode := serveMode == "api"
-
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
@@ -136,7 +130,7 @@ func setupServer() (*serverComponents, error) {
 	}
 	logger.Info(context.Background(), "socket ready", "path", sockPath)
 
-	httpServer := api.NewServer(cfg, resolvedDataPath, logsDir, pool, apiMode, insecureCookies)
+	httpServer := api.NewServer(cfg, resolvedDataPath, logsDir, pool, insecureCookies)
 
 	clk := clock.Real()
 	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath, resolvedDataPath)
@@ -197,6 +191,5 @@ func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", "", "Host/IP to bind to (default: 127.0.0.1 or from config)")
 	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP port to listen on (default: 6587 or from config)")
 	serveCmd.Flags().BoolVar(&noTray, "no-tray", false, "Disable macOS menu bar tray icon")
-	serveCmd.Flags().StringVar(&serveMode, "mode", "cli", "Execution mode: cli (default) or api")
 	serveCmd.Flags().BoolVar(&insecureCookies, "insecure-cookies", false, "Disable Secure flag on session cookies (for local HTTP dev without TLS)")
 }

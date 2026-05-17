@@ -11,10 +11,12 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/service"
 )
 
-// newAgentDefAPIModeServer creates a Server with given apiMode plus a seeded project
-// and workflow for agent-definition handler tests. Returns (server, projectID, workflowID).
+// newAgentDefAPIModeServer creates a Server seeded with a project and workflow for
+// agent-definition handler tests. If apiMode is true, seeds api_mode_enabled=true in DB.
+// Returns (server, projectID, workflowID).
 func newAgentDefAPIModeServer(t *testing.T, apiMode bool) (*Server, string, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "agentdef_apimode_test.db")
@@ -26,6 +28,13 @@ func newAgentDefAPIModeServer(t *testing.T, apiMode bool) (*Server, string, stri
 		t.Fatalf("failed to create pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
+
+	if apiMode {
+		svc := service.NewGlobalSettingsService(pool, clock.Real())
+		if err := svc.Set("api_mode_enabled", "true"); err != nil {
+			t.Fatalf("seed api_mode_enabled: %v", err)
+		}
+	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := pool.Exec(
@@ -41,7 +50,7 @@ func newAgentDefAPIModeServer(t *testing.T, apiMode bool) (*Server, string, stri
 		t.Fatalf("insert workflow: %v", err)
 	}
 
-	s := &Server{pool: pool, clock: clock.Real(), apiMode: apiMode}
+	s := &Server{pool: pool, clock: clock.Real()}
 	return s, "proj1", "wf1"
 }
 
@@ -70,7 +79,7 @@ func patchAgentDefRequest(t *testing.T, s *Server, projectID, workflowID, agentI
 }
 
 // TestHandleCreateAgentDef_APIModeDisabled verifies that POST with execution_mode=api
-// returns 400 with error "api_mode_disabled" when the server is in cli mode.
+// returns 400 with error "api_mode_disabled" when the setting is off.
 func TestHandleCreateAgentDef_APIModeDisabled(t *testing.T) {
 	s, pid, wid := newAgentDefAPIModeServer(t, false)
 
@@ -90,7 +99,7 @@ func TestHandleCreateAgentDef_APIModeDisabled(t *testing.T) {
 }
 
 // TestHandleCreateAgentDef_APIModeEnabled_Succeeds verifies that POST with
-// execution_mode=api returns 201 when the server is in api mode.
+// execution_mode=api returns 201 when api_mode_enabled=true is set in DB.
 func TestHandleCreateAgentDef_APIModeEnabled_Succeeds(t *testing.T) {
 	s, pid, wid := newAgentDefAPIModeServer(t, true)
 
@@ -103,7 +112,7 @@ func TestHandleCreateAgentDef_APIModeEnabled_Succeeds(t *testing.T) {
 }
 
 // TestHandleCreateAgentDef_CLIInteractiveMode_UnaffectedByAPIMode verifies that creating
-// a cli_interactive-mode agent succeeds even when the server was not started with --mode=api.
+// a cli_interactive-mode agent succeeds even when api_mode_enabled is not set.
 func TestHandleCreateAgentDef_CLIInteractiveMode_UnaffectedByAPIMode(t *testing.T) {
 	s, pid, wid := newAgentDefAPIModeServer(t, false)
 
@@ -116,7 +125,7 @@ func TestHandleCreateAgentDef_CLIInteractiveMode_UnaffectedByAPIMode(t *testing.
 }
 
 // TestHandleUpdateAgentDef_APIModeDisabled verifies that PATCH with execution_mode=api
-// returns 400 with error "api_mode_disabled" when the server is in cli mode.
+// returns 400 with error "api_mode_disabled" when the setting is off.
 func TestHandleUpdateAgentDef_APIModeDisabled(t *testing.T) {
 	s, pid, wid := newAgentDefAPIModeServer(t, false)
 

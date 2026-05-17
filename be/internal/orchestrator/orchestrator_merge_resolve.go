@@ -47,6 +47,9 @@ func (o *Orchestrator) attemptConflictResolution(
 
 	// Construct spawner with synthetic single-phase workflow.
 	// Conflict resolution is CLI-only; manifest tools are not used here.
+	apiModeSettingsSvc := service.NewGlobalSettingsService(pool, o.clock)
+	apiModeSettingVal, _ := apiModeSettingsSvc.Get("api_mode_enabled")
+
 	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
 	reviewRepo := repo.NewReviewRepo(pool, o.clock)
 	sp := spawner.New(spawner.Config{
@@ -66,14 +69,14 @@ func (o *Orchestrator) attemptConflictResolution(
 		ClaudeSettingsJSON: claudeSettingsJSON,
 		ModelConfigs:       modelConfigs,
 		ErrorSvc:           o.errorSvc,
-		APIMode:    o.apiMode,
-		PTYManager: o.PTYManager,
-		DispatchRepo:      dispatchRepo,
-		ReviewRepo:        reviewRepo,
-		CustomerConfigDir: customerConfigDir,
-		ProjectEnv:        projectEnv,
-		SDKDir:            o.sdkDir,
-		PythonScriptRepo:  repo.NewPythonScriptRepo(pool, o.clock),
+		APIMode:            apiModeSettingVal == "true",
+		PTYManager:         o.PTYManager,
+		DispatchRepo:       dispatchRepo,
+		ReviewRepo:         reviewRepo,
+		CustomerConfigDir:  customerConfigDir,
+		ProjectEnv:         projectEnv,
+		SDKDir:             o.sdkDir,
+		PythonScriptRepo:   repo.NewPythonScriptRepo(pool, o.clock),
 		OnSessionRegister: func(sid string, s *spawner.Spawner) {
 			o.mu.Lock()
 			if rs, ok := o.runs[wfiID]; ok {

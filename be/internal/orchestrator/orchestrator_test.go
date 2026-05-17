@@ -42,7 +42,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
 
-	orch := New(dbPath, hub, clock.Real(), nil, false, "")
+	orch := New(dbPath, hub, clock.Real(), nil, "")
 
 	projectID := "test-project"
 
@@ -68,7 +68,10 @@ func newTestEnv(t *testing.T) *testEnv {
 
 	// Seed agent definitions (layer info now lives on agent_definitions)
 	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
-	for _, ad := range []struct{ id string; layer int }{
+	for _, ad := range []struct {
+		id    string
+		layer int
+	}{
 		{"analyzer", 0},
 		{"builder", 1},
 	} {
@@ -110,7 +113,10 @@ func newTestEnv(t *testing.T) *testEnv {
 
 // createWorkflowWithAgents creates a workflow and its agent definitions in the DB.
 // agents is a list of (agentID, layer) pairs.
-func (e *testEnv) createWorkflowWithAgents(t *testing.T, workflowID, description, scopeType string, agents []struct{ ID string; Layer int }) {
+func (e *testEnv) createWorkflowWithAgents(t *testing.T, workflowID, description, scopeType string, agents []struct {
+	ID    string
+	Layer int
+}) {
 	t.Helper()
 	if scopeType == "" {
 		scopeType = "ticket"

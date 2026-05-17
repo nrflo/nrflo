@@ -36,7 +36,7 @@ func newPtyTestServer(t *testing.T) (*Server, string) {
 	go hub.Run()
 	t.Cleanup(hub.Stop)
 
-	orch := orchestrator.New(dbPath, hub, clock.Real(), nil, false, "")
+	orch := orchestrator.New(dbPath, hub, clock.Real(), nil, "")
 	s := &Server{
 		dataPath:     dbPath,
 		pool:         pool,

@@ -9,10 +9,11 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/service"
 )
 
-// newGlobalSettingsServerAPIMode creates a Server with the given apiMode flag for
-// testing the api_mode_enabled read-only field in the settings response.
+// newGlobalSettingsServerAPIMode creates a Server for settings handler tests.
+// If apiMode is true, seeds api_mode_enabled=true in the DB before returning.
 func newGlobalSettingsServerAPIMode(t *testing.T, apiMode bool) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "settings_apimode_test.db")
@@ -24,11 +25,17 @@ func newGlobalSettingsServerAPIMode(t *testing.T, apiMode bool) *Server {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
-	return &Server{pool: pool, clock: clock.Real(), apiMode: apiMode}
+	if apiMode {
+		svc := service.NewGlobalSettingsService(pool, clock.Real())
+		if err := svc.Set("api_mode_enabled", "true"); err != nil {
+			t.Fatalf("seed api_mode_enabled: %v", err)
+		}
+	}
+	return &Server{pool: pool, clock: clock.Real()}
 }
 
-// TestHandleGetGlobalSettings_APIModeEnabled_False verifies that a server started
-// without --mode=api reports api_mode_enabled=false in the settings response.
+// TestHandleGetGlobalSettings_APIModeEnabled_False verifies that GET /api/v1/settings
+// returns api_mode_enabled=false when the setting is not seeded in DB.
 func TestHandleGetGlobalSettings_APIModeEnabled_False(t *testing.T) {
 	s := newGlobalSettingsServerAPIMode(t, false)
 
@@ -50,8 +57,8 @@ func TestHandleGetGlobalSettings_APIModeEnabled_False(t *testing.T) {
 	}
 }
 
-// TestHandleGetGlobalSettings_APIModeEnabled_True verifies that a server started
-// with --mode=api reports api_mode_enabled=true in the settings response.
+// TestHandleGetGlobalSettings_APIModeEnabled_True verifies that GET /api/v1/settings
+// returns api_mode_enabled=true after seeding the setting in DB.
 func TestHandleGetGlobalSettings_APIModeEnabled_True(t *testing.T) {
 	s := newGlobalSettingsServerAPIMode(t, true)
 
@@ -73,10 +80,9 @@ func TestHandleGetGlobalSettings_APIModeEnabled_True(t *testing.T) {
 	}
 }
 
-// TestHandlePatchGlobalSettings_APIModeEnabled_ReadOnly verifies that PATCHing
-// api_mode_enabled is silently ignored and does not alter the server's startup mode.
-func TestHandlePatchGlobalSettings_APIModeEnabled_ReadOnly(t *testing.T) {
-	// Server started with apiMode=false; PATCH tries to set api_mode_enabled=true.
+// TestHandlePatchGlobalSettings_APIModeEnabled_Persists verifies that PATCH
+// api_mode_enabled=true is stored in DB and subsequent GET reflects the new value.
+func TestHandlePatchGlobalSettings_APIModeEnabled_Persists(t *testing.T) {
 	s := newGlobalSettingsServerAPIMode(t, false)
 
 	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/settings",
@@ -84,10 +90,10 @@ func TestHandlePatchGlobalSettings_APIModeEnabled_ReadOnly(t *testing.T) {
 	patchRR := httptest.NewRecorder()
 	s.handlePatchGlobalSettings(patchRR, patchReq)
 	if patchRR.Code != http.StatusOK {
-		t.Fatalf("PATCH status = %d, want 200", patchRR.Code)
+		t.Fatalf("PATCH status = %d, want 200; body: %s", patchRR.Code, patchRR.Body.String())
 	}
 
-	// GET should still report false (read-only field not mutated by PATCH).
+	// GET should now report true.
 	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
 	getRR := httptest.NewRecorder()
 	s.handleGetGlobalSettings(getRR, getReq)
@@ -95,7 +101,30 @@ func TestHandlePatchGlobalSettings_APIModeEnabled_ReadOnly(t *testing.T) {
 	resp := decodeSettingsResponse(t, getRR)
 	if v, ok := resp["api_mode_enabled"]; !ok {
 		t.Fatal("response missing api_mode_enabled field")
-	} else if v != false {
-		t.Errorf("api_mode_enabled after PATCH = %v, want false (field is read-only)", v)
+	} else if v != true {
+		t.Errorf("api_mode_enabled after PATCH = %v, want true", v)
+	}
+}
+
+// TestHandlePatchGlobalSettings_APIModeEnabled_ToggleOffOn verifies that PATCH
+// can toggle api_mode_enabled off and on in sequence.
+func TestHandlePatchGlobalSettings_APIModeEnabled_ToggleOffOn(t *testing.T) {
+	s := newGlobalSettingsServerAPIMode(t, true)
+
+	// Disable.
+	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/settings",
+		strings.NewReader(`{"api_mode_enabled":false}`))
+	patchRR := httptest.NewRecorder()
+	s.handlePatchGlobalSettings(patchRR, patchReq)
+	if patchRR.Code != http.StatusOK {
+		t.Fatalf("PATCH false status = %d, want 200", patchRR.Code)
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
+	getRR := httptest.NewRecorder()
+	s.handleGetGlobalSettings(getRR, getReq)
+	resp := decodeSettingsResponse(t, getRR)
+	if resp["api_mode_enabled"] != false {
+		t.Errorf("api_mode_enabled after disable = %v, want false", resp["api_mode_enabled"])
 	}
 }

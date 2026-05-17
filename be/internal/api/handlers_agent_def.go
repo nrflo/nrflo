@@ -21,7 +21,7 @@ func (s *Server) handleListAgentDefs(w http.ResponseWriter, r *http.Request) {
 
 	workflowID := r.PathValue("wid")
 
-	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock), s.apiMode)
+	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 
 	defs, err := svc.ListAgentDefs(projectID, workflowID)
 	if err != nil {
@@ -57,7 +57,7 @@ func (s *Server) handleCreateAgentDef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock), s.apiMode)
+	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 
 	def, err := svc.CreateAgentDef(projectID, workflowID, &req)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *Server) handleGetAgentDef(w http.ResponseWriter, r *http.Request) {
 	workflowID := r.PathValue("wid")
 	id := r.PathValue("id")
 
-	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock), s.apiMode)
+	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 
 	def, err := svc.GetAgentDef(projectID, workflowID, id)
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *Server) handleUpdateAgentDef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock), s.apiMode)
+	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 
 	if err := svc.UpdateAgentDef(projectID, workflowID, id, &req); err != nil {
 		if errors.Is(err, service.ErrAPIModeDisabled) {
@@ -176,7 +176,7 @@ func (s *Server) handleDeleteAgentDef(w http.ResponseWriter, r *http.Request) {
 	workflowID := r.PathValue("wid")
 	id := r.PathValue("id")
 
-	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock), s.apiMode)
+	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 
 	if err := svc.DeleteAgentDef(projectID, workflowID, id); err != nil {
 		if strings.Contains(err.Error(), "not found") {

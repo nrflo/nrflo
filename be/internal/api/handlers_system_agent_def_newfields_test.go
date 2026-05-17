@@ -10,6 +10,7 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
+	"be/internal/service"
 )
 
 // newSystemAgentServerWithSeeds creates a Server with all migration-seeded rows intact.
@@ -39,7 +40,8 @@ func findDefByID(defs []*model.SystemAgentDefinition, id string) *model.SystemAg
 }
 
 // newSystemAgentServerWithSeedsAPIMode creates a Server with all migration-seeded rows
-// and apiMode=true. Use this to test list behavior when api mode is enabled.
+// and api_mode_enabled seeded to "true" in the DB. Use this to test list behavior when
+// api mode is enabled.
 func newSystemAgentServerWithSeedsAPIMode(t *testing.T) *Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "sys_agent_apimode_test.db")
@@ -51,7 +53,11 @@ func newSystemAgentServerWithSeedsAPIMode(t *testing.T) *Server {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
-	return &Server{pool: pool, clock: clock.Real(), apiMode: true}
+	svc := service.NewGlobalSettingsService(pool, clock.Real())
+	if err := svc.Set("api_mode_enabled", "true"); err != nil {
+		t.Fatalf("seed api_mode_enabled: %v", err)
+	}
+	return &Server{pool: pool, clock: clock.Real()}
 }
 
 // TestHandleListSystemAgentDefs_HiddenInCLIMode verifies that in cli mode (apiMode=false,

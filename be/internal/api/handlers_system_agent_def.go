@@ -15,7 +15,9 @@ import (
 func (s *Server) handleListSystemAgentDefs(w http.ResponseWriter, r *http.Request) {
 	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock)
 
-	defs, err := svc.ListForAPI(s.apiMode)
+	settingsSvc := service.NewGlobalSettingsService(s.pool, s.clock)
+	apiModeVal, _ := settingsSvc.Get("api_mode_enabled")
+	defs, err := svc.ListForAPI(apiModeVal == "true")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

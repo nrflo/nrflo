@@ -18,9 +18,9 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
-	"be/internal/model"
 	manifestConfig "be/internal/manifest/config"
 	"be/internal/manifest/python"
+	"be/internal/model"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
@@ -62,12 +62,12 @@ type ErrorRecorder interface {
 }
 
 const (
-	defaultMaxContinuations       = 10
-	defaultContextThreshold       = 25
-	defaultFailRetryDelay         = 15 * time.Second
-	defaultStallStartTimeout      = 2 * time.Minute
-	defaultStallRunningTimeout    = 8 * time.Minute
-	maxStallRestarts              = 15
+	defaultMaxContinuations        = 10
+	defaultContextThreshold        = 25
+	defaultFailRetryDelay          = 15 * time.Second
+	defaultStallStartTimeout       = 2 * time.Minute
+	defaultStallRunningTimeout     = 8 * time.Minute
+	maxStallRestarts               = 15
 	defaultIdleAfterMessageTimeout = 3 * time.Minute
 	defaultIdleStartTimeout        = 2 * time.Minute
 	defaultNudgeMax                = 5
@@ -140,8 +140,9 @@ type Config struct {
 	WorkflowSvc        *service.WorkflowService
 	// ToolDefRepo lists HTTP tool definitions for API-mode registry resolution.
 	ToolDefRepo *repo.ToolDefinitionRepo
-	// APIMode enables execution_mode='api' agents. When false (default, --mode=cli),
-	// prepareSpawn rejects any agent with execution_mode='api' before making any provider call.
+	// APIMode enables execution_mode='api' agents. When false, prepareSpawn rejects any
+	// agent with execution_mode='api' before making any provider call. Injected by the
+	// orchestrator from the api_mode_enabled global setting at spawn time.
 	APIMode bool
 	// PTYManager manages PTY sessions for cli_interactive agents.
 	PTYManager *ptyPkg.Manager
@@ -204,9 +205,9 @@ type taskInfo struct {
 
 // processInfo tracks a single spawned agent process
 type processInfo struct {
-	cmd           *exec.Cmd
-	backend       ExecutionBackend
-	pid           int // OS pid; set by backends when proc.cmd is nil (e.g. PTY-owned process)
+	cmd     *exec.Cmd
+	backend ExecutionBackend
+	pid     int // OS pid; set by backends when proc.cmd is nil (e.g. PTY-owned process)
 	// env is the full process env assembled in prepareSpawn (nrflo-controlled vars +
 	// per-project vars). Stored separately from cmd.Env so contextSaveViaResume can
 	// reach it for PTY-owned processes where cmd is nil by design.
@@ -225,20 +226,20 @@ type processInfo struct {
 	// ferryPTYOutput. Read by deliverPrompt's quiescence gate to wait for
 	// the TUI to finish its splash render before submitting the prompt.
 	// Protected by messagesMutex. Zero-valued for non-PTY backends.
-	lastPTYByteAt time.Time
-	agentID       string
-	agentType     string
-	modelID       string
-	sessionID     string
-	startTime     time.Time
-	timeout       time.Duration
+	lastPTYByteAt   time.Time
+	agentID         string
+	agentType       string
+	modelID         string
+	sessionID       string
+	startTime       time.Time
+	timeout         time.Duration
 	pendingMessages []repo.MessageEntry // messages not yet flushed to DB
 	lastMessage     string              // most recent message (for status display)
 	nextSeq         int                 // next sequence number for agent_messages table
 	messagesMutex   sync.Mutex
-	pendingTasks    map[string]taskInfo  // tool_use_id -> taskInfo for in-flight Task invocations
-	finalStatus   string
-	elapsed       time.Duration
+	pendingTasks    map[string]taskInfo // tool_use_id -> taskInfo for in-flight Task invocations
+	finalStatus     string
+	elapsed         time.Duration
 	// Process lifecycle tracking
 	doneCh  chan struct{} // closed when process exits
 	waitErr error         // stores Wait() error
@@ -273,11 +274,11 @@ type processInfo struct {
 	stallRunningTimeout time.Duration // from agent_definition or default 480s
 	stallRestartCount   int           // incremented on each stall restart
 	// Idle/nudge detection (cli_interactive backend only; nudgeMax=0 means disabled)
-	nudgeCount             int
-	nudgeMax               int
+	nudgeCount              int
+	nudgeMax                int
 	idleAfterMessageTimeout time.Duration
-	idleStartTimeout       time.Duration
-	lastNudgeAt            time.Time
+	idleStartTimeout        time.Duration
+	lastNudgeAt             time.Time
 	// External session ID (e.g., codex thread_id) — for logging only
 	externalSessionID string
 	// Callback level set by API-mode agent_callback handler. Mirrors the
@@ -303,21 +304,21 @@ type manifestCacheEntry struct {
 
 // Spawner manages agent lifecycle
 type Spawner struct {
-	config             Config
-	restartCh          chan string             // carries sessionID of agent to restart
-	takeControlCh      chan string             // carries sessionID of agent to take control of
-	takeControlReadies map[string]chan struct{} // sessionID → closed when status is user_interactive (or take-control rejected/attached)
-	takeControlReadiesMu sync.Mutex             // protects takeControlReadies
-	terminalSignals    map[string]chan terminalSignal // sessionID → its monitorAll's receive channel
-	terminalSignalsMu  sync.Mutex              // protects terminalSignals
-	bumpMessageCh      chan string             // carries sessionID to bump lastMessageTime (hook events)
-	interactiveWaits   map[string]chan struct{} // sessionID → closed when interactive session completes
-	killedInteractive  map[string]struct{}     // sessionID → killed by KillInteractive (checked after wait)
-	mu                 sync.Mutex              // protects interactiveWaits and killedInteractive
-	sessionProcsMu     sync.Mutex              // protects sessionProcs
-	sessionProcs       map[string]*processInfo // sessionID → live proc for RecordUserInput lookups
-	manifestCache      map[string]*manifestCacheEntry // configDir → cached manifest (mtime-keyed)
-	manifestCacheMu    sync.Mutex                     // protects manifestCache
+	config               Config
+	restartCh            chan string                    // carries sessionID of agent to restart
+	takeControlCh        chan string                    // carries sessionID of agent to take control of
+	takeControlReadies   map[string]chan struct{}       // sessionID → closed when status is user_interactive (or take-control rejected/attached)
+	takeControlReadiesMu sync.Mutex                     // protects takeControlReadies
+	terminalSignals      map[string]chan terminalSignal // sessionID → its monitorAll's receive channel
+	terminalSignalsMu    sync.Mutex                     // protects terminalSignals
+	bumpMessageCh        chan string                    // carries sessionID to bump lastMessageTime (hook events)
+	interactiveWaits     map[string]chan struct{}       // sessionID → closed when interactive session completes
+	killedInteractive    map[string]struct{}            // sessionID → killed by KillInteractive (checked after wait)
+	mu                   sync.Mutex                     // protects interactiveWaits and killedInteractive
+	sessionProcsMu       sync.Mutex                     // protects sessionProcs
+	sessionProcs         map[string]*processInfo        // sessionID → live proc for RecordUserInput lookups
+	manifestCache        map[string]*manifestCacheEntry // configDir → cached manifest (mtime-keyed)
+	manifestCacheMu      sync.Mutex                     // protects manifestCache
 }
 
 // SpawnRequest contains parameters for spawning an agent
@@ -330,7 +331,7 @@ type SpawnRequest struct {
 	CLIName            string
 	ScopeType          string            // "ticket" (default) or "project"
 	WorkflowInstanceID string            // when set, used directly instead of DB lookup
-	ExtraVars          map[string]string  // Additional template variables (e.g., BRANCH_NAME, DEFAULT_BRANCH)
+	ExtraVars          map[string]string // Additional template variables (e.g., BRANCH_NAME, DEFAULT_BRANCH)
 }
 
 // IsProjectScope returns true if this is a project-scoped spawn request
@@ -964,7 +965,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		return s.prepareScriptSpawn(ctx, req, phase, wfiID, agentID, sessionID, spawnToken, agentDef)
 	}
 
-	// Reject api-mode agents when the server was not started with --mode=api.
+	// Reject api-mode agents when api_mode_enabled is not set.
 	if executionMode == "api" && !s.config.APIMode {
 		return nil, nil, fmt.Errorf("api_mode_disabled")
 	}

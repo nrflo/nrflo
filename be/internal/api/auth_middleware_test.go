@@ -27,7 +27,7 @@ func newServerWithAuth(t *testing.T) *Server {
 	}
 	t.Cleanup(func() { pool.Close() })
 	cfg := config.DefaultConfig()
-	return NewServer(cfg, dbPath, t.TempDir(), pool, false, true)
+	return NewServer(cfg, dbPath, t.TempDir(), pool, true)
 }
 
 // injectSession stores userID in a new session and returns the session cookie.

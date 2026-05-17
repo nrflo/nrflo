@@ -638,7 +638,7 @@ func TestRunLoop_PlanMode_StoresUserInstructions(t *testing.T) {
 // Verify NewAgentDefinitionService is importable and usable.
 func TestNewAgentDefinitionService_IsAvailable(t *testing.T) {
 	env := newTestEnv(t)
-	svc := service.NewAgentDefinitionService(env.pool, clock.Real(), service.NewCLIModelService(env.pool, clock.Real()), nil, false)
+	svc := service.NewAgentDefinitionService(env.pool, clock.Real(), service.NewCLIModelService(env.pool, clock.Real()), nil)
 	if svc == nil {
 		t.Fatal("NewAgentDefinitionService returned nil")
 	}

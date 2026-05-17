@@ -19,8 +19,8 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
-	"be/internal/model"
 	"be/internal/manifest/python"
+	"be/internal/model"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/service"
@@ -35,20 +35,20 @@ const maxCallbacks = 10 // max cumulative agent spawns via callback plans per wo
 
 // RunRequest contains parameters for starting an orchestrated workflow run.
 type RunRequest struct {
-	ProjectID             string                  `json:"project_id"`
-	TicketID              string                  `json:"ticket_id"`
-	WorkflowName          string                  `json:"workflow"`
-	Instructions          string                  `json:"instructions"` // User-provided instructions
-	ScopeType             string                  `json:"scope_type"`   // "ticket" (default) or "project"
-	Interactive           bool                    `json:"interactive"`  // If true, start with interactive PTY session before layer execution
-	PlanMode              bool                    `json:"plan_mode"`    // If true, start with planning PTY session, read plan file after
-	CloseTicketOnComplete bool                    `json:"close_ticket_on_complete"`
-	Force                 bool                    `json:"force"`                       // If true, bypass concurrent ticket workflow guard
-	EndlessLoop           bool                    `json:"endless_loop"`                // Project-scope only: auto re-run on successful completion until stopped or failed
-	ScheduledTaskID       string                  `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
+	ProjectID             string                   `json:"project_id"`
+	TicketID              string                   `json:"ticket_id"`
+	WorkflowName          string                   `json:"workflow"`
+	Instructions          string                   `json:"instructions"` // User-provided instructions
+	ScopeType             string                   `json:"scope_type"`   // "ticket" (default) or "project"
+	Interactive           bool                     `json:"interactive"`  // If true, start with interactive PTY session before layer execution
+	PlanMode              bool                     `json:"plan_mode"`    // If true, start with planning PTY session, read plan file after
+	CloseTicketOnComplete bool                     `json:"close_ticket_on_complete"`
+	Force                 bool                     `json:"force"`                       // If true, bypass concurrent ticket workflow guard
+	EndlessLoop           bool                     `json:"endless_loop"`                // Project-scope only: auto re-run on successful completion until stopped or failed
+	ScheduledTaskID       string                   `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
 	SeedFindings          map[string]string        `json:"seed_findings,omitempty"`     // Pre-populate workflow_instances.findings at create time
 	InputArtifacts        []types.InputArtifactRef `json:"input_artifacts,omitempty"`   // Staged uploads to attach at launch time
-	ChainDepth            int                     `json:"-"`                           // next_workflow_on_success recursion depth (not persisted)
+	ChainDepth            int                      `json:"-"`                           // next_workflow_on_success recursion depth (not persisted)
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -78,8 +78,8 @@ type runState struct {
 	cancel          context.CancelFunc
 	spawners        map[string]*spawner.Spawner
 	done            chan struct{} // closed when runLoop goroutine exits
-	callbackPlan    callbackPlan // active callback plan; zero value = no plan
-	callbackPlanIdx int          // index of the next unexecuted plan step
+	callbackPlan    callbackPlan  // active callback plan; zero value = no plan
+	callbackPlanIdx int           // index of the next unexecuted plan step
 }
 
 // Orchestrator manages server-side workflow runs.
@@ -92,7 +92,6 @@ type Orchestrator struct {
 	wsHub    *ws.Hub
 	clock    clock.Clock
 	errorSvc spawner.ErrorRecorder
-	apiMode  bool
 
 	// OnRegisterPtyCommand is called when interactive/plan mode needs to register
 	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.
@@ -108,7 +107,7 @@ type Orchestrator struct {
 }
 
 // New creates a new Orchestrator.
-func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder, apiMode bool, sdkDir string) *Orchestrator {
+func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder, sdkDir string) *Orchestrator {
 	return &Orchestrator{
 		runs:     make(map[string]*runState),
 		dataPath: dataPath,
@@ -117,7 +116,6 @@ func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.Error
 		wsHub:    wsHub,
 		clock:    clk,
 		errorSvc: errorSvc,
-		apiMode:  apiMode,
 	}
 }
 
@@ -833,9 +831,9 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Broadcast retry event
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationRetried, projectID, ticketID, workflowName, map[string]interface{}{
-		"instance_id":      wi.ID,
-		"start_layer":      startLayerIdx,
-		"failed_phase":     failedPhase,
+		"instance_id":       wi.ID,
+		"start_layer":       startLayerIdx,
+		"failed_phase":      failedPhase,
 		"failed_session_id": sessionID,
 	}))
 
@@ -1398,6 +1396,11 @@ func (o *Orchestrator) runLoop(
 
 	callbackCount := 0
 
+	// Read api_mode_enabled freshly at spawn time so runtime toggles take effect.
+	apiModeSettingsSvc := service.NewGlobalSettingsService(pool, o.clock)
+	apiModeSettingVal, _ := apiModeSettingsSvc.Get("api_mode_enabled")
+	runAPIMode := apiModeSettingVal == "true"
+
 	// Build shared spawner config used by all phases in this run.
 	// OnSessionRegister/Unregister are set per-spawn in spawnPhases.
 	baseCfg := spawner.Config{
@@ -1423,7 +1426,7 @@ func (o *Orchestrator) runLoop(
 		AgentSvcReal:              agentSvcReal,
 		WorkflowSvc:               workflowSvcReal,
 		ToolDefRepo:               toolDefRepo,
-		APIMode:                   o.apiMode,
+		APIMode:                   runAPIMode,
 		PTYManager:                o.PTYManager,
 		DispatchRepo:              dispatchRepo,
 		ReviewRepo:                reviewRepo,
@@ -1697,7 +1700,7 @@ func (o *Orchestrator) maybeRestartEndlessLoop(wfiID string, req RunRequest) {
 	logger.Info(context.Background(), "endless loop: starting next iteration", "workflow", req.WorkflowName, "prev_instance_id", wfiID)
 
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowUpdated, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-		"instance_id":          wfiID,
+		"instance_id":            wfiID,
 		"endless_loop_iterating": true,
 	}))
 

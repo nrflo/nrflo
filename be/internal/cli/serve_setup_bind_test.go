@@ -18,7 +18,6 @@ func TestSetupServer_SocketBindFailure(t *testing.T) {
 	t.Setenv("NRFLO_SOCKET", "/dev/null/x")
 
 	DataPath = ""
-	serveMode = "cli"
 
 	sc, err := setupServer()
 	if err == nil {

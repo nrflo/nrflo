@@ -38,7 +38,7 @@ func newAuthServer(t *testing.T) *authServer {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	srv := NewServer(config.DefaultConfig(), dbPath, t.TempDir(), pool, false, true)
+	srv := NewServer(config.DefaultConfig(), dbPath, t.TempDir(), pool, true)
 	port := findFreePort(t)
 	go func() { _ = srv.Start("127.0.0.1", port) }()
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)

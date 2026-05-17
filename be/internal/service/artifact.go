@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -225,6 +226,69 @@ func (s *ArtifactService) Open(ctx context.Context, a *model.Artifact) (io.ReadC
 		return nil, fmt.Errorf("init artifact storage: %w", err)
 	}
 	return storage.Get(ctx, a.PathKey)
+}
+
+const maxAgentArtifactBytes = 32 * 1024 * 1024 // 32 MiB
+
+// AddFromAgent persists a binary blob produced by a running agent. Enforces the
+// 32 MiB inline cap, writes via the configured Storage backend, inserts an
+// artifact row (source="agent", created_by_session=sessionID), and broadcasts
+// EventArtifactCreated.
+func (s *ArtifactService) AddFromAgent(ctx context.Context, sessionID, projectID, wfiID, name, contentType string, data []byte) (*model.Artifact, error) {
+	if len(data) > maxAgentArtifactBytes {
+		return nil, fmt.Errorf("artifact too large: %d bytes (max 32 MiB)", len(data))
+	}
+
+	cfg, err := NewGlobalSettingsService(s.pool, s.clock).GetArtifactStorage(projectID)
+	if err != nil {
+		return nil, fmt.Errorf("get artifact storage config: %w", err)
+	}
+	storage, err := artifact.NewFromProjectConfig(ctx, projectID, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("init artifact storage: %w", err)
+	}
+
+	artifactID := uuid.New().String()
+	storageKey := wfiID + "/" + artifactID + "__" + name
+
+	if err := storage.Put(ctx, storageKey, bytes.NewReader(data)); err != nil {
+		return nil, fmt.Errorf("store artifact: %w", err)
+	}
+
+	a := &model.Artifact{
+		ID:                 artifactID,
+		ProjectID:          projectID,
+		WorkflowInstanceID: wfiID,
+		Name:               name,
+		Type:               string(cfg.Mode),
+		PathKey:            storageKey,
+		SizeBytes:          int64(len(data)),
+		ContentType:        contentType,
+		Source:             model.ArtifactSourceAgent,
+		CreatedBySession:   sessionID,
+	}
+
+	artifactRepo := repo.NewArtifactRepo(s.pool, s.clock)
+	if err := artifactRepo.Create(a); err != nil {
+		storage.Delete(ctx, storageKey)
+		return nil, fmt.Errorf("record artifact: %w", err)
+	}
+
+	BroadcastFromCtx(s.hub, ws.EventArtifactCreated, BroadcastCtx{ProjectID: projectID}, map[string]interface{}{
+		"artifact_id":          artifactID,
+		"workflow_instance_id": wfiID,
+		"name":                 name,
+	})
+	return a, nil
+}
+
+// GetStorage returns an initialized Storage backend for the given project.
+func (s *ArtifactService) GetStorage(ctx context.Context, projectID string) (artifact.Storage, error) {
+	cfg, err := NewGlobalSettingsService(s.pool, s.clock).GetArtifactStorage(projectID)
+	if err != nil {
+		return nil, fmt.Errorf("get artifact storage config: %w", err)
+	}
+	return artifact.NewFromProjectConfig(ctx, projectID, cfg)
 }
 
 // Delete removes an artifact from storage and the database, then broadcasts.

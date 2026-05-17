@@ -288,6 +288,12 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		logger.Warn(context.Background(), "layer findings expansion failed", "error", err)
 	}
 
+	// Expand artifact patterns
+	template, err = s.expandArtifacts(template, projectID, wfiID)
+	if err != nil {
+		logger.Warn(context.Background(), "artifact expansion failed", "error", err)
+	}
+
 	// Expand findings patterns (after variable substitution)
 	template, err = s.expandFindings(template, projectID, ticketID, workflowName, wfiID)
 	if err != nil {

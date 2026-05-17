@@ -225,9 +225,9 @@ func TestAgentSubcommands(t *testing.T) {
 		}
 	}
 
-	// Verify exact count: 9 subcommands (chain-next-instructions and chain-next-ticket added)
-	if len(actualSubcommands) != 9 {
-		t.Errorf("agentCmd has %d subcommands, want 9. Subcommands: %v", len(actualSubcommands), actualSubcommands)
+	// Verify exact count: 10 subcommands (artifact added)
+	if len(actualSubcommands) != 10 {
+		t.Errorf("agentCmd has %d subcommands, want 10. Subcommands: %v", len(actualSubcommands), actualSubcommands)
 	}
 }
 

@@ -1338,6 +1338,7 @@ func (o *Orchestrator) runLoop(
 	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
 	reviewRepo := repo.NewReviewRepo(pool, o.clock)
 	pythonRunner := python.NewOSRunner()
+	artifactSvcRun := service.NewArtifactService(pool, o.clock, o.wsHub, o.dataPath)
 
 	// Worktree cleanup on failure/cancellation (deferred after pool so git commands still work)
 	worktreeHandled := false
@@ -1432,6 +1433,7 @@ func (o *Orchestrator) runLoop(
 		SDKDir:                    o.sdkDir,
 		PythonPath:                pythonPath,
 		PythonScriptRepo:          repo.NewPythonScriptRepo(pool, o.clock),
+		ArtifactSvc:               artifactSvcRun,
 	}
 
 	// Use index-based loop to support plan-driven jumps and forward iteration.

@@ -170,6 +170,32 @@ Synthesise the above into a final recommendation.
 
 ---
 
+### Artifact Variables (`#{ARTIFACTS}` / `#{ARTIFACT:name}`)
+
+Reference pre-materialized input artifacts directly in prompts.
+
+**Syntax:**
+
+```markdown
+#{ARTIFACTS}
+#{ARTIFACT:mydata.csv}
+```
+
+`#{ARTIFACTS}` expands to tab-separated `name\t/abs/path` lines for all artifacts attached to the workflow instance, or `_No artifacts available for this workflow._` when none exist. `#{ARTIFACT:name}` expands to the absolute local path of the named artifact, or an empty string (with a server-side warning) when not found.
+
+Both vars materialize artifacts to `$NRF_ARTIFACTS_DIR` on first use; subsequent calls are idempotent (size-match check).
+
+**Example:**
+
+```markdown
+The following data files are available:
+#{ARTIFACTS}
+
+Analyze the primary dataset at: #{ARTIFACT:dataset.csv}
+```
+
+---
+
 ## 3. Agent Lifecycle Commands
 
 Spawned agents report results via CLI. **Exiting with code 0 is an implicit pass** — `agent finished` is the explicit equivalent. Only call `agent fail` when the task cannot be completed. Context is provided automatically by the system.
@@ -208,6 +234,26 @@ nrflo agent chain-next-ticket --ticket-id "<id>"
 | `chain-next-ticket` | When running inside a workflow chain, set the ticket ID for the next ticket-scope step. Call before `finished` or exit 0 |
 
 **Completion semantics:** Exit 0 or `agent finished` = pass. Non-zero exit or `agent fail` = fail. `agent continue` ≠ success — it triggers a fresh relaunch for context-exhausted agents.
+
+---
+
+### Artifact CLI Commands
+
+Agents can upload, list, and retrieve artifacts at runtime. The `$NRF_ARTIFACTS_DIR` env var points to the pre-materialized stage directory for input artifacts.
+
+```bash
+# Upload a file as a named artifact (max 32 MiB)
+nrflo agent artifact add <file-path> <NAME>
+
+# List all artifacts for this workflow instance
+nrflo agent artifact list
+
+# Get the local abs path of a materialized artifact (cat-pipe friendly)
+nrflo agent artifact get <NAME>
+cat $(nrflo agent artifact get report.csv)
+```
+
+All commands read `NRF_SESSION_ID` and `NRF_WORKFLOW_INSTANCE_ID` from the environment (set automatically by the spawner).
 
 ---
 

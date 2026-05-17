@@ -335,4 +335,7 @@ func init() {
 
 	// agent record-event
 	agentCmd.AddCommand(agentRecordEventCmd)
+
+	// agent artifact
+	agentCmd.AddCommand(artifactCmd)
 }

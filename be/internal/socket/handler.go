@@ -53,6 +53,8 @@ func (h *Handler) Handle(req Request) Response {
 		return h.handleScript(ctx, req, action)
 	case "global":
 		return h.handleGlobal(ctx, req, action)
+	case "artifact":
+		return h.handleArtifact(ctx, req, action)
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", req.Method)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError(req.Method))

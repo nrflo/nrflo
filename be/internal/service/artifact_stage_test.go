@@ -207,3 +207,48 @@ func TestArtifact_AttachInputArtifacts_Empty(t *testing.T) {
 		t.Errorf("AttachInputArtifacts(nil) = %v, want nil", err)
 	}
 }
+
+func TestArtifact_AddFromAgent_HappyPath(t *testing.T) {
+	svc, hub, dir := newArtifactSvcEnv(t)
+	ctx := context.Background()
+	seedProjWFI(t, svc.pool, "proj-agent", "wfi-agent")
+
+	data := []byte("agent produced data")
+	a, err := svc.AddFromAgent(ctx, "sess-1", "proj-agent", "wfi-agent", "output.txt", "text/plain", data)
+	if err != nil {
+		t.Fatalf("AddFromAgent: %v", err)
+	}
+	if a.Source != model.ArtifactSourceAgent {
+		t.Errorf("source = %q, want %q", a.Source, model.ArtifactSourceAgent)
+	}
+	if a.CreatedBySession != "sess-1" {
+		t.Errorf("created_by_session = %q, want sess-1", a.CreatedBySession)
+	}
+	if a.SizeBytes != int64(len(data)) {
+		t.Errorf("size_bytes = %d, want %d", a.SizeBytes, len(data))
+	}
+	if a.Name != "output.txt" {
+		t.Errorf("name = %q, want output.txt", a.Name)
+	}
+
+	// File in storage
+	storagePath := dir + "/projects/proj-agent/artifacts/" + a.PathKey
+	if _, statErr := os.Stat(storagePath); statErr != nil {
+		t.Errorf("artifact not in storage: %v", statErr)
+	}
+
+	// Broadcast emitted
+	if len(hub.events) == 0 {
+		t.Error("expected broadcast event, got none")
+	}
+}
+
+func TestArtifact_AddFromAgent_OverSizeReturnsError(t *testing.T) {
+	svc, _, _ := newArtifactSvcEnv(t)
+	// 32 MiB + 1 byte
+	bigData := make([]byte, 32*1024*1024+1)
+	_, err := svc.AddFromAgent(context.Background(), "s", "proj", "wfi", "big.bin", "", bigData)
+	if err == nil {
+		t.Fatal("expected error for oversized artifact")
+	}
+}

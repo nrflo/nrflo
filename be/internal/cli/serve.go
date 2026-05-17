@@ -139,7 +139,7 @@ func setupServer() (*serverComponents, error) {
 	httpServer := api.NewServer(cfg, resolvedDataPath, logsDir, pool, apiMode, insecureCookies)
 
 	clk := clock.Real()
-	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath)
+	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath, resolvedDataPath)
 	if err := socketServer.Start(); err != nil {
 		sockListener.Close()
 		pool.Close()

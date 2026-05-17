@@ -34,6 +34,9 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 | `script.context` | Return 12-key auto-injectable dict for script-mode session. Params: `{session_id}` |
+| `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |
+| `artifact.list` | List artifacts for the session's workflow instance. Params: `{session_id}` |
+| `artifact.get` | Materialize artifact to stage dir and return abs path. Params: `{session_id, name}` |
 
 All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set from `NRF_WORKFLOW_INSTANCE_ID`/`NRF_SESSION_ID` env vars by the CLI).
 
@@ -63,3 +66,4 @@ After the DB write and WS broadcast, `agent.fail`, `agent.finished`, `agent.cont
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
 | `handler_script_context.go` | `script.context` handler |
 | `handler_agent_log.go` | `agent.log` handler |
+| `handler_artifact.go` | `artifact.add/list/get` handlers |

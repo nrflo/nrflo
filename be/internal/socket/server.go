@@ -104,13 +104,18 @@ type TerminalSignaler interface {
 }
 
 // NewServerWithListener creates a socket server with a pre-bound listener from BindListener.
-func NewServerWithListener(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler, listener net.Listener, socketPath string) *Server {
+// dataPath (optional last arg) is the database file path used to construct the ArtifactService.
+func NewServerWithListener(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler, listener net.Listener, socketPath string, dataPath ...string) *Server {
+	h := NewHandler(pool, hub, clk, signaler)
+	if len(dataPath) > 0 && dataPath[0] != "" {
+		h.artifactSvc = service.NewArtifactService(pool, clk, hub, dataPath[0])
+	}
 	return &Server{
 		pool:       pool,
 		socketPath: socketPath,
 		listener:   listener,
 		shutdown:   make(chan struct{}),
-		handler:    NewHandler(pool, hub, clk, signaler),
+		handler:    h,
 		wsHub:      hub,
 	}
 }
@@ -263,6 +268,7 @@ type Handler struct {
 	agentSvc           *service.AgentService
 	workflowSvc        *service.WorkflowService
 	wfChainRunSvc      *service.WorkflowChainRunService
+	artifactSvc        *service.ArtifactService
 	wsHub              *ws.Hub
 	signaler           TerminalSignaler // optional; nil-safe
 	pool               *db.Pool
@@ -276,7 +282,7 @@ type Handler struct {
 	codexJSONLOffsets map[string]int64
 }
 
-// NewHandler creates a new request handler
+// NewHandler creates a new request handler.
 func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler) *Handler {
 	return &Handler{
 		findingsSvc:        service.NewFindingsService(pool, clk),

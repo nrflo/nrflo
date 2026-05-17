@@ -120,7 +120,7 @@ Rules every change must respect.
 - **Service tokens (long-lived project-scoped bearer tokens for external callers)** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
-- **Artifact storage — DB model/repo + Storage interface + internalFS/R2/S3 backends + ArtifactService (stage/attach/list/stream/delete + WS broadcasts)** → [be/internal/artifact/](be/internal/artifact/) + [repo/artifact.go](be/internal/repo/artifact.go) + [service/artifact.go](be/internal/service/artifact.go)
+- **Artifact storage + agent runtime (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `nrflo agent artifact add|list|get`)** → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Notification channels** → [be/CLAUDE.md](be/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)

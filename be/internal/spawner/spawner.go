@@ -188,6 +188,10 @@ type Config struct {
 	// PythonScriptRepo loads python_scripts rows for script-mode agents.
 	// Required when any agent definition uses execution_mode='script'.
 	PythonScriptRepo *repo.PythonScriptRepo
+	// ArtifactSvc provides artifact listing and storage access for NRF_ARTIFACTS_DIR injection
+	// and #{ARTIFACT[S]} template expansion. Optional (nil-safe): when nil, NRF_ARTIFACTS_DIR
+	// still resolves to the stage dir but artifacts are not pre-materialized.
+	ArtifactSvc *service.ArtifactService
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -860,6 +864,19 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 
 	modelID := "script:" + script.ID
 
+	scriptStageDir, _ := EnsureStageDir(req.ProjectID, wfiID)
+	if s.config.ArtifactSvc != nil {
+		if pool := s.pool(); pool != nil {
+			if storage, storageErr := s.config.ArtifactSvc.GetStorage(ctx, req.ProjectID); storageErr == nil {
+				if _, matErr := MaterializeAll(ctx, wfiID, req.ProjectID, repo.NewArtifactRepo(pool, s.config.Clock), storage); matErr != nil {
+					logger.Warn(ctx, "artifact pre-materialize failed during script spawn", "error", matErr)
+				}
+			} else {
+				logger.Warn(ctx, "artifact storage unavailable during script spawn", "error", storageErr)
+			}
+		}
+	}
+
 	env := append(filterEnv(os.Environ(), "CLAUDECODE"),
 		fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 		fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
@@ -867,6 +884,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		fmt.Sprintf("NRFLO_AGENT_TOKEN=%s", spawnToken),
 		fmt.Sprintf("NRF_TRX=%s", logger.TrxFromContext(ctx)),
 		"NRF_SPAWNED=1",
+		fmt.Sprintf("NRF_ARTIFACTS_DIR=%s", scriptStageDir),
 	)
 	env = append(env, s.config.ProjectEnv...)
 
@@ -1237,6 +1255,19 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		reasoningEffort = cfg.ReasoningEffort
 	}
 
+	cliStageDir, _ := EnsureStageDir(req.ProjectID, wfiID)
+	if s.config.ArtifactSvc != nil {
+		if pool := s.pool(); pool != nil {
+			if storage, storageErr := s.config.ArtifactSvc.GetStorage(ctx, req.ProjectID); storageErr == nil {
+				if _, matErr := MaterializeAll(ctx, wfiID, req.ProjectID, repo.NewArtifactRepo(pool, s.config.Clock), storage); matErr != nil {
+					logger.Warn(ctx, "artifact pre-materialize failed during cli spawn", "error", matErr)
+				}
+			} else {
+				logger.Warn(ctx, "artifact storage unavailable during cli spawn", "error", storageErr)
+			}
+		}
+	}
+
 	opts := SpawnOptions{
 		Model:            model,
 		SessionID:        sessionID,
@@ -1256,6 +1287,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			"NRF_SPAWNED=1",
 			fmt.Sprintf("NRF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
 			fmt.Sprintf("NRF_MAX_CONTEXT=%d", s.maxContextForModel(model)),
+			fmt.Sprintf("NRF_ARTIFACTS_DIR=%s", cliStageDir),
 		), s.config.ProjectEnv...),
 	}
 

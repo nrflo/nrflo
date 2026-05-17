@@ -41,6 +41,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `user_service.go` | `UserService.Delete`: self-delete → system-user → last-admin checks; system users flagged via `users.system=1` |
 | `python_script_validate.go` | `Validate(ctx, code)`: runs `python3` AST parse with 5s timeout; degrades gracefully if python3 absent |
 | `project_env_var.go` | `ProjectEnvVarService`: List/Upsert/Delete; validates name regex, reserved names, 4096-byte value cap |
+| `artifact.go` | `ArtifactService`: StageUpload (tmp staging), ReadUploadMeta, CancelUpload, AttachInputArtifacts (moves staged uploads to persistent storage, transactional rollback), List, Get, Open, Delete (broadcasts `artifact.deleted`) |
 
 ## Per-project env vars
 

@@ -87,6 +87,8 @@ const (
 	EventChainStepCompleted    = "chain.step_completed"
 	EventChainRunCompleted     = "chain.run_completed"
 	EventChainRunFailed        = "chain.run_failed"
+	EventArtifactCreated       = "artifact.created"
+	EventArtifactDeleted       = "artifact.deleted"
 )
 
 // Event represents a WebSocket event to broadcast

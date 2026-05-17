@@ -62,15 +62,20 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 	}
 
 	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
-		ProjectID:    projectID,
-		WorkflowName: body.Workflow,
-		Instructions: body.Instructions,
-		ScopeType:    "project",
-		Interactive:  body.Interactive,
-		PlanMode:     body.PlanMode,
-		EndlessLoop:  body.EndlessLoop,
+		ProjectID:      projectID,
+		WorkflowName:   body.Workflow,
+		Instructions:   body.Instructions,
+		ScopeType:      "project",
+		Interactive:    body.Interactive,
+		PlanMode:       body.PlanMode,
+		EndlessLoop:    body.EndlessLoop,
+		InputArtifacts: body.InputArtifacts,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "input artifacts attach failed") {
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

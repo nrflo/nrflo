@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -310,6 +311,9 @@ func (s *Server) startRetentionCleanup() {
 		} else if deleted > 0 {
 			logger.Info(context.Background(), "retention cleanup: orphaned messages", "deleted", deleted)
 		}
+
+		// Reap staged uploads older than 1 hour.
+		s.reapStaleUploads()
 	}
 
 	// Run once immediately on startup
@@ -321,6 +325,34 @@ func (s *Server) startRetentionCleanup() {
 			cleanup()
 		}
 	}()
+}
+
+// reapStaleUploads removes staged upload directories older than 1 hour.
+func (s *Server) reapStaleUploads() {
+	if s.dataPath == "" {
+		return
+	}
+	artifactSvc := service.NewArtifactService(s.pool, s.clock, s.wsHub, s.dataPath)
+	root := artifactSvc.StagingRoot()
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return
+	}
+	cutoff := s.clock.Now().Add(-1 * time.Hour)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			if rmErr := os.RemoveAll(filepath.Join(root, e.Name())); rmErr == nil {
+				logger.Info(context.Background(), "retention cleanup: reaped stale upload", "upload_id", e.Name())
+			}
+		}
+	}
 }
 
 // ticketRepo returns a ticket repo backed by the connection pool
@@ -727,6 +759,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Status/Dashboard
 	protected("GET /api/v1/status", s.handleStatus)
 	protected("GET /api/v1/daily-stats", s.handleGetDailyStats)
+
+	// Artifact uploads (staging) and artifact management
+	protected("POST /api/v1/artifact-uploads", s.handleStageUpload)
+	protected("DELETE /api/v1/artifact-uploads/{upload_id}", s.handleCancelUpload)
+	protected("GET /api/v1/workflow-instances/{iid}/artifacts", s.handleListArtifacts)
+	protected("GET /api/v1/artifacts/{aid}/download", s.handleDownloadArtifact)
+	projectAdmin("DELETE /api/v1/artifacts/{aid}", s.handleDeleteArtifact)
 
 	// Embedded UI (SPA catch-all — no auth, serves login page too)
 	if uiFS, err := static.DistFS(); err == nil {

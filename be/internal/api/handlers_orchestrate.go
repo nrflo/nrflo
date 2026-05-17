@@ -9,6 +9,7 @@ import (
 	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/repo"
+	"be/internal/types"
 	"be/internal/ws"
 )
 
@@ -40,11 +41,12 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Workflow     string `json:"workflow"`
-		Instructions string `json:"instructions"`
-		Interactive  bool   `json:"interactive"`
-		PlanMode     bool   `json:"plan_mode"`
-		Force        bool   `json:"force"`
+		Workflow       string                   `json:"workflow"`
+		Instructions   string                   `json:"instructions"`
+		Interactive    bool                     `json:"interactive"`
+		PlanMode       bool                     `json:"plan_mode"`
+		Force          bool                     `json:"force"`
+		InputArtifacts []types.InputArtifactRef `json:"input_artifacts,omitempty"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -71,15 +73,20 @@ func (s *Server) handleRunWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := s.orchestrator.Start(r.Context(), orchestrator.RunRequest{
-		ProjectID:    projectID,
-		TicketID:     ticketID,
-		WorkflowName: body.Workflow,
-		Instructions: body.Instructions,
-		Interactive:  body.Interactive,
-		PlanMode:     body.PlanMode,
-		Force:        body.Force,
+		ProjectID:      projectID,
+		TicketID:       ticketID,
+		WorkflowName:   body.Workflow,
+		Instructions:   body.Instructions,
+		Interactive:    body.Interactive,
+		PlanMode:       body.PlanMode,
+		Force:          body.Force,
+		InputArtifacts: body.InputArtifacts,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "input artifacts attach failed") {
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
 		// Check if it's a "already running" or concurrent ticket workflow error
 		if s.orchestrator.IsRunning(projectID, ticketID, body.Workflow) ||
 			strings.Contains(err.Error(), "concurrent ticket workflows") {

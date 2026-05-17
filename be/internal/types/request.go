@@ -212,13 +212,14 @@ type WorkflowDefUpdateRequest struct {
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow
 type ProjectWorkflowRunRequest struct {
-	Workflow        string            `json:"workflow"`
-	Instructions    string            `json:"instructions,omitempty"`
-	Interactive     bool              `json:"interactive,omitempty"`
-	PlanMode        bool              `json:"plan_mode,omitempty"`
-	EndlessLoop     bool              `json:"endless_loop,omitempty"`
-	ScheduledTaskID string            `json:"scheduled_task_id,omitempty"`
-	SeedFindings    map[string]string `json:"seed_findings,omitempty"`
+	Workflow         string            `json:"workflow"`
+	Instructions     string            `json:"instructions,omitempty"`
+	Interactive      bool              `json:"interactive,omitempty"`
+	PlanMode         bool              `json:"plan_mode,omitempty"`
+	EndlessLoop      bool              `json:"endless_loop,omitempty"`
+	ScheduledTaskID  string            `json:"scheduled_task_id,omitempty"`
+	SeedFindings     map[string]string `json:"seed_findings,omitempty"`
+	InputArtifacts   []InputArtifactRef `json:"input_artifacts,omitempty"`
 }
 
 // AgentDefCreateRequest is the request for creating an agent definition
@@ -333,4 +334,32 @@ type DependencyRequest struct {
 type StatusRequest struct {
 	PendingLimit   int `json:"pending_limit,omitempty"`
 	CompletedLimit int `json:"completed_limit,omitempty"`
+}
+
+// InputArtifactRef references a staged upload to attach to a workflow run.
+type InputArtifactRef struct {
+	UploadID string `json:"upload_id"`
+	Name     string `json:"name,omitempty"`
+}
+
+// ArtifactUploadResponse is returned after staging an upload.
+type ArtifactUploadResponse struct {
+	UploadID    string `json:"upload_id"`
+	Name        string `json:"name"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentType string `json:"content_type"`
+}
+
+// ArtifactDTO is the API representation of a stored artifact.
+type ArtifactDTO struct {
+	ID                 string `json:"id"`
+	ProjectID          string `json:"project_id"`
+	WorkflowInstanceID string `json:"workflow_instance_id"`
+	Name               string `json:"name"`
+	Type               string `json:"type"`
+	SizeBytes          int64  `json:"size_bytes"`
+	ContentType        string `json:"content_type,omitempty"`
+	Source             string `json:"source"`
+	CreatedBySession   string `json:"created_by_session,omitempty"`
+	CreatedAt          string `json:"created_at"`
 }

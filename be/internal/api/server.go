@@ -591,6 +591,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/projects/{id}/findings", s.handleGetProjectFindings)
 	protected("POST /api/v1/projects/{id}/findings", s.handleUpsertProjectFinding)
 	protected("DELETE /api/v1/projects/{id}/findings/{key}", s.handleDeleteProjectFinding)
+	protected("GET /api/v1/findings/history", s.handleListFindingsHistory)
 
 	// Git
 	protected("GET /api/v1/projects/{id}/git/commits", s.handleListGitCommits)

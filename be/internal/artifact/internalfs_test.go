@@ -21,8 +21,10 @@ func TestNewFromProjectConfig(t *testing.T) {
 		wantErr bool
 	}{
 		{"internal", ModeInternal, false},
-		{"s3", ModeS3, true},
-		{"r2", ModeR2, true},
+		// s3 returns a stub (no error); operations on the stub fail.
+		{"s3", ModeS3, false},
+		// r2 with empty config fails because secret refs are unresolvable.
+		{"r2_empty_config", ModeR2, true},
 		{"unknown", StorageMode("badmode"), true},
 	}
 	for _, tc := range tests {
@@ -42,6 +44,24 @@ func TestNewFromProjectConfig(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNewFromProjectConfig_S3StubPutError(t *testing.T) {
+	t.Setenv("NRFLO_HOME", t.TempDir())
+	s, err := NewFromProjectConfig(context.Background(), "proj-s3err", Config{Mode: ModeS3})
+	if err != nil {
+		t.Fatalf("NewFromProjectConfig(s3) unexpected error: %v", err)
+	}
+	if s == nil {
+		t.Fatal("NewFromProjectConfig(s3) returned nil storage")
+	}
+	putErr := s.Put(context.Background(), "key.txt", bytes.NewReader([]byte("x")))
+	if putErr == nil {
+		t.Error("s3 stub Put() expected error, got nil")
+	}
+	if putErr.Error() != "s3 backend not yet implemented" {
+		t.Errorf("s3 stub Put() error = %q, want %q", putErr.Error(), "s3 backend not yet implemented")
 	}
 }
 

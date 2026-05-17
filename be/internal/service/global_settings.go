@@ -1,13 +1,21 @@
 package service
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+
+	"be/internal/artifact"
 	"be/internal/clock"
 	"be/internal/db"
 )
 
+const artifactStorageKey = "artifact_storage"
+
 // GlobalSettingsService provides access to global config key-value store.
 type GlobalSettingsService struct {
-	pool *db.Pool
+	pool  *db.Pool
 	clock clock.Clock
 }
 
@@ -34,4 +42,70 @@ func (s *GlobalSettingsService) GetProjectConfig(projectID, key string) (string,
 // SetProjectConfig upserts a project-scoped config key-value pair.
 func (s *GlobalSettingsService) SetProjectConfig(projectID, key, value string) error {
 	return s.pool.SetProjectConfig(projectID, key, value)
+}
+
+// GetArtifactStorage returns the artifact storage config for a project. Defaults to {mode: internal}.
+func (s *GlobalSettingsService) GetArtifactStorage(projectID string) (artifact.Config, error) {
+	raw, err := s.pool.GetProjectConfig(projectID, artifactStorageKey)
+	if err != nil {
+		return artifact.Config{}, err
+	}
+	if raw == "" {
+		return artifact.Config{Mode: artifact.ModeInternal}, nil
+	}
+	var cfg artifact.Config
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return artifact.Config{}, err
+	}
+	return cfg, nil
+}
+
+// SetArtifactStorage persists the artifact storage config for a project.
+// Returns an error without persisting if mode=s3 (not yet implemented) or R2 fields are missing.
+func (s *GlobalSettingsService) SetArtifactStorage(projectID string, cfg artifact.Config) error {
+	switch cfg.Mode {
+	case artifact.ModeInternal:
+		// OK
+	case artifact.ModeS3:
+		return errors.New("s3 backend not yet implemented")
+	case artifact.ModeR2:
+		var missing []string
+		if cfg.AccountID == "" {
+			missing = append(missing, "account_id")
+		}
+		if cfg.Bucket == "" {
+			missing = append(missing, "bucket")
+		}
+		if cfg.AccessKeyRef == "" {
+			missing = append(missing, "access_key_ref")
+		}
+		if cfg.SecretKeyRef == "" {
+			missing = append(missing, "secret_key_ref")
+		}
+		if len(missing) > 0 {
+			return fmt.Errorf("cloudflare_r2 requires: %s", strings.Join(missing, ", "))
+		}
+	default:
+		return fmt.Errorf("unknown storage mode %q", cfg.Mode)
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return s.pool.SetProjectConfig(projectID, artifactStorageKey, string(data))
+}
+
+// GetArtifactStorageRedacted returns the artifact storage config with secret refs redacted.
+func (s *GlobalSettingsService) GetArtifactStorageRedacted(projectID string) (artifact.Config, error) {
+	cfg, err := s.GetArtifactStorage(projectID)
+	if err != nil {
+		return artifact.Config{}, err
+	}
+	if cfg.AccessKeyRef != "" {
+		cfg.AccessKeyRef = artifact.RedactSecretRef(cfg.AccessKeyRef)
+	}
+	if cfg.SecretKeyRef != "" {
+		cfg.SecretKeyRef = artifact.RedactSecretRef(cfg.SecretKeyRef)
+	}
+	return cfg, nil
 }

@@ -112,6 +112,7 @@ The Unix socket uses JSON-RPC line-delimited protocol. Supported methods: `findi
 | `internal/spec_import/` | [spec_import/CLAUDE.md](internal/spec_import/CLAUDE.md) | Spec import adapters (GitHub Issue, Jira, Markdown passthrough) |
 
 Per-project env vars: see [internal/service/CLAUDE.md](internal/service/CLAUDE.md).
+Per-project cleanup toggle (`workflow_cleanup_enabled`, default off) + per-project retention limit: `GET|PUT /api/v1/projects/{id}/settings/cleanup` and `GET|PUT /api/v1/projects/{id}/settings/artifact-storage` (see `internal/api/handlers_project_settings.go`).
 Ticket refs: `be/internal/repo/ticket_ref.go` (repo) and `be/internal/model/ticket_ref.go` (model).
 SeedFindings on RunRequest: see [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md).
 

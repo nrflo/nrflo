@@ -316,6 +316,27 @@ func (r *WorkflowInstanceRepo) CleanupKeepLatest(keep int) (int64, error) {
 	return result.RowsAffected()
 }
 
+// CleanupKeepLatestForProject deletes non-active workflow instances beyond the keep
+// limit for a specific project, ordered by updated_at DESC. Active instances and
+// instances from other projects are never deleted.
+func (r *WorkflowInstanceRepo) CleanupKeepLatestForProject(projectID string, keep int) (int64, error) {
+	result, err := r.pool.Exec(`
+		DELETE FROM workflow_instances
+		WHERE LOWER(project_id) = LOWER(?)
+		AND status != ?
+		AND id NOT IN (
+			SELECT id FROM workflow_instances
+			WHERE LOWER(project_id) = LOWER(?)
+			AND status != ?
+			ORDER BY updated_at DESC
+			LIMIT ?
+		)`, projectID, model.WorkflowInstanceActive, projectID, model.WorkflowInstanceActive, keep)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // Delete deletes a workflow instance
 func (r *WorkflowInstanceRepo) Delete(id string) error {
 	result, err := r.pool.Exec(`DELETE FROM workflow_instances WHERE id = ?`, id)

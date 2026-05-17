@@ -7,6 +7,8 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { SafetyHookCheckDialog } from './SafetyHookCheckDialog'
 import { ProjectEnvVarsEditor } from './ProjectEnvVarsEditor'
+import { ProjectArtifactStorageEditor } from './ProjectArtifactStorageEditor'
+import { ProjectCleanupEditor } from './ProjectCleanupEditor'
 
 export interface ProjectFormData {
   id: string
@@ -266,7 +268,11 @@ export function ProjectForm({
         )}
       </div>
       {!isCreate && disabledId && (
-        <ProjectEnvVarsEditor projectId={disabledId} />
+        <>
+          <ProjectEnvVarsEditor projectId={disabledId} />
+          <ProjectArtifactStorageEditor projectId={disabledId} />
+          <ProjectCleanupEditor projectId={disabledId} />
+        </>
       )}
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>

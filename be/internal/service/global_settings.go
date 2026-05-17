@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"be/internal/artifact"
@@ -12,6 +13,8 @@ import (
 )
 
 const artifactStorageKey = "artifact_storage"
+const workflowCleanupEnabledKey = "workflow_cleanup_enabled"
+const sessionRetentionLimitKey = "session_retention_limit"
 
 // GlobalSettingsService provides access to global config key-value store.
 type GlobalSettingsService struct {
@@ -69,6 +72,18 @@ func (s *GlobalSettingsService) SetArtifactStorage(projectID string, cfg artifac
 	case artifact.ModeS3:
 		return errors.New("s3 backend not yet implemented")
 	case artifact.ModeR2:
+		if cfg.AccessKeyRef == artifact.RedactedSentinel || cfg.SecretKeyRef == artifact.RedactedSentinel {
+			existing, err := s.GetArtifactStorage(projectID)
+			if err != nil {
+				return err
+			}
+			if cfg.AccessKeyRef == artifact.RedactedSentinel {
+				cfg.AccessKeyRef = existing.AccessKeyRef
+			}
+			if cfg.SecretKeyRef == artifact.RedactedSentinel {
+				cfg.SecretKeyRef = existing.SecretKeyRef
+			}
+		}
 		var missing []string
 		if cfg.AccountID == "" {
 			missing = append(missing, "account_id")
@@ -108,4 +123,56 @@ func (s *GlobalSettingsService) GetArtifactStorageRedacted(projectID string) (ar
 		cfg.SecretKeyRef = artifact.RedactSecretRef(cfg.SecretKeyRef)
 	}
 	return cfg, nil
+}
+
+// GetWorkflowCleanupEnabled returns whether workflow cleanup is enabled for a project.
+// Defaults to false if not set.
+func (s *GlobalSettingsService) GetWorkflowCleanupEnabled(projectID string) (bool, error) {
+	val, err := s.pool.GetProjectConfig(projectID, workflowCleanupEnabledKey)
+	if err != nil {
+		return false, err
+	}
+	return val == "true", nil
+}
+
+// SetWorkflowCleanupEnabled persists the workflow cleanup enabled flag for a project.
+func (s *GlobalSettingsService) SetWorkflowCleanupEnabled(projectID string, enabled bool) error {
+	val := "false"
+	if enabled {
+		val = "true"
+	}
+	return s.pool.SetProjectConfig(projectID, workflowCleanupEnabledKey, val)
+}
+
+// GetSessionRetentionLimit returns the session retention limit for a project.
+// Falls back to the global setting, then defaults to 1000.
+func (s *GlobalSettingsService) GetSessionRetentionLimit(projectID string) (int, error) {
+	val, err := s.pool.GetProjectConfig(projectID, sessionRetentionLimitKey)
+	if err != nil {
+		return 0, err
+	}
+	if val != "" {
+		if parsed, parseErr := strconv.Atoi(val); parseErr == nil && parsed >= 10 {
+			return parsed, nil
+		}
+	}
+	globalVal, err := s.pool.GetConfig(sessionRetentionLimitKey)
+	if err != nil {
+		return 0, err
+	}
+	if globalVal != "" {
+		if parsed, parseErr := strconv.Atoi(globalVal); parseErr == nil && parsed >= 10 {
+			return parsed, nil
+		}
+	}
+	return 1000, nil
+}
+
+// SetSessionRetentionLimit persists the session retention limit for a project.
+// Returns an error if n < 10.
+func (s *GlobalSettingsService) SetSessionRetentionLimit(projectID string, n int) error {
+	if n < 10 {
+		return fmt.Errorf("session_retention_limit must be >= 10")
+	}
+	return s.pool.SetProjectConfig(projectID, sessionRetentionLimitKey, strconv.Itoa(n))
 }

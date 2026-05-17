@@ -42,6 +42,13 @@ vi.mock('@/api/systemAgentDefs', () => ({
   deleteSystemAgentDef: vi.fn(),
 }))
 
+vi.mock('@/api/projectSettings', () => ({
+  getArtifactStorage: vi.fn().mockResolvedValue({ mode: 'internal' }),
+  setArtifactStorage: vi.fn(),
+  getCleanup: vi.fn().mockResolvedValue({ enabled: false, retention_limit: 100 }),
+  setCleanup: vi.fn(),
+}))
+
 vi.mock('@/hooks/useLogs')
 
 function makeProject(overrides: Partial<Project> = {}): Project {
@@ -330,9 +337,9 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       await user.click(toggle)
       expect(toggle).toHaveAttribute('aria-checked', 'true')
 
-      // Save
-      const saveButton = screen.getByRole('button', { name: /save/i })
-      await user.click(saveButton)
+      // Save — use last match; editors add their own Save buttons before the form's
+      const saveButtons = screen.getAllByRole('button', { name: /save/i })
+      await user.click(saveButtons[saveButtons.length - 1])
 
       await waitFor(() => {
         expect(projectsApi.updateProject).toHaveBeenCalledWith('test-project', {
@@ -366,9 +373,9 @@ describe('SettingsPage - use_git_worktrees toggle', () => {
       await user.click(toggle)
       expect(toggle).toHaveAttribute('aria-checked', 'false')
 
-      // Save
-      const saveButton = screen.getByRole('button', { name: /save/i })
-      await user.click(saveButton)
+      // Save — use last match; editors add their own Save buttons before the form's
+      const saveButtons = screen.getAllByRole('button', { name: /save/i })
+      await user.click(saveButtons[saveButtons.length - 1])
 
       await waitFor(() => {
         expect(projectsApi.updateProject).toHaveBeenCalledWith('test-project', {

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -281,31 +280,44 @@ func (s *Server) initEventLog() {
 	}()
 }
 
-// startRetentionCleanup trims workflow_instances and agent_sessions to keep
-// only the latest N non-active/non-running rows, every 20 minutes.
-// N is read from the session_retention_limit global setting (default 1000).
+// startRetentionCleanup runs per-project workflow instance cleanup every 20 minutes.
+// For each project with workflow_cleanup_enabled=true, non-active instances beyond
+// that project's session_retention_limit (default 1000) are deleted.
+// Orphaned messages are purged once per pass after all projects are processed.
 func (s *Server) startRetentionCleanup() {
 	cleanup := func() {
 		svc := service.NewGlobalSettingsService(s.pool, s.clock)
-		keep := 1000
-		if val, err := svc.Get("session_retention_limit"); err == nil && val != "" {
-			if parsed, parseErr := strconv.Atoi(val); parseErr == nil && parsed >= 10 {
-				keep = parsed
-			}
-		}
-
+		projectRepo := repo.NewProjectRepo(s.pool, s.clock)
 		wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
 		asRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
 
-		if deleted, err := wfiRepo.CleanupKeepLatest(keep); err != nil {
-			logger.Info(context.Background(), "retention cleanup: workflow_instances error", "error", err)
-		} else if deleted > 0 {
-			logger.Info(context.Background(), "retention cleanup: workflow_instances", "deleted", deleted)
+		projects, err := projectRepo.List()
+		if err != nil {
+			logger.Info(context.Background(), "retention cleanup: list projects error", "error", err)
+		} else {
+			for _, project := range projects {
+				enabled, err := svc.GetWorkflowCleanupEnabled(project.ID)
+				if err != nil {
+					logger.Info(context.Background(), "retention cleanup: get cleanup enabled error", "project", project.ID, "error", err)
+					continue
+				}
+				if !enabled {
+					continue
+				}
+				keep, err := svc.GetSessionRetentionLimit(project.ID)
+				if err != nil {
+					logger.Info(context.Background(), "retention cleanup: get retention limit error", "project", project.ID, "error", err)
+					continue
+				}
+				if deleted, err := wfiRepo.CleanupKeepLatestForProject(project.ID, keep); err != nil {
+					logger.Info(context.Background(), "retention cleanup: workflow_instances error", "project", project.ID, "error", err)
+				} else if deleted > 0 {
+					logger.Info(context.Background(), "retention cleanup: workflow_instances", "project", project.ID, "deleted", deleted)
+				}
+			}
 		}
 
 		// Clean up orphaned messages (sessions removed by CASCADE).
-		// Agent sessions are NOT cleaned independently — CASCADE from
-		// workflow_instances deletion handles them.
 		if deleted, err := asRepo.CleanupOrphanedMessages(); err != nil {
 			logger.Info(context.Background(), "retention cleanup: orphaned messages error", "error", err)
 		} else if deleted > 0 {
@@ -651,6 +663,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/projects/{id}/env-vars", s.handleListProjectEnvVars)
 	projectAdmin("PUT /api/v1/projects/{id}/env-vars/{name}", s.handlePutProjectEnvVar)
 	projectAdmin("DELETE /api/v1/projects/{id}/env-vars/{name}", s.handleDeleteProjectEnvVar)
+
+	// Project settings: artifact storage and workflow cleanup
+	protected("GET /api/v1/projects/{id}/settings/artifact-storage", s.handleGetProjectArtifactStorage)
+	projectAdmin("PUT /api/v1/projects/{id}/settings/artifact-storage", s.handlePutProjectArtifactStorage)
+	protected("GET /api/v1/projects/{id}/settings/cleanup", s.handleGetProjectCleanup)
+	projectAdmin("PUT /api/v1/projects/{id}/settings/cleanup", s.handlePutProjectCleanup)
 
 	// Python scripts (project-scoped) — writes are admin-only
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"be/internal/artifact"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -31,9 +32,7 @@ func redactCredential(cred *model.APICredential) *model.APICredential {
 		return nil
 	}
 	out := *cred
-	if strings.HasPrefix(out.SecretRef, "literal:") {
-		out.SecretRef = literalSecretRedacted
-	}
+	out.SecretRef = artifact.RedactSecretRef(out.SecretRef)
 	return &out
 }
 

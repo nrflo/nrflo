@@ -41,6 +41,13 @@ vi.mock('@/api/systemAgentDefs', () => ({
   deleteSystemAgentDef: vi.fn(),
 }))
 
+vi.mock('@/api/projectSettings', () => ({
+  getArtifactStorage: vi.fn().mockResolvedValue({ mode: 'internal' }),
+  setArtifactStorage: vi.fn(),
+  getCleanup: vi.fn().mockResolvedValue({ enabled: false, retention_limit: 100 }),
+  setCleanup: vi.fn(),
+}))
+
 function makeProject(overrides: Partial<Project> = {}): Project {
   return {
     id: 'test-project',
@@ -174,7 +181,8 @@ describe('SettingsPage — safety hook edit form', () => {
     await user.click(screen.getByRole('button', { name: '' }))
 
     await user.click(screen.getByRole('switch', { name: /enable safety hook/i }))
-    await user.click(screen.getByRole('button', { name: /save/i }))
+    const saveButtons1 = screen.getAllByRole('button', { name: /save/i })
+    await user.click(saveButtons1[saveButtons1.length - 1])
 
     await waitFor(() => {
       const callArgs = vi.mocked(projectsApi.updateProject).mock.calls[0]
@@ -209,7 +217,8 @@ describe('SettingsPage — safety hook edit form', () => {
     const hookToggle = screen.getByRole('switch', { name: /enable safety hook/i })
     await user.click(hookToggle) // disable
     await user.click(hookToggle) // re-enable
-    await user.click(screen.getByRole('button', { name: /save/i }))
+    const saveButtons2 = screen.getAllByRole('button', { name: /save/i })
+    await user.click(saveButtons2[saveButtons2.length - 1])
 
     await waitFor(() => {
       const parsed = JSON.parse(
@@ -232,7 +241,8 @@ describe('SettingsPage — safety hook edit form', () => {
     await user.click(screen.getByRole('button', { name: '' }))
 
     expect(screen.getByRole('switch', { name: /enable safety hook/i })).toHaveAttribute('aria-checked', 'false')
-    await user.click(screen.getByRole('button', { name: /save/i }))
+    const saveButtons3 = screen.getAllByRole('button', { name: /save/i })
+    await user.click(saveButtons3[saveButtons3.length - 1])
 
     await waitFor(() => {
       expect(projectsApi.updateProject).toHaveBeenCalledWith(

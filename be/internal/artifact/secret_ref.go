@@ -47,11 +47,15 @@ func ResolveSecretRef(ref string) (string, error) {
 	return "", fmt.Errorf("unsupported secret_ref scheme: %q", ref)
 }
 
+// RedactedSentinel is the placeholder returned by RedactSecretRef for literal values.
+// When a client sends this back in a PUT request, the server should preserve the existing stored value.
+const RedactedSentinel = "literal:***"
+
 // RedactSecretRef returns a redacted form safe for logging. Literal values are
-// replaced by "literal:***"; env: and file: references are returned as-is.
+// replaced by RedactedSentinel; env: and file: references are returned as-is.
 func RedactSecretRef(ref string) string {
 	if strings.HasPrefix(ref, "literal:") {
-		return "literal:***"
+		return RedactedSentinel
 	}
 	return ref
 }

@@ -313,6 +313,27 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
+		setCount := 0
+		if params.Level > 0 {
+			setCount++
+		}
+		if params.TargetAgent != "" {
+			setCount++
+		}
+		if len(params.Chain) > 0 {
+			setCount++
+		}
+		if setCount != 1 {
+			return MakeErrorResponse(req.ID, NewValidationError("exactly one of level/target_agent/chain must be set"))
+		}
+		switch {
+		case params.TargetAgent != "":
+			params.Mode = "agent"
+		case len(params.Chain) > 0:
+			params.Mode = "chain"
+		default:
+			params.Mode = "layer"
+		}
 		bctx, err := h.agentSvc.Callback(&params)
 		if err != nil {
 			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)

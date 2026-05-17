@@ -123,13 +123,14 @@ type agentCallbackHandler struct{}
 func (agentCallbackHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "agent_callback",
-		Description: "Trigger a callback to re-run an earlier layer. Provide the target level (>=0).",
+		Description: "Trigger a callback. Exactly one of level, target_agent, or chain must be set.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"level":{"type":"integer","minimum":0,"description":"Layer level to call back to"}
+"level":{"type":"integer","minimum":0,"description":"Layer level to call back to (mode=layer)"},
+"target_agent":{"type":"string","description":"Target agent ID to call back to (mode=agent)"},
+"chain":{"type":"array","items":{"type":"string"},"description":"Target phases for chain callback (mode=chain)"}
 },
-"required":["level"],
 "additionalProperties":false
 }`),
 	}
@@ -137,20 +138,49 @@ func (agentCallbackHandler) Spec() provider.ToolSpec {
 
 func (agentCallbackHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
 	var args struct {
-		Level int `json:"level"`
+		Level       int      `json:"level"`
+		TargetAgent string   `json:"target_agent"`
+		Chain       []string `json:"chain"`
 	}
 	if err := json.Unmarshal(input, &args); err != nil {
 		return invalidArgs(err)
 	}
+	setCount := 0
+	if args.Level > 0 {
+		setCount++
+	}
+	if args.TargetAgent != "" {
+		setCount++
+	}
+	if len(args.Chain) > 0 {
+		setCount++
+	}
+	if setCount != 1 {
+		return "exactly one of level/target_agent/chain must be set", true, nil
+	}
 	if env.Agent == nil {
 		return missingService("agent")
 	}
+
+	var mode string
+	switch {
+	case args.TargetAgent != "":
+		mode = "agent"
+	case len(args.Chain) > 0:
+		mode = "chain"
+	default:
+		mode = "layer"
+	}
+
 	bctx, err := env.Agent.Callback(&types.AgentCallbackRequest{
 		AgentRequest: types.AgentRequest{
 			SessionID:  env.SessionID,
 			InstanceID: env.WorkflowInstanceID,
 		},
-		Level: args.Level,
+		Level:       args.Level,
+		Mode:        mode,
+		TargetAgent: args.TargetAgent,
+		Chain:       args.Chain,
 	})
 	if err != nil {
 		return err.Error(), true, nil

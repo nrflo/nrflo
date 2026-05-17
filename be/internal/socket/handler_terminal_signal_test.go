@@ -162,7 +162,7 @@ func TestAgentCallback_DispatchesTerminalSignal(t *testing.T) {
 
 	params := types.AgentCallbackRequest{
 		AgentRequest: types.AgentRequest{InstanceID: wfiID, SessionID: sessionID},
-		Level:        0,
+		Level:        1,
 	}
 	paramsData, _ := json.Marshal(params)
 	req := Request{ID: "req-3", Method: "agent.callback", Project: env.project, Params: paramsData}

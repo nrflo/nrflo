@@ -16,8 +16,10 @@ var agentCmd = &cobra.Command{
 
 // Agent fail/continue/callback flags
 var (
-	agentFailReason    string
-	agentCallbackLevel int
+	agentFailReason         string
+	agentCallbackLevel      int
+	agentCallbackTargetAgent string
+	agentCallbackChain      []string
 	// context-update flags
 	agentContextUpdatePctUsed float64
 )
@@ -143,9 +145,13 @@ Context is read from environment variables set by the spawner:
 
 var agentCallbackCmd = &cobra.Command{
 	Use:   "callback",
-	Short: "Signal a callback to a previous execution layer",
-	Long: `Signal that the agent needs to callback to a previous layer for fixes.
-The --level flag specifies the target layer index (0-based) to callback to.
+	Short: "Signal a callback to a previous execution layer, agent, or chain",
+	Long: `Signal that the agent needs to callback. Exactly one of --level, --agent, or --chain must be set.
+
+  --level N       callback to layer N (0-based)
+  --agent ID      callback targeting a specific agent by ID
+  --chain a,b,c   callback targeting a list of phases (comma-separated or repeated flag)
+
 Save callback_instructions as a finding before calling this.
 
 Context is read from environment variables set by the spawner:
@@ -153,6 +159,24 @@ Context is read from environment variables set by the spawner:
   NRF_WORKFLOW_INSTANCE_ID — workflow instance ID`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		levelSet := cmd.Flags().Changed("level")
+		agentSet := agentCallbackTargetAgent != ""
+		chainSet := len(agentCallbackChain) > 0
+
+		setCount := 0
+		if levelSet {
+			setCount++
+		}
+		if agentSet {
+			setCount++
+		}
+		if chainSet {
+			setCount++
+		}
+		if setCount != 1 {
+			return fmt.Errorf("exactly one of --level, --agent, or --chain must be set")
+		}
+
 		if err := RequireProject(); err != nil {
 			return err
 		}
@@ -165,25 +189,39 @@ Context is read from environment variables set by the spawner:
 			return fmt.Errorf("NRF_SESSION_ID env var is required")
 		}
 
-		if !cmd.Flags().Changed("level") {
-			return fmt.Errorf("--level is required")
-		}
-		if agentCallbackLevel < 0 {
-			return fmt.Errorf("--level must be >= 0")
-		}
-
 		c := GetClient()
 		reqParams := map[string]interface{}{
 			"session_id": sessionID,
-			"level":      agentCallbackLevel,
 		}
 		addSpawnerIDs(reqParams)
+
+		switch {
+		case agentSet:
+			reqParams["mode"] = "agent"
+			reqParams["target_agent"] = agentCallbackTargetAgent
+		case chainSet:
+			reqParams["mode"] = "chain"
+			reqParams["chain"] = agentCallbackChain
+		default:
+			if agentCallbackLevel < 0 {
+				return fmt.Errorf("--level must be >= 0")
+			}
+			reqParams["mode"] = "layer"
+			reqParams["level"] = agentCallbackLevel
+		}
 
 		if err := c.ExecuteAndUnmarshal("agent.callback", reqParams, nil); err != nil {
 			return err
 		}
 
-		fmt.Printf("Agent marked as callback (target layer: %d)\n", agentCallbackLevel)
+		switch {
+		case agentSet:
+			fmt.Printf("Agent marked as callback (target agent: %s)\n", agentCallbackTargetAgent)
+		case chainSet:
+			fmt.Printf("Agent marked as callback (target chain: %v)\n", agentCallbackChain)
+		default:
+			fmt.Printf("Agent marked as callback (target layer: %d)\n", agentCallbackLevel)
+		}
 		return nil
 	},
 }
@@ -286,7 +324,9 @@ func init() {
 	agentCmd.AddCommand(agentContinueCmd)
 
 	// agent callback
-	agentCallbackCmd.Flags().IntVar(&agentCallbackLevel, "level", 0, "Target layer index to callback to (required)")
+	agentCallbackCmd.Flags().IntVar(&agentCallbackLevel, "level", 0, "Target layer index to callback to")
+	agentCallbackCmd.Flags().StringVar(&agentCallbackTargetAgent, "agent", "", "Target agent ID to callback to")
+	agentCallbackCmd.Flags().StringSliceVar(&agentCallbackChain, "chain", nil, "Target phases for chain callback (comma-separated)")
 	agentCmd.AddCommand(agentCallbackCmd)
 
 	// agent context-update

@@ -299,7 +299,7 @@ func (s *AgentService) Callback(req *types.AgentCallbackRequest) (BroadcastCtx, 
 		return BroadcastCtx{}, err
 	}
 
-	// Save callback_level as a finding on the session
+	// Persist callback fields as findings on the session
 	var findingsStr sql.NullString
 	err = s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, req.SessionID).Scan(&findingsStr)
 	if err != nil {
@@ -311,6 +311,15 @@ func (s *AgentService) Callback(req *types.AgentCallbackRequest) (BroadcastCtx, 
 		json.Unmarshal([]byte(findingsStr.String), &findings)
 	}
 	findings["callback_level"] = req.Level
+	if req.Mode != "" {
+		findings["callback_mode"] = req.Mode
+	}
+	if req.Mode == "agent" && req.TargetAgent != "" {
+		findings["callback_target"] = req.TargetAgent
+	}
+	if req.Mode == "chain" && len(req.Chain) > 0 {
+		findings["callback_chain"] = req.Chain
+	}
 
 	data, _ := json.Marshal(findings)
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)

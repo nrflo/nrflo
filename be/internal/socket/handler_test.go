@@ -291,7 +291,7 @@ func TestAgentCallbackEventPayload(t *testing.T) {
 			InstanceID: wfiID,
 			SessionID:  "sess-test-callback",
 		},
-		Level: 0,
+		Level: 1,
 	}
 	paramsData, _ := json.Marshal(params)
 
@@ -332,8 +332,8 @@ func TestAgentCallbackEventPayload(t *testing.T) {
 		}
 
 		level, ok := event.Data["level"].(float64)
-		if !ok || int(level) != 0 {
-			t.Errorf("expected level=0, got: %v", event.Data["level"])
+		if !ok || int(level) != 1 {
+			t.Errorf("expected level=1, got: %v", event.Data["level"])
 		}
 
 	case <-time.After(time.Second):

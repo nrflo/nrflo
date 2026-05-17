@@ -398,6 +398,39 @@ func (r *AgentSessionRepo) ResetSessionsForCallback(wfiID string, phases []strin
 	return err
 }
 
+// ResetSingleAgentSession resets a single agent session (by phase/agent ID) to callback state,
+// clearing findings and ended_at. Excludes running and continued sessions.
+func (r *AgentSessionRepo) ResetSingleAgentSession(wfiID, phaseAgentID string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err := r.db.Exec(
+		`UPDATE agent_sessions SET status = 'callback', findings = '{}', ended_at = COALESCE(ended_at, ?), updated_at = ?
+		WHERE workflow_instance_id = ? AND phase = ? AND status NOT IN ('running', 'continued')`,
+		now, now, wfiID, phaseAgentID)
+	return err
+}
+
+// ResetAgentSessionsInWorkflow resets sessions for an arbitrary list of phases across any layer,
+// clearing findings and ended_at. Excludes running and continued sessions.
+func (r *AgentSessionRepo) ResetAgentSessionsInWorkflow(wfiID string, phases []string) error {
+	if len(phases) == 0 {
+		return nil
+	}
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	placeholders := make([]string, len(phases))
+	args := make([]interface{}, 0, len(phases)+3)
+	args = append(args, now, now, wfiID)
+	for i, p := range phases {
+		placeholders[i] = "?"
+		args = append(args, p)
+	}
+	query := fmt.Sprintf(
+		`UPDATE agent_sessions SET status = 'callback', findings = '{}', ended_at = COALESCE(ended_at, ?), updated_at = ?
+		WHERE workflow_instance_id = ? AND phase IN (%s) AND status NOT IN ('running', 'continued')`,
+		strings.Join(placeholders, ","))
+	_, err := r.db.Exec(query, args...)
+	return err
+}
+
 // ListFinishedFilter specifies criteria for ListFinished.
 type ListFinishedFilter struct {
 	ProjectID string

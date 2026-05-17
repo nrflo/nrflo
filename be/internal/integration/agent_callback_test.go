@@ -96,41 +96,21 @@ func TestAgentCallbackWithModel(t *testing.T) {
 func TestAgentCallbackZeroLevel(t *testing.T) {
 	env := NewTestEnv(t)
 
-	env.CreateTicket(t, "AGT-CB-3", "Agent callback level 0")
+	env.CreateTicket(t, "AGT-CB-3", "Agent callback level 0 rejected")
 	env.InitWorkflow(t, "AGT-CB-3")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-3", "test")
 	env.InsertAgentSession(t, "sess-cb-3", "AGT-CB-3", wfiID, "analyzer", "analyzer", "haiku")
 
-	// Call agent.callback with level 0
-	env.MustExecute(t, "agent.callback", map[string]interface{}{
+	// level=0 is the zero value and does not count as "set"; must use level>0, target_agent, or chain.
+	env.ExpectError(t, "agent.callback", map[string]interface{}{
 		"ticket_id":   "AGT-CB-3",
 		"workflow":    "test",
 		"agent_type":  "analyzer",
 		"session_id":  "sess-cb-3",
 		"level":       0,
 		"instance_id": wfiID,
-	}, nil)
-
-	// Verify session result
-	session, err := env.AgentSvc.GetSessionByID("sess-cb-3")
-	if err != nil {
-		t.Fatalf("failed to get session: %v", err)
-	}
-	if session.Result.String != "callback" {
-		t.Fatalf("expected result 'callback', got %v", session.Result.String)
-	}
-
-	// Verify callback_level is 0
-	findings := session.GetFindings()
-	level, ok := findings["callback_level"]
-	if !ok {
-		t.Fatalf("expected callback_level finding to be set")
-	}
-	levelFloat := level.(float64)
-	if int(levelFloat) != 0 {
-		t.Fatalf("expected callback_level to be 0, got %v", levelFloat)
-	}
+	}, -32606) // validation error: exactly one of level/target_agent/chain must be set
 }
 
 func TestAgentCallbackNoActiveAgent(t *testing.T) {
@@ -214,7 +194,7 @@ func TestAgentCallbackStatusMapping(t *testing.T) {
 		"workflow":    "test",
 		"agent_type":  "analyzer",
 		"session_id":  "sess-cb-6",
-		"level":       0,
+		"level":       1,
 		"instance_id": wfiID,
 	}, nil)
 
@@ -259,7 +239,7 @@ func TestAgentCallbackE2E(t *testing.T) {
 		"workflow":    "test",
 		"agent_type":  "analyzer",
 		"session_id":  "sess-cb-e2e",
-		"level":       0,
+		"level":       1,
 		"instance_id": wfiID,
 	}, nil)
 
@@ -275,8 +255,8 @@ func TestAgentCallbackE2E(t *testing.T) {
 	// 4. Verify callback_level is saved by the CLI command
 	findings := session.GetFindings()
 	level := findings["callback_level"].(float64)
-	if int(level) != 0 {
-		t.Fatalf("expected callback_level to be 0, got %v", level)
+	if int(level) != 1 {
+		t.Fatalf("expected callback_level to be 1, got %v", level)
 	}
 
 	// 5. Verify callback_instructions is present
@@ -337,7 +317,6 @@ func TestAgentCallbackDifferentLevels(t *testing.T) {
 		ticketID string
 		level    int
 	}{
-		{"Level 0", "AGT-CB-L0", 0},
 		{"Level 1", "AGT-CB-L1", 1},
 		{"Level 5", "AGT-CB-L5", 5},
 		{"Level 10", "AGT-CB-L10", 10},

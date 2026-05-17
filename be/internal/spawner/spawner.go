@@ -1759,11 +1759,12 @@ func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, r
 		}
 	}
 
-	// Callback detected — read callback_level from session findings and signal orchestrator
+	// Callback detected — read callback fields from session findings and signal orchestrator
 	if callbackCount > 0 {
-		level, instructions := s.readCallbackFindings(callbackProc)
-		logger.Info(ctx, "phase finalized", "phase", phase, "result", "CALLBACK", "callback_level", level)
-		return &CallbackError{Level: level, Instructions: instructions, AgentType: req.AgentType}
+		cb := s.readCallbackFindings(callbackProc)
+		cb.AgentType = req.AgentType
+		logger.Info(ctx, "phase finalized", "phase", phase, "result", "CALLBACK", "callback_level", cb.Level)
+		return cb
 	}
 
 	// All skipped = success (continue to next layer)
@@ -1790,20 +1791,21 @@ func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, r
 	return fmt.Errorf("phase %s failed", phase)
 }
 
-// readCallbackFindings reads callback_level and callback_instructions from agent session findings.
-func (s *Spawner) readCallbackFindings(proc *processInfo) (int, string) {
+// readCallbackFindings reads callback fields from agent session findings.
+func (s *Spawner) readCallbackFindings(proc *processInfo) *CallbackError {
 	pool := s.pool()
 	if pool == nil {
-		return 0, ""
+		return &CallbackError{Mode: "layer"}
 	}
 
 	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	session, err := sessionRepo.Get(proc.sessionID)
 	if err != nil {
-		return 0, ""
+		return &CallbackError{Mode: "layer"}
 	}
 
 	findings := session.GetFindings()
+
 	level := 0
 	if lvl, ok := findings["callback_level"]; ok {
 		switch v := lvl.(type) {
@@ -1821,7 +1823,45 @@ func (s *Spawner) readCallbackFindings(proc *processInfo) (int, string) {
 		}
 	}
 
-	return level, instructions
+	mode := "layer"
+	if m, ok := findings["callback_mode"]; ok {
+		if ms, ok := m.(string); ok && ms != "" {
+			mode = ms
+		}
+	}
+
+	var targetAgent string
+	if ta, ok := findings["callback_target"]; ok {
+		if tas, ok := ta.(string); ok {
+			targetAgent = tas
+		}
+	}
+
+	var chain []string
+	if ch, ok := findings["callback_chain"]; ok {
+		switch v := ch.(type) {
+		case []interface{}:
+			for _, item := range v {
+				if s, ok := item.(string); ok {
+					chain = append(chain, s)
+				}
+			}
+		case string:
+			for _, part := range strings.Split(v, ",") {
+				if p := strings.TrimSpace(part); p != "" {
+					chain = append(chain, p)
+				}
+			}
+		}
+	}
+
+	return &CallbackError{
+		Level:        level,
+		Instructions: instructions,
+		Mode:         mode,
+		TargetAgent:  targetAgent,
+		Chain:        chain,
+	}
 }
 
 // filterEnv returns a copy of env with the named variable removed.

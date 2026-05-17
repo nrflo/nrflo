@@ -185,7 +185,10 @@ type AgentRequest struct {
 // AgentCallbackRequest is the request for marking an agent as callback
 type AgentCallbackRequest struct {
 	AgentRequest
-	Level int `json:"level"`
+	Level       int      `json:"level"`
+	Mode        string   `json:"mode,omitempty"`
+	TargetAgent string   `json:"target_agent,omitempty"`
+	Chain       []string `json:"chain,omitempty"`
 }
 
 // WorkflowDefCreateRequest is the request for creating a workflow definition

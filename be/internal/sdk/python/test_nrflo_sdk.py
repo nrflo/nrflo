@@ -111,7 +111,7 @@ class TestClientStructure(unittest.TestCase):
     def test_top_level_methods_exist(self):
         c = self._make_client()
         for method in ("context", "user_instructions", "callback_info",
-                       "previous_data", "skip", "log", "close"):
+                       "previous_data", "skip", "log", "notification", "close"):
             self.assertTrue(callable(getattr(c, method, None)),
                             f"Client.{method} missing or not callable")
         c.close()

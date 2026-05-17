@@ -254,6 +254,63 @@ class _Agent:
         self._call("chain_next_ticket", {"ticket_id": ticket_id})
 
 
+class _Notification:
+    """Parsed NRFLO_NOTIFY_PAYLOAD_JSON payload for notification scripts."""
+
+    def __init__(self):
+        raw_env = os.environ.get("NRFLO_NOTIFY_PAYLOAD_JSON")
+        if not raw_env:
+            raise NrfloError(0, "no notification payload in env (NRFLO_NOTIFY_PAYLOAD_JSON unset)")
+        try:
+            self._raw = json.loads(raw_env)
+        except json.JSONDecodeError as e:
+            raise NrfloError(0, f"invalid JSON in NRFLO_NOTIFY_PAYLOAD_JSON: {e}")
+
+    @property
+    def event_type(self) -> str:
+        return self._raw.get("event_type", "")
+
+    @property
+    def project_id(self) -> str:
+        return self._raw.get("project_id", "")
+
+    @property
+    def project_name(self) -> str:
+        return self._raw.get("project_name", "")
+
+    @property
+    def workflow(self) -> str:
+        return self._raw.get("workflow", "")
+
+    @property
+    def instance_id(self) -> str:
+        return self._raw.get("instance_id", "")
+
+    @property
+    def ticket_id(self) -> str:
+        return self._raw.get("ticket_id", "")
+
+    @property
+    def ticket_name(self) -> str:
+        return self._raw.get("ticket_name", "")
+
+    @property
+    def agent_type(self) -> str:
+        return self._raw.get("agent_type", "")
+
+    @property
+    def reason(self) -> str:
+        return self._raw.get("reason", "")
+
+    @property
+    def summary(self) -> str:
+        return self._raw.get("workflow_final_result", "")
+
+    @property
+    def raw(self) -> dict:
+        return self._raw
+
+
 class Client:
     """nrflo script-mode client. Obtain via nrflo_sdk.client()."""
 
@@ -264,6 +321,7 @@ class Client:
         self._proj = proj
         self._trx = trx
         self._ctx_cache = None
+        self._notification_cache = None
         self.findings = _Findings(conn, sid, iid, proj, trx)
         self.project_findings = _ProjectFindings(conn, sid, iid, proj, trx)
         self.agent = _Agent(conn, sid, iid, proj, trx)
@@ -304,6 +362,12 @@ class Client:
             "trx": self._trx, "params": params,
         }))
 
+    def notification(self) -> _Notification:
+        """Return parsed NRFLO_NOTIFY_PAYLOAD_JSON (cached)."""
+        if self._notification_cache is None:
+            self._notification_cache = _Notification()
+        return self._notification_cache
+
     def close(self):
         self._conn.close()
 
@@ -333,3 +397,8 @@ def client(
     proj = project or os.environ.get("NRFLO_PROJECT", "")
     t = trx or os.environ.get("NRF_TRX", "")
     return Client(_Connection(path), sid, iid, proj, t)
+
+
+def notification() -> _Notification:
+    """Return a _Notification parsed from NRFLO_NOTIFY_PAYLOAD_JSON (env-only; no socket needed)."""
+    return _Notification()

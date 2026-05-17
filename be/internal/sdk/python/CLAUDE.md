@@ -25,18 +25,9 @@ import nrflo_sdk
 c = nrflo_sdk.client()
 ```
 
-## Auto-Populated Identity
+## Identity Env Vars
 
-The `client()` constructor reads four env vars set by the spawner:
-
-| Env var | Purpose |
-|---------|---------|
-| `NRF_SESSION_ID` | Current agent session — sent in every socket call |
-| `NRF_WORKFLOW_INSTANCE_ID` | Workflow instance — sent in findings/agent calls |
-| `NRFLO_PROJECT` | Project ID — derived for project-scoped findings |
-| `NRF_TRX` | Trace ID propagated to server logs |
-
-Socket path defaults to `$NRFLO_HOME/agent.sock` (fallback `~/.nrflo/agent.sock` when `NRFLO_HOME` unset); override via `NRFLO_SOCKET`.
+`client()` reads `NRF_SESSION_ID`, `NRF_WORKFLOW_INSTANCE_ID`, `NRFLO_PROJECT`, `NRF_TRX` (all set by the spawner). Socket path: `$NRFLO_HOME/agent.sock` (fallback `~/.nrflo/agent.sock`); override via `NRFLO_SOCKET`.
 
 ## Surface Area
 
@@ -52,8 +43,34 @@ Socket path defaults to `$NRFLO_HOME/agent.sock` (fallback `~/.nrflo/agent.sock`
 | `c.previous_data()` | Convenience: `c.context()["previous_data"]` (set on relaunch via `to_resume`) |
 | `c.skip(tag)` | Forwards to the `workflow.skip` socket method |
 | `c.log(type, message, payload=None)` | Insert a message row via `agent.log`; no project required. `type` defaults to `"text"` — accepted values: `text`, `tool`, `subagent`, `skill`, `user_input`, `error`, `result`. `payload` is an optional Python value serialised to JSON. Output appears in the Logs UI Messages tab and server log. |
+| `c.notification()` | Cached `_Notification` parsed from `NRFLO_NOTIFY_PAYLOAD_JSON`. Raises `NrfloError` if env var is missing or empty. No socket call. |
 
 `c.artifacts.add()` accepts `str` (UTF-8 encoded) or `bytes`/`bytearray`, enforces a 32 MiB client-side cap (raises `NrfloError` before sending), and base64-encodes the payload as `content_b64`. Note: `$NRF_ARTIFACTS_DIR` is a read-only pre-staged fallback set at spawn time and does not reflect artifacts uploaded by sibling agents mid-run; use `c.artifacts.list()`/`get()` to access those.
+
+## Notification Payload
+
+Notification scripts receive a JSON payload in `NRFLO_NOTIFY_PAYLOAD_JSON`. Access it via:
+
+- `c.notification()` — cached `_Notification` on a Client instance
+- `nrflo_sdk.notification()` — module-level; no socket/client required (useful for pure notification scripts)
+
+`_Notification` properties (all return `""` if key absent):
+
+| Property | JSON key |
+|----------|----------|
+| `event_type` | `event_type` |
+| `project_id` | `project_id` |
+| `project_name` | `project_name` |
+| `workflow` | `workflow` |
+| `instance_id` | `instance_id` |
+| `ticket_id` | `ticket_id` |
+| `ticket_name` | `ticket_name` |
+| `agent_type` | `agent_type` |
+| `reason` | `reason` |
+| `summary` | `workflow_final_result` |
+| `raw` | full parsed dict |
+
+Raises `NrfloError(0, "no notification payload in env …")` when `NRFLO_NOTIFY_PAYLOAD_JSON` is unset or empty.
 
 Underlying `_Connection` class keeps a persistent Unix socket open and reconnects on broken pipe (up to 1s of retries). All errors map to `NrfloError(code, message)`.
 

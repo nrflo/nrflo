@@ -36,6 +36,7 @@ type ToolEnv struct {
 	ProjectFindings    *service.ProjectFindingsService
 	Agent              *service.AgentService
 	Workflow           *service.WorkflowService
+	ArtifactSvc        *service.ArtifactService
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

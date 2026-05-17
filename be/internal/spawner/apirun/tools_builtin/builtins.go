@@ -34,5 +34,9 @@ func Builtins() map[string]apirun.ToolHandler {
 		"agent_context_update": agentContextUpdateHandler{},
 
 		"workflow_skip": workflowSkipHandler{},
+
+		"artifact_add":  artifactAddHandler{},
+		"artifact_list": artifactListHandler{},
+		"artifact_get":  artifactGetHandler{},
 	}
 }

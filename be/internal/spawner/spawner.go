@@ -1188,6 +1188,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			ProjectFindings:    s.config.ProjectFindingsSvc,
 			Agent:              s.config.AgentSvcReal,
 			Workflow:           s.config.WorkflowSvc,
+			ArtifactSvc:        s.config.ArtifactSvc,
 		}
 		prep.apiMaxIterations = maxIter
 		prep.apiMaxTokens = defaultAPIMaxTokens

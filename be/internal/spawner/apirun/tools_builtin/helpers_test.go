@@ -44,7 +44,9 @@ const (
 
 func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
+	home := t.TempDir()
+	t.Setenv("NRFLO_HOME", home)
+	dbPath := filepath.Join(home, "test.db")
 	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
@@ -72,6 +74,7 @@ func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 	projectFindingsSvc := service.NewProjectFindingsService(pool, clk)
 	agentSvc := service.NewAgentService(pool, clk)
 	workflowSvc := service.NewWorkflowService(pool, clk)
+	artifactSvc := service.NewArtifactService(pool, clk, hub, filepath.Join(home, "nrflo.data"))
 
 	env := apirun.ToolEnv{
 		Pool:               pool,
@@ -87,6 +90,7 @@ func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 		ProjectFindings:    projectFindingsSvc,
 		Agent:              agentSvc,
 		Workflow:           workflowSvc,
+		ArtifactSvc:        artifactSvc,
 	}
 	return &builtinTestEnv{pool: pool, hub: hub, env: env, clk: clk}
 }

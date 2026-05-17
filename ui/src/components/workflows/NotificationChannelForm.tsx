@@ -4,6 +4,7 @@ import { Check, X, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Toggle } from '@/components/ui/Toggle'
 import { testNotificationChannel, listNotificationDeliveries, getNotificationVariables } from '@/api/notifications'
@@ -14,6 +15,7 @@ import type { NotificationChannel, NotificationEventType, ChannelKind } from '@/
 const kindOptions = [
   { value: 'slack', label: 'Slack' },
   { value: 'telegram', label: 'Telegram' },
+  { value: 'script', label: 'Python Script' },
 ]
 
 const ALL_EVENT_TYPES: { value: NotificationEventType; label: string }[] = [
@@ -31,23 +33,26 @@ export interface ChannelFormData {
   webhookUrl: string
   botToken: string
   chatId: string
+  scriptCode: string
   eventTypes: NotificationEventType[]
   messageTemplate: string
 }
 
 export function emptyChannelForm(): ChannelFormData {
-  return { name: '', kind: 'slack', enabled: true, webhookUrl: '', botToken: '', chatId: '', eventTypes: [], messageTemplate: '' }
+  return { name: '', kind: 'slack', enabled: true, webhookUrl: '', botToken: '', chatId: '', scriptCode: '', eventTypes: [], messageTemplate: '' }
 }
 
 export function channelToFormData(ch: NotificationChannel): ChannelFormData {
   let webhookUrl = ''
   let botToken = ''
   let chatId = ''
+  let scriptCode = ''
   try {
     const cfg = JSON.parse(ch.config) as Record<string, string>
     webhookUrl = cfg['webhook_url'] ?? ''
     botToken = cfg['bot_token'] ?? ''
     chatId = cfg['chat_id'] ?? ''
+    scriptCode = cfg['script_code'] ?? ''
   } catch { /* ignore parse error */ }
   return {
     name: ch.name,
@@ -56,6 +61,7 @@ export function channelToFormData(ch: NotificationChannel): ChannelFormData {
     webhookUrl,
     botToken,
     chatId,
+    scriptCode,
     eventTypes: ch.event_types ?? [],
     messageTemplate: ch.message_template ?? '',
   }
@@ -64,6 +70,9 @@ export function channelToFormData(ch: NotificationChannel): ChannelFormData {
 export function buildConfig(formData: ChannelFormData): Record<string, unknown> {
   if (formData.kind === 'slack') {
     return { webhook_url: formData.webhookUrl }
+  }
+  if (formData.kind === 'script') {
+    return { script_code: formData.scriptCode }
   }
   return { bot_token: formData.botToken, chat_id: formData.chatId }
 }
@@ -103,7 +112,7 @@ export function NotificationChannelForm({
   // Prefill messageTemplate from kind-specific default when creating a new channel
   useEffect(() => {
     if (!isCreate || !variablesData || formData.messageTemplate !== '') return
-    const def = variablesData.defaults[formData.kind as ChannelKind] ?? ''
+    const def = (variablesData.defaults as Record<string, string>)[formData.kind] ?? ''
     setFormData({ ...formData, messageTemplate: def })
     setLastPrefilledDefault(def)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,13 +142,13 @@ export function NotificationChannelForm({
   const handleKindChange = (val: string) => {
     let messageTemplate = formData.messageTemplate
     if (isCreate && variablesData) {
-      const newDefault = variablesData.defaults[val as ChannelKind] ?? ''
+      const newDefault = (variablesData.defaults as Record<string, string>)[val] ?? ''
       if (formData.messageTemplate === lastPrefilledDefault) {
         messageTemplate = newDefault
         setLastPrefilledDefault(newDefault)
       }
     }
-    setFormData({ ...formData, kind: val, webhookUrl: '', botToken: '', chatId: '', messageTemplate })
+    setFormData({ ...formData, kind: val, webhookUrl: '', botToken: '', chatId: '', scriptCode: '', messageTemplate })
   }
 
   const showSyntaxHint = isCreate && !!variablesData && formData.messageTemplate !== lastPrefilledDefault && formData.messageTemplate !== ''
@@ -219,6 +228,23 @@ export function NotificationChannelForm({
         </div>
       )}
 
+      {formData.kind === 'script' && (
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">
+            Script Code {isCreate && <span className="text-destructive">*</span>}
+          </label>
+          <Textarea
+            value={formData.scriptCode}
+            onChange={(e) => setFormData({ ...formData, scriptCode: e.target.value })}
+            rows={12}
+            className="font-mono text-xs"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Use nrflo_sdk.notification() to read the event payload. Per-project env vars are available via os.environ.
+          </p>
+        </div>
+      )}
+
       <div>
         <label className="text-sm font-medium text-muted-foreground block mb-1.5">
           Event Types <span className="text-destructive">*</span>
@@ -247,17 +273,21 @@ export function NotificationChannelForm({
         )}
       </div>
 
-      <NotificationTemplateEditor
-        kind={formData.kind as ChannelKind}
-        value={formData.messageTemplate}
-        onChange={(v) => setFormData({ ...formData, messageTemplate: v })}
-        variables={variablesData?.variables ?? []}
-      />
+      {formData.kind !== 'script' && (
+        <>
+          <NotificationTemplateEditor
+            kind={formData.kind as ChannelKind}
+            value={formData.messageTemplate}
+            onChange={(v) => setFormData({ ...formData, messageTemplate: v })}
+            variables={variablesData?.variables ?? []}
+          />
 
-      {showSyntaxHint && (
-        <p className="text-xs text-muted-foreground">
-          Syntax may differ between Slack and Telegram — review your template when switching kinds.
-        </p>
+          {showSyntaxHint && (
+            <p className="text-xs text-muted-foreground">
+              Syntax may differ between Slack and Telegram — review your template when switching kinds.
+            </p>
+          )}
+        </>
       )}
 
       <div className="flex gap-2 justify-end">

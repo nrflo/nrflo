@@ -29,7 +29,7 @@ const notificationKeys = {
   deliveries: (workflowId: string, channelId: string) => ['notification-deliveries', workflowId, channelId] as const,
 }
 
-const KIND_LABELS: Record<string, string> = { slack: 'Slack', telegram: 'Telegram' }
+const KIND_LABELS: Record<string, string> = { slack: 'Slack', telegram: 'Telegram', script: 'Python Script' }
 
 function KindBadge({ kind }: { kind: string }) {
   return (

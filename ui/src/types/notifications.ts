@@ -1,4 +1,4 @@
-export type ChannelKind = 'slack' | 'telegram'
+export type ChannelKind = 'slack' | 'telegram' | 'script'
 
 export type NotificationEventType =
   | 'orchestration.completed'

@@ -107,6 +107,19 @@ describe('channelToFormData + buildConfig round-trip', () => {
     const fd: ChannelFormData = { ...emptyChannelForm(), kind: 'telegram', botToken: 'tok', chatId: '-9' }
     expect(buildConfig(fd)).toEqual({ bot_token: 'tok', chat_id: '-9' })
   })
+
+  it('buildConfig produces correct object for script kind', () => {
+    const fd: ChannelFormData = { ...emptyChannelForm(), kind: 'script', scriptCode: 'print(1)' }
+    expect(buildConfig(fd)).toEqual({ script_code: 'print(1)' })
+  })
+
+  it('channelToFormData extracts script_code into scriptCode', () => {
+    const ch = makeChannel({ kind: 'script', config: JSON.stringify({ script_code: 'x=1' }) })
+    const fd = channelToFormData(ch)
+    expect(fd.scriptCode).toBe('x=1')
+    expect(fd.webhookUrl).toBe('')
+    expect(fd.botToken).toBe('')
+  })
 })
 
 describe('NotificationChannelForm', () => {
@@ -225,6 +238,46 @@ describe('NotificationChannelForm', () => {
     expect(await screen.findByText('Recent Deliveries')).toBeInTheDocument()
     expect(screen.getByText('orchestration.completed')).toBeInTheDocument()
     expect(screen.getByText('delivered')).toBeInTheDocument()
+  })
+
+  it('create mode: shows script Textarea and hides template editor when kind is Python Script', async () => {
+    renderWithQuery(<TestForm isCreate />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /Slack/i }))
+    await user.click(screen.getByText('Python Script'))
+
+    expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument()
+    expect(screen.getByText(/nrflo_sdk\.notification/)).toBeInTheDocument()
+    expect(document.querySelector('textarea')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('https://hooks.slack.com/services/...')).not.toBeInTheDocument()
+  })
+
+  it('switching from script to slack clears scriptCode', async () => {
+    renderWithQuery(
+      <TestForm isCreate initial={{ ...emptyChannelForm(), kind: 'script', scriptCode: 'x=1' }} />
+    )
+    const user = userEvent.setup()
+
+    // initially in script mode: textarea present, no template editor
+    expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument()
+    expect(document.querySelector('textarea')).toBeInTheDocument()
+
+    // switch to Slack
+    await user.click(screen.getByRole('button', { name: /Python Script/i }))
+    await user.click(screen.getByText('Slack'))
+
+    // script section gone, template editor visible
+    expect(screen.getByTestId('markdown-editor')).toBeInTheDocument()
+    expect(screen.queryByText(/nrflo_sdk\.notification/)).not.toBeInTheDocument()
+
+    // switch back to script — scriptCode must have been cleared
+    await user.click(screen.getByRole('button', { name: /Slack/i }))
+    await user.click(screen.getByText('Python Script'))
+
+    const scriptTextarea = document.querySelector('textarea') as HTMLTextAreaElement | null
+    expect(scriptTextarea).toBeInTheDocument()
+    expect(scriptTextarea?.value).toBe('')
   })
 
   it('masked secret: channelToFormData reads webhook_url from config into webhookUrl field', () => {

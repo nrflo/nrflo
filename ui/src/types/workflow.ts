@@ -347,6 +347,7 @@ export interface RunWorkflowRequest {
   interactive?: boolean
   plan_mode?: boolean
   force?: boolean
+  input_artifacts?: { upload_id: string; name?: string }[]
 }
 
 export interface RunWorkflowResponse {

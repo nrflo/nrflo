@@ -354,6 +354,7 @@ export function WorkflowTabContent({
           projectFindings={projectFindings}
           phaseLayers={displayedState?.phase_layers}
           workflowFindings={displayedState?.workflow_findings}
+          workflowInstanceId={displayedState?.instance_id}
         />
       )}
     </div>

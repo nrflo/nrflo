@@ -160,3 +160,57 @@ export async function apiDelete<T>(
     body: body ? JSON.stringify(body) : undefined,
   })
 }
+
+export async function apiUploadMultipart<T>(
+  endpoint: string,
+  file: File,
+  extraFields?: Record<string, string>
+): Promise<T> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (extraFields) {
+    for (const [key, value] of Object.entries(extraFields)) {
+      formData.append(key, value)
+    }
+  }
+
+  const headers: Record<string, string> = {
+    'X-Project': currentProject,
+  }
+  if (currentDbPath) {
+    headers['X-DB-Path'] = currentDbPath
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: formData,
+  })
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`
+    try {
+      const error = await response.json()
+      message = error.error || message
+    } catch {
+      // ignore parse error
+    }
+    if (response.status === 401) {
+      if (endpoint !== '/api/v1/auth/login' && on401) {
+        on401(window.location.pathname + window.location.search)
+      }
+      throw new UnauthenticatedError(message)
+    }
+    if (response.status === 403) {
+      throw new ForbiddenError(message)
+    }
+    throw new ApiError(response.status, message)
+  }
+
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T
+  }
+
+  return response.json()
+}

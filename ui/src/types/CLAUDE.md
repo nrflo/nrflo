@@ -1,6 +1,14 @@
 # Types
 
-TypeScript type definitions matching Go API models. Contains 5 files.
+TypeScript type definitions matching Go API models. Contains 6 files.
+
+## Artifact Types (`artifact.ts`)
+
+| Type | Description |
+|------|-------------|
+| `Artifact` | Artifact record with `id`, `project_id`, `workflow_instance_id`, `name`, `type`, `size_bytes`, `content_type?`, `source` (`'input'|'agent'`), `created_by_session?`, `created_at` |
+| `ArtifactUploadResponse` | `{ upload_id, name }` — response from `POST /artifact-uploads` |
+| `InputArtifactRef` | `{ upload_id, name? }` — reference passed in `input_artifacts` at launch |
 
 ## Key Ticket Types (`ticket.ts`)
 

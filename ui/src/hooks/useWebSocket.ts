@@ -86,6 +86,8 @@ export type WSEventType =
   | 'spec_import.started'
   | 'spec_import.ready'
   | 'spec_import.failed'
+  | 'artifact.created'
+  | 'artifact.deleted'
   | 'test.echo'
 
 export interface WSEvent {

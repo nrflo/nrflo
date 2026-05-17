@@ -11,6 +11,7 @@ import { errorKeys } from './useErrors'
 import { agentSessionLogKeys } from './useAgentSessionLogs'
 import { projectEnvVarKeys } from './useProjectEnvVars'
 import { serviceTokenKeys } from './useServiceTokens'
+import { artifactKeys } from './useArtifacts'
 import type { WSEventType } from './useWebSocket'
 
 // Module-level throttle state for tool.dispatched (1s leading+trailing)
@@ -500,5 +501,14 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
   },
   'chain.run_failed': (_event, qc) => {
     qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
+  },
+
+  'artifact.created': (event, qc) => {
+    const iid = event.data?.workflow_instance_id as string | undefined
+    if (iid) qc.invalidateQueries({ queryKey: artifactKeys.instance(iid) })
+  },
+  'artifact.deleted': (event, qc) => {
+    const iid = event.data?.workflow_instance_id as string | undefined
+    if (iid) qc.invalidateQueries({ queryKey: artifactKeys.instance(iid) })
   },
 }

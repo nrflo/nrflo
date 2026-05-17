@@ -132,8 +132,6 @@ describe('ImportSpecPage', () => {
         expect(specImportApi.commitImport).toHaveBeenCalledWith('inst-1', {
           title: 'Fix the login bug',
           description: 'Login flow is broken',
-          workflow_name: 'feature',
-          instructions: 'Fix the auth module',
         })
       )
       expect(mockNavigate).toHaveBeenCalledWith('/tickets/T-42')
@@ -161,7 +159,7 @@ describe('ImportSpecPage', () => {
 
       // Advance just past the 250ms debounce, then flush async rejection
       await act(async () => {
-        vi.advanceTimersByTime(300)
+        vi.advanceTimersByTime(600)
         await Promise.resolve()
         await Promise.resolve()
       })

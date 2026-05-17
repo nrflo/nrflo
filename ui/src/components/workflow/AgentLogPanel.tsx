@@ -17,6 +17,7 @@ interface AgentLogPanelProps {
   projectFindings?: Record<string, unknown>
   phaseLayers?: Record<string, number>
   workflowFindings?: Record<string, unknown>
+  workflowInstanceId?: string
 }
 
 export function AgentLogPanel({
@@ -31,6 +32,7 @@ export function AgentLogPanel({
   projectFindings,
   phaseLayers,
   workflowFindings,
+  workflowInstanceId,
 }: AgentLogPanelProps) {
   const runningAgents = useMemo(() => {
     return Object.values(activeAgents).filter(a => {
@@ -103,7 +105,7 @@ export function AgentLogPanel({
         {collapsed ? (
           <CollapsedBar />
         ) : (
-          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} />
+          <AgentLogDetail selectedAgent={agentWithSession} onBack={() => onAgentSelect(null)} onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} workflowInstanceId={workflowInstanceId} />
         )}
       </PanelShell>
     )
@@ -156,7 +158,7 @@ export function AgentLogPanel({
             }
             return (
               <div className="flex-1 min-h-0 overflow-hidden">
-                <AgentLogDetail selectedAgent={agentData} hideHeader onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} />
+                <AgentLogDetail selectedAgent={agentData} hideHeader onResumeSession={onResumeSession} resumePending={resumePending} agentFindings={agentFindings} projectFindings={projectFindings} phaseLayers={phaseLayers} workflowFindings={workflowFindings} workflowInstanceId={workflowInstanceId} />
               </div>
             )
           })()}

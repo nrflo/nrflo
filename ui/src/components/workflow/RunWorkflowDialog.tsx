@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Play } from 'lucide-react'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
@@ -9,10 +9,13 @@ import { Tooltip } from '@/components/ui/Tooltip'
 import { ApiError } from '@/api/client'
 import { listWorkflowDefs } from '@/api/workflows'
 import { listAgentDefs } from '@/api/agentDefs'
+import { cancelUpload } from '@/api/artifacts'
 import { useRunWorkflow } from '@/hooks/useTickets'
 import { useProjectStore } from '@/stores/projectStore'
 import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
+import { ArtifactUploader } from './ArtifactUploader'
 import type { AgentDef } from '@/types/workflow'
+import type { InputArtifactRef } from '@/types/artifact'
 
 type StartMode = 'normal' | 'interactive' | 'plan'
 
@@ -32,6 +35,9 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
   const [instructions, setInstructions] = useState('')
   const [startMode, setStartMode] = useState<StartMode>('normal')
   const [showConcurrentWarning, setShowConcurrentWarning] = useState(false)
+  const [stagedArtifacts, setStagedArtifacts] = useState<InputArtifactRef[]>([])
+  const [hasUploadPending, setHasUploadPending] = useState(false)
+  const launchedRef = useRef(false)
 
   const project = useProjectStore((s) => s.currentProject)
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
@@ -112,27 +118,25 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
     })
   }
 
+  const buildParams = (extra?: { force?: boolean }) => ({
+    workflow: selectedWorkflow,
+    instructions: instructions || undefined,
+    ...(startMode === 'interactive' && { interactive: true }),
+    ...(startMode === 'plan' && { plan_mode: true }),
+    ...(stagedArtifacts.length > 0 && { input_artifacts: stagedArtifacts }),
+    ...extra,
+  })
+
   const handleRun = async () => {
     if (!selectedWorkflow) return
     try {
-      const result = await runMutation.mutateAsync({
-        ticketId,
-        params: {
-          workflow: selectedWorkflow,
-          instructions: instructions || undefined,
-          ...(startMode === 'interactive' && { interactive: true }),
-          ...(startMode === 'plan' && { plan_mode: true }),
-        },
-      })
+      const result = await runMutation.mutateAsync({ ticketId, params: buildParams() })
 
       if ((startMode === 'interactive' || startMode === 'plan') && result.session_id) {
-        pushToStore(
-          result.session_id,
-          startMode === 'plan' ? 'planner' : l0AgentType,
-          result.instance_id,
-        )
+        pushToStore(result.session_id, startMode === 'plan' ? 'planner' : l0AgentType, result.instance_id)
       }
 
+      launchedRef.current = true
       onClose()
       setInstructions('')
     } catch (error) {
@@ -147,25 +151,13 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
   const handleForceRun = async () => {
     setShowConcurrentWarning(false)
     try {
-      const result = await runMutation.mutateAsync({
-        ticketId,
-        params: {
-          workflow: selectedWorkflow,
-          instructions: instructions || undefined,
-          ...(startMode === 'interactive' && { interactive: true }),
-          ...(startMode === 'plan' && { plan_mode: true }),
-          force: true,
-        },
-      })
+      const result = await runMutation.mutateAsync({ ticketId, params: buildParams({ force: true }) })
 
       if ((startMode === 'interactive' || startMode === 'plan') && result.session_id) {
-        pushToStore(
-          result.session_id,
-          startMode === 'plan' ? 'planner' : l0AgentType,
-          result.instance_id,
-        )
+        pushToStore(result.session_id, startMode === 'plan' ? 'planner' : l0AgentType, result.instance_id)
       }
 
+      launchedRef.current = true
       onClose()
       setInstructions('')
     } catch {
@@ -173,15 +165,21 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
     }
   }
 
-  // Reset state when dialog closes
+  // Reset state when dialog closes; cancel any staged-but-not-launched uploads
   useEffect(() => {
     if (!open) {
+      if (!launchedRef.current) {
+        stagedArtifacts.forEach(a => cancelUpload(a.upload_id).catch(() => {}))
+      }
       setSelectedWorkflow('')
       setInstructions('')
       setStartMode('normal')
       setShowConcurrentWarning(false)
+      setStagedArtifacts([])
+      setHasUploadPending(false)
+      launchedRef.current = false
     }
-  }, [open])
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Dialog open={open} onClose={onClose} className="max-w-4xl max-h-[90vh]">
@@ -246,6 +244,18 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
               </div>
             )}
 
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Attachments <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <ArtifactUploader
+                onChange={(refs, pending) => {
+                  setStagedArtifacts(refs)
+                  setHasUploadPending(pending)
+                }}
+              />
+            </div>
+
             {startMode !== 'plan' && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">
@@ -303,7 +313,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
         </Button>
         <Button
           onClick={handleRun}
-          disabled={!selectedWorkflow || runMutation.isPending || !!blockedReason}
+          disabled={!selectedWorkflow || runMutation.isPending || !!blockedReason || hasUploadPending}
         >
           {runMutation.isPending && <Spinner size="sm" className="mr-2" />}
           Run

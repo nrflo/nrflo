@@ -15,6 +15,9 @@ func DefaultTemplate(kind model.ChannelKind) string {
 	if kind == model.ChannelKindTelegram {
 		return telegramDefaultTemplate
 	}
+	if kind == model.ChannelKindScript {
+		return ""
+	}
 	return slackDefaultTemplate
 }
 

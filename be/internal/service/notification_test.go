@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"strings"
@@ -44,7 +45,7 @@ func TestNotificationService_Create_List_Get(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), hub, nil, nil)
 
 	enabled := true
-	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, err := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:       "Test Slack",
 		Kind:       "slack",
 		Enabled:    &enabled,
@@ -87,7 +88,7 @@ func TestNotificationService_Update_MaskedPreservesSecret(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), nil, nil, nil)
 
 	enabled := true
-	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, err := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:    "ch",
 		Kind:    "slack",
 		Enabled: &enabled,
@@ -119,7 +120,7 @@ func TestNotificationService_Update_NewValueRotatesSecret(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), nil, nil, nil)
 
 	enabled := true
-	ch, _ := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, _ := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:    "ch",
 		Kind:    "slack",
 		Enabled: &enabled,
@@ -144,7 +145,7 @@ func TestNotificationService_Delete(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), nil, nil, nil)
 
 	enabled := true
-	ch, _ := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, _ := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name: "ch", Kind: "slack", Enabled: &enabled,
 	})
 
@@ -164,7 +165,7 @@ func TestNotificationService_TestSend_InsertsOneDelivery(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), nil, waker, nil)
 
 	enabled := true
-	ch, _ := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, _ := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name: "ch", Kind: "slack", Enabled: &enabled,
 	})
 
@@ -203,7 +204,7 @@ func TestNotificationService_Create_Validation(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := svc.Create(projectID, workflowID, &tc.req)
+			_, err := svc.Create(context.Background(), projectID, workflowID, &tc.req)
 			if err == nil {
 				t.Errorf("Create(%q): expected error, got nil", tc.name)
 			}
@@ -218,7 +219,7 @@ func TestNotificationService_TestSend_PayloadCoversAllVariables(t *testing.T) {
 	svc := NewNotificationService(pool, clk, nil, nil, nil)
 
 	enabled := true
-	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, err := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name: "payload-vars", Kind: "slack", Enabled: &enabled,
 	})
 	if err != nil {
@@ -277,7 +278,7 @@ func TestNotificationService_Create_UnknownWorkflow_ReturnsError(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), nil, nil, wfSvc)
 
 	enabled := true
-	_, err := svc.Create(projectID, "no-such-workflow", &types.NotificationChannelCreateRequest{
+	_, err := svc.Create(context.Background(), projectID, "no-such-workflow", &types.NotificationChannelCreateRequest{
 		Name: "ch", Kind: "slack", Enabled: &enabled,
 	})
 	if err == nil {

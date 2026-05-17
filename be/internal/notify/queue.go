@@ -107,11 +107,22 @@ func (w *Worker) dispatch(d *model.NotificationDelivery) {
 		return
 	}
 
+	instanceID, _ := eventData["instance_id"].(string)
+	ticketID, _ := eventData["ticket_id"].(string)
+	workflowName, _ := eventData["workflow"].(string)
+
 	sendErr := transport.Send(&Notification{
-		ChannelID: ch.ID,
-		Kind:      string(ch.Kind),
-		Config:    configMap,
-		Body:      body,
+		ChannelID:  ch.ID,
+		DeliveryID: d.ID,
+		Kind:       string(ch.Kind),
+		Config:     configMap,
+		Body:       body,
+		ProjectID:  d.ProjectID,
+		EventType:  d.EventType,
+		InstanceID: instanceID,
+		TicketID:   ticketID,
+		WorkflowID: workflowName,
+		Payload:    eventData,
 	})
 
 	newAttempts := d.Attempts + 1

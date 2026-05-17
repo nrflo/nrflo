@@ -10,6 +10,7 @@ type ChannelKind string
 const (
 	ChannelKindSlack    ChannelKind = "slack"
 	ChannelKindTelegram ChannelKind = "telegram"
+	ChannelKindScript   ChannelKind = "script"
 )
 
 // DeliveryStatus enumerates notification delivery states.

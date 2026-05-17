@@ -52,7 +52,7 @@ func (s *Server) handleCreateNotificationChannel(w http.ResponseWriter, r *http.
 	}
 	wfSvc := service.NewWorkflowService(s.pool, s.clock)
 	svc := service.NewNotificationService(s.pool, s.clock, s.wsHub, s.notifyWaker, wfSvc)
-	ch, err := svc.Create(projectID, wid, &req)
+	ch, err := svc.Create(r.Context(), projectID, wid, &req)
 	if err != nil {
 		status := http.StatusBadRequest
 		if strings.Contains(err.Error(), "already exists") {

@@ -21,7 +21,7 @@ Top-level packages under `be/internal/`:
 - `client/` — Unix socket + HTTP clients
 - `static/` — Embedded UI assets (`//go:embed`)
 - `socket/` — Unix socket server (agent communication: findings, callbacks, ws.broadcast)
-- `notify/` — Notification dispatch: Slack/Telegram transports, async retry queue
+- `notify/` — Notification dispatch: Slack/Telegram/Script transports, async retry queue
 - `service/` — Business logic layer (see [service/CLAUDE.md](internal/service/CLAUDE.md))
 - `db/` — SQLite connection pool, migrations (see [db/CLAUDE.md](internal/db/CLAUDE.md))
 - `model/` — Data models (structs)
@@ -96,7 +96,7 @@ The Unix socket uses JSON-RPC line-delimited protocol. Supported methods: `findi
 | Package | Documentation | Key Content |
 |---------|--------------|-------------|
 | `internal/scheduler/` | [scheduler/CLAUDE.md](internal/scheduler/CLAUDE.md) | Cron scheduler: lifecycle, dispatch flow |
-| `internal/notify/` | (inline docs) | Dispatcher (ws.Listener): Slack/Telegram transports, async retry queue (backoff 15s/60s/300s), secret masking, error tracking |
+| `internal/notify/` | (inline docs) | Dispatcher (ws.Listener): Slack/Telegram/Script transports, async retry queue (backoff 15s/60s/300s), secret masking, error tracking. Script transport runs user-supplied Python via per-project venv with a transient `_notification` agent_session (SDK auth) and a 30s timeout. |
 | `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, execution backends (cli_interactive/api/script), `Config.ProjectEnv` |
 | `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, layer aggregation, callback flow, chain runner |

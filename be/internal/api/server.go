@@ -27,6 +27,7 @@ import (
 	pythonsdk "be/internal/sdk/python"
 	"be/internal/service"
 	"be/internal/static"
+	"be/internal/venv"
 	"be/internal/ws"
 )
 
@@ -116,6 +117,24 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	hub.RegisterListener(dispatcher)
 	waker := service.NewChanWaker(notifyWakeCh)
 	notifyWorker := notify.NewWorker(deliveryRepo, channelRepo, hub, errorSvc, clk, notifyWakeCh)
+
+	// Script notification transport runtime.
+	{
+		dataDir := ""
+		if dataPath != "" {
+			dataDir = filepath.Dir(dataPath)
+		}
+		notify.RegisterScriptRuntime(&notify.ScriptRuntime{
+			ProjectRepo: repo.NewProjectRepo(pool, clk),
+			VenvMgr:     venv.New(dataDir, clk),
+			EnvVarRepo:  repo.NewProjectEnvVarRepo(pool, clk),
+			SessionRepo: repo.NewAgentSessionRepo(pool, clk),
+			Clock:       clk,
+			SDKDir:      sdkDir,
+			SocketPath:  os.Getenv("NRFLO_SOCKET"),
+			NrfloHome:   dataDir,
+		})
+	}
 
 	// Auth subsystem
 	sessionMgr := auth.NewManager(pool.DB, insecureCookies)

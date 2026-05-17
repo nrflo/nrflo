@@ -3,6 +3,7 @@ package service
 // TODO: encrypt at rest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -76,12 +77,23 @@ func (s *NotificationService) Get(id string) (*model.NotificationChannel, error)
 }
 
 // Create validates and persists a new notification channel for a specific workflow.
-func (s *NotificationService) Create(projectID, workflowID string, req *types.NotificationChannelCreateRequest) (*model.NotificationChannel, error) {
+func (s *NotificationService) Create(ctx context.Context, projectID, workflowID string, req *types.NotificationChannelCreateRequest) (*model.NotificationChannel, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("name is required")
 	}
-	if req.Kind != "slack" && req.Kind != "telegram" {
-		return nil, fmt.Errorf("kind must be slack or telegram")
+	if req.Kind != "slack" && req.Kind != "telegram" && req.Kind != "script" {
+		return nil, fmt.Errorf("kind must be slack, telegram, or script")
+	}
+
+	if req.Kind == "script" {
+		code, _ := req.Config["script_code"].(string)
+		if code == "" {
+			return nil, fmt.Errorf("script_code is required for script channels")
+		}
+		result := NewPythonScriptValidator().Validate(ctx, code)
+		if !result.OK {
+			return nil, fmt.Errorf("script syntax error: %s", result.Error)
+		}
 	}
 
 	if s.wfSvc != nil {

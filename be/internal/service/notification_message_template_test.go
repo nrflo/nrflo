@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"be/internal/clock"
@@ -15,7 +16,7 @@ func TestNotificationService_Create_DefaultMessageTemplate_Slack(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), nil, nil, nil)
 
 	enabled := true
-	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, err := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:    "slack-default",
 		Kind:    "slack",
 		Enabled: &enabled,
@@ -41,7 +42,7 @@ func TestNotificationService_Create_DefaultMessageTemplate_Telegram(t *testing.T
 	svc := NewNotificationService(pool, clock.Real(), nil, nil, nil)
 
 	enabled := true
-	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, err := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:    "tg-default",
 		Kind:    "telegram",
 		Enabled: &enabled,
@@ -67,7 +68,7 @@ func TestNotificationService_Create_ExplicitMessageTemplate(t *testing.T) {
 
 	custom := "my custom ${event_type}"
 	enabled := true
-	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, err := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:            "explicit-tpl",
 		Kind:            "slack",
 		Enabled:         &enabled,
@@ -93,7 +94,7 @@ func TestNotificationService_Update_MessageTemplate_NilNoChange(t *testing.T) {
 
 	custom := "keep me"
 	enabled := true
-	ch, _ := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, _ := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:            "keep-tpl",
 		Kind:            "slack",
 		Enabled:         &enabled,
@@ -119,7 +120,7 @@ func TestNotificationService_Update_MessageTemplate_EmptyResetsToDefault(t *test
 
 	custom := "some custom template"
 	enabled := true
-	ch, _ := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, _ := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:            "reset-tpl",
 		Kind:            "slack",
 		Enabled:         &enabled,
@@ -148,7 +149,7 @@ func TestNotificationService_Update_MessageTemplate_ExplicitSets(t *testing.T) {
 	svc := NewNotificationService(pool, clock.Real(), nil, nil, nil)
 
 	enabled := true
-	ch, _ := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, _ := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:    "set-tpl",
 		Kind:    "slack",
 		Enabled: &enabled,
@@ -175,7 +176,7 @@ func TestNotificationService_Create_EmptyStringMessageTemplate(t *testing.T) {
 
 	empty := ""
 	enabled := true
-	ch, err := svc.Create(projectID, workflowID, &types.NotificationChannelCreateRequest{
+	ch, err := svc.Create(context.Background(), projectID, workflowID, &types.NotificationChannelCreateRequest{
 		Name:            "empty-tpl",
 		Kind:            "slack",
 		Enabled:         &enabled,

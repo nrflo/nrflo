@@ -222,3 +222,4 @@ func TestWorker_NoPendingDeliveries_NoOp(t *testing.T) {
 		t.Errorf("RecordError calls = %d, want 0 (no pending deliveries)", errSvc.calls)
 	}
 }
+

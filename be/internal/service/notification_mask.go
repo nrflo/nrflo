@@ -19,6 +19,8 @@ func maskConfig(kind, configJSON string) string {
 			m["bot_token"] = maskToken(v)
 		}
 		// chat_id passthrough — not secret
+	case "script":
+		// script_code is editor-visible, not a credential; pass through verbatim
 	}
 
 	b, err := json.Marshal(m)
@@ -38,6 +40,18 @@ func applyConfigPatch(kind, storedJSON, incomingJSON string) string {
 	}
 	if err := json.Unmarshal([]byte(incomingJSON), &incoming); err != nil {
 		return storedJSON
+	}
+
+	// Script config is not masked; apply all incoming keys directly.
+	if kind == "script" {
+		for k, v := range incoming {
+			stored[k] = v
+		}
+		b, err := json.Marshal(stored)
+		if err != nil {
+			return storedJSON
+		}
+		return string(b)
 	}
 
 	masked := maskConfig(kind, storedJSON)

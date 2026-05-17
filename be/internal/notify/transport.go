@@ -16,10 +16,17 @@ type Transport interface {
 
 // Notification is the send payload handed to a Transport.
 type Notification struct {
-	ChannelID string
-	Kind      string
-	Config    map[string]interface{}
-	Body      string
+	ChannelID  string
+	DeliveryID string
+	Kind       string
+	Config     map[string]interface{}
+	Body       string
+	ProjectID  string
+	WorkflowID string
+	InstanceID string
+	TicketID   string
+	EventType  string
+	Payload    map[string]interface{}
 }
 
 var registry = map[string]Transport{}

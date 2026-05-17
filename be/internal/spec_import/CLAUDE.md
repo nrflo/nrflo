@@ -45,12 +45,14 @@ type Adapter interface {
 
 Defined in `catalog.go` as `Catalog []EnvVarSpec`. Single source of truth for API surfaces.
 
-| Name             | Feature        | Required |
-|------------------|----------------|----------|
-| `GITHUB_TOKEN`   | `github_issue` | false    |
-| `JIRA_BASE_URL`  | `jira`         | true     |
-| `JIRA_EMAIL`     | `jira`         | true     |
-| `JIRA_API_TOKEN` | `jira`         | true     |
+| Name                    | Feature        | Required |
+|-------------------------|----------------|----------|
+| `GITHUB_TOKEN`          | `github_issue` | false    |
+| `JIRA_BASE_URL`         | `jira`         | true     |
+| `JIRA_EMAIL`            | `jira`         | true     |
+| `JIRA_API_TOKEN`        | `jira`         | true     |
+| `ANTHROPIC_API_KEY`     | `anthropic`    | false    |
+| `ANTHROPIC_OAUTH_TOKEN` | `anthropic`    | false    |
 
 ## Error semantics
 

@@ -26,7 +26,7 @@ func TestResolveAPIKey_SecretRef_EnvErrors(t *testing.T) {
 			repo := &fakeRepo{rows: map[string]*model.APICredential{
 				"anthropic|": {SecretRef: tt.secretRef},
 			}}
-			_, err := ResolveAPIKey(context.Background(), repo, "")
+			_, err := ResolveAPIKey(context.Background(), repo, nil, "")
 			if err == nil {
 				t.Fatalf("expected error")
 			}
@@ -43,7 +43,7 @@ func TestResolveAPIKey_SecretRef_FileMissing(t *testing.T) {
 	repo := &fakeRepo{rows: map[string]*model.APICredential{
 		"anthropic|": {SecretRef: "file:" + missing},
 	}}
-	_, err := ResolveAPIKey(context.Background(), repo, "")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err == nil {
 		t.Fatalf("expected error for missing file")
 	}
@@ -62,7 +62,7 @@ func TestResolveAPIKey_SecretRef_FileEmpty(t *testing.T) {
 	repo := &fakeRepo{rows: map[string]*model.APICredential{
 		"anthropic|": {SecretRef: "file:" + empty},
 	}}
-	_, err := ResolveAPIKey(context.Background(), repo, "")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err == nil {
 		t.Fatalf("expected error for empty file")
 	}
@@ -81,12 +81,12 @@ func TestResolveAPIKey_SecretRef_FileOK(t *testing.T) {
 	repo := &fakeRepo{rows: map[string]*model.APICredential{
 		"anthropic|": {SecretRef: "file:" + path},
 	}}
-	got, err := ResolveAPIKey(context.Background(), repo, "")
+	got, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
-	if got != "sk-from-file" {
-		t.Errorf("got %q, want %q", got, "sk-from-file")
+	if got.Value != "sk-from-file" {
+		t.Errorf("got %q, want %q", got.Value, "sk-from-file")
 	}
 }
 
@@ -95,7 +95,7 @@ func TestResolveAPIKey_SecretRef_FileEmptyPathErrors(t *testing.T) {
 	repo := &fakeRepo{rows: map[string]*model.APICredential{
 		"anthropic|": {SecretRef: "file:"},
 	}}
-	_, err := ResolveAPIKey(context.Background(), repo, "")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err == nil {
 		t.Fatalf("expected error for empty file path")
 	}
@@ -113,12 +113,12 @@ func TestResolveAPIKey_SecretRef_LiteralWarnsOnce(t *testing.T) {
 		"anthropic|": {SecretRef: "literal:sk-abc"},
 	}}
 
-	got, err := ResolveAPIKey(context.Background(), repo, "")
+	got, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey #1: %v", err)
 	}
-	if got != "sk-abc" {
-		t.Errorf("got %q, want %q", got, "sk-abc")
+	if got.Value != "sk-abc" {
+		t.Errorf("got %q, want %q", got.Value, "sk-abc")
 	}
 	out1 := buf.String()
 	if !strings.Contains(out1, "literal API key") {
@@ -129,12 +129,12 @@ func TestResolveAPIKey_SecretRef_LiteralWarnsOnce(t *testing.T) {
 	}
 
 	buf.Reset()
-	got, err = ResolveAPIKey(context.Background(), repo, "")
+	got, err = ResolveAPIKey(context.Background(), repo, nil, "")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey #2: %v", err)
 	}
-	if got != "sk-abc" {
-		t.Errorf("second call returned %q, want %q", got, "sk-abc")
+	if got.Value != "sk-abc" {
+		t.Errorf("second call returned %q, want %q", got.Value, "sk-abc")
 	}
 	if buf.Len() != 0 {
 		t.Errorf("second call wrote to log: %q (warn must fire once)", buf.String())
@@ -146,7 +146,7 @@ func TestResolveAPIKey_SecretRef_LiteralEmptyErrors(t *testing.T) {
 	repo := &fakeRepo{rows: map[string]*model.APICredential{
 		"anthropic|": {SecretRef: "literal:"},
 	}}
-	_, err := ResolveAPIKey(context.Background(), repo, "")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err == nil {
 		t.Fatalf("expected error for empty literal value")
 	}
@@ -157,7 +157,7 @@ func TestResolveAPIKey_SecretRef_UnsupportedScheme(t *testing.T) {
 	repo := &fakeRepo{rows: map[string]*model.APICredential{
 		"anthropic|": {SecretRef: "vault://kv/something"},
 	}}
-	_, err := ResolveAPIKey(context.Background(), repo, "")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err == nil {
 		t.Fatalf("expected error for unsupported scheme")
 	}

@@ -1102,7 +1102,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	if executionMode == "api" {
 		// Resolve the API key up-front so spawn fails fast on misconfiguration
 		// (matches the CLI failure mode of a missing binary).
-		if _, keyErr := anthropic.ResolveAPIKey(context.Background(), s.config.APICredentialRepo, req.ProjectID); keyErr != nil {
+		var envRepo anthropic.ProjectEnvVarRepo
+		if s.config.Pool != nil {
+			envRepo = newSpawnerEnvRepo(s.config.Pool, s.config.Clock, req.ProjectID)
+		}
+		if _, keyErr := anthropic.ResolveAPIKey(context.Background(), s.config.APICredentialRepo, envRepo, req.ProjectID); keyErr != nil {
 			return nil, nil, fmt.Errorf("api mode: %w", keyErr)
 		}
 

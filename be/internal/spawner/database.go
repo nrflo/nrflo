@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"be/internal/clock"
+	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
+	"be/internal/spawner/apirun/provider/anthropic"
 	"be/internal/ws"
 )
 
@@ -204,6 +208,30 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 	}
 
 	return requestedPhase.ID, nil
+}
+
+// spawnerEnvRepo implements anthropic.ProjectEnvVarRepo from a pre-loaded
+// per-project env var map. Constructed once per prepareSpawn call.
+type spawnerEnvRepo struct {
+	vars map[string]string
+}
+
+func newSpawnerEnvRepo(pool *db.Pool, clk clock.Clock, projectID string) anthropic.ProjectEnvVarRepo {
+	svc := service.NewProjectEnvVarService(pool, clk)
+	vars, err := svc.List(projectID)
+	if err != nil {
+		return &spawnerEnvRepo{vars: map[string]string{}}
+	}
+	m := make(map[string]string, len(vars))
+	for _, v := range vars {
+		m[v.Name] = v.Value
+	}
+	return &spawnerEnvRepo{vars: m}
+}
+
+func (r *spawnerEnvRepo) Get(_ string, name string) (string, bool, error) {
+	v, ok := r.vars[name]
+	return v, ok, nil
 }
 
 // broadcastGlobal sends a signal-only global.running_agents event to all WS clients.

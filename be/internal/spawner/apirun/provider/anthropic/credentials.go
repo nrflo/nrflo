@@ -14,21 +14,52 @@ import (
 )
 
 // APICredentialRepo is the minimal subset of repo.APICredentialRepo this
-// package depends on. The runner (T3) wires the concrete repo to an adapter
+// package depends on. The runner wires the concrete repo to an adapter
 // that satisfies this interface; tests fake it directly.
 type APICredentialRepo interface {
 	Resolve(provider, projectID string) (*model.APICredential, error)
 }
 
+// ProjectEnvVarRepo is a narrow interface for per-project env var lookup.
+// Implementations load vars once and cache; the projectID parameter is
+// informational (adapters may be pre-scoped to a single project).
+type ProjectEnvVarRepo interface {
+	Get(projectID, name string) (string, bool, error)
+}
+
+// AuthMethod identifies the authentication scheme for a resolved credential.
+type AuthMethod string
+
 const (
-	envANTHROPICAPIKey = "ANTHROPIC_API_KEY"
-	providerAnthropic  = "anthropic"
+	MethodAPIKey      AuthMethod = "api_key"
+	MethodOAuthBearer AuthMethod = "oauth_bearer"
+)
+
+// Credentials holds a resolved API credential and the auth method to use.
+type Credentials struct {
+	Value  string
+	Method AuthMethod
+}
+
+const (
+	envANTHROPICAPIKey     = "ANTHROPIC_API_KEY"
+	envANTHROPICOAuthToken = "ANTHROPIC_OAUTH_TOKEN"
+	providerAnthropic      = "anthropic"
 )
 
 var literalWarned sync.Once
 
-// ResolveAPIKey returns the Anthropic API key for the given project, applying
-// the precedence: per-project DB row > global DB row > ANTHROPIC_API_KEY env.
+// detectAuthMethod returns MethodOAuthBearer for OAuth tokens (sk-ant-oat01- prefix),
+// MethodAPIKey otherwise.
+func detectAuthMethod(value string) AuthMethod {
+	if strings.HasPrefix(value, "sk-ant-oat01-") {
+		return MethodOAuthBearer
+	}
+	return MethodAPIKey
+}
+
+// ResolveAPIKey returns the Anthropic credentials for the given project, applying
+// the precedence: per-project DB row > per-project env > global DB row > server env.
 //
 // secret_ref values are dereferenced before being returned:
 //   - "env:NAME"  -> os.Getenv(NAME); errors if empty.
@@ -37,61 +68,76 @@ var literalWarned sync.Once
 //
 // Returns a descriptive error when no source resolves so the caller can fail
 // before issuing a request to the Anthropic API.
-//
-// ctx is reserved for future cancellable lookups; the current implementation
-// does only synchronous reads.
-func ResolveAPIKey(ctx context.Context, repo APICredentialRepo, projectID string) (string, error) {
+func ResolveAPIKey(ctx context.Context, credRepo APICredentialRepo, envRepo ProjectEnvVarRepo, projectID string) (Credentials, error) {
 	tried := []string{}
 
-	// 1. Per-project row.
-	if projectID != "" && repo != nil {
-		key, ok, err := resolveFromRepo(ctx, repo, projectID)
+	// 1. Per-project api_credentials row.
+	if projectID != "" && credRepo != nil {
+		creds, ok, err := resolveFromRepo(ctx, credRepo, projectID)
 		if err != nil {
-			return "", err
+			return Credentials{}, err
 		}
 		if ok {
-			return key, nil
+			return creds, nil
 		}
 		tried = append(tried, "per-project credential")
 	}
 
-	// 2. Global (project_id IS NULL) row.
-	if repo != nil {
-		key, ok, err := resolveFromRepo(ctx, repo, "")
+	// 2. Per-project env vars.
+	if projectID != "" && envRepo != nil {
+		for _, name := range []string{envANTHROPICAPIKey, envANTHROPICOAuthToken} {
+			v, ok, err := envRepo.Get(projectID, name)
+			if err != nil {
+				return Credentials{}, fmt.Errorf("per-project env %s: %w", name, err)
+			}
+			if ok && v != "" {
+				return Credentials{Value: v, Method: detectAuthMethod(v)}, nil
+			}
+		}
+		tried = append(tried, "per-project env")
+	}
+
+	// 3. Global (project_id IS NULL) api_credentials row.
+	if credRepo != nil {
+		creds, ok, err := resolveFromRepo(ctx, credRepo, "")
 		if err != nil {
-			return "", err
+			return Credentials{}, err
 		}
 		if ok {
-			return key, nil
+			return creds, nil
 		}
 		tried = append(tried, "global credential")
 	}
 
-	// 3. ANTHROPIC_API_KEY env fallback.
+	// 4. Server-process env fallback.
 	if v := os.Getenv(envANTHROPICAPIKey); v != "" {
-		return v, nil
+		return Credentials{Value: v, Method: MethodAPIKey}, nil
 	}
 	tried = append(tried, envANTHROPICAPIKey+" env")
+	if v := os.Getenv(envANTHROPICOAuthToken); v != "" {
+		return Credentials{Value: v, Method: MethodOAuthBearer}, nil
+	}
+	tried = append(tried, envANTHROPICOAuthToken+" env")
 
-	return "", fmt.Errorf("no anthropic API key found (tried: %s)", strings.Join(tried, ", "))
+	return Credentials{}, fmt.Errorf("no anthropic API key found (tried: %s)", strings.Join(tried, ", "))
 }
 
-func resolveFromRepo(ctx context.Context, repo APICredentialRepo, projectID string) (string, bool, error) {
+func resolveFromRepo(ctx context.Context, repo APICredentialRepo, projectID string) (Credentials, bool, error) {
 	cred, err := repo.Resolve(providerAnthropic, projectID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", false, nil
+			return Credentials{}, false, nil
 		}
-		return "", false, fmt.Errorf("resolve anthropic credential: %w", err)
+		return Credentials{}, false, fmt.Errorf("resolve anthropic credential: %w", err)
 	}
 	if cred == nil {
-		return "", false, nil
+		return Credentials{}, false, nil
 	}
 	key, err := dereferenceSecretRef(ctx, cred.SecretRef)
 	if err != nil {
-		return "", false, err
+		return Credentials{}, false, err
 	}
-	return key, true, nil
+	return Credentials{Value: key, Method: detectAuthMethod(key)}, true, nil
 }
 
 func dereferenceSecretRef(ctx context.Context, ref string) (string, error) {

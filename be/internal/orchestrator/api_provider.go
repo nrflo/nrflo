@@ -31,18 +31,43 @@ func loadProjectEnv(ctx context.Context, pool *db.Pool, projectID string, clk cl
 	return out
 }
 
-// buildAPIProvider resolves the project's Anthropic API key and constructs a
-// provider.Provider for API-mode agents. Returns nil if no key is configured —
-// the spawner will fail any api-mode spawn at prepareSpawn time with a clear
-// error, mirroring the CLI failure mode of a missing binary.
+// projectEnvAdapter implements anthropic.ProjectEnvVarRepo from a pre-loaded
+// per-project env var map. It ignores the projectID argument since vars are
+// already scoped at construction time.
+type projectEnvAdapter struct {
+	vars map[string]string
+}
+
+func newProjectEnvAdapter(pool *db.Pool, clk clock.Clock, projectID string) *projectEnvAdapter {
+	svc := service.NewProjectEnvVarService(pool, clk)
+	vars, err := svc.List(projectID)
+	if err != nil {
+		return &projectEnvAdapter{vars: map[string]string{}}
+	}
+	m := make(map[string]string, len(vars))
+	for _, v := range vars {
+		m[v.Name] = v.Value
+	}
+	return &projectEnvAdapter{vars: m}
+}
+
+func (a *projectEnvAdapter) Get(_ string, name string) (string, bool, error) {
+	v, ok := a.vars[name]
+	return v, ok, nil
+}
+
+// buildAPIProvider resolves the project's Anthropic credentials and constructs a
+// provider.Provider for API-mode agents. Returns nil if no credential is configured —
+// the spawner will fail any api-mode spawn at prepareSpawn time with a clear error.
 func buildAPIProvider(ctx context.Context, pool *db.Pool, projectID string, clk clock.Clock) provider.Provider {
 	credRepo := repo.NewAPICredentialRepo(pool, clk)
-	key, err := anthropic.ResolveAPIKey(ctx, credRepo, projectID)
+	envRepo := newProjectEnvAdapter(pool, clk, projectID)
+	creds, err := anthropic.ResolveAPIKey(ctx, credRepo, envRepo, projectID)
 	if err != nil {
-		logger.Info(ctx, "anthropic api key not configured (api-mode agents will fail to spawn)", "project_id", projectID)
 		return nil
 	}
-	return anthropic.New(key)
+	logger.Info(ctx, "api provider configured", "project_id", projectID, "method", string(creds.Method))
+	return anthropic.New(creds)
 }
 
 // apiAgentSvc adapts service.AgentService into apirun.AgentSvc, broadcasting

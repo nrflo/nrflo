@@ -35,4 +35,16 @@ var Catalog = []EnvVarSpec{
 		Description: "Jira API token generated at https://id.atlassian.com/manage-profile/security/api-tokens",
 		Required:    true,
 	},
+	{
+		Name:        "ANTHROPIC_API_KEY",
+		Feature:     "anthropic",
+		Description: "Anthropic API key (sk-ant-api...) for API-mode agents.",
+		Required:    false,
+	},
+	{
+		Name:        "ANTHROPIC_OAUTH_TOKEN",
+		Feature:     "anthropic",
+		Description: "Claude OAuth access token (sk-ant-oat01-...) from `claude /login`. Extract on macOS with: security find-generic-password -s 'Claude Code' -w",
+		Required:    false,
+	},
 }

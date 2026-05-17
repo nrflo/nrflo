@@ -3,17 +3,19 @@ package spec_import
 import "testing"
 
 func TestCatalog_Length(t *testing.T) {
-	if len(Catalog) != 4 {
-		t.Errorf("len(Catalog) = %d, want 4", len(Catalog))
+	if len(Catalog) != 6 {
+		t.Errorf("len(Catalog) = %d, want 6", len(Catalog))
 	}
 }
 
 func TestCatalog_Names(t *testing.T) {
 	want := map[string]bool{
-		"GITHUB_TOKEN":   true,
-		"JIRA_BASE_URL":  true,
-		"JIRA_EMAIL":     true,
-		"JIRA_API_TOKEN": true,
+		"GITHUB_TOKEN":         true,
+		"JIRA_BASE_URL":        true,
+		"JIRA_EMAIL":           true,
+		"JIRA_API_TOKEN":       true,
+		"ANTHROPIC_API_KEY":    true,
+		"ANTHROPIC_OAUTH_TOKEN": true,
 	}
 	seen := map[string]int{}
 	for _, e := range Catalog {
@@ -52,6 +54,11 @@ func TestCatalog_Features(t *testing.T) {
 	for _, name := range []string{"JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"} {
 		if featureOf[name] != string(SourceJira) {
 			t.Errorf("%s.Feature = %q, want %q", name, featureOf[name], string(SourceJira))
+		}
+	}
+	for _, name := range []string{"ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN"} {
+		if featureOf[name] != "anthropic" {
+			t.Errorf("%s.Feature = %q, want %q", name, featureOf[name], "anthropic")
 		}
 	}
 }

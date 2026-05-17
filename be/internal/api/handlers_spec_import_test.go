@@ -287,16 +287,18 @@ func TestHandleEnvVarCatalog_ReturnsAllVars(t *testing.T) {
 	var resp map[string]interface{}
 	json.NewDecoder(rr.Body).Decode(&resp)
 	vars, _ := resp["vars"].([]interface{})
-	if len(vars) != 4 {
-		t.Errorf("len(vars) = %d, want 4", len(vars))
+	if len(vars) != 6 {
+		t.Errorf("len(vars) = %d, want 6", len(vars))
 	}
 
 	// Verify the expected names appear.
 	want := map[string]bool{
-		"GITHUB_TOKEN":  true,
-		"JIRA_BASE_URL": true,
-		"JIRA_EMAIL":    true,
-		"JIRA_API_TOKEN": true,
+		"GITHUB_TOKEN":         true,
+		"JIRA_BASE_URL":        true,
+		"JIRA_EMAIL":           true,
+		"JIRA_API_TOKEN":       true,
+		"ANTHROPIC_API_KEY":    true,
+		"ANTHROPIC_OAUTH_TOKEN": true,
 	}
 	for _, v := range vars {
 		m, _ := v.(map[string]interface{})

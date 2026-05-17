@@ -101,7 +101,7 @@ func happyPathSSE() string {
 
 func TestRun_StreamingHappyPath(t *testing.T) {
 	rt := &fakeRoundTripper{body: happyPathSSE()}
-	p := NewWithHTTPClient("test-key", &http.Client{Transport: rt})
+	p := NewWithHTTPClient(Credentials{Value: "test-key", Method: MethodAPIKey}, &http.Client{Transport: rt})
 
 	sink := &recordingSink{}
 	resp, err := p.Run(context.Background(), provider.Request{
@@ -182,7 +182,7 @@ func TestRun_StreamingMalformedToolInputErrors(t *testing.T) {
 	b.WriteString(sseEvent("message_stop", `{"type":"message_stop"}`))
 
 	rt := &fakeRoundTripper{body: b.String()}
-	p := NewWithHTTPClient("test-key", &http.Client{Transport: rt})
+	p := NewWithHTTPClient(Credentials{Value: "test-key", Method: MethodAPIKey}, &http.Client{Transport: rt})
 
 	_, err := p.Run(context.Background(), provider.Request{
 		Model:     "claude-opus-4-7",
@@ -214,7 +214,7 @@ func TestRun_StreamingTextOnly(t *testing.T) {
 	b.WriteString(sseEvent("message_stop", `{"type":"message_stop"}`))
 
 	rt := &fakeRoundTripper{body: b.String()}
-	p := NewWithHTTPClient("test-key", &http.Client{Transport: rt})
+	p := NewWithHTTPClient(Credentials{Value: "test-key", Method: MethodAPIKey}, &http.Client{Transport: rt})
 	sink := &recordingSink{}
 	resp, err := p.Run(context.Background(), provider.Request{
 		Model:     "claude-opus-4-7",
@@ -249,7 +249,7 @@ func TestRun_StreamingEmptyToolInput(t *testing.T) {
 	b.WriteString(sseEvent("message_stop", `{"type":"message_stop"}`))
 
 	rt := &fakeRoundTripper{body: b.String()}
-	p := NewWithHTTPClient("test-key", &http.Client{Transport: rt})
+	p := NewWithHTTPClient(Credentials{Value: "test-key", Method: MethodAPIKey}, &http.Client{Transport: rt})
 	sink := &recordingSink{}
 	resp, err := p.Run(context.Background(), provider.Request{Model: "m", MaxTokens: 1}, sink)
 	if err != nil {

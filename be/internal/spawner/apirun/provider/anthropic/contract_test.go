@@ -29,7 +29,46 @@ func TestLiveAnthropic_SmokeRun(t *testing.T) {
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		t.Skip("ANTHROPIC_API_KEY not set; skipping live contract test")
 	}
-	p := New(os.Getenv("ANTHROPIC_API_KEY"))
+	p := New(Credentials{Value: os.Getenv("ANTHROPIC_API_KEY"), Method: MethodAPIKey})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+
+	resp, err := p.Run(ctx, provider.Request{
+		Model:     "claude-haiku-4-5-20251001",
+		MaxTokens: 64,
+		Messages: []provider.Message{{
+			Role:    "user",
+			Content: []provider.ContentBlock{{Type: "text", Text: "Reply with the word ok"}},
+		}},
+	}, discardSink{})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if resp.StopReason != "end_turn" {
+		t.Errorf("StopReason = %q, want end_turn", resp.StopReason)
+	}
+	if resp.Usage.OutputTokens <= 0 {
+		t.Errorf("Usage.OutputTokens = %d, want > 0", resp.Usage.OutputTokens)
+	}
+	hasText := false
+	for _, b := range resp.Content {
+		if b.Type == "text" && b.Text != "" {
+			hasText = true
+			break
+		}
+	}
+	if !hasText {
+		t.Errorf("Content has no non-empty text block: %+v", resp.Content)
+	}
+}
+
+func TestLiveAnthropic_OAuthBearer(t *testing.T) {
+	tok := os.Getenv("ANTHROPIC_OAUTH_TOKEN")
+	if tok == "" {
+		t.Skip("ANTHROPIC_OAUTH_TOKEN not set; skipping OAuth live contract test")
+	}
+	p := New(Credentials{Value: tok, Method: MethodOAuthBearer})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)

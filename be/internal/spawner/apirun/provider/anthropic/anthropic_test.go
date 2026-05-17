@@ -5,14 +5,14 @@ import (
 )
 
 func TestAnthropicProvider_Name(t *testing.T) {
-	p := New("test-key")
+	p := New(Credentials{Value: "test-key", Method: MethodAPIKey})
 	if got := p.Name(); got != "anthropic" {
 		t.Errorf("Name() = %q, want %q", got, "anthropic")
 	}
 }
 
 func TestMaxContext(t *testing.T) {
-	p := New("test-key")
+	p := New(Credentials{Value: "test-key", Method: MethodAPIKey})
 	tests := []struct {
 		model string
 		want  int

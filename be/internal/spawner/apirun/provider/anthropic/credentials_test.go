@@ -32,6 +32,21 @@ func (f *fakeRepo) Resolve(provider, projectID string) (*model.APICredential, er
 	return c, nil
 }
 
+// fakeEnvRepo is an in-memory ProjectEnvVarRepo. Keys are "projectID|name".
+// err lets a test inject an error to verify propagation.
+type fakeEnvRepo struct {
+	vars map[string]string
+	err  error
+}
+
+func (r *fakeEnvRepo) Get(projectID, name string) (string, bool, error) {
+	if r.err != nil {
+		return "", false, r.err
+	}
+	v, ok := r.vars[projectID+"|"+name]
+	return v, ok, nil
+}
+
 // captureLogger redirects logger output to a buffer for the test, restoring
 // the original writer in t.Cleanup.
 func captureLogger(t *testing.T) *bytes.Buffer {
@@ -58,12 +73,12 @@ func TestResolveAPIKey_PerProjectBeatsGlobal(t *testing.T) {
 		"anthropic|proj-1": {SecretRef: "env:ANTHROPIC_PROJ_KEY"},
 		"anthropic|":       {SecretRef: "env:ANTHROPIC_GLOBAL_KEY"},
 	}}
-	got, err := ResolveAPIKey(context.Background(), repo, "proj-1")
+	got, err := ResolveAPIKey(context.Background(), repo, nil, "proj-1")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
-	if got != "proj-key" {
-		t.Errorf("got %q, want %q (per-project must win)", got, "proj-key")
+	if got.Value != "proj-key" {
+		t.Errorf("got %q, want %q (per-project must win)", got.Value, "proj-key")
 	}
 }
 
@@ -73,47 +88,50 @@ func TestResolveAPIKey_GlobalBeatsEnv(t *testing.T) {
 	repo := &fakeRepo{rows: map[string]*model.APICredential{
 		"anthropic|": {SecretRef: "env:ANTHROPIC_GLOBAL_KEY"},
 	}}
-	got, err := ResolveAPIKey(context.Background(), repo, "proj-x")
+	got, err := ResolveAPIKey(context.Background(), repo, nil, "proj-x")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
-	if got != "global-key" {
-		t.Errorf("got %q, want %q (global must beat env)", got, "global-key")
+	if got.Value != "global-key" {
+		t.Errorf("got %q, want %q (global must beat env)", got.Value, "global-key")
 	}
 }
 
 func TestResolveAPIKey_EnvFallbackWhenNoRows(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "from-env")
+	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
 	repo := &fakeRepo{rows: map[string]*model.APICredential{}}
-	got, err := ResolveAPIKey(context.Background(), repo, "proj-x")
+	got, err := ResolveAPIKey(context.Background(), repo, nil, "proj-x")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
-	if got != "from-env" {
-		t.Errorf("got %q, want %q", got, "from-env")
+	if got.Value != "from-env" {
+		t.Errorf("got %q, want %q", got.Value, "from-env")
 	}
 }
 
 func TestResolveAPIKey_NilRepoFallsThroughToEnv(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "env-only")
-	got, err := ResolveAPIKey(context.Background(), nil, "")
+	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
+	got, err := ResolveAPIKey(context.Background(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
-	if got != "env-only" {
-		t.Errorf("got %q, want %q", got, "env-only")
+	if got.Value != "env-only" {
+		t.Errorf("got %q, want %q", got.Value, "env-only")
 	}
 }
 
 func TestResolveAPIKey_NoSourceErrors(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
 	repo := &fakeRepo{rows: map[string]*model.APICredential{}}
-	_, err := ResolveAPIKey(context.Background(), repo, "proj-x")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "proj-x")
 	if err == nil {
 		t.Fatalf("expected error when no key resolves")
 	}
 	msg := err.Error()
-	for _, sub := range []string{"per-project", "global", "ANTHROPIC_API_KEY"} {
+	for _, sub := range []string{"per-project", "global", "ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN"} {
 		if !strings.Contains(msg, sub) {
 			t.Errorf("error %q missing %q", msg, sub)
 		}
@@ -123,7 +141,7 @@ func TestResolveAPIKey_NoSourceErrors(t *testing.T) {
 func TestResolveAPIKey_RepoErrorPropagates(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "from-env")
 	repo := &fakeRepo{err: errors.New("db boom")}
-	_, err := ResolveAPIKey(context.Background(), repo, "proj-x")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "proj-x")
 	if err == nil {
 		t.Fatalf("expected DB error to propagate")
 	}
@@ -137,8 +155,9 @@ func TestResolveAPIKey_EmptyProjectIDSkipsPerProject(t *testing.T) {
 	// it would match the global row (provider|"") by accident and the
 	// 'tried' message would lie.
 	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
 	repo := &fakeRepo{rows: map[string]*model.APICredential{}}
-	_, err := ResolveAPIKey(context.Background(), repo, "")
+	_, err := ResolveAPIKey(context.Background(), repo, nil, "")
 	if err == nil {
 		t.Fatalf("expected error")
 	}

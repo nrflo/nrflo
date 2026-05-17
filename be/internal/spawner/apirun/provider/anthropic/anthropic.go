@@ -27,19 +27,30 @@ import (
 // compatible with older API endpoints / proxies.
 const betaPromptCaching = "prompt-caching-2024-07-31"
 
-// New returns a provider.Provider backed by the Anthropic SDK using apiKey.
-// Optional opts are forwarded to the SDK client (used by tests to inject a
-// fake http.Client).
-func New(apiKey string, opts ...option.RequestOption) provider.Provider {
-	all := append([]option.RequestOption{option.WithAPIKey(apiKey)}, opts...)
+// New returns a provider.Provider backed by the Anthropic SDK using the given credentials.
+// For MethodAPIKey, uses x-api-key auth. For MethodOAuthBearer, uses Authorization: Bearer
+// with the oauth-2025-04-20 beta header. Optional opts are forwarded to the SDK client
+// (used by tests to inject a fake http.Client).
+func New(creds Credentials, opts ...option.RequestOption) provider.Provider {
+	var authOpts []option.RequestOption
+	switch creds.Method {
+	case MethodOAuthBearer:
+		authOpts = []option.RequestOption{
+			option.WithAuthToken(creds.Value),
+			option.WithHeaderAdd("anthropic-beta", "oauth-2025-04-20"),
+		}
+	default:
+		authOpts = []option.RequestOption{option.WithAPIKey(creds.Value)}
+	}
+	all := append(authOpts, opts...)
 	client := sdk.NewClient(all...)
 	return &anthropicProvider{client: &client}
 }
 
 // NewWithHTTPClient is a convenience constructor for tests: it injects the
-// given *http.Client (fake transport) before applying the API key.
-func NewWithHTTPClient(apiKey string, hc *http.Client) provider.Provider {
-	return New(apiKey, option.WithHTTPClient(hc))
+// given *http.Client (fake transport) before applying credentials.
+func NewWithHTTPClient(creds Credentials, hc *http.Client) provider.Provider {
+	return New(creds, option.WithHTTPClient(hc))
 }
 
 type anthropicProvider struct {

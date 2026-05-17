@@ -45,12 +45,15 @@ Socket path defaults to `$NRFLO_HOME/agent.sock` (fallback `~/.nrflo/agent.sock`
 | `c.findings` | `add(key, value)`, `add_bulk(dict)`, `append(key, value)`, `append_bulk(dict)`, `get(agent_type=None, *, key=None, keys=None, layer=None)`, `delete(*keys)` — `layer=N` returns a flat `{agent_type: findings_dict\|None}` map; `agent_type` and `layer` are mutually exclusive |
 | `c.project_findings` | Same shape as `c.findings` but scoped to project |
 | `c.agent` | `finished()`, `fail(reason="")`, `continue_()`, `callback(level)`, `chain_next_ticket(ticket_id)` |
+| `c.artifacts` | `add(name, content, content_type=None)`, `list()`, `get(name)` |
 | `c.context(refresh=False)` | Cached call to the `script.context` socket method (12-key dict — see [be/internal/socket/CLAUDE.md](../../socket/CLAUDE.md)) |
 | `c.user_instructions()` | Convenience: `c.context()["user_instructions"]` |
 | `c.callback_info()` | Convenience: `c.context()["callback"]` (or `None`) |
 | `c.previous_data()` | Convenience: `c.context()["previous_data"]` (set on relaunch via `to_resume`) |
 | `c.skip(tag)` | Forwards to the `workflow.skip` socket method |
 | `c.log(type, message, payload=None)` | Insert a message row via `agent.log`; no project required. `type` defaults to `"text"` — accepted values: `text`, `tool`, `subagent`, `skill`, `user_input`, `error`, `result`. `payload` is an optional Python value serialised to JSON. Output appears in the Logs UI Messages tab and server log. |
+
+`c.artifacts.add()` accepts `str` (UTF-8 encoded) or `bytes`/`bytearray`, enforces a 32 MiB client-side cap (raises `NrfloError` before sending), and base64-encodes the payload as `content_b64`. Note: `$NRF_ARTIFACTS_DIR` is a read-only pre-staged fallback set at spawn time and does not reflect artifacts uploaded by sibling agents mid-run; use `c.artifacts.list()`/`get()` to access those.
 
 Underlying `_Connection` class keeps a persistent Unix socket open and reconnects on broken pipe (up to 1s of retries). All errors map to `NrfloError(code, message)`.
 

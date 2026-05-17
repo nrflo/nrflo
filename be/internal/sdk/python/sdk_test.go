@@ -7,9 +7,8 @@ import (
 	"testing"
 )
 
-// TestPythonSDK_UnitTests runs test_nrflo_sdk.py via python3 -m unittest.
-// The test is skipped when python3 is not available so CI on Python-free hosts
-// is not blocked.
+// TestPythonSDK_UnitTests runs all test_nrflo_sdk*.py files via python3 -m unittest discover.
+// The test is skipped when python3 is not available so CI on Python-free hosts is not blocked.
 func TestPythonSDK_UnitTests(t *testing.T) {
 	python3, err := exec.LookPath("python3")
 	if err != nil {
@@ -22,18 +21,21 @@ func TestPythonSDK_UnitTests(t *testing.T) {
 		t.Fatalf("WriteSDK: %v", err)
 	}
 
-	// Copy test_nrflo_sdk.py next to the SDK so the test can import it.
-	srcPath := filepath.Join("test_nrflo_sdk.py")
-	data, err := os.ReadFile(srcPath)
-	if err != nil {
-		t.Fatalf("read test_nrflo_sdk.py: %v", err)
+	testFiles := []string{
+		"test_nrflo_sdk.py",
+		"test_nrflo_sdk_artifacts.py",
 	}
-	dstPath := filepath.Join(dir, "test_nrflo_sdk.py")
-	if err := os.WriteFile(dstPath, data, 0o644); err != nil {
-		t.Fatalf("write test file to temp dir: %v", err)
+	for _, f := range testFiles {
+		data, err := os.ReadFile(filepath.Join(".", f))
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, f), data, 0o644); err != nil {
+			t.Fatalf("write %s to temp dir: %v", f, err)
+		}
 	}
 
-	cmd := exec.Command(python3, "-m", "unittest", "test_nrflo_sdk", "-v")
+	cmd := exec.Command(python3, "-m", "unittest", "discover", "-s", ".", "-p", "test_nrflo_sdk*.py", "-v")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {

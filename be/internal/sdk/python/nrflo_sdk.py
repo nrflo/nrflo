@@ -13,6 +13,7 @@ Usage:
     c.agent.finished()
 """
 
+import base64
 import json
 import os
 import socket
@@ -175,6 +176,51 @@ class _ProjectFindings:
         self._call("delete", {"keys": list(keys)})
 
 
+class _Artifacts:
+    def __init__(self, conn: _Connection, sid: str, iid: str, proj: str, trx: str):
+        self._conn = conn
+        self._sid = sid
+        self._proj = proj
+        self._trx = trx
+
+    def _call(self, action: str, extra: dict) -> dict:
+        params = {"session_id": self._sid}
+        params.update(extra)
+        return _check(self._conn.send({
+            "id": str(uuid.uuid4()), "method": f"artifact.{action}",
+            "project": self._proj, "trx": self._trx, "params": params,
+        }))
+
+    def add(self, name: str, content, content_type: str = None) -> dict:
+        if isinstance(content, str):
+            data = content.encode("utf-8")
+        elif isinstance(content, (bytes, bytearray)):
+            data = bytes(content)
+        else:
+            raise TypeError(f"content must be str or bytes, got {type(content).__name__}")
+        if len(data) > 32 * 1024 * 1024:
+            raise NrfloError(0, "artifact too large: max 32 MiB")
+        extra = {"name": name, "content_b64": base64.b64encode(data).decode("ascii")}
+        if content_type:
+            extra["content_type"] = content_type
+        return self._call("add", extra)
+
+    def list(self) -> list:
+        params = {"session_id": self._sid}
+        resp = self._conn.send({
+            "id": str(uuid.uuid4()), "method": "artifact.list",
+            "project": self._proj, "trx": self._trx, "params": params,
+        })
+        err = resp.get("error")
+        if err:
+            raise NrfloError(err.get("code", 0), err.get("message", "unknown error"))
+        return resp.get("result", [])
+
+    def get(self, name: str) -> str:
+        result = self._call("get", {"name": name})
+        return result.get("path", "")
+
+
 class _Agent:
     def __init__(self, conn: _Connection, sid: str, iid: str, proj: str, trx: str):
         self._conn = conn
@@ -221,6 +267,7 @@ class Client:
         self.findings = _Findings(conn, sid, iid, proj, trx)
         self.project_findings = _ProjectFindings(conn, sid, iid, proj, trx)
         self.agent = _Agent(conn, sid, iid, proj, trx)
+        self.artifacts = _Artifacts(conn, sid, iid, proj, trx)
 
     def context(self, refresh: bool = False) -> dict:
         """Return the auto-injectable variable dict for this session (cached)."""

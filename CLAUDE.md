@@ -120,7 +120,7 @@ Rules every change must respect.
 - **Service tokens (long-lived project-scoped bearer tokens for external callers)** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
-- **Artifact storage + agent runtime (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `nrflo agent artifact add|list|get`, api-mode builtins)** → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
+- **Artifact storage + agent runtime (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `nrflo agent artifact add|list|get`, api-mode builtins, Python SDK `c.artifacts`)** → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Notification channels** → [be/CLAUDE.md](be/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)

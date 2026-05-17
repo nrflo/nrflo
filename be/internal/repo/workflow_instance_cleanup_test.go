@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -33,8 +32,6 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	// Insert 5 instances: 3 completed, 2 active
 	// The 3 completed instances should be ordered by updated_at with varying timestamps
 	instances := []struct {
@@ -55,8 +52,8 @@ func TestWorkflowInstanceCleanupKeepLatest(t *testing.T) {
 		// Create instances with different updated_at timestamps (older first)
 		updatedAt := now.Add(time.Duration(-5+i) * time.Minute).Format(time.RFC3339Nano)
 
-		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			inst.id, "test-project", inst.ticketID, inst.workflowID, inst.status, "ticket", string(findings), updatedAt, updatedAt)
+		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			inst.id, "test-project", inst.ticketID, inst.workflowID, inst.status, "ticket", updatedAt, updatedAt)
 		if err != nil {
 			t.Fatalf("failed to create workflow instance %s: %v", inst.id, err)
 		}
@@ -141,8 +138,6 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	// Insert 3 completed instances
 	for i := 1; i <= 3; i++ {
 		wfiID := "wfi-" + string(rune(i+'0'))
@@ -156,7 +151,6 @@ func TestWorkflowInstanceCleanupKeepLatest_ZeroKeep(t *testing.T) {
 			WorkflowID: wfID,
 			ScopeType:  "ticket",
 			Status:     model.WorkflowInstanceCompleted,
-			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {
 			t.Fatalf("failed to create instance: %v", err)
@@ -204,8 +198,6 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	// Insert only 2 completed instances
 	for i := 1; i <= 2; i++ {
 		wfiID := "wfi-" + string(rune(i+'0'))
@@ -218,7 +210,6 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 			WorkflowID: "test-workflow",
 			ScopeType:  "ticket",
 			Status:     model.WorkflowInstanceCompleted,
-			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {
 			t.Fatalf("failed to create instance: %v", err)
@@ -288,8 +279,6 @@ func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
 
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	// Insert only active instances
 	for i := 1; i <= 3; i++ {
 		wfiID := "wfi-active-" + string(rune(i+'0'))
@@ -303,7 +292,6 @@ func TestWorkflowInstanceCleanupKeepLatest_OnlyActiveInstances(t *testing.T) {
 			WorkflowID: wfID,
 			ScopeType:  "ticket",
 			Status:     model.WorkflowInstanceActive,
-			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {
 			t.Fatalf("failed to create instance: %v", err)

@@ -23,7 +23,7 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 }
 
 const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
-	findings, skip_tags, retry_count, parent_session, worktree_path, branch_name,
+	skip_tags, retry_count, parent_session, worktree_path, branch_name,
 	endless_loop, stop_endless_loop_after_iteration, created_at, updated_at, scheduled_task_id`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
@@ -32,7 +32,7 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 	var scheduledTaskID sql.NullString
 	err := scanner.Scan(
 		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
-		&wi.Status, &wi.Findings, &wi.SkipTags,
+		&wi.Status, &wi.SkipTags,
 		&wi.RetryCount, &wi.ParentSession, &wi.WorktreePath, &wi.BranchName,
 		&wi.EndlessLoop, &wi.StopEndlessLoopAfterIteration, &createdAt, &updatedAt,
 		&scheduledTaskID,
@@ -60,10 +60,10 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
-		wi.Findings, wi.SkipTags, wi.RetryCount, wi.ParentSession,
+		wi.SkipTags, wi.RetryCount, wi.ParentSession,
 		wi.WorktreePath, wi.BranchName,
 		wi.EndlessLoop, wi.StopEndlessLoopAfterIteration,
 		now, now,
@@ -242,18 +242,6 @@ func (r *WorkflowInstanceRepo) UpdateRetryCount(id string, retryCount int) error
 	result, err := r.pool.Exec(
 		`UPDATE workflow_instances SET retry_count = ?, updated_at = ? WHERE id = ?`,
 		retryCount, now, id)
-	if err != nil {
-		return err
-	}
-	return checkAffected(result, id)
-}
-
-// UpdateFindings updates the workflow-level findings JSON
-func (r *WorkflowInstanceRepo) UpdateFindings(id string, findings string) error {
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	result, err := r.pool.Exec(
-		`UPDATE workflow_instances SET findings = ?, updated_at = ? WHERE id = ?`,
-		findings, now, id)
 	if err != nil {
 		return err
 	}

@@ -16,22 +16,17 @@ func TestUserInstructionsStoredAsDirectString(t *testing.T) {
 	env.createTicket(t, "UI-1", "User instructions test")
 	wfiID := env.initWorkflow(t, "UI-1")
 
-	// Simulate what Start() does: store instructions as direct string
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
-	findings["user_instructions"] = "Fix the login bug"
-	findingsJSON, _ := json.Marshal(findings)
-	err := wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
-	if err != nil {
-		t.Fatalf("failed to update findings: %v", err)
+	// Simulate what Start() does: store instructions as direct string via FindingRepo
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	instrJSON, _ := json.Marshal("Fix the login bug")
+	if err := findingRepo.Upsert("workflow_instance", wfiID, "user_instructions", instrJSON, repo.Denorm{}, repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("failed to upsert user_instructions: %v", err)
 	}
 
 	// Read back and verify it's a direct string, not a nested map
-	wi = env.getWorkflowInstance(t, wfiID)
-	readFindings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 
-	instructions, ok := readFindings["user_instructions"]
+	instructions, ok := findings["user_instructions"]
 	if !ok {
 		t.Fatal("expected user_instructions in findings")
 	}
@@ -52,8 +47,7 @@ func TestEmptyInstructionsNotStored(t *testing.T) {
 	env.createTicket(t, "UI-2", "Empty instructions test")
 	wfiID := env.initWorkflow(t, "UI-2")
 
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 
 	if _, exists := findings["user_instructions"]; exists {
 		t.Fatal("expected no user_instructions in findings for empty instructions")

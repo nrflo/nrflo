@@ -2,17 +2,12 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
-
-	"be/internal/clock"
-	"be/internal/repo"
 )
 
 // TestOrchestrator_Start_ProjectScope_SeedFindings verifies that SeedFindings on
-// RunRequest are written into workflow_instances.findings before the run goroutine
-// starts, and that the orchestrator's own _orchestration key is also present after
-// the orchestrator merges findings in Start().
+// RunRequest are written into the findings table before the run goroutine starts,
+// and that the orchestrator's own _orchestration key is also present.
 func TestOrchestrator_Start_ProjectScope_SeedFindings(t *testing.T) {
 	t.Parallel()
 	env := newTestEnv(t)
@@ -26,8 +21,8 @@ func TestOrchestrator_Start_ProjectScope_SeedFindings(t *testing.T) {
 	})
 
 	seed := map[string]string{
-		"import_id":   "spec-99",
-		"source_url":  "https://example.com/spec",
+		"import_id":  "spec-99",
+		"source_url": "https://example.com/spec",
 	}
 
 	result, err := env.orch.Start(context.Background(), RunRequest{
@@ -46,17 +41,7 @@ func TestOrchestrator_Start_ProjectScope_SeedFindings(t *testing.T) {
 	// Stop the run goroutine to avoid interfering with other tests.
 	env.stopAndWaitRun(t, result.InstanceID)
 
-	// Read the workflow instance directly from the DB.
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
-	wi, err := wfiRepo.Get(result.InstanceID)
-	if err != nil {
-		t.Fatalf("Get workflow instance: %v", err)
-	}
-
-	var findings map[string]interface{}
-	if err := json.Unmarshal([]byte(wi.Findings), &findings); err != nil {
-		t.Fatalf("unmarshal findings %q: %v", wi.Findings, err)
-	}
+	findings := getWFIFindings(t, env, result.InstanceID)
 
 	// Seeded keys must be present.
 	if findings["import_id"] != "spec-99" {
@@ -94,16 +79,7 @@ func TestOrchestrator_Start_TicketScope_SeedFindings(t *testing.T) {
 
 	env.stopAndWaitRun(t, result.InstanceID)
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
-	wi, err := wfiRepo.Get(result.InstanceID)
-	if err != nil {
-		t.Fatalf("Get workflow instance: %v", err)
-	}
-
-	var findings map[string]interface{}
-	if err := json.Unmarshal([]byte(wi.Findings), &findings); err != nil {
-		t.Fatalf("unmarshal findings: %v", err)
-	}
+	findings := getWFIFindings(t, env, result.InstanceID)
 
 	if findings["spec_ref"] != "https://docs.example.com" {
 		t.Errorf("findings[spec_ref] = %v, want %q", findings["spec_ref"], "https://docs.example.com")
@@ -138,16 +114,7 @@ func TestOrchestrator_Start_EmptySeedFindings(t *testing.T) {
 
 	env.stopAndWaitRun(t, result.InstanceID)
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
-	wi, err := wfiRepo.Get(result.InstanceID)
-	if err != nil {
-		t.Fatalf("Get workflow instance: %v", err)
-	}
-
-	var findings map[string]interface{}
-	if err := json.Unmarshal([]byte(wi.Findings), &findings); err != nil {
-		t.Fatalf("unmarshal findings %q: %v", wi.Findings, err)
-	}
+	findings := getWFIFindings(t, env, result.InstanceID)
 	if _, ok := findings["_orchestration"]; !ok {
 		t.Errorf("_orchestration missing from findings with empty seed")
 	}

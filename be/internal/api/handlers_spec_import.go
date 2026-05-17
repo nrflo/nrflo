@@ -17,6 +17,17 @@ import (
 	"be/internal/ws"
 )
 
+// rawFindingsToInterface converts map[string]json.RawMessage to map[string]interface{}.
+func rawFindingsToInterface(raw map[string]json.RawMessage) map[string]interface{} {
+	m := make(map[string]interface{}, len(raw))
+	for k, v := range raw {
+		var parsed interface{}
+		json.Unmarshal(v, &parsed) //nolint:errcheck
+		m[k] = parsed
+	}
+	return m
+}
+
 const specImportWorkflowID = "__spec_import__"
 
 // specImportAdapter is a minimal interface covering both Fetch and the source query.
@@ -127,10 +138,9 @@ func (s *Server) handleStartSpecImport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refsJSON, _ := json.Marshal(spec.AttachedRefs)
-	// SeedFindings live in workflow_instances.findings — readable by handlers
-	// but NOT by the agent's findings_get tool. The raw spec text is therefore
-	// passed via RunRequest.Instructions so it is auto-prepended to the agent
-	// prompt as the User Instructions block.
+	// SeedFindings are inserted into the findings table at scope=workflow_instance.
+	// The raw spec text is also passed via RunRequest.Instructions so it is
+	// auto-prepended to the agent prompt as the User Instructions block.
 	seed := map[string]string{
 		"_spec_source":        body.Source,
 		"_spec_attached_refs": string(refsJSON),
@@ -164,14 +174,20 @@ func (s *Server) handleStartSpecImport(w http.ResponseWriter, r *http.Request) {
 			ScopeType:  "project",
 			Status:     model.WorkflowInstanceActive,
 		}
-		wfi.SetFindings(map[string]interface{}{
-			"_spec_source":        body.Source,
-			"_spec_attached_refs": string(refsJSON),
-			"raw_spec":            spec.RawText,
-		})
 		if err := wfiRepo.Create(wfi); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to create import session: "+err.Error())
 			return
+		}
+		findingRepo := repo.NewFindingRepo(s.pool, s.clock)
+		denorm := repo.Denorm{ProjectID: projectID, WorkflowInstanceID: instanceID}
+		actor := repo.Actor{Source: "system"}
+		for key, val := range map[string]string{
+			"_spec_source":        body.Source,
+			"_spec_attached_refs": string(refsJSON),
+			"raw_spec":            spec.RawText,
+		} {
+			v, _ := json.Marshal(val)
+			findingRepo.Upsert("workflow_instance", instanceID, key, v, denorm, actor) //nolint:errcheck
 		}
 		status = "ready"
 	}
@@ -209,10 +225,11 @@ func (s *Server) handleGetSpecImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	findings := wfi.GetFindings()
+	findingRepo := repo.NewFindingRepo(s.pool, s.clock)
+	rawFindings, _ := findingRepo.GetOwn("workflow_instance", instanceID)
+	findings := rawFindingsToInterface(rawFindings)
 	rawSpec, _ := findings["raw_spec"].(string)
 	if rawSpec == "" {
-		// Backward-compat with previously persisted instances.
 		rawSpec, _ = findings["_raw_spec"].(string)
 	}
 

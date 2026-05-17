@@ -19,7 +19,7 @@ func seedLiveTestData(t *testing.T, pool *db.Pool) {
 	}{
 		{`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('live-api-proj', 'P', ?, ?)`, []interface{}{now, now}},
 		{`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('live-api-proj', 'live-api-wf', '', 'project', ?, ?)`, []interface{}{now, now}},
-		{`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('live-api-wfi', 'live-api-proj', '', 'live-api-wf', 'active', 'project', '{}', ?, ?)`, []interface{}{now, now}},
+		{`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('live-api-wfi', 'live-api-proj', '', 'live-api-wf', 'active', 'project', ?, ?)`, []interface{}{now, now}},
 		// running session with a fake pid (99999999) that PidAlive will reject — tests handler shape, not proc layer
 		{`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, pid, started_at, created_at, updated_at) VALUES ('live-api-s', 'live-api-proj', '', 'live-api-wfi', 'ph', 'ag', 'running', 99999999, ?, ?, ?)`, []interface{}{now, now, now}},
 	} {

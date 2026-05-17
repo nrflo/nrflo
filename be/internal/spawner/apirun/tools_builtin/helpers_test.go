@@ -1,6 +1,7 @@
 package tools_builtin
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -62,8 +63,8 @@ func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 		testWorkflow, testProjectID, now, now)
 	mustExec(t, pool, `INSERT INTO tickets (id, project_id, title, created_at, updated_at, created_by) VALUES (?, ?, ?, ?, ?, 'test')`,
 		testTicketID, testProjectID, "Test ticket", now, now)
-	mustExec(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'active', '{}', 0, ?, ?)`,
+	mustExec(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'active', 0, ?, ?)`,
 		testWFIID, testProjectID, testTicketID, testWorkflow, now, now)
 	mustExec(t, pool, `INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, 'phase1', ?, ?, 'running', ?, ?)`,
@@ -102,15 +103,30 @@ func mustExec(t *testing.T, pool *db.Pool, query string, args ...interface{}) {
 	}
 }
 
-// readSessionFindings returns the raw findings JSON for the seeded session.
+// readSessionFindings returns the findings as a JSON object string for the seeded session.
 func (e *builtinTestEnv) readSessionFindings(t *testing.T) string {
 	t.Helper()
-	var raw string
-	err := e.pool.QueryRow(`SELECT IFNULL(findings, '') FROM agent_sessions WHERE id = ?`, testSessionID).Scan(&raw)
+	rows, err := e.pool.Query(`SELECT key, value FROM findings WHERE scope='session' AND scope_id=?`, testSessionID)
 	if err != nil {
 		t.Fatalf("read findings: %v", err)
 	}
-	return raw
+	defer rows.Close()
+	result := make(map[string]json.RawMessage)
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			t.Fatalf("scan findings row: %v", err)
+		}
+		result[k] = json.RawMessage(v)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("findings rows err: %v", err)
+	}
+	b, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("marshal findings: %v", err)
+	}
+	return string(b)
 }
 
 // readSessionResult returns the result column for the seeded session.

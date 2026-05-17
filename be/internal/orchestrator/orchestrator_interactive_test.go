@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"be/internal/clock"
-	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
 )
@@ -139,10 +138,10 @@ func TestHandlePlanModePostStep_StoresPlanContent(t *testing.T) {
 	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	if _, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, result_reason, pid, findings, context_left, ancestor_session_id,
+			status, result, result_reason, pid, context_left, ancestor_session_id,
 			spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, 'test-project', '', ?, 'planning', 'planner', 'user_interactive',
-			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+			NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		sessionID, wfiID, now, now, now); err != nil {
 		t.Fatalf("insert planner session: %v", err)
 	}
@@ -153,8 +152,7 @@ func TestHandlePlanModePostStep_StoresPlanContent(t *testing.T) {
 	}
 
 	// Verify user_instructions stored in findings
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	gotInstructions, ok := findings["user_instructions"]
 	if !ok {
 		t.Fatal("user_instructions not found in workflow instance findings")
@@ -613,19 +611,15 @@ func TestRunLoop_PlanMode_StoresUserInstructions(t *testing.T) {
 	// Poll until runLoop processes the plan (may fail on agent spawning, but plan should be stored first)
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 		var wfiID string
 		env.pool.QueryRow(
 			`SELECT id FROM workflow_instances WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?)`,
 			env.project, "TKT-LOOP-PM",
 		).Scan(&wfiID)
 		if wfiID != "" {
-			wi, err := wfiRepo.Get(wfiID)
-			if err == nil {
-				findings := wi.GetFindings()
-				if instructions, ok := findings["user_instructions"]; ok && instructions == planContent {
-					return // success
-				}
+			findings := getWFIFindings(t, env, wfiID)
+			if instructions, ok := findings["user_instructions"]; ok && instructions == planContent {
+				return // success
 			}
 		}
 		time.Sleep(20 * time.Millisecond)

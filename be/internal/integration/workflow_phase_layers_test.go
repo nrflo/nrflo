@@ -149,7 +149,6 @@ func TestBuildV4State_PhaseLayers_WorkflowDefMissing(t *testing.T) {
 		WorkflowID: "nonexistent-workflow-def",
 		Status:     model.WorkflowInstanceActive,
 		ScopeType:  "ticket",
-		Findings:   "{}",
 		CreatedAt:  time.Now().UTC(),
 		UpdatedAt:  time.Now().UTC(),
 	}

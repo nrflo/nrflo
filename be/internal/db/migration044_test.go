@@ -100,7 +100,7 @@ func TestMigration044_AgentSessionsConfigColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("insert workflow: %v", err)
 	}
-	_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('wfi1', 'p1', 't1', 'wf1', 'active', 'ticket', '{}', datetime('now'), datetime('now'))`)
+	_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('wfi1', 'p1', 't1', 'wf1', 'active', 'ticket', datetime('now'), datetime('now'))`)
 	if err != nil {
 		t.Fatalf("insert workflow_instance: %v", err)
 	}

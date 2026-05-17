@@ -68,7 +68,7 @@ func seedArtifactForHandler(t *testing.T, pool *db.Pool, dir, projID, wfiID, nam
 	}{
 		{`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`, []interface{}{projID, projID, now, now}},
 		{`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES (?, 'wf-' || ?, '', 'project', ?, ?)`, []interface{}{projID, projID, now, now}},
-		{`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, ?, '', 'wf-' || ?, 'active', 'project', '{}', ?, ?)`, []interface{}{wfiID, projID, projID, now, now}},
+		{`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES (?, ?, '', 'wf-' || ?, 'active', 'project', ?, ?)`, []interface{}{wfiID, projID, projID, now, now}},
 	} {
 		if _, err := pool.Exec(q.sql, q.args...); err != nil {
 			t.Fatalf("seedArtifactForHandler: %v", err)

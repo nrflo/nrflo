@@ -156,7 +156,6 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 		TicketID:   "test-4",
 		WorkflowID: "test",
 		Status:     model.WorkflowInstanceActive,
-		Findings:   "{}",
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -171,7 +170,6 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 		TicketID:   "test-4",
 		WorkflowID: "bugfix",
 		Status:     model.WorkflowInstanceActive,
-		Findings:   "{}",
 	}
 	err = wfiRepo.Create(wi2)
 	if err != nil {
@@ -234,7 +232,6 @@ func TestListActiveByProject_OnlyActiveWorkflows(t *testing.T) {
 		TicketID:   "test-7",
 		WorkflowID: "test",
 		Status:     model.WorkflowInstanceCompleted,
-		Findings:   "{}",
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -374,7 +371,6 @@ func TestAttachWorkflowProgress_CaseInsensitiveTicketID(t *testing.T) {
 		TicketID:   strings.ToLower("TEST-10"),
 		WorkflowID: "test",
 		Status:     model.WorkflowInstanceActive,
-		Findings:   "{}",
 	}
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())

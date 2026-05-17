@@ -3,6 +3,9 @@ package socket
 import (
 	"encoding/json"
 	"testing"
+
+	"be/internal/clock"
+	"be/internal/repo"
 )
 
 // insertProjectWFI inserts a project-scoped workflow_instance row for context tests.
@@ -18,23 +21,41 @@ func insertProjectWFI(t *testing.T, env *handlerTestEnv, id string) string {
 	return id
 }
 
-// setWFIFindings updates the findings JSON on a workflow_instances row.
+// setWFIFindings upserts each key of findings into the findings table for the workflow_instance scope.
 func setWFIFindings(t *testing.T, env *handlerTestEnv, wfiID string, findings map[string]interface{}) {
 	t.Helper()
-	data, _ := json.Marshal(findings)
-	_, err := env.pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(data), wfiID)
-	if err != nil {
-		t.Fatalf("setWFIFindings: %v", err)
+	fr := repo.NewFindingRepo(env.pool, clock.Real())
+	for k, v := range findings {
+		val, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setWFIFindings: marshal %s: %v", k, err)
+		}
+		if err := fr.Upsert("workflow_instance", wfiID, k, json.RawMessage(val), repo.Denorm{}, repo.Actor{Source: "system"}); err != nil {
+			t.Fatalf("setWFIFindings: upsert %s: %v", k, err)
+		}
 	}
 }
 
-// setSessionFindings updates the findings JSON on an agent_sessions row.
+// setSessionFindings upserts each key of findings into the findings table for the session scope.
+// It looks up workflow_instance_id and agent_type from the DB to populate Denorm correctly.
 func setSessionFindings(t *testing.T, env *handlerTestEnv, sessionID string, findings map[string]interface{}) {
 	t.Helper()
-	data, _ := json.Marshal(findings)
-	_, err := env.pool.Exec(`UPDATE agent_sessions SET findings = ? WHERE id = ?`, string(data), sessionID)
-	if err != nil {
-		t.Fatalf("setSessionFindings: %v", err)
+	var wfiID, agentType string
+	if err := env.pool.QueryRow(
+		`SELECT workflow_instance_id, agent_type FROM agent_sessions WHERE id = ?`, sessionID,
+	).Scan(&wfiID, &agentType); err != nil {
+		t.Fatalf("setSessionFindings: lookup session %s: %v", sessionID, err)
+	}
+	fr := repo.NewFindingRepo(env.pool, clock.Real())
+	denorm := repo.Denorm{WorkflowInstanceID: wfiID, AgentType: agentType}
+	for k, v := range findings {
+		val, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setSessionFindings: marshal %s: %v", k, err)
+		}
+		if err := fr.Upsert("session", sessionID, k, json.RawMessage(val), denorm, repo.Actor{Source: "system"}); err != nil {
+			t.Fatalf("setSessionFindings: upsert %s: %v", k, err)
+		}
 	}
 }
 

@@ -5,10 +5,19 @@ import (
 	"net/http"
 	"net/url"
 
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
 )
+
+// requestActor returns an Actor for the current HTTP request principal.
+func requestActor(r *http.Request) repo.Actor {
+	if sp := getServicePrincipal(r); sp != nil {
+		return repo.Actor{ID: sp.TokenID, Source: "service_token"}
+	}
+	return repo.Actor{ID: getUserID(r), Source: "user"}
+}
 
 // handleGetProjectFindings returns all project findings as a JSON map.
 // GET /api/v1/projects/{id}/findings
@@ -50,7 +59,7 @@ func (s *Server) handleUpsertProjectFinding(w http.ResponseWriter, r *http.Reque
 	}
 
 	svc := service.NewProjectFindingsService(s.pool, s.clock)
-	if err := svc.Add(projectID, &req); err != nil {
+	if err := svc.Add(projectID, &req, requestActor(r)); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -83,7 +92,7 @@ func (s *Server) handleDeleteProjectFinding(w http.ResponseWriter, r *http.Reque
 	}
 
 	svc := service.NewProjectFindingsService(s.pool, s.clock)
-	deleted, err := svc.Delete(projectID, &types.ProjectFindingsDeleteRequest{Keys: []string{key}})
+	deleted, err := svc.Delete(projectID, &types.ProjectFindingsDeleteRequest{Keys: []string{key}}, requestActor(r))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -8,6 +8,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/repo"
 	"be/internal/types"
 )
 
@@ -66,14 +67,22 @@ func seedWorkflowDef(t *testing.T, pool *db.Pool, projectID, workflowID, scopeTy
 	}
 }
 
-// findingsFromJSON unmarshals a JSON string into a map[string]string.
-func findingsFromJSON(t *testing.T, raw string) map[string]string {
+// getWFIFindings reads the workflow_instance scope findings for a wfi and returns them as map[string]string.
+func getWFIFindings(t *testing.T, pool *db.Pool, wfiID string) map[string]string {
 	t.Helper()
-	var m map[string]string
-	if err := json.Unmarshal([]byte(raw), &m); err != nil {
-		t.Fatalf("unmarshal findings %q: %v", raw, err)
+	fr := repo.NewFindingRepo(pool, clock.Real())
+	raw, err := fr.GetOwn("workflow_instance", wfiID)
+	if err != nil {
+		t.Fatalf("GetOwn(workflow_instance, %q): %v", wfiID, err)
 	}
-	return m
+	result := make(map[string]string, len(raw))
+	for k, v := range raw {
+		var s string
+		if err := json.Unmarshal(v, &s); err == nil {
+			result[k] = s
+		}
+	}
+	return result
 }
 
 func TestWorkflowService_Init_SeedFindings(t *testing.T) {
@@ -94,7 +103,7 @@ func TestWorkflowService_Init_SeedFindings(t *testing.T) {
 		t.Fatalf("Init: %v", err)
 	}
 
-	findings := findingsFromJSON(t, wi.Findings)
+	findings := getWFIFindings(t, pool, wi.ID)
 	if findings["foo"] != "bar" {
 		t.Errorf("findings[foo] = %q, want %q", findings["foo"], "bar")
 	}
@@ -134,8 +143,9 @@ func TestWorkflowService_Init_EmptySeedFindings(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Init(%s): %v", c.name, err)
 			}
-			if wi.Findings != "{}" {
-				t.Errorf("Findings = %q, want %q", wi.Findings, "{}")
+			findings := getWFIFindings(t, pool, wi.ID)
+			if len(findings) != 0 {
+				t.Errorf("expected no findings for empty seed, got %v", findings)
 			}
 		})
 	}
@@ -162,7 +172,7 @@ func TestWorkflowService_InitProjectWorkflow_SeedFindings(t *testing.T) {
 		t.Errorf("ScopeType = %q, want %q", wi.ScopeType, "project")
 	}
 
-	findings := findingsFromJSON(t, wi.Findings)
+	findings := getWFIFindings(t, pool, wi.ID)
 	if findings["import_id"] != "spec-42" {
 		t.Errorf("findings[import_id] = %q, want %q", findings["import_id"], "spec-42")
 	}
@@ -185,8 +195,9 @@ func TestWorkflowService_InitProjectWorkflow_EmptySeedFindings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitProjectWorkflow: %v", err)
 	}
-	if wi.Findings != "{}" {
-		t.Errorf("Findings = %q, want %q", wi.Findings, "{}")
+	findings := getWFIFindings(t, pool, wi.ID)
+	if len(findings) != 0 {
+		t.Errorf("expected no findings for empty seed, got %v", findings)
 	}
 }
 

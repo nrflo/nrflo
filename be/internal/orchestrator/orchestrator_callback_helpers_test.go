@@ -1,7 +1,7 @@
 package orchestrator
 
 import (
-	"database/sql"
+	"encoding/json"
 	"testing"
 
 	"be/internal/clock"
@@ -15,8 +15,8 @@ func insertWFI(t *testing.T, env *testEnv, id, ticketID, workflowID string) stri
 	t.Helper()
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'active', '{}', 0, datetime('now'), datetime('now'))
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'active', 0, datetime('now'), datetime('now'))
 		RETURNING id`, id, env.project, ticketID, workflowID).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("insertWFI: %v", err)
@@ -24,16 +24,20 @@ func insertWFI(t *testing.T, env *testEnv, id, ticketID, workflowID string) stri
 	return wfiID
 }
 
-// insertWFIWithFindings inserts a workflow instance with preset findings.
+// insertWFIWithFindings inserts a workflow instance with preset findings seeded via FindingRepo.
 func insertWFIWithFindings(t *testing.T, env *testEnv, id, ticketID, workflowID, findingsJSON string) string {
 	t.Helper()
-	var wfiID string
-	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'active', ?, 0, datetime('now'), datetime('now'))
-		RETURNING id`, id, env.project, ticketID, workflowID, findingsJSON).Scan(&wfiID)
-	if err != nil {
-		t.Fatalf("insertWFIWithFindings: %v", err)
+	wfiID := insertWFI(t, env, id, ticketID, workflowID)
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(findingsJSON), &raw); err != nil {
+		t.Fatalf("insertWFIWithFindings: unmarshal: %v", err)
+	}
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	for k, v := range raw {
+		if err := findingRepo.Upsert("workflow_instance", wfiID, k, v, repo.Denorm{}, repo.Actor{Source: "system"}); err != nil {
+			t.Fatalf("insertWFIWithFindings: upsert key %q: %v", k, err)
+		}
 	}
 	return wfiID
 }
@@ -60,7 +64,6 @@ func createSession(t *testing.T, asRepo *repo.AgentSessionRepo, id, projectID, t
 		Phase:              phase,
 		AgentType:          phase,
 		Status:             status,
-		Findings:           sql.NullString{String: `{"key":"val"}`, Valid: true},
 	}); err != nil {
 		t.Fatalf("createSession %s: %v", id, err)
 	}

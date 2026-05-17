@@ -27,9 +27,9 @@ func newASLogsServer(t *testing.T) (*Server, *db.Pool) {
 	for _, q := range []string{
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('test-proj', 'Test', datetime('now'), datetime('now'))`,
 		`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('test-proj', 'test-wf', '', 'project', datetime('now'), datetime('now'))`,
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('test-wfi', 'test-proj', '', 'test-wf', 'active', 'project', '{}', datetime('now'), datetime('now'))`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('test-wfi', 'test-proj', '', 'test-wf', 'active', 'project', datetime('now'), datetime('now'))`,
 		`INSERT INTO scheduled_tasks (id, project_id, name, cron_expression, created_at, updated_at) VALUES ('test-sched', 'test-proj', 'Sched', '0 * * * *', datetime('now'), datetime('now'))`,
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, scheduled_task_id, created_at, updated_at) VALUES ('test-wfi-sched', 'test-proj', '', 'test-wf', 'completed', 'project', '{}', 'test-sched', datetime('now'), datetime('now'))`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, scheduled_task_id, created_at, updated_at) VALUES ('test-wfi-sched', 'test-proj', '', 'test-wf', 'completed', 'project', 'test-sched', datetime('now'), datetime('now'))`,
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, created_at, updated_at) VALUES ('agent-api', 'test-proj', 'test-wf', 'sonnet', 20, '', 0, 'api', datetime('now'), datetime('now'))`,
 	} {
 		if _, err := pool.Exec(q); err != nil {
@@ -39,19 +39,35 @@ func newASLogsServer(t *testing.T) (*Server, *db.Pool) {
 	return &Server{pool: pool, clock: clock.Real()}, pool
 }
 
-func insertASLogsSess(t *testing.T, pool *db.Pool, id, wfiID, agentType, status, findings string, endedAt time.Time) {
+func insertASLogsSess(t *testing.T, pool *db.Pool, id, wfiID, agentType, status, findingsJSON string, endedAt time.Time) {
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	started := endedAt.Add(-10 * time.Second).UTC().Format(time.RFC3339Nano)
 	ended := endedAt.UTC().Format(time.RFC3339Nano)
 	_, err := pool.Exec(`
 		INSERT INTO agent_sessions
-		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, findings, started_at, ended_at, created_at, updated_at)
-		VALUES (?, 'test-proj', '', ?, 'ph', ?, ?, ?, ?, ?, ?, ?)`,
-		id, wfiID, agentType, status, findings, started, ended, now, now,
+		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, started_at, ended_at, created_at, updated_at)
+		VALUES (?, 'test-proj', '', ?, 'ph', ?, ?, ?, ?, ?, ?)`,
+		id, wfiID, agentType, status, started, ended, now, now,
 	)
 	if err != nil {
 		t.Fatalf("insertASLogsSess(%s): %v", id, err)
+	}
+	if findingsJSON != "" && findingsJSON != "{}" {
+		var kv map[string]interface{}
+		if json.Unmarshal([]byte(findingsJSON), &kv) == nil {
+			for key, val := range kv {
+				valJSON, _ := json.Marshal(val)
+				findingID := id + "-" + key
+				if _, err := pool.Exec(
+					`INSERT OR IGNORE INTO findings (id, scope, scope_id, key, value, workflow_instance_id, created_at, updated_at)
+					 VALUES (?, 'session', ?, ?, ?, ?, ?, ?)`,
+					findingID, id, key, string(valJSON), wfiID, now, now,
+				); err != nil {
+					t.Fatalf("insertASLogsSess finding %q: %v", key, err)
+				}
+			}
+		}
 	}
 }
 

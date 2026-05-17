@@ -54,9 +54,17 @@ func (s *AgentSessionLogService) List(projectID string, page, perPage int) ([]Ag
 		return nil, 0, err
 	}
 
+	findingRepo := repo.NewFindingRepo(s.pool, s.clock)
 	result := make([]AgentSessionLogResponse, 0, len(rows))
 	for _, row := range rows {
 		resp := mapLogRow(row)
+		// Fetch workflow_final_result from the findings table.
+		if v, ok := findingRepo.GetSessionFindingByKey(row.WorkflowInstanceID, "workflow_final_result"); ok {
+			var s string
+			if json.Unmarshal(v, &s) == nil {
+				resp.WorkflowFinalResult = s
+			}
+		}
 		result = append(result, resp)
 	}
 	return result, total, nil
@@ -163,25 +171,5 @@ func mapLogRow(row *model.AgentSessionLogRow) AgentSessionLogResponse {
 		}
 	}
 
-	if row.Findings.Valid && row.Findings.String != "" {
-		resp.WorkflowFinalResult = extractWorkflowFinalResult(row.Findings.String)
-	}
-
 	return resp
-}
-
-func extractWorkflowFinalResult(findingsJSON string) string {
-	var findings map[string]interface{}
-	if json.Unmarshal([]byte(findingsJSON), &findings) != nil {
-		return ""
-	}
-	val, ok := findings["workflow_final_result"]
-	if !ok {
-		return ""
-	}
-	s, ok := val.(string)
-	if !ok {
-		return ""
-	}
-	return s
 }

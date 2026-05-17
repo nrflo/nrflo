@@ -20,17 +20,19 @@ import (
 
 // WorkflowService handles workflow business logic
 type WorkflowService struct {
-	clock   clock.Clock
-	pool    *db.Pool
-	wfiRepo *repo.WorkflowInstanceRepo
+	clock       clock.Clock
+	pool        *db.Pool
+	wfiRepo     *repo.WorkflowInstanceRepo
+	findingRepo *repo.FindingRepo
 }
 
 // NewWorkflowService creates a new workflow service
 func NewWorkflowService(pool *db.Pool, clk clock.Clock) *WorkflowService {
 	return &WorkflowService{
-		clock:   clk,
-		pool:    pool,
-		wfiRepo: repo.NewWorkflowInstanceRepo(pool, clk),
+		clock:       clk,
+		pool:        pool,
+		wfiRepo:     repo.NewWorkflowInstanceRepo(pool, clk),
+		findingRepo: repo.NewFindingRepo(pool, clk),
 	}
 }
 
@@ -83,7 +85,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 		return nil, fmt.Errorf("failed to query ticket: %w", err)
 	}
 
-	wi := s.buildWorkflowInstance(projectID, workflowName, wf, req.SeedFindings)
+	wi := s.buildWorkflowInstance(projectID, workflowName, wf)
 	wi.TicketID = ticketID
 	wi.ScopeType = "ticket"
 	wi.ScheduledTaskID = req.ScheduledTaskID
@@ -91,6 +93,7 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err
 	}
+	s.seedFindingsAfterCreate(wi, req.SeedFindings)
 	return wi, nil
 }
 
@@ -110,7 +113,7 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 		return nil, fmt.Errorf("workflow '%s' is not a project-scoped workflow", req.Workflow)
 	}
 
-	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf, req.SeedFindings)
+	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf)
 	wi.ScopeType = "project"
 	wi.EndlessLoop = req.EndlessLoop
 	wi.ScheduledTaskID = req.ScheduledTaskID
@@ -118,25 +121,31 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err
 	}
+	s.seedFindingsAfterCreate(wi, req.SeedFindings)
 	return wi, nil
 }
 
 // buildWorkflowInstance creates a WorkflowInstance from a workflow definition.
-// seed is pre-populated as the initial Findings JSON; nil/empty seed produces "{}".
-func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef, seed map[string]string) *model.WorkflowInstance {
-	findings := "{}"
-	if len(seed) > 0 {
-		if b, err := json.Marshal(seed); err == nil {
-			findings = string(b)
-		}
-	}
+func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef) *model.WorkflowInstance {
 	return &model.WorkflowInstance{
 		ID:         uuid.New().String(),
 		ProjectID:  projectID,
 		WorkflowID: workflowName,
 		Status:     model.WorkflowInstanceActive,
-		Findings:   findings,
 		RetryCount: 0,
+	}
+}
+
+// seedFindingsAfterCreate writes seed findings via FindingRepo after wfi creation.
+func (s *WorkflowService) seedFindingsAfterCreate(wi *model.WorkflowInstance, seed map[string]string) {
+	if len(seed) == 0 {
+		return
+	}
+	denorm := repo.Denorm{ProjectID: wi.ProjectID, WorkflowInstanceID: wi.ID}
+	actor := repo.Actor{Source: "system"}
+	for k, v := range seed {
+		val := json.RawMessage(normalizeJSONValue(v))
+		s.findingRepo.Upsert("workflow_instance", wi.ID, k, val, denorm, actor) //nolint:errcheck
 	}
 }
 
@@ -287,24 +296,30 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	// Combined findings: workflow-level + per-session
 	result["findings"] = s.BuildCombinedFindings(wi)
 
-	// Workflow-level findings (excluding internal keys starting with _) + callback extraction
-	if wfFindings := wi.GetFindings(); len(wfFindings) > 0 {
+	// Workflow-level findings from findings table (excluding internal keys starting with _)
+	wfRaw, _ := s.findingRepo.GetOwn("workflow_instance", wi.ID)
+	if len(wfRaw) > 0 {
 		filtered := make(map[string]interface{})
-		for k, v := range wfFindings {
+		for k, v := range wfRaw {
 			if !strings.HasPrefix(k, "_") {
-				filtered[k] = v
+				var parsed interface{}
+				json.Unmarshal(v, &parsed) //nolint:errcheck
+				filtered[k] = parsed
 			}
 		}
 		if len(filtered) > 0 {
 			result["workflow_findings"] = filtered
 		}
 		// Extract _callback as top-level field for frontend visualization
-		if cb, ok := wfFindings["_callback"].(map[string]interface{}); ok {
-			result["callback"] = map[string]interface{}{
-				"level":        cb["level"],
-				"instructions": cb["instructions"],
-				"from_layer":   cb["from_layer"],
-				"from_agent":   cb["from_agent"],
+		if cbRaw, ok := wfRaw["_callback"]; ok {
+			var cb map[string]interface{}
+			if json.Unmarshal(cbRaw, &cb) == nil {
+				result["callback"] = map[string]interface{}{
+					"level":        cb["level"],
+					"instructions": cb["instructions"],
+					"from_layer":   cb["from_layer"],
+					"from_agent":   cb["from_agent"],
+				}
 			}
 		}
 	}

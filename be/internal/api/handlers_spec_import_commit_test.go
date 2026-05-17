@@ -16,14 +16,24 @@ import (
 func seedSpecImportWFI(t *testing.T, s *Server, projectID string, status model.WorkflowInstanceStatus, findingsMap map[string]interface{}) string {
 	t.Helper()
 	instanceID := "wfi-commit-" + strings.ReplaceAll(t.Name(), "/", "-")
-	findingsJSON, _ := json.Marshal(findingsMap)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := s.pool.Exec(
-		`INSERT INTO workflow_instances (id, project_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES (?, ?, ?, 'project', ?, ?, ?, ?)`,
-		instanceID, projectID, specImportWorkflowID, string(status), string(findingsJSON), now, now,
+		`INSERT INTO workflow_instances (id, project_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES (?, ?, ?, 'project', ?, ?, ?)`,
+		instanceID, projectID, specImportWorkflowID, string(status), now, now,
 	); err != nil {
 		t.Fatalf("seedSpecImportWFI: %v", err)
+	}
+	for key, val := range findingsMap {
+		valJSON, _ := json.Marshal(val)
+		findingID := instanceID + "-" + key
+		if _, err := s.pool.Exec(
+			`INSERT OR IGNORE INTO findings (id, scope, scope_id, key, value, project_id, workflow_instance_id, created_at, updated_at)
+			 VALUES (?, 'workflow_instance', ?, ?, ?, ?, ?, ?, ?)`,
+			findingID, instanceID, key, string(valJSON), projectID, instanceID, now, now,
+		); err != nil {
+			t.Fatalf("seedSpecImportWFI finding %q: %v", key, err)
+		}
 	}
 	return instanceID
 }
@@ -73,19 +83,26 @@ func TestHandleCommitSpecImport_HappyPath(t *testing.T) {
 	}
 
 	// Verify wfi was archived (status=project_completed, _archived=true in findings).
-	var wfiStatus, wfiFindings string
+	var wfiStatus string
 	if err := s.pool.QueryRow(
-		`SELECT status, findings FROM workflow_instances WHERE id = ?`, instanceID,
-	).Scan(&wfiStatus, &wfiFindings); err != nil {
+		`SELECT status FROM workflow_instances WHERE id = ?`, instanceID,
+	).Scan(&wfiStatus); err != nil {
 		t.Fatalf("query wfi: %v", err)
 	}
 	if wfiStatus != string(model.WorkflowInstanceProjectCompleted) {
 		t.Errorf("wfi status = %q, want %q", wfiStatus, model.WorkflowInstanceProjectCompleted)
 	}
-	var findings map[string]interface{}
-	json.Unmarshal([]byte(wfiFindings), &findings)
-	if findings["_archived"] != true {
-		t.Errorf("findings[_archived] = %v, want true", findings["_archived"])
+	var archivedVal string
+	if err := s.pool.QueryRow(
+		`SELECT value FROM findings WHERE scope = 'workflow_instance' AND scope_id = ? AND key = '_archived'`,
+		instanceID,
+	).Scan(&archivedVal); err != nil {
+		t.Fatalf("query _archived finding: %v", err)
+	}
+	var archived bool
+	json.Unmarshal([]byte(archivedVal), &archived)
+	if !archived {
+		t.Errorf("findings[_archived] = %v, want true", archived)
 	}
 }
 
@@ -144,8 +161,8 @@ func TestHandleCommitSpecImport_WrongWorkflow_404(t *testing.T) {
 		`INSERT OR IGNORE INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at)
 		 VALUES ('feature', ?, '', 'ticket', '[]', 0, '', ?, ?)`, projectID, now, now)
 	s.pool.Exec( //nolint:errcheck
-		`INSERT INTO workflow_instances (id, project_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES ('wfi-wrong-wf', ?, 'feature', 'ticket', 'active', '{}', ?, ?)`, projectID, now, now)
+		`INSERT INTO workflow_instances (id, project_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES ('wfi-wrong-wf', ?, 'feature', 'ticket', 'active', ?, ?)`, projectID, now, now)
 
 	rr := doCommit(t, s, "wfi-wrong-wf", `{"title":"T"}`)
 	if rr.Code != http.StatusNotFound {

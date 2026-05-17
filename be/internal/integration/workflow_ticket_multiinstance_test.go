@@ -28,10 +28,12 @@ func TestTicketWorkflowRerunPreservesAgentSessions(t *testing.T) {
 	env.InsertAgentSession(t, "sess-trpas-1", "TRPAS-1", wi1.ID, "analyzer", "analyzer", "")
 	env.CompleteAgentSession(t, "sess-trpas-1", "pass")
 
-	// Mark first instance as completed with recognizable findings
+	// Mark first instance as completed with a recognizable finding
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	wfiRepo.UpdateStatus(wi1.ID, model.WorkflowInstanceCompleted)
-	wfiRepo.UpdateFindings(wi1.ID, `{"old_key":"old_val"}`)
+	findingRepo := repo.NewFindingRepo(env.Pool, clock.Real())
+	findingRepo.Upsert("workflow_instance", wi1.ID, "old_key", //nolint:errcheck
+		[]byte(`"old_val"`), repo.Denorm{}, repo.Actor{Source: "system"})
 
 	// Advance clock so the second instance has a newer created_at timestamp
 	env.Clock.Advance(1 * time.Second)
@@ -56,8 +58,10 @@ func TestTicketWorkflowRerunPreservesAgentSessions(t *testing.T) {
 	if oldInst.Status != model.WorkflowInstanceCompleted {
 		t.Errorf("old instance status = %s, want completed", oldInst.Status)
 	}
-	if oldInst.Findings != `{"old_key":"old_val"}` {
-		t.Errorf("old instance findings = %q, want original value", oldInst.Findings)
+	// Verify the finding is preserved
+	oldInstFindings, _ := repo.NewFindingRepo(env.Pool, clock.Real()).GetOwn("workflow_instance", wi1.ID)
+	if _, ok := oldInstFindings["old_key"]; !ok {
+		t.Errorf("old instance findings missing old_key, got %v", oldInstFindings)
 	}
 
 	// Old agent session must still belong to the first instance
@@ -164,7 +168,6 @@ func TestTicketWorkflowMultiInstanceGetStatusByInstance(t *testing.T) {
 			WorkflowID: wi.workflowID,
 			ScopeType:  "ticket",
 			Status:     model.WorkflowInstanceActive,
-			Findings:   "{}",
 		})
 		if err != nil {
 			t.Fatalf("GetStatusByInstance(%s): %v", wi.id, err)

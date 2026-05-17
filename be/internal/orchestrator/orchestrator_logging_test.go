@@ -289,22 +289,9 @@ func TestRetryFailedAgent_LogsRetryAttempt(t *testing.T) {
 func TestHandleCallback_LogsCallbackDetection(t *testing.T) {
 	env := newTestEnv(t)
 
-	logBuf := setupLogCapture(t)
-
-	// clearCallbackMetadata doesn't return error, it just logs
-	// So we call it with invalid ID to trigger error logging
+	// clearCallbackMetadata is a no-op for non-existent WFI IDs
+	// (DeleteKeys returns empty, no error). Verify no panic.
 	env.orch.clearCallbackMetadata(context.Background(), "nonexistent-wfi-id")
-
-	output := logBuf.String()
-
-	if !strings.Contains(output, "ERROR") {
-		t.Errorf("log output missing ERROR level: %s", output)
-	}
-	// Should log "failed to load WFI"
-	hasError := strings.Contains(output, "failed to load WFI")
-	if !hasError {
-		t.Errorf("log output missing expected error message: %s", output)
-	}
 }
 
 func TestOrchestratorStart_TrxPropagation_SameTrxInAllLogs(t *testing.T) {

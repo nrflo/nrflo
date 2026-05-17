@@ -5,19 +5,31 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
+	"be/internal/repo"
 	"be/internal/types"
 )
 
-// setSessionFindings sets the findings JSON on an agent session via direct SQL.
+// setSessionFindings upserts each key of findings into the findings table for the session scope.
+// It looks up the workflow_instance_id and agent_type from the DB to populate Denorm correctly.
 func setSessionFindings(t *testing.T, env *TestEnv, sessionID string, findings map[string]interface{}) {
 	t.Helper()
-	data, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
+	var wfiID, agentType string
+	if err := env.Pool.QueryRow(
+		`SELECT workflow_instance_id, agent_type FROM agent_sessions WHERE id = ?`, sessionID,
+	).Scan(&wfiID, &agentType); err != nil {
+		t.Fatalf("setSessionFindings: lookup session %s: %v", sessionID, err)
 	}
-	_, err = env.Pool.Exec(`UPDATE agent_sessions SET findings = ? WHERE id = ?`, string(data), sessionID)
-	if err != nil {
-		t.Fatalf("failed to set findings on session %s: %v", sessionID, err)
+	fr := repo.NewFindingRepo(env.Pool, clock.Real())
+	denorm := repo.Denorm{WorkflowInstanceID: wfiID, AgentType: agentType}
+	for k, v := range findings {
+		val, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setSessionFindings: marshal %s: %v", k, err)
+		}
+		if err := fr.Upsert("session", sessionID, k, json.RawMessage(val), denorm, repo.Actor{Source: "system"}); err != nil {
+			t.Fatalf("setSessionFindings: upsert %s: %v", k, err)
+		}
 	}
 }
 

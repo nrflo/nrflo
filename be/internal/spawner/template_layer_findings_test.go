@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -44,21 +45,38 @@ func insertCompletedLayerSession(t *testing.T, pool *db.Pool, sessionID, project
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, result_reason, pid, findings, context_left, ancestor_session_id,
+			status, result, result_reason, pid, context_left, ancestor_session_id,
 			spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, ?, ?, ?)`,
 		sessionID, projectID, ticketID, wfiID, agentType, agentType, now, now, now, now)
 	if err != nil {
 		t.Fatalf("insertCompletedLayerSession(%s): %v", sessionID, err)
 	}
 }
 
-// setLayerSessionFindings updates the findings JSON on a session row.
+// setLayerSessionFindings upserts each key-value pair from findingsJSON into the findings table.
 func setLayerSessionFindings(t *testing.T, pool *db.Pool, sessionID, findingsJSON string) {
 	t.Helper()
-	_, err := pool.Exec(`UPDATE agent_sessions SET findings = ? WHERE id = ?`, findingsJSON, sessionID)
-	if err != nil {
-		t.Fatalf("setLayerSessionFindings(%s): %v", sessionID, err)
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(findingsJSON), &rawMap); err != nil {
+		t.Fatalf("setLayerSessionFindings(%s): unmarshal: %v", sessionID, err)
+	}
+	// Look up wfiID from the session
+	var wfiID string
+	if err := pool.QueryRow(`SELECT workflow_instance_id FROM agent_sessions WHERE id = ?`, sessionID).Scan(&wfiID); err != nil {
+		t.Fatalf("setLayerSessionFindings(%s): get wfiID: %v", sessionID, err)
+	}
+	var agentType string
+	if err := pool.QueryRow(`SELECT agent_type FROM agent_sessions WHERE id = ?`, sessionID).Scan(&agentType); err != nil {
+		t.Fatalf("setLayerSessionFindings(%s): get agentType: %v", sessionID, err)
+	}
+	findingRepo := repo.NewFindingRepo(pool, clock.Real())
+	denorm := repo.Denorm{WorkflowInstanceID: wfiID, AgentType: agentType}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range rawMap {
+		if err := findingRepo.Upsert("session", sessionID, k, v, denorm, actor); err != nil {
+			t.Fatalf("setLayerSessionFindings(%s): Upsert key %q: %v", sessionID, k, err)
+		}
 	}
 }
 

@@ -31,10 +31,10 @@ func setupLogFixture(t *testing.T) *logFixture {
 	mustExecLog(t, database, `INSERT INTO projects (id, name, created_at, updated_at) VALUES ('log-proj-b', 'PB', datetime('now'), datetime('now'))`)
 	mustExecLog(t, database, `INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('log-proj', 'log-wf', '', 'project', datetime('now'), datetime('now'))`)
 	mustExecLog(t, database, `INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('log-proj-b', 'log-wf-b', '', 'project', datetime('now'), datetime('now'))`)
-	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('log-wfi', 'log-proj', '', 'log-wf', 'active', 'project', '{}', datetime('now'), datetime('now'))`)
+	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('log-wfi', 'log-proj', '', 'log-wf', 'active', 'project', datetime('now'), datetime('now'))`)
 	mustExecLog(t, database, `INSERT INTO scheduled_tasks (id, project_id, name, cron_expression, created_at, updated_at) VALUES ('log-sched', 'log-proj', 'S', '0 * * * *', datetime('now'), datetime('now'))`)
-	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, scheduled_task_id, created_at, updated_at) VALUES ('log-wfi-s', 'log-proj', '', 'log-wf', 'completed', 'project', '{}', 'log-sched', datetime('now'), datetime('now'))`)
-	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('log-wfi-b', 'log-proj-b', '', 'log-wf-b', 'active', 'project', '{}', datetime('now'), datetime('now'))`)
+	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, scheduled_task_id, created_at, updated_at) VALUES ('log-wfi-s', 'log-proj', '', 'log-wf', 'completed', 'project', 'log-sched', datetime('now'), datetime('now'))`)
+	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('log-wfi-b', 'log-proj-b', '', 'log-wf-b', 'active', 'project', datetime('now'), datetime('now'))`)
 
 	return &logFixture{
 		db:             database,

@@ -30,8 +30,8 @@ func TestMigration065_NudgeCountColumnExists(t *testing.T) {
 		t.Fatalf("insert workflow: %v", err)
 	}
 	_, err = pool.Exec(
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES ('wfi-1', 'p1', 'TKT-1', 'wf1', 'ticket', 'active', '{}', datetime('now'), datetime('now'))`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES ('wfi-1', 'p1', 'TKT-1', 'wf1', 'ticket', 'active', datetime('now'), datetime('now'))`,
 	)
 	if err != nil {
 		t.Fatalf("insert workflow_instance: %v", err)
@@ -72,8 +72,8 @@ func TestMigration065_NudgeCountDefaultZero(t *testing.T) {
 		 VALUES ('p2', 'T', datetime('now'), datetime('now'))`,
 		`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
 		 VALUES ('p2', 'wf2', '', 'ticket', datetime('now'), datetime('now'))`,
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES ('wfi-2', 'p2', 'TKT-2', 'wf2', 'ticket', 'active', '{}', datetime('now'), datetime('now'))`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES ('wfi-2', 'p2', 'TKT-2', 'wf2', 'ticket', 'active', datetime('now'), datetime('now'))`,
 	} {
 		if _, err := pool.Exec(stmt); err != nil {
 			t.Fatalf("setup: %v", err)
@@ -114,8 +114,8 @@ func TestMigration065_NudgeCountIsUpdatable(t *testing.T) {
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p3', 'T', datetime('now'), datetime('now'))`,
 		`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
 		 VALUES ('p3', 'wf3', '', 'ticket', datetime('now'), datetime('now'))`,
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES ('wfi-3', 'p3', 'TKT-3', 'wf3', 'ticket', 'active', '{}', datetime('now'), datetime('now'))`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES ('wfi-3', 'p3', 'TKT-3', 'wf3', 'ticket', 'active', datetime('now'), datetime('now'))`,
 		`INSERT INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, config, created_at, updated_at)
 		 VALUES ('sess-upd', 'p3', 'TKT-3', 'wfi-3', 'test', 'implementor', 'running', '', datetime('now'), datetime('now'))`,

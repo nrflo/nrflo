@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -13,8 +12,6 @@ import (
 func TestCleanupKeepLatestForProject_Basic(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
-
-	findings, _ := json.Marshal(map[string]interface{}{})
 
 	if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
 		"proj-a", "Project A", "/tmp/a"); err != nil {
@@ -32,10 +29,10 @@ func TestCleanupKeepLatestForProject_Basic(t *testing.T) {
 		updatedAt := now.Add(time.Duration(i) * time.Minute).Format(time.RFC3339Nano)
 		id := fmt.Sprintf("wfi-a-%d", i)
 		if _, err := pool.Exec(
-			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, "proj-a", fmt.Sprintf("TKT-%d", i), "wf-a",
-			model.WorkflowInstanceCompleted, "ticket", string(findings),
+			model.WorkflowInstanceCompleted, "ticket",
 			updatedAt, updatedAt,
 		); err != nil {
 			t.Fatalf("seed instance %d: %v", i, err)
@@ -75,8 +72,6 @@ func TestCleanupKeepLatestForProject_CrossProjectIsolation(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
 
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	for _, proj := range []string{"proj-x", "proj-y"} {
 		if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
 			proj, proj, "/tmp/"+proj); err != nil {
@@ -96,10 +91,10 @@ func TestCleanupKeepLatestForProject_CrossProjectIsolation(t *testing.T) {
 			updatedAt := now.Add(time.Duration(i) * time.Minute).Format(time.RFC3339Nano)
 			id := fmt.Sprintf("wfi-%s-%d", proj, i)
 			if _, err := pool.Exec(
-				`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 				id, proj, fmt.Sprintf("TKT-%d", i), "wf-"+proj,
-				model.WorkflowInstanceCompleted, "ticket", string(findings),
+				model.WorkflowInstanceCompleted, "ticket",
 				updatedAt, updatedAt,
 			); err != nil {
 				t.Fatalf("seed %s instance %d: %v", proj, i, err)
@@ -128,7 +123,6 @@ func TestCleanupKeepLatestForProject_PreservesActive(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
 
-	findings, _ := json.Marshal(map[string]interface{}{})
 	if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
 		"proj-act", "Active Project", "/tmp/act"); err != nil {
 		t.Fatalf("seed project: %v", err)
@@ -152,10 +146,10 @@ func TestCleanupKeepLatestForProject_PreservesActive(t *testing.T) {
 		updatedAt := now.Add(time.Duration(i) * time.Minute).Format(time.RFC3339Nano)
 		id := fmt.Sprintf("wfi-act-%d", i)
 		if _, err := pool.Exec(
-			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, "proj-act", fmt.Sprintf("TKT-%d", i), "wf-act",
-			status, "ticket", string(findings), updatedAt, updatedAt,
+			status, "ticket", updatedAt, updatedAt,
 		); err != nil {
 			t.Fatalf("seed instance %d: %v", i, err)
 		}

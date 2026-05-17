@@ -17,11 +17,11 @@ func insertInteractiveSessionForKill(t *testing.T, s *Server, wfiID, projectID, 
 	_, err := s.pool.Exec(`
 		INSERT INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			 model_id, status, result, result_reason, pid, findings,
+			 model_id, status, result, result_reason, pid,
 			 context_left, ancestor_session_id, spawn_command, prompt,
 			 restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, 'phase', 'agent',
-			?, 'user_interactive', NULL, NULL, NULL, NULL,
+			?, 'user_interactive', NULL, NULL, NULL,
 			NULL, NULL, NULL, NULL,
 			0, ?, NULL, ?, ?)`,
 		sessionID, projectID, ticketID, wfiID,
@@ -156,7 +156,7 @@ func TestHandleKillInteractive_SessionNotInInteractive(t *testing.T) {
 		t.Fatalf("seed workflow: %v", err)
 	}
 	wfiID := "wfi-kill-ni"
-	if _, err := s.pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, 'proj', 'TKT-NI', 'wf', 'active', 'ticket', '{}', ?, ?)`, wfiID, now, now); err != nil {
+	if _, err := s.pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES (?, 'proj', 'TKT-NI', 'wf', 'active', 'ticket', ?, ?)`, wfiID, now, now); err != nil {
 		t.Fatalf("seed wfi: %v", err)
 	}
 	sessID := "sess-not-interactive"

@@ -15,6 +15,26 @@ import (
 	"be/internal/ws"
 )
 
+// getWFIFindings retrieves the findings for a workflow instance via FindingRepo.
+// Returns a map[string]interface{} for easy value assertions in tests.
+func getWFIFindings(t *testing.T, env *testEnv, wfiID string) map[string]interface{} {
+	t.Helper()
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	raw, err := findingRepo.GetOwn("workflow_instance", wfiID)
+	if err != nil {
+		t.Fatalf("getWFIFindings(%s): %v", wfiID, err)
+	}
+	result := make(map[string]interface{})
+	for k, v := range raw {
+		var val interface{}
+		if err := json.Unmarshal(v, &val); err != nil {
+			t.Fatalf("getWFIFindings: unmarshal key %q: %v", k, err)
+		}
+		result[k] = val
+	}
+	return result
+}
+
 // testEnv holds test infrastructure for orchestrator tests.
 type testEnv struct {
 	pool    *db.Pool

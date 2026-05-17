@@ -288,10 +288,10 @@ func setupContextSaveTestEnv(t *testing.T) *contextSaveTestEnv {
 
 	// Create workflow instance
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		wfiID, projectID, ticketID, workflowID, "ticket", "active",
-		"{}", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
+		time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
@@ -321,10 +321,6 @@ func (env *contextSaveTestEnv) createSessionWithFindings(t *testing.T, findings 
 	t.Helper()
 
 	sessionID := uuid.New().String()
-	findingsJSON, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
-	}
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
@@ -336,11 +332,23 @@ func (env *contextSaveTestEnv) createSessionWithFindings(t *testing.T, findings 
 		AgentType:          "test-agent",
 		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
 		Status:             model.AgentSessionRunning,
-		Findings:           sql.NullString{String: string(findingsJSON), Valid: true},
 		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 	}
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create session: %v", err)
+	}
+
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet"}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("createSessionWithFindings: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("createSessionWithFindings: Upsert key %q: %v", k, err)
+		}
 	}
 
 	return sessionID
@@ -361,30 +369,46 @@ func (env *contextSaveTestEnv) createSessionWithNullFindings(t *testing.T) strin
 		AgentType:          "test-agent",
 		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
 		Status:             model.AgentSessionRunning,
-		Findings:           sql.NullString{Valid: false}, // NULL findings
 		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 	}
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create session: %v", err)
 	}
 
+	// No findings rows = NULL findings (same as before, no FindingRepo upsert needed)
 	return sessionID
 }
 
 func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string {
 	t.Helper()
 
+	// With the findings table, invalid JSON cannot be inserted through the repo.
+	// This helper now creates a session with a non-string to_resume value, which
+	// exercises the same code path (checkToResumeFindings returns false).
 	sessionID := uuid.New().String()
 
-	// Directly insert invalid JSON via raw SQL
-	_, err := env.database.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, findings, started_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		sessionID, env.projectID, env.ticketID, env.wfiID, "test-phase", "test-agent", "claude:sonnet", "running",
-		"{invalid json}", // Invalid JSON
-		time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
-	if err != nil {
-		t.Fatalf("failed to create session with invalid JSON: %v", err)
+	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
+	session := &model.AgentSession{
+		ID:                 sessionID,
+		ProjectID:          env.projectID,
+		TicketID:           env.ticketID,
+		WorkflowInstanceID: env.wfiID,
+		Phase:              "test-phase",
+		AgentType:          "test-agent",
+		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
+		Status:             model.AgentSessionRunning,
+		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
+	}
+	if err := sessionRepo.Create(session); err != nil {
+		t.Fatalf("failed to create session: %v", err)
+	}
+
+	// Insert a to_resume value that is a number (not a string) so the type check fails.
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet"}
+	actor := repo.Actor{Source: "agent"}
+	if err := findingRepo.Upsert("session", sessionID, "to_resume", json.RawMessage("12345"), denorm, actor); err != nil {
+		t.Fatalf("failed to upsert finding: %v", err)
 	}
 
 	return sessionID

@@ -40,7 +40,7 @@ func TestMigration028WorkflowInstancesColumnCount(t *testing.T) {
 		t.Fatalf("failed to count columns: %v", err)
 	}
 
-	const want = 17 // 11 original + skip_tags (000030) + worktree_path + branch_name (000041) + endless_loop + stop_endless_loop_after_iteration (000060) + scheduled_task_id (000088)
+	const want = 16 // 11 original + skip_tags (000030) + worktree_path + branch_name (000041) + endless_loop + stop_endless_loop_after_iteration (000060) + scheduled_task_id (000088) - findings (000110)
 	if count != want {
 		t.Errorf("workflow_instances expected %d columns, got %d", want, count)
 	}
@@ -52,7 +52,7 @@ func TestMigration028WorkflowInstancesExpectedColumns(t *testing.T) {
 
 	expectedColumns := []string{
 		"id", "project_id", "ticket_id", "workflow_id", "scope_type",
-		"status", "findings", "retry_count", "parent_session", "created_at", "updated_at",
+		"status", "retry_count", "parent_session", "created_at", "updated_at",
 	}
 
 	for _, col := range expectedColumns {
@@ -132,7 +132,7 @@ func TestMigration028WorkflowInstanceMarshalJSON(t *testing.T) {
 	}
 
 	// Verify expected fields still present
-	expectedFields := []string{"id", "project_id", "workflow_id", "scope_type", "status", "findings", "retry_count"}
+	expectedFields := []string{"id", "project_id", "workflow_id", "scope_type", "status", "retry_count"}
 	for _, field := range expectedFields {
 		if _, exists := result[field]; !exists {
 			t.Errorf("expected field %s to exist in WorkflowInstance JSON", field)
@@ -322,17 +322,17 @@ func TestMigration028InsertWithoutPhaseColumns(t *testing.T) {
 		t.Fatalf("failed to create workflow def: %v", err)
 	}
 
-	// Direct INSERT using only the 11 columns (no phase columns)
+	// Direct INSERT using only the 10 columns (no phase columns, no findings)
 	_, err = env.Pool.Exec(`
 		INSERT INTO workflow_instances
 			(id, project_id, ticket_id, workflow_id, scope_type, status,
-			 findings, retry_count, parent_session, created_at, updated_at)
+			 retry_count, parent_session, created_at, updated_at)
 		VALUES
 			('direct-028', ?, '', 'wf-028-proj', 'project', 'active',
-			 '{}', 0, NULL, datetime('now'), datetime('now'))`,
+			 0, NULL, datetime('now'), datetime('now'))`,
 		env.ProjectID)
 	if err != nil {
-		t.Fatalf("INSERT with 11 columns failed: %v", err)
+		t.Fatalf("INSERT with 10 columns failed: %v", err)
 	}
 
 	// Verify row was inserted

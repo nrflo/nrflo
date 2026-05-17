@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -1836,58 +1837,50 @@ func (s *Spawner) readCallbackFindings(proc *processInfo) *CallbackError {
 		return &CallbackError{Mode: "layer"}
 	}
 
-	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-	session, err := sessionRepo.Get(proc.sessionID)
+	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
+	raw, err := findingRepo.GetOwn("session", proc.sessionID)
 	if err != nil {
 		return &CallbackError{Mode: "layer"}
 	}
 
-	findings := session.GetFindings()
-
 	level := 0
-	if lvl, ok := findings["callback_level"]; ok {
-		switch v := lvl.(type) {
-		case float64:
-			level = int(v)
-		case int:
-			level = v
+	if v, ok := raw["callback_level"]; ok {
+		var n float64
+		if json.Unmarshal(v, &n) == nil {
+			level = int(n)
 		}
 	}
 
 	instructions := ""
-	if instr, ok := findings["callback_instructions"]; ok {
-		if str, ok := instr.(string); ok {
-			instructions = str
-		}
+	if v, ok := raw["callback_instructions"]; ok {
+		json.Unmarshal(v, &instructions) //nolint:errcheck
 	}
 
 	mode := "layer"
-	if m, ok := findings["callback_mode"]; ok {
-		if ms, ok := m.(string); ok && ms != "" {
+	if v, ok := raw["callback_mode"]; ok {
+		var ms string
+		if json.Unmarshal(v, &ms) == nil && ms != "" {
 			mode = ms
 		}
 	}
 
 	var targetAgent string
-	if ta, ok := findings["callback_target"]; ok {
-		if tas, ok := ta.(string); ok {
-			targetAgent = tas
-		}
+	if v, ok := raw["callback_target"]; ok {
+		json.Unmarshal(v, &targetAgent) //nolint:errcheck
 	}
 
 	var chain []string
-	if ch, ok := findings["callback_chain"]; ok {
-		switch v := ch.(type) {
-		case []interface{}:
-			for _, item := range v {
-				if s, ok := item.(string); ok {
-					chain = append(chain, s)
-				}
-			}
-		case string:
-			for _, part := range strings.Split(v, ",") {
-				if p := strings.TrimSpace(part); p != "" {
-					chain = append(chain, p)
+	if v, ok := raw["callback_chain"]; ok {
+		var arr []string
+		if json.Unmarshal(v, &arr) == nil {
+			chain = arr
+		} else {
+			var str string
+			if json.Unmarshal(v, &str) == nil {
+				for _, part := range strings.Split(str, ",") {
+					if p := strings.TrimSpace(part); p != "" {
+						chain = append(chain, p)
+					}
 				}
 			}
 		}

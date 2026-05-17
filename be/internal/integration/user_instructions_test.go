@@ -9,6 +9,30 @@ import (
 	"be/internal/types"
 )
 
+// upsertWFIFinding stores a single finding for a workflow_instance scope.
+func upsertWFIFinding(t *testing.T, env *TestEnv, wfiID, key string, value interface{}) {
+	t.Helper()
+	fr := repo.NewFindingRepo(env.Pool, clock.Real())
+	val, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("upsertWFIFinding: marshal: %v", err)
+	}
+	if err := fr.Upsert("workflow_instance", wfiID, key, json.RawMessage(val), repo.Denorm{}, repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("upsertWFIFinding: upsert %s: %v", key, err)
+	}
+}
+
+// getWFIFindings returns all findings for a workflow instance.
+func getWFIFindings(t *testing.T, env *TestEnv, wfiID string) map[string]json.RawMessage {
+	t.Helper()
+	fr := repo.NewFindingRepo(env.Pool, clock.Real())
+	raw, err := fr.GetOwn("workflow_instance", wfiID)
+	if err != nil {
+		t.Fatalf("getWFIFindings: %v", err)
+	}
+	return raw
+}
+
 // TestUserInstructionsEndToEnd validates the full flow: orchestrator stores
 // user instructions as a direct string in workflow instance findings, and the
 // spawner can retrieve them as a plain string (not a nested map).
@@ -19,48 +43,35 @@ func TestUserInstructionsEndToEnd(t *testing.T) {
 	env.InitWorkflow(t, "UI-1")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-1", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
-	// --- Simulate what the orchestrator does (orchestrator.go:152-161) ---
-	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-1", "test")
-	if err != nil {
-		t.Fatalf("failed to get workflow instance: %v", err)
-	}
-	findings := wi.GetFindings()
-	findings["user_instructions"] = "Build the login page with OAuth support"
-	findings["_orchestration"] = map[string]interface{}{"status": "running"}
-	findingsJSON, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
-	}
-	if err := wfiRepo.UpdateFindings(wfiID, string(findingsJSON)); err != nil {
-		t.Fatalf("failed to update findings: %v", err)
-	}
+	// --- Simulate what the orchestrator does: store findings via FindingRepo ---
+	upsertWFIFinding(t, env, wfiID, "user_instructions", "Build the login page with OAuth support")
+	upsertWFIFinding(t, env, wfiID, "_orchestration", map[string]interface{}{"status": "running"})
 
-	// --- Simulate what the spawner does (spawner.go:855-867) ---
-	wi2, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-1", "test")
-	if err != nil {
-		t.Fatalf("spawner failed to fetch workflow instance: %v", err)
-	}
-	retrievedFindings := wi2.GetFindings()
+	// --- Simulate what the spawner does: read findings via FindingRepo ---
+	retrievedFindings := getWFIFindings(t, env, wfiID)
 
-	// The spawner does: findings["user_instructions"].(string)
-	raw, ok := retrievedFindings["user_instructions"]
+	// The spawner does: unmarshal findings["user_instructions"] as string
+	rawInstr, ok := retrievedFindings["user_instructions"]
 	if !ok {
 		t.Fatal("user_instructions key missing from findings")
 	}
-	str, ok := raw.(string)
-	if !ok {
-		t.Fatalf("user_instructions is not a string, got %T: %v", raw, raw)
+	var str string
+	if err := json.Unmarshal(rawInstr, &str); err != nil {
+		t.Fatalf("user_instructions is not a string: %v", err)
 	}
 	if str != "Build the login page with OAuth support" {
 		t.Fatalf("expected 'Build the login page with OAuth support', got %q", str)
 	}
 
 	// Verify orchestration status is also present
-	orch, ok := retrievedFindings["_orchestration"].(map[string]interface{})
+	rawOrch, ok := retrievedFindings["_orchestration"]
 	if !ok {
-		t.Fatal("_orchestration key missing or wrong type")
+		t.Fatal("_orchestration key missing")
+	}
+	var orch map[string]interface{}
+	if err := json.Unmarshal(rawOrch, &orch); err != nil {
+		t.Fatalf("_orchestration unmarshal: %v", err)
 	}
 	if orch["status"] != "running" {
 		t.Fatalf("expected orchestration status 'running', got %v", orch["status"])
@@ -97,13 +108,8 @@ func TestUserInstructionsMissing(t *testing.T) {
 	env.CreateTicket(t, "UI-2", "No instructions test")
 	env.InitWorkflow(t, "UI-2")
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
-	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-2", "test")
-	if err != nil {
-		t.Fatalf("failed to get workflow instance: %v", err)
-	}
-
-	findings := wi.GetFindings()
+	wfiID := env.GetWorkflowInstanceID(t, "UI-2", "test")
+	findings := getWFIFindings(t, env, wfiID)
 
 	// No user_instructions key at all — spawner should return placeholder
 	_, exists := findings["user_instructions"]
@@ -127,23 +133,11 @@ func TestUserInstructionsEmptyString(t *testing.T) {
 	env.InitWorkflow(t, "UI-3")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-3", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
-
-	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-3", "test")
-	if err != nil {
-		t.Fatalf("failed to get workflow instance: %v", err)
-	}
-	findings := wi.GetFindings()
-	findings["user_instructions"] = ""
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
+	upsertWFIFinding(t, env, wfiID, "user_instructions", "")
 
 	// Re-read and check spawner logic
-	wi2, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-3", "test")
-	if err != nil {
-		t.Fatalf("failed to re-read: %v", err)
-	}
-	result := fetchInstructionsFromFindings(wi2.GetFindings())
+	findings := getWFIFindings(t, env, wfiID)
+	result := fetchInstructionsFromFindings(findings)
 	if result != "_No user instructions provided_" {
 		t.Fatalf("expected placeholder for empty string, got %q", result)
 	}
@@ -159,25 +153,13 @@ func TestUserInstructionsSpecialCharacters(t *testing.T) {
 	env.InitWorkflow(t, "UI-4")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-4", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	instructions := "Use \"double quotes\" and 'single quotes'.\nAlso newlines\tand tabs.\n## Markdown heading\n- bullet point"
-
-	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-4", "test")
-	if err != nil {
-		t.Fatalf("failed to get workflow instance: %v", err)
-	}
-	findings := wi.GetFindings()
-	findings["user_instructions"] = instructions
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
+	upsertWFIFinding(t, env, wfiID, "user_instructions", instructions)
 
 	// Re-read
-	wi2, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-4", "test")
-	if err != nil {
-		t.Fatalf("failed to re-read: %v", err)
-	}
-	result := fetchInstructionsFromFindings(wi2.GetFindings())
+	findings := getWFIFindings(t, env, wfiID)
+	result := fetchInstructionsFromFindings(findings)
 	if result != instructions {
 		t.Fatalf("instructions corrupted during roundtrip:\nexpected: %q\ngot:      %q", instructions, result)
 	}
@@ -193,45 +175,28 @@ func TestUserInstructionsNotOverwrittenByOrchestrationUpdate(t *testing.T) {
 	env.InitWorkflow(t, "UI-5")
 
 	wfiID := env.GetWorkflowInstanceID(t, "UI-5", "test")
-	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 
 	// Step 1: Store instructions (like orchestrator Start does)
-	wi, err := wfiRepo.GetByTicketAndWorkflow(env.ProjectID, "UI-5", "test")
-	if err != nil {
-		t.Fatalf("failed to get workflow instance: %v", err)
-	}
-	findings := wi.GetFindings()
-	findings["user_instructions"] = "Implement the feature"
-	findings["_orchestration"] = map[string]interface{}{"status": "running"}
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
+	upsertWFIFinding(t, env, wfiID, "user_instructions", "Implement the feature")
+	upsertWFIFinding(t, env, wfiID, "_orchestration", map[string]interface{}{"status": "running"})
 
-	// Step 2: Simulate orchestrator marking completed (read-modify-write)
-	wi2, err := wfiRepo.Get(wfiID)
-	if err != nil {
-		t.Fatalf("failed to re-read: %v", err)
-	}
-	findings2 := wi2.GetFindings()
-	findings2["_orchestration"] = map[string]interface{}{"status": "completed"}
-	findingsJSON2, _ := json.Marshal(findings2)
-	wfiRepo.UpdateFindings(wfiID, string(findingsJSON2))
+	// Step 2: Simulate orchestrator marking completed (individual upsert — no clobber)
+	upsertWFIFinding(t, env, wfiID, "_orchestration", map[string]interface{}{"status": "completed"})
 
 	// Step 3: Verify user_instructions survived the update
-	wi3, err := wfiRepo.Get(wfiID)
-	if err != nil {
-		t.Fatalf("failed to final read: %v", err)
-	}
-	result := fetchInstructionsFromFindings(wi3.GetFindings())
+	findings := getWFIFindings(t, env, wfiID)
+	result := fetchInstructionsFromFindings(findings)
 	if result != "Implement the feature" {
 		t.Fatalf("user_instructions lost after orchestration update, got %q", result)
 	}
 }
 
 // fetchInstructionsFromFindings mirrors the spawner's fetchUserInstructions
-// logic (spawner.go:861-867) without needing a Spawner instance.
-func fetchInstructionsFromFindings(findings map[string]interface{}) string {
-	if instructions, ok := findings["user_instructions"]; ok {
-		if str, ok := instructions.(string); ok && str != "" {
+// logic without needing a Spawner instance.
+func fetchInstructionsFromFindings(findings map[string]json.RawMessage) string {
+	if raw, ok := findings["user_instructions"]; ok {
+		var str string
+		if err := json.Unmarshal(raw, &str); err == nil && str != "" {
 			return str
 		}
 	}

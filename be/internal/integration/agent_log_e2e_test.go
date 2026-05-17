@@ -40,9 +40,9 @@ func seedSessionAndMessages(t *testing.T, dbPath string) {
 	}
 
 	// Workflow instance
-	if _, err := database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	if _, err := database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		"wi-e2e-1", "e2eproj", "E2E-1", "feature", "active",
-		`{}`, 0, now, now); err != nil {
+		0, now, now); err != nil {
 		t.Fatalf("failed to seed workflow instance: %v", err)
 	}
 

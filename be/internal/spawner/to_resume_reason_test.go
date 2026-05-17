@@ -98,10 +98,6 @@ func TestFetchPreviousDataAndReason_AllStallReasons(t *testing.T) {
 
 func createContinuedSessionWithReason(t *testing.T, env *toResumeTestEnv, sessionID string, findings map[string]interface{}, resultReason string) {
 	t.Helper()
-	findingsJSON, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
-	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	session := &model.AgentSession{
 		ID:                 sessionID,
@@ -114,12 +110,24 @@ func createContinuedSessionWithReason(t *testing.T, env *toResumeTestEnv, sessio
 		Status:             model.AgentSessionContinued,
 		Result:             sql.NullString{String: "continue", Valid: true},
 		ResultReason:       sql.NullString{String: resultReason, Valid: resultReason != ""},
-		Findings:           sql.NullString{String: string(findingsJSON), Valid: true},
 		StartedAt:          sql.NullString{String: now, Valid: true},
 		EndedAt:            sql.NullString{String: now, Valid: true},
 	}
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create continued session: %v", err)
+	}
+
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet"}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("createContinuedSessionWithReason: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("createContinuedSessionWithReason: Upsert key %q: %v", k, err)
+		}
 	}
 }

@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -14,7 +13,6 @@ func TestCleanupKeepLatestForProject_CaseInsensitiveProjectID(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
 
-	findings, _ := json.Marshal(map[string]interface{}{})
 	if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
 		"Proj-Case", "Case Project", "/tmp/case"); err != nil {
 		t.Fatalf("seed project: %v", err)
@@ -31,10 +29,10 @@ func TestCleanupKeepLatestForProject_CaseInsensitiveProjectID(t *testing.T) {
 		updatedAt := now.Add(time.Duration(i) * time.Minute).Format(time.RFC3339Nano)
 		id := fmt.Sprintf("wfi-case-%d", i)
 		if _, err := pool.Exec(
-			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, "Proj-Case", fmt.Sprintf("TKT-%d", i), "wf-case",
-			model.WorkflowInstanceCompleted, "ticket", string(findings), updatedAt, updatedAt,
+			model.WorkflowInstanceCompleted, "ticket", updatedAt, updatedAt,
 		); err != nil {
 			t.Fatalf("seed instance %d: %v", i, err)
 		}
@@ -54,7 +52,6 @@ func TestCleanupKeepLatestForProject_LargeScale(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
 
-	findings, _ := json.Marshal(map[string]interface{}{})
 	if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
 		"proj-big", "Big Project", "/tmp/big"); err != nil {
 		t.Fatalf("seed project: %v", err)
@@ -71,10 +68,10 @@ func TestCleanupKeepLatestForProject_LargeScale(t *testing.T) {
 		updatedAt := base.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano)
 		id := fmt.Sprintf("wfi-big-%04d", i)
 		if _, err := pool.Exec(
-			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, "proj-big", fmt.Sprintf("TKT-%d", i), "wf-big",
-			model.WorkflowInstanceCompleted, "ticket", string(findings), updatedAt, updatedAt,
+			model.WorkflowInstanceCompleted, "ticket", updatedAt, updatedAt,
 		); err != nil {
 			t.Fatalf("seed instance %d: %v", i, err)
 		}

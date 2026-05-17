@@ -2,9 +2,10 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
 )
@@ -35,8 +36,8 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	}
 
 	// Verify _callback metadata is saved with new shape
-	wi := env.getWorkflowInstance(t, wfiID)
-	cb, ok := wi.GetFindings()["_callback"].(map[string]interface{})
+	findings := getWFIFindings(t, env, wfiID)
+	cb, ok := findings["_callback"].(map[string]interface{})
 	if !ok {
 		t.Fatal("expected _callback metadata after handleCallback")
 	}
@@ -59,20 +60,17 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
 	// Verify _callback is cleared
-	wi = env.getWorkflowInstance(t, wfiID)
-	if _, ok := wi.GetFindings()["_callback"]; ok {
+	findings = getWFIFindings(t, env, wfiID)
+	if _, ok := findings["_callback"]; ok {
 		t.Error("expected _callback to be cleared after callback target layer completes")
 	}
 
-	// Step 3: verify other findings survive
-	otherFindings := map[string]interface{}{"layer2_result": "success"}
-	findingsJSON, _ := json.Marshal(otherFindings)
-	_, err := env.pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(findingsJSON), wfiID)
-	if err != nil {
-		t.Fatalf("failed to update findings: %v", err)
+	// Step 3: verify other findings survive — seed via FindingRepo
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	if err := findingRepo.Upsert("workflow_instance", wfiID, "layer2_result", []byte(`"success"`), repo.Denorm{}, repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("failed to upsert finding: %v", err)
 	}
-	wi = env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings = getWFIFindings(t, env, wfiID)
 	if _, ok := findings["_callback"]; ok {
 		t.Error("_callback should not reappear")
 	}
@@ -103,14 +101,14 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 3,
 		[]*spawner.CallbackError{{Level: 1, AgentType: "verifier", Instructions: "First callback: fix builder"}}, &count)
 
-	cb := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	cb := getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	if cb["instructions"] != "First callback: fix builder" {
 		t.Error("expected first callback instructions")
 	}
 
 	// Clear after first callback
 	env.orch.clearCallbackMetadata(context.Background(), wfiID)
-	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
+	if _, ok := getWFIFindings(t, env, wfiID)["_callback"]; ok {
 		t.Error("expected _callback cleared after first cycle")
 	}
 
@@ -118,7 +116,7 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 2,
 		[]*spawner.CallbackError{{Level: 0, AgentType: "tester", Instructions: "Second callback: restart from analyzer"}}, &count)
 
-	cb = env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	cb = getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	if cb["instructions"] != "Second callback: restart from analyzer" {
 		t.Error("expected second callback instructions")
 	}
@@ -128,7 +126,7 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 
 	// Clear after second callback
 	env.orch.clearCallbackMetadata(context.Background(), wfiID)
-	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
+	if _, ok := getWFIFindings(t, env, wfiID)["_callback"]; ok {
 		t.Error("expected _callback cleared after second cycle")
 	}
 }
@@ -154,7 +152,7 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 2,
 		[]*spawner.CallbackError{{Level: 1, AgentType: "tester", Instructions: "Fix builder"}}, &count)
 
-	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; !ok {
+	if _, ok := getWFIFindings(t, env, wfiID)["_callback"]; !ok {
 		t.Fatal("expected _callback to be set")
 	}
 
@@ -162,7 +160,7 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 
 	for _, lbl := range []string{"tester-layer", "deployer-layer"} {
 		_ = lbl
-		if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
+		if _, ok := getWFIFindings(t, env, wfiID)["_callback"]; ok {
 			t.Errorf("_callback should not be visible after clear")
 		}
 	}
@@ -177,8 +175,8 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-proj-e2e', ?, '', 'proj-cb-e2e', 'active', 'project', '{}', 0, datetime('now'), datetime('now'))
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, retry_count, created_at, updated_at)
+		VALUES ('wfi-proj-e2e', ?, '', 'proj-cb-e2e', 'active', 'project', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("create project WFI: %v", err)
@@ -194,13 +192,13 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 1,
 		[]*spawner.CallbackError{{Level: 0, AgentType: "builder", Instructions: "Project callback instructions"}}, &count)
 
-	cb := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	cb := getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	if cb["instructions"] != "Project callback instructions" {
 		t.Error("expected project callback instructions")
 	}
 
 	env.orch.clearCallbackMetadata(context.Background(), wfiID)
-	if _, ok := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"]; ok {
+	if _, ok := getWFIFindings(t, env, wfiID)["_callback"]; ok {
 		t.Error("expected project workflow _callback to be cleared")
 	}
 }
@@ -233,7 +231,7 @@ func TestCallback_EndToEnd_MultipleRequestsMerged(t *testing.T) {
 		t.Fatal("expected true for merged callbacks")
 	}
 
-	cb := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	cb := getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	plan := cb["plan"].([]interface{})
 	// level 0 from originatorLayer 1 → layers 0 and 1 → 2 steps
 	if len(plan) != 2 {

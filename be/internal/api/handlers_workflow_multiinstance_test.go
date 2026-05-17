@@ -67,8 +67,8 @@ func seedTicketTwoInstances(t *testing.T, s *Server, projectID, ticketID string)
 		{inst2, now},
 	} {
 		if _, err := s.pool.Exec(
-			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-			 VALUES (?, ?, ?, 'wf-mi', 'ticket', 'active', '{}', 0, ?, ?)`,
+			`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+			 VALUES (?, ?, ?, 'wf-mi', 'ticket', 'active', 0, ?, ?)`,
 			row.id, projectID, ticketID, row.createdAt, now,
 		); err != nil {
 			t.Fatalf("seed workflow instance %q: %v", row.id, err)
@@ -199,10 +199,10 @@ func TestHandleGetAgentSessions_FilterByInstanceID(t *testing.T) {
 		if _, err := s.pool.Exec(`
 			INSERT INTO agent_sessions
 				(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-				 model_id, status, result, result_reason, pid, findings,
+				 model_id, status, result, result_reason, pid,
 				 context_left, ancestor_session_id, spawn_command, prompt,
 				 restart_count, started_at, ended_at, created_at, updated_at)
-			VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', NULL, 'completed', 'pass', NULL, NULL, NULL,
+			VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', NULL, 'completed', 'pass', NULL, NULL,
 				NULL, NULL, NULL, NULL, 0, NULL, NULL, ?, ?)`,
 			row.sessID, "proj-mias", "MIAS-1", row.instID, now, now,
 		); err != nil {

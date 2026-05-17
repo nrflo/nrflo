@@ -72,18 +72,18 @@ func insertPtyTestSession(t *testing.T, dbPath, sessionID string, status model.A
 	}
 
 	wfiID := "wfi-pty-test"
-	_, err = database.Exec(`INSERT OR IGNORE INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-		VALUES (?, 'proj-pty', 'TKT-PTY', 'test-wf', 'active', 'ticket', '{}', ?, ?)`, wfiID, now, now)
+	_, err = database.Exec(`INSERT OR IGNORE INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+		VALUES (?, 'proj-pty', 'TKT-PTY', 'test-wf', 'active', 'ticket', ?, ?)`, wfiID, now, now)
 	if err != nil {
 		t.Fatalf("insertPtyTestSession: insert wfi: %v", err)
 	}
 
 	_, err = database.Exec(`INSERT OR IGNORE INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status,
-		 result, result_reason, pid, findings, context_left, ancestor_session_id,
+		 result, result_reason, pid, context_left, ancestor_session_id,
 		 spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, 'proj-pty', 'TKT-PTY', ?, 'phase1', 'analyzer', ?,
-		        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		        NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		sessionID, wfiID, string(status), now, now, now)
 	if err != nil {
 		t.Fatalf("insertPtyTestSession: insert session: %v", err)

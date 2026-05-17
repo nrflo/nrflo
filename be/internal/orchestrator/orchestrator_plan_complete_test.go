@@ -22,10 +22,10 @@ func TestHandlePlanModePostStep_MarksSessionInteractiveCompleted(t *testing.T) {
 	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	_, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, result_reason, pid, findings, context_left, ancestor_session_id,
+			status, result, result_reason, pid, context_left, ancestor_session_id,
 			spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, 'test-project', '', ?, 'planning', 'planner', 'user_interactive',
-			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+			NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		sessionID, wfiID, now, now, now)
 	if err != nil {
 		t.Fatalf("insert planner session: %v", err)

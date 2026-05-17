@@ -41,7 +41,6 @@ func makeTicketWFI(suffix string) *model.WorkflowInstance {
 		WorkflowID: "wf-" + suffix,
 		ScopeType:  "ticket",
 		Status:     model.WorkflowInstanceActive,
-		Findings:   "{}",
 	}
 }
 

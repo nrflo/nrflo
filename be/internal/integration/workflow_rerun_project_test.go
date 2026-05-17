@@ -44,7 +44,10 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 	// Simulate completion: set status to project_completed
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	wfiRepo.UpdateStatus(firstInstance.ID, model.WorkflowInstanceProjectCompleted)
-	wfiRepo.UpdateFindings(firstInstance.ID, `{"some_key": "some_value"}`)
+	// Seed a finding for the first instance via FindingRepo
+	findingRepo := repo.NewFindingRepo(env.Pool, clock.Real())
+	findingRepo.Upsert("workflow_instance", firstInstance.ID, "some_key", //nolint:errcheck
+		[]byte(`"some_value"`), repo.Denorm{}, repo.Actor{Source: "system"})
 
 	// Verify it's completed
 	firstInstance, _ = wfiRepo.Get(firstInstance.ID)
@@ -199,7 +202,10 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 
 	// Set it to completed
 	wfiRepo.UpdateStatus(wi.ID, model.WorkflowInstanceCompleted)
-	wfiRepo.UpdateFindings(wi.ID, `{"ticket_finding": "ticket_value"}`)
+	// Seed a finding via FindingRepo
+	findingRepo2 := repo.NewFindingRepo(env.Pool, clock.Real())
+	findingRepo2.Upsert("workflow_instance", wi.ID, "ticket_finding", //nolint:errcheck
+		[]byte(`"ticket_value"`), repo.Denorm{}, repo.Actor{Source: "system"})
 
 	// Create orchestrator and try to start again
 	orch := orchestrator.New(env.Pool.Path, env.Hub, clock.Real(), nil, "")
@@ -234,8 +240,13 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 	if oldInstance.Status != model.WorkflowInstanceCompleted {
 		t.Fatalf("expected old instance to remain completed, got %v", oldInstance.Status)
 	}
-	if oldInstance.Findings != `{"ticket_finding": "ticket_value"}` {
-		t.Fatalf("expected old instance findings preserved, got %s", oldInstance.Findings)
+	// Verify the finding seeded earlier is still intact
+	ticketFindingRaw, ticketFindingOK := repo.NewFindingRepo(env.Pool, clock.Real()).GetOwn("workflow_instance", firstInstanceID)
+	if ticketFindingOK != nil {
+		t.Fatalf("failed to read findings: %v", ticketFindingOK)
+	}
+	if _, ok := ticketFindingRaw["ticket_finding"]; !ok {
+		t.Fatalf("expected ticket_finding in old instance findings, got %v", ticketFindingRaw)
 	}
 
 	// New instance should exist with retry_count = 0 (fresh instance)

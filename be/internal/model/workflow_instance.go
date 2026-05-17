@@ -31,7 +31,6 @@ type WorkflowInstance struct {
 	WorkflowID    string                 `json:"workflow_id"`
 	ScopeType     string                 `json:"scope_type"` // "ticket" or "project"
 	Status        WorkflowInstanceStatus `json:"status"`
-	Findings      string                 `json:"-"` // JSON object string
 	SkipTags      string                 `json:"-"` // JSON array of skip tag strings
 	RetryCount    int                    `json:"retry_count"`
 	ParentSession sql.NullString         `json:"-"`
@@ -47,19 +46,6 @@ type WorkflowInstance struct {
 // IsProjectScope returns true if this is a project-scoped workflow instance
 func (wi *WorkflowInstance) IsProjectScope() bool {
 	return wi.ScopeType == "project"
-}
-
-// GetFindings returns the workflow-level findings as a map
-func (wi *WorkflowInstance) GetFindings() map[string]interface{} {
-	findings := make(map[string]interface{})
-	json.Unmarshal([]byte(wi.Findings), &findings)
-	return findings
-}
-
-// SetFindings updates the findings JSON string from a map
-func (wi *WorkflowInstance) SetFindings(findings map[string]interface{}) {
-	data, _ := json.Marshal(findings)
-	wi.Findings = string(data)
 }
 
 // GetSkipTags returns the parsed skip tags as a string slice
@@ -110,12 +96,6 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		branchName = &wi.BranchName.String
 	}
 
-	var findings map[string]interface{}
-	json.Unmarshal([]byte(wi.Findings), &findings)
-	if findings == nil {
-		findings = make(map[string]interface{})
-	}
-
 	scopeType := wi.ScopeType
 	if scopeType == "" {
 		scopeType = "ticket"
@@ -130,7 +110,6 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		WorkflowID    string                 `json:"workflow_id"`
 		ScopeType     string                 `json:"scope_type"`
 		Status        WorkflowInstanceStatus `json:"status"`
-		Findings      map[string]interface{} `json:"findings"`
 		SkipTags      []string               `json:"skip_tags"`
 		RetryCount    int                    `json:"retry_count"`
 		ParentSession *string                `json:"parent_session,omitempty"`
@@ -148,7 +127,6 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		WorkflowID:    wi.WorkflowID,
 		ScopeType:     scopeType,
 		Status:        wi.Status,
-		Findings:      findings,
 		SkipTags:      skipTags,
 		RetryCount:    wi.RetryCount,
 		ParentSession: parentSession,

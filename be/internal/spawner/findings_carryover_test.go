@@ -36,28 +36,40 @@ func (env *testEnv) createNamedSession(t *testing.T, sessionID, modelID string) 
 	return session
 }
 
-// setSessionFindings sets the findings JSON on the given session row.
+// setSessionFindings upserts each key from a map into the FindingRepo for scope=session.
 func setSessionFindings(t *testing.T, env *testEnv, sessionID string, findings map[string]interface{}) {
 	t.Helper()
-	b, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("setSessionFindings: marshal: %v", err)
-	}
-	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
-	if err := sessionRepo.UpdateFindings(sessionID, string(b)); err != nil {
-		t.Fatalf("setSessionFindings: UpdateFindings: %v", err)
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{WorkflowInstanceID: env.wfiID}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setSessionFindings: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("setSessionFindings: Upsert key %q: %v", k, err)
+		}
 	}
 }
 
-// getSessionFindings loads a session and returns its findings map.
+// getSessionFindings loads all findings for a session from FindingRepo and returns them as map[string]interface{}.
 func getSessionFindings(t *testing.T, env *testEnv, sessionID string) map[string]interface{} {
 	t.Helper()
-	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
-	session, err := sessionRepo.Get(sessionID)
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	rawMap, err := findingRepo.GetOwn("session", sessionID)
 	if err != nil {
-		t.Fatalf("getSessionFindings: Get(%s): %v", sessionID, err)
+		t.Fatalf("getSessionFindings: GetOwn(%s): %v", sessionID, err)
 	}
-	return session.GetFindings()
+	result := make(map[string]interface{}, len(rawMap))
+	for k, raw := range rawMap {
+		var v interface{}
+		if err := json.Unmarshal(raw, &v); err != nil {
+			t.Fatalf("getSessionFindings: unmarshal key %q: %v", k, err)
+		}
+		result[k] = v
+	}
+	return result
 }
 
 // TestCopyFindingsForContinuation_EmptyTarget verifies that findings from the old

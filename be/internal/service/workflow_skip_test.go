@@ -45,8 +45,8 @@ func setupSkipTestEnv(t *testing.T) (*db.Pool, *WorkflowService, string) {
 	// Create workflow instance directly (no ticket needed for service-level test)
 	wfiID := "wfi-skip-test"
 	if _, err = pool.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		VALUES (?, 'proj1', 'ticket-1', 'wf1', 'ticket', 'active', '{}', 0, ?, ?)`,
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		VALUES (?, 'proj1', 'ticket-1', 'wf1', 'ticket', 'active', 0, ?, ?)`,
 		wfiID, now, now); err != nil {
 		t.Fatalf("workflow_instance insert: %v", err)
 	}
@@ -179,8 +179,8 @@ func TestAddSkipTag_WorkflowNoGroups(t *testing.T) {
 
 	wfiID := "wfi-nogroups"
 	if _, err = pool.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		VALUES (?, 'proj2', 't1', 'wf-nogroups', 'ticket', 'active', '{}', 0, ?, ?)`,
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		VALUES (?, 'proj2', 't1', 'wf-nogroups', 'ticket', 'active', 0, ?, ?)`,
 		wfiID, now, now); err != nil {
 		t.Fatalf("workflow_instance insert: %v", err)
 	}

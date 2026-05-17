@@ -23,8 +23,8 @@ func seedTokenSession(t *testing.T, s *Server, projectID, token string, status m
 		t.Fatalf("workflow: %v", err)
 	}
 	wfiID := "wfi-" + token
-	if _, err := s.pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-		VALUES (?, ?, '', 'wf', 'active', 'project', '{}', ?, ?)`, wfiID, projectID, now, now); err != nil {
+	if _, err := s.pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+		VALUES (?, ?, '', 'wf', 'active', 'project', ?, ?)`, wfiID, projectID, now, now); err != nil {
 		t.Fatalf("wfi: %v", err)
 	}
 	sid := "sess-" + token

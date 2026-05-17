@@ -70,8 +70,8 @@ func TestCreate_PersistsEffectiveMode(t *testing.T) {
 	database := newTestDB(t)
 	mustExecLog(t, database, `INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-em', 'P', datetime('now'), datetime('now'))`)
 	mustExecLog(t, database, `INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('proj-em', 'wf-em', '', 'ticket', datetime('now'), datetime('now'))`)
-	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-		VALUES ('wfi-em', 'proj-em', 'TKT-1', 'wf-em', 'active', 'ticket', '{}', datetime('now'), datetime('now'))`)
+	mustExecLog(t, database, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+		VALUES ('wfi-em', 'proj-em', 'TKT-1', 'wf-em', 'active', 'ticket', datetime('now'), datetime('now'))`)
 
 	r := NewAgentSessionRepo(database, clock.Real())
 	sess := &model.AgentSession{

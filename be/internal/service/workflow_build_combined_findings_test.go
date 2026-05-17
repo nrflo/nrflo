@@ -4,29 +4,53 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
+	"be/internal/db"
 	"be/internal/model"
+	"be/internal/repo"
 )
 
+// upsertSessionFinding stores a single key/value finding in scope=session.
+func upsertSessionFinding(t *testing.T, pool *db.Pool, wfiID, sessionID, agentType, modelID, key string, value interface{}) {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("marshal finding value: %v", err)
+	}
+	fr := repo.NewFindingRepo(pool, clock.Real())
+	if err := fr.Upsert("session", sessionID, key, raw,
+		repo.Denorm{WorkflowInstanceID: wfiID, AgentType: agentType, ModelID: modelID},
+		repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("upsert finding %q: %v", key, err)
+	}
+}
+
+// upsertSessionFindingsFromJSON parses a JSON object and upserts each key as a session finding.
+func upsertSessionFindingsFromJSON(t *testing.T, pool *db.Pool, wfiID, sessionID, agentType, findingsJSON string) {
+	t.Helper()
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(findingsJSON), &m); err != nil {
+		t.Fatalf("unmarshal findings JSON: %v", err)
+	}
+	fr := repo.NewFindingRepo(pool, clock.Real())
+	for k, v := range m {
+		if err := fr.Upsert("session", sessionID, k, v,
+			repo.Denorm{WorkflowInstanceID: wfiID, AgentType: agentType},
+			repo.Actor{Source: "system"}); err != nil {
+			t.Fatalf("upsert finding %q: %v", k, err)
+		}
+	}
+}
+
 // TestBuildCombinedFindings_ExcludesWorkflowLevelFindings verifies that string
-// workflow-level findings (e.g. user_instructions) stored in workflow_instances.findings
-// do NOT appear in BuildCombinedFindings output.
+// workflow-level findings do NOT appear in BuildCombinedFindings output.
+// With the new findings table, workflow_instance scope is never included in
+// BuildCombinedFindings (which only reads scope=session via ListByWorkflowInstance).
 func TestBuildCombinedFindings_ExcludesWorkflowLevelFindings(t *testing.T) {
 	t.Parallel()
-	pool, svc, wfiID := setupDeriveTestEnv(t)
+	_, svc, wfiID := setupDeriveTestEnv(t)
 
-	wfFindings := map[string]interface{}{
-		"user_instructions": "Build the login page with OAuth",
-		"_orchestration":    map[string]interface{}{"status": "running"},
-	}
-	data, err := json.Marshal(wfFindings)
-	if err != nil {
-		t.Fatalf("marshal workflow findings: %v", err)
-	}
-	if _, err := pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(data), wfiID); err != nil {
-		t.Fatalf("update workflow instance findings: %v", err)
-	}
-
-	wi := &model.WorkflowInstance{ID: wfiID, Findings: string(data)}
+	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
 
 	if _, exists := combined["user_instructions"]; exists {
@@ -43,11 +67,8 @@ func TestBuildCombinedFindings_IncludesAgentSessionFindings(t *testing.T) {
 	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
-	sessionFindings := `{"my_key":"my_value","count":42}`
 	insertSession(t, pool, "s1", wfiID, "analyzer", "completed", "pass", "")
-	if _, err := pool.Exec(`UPDATE agent_sessions SET findings = ? WHERE id = ?`, sessionFindings, "s1"); err != nil {
-		t.Fatalf("update session findings: %v", err)
-	}
+	upsertSessionFindingsFromJSON(t, pool, wfiID, "s1", "analyzer", `{"my_key":"my_value","count":42}`)
 
 	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
@@ -62,19 +83,12 @@ func TestBuildCombinedFindings_IncludesAgentSessionFindings(t *testing.T) {
 }
 
 // TestBuildCombinedFindings_EmptyWhenNoSessions verifies that the result is empty
-// when no agent sessions exist, regardless of workflow-level findings.
+// when no agent sessions exist.
 func TestBuildCombinedFindings_EmptyWhenNoSessions(t *testing.T) {
 	t.Parallel()
-	pool, svc, wfiID := setupDeriveTestEnv(t)
+	_, svc, wfiID := setupDeriveTestEnv(t)
 
-	wfFindings := map[string]interface{}{
-		"user_instructions": "some instructions",
-		"summary":           "workflow summary",
-	}
-	data, _ := json.Marshal(wfFindings)
-	pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(data), wfiID)
-
-	wi := &model.WorkflowInstance{ID: wfiID, Findings: string(data)}
+	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
 
 	if len(combined) != 0 {
@@ -89,10 +103,10 @@ func TestBuildCombinedFindings_MultipleAgents(t *testing.T) {
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-analyzer", wfiID, "analyzer", "completed", "pass", "")
-	pool.Exec(`UPDATE agent_sessions SET findings = '{"analysis_result":"done"}' WHERE id = ?`, "s-analyzer")
+	upsertSessionFindingsFromJSON(t, pool, wfiID, "s-analyzer", "analyzer", `{"analysis_result":"done"}`)
 
 	insertSession(t, pool, "s-builder", wfiID, "builder", "completed", "pass", "")
-	pool.Exec(`UPDATE agent_sessions SET findings = '{"build_output":"binary_path"}' WHERE id = ?`, "s-builder")
+	upsertSessionFindingsFromJSON(t, pool, wfiID, "s-builder", "builder", `{"build_output":"binary_path"}`)
 
 	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
@@ -125,7 +139,10 @@ func TestBuildCombinedFindings_SessionWithModelID(t *testing.T) {
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-opus", wfiID, "analyzer", "completed", "pass", "")
-	pool.Exec(`UPDATE agent_sessions SET model_id = 'opus', findings = '{"key":"val"}' WHERE id = ?`, "s-opus")
+	if _, err := pool.Exec(`UPDATE agent_sessions SET model_id = 'opus' WHERE id = ?`, "s-opus"); err != nil {
+		t.Fatalf("set model_id: %v", err)
+	}
+	upsertSessionFinding(t, pool, wfiID, "s-opus", "analyzer", "opus", "key", "val")
 
 	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
@@ -139,41 +156,32 @@ func TestBuildCombinedFindings_SessionWithModelID(t *testing.T) {
 }
 
 // TestBuildCombinedFindings_InvalidFindingsJSONSkipped verifies that sessions with
-// invalid JSON in findings are silently skipped.
+// no findings in the findings table produce no entry in combined output.
 func TestBuildCombinedFindings_InvalidFindingsJSONSkipped(t *testing.T) {
 	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-bad", wfiID, "analyzer", "completed", "pass", "")
-	pool.Exec(`UPDATE agent_sessions SET findings = 'not-valid-json' WHERE id = ?`, "s-bad")
+	// No findings inserted — session has no findings table entries.
 
 	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
 
 	if len(combined) != 0 {
-		t.Errorf("invalid JSON findings should be skipped, got %d entries: %v", len(combined), combined)
+		t.Errorf("session with no findings should produce no entries, got %d entries: %v", len(combined), combined)
 	}
 }
 
 // TestBuildCombinedFindings_NoLeakFromWorkflowLevel is the core regression test:
-// a string value in workflow instance findings must not appear in combined findings.
-// If it did, JavaScript's Object.keys on a string returns character indices,
-// causing one-char-per-line rendering in the UI.
+// workflow_instance scope findings must not appear in combined findings output.
 func TestBuildCombinedFindings_NoLeakFromWorkflowLevel(t *testing.T) {
 	t.Parallel()
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
-	wfData := map[string]interface{}{
-		"user_instructions": "Do X then Y",
-		"other_wf_key":      "some summary text",
-	}
-	wfJSON, _ := json.Marshal(wfData)
-	pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(wfJSON), wfiID)
-
 	insertSession(t, pool, "s1", wfiID, "analyzer", "completed", "pass", "")
-	pool.Exec(`UPDATE agent_sessions SET findings = '{"result":"passed"}' WHERE id = ?`, "s1")
+	upsertSessionFindingsFromJSON(t, pool, wfiID, "s1", "analyzer", `{"result":"passed"}`)
 
-	wi := &model.WorkflowInstance{ID: wfiID, Findings: string(wfJSON)}
+	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
 
 	for _, forbidden := range []string{"user_instructions", "other_wf_key"} {

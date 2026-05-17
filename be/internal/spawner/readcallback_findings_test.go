@@ -10,13 +10,17 @@ import (
 
 func setFindings(t *testing.T, env *testEnv, m map[string]interface{}) {
 	t.Helper()
-	b, err := json.Marshal(m)
-	if err != nil {
-		t.Fatalf("marshal findings: %v", err)
-	}
-	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
-	if err := sessionRepo.UpdateFindings(env.sessionID, string(b)); err != nil {
-		t.Fatalf("UpdateFindings: %v", err)
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{WorkflowInstanceID: env.wfiID}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range m {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setFindings: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", env.sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("setFindings: Upsert key %q: %v", k, err)
+		}
 	}
 }
 

@@ -89,19 +89,13 @@ func TestBuildCombinedFindings_ExcludesSystemAgents(t *testing.T) {
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-impl", wfiID, "implementor", "completed", "pass", "")
-	if _, err := pool.Exec(`UPDATE agent_sessions SET findings = '{"k":"v"}' WHERE id = ?`, "s-impl"); err != nil {
-		t.Fatalf("set implementor findings: %v", err)
-	}
+	upsertSessionFindingsFromJSON(t, pool, wfiID, "s-impl", "implementor", `{"k":"v"}`)
 
 	insertSession(t, pool, "s-cs", wfiID, "context-saver", "completed", "pass", "")
-	if _, err := pool.Exec(`UPDATE agent_sessions SET findings = '{"to_resume":"x"}' WHERE id = ?`, "s-cs"); err != nil {
-		t.Fatalf("set context-saver findings: %v", err)
-	}
+	upsertSessionFindingsFromJSON(t, pool, wfiID, "s-cs", "context-saver", `{"to_resume":"x"}`)
 
 	insertSession(t, pool, "s-cr", wfiID, "conflict-resolver", "completed", "pass", "")
-	if _, err := pool.Exec(`UPDATE agent_sessions SET findings = '{"resolved":"y"}' WHERE id = ?`, "s-cr"); err != nil {
-		t.Fatalf("set conflict-resolver findings: %v", err)
-	}
+	upsertSessionFindingsFromJSON(t, pool, wfiID, "s-cr", "conflict-resolver", `{"resolved":"y"}`)
 
 	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)

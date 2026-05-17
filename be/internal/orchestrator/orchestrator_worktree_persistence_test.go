@@ -85,7 +85,6 @@ func TestWorktreePersistence_FieldsPopulatedOnInstance(t *testing.T) {
 		WorkflowID: "test-workflow",
 		ScopeType:  "ticket",
 		Status:     model.WorkflowInstanceActive,
-		Findings:   "{}",
 	}
 
 	// Insert project and workflow records needed for FK constraints.
@@ -198,7 +197,6 @@ func TestWorktreePersistence_ProjectScopeHasNullFields(t *testing.T) {
 		WorkflowID: "proj-workflow",
 		ScopeType:  "project",
 		Status:     model.WorkflowInstanceActive,
-		Findings:   "{}",
 	}
 	if err := wfiRepo.Create(wi); err != nil {
 		t.Fatalf("Create: %v", err)

@@ -42,7 +42,9 @@ func (s *Server) handleCommitSpecImport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	projectID := wfi.ProjectID
-	findings := wfi.GetFindings()
+	findingRepo := repo.NewFindingRepo(s.pool, s.clock)
+	rawFindings, _ := findingRepo.GetOwn("workflow_instance", instanceID)
+	findings := rawFindingsToInterface(rawFindings)
 	if archived, _ := findings["_archived"].(bool); archived {
 		writeError(w, http.StatusConflict, "import session already committed")
 		return
@@ -94,13 +96,14 @@ func (s *Server) handleCommitSpecImport(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Archive the spec-import wfi.
-	updatedFindings := wfi.GetFindings()
-	updatedFindings["_archived"] = true
-	wfi.SetFindings(updatedFindings)
+	archivedVal, _ := json.Marshal(true)
+	_ = findingRepo.Upsert("workflow_instance", instanceID, "_archived", archivedVal,
+		repo.Denorm{ProjectID: projectID, WorkflowInstanceID: instanceID},
+		repo.Actor{Source: "system"})
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, archiveErr := s.pool.Exec(
-		`UPDATE workflow_instances SET status = ?, findings = ?, updated_at = ? WHERE id = ?`,
-		model.WorkflowInstanceProjectCompleted, wfi.Findings, now, instanceID,
+		`UPDATE workflow_instances SET status = ?, updated_at = ? WHERE id = ?`,
+		model.WorkflowInstanceProjectCompleted, now, instanceID,
 	)
 	if archiveErr != nil {
 		// Non-fatal: ticket was already created. Log but don't fail.

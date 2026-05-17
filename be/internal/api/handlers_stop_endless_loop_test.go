@@ -53,9 +53,9 @@ func seedEndlessLoopInstance(t *testing.T, s *Server, projectID, instanceID, sco
 
 	if _, err := s.pool.Exec(
 		`INSERT INTO workflow_instances
-			(id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count,
+			(id, project_id, ticket_id, workflow_id, scope_type, status, retry_count,
 			endless_loop, stop_endless_loop_after_iteration, created_at, updated_at)
-			VALUES (?, ?, '', 'wf-test', ?, ?, '{}', 0, ?, ?, ?, ?)`,
+			VALUES (?, ?, '', 'wf-test', ?, ?, 0, ?, ?, ?, ?)`,
 		instanceID, projectID, scopeType, status, endlessLoop, stop, now, now,
 	); err != nil {
 		t.Fatalf("seed wfi: %v", err)

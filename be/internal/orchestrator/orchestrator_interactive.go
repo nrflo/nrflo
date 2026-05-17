@@ -284,16 +284,13 @@ func handlePlanModePostStep(sessionID, projectRoot string, pool *db.Pool, wfiID 
 		return fmt.Errorf("no plan file found for session %s", sessionID)
 	}
 
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clk)
-	wi, err := wfiRepo.Get(wfiID)
-	if err != nil {
-		return fmt.Errorf("failed to get workflow instance: %w", err)
+	findingRepo := repo.NewFindingRepo(pool, clk)
+	instrVal, _ := json.Marshal(planContent)
+	if err := findingRepo.Upsert("workflow_instance", wfiID, "user_instructions", instrVal,
+		repo.Denorm{WorkflowInstanceID: wfiID},
+		repo.Actor{Source: "orchestrator"}); err != nil {
+		return fmt.Errorf("failed to store user_instructions finding: %w", err)
 	}
-
-	findings := wi.GetFindings()
-	findings["user_instructions"] = planContent
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
 
 	if err := repo.NewAgentSessionRepo(pool, clk).UpdateStatusToInteractiveCompleted(sessionID); err != nil {
 		logger.Error(context.Background(), "failed to mark planner session interactive_completed", "session_id", sessionID, "err", err)

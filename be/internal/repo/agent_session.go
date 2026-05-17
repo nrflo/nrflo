@@ -23,7 +23,7 @@ func NewAgentSessionRepo(database db.Querier, clk clock.Clock) *AgentSessionRepo
 }
 
 const sessionCols = `id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-	model_id, status, result, result_reason, pid, findings,
+	model_id, status, result, result_reason, pid,
 	context_left, ancestor_session_id, spawn_command, prompt, system_prompt,
 	restart_count, nudge_count, config, started_at, ended_at, spawn_token, effective_mode, created_at, updated_at`
 
@@ -32,7 +32,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 	var createdAt, updatedAt string
 	err := scanner.Scan(
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
-		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
+		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &s.SpawnToken, &s.EffectiveMode, &createdAt, &updatedAt,
 	)
@@ -46,7 +46,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 
 // sessionColsWithWorkflow returns columns for JOINed queries that include workflow_id
 const sessionColsJoined = `s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
-	s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+	s.model_id, s.status, s.result, s.result_reason, s.pid,
 	s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
 	s.restart_count, s.nudge_count, s.config, s.started_at, s.ended_at, s.spawn_token, s.effective_mode, s.created_at, s.updated_at, wi.workflow_id`
 
@@ -55,7 +55,7 @@ func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.
 	var createdAt, updatedAt string
 	err := scanner.Scan(
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
-		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
+		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &s.SpawnToken, &s.EffectiveMode, &createdAt, &updatedAt, &s.Workflow,
 	)
@@ -75,7 +75,7 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 
 	_, err := r.db.Exec(`
 		INSERT INTO agent_sessions (`+sessionCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		strings.ToLower(session.ProjectID),
 		strings.ToLower(session.TicketID),
@@ -87,7 +87,6 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 		session.Result,
 		session.ResultReason,
 		session.PID,
-		session.Findings,
 		session.ContextLeft,
 		session.AncestorSessionID,
 		session.SpawnCommand,
@@ -295,16 +294,6 @@ func (r *AgentSessionRepo) UpdateResult(id, resultVal, reason string) error {
 	return err
 }
 
-// UpdateFindings updates the findings JSON field
-func (r *AgentSessionRepo) UpdateFindings(id string, findings string) error {
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	_, err := r.db.Exec(
-		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
-		sql.NullString{String: findings, Valid: findings != ""},
-		now, id)
-	return err
-}
-
 // SetEndedAt sets the ended_at timestamp
 func (r *AgentSessionRepo) SetEndedAt(id string) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
@@ -380,7 +369,7 @@ func (r *AgentSessionRepo) DeleteByTicket(projectID, ticketID string) error {
 func (r *AgentSessionRepo) ResetSingleAgentSession(wfiID, phaseAgentID string) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.Exec(
-		`UPDATE agent_sessions SET status = 'callback', findings = '{}', ended_at = COALESCE(ended_at, ?), updated_at = ?
+		`UPDATE agent_sessions SET status = 'callback', ended_at = COALESCE(ended_at, ?), updated_at = ?
 		WHERE workflow_instance_id = ? AND phase = ? AND status NOT IN ('running', 'continued')`,
 		now, now, wfiID, phaseAgentID)
 	return err
@@ -401,7 +390,7 @@ func (r *AgentSessionRepo) ResetAgentSessionsInWorkflow(wfiID string, phases []s
 		args = append(args, p)
 	}
 	query := fmt.Sprintf(
-		`UPDATE agent_sessions SET status = 'callback', findings = '{}', ended_at = COALESCE(ended_at, ?), updated_at = ?
+		`UPDATE agent_sessions SET status = 'callback', ended_at = COALESCE(ended_at, ?), updated_at = ?
 		WHERE workflow_instance_id = ? AND phase IN (%s) AND status NOT IN ('running', 'continued')`,
 		strings.Join(placeholders, ","))
 	_, err := r.db.Exec(query, args...)
@@ -433,7 +422,7 @@ func (r *AgentSessionRepo) ListFinished(f ListFinishedFilter, page, perPage int)
 	offset := (page - 1) * perPage
 	rows, err := r.db.Query(`
 		SELECT s.id, s.project_id, s.agent_type, s.model_id, s.status,
-		       s.started_at, s.ended_at, s.updated_at, s.findings,
+		       s.started_at, s.ended_at, s.updated_at,
 		       s.effective_mode,
 		       wi.workflow_id, s.workflow_instance_id, wi.scheduled_task_id,
 		       ad.execution_mode
@@ -459,7 +448,7 @@ func (r *AgentSessionRepo) ListFinished(f ListFinishedFilter, page, perPage int)
 		row := &model.AgentSessionLogRow{}
 		err := rows.Scan(
 			&row.SessionID, &row.ProjectID, &row.AgentType, &row.ModelID, &row.Status,
-			&row.StartedAt, &row.EndedAt, &row.UpdatedAt, &row.Findings,
+			&row.StartedAt, &row.EndedAt, &row.UpdatedAt,
 			&row.EffectiveMode,
 			&row.WorkflowID, &row.WorkflowInstanceID, &row.ScheduledTaskID,
 			&row.ExecutionMode,
@@ -477,7 +466,7 @@ func (r *AgentSessionRepo) ListFinished(f ListFinishedFilter, page, perPage int)
 func (r *AgentSessionRepo) ListLiveByProject(projectID string) ([]*model.AgentSessionLogRow, error) {
 	rows, err := r.db.Query(`
 		SELECT s.id, s.project_id, s.agent_type, s.model_id, s.status,
-		       s.started_at, s.ended_at, s.updated_at, s.findings,
+		       s.started_at, s.ended_at, s.updated_at,
 		       s.effective_mode, s.pid,
 		       wi.workflow_id, s.workflow_instance_id, wi.scheduled_task_id,
 		       ad.execution_mode
@@ -503,7 +492,7 @@ func (r *AgentSessionRepo) ListLiveByProject(projectID string) ([]*model.AgentSe
 		row := &model.AgentSessionLogRow{}
 		err := rows.Scan(
 			&row.SessionID, &row.ProjectID, &row.AgentType, &row.ModelID, &row.Status,
-			&row.StartedAt, &row.EndedAt, &row.UpdatedAt, &row.Findings,
+			&row.StartedAt, &row.EndedAt, &row.UpdatedAt,
 			&row.EffectiveMode, &row.PID,
 			&row.WorkflowID, &row.WorkflowInstanceID, &row.ScheduledTaskID,
 			&row.ExecutionMode,

@@ -71,10 +71,10 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 
 	// Create active workflow for TESTPROJ-001
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, parent_session, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, parent_session, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"wf-1", "testproj", "testproj-001", "feature", "active",
-		"{}", 0, sql.NullString{}, now, now)
+		0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
 		t.Fatalf("failed to create workflow instance 1: %v", err)
@@ -105,10 +105,10 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 
 	// Create completed workflow for TESTPROJ-003
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, parent_session, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, parent_session, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"wf-3", "testproj", "testproj-003", "bugfix", "completed",
-		"{}", 0, sql.NullString{}, now, now)
+		0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
 		t.Fatalf("failed to create workflow instance 3: %v", err)
@@ -240,10 +240,10 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 
 	// Create active workflow for PROJ2-001
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, parent_session, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, parent_session, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"wf-prog", "testproj2", "proj2-001", "feature", "active",
-		"{}", 0, sql.NullString{}, now, now)
+		0, sql.NullString{}, now, now)
 	if err != nil {
 		database.Close()
 		t.Fatalf("failed to create workflow instance: %v", err)

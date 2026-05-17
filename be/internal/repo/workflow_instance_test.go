@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -31,8 +30,6 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 	repo := NewWorkflowInstanceRepo(pool, clock.Real())
 
 	// Create a workflow instance
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	wi := &model.WorkflowInstance{
 		ID:         "test-wfi",
 		ProjectID:  "test-project",
@@ -40,7 +37,6 @@ func TestUpdateStatusToProjectCompleted(t *testing.T) {
 		WorkflowID: "test-workflow",
 		ScopeType:  "project",
 		Status:     model.WorkflowInstanceActive,
-		Findings:   string(findings),
 	}
 
 	if err := repo.Create(wi); err != nil {
@@ -97,7 +93,6 @@ func TestCreate_ScheduledTaskID_RoundTrip(t *testing.T) {
 			WorkflowID:      "wf-sched",
 			ScopeType:       "project",
 			Status:          model.WorkflowInstanceActive,
-			Findings:        "{}",
 			ScheduledTaskID: "task-abc",
 		}
 		if err := repo.Create(wi); err != nil {
@@ -136,7 +131,6 @@ func TestCreate_ScheduledTaskID_RoundTrip(t *testing.T) {
 			WorkflowID: "wf-nosched",
 			ScopeType:  "project",
 			Status:     model.WorkflowInstanceActive,
-			Findings:   "{}",
 			// ScheduledTaskID intentionally empty
 		}
 		if err := repo.Create(wi); err != nil {
@@ -192,8 +186,6 @@ func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 		{"wfi-proj-completed", "wf-proj-completed", model.WorkflowInstanceProjectCompleted},
 	}
 
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	for _, inst := range instances {
 		_, err = pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
 			inst.workflowID, projectID, "Test Workflow", "project")
@@ -208,7 +200,6 @@ func TestListByProjectScopeIncludesAllStatuses(t *testing.T) {
 			WorkflowID: inst.workflowID,
 			ScopeType:  "project",
 			Status:     inst.status,
-			Findings:   string(findings),
 		}
 		if err := repo.Create(wi); err != nil {
 			t.Fatalf("failed to create workflow instance %s: %v", inst.id, err)

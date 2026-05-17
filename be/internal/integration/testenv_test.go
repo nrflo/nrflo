@@ -230,8 +230,8 @@ func (e *TestEnv) InitWorkflowWithID(t *testing.T, ticketID, wfiID string) {
 	now := e.Clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := e.Pool.Exec(`
 		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status,
-			findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, ?, 'test', 'ticket', 'active', '{}', 0, ?, ?)`,
+			retry_count, created_at, updated_at)
+		VALUES (?, ?, ?, 'test', 'ticket', 'active', 0, ?, ?)`,
 		wfiID, e.ProjectID, ticketID, now, now)
 	if err != nil {
 		t.Fatalf("failed to init workflow with ID %s: %v", wfiID, err)
@@ -258,10 +258,10 @@ func (e *TestEnv) InsertAgentSession(t *testing.T, id, ticketID, wfiID, phase, a
 	now := e.Clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := e.Pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			model_id, status, result, result_reason, pid, findings,
+			model_id, status, result, result_reason, pid,
 			context_left, ancestor_session_id, spawn_command, prompt,
 			restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		id, e.ProjectID, ticketID, wfiID, phase, agentType,
 		nullStr(modelID),
 		now, now, now,

@@ -93,10 +93,10 @@ func TestWorkflowsTableSchemaAfterMigration018(t *testing.T) {
 func TestWorkflowInstancesTableSchemaAfterMigration018(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Expected columns (no category, no phase columns after migration 000028)
+	// Expected columns (no category, no phase columns after migration 000028, no findings after 000110)
 	expectedColumns := []string{
 		"id", "project_id", "ticket_id", "workflow_id", "scope_type", "status",
-		"findings", "retry_count",
+		"retry_count",
 		"parent_session", "created_at", "updated_at",
 	}
 

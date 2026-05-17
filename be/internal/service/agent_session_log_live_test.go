@@ -30,7 +30,7 @@ func setupLiveTestEnv(t *testing.T) *liveTestEnv {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	mustExecLiveSvc(t, pool, `INSERT INTO projects (id, name, created_at, updated_at) VALUES ('live-proj', 'P', ?, ?)`, now, now)
 	mustExecLiveSvc(t, pool, `INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('live-proj', 'live-wf', '', 'project', ?, ?)`, now, now)
-	mustExecLiveSvc(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('live-wfi', 'live-proj', '', 'live-wf', 'active', 'project', '{}', ?, ?)`, now, now)
+	mustExecLiveSvc(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('live-wfi', 'live-proj', '', 'live-wf', 'active', 'project', ?, ?)`, now, now)
 
 	return &liveTestEnv{pool: pool, projID: "live-proj", wfiID: "live-wfi"}
 }

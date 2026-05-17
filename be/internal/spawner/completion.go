@@ -2,7 +2,6 @@ package spawner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"syscall"
 	"time"
@@ -215,41 +214,44 @@ func (s *Spawner) copyFindingsForContinuation(ctx context.Context, oldSessionID,
 	if pool == nil {
 		return
 	}
-	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
+	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
 
-	oldSession, err := sessionRepo.Get(oldSessionID)
+	oldFindings, err := findingRepo.GetOwn("session", oldSessionID)
+	if err != nil || len(oldFindings) == 0 {
+		return
+	}
+
+	newFindings, err := findingRepo.GetOwn("session", newSessionID)
 	if err != nil {
-		logger.Warn(ctx, "findings carryover: failed to load old session", "old_session_id", oldSessionID, "err", err)
+		logger.Warn(ctx, "findings carryover: failed to load new session findings", "new_session_id", newSessionID, "err", err)
 		return
 	}
 
-	oldMap := oldSession.GetFindings()
-	if len(oldMap) == 0 {
-		return
-	}
-
+	// Load new session for denorm
+	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	newSession, err := sessionRepo.Get(newSessionID)
 	if err != nil {
 		logger.Warn(ctx, "findings carryover: failed to load new session", "new_session_id", newSessionID, "err", err)
 		return
 	}
+	modelID := ""
+	if newSession.ModelID.Valid {
+		modelID = newSession.ModelID.String
+	}
+	denorm := repo.Denorm{
+		ProjectID:          newSession.ProjectID,
+		WorkflowInstanceID: newSession.WorkflowInstanceID,
+		AgentType:          newSession.AgentType,
+		ModelID:            modelID,
+	}
+	actor := repo.Actor{Source: "system", ID: "continuation"}
 
-	newMap := newSession.GetFindings()
-
-	for k, v := range oldMap {
-		if _, exists := newMap[k]; !exists {
-			newMap[k] = v
+	for k, v := range oldFindings {
+		if _, exists := newFindings[k]; !exists {
+			if err := findingRepo.Upsert("session", newSessionID, k, v, denorm, actor); err != nil {
+				logger.Warn(ctx, "findings carryover: failed to copy key", "key", k, "err", err)
+			}
 		}
-	}
-
-	jsonBytes, err := json.Marshal(newMap)
-	if err != nil {
-		logger.Warn(ctx, "findings carryover: failed to marshal merged findings", "new_session_id", newSessionID, "err", err)
-		return
-	}
-
-	if err := sessionRepo.UpdateFindings(newSessionID, string(jsonBytes)); err != nil {
-		logger.Warn(ctx, "findings carryover: failed to persist merged findings", "new_session_id", newSessionID, "err", err)
 	}
 }
 

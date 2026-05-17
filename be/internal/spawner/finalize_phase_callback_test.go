@@ -13,14 +13,21 @@ import (
 	"be/internal/repo"
 )
 
-// mustMarshal marshals data to JSON or fails the test
-func mustMarshal(t *testing.T, data interface{}) string {
+// setSessionFindingsMap upserts each key from a map into the FindingRepo for scope=session.
+func setSessionFindingsMap(t *testing.T, env *testEnv, sessionID string, findings map[string]interface{}) {
 	t.Helper()
-	b, err := json.Marshal(data)
-	if err != nil {
-		t.Fatalf("failed to marshal: %v", err)
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{WorkflowInstanceID: env.wfiID}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setSessionFindingsMap: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("setSessionFindingsMap: Upsert key %q: %v", k, err)
+		}
 	}
-	return string(b)
 }
 
 // createSessionWithID creates a test session with a specific ID
@@ -58,8 +65,7 @@ func TestFinalizePhase_CallbackDetection(t *testing.T) {
 		"callback_level":        1,
 		"callback_instructions": "Fix the implementation bug",
 	}
-	findingsJSON := mustMarshal(t, findings)
-	sessionRepo.UpdateFindings(env.sessionID, findingsJSON)
+	setSessionFindingsMap(t, env, env.sessionID, findings)
 	sessionRepo.UpdateResult(env.sessionID, "callback", "explicit")
 
 	// Create completed process info with CALLBACK finalStatus
@@ -118,8 +124,7 @@ func TestFinalizePhase_CallbackLevelZero(t *testing.T) {
 		"callback_level":        0,
 		"callback_instructions": "Restart from beginning",
 	}
-	findingsJSON := mustMarshal(t, findings)
-	sessionRepo.UpdateFindings(env.sessionID, findingsJSON)
+	setSessionFindingsMap(t, env, env.sessionID, findings)
 	sessionRepo.UpdateResult(env.sessionID, "callback", "explicit")
 
 	cmd := exec.Command("true")
@@ -168,8 +173,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 		"callback_level": 2,
 		// No callback_instructions
 	}
-	findingsJSON := mustMarshal(t, findings)
-	sessionRepo.UpdateFindings(env.sessionID, findingsJSON)
+	setSessionFindingsMap(t, env, env.sessionID, findings)
 	sessionRepo.UpdateResult(env.sessionID, "callback", "explicit")
 
 	cmd := exec.Command("true")
@@ -227,8 +231,7 @@ func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
 		"callback_level":        1,
 		"callback_instructions": "Callback from multi-agent layer",
 	}
-	findingsJSON := mustMarshal(t, findings)
-	sessionRepo.UpdateFindings(sess2, findingsJSON)
+	setSessionFindingsMap(t, env, sess2, findings)
 	sessionRepo.UpdateResult(sess2, "callback", "explicit")
 
 	cmd1 := exec.Command("true")
@@ -421,8 +424,7 @@ func TestFinalizePhase_CallbackLevelFloat(t *testing.T) {
 		"callback_level":        float64(3),
 		"callback_instructions": "Float level test",
 	}
-	findingsJSON := mustMarshal(t, findings)
-	sessionRepo.UpdateFindings(env.sessionID, findingsJSON)
+	setSessionFindingsMap(t, env, env.sessionID, findings)
 	sessionRepo.UpdateResult(env.sessionID, "callback", "explicit")
 
 	cmd := exec.Command("true")

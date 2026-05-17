@@ -7,6 +7,17 @@ import (
 	"be/internal/repo"
 )
 
+// rawFindingStr extracts a string value from a raw findings map.
+func rawFindingStr(raw map[string]json.RawMessage, key string) string {
+	v, ok := raw[key]
+	if !ok {
+		return ""
+	}
+	var s string
+	json.Unmarshal(v, &s) //nolint:errcheck
+	return s
+}
+
 func (h *Handler) handleScript(ctx context.Context, req Request, action string) Response {
 	switch action {
 	case "context":
@@ -41,19 +52,16 @@ func (h *Handler) handleScriptContext(_ context.Context, req Request) Response {
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 	}
 
-	wfiFindings := wfi.GetFindings()
-	sessionFindings := session.GetFindings()
+	findingRepo := repo.NewFindingRepo(h.pool, h.clk)
+	wfiRaw, _ := findingRepo.GetOwn("workflow_instance", wfi.ID)
+	sessionRaw, _ := findingRepo.GetOwn("session", params.SessionID)
 
-	userInstructions := ""
-	if v, ok := wfiFindings["user_instructions"]; ok {
-		if s, ok := v.(string); ok {
-			userInstructions = s
-		}
-	}
+	userInstructions := rawFindingStr(wfiRaw, "user_instructions")
 
 	var callbackInfo interface{}
-	if v, ok := wfiFindings["_callback"]; ok {
-		if m, ok := v.(map[string]interface{}); ok {
+	if cbRaw, ok := wfiRaw["_callback"]; ok {
+		var m map[string]interface{}
+		if json.Unmarshal(cbRaw, &m) == nil {
 			if instr, ok := m["instructions"].(string); ok && instr != "" {
 				callbackInfo = map[string]interface{}{
 					"instructions": instr,
@@ -64,12 +72,7 @@ func (h *Handler) handleScriptContext(_ context.Context, req Request) Response {
 		}
 	}
 
-	previousData := ""
-	if v, ok := sessionFindings["to_resume"]; ok {
-		if s, ok := v.(string); ok {
-			previousData = s
-		}
-	}
+	previousData := rawFindingStr(sessionRaw, "to_resume")
 
 	ticketID := session.TicketID
 	ticketTitle := ""

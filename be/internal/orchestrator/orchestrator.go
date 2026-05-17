@@ -46,7 +46,7 @@ type RunRequest struct {
 	Force                 bool                     `json:"force"`                       // If true, bypass concurrent ticket workflow guard
 	EndlessLoop           bool                     `json:"endless_loop"`                // Project-scope only: auto re-run on successful completion until stopped or failed
 	ScheduledTaskID       string                   `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
-	SeedFindings          map[string]string        `json:"seed_findings,omitempty"`     // Pre-populate workflow_instances.findings at create time
+	SeedFindings          map[string]string        `json:"seed_findings,omitempty"`     // Pre-seed findings rows at scope=workflow_instance on run start
 	InputArtifacts        []types.InputArtifactRef `json:"input_artifacts,omitempty"`   // Staged uploads to attach at launch time
 	ChainDepth            int                      `json:"-"`                           // next_workflow_on_success recursion depth (not persisted)
 }
@@ -292,15 +292,15 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Store user instructions and orchestration status in findings
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
-	findings := wi.GetFindings()
+	findingRepo := repo.NewFindingRepo(pool, o.clock)
+	wfiDenorm := repo.Denorm{ProjectID: wi.ProjectID, WorkflowInstanceID: wi.ID}
+	orchActor := repo.Actor{Source: "orchestrator"}
 	if req.Instructions != "" {
-		findings["user_instructions"] = req.Instructions
+		instrVal, _ := json.Marshal(req.Instructions)
+		findingRepo.Upsert("workflow_instance", wi.ID, "user_instructions", instrVal, wfiDenorm, orchActor) //nolint:errcheck
 	}
-	findings["_orchestration"] = map[string]interface{}{
-		"status": "running",
-	}
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
+	orchVal, _ := json.Marshal(map[string]interface{}{"status": "running"})
+	findingRepo.Upsert("workflow_instance", wi.ID, "_orchestration", orchVal, wfiDenorm, orchActor) //nolint:errcheck
 
 	// Persist worktree info if available
 	if wt != nil {
@@ -736,12 +736,11 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	wfiRepo.UpdateRetryCount(wi.ID, wi.RetryCount+1)
 
 	// Update orchestration status in findings
-	findings := wi.GetFindings()
-	findings["_orchestration"] = map[string]interface{}{
-		"status": "running",
-	}
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wi.ID, string(findingsJSON))
+	retryFindingRepo := repo.NewFindingRepo(pool, o.clock)
+	retryOrchVal, _ := json.Marshal(map[string]interface{}{"status": "running"})
+	retryFindingRepo.Upsert("workflow_instance", wi.ID, "_orchestration", retryOrchVal, //nolint:errcheck
+		repo.Denorm{ProjectID: wi.ProjectID, WorkflowInstanceID: wi.ID},
+		repo.Actor{Source: "orchestrator"})
 
 	// Persist worktree info if available
 	if wt != nil {
@@ -1826,7 +1825,6 @@ func (o *Orchestrator) handleCallback(
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
 	asRepo := repo.NewAgentSessionRepo(database, o.clock)
 
 	// Reset all sessions in the plan's scope (single call)
@@ -1855,19 +1853,18 @@ func (o *Orchestrator) handleCallback(
 	}
 
 	// Persist _callback finding
-	wi, err := wfiRepo.Get(wfiID)
-	if err == nil {
-		findings := wi.GetFindings()
-		findings["_callback"] = map[string]interface{}{
-			"plan":         planData,
-			"resume_layer": plan.resumeLayer,
-			"requests":     reqData,
-			"from_layer":   originatorLayer,
-			"instructions": legacyInstr, // template variable ${CALLBACK_INSTRUCTIONS}
-		}
-		findingsJSON, _ := json.Marshal(findings)
-		wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
+	cbFindingRepo := repo.NewFindingRepo(pool, o.clock)
+	cbData := map[string]interface{}{
+		"plan":         planData,
+		"resume_layer": plan.resumeLayer,
+		"requests":     reqData,
+		"from_layer":   originatorLayer,
+		"instructions": legacyInstr, // template variable ${CALLBACK_INSTRUCTIONS}
 	}
+	cbVal, _ := json.Marshal(cbData)
+	cbFindingRepo.Upsert("workflow_instance", wfiID, "_callback", cbVal, //nolint:errcheck
+		repo.Denorm{ProjectID: req.ProjectID, WorkflowInstanceID: wfiID},
+		repo.Actor{Source: "orchestrator"})
 
 	// Broadcast single enriched event
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCallback, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
@@ -1902,17 +1899,9 @@ func (o *Orchestrator) clearCallbackMetadata(ctx context.Context, wfiID string) 
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
-	wi, err := wfiRepo.Get(wfiID)
-	if err != nil {
-		logger.Error(ctx, "failed to load WFI to clear callback metadata", "err", err)
-		return
-	}
-
-	findings := wi.GetFindings()
-	delete(findings, "_callback")
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
+	findingRepo := repo.NewFindingRepo(pool, o.clock)
+	findingRepo.DeleteKeys("workflow_instance", wfiID, []string{"_callback"}, //nolint:errcheck
+		repo.Actor{Source: "orchestrator"})
 }
 
 // layerGroup holds phases that share the same layer number.
@@ -1984,7 +1973,7 @@ func (o *Orchestrator) markCompleted(wfiID string, req RunRequest) (finalResult 
 		}
 	}
 
-	finalResult = service.ExtractWorkflowFinalResultByInstanceID(pool, wfiID)
+	finalResult = service.ExtractWorkflowFinalResultByInstanceID(pool, wfiID, o.clock)
 	data := map[string]interface{}{"instance_id": wfiID}
 	if finalResult != "" {
 		data["workflow_final_result"] = finalResult
@@ -2046,18 +2035,11 @@ func (o *Orchestrator) updateOrchestrationStatus(wfiID, status string) {
 	defer database.Close()
 
 	pool := db.WrapAsPool(database)
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, o.clock)
-	wi, err := wfiRepo.Get(wfiID)
-	if err != nil {
-		return
-	}
-
-	findings := wi.GetFindings()
-	findings["_orchestration"] = map[string]interface{}{
-		"status": status,
-	}
-	findingsJSON, _ := json.Marshal(findings)
-	wfiRepo.UpdateFindings(wfiID, string(findingsJSON))
+	findingRepo := repo.NewFindingRepo(pool, o.clock)
+	val, _ := json.Marshal(map[string]interface{}{"status": status})
+	findingRepo.Upsert("workflow_instance", wfiID, "_orchestration", val, //nolint:errcheck
+		repo.Denorm{WorkflowInstanceID: wfiID},
+		repo.Actor{Source: "orchestrator"})
 }
 
 // convertToSpawnerWorkflows converts service types to spawner types.

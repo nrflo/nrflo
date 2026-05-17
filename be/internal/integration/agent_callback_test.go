@@ -4,9 +4,31 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
+	"be/internal/repo"
 	"be/internal/types"
 )
+
+// getSessionFindings returns the findings for a session as map[string]interface{},
+// matching the semantics of the old session.GetFindings() method.
+func getSessionFindings(t *testing.T, env *TestEnv, sessionID string) map[string]interface{} {
+	t.Helper()
+	fr := repo.NewFindingRepo(env.Pool, clock.Real())
+	raw, err := fr.GetOwn("session", sessionID)
+	if err != nil {
+		t.Fatalf("getSessionFindings: %v", err)
+	}
+	result := make(map[string]interface{})
+	for k, v := range raw {
+		var val interface{}
+		if err := json.Unmarshal(v, &val); err != nil {
+			t.Fatalf("getSessionFindings: unmarshal %s: %v", k, err)
+		}
+		result[k] = val
+	}
+	return result
+}
 
 func TestAgentCallback(t *testing.T) {
 	env := NewTestEnv(t)
@@ -37,7 +59,7 @@ func TestAgentCallback(t *testing.T) {
 	}
 
 	// Verify callback_level finding is saved
-	findings := session.GetFindings()
+	findings := getSessionFindings(t, env, session.ID)
 	level, ok := findings["callback_level"]
 	if !ok {
 		t.Fatalf("expected callback_level finding to be set")
@@ -82,7 +104,7 @@ func TestAgentCallbackWithModel(t *testing.T) {
 	}
 
 	// Verify callback_level finding
-	findings := session.GetFindings()
+	findings := getSessionFindings(t, env, session.ID)
 	level, ok := findings["callback_level"]
 	if !ok {
 		t.Fatalf("expected callback_level finding to be set")
@@ -166,7 +188,7 @@ func TestAgentCallbackPreservesExistingFindings(t *testing.T) {
 		t.Fatalf("failed to get session: %v", err)
 	}
 
-	findings := session.GetFindings()
+	findings := getSessionFindings(t, env, session.ID)
 	if findings["callback_instructions"] != "Fix the bug in layer 0" {
 		t.Fatalf("expected callback_instructions to be preserved")
 	}
@@ -253,7 +275,7 @@ func TestAgentCallbackE2E(t *testing.T) {
 	}
 
 	// 4. Verify callback_level is saved by the CLI command
-	findings := session.GetFindings()
+	findings := getSessionFindings(t, env, session.ID)
 	level := findings["callback_level"].(float64)
 	if int(level) != 1 {
 		t.Fatalf("expected callback_level to be 1, got %v", level)
@@ -347,7 +369,7 @@ func TestAgentCallbackDifferentLevels(t *testing.T) {
 				t.Fatalf("failed to get session: %v", err)
 			}
 
-			findings := session.GetFindings()
+			findings := getSessionFindings(t, env, session.ID)
 			levelFloat := findings["callback_level"].(float64)
 			if int(levelFloat) != tc.level {
 				t.Fatalf("expected callback_level to be %d, got %v", tc.level, levelFloat)

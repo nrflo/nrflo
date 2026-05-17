@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"be/internal/clock"
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 )
@@ -64,11 +65,18 @@ func TestFindingsGet_LayerOnly_HappyPath(t *testing.T) {
 	// Insert a completed session with findings.
 	if _, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, pid, findings, context_left, restart_count, created_at, updated_at)
+			status, result, pid, context_left, restart_count, created_at, updated_at)
 		VALUES ('sess-layer', ?, 'LAYER-1', ?, 'analyzer', 'analyzer',
-			'completed', 'pass', NULL, '{"layer_key":"layer_val"}', NULL, 0, ?, ?)`,
+			'completed', 'pass', NULL, NULL, 0, ?, ?)`,
 		env.project, wfiID, now, now); err != nil {
 		t.Fatalf("insert agent_session: %v", err)
+	}
+	// Seed the finding via FindingRepo.
+	fr := repo.NewFindingRepo(env.pool, clock.Real())
+	if err := fr.Upsert("session", "sess-layer", "layer_key", json.RawMessage(`"layer_val"`),
+		repo.Denorm{WorkflowInstanceID: wfiID, AgentType: "analyzer"},
+		repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("upsert layer finding: %v", err)
 	}
 
 	layer := 0
@@ -142,11 +150,18 @@ func TestFindingsGet_BothNilLayer_OwnSessionRead(t *testing.T) {
 	sessionID := "sess-own-read"
 	if _, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, pid, findings, context_left, restart_count, created_at, updated_at)
+			status, result, pid, context_left, restart_count, created_at, updated_at)
 		VALUES (?, ?, 'OWN-1', ?, 'analyzer', 'analyzer',
-			'running', NULL, NULL, '{"my_key":"my_val"}', NULL, 0, ?, ?)`,
+			'running', NULL, NULL, NULL, 0, ?, ?)`,
 		sessionID, env.project, wfiID, now, now); err != nil {
 		t.Fatalf("insert session: %v", err)
+	}
+	// Seed the finding via FindingRepo.
+	frOwn := repo.NewFindingRepo(env.pool, clock.Real())
+	if err := frOwn.Upsert("session", sessionID, "my_key", json.RawMessage(`"my_val"`),
+		repo.Denorm{WorkflowInstanceID: wfiID, AgentType: "analyzer"},
+		repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("upsert own finding: %v", err)
 	}
 
 	// No layer, no agent_type → own-session read via session_id.

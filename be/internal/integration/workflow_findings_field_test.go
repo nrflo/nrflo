@@ -4,19 +4,24 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
+	"be/internal/repo"
 	"be/internal/types"
 )
 
-// setWorkflowInstanceFindings sets the findings JSON on a workflow instance via direct SQL.
+// setWorkflowInstanceFindings upserts each key of findings into the findings table
+// for the workflow_instance scope.
 func setWorkflowInstanceFindings(t *testing.T, env *TestEnv, wfiID string, findings map[string]interface{}) {
 	t.Helper()
-	data, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("setWorkflowInstanceFindings: marshal: %v", err)
-	}
-	_, err = env.Pool.Exec(`UPDATE workflow_instances SET findings = ? WHERE id = ?`, string(data), wfiID)
-	if err != nil {
-		t.Fatalf("setWorkflowInstanceFindings: exec: %v", err)
+	fr := repo.NewFindingRepo(env.Pool, clock.Real())
+	for k, v := range findings {
+		val, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setWorkflowInstanceFindings: marshal %s: %v", k, err)
+		}
+		if err := fr.Upsert("workflow_instance", wfiID, k, json.RawMessage(val), repo.Denorm{}, repo.Actor{Source: "system"}); err != nil {
+			t.Fatalf("setWorkflowInstanceFindings: upsert %s: %v", k, err)
+		}
 	}
 }
 

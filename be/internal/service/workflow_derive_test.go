@@ -51,8 +51,8 @@ func setupDeriveTestEnv(t *testing.T) (*db.Pool, *WorkflowService, string) {
 
 	wfiID := "wfi-test"
 	if _, err = pool.Exec(
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		 VALUES (?, ?, '', 'test-wf', 'ticket', 'active', '{}', 0, ?, ?)`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		 VALUES (?, ?, '', 'test-wf', 'ticket', 'active', 0, ?, ?)`,
 		wfiID, projectID, now, now); err != nil {
 		t.Fatalf("workflow_instance insert: %v", err)
 	}
@@ -75,9 +75,9 @@ func insertSession(t *testing.T, pool *db.Pool, id, wfiID, agentType, status, re
 	}
 	_, err := pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, result_reason, pid, findings, context_left, ancestor_session_id,
+			status, result, result_reason, pid, context_left, ancestor_session_id,
 			spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, 'test-proj', '', ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		VALUES (?, 'test-proj', '', ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		id, wfiID, agentType, agentType, status, resultVal, createdAt, createdAt, now)
 	if err != nil {
 		t.Fatalf("failed to insert session %s: %v", id, err)
@@ -400,8 +400,8 @@ func TestDerivePhaseStatuses_ThreeLayerSkipInference(t *testing.T) {
 
 	wfiID2 := "wfi-test-3"
 	_, err = pool.Exec(
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		 VALUES (?, 'test-proj', '', ?, 'ticket', 'active', '{}', 0, ?, ?)`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		 VALUES (?, 'test-proj', '', ?, 'ticket', 'active', 0, ?, ?)`,
 		wfiID2, wfID, now, now)
 	if err != nil {
 		t.Fatalf("workflow_instance insert: %v", err)
@@ -455,8 +455,8 @@ func TestDerivePhaseStatuses_SessionForDifferentWFI(t *testing.T) {
 
 	// Insert session for a DIFFERENT workflow instance ID
 	_, err = pool.Exec(
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		 VALUES (?, 'test-proj', '', 'test-wf-other', 'ticket', 'active', '{}', 0, ?, ?)`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		 VALUES (?, 'test-proj', '', 'test-wf-other', 'ticket', 'active', 0, ?, ?)`,
 		"other-wfi", now, now)
 	if err != nil {
 		t.Fatalf("other wfi insert: %v", err)
@@ -508,9 +508,9 @@ func BenchmarkDerivePhaseStatuses(b *testing.B) {
 	for i := 0; i < 5; i++ {
 		pool.Exec(`
 			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-				status, result, result_reason, pid, findings, context_left, ancestor_session_id,
+				status, result, result_reason, pid, context_left, ancestor_session_id,
 				spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
-			VALUES (?, 'test-proj', '', ?, ?, ?, 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+			VALUES (?, 'test-proj', '', ?, ?, ?, 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 			fmt.Sprintf("sess-%d", i), wfiID, fmt.Sprintf("agent-%d", i), fmt.Sprintf("agent-%d", i),
 			now, now, now)
 	}
@@ -538,7 +538,7 @@ func setupDeriveTestEnvBench(b *testing.B) (*db.Pool, *WorkflowService, string) 
 	pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, 'Test', '/tmp', ?, ?)`, projectID, now, now)
 	pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES ('test-wf', ?, '', 'ticket', ?, ?)`, projectID, now, now)
 	wfiID := "bench-wfi"
-	pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at) VALUES (?, ?, '', 'test-wf', 'ticket', 'active', '{}', 0, ?, ?)`, wfiID, projectID, now, now)
+	pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at) VALUES (?, ?, '', 'test-wf', 'ticket', 'active', 0, ?, ?)`, wfiID, projectID, now, now)
 
 	svc := NewWorkflowService(pool, clock.Real())
 	return pool, svc, wfiID

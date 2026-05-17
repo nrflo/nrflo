@@ -240,32 +240,26 @@ func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) 
 		return false
 	}
 
-	var findingsRaw sql.NullString
-	err := pool.QueryRow("SELECT findings FROM agent_sessions WHERE id = ?", proc.sessionID).Scan(&findingsRaw)
+	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
+	findings, err := findingRepo.GetOwn("session", proc.sessionID)
 	if err != nil {
 		logger.Error(ctx, "failed to query findings", "err", err, "session_id", proc.sessionID)
 		return false
 	}
 
-	if !findingsRaw.Valid || findingsRaw.String == "" || findingsRaw.String == "{}" {
+	if len(findings) == 0 {
 		logger.Warn(ctx, "no findings saved by context-saver agent", "session_id", proc.sessionID)
 		return false
 	}
 
-	var findings map[string]interface{}
-	if json.Unmarshal([]byte(findingsRaw.String), &findings) != nil {
-		logger.Warn(ctx, "failed to parse findings JSON", "session_id", proc.sessionID)
-		return false
-	}
-
-	toResume, ok := findings["to_resume"]
+	rawVal, ok := findings["to_resume"]
 	if !ok {
 		logger.Warn(ctx, "findings saved but to_resume key missing", "keys_count", len(findings), "session_id", proc.sessionID)
 		return false
 	}
 
-	str, isStr := toResume.(string)
-	if !isStr || str == "" {
+	var str string
+	if json.Unmarshal(rawVal, &str) != nil || str == "" {
 		logger.Warn(ctx, "to_resume key present but empty or non-string", "session_id", proc.sessionID)
 		return false
 	}

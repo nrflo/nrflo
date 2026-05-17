@@ -18,8 +18,8 @@ func insertASLogsSessWithMode(t *testing.T, pool *db.Pool, id, wfiID, agentType,
 	ended := endedAt.UTC().Format(time.RFC3339Nano)
 	_, err := pool.Exec(`
 		INSERT INTO agent_sessions
-		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, findings, started_at, ended_at, effective_mode, created_at, updated_at)
-		VALUES (?, 'test-proj', '', ?, 'ph', ?, ?, '', ?, ?, ?, ?, ?)`,
+		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status, started_at, ended_at, effective_mode, created_at, updated_at)
+		VALUES (?, 'test-proj', '', ?, 'ph', ?, ?, ?, ?, ?, ?, ?)`,
 		id, wfiID, agentType, status, started, ended, effectiveMode, now, now,
 	)
 	if err != nil {

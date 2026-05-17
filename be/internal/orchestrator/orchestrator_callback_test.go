@@ -42,8 +42,7 @@ func TestHandleCallback_LevelMode(t *testing.T) {
 		t.Errorf("count = %d, want 2 (builder + verifier)", count)
 	}
 
-	wi := env.getWorkflowInstance(t, wfiID)
-	cb, ok := wi.GetFindings()["_callback"].(map[string]interface{})
+	cb, ok := getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	if !ok {
 		t.Fatal("expected _callback key in findings")
 	}
@@ -60,9 +59,6 @@ func TestHandleCallback_LevelMode(t *testing.T) {
 	sess, _ := asRepo.Get("sess-builder")
 	if sess.Status != model.AgentSessionCallback {
 		t.Errorf("builder status = %s, want callback", sess.Status)
-	}
-	if sess.Findings.String != "{}" {
-		t.Errorf("builder findings = %s, want {}", sess.Findings.String)
 	}
 
 	event := expectEvent(t, ch, ws.EventOrchestrationCallback, 2*time.Second)
@@ -103,7 +99,7 @@ func TestHandleCallback_AgentMode(t *testing.T) {
 		t.Errorf("count = %d, want 2", count)
 	}
 
-	cb, _ := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	cb, _ := getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	plan := cb["plan"].([]interface{})
 	if len(plan) != 2 {
 		t.Fatalf("plan len = %d, want 2", len(plan))
@@ -143,7 +139,7 @@ func TestHandleCallback_ChainMode(t *testing.T) {
 	if count != 2 {
 		t.Errorf("count = %d, want 2", count)
 	}
-	cb, _ := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	cb, _ := getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	if cb["resume_layer"] != float64(2) {
 		t.Errorf("resume_layer = %v, want 2", cb["resume_layer"])
 	}
@@ -175,7 +171,7 @@ func TestHandleCallback_MultipleRequests(t *testing.T) {
 		t.Fatal("expected true for merged callbacks")
 	}
 
-	cb, _ := env.getWorkflowInstance(t, wfiID).GetFindings()["_callback"].(map[string]interface{})
+	cb, _ := getWFIFindings(t, env, wfiID)["_callback"].(map[string]interface{})
 	// sorted by agentID: impl-a before impl-b
 	wantInstr := "impl-a says fix analyzer\n---\nimpl-b says fix analyzer"
 	if cb["instructions"] != wantInstr {

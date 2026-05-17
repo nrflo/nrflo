@@ -66,9 +66,9 @@ func seedAPISession(t *testing.T, dbPath, projectID, ticketID, sessionID, wfiID 
 	// Workflow instance (links ticket → workflow)
 	if _, err := database.Exec(`
 		INSERT OR IGNORE INTO workflow_instances
-			(id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		wfiID, projectID, ticketID, "api-wf", "ticket", "active", "{}", 0, now, now,
+			(id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		wfiID, projectID, ticketID, "api-wf", "ticket", "active", 0, now, now,
 	); err != nil {
 		t.Fatalf("seedAPISession: workflow_instance: %v", err)
 	}
@@ -77,10 +77,10 @@ func seedAPISession(t *testing.T, dbPath, projectID, ticketID, sessionID, wfiID 
 	if _, err := database.Exec(`
 		INSERT OR IGNORE INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			 status, result, result_reason, pid, findings,
+			 status, result, result_reason, pid,
 			 context_left, ancestor_session_id, spawn_command, prompt,
 			 restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		sessionID, projectID, ticketID, wfiID, "L0", "api-agent", now, now, now,
 	); err != nil {
 		t.Fatalf("seedAPISession: agent_session: %v", err)

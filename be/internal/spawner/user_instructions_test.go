@@ -99,16 +99,19 @@ func (e *spawnerTestEnv) initWorkflow(t *testing.T, ticketID string) string {
 	return id
 }
 
-// setFindings directly sets the findings JSON on a workflow instance.
+// setFindings upserts each key from a map into the FindingRepo for scope=workflow_instance.
 func (e *spawnerTestEnv) setFindings(t *testing.T, wfiID string, findings map[string]interface{}) {
 	t.Helper()
-	data, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
-	}
-	wfiRepo := repo.NewWorkflowInstanceRepo(e.pool, clock.Real())
-	if err := wfiRepo.UpdateFindings(wfiID, string(data)); err != nil {
-		t.Fatalf("failed to update findings: %v", err)
+	findingRepo := repo.NewFindingRepo(e.pool, clock.Real())
+	actor := repo.Actor{Source: "system"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("setFindings: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("workflow_instance", wfiID, k, json.RawMessage(b), repo.Denorm{}, actor); err != nil {
+			t.Fatalf("setFindings: Upsert key %q: %v", k, err)
+		}
 	}
 }
 

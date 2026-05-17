@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
+	"be/internal/repo"
+
 	"github.com/google/uuid"
 )
 
@@ -18,18 +21,21 @@ func TestClearCallbackMetadata(t *testing.T) {
 	// Create workflow instance with callback metadata in findings
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
 		VALUES ('wfi-cb-clear', ?, 'CB-CLEAR', 'test', 'active',
-		        '{"_callback":{"level":0,"instructions":"Fix it","from_layer":1,"from_agent":"builder"},"other_key":"other_value"}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	cbVal, _ := json.Marshal(map[string]interface{}{"level": 0, "instructions": "Fix it", "from_layer": 1, "from_agent": "builder"})
+	findingRepo.Upsert("workflow_instance", wfiID, "_callback", json.RawMessage(cbVal), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
+	findingRepo.Upsert("workflow_instance", wfiID, "other_key", json.RawMessage(`"other_value"`), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
+
 	// Verify _callback exists before clearing
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	if _, ok := findings["_callback"]; !ok {
 		t.Fatal("expected _callback to exist before clearing")
 	}
@@ -38,11 +44,10 @@ func TestClearCallbackMetadata(t *testing.T) {
 	}
 
 	// Clear callback metadata
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
 	// Verify _callback was removed
-	wi = env.getWorkflowInstance(t, wfiID)
-	findings = wi.GetFindings()
+	findings = getWFIFindings(t, env, wfiID)
 	if _, ok := findings["_callback"]; ok {
 		t.Error("expected _callback to be removed after clearing")
 	}
@@ -62,21 +67,22 @@ func TestClearCallbackMetadata_NoCallback(t *testing.T) {
 	// Create workflow instance without callback metadata
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
 		VALUES ('wfi-cb-noclear', ?, 'CB-NOCLEAR', 'test', 'active',
-		        '{"some_key":"some_value"}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	findingRepo.Upsert("workflow_instance", wfiID, "some_key", json.RawMessage(`"some_value"`), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
+
 	// Clear callback metadata (should be a no-op)
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
 	// Verify findings are unchanged
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	if findings["some_key"] != "some_value" {
 		t.Error("expected existing findings to be preserved")
 	}
@@ -92,9 +98,8 @@ func TestClearCallbackMetadata_EmptyFindings(t *testing.T) {
 	// Create workflow instance with empty findings
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
 		VALUES ('wfi-cb-empty', ?, 'CB-EMPTY', 'test', 'active',
-		        '{}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
@@ -102,11 +107,10 @@ func TestClearCallbackMetadata_EmptyFindings(t *testing.T) {
 	}
 
 	// Clear callback metadata (should be a no-op)
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
 	// Verify findings are still empty
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	if len(findings) != 0 {
 		t.Errorf("expected empty findings, got %d keys", len(findings))
 	}
@@ -119,7 +123,7 @@ func TestClearCallbackMetadata_InvalidWorkflowID(t *testing.T) {
 
 	// Try to clear callback metadata for non-existent workflow instance
 	// Should not panic, just log error
-	env.orch.clearCallbackMetadata(context.Background(),"nonexistent-wfi-id")
+	env.orch.clearCallbackMetadata(context.Background(), "nonexistent-wfi-id")
 
 	// No assertion needed - we're just verifying it doesn't panic
 }
@@ -138,21 +142,24 @@ func TestClearCallbackMetadata_ProjectScope(t *testing.T) {
 	// Create project-scoped workflow instance with callback metadata
 	var wfiID string
 	err = env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, retry_count, created_at, updated_at)
 		VALUES ('wfi-proj-clear', ?, '', 'test', 'active', 'project',
-		        '{"_callback":{"level":0,"instructions":"Project callback","from_agent":"verifier"},"project_key":"project_value"}',
 		        0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("failed to create project workflow instance: %v", err)
 	}
 
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	cbVal, _ := json.Marshal(map[string]interface{}{"level": 0, "instructions": "Project callback", "from_agent": "verifier"})
+	findingRepo.Upsert("workflow_instance", wfiID, "_callback", json.RawMessage(cbVal), repo.Denorm{}, repo.Actor{Source: "system"})     //nolint:errcheck
+	findingRepo.Upsert("workflow_instance", wfiID, "project_key", json.RawMessage(`"project_value"`), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
+
 	// Clear callback metadata
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
 	// Verify _callback was removed but other findings preserved
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	if _, ok := findings["_callback"]; ok {
 		t.Error("expected _callback to be removed from project workflow")
 	}
@@ -175,26 +182,24 @@ func TestClearCallbackMetadata_MultipleCallbackFields(t *testing.T) {
 		"from_layer":   3,
 		"from_agent":   "qa-verifier",
 	}
-	findingsData := map[string]interface{}{
-		"_callback":  callbackData,
-		"keep_this":  "value",
-		"and_this":   123,
-	}
-	findingsJSON, _ := json.Marshal(findingsData)
+	callbackJSON, _ := json.Marshal(callbackData)
 
-	var wfiID string
-	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES (?, ?, 'CB-MULTI', 'test', 'active',
-		        ?, 0, datetime('now'), datetime('now'))
-		RETURNING id`, uuid.New().String(), env.project, string(findingsJSON)).Scan(&wfiID)
+	wfiID := uuid.New().String()
+	_, err := env.pool.Exec(`
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
+		VALUES (?, ?, 'CB-MULTI', 'test', 'active', 0, datetime('now'), datetime('now'))`,
+		wfiID, env.project)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
 
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	findingRepo.Upsert("workflow_instance", wfiID, "_callback", json.RawMessage(callbackJSON), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
+	findingRepo.Upsert("workflow_instance", wfiID, "keep_this", json.RawMessage(`"value"`), repo.Denorm{}, repo.Actor{Source: "system"})    //nolint:errcheck
+	findingRepo.Upsert("workflow_instance", wfiID, "and_this", json.RawMessage(`123`), repo.Denorm{}, repo.Actor{Source: "system"})         //nolint:errcheck
+
 	// Verify all callback fields exist
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	callback, ok := findings["_callback"].(map[string]interface{})
 	if !ok {
 		t.Fatal("expected _callback to exist before clearing")
@@ -213,11 +218,10 @@ func TestClearCallbackMetadata_MultipleCallbackFields(t *testing.T) {
 	}
 
 	// Clear callback metadata
-	env.orch.clearCallbackMetadata(context.Background(),wfiID)
+	env.orch.clearCallbackMetadata(context.Background(), wfiID)
 
 	// Verify entire _callback key is removed (not just individual fields)
-	wi = env.getWorkflowInstance(t, wfiID)
-	findings = wi.GetFindings()
+	findings = getWFIFindings(t, env, wfiID)
 	if _, ok := findings["_callback"]; ok {
 		t.Error("expected entire _callback key to be removed")
 	}

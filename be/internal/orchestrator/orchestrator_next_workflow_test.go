@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -49,26 +48,35 @@ func TestMaybeStartNextOnSuccess_HappyPath(t *testing.T) {
 	}
 	env.orch.maybeStartNextOnSuccess(context.Background(), req, "the summary")
 
+	var newWfiID string
 	if !pollUntil(2*time.Second, func() bool {
-		return env.countProjectInstances(t, "next-wf") >= 1
+		return env.pool.QueryRow(
+			`SELECT id FROM workflow_instances
+			 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER('next-wf')`,
+			env.project,
+		).Scan(&newWfiID) == nil
 	}) {
 		t.Fatal("timeout: next-wf workflow_instances row was not created")
 	}
 
-	var scopeType, findingsJSON string
+	var scopeType string
 	if err := env.pool.QueryRow(
-		`SELECT scope_type, COALESCE(findings, '{}') FROM workflow_instances
-		 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER('next-wf')`,
-		env.project,
-	).Scan(&scopeType, &findingsJSON); err != nil {
-		t.Fatalf("query new instance: %v", err)
+		`SELECT scope_type FROM workflow_instances WHERE id = ?`, newWfiID,
+	).Scan(&scopeType); err != nil {
+		t.Fatalf("query scope_type: %v", err)
 	}
 	if scopeType != "project" {
 		t.Errorf("scope_type = %q, want 'project'", scopeType)
 	}
+
+	// Poll until user_instructions finding is stored (async, may lag instance creation).
 	var findings map[string]interface{}
-	if err := json.Unmarshal([]byte(findingsJSON), &findings); err != nil {
-		t.Fatalf("unmarshal findings: %v", err)
+	if !pollUntil(2*time.Second, func() bool {
+		findings = getWFIFindings(t, env, newWfiID)
+		_, ok := findings["user_instructions"]
+		return ok
+	}) {
+		t.Fatal("timeout: user_instructions finding not set on next-wf instance")
 	}
 	if findings["user_instructions"] != "the summary" {
 		t.Errorf("user_instructions = %v, want 'the summary'", findings["user_instructions"])

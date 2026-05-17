@@ -61,8 +61,8 @@ func seedProject(t *testing.T, database *db.DB, projectID, projectName string) s
 		t.Fatalf("seedProject workflow(%s): %v", projectID, err)
 	}
 	wfiID := "wfi-" + projectID
-	_, err = database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-		VALUES (?, ?, 'TKT-1', 'wf-1', 'active', 'ticket', '{}', datetime('now'), datetime('now'))`, wfiID, projectID)
+	_, err = database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+		VALUES (?, ?, 'TKT-1', 'wf-1', 'active', 'ticket', datetime('now'), datetime('now'))`, wfiID, projectID)
 	if err != nil {
 		t.Fatalf("seedProject wfi(%s): %v", projectID, err)
 	}

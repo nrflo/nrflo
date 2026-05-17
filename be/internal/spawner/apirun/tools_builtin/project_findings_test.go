@@ -18,7 +18,7 @@ func TestProjectFindingsAdd_PersistsAndBroadcasts(t *testing.T) {
 	}
 	var stored string
 	row := env.pool.QueryRow(
-		`SELECT value FROM project_findings WHERE project_id = ? AND key = ?`,
+		`SELECT value FROM findings WHERE scope='project' AND scope_id = ? AND key = ?`,
 		testProjectID, "arch")
 	if err := row.Scan(&stored); err != nil {
 		t.Fatalf("read project_findings: %v", err)
@@ -37,7 +37,7 @@ func TestProjectFindingsAddBulk_PersistsAndBroadcasts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoke: %v", err)
 	}
-	rows, err := env.pool.Query(`SELECT key FROM project_findings WHERE project_id = ?`, testProjectID)
+	rows, err := env.pool.Query(`SELECT key FROM findings WHERE scope='project' AND scope_id = ?`, testProjectID)
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestProjectFindingsAppend_PersistsAndBroadcasts(t *testing.T) {
 	}
 	var stored string
 	if err := env.pool.QueryRow(
-		`SELECT value FROM project_findings WHERE project_id = ? AND key = ?`,
+		`SELECT value FROM findings WHERE scope='project' AND scope_id = ? AND key = ?`,
 		testProjectID, "items").Scan(&stored); err != nil {
 		t.Fatalf("read: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestProjectFindingsDelete_PersistsAndBroadcasts(t *testing.T) {
 	}
 	var count int
 	_ = env.pool.QueryRow(
-		`SELECT COUNT(*) FROM project_findings WHERE project_id = ? AND key = ?`,
+		`SELECT COUNT(*) FROM findings WHERE scope='project' AND scope_id = ? AND key = ?`,
 		testProjectID, "k").Scan(&count)
 	if count != 0 {
 		t.Errorf("expected 0 rows after delete, got %d", count)

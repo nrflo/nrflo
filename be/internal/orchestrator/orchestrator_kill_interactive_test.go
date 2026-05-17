@@ -21,17 +21,17 @@ func insertInteractiveSession(t *testing.T, env *testEnv, wfiID, ticketID, sessi
 	_, err := env.pool.Exec(`
 		INSERT INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			 model_id, status, result, result_reason, pid, findings,
+			 model_id, status, result, result_reason, pid,
 			 context_left, ancestor_session_id, spawn_command, prompt,
 			 restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?,
-			?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?,
 			?, ?, ?, ?,
 			?, ?, ?, ?, ?)`,
 		sessionID, env.project, ticketID, wfiID, "test-phase", "test-agent",
 		sql.NullString{String: "claude:sonnet", Valid: true},
 		"user_interactive",
-		sql.NullString{}, sql.NullString{}, sql.NullInt64{}, sql.NullString{},
+		sql.NullString{}, sql.NullString{}, sql.NullInt64{},
 		sql.NullInt64{}, sql.NullString{}, sql.NullString{}, sql.NullString{},
 		0, sql.NullString{String: now, Valid: true}, sql.NullString{},
 		now, now,

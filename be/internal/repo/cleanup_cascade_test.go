@@ -2,7 +2,6 @@ package repo
 
 import (
 	"database/sql"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -43,8 +42,6 @@ func TestCleanupCascade(t *testing.T) {
 	wfiRepo := NewWorkflowInstanceRepo(pool, clock.Real())
 	asRepo := NewAgentSessionRepo(database, clock.Real())
 
-	findings, _ := json.Marshal(map[string]interface{}{})
-
 	// Create 3 completed workflow instances with different timestamps
 	now := time.Now().UTC()
 	instances := []struct {
@@ -60,8 +57,8 @@ func TestCleanupCascade(t *testing.T) {
 
 	for _, inst := range instances {
 		updatedAt := now.Add(inst.offset).Format(time.RFC3339Nano)
-		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			inst.id, "test-project", inst.ticketID, inst.workflowID, model.WorkflowInstanceCompleted, "ticket", string(findings), updatedAt, updatedAt)
+		_, err = pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			inst.id, "test-project", inst.ticketID, inst.workflowID, model.WorkflowInstanceCompleted, "ticket", updatedAt, updatedAt)
 		if err != nil {
 			t.Fatalf("failed to create workflow instance %s: %v", inst.id, err)
 		}

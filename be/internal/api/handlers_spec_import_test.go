@@ -126,22 +126,30 @@ func TestHandleStartSpecImport_Markdown_HappyPath(t *testing.T) {
 		t.Errorf("status = %v, want ready", resp["status"])
 	}
 
-	// Verify findings were seeded in DB.
+	// Verify findings were seeded in the findings table.
 	instanceID, _ := resp["instance_id"].(string)
-	var findingsJSON string
+	var specSourceVal string
 	err := s.pool.QueryRow(
-		`SELECT findings FROM workflow_instances WHERE id = ?`, instanceID,
-	).Scan(&findingsJSON)
+		`SELECT value FROM findings WHERE scope = 'workflow_instance' AND scope_id = ? AND key = '_spec_source'`,
+		instanceID,
+	).Scan(&specSourceVal)
 	if err != nil {
-		t.Fatalf("query findings: %v", err)
+		t.Fatalf("query _spec_source finding: %v", err)
 	}
-	var findings map[string]interface{}
-	json.Unmarshal([]byte(findingsJSON), &findings)
-	if findings["_spec_source"] != "markdown" {
-		t.Errorf("_spec_source = %v, want markdown", findings["_spec_source"])
+	var specSource string
+	json.Unmarshal([]byte(specSourceVal), &specSource)
+	if specSource != "markdown" {
+		t.Errorf("_spec_source = %v, want markdown", specSource)
 	}
-	if findings["_raw_spec"] == "" {
-		t.Error("_raw_spec should be non-empty")
+	var rawSpecVal string
+	if err := s.pool.QueryRow(
+		`SELECT value FROM findings WHERE scope = 'workflow_instance' AND scope_id = ? AND key = 'raw_spec'`,
+		instanceID,
+	).Scan(&rawSpecVal); err != nil {
+		t.Fatalf("query raw_spec finding: %v", err)
+	}
+	if rawSpecVal == "" || rawSpecVal == `""` {
+		t.Error("raw_spec should be non-empty")
 	}
 }
 

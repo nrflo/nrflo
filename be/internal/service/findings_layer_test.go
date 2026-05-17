@@ -1,11 +1,13 @@
 package service
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/repo"
 	"be/internal/types"
 )
 
@@ -22,12 +24,30 @@ func insertFindingsAgentDef(t *testing.T, pool *db.Pool, id string, layer int) {
 	}
 }
 
-// setSessionFindings updates the findings JSON on a session row.
+// setSessionFindings stores findingsJSON keys into the findings table for the given session.
+// It looks up the session's agent_type and workflow_instance_id from the DB.
+// Invalid JSON is silently skipped (no findings stored).
 func setSessionFindings(t *testing.T, pool *db.Pool, sessionID, findingsJSON string) {
 	t.Helper()
-	_, err := pool.Exec(`UPDATE agent_sessions SET findings = ? WHERE id = ?`, findingsJSON, sessionID)
+	var agentType, wfiID string
+	err := pool.QueryRow(
+		`SELECT agent_type, workflow_instance_id FROM agent_sessions WHERE id = ?`, sessionID,
+	).Scan(&agentType, &wfiID)
 	if err != nil {
-		t.Fatalf("setSessionFindings(%s): %v", sessionID, err)
+		t.Fatalf("setSessionFindings: lookup session %s: %v", sessionID, err)
+	}
+	var m map[string]json.RawMessage
+	if jsonErr := json.Unmarshal([]byte(findingsJSON), &m); jsonErr != nil {
+		// Invalid JSON — no findings stored. Tests asserting nil result will pass.
+		return
+	}
+	fr := repo.NewFindingRepo(pool, clock.Real())
+	for k, v := range m {
+		if err := fr.Upsert("session", sessionID, k, v,
+			repo.Denorm{WorkflowInstanceID: wfiID, AgentType: agentType},
+			repo.Actor{Source: "system"}); err != nil {
+			t.Fatalf("setSessionFindings(%s, key=%s): %v", sessionID, k, err)
+		}
 	}
 }
 
@@ -134,7 +154,7 @@ func TestFindingsGetByLayer_MultipleAgentsSameLayer(t *testing.T) {
 }
 
 // TestFindingsGetByLayer_SiblingWithNoSession verifies that a sibling with no
-// terminal session appears in the result with a nil value.
+// session appears in the result with a nil value.
 func TestFindingsGetByLayer_SiblingWithNoSession(t *testing.T) {
 	t.Parallel()
 	pool, svc, wfiID := setupFindingsLayerEnv(t)
@@ -163,20 +183,22 @@ func TestFindingsGetByLayer_SiblingWithNoSession(t *testing.T) {
 	}
 }
 
-// TestFindingsGetByLayer_ContinuationRows verifies only the latest session's findings
-// are returned when the same agent type has multiple sessions.
-func TestFindingsGetByLayer_ContinuationRows(t *testing.T) {
+// TestFindingsGetByLayer_MultipleSessionsSameAgent verifies that when the same agent_type
+// has multiple sessions, findings from both sessions are aggregated (each session may
+// contribute distinct keys to the merged result).
+func TestFindingsGetByLayer_MultipleSessionsSameAgent(t *testing.T) {
 	t.Parallel()
 	pool, svc, wfiID := setupFindingsLayerEnv(t)
 
 	t1 := "2025-01-01T00:00:00Z"
 	t2 := "2025-01-01T00:00:01Z"
 
-	insertSession(t, pool, "sess-old", wfiID, "analyzer", "completed", "pass", t1)
-	setSessionFindings(t, pool, "sess-old", `{"data":"old"}`)
+	// Two sessions for the same agent_type; each writes a unique key.
+	insertSession(t, pool, "sess-first", wfiID, "analyzer", "completed", "pass", t1)
+	setSessionFindings(t, pool, "sess-first", `{"from_first":"yes"}`)
 
-	insertSession(t, pool, "sess-new", wfiID, "analyzer", "completed", "pass", t2)
-	setSessionFindings(t, pool, "sess-new", `{"data":"new"}`)
+	insertSession(t, pool, "sess-second", wfiID, "analyzer", "completed", "pass", t2)
+	setSessionFindings(t, pool, "sess-second", `{"from_second":"yes"}`)
 
 	layer := 0
 	result, err := svc.Get(&types.FindingsGetRequest{Layer: &layer, InstanceID: wfiID})
@@ -189,8 +211,12 @@ func TestFindingsGetByLayer_ContinuationRows(t *testing.T) {
 	if !ok {
 		t.Fatalf("m[analyzer] should be map, got %T", m["analyzer"])
 	}
-	if af["data"] != "new" {
-		t.Errorf("m[analyzer][data] = %v, want \"new\" (latest session)", af["data"])
+	// Both sessions' distinct keys should appear in the merged result.
+	if af["from_first"] != "yes" {
+		t.Errorf("m[analyzer][from_first] = %v, want \"yes\"", af["from_first"])
+	}
+	if af["from_second"] != "yes" {
+		t.Errorf("m[analyzer][from_second] = %v, want \"yes\"", af["from_second"])
 	}
 }
 
@@ -246,29 +272,28 @@ func TestFindingsGetByLayer_MissingInstanceID(t *testing.T) {
 	}
 }
 
-// TestFindingsGetByLayer_CallbackSessionExcluded verifies that callback status sessions
-// are excluded from the layer findings result (agent appears with nil value).
-func TestFindingsGetByLayer_CallbackSessionExcluded(t *testing.T) {
+// TestFindingsGetByLayer_SessionWithNoFindings verifies that a session with no
+// findings stored yields nil for that agent type in the layer result.
+func TestFindingsGetByLayer_SessionWithNoFindings(t *testing.T) {
 	t.Parallel()
 	pool, svc, wfiID := setupFindingsLayerEnv(t)
 
-	insertSession(t, pool, "sess-cb", wfiID, "analyzer", "callback", "callback", "")
-	setSessionFindings(t, pool, "sess-cb", `{"secret":"excluded"}`)
+	// Session exists but no findings stored in findings table.
+	insertSession(t, pool, "sess-empty", wfiID, "analyzer", "completed", "pass", "")
 
 	layer := 0
 	result, err := svc.Get(&types.FindingsGetRequest{Layer: &layer, InstanceID: wfiID})
 	if err != nil {
-		t.Fatalf("Get(layer=0): %v", err)
+		t.Fatalf("Get(layer=0) with no findings: %v", err)
 	}
 	m := assertLayerMap(t, result)
-	// "analyzer" is in the result (agent_def exists) but with nil value (callback excluded).
-	if v, ok := m["analyzer"]; ok && v != nil {
-		t.Errorf("m[analyzer] should be nil (callback excluded), got %v", v)
+	if v, exists := m["analyzer"]; exists && v != nil {
+		t.Errorf("m[analyzer] should be nil for session with no findings, got %v", v)
 	}
 }
 
-// TestFindingsGetByLayer_InvalidFindingsJSON verifies that a session with non-JSON
-// findings yields nil for that agent type.
+// TestFindingsGetByLayer_InvalidFindingsJSON verifies that a session with invalid
+// JSON passed to setSessionFindings (which skips invalid input) yields nil for that agent type.
 func TestFindingsGetByLayer_InvalidFindingsJSON(t *testing.T) {
 	t.Parallel()
 	pool, svc, wfiID := setupFindingsLayerEnv(t)
@@ -283,6 +308,31 @@ func TestFindingsGetByLayer_InvalidFindingsJSON(t *testing.T) {
 	}
 	m := assertLayerMap(t, result)
 	if v, exists := m["analyzer"]; exists && v != nil {
-		t.Errorf("m[analyzer] should be nil for invalid JSON, got %v", v)
+		t.Errorf("m[analyzer] should be nil for invalid JSON (no findings stored), got %v", v)
+	}
+}
+
+// TestFindingsGetByLayer_CallbackSessionFindings verifies that findings stored
+// for a callback-status session ARE included in the layer result (findings are
+// stored per-session in the findings table, not filtered by session status).
+func TestFindingsGetByLayer_CallbackSessionFindings(t *testing.T) {
+	t.Parallel()
+	pool, svc, wfiID := setupFindingsLayerEnv(t)
+
+	insertSession(t, pool, "sess-cb", wfiID, "analyzer", "callback", "callback", "")
+	setSessionFindings(t, pool, "sess-cb", `{"stored":"yes"}`)
+
+	layer := 0
+	result, err := svc.Get(&types.FindingsGetRequest{Layer: &layer, InstanceID: wfiID})
+	if err != nil {
+		t.Fatalf("Get(layer=0): %v", err)
+	}
+	m := assertLayerMap(t, result)
+	af, ok := m["analyzer"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("m[analyzer] should be map (findings are stored regardless of session status), got %T", m["analyzer"])
+	}
+	if af["stored"] != "yes" {
+		t.Errorf("m[analyzer][stored] = %v, want \"yes\"", af["stored"])
 	}
 }

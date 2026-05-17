@@ -150,7 +150,7 @@ func TestWorkflowInstanceSkipTagsCreateAndGet(t *testing.T) {
 	wi := &model.WorkflowInstance{
 		ID: "wfi-st-1", ProjectID: "proj", TicketID: "ticket-1",
 		WorkflowID: "wf", ScopeType: "ticket", Status: model.WorkflowInstanceActive,
-		Findings: "{}", SkipTags: "[]",
+		SkipTags: "[]",
 	}
 	wi.SetSkipTags([]string{"be", "fe"})
 
@@ -173,8 +173,8 @@ func TestWorkflowInstanceSkipTagsDefaultEmpty(t *testing.T) {
 	seedWorkflowPool(t, pool, "proj", "wf")
 	wfiRepo := NewWorkflowInstanceRepo(pool, clock.Real())
 
-	_, err := pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-no-st', 'proj', 'ticket-2', 'wf', 'ticket', 'active', '{}', 0, datetime('now'), datetime('now'))`)
+	_, err := pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		VALUES ('wfi-no-st', 'proj', 'ticket-2', 'wf', 'ticket', 'active', 0, datetime('now'), datetime('now'))`)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestWorkflowInstanceUpdateSkipTags(t *testing.T) {
 	wi := &model.WorkflowInstance{
 		ID: "wfi-upd-st", ProjectID: "proj", TicketID: "ticket-upd",
 		WorkflowID: "wf", ScopeType: "ticket", Status: model.WorkflowInstanceActive,
-		Findings: "{}", SkipTags: "[]",
+		SkipTags: "[]",
 	}
 	if err := wfiRepo.Create(wi); err != nil {
 		t.Fatalf("Create: %v", err)

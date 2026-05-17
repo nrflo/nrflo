@@ -236,10 +236,10 @@ func setupE2ETestEnv(t *testing.T) *e2eTestEnv {
 
 	// Create workflow instance
 	_, err = database.Exec(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		wfiID, projectID, ticketID, workflowID, "ticket", "active",
-		"{}", time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
+		time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)
 	}
@@ -276,11 +276,6 @@ func (env *e2eTestEnv) createContinuedSessionWithFindings(t *testing.T, sessionI
 func (env *e2eTestEnv) createContinuedSessionWithTime(t *testing.T, sessionID string, findings map[string]interface{}, endedAt time.Time) {
 	t.Helper()
 
-	findingsJSON, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
-	}
-
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
 		ID:                 sessionID,
@@ -292,22 +287,29 @@ func (env *e2eTestEnv) createContinuedSessionWithTime(t *testing.T, sessionID st
 		ModelID:            sql.NullString{String: env.modelID, Valid: true},
 		Status:             model.AgentSessionContinued,
 		Result:             sql.NullString{String: "continue", Valid: true},
-		Findings:           sql.NullString{String: string(findingsJSON), Valid: true},
 		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 		EndedAt:            sql.NullString{String: endedAt.UTC().Format(time.RFC3339Nano), Valid: true},
 	}
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create continued session: %v", err)
 	}
+
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: env.agentType, ModelID: env.modelID}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("createContinuedSessionWithTime: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("createContinuedSessionWithTime: Upsert key %q: %v", k, err)
+		}
+	}
 }
 
 func (env *e2eTestEnv) createContinuedSessionForAgent(t *testing.T, sessionID string, findings map[string]interface{}, agentType, modelID, phase string) {
 	t.Helper()
-
-	findingsJSON, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
-	}
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	session := &model.AgentSession{
@@ -320,12 +322,24 @@ func (env *e2eTestEnv) createContinuedSessionForAgent(t *testing.T, sessionID st
 		ModelID:            sql.NullString{String: modelID, Valid: true},
 		Status:             model.AgentSessionContinued,
 		Result:             sql.NullString{String: "continue", Valid: true},
-		Findings:           sql.NullString{String: string(findingsJSON), Valid: true},
 		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 		EndedAt:            sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 	}
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create continued session: %v", err)
+	}
+
+	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: agentType, ModelID: modelID}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("createContinuedSessionForAgent: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("createContinuedSessionForAgent: Upsert key %q: %v", k, err)
+		}
 	}
 }
 

@@ -103,7 +103,7 @@ func TestHandleCallback_MetadataPreserved(t *testing.T) {
 	count := 0
 	env.orch.handleCallback(context.Background(), wfiID, req, layerGroups, 1, []*spawner.CallbackError{{Level: 0, AgentType: "builder", Instructions: "Detailed"}}, &count)
 
-	findings := env.getWorkflowInstance(t, wfiID).GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	if findings["existing_key"] != "existing_value" {
 		t.Error("existing findings should be preserved")
 	}
@@ -154,8 +154,8 @@ func TestHandleCallback_ProjectScope(t *testing.T) {
 
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-proj-cb', ?, '', 'proj-cb', 'active', 'project', '{}', 0, datetime('now'), datetime('now'))
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, retry_count, created_at, updated_at)
+		VALUES ('wfi-proj-cb', ?, '', 'proj-cb', 'active', 'project', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("create project WFI: %v", err)

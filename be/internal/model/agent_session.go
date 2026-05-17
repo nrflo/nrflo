@@ -35,7 +35,6 @@ type AgentSession struct {
 	Result             sql.NullString     `json:"-"` // pass | fail | continue | timeout | callback
 	ResultReason       sql.NullString     `json:"-"`
 	PID                sql.NullInt64      `json:"-"`
-	Findings           sql.NullString     `json:"-"` // JSON findings
 	ContextLeft        sql.NullInt64      `json:"-"` // Remaining context percentage
 	AncestorSessionID  sql.NullString     `json:"-"` // Ancestor session for continuation
 	SpawnCommand       sql.NullString     `json:"-"` // Full CLI command used to spawn
@@ -59,22 +58,6 @@ type AgentSession struct {
 	MessageCount int      `json:"-"` // Total message count from agent_messages table
 }
 
-// GetFindings returns the session findings as a map
-func (as *AgentSession) GetFindings() map[string]interface{} {
-	if !as.Findings.Valid || as.Findings.String == "" {
-		return make(map[string]interface{})
-	}
-	findings := make(map[string]interface{})
-	json.Unmarshal([]byte(as.Findings.String), &findings)
-	return findings
-}
-
-// SetFindings updates the findings JSON from a map
-func (as *AgentSession) SetFindings(findings map[string]interface{}) {
-	data, _ := json.Marshal(findings)
-	as.Findings = sql.NullString{String: string(data), Valid: true}
-}
-
 // AgentSessionLogRow carries joined fields for the agent session log endpoint.
 // Fields from agent_sessions joined with workflow_instances and agent_definitions.
 type AgentSessionLogRow struct {
@@ -86,7 +69,6 @@ type AgentSessionLogRow struct {
 	StartedAt          sql.NullString
 	EndedAt            sql.NullString
 	UpdatedAt          sql.NullString
-	Findings           sql.NullString
 	WorkflowID         string
 	WorkflowInstanceID string
 	ScheduledTaskID    sql.NullString
@@ -140,10 +122,6 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		v := int(as.PID.Int64)
 		pid = &v
 	}
-	var findings interface{}
-	if as.Findings.Valid && as.Findings.String != "" {
-		json.Unmarshal([]byte(as.Findings.String), &findings)
-	}
 	var startedAt *string
 	if as.StartedAt.Valid {
 		startedAt = &as.StartedAt.String
@@ -169,7 +147,6 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		Result             *string            `json:"result,omitempty"`
 		ResultReason       *string            `json:"result_reason,omitempty"`
 		PID                *int               `json:"pid,omitempty"`
-		Findings           interface{}        `json:"findings,omitempty"`
 		LastMessages       []string           `json:"last_messages"`
 		MessageCount       int                `json:"message_count"`
 		ContextLeft        *int               `json:"context_left,omitempty"`
@@ -197,7 +174,6 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		Result:             result,
 		ResultReason:       resultReason,
 		PID:                pid,
-		Findings:           findings,
 		LastMessages:       messages,
 		MessageCount:       as.MessageCount,
 		ContextLeft:        contextLeft,

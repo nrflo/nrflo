@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
@@ -289,75 +290,35 @@ func (s *WorkflowService) DeriveWorkflowProgress(instances map[string]*model.Wor
 	return result
 }
 
-// BuildCombinedFindings aggregates per-session findings into a single map.
-// Workflow-level findings are served separately via the workflow_findings response field.
+// BuildCombinedFindings aggregates per-session findings into a single map keyed by agent_type[:model_id].
 func (s *WorkflowService) BuildCombinedFindings(wi *model.WorkflowInstance) map[string]interface{} {
 	combined := make(map[string]interface{})
-
-	rows, err := s.pool.Query(`
-		SELECT agent_type, model_id, findings
-		FROM agent_sessions
-		WHERE workflow_instance_id = ? AND findings IS NOT NULL AND findings != ''
-		  AND agent_type NOT IN ('context-saver', 'conflict-resolver')`, wi.ID)
+	byAgent, err := s.findingRepo.ListByWorkflowInstance(wi.ID)
 	if err != nil {
 		return combined
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var agentType string
-		var modelID, findingsStr sql.NullString
-		rows.Scan(&agentType, &modelID, &findingsStr)
-
-		if !findingsStr.Valid || findingsStr.String == "" {
-			continue
-		}
-		var sessionFindings map[string]interface{}
-		if json.Unmarshal([]byte(findingsStr.String), &sessionFindings) != nil {
-			continue
-		}
-
-		key := agentType
-		if modelID.Valid && modelID.String != "" {
-			key = agentType + ":" + modelID.String
-		}
-		combined[key] = sessionFindings
+	for key, m := range byAgent {
+		combined[key] = rawToInterface(m)
 	}
 	return combined
 }
 
-// ExtractWorkflowFinalResultByInstanceID scans agent sessions for the workflow_final_result finding,
-// returning the value from the session with the latest ended_at. Running sessions (NULL
-// ended_at) are deprioritized — completed sessions always take precedence.
-func ExtractWorkflowFinalResultByInstanceID(pool *db.Pool, instanceID string) string {
-	rows, err := pool.Query(`
-		SELECT findings FROM agent_sessions
-		WHERE workflow_instance_id = ? AND findings IS NOT NULL AND findings != ''
-		ORDER BY ended_at IS NULL, ended_at DESC`, instanceID)
-	if err != nil {
+// ExtractWorkflowFinalResultByInstanceID returns the workflow_final_result finding value from
+// any session finding for the workflow instance, or "" if not set.
+func ExtractWorkflowFinalResultByInstanceID(pool *db.Pool, instanceID string, clk clock.Clock) string {
+	fr := repo.NewFindingRepo(pool, clk)
+	raw, found := fr.GetSessionFindingByKey(instanceID, "workflow_final_result")
+	if !found {
 		return ""
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var findingsStr string
-		rows.Scan(&findingsStr)
-
-		var sessionFindings map[string]interface{}
-		if json.Unmarshal([]byte(findingsStr), &sessionFindings) != nil {
-			continue
-		}
-		if val, ok := sessionFindings["workflow_final_result"]; ok {
-			if s, ok := val.(string); ok {
-				return s
-			}
-			return ""
-		}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s
 	}
 	return ""
 }
 
 // ExtractWorkflowFinalResult scans agent sessions for the workflow_final_result finding.
 func (s *WorkflowService) ExtractWorkflowFinalResult(wi *model.WorkflowInstance) string {
-	return ExtractWorkflowFinalResultByInstanceID(s.pool, wi.ID)
+	return ExtractWorkflowFinalResultByInstanceID(s.pool, wi.ID, s.clock)
 }

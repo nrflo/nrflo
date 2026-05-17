@@ -253,7 +253,7 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 	}
 
 	// Verify orchestration status in findings
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 	if orchStatus, ok := findings["_orchestration"].(map[string]interface{}); ok {
 		if orchStatus["status"] != "running" {
 			t.Errorf("expected orchestration status=running, got %v", orchStatus["status"])
@@ -307,8 +307,8 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	// Init workflow
 	var wfiID string
 	err := env.pool.QueryRow(`
-		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at)
-		VALUES ('wfi-8', ?, 'RTR-8', 'test-3layer', 'failed', '{}', 0, datetime('now'), datetime('now'))
+		INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
+		VALUES ('wfi-8', ?, 'RTR-8', 'test-3layer', 'failed', 0, datetime('now'), datetime('now'))
 		RETURNING id`, env.project).Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("failed to create workflow instance: %v", err)

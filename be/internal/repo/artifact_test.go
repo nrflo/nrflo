@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +41,6 @@ func newArtifactTestEnv(t *testing.T) *artifactTestEnv {
 
 func seedArtifactParents(t *testing.T, pool *db.Pool, projectID, wfID, wfiID string) {
 	t.Helper()
-	findings, _ := json.Marshal(map[string]any{})
 	if _, err := pool.Exec(
 		`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
 		projectID, "Art Project", "/tmp/art",
@@ -56,8 +54,8 @@ func seedArtifactParents(t *testing.T, pool *db.Pool, projectID, wfID, wfiID str
 		t.Fatalf("seed workflow: %v", err)
 	}
 	if _, err := pool.Exec(
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-		wfiID, projectID, "TKT-1", wfID, model.WorkflowInstanceCompleted, "ticket", string(findings),
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		wfiID, projectID, "TKT-1", wfID, model.WorkflowInstanceCompleted, "ticket",
 	); err != nil {
 		t.Fatalf("seed workflow_instance: %v", err)
 	}
@@ -215,12 +213,11 @@ func TestArtifactRepo_DeleteNotFound(t *testing.T) {
 func TestArtifactRepo_List(t *testing.T) {
 	t.Parallel()
 	env := newArtifactTestEnv(t)
-	findings, _ := json.Marshal(map[string]any{})
 
 	// Seed a second wfi; its artifact must not appear in List(env.wfiID).
 	if _, err := env.pool.Exec(
-		`INSERT INTO workflow_instances (id,project_id,ticket_id,workflow_id,status,scope_type,findings,created_at,updated_at) VALUES (?,?,?,?,?,?,?,datetime('now'),datetime('now'))`,
-		"wfi-other", env.projectID, "TKT-2", env.wfID, model.WorkflowInstanceCompleted, "ticket", string(findings),
+		`INSERT INTO workflow_instances (id,project_id,ticket_id,workflow_id,status,scope_type,created_at,updated_at) VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))`,
+		"wfi-other", env.projectID, "TKT-2", env.wfID, model.WorkflowInstanceCompleted, "ticket",
 	); err != nil {
 		t.Fatalf("seed wfi-other: %v", err)
 	}
@@ -257,7 +254,6 @@ func TestArtifactRepo_ListByProject(t *testing.T) {
 	pool := newTestPool(t)
 	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	r := NewArtifactRepo(pool, clk)
-	findings, _ := json.Marshal(map[string]any{})
 
 	for _, pid := range []string{"lbp-a", "lbp-b"} {
 		if _, err := pool.Exec(`INSERT INTO projects (id,name,root_path,created_at,updated_at) VALUES (?,?,?,datetime('now'),datetime('now'))`, pid, pid, "/tmp"); err != nil {
@@ -267,8 +263,8 @@ func TestArtifactRepo_ListByProject(t *testing.T) {
 			t.Fatalf("seed wf %s: %v", pid, err)
 		}
 		if _, err := pool.Exec(
-			`INSERT INTO workflow_instances (id,project_id,ticket_id,workflow_id,status,scope_type,findings,created_at,updated_at) VALUES (?,?,?,?,?,?,?,datetime('now'),datetime('now'))`,
-			"wfi-"+pid, pid, "TKT", "wf-"+pid, model.WorkflowInstanceCompleted, "ticket", string(findings),
+			`INSERT INTO workflow_instances (id,project_id,ticket_id,workflow_id,status,scope_type,created_at,updated_at) VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))`,
+			"wfi-"+pid, pid, "TKT", "wf-"+pid, model.WorkflowInstanceCompleted, "ticket",
 		); err != nil {
 			t.Fatalf("seed wfi %s: %v", pid, err)
 		}

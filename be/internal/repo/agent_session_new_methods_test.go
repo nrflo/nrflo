@@ -1,14 +1,12 @@
 package repo
 
 import (
-	"database/sql"
 	"testing"
 
 	"be/internal/model"
 )
 
-// TestResetSingleAgentSession_HappyPath verifies that a completed session is reset to
-// callback status, findings cleared, and ended_at set.
+// TestResetSingleAgentSession_HappyPath verifies that a completed session is reset to callback status.
 func TestResetSingleAgentSession_HappyPath(t *testing.T) {
 	t.Parallel()
 	database, repo, wfiID := setupTestDB(t)
@@ -22,7 +20,6 @@ func TestResetSingleAgentSession_HappyPath(t *testing.T) {
 		Phase:              "analyzer",
 		AgentType:          "analyzer",
 		Status:             model.AgentSessionCompleted,
-		Findings:           sql.NullString{String: `{"key":"val"}`, Valid: true},
 	}
 	if err := repo.Create(session); err != nil {
 		t.Fatalf("failed to create session: %v", err)
@@ -38,9 +35,6 @@ func TestResetSingleAgentSession_HappyPath(t *testing.T) {
 	}
 	if got.Status != model.AgentSessionCallback {
 		t.Errorf("status = %q, want callback", got.Status)
-	}
-	if got.Findings.String != "{}" {
-		t.Errorf("findings = %q, want {}", got.Findings.String)
 	}
 	if !got.EndedAt.Valid {
 		t.Error("ended_at should be set")
@@ -61,7 +55,6 @@ func TestResetSingleAgentSession_ExcludesRunning(t *testing.T) {
 		Phase:              "builder",
 		AgentType:          "builder",
 		Status:             model.AgentSessionRunning,
-		Findings:           sql.NullString{String: `{"x":"y"}`, Valid: true},
 	}
 	if err := repo.Create(running); err != nil {
 		t.Fatalf("failed to create session: %v", err)
@@ -74,9 +67,6 @@ func TestResetSingleAgentSession_ExcludesRunning(t *testing.T) {
 	got, _ := repo.Get("single-running")
 	if got.Status != model.AgentSessionRunning {
 		t.Errorf("running session status = %q, want running", got.Status)
-	}
-	if got.Findings.String != `{"x":"y"}` {
-		t.Errorf("running session findings changed unexpectedly: %s", got.Findings.String)
 	}
 }
 
@@ -94,7 +84,6 @@ func TestResetSingleAgentSession_ExcludesContinued(t *testing.T) {
 		Phase:              "verifier",
 		AgentType:          "verifier",
 		Status:             model.AgentSessionContinued,
-		Findings:           sql.NullString{String: `{"a":"b"}`, Valid: true},
 	}
 	if err := repo.Create(continued); err != nil {
 		t.Fatalf("failed to create session: %v", err)
@@ -136,7 +125,6 @@ func TestResetAgentSessionsInWorkflow_HappyPath(t *testing.T) {
 			Phase:              "analyzer",
 			AgentType:          "analyzer",
 			Status:             model.AgentSessionCompleted,
-			Findings:           sql.NullString{String: `{"phase":"analyzer"}`, Valid: true},
 		},
 		{
 			ID:                 "multi-2",
@@ -146,7 +134,6 @@ func TestResetAgentSessionsInWorkflow_HappyPath(t *testing.T) {
 			Phase:              "builder",
 			AgentType:          "builder",
 			Status:             model.AgentSessionFailed,
-			Findings:           sql.NullString{String: `{"phase":"builder"}`, Valid: true},
 		},
 		{
 			ID:                 "multi-3",
@@ -156,7 +143,6 @@ func TestResetAgentSessionsInWorkflow_HappyPath(t *testing.T) {
 			Phase:              "verifier",
 			AgentType:          "verifier",
 			Status:             model.AgentSessionCompleted,
-			Findings:           sql.NullString{String: `{"phase":"verifier"}`, Valid: true},
 		},
 	}
 	for _, s := range sessions {
@@ -176,9 +162,6 @@ func TestResetAgentSessionsInWorkflow_HappyPath(t *testing.T) {
 		}
 		if got.Status != model.AgentSessionCallback {
 			t.Errorf("%s: status = %q, want callback", id, got.Status)
-		}
-		if got.Findings.String != "{}" {
-			t.Errorf("%s: findings = %q, want {}", id, got.Findings.String)
 		}
 		if !got.EndedAt.Valid {
 			t.Errorf("%s: ended_at should be set", id)
@@ -207,7 +190,6 @@ func TestResetAgentSessionsInWorkflow_ExcludesRunningAndContinued(t *testing.T) 
 			Phase:              "analyzer",
 			AgentType:          "analyzer",
 			Status:             model.AgentSessionRunning,
-			Findings:           sql.NullString{String: `{"r":"1"}`, Valid: true},
 		},
 		{
 			ID:                 "multi-cont",
@@ -217,7 +199,6 @@ func TestResetAgentSessionsInWorkflow_ExcludesRunningAndContinued(t *testing.T) 
 			Phase:              "analyzer",
 			AgentType:          "analyzer",
 			Status:             model.AgentSessionContinued,
-			Findings:           sql.NullString{String: `{"c":"2"}`, Valid: true},
 		},
 	}
 	for _, s := range sessions {
@@ -255,7 +236,6 @@ func TestResetAgentSessionsInWorkflow_EmptyPhasesIsNoOp(t *testing.T) {
 		Phase:              "analyzer",
 		AgentType:          "analyzer",
 		Status:             model.AgentSessionCompleted,
-		Findings:           sql.NullString{String: `{"data":"test"}`, Valid: true},
 	}
 	if err := repo.Create(session); err != nil {
 		t.Fatalf("failed to create session: %v", err)
@@ -268,9 +248,6 @@ func TestResetAgentSessionsInWorkflow_EmptyPhasesIsNoOp(t *testing.T) {
 	got, _ := repo.Get("multi-empty")
 	if got.Status != model.AgentSessionCompleted {
 		t.Errorf("status = %q, want completed", got.Status)
-	}
-	if got.Findings.String != `{"data":"test"}` {
-		t.Errorf("findings changed unexpectedly: %s", got.Findings.String)
 	}
 }
 
@@ -289,7 +266,6 @@ func TestResetAgentSessionsInWorkflow_OnlySpecifiedPhases(t *testing.T) {
 			Phase:              "analyzer",
 			AgentType:          "analyzer",
 			Status:             model.AgentSessionCompleted,
-			Findings:           sql.NullString{String: `{"p":"analyzer"}`, Valid: true},
 		},
 		{
 			ID:                 "multi-other",
@@ -299,7 +275,6 @@ func TestResetAgentSessionsInWorkflow_OnlySpecifiedPhases(t *testing.T) {
 			Phase:              "builder",
 			AgentType:          "builder",
 			Status:             model.AgentSessionCompleted,
-			Findings:           sql.NullString{String: `{"p":"builder"}`, Valid: true},
 		},
 	}
 	for _, s := range sessions {
@@ -320,8 +295,5 @@ func TestResetAgentSessionsInWorkflow_OnlySpecifiedPhases(t *testing.T) {
 	other, _ := repo.Get("multi-other")
 	if other.Status != model.AgentSessionCompleted {
 		t.Errorf("builder session status = %q, want completed (should be untouched)", other.Status)
-	}
-	if other.Findings.String != `{"p":"builder"}` {
-		t.Errorf("builder session findings changed unexpectedly: %s", other.Findings.String)
 	}
 }

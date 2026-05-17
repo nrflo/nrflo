@@ -16,7 +16,7 @@ func setupMessageFixture(t *testing.T, d *db.DB, sessionID string) {
 	if _, err := d.Exec(`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('msg-proj', 'msg-wf', '', 'project', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert workflow: %v", err)
 	}
-	if _, err := d.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('msg-wfi', 'msg-proj', '', 'msg-wf', 'active', 'project', '{}', datetime('now'), datetime('now'))`); err != nil {
+	if _, err := d.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('msg-wfi', 'msg-proj', '', 'msg-wf', 'active', 'project', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert wfi: %v", err)
 	}
 	if _, err := d.Exec(`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at) VALUES (?, 'msg-proj', '', 'msg-wfi', 'ph', 'ag', 'm', 'running', datetime('now'), datetime('now'))`, sessionID); err != nil {
@@ -98,7 +98,7 @@ func TestAgentMessagePoolRepo_InsertBatch_PayloadRoundTrip(t *testing.T) {
 	// Seed the same fixtures directly on the pool.
 	mustExecPool(t, pool, `INSERT INTO projects (id, name, created_at, updated_at) VALUES ('pool-msg-proj', 'P', datetime('now'), datetime('now'))`)
 	mustExecPool(t, pool, `INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at) VALUES ('pool-msg-proj', 'pool-msg-wf', '', 'project', datetime('now'), datetime('now'))`)
-	mustExecPool(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES ('pool-msg-wfi', 'pool-msg-proj', '', 'pool-msg-wf', 'active', 'project', '{}', datetime('now'), datetime('now'))`)
+	mustExecPool(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('pool-msg-wfi', 'pool-msg-proj', '', 'pool-msg-wf', 'active', 'project', datetime('now'), datetime('now'))`)
 	mustExecPool(t, pool, `INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at) VALUES ('pool-msg-sess', 'pool-msg-proj', '', 'pool-msg-wfi', 'ph', 'ag', 'm', 'running', datetime('now'), datetime('now'))`)
 
 	r := NewAgentMessagePoolRepo(pool, clock.Real())

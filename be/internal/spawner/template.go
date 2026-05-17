@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -118,6 +119,70 @@ func (s *Spawner) fetchUserInstructionsRaw(projectID, ticketID, workflowName, wf
 		return ""
 	}
 
+	resolvedWFIID := s.resolveWFIID(projectID, ticketID, workflowName, wfiID)
+	if resolvedWFIID == "" {
+		return ""
+	}
+
+	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
+	raw, err := findingRepo.GetOwn("workflow_instance", resolvedWFIID)
+	if err != nil {
+		return ""
+	}
+	if v, ok := raw["user_instructions"]; ok {
+		var str string
+		if json.Unmarshal(v, &str) == nil {
+			return str
+		}
+	}
+	return ""
+}
+
+// fetchCallbackRaw returns raw callback instructions and from_agent from workflow instance findings.
+// Returns ("", "") on miss. Uses wfiID directly when available; falls back to ticket-based lookup.
+func (s *Spawner) fetchCallbackRaw(projectID, ticketID, workflowName, wfiID string) (instructions string, fromAgent string) {
+	pool := s.pool()
+	if pool == nil {
+		logger.Warn(context.Background(), "no database pool for callback instructions")
+		return "", ""
+	}
+
+	resolvedWFIID := s.resolveWFIID(projectID, ticketID, workflowName, wfiID)
+	if resolvedWFIID == "" {
+		return "", ""
+	}
+
+	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
+	raw, err := findingRepo.GetOwn("workflow_instance", resolvedWFIID)
+	if err != nil {
+		return "", ""
+	}
+	cbRaw, ok := raw["_callback"]
+	if !ok {
+		return "", ""
+	}
+	var callbackMap map[string]interface{}
+	if json.Unmarshal(cbRaw, &callbackMap) != nil {
+		return "", ""
+	}
+	instr, _ := callbackMap["instructions"].(string)
+	if instr == "" {
+		return "", ""
+	}
+	from, _ := callbackMap["from_agent"].(string)
+	return instr, from
+}
+
+// resolveWFIID resolves a workflow instance ID from direct wfiID or ticket/project lookup.
+func (s *Spawner) resolveWFIID(projectID, ticketID, workflowName, wfiID string) string {
+	return s.resolveWFIIDFromPool(projectID, ticketID, workflowName, wfiID)
+}
+
+func (s *Spawner) resolveWFIIDFromPool(projectID, ticketID, workflowName, wfiID string) string {
+	pool := s.pool()
+	if pool == nil {
+		return ""
+	}
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
 	var wi *model.WorkflowInstance
 	var err error
@@ -135,56 +200,7 @@ func (s *Spawner) fetchUserInstructionsRaw(projectID, ticketID, workflowName, wf
 	if err != nil || wi == nil {
 		return ""
 	}
-	findings := wi.GetFindings()
-	if instructions, ok := findings["user_instructions"]; ok {
-		if str, ok := instructions.(string); ok && str != "" {
-			return str
-		}
-	}
-	return ""
-}
-
-// fetchCallbackRaw returns raw callback instructions and from_agent from workflow instance findings.
-// Returns ("", "") on miss. Uses wfiID directly when available; falls back to ticket-based lookup.
-func (s *Spawner) fetchCallbackRaw(projectID, ticketID, workflowName, wfiID string) (instructions string, fromAgent string) {
-	pool := s.pool()
-	if pool == nil {
-		logger.Warn(context.Background(), "no database pool for callback instructions")
-		return "", ""
-	}
-
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
-	var wi *model.WorkflowInstance
-	var err error
-	if wfiID != "" {
-		wi, err = wfiRepo.Get(wfiID)
-	} else if ticketID != "" {
-		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
-	} else {
-		var instances []*model.WorkflowInstance
-		instances, err = wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
-		if err == nil && len(instances) > 0 {
-			wi = instances[len(instances)-1]
-		}
-	}
-	if err != nil || wi == nil {
-		return "", ""
-	}
-	findings := wi.GetFindings()
-	callbackRaw, ok := findings["_callback"]
-	if !ok {
-		return "", ""
-	}
-	callbackMap, ok := callbackRaw.(map[string]interface{})
-	if !ok {
-		return "", ""
-	}
-	instr, _ := callbackMap["instructions"].(string)
-	if instr == "" {
-		return "", ""
-	}
-	from, _ := callbackMap["from_agent"].(string)
-	return instr, from
+	return wi.ID
 }
 
 // LoadTemplate is the public wrapper around loadTemplate. It loads and expands

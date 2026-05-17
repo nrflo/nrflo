@@ -43,8 +43,8 @@ func setupDeleteProjWFEnv(t *testing.T, projectID, instanceID, status, scopeType
 	}
 
 	if _, err = pool.Exec(
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, retry_count, created_at, updated_at)
-		 VALUES (?, ?, '', 'wf-delete-test', ?, ?, '{}', 0, ?, ?)`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		 VALUES (?, ?, '', 'wf-delete-test', ?, ?, 0, ?, ?)`,
 		instanceID, strings.ToLower(projectID), scopeType, status, now, now,
 	); err != nil {
 		t.Fatalf("insert workflow instance %q: %v", instanceID, err)

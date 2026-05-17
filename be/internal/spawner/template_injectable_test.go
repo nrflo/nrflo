@@ -161,13 +161,10 @@ func TestLoadTemplate_InjectableMissingFromDB(t *testing.T) {
 // createContinuedSessionInEnv creates a continued agent session in a spawnerTestEnv.
 func createContinuedSessionInEnv(t *testing.T, env *spawnerTestEnv, ticketID, wfiID, agentType, modelID, phase, resultReason string, findings map[string]interface{}) {
 	t.Helper()
-	findingsJSON, err := json.Marshal(findings)
-	if err != nil {
-		t.Fatalf("failed to marshal findings: %v", err)
-	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
+	sessionID := uuid.New().String()
 	session := &model.AgentSession{
-		ID:                 uuid.New().String(),
+		ID:                 sessionID,
 		ProjectID:          env.project,
 		TicketID:           ticketID,
 		WorkflowInstanceID: wfiID,
@@ -176,7 +173,6 @@ func createContinuedSessionInEnv(t *testing.T, env *spawnerTestEnv, ticketID, wf
 		ModelID:            sql.NullString{String: modelID, Valid: true},
 		Status:             model.AgentSessionContinued,
 		Result:             sql.NullString{String: "continue", Valid: true},
-		Findings:           sql.NullString{String: string(findingsJSON), Valid: true},
 		StartedAt:          sql.NullString{String: now, Valid: true},
 		EndedAt:            sql.NullString{String: now, Valid: true},
 	}
@@ -186,5 +182,18 @@ func createContinuedSessionInEnv(t *testing.T, env *spawnerTestEnv, ticketID, wf
 	sessionRepo := repo.NewAgentSessionRepo(env.pool, clock.Real())
 	if err := sessionRepo.Create(session); err != nil {
 		t.Fatalf("failed to create continued session: %v", err)
+	}
+
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	denorm := repo.Denorm{ProjectID: env.project, WorkflowInstanceID: wfiID, AgentType: agentType, ModelID: modelID}
+	actor := repo.Actor{Source: "agent"}
+	for k, v := range findings {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("createContinuedSessionInEnv: marshal key %q: %v", k, err)
+		}
+		if err := findingRepo.Upsert("session", sessionID, k, json.RawMessage(b), denorm, actor); err != nil {
+			t.Fatalf("createContinuedSessionInEnv: Upsert key %q: %v", k, err)
+		}
 	}
 }

@@ -71,8 +71,8 @@ func insertResumeTestSession(t *testing.T, dbPath, sessionID, projectID string, 
 	}
 
 	wfiID := "wfi-rs-" + sessionID
-	_, err = database.Exec(`INSERT OR IGNORE INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-		VALUES (?, ?, 'TKT-RS', ?, 'active', 'ticket', '{}', ?, ?)`, wfiID, projectID, wfID, now, now)
+	_, err = database.Exec(`INSERT OR IGNORE INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+		VALUES (?, ?, 'TKT-RS', ?, 'active', 'ticket', ?, ?)`, wfiID, projectID, wfID, now, now)
 	if err != nil {
 		t.Fatalf("insertResumeTestSession: insert wfi: %v", err)
 	}
@@ -83,10 +83,10 @@ func insertResumeTestSession(t *testing.T, dbPath, sessionID, projectID string, 
 	}
 	_, err = database.Exec(`INSERT OR IGNORE INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status,
-		 result, result_reason, pid, findings, context_left, ancestor_session_id,
+		 result, result_reason, pid, context_left, ancestor_session_id,
 		 spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, 'TKT-RS', ?, 'phase1', 'implementor', ?, ?,
-		        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		        NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		sessionID, projectID, wfiID, modelIDVal, string(status), now, now, now)
 	if err != nil {
 		t.Fatalf("insertResumeTestSession: insert session: %v", err)

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 )
@@ -315,13 +316,13 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 		}
 	}
 
-	var findingsStr sql.NullString
+	var sessionID string
 	var reasonStr sql.NullString
 	err = pool.QueryRow(`
-		SELECT findings, result_reason FROM agent_sessions
+		SELECT id, result_reason FROM agent_sessions
 		WHERE workflow_instance_id = ? AND agent_type = ? AND model_id = ? AND phase = ? AND status = 'continued'
 		ORDER BY ended_at DESC LIMIT 1`,
-		wfiID, agentType, modelID, phase).Scan(&findingsStr, &reasonStr)
+		wfiID, agentType, modelID, phase).Scan(&sessionID, &reasonStr)
 	if err != nil {
 		return "", ""
 	}
@@ -331,21 +332,18 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 		reason = reasonStr.String
 	}
 
-	if !findingsStr.Valid || findingsStr.String == "" {
+	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
+	rawFindings, err := findingRepo.GetOwn("session", sessionID)
+	if err != nil || len(rawFindings) == 0 {
 		return "", reason
 	}
 
-	var findings map[string]interface{}
-	if json.Unmarshal([]byte(findingsStr.String), &findings) != nil || len(findings) == 0 {
-		return "", reason
-	}
-
-	toResume, ok := findings["to_resume"]
+	rawVal, ok := rawFindings["to_resume"]
 	if !ok {
 		return "", reason
 	}
-	str, ok := toResume.(string)
-	if !ok || str == "" {
+	var str string
+	if json.Unmarshal(rawVal, &str) != nil || str == "" {
 		return "", reason
 	}
 	return str, reason

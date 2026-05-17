@@ -30,8 +30,8 @@ func setupAgentNudgeEnv(t *testing.T) (*AgentService, string) {
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'T', '` + now + `', '` + now + `')`,
 		`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
 		 VALUES ('p1', 'wf1', '', 'ticket', '` + now + `', '` + now + `')`,
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES ('wfi-1', 'p1', 'TKT-1', 'wf1', 'ticket', 'active', '{}', '` + now + `', '` + now + `')`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES ('wfi-1', 'p1', 'TKT-1', 'wf1', 'ticket', 'active', '` + now + `', '` + now + `')`,
 	} {
 		if _, err := pool.Exec(stmt); err != nil {
 			t.Fatalf("seed: %v", err)
@@ -105,8 +105,8 @@ func TestIncrementNudgeCount_DBReflectsCount(t *testing.T) {
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p2', 'T', '` + now + `', '` + now + `')`,
 		`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
 		 VALUES ('p2', 'wf2', '', 'ticket', '` + now + `', '` + now + `')`,
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES ('wfi-2', 'p2', 'TKT-2', 'wf2', 'ticket', 'active', '{}', '` + now + `', '` + now + `')`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES ('wfi-2', 'p2', 'TKT-2', 'wf2', 'ticket', 'active', '` + now + `', '` + now + `')`,
 	} {
 		if _, err := pool.Exec(stmt); err != nil {
 			t.Fatalf("seed: %v", err)
@@ -184,8 +184,8 @@ func TestIncrementNudgeCount_UpdatedAt_SetFromClock(t *testing.T) {
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p3', 'T', '` + pastStr + `', '` + pastStr + `')`,
 		`INSERT INTO workflows (project_id, id, description, scope_type, created_at, updated_at)
 		 VALUES ('p3', 'wf3', '', 'ticket', '` + pastStr + `', '` + pastStr + `')`,
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, findings, created_at, updated_at)
-		 VALUES ('wfi-3', 'p3', 'TKT-3', 'wf3', 'ticket', 'active', '{}', '` + pastStr + `', '` + pastStr + `')`,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, created_at, updated_at)
+		 VALUES ('wfi-3', 'p3', 'TKT-3', 'wf3', 'ticket', 'active', '` + pastStr + `', '` + pastStr + `')`,
 		`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, status,
 			nudge_count, config, created_at, updated_at)
 		 VALUES ('sess-ts', 'p3', 'TKT-3', 'wfi-3', 'test', 'implementor', 'running',

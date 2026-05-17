@@ -21,8 +21,8 @@ func setupTokenTestDB(t *testing.T) (*db.DB, *AgentSessionRepo, string) {
 		t.Fatalf("workflow: %v", err)
 	}
 	wfiID := "wfi-token-test"
-	if _, err := database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at)
-		VALUES (?, 'proj', 'TKT-1', 'wf', 'active', 'ticket', '{}', datetime('now'), datetime('now'))`, wfiID); err != nil {
+	if _, err := database.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at)
+		VALUES (?, 'proj', 'TKT-1', 'wf', 'active', 'ticket', datetime('now'), datetime('now'))`, wfiID); err != nil {
 		t.Fatalf("wfi: %v", err)
 	}
 	return database, NewAgentSessionRepo(database, clock.Real()), wfiID

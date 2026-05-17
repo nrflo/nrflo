@@ -110,7 +110,7 @@ func TestHandleKillInteractiveProject_SessionNotInInteractive(t *testing.T) {
 		t.Fatalf("seed workflow: %v", err)
 	}
 	wfiID := "wfi-proj-kill-ni"
-	if _, err := s.pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, findings, created_at, updated_at) VALUES (?, 'proj', '', 'wf2', 'active', 'project', '{}', ?, ?)`, wfiID, now, now); err != nil {
+	if _, err := s.pool.Exec(`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES (?, 'proj', '', 'wf2', 'active', 'project', ?, ?)`, wfiID, now, now); err != nil {
 		t.Fatalf("seed wfi: %v", err)
 	}
 	sessID := "sess-proj-not-interactive"

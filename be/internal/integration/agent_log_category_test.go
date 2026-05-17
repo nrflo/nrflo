@@ -41,8 +41,8 @@ func seedCategoryMessages(t *testing.T, dbPath, projectID, sessionID string) {
 	}
 	wfiID := projectID + "-wfi"
 	if _, err := database.Exec(
-		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, findings, retry_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		wfiID, projectID, ticketID, "feature", "active", `{}`, 0, now, now,
+		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		wfiID, projectID, ticketID, "feature", "active", 0, now, now,
 	); err != nil {
 		t.Fatalf("seed wfi: %v", err)
 	}

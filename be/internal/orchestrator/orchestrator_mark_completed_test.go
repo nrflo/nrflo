@@ -236,8 +236,7 @@ func TestMarkCompletedUpdatesOrchestrationFindings(t *testing.T) {
 	})
 
 	// Verify _orchestration findings are set to "completed"
-	wi := env.getWorkflowInstance(t, wfiID)
-	findings := wi.GetFindings()
+	findings := getWFIFindings(t, env, wfiID)
 
 	orch, ok := findings["_orchestration"].(map[string]interface{})
 	if !ok {
@@ -546,13 +545,18 @@ func TestMarkCompletedBroadcastsWorkflowFinalResult(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, findings, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'test-phase', 'analyzer', 'completed', 'pass', ?, ?, ?, ?)`,
+			status, result, ended_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'test-phase', 'analyzer', 'completed', 'pass', ?, ?, ?)`,
 		"sess-fr1", env.project, "MC-FR1", wfiID,
-		`{"workflow_final_result":"hello"}`,
 		now, now, now)
 	if err != nil {
 		t.Fatalf("failed to insert session: %v", err)
+	}
+	// Seed workflow_final_result finding via FindingRepo
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	if err := findingRepo.Upsert("session", "sess-fr1", "workflow_final_result", []byte(`"hello"`),
+		repo.Denorm{WorkflowInstanceID: wfiID, AgentType: "analyzer"}, repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("failed to seed finding: %v", err)
 	}
 
 	ch := env.subscribeWSClient(t, "ws-fr1", "MC-FR1")
@@ -579,13 +583,18 @@ func TestMarkCompletedOmitsWorkflowFinalResultWhenAbsent(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			status, result, findings, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'test-phase', 'analyzer', 'completed', 'pass', ?, ?, ?, ?)`,
+			status, result, ended_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'test-phase', 'analyzer', 'completed', 'pass', ?, ?, ?)`,
 		"sess-fr2", env.project, "MC-FR2", wfiID,
-		`{"some_other_key":"value"}`,
 		now, now, now)
 	if err != nil {
 		t.Fatalf("failed to insert session: %v", err)
+	}
+	// Seed a different finding (no workflow_final_result) via FindingRepo
+	findingRepo2 := repo.NewFindingRepo(env.pool, clock.Real())
+	if err := findingRepo2.Upsert("session", "sess-fr2", "some_other_key", []byte(`"value"`),
+		repo.Denorm{WorkflowInstanceID: wfiID, AgentType: "analyzer"}, repo.Actor{Source: "system"}); err != nil {
+		t.Fatalf("failed to seed finding: %v", err)
 	}
 
 	ch := env.subscribeWSClient(t, "ws-fr2", "MC-FR2")

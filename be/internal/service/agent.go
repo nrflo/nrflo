@@ -68,7 +68,7 @@ func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.
 	var createdAt, updatedAt string
 	err := scanner.Scan(
 		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
-		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID, &s.Findings,
+		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.StartedAt, &s.EndedAt, &createdAt, &updatedAt, &s.Workflow,
 	)
@@ -299,34 +299,26 @@ func (s *AgentService) Callback(req *types.AgentCallbackRequest) (BroadcastCtx, 
 		return BroadcastCtx{}, err
 	}
 
-	// Persist callback fields as findings on the session
-	var findingsStr sql.NullString
-	err = s.pool.QueryRow(`SELECT findings FROM agent_sessions WHERE id = ?`, req.SessionID).Scan(&findingsStr)
-	if err != nil {
-		return BroadcastCtx{}, fmt.Errorf("failed to read session findings: %w", err)
-	}
+	// Persist callback fields as session-scoped findings
+	findingRepo := repo.NewFindingRepo(s.pool, s.clock)
+	actor := repo.Actor{Source: "agent", ID: req.SessionID}
+	denorm := repo.Denorm{}
 
-	findings := make(map[string]interface{})
-	if findingsStr.Valid && findingsStr.String != "" {
-		json.Unmarshal([]byte(findingsStr.String), &findings)
-	}
-	findings["callback_level"] = req.Level
+	levelJSON, _ := json.Marshal(req.Level)
+	_ = findingRepo.Upsert("session", req.SessionID, "callback_level", levelJSON, denorm, actor)
 	if req.Mode != "" {
-		findings["callback_mode"] = req.Mode
+		modeJSON, _ := json.Marshal(req.Mode)
+		_ = findingRepo.Upsert("session", req.SessionID, "callback_mode", modeJSON, denorm, actor)
 	}
 	if req.Mode == "agent" && req.TargetAgent != "" {
-		findings["callback_target"] = req.TargetAgent
+		targetJSON, _ := json.Marshal(req.TargetAgent)
+		_ = findingRepo.Upsert("session", req.SessionID, "callback_target", targetJSON, denorm, actor)
 	}
 	if req.Mode == "chain" && len(req.Chain) > 0 {
-		findings["callback_chain"] = req.Chain
+		chainJSON, _ := json.Marshal(req.Chain)
+		_ = findingRepo.Upsert("session", req.SessionID, "callback_chain", chainJSON, denorm, actor)
 	}
-
-	data, _ := json.Marshal(findings)
-	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
-	_, err = s.pool.Exec(
-		`UPDATE agent_sessions SET findings = ?, updated_at = ? WHERE id = ?`,
-		string(data), now, req.SessionID)
-	return bctx, err
+	return bctx, nil
 }
 
 func (s *AgentService) setAgentResult(sessionID, result string) (BroadcastCtx, error) {
@@ -424,7 +416,7 @@ func (s *AgentService) GetRecentSessions(projectID string, limit int) ([]*model.
 
 	rows, err := s.pool.Query(`
 		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
-			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.model_id, s.status, s.result, s.result_reason, s.pid,
 			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
 			s.restart_count, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
 		FROM agent_sessions s
@@ -454,7 +446,7 @@ func (s *AgentService) GetRecentSessions(projectID string, limit int) ([]*model.
 func (s *AgentService) GetTicketSessions(projectID, ticketID, workflow string) ([]*model.AgentSession, error) {
 	query := `
 		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
-			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.model_id, s.status, s.result, s.result_reason, s.pid,
 			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
 			s.restart_count, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
 		FROM agent_sessions s
@@ -491,7 +483,7 @@ func (s *AgentService) GetTicketSessions(projectID, ticketID, workflow string) (
 func (s *AgentService) GetProjectSessions(projectID, phase string) ([]*model.AgentSession, error) {
 	query := `
 		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
-			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.model_id, s.status, s.result, s.result_reason, s.pid,
 			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
 			s.restart_count, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
 		FROM agent_sessions s
@@ -532,10 +524,10 @@ func (s *AgentService) CreateSession(session *model.AgentSession) error {
 
 	_, err := s.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			model_id, status, result, result_reason, pid, findings,
+			model_id, status, result, result_reason, pid,
 			context_left, ancestor_session_id, spawn_command, prompt, system_prompt,
 			restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		session.ProjectID,
 		session.TicketID,
@@ -547,7 +539,6 @@ func (s *AgentService) CreateSession(session *model.AgentSession) error {
 		session.Result,
 		session.ResultReason,
 		session.PID,
-		session.Findings,
 		session.ContextLeft,
 		session.AncestorSessionID,
 		session.SpawnCommand,
@@ -575,7 +566,7 @@ func (s *AgentService) UpdateSessionStatus(sessionID string, status model.AgentS
 func (s *AgentService) GetSessionByID(sessionID string) (*model.AgentSession, error) {
 	row := s.pool.QueryRow(`
 		SELECT s.id, s.project_id, s.ticket_id, s.workflow_instance_id, s.phase, s.agent_type,
-			s.model_id, s.status, s.result, s.result_reason, s.pid, s.findings,
+			s.model_id, s.status, s.result, s.result_reason, s.pid,
 			s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
 			s.restart_count, s.started_at, s.ended_at, s.created_at, s.updated_at, wi.workflow_id
 		FROM agent_sessions s

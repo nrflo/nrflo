@@ -169,10 +169,15 @@ func TestFindingsGet_Layer(t *testing.T) {
 		 VALUES (?, ?, ?, '', 2, ?, ?)`,
 		"qa-verifier", testProjectID, testWorkflow, ts, ts)
 
-	// Give the running implementor session some findings.
+	// Give the running implementor session some findings via the findings table.
 	mustExec(t, env.pool,
-		`UPDATE agent_sessions SET findings = '{"status":"ok","score":9}' WHERE id = ?`,
-		testSessionID)
+		`INSERT INTO findings (id, scope, scope_id, key, value, project_id, workflow_instance_id, agent_type, created_at, updated_at)
+		 VALUES (lower(hex(randomblob(16))), 'session', ?, 'status', '"ok"', ?, ?, ?, ?, ?)`,
+		testSessionID, testProjectID, testWFIID, testAgentType, ts, ts)
+	mustExec(t, env.pool,
+		`INSERT INTO findings (id, scope, scope_id, key, value, project_id, workflow_instance_id, agent_type, created_at, updated_at)
+		 VALUES (lower(hex(randomblob(16))), 'session', ?, 'score', '9', ?, ?, ?, ?, ?)`,
+		testSessionID, testProjectID, testWFIID, testAgentType, ts, ts)
 
 	out, isErr, err := invoke(t, env.env, "findings_get", `{"layer": 2}`)
 	if err != nil {

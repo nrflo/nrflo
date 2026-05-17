@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Run the full per-provider manual-testing suite.
+"""Run the full manual-testing suite.
 
-Launches one subprocess per provider concurrently. Inside each
-subprocess the scenarios run sequentially (parallel=1). After all
-subprocesses finish, aggregates results, probes CLI versions, and
-overwrites `/capabilities.md` at the repo root.
+Two stages:
+  1. `engine` runs first, alone, sequentially. It exercises the
+     provider-agnostic orchestrator/REST/WS/spawner paths under the
+     `claude` binary.
+  2. The remaining per-provider folders launch in parallel and each run
+     their own (small) set of provider-specific scenarios sequentially.
+
+After everything finishes, results are aggregated, CLI versions probed,
+and `/capabilities.md` overwritten at the repo root.
 
 Usage:
     python3 manual_testing/run_suite.py
-    python3 manual_testing/run_suite.py --only=claude,python
+    python3 manual_testing/run_suite.py --only=engine,claude
     python3 manual_testing/run_suite.py --timeout=600
 """
 
@@ -33,12 +38,16 @@ from lib import versions as ver_mod  # noqa: E402
 
 PROVIDERS: list[tuple[str, str]] = [
     # (provider folder, binary name)
+    # `engine` runs first, sequentially. The rest run in parallel.
+    ("engine", "claude"),
     ("claude", "claude"),
     ("codex", "codex"),
     ("gemini", "gemini"),
     ("opencode", "opencode"),
     ("python", "python3"),
 ]
+
+ENGINE_PROVIDER = "engine"
 
 
 def _ts() -> str:
@@ -70,8 +79,7 @@ def main() -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
     _say(f"run dir: {run_dir}")
 
-    procs: list[tuple[str, str, subprocess.Popen, Path, Path]] = []
-    for provider, binary in selected:
+    def _launch(provider: str, binary: str) -> tuple[str, str, subprocess.Popen, Path, Path]:
         if not shutil.which(binary):
             _say(f"{provider}: binary {binary!r} not on PATH — will skip")
             # We still spawn it so the test.py records the SKIP in JSON.
@@ -87,14 +95,34 @@ def main() -> int:
         ]
         _say(f"launch {provider}: {' '.join(cmd)}")
         p = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT)
-        procs.append((provider, binary, p, results_json, log_path))
+        return (provider, binary, p, results_json, log_path)
 
     suite_start = time.monotonic()
+    procs: list[tuple[str, str, subprocess.Popen, Path, Path]] = []
     exit_codes: dict[str, int] = {}
-    for provider, _binary, p, _json, log_path in procs:
+
+    # Stage 1: engine first, sequentially.
+    engine_entry = next(((p, b) for (p, b) in selected if p == ENGINE_PROVIDER), None)
+    if engine_entry is not None:
+        provider, binary = engine_entry
+        rec = _launch(provider, binary)
+        procs.append(rec)
+        rc = rec[2].wait()
+        exit_codes[provider] = rc
+        _say(f"{provider} exit={rc} ({rec[4]})")
+
+    # Stage 2: remaining providers in parallel.
+    rest = [(p, b) for (p, b) in selected if p != ENGINE_PROVIDER]
+    parallel_procs: list[tuple[str, str, subprocess.Popen, Path, Path]] = []
+    for provider, binary in rest:
+        rec = _launch(provider, binary)
+        procs.append(rec)
+        parallel_procs.append(rec)
+    for provider, _binary, p, _json, log_path in parallel_procs:
         rc = p.wait()
         exit_codes[provider] = rc
         _say(f"{provider} exit={rc} ({log_path})")
+
     suite_wall = time.monotonic() - suite_start
     _say(f"all providers finished in {suite_wall:.2f}s")
 

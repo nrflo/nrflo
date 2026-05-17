@@ -1,76 +1,18 @@
-"""Manual-testing scenarios for the codex CLI provider."""
+"""Manual-testing scenarios specific to the codex CLI provider.
+
+Engine-level scenarios live in `manual_testing/engine/`. This folder
+holds only the scenarios whose implementation diverges per provider.
+"""
 
 from __future__ import annotations
 
 from . import (
-    s01_findings_save,
-    s02_agent_fail,
-    s03_project_findings,
-    s04_message_categories,
     s05_context_left,
-    s06_skip_tag,
-    s07_layer_handoff,
-    s08_workflow_final_result,
-    s09_ticket_scope,
-    s10_parallel_agents,
-    s11_user_instructions,
-    s12_project_findings_xwf,
-    s13_project_env_var,
-    s14_pass_policy_all,
-    s15_prior_layer_findings,
-    s17_callback,
-    s18_retry_failed,
-    s19_endless_loop,
-    s20_chain_run,
-    s21_next_workflow_on_success,
-    s22_max_fail_restarts,
-    s23_chain_next_ticket,
-    s24_agent_session_logs,
-    s25_findings_carryover,
-    s26_context_save_resume,
-    s29_manual_restart,
-    s30_ticket_concurrency_guard,
-    s31_take_control_exit_interactive,
-    s32_plan_mode,
-    s34_multi_instance_same_ticket,
     s35_custom_cli_model,
-    s37_ws_event_subscriber,
-    s38_notification_webhook,
 )
 
 
 ALL_SCENARIOS = [
-    s01_findings_save.run,
-    s02_agent_fail.run,
-    s03_project_findings.run,
-    s04_message_categories.run,
     s05_context_left.run,
-    s06_skip_tag.run,
-    s07_layer_handoff.run,
-    s08_workflow_final_result.run,
-    s09_ticket_scope.run,
-    s10_parallel_agents.run,
-    s11_user_instructions.run,
-    s12_project_findings_xwf.run,
-    s13_project_env_var.run,
-    s14_pass_policy_all.run,
-    s15_prior_layer_findings.run,
-    s17_callback.run,
-    s18_retry_failed.run,
-    s19_endless_loop.run,
-    s20_chain_run.run,
-    s21_next_workflow_on_success.run,
-    s22_max_fail_restarts.run,
-    s23_chain_next_ticket.run,
-    s24_agent_session_logs.run,
-    s25_findings_carryover.run,
-    s26_context_save_resume.run,
-    s29_manual_restart.run,
-    s30_ticket_concurrency_guard.run,
-    s31_take_control_exit_interactive.run,
-    s32_plan_mode.run,
-    s34_multi_instance_same_ticket.run,
     s35_custom_cli_model.run,
-    s37_ws_event_subscriber.run,
-    s38_notification_webhook.run,
 ]

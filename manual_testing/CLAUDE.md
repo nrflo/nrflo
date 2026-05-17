@@ -13,12 +13,13 @@ Per-provider Python harness that exercises the full path "real REST API → real
 ```
 manual_testing/
 ├── suite.md                 # canonical scenario catalogue (numbers + descriptions)
-├── run_suite.py             # cross-provider orchestrator (5 providers parallel, scenarios sequential)
+├── run_suite.py             # orchestrator: engine first sequentially, then per-provider folders in parallel
 ├── lib/                     # shared infra: api, db, runner, runtime, server, ws_client, http_mock, script_helpers, versions
-├── claude/                  # per-provider scenarios, __init__.py, test.py
-├── codex/
-├── gemini/
-├── opencode/
+├── engine/                  # provider-agnostic scenarios, run under the claude binary
+├── claude/                  # claude-specific scenarios only (s05, s35)
+├── codex/                   # codex-specific scenarios only (s05, s35)
+├── gemini/                  # gemini-specific scenarios only (s05, s35)
+├── opencode/                # opencode-specific scenarios only (s05, s27, s35)
 └── python/                  # execution_mode='script' scenarios (no CLI, no LLM)
 ```
 
@@ -26,14 +27,14 @@ manual_testing/
 - `lib/runtime.py` — `Ctx` dataclass + `make_project` + `wait_for_workflow`
 - `lib/server.py` — spawns `nrflo_server` on a fresh `NRFLO_HOME`
 - `lib/versions.py` — probes `<binary> --version` for the capability matrix
-- `<provider>/__init__.py` — explicit `ALL_SCENARIOS` list for that provider
-- `<provider>/test.py` — entry point (`--parallel`, `--model`, `--only`, `--timeout`, `--results`)
+- `<folder>/__init__.py` — explicit `ALL_SCENARIOS` list for that folder
+- `<folder>/test.py` — entry point (`--parallel`, `--model`, `--only`, `--timeout`, `--results`)
 
-Per-provider applicability is recorded in `suite.md` and verified by file presence in each provider folder. Cross-provider gates (`if ctx.provider == …`) are forbidden — if a scenario does not apply to a provider, omit the file.
+Folder applicability is recorded in `suite.md` and verified by file presence in each folder. Cross-provider gates (`if ctx.provider == …`) are forbidden inside scenarios — divergent behaviour belongs in a per-provider folder.
 
 ## Concepts
 
-- **Provider**: `claude`, `codex`, `gemini`, `opencode`, or `python`. CLI providers run under `cli_interactive` (PTY relay); python runs under `script` (execution_mode='script').
+- **Provider**: `engine`, `claude`, `codex`, `gemini`, `opencode`, or `python`. `engine` and the CLI providers run under `cli_interactive` (PTY relay) — `engine` uses the `claude` binary. `python` runs under `script` (execution_mode='script').
 - **`Ctx`** (`lib/runtime.py:33`): carries server handle, REST client, provider, model, binary, mode, scenario label.
 - **Scenario**: `run(ctx: Ctx) -> Result` where `Result = (name, "PASS"|"FAIL"|"SKIP", details)`. One function per file. Self-contained — no shared fixtures beyond `lib/runtime.py` helpers and `lib/script_helpers.py` for python scenarios.
 
@@ -47,14 +48,15 @@ Install via `pip install websockets` before running the CLI suites.
 ```bash
 make build
 
-# full suite — 5 providers in parallel, scenarios sequential, overwrites /capabilities.md
+# full suite — engine first sequentially, then 5 per-provider folders in parallel; overwrites /capabilities.md
 python3 manual_testing/run_suite.py
 
-# subset of providers
-python3 manual_testing/run_suite.py --only=claude,python
+# subset
+python3 manual_testing/run_suite.py --only=engine,python
 
-# single provider directly (useful for debugging)
-python3 manual_testing/claude/test.py --only=s01 --parallel=1
+# single folder directly (useful for debugging)
+python3 manual_testing/engine/test.py --only=s01 --parallel=1
+python3 manual_testing/claude/test.py --only=s05 --parallel=1
 python3 manual_testing/python/test.py --only=P01
 ```
 
@@ -67,9 +69,9 @@ Exit codes: `0` = all PASS/SKIP, `1` = any FAIL, `2` = fatal interruption.
 ## Adding a new scenario
 
 1. Pick the next free id in `suite.md` (`sNN` for CLI, `PNN` for python). Add a one-line description.
-2. Create `<provider>/<id>_<short_name>.py` in every provider folder that should run it. Use `claude/s01_findings_save.py` (CLI) or `python/P01_findings_basic.py` (script) as the template. Do not branch on `ctx.provider` inside the file.
-3. Append the module to that provider's `__init__.py::ALL_SCENARIOS`.
-4. `python3 manual_testing/<provider>/test.py --only=<id> --parallel=1` to debug.
+2. Default home is `engine/`. Create `engine/<id>_<short_name>.py` using `engine/s01_findings_save.py` (CLI) or `python/P01_findings_basic.py` (script) as the template. Do not branch on `ctx.provider` inside the file. Only put a scenario in a per-provider folder when the implementation must diverge per provider — in that case add the file to every applicable provider folder.
+3. Append the module to that folder's `__init__.py::ALL_SCENARIOS`.
+4. `python3 manual_testing/<folder>/test.py --only=<id> --parallel=1` to debug.
 5. Run `python3 manual_testing/run_suite.py` once to regenerate `/capabilities.md`.
 
 ## Debugging

@@ -120,6 +120,7 @@ Rules every change must respect.
 - **Service tokens (long-lived project-scoped bearer tokens for external callers)** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
+- **Artifact storage — DB model/repo + Storage interface + internalFS backend + secret_ref resolver** → [be/internal/artifact/](be/internal/artifact/) + [repo/artifact.go](be/internal/repo/artifact.go)
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Notification channels** → [be/CLAUDE.md](be/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)

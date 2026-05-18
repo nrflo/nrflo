@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, Bot } from 'lucide-react'
+import { Plus, Pencil, Trash2, Bot, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import {
@@ -136,6 +136,15 @@ export function SystemAgentsSection() {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
+          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <strong>System agents run under the Claude Code CLI.</strong>{' '}
+              The <code>claude</code> CLI binary is used regardless of the project default CLI. Ensure
+              Claude Code CLI is installed and authenticated on the server host, and that a Claude
+              model is configured under <strong>CLI Models &rarr; Claude</strong>.
+            </div>
+          </div>
           {isLoading && (
             <div className="text-center py-8 text-muted-foreground">Loading system agents...</div>
           )}

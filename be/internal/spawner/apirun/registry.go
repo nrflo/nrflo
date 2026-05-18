@@ -13,13 +13,6 @@ import (
 // with the tools_http subpackage.
 type HTTPHandlerFactory func(def *model.ToolDefinition) ToolHandler
 
-// ManifestProvider is the contract for manifest-backed tools. The interface
-// keeps registry.go free of a tools_manifest import (same pattern as HTTPHandlerFactory).
-type ManifestProvider interface {
-	Specs() []provider.ToolSpec
-	Handler(name string) (ToolHandler, bool)
-}
-
 // ResolveRegistry returns the tool specs and handler map an api-mode agent
 // should be spawned with. toolsCSV is the comma-separated patterns from the
 // agent definition (`*`, `prefix.*`, or exact tool name). Empty CSV is a
@@ -30,55 +23,49 @@ type ManifestProvider interface {
 // project + workflow (the caller is expected to have filtered by scope before
 // calling).
 //
-// manifestProvider is optional (nil = no manifest tools). When non-nil, its
-// tools are composed as a third source after builtins and HTTP defs.
+// pythonHandlers is the set of python_scripts kind=tool handlers for the project.
+// Composed after builtins and before HTTP defs.
 func ResolveRegistry(
 	toolsCSV string,
 	builtins map[string]ToolHandler,
+	pythonHandlers []ToolHandler,
 	httpDefs []*model.ToolDefinition,
 	httpFactory HTTPHandlerFactory,
-	manifestProvider ManifestProvider,
 ) ([]provider.ToolSpec, Registry, error) {
 	patterns := splitPatterns(toolsCSV)
 	if len(patterns) == 0 {
 		return nil, Registry{}, nil
 	}
 
-	// Build available pool: builtins → manifest tools → HTTP defs.
+	// Build available pool: builtins → python tools → HTTP defs.
 	// Collision detection ensures names are unique across all three sources.
-	available := make(map[string]ToolHandler, len(builtins)+len(httpDefs))
+	available := make(map[string]ToolHandler, len(builtins)+len(pythonHandlers)+len(httpDefs))
 	for name, h := range builtins {
 		available[name] = h
 	}
 
-	// Manifest tools: collide with builtins → error.
-	if manifestProvider != nil {
-		for _, spec := range manifestProvider.Specs() {
-			if spec.Name == "" {
-				continue
-			}
-			if _, exists := available[spec.Name]; exists {
-				return nil, nil, fmt.Errorf("tool name %q collides with builtin", spec.Name)
-			}
-			h, ok := manifestProvider.Handler(spec.Name)
-			if !ok {
-				continue
-			}
-			available[spec.Name] = h
+	// Python tools: collide with builtins → error.
+	for _, h := range pythonHandlers {
+		spec := h.Spec()
+		if spec.Name == "" {
+			continue
 		}
+		if _, exists := available[spec.Name]; exists {
+			return nil, nil, fmt.Errorf("tool name %q collides with builtin", spec.Name)
+		}
+		available[spec.Name] = h
 	}
 
-	// HTTP tool defs: collide with builtins or manifest tools → error.
+	// HTTP tool defs: collide with builtins or python tools → error.
 	for _, def := range httpDefs {
 		if def == nil || def.Name == "" {
 			continue
 		}
 		if _, exists := available[def.Name]; exists {
-			// Could be a builtin or a manifest tool — report generically as collision.
 			if _, isBuiltin := builtins[def.Name]; isBuiltin {
 				return nil, nil, fmt.Errorf("tool name %q collides with builtin", def.Name)
 			}
-			return nil, nil, fmt.Errorf("tool name %q collides with manifest tool", def.Name)
+			return nil, nil, fmt.Errorf("tool name %q collides with python tool", def.Name)
 		}
 		available[def.Name] = httpFactory(def)
 	}

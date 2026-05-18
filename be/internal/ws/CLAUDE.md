@@ -76,11 +76,8 @@ Fan-out is non-blocking: a goroutine is spawned per broadcast, iterating all lis
 | `EventNotificationDelivered` | `notification.delivered` | Delivery sent successfully |
 | `EventNotificationFailed` | `notification.failed` | Delivery giving up (3 attempts exhausted) |
 
-## Manifest/Review Event Constants
+## Tool Dispatch Event Constants
 
 | Constant | Value | Data fields | Description |
 |----------|-------|-------------|-------------|
-| `EventToolDispatched` | `tool.dispatched` | `tool_name`, `status` (success\|error), `duration_ms`, `dispatch_id` | Emitted after every manifest tool invocation (success or error) |
-| `EventReviewCreated` | `review.created` | `review_item_id`, `tool_name` | Emitted when a manifest tool with `review:true` creates a new review item |
-| `EventReviewUpdated` | `review.updated` | — | Review item status changes (approve/reject/draft patch) |
-| `EventConfigFileUpdated` | `config_file.updated` | — | Customer config file edited or rolled back |
+| `EventToolDispatched` | `tool.dispatched` | `tool_name`, `status` (success\|error), `duration_ms`, `dispatch_id` | Emitted after every tool invocation (success or error) |

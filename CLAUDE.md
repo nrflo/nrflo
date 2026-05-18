@@ -106,7 +106,7 @@ Rules every change must respect.
 - **`cli_interactive` backend** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **`script` — Python scriptBackend** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **Per-project venv** → [venv/](be/internal/venv/)
-- **Manifest tools (api-mode only)** → [manifest/CLAUDE.md](be/internal/manifest/CLAUDE.md) + [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
+- **Python tools (api-mode only)** → [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
 - **Python SDK + `script.context` socket method** → [sdk/python/CLAUDE.md](be/internal/sdk/python/CLAUDE.md) + [socket/CLAUDE.md](be/internal/socket/CLAUDE.md)
 - **Provider capability matrix** → [capabilities.md](capabilities.md)
 
@@ -126,7 +126,6 @@ Rules every change must respect.
 - **Notification channels** → [be/CLAUDE.md](be/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
-- **Versioned config-file editor** → [configeditor/CLAUDE.md](be/internal/configeditor/CLAUDE.md)
 
 See `be/cmd/server/main.go` for subcommands.
 

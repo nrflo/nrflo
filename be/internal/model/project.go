@@ -16,7 +16,6 @@ type Project struct {
 	UseGitWorktrees  bool   `json:"use_git_worktrees"`
 	ClaudeSafetyHook  string `json:"-"` // Loaded from config table, not projects table
 	PushAfterMerge    bool   `json:"-"` // Loaded from config table, not projects table
-	CustomerConfigDir   string `json:"-"` // Loaded from config table, not projects table
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 }
@@ -38,32 +37,25 @@ func (p Project) MarshalJSON() ([]byte, error) {
 		claudeSafetyHook = &p.ClaudeSafetyHook
 	}
 
-	var customerConfigDir *string
-	if p.CustomerConfigDir != "" {
-		customerConfigDir = &p.CustomerConfigDir
-	}
-
 	return json.Marshal(&struct {
-		ID                string    `json:"id"`
-		Name              string    `json:"name"`
-		RootPath          *string   `json:"root_path"`
-		DefaultBranch     *string   `json:"default_branch"`
-		UseGitWorktrees   bool      `json:"use_git_worktrees"`
-		PushAfterMerge    bool      `json:"push_after_merge"`
-		CustomerConfigDir *string   `json:"customer_config_dir"`
-		ClaudeSafetyHook  *string   `json:"claude_safety_hook"`
-		CreatedAt         time.Time `json:"created_at"`
-		UpdatedAt         time.Time `json:"updated_at"`
+		ID              string    `json:"id"`
+		Name            string    `json:"name"`
+		RootPath        *string   `json:"root_path"`
+		DefaultBranch   *string   `json:"default_branch"`
+		UseGitWorktrees bool      `json:"use_git_worktrees"`
+		PushAfterMerge  bool      `json:"push_after_merge"`
+		ClaudeSafetyHook *string  `json:"claude_safety_hook"`
+		CreatedAt       time.Time `json:"created_at"`
+		UpdatedAt       time.Time `json:"updated_at"`
 	}{
-		ID:                p.ID,
-		Name:              p.Name,
-		RootPath:          rootPath,
-		DefaultBranch:     defaultBranch,
-		UseGitWorktrees:   p.UseGitWorktrees,
-		PushAfterMerge:    p.PushAfterMerge,
-		CustomerConfigDir: customerConfigDir,
-		ClaudeSafetyHook:  claudeSafetyHook,
-		CreatedAt:         p.CreatedAt,
-		UpdatedAt:         p.UpdatedAt,
+		ID:              p.ID,
+		Name:            p.Name,
+		RootPath:        rootPath,
+		DefaultBranch:   defaultBranch,
+		UseGitWorktrees: p.UseGitWorktrees,
+		PushAfterMerge:  p.PushAfterMerge,
+		ClaudeSafetyHook: claudeSafetyHook,
+		CreatedAt:       p.CreatedAt,
+		UpdatedAt:       p.UpdatedAt,
 	})
 }

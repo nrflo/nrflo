@@ -19,8 +19,6 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
-	manifestConfig "be/internal/manifest/config"
-	"be/internal/manifest/python"
 	"be/internal/model"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
@@ -30,7 +28,7 @@ import (
 	"be/internal/spawner/apirun/provider/anthropic"
 	"be/internal/spawner/apirun/tools_builtin"
 	"be/internal/spawner/apirun/tools_http"
-	"be/internal/spawner/apirun/tools_manifest"
+	"be/internal/spawner/apirun/tools_python"
 	"be/internal/ws"
 )
 
@@ -156,18 +154,9 @@ type Config struct {
 	// NudgeMax: max nudge attempts before auto-fail (default 5, 0 = use default).
 	// Only applies to cliInteractiveBackend agents.
 	NudgeMax int
-	// DispatchRepo records tool dispatch events for manifest tools.
+	// DispatchRepo records tool dispatch events for python and HTTP tools.
 	// Optional (nil-safe): when nil, dispatch rows are not inserted.
 	DispatchRepo *repo.DispatchRepo
-	// ReviewRepo stores review items created by manifest tools with review:true.
-	// Optional (nil-safe): when nil, review rows are not inserted.
-	ReviewRepo *repo.ReviewRepo
-	// PythonRunner executes Python scripts for manifest tools.
-	// Optional (nil-safe): when nil, manifest tools are unavailable even if APIMode is set.
-	PythonRunner python.Runner
-	// CustomerConfigDir is the absolute path to the customer config directory for this project.
-	// Used to load tool_manifest.yaml when APIMode is true and the dir is non-empty.
-	CustomerConfigDir string
 	// ProjectEnv holds per-project env vars as "KEY=value" strings, loaded once at workflow
 	// start from project_env_vars. Appended after nrflo-controlled vars in every spawn path
 	// so duplicates resolve last-wins (nrflo reserved names are also guarded at the service layer).
@@ -297,12 +286,6 @@ type terminalSignal struct {
 	Result    string
 }
 
-// manifestCacheEntry caches a loaded manifest keyed by its directory path.
-type manifestCacheEntry struct {
-	mtime    time.Time
-	manifest *manifestConfig.Manifest
-}
-
 // Spawner manages agent lifecycle
 type Spawner struct {
 	config               Config
@@ -318,8 +301,6 @@ type Spawner struct {
 	mu                   sync.Mutex                     // protects interactiveWaits and killedInteractive
 	sessionProcsMu       sync.Mutex                     // protects sessionProcs
 	sessionProcs         map[string]*processInfo        // sessionID → live proc for RecordUserInput lookups
-	manifestCache        map[string]*manifestCacheEntry // configDir → cached manifest (mtime-keyed)
-	manifestCacheMu      sync.Mutex                     // protects manifestCache
 }
 
 // SpawnRequest contains parameters for spawning an agent
@@ -352,42 +333,25 @@ func New(config Config) *Spawner {
 		interactiveWaits:   make(map[string]chan struct{}),
 		killedInteractive:  make(map[string]struct{}),
 		sessionProcs:       make(map[string]*processInfo),
-		manifestCache:      make(map[string]*manifestCacheEntry),
 	}
 }
 
-// loadManifestCached loads and caches tool_manifest.yaml from configDir. It
-// reloads only when the file's mtime has changed since the last load.
-// Returns (nil, nil) when the manifest file does not exist.
-func (s *Spawner) loadManifestCached(configDir string) (*manifestConfig.Manifest, error) {
-	manifestPath := filepath.Join(configDir, "tool_manifest.yaml")
-	info, statErr := os.Stat(manifestPath)
-	if statErr != nil {
-		if os.IsNotExist(statErr) {
-			return nil, nil
-		}
-		return nil, statErr
+// loadProjectPythonTools loads python_scripts rows with kind=tool for a project
+// and constructs apirun.ToolHandler instances for each. Returns nil slice (no error)
+// when PythonScriptRepo is not configured or no tool rows exist.
+func (s *Spawner) loadProjectPythonTools(projectID, sessionID string) ([]apirun.ToolHandler, error) {
+	if s.config.PythonScriptRepo == nil {
+		return nil, nil
 	}
-	mtime := info.ModTime()
-
-	s.manifestCacheMu.Lock()
-	entry, ok := s.manifestCache[configDir]
-	if ok && !entry.mtime.Before(mtime) {
-		m := entry.manifest
-		s.manifestCacheMu.Unlock()
-		return m, nil
+	rows, err := s.config.PythonScriptRepo.ListByKind(projectID, "tool")
+	if err != nil {
+		return nil, err
 	}
-	s.manifestCacheMu.Unlock()
-
-	m, loadErr := manifestConfig.Load(configDir)
-	if loadErr != nil {
-		return nil, loadErr
+	handlers := make([]apirun.ToolHandler, 0, len(rows))
+	for _, row := range rows {
+		handlers = append(handlers, tools_python.New(row, s.config.PythonPath, s.config.ProjectEnv))
 	}
-
-	s.manifestCacheMu.Lock()
-	s.manifestCache[configDir] = &manifestCacheEntry{mtime: mtime, manifest: m}
-	s.manifestCacheMu.Unlock()
-	return m, nil
+	return handlers, nil
 }
 
 // RequestRestart sends a restart signal for the given session ID.
@@ -1145,28 +1109,10 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			return nil, nil, fmt.Errorf("api mode: load tool defs: %w", defsErr)
 		}
 
-		// Load manifest tools when a customer config dir is configured.
-		var manifestProv apirun.ManifestProvider
-		if s.config.CustomerConfigDir != "" && s.config.PythonRunner != nil {
-			manifest, mErr := s.loadManifestCached(s.config.CustomerConfigDir)
-			if mErr != nil {
-				logger.Warn(ctx, "manifest load failed, skipping manifest tools", "dir", s.config.CustomerConfigDir, "err", mErr)
-			} else if manifest != nil {
-				manifestProv = tools_manifest.New(
-					manifest,
-					s.config.PythonRunner,
-					req.ProjectID,
-					proc.sessionID,
-					s.config.DispatchRepo,
-					s.config.ReviewRepo,
-					s.config.WSHub,
-					s.config.Clock,
-					s.config.ProjectEnv,
-				)
-			}
-		}
+		// Load python tool handlers for this project.
+		pythonHandlers, _ := s.loadProjectPythonTools(req.ProjectID, proc.sessionID)
 
-		specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, tools_builtin.Builtins(), httpDefs, tools_http.New(nil), manifestProv)
+		specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, tools_builtin.Builtins(), pythonHandlers, httpDefs, tools_http.New(nil))
 		if regErr != nil {
 			return nil, nil, fmt.Errorf("api mode: %w", regErr)
 		}
@@ -1183,6 +1129,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			Pool:               s.config.Pool,
 			WSHub:              s.config.WSHub,
 			Clock:              s.config.Clock,
+			DispatchRepo:       s.config.DispatchRepo,
 			SessionID:          proc.sessionID,
 			AgentID:            proc.agentID,
 			AgentType:          req.AgentType,

@@ -8,7 +8,6 @@ func RegisterServerCommands() {
 	rootCmd.RunE = serveCmd.RunE
 	rootCmd.Flags().AddFlagSet(serveCmd.Flags())
 	rootCmd.AddCommand(serveCmd)
-	rootCmd.AddCommand(initCustomerCmd)
 }
 
 // RegisterCLICommands adds client-facing commands to the root command.

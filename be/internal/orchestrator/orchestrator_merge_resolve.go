@@ -26,7 +26,6 @@ func (o *Orchestrator) attemptConflictResolution(
 	mergeError string,
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
-	customerConfigDir string,
 	projectEnv []string,
 ) error {
 	// Load conflict-resolver system agent definition.
@@ -51,7 +50,6 @@ func (o *Orchestrator) attemptConflictResolution(
 	apiModeSettingVal, _ := apiModeSettingsSvc.Get("api_mode_enabled")
 
 	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
-	reviewRepo := repo.NewReviewRepo(pool, o.clock)
 	sp := spawner.New(spawner.Config{
 		Workflows: map[string]spawner.WorkflowDef{
 			"_conflict_resolution": {
@@ -72,8 +70,6 @@ func (o *Orchestrator) attemptConflictResolution(
 		APIMode:            apiModeSettingVal == "true",
 		PTYManager:         o.PTYManager,
 		DispatchRepo:       dispatchRepo,
-		ReviewRepo:         reviewRepo,
-		CustomerConfigDir:  customerConfigDir,
 		ProjectEnv:         projectEnv,
 		SDKDir:             o.sdkDir,
 		PythonScriptRepo:   repo.NewPythonScriptRepo(pool, o.clock),

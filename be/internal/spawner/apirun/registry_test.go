@@ -57,7 +57,7 @@ func sortedKeys(m Registry) []string {
 }
 
 func TestResolveRegistry_EmptyCSV(t *testing.T) {
-	specs, reg, err := ResolveRegistry("", defaultBuiltins(), nil, httpFactoryStub, nil)
+	specs, reg, err := ResolveRegistry("", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestResolveRegistry_EmptyCSV(t *testing.T) {
 }
 
 func TestResolveRegistry_FindingsGlob(t *testing.T) {
-	_, reg, err := ResolveRegistry("findings_*", defaultBuiltins(), nil, httpFactoryStub, nil)
+	_, reg, err := ResolveRegistry("findings_*", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestResolveRegistry_FindingsGlob(t *testing.T) {
 }
 
 func TestResolveRegistry_AgentGlobAndExact(t *testing.T) {
-	_, reg, err := ResolveRegistry("agent_*,workflow_skip", defaultBuiltins(), nil, httpFactoryStub, nil)
+	_, reg, err := ResolveRegistry("agent_*,workflow_skip", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestResolveRegistry_AgentGlobAndExact(t *testing.T) {
 
 func TestResolveRegistry_StarMatchesAll(t *testing.T) {
 	httpDefs := []*model.ToolDefinition{{Name: "lookup_sku"}}
-	_, reg, err := ResolveRegistry("*", defaultBuiltins(), httpDefs, httpFactoryStub, nil)
+	_, reg, err := ResolveRegistry("*", defaultBuiltins(), nil, httpDefs, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestResolveRegistry_StarMatchesAll(t *testing.T) {
 
 func TestResolveRegistry_HTTPExactMatch(t *testing.T) {
 	httpDefs := []*model.ToolDefinition{{Name: "lookup_sku"}, {Name: "search_db"}}
-	_, reg, err := ResolveRegistry("lookup_sku", defaultBuiltins(), httpDefs, httpFactoryStub, nil)
+	_, reg, err := ResolveRegistry("lookup_sku", defaultBuiltins(), nil, httpDefs, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestResolveRegistry_HTTPExactMatch(t *testing.T) {
 }
 
 func TestResolveRegistry_NoMatchIsConfigError(t *testing.T) {
-	_, _, err := ResolveRegistry("lookup_sku", defaultBuiltins(), nil, httpFactoryStub, nil)
+	_, _, err := ResolveRegistry("lookup_sku", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err == nil {
 		t.Fatalf("expected config error, got nil")
 	}
@@ -139,7 +139,7 @@ func TestResolveRegistry_NoMatchIsConfigError(t *testing.T) {
 
 func TestResolveRegistry_BuiltinHTTPCollision(t *testing.T) {
 	httpDefs := []*model.ToolDefinition{{Name: "findings_add"}}
-	_, _, err := ResolveRegistry("findings_add", defaultBuiltins(), httpDefs, httpFactoryStub, nil)
+	_, _, err := ResolveRegistry("findings_add", defaultBuiltins(), nil, httpDefs, httpFactoryStub)
 	if err == nil {
 		t.Fatalf("expected collision error, got nil")
 	}
@@ -151,7 +151,7 @@ func TestResolveRegistry_BuiltinHTTPCollision(t *testing.T) {
 func TestResolveRegistry_DedupAcrossPatterns(t *testing.T) {
 	// "findings_add" appears via both the exact match and the glob; dedup
 	// must keep one entry.
-	_, reg, err := ResolveRegistry("findings_add,findings_*", defaultBuiltins(), nil, httpFactoryStub, nil)
+	_, reg, err := ResolveRegistry("findings_add,findings_*", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestResolveRegistry_DedupAcrossPatterns(t *testing.T) {
 }
 
 func TestResolveRegistry_WhitespaceTrimmed(t *testing.T) {
-	_, reg, err := ResolveRegistry(" findings_add , workflow_skip ", defaultBuiltins(), nil, httpFactoryStub, nil)
+	_, reg, err := ResolveRegistry(" findings_add , workflow_skip ", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -174,7 +174,7 @@ func TestResolveRegistry_WhitespaceTrimmed(t *testing.T) {
 }
 
 func TestResolveRegistry_SpecsMirrorRegistry(t *testing.T) {
-	specs, reg, err := ResolveRegistry("findings_*", defaultBuiltins(), nil, httpFactoryStub, nil)
+	specs, reg, err := ResolveRegistry("findings_*", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestResolveRegistry_SpecsMirrorRegistry(t *testing.T) {
 // Users must write `findings_*` for the underscore-style names. Recorded as
 // a production/docs mismatch in be_production_bugs.
 func TestResolveRegistry_DotPatternMismatch(t *testing.T) {
-	_, _, err := ResolveRegistry("findings.*", defaultBuiltins(), nil, httpFactoryStub, nil)
+	_, _, err := ResolveRegistry("findings.*", defaultBuiltins(), nil, nil, httpFactoryStub)
 	if err == nil {
 		t.Fatalf("expected `findings.*` to NOT match any builtin (names use underscores), but ResolveRegistry succeeded")
 	}
@@ -211,7 +211,7 @@ func TestResolveRegistry_DotPatternMismatch(t *testing.T) {
 
 func TestResolveRegistry_NilHTTPDefSkipped(t *testing.T) {
 	httpDefs := []*model.ToolDefinition{nil, {Name: ""}, {Name: "lookup_sku"}}
-	_, reg, err := ResolveRegistry("lookup_sku", defaultBuiltins(), httpDefs, httpFactoryStub, nil)
+	_, reg, err := ResolveRegistry("lookup_sku", defaultBuiltins(), nil, httpDefs, httpFactoryStub)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}

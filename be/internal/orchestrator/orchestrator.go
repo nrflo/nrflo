@@ -19,7 +19,6 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
-	"be/internal/manifest/python"
 	"be/internal/model"
 	ptyPkg "be/internal/pty"
 	"be/internal/repo"
@@ -361,9 +360,6 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		pushAfterMerge = true
 	}
 
-	// Read customer config dir (once at workflow start; used by api-mode manifest tools)
-	customerConfigDir, _ := pool.GetProjectConfig(req.ProjectID, "customer_config_dir")
-
 	// Load per-project env vars (once at workflow start; injected into all spawned agents)
 	projectEnv := loadProjectEnv(ctx, pool, req.ProjectID, o.clock)
 
@@ -435,7 +431,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, customerConfigDir, projectEnv, layerPolicies)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies)
 
 	status := "started"
 	sessionID := ""
@@ -797,9 +793,6 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		pushAfterMerge = true
 	}
 
-	// Read customer config dir (once at workflow retry)
-	customerConfigDir, _ := pool.GetProjectConfig(projectID, "customer_config_dir")
-
 	// Load per-project env vars (once at workflow retry; injected into all spawned agents)
 	projectEnv := loadProjectEnv(ctx, pool, projectID, o.clock)
 
@@ -837,7 +830,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}))
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, customerConfigDir, projectEnv, layerPolicies)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies)
 
 	return nil
 }
@@ -1294,7 +1287,6 @@ func (o *Orchestrator) runLoop(
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
 	pushAfterMerge bool,
-	customerConfigDir string,
 	projectEnv []string,
 	layerPolicies map[int]string,
 ) {
@@ -1333,8 +1325,6 @@ func (o *Orchestrator) runLoop(
 	workflowSvcReal := service.NewWorkflowService(pool, o.clock)
 	toolDefRepo := repo.NewToolDefinitionRepo(pool, o.clock)
 	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
-	reviewRepo := repo.NewReviewRepo(pool, o.clock)
-	pythonRunner := python.NewOSRunner()
 	artifactSvcRun := service.NewArtifactService(pool, o.clock, o.wsHub, o.dataPath)
 
 	// Worktree cleanup on failure/cancellation (deferred after pool so git commands still work)
@@ -1428,9 +1418,6 @@ func (o *Orchestrator) runLoop(
 		APIMode:                   runAPIMode,
 		PTYManager:                o.PTYManager,
 		DispatchRepo:              dispatchRepo,
-		ReviewRepo:                reviewRepo,
-		PythonRunner:              pythonRunner,
-		CustomerConfigDir:         customerConfigDir,
 		ProjectEnv:                projectEnv,
 		SDKDir:                    o.sdkDir,
 		PythonPath:                pythonPath,
@@ -1645,7 +1632,7 @@ func (o *Orchestrator) runLoop(
 		wtService := &service.WorktreeService{}
 		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
 			// Attempt automatic conflict resolution
-			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs, claudeSettingsJSON, customerConfigDir, projectEnv); resolveErr != nil {
+			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs, claudeSettingsJSON, projectEnv); resolveErr != nil {
 				// Resolution failed or no resolver configured — fall through to manual resolution
 				logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
 					"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)

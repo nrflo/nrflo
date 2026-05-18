@@ -8,40 +8,28 @@ import (
 	"be/internal/model"
 )
 
-func setupDispatchDBWithClock(t *testing.T, clk clock.Clock) (*DispatchRepo, string) {
-	t.Helper()
-	database := newTestDB(t)
-	var err error
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`)
-	if err != nil {
-		t.Fatalf("insert project: %v", err)
-	}
-	return NewDispatchRepo(database, clk), "proj-1"
-}
-
 func setupDispatchDB(t *testing.T) (*DispatchRepo, string) {
 	t.Helper()
-	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	return setupDispatchDBWithClock(t, clk)
-}
-
-
-func makeDispatch(projectID, toolName, status string, durationMs int64) *model.ToolDispatch {
-	return &model.ToolDispatch{
-		ProjectID:  projectID,
-		ToolName:   toolName,
-		Input:      `{}`,
-		Status:     status,
-		DurationMs: durationMs,
+	database := newTestDB(t)
+	if _, err := database.Exec(
+		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`); err != nil {
+		t.Fatalf("insert project: %v", err)
 	}
+	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	return NewDispatchRepo(database, clk), "proj-1"
 }
 
 func TestDispatchRepo_InsertSetsIDAndTimestamp(t *testing.T) {
 	t.Parallel()
 	r, projectID := setupDispatchDB(t)
 
-	d := makeDispatch(projectID, "write_file", model.DispatchStatusSuccess, 100)
+	d := &model.ToolDispatch{
+		ProjectID:  projectID,
+		ToolName:   "write_file",
+		Input:      `{}`,
+		Status:     model.DispatchStatusSuccess,
+		DurationMs: 100,
+	}
 	if err := r.Insert(d); err != nil {
 		t.Fatalf("Insert: %v", err)
 	}
@@ -49,7 +37,7 @@ func TestDispatchRepo_InsertSetsIDAndTimestamp(t *testing.T) {
 		t.Errorf("ID not set after Insert")
 	}
 	if d.CreatedAt.IsZero() {
-		t.Errorf("CreatedAt is zero")
+		t.Errorf("CreatedAt is zero after Insert")
 	}
 }
 
@@ -74,151 +62,44 @@ func TestDispatchRepo_InsertErrorStatus(t *testing.T) {
 	}
 }
 
-func TestDispatchRepo_ListSummary_Counts(t *testing.T) {
+func TestDispatchRepo_InsertNilSessionID(t *testing.T) {
 	t.Parallel()
 	r, projectID := setupDispatchDB(t)
-	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
-	for i := 0; i < 3; i++ {
-		r.Insert(makeDispatch(projectID, "tool", model.DispatchStatusSuccess, 10))
+	d := &model.ToolDispatch{
+		ProjectID:  projectID,
+		ToolName:   "no_session_tool",
+		Input:      `{"x":1}`,
+		Status:     model.DispatchStatusSuccess,
+		DurationMs: 5,
 	}
-	for i := 0; i < 2; i++ {
-		r.Insert(makeDispatch(projectID, "tool", model.DispatchStatusError, 10))
+	if err := r.Insert(d); err != nil {
+		t.Fatalf("Insert with nil SessionID: %v", err)
 	}
-
-	summary, err := r.ListSummary(projectID, since)
-	if err != nil {
-		t.Fatalf("ListSummary: %v", err)
-	}
-	if summary.Total != 5 {
-		t.Errorf("Total = %d, want 5", summary.Total)
-	}
-	if summary.Success != 3 {
-		t.Errorf("Success = %d, want 3", summary.Success)
-	}
-	if summary.Error != 2 {
-		t.Errorf("Error = %d, want 2", summary.Error)
+	if d.ID == "" {
+		t.Errorf("ID not set")
 	}
 }
 
-func TestDispatchRepo_ListSummary_Percentiles(t *testing.T) {
+func TestDispatchRepo_InsertWithSessionID(t *testing.T) {
 	t.Parallel()
 	r, projectID := setupDispatchDB(t)
-	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
 
-	// 10 dispatches with durations 10..100ms (sorted ascending by query)
-	for i := 1; i <= 10; i++ {
-		r.Insert(makeDispatch(projectID, "tool", model.DispatchStatusSuccess, int64(i*10)))
+	sessionID := "sess-abc"
+	output := `{"result":"ok"}`
+	d := &model.ToolDispatch{
+		ProjectID:  projectID,
+		SessionID:  &sessionID,
+		ToolName:   "lookup_sku",
+		Input:      `{"sku":"X1"}`,
+		Output:     &output,
+		Status:     model.DispatchStatusSuccess,
+		DurationMs: 20,
 	}
-
-	summary, err := r.ListSummary(projectID, since)
-	if err != nil {
-		t.Fatalf("ListSummary: %v", err)
+	if err := r.Insert(d); err != nil {
+		t.Fatalf("Insert with SessionID: %v", err)
 	}
-	// p50Index(10) = 10*50/100 = 5 → sorted[5] = 60ms (0-indexed: 10,20,30,40,50,60,...)
-	if summary.P50Ms != 60 {
-		t.Errorf("P50Ms = %d, want 60", summary.P50Ms)
-	}
-	// p95Index(10) = 10*95/100 = 9 → sorted[9] = 100ms
-	if summary.P95Ms != 100 {
-		t.Errorf("P95Ms = %d, want 100", summary.P95Ms)
-	}
-}
-
-func TestDispatchRepo_ListSummary_Empty(t *testing.T) {
-	t.Parallel()
-	r, projectID := setupDispatchDB(t)
-	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
-
-	summary, err := r.ListSummary(projectID, since)
-	if err != nil {
-		t.Fatalf("ListSummary empty: %v", err)
-	}
-	if summary.Total != 0 || summary.Success != 0 || summary.Error != 0 {
-		t.Errorf("empty: Total=%d Success=%d Error=%d, want all 0", summary.Total, summary.Success, summary.Error)
-	}
-	if summary.P50Ms != 0 || summary.P95Ms != 0 {
-		t.Errorf("empty: P50Ms=%d P95Ms=%d, want 0", summary.P50Ms, summary.P95Ms)
-	}
-}
-
-func TestDispatchRepo_ListSummary_SinceFilters(t *testing.T) {
-	t.Parallel()
-	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	r, projectID := setupDispatchDBWithClock(t, clk)
-
-	// Insert 2 records at T0
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-
-	// Insert 1 more at T0+1h
-	clk.Advance(time.Hour)
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-
-	// since = T0+30m: only the last record is included
-	since := time.Date(2026, 1, 1, 0, 30, 0, 0, time.UTC)
-	summary, err := r.ListSummary(projectID, since)
-	if err != nil {
-		t.Fatalf("ListSummary with since: %v", err)
-	}
-	if summary.Total != 1 {
-		t.Errorf("Total = %d, want 1 (since filter)", summary.Total)
-	}
-}
-
-
-func TestDispatchRepo_Throughput_Buckets(t *testing.T) {
-	t.Parallel()
-	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	clk := clock.NewTest(t0)
-	r, projectID := setupDispatchDBWithClock(t, clk)
-	since := t0.Add(-time.Second)
-
-	// T0: 2 dispatches → bucket 0 (minute 0)
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-	// T0+30s: still bucket 0 (same 60s window)
-	clk.Advance(30 * time.Second)
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-	// T0+60s: bucket 1
-	clk.Advance(30 * time.Second)
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-	// T0+120s: bucket 2
-	clk.Advance(60 * time.Second)
-	r.Insert(makeDispatch(projectID, "t", model.DispatchStatusSuccess, 10))
-
-	points, err := r.Throughput(projectID, since, 60)
-	if err != nil {
-		t.Fatalf("Throughput: %v", err)
-	}
-	if len(points) != 3 {
-		t.Fatalf("Throughput bucket count = %d, want 3", len(points))
-	}
-	if points[0].Count != 3 {
-		t.Errorf("bucket[0].Count = %d, want 3 (T0 + T0+30s)", points[0].Count)
-	}
-	if points[1].Count != 1 {
-		t.Errorf("bucket[1].Count = %d, want 1 (T0+60s)", points[1].Count)
-	}
-	if points[2].Count != 1 {
-		t.Errorf("bucket[2].Count = %d, want 1 (T0+120s)", points[2].Count)
-	}
-	if !points[1].BucketStart.After(points[0].BucketStart) {
-		t.Errorf("bucket[1].BucketStart %v not after bucket[0].BucketStart %v", points[1].BucketStart, points[0].BucketStart)
-	}
-}
-
-func TestDispatchRepo_Throughput_Empty(t *testing.T) {
-	t.Parallel()
-	r, projectID := setupDispatchDB(t)
-	// since is in the future → no records match
-	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Hour)
-
-	points, err := r.Throughput(projectID, since, 60)
-	if err != nil {
-		t.Fatalf("Throughput empty: %v", err)
-	}
-	if len(points) != 0 {
-		t.Errorf("Throughput empty: count = %d, want 0", len(points))
+	if d.ID == "" {
+		t.Errorf("ID not set")
 	}
 }

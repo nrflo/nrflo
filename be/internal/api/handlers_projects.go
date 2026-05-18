@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"be/internal/model"
 	"be/internal/repo"
@@ -28,14 +26,6 @@ func (s *Server) loadPushAfterMerge(p *model.Project) {
 	}
 }
 
-// loadCustomerConfigDir loads the customer_config_dir config for a project and sets it on the model.
-func (s *Server) loadCustomerConfigDir(p *model.Project) {
-	val, err := s.pool.GetProjectConfig(p.ID, "customer_config_dir")
-	if err == nil {
-		p.CustomerConfigDir = val
-	}
-}
-
 // handleListProjects returns all projects
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	projectRepo := s.projectRepo()
@@ -53,7 +43,6 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	for _, p := range projects {
 		s.loadSafetyHook(p)
 		s.loadPushAfterMerge(p)
-		s.loadCustomerConfigDir(p)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -130,7 +119,6 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 
 	s.loadSafetyHook(created)
 	s.loadPushAfterMerge(created)
-	s.loadCustomerConfigDir(created)
 
 	writeJSON(w, http.StatusCreated, created)
 }
@@ -148,7 +136,6 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 
 	s.loadSafetyHook(project)
 	s.loadPushAfterMerge(project)
-	s.loadCustomerConfigDir(project)
 
 	writeJSON(w, http.StatusOK, project)
 }
@@ -168,13 +155,12 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 
 // UpdateProjectRequest represents the request body for updating a project
 type UpdateProjectRequest struct {
-	Name              *string `json:"name,omitempty"`
-	RootPath          *string `json:"root_path,omitempty"`
-	DefaultBranch     *string `json:"default_branch,omitempty"`
-	UseGitWorktrees   *bool   `json:"use_git_worktrees,omitempty"`
-	PushAfterMerge    *bool   `json:"push_after_merge,omitempty"`
-	CustomerConfigDir *string `json:"customer_config_dir,omitempty"`
-	ClaudeSafetyHook  *string `json:"claude_safety_hook,omitempty"`
+	Name            *string `json:"name,omitempty"`
+	RootPath        *string `json:"root_path,omitempty"`
+	DefaultBranch   *string `json:"default_branch,omitempty"`
+	UseGitWorktrees *bool   `json:"use_git_worktrees,omitempty"`
+	PushAfterMerge  *bool   `json:"push_after_merge,omitempty"`
+	ClaudeSafetyHook *string `json:"claude_safety_hook,omitempty"`
 }
 
 // handleUpdateProject updates a project
@@ -229,30 +215,6 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Handle customer_config_dir config (stored in config table, not projects table)
-	if req.CustomerConfigDir != nil {
-		dirVal := *req.CustomerConfigDir
-		if dirVal != "" {
-			if !filepath.IsAbs(dirVal) {
-				writeError(w, http.StatusBadRequest, "customer_config_dir must be an absolute path")
-				return
-			}
-			info, err := os.Stat(dirVal)
-			if err != nil {
-				writeError(w, http.StatusBadRequest, "customer_config_dir path does not exist: "+err.Error())
-				return
-			}
-			if !info.IsDir() {
-				writeError(w, http.StatusBadRequest, "customer_config_dir must be a directory, not a file")
-				return
-			}
-		}
-		if err := s.pool.SetProjectConfig(id, "customer_config_dir", dirVal); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to save customer_config_dir config: "+err.Error())
-			return
-		}
-	}
-
 	updated, err := projectRepo.Get(id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -261,7 +223,6 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 
 	s.loadSafetyHook(updated)
 	s.loadPushAfterMerge(updated)
-	s.loadCustomerConfigDir(updated)
 
 	writeJSON(w, http.StatusOK, updated)
 }

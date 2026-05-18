@@ -19,7 +19,7 @@ import (
 	"be/internal/ws"
 )
 
-func newTestDispatchRepo(t *testing.T, clk clock.Clock) (*repo.DispatchRepo, string) {
+func newTestDispatchRepo(t *testing.T, clk clock.Clock) (*repo.DispatchRepo, string, *db.DB) {
 	t.Helper()
 	database, err := db.OpenPath(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -30,7 +30,22 @@ func newTestDispatchRepo(t *testing.T, clk clock.Clock) (*repo.DispatchRepo, str
 		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
-	return repo.NewDispatchRepo(database, clk), "proj-1"
+	return repo.NewDispatchRepo(database, clk), "proj-1", database
+}
+
+func countDispatches(t *testing.T, database *db.DB, projectID, status string) int {
+	t.Helper()
+	q := `SELECT COUNT(*) FROM tool_dispatches WHERE project_id = ?`
+	args := []interface{}{projectID}
+	if status != "" {
+		q += ` AND status = ?`
+		args = append(args, status)
+	}
+	var n int
+	if err := database.QueryRow(q, args...).Scan(&n); err != nil {
+		t.Fatalf("countDispatches: %v", err)
+	}
+	return n
 }
 
 type fakeHub struct {
@@ -89,9 +104,8 @@ func TestPython_SchemaValidationFails(t *testing.T) {
 		t.Skip("python3 not on PATH")
 	}
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
+	dispatchRepo, projectID, database := newTestDispatchRepo(t, clk)
 	hub := &fakeHub{}
-	since := clk.Now().Add(-time.Second)
 
 	schema := `{"type":"object","properties":{"q":{"type":"string"}},"required":["q"]}`
 	row := pythonRow("schema-tool", `import json,sys; print(json.dumps({"ok":True}))`, schema, 5)
@@ -109,12 +123,11 @@ func TestPython_SchemaValidationFails(t *testing.T) {
 		t.Errorf("output=%q, want contains 'schema validation failed'", out)
 	}
 
-	summary, sErr := dispatchRepo.ListSummary(projectID, since)
-	if sErr != nil {
-		t.Fatalf("ListSummary: %v", sErr)
+	if n := countDispatches(t, database, projectID, ""); n != 1 {
+		t.Errorf("dispatch count=%d, want 1", n)
 	}
-	if summary.Total != 1 || summary.Error != 1 {
-		t.Errorf("dispatch Total=%d Error=%d, want 1/1", summary.Total, summary.Error)
+	if n := countDispatches(t, database, projectID, model.DispatchStatusError); n != 1 {
+		t.Errorf("dispatch error count=%d, want 1", n)
 	}
 
 	events := hub.Events()
@@ -135,9 +148,8 @@ func TestPython_Success_StdinStdoutRoundTrip(t *testing.T) {
 		t.Skip("python3 not on PATH")
 	}
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
+	dispatchRepo, projectID, database := newTestDispatchRepo(t, clk)
 	hub := &fakeHub{}
-	since := clk.Now().Add(-time.Second)
 
 	code := `import json,sys; d=json.loads(sys.stdin.read()); print(json.dumps({"echo": d["q"]}))`
 	row := pythonRow("echo-tool", code, "", 10)
@@ -155,12 +167,11 @@ func TestPython_Success_StdinStdoutRoundTrip(t *testing.T) {
 		t.Errorf("output=%q, want contains echo:hi", out)
 	}
 
-	summary, sErr := dispatchRepo.ListSummary(projectID, since)
-	if sErr != nil {
-		t.Fatalf("ListSummary: %v", sErr)
+	if n := countDispatches(t, database, projectID, ""); n != 1 {
+		t.Errorf("dispatch count=%d, want 1", n)
 	}
-	if summary.Total != 1 || summary.Success != 1 {
-		t.Errorf("dispatch Total=%d Success=%d, want 1/1", summary.Total, summary.Success)
+	if n := countDispatches(t, database, projectID, model.DispatchStatusSuccess); n != 1 {
+		t.Errorf("dispatch success count=%d, want 1", n)
 	}
 
 	events := hub.Events()
@@ -181,9 +192,8 @@ func TestPython_NonZeroExit_StderrSurfaces(t *testing.T) {
 		t.Skip("python3 not on PATH")
 	}
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
+	dispatchRepo, projectID, database := newTestDispatchRepo(t, clk)
 	hub := &fakeHub{}
-	since := clk.Now().Add(-time.Second)
 
 	code := `import sys; print("boom", file=sys.stderr); sys.exit(2)`
 	row := pythonRow("fail-tool", code, "", 10)
@@ -201,12 +211,11 @@ func TestPython_NonZeroExit_StderrSurfaces(t *testing.T) {
 		t.Errorf("output=%q, want %q", out, "boom\n")
 	}
 
-	summary, sErr := dispatchRepo.ListSummary(projectID, since)
-	if sErr != nil {
-		t.Fatalf("ListSummary: %v", sErr)
+	if n := countDispatches(t, database, projectID, ""); n != 1 {
+		t.Errorf("dispatch count=%d, want 1", n)
 	}
-	if summary.Total != 1 || summary.Error != 1 {
-		t.Errorf("dispatch Total=%d Error=%d, want 1/1", summary.Total, summary.Error)
+	if n := countDispatches(t, database, projectID, model.DispatchStatusError); n != 1 {
+		t.Errorf("dispatch error count=%d, want 1", n)
 	}
 }
 
@@ -215,9 +224,8 @@ func TestPython_Timeout(t *testing.T) {
 		t.Skip("python3 not on PATH")
 	}
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
+	dispatchRepo, projectID, database := newTestDispatchRepo(t, clk)
 	hub := &fakeHub{}
-	since := clk.Now().Add(-time.Second)
 
 	code := `import time; time.sleep(5)`
 	row := pythonRow("sleep-tool", code, "", 1)
@@ -235,12 +243,11 @@ func TestPython_Timeout(t *testing.T) {
 		t.Errorf("output=%q, want contains 'tool timed out after 1s'", out)
 	}
 
-	summary, sErr := dispatchRepo.ListSummary(projectID, since)
-	if sErr != nil {
-		t.Fatalf("ListSummary: %v", sErr)
+	if n := countDispatches(t, database, projectID, ""); n != 1 {
+		t.Errorf("dispatch count=%d, want 1", n)
 	}
-	if summary.Total != 1 || summary.Error != 1 {
-		t.Errorf("dispatch Total=%d Error=%d, want 1/1", summary.Total, summary.Error)
+	if n := countDispatches(t, database, projectID, model.DispatchStatusError); n != 1 {
+		t.Errorf("dispatch error count=%d, want 1", n)
 	}
 
 	events := hub.Events()
@@ -261,7 +268,7 @@ func TestPython_Truncates16KB(t *testing.T) {
 		t.Skip("python3 not on PATH")
 	}
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
+	dispatchRepo, projectID, _ := newTestDispatchRepo(t, clk)
 	hub := &fakeHub{}
 
 	code := `import sys; sys.stdout.write("a"*20480); sys.stdout.flush()`
@@ -290,7 +297,7 @@ func TestPython_FilePathPreferredOverCode(t *testing.T) {
 		t.Skip("python3 not on PATH")
 	}
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
+	dispatchRepo, projectID, _ := newTestDispatchRepo(t, clk)
 	hub := &fakeHub{}
 
 	dir := t.TempDir()

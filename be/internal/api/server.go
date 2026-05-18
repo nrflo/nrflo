@@ -766,26 +766,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	apiModeAdmin("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
 	apiModeAdmin("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
 
-	// review items (project-scoped; api-mode only)
-	apiModeProtected("GET /api/v1/review", s.handleListReviews)
-	apiModeProtected("POST /api/v1/review", s.handleCreateReview)
-	apiModeProtected("GET /api/v1/review/{id}", s.handleGetReview)
-	apiModeProtected("PATCH /api/v1/review/{id}", s.handlePatchReview)
-	apiModeProtected("POST /api/v1/review/{id}/approve", s.handleApproveReview)
-	apiModeProtected("POST /api/v1/review/{id}/reject", s.handleRejectReview)
-
-	// config editor (project-scoped; api-mode only)
-	apiModeProtected("GET /api/v1/config-files", s.handleListConfigFiles)
-	apiModeProtected("GET /api/v1/config-files/content/{file...}", s.handleGetConfigFile)
-	apiModeProtected("PUT /api/v1/config-files/content/{file...}", s.handlePutConfigFile)
-	apiModeProtected("GET /api/v1/config-files/history/{file...}", s.handleGetConfigHistory)
-	apiModeProtected("POST /api/v1/config-files/rollback/{file...}", s.handleRollbackConfig)
-
-	// insights (project-scoped; api-mode only)
-	apiModeProtected("GET /api/v1/insights/summary", s.handleInsightsSummary)
-	apiModeProtected("GET /api/v1/insights/edit-rate", s.handleInsightsEditRate)
-	apiModeProtected("GET /api/v1/insights/throughput", s.handleInsightsThroughput)
-
 	// Spec import (project-scoped via X-Project header)
 	protected("POST /api/v1/import/spec", s.handleStartSpecImport)
 	protected("GET /api/v1/import/spec/{instance_id}", s.handleGetSpecImport)

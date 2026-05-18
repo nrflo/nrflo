@@ -26,8 +26,6 @@ Top-level packages under `be/internal/`:
 - `db/` — SQLite connection pool, migrations (see [db/CLAUDE.md](internal/db/CLAUDE.md))
 - `model/` — Data models (structs)
 - `sdk/python/` — Embedded Python SDK installed to `$NRFLO_HOME/sdk/` on startup
-- `manifest/` — Manifest parsing, python runtime, init-customer scaffold
-- `configeditor/` — Versioned config file editing service
 - `repo/` — Repository pattern (DB access layer)
 - `types/` — Shared request/response types
 - `clock/` — Time abstraction (`clock.Clock` interface + `Real()` + test clock)
@@ -106,10 +104,8 @@ The Unix socket uses JSON-RPC line-delimited protocol. Supported methods: `findi
 | `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Business logic, per-project env vars |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers |
-| `internal/manifest/` | [manifest/CLAUDE.md](internal/manifest/CLAUDE.md) | Manifest parsing, python script runtime |
 | `internal/sdk/python/` | [sdk/python/CLAUDE.md](internal/sdk/python/CLAUDE.md) | Embedded Python SDK for `execution_mode='script'` agents |
 | `internal/venv/` | (inline docs) | Per-project venv: `Ensure(ctx, projectID, projectRoot)` syncs with `requirements.txt` (sha256-keyed, atomic rename); non-blocking fallback to PATH python3 |
-| `internal/configeditor/` | [configeditor/CLAUDE.md](internal/configeditor/CLAUDE.md) | Versioned config file editing + forward-only migration runner |
 | `internal/spec_import/` | [spec_import/CLAUDE.md](internal/spec_import/CLAUDE.md) | Spec import adapters (GitHub Issue, Jira, Markdown passthrough) |
 
 Per-project env vars: see [internal/service/CLAUDE.md](internal/service/CLAUDE.md).

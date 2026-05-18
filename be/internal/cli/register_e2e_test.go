@@ -46,14 +46,9 @@ func TestE2E_ServerRegistration(t *testing.T) {
 		}
 	}
 
-	// Should have init-customer
-	if !contains(commands, "init-customer") {
-		t.Error("server binary: missing 'init-customer' command")
-	}
-
-	// Verify command count: serve, version, init-customer
-	if len(commands) != 3 {
-		t.Errorf("server binary: got %d commands, want 3 (serve, version, init-customer). Commands: %v", len(commands), commands)
+	// Verify command count: serve, version
+	if len(commands) != 2 {
+		t.Errorf("server binary: got %d commands, want 2 (serve, version). Commands: %v", len(commands), commands)
 	}
 }
 

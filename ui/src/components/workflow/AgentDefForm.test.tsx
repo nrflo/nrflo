@@ -192,6 +192,7 @@ describe('AgentDefForm', () => {
         execution_mode: 'cli_interactive',
         tools: '',
         api_max_iterations: undefined,
+        validation_commands: [],
       })
     })
 
@@ -223,6 +224,7 @@ describe('AgentDefForm', () => {
         execution_mode: 'cli_interactive',
         tools: '',
         api_max_iterations: undefined,
+        validation_commands: [],
       })
     })
 

@@ -40,6 +40,9 @@ export function AgentDefForm({
   const [pythonScriptId, setPythonScriptId] = useState(initial?.python_script_id || '')
   const [tools, setTools] = useState(initial?.tools || '')
   const [apiMaxIterations, setApiMaxIterations] = useState<number | ''>(initial?.api_max_iterations ?? '')
+  const [validationCommands, setValidationCommands] = useState<string[]>(() => {
+    try { return JSON.parse(initial?.validation_commands ?? '[]') } catch { return [] }
+  })
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
   const apiModeEnabled = useAPIModeEnabled()
@@ -57,16 +60,17 @@ export function AgentDefForm({
     const threshold = restartThreshold !== '' ? restartThreshold : undefined
     const failRestarts = maxFailRestarts !== '' ? maxFailRestarts : undefined
     const tagValue = tag || undefined
+    const trimmedCmds = validationCommands.map(s => s.trim()).filter(Boolean).slice(0, 20)
 
     if (executionMode === 'script') {
-      const base = { layer, timeout, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, execution_mode: 'script' as const, python_script_id: pythonScriptId }
+      const base = { layer, timeout, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, execution_mode: 'script' as const, python_script_id: pythonScriptId, validation_commands: trimmedCmds }
       onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
       return
     }
 
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter }
+    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, validation_commands: trimmedCmds }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -114,6 +118,25 @@ export function AgentDefForm({
           <label className="block text-xs font-medium text-muted-foreground mb-1">Fail restarts</label>
           <input type="number" value={maxFailRestarts} onChange={(e) => setMaxFailRestarts(e.target.value === '' ? '' : Number(e.target.value))} placeholder="0" min={0} max={10} className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
         </div>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Validation commands</label>
+        <p className="text-xs text-muted-foreground mb-2">Commands run by the orchestrator after the agent reports pass. Any non-zero exit fails the session.</p>
+        <div className="space-y-1.5">
+          {validationCommands.map((cmd, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={cmd}
+                onChange={(e) => setValidationCommands(prev => prev.map((c, i) => i === idx ? e.target.value : c))}
+                placeholder="e.g., make test"
+                className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+              />
+              <Button type="button" variant="ghost" size="sm" onClick={() => setValidationCommands(prev => prev.filter((_, i) => i !== idx))}>Remove</Button>
+            </div>
+          ))}
+        </div>
+        <Button type="button" variant="outline" size="sm" className="mt-2" disabled={validationCommands.length >= 20} onClick={() => setValidationCommands(prev => [...prev, ''])}>Add command</Button>
       </div>
       {groups.length > 0 && (
         <div>

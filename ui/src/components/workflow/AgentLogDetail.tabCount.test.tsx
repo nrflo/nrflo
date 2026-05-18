@@ -90,7 +90,7 @@ describe('AgentLogDetail - tab count badges', () => {
 
     // Each tab button contains a count badge span — verify via textContent
     const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(8)
+    expect(tabs).toHaveLength(9)
 
     // All tab: total count = 6
     expect(tabs[0].textContent).toContain('6')
@@ -224,7 +224,7 @@ describe('AgentLogDetail - tab count badges', () => {
     })
 
     const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(8)
+    expect(tabs).toHaveLength(9)
     expect(tabs[0].textContent).toContain('4') // All
     expect(tabs[1].textContent).toContain('1') // Text
     expect(tabs[2].textContent).toContain('1') // Tools

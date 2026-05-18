@@ -38,6 +38,7 @@ const CATEGORY_TABS: { value: MessageCategory | 'all'; label: string }[] = [
   { value: 'user_input', label: 'User input' },
   { value: 'error', label: 'Errors' },
   { value: 'result', label: 'Results' },
+  { value: 'validation', label: 'Validation' },
 ]
 
 function formatDuration(durationSec?: number): string {
@@ -88,7 +89,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const messages = messagesData?.messages ?? []
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0, error: 0, result: 0 }
+    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0, error: 0, result: 0, validation: 0 }
     for (const m of messages) {
       const cat = m.category || 'text'
       counts[cat] = (counts[cat] || 0) + 1
@@ -296,6 +297,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                   const isUserInput = msg.category === 'user_input'
                   const isError = msg.category === 'error'
                   const isResult = msg.category === 'result'
+                  const isValidation = msg.category === 'validation'
                   return (
                     <TableRow
                       key={i}
@@ -304,6 +306,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                         isUserInput && "border-l-4 border-l-primary bg-primary/5 dark:bg-primary/10",
                         isError && "border-l-4 border-l-destructive bg-destructive/5 dark:bg-destructive/10",
                         isResult && "border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
+                        isValidation && "border-l-4 border-l-destructive bg-destructive/5 dark:bg-destructive/10",
                       )}
                       data-testid="message-row"
                     >
@@ -322,6 +325,10 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                         ) : isResult ? (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700">
                             Result
+                          </span>
+                        ) : isValidation ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-destructive/10 text-destructive border border-destructive/40">
+                            Validation
                           </span>
                         ) : (
                           toolName && <ToolBadge name={toolName} />

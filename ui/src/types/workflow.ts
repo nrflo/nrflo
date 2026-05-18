@@ -202,7 +202,7 @@ export interface AgentSession {
   updated_at: string
 }
 
-export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill' | 'user_input' | 'error' | 'result'
+export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill' | 'user_input' | 'error' | 'result' | 'validation'
 
 export interface MessageWithTime {
   content: string
@@ -306,6 +306,7 @@ export interface AgentDef {
   tools: string
   api_max_iterations?: number
   python_script_id?: string
+  validation_commands?: string
   created_at: string
   updated_at: string
 }
@@ -324,6 +325,7 @@ export interface AgentDefCreateRequest {
   tools?: string
   api_max_iterations?: number
   python_script_id?: string
+  validation_commands?: string[]
 }
 
 export interface AgentDefUpdateRequest {
@@ -339,6 +341,7 @@ export interface AgentDefUpdateRequest {
   tools?: string
   api_max_iterations?: number
   python_script_id?: string
+  validation_commands?: string[]
 }
 
 // Orchestration types

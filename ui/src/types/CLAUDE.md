@@ -24,9 +24,11 @@ TypeScript type definitions matching Go API models. Contains 6 files.
 
 | Type | Description |
 |------|-------------|
-| `PythonScript` | Python script record with `id`, `project_id`, `name`, `description`, `code`, timestamps |
-| `PythonScriptCreateRequest` | `{ name, description?, code }` |
-| `PythonScriptUpdateRequest` | `{ name?, description?, code? }` — all optional partial update |
+| `PythonScript` | Python script record with `id`, `project_id`, `name`, `description`, `kind` (`'agent'\|'tool'`), `code`, `file_path`, tool fields (`tool_description`, `input_schema`, `timeout_sec`), timestamps |
+| `PythonScriptCreateRequest` | `{ kind: 'agent', name, description?, code, file_path? }` |
+| `PythonScriptUpdateRequest` | partial update for agent kind (`name?`, `description?`, `code?`, `file_path?`) |
+| `PythonToolCreateRequest` | `{ kind: 'tool', name, description?, tool_description, input_schema, timeout_sec, code?, file_path? }` |
+| `PythonToolUpdateRequest` | partial update for tool kind (no `kind` field — backend rejects) |
 | `ValidationResult` | `{ ok, error?, line?, col? }` — syntax check result from `/validate` endpoint |
 
 ## Key Workflow Types (`workflow.ts`)

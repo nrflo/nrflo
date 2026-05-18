@@ -16,9 +16,6 @@ import {
   Wrench,
   KeyRound,
   CalendarClock,
-  ClipboardList,
-  FileEdit,
-  BarChart3,
   ScrollText,
   ListOrdered,
   FileCode,
@@ -197,27 +194,6 @@ export function Sidebar() {
               icon={<KeyRound className="h-4 w-4" />}
               label="API Credentials"
               active={isActive('/api-credentials')}
-            />
-            <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Vertical app
-            </div>
-            <NavItem
-              to="/review"
-              icon={<ClipboardList className="h-4 w-4" />}
-              label="Review queue"
-              active={isActive('/review')}
-            />
-            <NavItem
-              to="/config-files"
-              icon={<FileEdit className="h-4 w-4" />}
-              label="Config"
-              active={isActive('/config-files')}
-            />
-            <NavItem
-              to="/insights"
-              icon={<BarChart3 className="h-4 w-4" />}
-              label="Insights"
-              active={isActive('/insights')}
             />
           </>
         )}

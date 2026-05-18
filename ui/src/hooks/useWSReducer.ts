@@ -14,28 +14,6 @@ import { serviceTokenKeys } from './useServiceTokens'
 import { artifactKeys } from './useArtifacts'
 import type { WSEventType } from './useWebSocket'
 
-// Module-level throttle state for tool.dispatched (1s leading+trailing)
-let _insightsThrottleTimer: ReturnType<typeof setTimeout> | null = null
-let _insightsThrottlePendingQc: QueryClient | null = null
-
-function throttledInsightsInvalidate(qc: QueryClient): void {
-  if (!_insightsThrottleTimer) {
-    // Leading edge: fire immediately
-    qc.invalidateQueries({ queryKey: ['insights'] })
-    _insightsThrottleTimer = setTimeout(() => {
-      _insightsThrottleTimer = null
-      if (_insightsThrottlePendingQc) {
-        // Trailing edge: fire once more for calls within the window
-        _insightsThrottlePendingQc.invalidateQueries({ queryKey: ['insights'] })
-        _insightsThrottlePendingQc = null
-      }
-    }, 1000)
-  } else {
-    // Within window: mark for trailing fire
-    _insightsThrottlePendingQc = qc
-  }
-}
-
 // Seq tracking per subscription
 const seqMap = new Map<string, number>()
 
@@ -462,19 +440,6 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     if (event.data?.channel_id) {
       qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as string] })
     }
-  },
-
-  'review.created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['review'] })
-  },
-  'review.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['review'] })
-  },
-  'config_file.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['config-files'] })
-  },
-  'tool.dispatched': (_event, qc) => {
-    throttledInsightsInvalidate(qc)
   },
 
   'chain_def.created': (_event, qc) => {

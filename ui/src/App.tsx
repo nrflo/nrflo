@@ -1,4 +1,4 @@
-import { useEffect, Suspense, lazy } from 'react'
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WebSocketProvider } from '@/providers/WebSocketProvider'
@@ -34,22 +34,6 @@ import { useProjectStore } from '@/stores/projectStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAPIModeEnabled, useExperimentalEnabled } from '@/hooks/useGlobalSettings'
 
-const ReviewPage = lazy(() =>
-  import('@/pages/review/Review').then((m) => ({ default: m.ReviewPage }))
-)
-const ReviewDetailPage = lazy(() =>
-  import('@/pages/review/ReviewDetail').then((m) => ({ default: m.ReviewDetailPage }))
-)
-const ConfigFilesPage = lazy(() =>
-  import('@/pages/configeditor/Config').then((m) => ({ default: m.ConfigFilesPage }))
-)
-const ConfigEditorPage = lazy(() =>
-  import('@/pages/configeditor/ConfigEditor').then((m) => ({ default: m.ConfigEditorPage }))
-)
-const InsightsDashboard = lazy(() =>
-  import('@/pages/insights/Insights').then((m) => ({ default: m.InsightsDashboard }))
-)
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -65,7 +49,6 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <AuthGate>
-        <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forbidden" element={<ForbiddenPage />} />
@@ -90,17 +73,11 @@ function AppRoutes() {
               {experimentalEnabled && <Route path="python-scripts" element={<PythonScriptsPage />} />}
               {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
               {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
-              {apiModeEnabled && <Route path="review" element={<ReviewPage />} />}
-              {apiModeEnabled && <Route path="review/:id" element={<ReviewDetailPage />} />}
-              {apiModeEnabled && <Route path="config-files" element={<ConfigFilesPage />} />}
-              {apiModeEnabled && <Route path="config-files/:file" element={<ConfigEditorPage />} />}
-              {apiModeEnabled && <Route path="insights" element={<InsightsDashboard />} />}
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />
             </Route>
           </Routes>
-        </Suspense>
       </AuthGate>
     </BrowserRouter>
   )

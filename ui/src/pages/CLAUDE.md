@@ -21,7 +21,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/schedules` | `SchedulesPage.tsx` | Scheduled tasks table; write controls (New/Edit/Delete/Run-now/Toggle) hidden for non-admins via `useIsAdmin()`; ReadOnlyHint shown at top |
 | `/workflow-chains` | `WorkflowChainsPage.tsx` | Workflow chain list; New/Delete admin-only; ReadOnlyHint at top for non-admins; clicking row navigates to editor |
 | `/workflow-chains/:id` | `WorkflowChainEditorPage.tsx` | Chain editor — chain metadata form + ordered step list with Up/Down reorder, per-step inline form, Add/Delete step |
-| `/python-scripts` | `PythonScriptsPage.tsx` | Python script CRUD — list with edit/delete, New button (admin-only), ConfirmDialog for delete, PythonScriptForm dialog for create/edit, save-anyway flow for syntax errors, ReadOnlyHint for non-admins |
+| `/python-scripts` | `PythonScriptsPage.tsx` | Python scripts CRUD with Agents/Tools tab toggle (`?kind=agent\|tool`, default `agent`). Tab selection drives `usePythonScripts(kind)` and routes create/edit to `PythonScriptForm` (agent) or `PythonToolForm` (tool). New/Edit/Delete admin-only; ConfirmDialog for delete; save-anyway flow for syntax errors; ReadOnlyHint for non-admins |
 | `/settings` | `SettingsPage.tsx` | Tabbed settings page (General, Projects, System Agents, Default Templates, CLI Models, Logs, Administration) — admin-only, gated via `RequireAdmin` at route level; CLI Models tab has Claude / OpenCode / Codex / Gemini provider sub-tabs via `?sub=<provider>`; Administration tab has Users / Audit Log / Service Tokens sub-tabs via `?sub=users\|audit\|tokens`; section components in `src/components/settings/` |
 
 Routes are defined in `src/App.tsx`.

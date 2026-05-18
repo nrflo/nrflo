@@ -1,15 +1,20 @@
 export interface PythonScript {
   id: string
   project_id: string
+  kind: 'agent' | 'tool'
   name: string
   description: string
   code: string
   file_path: string
+  tool_description?: string
+  input_schema?: string
+  timeout_sec?: number
   created_at: string
   updated_at: string
 }
 
 export interface PythonScriptCreateRequest {
+  kind: 'agent' | 'tool'
   name: string
   description?: string
   code: string
@@ -19,6 +24,27 @@ export interface PythonScriptCreateRequest {
 export interface PythonScriptUpdateRequest {
   name?: string
   description?: string
+  code?: string
+  file_path?: string
+}
+
+export interface PythonToolCreateRequest {
+  kind: 'tool'
+  name: string
+  description?: string
+  tool_description: string
+  input_schema: string
+  timeout_sec: number
+  code: string
+  file_path?: string
+}
+
+export interface PythonToolUpdateRequest {
+  name?: string
+  description?: string
+  tool_description?: string
+  input_schema?: string
+  timeout_sec?: number
   code?: string
   file_path?: string
 }

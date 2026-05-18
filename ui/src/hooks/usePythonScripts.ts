@@ -9,18 +9,18 @@ import {
   browseDirectory,
   readPythonFile,
 } from '@/api/pythonScripts'
-import type { PythonScriptCreateRequest, PythonScriptUpdateRequest } from '@/types/pythonScript'
+import type { PythonScriptCreateRequest, PythonScriptUpdateRequest, PythonToolCreateRequest, PythonToolUpdateRequest } from '@/types/pythonScript'
 
 export const pythonScriptKeys = {
   all: ['python-scripts'] as const,
-  list: () => [...pythonScriptKeys.all, 'list'] as const,
+  list: (kind?: 'agent' | 'tool') => [...pythonScriptKeys.all, 'list', kind ?? 'all'] as const,
   detail: (id: string) => [...pythonScriptKeys.all, 'detail', id] as const,
 }
 
-export function usePythonScripts() {
+export function usePythonScripts(kind?: 'agent' | 'tool') {
   return useQuery({
-    queryKey: pythonScriptKeys.list(),
-    queryFn: listPythonScripts,
+    queryKey: pythonScriptKeys.list(kind),
+    queryFn: () => listPythonScripts(kind),
   })
 }
 
@@ -35,7 +35,7 @@ export function usePythonScript(id: string) {
 export function useCreatePythonScript() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: PythonScriptCreateRequest) => createPythonScript(data),
+    mutationFn: (data: PythonScriptCreateRequest | PythonToolCreateRequest) => createPythonScript(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: pythonScriptKeys.all }),
   })
 }
@@ -43,7 +43,7 @@ export function useCreatePythonScript() {
 export function useUpdatePythonScript() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: PythonScriptUpdateRequest }) =>
+    mutationFn: ({ id, data }: { id: string; data: PythonScriptUpdateRequest | PythonToolUpdateRequest }) =>
       updatePythonScript(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: pythonScriptKeys.all }),
   })

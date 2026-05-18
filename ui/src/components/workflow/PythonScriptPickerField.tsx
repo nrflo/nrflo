@@ -8,7 +8,7 @@ interface PythonScriptPickerFieldProps {
 }
 
 export function PythonScriptPickerField({ value, onChange }: PythonScriptPickerFieldProps) {
-  const { data: scripts = [], isLoading } = usePythonScripts()
+  const { data: scripts = [], isLoading } = usePythonScripts('agent')
 
   if (isLoading) {
     return <div className="text-xs text-muted-foreground py-2">Loading scripts…</div>

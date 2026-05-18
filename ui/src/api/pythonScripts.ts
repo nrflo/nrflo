@@ -1,21 +1,22 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from './client'
-import type { PythonScript, PythonScriptCreateRequest, PythonScriptUpdateRequest, ValidationResult, BrowseResponse, ReadFileResponse } from '@/types/pythonScript'
+import type { PythonScript, PythonScriptCreateRequest, PythonScriptUpdateRequest, PythonToolCreateRequest, PythonToolUpdateRequest, ValidationResult, BrowseResponse, ReadFileResponse } from '@/types/pythonScript'
 
-export async function listPythonScripts(): Promise<PythonScript[]> {
-  return apiGet<PythonScript[]>('/api/v1/python-scripts')
+export async function listPythonScripts(kind?: 'agent' | 'tool'): Promise<PythonScript[]> {
+  const qs = kind ? `?kind=${kind}` : ''
+  return apiGet<PythonScript[]>(`/api/v1/python-scripts${qs}`)
 }
 
 export async function getPythonScript(id: string): Promise<PythonScript> {
   return apiGet<PythonScript>(`/api/v1/python-scripts/${encodeURIComponent(id)}`)
 }
 
-export async function createPythonScript(data: PythonScriptCreateRequest): Promise<PythonScript> {
+export async function createPythonScript(data: PythonScriptCreateRequest | PythonToolCreateRequest): Promise<PythonScript> {
   return apiPost<PythonScript>('/api/v1/python-scripts', data)
 }
 
 export async function updatePythonScript(
   id: string,
-  data: PythonScriptUpdateRequest
+  data: PythonScriptUpdateRequest | PythonToolUpdateRequest
 ): Promise<{ status: string }> {
   return apiPatch<{ status: string }>(`/api/v1/python-scripts/${encodeURIComponent(id)}`, data)
 }

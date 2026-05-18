@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"be/internal/clock"
-	"be/internal/model"
 	"be/internal/manifest/python"
+	"be/internal/model"
 	"be/internal/ws"
 )
 
@@ -19,11 +19,11 @@ func TestManifestHandler_ScriptError(t *testing.T) {
 	scriptErr := &python.ScriptError{ExitCode: 1, Stderr: "command failed"}
 	runner := &fakeRunner{err: scriptErr}
 	hub := &fakeHub{}
-	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
+	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
 	since := clk.Now().Add(-time.Second)
 
 	// tool_with_review has review:true, but error path must skip review creation.
-	prov := New(manifest, runner, projectID, "sess-3", dispatchRepo, reviewRepo, hub, clk, nil)
+	prov := New(manifest, runner, projectID, "sess-3", dispatchRepo, nil, hub, clk, nil)
 	h, ok := prov.Handler("tool_with_review")
 	if !ok {
 		t.Fatalf("Handler: tool_with_review not found")
@@ -49,16 +49,7 @@ func TestManifestHandler_ScriptError(t *testing.T) {
 		t.Errorf("dispatch Total=%d Error=%d, want 1/1", summary.Total, summary.Error)
 	}
 
-	// No review row inserted on error.
-	reviews, rErr := reviewRepo.List(projectID, "", 10, 0)
-	if rErr != nil {
-		t.Fatalf("List reviews: %v", rErr)
-	}
-	if len(reviews) != 0 {
-		t.Errorf("review items = %d, want 0 (error skips review)", len(reviews))
-	}
-
-	// EventToolDispatched with status=error; no review event.
+	// EventToolDispatched with status=error; no review event (review_items dropped in migration 114).
 	events := hub.Events()
 	if n := countEvents(events, ws.EventToolDispatched); n != 1 {
 		t.Errorf("dispatch events = %d, want 1", n)
@@ -80,10 +71,10 @@ func TestManifestHandler_ValidationError(t *testing.T) {
 	manifest := newTestManifest(t)
 	runner := &fakeRunner{out: []byte(`{"result":"ok"}`)}
 	hub := &fakeHub{}
-	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
+	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
 	since := clk.Now().Add(-time.Second)
 
-	prov := New(manifest, runner, projectID, "sess-4", dispatchRepo, reviewRepo, hub, clk, nil)
+	prov := New(manifest, runner, projectID, "sess-4", dispatchRepo, nil, hub, clk, nil)
 	h, ok := prov.Handler("tool_no_review")
 	if !ok {
 		t.Fatalf("Handler: tool_no_review not found")
@@ -126,9 +117,9 @@ func TestManifestHandler_InvalidJSON_Input(t *testing.T) {
 	manifest := newTestManifest(t)
 	runner := &fakeRunner{out: []byte(`"ok"`)}
 	hub := &fakeHub{}
-	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
+	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
 
-	prov := New(manifest, runner, projectID, "sess-5", dispatchRepo, reviewRepo, hub, clk, nil)
+	prov := New(manifest, runner, projectID, "sess-5", dispatchRepo, nil, hub, clk, nil)
 	h, ok := prov.Handler("tool_no_review")
 	if !ok {
 		t.Fatalf("Handler: tool_no_review not found")

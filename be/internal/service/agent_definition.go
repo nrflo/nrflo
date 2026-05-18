@@ -47,8 +47,12 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 		return fmt.Errorf("script_mode_no_api_max_iterations")
 	}
 	if s.pythonScriptRepo != nil {
-		if _, err := s.pythonScriptRepo.Get(projectID, *pythonScriptID); err != nil {
+		script, err := s.pythonScriptRepo.Get(projectID, *pythonScriptID)
+		if err != nil {
 			return fmt.Errorf("python_script_not_found: %s", *pythonScriptID)
+		}
+		if script.Kind == "tool" {
+			return fmt.Errorf("python_script_kind_mismatch")
 		}
 	}
 	return nil
@@ -435,8 +439,12 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 			return fmt.Errorf("python_script_id_requires_script_mode")
 		}
 		if s.pythonScriptRepo != nil {
-			if _, err := s.pythonScriptRepo.Get(projectID, *req.PythonScriptID); err != nil {
+			script, err := s.pythonScriptRepo.Get(projectID, *req.PythonScriptID)
+			if err != nil {
 				return fmt.Errorf("python_script_not_found: %s", *req.PythonScriptID)
+			}
+			if script.Kind == "tool" {
+				return fmt.Errorf("python_script_kind_mismatch")
 			}
 		}
 	}

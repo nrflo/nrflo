@@ -86,38 +86,6 @@ func (r *DispatchRepo) ListSummary(projectID string, since time.Time) (*model.Di
 	return summary, nil
 }
 
-// EditRateByTool returns per-tool review outcome ratios by joining dispatches with review items
-func (r *DispatchRepo) EditRateByTool(projectID string, since time.Time) ([]*model.EditRateRow, error) {
-	rows, err := r.db.Query(`
-		SELECT
-			d.tool_name,
-			COUNT(CASE WHEN r.status = 'approved' AND (r.draft IS NULL OR r.draft = r.input) THEN 1 END) AS approve_no_edits,
-			COUNT(CASE WHEN r.status = 'approved' AND r.draft IS NOT NULL AND r.draft != r.input THEN 1 END) AS approve_with_edits,
-			COUNT(CASE WHEN r.status = 'rejected' THEN 1 END) AS rejected
-		FROM tool_dispatches d
-		LEFT JOIN review_items r
-			ON r.project_id = d.project_id
-			AND r.session_id = d.session_id
-			AND r.tool_name = d.tool_name
-		WHERE d.project_id = ? AND d.created_at >= ?
-		GROUP BY d.tool_name
-		ORDER BY d.tool_name`,
-		projectID, since.UTC().Format(time.RFC3339Nano))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var result []*model.EditRateRow
-	for rows.Next() {
-		row := &model.EditRateRow{}
-		if err := rows.Scan(&row.ToolName, &row.ApproveNoEdits, &row.ApproveWithEdits, &row.Rejected); err != nil {
-			return nil, err
-		}
-		result = append(result, row)
-	}
-	return result, rows.Err()
-}
 
 // Throughput returns bucketed dispatch counts over time
 func (r *DispatchRepo) Throughput(projectID string, since time.Time, bucketSec int) ([]*model.ThroughputPoint, error) {

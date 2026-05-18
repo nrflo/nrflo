@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"strings"
 
+	"be/internal/model"
 	"be/internal/service"
 	"be/internal/types"
 )
 
-// handleListPythonScripts returns all python scripts for a project
+// handleListPythonScripts returns python scripts for a project.
+// Optional ?kind=agent|tool filters by kind; omitting returns all.
 func (s *Server) handleListPythonScripts(w http.ResponseWriter, r *http.Request) {
 	projectID := getProjectID(r)
 	if projectID == "" {
@@ -16,8 +18,20 @@ func (s *Server) handleListPythonScripts(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	kind := r.URL.Query().Get("kind")
+	if kind != "" && kind != "agent" && kind != "tool" {
+		writeError(w, http.StatusBadRequest, "kind must be agent or tool")
+		return
+	}
+
 	svc := service.NewPythonScriptService(s.pool, s.clock)
-	scripts, err := svc.List(projectID)
+	var scripts []*model.PythonScript
+	var err error
+	if kind == "" {
+		scripts, err = svc.List(projectID)
+	} else {
+		scripts, err = svc.ListByKind(projectID, kind)
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -52,11 +66,16 @@ func (s *Server) handleCreatePythonScript(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "file_path") {
-			writeError(w, http.StatusBadRequest, err.Error())
+		msg := err.Error()
+		if strings.Contains(msg, "file_path") ||
+			strings.Contains(msg, "tool_description") ||
+			strings.Contains(msg, "input_schema") ||
+			strings.Contains(msg, "timeout_sec") ||
+			strings.Contains(msg, "kind must be") {
+			writeError(w, http.StatusBadRequest, msg)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, msg)
 		return
 	}
 

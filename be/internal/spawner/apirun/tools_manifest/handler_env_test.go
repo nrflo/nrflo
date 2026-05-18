@@ -83,10 +83,10 @@ func TestManifestHandler_ProjectEnv_EnvAllow(t *testing.T) {
 	manifest := newEnvAllowManifest(t)
 	runner := &envCapturingRunner{out: []byte(`{"ok":true}`)}
 	hub := &fakeHub{}
-	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
+	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
 
 	projectEnv := []string{"TEST_NRF_PROJ_KEY=myvalue", "UNRELATED_OTHER_VAR=other"}
-	prov := New(manifest, runner, projectID, "sess-env-1", dispatchRepo, reviewRepo, hub, clk, projectEnv)
+	prov := New(manifest, runner, projectID, "sess-env-1", dispatchRepo, nil, hub, clk, projectEnv)
 	h, ok := prov.Handler("tool_env_allow")
 	if !ok {
 		t.Fatalf("Handler: tool_env_allow not found")
@@ -114,10 +114,10 @@ func TestManifestHandler_ProjectEnv_NoAllowMatch(t *testing.T) {
 	manifest := newEnvAllowManifest(t)
 	runner := &envCapturingRunner{out: []byte(`{"ok":true}`)}
 	hub := &fakeHub{}
-	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
+	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
 
 	projectEnv := []string{"COMPLETELY_DIFFERENT_VAR=blocked"}
-	prov := New(manifest, runner, projectID, "sess-env-2", dispatchRepo, reviewRepo, hub, clk, projectEnv)
+	prov := New(manifest, runner, projectID, "sess-env-2", dispatchRepo, nil, hub, clk, projectEnv)
 	h, ok := prov.Handler("tool_env_allow")
 	if !ok {
 		t.Fatalf("Handler: tool_env_allow not found")
@@ -146,10 +146,10 @@ func TestManifestHandler_ProjectEnv_LastWinsOrder(t *testing.T) {
 	manifest := newEnvAllowManifest(t)
 	runner := &envCapturingRunner{out: []byte(`{"ok":true}`)}
 	hub := &fakeHub{}
-	dispatchRepo, reviewRepo, projectID := newTestRepos(t, clk)
+	dispatchRepo, projectID := newTestDispatchRepo(t, clk)
 
 	projectEnv := []string{testKey + "=proj_value"}
-	prov := New(manifest, runner, projectID, "sess-env-3", dispatchRepo, reviewRepo, hub, clk, projectEnv)
+	prov := New(manifest, runner, projectID, "sess-env-3", dispatchRepo, nil, hub, clk, projectEnv)
 	h, ok := prov.Handler("tool_env_allow")
 	if !ok {
 		t.Fatalf("Handler: tool_env_allow not found")

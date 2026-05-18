@@ -26,18 +26,6 @@ func setupDispatchDB(t *testing.T) (*DispatchRepo, string) {
 	return setupDispatchDBWithClock(t, clk)
 }
 
-func setupDispatchAndReviewDB(t *testing.T) (*DispatchRepo, *ReviewRepo, string) {
-	t.Helper()
-	database := newTestDB(t)
-	var err error
-	_, err = database.Exec(
-		`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-1', 'Test', datetime('now'), datetime('now'))`)
-	if err != nil {
-		t.Fatalf("insert project: %v", err)
-	}
-	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
-	return NewDispatchRepo(database, clk), NewReviewRepo(database, clk), "proj-1"
-}
 
 func makeDispatch(projectID, toolName, status string, durationMs int64) *model.ToolDispatch {
 	return &model.ToolDispatch{
@@ -178,79 +166,6 @@ func TestDispatchRepo_ListSummary_SinceFilters(t *testing.T) {
 	}
 }
 
-func TestDispatchRepo_EditRateByTool(t *testing.T) {
-	t.Parallel()
-	dispatchRepo, reviewRepo, projectID := setupDispatchAndReviewDB(t)
-	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
-
-	sess1 := "sess-write"
-	sess2 := "sess-exec"
-	sess3 := "sess-read"
-
-	// write_file: dispatch + approved review with no draft → approve_no_edits
-	d1 := &model.ToolDispatch{ProjectID: projectID, SessionID: &sess1, ToolName: "write_file", Input: `{}`, Status: model.DispatchStatusSuccess, DurationMs: 10}
-	dispatchRepo.Insert(d1)
-	rev1 := &model.ReviewItem{ProjectID: projectID, SessionID: &sess1, ToolName: "write_file", Input: `{}`}
-	reviewRepo.Insert(rev1)
-	reviewRepo.Approve(rev1.ID, projectID) // draft=NULL → approve_no_edits
-
-	// exec_cmd: dispatch + approved review with draft != input → approve_with_edits
-	d2 := &model.ToolDispatch{ProjectID: projectID, SessionID: &sess2, ToolName: "exec_cmd", Input: `{}`, Status: model.DispatchStatusSuccess, DurationMs: 20}
-	dispatchRepo.Insert(d2)
-	rev2 := &model.ReviewItem{ProjectID: projectID, SessionID: &sess2, ToolName: "exec_cmd", Input: `{}`}
-	reviewRepo.Insert(rev2)
-	reviewRepo.UpdateDraft(rev2.ID, projectID, "edited") // "edited" != "{}"
-	reviewRepo.Approve(rev2.ID, projectID)
-
-	// read_file: dispatch with no matching review → all zeros
-	d3 := &model.ToolDispatch{ProjectID: projectID, SessionID: &sess3, ToolName: "read_file", Input: `{}`, Status: model.DispatchStatusSuccess, DurationMs: 5}
-	dispatchRepo.Insert(d3)
-
-	rows, err := dispatchRepo.EditRateByTool(projectID, since)
-	if err != nil {
-		t.Fatalf("EditRateByTool: %v", err)
-	}
-	if len(rows) != 3 {
-		t.Fatalf("EditRateByTool row count = %d, want 3", len(rows))
-	}
-
-	byTool := map[string]*model.EditRateRow{}
-	for _, row := range rows {
-		byTool[row.ToolName] = row
-	}
-
-	if wf := byTool["write_file"]; wf == nil {
-		t.Error("write_file row missing")
-	} else if wf.ApproveNoEdits != 1 || wf.ApproveWithEdits != 0 || wf.Rejected != 0 {
-		t.Errorf("write_file = {%d,%d,%d}, want {1,0,0}", wf.ApproveNoEdits, wf.ApproveWithEdits, wf.Rejected)
-	}
-
-	if ec := byTool["exec_cmd"]; ec == nil {
-		t.Error("exec_cmd row missing")
-	} else if ec.ApproveNoEdits != 0 || ec.ApproveWithEdits != 1 || ec.Rejected != 0 {
-		t.Errorf("exec_cmd = {%d,%d,%d}, want {0,1,0}", ec.ApproveNoEdits, ec.ApproveWithEdits, ec.Rejected)
-	}
-
-	if rf := byTool["read_file"]; rf == nil {
-		t.Error("read_file row missing")
-	} else if rf.ApproveNoEdits != 0 || rf.ApproveWithEdits != 0 || rf.Rejected != 0 {
-		t.Errorf("read_file = {%d,%d,%d}, want {0,0,0} (no review)", rf.ApproveNoEdits, rf.ApproveWithEdits, rf.Rejected)
-	}
-}
-
-func TestDispatchRepo_EditRateByTool_Empty(t *testing.T) {
-	t.Parallel()
-	r, _, projectID := setupDispatchAndReviewDB(t)
-	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
-
-	rows, err := r.EditRateByTool(projectID, since)
-	if err != nil {
-		t.Fatalf("EditRateByTool empty: %v", err)
-	}
-	if len(rows) != 0 {
-		t.Errorf("EditRateByTool empty: count = %d, want 0", len(rows))
-	}
-}
 
 func TestDispatchRepo_Throughput_Buckets(t *testing.T) {
 	t.Parallel()

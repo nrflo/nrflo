@@ -27,6 +27,7 @@ func makePythonScript(projectID, id, name string) *model.PythonScript {
 		Name:        name,
 		Description: "Test description",
 		Code:        "print('hello')",
+		Kind:        "agent",
 	}
 }
 

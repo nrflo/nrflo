@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v5"
+
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/id"
@@ -51,10 +53,53 @@ func validateFilePath(path string) error {
 	return nil
 }
 
+// compileInputSchema validates that s is a valid JSON Schema via Draft2020 and returns an error if not.
+func compileInputSchema(s string) error {
+	compiler := jsonschema.NewCompiler()
+	compiler.Draft = jsonschema.Draft2020
+	if err := compiler.AddResource("schema://compile", strings.NewReader(s)); err != nil {
+		return fmt.Errorf("invalid input_schema: %w", err)
+	}
+	if _, err := compiler.Compile("schema://compile"); err != nil {
+		return fmt.Errorf("invalid input_schema: %w", err)
+	}
+	return nil
+}
+
 // Create creates a new python script for a project
 func (s *PythonScriptService) Create(projectID string, req *types.PythonScriptCreateRequest) (*model.PythonScript, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("name is required")
+	}
+
+	kind := req.Kind
+	if kind == "" {
+		kind = "agent"
+	}
+	if kind != "agent" && kind != "tool" {
+		return nil, fmt.Errorf("kind must be agent or tool")
+	}
+
+	timeoutSec := req.TimeoutSec
+	toolDescription := req.ToolDescription
+	inputSchema := req.InputSchema
+
+	if kind == "tool" {
+		if toolDescription == "" {
+			return nil, fmt.Errorf("tool_description is required for kind=tool")
+		}
+		if inputSchema == "" {
+			inputSchema = "{}"
+		}
+		if err := compileInputSchema(inputSchema); err != nil {
+			return nil, err
+		}
+		if timeoutSec == 0 {
+			timeoutSec = 30
+		}
+		if timeoutSec < 1 || timeoutSec > 600 {
+			return nil, fmt.Errorf("timeout_sec must be between 1 and 600")
+		}
 	}
 
 	fp := ""
@@ -73,12 +118,16 @@ func (s *PythonScriptService) Create(projectID string, req *types.PythonScriptCr
 
 	r := repo.NewPythonScriptRepo(s.pool, s.clock)
 	script := &model.PythonScript{
-		ID:          scriptID,
-		ProjectID:   strings.ToLower(projectID),
-		Name:        req.Name,
-		Description: req.Description,
-		Code:        req.Code,
-		FilePath:    fp,
+		ID:              scriptID,
+		ProjectID:       strings.ToLower(projectID),
+		Name:            req.Name,
+		Description:     req.Description,
+		Code:            req.Code,
+		FilePath:        fp,
+		Kind:            kind,
+		ToolDescription: toolDescription,
+		InputSchema:     inputSchema,
+		TimeoutSec:      timeoutSec,
 	}
 
 	if err := r.Create(script); err != nil {
@@ -110,6 +159,24 @@ func (s *PythonScriptService) List(projectID string) ([]*model.PythonScript, err
 	return scripts, nil
 }
 
+// ListByKind retrieves all python scripts of the given kind for a project
+func (s *PythonScriptService) ListByKind(projectID, kind string) ([]*model.PythonScript, error) {
+	r := repo.NewPythonScriptRepo(s.pool, s.clock)
+	scripts, err := r.ListByKind(projectID, kind)
+	if err != nil {
+		return nil, err
+	}
+	if scripts == nil {
+		return []*model.PythonScript{}, nil
+	}
+	return scripts, nil
+}
+
+// ListTools retrieves all kind=tool rows for a project
+func (s *PythonScriptService) ListTools(projectID string) ([]*model.PythonScript, error) {
+	return s.ListByKind(projectID, "tool")
+}
+
 // Update updates a python script
 func (s *PythonScriptService) Update(projectID, id string, req *types.PythonScriptUpdateRequest) error {
 	if req.Name != nil && *req.Name == "" {
@@ -118,6 +185,17 @@ func (s *PythonScriptService) Update(projectID, id string, req *types.PythonScri
 	if req.FilePath != nil {
 		if err := validateFilePath(*req.FilePath); err != nil {
 			return err
+		}
+	}
+	if req.InputSchema != nil {
+		if err := compileInputSchema(*req.InputSchema); err != nil {
+			return err
+		}
+	}
+	if req.TimeoutSec != nil {
+		t := *req.TimeoutSec
+		if t < 1 || t > 600 {
+			return fmt.Errorf("timeout_sec must be between 1 and 600")
 		}
 	}
 	r := repo.NewPythonScriptRepo(s.pool, s.clock)

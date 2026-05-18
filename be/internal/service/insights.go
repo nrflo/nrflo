@@ -10,12 +10,11 @@ import (
 	"be/internal/repo"
 )
 
-// InsightsService provides aggregation methods for review/dispatch dashboards.
+// InsightsService provides aggregation methods for dispatch dashboards.
 type InsightsService struct {
 	pool         *db.Pool
 	clk          clock.Clock
 	dispatchRepo *repo.DispatchRepo
-	reviewRepo   *repo.ReviewRepo
 }
 
 // NewInsightsService creates a new InsightsService.
@@ -24,85 +23,32 @@ func NewInsightsService(pool *db.Pool, clk clock.Clock) *InsightsService {
 		pool:         pool,
 		clk:          clk,
 		dispatchRepo: repo.NewDispatchRepo(pool, clk),
-		reviewRepo:   repo.NewReviewRepo(pool, clk),
 	}
 }
 
-// InsightsSummary combines dispatch stats and review counts.
+// InsightsSummary combines dispatch stats.
 type InsightsSummary struct {
 	*model.DispatchSummary
-	ReviewPending  int     `json:"review_pending"`
-	ReviewApproved int     `json:"review_approved"`
-	ReviewRejected int     `json:"review_rejected"`
-	ApprovalRate   float64 `json:"approval_rate"`
 }
 
-// Summary returns aggregate dispatch stats and review counts for a project since the given time.
+// Summary returns aggregate dispatch stats for a project since the given time.
 func (s *InsightsService) Summary(projectID string, since time.Time) (*InsightsSummary, error) {
 	dispatch, err := s.dispatchRepo.ListSummary(projectID, since)
 	if err != nil {
 		return nil, fmt.Errorf("dispatch summary: %w", err)
 	}
-
-	pending, err := s.countReviews(projectID, model.ReviewStatusPending)
-	if err != nil {
-		return nil, err
-	}
-	approved, err := s.countReviews(projectID, model.ReviewStatusApproved)
-	if err != nil {
-		return nil, err
-	}
-	rejected, err := s.countReviews(projectID, model.ReviewStatusRejected)
-	if err != nil {
-		return nil, err
-	}
-
-	total := approved + rejected
-	var approvalRate float64
-	if total > 0 {
-		approvalRate = float64(approved) / float64(total)
-	}
-
-	return &InsightsSummary{
-		DispatchSummary: dispatch,
-		ReviewPending:   pending,
-		ReviewApproved:  approved,
-		ReviewRejected:  rejected,
-		ApprovalRate:    approvalRate,
-	}, nil
+	return &InsightsSummary{DispatchSummary: dispatch}, nil
 }
 
-func (s *InsightsService) countReviews(projectID, status string) (int, error) {
-	var n int
-	err := s.pool.QueryRow(
-		`SELECT COUNT(*) FROM review_items WHERE project_id = ? AND status = ?`,
-		projectID, status,
-	).Scan(&n)
-	return n, err
-}
-
-// EditRateResult extends the repo row with a computed edit-rate percentage.
+// EditRateResult is kept for API compatibility; review_items was dropped in migration 114.
 type EditRateResult struct {
-	*model.EditRateRow
+	ToolName    string  `json:"tool_name"`
 	EditRatePct float64 `json:"edit_rate_pct"`
 }
 
-// EditRate returns per-tool review outcome ratios with computed edit-rate percentage.
+// EditRate returns an empty result set; review_items was dropped in migration 114.
 func (s *InsightsService) EditRate(projectID string, since time.Time) ([]*EditRateResult, error) {
-	rows, err := s.dispatchRepo.EditRateByTool(projectID, since)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]*EditRateResult, len(rows))
-	for i, r := range rows {
-		total := r.ApproveNoEdits + r.ApproveWithEdits + r.Rejected
-		var pct float64
-		if total > 0 {
-			pct = float64(r.ApproveWithEdits) / float64(total) * 100
-		}
-		result[i] = &EditRateResult{EditRateRow: r, EditRatePct: pct}
-	}
-	return result, nil
+	return []*EditRateResult{}, nil
 }
 
 // Throughput returns bucketed dispatch counts over time.

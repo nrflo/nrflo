@@ -18,7 +18,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status |
 | `workflow_restart_details.go` | Restart detail loading: duration, context, message count from continued sessions |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |
-| `agent_definition.go` | Agent definition CRUD; validates `layer >= 0`; `execution_mode` cli_interactive/api/script (default cli_interactive); script requires `python_script_id` in same project |
+| `agent_definition.go` | Agent definition CRUD; validates `layer >= 0`; `execution_mode` cli_interactive/api/script (default cli_interactive); script requires `python_script_id` in same project and rejects binding to a `kind='tool'` row with `python_script_kind_mismatch` |
 | `findings.go` | Findings add/append/get/delete |
 | `chain.go` | Chain build, dependency expansion, topological sort, cycle detection |
 | `chain_preview.go` | `PreviewChain`, custom order validation |
@@ -37,7 +37,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `insights.go` | `Summary`/`EditRate`/`Throughput`; `ParseRange` (7d/30d), `ParseBucket` (1h/6h/1d) |
 | `workflow_chain.go` | `WorkflowChainService`: chain+step CRUD; validates dense positions, step 0 project-scope, workflow_name resolves |
 | `workflow_chain_run.go` | `WorkflowChainRunService`: CreateRun, GetRunDetail, ListRuns, SetNextStepInstructions, SetNextStepTicket |
-| `python_script.go` | `PythonScriptService`: Create/Get/List/Update/Delete; validates `file_path` (absolute, exists, `.py`) |
+| `python_script.go` | `PythonScriptService`: Create/Get/List/ListByKind/ListTools/Update/Delete; rows are discriminated by `kind` (`agent` default, or `tool`); validates `file_path` (absolute, exists, `.py`); for `kind=tool` requires `tool_description`, compiles `input_schema` via santhosh-tekuri jsonschema Draft2020, enforces `timeout_sec ∈ [1,600]` (default 30); `kind` is immutable on update |
 | `user_service.go` | `UserService.Delete`: self-delete → system-user → last-admin checks; system users flagged via `users.system=1` |
 | `python_script_validate.go` | `Validate(ctx, code)`: runs `python3` AST parse with 5s timeout; degrades gracefully if python3 absent |
 | `project_env_var.go` | `ProjectEnvVarService`: List/Upsert/Delete; validates name regex, reserved names, 4096-byte value cap |

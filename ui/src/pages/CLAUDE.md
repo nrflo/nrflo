@@ -11,7 +11,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/tickets/new` | `CreateTicketPage.tsx` | Create new ticket form |
 | `/tickets/:id/edit` | `EditTicketPage.tsx` | Edit existing ticket form |
 | `/tickets/:id` | `TicketDetailPage.tsx` | Ticket detail with tabbed interface |
-| `/workflows` | `WorkflowsPage.tsx` | Workflow definitions and agent definitions CRUD |
+| `/workflows` | `WorkflowsPage.tsx` | Workflow CRUD + per-row Export, header Export All / Import (`WorkflowImportDialog`). Cards in `WorkflowCard.tsx`. |
 | `/project-workflows` | `ProjectWorkflowsPage.tsx` | Project-scoped workflows (5-tab layout: Run / Running / Failed / Completed / Findings) |
 | `/git-status` | `GitStatusPage.tsx` | Standalone git commit status page (conditional on `default_branch`) |
 | `/chains` | `ChainListPage.tsx` | Chain list with status filtering, create/edit dialog |

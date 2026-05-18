@@ -12,11 +12,28 @@ vi.mock('@/api/workflows', () => ({
   createWorkflowDef: vi.fn(),
   updateWorkflowDef: vi.fn(),
   deleteWorkflowDef: vi.fn(),
+  exportWorkflow: vi.fn(),
+  exportAllWorkflows: vi.fn(),
+  checkImport: vi.fn(),
+  importWorkflows: vi.fn(),
 }))
 
 // Mock project store
 vi.mock('@/stores/projectStore', () => ({
   useProjectStore: () => 'test-project',
+}))
+
+vi.mock('@/lib/downloadBlob', () => ({
+  triggerDownload: vi.fn(),
+  fallbackExportFilename: vi.fn(() => 'nrflo-workflows-test-project-20260101-000000.json'),
+}))
+
+vi.mock('@/hooks/usePythonScripts', () => ({
+  pythonScriptKeys: { all: ['python-scripts'] },
+}))
+
+vi.mock('@/components/workflow/WorkflowImportDialog', () => ({
+  WorkflowImportDialog: () => null,
 }))
 
 // Mock AgentDefsSection to avoid deep dependencies

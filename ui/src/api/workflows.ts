@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from './client'
+import { apiGet, apiPost, apiPatch, apiDelete, apiGetBlob } from './client'
 import type {
   WorkflowDef,
   WorkflowDefSummary,
@@ -13,6 +13,57 @@ import type {
   ExitInteractiveRequest,
   ResumeSessionRequest,
 } from '@/types/workflow'
+
+// Export/Import types mirroring be/internal/types/workflow_export_request.go
+export interface WorkflowBundleEntry {
+  workflow: Record<string, unknown>
+  agents: Record<string, unknown>[]
+  layer_policies: Record<number, string>
+  notifications: Record<string, unknown>[]
+}
+
+export interface WorkflowBundle {
+  version: string
+  exported_at: string
+  workflows: WorkflowBundleEntry[]
+  python_scripts: Record<string, unknown>[]
+}
+
+export interface ImportConflicts {
+  workflow_ids: string[]
+  python_script_ids: string[]
+}
+
+export interface ImportResult {
+  workflow_ids: string[]
+  python_script_ids: string[]
+  skipped: boolean
+}
+
+/** Export a single workflow definition */
+export async function exportWorkflow(
+  id: string
+): Promise<{ blob: Blob; filename: string | null }> {
+  return apiGetBlob(`/api/v1/workflows/${encodeURIComponent(id)}/export`)
+}
+
+/** Export all workflow definitions for the current project */
+export async function exportAllWorkflows(): Promise<{ blob: Blob; filename: string | null }> {
+  return apiGetBlob('/api/v1/workflows/export')
+}
+
+/** Check for import conflicts without committing */
+export async function checkImport(bundle: WorkflowBundle): Promise<ImportConflicts> {
+  return apiPost<ImportConflicts>('/api/v1/workflows/import/check', bundle)
+}
+
+/** Import workflows with the given conflict action */
+export async function importWorkflows(
+  bundle: WorkflowBundle,
+  action: 'overwrite' | 'rename' | 'cancel'
+): Promise<ImportResult> {
+  return apiPost<ImportResult>('/api/v1/workflows/import', { bundle, action })
+}
 
 /** List all workflow definitions for current project */
 export async function listWorkflowDefs(): Promise<Record<string, WorkflowDefSummary>> {

@@ -161,6 +161,62 @@ export async function apiDelete<T>(
   })
 }
 
+export async function apiGetBlob(
+  endpoint: string,
+  options?: FetchOptions
+): Promise<{ blob: Blob; filename: string | null }> {
+  const { project, dbPath, ...fetchOptions } = options ?? {}
+  const projectHeader = project || currentProject
+  const dbPathHeader = dbPath || currentDbPath
+
+  const headers: Record<string, string> = {
+    'X-Project': projectHeader,
+  }
+
+  if (dbPathHeader) {
+    headers['X-DB-Path'] = dbPathHeader
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...fetchOptions,
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      ...headers,
+      ...(fetchOptions.headers as Record<string, string> | undefined),
+    },
+  })
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`
+    try {
+      const error = await response.json()
+      message = error.error || message
+    } catch {
+      // ignore parse error
+    }
+    if (response.status === 401) {
+      if (endpoint !== '/api/v1/auth/login' && on401) {
+        on401(window.location.pathname + window.location.search)
+      }
+      throw new UnauthenticatedError(message)
+    }
+    if (response.status === 403) {
+      throw new ForbiddenError(message)
+    }
+    throw new ApiError(response.status, message)
+  }
+
+  const blob = await response.blob()
+  const cd = response.headers.get('Content-Disposition')
+  let filename: string | null = null
+  if (cd) {
+    const match = cd.match(/filename[^;=\n]*=(['"]?)([^'";\n]+)\1/)
+    if (match) filename = match[2]
+  }
+  return { blob, filename }
+}
+
 export async function apiUploadMultipart<T>(
   endpoint: string,
   file: File,

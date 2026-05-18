@@ -1,140 +1,24 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Download, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { AgentDefsSection } from '@/components/workflow/AgentDefsSection'
-import { WorkflowNotificationsSection } from '@/components/workflows/WorkflowNotificationsSection'
 import { WorkflowDefForm } from '@/components/workflow/WorkflowDefForm'
-import { listWorkflowDefs, createWorkflowDef, updateWorkflowDef, deleteWorkflowDef } from '@/api/workflows'
+import { WorkflowImportDialog } from '@/components/workflow/WorkflowImportDialog'
+import { WorkflowCard } from './WorkflowCard'
+import {
+  listWorkflowDefs,
+  createWorkflowDef,
+  updateWorkflowDef,
+  deleteWorkflowDef,
+  exportWorkflow,
+  exportAllWorkflows,
+} from '@/api/workflows'
 import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateRequest, ScopeType } from '@/types/workflow'
 import { useProjectStore } from '@/stores/projectStore'
-import { cn } from '@/lib/utils'
-
-function GroupBadges({ groups }: { groups?: string[] }) {
-  if (!groups?.length) return null
-  return (
-    <>
-      {groups.map((g) => (
-        <Badge key={g} variant="outline" className="text-xs border-emerald-300 text-emerald-600">
-          {g}
-        </Badge>
-      ))}
-    </>
-  )
-}
-
-function WorkflowCard({
-  id,
-  def,
-  onEdit,
-  onDelete,
-}: {
-  id: string
-  def: WorkflowDefSummary
-  onEdit: () => void
-  onDelete: () => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-
-  // Group agents by layer for display
-  const phases = (() => {
-    if (!def.phases?.length) return ''
-    const byLayer: Record<number, string[]> = {}
-    for (const p of def.phases) {
-      const layer = p.layer ?? 0
-      if (!byLayer[layer]) byLayer[layer] = []
-      byLayer[layer].push(p.agent || p.id)
-    }
-    return Object.keys(byLayer)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .map((l) => {
-        if (byLayer[l].length > 1) {
-          const policy = def.layer_policies?.[l]
-          const suffix = policy ? `·${policy}` : ''
-          return `[${byLayer[l].join(' | ')}]${suffix}`
-        }
-        return byLayer[l][0]
-      })
-      .join(' -> ')
-  })()
-
-  return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <div
-        className={cn(
-          'w-full p-4 flex items-center justify-between text-left hover:bg-muted/30 transition-colors',
-          expanded && 'border-b border-border'
-        )}
-      >
-        <button
-          className="flex items-center gap-3 flex-1 text-left"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-          <div>
-            <div className="font-medium">{id}</div>
-            {def.description && (
-              <p className="text-xs text-muted-foreground mt-0.5">{def.description}</p>
-            )}
-          </div>
-        </button>
-        <div className="flex items-center gap-2">
-          {def.scope_type === 'project' && (
-            <Badge variant="outline" className="text-xs border-blue-300 text-blue-600">
-              project
-            </Badge>
-          )}
-          <GroupBadges groups={def.groups} />
-          <span className="text-xs text-muted-foreground">
-            {def.phases?.length || 0} agents
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={onEdit}
-            title="Edit workflow"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-            onClick={onDelete}
-            title="Delete workflow"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="p-4 space-y-4">
-          {phases && (
-            <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                Agent Pipeline
-              </h4>
-              <p className="text-sm font-mono">{phases}</p>
-            </div>
-          )}
-
-          <AgentDefsSection workflowId={id} groups={def.groups || []} />
-          <WorkflowNotificationsSection workflowId={id} />
-        </div>
-      )}
-    </div>
-  )
-}
+import { triggerDownload, fallbackExportFilename } from '@/lib/downloadBlob'
+import { pythonScriptKeys } from '@/hooks/usePythonScripts'
 
 interface EditingWorkflow {
   id: string
@@ -151,6 +35,7 @@ export function WorkflowsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingWorkflow, setEditingWorkflow] = useState<EditingWorkflow | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [showImportDialog, setShowImportDialog] = useState(false)
 
   const queryKey = ['workflow-defs', currentProject] as const
 
@@ -183,8 +68,20 @@ export function WorkflowsPage() {
     },
   })
 
-  const handleDelete = (id: string) => {
-    setDeleteTarget(id)
+  const handleExport = async (id: string) => {
+    const { blob, filename } = await exportWorkflow(id)
+    triggerDownload(blob, filename ?? `nrflo-workflow-${id}.json`)
+  }
+
+  const handleExportAll = async () => {
+    const { blob, filename } = await exportAllWorkflows()
+    triggerDownload(blob, filename ?? fallbackExportFilename(currentProject))
+  }
+
+  const handleImportSuccess = () => {
+    queryClient.invalidateQueries({ queryKey })
+    queryClient.invalidateQueries({ queryKey: pythonScriptKeys.all })
+    setShowImportDialog(false)
   }
 
   return (
@@ -196,10 +93,20 @@ export function WorkflowsPage() {
             Workflow definitions and their agent configurations.
           </p>
         </div>
-        <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Create Workflow
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportAll}>
+            <Download className="h-4 w-4 mr-1" />
+            Export All
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
+            <Upload className="h-4 w-4 mr-1" />
+            Import
+          </Button>
+          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Create Workflow
+          </Button>
+        </div>
       </div>
 
       {isLoading && <p className="text-muted-foreground">Loading workflows...</p>}
@@ -213,13 +120,14 @@ export function WorkflowsPage() {
 
       <div className="space-y-3">
         {workflows &&
-          Object.entries(workflows).map(([id, def]) => (
+          Object.entries(workflows).map(([id, def]: [string, WorkflowDefSummary]) => (
             <WorkflowCard
               key={id}
               id={id}
               def={def}
               onEdit={() => setEditingWorkflow({ id, ...def })}
-              onDelete={() => handleDelete(id)}
+              onDelete={() => setDeleteTarget(id)}
+              onExport={() => handleExport(id)}
             />
           ))}
       </div>
@@ -253,6 +161,13 @@ export function WorkflowsPage() {
         message={`Delete workflow '${deleteTarget}'? This cannot be undone.`}
         confirmLabel="Delete"
         variant="destructive"
+      />
+
+      {/* Import Dialog */}
+      <WorkflowImportDialog
+        open={showImportDialog}
+        onClose={() => setShowImportDialog(false)}
+        onSuccess={handleImportSuccess}
       />
 
       {/* Edit Dialog */}

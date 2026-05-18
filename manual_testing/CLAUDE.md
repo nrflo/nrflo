@@ -13,7 +13,7 @@ Per-provider Python harness that exercises the full path "real REST API → real
 ```
 manual_testing/
 ├── suite.md                 # canonical scenario catalogue (numbers + descriptions)
-├── run_suite.py             # orchestrator: engine first sequentially, then per-provider folders in parallel
+├── run_suite.py             # orchestrator: all provider folders run concurrently (per-folder NRFLO_HOME + NRFLO_SOCKET)
 ├── lib/                     # shared infra: api, db, runner, runtime, server, ws_client, http_mock, script_helpers, versions, credentials
 ├── engine/                  # provider-agnostic scenarios, run under the claude binary
 ├── claude/                  # claude-specific scenarios only (s05, s35)
@@ -49,11 +49,14 @@ Install via `pip install websockets` before running the CLI suites.
 ```bash
 make build
 
-# full suite — engine first sequentially, then 5 per-provider folders in parallel; overwrites /capabilities.md
+# full suite — all provider folders run concurrently with isolated NRFLO_HOME/NRFLO_SOCKET each; overwrites /capabilities.md
 python3 manual_testing/run_suite.py
 
 # subset
 python3 manual_testing/run_suite.py --only=engine,python
+
+# force one-at-a-time (debugging, rate-limited keys, etc.)
+python3 manual_testing/run_suite.py --sequential
 
 # single folder directly (useful for debugging)
 python3 manual_testing/engine/test.py --only=s01 --parallel=1

@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Run the full manual-testing suite.
 
-Two stages:
-  1. `engine` runs first, alone, sequentially. It exercises the
-     provider-agnostic orchestrator/REST/WS/spawner paths under the
-     `claude` binary.
-  2. The remaining per-provider folders launch in parallel and each run
-     their own (small) set of provider-specific scenarios sequentially.
+All selected provider folders launch concurrently. Each subprocess
+gets its own NRFLO_HOME (tempfile.mkdtemp) and NRFLO_SOCKET (short
+/tmp path) via `lib/server.py`, so the servers don't share DB,
+agent socket, or HTTP port. Scenarios within a single provider run
+sequentially under that provider's server.
 
 After everything finishes, results are aggregated, CLI versions probed,
 and `/capabilities.md` overwritten at the repo root.
@@ -15,6 +14,7 @@ Usage:
     python3 manual_testing/run_suite.py
     python3 manual_testing/run_suite.py --only=engine,claude
     python3 manual_testing/run_suite.py --timeout=600
+    python3 manual_testing/run_suite.py --sequential   # one provider at a time
 """
 
 from __future__ import annotations
@@ -38,7 +38,9 @@ from lib import versions as ver_mod  # noqa: E402
 
 PROVIDERS: list[tuple[str, str]] = [
     # (provider folder, binary name)
-    # `engine` runs first, sequentially. The rest run in parallel.
+    # All run concurrently by default — each subprocess gets its own
+    # NRFLO_HOME + NRFLO_SOCKET via lib/server.py so server-side state
+    # is fully isolated.
     ("engine", "claude"),
     ("claude", "claude"),
     ("codex", "codex"),
@@ -51,8 +53,6 @@ PROVIDERS: list[tuple[str, str]] = [
     # Anthropic OAuth token is reachable (see lib/credentials.py).
     ("api", "claude"),
 ]
-
-ENGINE_PROVIDER = "engine"
 
 
 def _ts() -> str:
@@ -71,6 +71,8 @@ def main() -> int:
     )
     ap.add_argument("--timeout", type=float, default=300.0,
                     help="per-scenario timeout in seconds")
+    ap.add_argument("--sequential", action="store_true",
+                    help="run provider folders one at a time (default: all in parallel)")
     args = ap.parse_args()
 
     wanted = {p.strip() for p in args.only.split(",")} if args.only else None
@@ -106,27 +108,27 @@ def main() -> int:
     procs: list[tuple[str, str, subprocess.Popen, Path, Path]] = []
     exit_codes: dict[str, int] = {}
 
-    # Stage 1: engine first, sequentially.
-    engine_entry = next(((p, b) for (p, b) in selected if p == ENGINE_PROVIDER), None)
-    if engine_entry is not None:
-        provider, binary = engine_entry
-        rec = _launch(provider, binary)
-        procs.append(rec)
-        rc = rec[2].wait()
-        exit_codes[provider] = rc
-        _say(f"{provider} exit={rc} ({rec[4]})")
-
-    # Stage 2: remaining providers in parallel.
-    rest = [(p, b) for (p, b) in selected if p != ENGINE_PROVIDER]
-    parallel_procs: list[tuple[str, str, subprocess.Popen, Path, Path]] = []
-    for provider, binary in rest:
-        rec = _launch(provider, binary)
-        procs.append(rec)
-        parallel_procs.append(rec)
-    for provider, _binary, p, _json, log_path in parallel_procs:
-        rc = p.wait()
-        exit_codes[provider] = rc
-        _say(f"{provider} exit={rc} ({log_path})")
+    if args.sequential:
+        # One provider at a time. Mostly useful when an interactive
+        # debugger is attached or when an external rate-limit forces
+        # serialization.
+        for provider, binary in selected:
+            rec = _launch(provider, binary)
+            procs.append(rec)
+            rc = rec[2].wait()
+            exit_codes[provider] = rc
+            _say(f"{provider} exit={rc} ({rec[4]})")
+    else:
+        # Default: launch every provider concurrently. Each subprocess
+        # spawns its own nrflo_server with an isolated NRFLO_HOME +
+        # NRFLO_SOCKET (see lib/server.py.start_server), so the servers
+        # don't share DB rows, agent sockets, or HTTP ports.
+        for provider, binary in selected:
+            procs.append(_launch(provider, binary))
+        for provider, _binary, p, _json, log_path in procs:
+            rc = p.wait()
+            exit_codes[provider] = rc
+            _say(f"{provider} exit={rc} ({log_path})")
 
     suite_wall = time.monotonic() - suite_start
     _say(f"all providers finished in {suite_wall:.2f}s")

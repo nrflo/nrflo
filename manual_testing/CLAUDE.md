@@ -14,13 +14,14 @@ Per-provider Python harness that exercises the full path "real REST API → real
 manual_testing/
 ├── suite.md                 # canonical scenario catalogue (numbers + descriptions)
 ├── run_suite.py             # orchestrator: engine first sequentially, then per-provider folders in parallel
-├── lib/                     # shared infra: api, db, runner, runtime, server, ws_client, http_mock, script_helpers, versions
+├── lib/                     # shared infra: api, db, runner, runtime, server, ws_client, http_mock, script_helpers, versions, credentials
 ├── engine/                  # provider-agnostic scenarios, run under the claude binary
 ├── claude/                  # claude-specific scenarios only (s05, s35)
 ├── codex/                   # codex-specific scenarios only (s05, s35)
 ├── gemini/                  # gemini-specific scenarios only (s05, s35)
 ├── opencode/                # opencode-specific scenarios only (s05, s27, s35)
-└── python/                  # execution_mode='script' scenarios (no CLI, no LLM)
+├── python/                  # execution_mode='script' scenarios (no CLI, no LLM)
+└── api/                     # execution_mode='api' scenarios (in-process Anthropic runner)
 ```
 
 - `lib/runner.py` — `run_all(scenarios=…, provider=…, model=…, binary=…, mode=…, results_path=…)`
@@ -34,7 +35,7 @@ Folder applicability is recorded in `suite.md` and verified by file presence in 
 
 ## Concepts
 
-- **Provider**: `engine`, `claude`, `codex`, `gemini`, `opencode`, or `python`. `engine` and the CLI providers run under `cli_interactive` (PTY relay) — `engine` uses the `claude` binary. `python` runs under `script` (execution_mode='script').
+- **Provider**: `engine`, `claude`, `codex`, `gemini`, `opencode`, `python`, or `api`. `engine` and the CLI providers run under `cli_interactive` (PTY relay) — `engine` uses the `claude` binary. `python` runs under `script` (execution_mode='script'). `api` runs the in-process Anthropic runner (`execution_mode='api'`); the runner SKIPs the whole folder when `lib/credentials.probe_oauth_token()` cannot resolve an OAuth bearer token from the macOS Keychain (service `Claude Code-credentials`) or `$ANTHROPIC_OAUTH_TOKEN`.
 - **`Ctx`** (`lib/runtime.py:33`): carries server handle, REST client, provider, model, binary, mode, scenario label.
 - **Scenario**: `run(ctx: Ctx) -> Result` where `Result = (name, "PASS"|"FAIL"|"SKIP", details)`. One function per file. Self-contained — no shared fixtures beyond `lib/runtime.py` helpers and `lib/script_helpers.py` for python scenarios.
 
@@ -58,6 +59,7 @@ python3 manual_testing/run_suite.py --only=engine,python
 python3 manual_testing/engine/test.py --only=s01 --parallel=1
 python3 manual_testing/claude/test.py --only=s05 --parallel=1
 python3 manual_testing/python/test.py --only=P01
+python3 manual_testing/api/test.py --only=A01 --parallel=1
 ```
 
 Each provider subprocess creates `/tmp/nrflo-manual-<provider>-<mode>-XXXX/` with the SQLite DB, per-scenario project roots, and `server.log`. The orchestrator collects results under `/tmp/nrflo-suite-<ts>/`. Directories are kept on exit.

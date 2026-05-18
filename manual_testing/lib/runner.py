@@ -69,6 +69,7 @@ def run_all(
     only: list[str] | None = None,
     timeout: float | None = None,
     results_path: str | None = None,
+    cli_model_spec: dict | None = None,
 ) -> int:
     """Run `scenarios` for one provider on one fresh server.
 
@@ -90,25 +91,52 @@ def run_all(
         scenarios = filtered
 
     label = f"{provider}/{mode}"
-    bin_path = shutil.which(binary)
-    if not bin_path:
-        print(f"[{_ts()}] [{label}] SKIPPED — binary {binary!r} not on PATH")
-        if results_path:
-            _write_results(results_path, [], skipped_reason=f"binary {binary!r} not on PATH")
-        return 0
+    extra_env: dict[str, str] = {}
+    if mode == "api":
+        # api-mode runs in-process — no CLI binary needed. Source the
+        # Anthropic OAuth token from the macOS Keychain (or env) and
+        # SKIP the whole folder cleanly when none is reachable, just
+        # like the CLI providers SKIP when their binary is missing.
+        from .credentials import probe_oauth_token
+        tok, reason = probe_oauth_token()
+        if not tok:
+            print(f"[{_ts()}] [{label}] SKIPPED — {reason}")
+            if results_path:
+                _write_results(results_path, [], skipped_reason=reason)
+            return 0
+        extra_env["ANTHROPIC_OAUTH_TOKEN"] = tok
+        _say(label, f"resolved Anthropic OAuth token ({reason})")
+    else:
+        bin_path = shutil.which(binary)
+        if not bin_path:
+            print(f"[{_ts()}] [{label}] SKIPPED — binary {binary!r} not on PATH")
+            if results_path:
+                _write_results(results_path, [], skipped_reason=f"binary {binary!r} not on PATH")
+            return 0
+        _say(label, f"resolved {binary!r} → {bin_path}")
     parallel = max(1, parallel)
-    _say(label, f"resolved {binary!r} → {bin_path}")
     _say(label, f"model={model}  mode={mode}  parallel={parallel}")
 
     boot_start = time.monotonic()
     _say(label, "booting nrflo_server …")
-    srv = server_mod.start_server(cli_label=f"{provider}-{mode}")
+    srv = server_mod.start_server(cli_label=f"{provider}-{mode}", extra_env=extra_env)
     _say(label, f"server ready in {time.monotonic() - boot_start:.2f}s "
                 f"at {srv.base_url} (NRFLO_HOME={srv.home})")
     client = api_mod.NrfloClient(srv.base_url)
     client.login()
     _say(label, "logged in as admin")
     client.default_execution_mode = mode
+    if mode == "api":
+        client.set_global_setting("api_mode_enabled", True)
+        _say(label, "flipped api_mode_enabled=true")
+    if cli_model_spec is not None:
+        # The seeded `haiku` cli_models row has `mapped_model='haiku'`,
+        # which the Anthropic API rejects. Api-mode scenarios register a
+        # fresh model id whose `mapped_model` is a real Anthropic name
+        # (e.g. `claude-haiku-4-5`) and pass that as the agent_def model.
+        client.create_cli_model(**cli_model_spec)
+        _say(label, f"registered cli_model {cli_model_spec['id']!r} "
+                    f"-> {cli_model_spec.get('mapped_model')!r}")
     base_ctx = Ctx(
         server=srv, client=client,
         provider=provider, model=model, binary=binary, mode=mode,

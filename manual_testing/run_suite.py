@@ -45,6 +45,11 @@ PROVIDERS: list[tuple[str, str]] = [
     ("gemini", "gemini"),
     ("opencode", "opencode"),
     ("python", "python3"),
+    # `api` exercises execution_mode='api' in-process; no binary
+    # required, but we pass 'claude' so the existing PATH probe in
+    # _launch logs honestly. The runner SKIPs the whole folder when no
+    # Anthropic OAuth token is reachable (see lib/credentials.py).
+    ("api", "claude"),
 ]
 
 ENGINE_PROVIDER = "engine"

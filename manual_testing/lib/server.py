@@ -67,8 +67,17 @@ class RunningServer:
             print(f"[server] data dir kept at: {self.home}", flush=True)
 
 
-def start_server(*, cli_label: str) -> RunningServer:
-    """Start a fresh nrflo_server. Caller MUST eventually call .stop()."""
+def start_server(
+    *,
+    cli_label: str,
+    extra_env: dict[str, str] | None = None,
+) -> RunningServer:
+    """Start a fresh nrflo_server. Caller MUST eventually call .stop().
+
+    `extra_env` is merged into the child process environment after the
+    standard NRFLO_* vars are set. Used by the api-mode runner to inject
+    `ANTHROPIC_OAUTH_TOKEN` so the server resolves it via
+    `apirun/provider/anthropic.ResolveAPIKey` step 4 (server env)."""
     server_bin, cli_bin = _resolve_binaries()
 
     home = Path(tempfile.mkdtemp(prefix=f"nrflo-manual-{cli_label}-"))
@@ -99,6 +108,8 @@ def start_server(*, cli_label: str) -> RunningServer:
     env["NRFLO_SOCKET"] = str(socket_path)
     # Make sure the spawned-agent processes can find the nrflo CLI.
     env["PATH"] = f"{cli_bin.parent}{os.pathsep}{env.get('PATH', '')}"
+    if extra_env:
+        env.update(extra_env)
 
     log_fh = log_path.open("wb")
     proc = subprocess.Popen(

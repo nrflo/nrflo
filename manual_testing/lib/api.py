@@ -94,6 +94,14 @@ class NrfloClient:
         self._request("POST", "/api/v1/auth/login",
                       body={"email": email, "password": password})
 
+    # ---- global settings -----------------------------------------------
+
+    def set_global_setting(self, key: str, value: Any) -> dict:
+        """PATCH /api/v1/settings — used by the api-mode runner to flip
+        `api_mode_enabled` on, and by scenarios that need to flip it off
+        again to exercise the disabled-rejection path."""
+        return self._request("PATCH", "/api/v1/settings", body={key: value})
+
     # ---- projects ------------------------------------------------------
 
     def create_project(self, project_id: str, *, root_path: str, name: str | None = None) -> dict:
@@ -173,6 +181,7 @@ class NrfloClient:
         restart_threshold: int | None = None,
         execution_mode: str | None = None,
         python_script_id: str | None = None,
+        tools: str | None = None,
     ) -> dict:
         body: dict[str, Any] = {
             "id": agent_id,
@@ -196,6 +205,8 @@ class NrfloClient:
             body["max_fail_restarts"] = max_fail_restarts
         if restart_threshold is not None:
             body["restart_threshold"] = restart_threshold
+        if tools is not None:
+            body["tools"] = tools
         # Per-call override beats process default.
         mode = execution_mode if execution_mode is not None else self.default_execution_mode
         if mode is not None:

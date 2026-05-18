@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   ProjectForm,
@@ -7,6 +7,9 @@ import {
   parseSafetyHookConfig,
   buildSafetyHookJSON,
 } from './ProjectForm'
+import { renderWithQuery } from '@/test/utils'
+
+vi.mock('@/api/projectSettings')
 
 function makeMutation(overrides = {}) {
   return { isPending: false, isError: false, error: null, ...overrides }
@@ -25,7 +28,7 @@ function makeProps(formDataOverrides = {}) {
 describe('ProjectForm — default branch tooltip', () => {
   it('shows info tooltip on hover over default branch info icon', async () => {
     const user = userEvent.setup()
-    render(<ProjectForm {...makeProps()} />)
+    renderWithQuery(<ProjectForm {...makeProps()} />)
 
     const label = screen.getByText('Default Branch')
     const tooltipTrigger = label.closest('.flex')?.querySelector('[data-state]') as HTMLElement
@@ -40,7 +43,7 @@ describe('ProjectForm — default branch tooltip', () => {
 describe('ProjectForm — worktree tooltip', () => {
   it('shows worktree explanation tooltip on hover', async () => {
     const user = userEvent.setup()
-    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
 
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
 
@@ -54,7 +57,7 @@ describe('ProjectForm — worktree tooltip', () => {
 
   it('tooltip is accessible via role on hover', async () => {
     const user = userEvent.setup()
-    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
 
     await user.hover(screen.getByText('Use Git Worktrees'))
     const tooltip = await screen.findByRole('tooltip')
@@ -63,7 +66,7 @@ describe('ProjectForm — worktree tooltip', () => {
 
   it('tooltip applies max-w-sm class', async () => {
     const user = userEvent.setup()
-    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
 
     await user.hover(screen.getByText('Use Git Worktrees'))
     await screen.findByRole('tooltip')
@@ -75,14 +78,14 @@ describe('ProjectForm — worktree tooltip', () => {
 
 describe('ProjectForm — worktree toggle state', () => {
   it('disables toggle when default_branch is empty', () => {
-    render(<ProjectForm {...makeProps({ default_branch: '' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: '' })} />)
 
     const toggle = screen.getByRole('switch', { name: /use git worktrees/i })
     expect(toggle).toBeDisabled()
   })
 
   it('enables toggle when default_branch is set', () => {
-    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
 
     const toggle = screen.getByRole('switch', { name: /use git worktrees/i })
     expect(toggle).not.toBeDisabled()
@@ -91,36 +94,36 @@ describe('ProjectForm — worktree toggle state', () => {
 
 describe('ProjectForm — push after merge toggle', () => {
   it('disables toggle when default_branch is empty', () => {
-    render(<ProjectForm {...makeProps({ default_branch: '' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: '' })} />)
     expect(screen.getByRole('switch', { name: /push after merge/i })).toBeDisabled()
   })
 
   it('enables toggle when default_branch is set', () => {
-    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
     expect(screen.getByRole('switch', { name: /push after merge/i })).not.toBeDisabled()
   })
 
   it('reflects checked state true from formData', () => {
-    render(<ProjectForm {...makeProps({ default_branch: 'main', push_after_merge: true })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main', push_after_merge: true })} />)
     expect(screen.getByRole('switch', { name: /push after merge/i })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('reflects checked state false from formData', () => {
-    render(<ProjectForm {...makeProps({ default_branch: 'main', push_after_merge: false })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main', push_after_merge: false })} />)
     expect(screen.getByRole('switch', { name: /push after merge/i })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('calls setFormData with push_after_merge toggled on click', async () => {
     const user = userEvent.setup()
     const props = makeProps({ default_branch: 'main', push_after_merge: false })
-    render(<ProjectForm {...props} />)
+    renderWithQuery(<ProjectForm {...props} />)
     await user.click(screen.getByRole('switch', { name: /push after merge/i }))
     expect(props.setFormData).toHaveBeenCalledWith(expect.objectContaining({ push_after_merge: true }))
   })
 
   it('shows tooltip on hover', async () => {
     const user = userEvent.setup()
-    render(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ default_branch: 'main' })} />)
     await user.hover(screen.getByText('Push after merge'))
     const tooltip = await screen.findByRole('tooltip')
     expect(tooltip).toHaveTextContent(/Automatically push default branch/)
@@ -232,7 +235,7 @@ describe('buildSafetyHookJSON', () => {
 
 describe('ProjectForm — safety hook section', () => {
   it('hides safety hook fields when disabled', () => {
-    render(<ProjectForm {...makeProps({ safety_hook_enabled: false })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ safety_hook_enabled: false })} />)
     expect(screen.queryByRole('switch', { name: /allow git operations/i })).not.toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/node_modules/i)).not.toBeInTheDocument()
   })
@@ -242,32 +245,32 @@ describe('ProjectForm — safety hook section', () => {
   })
 
   it('hides safety hook details with default emptyProjectForm', () => {
-    render(<ProjectForm {...makeProps()} />)
+    renderWithQuery(<ProjectForm {...makeProps()} />)
     expect(screen.queryByRole('switch', { name: /allow git operations/i })).not.toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/node_modules/i)).not.toBeInTheDocument()
   })
 
   it('shows all safety hook fields when enabled', () => {
-    render(<ProjectForm {...makeProps({ safety_hook_enabled: true })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ safety_hook_enabled: true })} />)
     expect(screen.getByRole('switch', { name: /allow git operations/i })).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/node_modules/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/rm -rf/i)).toBeInTheDocument()
   })
 
   it('shows Check button when safety hook is enabled', () => {
-    render(<ProjectForm {...makeProps({ safety_hook_enabled: true })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ safety_hook_enabled: true })} />)
     expect(screen.getByRole('button', { name: /check/i })).toBeInTheDocument()
   })
 
   it('hides Check button when safety hook is disabled', () => {
-    render(<ProjectForm {...makeProps({ safety_hook_enabled: false })} />)
+    renderWithQuery(<ProjectForm {...makeProps({ safety_hook_enabled: false })} />)
     expect(screen.queryByRole('button', { name: /check/i })).not.toBeInTheDocument()
   })
 
   it('enabling toggle populates default rm paths when empty', async () => {
     const user = userEvent.setup()
     const setFormData = vi.fn()
-    render(
+    renderWithQuery(
       <ProjectForm
         {...makeProps({ safety_hook_enabled: false, safety_hook_allowed_rm_paths: '' })}
         setFormData={setFormData}
@@ -285,7 +288,7 @@ describe('ProjectForm — safety hook section', () => {
   it('enabling toggle preserves existing rm paths', async () => {
     const user = userEvent.setup()
     const setFormData = vi.fn()
-    render(
+    renderWithQuery(
       <ProjectForm
         {...makeProps({ safety_hook_enabled: false, safety_hook_allowed_rm_paths: 'custom-dir' })}
         setFormData={setFormData}

@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ProjectsSection } from './ProjectsSection'
 import * as projectsApi from '@/api/projects'
 import * as envVarsApi from '@/api/projectEnvVars'
 import * as catalogHook from '@/hooks/useEnvVarCatalog'
+import * as settingsApi from '@/api/projectSettings'
 import { renderWithQuery } from '@/test/utils'
 import type { Project } from '@/api/projects'
 
 vi.mock('@/api/projects')
 vi.mock('@/api/projectEnvVars')
 vi.mock('@/hooks/useEnvVarCatalog')
+vi.mock('@/api/projectSettings')
 vi.mock('@/stores/projectStore', () => ({
   useProjectStore: vi.fn(() => ({
     currentProject: 'aveva',
@@ -39,7 +42,58 @@ beforeEach(() => {
   vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject()] })
   vi.mocked(envVarsApi.listEnvVars).mockResolvedValue([])
   vi.mocked(catalogHook.useEnvVarCatalog).mockReturnValue({ data: [], isLoading: false } as any)
+  vi.mocked(settingsApi.getArtifactStorage).mockResolvedValue({ mode: 'internal' })
+  vi.mocked(settingsApi.getCleanup).mockResolvedValue({ enabled: false, retention_limit: 0 })
   Element.prototype.scrollIntoView = vi.fn()
+})
+
+describe('ProjectsSection — unified save flow', () => {
+  beforeEach(() => {
+    vi.mocked(projectsApi.updateProject).mockResolvedValue(makeProject())
+    vi.mocked(settingsApi.setArtifactStorage).mockResolvedValue({ mode: 'internal' })
+    vi.mocked(settingsApi.setCleanup).mockResolvedValue({ enabled: false, retention_limit: 0 })
+  })
+
+  it('Save with unmodified subforms calls only updateProject', async () => {
+    const user = userEvent.setup()
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection initialEditProjectId="aveva" />
+      </MemoryRouter>
+    )
+
+    await screen.findByText('Environment Variables')
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() =>
+      expect(screen.queryByText('Environment Variables')).not.toBeInTheDocument()
+    )
+    expect(projectsApi.updateProject).toHaveBeenCalledOnce()
+    expect(settingsApi.setArtifactStorage).not.toHaveBeenCalled()
+    expect(settingsApi.setCleanup).not.toHaveBeenCalled()
+  })
+
+  it('setArtifactStorage rejection shows inline error and keeps form open', async () => {
+    const user = userEvent.setup()
+    vi.mocked(settingsApi.setArtifactStorage).mockRejectedValue(new Error('bucket required'))
+
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection initialEditProjectId="aveva" />
+      </MemoryRouter>
+    )
+
+    await screen.findByText('Environment Variables')
+
+    await user.click(screen.getByRole('button', { name: /internal/i }))
+    await user.click(screen.getByText('Cloudflare R2'))
+
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    await screen.findByText('bucket required')
+    expect(screen.getByText('Environment Variables')).toBeInTheDocument()
+    expect(settingsApi.setArtifactStorage).toHaveBeenCalledOnce()
+  })
 })
 
 describe('ProjectsSection — initialEditProjectId', () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { useProjectStore } from '@/stores/projectStore'
@@ -13,13 +13,16 @@ import {
   type CreateProjectRequest,
   type UpdateProjectRequest,
 } from '@/api/projects'
+import { ProjectForm } from './ProjectForm'
+import { ProjectListItem } from './ProjectListItem'
 import {
-  ProjectForm,
   emptyProjectForm,
   parseSafetyHookConfig,
   buildSafetyHookJSON,
   type ProjectFormData,
-} from './ProjectForm'
+} from './projectFormUtils'
+import { useSetArtifactStorage, useSetCleanup } from '@/hooks/useProjectSettings'
+import type { ArtifactStorageConfig, CleanupSettings } from '@/api/projectSettings'
 
 const projectKeys = {
   all: ['projects'] as const,
@@ -38,6 +41,8 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<ProjectFormData>(emptyProjectForm)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [artifactError, setArtifactError] = useState<string | null>(null)
+  const [cleanupError, setCleanupError] = useState<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: projectKeys.list(),
@@ -62,10 +67,11 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() })
       loadProjects()
-      setEditingId(null)
-      setFormData(emptyProjectForm)
     },
   })
+
+  const setArtifactMutation = useSetArtifactStorage()
+  const setCleanupMutation = useSetCleanup()
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProject(id),
@@ -127,20 +133,42 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
     })
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings }) => {
     if (!editingId) return
+    setArtifactError(null)
+    setCleanupError(null)
     const safetyHook = buildSafetyHookJSON(formData)
-    updateMutation.mutate({
-      id: editingId,
-      data: {
-        name: formData.name.trim() || undefined,
-        root_path: formData.root_path.trim() || undefined,
-        default_branch: formData.default_branch.trim() || undefined,
-        use_git_worktrees: formData.use_git_worktrees,
-        push_after_merge: formData.push_after_merge,
-        claude_safety_hook: safetyHook,
-      },
-    })
+
+    const [projectResult, artifactResult, cleanupResult] = await Promise.allSettled([
+      updateMutation.mutateAsync({
+        id: editingId,
+        data: {
+          name: formData.name.trim() || undefined,
+          root_path: formData.root_path.trim() || undefined,
+          default_branch: formData.default_branch.trim() || undefined,
+          use_git_worktrees: formData.use_git_worktrees,
+          push_after_merge: formData.push_after_merge,
+          claude_safety_hook: safetyHook,
+        },
+      }),
+      subforms?.artifact
+        ? setArtifactMutation.mutateAsync({ projectId: editingId, cfg: subforms.artifact })
+        : Promise.resolve(null),
+      subforms?.cleanup
+        ? setCleanupMutation.mutateAsync({ projectId: editingId, cfg: subforms.cleanup })
+        : Promise.resolve(null),
+    ])
+
+    if (artifactResult.status === 'rejected') {
+      setArtifactError((artifactResult.reason as Error).message)
+    }
+    if (cleanupResult.status === 'rejected') {
+      setCleanupError((cleanupResult.reason as Error).message)
+    }
+    if (projectResult.status === 'fulfilled' && artifactResult.status === 'fulfilled' && cleanupResult.status === 'fulfilled') {
+      setEditingId(null)
+      setFormData(emptyProjectForm)
+    }
   }
 
   const handleDelete = (id: string) => {
@@ -196,95 +224,30 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
             </div>
           ) : (
             projects.map((project) => (
-              <div
+              <ProjectListItem
                 key={project.id}
-                className={`border rounded-lg p-4 ${
-                  project.id === currentProject ? 'border-primary bg-primary/5' : ''
-                }`}
-              >
-                {editingId === project.id ? (
-                  <ProjectForm
-                    formData={formData}
-                    setFormData={setFormData}
-                    onCancel={handleCancel}
-                    onSave={handleSaveEdit}
-                    mutation={updateMutation}
-                    disabledId={project.id}
-                  />
-                ) : deleteConfirm === project.id ? (
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm">
-                      Are you sure you want to delete{' '}
-                      <span className="font-semibold">{project.name}</span>?
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => handleDelete(project.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FolderOpen className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{project.name}</span>
-                          <span className="text-sm text-muted-foreground">({project.id})</span>
-                          {project.id === currentProject && (
-                            <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
-                              Active
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {[
-                            project.root_path && `Path: ${project.root_path}`,
-                            project.default_branch && `Branch: ${project.default_branch}`,
-                            project.use_git_worktrees && 'Worktrees: enabled',
-                            project.push_after_merge && 'Push after merge: enabled',
-                            project.claude_safety_hook && 'Safety hook: enabled',
-                          ]
-                            .filter(Boolean)
-                            .map((text, i, arr) => (
-                              <span key={i}>
-                                {text}
-                                {i < arr.length - 1 && <span className="mx-2">|</span>}
-                              </span>
-                            ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleStartEdit(project)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteConfirm(project.id)}
-                        disabled={projects.length === 1}
-                        title={
-                          projects.length === 1 ? "Can't delete the last project" : 'Delete'
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                project={project}
+                isEditing={editingId === project.id}
+                isDeleteConfirm={deleteConfirm === project.id}
+                currentProject={currentProject}
+                formData={formData}
+                setFormData={setFormData}
+                onStartEdit={() => handleStartEdit(project)}
+                onCancelEdit={handleCancel}
+                onSaveEdit={handleSaveEdit}
+                onDeleteConfirm={() => setDeleteConfirm(project.id)}
+                onCancelDeleteConfirm={() => setDeleteConfirm(null)}
+                onDelete={() => handleDelete(project.id)}
+                editMutation={{
+                  isPending: updateMutation.isPending || setArtifactMutation.isPending || setCleanupMutation.isPending,
+                  isError: updateMutation.isError,
+                  error: updateMutation.error,
+                  artifactError,
+                  cleanupError,
+                }}
+                isDeletePending={deleteMutation.isPending}
+                projectsCount={projects.length}
+              />
             ))
           )}
         </div>

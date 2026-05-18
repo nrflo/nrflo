@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X, Check, Info, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -7,99 +7,28 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { SafetyHookCheckDialog } from './SafetyHookCheckDialog'
 import { ProjectEnvVarsEditor } from './ProjectEnvVarsEditor'
-import { ProjectArtifactStorageEditor } from './ProjectArtifactStorageEditor'
-import { ProjectCleanupEditor } from './ProjectCleanupEditor'
+import {
+  ProjectArtifactStorageEditor,
+  type FormState as ArtifactFormState,
+  toForm as toArtifactForm,
+  buildPayload as buildArtifactPayload,
+} from './ProjectArtifactStorageEditor'
+import { ProjectCleanupEditor, type CleanupFormState } from './ProjectCleanupEditor'
+import { useArtifactStorage, useCleanup } from '@/hooks/useProjectSettings'
+import type { ArtifactStorageConfig, CleanupSettings } from '@/api/projectSettings'
+import { type ProjectFormData, emptyProjectForm } from './projectFormUtils'
+export { type ProjectFormData, emptyProjectForm, parseSafetyHookConfig, buildSafetyHookJSON } from './projectFormUtils'
 
-export interface ProjectFormData {
-  id: string
-  name: string
-  root_path: string
-  default_branch: string
-  use_git_worktrees: boolean
-  push_after_merge: boolean
-  safety_hook_enabled: boolean
-  safety_hook_allow_git: boolean
-  safety_hook_allowed_rm_paths: string
-  safety_hook_dangerous_patterns: string
+const defaultArtifactForm: ArtifactFormState = {
+  mode: 'internal',
+  account_id: '',
+  bucket: '',
+  prefix: '',
+  access_key_ref: '',
+  secret_key_ref: '',
 }
 
-const DEFAULT_RM_PATHS = [
-  'node_modules', 'target', 'build', 'dist', '.cache',
-  '__pycache__', 'coverage', '.next', 'vendor', '/tmp', '/var/tmp',
-].join('\n')
-
-const DEFAULT_DANGEROUS_PATTERNS = [
-  'DROP DATABASE', 'DROP TABLE', 'TRUNCATE TABLE',
-  '> /dev/sda', 'mkfs', 'dd if=',
-  ':(){:|:&};:', 'chmod -R 777 /',
-  'sudo rm', '--hard', 'rm -rf /',
-].join('\n')
-
-export const emptyProjectForm: ProjectFormData = {
-  id: '',
-  name: '',
-  root_path: '',
-  default_branch: '',
-  use_git_worktrees: false,
-  push_after_merge: false,
-  safety_hook_enabled: false,
-  safety_hook_allow_git: true,
-  safety_hook_allowed_rm_paths: DEFAULT_RM_PATHS,
-  safety_hook_dangerous_patterns: DEFAULT_DANGEROUS_PATTERNS,
-}
-
-interface SafetyHookConfig {
-  enabled: boolean
-  allow_git: boolean
-  rm_rf_allowed_paths: string[]
-  dangerous_patterns: string[]
-}
-
-type SafetyHookFields = Pick<ProjectFormData, 'safety_hook_enabled' | 'safety_hook_allow_git' | 'safety_hook_allowed_rm_paths' | 'safety_hook_dangerous_patterns'>
-
-export function parseSafetyHookConfig(json: string | null): SafetyHookFields {
-  if (!json) {
-    return {
-      safety_hook_enabled: false,
-      safety_hook_allow_git: true,
-      safety_hook_allowed_rm_paths: '',
-      safety_hook_dangerous_patterns: '',
-    }
-  }
-  try {
-    const config: SafetyHookConfig = JSON.parse(json)
-    return {
-      safety_hook_enabled: config.enabled ?? false,
-      safety_hook_allow_git: config.allow_git ?? true,
-      safety_hook_allowed_rm_paths: (config.rm_rf_allowed_paths || []).join('\n'),
-      safety_hook_dangerous_patterns: (config.dangerous_patterns || []).join('\n'),
-    }
-  } catch {
-    return {
-      safety_hook_enabled: false,
-      safety_hook_allow_git: true,
-      safety_hook_allowed_rm_paths: '',
-      safety_hook_dangerous_patterns: '',
-    }
-  }
-}
-
-export function buildSafetyHookJSON(formData: ProjectFormData): string {
-  if (!formData.safety_hook_enabled) return ''
-  const config: SafetyHookConfig = {
-    enabled: true,
-    allow_git: formData.safety_hook_allow_git,
-    rm_rf_allowed_paths: formData.safety_hook_allowed_rm_paths
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean),
-    dangerous_patterns: formData.safety_hook_dangerous_patterns
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean),
-  }
-  return JSON.stringify(config)
-}
+const defaultCleanupForm: CleanupFormState = { enabled: false, retentionLimit: 0 }
 
 export function ProjectForm({
   formData,
@@ -113,13 +42,61 @@ export function ProjectForm({
   formData: ProjectFormData
   setFormData: (data: ProjectFormData) => void
   onCancel: () => void
-  onSave: () => void
+  onSave: (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings }) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mutation: { isPending: boolean; isError: boolean; error: any }
+  mutation: { isPending: boolean; isError: boolean; error: any; artifactError?: string | null; cleanupError?: string | null }
   isCreate?: boolean
   disabledId?: string
 }) {
   const [checkDialogOpen, setCheckDialogOpen] = useState(false)
+  const isEdit = !isCreate && !!disabledId
+
+  const { data: artifactData } = useArtifactStorage(disabledId ?? '')
+  const { data: cleanupData } = useCleanup(disabledId ?? '')
+  const [artifactValue, setArtifactValue] = useState<ArtifactFormState>(defaultArtifactForm)
+  const [cleanupValue, setCleanupValue] = useState<CleanupFormState>(defaultCleanupForm)
+  const initialArtifactDataRef = useRef<ArtifactStorageConfig | undefined>(undefined)
+  const initialCleanupDataRef = useRef<CleanupSettings | undefined>(undefined)
+
+  useEffect(() => {
+    if (artifactData && !initialArtifactDataRef.current) {
+      initialArtifactDataRef.current = artifactData
+      setArtifactValue(toArtifactForm(artifactData))
+    }
+  }, [artifactData])
+
+  useEffect(() => {
+    if (cleanupData && !initialCleanupDataRef.current) {
+      initialCleanupDataRef.current = cleanupData
+      setCleanupValue({ enabled: cleanupData.enabled, retentionLimit: cleanupData.retention_limit })
+    }
+  }, [cleanupData])
+
+  function handleSave() {
+    if (isEdit) {
+      const initialArtifact = initialArtifactDataRef.current
+      const initialArtifactForm = initialArtifact ? toArtifactForm(initialArtifact) : defaultArtifactForm
+      const artifactChanged = JSON.stringify(artifactValue) !== JSON.stringify(initialArtifactForm)
+
+      const initialCleanup = initialCleanupDataRef.current
+      const initialCleanupForm: CleanupFormState = initialCleanup
+        ? { enabled: initialCleanup.enabled, retentionLimit: initialCleanup.retention_limit }
+        : defaultCleanupForm
+      const cleanupChanged = JSON.stringify(cleanupValue) !== JSON.stringify(initialCleanupForm)
+
+      onSave({
+        artifact: artifactChanged && artifactValue.mode !== 's3'
+          ? buildArtifactPayload(artifactValue, initialArtifact)
+          : undefined,
+        cleanup: cleanupChanged
+          ? { enabled: cleanupValue.enabled, retention_limit: cleanupValue.retentionLimit }
+          : undefined,
+      })
+    } else {
+      onSave()
+    }
+  }
+
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
       <div className="grid grid-cols-2 gap-3">
@@ -222,10 +199,10 @@ export function ProjectForm({
               ...formData,
               safety_hook_enabled: checked,
               safety_hook_allowed_rm_paths: checked && !formData.safety_hook_allowed_rm_paths
-                ? DEFAULT_RM_PATHS
+                ? emptyProjectForm.safety_hook_allowed_rm_paths
                 : formData.safety_hook_allowed_rm_paths,
               safety_hook_dangerous_patterns: checked && !formData.safety_hook_dangerous_patterns
-                ? DEFAULT_DANGEROUS_PATTERNS
+                ? emptyProjectForm.safety_hook_dangerous_patterns
                 : formData.safety_hook_dangerous_patterns,
             })
           }
@@ -267,11 +244,21 @@ export function ProjectForm({
           </div>
         )}
       </div>
-      {!isCreate && disabledId && (
+      {isEdit && disabledId && (
         <>
           <ProjectEnvVarsEditor projectId={disabledId} />
-          <ProjectArtifactStorageEditor projectId={disabledId} />
-          <ProjectCleanupEditor projectId={disabledId} />
+          <ProjectArtifactStorageEditor
+            projectId={disabledId}
+            value={artifactValue}
+            onChange={setArtifactValue}
+            serverError={mutation.artifactError}
+          />
+          <ProjectCleanupEditor
+            projectId={disabledId}
+            value={cleanupValue}
+            onChange={setCleanupValue}
+            serverError={mutation.cleanupError}
+          />
         </>
       )}
       <div className="flex gap-2 justify-end">
@@ -279,7 +266,7 @@ export function ProjectForm({
           {isCreate ? 'Cancel' : <><X className="h-4 w-4 mr-1" />Cancel</>}
         </Button>
         <Button
-          onClick={onSave}
+          onClick={handleSave}
           disabled={isCreate ? !formData.id.trim() || mutation.isPending : mutation.isPending}
         >
           {isCreate ? (

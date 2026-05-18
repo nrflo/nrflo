@@ -42,6 +42,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `python_script_validate.go` | `Validate(ctx, code)`: runs `python3` AST parse with 5s timeout; degrades gracefully if python3 absent |
 | `project_env_var.go` | `ProjectEnvVarService`: List/Upsert/Delete; validates name regex, reserved names, 4096-byte value cap |
 | `artifact.go` | `ArtifactService`: StageUpload (tmp staging), ReadUploadMeta, CancelUpload, AttachInputArtifacts (moves staged uploads to persistent storage, transactional rollback), List, Get, Open, Delete (broadcasts `artifact.deleted`) |
+| `workflow_export.go` + `workflow_export_import.go` | `WorkflowExportService`: `Export` builds a v1.0 `types.WorkflowBundle` (strips project_id/workflow_id, dedupes referenced python scripts); `CheckImport` probes target project for workflow/script ID conflicts; `Import` applies bundle with action `overwrite` (cascade-delete then create), `rename` (`-N` suffix on conflicting workflow IDs), or `cancel` (no-op, `Skipped=true`). Python scripts always get freshly generated IDs; agent `PythonScriptID` is remapped before `CreateAgentDef`. |
 
 ## Per-project env vars
 

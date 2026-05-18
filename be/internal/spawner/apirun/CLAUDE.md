@@ -18,6 +18,7 @@ In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `i
 | `FAIL` | `agent_fail` | spawner: result=fail |
 | `CONTINUE` | `agent_continue` | `relaunchForContinuation` |
 | `CALLBACK` | `agent_callback` | `finalizePhase` reads `callback_level`, returns `CallbackError` |
+| `RATE_LIMITED` | `classifyProviderError` → `RetryClassRateLimit` | api_backend rate-limit dance → `relaunchForContinuation` |
 
 Each terminal handler also calls the corresponding `AgentService` method, so DB row + WS broadcast happen identically to CLI agents.
 
@@ -39,7 +40,11 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; run `grep -n Re
 
 ## Wiring
 
-`prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + `loadProjectPythonTools` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled). See `spawner/api_backend.go`.
+`prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + `loadProjectPythonTools` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled), RATE_LIMITED→(continue,rate_limit). See `spawner/api_backend.go`.
+
+## Provider Error Classification
+
+`errors.go:classifyProviderError` returns `(status, message, RetryClass)`. Detection uses typed SDK errors only — no string matching. `sdk.Error.Type() == ErrorTypeRateLimitError | ErrorTypeOverloadedError`, or `StatusCode ∈ {429, 529}` → `RATE_LIMITED` + `RetryClassRateLimit`. 401/403 → `FAIL` + `RetryClassError` (auth_error). 5xx → `FAIL` + `RetryClassError`. `json.SyntaxError`/`UnmarshalTypeError` → `FAIL` + `RetryClassError`. Other → `FAIL` + `RetryClassNone`. `ctx.Err()` takes priority → `CANCELLED`. On `RetryClassRateLimit` the runner skips `ErrorSvc.RecordError` and sets `RATE_LIMITED`; the api_backend goroutine then performs the rate-limit retry dance (see spawner [Rate-Limit Restart](../CLAUDE.md#rate-limit-restart)) gated on `rateLimitConfig.Enabled && rateLimitTotalWait < MaxWait`.
 
 ## Low-Context Behavior
 

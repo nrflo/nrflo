@@ -9,8 +9,11 @@ import (
 	"time"
 
 	"be/internal/logger"
+	"be/internal/model"
+	"be/internal/repo"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
+	"be/internal/ws"
 )
 
 // ExecutionBackend abstracts how an agent process is started, signaled, and tracked.
@@ -152,9 +155,38 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 		// will see finalStatus already set and skip handleCompletion (which
 		// would dereference proc.cmd).
 		b.s.saveMessages(proc)
-		result, reason := mapFinalStatus(proc.finalStatus)
-		b.s.registerAgentStopWithReason(proc.projectID, proc.ticketID, proc.workflowName,
-			proc.sessionID, proc.agentID, result, reason, proc.modelID)
+
+		if proc.finalStatus == "RATE_LIMITED" &&
+			proc.rateLimitConfig.Enabled &&
+			proc.rateLimitTotalWait < proc.rateLimitConfig.MaxWait {
+
+			upcomingCount := proc.rateLimitRetryCount + 1
+			delay := computeRateLimitDelay(proc.rateLimitConfig, upcomingCount)
+			b.s.broadcast(ws.EventAgentRateLimited, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
+				"session_id":         proc.sessionID,
+				"agent_type":         proc.agentType,
+				"wait_seconds":       int(delay.Seconds()),
+				"total_wait_seconds": int(proc.rateLimitTotalWait.Seconds()) + int(delay.Seconds()),
+				"matched_pattern":    "",
+				"retry_count":        upcomingCount,
+			})
+			b.s.registerAgentStopWithReason(proc.projectID, proc.ticketID, proc.workflowName,
+				proc.sessionID, proc.agentID, "continue", "rate_limit", proc.modelID)
+			if pool := b.s.pool(); pool != nil {
+				sessionRepo := repo.NewAgentSessionRepo(pool, b.s.config.Clock)
+				sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
+				rateLimitUntil := b.s.config.Clock.Now().Add(delay).UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+				sessionRepo.UpdateRateLimitUntil(proc.sessionID, rateLimitUntil, upcomingCount, "")
+			}
+			proc.rateLimitRetryCount++
+			rateLimitReq := SpawnRequest{ProjectID: proc.projectID, TicketID: proc.ticketID, WorkflowName: proc.workflowName}
+			b.s.waitForRateLimitRetry(runCtx, proc, rateLimitReq)
+			proc.finalStatus = "CONTINUE"
+		} else {
+			result, reason := mapFinalStatus(proc.finalStatus)
+			b.s.registerAgentStopWithReason(proc.projectID, proc.ticketID, proc.workflowName,
+				proc.sessionID, proc.agentID, result, reason, proc.modelID)
+		}
 
 		logCtx := logger.WithTrx(context.Background(), proc.trx)
 		logger.Info(logCtx, "api agent finished", "model", proc.modelID, "status", proc.finalStatus, "session_id", proc.sessionID)
@@ -224,6 +256,8 @@ func mapFinalStatus(status string) (result, reason string) {
 		return "fail", "cancelled"
 	case "FAIL":
 		return "fail", "api_error"
+	case "RATE_LIMITED":
+		return "continue", "rate_limit"
 	case "CONTINUE":
 		return "continue", "api_continue"
 	case "CALLBACK":

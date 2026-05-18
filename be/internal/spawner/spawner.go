@@ -1094,6 +1094,8 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	if executionMode == "cli_interactive" && adapter != nil {
 		proc.rateLimitConfig = s.loadRateLimitConfig(req.ProjectID, adapter.Name())
 		proc.adapter = adapter
+	} else if executionMode == "api" {
+		proc.rateLimitConfig = s.loadRateLimitConfig(req.ProjectID, "api")
 	}
 
 	prep := &prepResult{

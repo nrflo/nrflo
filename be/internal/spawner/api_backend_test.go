@@ -77,6 +77,7 @@ func TestMapFinalStatus_AllCases(t *testing.T) {
 		{in: "PASS", wantResult: "pass", wantReason: "implicit"},
 		{in: "CANCELLED", wantResult: "fail", wantReason: "cancelled"},
 		{in: "FAIL", wantResult: "fail", wantReason: "api_error"},
+		{in: "RATE_LIMITED", wantResult: "continue", wantReason: "rate_limit"},
 		{in: "", wantResult: "fail", wantReason: "no_status"},
 		{in: "WEIRD", wantResult: "fail", wantReason: "weird"},
 	}

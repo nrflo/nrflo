@@ -105,8 +105,12 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 		resp, err := r.cfg.Provider.Run(ctx, req, sink)
 		sink.close()
 		if err != nil {
-			status, msg := classifyProviderError(ctx, err)
+			status, msg, class := classifyProviderError(ctx, err)
 			r.cfg.Sink.TrackMessage(msg, "system")
+			if class == RetryClassRateLimit {
+				proc.SetFinalStatus("RATE_LIMITED")
+				return
+			}
 			if r.cfg.ErrorSvc != nil && status == "FAIL" {
 				r.cfg.ErrorSvc.RecordError(proc.ProjectID(), "agent", proc.SessionID(), msg)
 			}

@@ -84,7 +84,9 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Rate-Limit Restart
 
-When an agent exits non-zero and `ClassifyExit` (on the adapter) matches a rate-limit pattern in the last ~10 output/stderr blocks, `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers the stop (`result=continue/reason=rate_limit`), persists `rate_limit_until_ts` in the DB, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` then sleeps with exponential backoff (`min(InitialBackoff * 2^(retryCount-1), MaxWait)`), using `s.config.Clock.After` so tests control time. `rateLimitRetryCount` is a separate counter from `failRestartCount` and carries across relaunches via `relaunchForContinuation`.
+For `cli_interactive` agents: when an agent exits non-zero and `ClassifyExit` (on the adapter) matches a rate-limit pattern in the last ~10 output/stderr blocks, `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers the stop (`result=continue/reason=rate_limit`), persists `rate_limit_until_ts` in the DB, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` then sleeps with exponential backoff (`min(InitialBackoff * 2^(retryCount-1), MaxWait)`), using `s.config.Clock.After` so tests control time. `rateLimitRetryCount` is a separate counter from `failRestartCount` and carries across relaunches via `relaunchForContinuation`.
+
+For `api` agents: `apirun.classifyProviderError` returns `RetryClassRateLimit` from typed `*sdk.Error` (no regex). The runner sets `RATE_LIMITED`; `apiBackend.Start`'s goroutine inlines the same broadcast/register-stop/UpdateRateLimitUntil/wait dance and flips `finalStatus=CONTINUE`. `rateLimitConfig` is loaded for both `cli_interactive` and `api` modes in `prepareSpawn` (adapter name = `"api"` for the API lane).
 
 Well-known config keys (project-scoped > global, via `pool.GetProjectConfig`/`GetConfig`):
 

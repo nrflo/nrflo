@@ -19,6 +19,7 @@ import {
   ScrollText,
   ListOrdered,
   FileCode,
+  FileInput,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/useTickets'
@@ -113,6 +114,12 @@ export function Sidebar() {
           icon={<Plus className="h-4 w-4" />}
           label="New Ticket"
           active={isActive('/tickets/new')}
+        />
+        <NavItem
+          to="/import"
+          icon={<FileInput className="h-4 w-4" />}
+          label="Import Spec"
+          active={isActive('/import')}
         />
         <NavItem
           to="/project-workflows"

@@ -25,22 +25,10 @@ from lib.runner import run_all  # noqa: E402
 from api import ALL_SCENARIOS  # noqa: E402
 
 
-# A fresh cli_models row whose mapped_model is a valid Anthropic model id.
-# The seeded `haiku` row has mapped_model='haiku' which the Anthropic
-# SDK rejects, so we register a parallel id and target it from scenarios.
-DEFAULT_API_MODEL_SPEC = {
-    "id": "haiku_api",
-    "cli_type": "claude",
-    "display_name": "Haiku (API)",
-    "mapped_model": "claude-haiku-4-5",
-    "context_length": 200000,
-}
-
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--parallel", type=int, default=1)
-    ap.add_argument("--model", default=DEFAULT_API_MODEL_SPEC["id"])
+    ap.add_argument("--model", default="haiku")
     ap.add_argument("--only", default=None)
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--results", default=None,
@@ -59,7 +47,6 @@ def main() -> int:
         only=args.only.split(",") if args.only else None,
         timeout=args.timeout,
         results_path=args.results,
-        cli_model_spec=DEFAULT_API_MODEL_SPEC if args.model == DEFAULT_API_MODEL_SPEC["id"] else None,
     )
 
 

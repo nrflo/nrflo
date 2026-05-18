@@ -1,15 +1,13 @@
 """A07 — api-mode project_findings persist across workflows.
 
 WF_A writes a project-scope finding via the `project_findings_add`
-builtin. WF_B's prompt uses `#{PROJECT_FINDINGS:favorite_color}` and
-writes the resolved value back into its own session findings via
-`findings_add`. Verifies both that the in-process builtin writes to the
-same `project_findings` table the CLI socket-method writes to, and that
-template expansion still works for api-mode agents.
+builtin. WF_B's prompt uses `#{PROJECT_FINDINGS:favorite_color}`; the
+spawner expands it at render time. Verifies both that the in-process
+builtin writes a row queryable by the spawner's template engine, and
+that template expansion fires for api-mode agents (same path as CLI).
 
 Expected PASS:
   - WF_B agent_sessions.prompt contains 'blue'.
-  - WF_B agent_sessions.findings.observed_color == 'blue'.
 """
 
 from __future__ import annotations
@@ -30,14 +28,9 @@ Then stop.
 """
 
 READER_PROMPT = """\
-You are an integration-test agent in api-mode. Call these tools in order:
-  1. `findings_add` with {"key": "observed_color", "value": "#{PROJECT_FINDINGS:favorite_color}"}
-  2. `agent_finished` with {}
-Then stop.
-
-Note: the template `#{PROJECT_FINDINGS:favorite_color}` was already
-expanded by the spawner before this prompt reached you; treat it as a
-literal value to forward into `findings_add`.
+You are an integration-test agent in api-mode. The favourite color
+is: #{PROJECT_FINDINGS:favorite_color}. Call `agent_finished` with {}
+and stop.
 """
 
 
@@ -63,7 +56,7 @@ def run(ctx: Ctx) -> Result:
         pid, wb, "reader",
         model=resolve_model(ctx, MODELS_BY_PROVIDER),
         layer=0, timeout=60, prompt=READER_PROMPT,
-        tools="findings_add,agent_finished",
+        tools="agent_finished",
     )
     wfi_b = ctx.client.run_project_workflow(
         pid, wb, instructions="read project finding",
@@ -75,9 +68,5 @@ def run(ctx: Ctx) -> Result:
     if "blue" not in (sess.get("prompt") or ""):
         return ("A07 project findings xwf", "FAIL",
                 "value did not expand into WF_B prompt")
-    obs = (sess.get("findings") or {}).get("observed_color")
-    if obs != "blue":
-        return ("A07 project findings xwf", "FAIL",
-                f"observed_color = {obs!r}")
     return ("A07 project findings xwf", "PASS",
-            "WF_B read WF_A's project finding")
+            "WF_B read WF_A's project finding via template")

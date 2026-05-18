@@ -69,7 +69,6 @@ def run_all(
     only: list[str] | None = None,
     timeout: float | None = None,
     results_path: str | None = None,
-    cli_model_spec: dict | None = None,
 ) -> int:
     """Run `scenarios` for one provider on one fresh server.
 
@@ -129,14 +128,6 @@ def run_all(
     if mode == "api":
         client.set_global_setting("api_mode_enabled", True)
         _say(label, "flipped api_mode_enabled=true")
-    if cli_model_spec is not None:
-        # The seeded `haiku` cli_models row has `mapped_model='haiku'`,
-        # which the Anthropic API rejects. Api-mode scenarios register a
-        # fresh model id whose `mapped_model` is a real Anthropic name
-        # (e.g. `claude-haiku-4-5`) and pass that as the agent_def model.
-        client.create_cli_model(**cli_model_spec)
-        _say(label, f"registered cli_model {cli_model_spec['id']!r} "
-                    f"-> {cli_model_spec.get('mapped_model')!r}")
     base_ctx = Ctx(
         server=srv, client=client,
         provider=provider, model=model, binary=binary, mode=mode,

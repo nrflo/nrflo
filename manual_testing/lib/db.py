@@ -24,7 +24,7 @@ def agent_sessions_for_instance(home: Path, instance_id: str) -> list[dict[str, 
         rows = c.execute(
             """
             SELECT id, project_id, workflow_instance_id, phase, agent_type, model_id,
-                   status, result, result_reason, pid, findings, context_left,
+                   status, result, result_reason, pid, context_left,
                    effective_mode, prompt, system_prompt, ancestor_session_id,
                    started_at, ended_at
             FROM agent_sessions
@@ -33,7 +33,13 @@ def agent_sessions_for_instance(home: Path, instance_id: str) -> list[dict[str, 
             """,
             (instance_id,),
         ).fetchall()
-    return [_row_to_dict(r, json_keys=("findings",)) for r in rows]
+        sessions = [dict(r) for r in rows]
+        # Findings now live in the unified `findings` table keyed by
+        # (scope, scope_id). Reconstruct the per-session JSON dict so
+        # callers can keep using `sess["findings"][key]` access.
+        for s in sessions:
+            s["findings"] = _findings_for(c, "session", s["id"])
+    return sessions
 
 
 def workflow_instances_for_workflow(
@@ -42,7 +48,7 @@ def workflow_instances_for_workflow(
     with _connect(home) as c:
         rows = c.execute(
             """
-            SELECT id, project_id, workflow_id, scope_type, status, findings,
+            SELECT id, project_id, workflow_id, scope_type, status,
                    skip_tags, endless_loop, stop_endless_loop_after_iteration,
                    retry_count, created_at
             FROM workflow_instances
@@ -51,7 +57,10 @@ def workflow_instances_for_workflow(
             """,
             (project_id, workflow_id),
         ).fetchall()
-    return [_row_to_dict(r, json_keys=("findings", "skip_tags")) for r in rows]
+        instances = [_row_to_dict(r, json_keys=("skip_tags",)) for r in rows]
+        for inst in instances:
+            inst["findings"] = _findings_for(c, "workflow_instance", inst["id"])
+    return instances
 
 
 def chain_run_steps(home: Path, chain_run_id: str) -> list[dict[str, Any]]:
@@ -75,14 +84,16 @@ def workflow_instance(home: Path, instance_id: str) -> dict[str, Any] | None:
         row = c.execute(
             """
             SELECT id, project_id, ticket_id, workflow_id, scope_type, status,
-                   findings, skip_tags, retry_count, created_at, updated_at
+                   skip_tags, retry_count, created_at, updated_at
             FROM workflow_instances WHERE id = ?
             """,
             (instance_id,),
         ).fetchone()
-    if row is None:
-        return None
-    return _row_to_dict(row, json_keys=("findings", "skip_tags"))
+        if row is None:
+            return None
+        inst = _row_to_dict(row, json_keys=("skip_tags",))
+        inst["findings"] = _findings_for(c, "workflow_instance", instance_id)
+    return inst
 
 
 def agent_messages(home: Path, session_id: str) -> list[dict[str, Any]]:
@@ -101,20 +112,7 @@ def project_findings(home: Path, project_id: str) -> dict[str, Any]:
     """Values are JSON-serialized on disk; decode so callers compare to plain
     Python values (`"alpha"` JSON → `"alpha"` str)."""
     with _connect(home) as c:
-        rows = c.execute(
-            "SELECT key, value FROM project_findings WHERE project_id = ?",
-            (project_id,),
-        ).fetchall()
-    out: dict[str, Any] = {}
-    for r in rows:
-        v = r["value"]
-        if isinstance(v, str) and v != "":
-            try:
-                v = json.loads(v)
-            except json.JSONDecodeError:
-                pass
-        out[r["key"]] = v
-    return out
+        return _findings_for(c, "project", project_id)
 
 
 def errors_for_project(home: Path, project_id: str) -> list[dict[str, Any]]:
@@ -139,6 +137,31 @@ def ticket(home: Path, project_id: str, ticket_id: str) -> dict[str, Any] | None
             (project_id, ticket_id),
         ).fetchone()
     return dict(row) if row else None
+
+
+def _findings_for(c: sqlite3.Connection, scope: str, scope_id: str) -> dict[str, Any]:
+    """Read findings rows from the unified `findings` table (migration 110)
+    and decode each value as JSON when possible. Returns `key -> value`.
+
+    Findings are stored as JSON-encoded strings in the `value` column
+    (`json_quote(...)` during backfill, `json.Marshal` in Go). For values
+    written as plain strings the decoded result is the unquoted string,
+    matching the dict shape callers used when findings lived in
+    `agent_sessions.findings` JSON."""
+    rows = c.execute(
+        "SELECT key, value FROM findings WHERE scope = ? AND scope_id = ?",
+        (scope, scope_id),
+    ).fetchall()
+    out: dict[str, Any] = {}
+    for r in rows:
+        v = r["value"]
+        if isinstance(v, str) and v != "":
+            try:
+                v = json.loads(v)
+            except json.JSONDecodeError:
+                pass
+        out[r["key"]] = v
+    return out
 
 
 def _row_to_dict(row: sqlite3.Row, *, json_keys: tuple[str, ...]) -> dict[str, Any]:

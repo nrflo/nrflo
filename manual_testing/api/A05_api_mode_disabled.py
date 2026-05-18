@@ -31,17 +31,20 @@ You are an integration-test agent. Call `agent_finished` with {} and stop.
 
 
 def run(ctx: Ctx) -> Result:
+    # Build the workflow first while api_mode is still enabled (agent_def
+    # creation is itself gated by the flag). Then flip the flag off so
+    # the spawn-time check is what rejects.
+    pid, _root = make_project(ctx)
+    wid = next_id(ctx, "wf")
+    ctx.client.create_workflow(pid, wid, scope_type="project")
+    ctx.client.create_agent_def(
+        pid, wid, "main",
+        model=resolve_model(ctx, MODELS_BY_PROVIDER),
+        layer=0, timeout=30, prompt=PROMPT,
+        tools="agent_finished",
+    )
     ctx.client.set_global_setting("api_mode_enabled", False)
     try:
-        pid, _root = make_project(ctx)
-        wid = next_id(ctx, "wf")
-        ctx.client.create_workflow(pid, wid, scope_type="project")
-        ctx.client.create_agent_def(
-            pid, wid, "main",
-            model=resolve_model(ctx, MODELS_BY_PROVIDER),
-            layer=0, timeout=30, prompt=PROMPT,
-            tools="agent_finished",
-        )
         wfi = ctx.client.run_project_workflow(
             pid, wid, instructions="api-mode disabled",
         )["instance_id"]

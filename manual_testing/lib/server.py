@@ -120,7 +120,6 @@ def start_server(
             "--port", str(port),
             "--no-tray",
             "--insecure-cookies",
-            "--mode", "cli",
         ],
         env=env,
         stdout=log_fh,

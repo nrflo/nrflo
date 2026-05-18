@@ -11,8 +11,8 @@ import (
 // TestIdleNudge_Constants verifies the idle/nudge detection constants match the spec.
 func TestIdleNudge_Constants(t *testing.T) {
 	t.Parallel()
-	if defaultIdleAfterMessageTimeout != 3*time.Minute {
-		t.Errorf("defaultIdleAfterMessageTimeout = %v, want 3m", defaultIdleAfterMessageTimeout)
+	if defaultIdleAfterMessageTimeout != 4*time.Minute {
+		t.Errorf("defaultIdleAfterMessageTimeout = %v, want 4m", defaultIdleAfterMessageTimeout)
 	}
 	if defaultIdleStartTimeout != 2*time.Minute {
 		t.Errorf("defaultIdleStartTimeout = %v, want 2m", defaultIdleStartTimeout)

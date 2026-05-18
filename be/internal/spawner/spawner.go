@@ -69,7 +69,7 @@ const (
 	defaultStallStartTimeout       = 2 * time.Minute
 	defaultStallRunningTimeout     = 8 * time.Minute
 	maxStallRestarts               = 15
-	defaultIdleAfterMessageTimeout = 3 * time.Minute
+	defaultIdleAfterMessageTimeout = 4 * time.Minute
 	defaultIdleStartTimeout        = 2 * time.Minute
 	defaultNudgeMax                = 5
 
@@ -147,7 +147,7 @@ type Config struct {
 	APIMode bool
 	// PTYManager manages PTY sessions for cli_interactive agents.
 	PTYManager *ptyPkg.Manager
-	// IdleAfterMessageTimeoutSec: idle window after last message before nudge (default 180s, 0 = use default).
+	// IdleAfterMessageTimeoutSec: idle window after last message before nudge (default 240s, 0 = use default).
 	// Only applies to cliInteractiveBackend agents.
 	IdleAfterMessageTimeoutSec int
 	// IdleStartTimeoutSec: idle window before first message before nudge (default 120s, 0 = use default).

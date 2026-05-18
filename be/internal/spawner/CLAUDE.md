@@ -94,7 +94,7 @@ On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `r
 
 ## Idle/Nudge Loop
 
-Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 3 min, after first output). On idle: write `finish-reminder` injectable to PTY stdin, broadcast `agent.nudged`, persist `nudge_count` in DB. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.IdleAfterMessageTimeoutSec`, `Config.IdleStartTimeoutSec`, `Config.NudgeMax`.
+Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` injectable to PTY stdin, broadcast `agent.nudged`, persist `nudge_count` in DB. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.IdleAfterMessageTimeoutSec`, `Config.IdleStartTimeoutSec`, `Config.NudgeMax`.
 
 ## Template Variables
 

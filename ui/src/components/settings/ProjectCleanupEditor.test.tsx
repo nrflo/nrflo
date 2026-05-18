@@ -19,7 +19,7 @@ describe('ProjectCleanupEditor', () => {
 
     const toggle = await screen.findByRole('switch', { name: /enable cleanup/i })
     expect(toggle).toHaveAttribute('aria-checked', 'false')
-    expect(screen.queryByPlaceholderText('1000')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('e.g. 1000')).not.toBeInTheDocument()
     expect(screen.getByText(/kept indefinitely/i)).toBeInTheDocument()
   })
 
@@ -33,7 +33,7 @@ describe('ProjectCleanupEditor', () => {
     await user.click(screen.getByRole('switch', { name: /enable cleanup/i }))
 
     expect(screen.getByRole('switch', { name: /enable cleanup/i })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByPlaceholderText('1000')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('e.g. 1000')).toBeInTheDocument()
     expect(screen.queryByText(/kept indefinitely/i)).not.toBeInTheDocument()
   })
 
@@ -47,7 +47,7 @@ describe('ProjectCleanupEditor', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('switch', { name: /enable cleanup/i }))
 
-    const retentionInput = screen.getByPlaceholderText('1000')
+    const retentionInput = screen.getByPlaceholderText('e.g. 1000')
     await user.clear(retentionInput)
     await user.type(retentionInput, '1000')
 

@@ -20,18 +20,6 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	retentionVal, err := svc.Get("session_retention_limit")
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	retentionLimit := 1000
-	if retentionVal != "" {
-		if parsed, parseErr := strconv.Atoi(retentionVal); parseErr == nil {
-			retentionLimit = parsed
-		}
-	}
-
 	contextSaveViaAgentVal, err := svc.Get("context_save_via_agent")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -72,7 +60,6 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"context_save_via_agent":  contextSaveViaAgentVal == "true",
 		"simplified_agents_graph": simplifiedAgentsGraphVal == "true",
 		"experimental":            experimentalVal == "true",
-		"session_retention_limit": retentionLimit,
 		"api_mode_enabled":        apiModeVal == "true",
 	}
 	if stallStartVal != "" {
@@ -102,7 +89,6 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		SimplifiedAgentsGraph  *bool           `json:"simplified_agents_graph"`
 		Experimental           *bool           `json:"experimental"`
 		APIModeEnabled         *bool           `json:"api_mode_enabled"`
-		SessionRetentionLimit  *int            `json:"session_retention_limit"`
 		StallStartTimeoutSec   json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec json.RawMessage `json:"stall_running_timeout_sec"`
 	}
@@ -163,17 +149,6 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			val = "true"
 		}
 		if err := svc.Set("api_mode_enabled", val); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-	}
-
-	if req.SessionRetentionLimit != nil {
-		if *req.SessionRetentionLimit < 10 {
-			writeError(w, http.StatusBadRequest, "session_retention_limit must be >= 10")
-			return
-		}
-		if err := svc.Set("session_retention_limit", strconv.Itoa(*req.SessionRetentionLimit)); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

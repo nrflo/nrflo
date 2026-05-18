@@ -73,8 +73,8 @@ func TestHandleGetProjectCleanup_Defaults(t *testing.T) {
 	if m["enabled"] != false {
 		t.Errorf("enabled = %v, want false", m["enabled"])
 	}
-	if m["retention_limit"] != float64(1000) {
-		t.Errorf("retention_limit = %v, want 1000", m["retention_limit"])
+	if m["retention_limit"] != float64(0) {
+		t.Errorf("retention_limit = %v, want 0", m["retention_limit"])
 	}
 }
 
@@ -102,8 +102,8 @@ func TestHandlePutProjectCleanup_EnableOnly(t *testing.T) {
 	if m["enabled"] != true {
 		t.Errorf("enabled = %v, want true", m["enabled"])
 	}
-	if m["retention_limit"] != float64(1000) {
-		t.Errorf("retention_limit = %v, want 1000 (default)", m["retention_limit"])
+	if m["retention_limit"] != float64(0) {
+		t.Errorf("retention_limit = %v, want 0 (default, no limit configured)", m["retention_limit"])
 	}
 }
 

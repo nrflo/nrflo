@@ -10,7 +10,6 @@ import { Info } from 'lucide-react'
 
 export function GlobalSettingsSection() {
   const queryClient = useQueryClient()
-  const [retentionLimit, setRetentionLimit] = useState<number>(1000)
   const [stallStartTimeout, setStallStartTimeout] = useState<string>('')
   const [stallRunningTimeout, setStallRunningTimeout] = useState<string>('')
 
@@ -18,12 +17,6 @@ export function GlobalSettingsSection() {
     queryKey: settingsKeys.global(),
     queryFn: getGlobalSettings,
   })
-
-  useEffect(() => {
-    if (settings?.session_retention_limit != null) {
-      setRetentionLimit(settings.session_retention_limit)
-    }
-  }, [settings?.session_retention_limit])
 
   useEffect(() => {
     if (settings) {
@@ -66,21 +59,6 @@ export function GlobalSettingsSection() {
       queryClient.invalidateQueries({ queryKey: settingsKeys.all })
     },
   })
-
-  const retentionMutation = useMutation({
-    mutationFn: (val: number) => updateGlobalSettings({ session_retention_limit: val }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
-    },
-  })
-
-  const submitRetention = () => {
-    if (retentionLimit >= 10 && retentionLimit !== settings?.session_retention_limit) {
-      retentionMutation.mutate(retentionLimit)
-    } else if (retentionLimit < 10) {
-      setRetentionLimit(settings?.session_retention_limit ?? 1000)
-    }
-  }
 
   const stallMutation = useMutation({
     mutationFn: (data: Partial<{ stall_start_timeout_sec: number | null; stall_running_timeout_sec: number | null }>) =>
@@ -205,28 +183,6 @@ export function GlobalSettingsSection() {
                 checked={settings.experimental ?? false}
                 onChange={(val) => experimentalMutation.mutate(val)}
                 disabled={experimentalMutation.isPending}
-              />
-            </div>
-            <div className="border-t border-border" />
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <div className="text-sm font-medium">Workflow session retention limit</div>
-                <Tooltip
-                  placement="right"
-                  text="Maximum number of completed agent sessions to keep per cleanup cycle (every 20 min). Associated agent messages are automatically removed with their sessions. Minimum: 10, Default: 1000."
-                >
-                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                </Tooltip>
-              </div>
-              <Input
-                type="number"
-                min={10}
-                value={retentionLimit}
-                onChange={(e) => setRetentionLimit(Number(e.target.value))}
-                onBlur={submitRetention}
-                onKeyDown={(e) => { if (e.key === 'Enter') submitRetention() }}
-                disabled={retentionMutation.isPending}
-                className="w-24"
               />
             </div>
             <div className="border-t border-border" />

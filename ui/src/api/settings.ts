@@ -6,7 +6,6 @@ export interface GlobalSettings {
   context_save_via_agent: boolean
   simplified_agents_graph: boolean
   experimental: boolean
-  session_retention_limit: number
   stall_start_timeout_sec: number | null
   stall_running_timeout_sec: number | null
 }

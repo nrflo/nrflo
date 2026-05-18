@@ -298,8 +298,9 @@ func (s *Server) initEventLog() {
 }
 
 // startRetentionCleanup runs per-project workflow instance cleanup every 20 minutes.
-// For each project with workflow_cleanup_enabled=true, non-active instances beyond
-// that project's session_retention_limit (default 1000) are deleted.
+// For each project with workflow_cleanup_enabled=true and a per-project retention_limit
+// set, non-active instances beyond that limit are deleted. If no per-project limit is
+// configured (sentinel 0), the project is skipped.
 // Orphaned messages are purged once per pass after all projects are processed.
 func (s *Server) startRetentionCleanup() {
 	cleanup := func() {
@@ -324,6 +325,10 @@ func (s *Server) startRetentionCleanup() {
 				keep, err := svc.GetSessionRetentionLimit(project.ID)
 				if err != nil {
 					logger.Info(context.Background(), "retention cleanup: get retention limit error", "project", project.ID, "error", err)
+					continue
+				}
+				if keep <= 0 {
+					logger.Info(context.Background(), "retention cleanup: limit not configured", "project", project.ID)
 					continue
 				}
 				if deleted, err := wfiRepo.CleanupKeepLatestForProject(project.ID, keep); err != nil {

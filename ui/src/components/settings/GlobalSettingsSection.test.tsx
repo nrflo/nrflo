@@ -18,7 +18,6 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     context_save_via_agent: false,
     simplified_agents_graph: false,
     experimental: false,
-    session_retention_limit: 1000,
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,
     ...overrides,
@@ -61,6 +60,7 @@ describe('GlobalSettingsSection', () => {
     expect(screen.getByText('Global Settings')).toBeInTheDocument()
     expect(screen.getByText('Low consumption mode')).toBeInTheDocument()
     expect(screen.getByText(/when enabled, agents with a configured alternative/i)).toBeInTheDocument()
+    expect(screen.queryByText('Workflow session retention limit')).not.toBeInTheDocument()
   })
 
   it('clicking toggle calls updateGlobalSettings with toggled value (false → true)', async () => {
@@ -90,79 +90,6 @@ describe('GlobalSettingsSection', () => {
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: false })
     })
-  })
-
-  it('renders number input with server value and label', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
-    renderWithQuery(<GlobalSettingsSection />)
-    const input = await screen.findByRole('spinbutton')
-    expect(input).toHaveValue(1000)
-    expect(screen.getByText('Workflow session retention limit')).toBeInTheDocument()
-  })
-
-  it('blur with valid new value calls updateGlobalSettings with session_retention_limit', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
-    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
-    renderWithQuery(<GlobalSettingsSection />)
-
-    const user = userEvent.setup()
-    const input = await screen.findByRole('spinbutton')
-    await user.clear(input)
-    await user.type(input, '50')
-    await user.tab()
-
-    await waitFor(() => {
-      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ session_retention_limit: 50 })
-    })
-  })
-
-  it('blur with value below minimum resets to server value without calling API', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
-    renderWithQuery(<GlobalSettingsSection />)
-
-    const user = userEvent.setup()
-    const input = await screen.findByRole('spinbutton')
-    await user.clear(input)
-    await user.type(input, '5')
-    await user.tab()
-
-    await waitFor(() => {
-      expect(input).toHaveValue(1000)
-    })
-    expect(settingsApi.updateGlobalSettings).not.toHaveBeenCalled()
-  })
-
-  it('Enter key submits valid retention value', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
-    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
-    renderWithQuery(<GlobalSettingsSection />)
-
-    const user = userEvent.setup()
-    const input = await screen.findByRole('spinbutton')
-    await user.clear(input)
-    await user.type(input, '75')
-    await user.keyboard('{Enter}')
-
-    await waitFor(() => {
-      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ session_retention_limit: 75 })
-    })
-  })
-
-  it('shows tooltip text on hover over info icon', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
-    renderWithQuery(<GlobalSettingsSection />)
-
-    await screen.findByRole('spinbutton')
-    const retentionLabel = screen.getByText('Workflow session retention limit')
-    // Radix Tooltip.Trigger renders with data-state; find the trigger span near the label
-    const tooltipTrigger = retentionLabel.closest('.flex')?.querySelector('[data-state]') as HTMLElement
-
-    const user = userEvent.setup()
-    await user.hover(tooltipTrigger)
-
-    const tooltip = await screen.findByRole('tooltip')
-    expect(tooltip).toHaveTextContent(/Maximum number of completed agent sessions/)
-    expect(tooltip).toHaveTextContent(/Associated agent messages are automatically removed/)
   })
 
   it('renders stall start input empty when server returns null', async () => {

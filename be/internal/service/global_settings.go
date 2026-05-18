@@ -14,7 +14,6 @@ import (
 
 const artifactStorageKey = "artifact_storage"
 const workflowCleanupEnabledKey = "workflow_cleanup_enabled"
-const sessionRetentionLimitKey = "session_retention_limit"
 
 // GlobalSettingsService provides access to global config key-value store.
 type GlobalSettingsService struct {
@@ -144,10 +143,10 @@ func (s *GlobalSettingsService) SetWorkflowCleanupEnabled(projectID string, enab
 	return s.pool.SetProjectConfig(projectID, workflowCleanupEnabledKey, val)
 }
 
-// GetSessionRetentionLimit returns the session retention limit for a project.
-// Falls back to the global setting, then defaults to 1000.
+// GetSessionRetentionLimit returns the per-project session retention limit.
+// Returns 0 when no limit is configured (sentinel for "no limit set").
 func (s *GlobalSettingsService) GetSessionRetentionLimit(projectID string) (int, error) {
-	val, err := s.pool.GetProjectConfig(projectID, sessionRetentionLimitKey)
+	val, err := s.pool.GetProjectConfig(projectID, "session_retention_limit")
 	if err != nil {
 		return 0, err
 	}
@@ -156,16 +155,7 @@ func (s *GlobalSettingsService) GetSessionRetentionLimit(projectID string) (int,
 			return parsed, nil
 		}
 	}
-	globalVal, err := s.pool.GetConfig(sessionRetentionLimitKey)
-	if err != nil {
-		return 0, err
-	}
-	if globalVal != "" {
-		if parsed, parseErr := strconv.Atoi(globalVal); parseErr == nil && parsed >= 10 {
-			return parsed, nil
-		}
-	}
-	return 1000, nil
+	return 0, nil
 }
 
 // SetSessionRetentionLimit persists the session retention limit for a project.
@@ -174,5 +164,5 @@ func (s *GlobalSettingsService) SetSessionRetentionLimit(projectID string, n int
 	if n < 10 {
 		return fmt.Errorf("session_retention_limit must be >= 10")
 	}
-	return s.pool.SetProjectConfig(projectID, sessionRetentionLimitKey, strconv.Itoa(n))
+	return s.pool.SetProjectConfig(projectID, "session_retention_limit", strconv.Itoa(n))
 }

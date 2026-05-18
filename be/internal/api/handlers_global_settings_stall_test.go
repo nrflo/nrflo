@@ -230,7 +230,7 @@ func TestHandlePatchGlobalSettings_StallTimeout_AbsentPreserves(t *testing.T) {
 func TestHandlePatchGlobalSettings_StallAndOtherFields(t *testing.T) {
 	s := newGlobalSettingsServer(t)
 
-	body := `{"low_consumption_mode":true,"session_retention_limit":50,"stall_start_timeout_sec":60,"stall_running_timeout_sec":300}`
+	body := `{"low_consumption_mode":true,"stall_start_timeout_sec":60,"stall_running_timeout_sec":300}`
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	s.handlePatchGlobalSettings(rr, req)
@@ -245,9 +245,6 @@ func TestHandlePatchGlobalSettings_StallAndOtherFields(t *testing.T) {
 
 	if v := resp["low_consumption_mode"]; v != true {
 		t.Errorf("low_consumption_mode = %v, want true", v)
-	}
-	if v := resp["session_retention_limit"]; v != float64(50) {
-		t.Errorf("session_retention_limit = %v, want 50", v)
 	}
 	if v := resp["stall_start_timeout_sec"]; v != float64(60) {
 		t.Errorf("stall_start_timeout_sec = %v, want 60", v)

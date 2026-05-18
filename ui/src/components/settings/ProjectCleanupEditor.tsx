@@ -9,7 +9,7 @@ export function ProjectCleanupEditor({ projectId }: { projectId: string }) {
   const { data } = useCleanup(projectId)
   const mutation = useSetCleanup()
   const [enabled, setEnabled] = useState(false)
-  const [retentionLimit, setRetentionLimit] = useState(1000)
+  const [retentionLimit, setRetentionLimit] = useState(0)
   const [serverError, setServerError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -50,7 +50,7 @@ export function ProjectCleanupEditor({ projectId }: { projectId: string }) {
             type="number"
             value={retentionLimit}
             onChange={(e) => setRetentionLimit(Number(e.target.value))}
-            placeholder="1000"
+            placeholder="e.g. 1000"
             min={10}
           />
         </div>

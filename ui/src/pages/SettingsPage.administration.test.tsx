@@ -14,7 +14,6 @@ vi.mock('@/api/settings', () => ({
     low_consumption_mode: false,
     api_mode_enabled: false,
     simplified_agents_graph: false,
-    session_retention_limit: 1000,
   }),
   updateGlobalSettings: vi.fn(),
 }))

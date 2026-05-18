@@ -62,7 +62,7 @@ func TestSetWorkflowCleanupEnabled_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestGetSessionRetentionLimit_DefaultIs1000(t *testing.T) {
+func TestGetSessionRetentionLimit_DefaultIsZero(t *testing.T) {
 	t.Parallel()
 	svc, projectID := setupCleanupTestEnv(t)
 
@@ -70,8 +70,8 @@ func TestGetSessionRetentionLimit_DefaultIs1000(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSessionRetentionLimit() error: %v", err)
 	}
-	if limit != 1000 {
-		t.Errorf("default retention limit = %d, want 1000", limit)
+	if limit != 0 {
+		t.Errorf("default retention limit = %d, want 0", limit)
 	}
 }
 
@@ -105,13 +105,13 @@ func TestSetSessionRetentionLimit_RejectsBelow10(t *testing.T) {
 		}
 	}
 
-	// Limit should remain at default.
+	// Limit should remain at default (0 = not configured).
 	got, err := svc.GetSessionRetentionLimit(projectID)
 	if err != nil {
 		t.Fatalf("GetSessionRetentionLimit(): %v", err)
 	}
-	if got != 1000 {
-		t.Errorf("limit after rejected set = %d, want 1000", got)
+	if got != 0 {
+		t.Errorf("limit after rejected set = %d, want 0", got)
 	}
 }
 
@@ -131,44 +131,6 @@ func TestSetSessionRetentionLimit_ExactlyTenIsValid(t *testing.T) {
 	}
 }
 
-func TestGetSessionRetentionLimit_FallbackToGlobal(t *testing.T) {
-	t.Parallel()
-	svc, projectID := setupCleanupTestEnv(t)
-
-	// Set a global value; project has no per-project override.
-	if err := svc.Set(sessionRetentionLimitKey, "250"); err != nil {
-		t.Fatalf("Set global retention limit: %v", err)
-	}
-
-	got, err := svc.GetSessionRetentionLimit(projectID)
-	if err != nil {
-		t.Fatalf("GetSessionRetentionLimit(): %v", err)
-	}
-	if got != 250 {
-		t.Errorf("retention limit with global fallback = %d, want 250", got)
-	}
-}
-
-func TestGetSessionRetentionLimit_ProjectOverridesGlobal(t *testing.T) {
-	t.Parallel()
-	svc, projectID := setupCleanupTestEnv(t)
-
-	if err := svc.Set(sessionRetentionLimitKey, "250"); err != nil {
-		t.Fatalf("Set global retention limit: %v", err)
-	}
-	if err := svc.SetSessionRetentionLimit(projectID, 75); err != nil {
-		t.Fatalf("SetSessionRetentionLimit(75): %v", err)
-	}
-
-	got, err := svc.GetSessionRetentionLimit(projectID)
-	if err != nil {
-		t.Fatalf("GetSessionRetentionLimit(): %v", err)
-	}
-	if got != 75 {
-		t.Errorf("retention limit = %d, want project-specific 75 (not global 250)", got)
-	}
-}
-
 func TestGetWorkflowCleanupEnabled_UnknownProjectReturnsDefault(t *testing.T) {
 	t.Parallel()
 	svc, _ := setupCleanupTestEnv(t)
@@ -182,7 +144,7 @@ func TestGetWorkflowCleanupEnabled_UnknownProjectReturnsDefault(t *testing.T) {
 	}
 }
 
-func TestGetSessionRetentionLimit_UnknownProjectReturnsDefault(t *testing.T) {
+func TestGetSessionRetentionLimit_UnknownProjectReturnsZero(t *testing.T) {
 	t.Parallel()
 	svc, _ := setupCleanupTestEnv(t)
 
@@ -190,7 +152,7 @@ func TestGetSessionRetentionLimit_UnknownProjectReturnsDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSessionRetentionLimit(unknown) error: %v", err)
 	}
-	if limit != 1000 {
-		t.Errorf("unknown project retention limit = %d, want 1000", limit)
+	if limit != 0 {
+		t.Errorf("unknown project retention limit = %d, want 0", limit)
 	}
 }

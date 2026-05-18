@@ -17,6 +17,7 @@ import (
 	"be/internal/model"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
+	"be/internal/ws"
 )
 
 const (
@@ -55,6 +56,14 @@ func (h *httpToolHandler) Spec() provider.ToolSpec {
 }
 
 func (h *httpToolHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
+	start := env.Clock.Now()
+	out, isError := h.invoke(ctx, env, input)
+	durationMs := env.Clock.Now().Sub(start).Milliseconds()
+	h.recordDispatch(env, input, out, isError, durationMs)
+	return out, isError, nil
+}
+
+func (h *httpToolHandler) invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool) {
 	body := map[string]interface{}{
 		"tool":  h.def.Name,
 		"input": json.RawMessage(input),
@@ -66,7 +75,7 @@ func (h *httpToolHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input 
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {
-		return fmt.Sprintf("marshal request: %s", err.Error()), true, nil
+		return fmt.Sprintf("marshal request: %s", err.Error()), true
 	}
 
 	timeout := time.Duration(h.def.TimeoutSec) * time.Second
@@ -76,27 +85,66 @@ func (h *httpToolHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input 
 
 	authHeader, err := h.resolveAuth(ctx)
 	if err != nil {
-		return fmt.Sprintf("auth: %s", err.Error()), true, nil
+		return fmt.Sprintf("auth: %s", err.Error()), true
 	}
 
 	out, isErr, doErr := h.do(ctx, payload, authHeader, timeout)
 	if doErr == nil {
-		return out, isErr, nil
+		return out, isErr
 	}
 	// If do returned a transient error signal (5xx wrapped as retryable), retry once.
 	if !isRetryable(doErr) {
-		return doErr.Error(), true, nil
+		return doErr.Error(), true
 	}
 	select {
 	case <-ctx.Done():
-		return ctx.Err().Error(), true, nil
+		return ctx.Err().Error(), true
 	case <-time.After(retryDelay):
 	}
 	out, isErr, doErr = h.do(ctx, payload, authHeader, timeout)
 	if doErr != nil {
-		return doErr.Error(), true, nil
+		return doErr.Error(), true
 	}
-	return out, isErr, nil
+	return out, isErr
+}
+
+func (h *httpToolHandler) recordDispatch(env apirun.ToolEnv, input json.RawMessage, output string, isError bool, durationMs int64) {
+	status := model.DispatchStatusSuccess
+	var errMsg *string
+	var outPtr *string
+	if isError {
+		status = model.DispatchStatusError
+		s := output
+		errMsg = &s
+	} else {
+		s := output
+		outPtr = &s
+	}
+	sessionID := env.SessionID
+	dispatch := &model.ToolDispatch{
+		ProjectID:  env.ProjectID,
+		SessionID:  &sessionID,
+		ToolName:   h.def.Name,
+		Input:      string(input),
+		Output:     outPtr,
+		Status:     status,
+		ErrorMsg:   errMsg,
+		DurationMs: durationMs,
+	}
+	var dispatchID string
+	if env.DispatchRepo != nil {
+		if insertErr := env.DispatchRepo.Insert(dispatch); insertErr == nil {
+			dispatchID = dispatch.ID
+		}
+	}
+	if env.WSHub != nil {
+		env.WSHub.Broadcast(ws.NewEvent(ws.EventToolDispatched, env.ProjectID, env.TicketID, env.WorkflowName, map[string]interface{}{
+			"tool_name":   h.def.Name,
+			"status":      status,
+			"duration_ms": durationMs,
+			"dispatch_id": dispatchID,
+		}))
+	}
 }
 
 // retryableErr signals a 5xx that should be retried once.

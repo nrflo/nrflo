@@ -7,6 +7,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner/apirun/provider"
 )
@@ -37,6 +38,9 @@ type ToolEnv struct {
 	Agent              *service.AgentService
 	Workflow           *service.WorkflowService
 	ArtifactSvc        *service.ArtifactService
+	// DispatchRepo is required for tools that record dispatch rows (tools_http, tools_python).
+	// Nil-safe: handlers skip Insert when nil.
+	DispatchRepo       *repo.DispatchRepo
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

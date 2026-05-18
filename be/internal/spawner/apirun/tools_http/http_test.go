@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/spawner/apirun"
 )
@@ -33,6 +34,7 @@ func sampleEnv() apirun.ToolEnv {
 		ProjectID:    "p1",
 		WorkflowName: "wf",
 		SessionID:    "sess-1",
+		Clock:        clock.Real(),
 	}
 }
 

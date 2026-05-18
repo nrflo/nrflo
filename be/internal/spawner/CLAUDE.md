@@ -82,9 +82,23 @@ Default: claude + codex → resume (with agent-path fallback); opencode/api → 
 
 When context usage crosses the threshold, the spawner kills the agent, saves context via the path above, then calls `relaunchForContinuation`. The new session inherits `to_resume` findings via the `low-context` injectable block. Core logic lives in `context_save.go` and `context_save_resume.go`.
 
-## Stall Detection
+## Rate-Limit Restart
 
-Rate-limit restart logic (back-off on 429 responses) will live in `rate_limit_restart.go` (not yet created).
+When an agent exits non-zero and `ClassifyExit` (on the adapter) matches a rate-limit pattern in the last ~10 output/stderr blocks, `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers the stop (`result=continue/reason=rate_limit`), persists `rate_limit_until_ts` in the DB, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` then sleeps with exponential backoff (`min(InitialBackoff * 2^(retryCount-1), MaxWait)`), using `s.config.Clock.After` so tests control time. `rateLimitRetryCount` is a separate counter from `failRestartCount` and carries across relaunches via `relaunchForContinuation`.
+
+Well-known config keys (project-scoped > global, via `pool.GetProjectConfig`/`GetConfig`):
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `rate_limit_enabled` | `true` | Enable/disable rate-limit restart |
+| `rate_limit_initial_backoff_sec` | `60` | First retry wait in seconds |
+| `rate_limit_max_wait_sec` | `3600` | Max per-step wait; total-wait gate for future retries |
+| `<adapter>_limit_patterns` | (adapter defaults) | Extra comma-separated rate-limit patterns |
+| `<adapter>_error_patterns` | (adapter defaults) | Extra comma-separated error patterns |
+
+Claude defaults: limit — "You've hit your limit", "You've hit your org's monthly usage limit", "Your usage allocation has been disabled by your admin"; error — "API Error:", "cannot be launched inside another Claude Code session", "Not logged in". Codex defaults: limit — "Rate limit exceeded", "429 Too Many Requests", "quota exceeded", "insufficient_quota", "You've hit your usage limit". Opencode/Gemini have no code defaults (fully user-extensible).
+
+## Stall Detection
 
 Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15). Config keys:
 

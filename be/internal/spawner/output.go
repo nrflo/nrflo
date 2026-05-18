@@ -302,12 +302,14 @@ func (s *Spawner) handleClaudeToolResult(proc *processInfo, data map[string]inte
 // without depending on the rest of the spawner.
 func (s *Spawner) TrackMessage(proc *processInfo, msg string, category string) {
 	proc.messagesMutex.Lock()
-	defer proc.messagesMutex.Unlock()
 	proc.pendingMessages = append(proc.pendingMessages, repo.MessageEntry{Content: msg, Category: category})
 	proc.lastMessage = msg
 	proc.messagesDirty = true
 	proc.lastMessageTime = s.config.Clock.Now()
 	proc.hasReceivedMessage = true
+	proc.messagesMutex.Unlock()
+	// Feed rate-limit ring buffer outside the messages lock to avoid nested locking.
+	proc.appendRecent(msg)
 }
 
 // formatPrefix returns a prefix string with agent type and model for console output

@@ -8,7 +8,6 @@ import (
 	ptyPkg "be/internal/pty"
 )
 
-
 // ptySessionIface abstracts *pty.Session so tests can inject a mock PTY session.
 type ptySessionIface interface {
 	Read(p []byte) (int, error)
@@ -160,6 +159,14 @@ func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respond
 				proc.hasReceivedMessage = true
 				proc.messagesMutex.Unlock()
 			}
+
+			// Feed PTY bytes into the rate-limit ring buffer for adapters that
+			// lack structured event channels. Matching is best-effort (raw bytes
+			// may include ANSI escapes); the ring caps at 10 chunks so only
+			// recent output is inspected. Adapters with structured channels
+			// (Claude via hooks, Codex via JSONL tailer) populate the buffer
+			// via TrackMessage; PTY bytes are a looser fallback for those too.
+			proc.appendRecent(string(buf[:n]))
 
 			if respondToQueries {
 				if reply := respondToTerminalQueries(buf[:n]); len(reply) > 0 {

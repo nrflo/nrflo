@@ -151,4 +151,19 @@ func (a *OpencodeAdapter) BumpsOnPTYBytes() bool { return false }
 // so the ceiling is harmless in the common case.
 func (a *OpencodeAdapter) NaturalExitGrace() time.Duration { return 5 * time.Second }
 
-
+// ClassifyExit has empty defaults; all patterns are user-extensible via
+// config keys (opencode_limit_patterns, opencode_error_patterns).
+func (a *OpencodeAdapter) ClassifyExit(recentText, stderrTail string, exitCode int, extraLimitPatterns, extraErrorPatterns []string) (RetryClass, string) {
+	combined := recentText + "\n" + stderrTail
+	if len(extraLimitPatterns) > 0 {
+		if p, ok := matchAnyCaseInsensitive(combined, extraLimitPatterns); ok {
+			return RetryClassRateLimit, p
+		}
+	}
+	if len(extraErrorPatterns) > 0 {
+		if p, ok := matchAnyCaseInsensitive(combined, extraErrorPatterns); ok {
+			return RetryClassError, p
+		}
+	}
+	return RetryClassNone, ""
+}

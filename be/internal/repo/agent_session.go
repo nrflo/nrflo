@@ -14,7 +14,7 @@ import (
 // AgentSessionRepo handles agent session CRUD operations
 type AgentSessionRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 // NewAgentSessionRepo creates a new agent session repository
@@ -297,6 +297,21 @@ func (r *AgentSessionRepo) UpdateResult(id, resultVal, reason string) error {
 		`UPDATE agent_sessions SET result = ?, result_reason = ?, updated_at = ? WHERE id = ?`,
 		sql.NullString{String: resultVal, Valid: resultVal != ""},
 		sql.NullString{String: reason, Valid: reason != ""},
+		now, id)
+	return err
+}
+
+// UpdateRateLimitUntil persists rate-limit state after a rate-limited exit.
+// ts is an RFC3339Nano timestamp for when the rate limit is expected to lift.
+// retryCount is the 1-based count after this retry; lastRetryClass is the
+// matched pattern string (stored in last_retry_class for observability).
+func (r *AgentSessionRepo) UpdateRateLimitUntil(id, ts string, retryCount int, lastRetryClass string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err := r.db.Exec(
+		`UPDATE agent_sessions SET rate_limit_until_ts = ?, rate_limit_retry_count = ?, last_retry_class = ?, updated_at = ? WHERE id = ?`,
+		sql.NullString{String: ts, Valid: ts != ""},
+		retryCount,
+		sql.NullString{String: lastRetryClass, Valid: lastRetryClass != ""},
 		now, id)
 	return err
 }

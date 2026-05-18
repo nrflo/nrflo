@@ -23,7 +23,7 @@ func (a *GeminiAdapter) MapModel(model string) string {
 	return model // pass through custom model names
 }
 
-func (a *GeminiAdapter) SupportsSessionID() bool       { return true }
+func (a *GeminiAdapter) SupportsSessionID() bool        { return true }
 func (a *GeminiAdapter) SupportsSystemPromptFile() bool { return false }
 func (a *GeminiAdapter) SupportsResume() bool           { return true }
 
@@ -70,6 +70,23 @@ func (a *GeminiAdapter) DeliversPromptInline() bool      { return true }
 func (a *GeminiAdapter) NeedsTerminalQueryReplies() bool { return false }
 func (a *GeminiAdapter) BumpsOnPTYBytes() bool           { return false }
 func (a *GeminiAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
+
+// ClassifyExit has empty defaults; all patterns are user-extensible via
+// config keys (gemini_limit_patterns, gemini_error_patterns).
+func (a *GeminiAdapter) ClassifyExit(recentText, stderrTail string, exitCode int, extraLimitPatterns, extraErrorPatterns []string) (RetryClass, string) {
+	combined := recentText + "\n" + stderrTail
+	if len(extraLimitPatterns) > 0 {
+		if p, ok := matchAnyCaseInsensitive(combined, extraLimitPatterns); ok {
+			return RetryClassRateLimit, p
+		}
+	}
+	if len(extraErrorPatterns) > 0 {
+		if p, ok := matchAnyCaseInsensitive(combined, extraErrorPatterns); ok {
+			return RetryClassError, p
+		}
+	}
+	return RetryClassNone, ""
+}
 
 // PostStart wires up the per-session JSONL transcript tailer. No-op when prep
 // did not produce a GeminiHome (e.g. PrepareInteractive failed).

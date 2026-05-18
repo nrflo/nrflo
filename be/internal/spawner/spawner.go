@@ -278,6 +278,15 @@ type processInfo struct {
 	callbackLevel int
 	// Transaction ID for structured logging (from orchestrator context)
 	trx string
+	// Rate-limit detection ring buffers (protected by recentMu).
+	recentBlocks []string   // last ≤10 recent text blocks (structured msgs + PTY chunks)
+	stderrBlocks []string   // last ≤10 stderr blocks
+	recentMu     sync.Mutex // protects recentBlocks and stderrBlocks
+	// Rate-limit restart tracking (separate counter from failRestartCount).
+	rateLimitRetryCount int
+	rateLimitTotalWait  time.Duration
+	rateLimitConfig     rateLimitConfig
+	adapter             CLIAdapter // nil for api/script backends
 }
 
 // terminalSignal is routed via the per-session terminalSignals registry to kill
@@ -1080,6 +1089,12 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		proc.idleStartTimeout = idleStart
 	}
 	// nudgeMax = 0 (zero value) → disabled for non-interactive backends
+
+	// Load rate-limit config and wire up adapter for cli_interactive mode.
+	if executionMode == "cli_interactive" && adapter != nil {
+		proc.rateLimitConfig = s.loadRateLimitConfig(req.ProjectID, adapter.Name())
+		proc.adapter = adapter
+	}
 
 	prep := &prepResult{
 		cliName:       cliName,

@@ -106,6 +106,25 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 		}
 	}
 
+	// Classify non-zero exit via adapter pattern matching.
+	if result == "fail" && resultReason == "exit_code" && proc.adapter != nil {
+		class, matched := proc.adapter.ClassifyExit(
+			proc.recentTail(), proc.stderrTail(), exitCode,
+			proc.rateLimitConfig.LimitPatterns, proc.rateLimitConfig.ErrorPatterns,
+		)
+		switch class {
+		case RetryClassRateLimit:
+			if proc.rateLimitConfig.Enabled && proc.rateLimitTotalWait < proc.rateLimitConfig.MaxWait {
+				s.handleRateLimitRetry(ctx, proc, req, matched)
+				// handleRateLimitRetry set finalStatus=CONTINUE; wait before relaunch.
+				s.waitForRateLimitRetry(ctx, proc, req)
+				return
+			}
+		case RetryClassError:
+			resultReason = "provider_error_pattern"
+		}
+	}
+
 	// Run validation commands when the agent passes (explicit or implicit).
 	if result == "pass" && len(proc.validationCommands) > 0 {
 		failedIdx, exitCode, tail, valErr := s.runValidationCommands(ctx, proc)
@@ -160,6 +179,10 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.stallRunningTimeout = oldProc.stallRunningTimeout
 	newProc.validationCommands = oldProc.validationCommands
 	newProc.workDir = oldProc.workDir
+	newProc.rateLimitRetryCount = oldProc.rateLimitRetryCount
+	newProc.rateLimitTotalWait = oldProc.rateLimitTotalWait
+	newProc.rateLimitConfig = oldProc.rateLimitConfig
+	newProc.adapter = oldProc.adapter
 
 	// Update the ancestor_session_id and restart_count on the new DB session record
 	if pool := s.pool(); pool != nil {
@@ -173,12 +196,12 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 
 	// Broadcast continuation event
 	s.broadcast(ws.EventAgentContinued, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-		"old_session_id":     oldProc.sessionID,
-		"new_session_id":     newProc.sessionID,
-		"ancestor_session":   ancestorID,
-		"restart_count":      newProc.restartCount,
-		"agent_type":         req.AgentType,
-		"model_id":           oldProc.modelID,
+		"old_session_id":   oldProc.sessionID,
+		"new_session_id":   newProc.sessionID,
+		"ancestor_session": ancestorID,
+		"restart_count":    newProc.restartCount,
+		"agent_type":       req.AgentType,
+		"model_id":         oldProc.modelID,
 	})
 
 	logger.Info(ctx, "agent continuation started", "model", oldProc.modelID, "new_session", newProc.sessionID, "ancestor", ancestorID, "restart_count", newProc.restartCount)

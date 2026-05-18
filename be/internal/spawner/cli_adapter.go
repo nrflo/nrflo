@@ -8,6 +8,27 @@ import (
 	"time"
 )
 
+// RetryClass categorizes the reason an agent exited abnormally for retry decisions.
+type RetryClass int
+
+const (
+	RetryClassNone      RetryClass = 0 // normal exit or unrecognized pattern
+	RetryClassRateLimit RetryClass = 1 // provider rate limit / quota exhausted
+	RetryClassError     RetryClass = 2 // provider error pattern (non-retriable via backoff)
+)
+
+// matchAnyCaseInsensitive reports whether text contains any of the patterns
+// (case-insensitive). Returns the first matched pattern and true on success.
+func matchAnyCaseInsensitive(text string, patterns []string) (string, bool) {
+	lower := strings.ToLower(text)
+	for _, p := range patterns {
+		if strings.Contains(lower, strings.ToLower(p)) {
+			return p, true
+		}
+	}
+	return "", false
+}
+
 // CLIAdapter defines the interface for different CLI backends
 type CLIAdapter interface {
 	// Name returns the CLI identifier (e.g., "claude", "opencode")
@@ -66,6 +87,16 @@ type CLIAdapter interface {
 	// call returns) return a non-zero value here so the wrap-up has time
 	// to land. Default 0 = no wait (kill immediately).
 	NaturalExitGrace() time.Duration
+
+	// ClassifyExit inspects recent stdout/stderr text and the exit code to
+	// determine whether the agent exited due to a rate limit, a provider
+	// error, or some other reason. recentText is the concatenated last ~10
+	// output blocks; stderrTail is the last ~10 stderr blocks.
+	// extraLimitPatterns and extraErrorPatterns are user-configured additions
+	// resolved at call site from proc.rateLimitConfig; implementations merge
+	// them with their code defaults before matching. Limit patterns are
+	// checked first so a rate-limit message wins over a generic error pattern.
+	ClassifyExit(recentText, stderrTail string, exitCode int, extraLimitPatterns, extraErrorPatterns []string) (RetryClass, string)
 }
 
 // InteractiveExtras carries adapter-owned spawn-time outputs that the backend
@@ -99,14 +130,14 @@ type InteractiveSpawnOptions struct {
 	ReasoningEffort  string // passed as --effort (Claude) or --variant (Opencode)
 	WorkDir          string
 	Env              []string
-	SystemPromptFile string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
-	SettingsJSON     string // Claude: --settings JSON; others: ignored
-	CodexHome        string // CODEX_HOME dir path; Codex only — ignored by other adapters
-	GeminiHome       string // GEMINI_HOME dir path; Gemini only — ignored by other adapters
-	Prompt           string // initial user prompt; Codex passes this as argv positional, others ignore
+	SystemPromptFile string      // path to suffix file; Claude: --append-system-prompt-file; others: ignored
+	SettingsJSON     string      // Claude: --settings JSON; others: ignored
+	CodexHome        string      // CODEX_HOME dir path; Codex only — ignored by other adapters
+	GeminiHome       string      // GEMINI_HOME dir path; Gemini only — ignored by other adapters
+	Prompt           string      // initial user prompt; Codex passes this as argv positional, others ignore
 	Hooks            []HookEvent // event-keyed hook commands; Codex injects via repeated `-c hooks.<event>=…` (TUI ignores config.toml hooks); other adapters ignore
-	Port             int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
-	ResumeSessionID  string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
+	Port             int         // embedded HTTP server port (opencode only; 0 = not used by other adapters)
+	ResumeSessionID  string      // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
 }
 
 // Sink is a spawner-internal interface the SSE event consumer uses to report
@@ -155,9 +186,9 @@ type PostStarter interface {
 // fire. Translated to a `-c hooks.<Event>=[{matcher="*",hooks=[{...}]}]`
 // inline-TOML CLI override at command-build time.
 type HookEvent struct {
-	Event   string // e.g. "SessionStart", "PostToolUse", "Stop"
-	Command string // shell command codex execs when the event fires
-	TimeoutSec int // hook timeout in seconds
+	Event      string // e.g. "SessionStart", "PostToolUse", "Stop"
+	Command    string // shell command codex execs when the event fires
+	TimeoutSec int    // hook timeout in seconds
 }
 
 // SpawnOptions contains parameters for building a spawn command

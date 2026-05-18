@@ -89,3 +89,26 @@ func (a *ClaudeAdapter) BumpsOnPTYBytes() bool { return false }
 // surprises when adapters' telemetry-flush timing changes upstream.
 func (a *ClaudeAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
+// ClassifyExit inspects recent output to classify an abnormal exit.
+// Rate-limit patterns are checked before error patterns; user-supplied extras
+// are merged with defaults so site-level overrides extend, not replace, them.
+func (a *ClaudeAdapter) ClassifyExit(recentText, stderrTail string, exitCode int, extraLimitPatterns, extraErrorPatterns []string) (RetryClass, string) {
+	limitPatterns := append([]string{
+		"You've hit your limit",
+		"You've hit your org's monthly usage limit",
+		"Your usage allocation has been disabled by your admin",
+	}, extraLimitPatterns...)
+	errorPatterns := append([]string{
+		"API Error:",
+		"cannot be launched inside another Claude Code session",
+		"Not logged in",
+	}, extraErrorPatterns...)
+	combined := recentText + "\n" + stderrTail
+	if p, ok := matchAnyCaseInsensitive(combined, limitPatterns); ok {
+		return RetryClassRateLimit, p
+	}
+	if p, ok := matchAnyCaseInsensitive(combined, errorPatterns); ok {
+		return RetryClassError, p
+	}
+	return RetryClassNone, ""
+}

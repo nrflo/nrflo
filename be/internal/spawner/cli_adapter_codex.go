@@ -214,6 +214,29 @@ func (a *CodexAdapter) BumpsOnPTYBytes() bool { return false }
 // in well under 2s after its last function_call_output.
 func (a *CodexAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
+// ClassifyExit inspects recent output to classify an abnormal exit.
+// Codex error patterns are empty by default; users extend via config keys.
+func (a *CodexAdapter) ClassifyExit(recentText, stderrTail string, exitCode int, extraLimitPatterns, extraErrorPatterns []string) (RetryClass, string) {
+	limitPatterns := append([]string{
+		"Rate limit exceeded",
+		"rate limit reached",
+		"429 Too Many Requests",
+		"quota exceeded",
+		"insufficient_quota",
+		"You've hit your usage limit",
+	}, extraLimitPatterns...)
+	combined := recentText + "\n" + stderrTail
+	if p, ok := matchAnyCaseInsensitive(combined, limitPatterns); ok {
+		return RetryClassRateLimit, p
+	}
+	if len(extraErrorPatterns) > 0 {
+		if p, ok := matchAnyCaseInsensitive(combined, extraErrorPatterns); ok {
+			return RetryClassError, p
+		}
+	}
+	return RetryClassNone, ""
+}
+
 // PostStart launches the codex rollout JSONL tailer goroutine. Called by
 // cliInteractiveBackend.Start — the rollout JSONL signal is produced in all
 // interactive sessions (verified on codex 0.130.0).
@@ -237,4 +260,3 @@ func (a *CodexAdapter) PostStart(ctx context.Context, opts PostStartOptions) (fu
 	cancel := startCodexJSONLTail(ctx, opts.SessionID, opts.WorkDir, opts.Sink)
 	return func() { cancel() }, nil
 }
-

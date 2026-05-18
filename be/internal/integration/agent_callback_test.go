@@ -118,21 +118,33 @@ func TestAgentCallbackWithModel(t *testing.T) {
 func TestAgentCallbackZeroLevel(t *testing.T) {
 	env := NewTestEnv(t)
 
-	env.CreateTicket(t, "AGT-CB-3", "Agent callback level 0 rejected")
+	env.CreateTicket(t, "AGT-CB-3", "Agent callback level 0 accepted")
 	env.InitWorkflow(t, "AGT-CB-3")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-3", "test")
 	env.InsertAgentSession(t, "sess-cb-3", "AGT-CB-3", wfiID, "analyzer", "analyzer", "haiku")
 
-	// level=0 is the zero value and does not count as "set"; must use level>0, target_agent, or chain.
-	env.ExpectError(t, "agent.callback", map[string]interface{}{
+	// level=0 must be accepted as the first-layer callback target. Layer mode
+	// is the default and Level=0 is its valid zero value, not "missing".
+	var result map[string]string
+	env.MustExecute(t, "agent.callback", map[string]interface{}{
 		"ticket_id":   "AGT-CB-3",
 		"workflow":    "test",
 		"agent_type":  "analyzer",
 		"session_id":  "sess-cb-3",
 		"level":       0,
 		"instance_id": wfiID,
-	}, -32606) // validation error: exactly one of level/target_agent/chain must be set
+	}, &result)
+	if result["status"] != "callback" {
+		t.Fatalf("expected status=callback, got %q", result["status"])
+	}
+	findings := getSessionFindings(t, env, "sess-cb-3")
+	if got, ok := findings["callback_level"].(float64); !ok || int(got) != 0 {
+		t.Fatalf("expected callback_level=0 finding, got %v", findings["callback_level"])
+	}
+	if got, ok := findings["callback_mode"].(string); !ok || got != "layer" {
+		t.Fatalf("expected callback_mode='layer' finding, got %v", findings["callback_mode"])
+	}
 }
 
 func TestAgentCallbackNoActiveAgent(t *testing.T) {

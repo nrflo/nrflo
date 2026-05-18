@@ -1,18 +1,10 @@
-"""A04 — api-mode `agent_callback` terminal signal triggers replay.
+"""A04 — api-mode `agent_callback` terminal signal triggers L0 replay.
 
-Mirrors engine/s17 but exercises the apirun callback path. Two notes
-about apirun callback quirks that shape this scenario:
-
-  - `tools_builtin/agent.go:149` treats `args.Level > 0` as "level
-    provided", so `level=0` would error out as "exactly one of
-    level/target_agent/chain must be set". We use layers 1 and 2 so
-    the L_upper agent can call back with `level=1`.
-  - `service.AgentService.Callback` writes `callback_target` /
-    `callback_chain` findings via `findingRepo.Upsert` with the error
-    swallowed; under SQLite contention the write occasionally drops,
-    yielding 'agent "" not found' from the orchestrator validator. Using
-    level-mode keeps the only required finding (`callback_level`) on
-    the first successful write.
+Mirrors engine/s17 but exercises the apirun callback path: the L1 agent
+calls `agent_callback` with `{"level": 0}`, the handler emits
+`TerminalSignal{Status:"CALLBACK", Level:0}`, `finalizePhase` reads
+the level and re-spawns L0. Stops after the second L0 row appears
+because the naive prompt would loop forever.
 
 Expected PASS:
   - >= 2 agent_sessions rows with agent_type='a' (the L0 replay).
@@ -37,11 +29,11 @@ Then stop.
 """
 
 L1_PROMPT = """\
-You are the L2 verifier in an api-mode layered integration test. The
-L1 agent (layer 1) produced a single finding `greet`. The test ONLY
-passes if you call exactly one tool:
+You are the L1 verifier in an api-mode layered integration test. The
+L0 agent produced a single finding `greet`. The test ONLY passes if
+you call exactly one tool:
 
-  `agent_callback` with input {"level": 1}
+  `agent_callback` with input {"level": 0}
 
 Do NOT call `agent_finished`. Do NOT emit any other text or tool call.
 Invoke `agent_callback` as your first and only tool use.
@@ -55,13 +47,13 @@ def run(ctx: Ctx) -> Result:
     ctx.client.create_agent_def(
         pid, wid, "a",
         model=resolve_model(ctx, MODELS_BY_PROVIDER),
-        layer=1, timeout=60, prompt=L0_PROMPT,
+        layer=0, timeout=60, prompt=L0_PROMPT,
         tools="findings_add,agent_finished",
     )
     ctx.client.create_agent_def(
         pid, wid, "b",
         model=resolve_model(ctx, MODELS_BY_PROVIDER),
-        layer=2, timeout=60, prompt=L1_PROMPT,
+        layer=1, timeout=60, prompt=L1_PROMPT,
         tools="agent_callback",
     )
     wfi = ctx.client.run_project_workflow(

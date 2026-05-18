@@ -9,7 +9,10 @@ import (
 	"be/internal/ws"
 )
 
-// TestAgentCallbackValidation covers the setCount != 1 rejection cases.
+// TestAgentCallbackValidation covers the only rejected combination:
+// target_agent and chain set together (mutually exclusive disambiguators).
+// target_agent or chain alone disambiguates the mode; if neither is set
+// the request falls into layer mode where Level=0 is the valid first layer.
 func TestAgentCallbackValidation(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -17,20 +20,6 @@ func TestAgentCallbackValidation(t *testing.T) {
 		targetAgent string
 		chain       []string
 	}{
-		{
-			name:  "none set",
-			level: 0,
-		},
-		{
-			name:        "level and agent",
-			level:       2,
-			targetAgent: "implementor",
-		},
-		{
-			name:  "level and chain",
-			level: 2,
-			chain: []string{"workflow-a", "workflow-b"},
-		},
 		{
 			name:        "agent and chain",
 			targetAgent: "implementor",

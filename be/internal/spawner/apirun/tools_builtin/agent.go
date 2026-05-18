@@ -123,7 +123,7 @@ type agentCallbackHandler struct{}
 func (agentCallbackHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "agent_callback",
-		Description: "Trigger a callback. Exactly one of level, target_agent, or chain must be set.",
+		Description: "Trigger a callback. Default is layer mode (re-run a target layer; level=0 is the first layer). Set target_agent to re-run a specific agent, or chain to re-run a sequence of agents. target_agent and chain are mutually exclusive.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
@@ -145,18 +145,9 @@ func (agentCallbackHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inpu
 	if err := json.Unmarshal(input, &args); err != nil {
 		return invalidArgs(err)
 	}
-	setCount := 0
-	if args.Level > 0 {
-		setCount++
-	}
-	if args.TargetAgent != "" {
-		setCount++
-	}
-	if len(args.Chain) > 0 {
-		setCount++
-	}
-	if setCount != 1 {
-		return "exactly one of level/target_agent/chain must be set", true, nil
+	// Reject ambiguous combinations. Level=0 is a valid first layer, not "missing".
+	if args.TargetAgent != "" && len(args.Chain) > 0 {
+		return "target_agent and chain are mutually exclusive", true, nil
 	}
 	if env.Agent == nil {
 		return missingService("agent")
@@ -170,6 +161,9 @@ func (agentCallbackHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inpu
 		mode = "chain"
 	default:
 		mode = "layer"
+	}
+	if mode == "layer" && args.Level < 0 {
+		return "level must be >= 0", true, nil
 	}
 
 	bctx, err := env.Agent.Callback(&types.AgentCallbackRequest{

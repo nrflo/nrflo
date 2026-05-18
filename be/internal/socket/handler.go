@@ -315,18 +315,10 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 		if err := json.Unmarshal(req.Params, &params); err != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
 		}
-		setCount := 0
-		if params.Level > 0 {
-			setCount++
-		}
-		if params.TargetAgent != "" {
-			setCount++
-		}
-		if len(params.Chain) > 0 {
-			setCount++
-		}
-		if setCount != 1 {
-			return MakeErrorResponse(req.ID, NewValidationError("exactly one of level/target_agent/chain must be set"))
+		// Reject ambiguous combinations (e.g. target_agent + chain). Layer
+		// mode is the default — Level=0 is a valid first layer, not "missing".
+		if params.TargetAgent != "" && len(params.Chain) > 0 {
+			return MakeErrorResponse(req.ID, NewValidationError("target_agent and chain are mutually exclusive"))
 		}
 		switch {
 		case params.TargetAgent != "":
@@ -335,6 +327,9 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 			params.Mode = "chain"
 		default:
 			params.Mode = "layer"
+		}
+		if params.Mode == "layer" && params.Level < 0 {
+			return MakeErrorResponse(req.ID, NewValidationError("level must be >= 0"))
 		}
 		bctx, err := h.agentSvc.Callback(&params)
 		if err != nil {

@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { RunWorkflowForm } from './ProjectWorkflowComponents'
+import { RunWorkflowForm } from './RunWorkflowForm'
 import { renderWithQuery } from '@/test/utils'
 import * as agentDefsApi from '@/api/agentDefs'
 import type { AgentDef, WorkflowDefSummary } from '@/types/workflow'
 
 vi.mock('@/api/agentDefs', () => ({
   listAgentDefs: vi.fn(),
+}))
+
+vi.mock('@/components/workflow/ArtifactUploader', () => ({
+  ArtifactUploader: () => <div data-testid="artifact-uploader" />,
 }))
 
 const makeAgentDef = (overrides: Partial<AgentDef> = {}): AgentDef => ({
@@ -62,6 +66,9 @@ function renderForm({
       onRun={onRun}
       runPending={false}
       runError={null}
+      onStagedArtifactsChange={vi.fn()}
+      hasUploadPending={false}
+      onUploadPendingChange={vi.fn()}
     />
   )
 }

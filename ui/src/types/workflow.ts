@@ -1,3 +1,5 @@
+import type { InputArtifactRef } from '@/types/artifact'
+
 export type PhaseStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'error'
 export type PhaseResult = 'pass' | 'fail' | 'skipped' | null
 
@@ -377,4 +379,5 @@ export interface ProjectWorkflowRunRequest {
   interactive?: boolean
   plan_mode?: boolean
   endless_loop?: boolean
+  input_artifacts?: InputArtifactRef[]
 }

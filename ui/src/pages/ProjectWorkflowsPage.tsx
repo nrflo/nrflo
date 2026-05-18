@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useProjectStore } from '@/stores/projectStore'
 import {
@@ -14,8 +14,11 @@ import {
   useSetStopEndlessLoopAfterIteration,
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
+import { cancelUpload } from '@/api/artifacts'
 import { WorkflowTabContent } from './WorkflowTabContent'
-import { RunWorkflowForm, InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
+import { RunWorkflowForm } from './RunWorkflowForm'
+import { InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
+import type { InputArtifactRef } from '@/types/artifact'
 import { WorkflowInstanceTable } from './WorkflowInstanceTable'
 import type { ProjectWorkflowTabId, StartMode } from './ProjectWorkflowComponents'
 import { ProjectFindingsTab } from '@/components/workflow/ProjectFindingsTab'
@@ -41,6 +44,9 @@ export function ProjectWorkflowsPage() {
   // Run Workflow form state
   const [selectedWorkflowDef, setSelectedWorkflowDef] = useState('')
   const [instructions, setInstructions] = useState('')
+  const [stagedArtifacts, setStagedArtifacts] = useState<InputArtifactRef[]>([])
+  const [hasUploadPending, setHasUploadPending] = useState(false)
+  const launchedRef = useRef(false)
 
   const addSession = useInteractiveSessionsStore((s) => s.add)
 
@@ -186,6 +192,7 @@ export function ProjectWorkflowsPage() {
           ...(startMode === 'interactive' && { interactive: true }),
           ...(startMode === 'plan' && { plan_mode: true }),
           ...(startMode === 'endless' && { endless_loop: true }),
+          ...(stagedArtifacts.length > 0 && { input_artifacts: stagedArtifacts }),
         },
       })
 
@@ -197,13 +204,35 @@ export function ProjectWorkflowsPage() {
         )
       }
 
+      launchedRef.current = true
       setInstructions('')
+      setStagedArtifacts([])
+      setHasUploadPending(false)
       setSelectedInstanceId(result.instance_id)
       setActiveTab('running')
     } catch {
       // Error handled by mutation state
     }
   }
+
+  // Cancel staged uploads when leaving the run tab without submitting
+  useEffect(() => {
+    if (activeTab !== 'run' && !launchedRef.current && stagedArtifacts.length > 0) {
+      stagedArtifacts.forEach(a => cancelUpload(a.upload_id).catch(() => {}))
+      setStagedArtifacts([])
+      setHasUploadPending(false)
+      launchedRef.current = false
+    }
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cancel staged uploads on page unmount
+  useEffect(() => {
+    return () => {
+      if (!launchedRef.current) {
+        stagedArtifacts.forEach(a => cancelUpload(a.upload_id).catch(() => {}))
+      }
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="max-w-full px-4 space-y-6">
@@ -233,6 +262,9 @@ export function ProjectWorkflowsPage() {
           onRun={handleRun}
           runPending={runMutation.isPending}
           runError={runMutation.isError ? runMutation.error : null}
+          onStagedArtifactsChange={setStagedArtifacts}
+          hasUploadPending={hasUploadPending}
+          onUploadPendingChange={setHasUploadPending}
         />
       )}
 

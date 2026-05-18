@@ -49,7 +49,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 ## ProjectWorkflowsPage
 
-5-tab layout: Run Workflow / Running / Failed / Completed / Findings (project-level findings CRUD). Running tab uses `InstanceList` + `WorkflowTabContent`; Failed/Completed use `WorkflowInstanceTable` (paginated, PAGE_SIZE=10) + `WorkflowTabContent`. Sub-components in `ProjectWorkflowComponents.tsx` (`ProjectWorkflowTabBar`, `RunWorkflowForm`, `InstanceList`) and `WorkflowSubTabBar.tsx` (`WorkflowSubTabBar` — shared Running/Failed/Completed sub-tab switcher, used by `TicketWorkflowTab`).
+5-tab layout: Run Workflow / Running / Failed / Completed / Findings (project-level findings CRUD). Running tab uses `InstanceList` + `WorkflowTabContent`; Failed/Completed use `WorkflowInstanceTable` (paginated, PAGE_SIZE=10) + `WorkflowTabContent`. Sub-components in `ProjectWorkflowComponents.tsx` (`ProjectWorkflowTabBar`, `InstanceList`), `RunWorkflowForm.tsx` (Run tab form with embedded `ArtifactUploader` for `input_artifacts`), and `WorkflowSubTabBar.tsx` (`WorkflowSubTabBar` — shared Running/Failed/Completed sub-tab switcher, used by `TicketWorkflowTab`). The page holds `stagedArtifacts` state + `launchedRef` to cancel orphaned uploads on tab-leave / unmount and skip cancellation after a successful launch.
 
 ## Real-Time Update Patterns
 

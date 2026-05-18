@@ -191,3 +191,119 @@ func TestTestClock_DateOnly(t *testing.T) {
 		t.Errorf("Now().UTC().Format(date-only) = %v, want %v", result, want)
 	}
 }
+
+func TestRealClock_After(t *testing.T) {
+	ch := Real().After(10 * time.Millisecond)
+	select {
+	case got := <-ch:
+		if got.IsZero() {
+			t.Error("After(10ms) fired with zero time")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Error("Real().After(10ms) did not fire within 500ms")
+	}
+}
+
+func TestTestClock_After(t *testing.T) {
+	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("fires-after-Advance", func(t *testing.T) {
+		clk := NewTest(base)
+		ch := clk.After(time.Second)
+		select {
+		case <-ch:
+			t.Error("timer fired before advance")
+		default:
+		}
+		clk.Advance(time.Second)
+		select {
+		case got := <-ch:
+			want := base.Add(time.Second)
+			if !got.Equal(want) {
+				t.Errorf("After fired with %v, want %v", got, want)
+			}
+		default:
+			t.Error("timer did not fire after advance past deadline")
+		}
+	})
+
+	t.Run("does-not-fire-before", func(t *testing.T) {
+		clk := NewTest(base)
+		ch := clk.After(5 * time.Second)
+		clk.Advance(time.Second)
+		select {
+		case <-ch:
+			t.Error("timer fired before deadline was reached")
+		default:
+		}
+	})
+
+	t.Run("fires-after-Set-across-deadline", func(t *testing.T) {
+		clk := NewTest(base)
+		ch := clk.After(5 * time.Second)
+		clk.Set(base.Add(10 * time.Second))
+		select {
+		case got := <-ch:
+			if got.IsZero() {
+				t.Error("timer fired with zero time")
+			}
+		default:
+			t.Error("timer did not fire after Set past deadline")
+		}
+	})
+
+	t.Run("multiple-After-calls-fire-independently", func(t *testing.T) {
+		clk := NewTest(base)
+		ch1 := clk.After(2 * time.Second)
+		ch2 := clk.After(4 * time.Second)
+
+		clk.Advance(2 * time.Second)
+		select {
+		case <-ch1:
+		default:
+			t.Error("ch1 did not fire after 2s advance")
+		}
+		select {
+		case <-ch2:
+			t.Error("ch2 fired too early (only 2s elapsed)")
+		default:
+		}
+
+		clk.Advance(2 * time.Second)
+		select {
+		case <-ch2:
+		default:
+			t.Error("ch2 did not fire after 4s total")
+		}
+	})
+
+	t.Run("zero-duration-fires-immediately", func(t *testing.T) {
+		clk := NewTest(base)
+		ch := clk.After(0)
+		select {
+		case <-ch:
+		default:
+			t.Error("After(0) did not fire immediately")
+		}
+	})
+
+	t.Run("concurrent-access", func(t *testing.T) {
+		clk := NewTest(base)
+		const n = 20
+		done := make(chan struct{}, n)
+		for i := 0; i < n; i++ {
+			go func(i int) {
+				_ = clk.After(time.Duration(i) * time.Millisecond)
+				done <- struct{}{}
+			}(i)
+		}
+		go func() {
+			for j := 0; j < 50; j++ {
+				clk.Advance(time.Millisecond)
+			}
+		}()
+		for i := 0; i < n; i++ {
+			<-done
+		}
+	})
+}

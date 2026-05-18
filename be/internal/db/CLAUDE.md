@@ -26,6 +26,15 @@ The clock abstraction (`internal/clock`) drives all `created_at`/`updated_at` ti
 
 Foreign keys use `ON DELETE CASCADE` for child rows tied to a parent (e.g., agent_sessions → workflow_instances, workflow_instances → tickets). See the migration files for per-table FK details.
 
+## Per-project & global settings (config table)
+
+Composite PK `(project_id, key)`. `project_id=''` is the sentinel for global (non-project) settings. Accessors at `be/internal/db/pool.go:94-130`:
+
+- `pool.GetConfig(key)` / `pool.SetConfig(key, value)` — global KV
+- `pool.GetProjectConfig(projectID, key)` / `pool.SetProjectConfig(projectID, key, value)` — project-scoped KV
+
+This is the canonical KV store — do not create new tables for similar use cases.
+
 ## Files
 
 | File | Purpose |

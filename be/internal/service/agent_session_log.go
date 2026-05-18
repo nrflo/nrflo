@@ -86,6 +86,7 @@ type LiveAgentSessionResponse struct {
 	RssKB              int64   `json:"rss_kb"`
 	CpuPct             float64 `json:"cpu_pct"`
 	OsUptimeSec        int64   `json:"os_uptime_sec"`
+	RateLimitUntilTs   *string `json:"rate_limit_until_ts,omitempty"`
 }
 
 // ListLive returns currently running sessions for the given project, enriched with host metrics.
@@ -131,6 +132,10 @@ func (s *AgentSessionLogService) ListLive(projectID string) ([]LiveAgentSessionR
 			if err == nil {
 				resp.DurationSec = now.Sub(started).Seconds()
 			}
+		}
+		if row.RateLimitUntilTs.Valid {
+			v := row.RateLimitUntilTs.String
+			resp.RateLimitUntilTs = &v
 		}
 		result = append(result, resp)
 	}

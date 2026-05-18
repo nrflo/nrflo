@@ -45,10 +45,13 @@ type AgentSession struct {
 	Config             string             `json:"-"` // Safety settings JSON used for this session
 	StartedAt          sql.NullString     `json:"-"`
 	EndedAt            sql.NullString     `json:"-"`
-	SpawnToken         sql.NullString     `json:"-"` // Bearer token for spawned agent's HTTP API access (valid while session is running/user_interactive)
-	EffectiveMode      sql.NullString     `json:"-"` // Effective execution backend: cli|cli_interactive|api|script (set at spawn time)
-	CreatedAt          time.Time          `json:"created_at"`
-	UpdatedAt          time.Time          `json:"updated_at"`
+	SpawnToken           sql.NullString     `json:"-"` // Bearer token for spawned agent's HTTP API access (valid while session is running/user_interactive)
+	EffectiveMode        sql.NullString     `json:"-"` // Effective execution backend: cli|cli_interactive|api|script (set at spawn time)
+	RateLimitRetryCount  int                `json:"-"`
+	RateLimitUntilTs     sql.NullString     `json:"-"`
+	LastRetryClass       sql.NullString     `json:"-"`
+	CreatedAt            time.Time          `json:"created_at"`
+	UpdatedAt            time.Time          `json:"updated_at"`
 
 	// Derived fields (populated via JOIN, not stored in agent_sessions)
 	Workflow string `json:"-"` // workflow_id from workflow_instances (for API compat)
@@ -75,6 +78,7 @@ type AgentSessionLogRow struct {
 	ExecutionMode      sql.NullString
 	EffectiveMode      sql.NullString
 	PID                sql.NullInt64
+	RateLimitUntilTs   sql.NullString
 }
 
 // MarshalJSON implements custom JSON marshaling for AgentSession

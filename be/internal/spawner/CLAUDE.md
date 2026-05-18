@@ -84,6 +84,8 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Stall Detection
 
+Rate-limit restart logic (back-off on 429 responses) will live in `rate_limit_restart.go` (not yet created).
+
 Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15). Config keys:
 
 - `stall_start_timeout_sec` (agent_definitions) — seconds with no output before a start-stall; NULL = global default (120s), 0 = disabled.

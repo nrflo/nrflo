@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { LogsLiveTab } from './LogsLiveTab'
@@ -88,9 +88,9 @@ describe('LogsLiveTab', () => {
       })
     })
 
-    it('renders all 10 column headers', () => {
+    it('renders all 11 column headers', () => {
       renderTab()
-      for (const header of ['SID', 'Agent', 'Model', 'Mode', 'Workflow', 'Uptime', 'PID', 'Memory', 'CPU %', 'Actions']) {
+      for (const header of ['SID', 'Agent', 'Model', 'Mode', 'Workflow', 'Uptime', 'PID', 'Memory', 'CPU %', 'Status', 'Actions']) {
         expect(screen.getByText(header)).toBeInTheDocument()
       }
     })
@@ -200,6 +200,75 @@ describe('LogsLiveTab', () => {
       const buttons = screen.getAllByRole('button')
       // Last button is the row Kill button
       expect(buttons[buttons.length - 1]).toBeDisabled()
+    })
+  })
+
+  describe('rate-limit Status column', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows rate-limit badge text for a future-dated rate_limit_until_ts', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+      const session = makeLiveSession({ rate_limit_until_ts: '2026-01-01T00:01:00Z' })
+      mockUseLive.mockReturnValue({ data: { sessions: [session] }, isFetching: false, refetch: vi.fn() })
+
+      renderTab()
+
+      expect(screen.getByText(/rate-limited, retrying in/i)).toBeInTheDocument()
+    })
+
+    it('shows dash (not badge) when rate_limit_until_ts is absent', () => {
+      const session = makeLiveSession()
+      mockUseLive.mockReturnValue({ data: { sessions: [session] }, isFetching: false, refetch: vi.fn() })
+
+      renderTab()
+
+      expect(screen.queryByText(/rate-limited/i)).toBeNull()
+    })
+
+    it('shows dash when rate_limit_until_ts is expired', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-01T00:02:00Z'))
+      const session = makeLiveSession({ rate_limit_until_ts: '2026-01-01T00:01:00Z' })
+      mockUseLive.mockReturnValue({ data: { sessions: [session] }, isFetching: false, refetch: vi.fn() })
+
+      renderTab()
+
+      expect(screen.queryByText(/rate-limited/i)).toBeNull()
+    })
+
+    it('countdown updates after clock advances', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+      const session = makeLiveSession({ rate_limit_until_ts: '2026-01-01T00:00:30Z' })
+      mockUseLive.mockReturnValue({ data: { sessions: [session] }, isFetching: false, refetch: vi.fn() })
+
+      renderTab()
+      expect(screen.getByText('Rate-limited, retrying in 30s')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(10_000))
+      expect(screen.getByText('Rate-limited, retrying in 20s')).toBeInTheDocument()
+    })
+
+    it('tooltip text includes matched_pattern and retry_count on hover', async () => {
+      const futureTs = new Date(Date.now() + 60_000).toISOString()
+      const session = makeLiveSession({
+        rate_limit_until_ts: futureTs,
+        rate_limit_matched_pattern: 'test-pattern-xyz',
+        rate_limit_retry_count: 3,
+      })
+      mockUseLive.mockReturnValue({ data: { sessions: [session] }, isFetching: false, refetch: vi.fn() })
+      renderTab()
+
+      const user = userEvent.setup()
+      const badge = screen.getByText(/rate-limited, retrying in/i)
+      await user.hover(badge)
+
+      const tooltip = await screen.findByRole('tooltip')
+      expect(tooltip.textContent).toContain('test-pattern-xyz')
+      expect(tooltip.textContent).toContain('retry #3')
     })
   })
 })

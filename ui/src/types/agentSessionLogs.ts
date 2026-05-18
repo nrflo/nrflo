@@ -37,6 +37,11 @@ export interface LiveAgentSession {
   rss_kb: number
   cpu_pct: number
   os_uptime_sec: number
+  rate_limit_until_ts?: string
+  rate_limit_wait_seconds?: number
+  rate_limit_total_wait_seconds?: number
+  rate_limit_matched_pattern?: string
+  rate_limit_retry_count?: number
 }
 
 export interface LiveAgentSessionsResponse {

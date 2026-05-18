@@ -13,6 +13,7 @@ import { projectEnvVarKeys } from './useProjectEnvVars'
 import { serviceTokenKeys } from './useServiceTokens'
 import { artifactKeys } from './useArtifacts'
 import type { WSEventType } from './useWebSocket'
+import type { LiveAgentSessionsResponse } from '@/types/agentSessionLogs'
 
 // Seq tracking per subscription
 const seqMap = new Map<string, number>()
@@ -197,6 +198,36 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+    }
+  },
+
+  'agent.rate_limited': (event, qc) => {
+    const sessionId = event.data?.session_id as string | undefined
+    const waitSeconds = event.data?.wait_seconds as number | undefined
+    if (!sessionId || waitSeconds === undefined) return
+
+    const rateLimitUntilTs = new Date(Date.now() + waitSeconds * 1000).toISOString()
+    const cacheKey = agentSessionLogKeys.live(event.project_id)
+    const prev = qc.getQueryData<LiveAgentSessionsResponse>(cacheKey)
+
+    if (prev) {
+      qc.setQueryData<LiveAgentSessionsResponse>(cacheKey, {
+        ...prev,
+        sessions: prev.sessions.map((s) =>
+          s.session_id === sessionId
+            ? {
+                ...s,
+                rate_limit_until_ts: rateLimitUntilTs,
+                rate_limit_wait_seconds: waitSeconds,
+                rate_limit_total_wait_seconds: event.data?.total_wait_seconds as number | undefined,
+                rate_limit_matched_pattern: event.data?.matched_pattern as string | undefined,
+                rate_limit_retry_count: event.data?.retry_count as number | undefined,
+              }
+            : s
+        ),
+      })
+    } else {
+      qc.invalidateQueries({ queryKey: agentSessionLogKeys.all })
     }
   },
 

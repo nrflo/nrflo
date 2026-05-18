@@ -84,6 +84,7 @@ export type WSEventType =
   | 'spec_import.failed'
   | 'artifact.created'
   | 'artifact.deleted'
+  | 'agent.rate_limited'
   | 'test.echo'
 
 export interface WSEvent {

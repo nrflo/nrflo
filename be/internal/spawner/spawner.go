@@ -263,6 +263,7 @@ type processInfo struct {
 	stallStartTimeout   time.Duration // from agent_definition or default 120s
 	stallRunningTimeout time.Duration // from agent_definition or default 480s
 	stallRestartCount   int           // incremented on each stall restart
+	validationCommands  []string      // parsed from agent_def.ValidationCommands at spawn time
 	// Idle/nudge detection (cli_interactive backend only; nudgeMax=0 means disabled)
 	nudgeCount              int
 	nudgeMax                int
@@ -823,6 +824,14 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		}
 	}
 
+	var scriptValidationCommands []string
+	if agentDef.ValidationCommands != "" {
+		if jsonErr := json.Unmarshal([]byte(agentDef.ValidationCommands), &scriptValidationCommands); jsonErr != nil {
+			logger.Warn(ctx, "failed to parse validation_commands", "agent", req.AgentType, "error", jsonErr)
+			scriptValidationCommands = nil
+		}
+	}
+
 	workDir := s.config.ProjectRoot
 	if workDir == "" || workDir == "." {
 		workDir = ""
@@ -877,8 +886,10 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		stallRunningTimeout: stallRunningTimeout,
 		maxContext:          0,
 		restartThreshold:    defaultContextThreshold,
+		validationCommands:  scriptValidationCommands,
 		env:                 env,
 	}
+	logger.Info(ctx, "agent spawned with validation commands", "agent", req.AgentType, "count", len(proc.validationCommands))
 
 	prep := &prepResult{
 		executionMode: "script",
@@ -991,6 +1002,14 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 	}
 
+	var validationCommands []string
+	if agentDef != nil && agentDef.ValidationCommands != "" {
+		if jsonErr := json.Unmarshal([]byte(agentDef.ValidationCommands), &validationCommands); jsonErr != nil {
+			logger.Warn(ctx, "failed to parse validation_commands", "agent", req.AgentType, "error", jsonErr)
+			validationCommands = nil
+		}
+	}
+
 	// Load agent template
 	agentLayer := 0
 	if agentDef != nil {
@@ -1033,7 +1052,9 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		stallStartTimeout:   stallStartTimeout,
 		stallRunningTimeout: stallRunningTimeout,
 		maxContext:          s.maxContextForModel(modelName),
+		validationCommands:  validationCommands,
 	}
+	logger.Info(ctx, "agent spawned with validation commands", "agent", req.AgentType, "count", len(proc.validationCommands))
 
 	// Populate idle/nudge fields only for cliInteractiveBackend agents.
 	if executionMode == "cli_interactive" {

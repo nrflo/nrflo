@@ -33,8 +33,8 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		executionMode = "cli_interactive"
 	}
 	_, err := r.db.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -52,6 +52,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		def.Tools,
 		def.APIMaxIterations,
 		def.PythonScriptID,
+		def.ValidationCommands,
 		now,
 		now,
 	)
@@ -66,7 +67,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter sql.NullInt64
 	var pythonScriptID sql.NullString
 	err := r.db.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -87,6 +88,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		&def.Tools,
 		&apiMaxIter,
 		&pythonScriptID,
+		&def.ValidationCommands,
 		&createdAt,
 		&updatedAt,
 	)
@@ -130,7 +132,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 // List retrieves all agent definitions for a workflow
 func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -164,6 +166,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 			&def.Tools,
 			&apiMaxIter,
 			&pythonScriptID,
+			&def.ValidationCommands,
 			&createdAt,
 			&updatedAt,
 		)
@@ -220,6 +223,7 @@ type AgentDefUpdateFields struct {
 	Tools                  *string
 	APIMaxIterations       *int
 	PythonScriptID         *string
+	ValidationCommands     *string
 }
 
 // Update updates an agent definition
@@ -282,6 +286,10 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.PythonScriptID != nil {
 		updates = append(updates, "python_script_id = ?")
 		args = append(args, *fields.PythonScriptID)
+	}
+	if fields.ValidationCommands != nil {
+		updates = append(updates, "validation_commands = ?")
+		args = append(args, *fields.ValidationCommands)
 	}
 
 	if len(updates) == 0 {

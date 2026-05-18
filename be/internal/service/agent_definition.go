@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -58,7 +59,21 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 	return nil
 }
 
-// validateCLIInteractiveMode checks that the model's adapter supports PTY-based interactive
+func validateValidationCommands(cmds []string) error {
+	if len(cmds) > 20 {
+		return fmt.Errorf("validation_commands: too many entries (max 20)")
+	}
+	for _, cmd := range cmds {
+		if strings.TrimSpace(cmd) == "" {
+			return fmt.Errorf("validation_commands: empty or whitespace-only entry")
+		}
+		if len(cmd) > 1024 {
+			return fmt.Errorf("validation_commands: entry exceeds 1024 bytes")
+		}
+	}
+	return nil
+}
+
 // CreateAgentDef creates a new agent definition
 func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, req *types.AgentDefCreateRequest) (*model.AgentDefinition, error) {
 	if req.ID == "" {
@@ -125,6 +140,19 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
+	// Validate and marshal validation_commands
+	validationCommandsJSON := "[]"
+	if req.ValidationCommands != nil {
+		if err := validateValidationCommands(*req.ValidationCommands); err != nil {
+			return nil, err
+		}
+		b, err := json.Marshal(*req.ValidationCommands)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal validation_commands: %w", err)
+		}
+		validationCommandsJSON = string(b)
+	}
+
 	// Validate layer config (layer >= 0) with existing agents + new agent
 	if err := s.validateLayerConfigForWorkflow(projectID, workflowID, req.ID, req.Layer); err != nil {
 		return nil, err
@@ -155,9 +183,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.PythonScriptID, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.PythonScriptID, validationCommandsJSON, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -185,6 +213,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		Tools:                  req.Tools,
 		APIMaxIterations:       req.APIMaxIterations,
 		PythonScriptID:         req.PythonScriptID,
+		ValidationCommands:     validationCommandsJSON,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil
@@ -198,7 +227,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 	var pythonScriptID sql.NullString
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -207,6 +236,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 		&def.LowConsumptionModel, &def.Layer,
 		&def.ExecutionMode, &def.Tools, &apiMaxIter, &pythonScriptID,
+		&def.ValidationCommands,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -248,7 +278,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -270,6 +300,7 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 			&def.LowConsumptionModel, &def.Layer,
 			&def.ExecutionMode, &def.Tools, &apiMaxIter, &pythonScriptID,
+			&def.ValidationCommands,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -459,6 +490,17 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.PythonScriptID != nil {
 		updates = append(updates, "python_script_id = ?")
 		args = append(args, *req.PythonScriptID)
+	}
+	if req.ValidationCommands != nil {
+		if err := validateValidationCommands(*req.ValidationCommands); err != nil {
+			return err
+		}
+		b, err := json.Marshal(*req.ValidationCommands)
+		if err != nil {
+			return fmt.Errorf("failed to marshal validation_commands: %w", err)
+		}
+		updates = append(updates, "validation_commands = ?")
+		args = append(args, string(b))
 	}
 
 	if len(updates) == 0 {

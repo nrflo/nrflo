@@ -157,6 +157,13 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 					scriptID = &mapped
 				}
 			}
+			var validationCmds *[]string
+			if agent.ValidationCommands != "" {
+				var cmds []string
+				if err := json.Unmarshal([]byte(agent.ValidationCommands), &cmds); err == nil {
+					validationCmds = &cmds
+				}
+			}
 			if _, err := s.agentDefSvc.CreateAgentDef(projectID, wf.ID, &types.AgentDefCreateRequest{
 				ID:                     agent.ID,
 				Model:                  agent.Model,
@@ -173,6 +180,7 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 				Tools:                  agent.Tools,
 				APIMaxIterations:       agent.APIMaxIterations,
 				PythonScriptID:         scriptID,
+				ValidationCommands:     validationCmds,
 			}); err != nil {
 				return nil, fmt.Errorf("create agent %s in workflow %s: %w", agent.ID, wf.ID, err)
 			}

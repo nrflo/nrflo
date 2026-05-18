@@ -106,6 +106,20 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 		}
 	}
 
+	// Run validation commands when the agent passes (explicit or implicit).
+	if result == "pass" && len(proc.validationCommands) > 0 {
+		failedIdx, exitCode, tail, valErr := s.runValidationCommands(ctx, proc)
+		if valErr != nil {
+			// Context cancelled (orchestrator shutdown) — propagate without overriding result.
+			logger.Warn(ctx, "validation commands interrupted", "session", proc.sessionID, "err", valErr)
+		} else if failedIdx >= 0 {
+			s.writeValidationFailureFinding(proc, failedIdx, exitCode, tail)
+			result = "fail"
+			resultReason = "validation_failure"
+			proc.finalStatus = "FAIL"
+		}
+	}
+
 	// Save messages to database
 	s.saveMessages(proc)
 
@@ -145,6 +159,7 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.stallStartTimeout = oldProc.stallStartTimeout
 	newProc.stallRunningTimeout = oldProc.stallRunningTimeout
 	newProc.validationCommands = oldProc.validationCommands
+	newProc.workDir = oldProc.workDir
 
 	// Update the ancestor_session_id and restart_count on the new DB session record
 	if pool := s.pool(); pool != nil {

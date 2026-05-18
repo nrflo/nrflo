@@ -92,6 +92,10 @@ Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRes
 
 On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `result=continue reason=stall_restart_*`, 15s delay, relaunch.
 
+## Validation Commands
+
+When an agent finishes with `result=pass` (explicit or implicit), `handleCompletion` runs `agent_definitions.validation_commands` (JSON array of shell strings) sequentially via `sh -c` in `proc.workDir`. Per-command timeout: `validationCommandTimeout` (5 min). Env: full agent envelope minus `NRFLO_AGENT_TOKEN` and `NRF_SESSION_ID` (session-bound tokens are not reusable). Combined stdout+stderr is tail-captured to 64 KB. First non-zero exit → result flips to `fail` with `result_reason=validation_failure` and a `validation_failure` finding (`{command, command_index, exit_code, output_tail}`) is written on the session scope; `copyFindingsForContinuation` carries it to the retry session. Progress is logged via `agent_messages` rows with `category=validation`. Implementation: `validation.go`.
+
 ## Idle/Nudge Loop
 
 Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` injectable to PTY stdin, broadcast `agent.nudged`, persist `nudge_count` in DB. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.IdleAfterMessageTimeoutSec`, `Config.IdleStartTimeoutSec`, `Config.NudgeMax`.

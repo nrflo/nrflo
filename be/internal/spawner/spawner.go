@@ -264,6 +264,7 @@ type processInfo struct {
 	stallRunningTimeout time.Duration // from agent_definition or default 480s
 	stallRestartCount   int           // incremented on each stall restart
 	validationCommands  []string      // parsed from agent_def.ValidationCommands at spawn time
+	workDir             string        // resolved working directory for validation commands
 	// Idle/nudge detection (cli_interactive backend only; nudgeMax=0 means disabled)
 	nudgeCount              int
 	nudgeMax                int
@@ -887,6 +888,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		maxContext:          0,
 		restartThreshold:    defaultContextThreshold,
 		validationCommands:  scriptValidationCommands,
+		workDir:             workDir,
 		env:                 env,
 	}
 	logger.Info(ctx, "agent spawned with validation commands", "agent", req.AgentType, "count", len(proc.validationCommands))
@@ -1053,6 +1055,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		stallRunningTimeout: stallRunningTimeout,
 		maxContext:          s.maxContextForModel(modelName),
 		validationCommands:  validationCommands,
+		workDir:             workDir,
 	}
 	logger.Info(ctx, "agent spawned with validation commands", "agent", req.AgentType, "count", len(proc.validationCommands))
 

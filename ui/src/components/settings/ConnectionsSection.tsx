@@ -5,15 +5,15 @@ import { useConnectionsStore } from '@/stores/connectionsStore'
 import { ConnectionRow } from './ConnectionRow'
 import { ConnectionAddDialog } from './ConnectionAddDialog'
 
-export function ConnectionsPage() {
+export function ConnectionsSection() {
   const { list, activeId } = useConnectionsStore()
   const [addOpen, setAddOpen] = useState(false)
 
   return (
-    <div className="p-6 max-w-4xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Connections</h1>
+          <h2 className="text-xl font-bold">Connections</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Manage connections to nrflo server instances. Remote servers must allow CORS from this origin.
           </p>

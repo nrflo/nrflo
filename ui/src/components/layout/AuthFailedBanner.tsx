@@ -13,7 +13,7 @@ export function AuthFailedBanner() {
       <span>
         Service token for <strong>{failedConn.name}</strong> was rejected.
       </span>
-      <Button variant="link" size="sm" className="text-destructive p-0 h-auto" onClick={() => navigate('/settings/connections')}>
+      <Button variant="link" size="sm" className="text-destructive p-0 h-auto" onClick={() => navigate('/settings?tab=connections')}>
         Open Connections
       </Button>
       <span>to re-paste.</span>

@@ -15,7 +15,6 @@ import {
   AlertTriangle,
   Wrench,
   KeyRound,
-  Network,
   CalendarClock,
   ScrollText,
   ListOrdered,
@@ -211,12 +210,6 @@ export function Sidebar() {
                 <LaunchObserverButton payload={{ scope: 'global' }} variant="outline" size="sm" />
               </div>
             )}
-            <NavItem
-              to="/settings/connections"
-              icon={<Network className="h-4 w-4" />}
-              label="Connections"
-              active={isActive('/settings/connections')}
-            />
             {apiModeEnabled && (
               <>
                 <NavItem

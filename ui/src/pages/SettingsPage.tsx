@@ -13,9 +13,10 @@ import { UsersSection } from '@/components/settings/UsersSection'
 import { AuditLogSection } from '@/components/settings/AuditLogSection'
 import { ServiceTokensSection } from '@/components/settings/ServiceTokensSection'
 import { ProvidersSection } from '@/components/settings/ProvidersSection'
+import { ConnectionsSection } from '@/components/settings/ConnectionsSection'
 import type { ProviderName } from '@/api/providers'
 
-type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'administration'
+type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'connections' | 'administration'
 type AdministrationSubTab = 'users' | 'audit' | 'tokens'
 
 const tabs: { id: SettingsTab; label: string }[] = [
@@ -26,6 +27,7 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'default-templates', label: 'Default Templates' },
   { id: 'cli-models', label: 'CLI Models' },
   { id: 'logs', label: 'Logs' },
+  { id: 'connections', label: 'Connections' },
   { id: 'administration', label: 'Administration' },
 ]
 
@@ -181,6 +183,7 @@ export function SettingsPage() {
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'cli-models' && <ProvidersSection activeProvider={activeProvider} />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
+      {activeTab === 'connections' && <ConnectionsSection />}
       {activeTab === 'administration' && activeAdminSub === 'users' && <UsersSection />}
       {activeTab === 'administration' && activeAdminSub === 'audit' && <AuditLogSection />}
       {activeTab === 'administration' && activeAdminSub === 'tokens' && <ServiceTokensSection />}

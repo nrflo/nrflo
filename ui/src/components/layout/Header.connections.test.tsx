@@ -51,7 +51,7 @@ vi.mock('@/components/interactive/InteractiveSessionsTab', () => ({
 
 function LocationDisplay() {
   const loc = useLocation()
-  return <div data-testid="location">{loc.pathname}</div>
+  return <div data-testid="location">{loc.pathname + loc.search}</div>
 }
 
 function renderHeader(initialRoute = '/') {
@@ -96,12 +96,12 @@ describe('Header - connection dropdown', () => {
     expect(mockSetActiveConn).toHaveBeenCalledWith('r1')
   })
 
-  it('selecting Manage connections navigates to /settings/connections', async () => {
+  it('selecting Manage connections navigates to /settings?tab=connections', async () => {
     const user = userEvent.setup()
     renderHeader()
     await user.click(screen.getByRole('button', { name: /local/i }))
     await user.click(await screen.findByText(/manage connections/i))
-    expect(screen.getByTestId('location')).toHaveTextContent('/settings/connections')
+    expect(screen.getByTestId('location')).toHaveTextContent('/settings?tab=connections')
   })
 
   it('dropdown lists all connections plus Manage option', async () => {

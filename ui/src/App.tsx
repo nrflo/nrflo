@@ -12,7 +12,6 @@ import { TicketDetailPage } from '@/pages/TicketDetailPage'
 import { CreateTicketPage } from '@/pages/CreateTicketPage'
 import { EditTicketPage } from '@/pages/EditTicketPage'
 import { SettingsPage } from '@/pages/SettingsPage'
-import { ConnectionsPage } from '@/pages/ConnectionsPage'
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import { ProjectWorkflowsPage } from '@/pages/ProjectWorkflowsPage'
 import { ChainListPage } from '@/pages/ChainListPage'
@@ -77,7 +76,6 @@ function AppRoutes() {
               {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
-              <Route path="settings/connections" element={<RequireAdmin><ConnectionsPage /></RequireAdmin>} />
               <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />
             </Route>
           </Routes>

@@ -123,7 +123,7 @@ export function Header() {
           value={activeConnId}
           onChange={(value) => {
             if (value === '__manage') {
-              navigate('/settings/connections')
+              navigate('/settings?tab=connections')
             } else {
               setActiveConn(value)
             }

@@ -144,11 +144,13 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	userSvc := service.NewUserService(pool, clk)
 
 	// Observer subsystem: dedicated spawner with minimal config (no workflow/agent defs).
+	// PTYManager is required because observers spawn under cli_interactive.
 	observerSpawner := spawner.New(spawner.Config{
-		Pool:     pool,
-		Clock:    clk,
-		WSHub:    hub,
-		DataPath: dataPath,
+		Pool:       pool,
+		Clock:      clk,
+		WSHub:      hub,
+		DataPath:   dataPath,
+		PTYManager: ptyMgr,
 	})
 	observerSvc := service.NewObserverService(
 		pool, clk,

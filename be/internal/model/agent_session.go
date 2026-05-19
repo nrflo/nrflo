@@ -52,6 +52,7 @@ type AgentSession struct {
 	LastRetryClass       sql.NullString     `json:"-"`
 	Kind                 string             `json:"-"` // "workflow_agent" or "observer"
 	ObserverScope        sql.NullString     `json:"-"` // "workflow", "project", or "global"
+	ObserverWorkflowID   sql.NullString     `json:"-"` // For workflow-scope observers: bound workflow definition id
 	CreatedAt            time.Time          `json:"created_at"`
 	UpdatedAt            time.Time          `json:"updated_at"`
 

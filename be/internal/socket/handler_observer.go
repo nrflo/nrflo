@@ -79,14 +79,16 @@ func (h *Handler) authorizeObserver(_ context.Context, sessionID, projectID, wor
 		return nil, NewValidationError("permission denied: project_id mismatch")
 	}
 
-	// Workflow-scoped observer: target workflow_id must match the observer's workflow instance.
+	// Workflow-scoped observer: target workflow_id must match the bound workflow definition.
 	if observerScope == "workflow" && workflowID != "" {
-		wfiRepo := repo.NewWorkflowInstanceRepo(h.pool, h.clk)
-		wfi, wfiErr := wfiRepo.Get(session.WorkflowInstanceID)
-		if wfiErr != nil {
-			return nil, NewInternalError("failed to load workflow instance")
+		bound := ""
+		if session.ObserverWorkflowID.Valid {
+			bound = session.ObserverWorkflowID.String
 		}
-		if workflowID != wfi.WorkflowID {
+		if bound == "" {
+			return nil, NewInternalError("observer session missing workflow binding")
+		}
+		if workflowID != bound {
 			return nil, NewValidationError("permission denied: workflow_id mismatch")
 		}
 	}

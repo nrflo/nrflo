@@ -25,6 +25,9 @@ func seedObserverSession(t *testing.T, env *handlerTestEnv, id, scope, projectID
 		Status:             model.AgentSessionRunning,
 		Kind:               "observer",
 		ObserverScope:      sql.NullString{String: scope, Valid: scope != ""},
+		// Workflow-scope observers must persist their bound workflow def id;
+		// all socket tests use the "test" workflow seeded by createTicketAndWorkflow.
+		ObserverWorkflowID: sql.NullString{String: "test", Valid: scope == "workflow"},
 	}
 	if err := asRepo.Create(sess); err != nil {
 		t.Fatalf("seedObserverSession id=%s scope=%s: %v", id, scope, err)

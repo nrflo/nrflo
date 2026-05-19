@@ -33,7 +33,7 @@ PROMPT = "nrflo agent finished"
 
 def _socket_call(ctx: Ctx, method: str, params: dict) -> tuple[object, object]:
     """Send a single JSON-RPC call to the Unix socket; return (result, error)."""
-    payload = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}) + "\n"
+    payload = json.dumps({"jsonrpc": "2.0", "id": "1", "method": method, "params": params}) + "\n"
     with _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM) as s:
         s.connect(str(ctx.server.socket_path))
         s.sendall(payload.encode())
@@ -93,10 +93,10 @@ def run(ctx: Ctx) -> Result:
     result, err = _socket_call(ctx, "observer.project.workflows", {
         "session_id": proj_sid, "project_id": pid,
     })
-    if err or not isinstance(result, list):
+    if err or not isinstance(result, dict):
         return ("S46 observer", "FAIL", f"project.workflows failed: err={err}")
-    if not any(w.get("id") == wid for w in result):
-        return ("S46 observer", "FAIL", f"stub workflow {wid!r} not in project.workflows list")
+    if wid not in result:
+        return ("S46 observer", "FAIL", f"stub workflow {wid!r} not in project.workflows map: keys={list(result)}")
 
     # --- project scope: mutate (create a new workflow def) ---
     stub_wid = next_id(ctx, "obs")
@@ -107,7 +107,7 @@ def run(ctx: Ctx) -> Result:
     if err or not result:
         return ("S46 observer", "FAIL", f"project.workflow.create failed: err={err}")
     wfs = ctx.client._request("GET", "/api/v1/workflows", project=pid)
-    wf_ids = [w.get("id") for w in (wfs if isinstance(wfs, list) else [])]
+    wf_ids = list(wfs) if isinstance(wfs, dict) else [w.get("id") for w in (wfs or [])]
     if stub_wid not in wf_ids:
         return ("S46 observer", "FAIL", f"created workflow {stub_wid!r} not in REST list: {wf_ids}")
 

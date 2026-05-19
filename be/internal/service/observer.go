@@ -156,9 +156,10 @@ func (s *ObserverService) Launch(scope, projectID, workflowID string) (sessionID
 		Phase:         "observer",
 		Status:        model.AgentSessionRunning,
 		Kind:          "observer",
-		ObserverScope: sql.NullString{String: scope, Valid: scope != ""},
-		SpawnToken:    sql.NullString{String: spawnToken, Valid: true},
-		StartedAt:     sql.NullString{String: now, Valid: true},
+		ObserverScope:      sql.NullString{String: scope, Valid: scope != ""},
+		ObserverWorkflowID: sql.NullString{String: workflowID, Valid: scope == "workflow" && workflowID != ""},
+		SpawnToken:         sql.NullString{String: spawnToken, Valid: true},
+		StartedAt:          sql.NullString{String: now, Valid: true},
 	}
 	if err := sessionRepo.Create(sess); err != nil {
 		return "", fmt.Errorf("create observer session: %w", err)

@@ -134,6 +134,7 @@ func setupServer() (*serverComponents, error) {
 
 	clk := clock.Real()
 	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath, resolvedDataPath)
+	socketServer.SetWorkflowRunner(httpServer.GetOrchestrator())
 	if err := socketServer.Start(); err != nil {
 		sockListener.Close()
 		pool.Close()

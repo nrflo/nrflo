@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from lib import db as db_mod
 from lib.runtime import (
-    Ctx, Result, first_session, make_project, next_id, resolve_model, wait_for_workflow,
+    Ctx, Result, make_project, next_id, resolve_model, wait_for_workflow,
 )
 
 
@@ -63,15 +63,28 @@ def run(ctx: Ctx) -> Result:
     )["instance_id"]
     wait_for_workflow(ctx, pid, instance_id=wfi)
 
-    sess = first_session(db_mod.agent_sessions_for_instance(ctx.server.home, wfi))
-    cl = sess.get("context_left")
-    if cl is None:
-        if sess.get("result") == "pass":
-            return ("S05 context_left", "SKIP",
-                    "opencode dropped the SQLite write for this turn "
-                    "(best-effort async persistence)")
-        return ("S05 context_left", "FAIL",
-                "context_left NULL — opencode SQLite tailer not wired?")
-    if not (0 <= cl <= 100):
-        return ("S05 context_left", "FAIL", f"context_left out of range: {cl}")
-    return ("S05 context_left", "PASS", f"context_left={cl}")
+    sessions = db_mod.agent_sessions_for_instance(ctx.server.home, wfi)
+    if not sessions:
+        return ("S05 context_left", "FAIL", "no agent_sessions row was created")
+
+    # Any session in the instance with a populated context_left proves the
+    # opencode SQLite tailer is wired. Under retry/stall pressure the *first*
+    # session can stall before opencode ever flushes a usage row — the tailer
+    # is healthy as long as one of the (possibly restarted) sessions captured
+    # a usage update.
+    populated = [s for s in sessions if s.get("context_left") is not None]
+    if populated:
+        cl = populated[-1]["context_left"]
+        if not (0 <= cl <= 100):
+            return ("S05 context_left", "FAIL", f"context_left out of range: {cl}")
+        return ("S05 context_left", "PASS",
+                f"context_left={cl} (sessions={len(sessions)})")
+
+    # No session has telemetry. If at least one session passed, treat as the
+    # documented opencode async-flush drop. Otherwise the tailer is broken.
+    if any(s.get("result") == "pass" for s in sessions):
+        return ("S05 context_left", "SKIP",
+                "opencode dropped the SQLite write for every turn "
+                "(best-effort async persistence)")
+    return ("S05 context_left", "FAIL",
+            "context_left NULL on all sessions — opencode SQLite tailer not wired?")

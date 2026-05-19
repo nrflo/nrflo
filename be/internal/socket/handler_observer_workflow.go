@@ -205,11 +205,15 @@ func (h *Handler) resolveWorkflowScope(session *model.AgentSession, base observe
 	}
 	workflowID = base.WorkflowID
 	if workflowID == "" {
-		wfi, err := repo.NewWorkflowInstanceRepo(h.pool, h.clk).Get(session.WorkflowInstanceID)
-		if err != nil {
-			return "", "", NewInternalError("failed to load workflow instance")
+		if session.ObserverWorkflowID.Valid && session.ObserverWorkflowID.String != "" {
+			workflowID = session.ObserverWorkflowID.String
+		} else if session.WorkflowInstanceID != "" {
+			wfi, err := repo.NewWorkflowInstanceRepo(h.pool, h.clk).Get(session.WorkflowInstanceID)
+			if err != nil {
+				return "", "", NewInternalError("failed to load workflow instance")
+			}
+			workflowID = wfi.WorkflowID
 		}
-		workflowID = wfi.WorkflowID
 	}
 	return projectID, workflowID, nil
 }

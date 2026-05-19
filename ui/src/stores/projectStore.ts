@@ -25,9 +25,9 @@ export const useProjectStore = create<ProjectState>()((set) => ({
   projects: [],
   projectsLoaded: false,
   setCurrentProject: (projectId: string) => {
-    const { activeId } = useConnectionsStore.getState()
-    useConnectionsStore.getState().setActiveProject(activeId, projectId)
-    setCookie('nrf_project', projectId)
+    const active = useConnectionsStore.getState().active()
+    useConnectionsStore.getState().setActiveProject(active.id, projectId)
+    if (active.isLocal) setCookie('nrf_project', projectId)
     set({ currentProject: projectId })
   },
   setProjects: (projects: Project[]) => {
@@ -38,11 +38,19 @@ export const useProjectStore = create<ProjectState>()((set) => ({
       const response = await listProjects()
       const projects = response.projects || []
       if (projects.length > 0) {
-        const saved = getCookie('nrf_project')
-        const resolved = saved && projects.some((p) => p.id === saved) ? saved : projects[0].id
-        const { activeId } = useConnectionsStore.getState()
-        useConnectionsStore.getState().setActiveProject(activeId, resolved)
-        setCookie('nrf_project', resolved)
+        const active = useConnectionsStore.getState().active()
+        const remembered = active.activeProject
+        let resolved: string
+        if (remembered && projects.some((p) => p.id === remembered)) {
+          resolved = remembered
+        } else if (active.isLocal) {
+          const saved = getCookie('nrf_project')
+          resolved = saved && projects.some((p) => p.id === saved) ? saved : projects[0].id
+        } else {
+          resolved = projects[0].id
+        }
+        useConnectionsStore.getState().setActiveProject(active.id, resolved)
+        if (active.isLocal) setCookie('nrf_project', resolved)
         set({ projects, currentProject: resolved, projectsLoaded: true })
       } else {
         set({ projects, projectsLoaded: true })

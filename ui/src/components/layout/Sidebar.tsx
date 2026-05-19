@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Wrench,
   KeyRound,
+  Network,
   CalendarClock,
   ScrollText,
   ListOrdered,
@@ -185,23 +186,33 @@ export function Sidebar() {
           label="Agent sessions"
           active={isActive('/logs')}
         />
-        {apiModeEnabled && isAdmin && (
+        {isAdmin && (
           <>
             <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Configuration
             </div>
             <NavItem
-              to="/tool-definitions"
-              icon={<Wrench className="h-4 w-4" />}
-              label="Tool Definitions"
-              active={isActive('/tool-definitions')}
+              to="/settings/connections"
+              icon={<Network className="h-4 w-4" />}
+              label="Connections"
+              active={isActive('/settings/connections')}
             />
-            <NavItem
-              to="/api-credentials"
-              icon={<KeyRound className="h-4 w-4" />}
-              label="API Credentials"
-              active={isActive('/api-credentials')}
-            />
+            {apiModeEnabled && (
+              <>
+                <NavItem
+                  to="/tool-definitions"
+                  icon={<Wrench className="h-4 w-4" />}
+                  label="Tool Definitions"
+                  active={isActive('/tool-definitions')}
+                />
+                <NavItem
+                  to="/api-credentials"
+                  icon={<KeyRound className="h-4 w-4" />}
+                  label="API Credentials"
+                  active={isActive('/api-credentials')}
+                />
+              </>
+            )}
           </>
         )}
         <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">

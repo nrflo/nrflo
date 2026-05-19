@@ -612,12 +612,12 @@ describe('Sidebar - API Mode Gating', () => {
     mockUseChainList.mockReturnValue({ data: [] })
   })
 
-  it('hides Tool Definitions, API Credentials, and Configuration heading when apiModeEnabled=false', () => {
+  it('hides Tool Definitions and API Credentials but keeps Configuration heading when apiModeEnabled=false', () => {
     mockUseAPIModeEnabled.mockReturnValue(false)
     renderSidebar()
     expect(screen.queryByText('Tool Definitions')).not.toBeInTheDocument()
     expect(screen.queryByText('API Credentials')).not.toBeInTheDocument()
-    expect(screen.queryByText('Configuration')).not.toBeInTheDocument()
+    expect(screen.getByText('Configuration')).toBeInTheDocument()
   })
 
   it('shows Tool Definitions and API Credentials when apiModeEnabled=true', () => {

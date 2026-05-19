@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores/authStore'
+import { useConnectionsStore } from '@/stores/connectionsStore'
 import { ApiError } from '@/api/client'
 
 export function LoginPage() {
@@ -13,6 +14,8 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const login = useAuthStore((s) => s.login)
+  const activeConn = useConnectionsStore.getState().active()
+  const setActive = useConnectionsStore((s) => s.setActive)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,6 +40,23 @@ export function LoginPage() {
     } finally {
       setIsPending(false)
     }
+  }
+
+  if (!activeConn.isLocal) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-full max-w-sm space-y-6 p-8 border border-border rounded-lg bg-card">
+          <h1 className="text-2xl font-bold text-center">Remote connection active</h1>
+          <p className="text-sm text-muted-foreground text-center">
+            You are connected to <strong>{activeConn.name}</strong>. Login is handled via service token for remote connections.
+            Switch to local to sign in with a username and password.
+          </p>
+          <Button className="w-full" onClick={() => setActive('local')}>
+            Switch to Local
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (

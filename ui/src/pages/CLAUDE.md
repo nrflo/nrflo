@@ -23,6 +23,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 | `/workflow-chains/:id` | `WorkflowChainEditorPage.tsx` | Chain editor — chain metadata form + ordered step list with Up/Down reorder, per-step inline form, Add/Delete step |
 | `/python-scripts` | `PythonScriptsPage.tsx` | Python scripts CRUD with Agents/Tools tab toggle (`?kind=agent\|tool`, default `agent`). Tab selection drives `usePythonScripts(kind)` and routes create/edit to `PythonScriptForm` (agent) or `PythonToolForm` (tool). New/Edit/Delete admin-only; ConfirmDialog for delete; save-anyway flow for syntax errors; ReadOnlyHint for non-admins |
 | `/settings` | `SettingsPage.tsx` | Tabbed settings page (General, Projects, System Agents, Default Templates, CLI Models, Logs, Administration) — admin-only, gated via `RequireAdmin` at route level; CLI Models tab has Claude / OpenCode / Codex / Gemini provider sub-tabs via `?sub=<provider>`; Administration tab has Users / Audit Log / Service Tokens sub-tabs via `?sub=users\|audit\|tokens`; section components in `src/components/settings/` |
+| `/settings/connections` | `ConnectionsPage.tsx` | Admin-only connections manager: list of nrflo server connections (Local + remotes), per-row Test/Remove (Local non-removable), Add dialog (`ConnectionAddDialog`) with URL validation and service-token paste. Rows in `ConnectionRow.tsx`. Header (`Header.tsx`) hosts a connection-switcher Dropdown that deep-links here. |
 
 Routes are defined in `src/App.tsx`.
 

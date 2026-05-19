@@ -31,7 +31,9 @@ Both exported from `client.ts`:
 
 `client.ts` exports `set401Handler(fn)`. Signature: `(path, { isLocal, connectionId }) => void`. When any request (except `POST /api/v1/auth/login`) returns 401, it throws `UnauthenticatedError` then calls the registered handler with `pathname + search` plus the active connection context.
 
-`AuthGate` registers this handler on first mount: calls `useAuthStore.getState().clear()` and navigates to `/login?next=<encoded path>` via `window.history.pushState` + popstate event, unless already on `/login`.
+`AuthGate` registers this handler on first mount. For local connections: calls `useAuthStore.getState().clear()` and navigates to `/login?next=<encoded path>` via `window.history.pushState` + popstate event, unless already on `/login`. For remote connections: calls `useConnectionsStore.getState().markAuthFailed(connectionId)` without navigating (the `AuthFailedBanner` surfaces the failure).
+
+`testConnection(conn)` in `client.ts` — bypasses the 401 handler and targets a specific `Connection` directly (used by `ConnectionsPage` and `ConnectionAddDialog` for inline connectivity checks).
 
 ## Connections Store
 

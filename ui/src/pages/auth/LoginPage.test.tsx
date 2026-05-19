@@ -6,6 +6,18 @@ import { LoginPage } from './LoginPage'
 import { useAuthStore } from '@/stores/authStore'
 import { ApiError } from '@/api/client'
 
+let mockActiveConn = { id: 'local', name: 'Local', baseURL: '', isLocal: true }
+const mockSetActive = vi.fn()
+
+vi.mock('@/stores/connectionsStore', () => ({
+  useConnectionsStore: Object.assign(
+    vi.fn((selector: (s: { setActive: typeof mockSetActive }) => unknown) =>
+      selector({ setActive: mockSetActive })
+    ),
+    { getState: vi.fn(() => ({ active: () => mockActiveConn })) }
+  ),
+}))
+
 function LocationDisplay() {
   const loc = useLocation()
   return <div data-testid="location">{loc.pathname}{loc.search}</div>
@@ -166,5 +178,41 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(screen.getByTestId('location')).toHaveTextContent('/')
+  })
+})
+
+describe('LoginPage - remote connection guard', () => {
+  beforeEach(() => {
+    mockSetActive.mockReset()
+    mockActiveConn = { id: 'local', name: 'Local', baseURL: '', isLocal: true }
+    useAuthStore.setState({ user: null, status: 'anon' })
+    vi.clearAllMocks()
+  })
+
+  it('shows remote panel instead of login form when remote connection is active', () => {
+    mockActiveConn = { id: 'r1', name: 'Staging Server', baseURL: 'https://staging.example.com', isLocal: false }
+    renderLoginPage()
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /switch to local/i })).toBeInTheDocument()
+  })
+
+  it('shows remote connection name in the panel', () => {
+    mockActiveConn = { id: 'r1', name: 'Staging Server', baseURL: 'https://staging.example.com', isLocal: false }
+    renderLoginPage()
+    expect(screen.getByText(/staging server/i)).toBeInTheDocument()
+  })
+
+  it('clicking Switch to Local calls setActive("local")', async () => {
+    mockActiveConn = { id: 'r1', name: 'Staging Server', baseURL: 'https://staging.example.com', isLocal: false }
+    const user = userEvent.setup()
+    renderLoginPage()
+    await user.click(screen.getByRole('button', { name: /switch to local/i }))
+    expect(mockSetActive).toHaveBeenCalledWith('local')
+  })
+
+  it('shows login form (not remote panel) when local connection is active', () => {
+    renderLoginPage()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /switch to local/i })).not.toBeInTheDocument()
   })
 })

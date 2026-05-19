@@ -7,9 +7,11 @@ import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { DailyStats } from '@/components/layout/DailyStats'
 import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
 import { InteractiveSessionsTab } from '@/components/interactive/InteractiveSessionsTab'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { useProjectStore } from '@/stores/projectStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useAuthStore, useIsAdmin } from '@/stores/authStore'
+import { useConnectionsStore } from '@/stores/connectionsStore'
 
 export function Header() {
   const navigate = useNavigate()
@@ -19,6 +21,7 @@ export function Header() {
   const isAdmin = useIsAdmin()
   const logout = useAuthStore((s) => s.logout)
   const [loggingOut, setLoggingOut] = useState(false)
+  const { list: connList, activeId: activeConnId, setActive: setActiveConn } = useConnectionsStore()
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -115,6 +118,22 @@ export function Header() {
             />
           </div>
         </form>
+
+        <Dropdown
+          value={activeConnId}
+          onChange={(value) => {
+            if (value === '__manage') {
+              navigate('/settings/connections')
+            } else {
+              setActiveConn(value)
+            }
+          }}
+          options={[
+            ...connList.map((c) => ({ value: c.id, label: c.name })),
+            { value: '__manage', label: 'Manage connections…' },
+          ]}
+          className="w-40"
+        />
 
         <ProjectSelect
           value={currentProject}

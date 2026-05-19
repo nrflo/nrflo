@@ -1,4 +1,4 @@
-import { useConnectionsStore } from '@/stores/connectionsStore'
+import { useConnectionsStore, type Connection } from '@/stores/connectionsStore'
 
 interface FetchOptions extends RequestInit {
   project?: string
@@ -221,6 +221,36 @@ export async function apiGetBlob(
     if (match) filename = match[2]
   }
   return { blob, filename }
+}
+
+// testConnection bypasses the 401 handler and targets a specific Connection directly.
+export async function testConnection(conn: Connection): Promise<{ ok: boolean; status: number; message?: string }> {
+  const project = conn.activeProject ?? 'default'
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Project': project,
+  }
+  if (!conn.isLocal && conn.token) {
+    headers['Authorization'] = `Bearer ${conn.token}`
+  }
+  try {
+    const response = await fetch(`${conn.baseURL}/api/v1/projects`, {
+      method: 'GET',
+      credentials: conn.isLocal ? 'include' : 'omit',
+      headers,
+    })
+    if (!response.ok) {
+      let message = `Request failed with status ${response.status}`
+      try {
+        const error = await response.json()
+        message = error.error || message
+      } catch { /* ignore */ }
+      return { ok: false, status: response.status, message }
+    }
+    return { ok: true, status: response.status }
+  } catch (e) {
+    return { ok: false, status: 0, message: e instanceof Error ? e.message : 'Network error' }
+  }
 }
 
 export async function apiUploadMultipart<T>(

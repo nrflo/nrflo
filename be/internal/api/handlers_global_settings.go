@@ -77,15 +77,23 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 	}
 
 	resp := map[string]interface{}{
-		"low_consumption_mode":         val == "true",
-		"context_save_via_agent":       contextSaveViaAgentVal == "true",
-		"simplified_agents_graph":      simplifiedAgentsGraphVal == "true",
-		"experimental":                 experimentalVal == "true",
-		"api_mode_enabled":             apiModeVal == "true",
+		"low_consumption_mode":          val == "true",
+		"context_save_via_agent":        contextSaveViaAgentVal == "true",
+		"simplified_agents_graph":       simplifiedAgentsGraphVal == "true",
+		"experimental":                  experimentalVal == "true",
+		"api_mode_enabled":              apiModeVal == "true",
 		"experimental_observer_enabled": observerEnabled,
-		"observer_system_context":      observerSysCtx,
-		"observer_provider":            observerProvider,
-		"observer_model":               observerModel,
+		"observer_system_context":       observerSysCtx,
+		"observer_provider":             observerProvider,
+		"observer_model":                observerModel,
+	}
+	for _, ms := range menuSettings {
+		v, err := boolWithDefault(svc, ms.key, ms.def)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp[ms.key] = v
 	}
 	if stallStartVal != "" {
 		if parsed, parseErr := strconv.Atoi(stallStartVal); parseErr == nil {
@@ -109,17 +117,18 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 // PATCH /api/v1/settings
 func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		LowConsumptionMode           *bool           `json:"low_consumption_mode"`
-		ContextSaveViaAgent          *bool           `json:"context_save_via_agent"`
-		SimplifiedAgentsGraph        *bool           `json:"simplified_agents_graph"`
-		Experimental                 *bool           `json:"experimental"`
-		APIModeEnabled               *bool           `json:"api_mode_enabled"`
-		StallStartTimeoutSec         json.RawMessage `json:"stall_start_timeout_sec"`
-		StallRunningTimeoutSec       json.RawMessage `json:"stall_running_timeout_sec"`
-		ExperimentalObserverEnabled  *bool           `json:"experimental_observer_enabled"`
-		ObserverSystemContext        *string         `json:"observer_system_context"`
-		ObserverProvider             *string         `json:"observer_provider"`
-		ObserverModel                *string         `json:"observer_model"`
+		LowConsumptionMode          *bool           `json:"low_consumption_mode"`
+		ContextSaveViaAgent         *bool           `json:"context_save_via_agent"`
+		SimplifiedAgentsGraph       *bool           `json:"simplified_agents_graph"`
+		Experimental                *bool           `json:"experimental"`
+		APIModeEnabled              *bool           `json:"api_mode_enabled"`
+		StallStartTimeoutSec        json.RawMessage `json:"stall_start_timeout_sec"`
+		StallRunningTimeoutSec      json.RawMessage `json:"stall_running_timeout_sec"`
+		ExperimentalObserverEnabled *bool           `json:"experimental_observer_enabled"`
+		ObserverSystemContext       *string         `json:"observer_system_context"`
+		ObserverProvider            *string         `json:"observer_provider"`
+		ObserverModel               *string         `json:"observer_model"`
+		menuPatchFields
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -213,6 +222,10 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+	}
+
+	if err := applyMenuToggles(req.menuPatchFields, svc, w); err != nil {
+		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})

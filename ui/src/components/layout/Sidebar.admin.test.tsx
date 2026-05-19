@@ -14,10 +14,16 @@ vi.mock('@/hooks/useTickets', () => ({
 
 const mockUseAPIModeEnabled = vi.fn().mockReturnValue(false)
 const mockUseExperimentalEnabled = vi.fn().mockReturnValue(false)
+const mockUseMenuVisibility = vi.fn().mockReturnValue({
+  newTicket: true, importSpec: true, git: true, chainExecutions: true,
+  schedules: true, workflowChains: true, pythonScripts: true,
+  documentation: true, errors: true, agentSessions: true,
+})
 vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => mockUseAPIModeEnabled(),
   useExperimentalEnabled: () => mockUseExperimentalEnabled(),
   useExperimentalObserverEnabled: () => false,
+  useMenuVisibility: () => mockUseMenuVisibility(),
 }))
 
 const mockUseIsAdmin = vi.fn().mockReturnValue(true)
@@ -46,6 +52,11 @@ describe('Sidebar - Admin Role', () => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
     mockUseAPIModeEnabled.mockReturnValue(false)
+    mockUseMenuVisibility.mockReturnValue({
+      newTicket: true, importSpec: true, git: true, chainExecutions: true,
+      schedules: true, workflowChains: true, pythonScripts: true,
+      documentation: true, errors: true, agentSessions: true,
+    })
     mockUseStatus.mockReturnValue({ data: undefined })
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })
@@ -69,6 +80,11 @@ describe('Sidebar - Viewer Role', () => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(false)
     mockUseAPIModeEnabled.mockReturnValue(true)
+    mockUseMenuVisibility.mockReturnValue({
+      newTicket: true, importSpec: true, git: true, chainExecutions: true,
+      schedules: true, workflowChains: true, pythonScripts: true,
+      documentation: true, errors: true, agentSessions: true,
+    })
     mockUseStatus.mockReturnValue({ data: undefined })
     mockUseProjectWorkflow.mockReturnValue({ data: undefined })
     mockUseChainList.mockReturnValue({ data: [] })

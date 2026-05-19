@@ -4,6 +4,7 @@ import { AlertTriangle, Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/stores/projectStore'
 import { GlobalSettingsSection } from '@/components/settings/GlobalSettingsSection'
+import { MenuPanelSection } from '@/components/settings/MenuPanelSection'
 import { ProjectsSection } from '@/components/settings/ProjectsSection'
 import { SystemAgentsSection } from '@/components/settings/SystemAgentsSection'
 import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesSection'
@@ -173,6 +174,7 @@ export function SettingsPage() {
       )}
 
       {activeTab === 'general' && <GlobalSettingsSection />}
+      {activeTab === 'general' && <MenuPanelSection />}
       {activeTab === 'projects' && <ProjectsSection initialEditProjectId={projectParam ?? undefined} />}
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}

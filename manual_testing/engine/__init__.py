@@ -43,6 +43,13 @@ from . import (
     s34_multi_instance_same_ticket,
     s37_ws_event_subscriber,
     s38_notification_webhook,
+    s39_validation_commands_pass,
+    s40_validation_commands_fail,
+    s41_workflow_export_import,
+    s42_service_token,
+    s43_artifacts_e2e,
+    s44_findings_history,
+    s45_notification_script,
 )
 
 
@@ -79,4 +86,11 @@ ALL_SCENARIOS = [
     s34_multi_instance_same_ticket.run,
     s37_ws_event_subscriber.run,
     s38_notification_webhook.run,
+    s39_validation_commands_pass.run,
+    s40_validation_commands_fail.run,
+    s41_workflow_export_import.run,
+    s42_service_token.run,
+    s43_artifacts_e2e.run,
+    s44_findings_history.run,
+    s45_notification_script.run,
 ]

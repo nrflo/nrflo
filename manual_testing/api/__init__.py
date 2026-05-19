@@ -24,6 +24,8 @@ from . import (
     A08_low_context_agent_save,
     A09_stall_restart,
     A10_auth_error,
+    A11_python_tool_dispatch,
+    A12_api_mode_toggle,
 )
 
 
@@ -38,4 +40,6 @@ ALL_SCENARIOS = [
     A08_low_context_agent_save.run,
     A09_stall_restart.run,
     A10_auth_error.run,
+    A11_python_tool_dispatch.run,
+    A12_api_mode_toggle.run,
 ]

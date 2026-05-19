@@ -127,6 +127,21 @@ def errors_for_project(home: Path, project_id: str) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def tool_dispatches(home: Path, project_id: str) -> list[dict[str, Any]]:
+    """All tool_dispatches rows for a project ordered by created_at."""
+    with _connect(home) as c:
+        rows = c.execute(
+            """
+            SELECT id, project_id, session_id, tool_name, input, output,
+                   status, error_msg, duration_ms, created_at
+            FROM tool_dispatches WHERE project_id = ?
+            ORDER BY created_at ASC
+            """,
+            (project_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def ticket(home: Path, project_id: str, ticket_id: str) -> dict[str, Any] | None:
     with _connect(home) as c:
         row = c.execute(

@@ -48,6 +48,13 @@ When you add or remove a scenario, edit this file in the same commit.
 | s35 | POST /cli-models registers custom model |
 | s37 | WS subscriber receives workflow events |
 | s38 | notification webhook fires on completion |
+| s39 | declarative validation_commands run on pass (no flip) |
+| s40 | validation_commands non-zero exit flips session to fail + validation_failure finding |
+| s41 | workflow export/import round-trips into a fresh project and runs |
+| s42 | service token bearer scope: ok on matching project, 403 on mismatch |
+| s43 | artifacts: stage upload + input_artifacts + agent add/list end-to-end |
+| s44 | findings audit history returns insert + update rows for same key |
+| s45 | notification channel kind='script' runs user Python on completion |
 
 ## Python (script-mode) scenarios (P-prefix)
 
@@ -71,6 +78,7 @@ When you add or remove a scenario, edit this file in the same commit.
 | P16 | stderr surfaces as `[stderr]`-prefixed log lines |
 | P17 | multiple c.skip(tag) calls accumulate + dedupe |
 | P18 | SDK c.agent.chain_next_ticket + require_ticket_handoff |
+| P19 | SDK c.notification() parses NRFLO_NOTIFY_PAYLOAD_JSON |
 
 ## API-mode scenarios (A-prefix)
 
@@ -91,18 +99,20 @@ SKIPs cleanly when no token is reachable.
 | A08 | low-context forces agent-save branch (never `--resume`) + carryover |
 | A09 | hung HTTP tool trips stall_running_timeout_sec in api-mode |
 | A10 | bogus per-project OAuth token → result_reason=api_error + auth_error row |
+| A11 | api-mode invokes a `kind='tool'` python_scripts row; tool_dispatches row written |
+| A12 | api_mode_enabled runtime toggle: off → spawn rejected; on → spawn passes |
 
 ## Folder applicability
 
 | Folder      | Members |
 |-------------|---------|
-| `engine/`   | every s-id except s05, s27, s35 (32 scenarios, run under `claude`) |
+| `engine/`   | every s-id except s05, s27, s35 (39 scenarios, run under `claude`) |
 | `claude/`   | s05, s35 |
 | `codex/`    | s05, s35 |
 | `gemini/`   | s05, s35 |
 | `opencode/` | s05, s27, s35 |
-| `python/`   | P01..P18 |
-| `api/`      | A01..A10 |
+| `python/`   | P01..P19 |
+| `api/`      | A01..A12 |
 
 `s05`, `s35`, and `s27` are the only scenarios with provider-specific
 implementations:

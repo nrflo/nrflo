@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import http.cookiejar
 import json
+import mimetypes
+import os
 import urllib.error
 import urllib.request
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -55,22 +58,37 @@ class NrfloClient:
         body: Any = None,
         project: str | None = None,
         expect_status: int | None = None,
+        bearer: str | None = None,
+        raw_body: bytes | None = None,
+        content_type: str | None = None,
+        use_cookies: bool = True,
     ) -> Any:
         """Issue a request. When `expect_status` is set, return
         `(status, decoded_body)` for *any* HTTP status and never raise —
         callers asserting negative paths (e.g. 409) use this.
-        Otherwise non-2xx raises APIError."""
+        Otherwise non-2xx raises APIError.
+
+        `bearer` sends `Authorization: Bearer <token>` and bypasses the
+        cookie jar (used by service-token scenarios).
+        `raw_body`/`content_type` are used for multipart uploads."""
         url = self.base_url + path
-        data = None
+        data: bytes | None = None
         headers: dict[str, str] = {"Accept": "application/json"}
-        if body is not None:
+        if raw_body is not None:
+            data = raw_body
+            if content_type:
+                headers["Content-Type"] = content_type
+        elif body is not None:
             data = json.dumps(body).encode("utf-8")
             headers["Content-Type"] = "application/json"
         if project:
             headers["X-Project"] = project
+        if bearer:
+            headers["Authorization"] = f"Bearer {bearer}"
+        opener = self._opener if use_cookies else urllib.request.build_opener()
         req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:
-            with self._opener.open(req, timeout=30) as resp:
+            with opener.open(req, timeout=30) as resp:
                 raw = resp.read().decode("utf-8")
                 status = resp.status
         except urllib.error.HTTPError as e:
@@ -182,6 +200,7 @@ class NrfloClient:
         execution_mode: str | None = None,
         python_script_id: str | None = None,
         tools: str | None = None,
+        validation_commands: list[str] | None = None,
     ) -> dict:
         body: dict[str, Any] = {
             "id": agent_id,
@@ -207,6 +226,8 @@ class NrfloClient:
             body["restart_threshold"] = restart_threshold
         if tools is not None:
             body["tools"] = tools
+        if validation_commands is not None:
+            body["validation_commands"] = validation_commands
         # Per-call override beats process default.
         mode = execution_mode if execution_mode is not None else self.default_execution_mode
         if mode is not None:
@@ -223,10 +244,20 @@ class NrfloClient:
     def create_python_script(
         self, project_id: str, *, name: str, code: str = "",
         description: str = "", file_path: str | None = None,
+        kind: str | None = None, tool_description: str | None = None,
+        input_schema: str | None = None, timeout_sec: int | None = None,
     ) -> dict:
         body: dict[str, Any] = {"name": name, "code": code, "description": description}
         if file_path is not None:
             body["file_path"] = file_path
+        if kind is not None:
+            body["kind"] = kind
+        if tool_description is not None:
+            body["tool_description"] = tool_description
+        if input_schema is not None:
+            body["input_schema"] = input_schema
+        if timeout_sec is not None:
+            body["timeout_sec"] = timeout_sec
         return self._request(
             "POST",
             "/api/v1/python-scripts",
@@ -245,6 +276,7 @@ class NrfloClient:
         endless_loop: bool = False,
         interactive: bool = False,
         plan_mode: bool = False,
+        input_artifacts: list[dict] | None = None,
     ) -> dict:
         body: dict[str, Any] = {"workflow": workflow_id}
         if endless_loop:
@@ -255,6 +287,8 @@ class NrfloClient:
             body["interactive"] = True
         if plan_mode:
             body["plan_mode"] = True
+        if input_artifacts:
+            body["input_artifacts"] = input_artifacts
         return self._request(
             "POST",
             f"/api/v1/projects/{project_id}/workflow/run",
@@ -481,5 +515,106 @@ class NrfloClient:
         return self._request(
             "GET",
             f"/api/v1/tickets/{ticket_id}/workflow{suffix}",
+            project=project_id,
+        )
+
+    # ---- workflow export / import -------------------------------------
+
+    def export_workflow(self, project_id: str, workflow_id: str) -> dict:
+        return self._request(
+            "GET",
+            f"/api/v1/workflows/{workflow_id}/export",
+            project=project_id,
+        )
+
+    def import_workflow_check(self, project_id: str, bundle: dict) -> dict:
+        return self._request(
+            "POST",
+            "/api/v1/workflows/import/check",
+            body=bundle,
+            project=project_id,
+        )
+
+    def import_workflow(
+        self, project_id: str, bundle: dict, *, action: str = "overwrite",
+    ) -> dict:
+        return self._request(
+            "POST",
+            "/api/v1/workflows/import",
+            body={"bundle": bundle, "action": action},
+            project=project_id,
+        )
+
+    # ---- service tokens (admin-minted, project-scoped) -----------------
+
+    def create_service_token(self, project_id: str, name: str) -> dict:
+        return self._request(
+            "POST",
+            "/api/v1/service-tokens",
+            body={"project_id": project_id, "name": name},
+        )
+
+    def bearer_get(
+        self,
+        path: str,
+        *,
+        token: str,
+        project: str | None = None,
+        expect_status: int | None = None,
+    ) -> Any:
+        """Issue GET with Authorization: Bearer <token> and no cookies. For
+        service-token scope tests where the cookie jar would otherwise grant
+        admin access."""
+        return self._request(
+            "GET", path,
+            bearer=token, project=project,
+            expect_status=expect_status, use_cookies=False,
+        )
+
+    # ---- artifacts ----------------------------------------------------
+
+    def stage_artifact_upload(
+        self, project_id: str, *, filename: str, data: bytes,
+        content_type: str | None = None,
+    ) -> dict:
+        """POST /api/v1/artifact-uploads with a single file part. Returns
+        ArtifactUploadResponse {upload_id, name, size_bytes, content_type}."""
+        boundary = "----nrflo-manual-" + uuid.uuid4().hex
+        ct = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        parts: list[bytes] = []
+        parts.append(f"--{boundary}\r\n".encode("utf-8"))
+        parts.append(
+            (f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+             f"Content-Type: {ct}\r\n\r\n").encode("utf-8")
+        )
+        parts.append(data)
+        parts.append(b"\r\n")
+        parts.append(f"--{boundary}--\r\n".encode("utf-8"))
+        body = b"".join(parts)
+        return self._request(
+            "POST", "/api/v1/artifact-uploads",
+            project=project_id, raw_body=body,
+            content_type=f"multipart/form-data; boundary={boundary}",
+        )
+
+    def list_artifacts(self, instance_id: str, project_id: str) -> list[dict]:
+        return self._request(
+            "GET",
+            f"/api/v1/workflow-instances/{instance_id}/artifacts",
+            project=project_id,
+        )
+
+    # ---- findings history ---------------------------------------------
+
+    def findings_history(
+        self, scope: str, scope_id: str, *,
+        project_id: str, key: str | None = None,
+    ) -> Any:
+        q = [f"scope={scope}", f"scope_id={scope_id}"]
+        if key:
+            q.append(f"key={key}")
+        return self._request(
+            "GET",
+            f"/api/v1/findings/history?" + "&".join(q),
             project=project_id,
         )

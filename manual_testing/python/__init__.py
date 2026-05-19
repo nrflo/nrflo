@@ -25,6 +25,7 @@ from . import (
     P16_stderr_captured,
     P17_multi_skip_tag,
     P18_chain_require_ticket_handoff,
+    P19_notification_accessor,
 )
 
 
@@ -47,4 +48,5 @@ ALL_SCENARIOS = [
     P16_stderr_captured.run,
     P17_multi_skip_tag.run,
     P18_chain_require_ticket_handoff.run,
+    P19_notification_accessor.run,
 ]

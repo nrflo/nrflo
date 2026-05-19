@@ -1,6 +1,6 @@
 # NRFLO
 
-A self-hosted control plane for AI engineering workflows.
+Self-hosted orchestrator for coding-agent workflows.
 
 NRFLO orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
 
@@ -17,18 +17,21 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
 - **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
 - **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
-- **Mixed-agent compatible** — run workflows across Claude Code, Opencode, and Codex without changing the workflow model
-- **Uses your existing CLI subscriptions. No API billing.** NRFLO drives Claude Code, Opencode, and Codex in two flavours — as non-interactive batch invocations for headless layered runs, or as PTY-attached interactive sessions you can take over live in the browser. Both flavours reuse each tool's local login, so runs go through your Claude Pro / Max, ChatGPT, or Opencode provider plan. Nothing new to pay for, no API keys to rotate, no per-token surprises.
+- **Mixed-agent compatible** — run workflows across Claude Code, Opencode, Codex, and Gemini without changing the workflow model
+- **Uses your existing CLI subscriptions. No API billing required.** NRFLO drives Claude Code, Opencode, Codex, and Gemini as PTY-attached interactive sessions you can take over live in the browser, reusing each tool's local login (Claude Pro / Max, ChatGPT, Opencode provider plan, Gemini). For Anthropic users, an optional in-process **API mode** is available as an admin-toggled runtime setting, with OAuth bearer support to bill against a Claude subscription rather than API keys.
 
 ## Core capabilities
 
 ### Orchestration
-- Vendor-agnostic orchestration across Claude Code, Opencode, and Codex
+- Vendor-agnostic orchestration across Claude Code, Opencode, Codex, and Gemini
 - Layered execution with same-layer parallelism and sequential layer progression
 - Ticket-scoped and project-scoped workflows
 - Dependency-aware sequential ticket chains
 - Endless loop mode for project-scoped workflows that re-spawn after completion
 - Per-agent low-consumption toggle that swaps to a cheaper model on the fly
+- Workflow export/import for sharing definitions between projects or installations
+- Import Spec entry point with a `spec-normalizer` agent that turns free-form specs into workflow input
+- Declarative per-agent `validation_commands` that run after a pass and gate the layer
 
 ### Scheduled execution
 - Cron-driven scheduler dispatches workflows or workflow chains on a schedule
@@ -41,9 +44,9 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - Prompt templates, findings expansion, and model controls
 
 ### Human control and recovery
-- Browser takeover of live runs (kill-and-resume, or live viewer-attach in interactive CLI mode)
+- Browser takeover of live runs (kill-and-resume, or live viewer-attach)
 - Interactive start, plan mode, and resume flows
-- PTY-backed interactive CLI mode for Claude/Codex/Opencode with live keystroke capture
+- PTY-backed sessions for Claude, Codex, Opencode, and Gemini with live keystroke capture
 - Idle/nudge loop that prompts unresponsive interactive agents before failing them
 - Low-context continuation, stall restart, manual restart, and retry from the failed layer
 
@@ -53,8 +56,18 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - Conflict-resolver agent on failed merge
 - Optional push after merge
 
+### Artifacts and external access
+- Per-project artifact storage with local, Cloudflare R2, and S3 backends
+- Artifact uploader in the Run Workflow form; per-agent and all-artifacts UI tabs
+- Service tokens — long-lived project-scoped bearer tokens for external REST callers
+
+### Rate limits
+- CLI-side and API-mode rate-limit detection with automatic backoff and relaunch
+- UI rate-limit badge with WS-driven countdown
+
 ### Notifications
 - Per-project Slack and Telegram channels for workflow events
+- Custom Python-script notification channels for routing events to anything else
 
 ### Observability
 - Real-time workflow graph
@@ -121,7 +134,7 @@ On Linux there is no system tray; the server runs headless and is reached at htt
 When serving over plain HTTP (e.g. localhost or a LAN), start the server with `--insecure-cookies` so the session cookie is not marked `Secure` and login works in the browser:
 
 ```bash
-nrflo_server serve --host 0.0.0.0 --insecure-cookies
+nrflo_server --host 0.0.0.0 --insecure-cookies
 ```
 
 Drop `--insecure-cookies` once the server is fronted by HTTPS.
@@ -135,7 +148,7 @@ make build && make install
 ### Run
 
 ```bash
-nrflo_server serve
+nrflo_server
 # Open http://localhost:6587
 ```
 
@@ -144,7 +157,7 @@ Sign in with the seeded admin account — **username `admin`, password `admin`**
 To make the server accessible on the local network:
 
 ```bash
-nrflo_server serve --host 0.0.0.0
+nrflo_server --host 0.0.0.0
 ```
 
 ## CLI Overview

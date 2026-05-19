@@ -72,7 +72,7 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 
 Rules every change must respect.
 
-- **Server-only**: `nrflo_server serve` is the only user-facing command; all management goes through the web UI.
+- **Server-only**: `nrflo_server` is the only user-facing command; all management goes through the web UI.
 - **Two binaries**: `nrflo_server` (server) and `nrflo` (agent + ticket/deps CLI).
 - **Single global SQLite DB**: `~/.nrflo/nrflo.data` (override with `NRFLO_HOME`); migrations auto-run on startup.
 - **Project scope from env**: every CLI/API call resolves the project from `NRFLO_PROJECT` (or the `X-Project` header for HTTP).

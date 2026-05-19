@@ -55,6 +55,7 @@ When you add or remove a scenario, edit this file in the same commit.
 | s43 | artifacts: stage upload + input_artifacts + agent add/list end-to-end |
 | s44 | findings audit history returns insert + update rows for same key |
 | s45 | notification channel kind='script' runs user Python on completion |
+| s46 | observer agents: launch/read/mutate per scope, cross-scope deny, flag-off 404 |
 
 ## Python (script-mode) scenarios (P-prefix)
 
@@ -106,7 +107,7 @@ SKIPs cleanly when no token is reachable.
 
 | Folder      | Members |
 |-------------|---------|
-| `engine/`   | every s-id except s05, s27, s35 (39 scenarios, run under `claude`) |
+| `engine/`   | every s-id except s05, s27, s35 (40 scenarios, run under `claude`) |
 | `claude/`   | s05, s35 |
 | `codex/`    | s05, s35 |
 | `gemini/`   | s05, s35 |

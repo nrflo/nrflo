@@ -50,6 +50,7 @@ from . import (
     s43_artifacts_e2e,
     s44_findings_history,
     s45_notification_script,
+    s46_observer,
 )
 
 
@@ -93,4 +94,5 @@ ALL_SCENARIOS = [
     s43_artifacts_e2e.run,
     s44_findings_history.run,
     s45_notification_script.run,
+    s46_observer.run,
 ]

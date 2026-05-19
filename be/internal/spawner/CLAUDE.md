@@ -145,3 +145,7 @@ The orchestrator calls `venvMgr.Ensure(ctx, projectID, projectRoot)` once per wo
 | *(per-project vars)* | `Config.ProjectEnv` entries appended last (last-wins) |
 
 Run `make test-pkg PKG=spawner`.
+
+## Observer Agent
+
+Entry point: `spawn_observer.go:23`. Called by `ObserverService.Launch` (service/observer.go) — bypasses orchestrator, layer, and phase; no `workflow_instances` row is created. The session row uses `agent_type=_observer`, `phase=observer`, `kind=observer`, and `observer_scope` set to the requested scope. Env vars injected in addition to the standard agent envelope: `NRF_OBSERVER=1`, `NRF_OBSERVER_SCOPE`, `NRF_PROJECT_ID`, and (when scope=workflow) `NRF_WORKFLOW_ID`. Terminates via the standard `CompleteInteractive` / `KillInteractive` interactive-wait path.

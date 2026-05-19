@@ -98,7 +98,6 @@ Rules every change must respect.
 ### Agents, templates, and configuration
 - **Workflow definitions, agent definitions, system agents** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [agent_manual.md](agent_manual.md)
 - **Default templates** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Low consumption mode** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **CLI models registry / supported models** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 
 ### Execution backends (`execution_mode`)
@@ -123,9 +122,11 @@ Rules every change must respect.
 ### Storage & operations
 - **Artifact storage + agent runtime (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `nrflo agent artifact add|list|get`, api-mode builtins, Python SDK `c.artifacts`)** → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Notification channels** → [be/CLAUDE.md](be/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
+
+### Observer (experimental)
+- **Observer agents (experimental, env-gated)** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 See `be/cmd/server/main.go` for subcommands.
 

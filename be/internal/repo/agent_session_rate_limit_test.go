@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/db"
 	"be/internal/model"
 )
 
@@ -130,5 +131,103 @@ func TestListLiveByProject_RateLimitUntilTs_Null(t *testing.T) {
 	}
 	if rows[0].RateLimitUntilTs.Valid {
 		t.Errorf("RateLimitUntilTs.Valid = true, want false (null)")
+	}
+}
+
+// insertContinuedSessionWithRateLimit inserts a continued session with rate_limit_until_ts set.
+// Pass rateLimitUntilTs="" to store NULL (excluded by GetRunning WHERE clause).
+func insertContinuedSessionWithRateLimit(t *testing.T, database *db.DB, id, wfiID, rateLimitUntilTs string) {
+	t.Helper()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	var rlTs interface{}
+	if rateLimitUntilTs != "" {
+		rlTs = rateLimitUntilTs
+	}
+	_, err := database.Exec(`
+		INSERT INTO agent_sessions
+		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, started_at, created_at, updated_at, rate_limit_until_ts)
+		VALUES (?, 'proj', 'TKT-1', ?, 'test-phase', 'test-agent', 'sonnet', 'continued', ?, ?, ?, ?)`,
+		id, wfiID, now, now, now, rlTs)
+	if err != nil {
+		t.Fatalf("insertContinuedSessionWithRateLimit(%s): %v", id, err)
+	}
+}
+
+// TestGetRunning_ContinuedWithRateLimitReturned verifies that continued sessions with a
+// non-NULL rate_limit_until_ts (both future and past) are returned by GetRunning.
+// Filtering by future/past is the caller's responsibility.
+func TestGetRunning_ContinuedWithRateLimitReturned(t *testing.T) {
+	t.Parallel()
+	database, r, wfiID := setupRunningTestDB(t)
+	defer database.Close()
+
+	futureTs := time.Now().UTC().Add(time.Hour).Format(time.RFC3339Nano)
+	pastTs := time.Now().UTC().Add(-time.Hour).Format(time.RFC3339Nano)
+	insertContinuedSessionWithRateLimit(t, database, "sess-future", wfiID, futureTs)
+	insertContinuedSessionWithRateLimit(t, database, "sess-past", wfiID, pastTs)
+
+	sessions, err := r.GetRunning(50)
+	if err != nil {
+		t.Fatalf("GetRunning() error: %v", err)
+	}
+	if len(sessions) != 2 {
+		t.Errorf("GetRunning() = %d sessions, want 2 (caller owns future/past filter)", len(sessions))
+	}
+	for _, s := range sessions {
+		if s.Status != model.AgentSessionContinued {
+			t.Errorf("session %s status = %s, want continued", s.ID, s.Status)
+		}
+		if !s.RateLimitUntilTs.Valid {
+			t.Errorf("session %s RateLimitUntilTs must be valid (non-NULL)", s.ID)
+		}
+	}
+}
+
+// TestGetRunning_ContinuedWithNullRateLimitExcluded verifies that continued sessions
+// with NULL rate_limit_until_ts are excluded by the GetRunning WHERE clause.
+func TestGetRunning_ContinuedWithNullRateLimitExcluded(t *testing.T) {
+	t.Parallel()
+	database, r, wfiID := setupRunningTestDB(t)
+	defer database.Close()
+
+	insertContinuedSessionWithRateLimit(t, database, "sess-null-rl", wfiID, "")
+
+	sessions, err := r.GetRunning(50)
+	if err != nil {
+		t.Fatalf("GetRunning() error: %v", err)
+	}
+	if len(sessions) != 0 {
+		t.Errorf("GetRunning() = %d sessions, want 0 (continued+null rate_limit excluded)", len(sessions))
+	}
+}
+
+// TestGetRunning_MixedRunningAndContinuedRateLimit verifies running and
+// continued+non-null rate_limit sessions are both returned.
+func TestGetRunning_MixedRunningAndContinuedRateLimit(t *testing.T) {
+	t.Parallel()
+	database, r, wfiID := setupRunningTestDB(t)
+	defer database.Close()
+
+	now := time.Now().UTC()
+	insertRunningSession(t, database, "sess-running", wfiID, model.AgentSessionRunning, now)
+	futureTs := now.Add(time.Hour).Format(time.RFC3339Nano)
+	insertContinuedSessionWithRateLimit(t, database, "sess-rl", wfiID, futureTs)
+
+	sessions, err := r.GetRunning(50)
+	if err != nil {
+		t.Fatalf("GetRunning() error: %v", err)
+	}
+	if len(sessions) != 2 {
+		t.Errorf("GetRunning() = %d sessions, want 2 (running + continued+rate_limit)", len(sessions))
+	}
+	counts := make(map[model.AgentSessionStatus]int)
+	for _, s := range sessions {
+		counts[s.Status]++
+	}
+	if counts[model.AgentSessionRunning] != 1 {
+		t.Errorf("running count = %d, want 1", counts[model.AgentSessionRunning])
+	}
+	if counts[model.AgentSessionContinued] != 1 {
+		t.Errorf("continued count = %d, want 1", counts[model.AgentSessionContinued])
 	}
 }

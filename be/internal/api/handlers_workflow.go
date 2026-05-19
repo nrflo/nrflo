@@ -310,6 +310,19 @@ func (s *Server) handleGetRunningAgents(w http.ResponseWriter, r *http.Request) 
 	now := s.clock.Now()
 	agents := make([]map[string]interface{}, 0, len(sessions))
 	for _, sess := range sessions {
+		// For continued sessions, filter out those whose rate limit has expired
+		if sess.Status == model.AgentSessionContinued {
+			if !sess.RateLimitUntilTs.Valid {
+				continue
+			}
+			ts, err := time.Parse(time.RFC3339Nano, sess.RateLimitUntilTs.String)
+			if err != nil {
+				ts, err = time.Parse(time.RFC3339, sess.RateLimitUntilTs.String)
+			}
+			if err != nil || !ts.After(now) {
+				continue
+			}
+		}
 		var elapsedSec float64
 		if sess.StartedAt.Valid {
 			if t, err := time.Parse(time.RFC3339Nano, sess.StartedAt.String); err == nil {
@@ -320,7 +333,7 @@ func (s *Server) handleGetRunningAgents(w http.ResponseWriter, r *http.Request) 
 		if sess.ModelID.Valid {
 			modelID = sess.ModelID.String
 		}
-		agents = append(agents, map[string]interface{}{
+		agent := map[string]interface{}{
 			"session_id":   sess.ID,
 			"project_id":   sess.ProjectID,
 			"project_name": projectMap[sess.ProjectID],
@@ -331,7 +344,13 @@ func (s *Server) handleGetRunningAgents(w http.ResponseWriter, r *http.Request) 
 			"phase":        sess.Phase,
 			"started_at":   sess.StartedAt.String,
 			"elapsed_sec":  elapsedSec,
-		})
+		}
+		if sess.Status == model.AgentSessionContinued && sess.RateLimitUntilTs.Valid {
+			agent["waiting_for_rate_limit"] = true
+			agent["rate_limit_until_ts"] = sess.RateLimitUntilTs.String
+			agent["rate_limit_retry_count"] = sess.RateLimitRetryCount
+		}
+		agents = append(agents, agent)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

@@ -8,9 +8,12 @@ import (
 
 // PhaseStatus represents the status of a phase within a workflow instance.
 // Used by service.derivePhaseStatuses — not stored in workflow_instances table.
+// status values: pending, in_progress, completed, skipped, rate_limited.
 type PhaseStatus struct {
-	Status string `json:"status"`
-	Result string `json:"result,omitempty"`
+	Status              string `json:"status"`
+	Result              string `json:"result,omitempty"`
+	RateLimitUntilTs    string `json:"rate_limit_until_ts,omitempty"`
+	RateLimitRetryCount int    `json:"rate_limit_retry_count,omitempty"`
 }
 
 // WorkflowInstanceStatus represents the status of a workflow instance

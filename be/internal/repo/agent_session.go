@@ -610,13 +610,15 @@ func (r *AgentSessionRepo) CountRunning() (int, error) {
 	return count, err
 }
 
-// GetRunning retrieves currently running agent sessions across all projects
+// GetRunning retrieves running and rate-limited (continued+non-null rate_limit_until_ts) agent
+// sessions across all projects. Callers are responsible for filtering continued rows by
+// comparing rate_limit_until_ts against clock.Now().
 func (r *AgentSessionRepo) GetRunning(limit int) ([]*model.AgentSession, error) {
 	rows, err := r.db.Query(`
 		SELECT `+sessionColsJoined+`
 		FROM agent_sessions s
 		JOIN workflow_instances wi ON s.workflow_instance_id = wi.id
-		WHERE s.status = 'running'
+		WHERE (s.status = 'running' OR (s.status = 'continued' AND s.rate_limit_until_ts IS NOT NULL))
 		ORDER BY s.started_at ASC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err

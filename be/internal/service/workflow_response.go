@@ -16,24 +16,24 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
 		SELECT s.id, s.phase, s.agent_type, s.model_id, s.pid, s.result, s.started_at, s.context_left, s.restart_count,
-		       ad.restart_threshold, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode
+		       ad.restart_threshold, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode, s.status, s.rate_limit_until_ts, s.rate_limit_retry_count
 		FROM agent_sessions s
 		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
 			AND LOWER(ad.workflow_id) = LOWER(wi.workflow_id)
 			AND LOWER(ad.id) = LOWER(s.agent_type)
-		WHERE s.workflow_instance_id = ? AND s.status = 'running' AND s.agent_type NOT IN ('planner', 'context-saver', 'conflict-resolver')`, wfiID)
+		WHERE s.workflow_instance_id = ? AND (s.status = 'running' OR (s.status = 'continued' AND s.rate_limit_until_ts IS NOT NULL)) AND s.agent_type NOT IN ('planner', 'context-saver', 'conflict-resolver')`, wfiID)
 	if err != nil {
 		return agents
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var id, agentType string
-		var phase, modelID, agentResult, startedAt, ancestorSessionID, tag, effectiveMode sql.NullString
+		var id, agentType, status string
+		var phase, modelID, agentResult, startedAt, ancestorSessionID, tag, effectiveMode, rateLimitUntilTs sql.NullString
 		var pid, contextLeft, restartThreshold sql.NullInt64
-		var restartCount, nudgeCount int
-		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode)
+		var restartCount, nudgeCount, rateLimitRetryCount int
+		rows.Scan(&id, &phase, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode, &status, &rateLimitUntilTs, &rateLimitRetryCount)
 
 		key := agentType
 		agent := map[string]interface{}{
@@ -85,6 +85,21 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 			if dets, ok := detailsMap[chainRoot]; ok {
 				agent["restart_details"] = dets
 			}
+		}
+		if status == "continued" {
+			if !rateLimitUntilTs.Valid {
+				continue
+			}
+			ts, parseErr := time.Parse(time.RFC3339Nano, rateLimitUntilTs.String)
+			if parseErr != nil {
+				ts, parseErr = time.Parse(time.RFC3339, rateLimitUntilTs.String)
+			}
+			if parseErr != nil || !ts.After(s.clock.Now()) {
+				continue
+			}
+			agent["waiting_for_rate_limit"] = true
+			agent["rate_limit_until_ts"] = rateLimitUntilTs.String
+			agent["rate_limit_retry_count"] = rateLimitRetryCount
 		}
 		agents[key] = agent
 	}
@@ -186,6 +201,53 @@ func (s *WorkflowService) derivePhaseStatuses(wfiID string, phases []PhaseDef) m
 		result[p.ID] = model.PhaseStatus{Status: "pending"}
 	}
 
+	seen := make(map[string]bool)
+	maxLayer := -1
+
+	// Pre-pass: continued sessions with a future rate_limit_until_ts become "rate_limited".
+	// Use a separate dedup set so expired waiting rows don't block the main loop.
+	waitingDeduped := make(map[string]bool)
+	waitingRows, waitingErr := s.pool.Query(`
+		SELECT agent_type, rate_limit_until_ts, rate_limit_retry_count FROM agent_sessions
+		WHERE workflow_instance_id = ? AND status = 'continued' AND rate_limit_until_ts IS NOT NULL
+		AND agent_type NOT IN ('planner', 'context-saver', 'conflict-resolver')
+		ORDER BY created_at DESC`, wfiID)
+	if waitingErr == nil {
+		now := s.clock.Now()
+		for waitingRows.Next() {
+			var agentType string
+			var rateLimitUntilTs sql.NullString
+			var rateLimitRetryCount int
+			waitingRows.Scan(&agentType, &rateLimitUntilTs, &rateLimitRetryCount)
+			if waitingDeduped[agentType] {
+				continue
+			}
+			waitingDeduped[agentType] = true
+			if !rateLimitUntilTs.Valid {
+				continue
+			}
+			ts, parseErr := time.Parse(time.RFC3339Nano, rateLimitUntilTs.String)
+			if parseErr != nil {
+				ts, parseErr = time.Parse(time.RFC3339, rateLimitUntilTs.String)
+			}
+			if parseErr != nil || !ts.After(now) {
+				continue
+			}
+			result[agentType] = model.PhaseStatus{
+				Status:              "rate_limited",
+				RateLimitUntilTs:    rateLimitUntilTs.String,
+				RateLimitRetryCount: rateLimitRetryCount,
+			}
+			seen[agentType] = true
+			for _, p := range phases {
+				if p.ID == agentType && p.Layer > maxLayer {
+					maxLayer = p.Layer
+				}
+			}
+		}
+		waitingRows.Close()
+	}
+
 	// Query latest non-continued/callback session per agent_type
 	rows, err := s.pool.Query(`
 		SELECT agent_type, status, result FROM agent_sessions
@@ -197,8 +259,6 @@ func (s *WorkflowService) derivePhaseStatuses(wfiID string, phases []PhaseDef) m
 	defer rows.Close()
 
 	// Group by agent_type, take latest session per agent
-	seen := make(map[string]bool)
-	maxLayer := -1 // track highest layer with a session
 	for rows.Next() {
 		var agentType, status string
 		var sessionResult sql.NullString
@@ -250,17 +310,36 @@ func (s *WorkflowService) derivePhaseStatuses(wfiID string, phases []PhaseDef) m
 	return result
 }
 
-// deriveCurrentPhase returns the phase of the latest running agent session, or empty string if none.
+// deriveCurrentPhase returns the phase of the latest active agent session (running,
+// user_interactive, or rate-limited continued), or empty string if none.
 func (s *WorkflowService) deriveCurrentPhase(wfiID string) string {
-	var phase sql.NullString
-	err := s.pool.QueryRow(`
-		SELECT phase FROM agent_sessions
+	var runningPhase, runningCreatedAt sql.NullString
+	s.pool.QueryRow(`
+		SELECT phase, created_at FROM agent_sessions
 		WHERE workflow_instance_id = ? AND status IN ('running', 'user_interactive')
-		ORDER BY created_at DESC LIMIT 1`, wfiID).Scan(&phase)
-	if err != nil || !phase.Valid {
+		ORDER BY created_at DESC LIMIT 1`, wfiID).Scan(&runningPhase, &runningCreatedAt)
+
+	nowStr := s.clock.Now().UTC().Format(time.RFC3339Nano)
+	var waitingPhase, waitingCreatedAt sql.NullString
+	s.pool.QueryRow(`
+		SELECT phase, created_at FROM agent_sessions
+		WHERE workflow_instance_id = ? AND status = 'continued' AND rate_limit_until_ts IS NOT NULL AND rate_limit_until_ts > ?
+		ORDER BY created_at DESC LIMIT 1`, wfiID, nowStr).Scan(&waitingPhase, &waitingCreatedAt)
+
+	if !waitingPhase.Valid {
+		if runningPhase.Valid {
+			return runningPhase.String
+		}
 		return ""
 	}
-	return phase.String
+	if !runningPhase.Valid {
+		return waitingPhase.String
+	}
+	// Both candidates exist; return the one with the later created_at
+	if waitingCreatedAt.String > runningCreatedAt.String {
+		return waitingPhase.String
+	}
+	return runningPhase.String
 }
 
 // DeriveWorkflowProgress computes workflow progress for a set of workflow instances.

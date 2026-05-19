@@ -1,6 +1,4 @@
-import { apiGet, getProject, ApiError } from './client'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+import { apiGet, ApiError, requestConfig } from './client'
 
 export interface EnvVarCatalogEntry {
   name: string
@@ -75,14 +73,20 @@ export interface JiraIssueSummary {
 
 // Thin fetch wrapper that detects 412 and throws NotConfiguredError
 async function apiFetchWith412<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const cfg = requestConfig()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Project': cfg.project,
+    ...((options.headers as Record<string, string>) ?? {}),
+  }
+  if (cfg.auth) {
+    headers['Authorization'] = `Bearer ${cfg.auth}`
+  }
+
+  const response = await fetch(`${cfg.baseURL}${endpoint}`, {
     ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Project': getProject(),
-      ...((options.headers as Record<string, string>) ?? {}),
-    },
+    credentials: cfg.useCookie ? 'include' : 'omit',
+    headers,
   })
 
   if (response.status === 412) {

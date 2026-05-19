@@ -4,8 +4,8 @@ API client modules for communicating with the nrflo backend.
 
 ## Architecture
 
-- All API calls go through `client.ts`: configured fetch wrapper with `credentials: 'include'`, `X-Project` header injection, and `UnauthenticatedError`/`ForbiddenError` subclasses.
-- Project scope via `X-Project` header or `?project=` query parameter.
+- All API calls go through `client.ts`: fetch wrapper that resolves baseURL/project/auth at call time from the active `connectionsStore` connection (`requestConfig()` in `client.ts`). Local connections use cookie auth (`credentials: 'include'`); remote connections use `Authorization: Bearer <token>` with `credentials: 'omit'`. Exposes `UnauthenticatedError`/`ForbiddenError` subclasses and a global 401 handler.
+- Project scope via `X-Project` header or `?project=` query parameter; project ID lives on the active connection (`connectionsStore.active().activeProject`).
 - TanStack Query handles caching and refetching in the hooks layer; see [hooks/CLAUDE.md](../hooks/CLAUDE.md).
 - Vite proxies `/api` to the backend in development (including WebSocket via `ws: true`).
 
@@ -29,6 +29,10 @@ Both exported from `client.ts`:
 
 ## Global 401 Handler
 
-`client.ts` exports `set401Handler(fn)`. When any request (except `POST /api/v1/auth/login`) returns 401, it throws `UnauthenticatedError` then calls the registered handler with `pathname + search`.
+`client.ts` exports `set401Handler(fn)`. Signature: `(path, { isLocal, connectionId }) => void`. When any request (except `POST /api/v1/auth/login`) returns 401, it throws `UnauthenticatedError` then calls the registered handler with `pathname + search` plus the active connection context.
 
 `AuthGate` registers this handler on first mount: calls `useAuthStore.getState().clear()` and navigates to `/login?next=<encoded path>` via `window.history.pushState` + popstate event, unless already on `/login`.
+
+## Connections Store
+
+`src/stores/connectionsStore.ts` (Zustand + persist key `nrf_connections`) holds the list of nrflo server connections (one implicit `Local` entry plus zero-or-more remotes) and the active one. The active project is owned by the connection record (`activeProject`); `projectStore.ts` keeps the projects-list cache and write-throughs to `connectionsStore.setActiveProject`.

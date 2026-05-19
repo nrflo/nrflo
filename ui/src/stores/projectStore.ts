@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { setProject } from '@/api/client'
+import { useConnectionsStore } from './connectionsStore'
 import { listProjects, type Project } from '@/api/projects'
 
 function getCookie(name: string): string | null {
@@ -21,11 +21,12 @@ interface ProjectState {
 }
 
 export const useProjectStore = create<ProjectState>()((set) => ({
-  currentProject: '',
+  currentProject: useConnectionsStore.getState().active().activeProject ?? '',
   projects: [],
   projectsLoaded: false,
   setCurrentProject: (projectId: string) => {
-    setProject(projectId)
+    const { activeId } = useConnectionsStore.getState()
+    useConnectionsStore.getState().setActiveProject(activeId, projectId)
     setCookie('nrf_project', projectId)
     set({ currentProject: projectId })
   },
@@ -39,7 +40,8 @@ export const useProjectStore = create<ProjectState>()((set) => ({
       if (projects.length > 0) {
         const saved = getCookie('nrf_project')
         const resolved = saved && projects.some((p) => p.id === saved) ? saved : projects[0].id
-        setProject(resolved)
+        const { activeId } = useConnectionsStore.getState()
+        useConnectionsStore.getState().setActiveProject(activeId, resolved)
         setCookie('nrf_project', resolved)
         set({ projects, currentProject: resolved, projectsLoaded: true })
       } else {

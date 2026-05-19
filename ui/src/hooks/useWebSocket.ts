@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { getProject } from '../api/client'
+import { useConnectionsStore } from '../stores/connectionsStore'
 import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
 import { chainKeys } from './useChains'
 import { scheduleKeys } from './useScheduledTasks'
@@ -113,16 +113,17 @@ const HEARTBEAT_TIMEOUT = 60_000 // 60 seconds
 const isDev = import.meta.env.DEV
 
 function getWebSocketUrl(): string {
+  const active = useConnectionsStore.getState().active()
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = window.location.host
 
-  const apiUrl = import.meta.env.VITE_API_URL
-  if (apiUrl) {
-    const url = new URL(apiUrl)
-    return `${protocol}//${url.host}/api/v1/ws`
+  if (active.isLocal) {
+    return `${protocol}//${window.location.host}/api/v1/ws`
   }
 
-  return `${protocol}//${host}/api/v1/ws`
+  const url = new URL(active.baseURL)
+  const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  const token = active.token ? `?token=${encodeURIComponent(active.token)}` : ''
+  return `${wsProtocol}//${url.host}/api/v1/ws${token}`
 }
 
 // Restore persisted seq state on module load
@@ -296,7 +297,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       resetHeartbeat()
 
       // Re-subscribe with cursor resume
-      const projectId = getProject()
+      const projectId = useConnectionsStore.getState().active().activeProject ?? 'default'
       subscriptionsRef.current.forEach((ticketId) => {
         const message = buildSubscribeMessage(projectId, ticketId)
         if (isDev) console.debug('[ws] subscribe:', message)
@@ -390,7 +391,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     subscriptionsRef.current.add(ticketId)
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const projectId = getProject()
+      const projectId = useConnectionsStore.getState().active().activeProject ?? 'default'
       const message = buildSubscribeMessage(projectId, ticketId)
       if (isDev) console.debug('[ws] subscribe:', message)
       wsRef.current.send(JSON.stringify(message))
@@ -402,7 +403,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     subscriptionsRef.current.delete(ticketId)
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const projectId = getProject()
+      const projectId = useConnectionsStore.getState().active().activeProject ?? 'default'
       const message: WSSubscribeMessage = {
         action: 'unsubscribe',
         project_id: projectId,

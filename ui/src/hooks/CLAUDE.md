@@ -64,7 +64,7 @@ Omit `since_seq` for initial subscription (v1 compat). Include `since_seq: 0` to
 
 **Project-wide:** `WebSocketProvider` auto-subscribes with empty ticketId.
 
-**Important:** Subscriptions must be gated on `projectsLoaded`. Project ID resolved fresh via `getProject()` each time.
+**Important:** Subscriptions must be gated on `projectsLoaded`. Project ID resolved fresh via `useConnectionsStore.getState().active().activeProject` each time.
 
 ## Event Types
 

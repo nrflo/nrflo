@@ -1,7 +1,6 @@
 import { apiGet, apiDelete, apiUploadMultipart } from './client'
+import { useConnectionsStore } from '@/stores/connectionsStore'
 import type { Artifact, ArtifactUploadResponse } from '@/types/artifact'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 export function uploadArtifact(file: File): Promise<ArtifactUploadResponse> {
   return apiUploadMultipart<ArtifactUploadResponse>('/api/v1/artifact-uploads', file)
@@ -16,7 +15,8 @@ export function listArtifacts(wfiId: string): Promise<Artifact[]> {
 }
 
 export function downloadArtifactURL(id: string): string {
-  return `${API_BASE_URL}/api/v1/artifacts/${encodeURIComponent(id)}/download`
+  const baseURL = useConnectionsStore.getState().active().baseURL
+  return `${baseURL}/api/v1/artifacts/${encodeURIComponent(id)}/download`
 }
 
 export function deleteArtifact(id: string): Promise<void> {

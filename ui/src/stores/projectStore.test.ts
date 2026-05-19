@@ -1,14 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as projectsApi from '@/api/projects'
-import * as client from '@/api/client'
 
 // Mock API modules
 vi.mock('@/api/projects', () => ({
   listProjects: vi.fn(),
 }))
 
-vi.mock('@/api/client', () => ({
-  setProject: vi.fn(),
+const mockSetActiveProject = vi.fn()
+
+vi.mock('@/stores/connectionsStore', () => ({
+  useConnectionsStore: {
+    getState: vi.fn(() => ({
+      activeId: 'local',
+      setActiveProject: mockSetActiveProject,
+      active: () => ({
+        id: 'local',
+        name: 'Local',
+        isLocal: true,
+        baseURL: '',
+        activeProject: undefined,
+      }),
+    })),
+  },
 }))
 
 function makeProject(id: string, name = `Project ${id}`): projectsApi.Project {
@@ -72,13 +85,13 @@ describe('projectStore', () => {
       expect(useProjectStore.getState().currentProject).toBe('alpha')
     })
 
-    it('calls setProject from api/client with the project ID', async () => {
+    it('calls setActiveProject from connectionsStore with the project ID', async () => {
       const useProjectStore = await getStore()
       const { setCurrentProject } = useProjectStore.getState()
 
       setCurrentProject('beta')
 
-      expect(client.setProject).toHaveBeenCalledWith('beta')
+      expect(mockSetActiveProject).toHaveBeenCalledWith('local', 'beta')
     })
 
     it('overwrites cookie when called multiple times', async () => {
@@ -142,7 +155,7 @@ describe('projectStore', () => {
       expect(useProjectStore.getState().currentProject).toBe('proj-b')
     })
 
-    it('calls setProject with the cookie value when it is valid', async () => {
+    it('calls setActiveProject with the cookie value when it is valid', async () => {
       document.cookie = 'nrf_project=proj-b; path=/'
 
       vi.mocked(projectsApi.listProjects).mockResolvedValue({
@@ -152,7 +165,7 @@ describe('projectStore', () => {
       const useProjectStore = await getStore()
       await useProjectStore.getState().loadProjects()
 
-      expect(client.setProject).toHaveBeenCalledWith('proj-b')
+      expect(mockSetActiveProject).toHaveBeenCalledWith('local', 'proj-b')
     })
   })
 

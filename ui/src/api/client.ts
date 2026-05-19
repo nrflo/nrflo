@@ -1,8 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+import { useConnectionsStore } from '@/stores/connectionsStore'
 
 interface FetchOptions extends RequestInit {
   project?: string
-  dbPath?: string
 }
 
 export class ApiError extends Error {
@@ -29,50 +28,62 @@ export class ForbiddenError extends ApiError {
   }
 }
 
-let currentProject = 'default'
-let currentDbPath = ''
-let on401: ((path: string) => void) | null = null
+type Handler401 = (path: string, ctx: { isLocal: boolean; connectionId: string }) => void
+let on401: Handler401 | null = null
 
-export function set401Handler(handler: (path: string) => void) {
+export function set401Handler(handler: Handler401) {
   on401 = handler
 }
 
-export function setProject(project: string) {
-  currentProject = project
+export interface RequestConfig {
+  baseURL: string
+  project: string
+  auth: string | undefined
+  useCookie: boolean
+  connectionId: string
+  isLocal: boolean
 }
 
-export function getProject(): string {
-  return currentProject
+export function requestConfig(): RequestConfig {
+  const active = useConnectionsStore.getState().active()
+  return {
+    baseURL: active.baseURL,
+    project: active.activeProject ?? 'default',
+    auth: active.isLocal ? undefined : active.token,
+    useCookie: active.isLocal,
+    connectionId: active.id,
+    isLocal: active.isLocal,
+  }
 }
 
-export function setDbPath(path: string) {
-  currentDbPath = path
-}
-
-export function getDbPath(): string {
-  return currentDbPath
+function handle401(endpoint: string, cfg: RequestConfig) {
+  if (endpoint !== '/api/v1/auth/login' && on401) {
+    on401(window.location.pathname + window.location.search, {
+      isLocal: cfg.isLocal,
+      connectionId: cfg.connectionId,
+    })
+  }
 }
 
 export async function apiFetch<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<T> {
-  const { project, dbPath, ...fetchOptions } = options
-  const projectHeader = project || currentProject
-  const dbPathHeader = dbPath || currentDbPath
+  const { project: optProject, ...fetchOptions } = options
+  const cfg = requestConfig()
+  const project = optProject ?? cfg.project
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Project': projectHeader,
+    'X-Project': project,
+  }
+  if (cfg.auth) {
+    headers['Authorization'] = `Bearer ${cfg.auth}`
   }
 
-  if (dbPathHeader) {
-    headers['X-DB-Path'] = dbPathHeader
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${cfg.baseURL}${endpoint}`, {
     ...fetchOptions,
-    credentials: 'include',
+    credentials: cfg.useCookie ? 'include' : 'omit',
     headers: {
       ...headers,
       ...fetchOptions.headers,
@@ -88,9 +99,7 @@ export async function apiFetch<T>(
       // ignore parse error
     }
     if (response.status === 401) {
-      if (endpoint !== '/api/v1/auth/login' && on401) {
-        on401(window.location.pathname + window.location.search)
-      }
+      handle401(endpoint, cfg)
       throw new UnauthenticatedError(message)
     }
     if (response.status === 403) {
@@ -165,22 +174,21 @@ export async function apiGetBlob(
   endpoint: string,
   options?: FetchOptions
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const { project, dbPath, ...fetchOptions } = options ?? {}
-  const projectHeader = project || currentProject
-  const dbPathHeader = dbPath || currentDbPath
+  const { project: optProject, ...fetchOptions } = options ?? {}
+  const cfg = requestConfig()
+  const project = optProject ?? cfg.project
 
   const headers: Record<string, string> = {
-    'X-Project': projectHeader,
+    'X-Project': project,
+  }
+  if (cfg.auth) {
+    headers['Authorization'] = `Bearer ${cfg.auth}`
   }
 
-  if (dbPathHeader) {
-    headers['X-DB-Path'] = dbPathHeader
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${cfg.baseURL}${endpoint}`, {
     ...fetchOptions,
     method: 'GET',
-    credentials: 'include',
+    credentials: cfg.useCookie ? 'include' : 'omit',
     headers: {
       ...headers,
       ...(fetchOptions.headers as Record<string, string> | undefined),
@@ -196,9 +204,7 @@ export async function apiGetBlob(
       // ignore parse error
     }
     if (response.status === 401) {
-      if (endpoint !== '/api/v1/auth/login' && on401) {
-        on401(window.location.pathname + window.location.search)
-      }
+      handle401(endpoint, cfg)
       throw new UnauthenticatedError(message)
     }
     if (response.status === 403) {
@@ -222,6 +228,7 @@ export async function apiUploadMultipart<T>(
   file: File,
   extraFields?: Record<string, string>
 ): Promise<T> {
+  const cfg = requestConfig()
   const formData = new FormData()
   formData.append('file', file)
   if (extraFields) {
@@ -231,15 +238,15 @@ export async function apiUploadMultipart<T>(
   }
 
   const headers: Record<string, string> = {
-    'X-Project': currentProject,
+    'X-Project': cfg.project,
   }
-  if (currentDbPath) {
-    headers['X-DB-Path'] = currentDbPath
+  if (cfg.auth) {
+    headers['Authorization'] = `Bearer ${cfg.auth}`
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${cfg.baseURL}${endpoint}`, {
     method: 'POST',
-    credentials: 'include',
+    credentials: cfg.useCookie ? 'include' : 'omit',
     headers,
     body: formData,
   })
@@ -253,9 +260,7 @@ export async function apiUploadMultipart<T>(
       // ignore parse error
     }
     if (response.status === 401) {
-      if (endpoint !== '/api/v1/auth/login' && on401) {
-        on401(window.location.pathname + window.location.search)
-      }
+      handle401(endpoint, cfg)
       throw new UnauthenticatedError(message)
     }
     if (response.status === 403) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { useConnectionsStore } from '@/stores/connectionsStore'
 
 interface XTerminalProps {
   sessionId: string
@@ -8,13 +9,17 @@ interface XTerminalProps {
 }
 
 function getPtyWebSocketUrl(sessionId: string): string {
+  const active = useConnectionsStore.getState().active()
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const apiUrl = import.meta.env.VITE_API_URL
-  if (apiUrl) {
-    const url = new URL(apiUrl)
-    return `${protocol}//${url.host}/api/v1/pty/${encodeURIComponent(sessionId)}`
+
+  if (active.isLocal) {
+    return `${protocol}//${window.location.host}/api/v1/pty/${encodeURIComponent(sessionId)}`
   }
-  return `${protocol}//${window.location.host}/api/v1/pty/${encodeURIComponent(sessionId)}`
+
+  const url = new URL(active.baseURL)
+  const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  const token = active.token ? `?token=${encodeURIComponent(active.token)}` : ''
+  return `${wsProtocol}//${url.host}/api/v1/pty/${encodeURIComponent(sessionId)}${token}`
 }
 
 /** Encode a binary string (each char is one byte) into a Uint8Array. */

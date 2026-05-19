@@ -57,7 +57,9 @@ All reads on those resources are `protected` (requireAuth only). All other route
 
 ### WS / PTY Auth
 
-`GET /api/v1/ws` and `GET /api/v1/pty/{session_id}` are registered via `requireAuth`, so the 401 is returned before any WebSocket upgrade handshake. PTY upgrade, resize handling, and exit-interactive wiring are in `handlers_pty.go`.
+`GET /api/v1/ws` and `GET /api/v1/pty/{session_id}` are registered via `requireAuthWith(true, ...)`, so the 401 is returned before any WebSocket upgrade handshake. These two endpoints additionally accept a bearer token via the `?token=<bearer>` query parameter as a fallback, because browsers cannot set `Authorization` headers on WebSocket constructors. All other endpoints use `requireAuth` (header-only bearer). PTY upgrade, resize handling, and exit-interactive wiring are in `handlers_pty.go`.
+
+CORS `Access-Control-Allow-Headers` includes `Authorization` so cross-origin REST preflight succeeds when the UI sends a Bearer token. `Access-Control-Allow-Credentials` is not set.
 
 ## Handlers
 

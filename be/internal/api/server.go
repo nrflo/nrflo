@@ -458,7 +458,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Project, X-Request-ID")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Project, X-Request-ID, Authorization")
 		w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
@@ -545,10 +545,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("POST /api/v1/service-tokens", s.handleCreateServiceToken)
 	admin("DELETE /api/v1/service-tokens/{id}", s.handleDeleteServiceToken)
 
-	// WebSocket endpoints — gated on session before upgrade
+	// WebSocket endpoints — gated on session before upgrade.
+	// These use requireAuthWith(true, ...) so browsers can authenticate via
+	// ?token=<bearer> query parameter (WS constructors cannot set headers).
 	wsHandler := ws.NewHandler(s.wsHub)
-	mux.Handle("GET /api/v1/ws", s.requireAuth(wsHandler))
-	protected("GET /api/v1/pty/{session_id}", s.handlePtyWebSocket)
+	mux.Handle("GET /api/v1/ws", s.requireAuthWith(true, wsHandler))
+	mux.Handle("GET /api/v1/pty/{session_id}", s.requireAuthWith(true, http.HandlerFunc(s.handlePtyWebSocket)))
 
 	// Documentation
 	protected("GET /api/v1/docs/agent-manual", s.handleGetAgentManual)

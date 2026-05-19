@@ -31,14 +31,28 @@ type ServicePrincipal struct {
 // Returns 401 on failure. If sessionMgr is nil (test environments) the cookie
 // path passes through; the bearer path still works because it doesn't depend
 // on the session manager.
+// For WebSocket/PTY endpoints that cannot set Authorization headers, use
+// requireAuthWith(true, next) to also accept ?token=<bearer> query parameter.
 func (s *Server) requireAuth(next http.Handler) http.Handler {
+	return s.requireAuthWith(false, next)
+}
+
+// requireAuthWith is the parameterized form of requireAuth. When acceptQueryToken
+// is true, a bearer token may also be supplied via the ?token= query parameter
+// as a fallback — this is opt-in and used only for WS/PTY upgrade endpoints
+// where browsers cannot set Authorization headers on WebSocket constructors.
+func (s *Server) requireAuthWith(acceptQueryToken bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Bearer-token path. Two kinds of tokens are accepted:
 		//   1. service tokens — long-lived, admin-minted, project-scoped
 		//   2. agent_sessions.spawn_token — short-lived, valid while the
 		//      agent_session row is running/user_interactive
 		// X-Project, if present, must match the token's project_id.
-		if token := bearerToken(r.Header.Get("Authorization")); token != "" {
+		token := bearerToken(r.Header.Get("Authorization"))
+		if token == "" && acceptQueryToken {
+			token = r.URL.Query().Get("token")
+		}
+		if token != "" {
 			svcTok := service.NewServiceTokenService(s.pool, s.clock)
 			if t, _ := svcTok.LookupByPlaintext(token); t != nil {
 				if hp := r.Header.Get("X-Project"); hp != "" && !strings.EqualFold(hp, t.ProjectID) {

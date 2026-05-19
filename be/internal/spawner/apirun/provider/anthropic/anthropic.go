@@ -27,6 +27,13 @@ import (
 // compatible with older API endpoints / proxies.
 const betaPromptCaching = "prompt-caching-2024-07-31"
 
+// claudeCodeIdentitySystem is the system-prompt block Anthropic requires as
+// the leading block when authenticating with an OAuth bearer token. Without
+// it, premium models (sonnet/opus) return 429 rate_limit_error with no
+// utilization headers; only haiku is exempt. Prepended in Run when
+// authMethod==MethodOAuthBearer.
+const claudeCodeIdentitySystem = "You are Claude Code, Anthropic's official CLI for Claude."
+
 // New returns a provider.Provider backed by the Anthropic SDK using the given credentials.
 // For MethodAPIKey, uses x-api-key auth. For MethodOAuthBearer, uses Authorization: Bearer
 // with the oauth-2025-04-20 beta header. Optional opts are forwarded to the SDK client
@@ -44,7 +51,7 @@ func New(creds Credentials, opts ...option.RequestOption) provider.Provider {
 	}
 	all := append(authOpts, opts...)
 	client := sdk.NewClient(all...)
-	return &anthropicProvider{client: &client}
+	return &anthropicProvider{client: &client, authMethod: creds.Method}
 }
 
 // NewWithHTTPClient is a convenience constructor for tests: it injects the
@@ -54,7 +61,8 @@ func NewWithHTTPClient(creds Credentials, hc *http.Client) provider.Provider {
 }
 
 type anthropicProvider struct {
-	client *sdk.Client
+	client     *sdk.Client
+	authMethod AuthMethod
 }
 
 func (p *anthropicProvider) Name() string { return "anthropic" }
@@ -77,6 +85,12 @@ func (p *anthropicProvider) Run(ctx context.Context, req provider.Request, sink 
 	params, err := translateRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("translate anthropic request: %w", err)
+	}
+	if p.authMethod == MethodOAuthBearer {
+		params.System = append(
+			[]sdk.TextBlockParam{{Text: claudeCodeIdentitySystem}},
+			params.System...,
+		)
 	}
 	stream := p.client.Messages.NewStreaming(ctx, params,
 		option.WithHeaderAdd("anthropic-beta", betaPromptCaching),

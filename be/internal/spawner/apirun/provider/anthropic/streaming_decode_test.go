@@ -15,13 +15,19 @@ import (
 // fakeRoundTripper returns a canned text/event-stream HTTP response. The body
 // is the joined SSE event payload provided at construction time.
 type fakeRoundTripper struct {
-	body    string
-	status  int
-	lastReq *http.Request
+	body     string
+	status   int
+	lastReq  *http.Request
+	lastBody []byte
 }
 
 func (f *fakeRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	f.lastReq = req
+	if req.Body != nil {
+		buf, _ := io.ReadAll(req.Body)
+		f.lastBody = buf
+		_ = req.Body.Close()
+	}
 	status := f.status
 	if status == 0 {
 		status = http.StatusOK

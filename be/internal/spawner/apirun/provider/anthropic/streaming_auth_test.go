@@ -91,3 +91,63 @@ func TestRun_OAuthBearer_Headers(t *testing.T) {
 		t.Errorf("anthropic-beta = %q, want it to contain prompt-caching-2024-07-31", betaHdr)
 	}
 }
+
+// TestRun_OAuthBearer_PrependsClaudeCodeIdentity pins the
+// Anthropic-mandated leading system block. Without it, sonnet/opus return
+// 429 rate_limit_error on OAuth-bearer auth (haiku is exempt). The block
+// must be the FIRST system entry; any caller-supplied system text follows.
+func TestRun_OAuthBearer_PrependsClaudeCodeIdentity(t *testing.T) {
+	rt := &fakeRoundTripper{body: minimalSSE()}
+	p := NewWithHTTPClient(Credentials{Value: "sk-ant-oat01-mytoken", Method: MethodOAuthBearer}, &http.Client{Transport: rt})
+
+	req := minimalRequest()
+	req.System = "be brief"
+	if _, err := p.Run(context.Background(), req, &recordingSink{}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	body := string(rt.lastBody)
+	if !strings.Contains(body, "You are Claude Code, Anthropic's official CLI for Claude.") {
+		t.Errorf("OAuth body missing Claude Code identity block; body=%s", body)
+	}
+	idIdx := strings.Index(body, "You are Claude Code")
+	userIdx := strings.Index(body, "be brief")
+	if idIdx < 0 || userIdx < 0 {
+		t.Fatalf("missing markers: identity=%d user-system=%d body=%s", idIdx, userIdx, body)
+	}
+	if idIdx > userIdx {
+		t.Errorf("identity block must precede caller system text: identity=%d user-system=%d", idIdx, userIdx)
+	}
+}
+
+// TestRun_OAuthBearer_PrependsIdentity_NoUserSystem covers the case where
+// the caller supplied no system prompt — the identity block must still be
+// the sole system entry, otherwise premium models get 429s.
+func TestRun_OAuthBearer_PrependsIdentity_NoUserSystem(t *testing.T) {
+	rt := &fakeRoundTripper{body: minimalSSE()}
+	p := NewWithHTTPClient(Credentials{Value: "sk-ant-oat01-mytoken", Method: MethodOAuthBearer}, &http.Client{Transport: rt})
+
+	if _, err := p.Run(context.Background(), minimalRequest(), &recordingSink{}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	body := string(rt.lastBody)
+	if !strings.Contains(body, "You are Claude Code, Anthropic's official CLI for Claude.") {
+		t.Errorf("OAuth body missing Claude Code identity block; body=%s", body)
+	}
+}
+
+// TestRun_APIKey_DoesNotPrependIdentity ensures we don't waste a system
+// slot (or alter cache keys) for API-key auth, which has no identity gate.
+func TestRun_APIKey_DoesNotPrependIdentity(t *testing.T) {
+	rt := &fakeRoundTripper{body: minimalSSE()}
+	p := NewWithHTTPClient(Credentials{Value: "sk-test-apikey", Method: MethodAPIKey}, &http.Client{Transport: rt})
+
+	req := minimalRequest()
+	req.System = "be brief"
+	if _, err := p.Run(context.Background(), req, &recordingSink{}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	body := string(rt.lastBody)
+	if strings.Contains(body, "You are Claude Code") {
+		t.Errorf("API-key body must NOT contain Claude Code identity block; body=%s", body)
+	}
+}

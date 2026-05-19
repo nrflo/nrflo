@@ -26,6 +26,7 @@ import (
 	"be/internal/scheduler"
 	pythonsdk "be/internal/sdk/python"
 	"be/internal/service"
+	"be/internal/spawner"
 	"be/internal/static"
 	"be/internal/venv"
 	"be/internal/ws"
@@ -55,6 +56,7 @@ type Server struct {
 	authSvc               *service.AuthService
 	userSvc               *service.UserService
 	rateLimiter           *loginRateLimiter
+	observerSvc           *service.ObserverService
 }
 
 // NewServer creates a new API server.
@@ -141,6 +143,24 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	authSvc := service.NewAuthService(pool, clk)
 	userSvc := service.NewUserService(pool, clk)
 
+	// Observer subsystem: dedicated spawner with minimal config (no workflow/agent defs).
+	observerSpawner := spawner.New(spawner.Config{
+		Pool:     pool,
+		Clock:    clk,
+		WSHub:    hub,
+		DataPath: dataPath,
+	})
+	observerSvc := service.NewObserverService(
+		pool, clk,
+		service.NewGlobalSettingsService(pool, clk),
+		service.NewWorkflowService(pool, clk),
+		service.NewAgentService(pool, clk),
+		service.NewFindingsService(pool, clk),
+		service.NewProjectFindingsService(pool, clk),
+		service.NewProjectService(pool, clk),
+		observerSpawner,
+	)
+
 	return &Server{
 		config:        cfg,
 		dataPath:      dataPath,
@@ -159,6 +179,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		authSvc:       authSvc,
 		userSvc:       userSvc,
 		rateLimiter:   newLoginRateLimiter(),
+		observerSvc:   observerSvc,
 	}
 }
 

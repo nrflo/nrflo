@@ -26,21 +26,23 @@ const sessionCols = `id, project_id, ticket_id, workflow_instance_id, phase, age
 	model_id, status, result, result_reason, pid,
 	context_left, ancestor_session_id, spawn_command, prompt, system_prompt,
 	restart_count, nudge_count, config, started_at, ended_at, spawn_token, effective_mode, created_at, updated_at,
-	rate_limit_retry_count, rate_limit_until_ts, last_retry_class`
+	rate_limit_retry_count, rate_limit_until_ts, last_retry_class, kind, observer_scope`
 
 func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
 	s := &model.AgentSession{}
 	var createdAt, updatedAt string
+	var wfi sql.NullString
 	err := scanner.Scan(
-		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
+		&s.ID, &s.ProjectID, &s.TicketID, &wfi, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &s.SpawnToken, &s.EffectiveMode, &createdAt, &updatedAt,
-		&s.RateLimitRetryCount, &s.RateLimitUntilTs, &s.LastRetryClass,
+		&s.RateLimitRetryCount, &s.RateLimitUntilTs, &s.LastRetryClass, &s.Kind, &s.ObserverScope,
 	)
 	if err != nil {
 		return nil, err
 	}
+	s.WorkflowInstanceID = wfi.String
 	s.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	s.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return s, nil
@@ -51,21 +53,23 @@ const sessionColsJoined = `s.id, s.project_id, s.ticket_id, s.workflow_instance_
 	s.model_id, s.status, s.result, s.result_reason, s.pid,
 	s.context_left, s.ancestor_session_id, s.spawn_command, s.prompt, s.system_prompt,
 	s.restart_count, s.nudge_count, s.config, s.started_at, s.ended_at, s.spawn_token, s.effective_mode, s.created_at, s.updated_at,
-	s.rate_limit_retry_count, s.rate_limit_until_ts, s.last_retry_class, wi.workflow_id`
+	s.rate_limit_retry_count, s.rate_limit_until_ts, s.last_retry_class, s.kind, s.observer_scope, wi.workflow_id`
 
 func scanSessionJoined(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
 	s := &model.AgentSession{}
 	var createdAt, updatedAt string
+	var wfi sql.NullString
 	err := scanner.Scan(
-		&s.ID, &s.ProjectID, &s.TicketID, &s.WorkflowInstanceID, &s.Phase, &s.AgentType,
+		&s.ID, &s.ProjectID, &s.TicketID, &wfi, &s.Phase, &s.AgentType,
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &s.SpawnToken, &s.EffectiveMode, &createdAt, &updatedAt,
-		&s.RateLimitRetryCount, &s.RateLimitUntilTs, &s.LastRetryClass, &s.Workflow,
+		&s.RateLimitRetryCount, &s.RateLimitUntilTs, &s.LastRetryClass, &s.Kind, &s.ObserverScope, &s.Workflow,
 	)
 	if err != nil {
 		return nil, err
 	}
+	s.WorkflowInstanceID = wfi.String
 	s.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	s.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return s, nil
@@ -77,13 +81,17 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 	session.CreatedAt, _ = time.Parse(time.RFC3339Nano, now)
 	session.UpdatedAt = session.CreatedAt
 
+	kind := session.Kind
+	if kind == "" {
+		kind = "workflow_agent"
+	}
 	_, err := r.db.Exec(`
 		INSERT INTO agent_sessions (`+sessionCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		strings.ToLower(session.ProjectID),
 		strings.ToLower(session.TicketID),
-		session.WorkflowInstanceID,
+		sql.NullString{String: session.WorkflowInstanceID, Valid: session.WorkflowInstanceID != ""},
 		session.Phase,
 		session.AgentType,
 		session.ModelID,
@@ -108,6 +116,8 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 		session.RateLimitRetryCount,
 		session.RateLimitUntilTs,
 		session.LastRetryClass,
+		kind,
+		session.ObserverScope,
 	)
 	return err
 }

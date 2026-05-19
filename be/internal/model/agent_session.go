@@ -50,6 +50,8 @@ type AgentSession struct {
 	RateLimitRetryCount  int                `json:"-"`
 	RateLimitUntilTs     sql.NullString     `json:"-"`
 	LastRetryClass       sql.NullString     `json:"-"`
+	Kind                 string             `json:"-"` // "workflow_agent" or "observer"
+	ObserverScope        sql.NullString     `json:"-"` // "workflow", "project", or "global"
 	CreatedAt            time.Time          `json:"created_at"`
 	UpdatedAt            time.Time          `json:"updated_at"`
 

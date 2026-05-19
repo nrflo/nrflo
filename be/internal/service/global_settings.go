@@ -15,6 +15,13 @@ import (
 const artifactStorageKey = "artifact_storage"
 const workflowCleanupEnabledKey = "workflow_cleanup_enabled"
 
+const (
+	observerEnabledKey       = "experimental_observer_enabled"
+	observerSystemContextKey = "observer_system_context"
+	observerProviderKey      = "observer_provider"
+	observerModelKey         = "observer_model"
+)
+
 // GlobalSettingsService provides access to global config key-value store.
 type GlobalSettingsService struct {
 	pool  *db.Pool
@@ -165,4 +172,82 @@ func (s *GlobalSettingsService) SetSessionRetentionLimit(projectID string, n int
 		return fmt.Errorf("session_retention_limit must be >= 10")
 	}
 	return s.pool.SetProjectConfig(projectID, "session_retention_limit", strconv.Itoa(n))
+}
+
+// GetExperimentalObserverEnabled returns whether the observer feature is enabled globally.
+func (s *GlobalSettingsService) GetExperimentalObserverEnabled() (bool, error) {
+	val, err := s.pool.GetConfig(observerEnabledKey)
+	if err != nil {
+		return false, err
+	}
+	return val == "true", nil
+}
+
+// SetExperimentalObserverEnabled persists the observer enabled flag globally.
+func (s *GlobalSettingsService) SetExperimentalObserverEnabled(enabled bool) error {
+	val := "false"
+	if enabled {
+		val = "true"
+	}
+	return s.pool.SetConfig(observerEnabledKey, val)
+}
+
+// GetObserverSystemContext returns the global observer system context string.
+func (s *GlobalSettingsService) GetObserverSystemContext() (string, error) {
+	return s.pool.GetConfig(observerSystemContextKey)
+}
+
+// SetObserverSystemContext persists the global observer system context string.
+func (s *GlobalSettingsService) SetObserverSystemContext(ctx string) error {
+	return s.pool.SetConfig(observerSystemContextKey, ctx)
+}
+
+// GetObserverProvider returns the global observer provider override.
+func (s *GlobalSettingsService) GetObserverProvider() (string, error) {
+	return s.pool.GetConfig(observerProviderKey)
+}
+
+// SetObserverProvider persists the global observer provider override.
+func (s *GlobalSettingsService) SetObserverProvider(provider string) error {
+	return s.pool.SetConfig(observerProviderKey, provider)
+}
+
+// GetObserverModel returns the global observer model override.
+func (s *GlobalSettingsService) GetObserverModel() (string, error) {
+	return s.pool.GetConfig(observerModelKey)
+}
+
+// SetObserverModel persists the global observer model override.
+func (s *GlobalSettingsService) SetObserverModel(model string) error {
+	return s.pool.SetConfig(observerModelKey, model)
+}
+
+// GetObserverSystemContextForProject returns the project-level observer system context override.
+func (s *GlobalSettingsService) GetObserverSystemContextForProject(projectID string) (string, error) {
+	return s.pool.GetProjectConfig(projectID, observerSystemContextKey)
+}
+
+// SetObserverSystemContextForProject persists the project-level observer system context override.
+func (s *GlobalSettingsService) SetObserverSystemContextForProject(projectID, ctx string) error {
+	return s.pool.SetProjectConfig(projectID, observerSystemContextKey, ctx)
+}
+
+// GetObserverProviderForProject returns the project-level observer provider override.
+func (s *GlobalSettingsService) GetObserverProviderForProject(projectID string) (string, error) {
+	return s.pool.GetProjectConfig(projectID, observerProviderKey)
+}
+
+// SetObserverProviderForProject persists the project-level observer provider override.
+func (s *GlobalSettingsService) SetObserverProviderForProject(projectID, provider string) error {
+	return s.pool.SetProjectConfig(projectID, observerProviderKey, provider)
+}
+
+// GetObserverModelForProject returns the project-level observer model override.
+func (s *GlobalSettingsService) GetObserverModelForProject(projectID string) (string, error) {
+	return s.pool.GetProjectConfig(projectID, observerModelKey)
+}
+
+// SetObserverModelForProject persists the project-level observer model override.
+func (s *GlobalSettingsService) SetObserverModelForProject(projectID, model string) error {
+	return s.pool.SetProjectConfig(projectID, observerModelKey, model)
 }

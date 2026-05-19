@@ -1,21 +1,25 @@
 package model
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 )
 
 // Workflow represents a workflow definition stored in the database
 type Workflow struct {
-	ID                     string    `json:"id"`
-	ProjectID              string    `json:"project_id"`
-	Description            string    `json:"description"`
-	ScopeType              string    `json:"scope_type"` // "ticket" or "project"
-	CloseTicketOnComplete  bool      `json:"close_ticket_on_complete"`
-	Groups                 string    `json:"-"`           // JSON array of tag strings
-	NextWorkflowOnSuccess  string    `json:"-"`
-	CreatedAt              time.Time `json:"created_at"`
-	UpdatedAt              time.Time `json:"updated_at"`
+	ID                     string         `json:"id"`
+	ProjectID              string         `json:"project_id"`
+	Description            string         `json:"description"`
+	ScopeType              string         `json:"scope_type"` // "ticket" or "project"
+	CloseTicketOnComplete  bool           `json:"close_ticket_on_complete"`
+	Groups                 string         `json:"-"`           // JSON array of tag strings
+	NextWorkflowOnSuccess  string         `json:"-"`
+	ObserverContext        string         `json:"-"` // workflow-level override for observer system context
+	ObserverProvider       sql.NullString `json:"-"` // workflow-level override for observer provider
+	ObserverModel          sql.NullString `json:"-"` // workflow-level override for observer model
+	CreatedAt              time.Time      `json:"created_at"`
+	UpdatedAt              time.Time      `json:"updated_at"`
 }
 
 // GetGroups returns the parsed groups as a string slice

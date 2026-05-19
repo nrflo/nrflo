@@ -32,8 +32,8 @@ func (r *WorkflowRepo) Create(wf *model.Workflow) error {
 	}
 
 	_, err := r.db.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, observer_context, observer_provider, observer_model, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(wf.ID),
 		strings.ToLower(wf.ProjectID),
 		wf.Description,
@@ -41,6 +41,9 @@ func (r *WorkflowRepo) Create(wf *model.Workflow) error {
 		wf.Groups,
 		wf.CloseTicketOnComplete,
 		wf.NextWorkflowOnSuccess,
+		wf.ObserverContext,
+		wf.ObserverProvider,
+		wf.ObserverModel,
 		now,
 		now,
 	)
@@ -53,7 +56,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at
+		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, observer_context, observer_provider, observer_model, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, id).Scan(
 		&wf.ID,
@@ -63,6 +66,9 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 		&wf.Groups,
 		&wf.CloseTicketOnComplete,
 		&wf.NextWorkflowOnSuccess,
+		&wf.ObserverContext,
+		&wf.ObserverProvider,
+		&wf.ObserverModel,
 		&createdAt,
 		&updatedAt,
 	)
@@ -82,7 +88,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 // List retrieves all workflow definitions for a project
 func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at
+		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, observer_context, observer_provider, observer_model, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -103,6 +109,9 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 			&wf.Groups,
 			&wf.CloseTicketOnComplete,
 			&wf.NextWorkflowOnSuccess,
+			&wf.ObserverContext,
+			&wf.ObserverProvider,
+			&wf.ObserverModel,
 			&createdAt,
 			&updatedAt,
 		)

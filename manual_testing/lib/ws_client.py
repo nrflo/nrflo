@@ -13,6 +13,7 @@ from __future__ import annotations
 import http.cookiejar
 import json
 import time
+import urllib.parse
 from typing import Any, Callable
 
 
@@ -43,11 +44,27 @@ class WSClient:
             ev = ws.wait_for(lambda e: e.get("type") == "agent.completed")
     """
 
-    def __init__(self, base_url: str, jar: http.cookiejar.CookieJar) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        jar: http.cookiejar.CookieJar | None = None,
+        *,
+        query_token: str | None = None,
+    ) -> None:
         ws_url = base_url.replace("http://", "ws://", 1).replace(
             "https://", "wss://", 1) + "/api/v1/ws"
+        if query_token is not None:
+            ws_url += "?token=" + urllib.parse.quote(query_token, safe="")
         self._url = ws_url
-        self._headers = [("Cookie", _cookie_header(jar))]
+        # Cookie-auth path keeps the existing header; query-token path sends
+        # no Cookie/Authorization so the ?token= fallback in requireAuthWith
+        # is exercised end-to-end.
+        if query_token is None:
+            if jar is None:
+                raise ValueError("WSClient requires either jar or query_token")
+            self._headers = [("Cookie", _cookie_header(jar))]
+        else:
+            self._headers = []
         self._conn = None
 
     def __enter__(self) -> "WSClient":
@@ -66,15 +83,26 @@ class WSClient:
             self._conn = None
 
     def subscribe(self, project_id: str, *, ticket_id: str = "",
-                  since_seq: int = 0) -> None:
+                  since_seq: int | None = 0) -> None:
+        """Subscribe to events.
+
+        `since_seq=0` (default) triggers an initial snapshot stream — keeps
+        existing scenarios (s37) on the path they expect. Pass
+        `since_seq=None` for live-only delivery (no snapshot), which avoids
+        the snapshot fan-out flooding the per-client send buffer (256) and
+        causing fast live broadcasts to be dropped silently — important
+        for race-tight tests like s47/A13 where the event of interest is
+        broadcast within milliseconds of run start.
+        """
         if self._conn is None:
             raise RuntimeError("WSClient not opened (use as context manager)")
         msg: dict[str, Any] = {
             "action": "subscribe",
             "project_id": project_id,
             "ticket_id": ticket_id,
-            "since_seq": since_seq,
         }
+        if since_seq is not None:
+            msg["since_seq"] = since_seq
         self._conn.send(json.dumps(msg))
 
     def wait_for(
@@ -85,7 +113,15 @@ class WSClient:
     ) -> dict | None:
         """Return the first event the predicate accepts, or None on timeout.
         Snapshot/heartbeat envelopes pass through unfiltered — predicates
-        choose what they care about."""
+        choose what they care about.
+
+        WritePump in be/internal/ws/client.go batches all queued messages
+        into a single websocket frame separated by `\\n` whenever multiple
+        broadcasts arrive between WritePump iterations (fast-broadcast paths
+        like rate-limit + agent_completed). Split the frame on newlines and
+        decode each JSON object independently — naive `json.loads(raw)` on
+        a batched frame raises and the trailing events would be silently
+        discarded."""
         if self._conn is None:
             raise RuntimeError("WSClient not opened (use as context manager)")
         deadline = time.monotonic() + timeout_s
@@ -97,10 +133,14 @@ class WSClient:
                 continue
             except Exception:
                 return None
-            try:
-                event = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
-            if predicate(event):
-                return event
+            for line in raw.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if predicate(event):
+                    return event
         return None

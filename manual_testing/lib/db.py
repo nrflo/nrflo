@@ -26,7 +26,8 @@ def agent_sessions_for_instance(home: Path, instance_id: str) -> list[dict[str, 
             SELECT id, project_id, workflow_instance_id, phase, agent_type, model_id,
                    status, result, result_reason, pid, context_left,
                    effective_mode, prompt, system_prompt, ancestor_session_id,
-                   started_at, ended_at
+                   started_at, ended_at,
+                   rate_limit_retry_count, rate_limit_until_ts, last_retry_class
             FROM agent_sessions
             WHERE workflow_instance_id = ?
             ORDER BY COALESCE(started_at, created_at) ASC

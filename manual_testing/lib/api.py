@@ -277,6 +277,7 @@ class NrfloClient:
         interactive: bool = False,
         plan_mode: bool = False,
         input_artifacts: list[dict] | None = None,
+        seed_findings: dict[str, str] | None = None,
     ) -> dict:
         body: dict[str, Any] = {"workflow": workflow_id}
         if endless_loop:
@@ -289,6 +290,8 @@ class NrfloClient:
             body["plan_mode"] = True
         if input_artifacts:
             body["input_artifacts"] = input_artifacts
+        if seed_findings:
+            body["seed_findings"] = seed_findings
         return self._request(
             "POST",
             f"/api/v1/projects/{project_id}/workflow/run",

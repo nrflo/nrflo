@@ -56,6 +56,8 @@ When you add or remove a scenario, edit this file in the same commit.
 | s44 | findings audit history returns insert + update rows for same key |
 | s45 | notification channel kind='script' runs user Python on completion |
 | s46 | observer agents: launch/read/mutate per scope, cross-scope deny, flag-off 404 |
+| s47 | CLI rate-limit detection: stub claude → agent.rate_limited WS + DB cols |
+| s48 | WS `?token=` query auth accepts service token; bogus token rejected |
 
 ## Python (script-mode) scenarios (P-prefix)
 
@@ -80,6 +82,7 @@ When you add or remove a scenario, edit this file in the same commit.
 | P17 | multiple c.skip(tag) calls accumulate + dedupe |
 | P18 | SDK c.agent.chain_next_ticket + require_ticket_handoff |
 | P19 | SDK c.notification() parses NRFLO_NOTIFY_PAYLOAD_JSON |
+| P20 | SDK c.seed_findings() returns RunRequest.SeedFindings filtered |
 
 ## API-mode scenarios (A-prefix)
 
@@ -102,18 +105,19 @@ SKIPs cleanly when no token is reachable.
 | A10 | bogus per-project OAuth token → result_reason=api_error + auth_error row |
 | A11 | api-mode invokes a `kind='tool'` python_scripts row; tool_dispatches row written |
 | A12 | api_mode_enabled runtime toggle: off → spawn rejected; on → spawn passes |
+| A13 | api-mode rate-limit detection: mock 429 → agent.rate_limited WS + DB cols |
 
 ## Folder applicability
 
 | Folder      | Members |
 |-------------|---------|
-| `engine/`   | every s-id except s05, s27, s35 (40 scenarios, run under `claude`) |
+| `engine/`   | every s-id except s05, s27, s35 (42 scenarios, run under `claude`) |
 | `claude/`   | s05, s35 |
 | `codex/`    | s05, s35 |
 | `gemini/`   | s05, s35 |
 | `opencode/` | s05, s27, s35 |
-| `python/`   | P01..P19 |
-| `api/`      | A01..A12 |
+| `python/`   | P01..P20 |
+| `api/`      | A01..A13 |
 
 `s05`, `s35`, and `s27` are the only scenarios with provider-specific
 implementations:

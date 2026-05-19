@@ -26,6 +26,7 @@ from . import (
     A10_auth_error,
     A11_python_tool_dispatch,
     A12_api_mode_toggle,
+    A13_rate_limit,
 )
 
 
@@ -42,4 +43,5 @@ ALL_SCENARIOS = [
     A10_auth_error.run,
     A11_python_tool_dispatch.run,
     A12_api_mode_toggle.run,
+    A13_rate_limit.run,
 ]

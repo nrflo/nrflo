@@ -26,6 +26,7 @@ from . import (
     P17_multi_skip_tag,
     P18_chain_require_ticket_handoff,
     P19_notification_accessor,
+    P20_seed_findings,
 )
 
 
@@ -49,4 +50,5 @@ ALL_SCENARIOS = [
     P17_multi_skip_tag.run,
     P18_chain_require_ticket_handoff.run,
     P19_notification_accessor.run,
+    P20_seed_findings.run,
 ]

@@ -51,6 +51,8 @@ from . import (
     s44_findings_history,
     s45_notification_script,
     s46_observer,
+    s47_rate_limit_cli,
+    s48_ws_query_token,
 )
 
 
@@ -95,4 +97,6 @@ ALL_SCENARIOS = [
     s44_findings_history.run,
     s45_notification_script.run,
     s46_observer.run,
+    s47_rate_limit_cli.run,
+    s48_ws_query_token.run,
 ]

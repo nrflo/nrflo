@@ -69,6 +69,7 @@ func (s *Server) handleRunProjectWorkflow(w http.ResponseWriter, r *http.Request
 		Interactive:    body.Interactive,
 		PlanMode:       body.PlanMode,
 		EndlessLoop:    body.EndlessLoop,
+		SeedFindings:   body.SeedFindings,
 		InputArtifacts: body.InputArtifacts,
 	})
 	if err != nil {

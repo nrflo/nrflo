@@ -56,6 +56,11 @@ export function restoreSeqs(): void {
   } catch { /* parse error or unavailable */ }
 }
 
+export function resetSeqs(): void {
+  seqMap.clear()
+  sessionStorage.removeItem(STORAGE_KEY)
+}
+
 // Gap detection result
 export type GapResult =
   | { type: 'ok' }

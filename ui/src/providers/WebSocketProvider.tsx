@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useMemo, type ReactNode } from 'react'
 import { useWebSocket, type WSEvent } from '@/hooks/useWebSocket'
 import { useProjectStore } from '@/stores/projectStore'
+import { useConnectionsStore } from '@/stores/connectionsStore'
 
 interface WebSocketContextValue {
   isConnected: boolean
@@ -38,9 +39,11 @@ export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps)
   const { isConnected, subscribe, unsubscribe } = useWebSocket({ onEvent: handleEvent })
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
   const currentProject = useProjectStore((s) => s.currentProject)
+  const activeId = useConnectionsStore((s) => s.activeId)
   const subscribedRef = useRef(false)
 
-  // Auto-subscribe to project-wide events
+  // Auto-subscribe to project-wide events; re-runs when connection switches so
+  // the cleanup resets subscribedRef and the body re-subscribes on the new socket.
   useEffect(() => {
     if (projectsLoaded && !subscribedRef.current) {
       subscribe('')
@@ -50,7 +53,7 @@ export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps)
         subscribedRef.current = false
       }
     }
-  }, [projectsLoaded, currentProject, subscribe, unsubscribe])
+  }, [projectsLoaded, currentProject, activeId, subscribe, unsubscribe])
 
   const ctxValue = useMemo(
     () => ({

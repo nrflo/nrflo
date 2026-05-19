@@ -14,6 +14,7 @@ import {
   setLastSeq,
   persistSeqs,
   restoreSeqs,
+  resetSeqs,
 } from './useWSReducer'
 import {
   handleSnapshotBegin,
@@ -132,6 +133,7 @@ restoreSeqs()
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
   const { enabled = true, onEvent } = options
   const queryClient = useQueryClient()
+  const activeId = useConnectionsStore((s) => s.activeId)
 
   const [isConnected, setIsConnected] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
@@ -140,6 +142,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const subscriptionsRef = useRef<Set<string>>(new Set())
   const mountedRef = useRef(true)
   const heartbeatTimerRef = useRef<number | null>(null)
+  const prevActiveIdRef = useRef(activeId)
 
   // Use refs for callbacks to avoid dependency chain issues.
   // This prevents connect() from being recreated when handlers change,
@@ -339,6 +342,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
     ws.onclose = (e) => {
       if (!mountedRef.current) return
+      // A connection switch may have already replaced wsRef with a newer socket.
+      if (wsRef.current !== null && wsRef.current !== ws) return
 
       if (isDev) console.debug('[ws] disconnected, code:', e.code, 'reason:', e.reason)
       setIsConnected(false)
@@ -427,6 +432,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       disconnect()
     }
   }, [enabled, connect, disconnect])
+
+  // Tear down and reconnect when the active connection changes
+  useEffect(() => {
+    if (prevActiveIdRef.current === activeId) return
+    prevActiveIdRef.current = activeId
+    disconnect()
+    resetSeqs()
+    subscriptionsRef.current.clear()
+    reconnectAttemptsRef.current = 0
+    if (enabled) connect()
+  }, [activeId, enabled, disconnect, connect])
 
   return {
     isConnected,

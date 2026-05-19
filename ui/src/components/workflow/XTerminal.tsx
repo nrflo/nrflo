@@ -39,6 +39,8 @@ export function XTerminal({ sessionId, onExit }: XTerminalProps) {
   const resizeTimerRef = useRef<number | null>(null)
   const onExitRef = useRef(onExit)
   onExitRef.current = onExit
+  const activeId = useConnectionsStore((s) => s.activeId)
+  const didMountRef = useRef(false)
 
   const sendResize = useCallback((cols: number, rows: number) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -156,6 +158,15 @@ export function XTerminal({ sessionId, onExit }: XTerminalProps) {
       fitAddonRef.current = null
     }
   }, [sessionId, sendResize])
+
+  // Close the PTY socket when the active connection switches; ws.onclose calls onExit.
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
+    wsRef.current?.close()
+  }, [activeId])
 
   return (
     <div

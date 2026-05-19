@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useConnectionsStore } from './connectionsStore'
 
 export interface InteractiveSession {
   sessionId: string
@@ -46,3 +47,12 @@ export const useInteractiveSessionsStore = create<InteractiveSessionsState>()((s
   setActive: (sessionId) => set({ activeId: sessionId }),
   toggleMinimized: () => set((state) => ({ minimized: !state.minimized })),
 }))
+
+// Sessions belong to the previously-active server; clear on connection switch.
+// zustand 5: subscribe takes a single (newState, prevState) listener — the
+// 2-arg selector form requires subscribeWithSelector middleware.
+useConnectionsStore.subscribe((newState, prevState) => {
+  if (newState.activeId !== prevState.activeId) {
+    useInteractiveSessionsStore.setState({ sessions: [], activeId: '', minimized: false })
+  }
+})

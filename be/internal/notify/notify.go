@@ -135,7 +135,7 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 
 	for _, ch := range channels {
 		// Validate kind is supported; worker will render body at dispatch time.
-		if ch.Kind != model.ChannelKindSlack && ch.Kind != model.ChannelKindTelegram {
+		if ch.Kind != model.ChannelKindSlack && ch.Kind != model.ChannelKindTelegram && ch.Kind != model.ChannelKindScript {
 			continue
 		}
 

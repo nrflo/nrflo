@@ -122,6 +122,46 @@ func TestDispatcher_OnEvent_WatchedEvent_InsertsDelivery(t *testing.T) {
 	}
 }
 
+// TestDispatcher_OnEvent_ScriptKind_InsertsDelivery pins down that the
+// dispatcher allow-list accepts ChannelKindScript alongside slack/telegram.
+// Regression guard for the bug where the script kind was added to the model,
+// migration, transport, runtime, and validator but missed in notify.go's
+// per-channel kind check — silently dropping every script delivery.
+func TestDispatcher_OnEvent_ScriptKind_InsertsDelivery(t *testing.T) {
+	database, projectID, workflowID := setupNotifyDB(t)
+	clk := clock.Real()
+	channelRepo := repo.NewNotificationChannelRepo(database, clk)
+	deliveryRepo := repo.NewNotificationDeliveryRepo(database, clk)
+	wakeCh := make(chan struct{}, 1)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh)
+
+	ch := &model.NotificationChannel{
+		ProjectID:  projectID,
+		WorkflowID: workflowID,
+		Name:       "script-ch",
+		Kind:       model.ChannelKindScript,
+		Enabled:    true,
+		Config:     `{"script_code":"pass"}`,
+		EventTypes: []string{ws.EventOrchestrationCompleted},
+	}
+	if err := channelRepo.Insert(ch); err != nil {
+		t.Fatalf("insert script channel: %v", err)
+	}
+
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
+
+	results, err := deliveryRepo.ListByChannel(ch.ID, 10)
+	if err != nil {
+		t.Fatalf("ListByChannel: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("script deliveries = %d, want 1 (dispatcher must allow ChannelKindScript)", len(results))
+	}
+	if results[0].Status != model.DeliveryStatusPending {
+		t.Errorf("status = %q, want pending", results[0].Status)
+	}
+}
+
 func TestDispatcher_OnEvent_WakeCh_NonBlockingWhenFull(t *testing.T) {
 	database, projectID, workflowID := setupNotifyDB(t)
 	clk := clock.Real()

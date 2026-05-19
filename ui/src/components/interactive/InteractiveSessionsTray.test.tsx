@@ -119,10 +119,12 @@ describe('InteractiveSessionsTray', () => {
     expect(screen.getByText('setup-analyzer (bbb222)')).toBeInTheDocument()
   })
 
-  it('hides session panels when minimized', () => {
+  it('keeps session panels mounted but hidden when minimized', () => {
     setStore({ sessions: [makeSession()], minimized: true })
     render(<InteractiveSessionsTray />)
-    expect(screen.queryByTestId('session-panel')).not.toBeInTheDocument()
+    const panel = screen.getByTestId('session-panel')
+    expect(panel).toBeInTheDocument()
+    expect(panel.closest('.hidden')).not.toBeNull()
   })
 
   it('calls toggleMinimized when minimize button clicked', async () => {

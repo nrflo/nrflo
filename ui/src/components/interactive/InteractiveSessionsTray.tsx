@@ -111,23 +111,21 @@ export function InteractiveSessionsTray() {
         activeSession={activeSession}
       />
 
-      {!minimized && (
-        <div className="flex flex-col h-[50vh]">
-          {sessions.map((s) => (
-            <InteractiveSessionPanel
-              key={s.sessionId}
-              sessionId={s.sessionId}
-              isActive={s.sessionId === activeId}
-              onExit={() => remove(s.sessionId)}
-            />
-          ))}
-          {activeSession?.agentType === 'planner' && (
-            <div className="px-4 py-2 text-sm text-muted-foreground border-t border-border">
-              On exit, the plan file will be used as instructions for workflow agents. Use &apos;/plan&apos; to show the plan.
-            </div>
-          )}
-        </div>
-      )}
+      <div className={minimized ? 'hidden' : 'flex flex-col h-[50vh]'}>
+        {sessions.map((s) => (
+          <InteractiveSessionPanel
+            key={s.sessionId}
+            sessionId={s.sessionId}
+            isActive={s.sessionId === activeId}
+            onExit={() => remove(s.sessionId)}
+          />
+        ))}
+        {activeSession?.agentType === 'planner' && (
+          <div className="px-4 py-2 text-sm text-muted-foreground border-t border-border">
+            On exit, the plan file will be used as instructions for workflow agents. Use &apos;/plan&apos; to show the plan.
+          </div>
+        )}
+      </div>
 
       <ConfirmDialog
         open={showKillConfirm}

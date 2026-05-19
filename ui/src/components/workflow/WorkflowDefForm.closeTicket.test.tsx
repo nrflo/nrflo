@@ -45,7 +45,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
   describe('visibility', () => {
     it('shows checkbox when scope is ticket (default)', () => {
       renderForm({ isCreate: true })
-      expect(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /close ticket after workflow finished/i })).toBeInTheDocument()
     })
 
     it('hides checkbox when scope is project', async () => {
@@ -54,7 +54,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
 
       await user.click(screen.getByRole('button', { name: /^project$/i }))
 
-      expect(screen.queryByRole('checkbox', { name: /close ticket after workflow finished/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('switch', { name: /close ticket after workflow finished/i })).not.toBeInTheDocument()
     })
 
     it('re-shows checkbox when scope toggled back to ticket', async () => {
@@ -62,17 +62,17 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
       renderForm({ isCreate: true })
 
       await user.click(screen.getByRole('button', { name: /^project$/i }))
-      expect(screen.queryByRole('checkbox', { name: /close ticket after workflow finished/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('switch', { name: /close ticket after workflow finished/i })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: /^ticket$/i }))
-      expect(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /close ticket after workflow finished/i })).toBeInTheDocument()
     })
   })
 
   describe('default state', () => {
     it('is checked by default on create (no initial prop)', () => {
       renderForm({ isCreate: true })
-      expect(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i })).toBeChecked()
+      expect(screen.getByRole('switch', { name: /close ticket after workflow finished/i })).toBeChecked()
     })
 
     it('respects initial close_ticket_on_complete=false', () => {
@@ -80,7 +80,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
         isCreate: false,
         initial: { id: 'feature', close_ticket_on_complete: false },
       })
-      expect(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i })).not.toBeChecked()
+      expect(screen.getByRole('switch', { name: /close ticket after workflow finished/i })).not.toBeChecked()
     })
 
     it('respects initial close_ticket_on_complete=true', () => {
@@ -88,7 +88,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
         isCreate: false,
         initial: { id: 'feature', close_ticket_on_complete: true },
       })
-      expect(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i })).toBeChecked()
+      expect(screen.getByRole('switch', { name: /close ticket after workflow finished/i })).toBeChecked()
     })
   })
 
@@ -97,13 +97,13 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const checkbox = screen.getByRole('checkbox', { name: /close ticket after workflow finished/i })
+      const checkbox = screen.getByRole('switch', { name: /close ticket after workflow finished/i })
       await user.click(checkbox) // uncheck (was true by default)
 
       await user.click(screen.getByRole('button', { name: /^project$/i }))
       await user.click(screen.getByRole('button', { name: /^ticket$/i }))
 
-      expect(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i })).not.toBeChecked()
+      expect(screen.getByRole('switch', { name: /close ticket after workflow finished/i })).not.toBeChecked()
     })
   })
 
@@ -114,7 +114,7 @@ describe('WorkflowDefForm – close_ticket_on_complete checkbox', () => {
       renderForm({ isCreate: true, onSubmit })
 
       await user.type(screen.getByPlaceholderText(/e.g., feature/i), 'my-workflow')
-      await user.click(screen.getByRole('checkbox', { name: /close ticket after workflow finished/i }))
+      await user.click(screen.getByRole('switch', { name: /close ticket after workflow finished/i }))
 
       await user.click(screen.getByRole('button', { name: /submit/i }))
 

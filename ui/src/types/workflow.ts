@@ -252,6 +252,9 @@ export interface WorkflowDefSummary {
   groups?: string[]
   close_ticket_on_complete?: boolean
   next_workflow_on_success?: string
+  observer_context?: string
+  observer_provider?: string | null
+  observer_model?: string | null
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
 }
@@ -265,6 +268,9 @@ export interface WorkflowDef {
   groups?: string[]
   close_ticket_on_complete?: boolean
   next_workflow_on_success?: string
+  observer_context?: string
+  observer_provider?: string | null
+  observer_model?: string | null
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
   created_at: string
@@ -278,6 +284,9 @@ export interface WorkflowDefCreateRequest {
   groups?: string[]
   close_ticket_on_complete?: boolean
   next_workflow_on_success?: string
+  observer_context?: string
+  observer_provider?: string | null
+  observer_model?: string | null
 }
 
 export interface WorkflowDefUpdateRequest {
@@ -286,6 +295,9 @@ export interface WorkflowDefUpdateRequest {
   groups?: string[]
   close_ticket_on_complete?: boolean
   next_workflow_on_success?: string
+  observer_context?: string
+  observer_provider?: string | null
+  observer_model?: string | null
 }
 
 // Agent definition types (DB-stored)

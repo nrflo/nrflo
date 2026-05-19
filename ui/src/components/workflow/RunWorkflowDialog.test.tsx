@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RunWorkflowDialog } from './RunWorkflowDialog'
+import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
 
 vi.mock('@/stores/projectStore', () => ({
   useProjectStore: (selector: (s: { currentProject: string; projectsLoaded: boolean }) => unknown) =>
@@ -119,5 +120,45 @@ describe('RunWorkflowDialog', () => {
     await waitFor(() => {
       expect(screen.getByText(/No workflow definitions found/)).toBeInTheDocument()
     })
+  })
+
+  it('regression: observer sessions in interactiveSessionsStore do not appear in workflow dropdown', async () => {
+    // Pre-seed store with an observer session
+    useInteractiveSessionsStore.setState({
+      sessions: [
+        {
+          sessionId: 'obs-1',
+          agentType: 'observer',
+          scope: { type: 'project', projectId: 'test-project' },
+          workflow: '_observer',
+          startedAt: Date.now(),
+        },
+      ],
+      activeId: 'obs-1',
+      minimized: false,
+    })
+
+    // listWorkflowDefs only returns a ticket-scoped workflow
+    listWorkflowDefs.mockResolvedValue({
+      feature: {
+        description: 'Feature workflow',
+        scope_type: 'ticket',
+        phases: [{ id: 'impl', agent: 'impl', layer: 0 }],
+      },
+    })
+
+    const user = userEvent.setup()
+    renderDialog()
+
+    // Auto-selects feature workflow (not observer)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /feature/ })).toBeInTheDocument()
+    })
+
+    // Open dropdown and verify only feature is present
+    await user.click(screen.getByRole('button', { name: /feature/ }))
+
+    expect(screen.queryByText('obs-1')).not.toBeInTheDocument()
+    expect(screen.queryByText('_observer')).not.toBeInTheDocument()
   })
 })

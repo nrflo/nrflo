@@ -27,9 +27,10 @@ import { useStatus } from '@/hooks/useTickets'
 import { useChainList } from '@/hooks/useChains'
 import { useRunningAgents } from '@/hooks/useRunningAgents'
 import { useProjectStore } from '@/stores/projectStore'
-import { useAPIModeEnabled, useExperimentalEnabled } from '@/hooks/useGlobalSettings'
+import { useAPIModeEnabled, useExperimentalEnabled, useExperimentalObserverEnabled } from '@/hooks/useGlobalSettings'
 import { useIsAdmin } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
+import { LaunchObserverButton } from '@/components/observer/LaunchObserverButton'
 
 interface NavItemProps {
   to: string
@@ -68,6 +69,7 @@ export function Sidebar() {
   const projects = useProjectStore((s) => s.projects)
   const apiModeEnabled = useAPIModeEnabled()
   const experimentalEnabled = useExperimentalEnabled()
+  const observerEnabled = useExperimentalObserverEnabled()
   const isAdmin = useIsAdmin()
 
   const { data: runningAgentsData } = useRunningAgents()
@@ -191,6 +193,11 @@ export function Sidebar() {
             <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Configuration
             </div>
+            {observerEnabled && (
+              <div className="px-3 py-1">
+                <LaunchObserverButton payload={{ scope: 'global' }} variant="outline" size="sm" />
+              </div>
+            )}
             <NavItem
               to="/settings/connections"
               icon={<Network className="h-4 w-4" />}

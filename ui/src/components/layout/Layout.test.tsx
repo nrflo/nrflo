@@ -16,6 +16,10 @@ vi.mock('@/components/interactive/InteractiveSessionsTray', () => ({
   InteractiveSessionsTray: () => null,
 }))
 
+vi.mock('@/components/observer/ActiveObserversPanel', () => ({
+  ActiveObserversPanel: () => null,
+}))
+
 const mockUseProjectStore = vi.fn()
 
 vi.mock('@/stores/projectStore', () => ({

@@ -15,6 +15,8 @@ import {
   useResumeSession,
 } from '@/hooks/useTickets'
 import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
+import { LaunchObserverButton } from '@/components/observer/LaunchObserverButton'
+import { useProjectStore } from '@/stores/projectStore'
 
 interface TicketWorkflowTabProps {
   ticketId: string | undefined
@@ -47,6 +49,7 @@ export function TicketWorkflowTab({
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
 
   const addSession = useInteractiveSessionsStore((s) => s.add)
+  const currentProject = useProjectStore((s) => s.currentProject)
 
   const stopMutation = useStopWorkflow()
   const retryFailedMutation = useRetryFailedAgent()
@@ -315,6 +318,11 @@ export function TicketWorkflowTab({
         resumeSessionPending={resumeSessionMutation.isPending}
         projectFindings={projectFindings}
         blockedReason={blockedReason}
+        headerExtra={
+          <LaunchObserverButton
+            payload={{ scope: 'workflow', project_id: currentProject, workflow_id: displayedWorkflowName }}
+          />
+        }
       />
     </>
   )

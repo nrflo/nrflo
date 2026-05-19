@@ -21,8 +21,8 @@ import {
   buildSafetyHookJSON,
   type ProjectFormData,
 } from './projectFormUtils'
-import { useSetArtifactStorage, useSetCleanup } from '@/hooks/useProjectSettings'
-import type { ArtifactStorageConfig, CleanupSettings } from '@/api/projectSettings'
+import { useSetArtifactStorage, useSetCleanup, useSetObserver } from '@/hooks/useProjectSettings'
+import type { ArtifactStorageConfig, CleanupSettings, ObserverSettings } from '@/api/projectSettings'
 
 const projectKeys = {
   all: ['projects'] as const,
@@ -43,6 +43,7 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [artifactError, setArtifactError] = useState<string | null>(null)
   const [cleanupError, setCleanupError] = useState<string | null>(null)
+  const [observerError, setObserverError] = useState<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: projectKeys.list(),
@@ -72,6 +73,7 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
 
   const setArtifactMutation = useSetArtifactStorage()
   const setCleanupMutation = useSetCleanup()
+  const setObserverMutation = useSetObserver()
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProject(id),
@@ -133,13 +135,14 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
     })
   }
 
-  const handleSaveEdit = async (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings }) => {
+  const handleSaveEdit = async (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings; observer?: Partial<ObserverSettings> }) => {
     if (!editingId) return
     setArtifactError(null)
     setCleanupError(null)
+    setObserverError(null)
     const safetyHook = buildSafetyHookJSON(formData)
 
-    const [projectResult, artifactResult, cleanupResult] = await Promise.allSettled([
+    const [projectResult, artifactResult, cleanupResult, observerResult] = await Promise.allSettled([
       updateMutation.mutateAsync({
         id: editingId,
         data: {
@@ -157,6 +160,9 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
       subforms?.cleanup
         ? setCleanupMutation.mutateAsync({ projectId: editingId, cfg: subforms.cleanup })
         : Promise.resolve(null),
+      subforms?.observer
+        ? setObserverMutation.mutateAsync({ projectId: editingId, cfg: subforms.observer })
+        : Promise.resolve(null),
     ])
 
     if (artifactResult.status === 'rejected') {
@@ -165,7 +171,10 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
     if (cleanupResult.status === 'rejected') {
       setCleanupError((cleanupResult.reason as Error).message)
     }
-    if (projectResult.status === 'fulfilled' && artifactResult.status === 'fulfilled' && cleanupResult.status === 'fulfilled') {
+    if (observerResult.status === 'rejected') {
+      setObserverError((observerResult.reason as Error).message)
+    }
+    if (projectResult.status === 'fulfilled' && artifactResult.status === 'fulfilled' && cleanupResult.status === 'fulfilled' && observerResult.status === 'fulfilled') {
       setEditingId(null)
       setFormData(emptyProjectForm)
     }
@@ -239,11 +248,12 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
                 onCancelDeleteConfirm={() => setDeleteConfirm(null)}
                 onDelete={() => handleDelete(project.id)}
                 editMutation={{
-                  isPending: updateMutation.isPending || setArtifactMutation.isPending || setCleanupMutation.isPending,
+                  isPending: updateMutation.isPending || setArtifactMutation.isPending || setCleanupMutation.isPending || setObserverMutation.isPending,
                   isError: updateMutation.isError,
                   error: updateMutation.error,
                   artifactError,
                   cleanupError,
+                  observerError,
                 }}
                 isDeletePending={deleteMutation.isPending}
                 projectsCount={projects.length}

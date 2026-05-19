@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { ProjectForm } from './ProjectForm'
 import type { ProjectFormData } from './projectFormUtils'
 import type { Project } from '@/api/projects'
-import type { ArtifactStorageConfig, CleanupSettings } from '@/api/projectSettings'
+import type { ArtifactStorageConfig, CleanupSettings, ObserverSettings } from '@/api/projectSettings'
 
 interface EditMutation {
   isPending: boolean
@@ -12,6 +12,7 @@ interface EditMutation {
   error: any
   artifactError?: string | null
   cleanupError?: string | null
+  observerError?: string | null
 }
 
 interface ProjectListItemProps {
@@ -23,7 +24,7 @@ interface ProjectListItemProps {
   setFormData: (d: ProjectFormData) => void
   onStartEdit: () => void
   onCancelEdit: () => void
-  onSaveEdit: (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings }) => void
+  onSaveEdit: (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings; observer?: Partial<ObserverSettings> }) => void
   onDeleteConfirm: () => void
   onCancelDeleteConfirm: () => void
   onDelete: () => void

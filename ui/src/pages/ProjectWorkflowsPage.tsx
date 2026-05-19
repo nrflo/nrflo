@@ -25,6 +25,7 @@ import { ProjectFindingsTab } from '@/components/workflow/ProjectFindingsTab'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Badge } from '@/components/ui/Badge'
 import { Repeat } from 'lucide-react'
+import { LaunchObserverButton } from '@/components/observer/LaunchObserverButton'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
@@ -237,7 +238,10 @@ export function ProjectWorkflowsPage() {
   return (
     <div className="max-w-full px-4 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Project Workflows</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Project Workflows</h1>
+          <LaunchObserverButton payload={{ scope: 'project', project_id: currentProject }} />
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           Workflows that run at project level without a ticket. Typically used for ticket management and project-wide tasks. Changes are made directly in the project root (no worktree or auto-merge).
         </p>
@@ -314,6 +318,11 @@ export function ProjectWorkflowsPage() {
             }}
             resumeSessionPending={resumeSessionMutation.isPending}
             projectFindings={projectFindings}
+            headerExtra={
+              <LaunchObserverButton
+                payload={{ scope: 'workflow', project_id: currentProject, workflow_id: displayedState?.workflow ?? displayedWorkflowName }}
+              />
+            }
           />
         </>
       )}

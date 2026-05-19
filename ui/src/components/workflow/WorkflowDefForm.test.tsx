@@ -57,13 +57,13 @@ describe('WorkflowDefForm', () => {
       await user.type(screen.getByPlaceholderText(/short description/i), 'Full TDD workflow')
       await user.click(screen.getByRole('button', { name: /submit/i }))
 
-      expect(onSubmit).toHaveBeenCalledWith({
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
         id: 'feature',
         description: 'Full TDD workflow',
         scope_type: 'ticket',
         groups: [],
         close_ticket_on_complete: true,
-      })
+      }))
     })
 
     it('submits WorkflowDefUpdateRequest in update mode', async () => {
@@ -76,12 +76,12 @@ describe('WorkflowDefForm', () => {
       await user.type(descInput, 'New description')
       await user.click(screen.getByRole('button', { name: /submit/i }))
 
-      expect(onSubmit).toHaveBeenCalledWith({
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
         description: 'New description',
         scope_type: 'ticket',
         groups: [],
         close_ticket_on_complete: true,
-      })
+      }))
     })
   })
 
@@ -100,7 +100,7 @@ describe('WorkflowDefForm', () => {
   describe('scope_type toggle', () => {
     it('defaults to ticket scope', () => {
       renderForm({ isCreate: true })
-      expect(screen.getByRole('button', { name: /^ticket$/i })).toHaveClass('border-primary')
+      expect(screen.getByRole('button', { name: /^ticket$/i })).toHaveClass('bg-primary')
     })
 
     it('toggles to project scope', async () => {
@@ -109,7 +109,7 @@ describe('WorkflowDefForm', () => {
 
       await user.click(screen.getByRole('button', { name: /^project$/i }))
 
-      expect(screen.getByRole('button', { name: /^project$/i })).toHaveClass('border-primary')
+      expect(screen.getByRole('button', { name: /^project$/i })).toHaveClass('bg-primary')
       expect(screen.getByText(/project workflows run without a ticket/i)).toBeInTheDocument()
     })
 
@@ -154,7 +154,7 @@ describe('WorkflowDefForm', () => {
     it('respects initial scope_type from props', () => {
       renderForm({ isCreate: false, initial: { id: 'test', scope_type: 'project' } })
 
-      expect(screen.getByRole('button', { name: /^project$/i })).toHaveClass('border-primary')
+      expect(screen.getByRole('button', { name: /^project$/i })).toHaveClass('bg-primary')
       expect(screen.getByText(/project workflows run without a ticket/i)).toBeInTheDocument()
     })
   })
@@ -164,7 +164,7 @@ describe('WorkflowDefForm', () => {
       // query resolves to {} (empty) — checkbox stays disabled in both pre/post-resolve states
       renderForm({ isCreate: true })
 
-      const checkbox = screen.getByRole('checkbox', { name: /run another workflow on success/i })
+      const checkbox = screen.getByRole('switch', { name: /run another workflow on success/i })
       expect(checkbox).toBeDisabled()
       expect(screen.getByText(/create a project-scoped workflow first/i)).toBeInTheDocument()
     })
@@ -189,7 +189,7 @@ describe('WorkflowDefForm', () => {
       })
       renderForm({ isCreate: true })
 
-      const checkbox = screen.getByRole('checkbox', { name: /run another workflow on success/i })
+      const checkbox = screen.getByRole('switch', { name: /run another workflow on success/i })
       await waitFor(() => expect(checkbox).toBeEnabled())
     })
 
@@ -201,7 +201,7 @@ describe('WorkflowDefForm', () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const checkbox = screen.getByRole('checkbox', { name: /run another workflow on success/i })
+      const checkbox = screen.getByRole('switch', { name: /run another workflow on success/i })
       await waitFor(() => expect(checkbox).toBeEnabled())
       await user.click(checkbox)
 
@@ -218,7 +218,7 @@ describe('WorkflowDefForm', () => {
       const onSubmit = vi.fn()
       renderForm({ isCreate: true, onSubmit })
 
-      const checkbox = screen.getByRole('checkbox', { name: /run another workflow on success/i })
+      const checkbox = screen.getByRole('switch', { name: /run another workflow on success/i })
       await waitFor(() => expect(checkbox).toBeEnabled())
       await user.click(checkbox)
 
@@ -240,7 +240,7 @@ describe('WorkflowDefForm', () => {
         onSubmit,
       })
 
-      const checkbox = screen.getByRole('checkbox', { name: /run another workflow on success/i })
+      const checkbox = screen.getByRole('switch', { name: /run another workflow on success/i })
       await waitFor(() => expect(checkbox).toBeEnabled())
       expect(checkbox).toBeChecked()
 
@@ -260,7 +260,7 @@ describe('WorkflowDefForm', () => {
       const user = userEvent.setup()
       renderForm({ isCreate: false, initial: { id: 'wf1' } })
 
-      const checkbox = screen.getByRole('checkbox', { name: /run another workflow on success/i })
+      const checkbox = screen.getByRole('switch', { name: /run another workflow on success/i })
       await waitFor(() => expect(checkbox).toBeEnabled())
       await user.click(checkbox)
 
@@ -278,7 +278,7 @@ describe('WorkflowDefForm', () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      const checkbox = screen.getByRole('checkbox', { name: /run another workflow on success/i })
+      const checkbox = screen.getByRole('switch', { name: /run another workflow on success/i })
       await waitFor(() => expect(checkbox).toBeEnabled())
       await user.click(checkbox)
 
@@ -294,7 +294,7 @@ describe('WorkflowDefForm', () => {
 
       // After query resolves, projectWorkflowOptions is still [] (all filtered out) → stays disabled
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: /run another workflow on success/i })).toBeDisabled()
+        expect(screen.getByRole('switch', { name: /run another workflow on success/i })).toBeDisabled()
       })
       expect(screen.getByText(/create a project-scoped workflow first/i)).toBeInTheDocument()
     })

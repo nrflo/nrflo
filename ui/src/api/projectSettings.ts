@@ -1,5 +1,11 @@
 import { apiGet, apiPut } from './client'
 
+export interface ObserverSettings {
+  system_context: string
+  provider: string
+  model: string
+}
+
 export interface ArtifactStorageConfig {
   mode: string
   account_id?: string
@@ -28,4 +34,12 @@ export async function getCleanup(projectId: string): Promise<CleanupSettings> {
 
 export async function setCleanup(projectId: string, cfg: CleanupSettings): Promise<CleanupSettings> {
   return apiPut<CleanupSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/cleanup`, cfg)
+}
+
+export async function getObserver(projectId: string): Promise<ObserverSettings> {
+  return apiGet<ObserverSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/observer`)
+}
+
+export async function setObserver(projectId: string, cfg: Partial<ObserverSettings>): Promise<ObserverSettings> {
+  return apiPut<ObserverSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/observer`, cfg)
 }

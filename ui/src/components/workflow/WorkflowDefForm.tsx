@@ -2,14 +2,29 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { listWorkflowDefs } from '@/api/workflows'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
+import { Toggle } from '@/components/ui/Toggle'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { useProjectStore } from '@/stores/projectStore'
+import { useCLIModels } from '@/hooks/useCLIModels'
 import type { ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
 
 const TAG_PATTERN = /^[a-zA-Z0-9-]+$/
 
 interface WorkflowDefFormProps {
-  initial?: { id: string; description?: string; scope_type?: ScopeType; groups?: string[]; close_ticket_on_complete?: boolean; next_workflow_on_success?: string }
+  initial?: {
+    id: string
+    description?: string
+    scope_type?: ScopeType
+    groups?: string[]
+    close_ticket_on_complete?: boolean
+    next_workflow_on_success?: string
+    observer_context?: string
+    observer_provider?: string | null
+    observer_model?: string | null
+  }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
   formId?: string
@@ -23,8 +38,12 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   const [groupInput, setGroupInput] = useState('')
   const [closeTicketOnComplete, setCloseTicketOnComplete] = useState(initial?.close_ticket_on_complete ?? true)
   const [nextWorkflowOnSuccess, setNextWorkflowOnSuccess] = useState(initial?.next_workflow_on_success || '')
+  const [observerContext, setObserverContext] = useState(initial?.observer_context || '')
+  const [observerProvider, setObserverProvider] = useState(initial?.observer_provider || '')
+  const [observerModel, setObserverModel] = useState(initial?.observer_model || '')
 
   const project = useProjectStore((s) => s.currentProject)
+  const { data: models = [] } = useCLIModels()
 
   const { data: workflowDefs } = useQuery({
     queryKey: ['workflows', 'defs', project],
@@ -37,6 +56,16 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       .filter(([id, def]) => def.scope_type === 'project' && id !== initial?.id)
       .map(([id, def]) => ({ value: id, label: id + (def.description ? ` — ${def.description}` : '') }))
   }, [workflowDefs, initial?.id])
+
+  const providerOptions = useMemo(() => {
+    const types = Array.from(new Set(models.filter(m => m.enabled).map(m => m.cli_type)))
+    return [{ value: '', label: 'Inherit project default' }, ...types.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))]
+  }, [models])
+
+  const modelOptions = useMemo(() => {
+    const filtered = models.filter(m => m.enabled && (!observerProvider || m.cli_type === observerProvider))
+    return [{ value: '', label: 'Inherit project default' }, ...filtered.map(m => ({ value: m.id, label: m.display_name }))]
+  }, [models, observerProvider])
 
   const addGroup = (raw: string) => {
     const tag = raw.trim().toLowerCase()
@@ -54,23 +83,20 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const shared = {
+      description: description.trim() || undefined,
+      scope_type: scopeType,
+      groups,
+      close_ticket_on_complete: closeTicketOnComplete,
+      next_workflow_on_success: nextWorkflowOnSuccess || undefined,
+      observer_context: observerContext.trim() || undefined,
+      observer_provider: observerProvider || null,
+      observer_model: observerModel || null,
+    }
     if (isCreate) {
-      onSubmit({
-        id: id.trim(),
-        description: description.trim() || undefined,
-        scope_type: scopeType,
-        groups,
-        close_ticket_on_complete: closeTicketOnComplete,
-        next_workflow_on_success: nextWorkflowOnSuccess || undefined,
-      } as WorkflowDefCreateRequest)
+      onSubmit({ id: id.trim(), ...shared } as WorkflowDefCreateRequest)
     } else {
-      onSubmit({
-        description: description.trim() || undefined,
-        scope_type: scopeType,
-        groups,
-        close_ticket_on_complete: closeTicketOnComplete,
-        next_workflow_on_success: nextWorkflowOnSuccess || undefined,
-      } as WorkflowDefUpdateRequest)
+      onSubmit(shared as WorkflowDefUpdateRequest)
     }
   }
 
@@ -81,13 +107,12 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
           <label className="block text-xs font-medium text-muted-foreground mb-1">
             Workflow ID
           </label>
-          <input
+          <Input
             type="text"
             value={id}
             onChange={(e) => setId(e.target.value)}
             placeholder="e.g., feature, bugfix, hotfix"
             required
-            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
           />
         </div>
       )}
@@ -96,12 +121,11 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         <label className="block text-xs font-medium text-muted-foreground mb-1">
           Description
         </label>
-        <input
+        <Input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Short description of the workflow"
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
         />
       </div>
 
@@ -110,28 +134,22 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
           Scope
         </label>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant={scopeType === 'ticket' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setScopeType('ticket')}
-            className={`text-xs px-3 py-1 rounded border transition-colors ${
-              scopeType === 'ticket'
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground'
-            }`}
           >
             Ticket
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={scopeType === 'project' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setScopeType('project')}
-            className={`text-xs px-3 py-1 rounded border transition-colors ${
-              scopeType === 'project'
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground'
-            }`}
           >
             Project
-          </button>
+          </Button>
         </div>
         {scopeType === 'project' && (
           <p className="text-xs text-muted-foreground mt-1">
@@ -141,34 +159,26 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       </div>
 
       {scopeType === 'ticket' && (
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={closeTicketOnComplete}
-            onChange={(e) => setCloseTicketOnComplete(e.target.checked)}
-            className="rounded border-border"
-          />
-          <span className="text-muted-foreground">Close ticket after workflow finished</span>
-        </label>
+        <Toggle
+          checked={closeTicketOnComplete}
+          onChange={setCloseTicketOnComplete}
+          label="Close ticket after workflow finished"
+        />
       )}
 
       <div>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={nextWorkflowOnSuccess !== ''}
-            disabled={projectWorkflowOptions.length === 0}
-            onChange={(e) => {
-              if (e.target.checked) {
-                setNextWorkflowOnSuccess(projectWorkflowOptions[0]?.value ?? '')
-              } else {
-                setNextWorkflowOnSuccess('')
-              }
-            }}
-            className="rounded border-border"
-          />
-          <span className="text-muted-foreground">Run another workflow on success</span>
-        </label>
+        <Toggle
+          checked={nextWorkflowOnSuccess !== ''}
+          onChange={(checked) => {
+            if (checked) {
+              setNextWorkflowOnSuccess(projectWorkflowOptions[0]?.value ?? '')
+            } else {
+              setNextWorkflowOnSuccess('')
+            }
+          }}
+          label="Run another workflow on success"
+          disabled={projectWorkflowOptions.length === 0}
+        />
         {projectWorkflowOptions.length === 0 ? (
           <p className="text-xs text-muted-foreground mt-1">Create a project-scoped workflow first.</p>
         ) : nextWorkflowOnSuccess !== '' ? (
@@ -207,19 +217,50 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
             </span>
           ))}
         </div>
-        <input
+        <Input
           type="text"
           value={groupInput}
           onChange={(e) => setGroupInput(e.target.value)}
           onKeyDown={handleGroupKeyDown}
           placeholder="Type a tag and press Enter"
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
         />
         <p className="text-xs text-muted-foreground mt-1">
           Define tag groups for skip logic (e.g., be, fe, docs). Press Enter or comma to add.
         </p>
       </div>
 
+      <div className="border-t border-border pt-3 space-y-3">
+        <div className="text-xs font-medium text-muted-foreground">Observer overrides</div>
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Observer context
+          </label>
+          <Textarea
+            value={observerContext}
+            onChange={(e) => setObserverContext(e.target.value)}
+            rows={2}
+            placeholder="Optional observer context for this workflow (overrides project setting)"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Provider</label>
+            <Dropdown
+              value={observerProvider}
+              onChange={(v) => { setObserverProvider(v); setObserverModel('') }}
+              options={providerOptions}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>
+            <Dropdown
+              value={observerModel}
+              onChange={setObserverModel}
+              options={modelOptions}
+            />
+          </div>
+        </div>
+      </div>
     </form>
   )
 }

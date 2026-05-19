@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { getGlobalSettings, updateGlobalSettings, settingsKeys } from '@/api/settings'
 import { parseOptionalInt } from './AgentForm'
+import { ObserverSettingsSection } from './ObserverSettingsSection'
 import { Info } from 'lucide-react'
 
 export function GlobalSettingsSection() {
@@ -185,6 +186,8 @@ export function GlobalSettingsSection() {
                 disabled={experimentalMutation.isPending}
               />
             </div>
+            <div className="border-t border-border" />
+            <ObserverSettingsSection settings={settings} />
             <div className="border-t border-border" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { X, Check, Info, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -7,28 +7,13 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { SafetyHookCheckDialog } from './SafetyHookCheckDialog'
 import { ProjectEnvVarsEditor } from './ProjectEnvVarsEditor'
-import {
-  ProjectArtifactStorageEditor,
-  type FormState as ArtifactFormState,
-  toForm as toArtifactForm,
-  buildPayload as buildArtifactPayload,
-} from './ProjectArtifactStorageEditor'
-import { ProjectCleanupEditor, type CleanupFormState } from './ProjectCleanupEditor'
-import { useArtifactStorage, useCleanup } from '@/hooks/useProjectSettings'
-import type { ArtifactStorageConfig, CleanupSettings } from '@/api/projectSettings'
+import { ProjectArtifactStorageEditor } from './ProjectArtifactStorageEditor'
+import { ProjectCleanupEditor } from './ProjectCleanupEditor'
+import { ProjectObserverEditor } from './ProjectObserverEditor'
+import { useProjectSubforms } from './useProjectSubforms'
+import type { ArtifactStorageConfig, CleanupSettings, ObserverSettings } from '@/api/projectSettings'
 import { type ProjectFormData, emptyProjectForm } from './projectFormUtils'
 export { type ProjectFormData, emptyProjectForm, parseSafetyHookConfig, buildSafetyHookJSON } from './projectFormUtils'
-
-const defaultArtifactForm: ArtifactFormState = {
-  mode: 'internal',
-  account_id: '',
-  bucket: '',
-  prefix: '',
-  access_key_ref: '',
-  secret_key_ref: '',
-}
-
-const defaultCleanupForm: CleanupFormState = { enabled: false, retentionLimit: 0 }
 
 export function ProjectForm({
   formData,
@@ -42,56 +27,21 @@ export function ProjectForm({
   formData: ProjectFormData
   setFormData: (data: ProjectFormData) => void
   onCancel: () => void
-  onSave: (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings }) => void
+  onSave: (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings; observer?: Partial<ObserverSettings> }) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mutation: { isPending: boolean; isError: boolean; error: any; artifactError?: string | null; cleanupError?: string | null }
+  mutation: { isPending: boolean; isError: boolean; error: any; artifactError?: string | null; cleanupError?: string | null; observerError?: string | null }
   isCreate?: boolean
   disabledId?: string
 }) {
   const [checkDialogOpen, setCheckDialogOpen] = useState(false)
   const isEdit = !isCreate && !!disabledId
 
-  const { data: artifactData } = useArtifactStorage(disabledId ?? '')
-  const { data: cleanupData } = useCleanup(disabledId ?? '')
-  const [artifactValue, setArtifactValue] = useState<ArtifactFormState>(defaultArtifactForm)
-  const [cleanupValue, setCleanupValue] = useState<CleanupFormState>(defaultCleanupForm)
-  const initialArtifactDataRef = useRef<ArtifactStorageConfig | undefined>(undefined)
-  const initialCleanupDataRef = useRef<CleanupSettings | undefined>(undefined)
-
-  useEffect(() => {
-    if (artifactData && !initialArtifactDataRef.current) {
-      initialArtifactDataRef.current = artifactData
-      setArtifactValue(toArtifactForm(artifactData))
-    }
-  }, [artifactData])
-
-  useEffect(() => {
-    if (cleanupData && !initialCleanupDataRef.current) {
-      initialCleanupDataRef.current = cleanupData
-      setCleanupValue({ enabled: cleanupData.enabled, retentionLimit: cleanupData.retention_limit })
-    }
-  }, [cleanupData])
+  const { artifactValue, setArtifactValue, cleanupValue, setCleanupValue, observerValue, setObserverValue, buildChangedSubforms } =
+    useProjectSubforms(disabledId ?? '')
 
   function handleSave() {
     if (isEdit) {
-      const initialArtifact = initialArtifactDataRef.current
-      const initialArtifactForm = initialArtifact ? toArtifactForm(initialArtifact) : defaultArtifactForm
-      const artifactChanged = JSON.stringify(artifactValue) !== JSON.stringify(initialArtifactForm)
-
-      const initialCleanup = initialCleanupDataRef.current
-      const initialCleanupForm: CleanupFormState = initialCleanup
-        ? { enabled: initialCleanup.enabled, retentionLimit: initialCleanup.retention_limit }
-        : defaultCleanupForm
-      const cleanupChanged = JSON.stringify(cleanupValue) !== JSON.stringify(initialCleanupForm)
-
-      onSave({
-        artifact: artifactChanged && artifactValue.mode !== 's3'
-          ? buildArtifactPayload(artifactValue, initialArtifact)
-          : undefined,
-        cleanup: cleanupChanged
-          ? { enabled: cleanupValue.enabled, retention_limit: cleanupValue.retentionLimit }
-          : undefined,
-      })
+      onSave(buildChangedSubforms())
     } else {
       onSave()
     }
@@ -258,6 +208,12 @@ export function ProjectForm({
             value={cleanupValue}
             onChange={setCleanupValue}
             serverError={mutation.cleanupError}
+          />
+          <ProjectObserverEditor
+            projectId={disabledId}
+            value={observerValue}
+            onChange={setObserverValue}
+            serverError={mutation.observerError}
           />
         </>
       )}

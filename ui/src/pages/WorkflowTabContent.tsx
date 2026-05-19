@@ -61,6 +61,7 @@ interface WorkflowTabContentProps {
   resumeSessionPending?: boolean
   projectFindings?: Record<string, unknown>
   blockedReason?: string
+  headerExtra?: React.ReactNode
 }
 
 export function WorkflowTabContent({
@@ -95,6 +96,7 @@ export function WorkflowTabContent({
   resumeSessionPending,
   projectFindings,
   blockedReason,
+  headerExtra,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
@@ -176,6 +178,7 @@ export function WorkflowTabContent({
                 )}
               </div>
               <div className="flex items-center gap-3">
+                {headerExtra}
                 {(hasActivePhase || selectedPanelAgent) && (
                   <Tooltip text={logPanelCollapsed ? 'Expand agent log' : 'Collapse agent log'} placement="top">
                     <Button

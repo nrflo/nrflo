@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar'
 import { MustChangePasswordBanner } from '@/components/auth/MustChangePasswordBanner'
 import { AuthFailedBanner } from '@/components/layout/AuthFailedBanner'
 import { InteractiveSessionsTray } from '@/components/interactive/InteractiveSessionsTray'
+import { ActiveObserversPanel } from '@/components/observer/ActiveObserversPanel'
 import { useProjectStore } from '@/stores/projectStore'
 
 export function Layout() {
@@ -30,6 +31,7 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      <ActiveObserversPanel />
       <InteractiveSessionsTray />
     </div>
   )

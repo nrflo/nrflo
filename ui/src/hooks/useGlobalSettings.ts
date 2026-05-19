@@ -17,3 +17,7 @@ export function useAPIModeEnabled(): boolean {
 export function useExperimentalEnabled(): boolean {
   return useGlobalSettings().data?.experimental ?? false
 }
+
+export function useExperimentalObserverEnabled(): boolean {
+  return useGlobalSettings().data?.experimental_observer_enabled ?? false
+}

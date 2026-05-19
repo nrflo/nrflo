@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { StatusCell } from '@/components/ui/StatusCell'
@@ -159,7 +159,9 @@ export function AgentsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map(row => {
+            {rows.map((row, idx) => {
+              const prevLayer = idx > 0 ? rows[idx - 1].layer : null
+              const showSeparator = prevLayer !== null && prevLayer !== row.layer
               const rawRestartCount = row.active?.restart_count ?? row.history?.restart_count
               const restartCount = rawRestartCount ?? 0
               const restartDetails = row.active?.restart_details ?? row.history?.restart_details
@@ -172,8 +174,13 @@ export function AgentsTable({
               const isCurrentRunningLayer = currentRunningLayer !== null && row.layer === currentRunningLayer && row.status === 'running'
 
               return (
+                <Fragment key={row.phaseName}>
+                  {showSeparator && (
+                    <TableRow className="hover:bg-transparent border-0 pointer-events-none" aria-hidden="true">
+                      <TableCell colSpan={8} className="p-0 h-3 bg-muted/30 border-0" />
+                    </TableRow>
+                  )}
                 <TableRow
-                  key={row.phaseName}
                   onClick={() => handleClick(row)}
                   className={cn('cursor-pointer', isCurrentRunningLayer && 'bg-yellow-50 dark:bg-yellow-950/30')}
                 >
@@ -251,6 +258,7 @@ export function AgentsTable({
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">{getDuration(row)}</TableCell>
                 </TableRow>
+                </Fragment>
               )
             })}
           </TableBody>

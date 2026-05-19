@@ -15,11 +15,12 @@ import { ServiceTokensSection } from '@/components/settings/ServiceTokensSection
 import { ProvidersSection } from '@/components/settings/ProvidersSection'
 import type { ProviderName } from '@/api/providers'
 
-type SettingsTab = 'general' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'administration'
+type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'cli-models' | 'logs' | 'administration'
 type AdministrationSubTab = 'users' | 'audit' | 'tokens'
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
+  { id: 'menu-panel', label: 'Menu Panel' },
   { id: 'projects', label: 'Projects' },
   { id: 'system-agents', label: 'System Agents' },
   { id: 'default-templates', label: 'Default Templates' },
@@ -174,7 +175,7 @@ export function SettingsPage() {
       )}
 
       {activeTab === 'general' && <GlobalSettingsSection />}
-      {activeTab === 'general' && <MenuPanelSection />}
+      {activeTab === 'menu-panel' && <MenuPanelSection />}
       {activeTab === 'projects' && <ProjectsSection initialEditProjectId={projectParam ?? undefined} />}
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}

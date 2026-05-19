@@ -7,6 +7,8 @@ import { SettingsPage } from './SettingsPage'
 import * as projectsApi from '@/api/projects'
 import type { Project } from '@/api/projects'
 import * as logsHook from '@/hooks/useLogs'
+import * as settingsApi from '@/api/settings'
+import type { GlobalSettings } from '@/api/settings'
 
 const mockSetCurrentProject = vi.fn()
 const mockLoadProjects = vi.fn()
@@ -51,6 +53,20 @@ vi.mock('@/api/projectSettings', () => ({
 
 vi.mock('@/hooks/useLogs')
 
+vi.mock('@/api/settings', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/settings')>()
+  return {
+    ...actual,
+    getGlobalSettings: vi.fn().mockResolvedValue({
+      menu_new_ticket: false, menu_import_spec: false, menu_git: true,
+      menu_chain_executions: true, menu_schedules: false, menu_workflow_chains: false,
+      menu_python_scripts: false, menu_documentation: true, menu_errors: false,
+      menu_agent_sessions: false,
+    }),
+    updateGlobalSettings: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
 function makeProject(overrides: Partial<Project> = {}): Project {
   return {
     id: 'test-project',
@@ -66,7 +82,23 @@ function makeProject(overrides: Partial<Project> = {}): Project {
   }
 }
 
-function renderPage() {
+function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
+  return {
+    menu_new_ticket: false,
+    menu_import_spec: false,
+    menu_git: true,
+    menu_chain_executions: true,
+    menu_schedules: false,
+    menu_workflow_chains: false,
+    menu_python_scripts: false,
+    menu_documentation: true,
+    menu_errors: false,
+    menu_agent_sessions: false,
+    ...overrides,
+  } as GlobalSettings
+}
+
+function renderPage(initialEntries: string[] = ['/']) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -75,7 +107,7 @@ function renderPage() {
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <SettingsPage />
       </MemoryRouter>
     </QueryClientProvider>
@@ -449,7 +481,7 @@ describe('SettingsPage - Logs tab', () => {
     const logsTab = screen.getByRole('button', { name: 'Logs' })
     expect(logsTab).toBeInTheDocument()
     const allTabs = screen.getAllByRole('button').filter((b) =>
-      ['General', 'Projects', 'System Agents', 'Default Templates', 'CLI Models', 'Logs'].includes(b.textContent ?? '')
+      ['General', 'Menu Panel', 'Projects', 'System Agents', 'Default Templates', 'CLI Models', 'Logs'].includes(b.textContent ?? '')
     )
     expect(allTabs[allTabs.length - 1]).toHaveTextContent('Logs')
   })
@@ -461,5 +493,39 @@ describe('SettingsPage - Logs tab', () => {
     expect(screen.getByPlaceholderText('Filter logs...')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /BE/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /FE/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('SettingsPage - Menu Panel tab', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [] })
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings())
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    vi.mocked(logsHook.useLogs).mockReturnValue({
+      data: { lines: [], type: 'be' },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof logsHook.useLogs>)
+  })
+
+  it('clicking Menu Panel tab renders the Menu Panel card heading', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Menu Panel' }))
+    expect(await screen.findByText('Menu Panel', { selector: 'h3' })).toBeInTheDocument()
+  })
+
+  it('default General tab does not render the Menu Panel card heading', async () => {
+    renderPage()
+    // Wait for the page to settle on the General tab
+    await screen.findByRole('button', { name: 'Menu Panel' })
+    expect(screen.queryByText('Menu Panel', { selector: 'h3' })).not.toBeInTheDocument()
+  })
+
+  it('deep-link ?tab=menu-panel renders the Menu Panel card on initial mount', async () => {
+    renderPage(['/?tab=menu-panel'])
+    expect(await screen.findByText('Menu Panel', { selector: 'h3' })).toBeInTheDocument()
   })
 })

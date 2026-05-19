@@ -55,12 +55,37 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	observerEnabled, err := svc.GetExperimentalObserverEnabled()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	observerSysCtx, err := svc.GetObserverSystemContext()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	observerProvider, err := svc.GetObserverProvider()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	observerModel, err := svc.GetObserverModel()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	resp := map[string]interface{}{
-		"low_consumption_mode":    val == "true",
-		"context_save_via_agent":  contextSaveViaAgentVal == "true",
-		"simplified_agents_graph": simplifiedAgentsGraphVal == "true",
-		"experimental":            experimentalVal == "true",
-		"api_mode_enabled":        apiModeVal == "true",
+		"low_consumption_mode":         val == "true",
+		"context_save_via_agent":       contextSaveViaAgentVal == "true",
+		"simplified_agents_graph":      simplifiedAgentsGraphVal == "true",
+		"experimental":                 experimentalVal == "true",
+		"api_mode_enabled":             apiModeVal == "true",
+		"experimental_observer_enabled": observerEnabled,
+		"observer_system_context":      observerSysCtx,
+		"observer_provider":            observerProvider,
+		"observer_model":               observerModel,
 	}
 	if stallStartVal != "" {
 		if parsed, parseErr := strconv.Atoi(stallStartVal); parseErr == nil {
@@ -84,13 +109,17 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 // PATCH /api/v1/settings
 func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		LowConsumptionMode     *bool           `json:"low_consumption_mode"`
-		ContextSaveViaAgent    *bool           `json:"context_save_via_agent"`
-		SimplifiedAgentsGraph  *bool           `json:"simplified_agents_graph"`
-		Experimental           *bool           `json:"experimental"`
-		APIModeEnabled         *bool           `json:"api_mode_enabled"`
-		StallStartTimeoutSec   json.RawMessage `json:"stall_start_timeout_sec"`
-		StallRunningTimeoutSec json.RawMessage `json:"stall_running_timeout_sec"`
+		LowConsumptionMode           *bool           `json:"low_consumption_mode"`
+		ContextSaveViaAgent          *bool           `json:"context_save_via_agent"`
+		SimplifiedAgentsGraph        *bool           `json:"simplified_agents_graph"`
+		Experimental                 *bool           `json:"experimental"`
+		APIModeEnabled               *bool           `json:"api_mode_enabled"`
+		StallStartTimeoutSec         json.RawMessage `json:"stall_start_timeout_sec"`
+		StallRunningTimeoutSec       json.RawMessage `json:"stall_running_timeout_sec"`
+		ExperimentalObserverEnabled  *bool           `json:"experimental_observer_enabled"`
+		ObserverSystemContext        *string         `json:"observer_system_context"`
+		ObserverProvider             *string         `json:"observer_provider"`
+		ObserverModel                *string         `json:"observer_model"`
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -159,6 +188,31 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	}
 	if err := applyOptionalIntSetting(svc, req.StallRunningTimeoutSec, "stall_running_timeout_sec", w); err != nil {
 		return
+	}
+
+	if req.ExperimentalObserverEnabled != nil {
+		if err := svc.SetExperimentalObserverEnabled(*req.ExperimentalObserverEnabled); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	if req.ObserverSystemContext != nil {
+		if err := svc.SetObserverSystemContext(*req.ObserverSystemContext); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	if req.ObserverProvider != nil {
+		if err := svc.SetObserverProvider(*req.ObserverProvider); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	if req.ObserverModel != nil {
+		if err := svc.SetObserverModel(*req.ObserverModel); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})

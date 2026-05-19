@@ -7,6 +7,99 @@ import (
 	"be/internal/service"
 )
 
+type projectObserverResponse struct {
+	SystemContext string `json:"system_context"`
+	Provider      string `json:"provider"`
+	Model         string `json:"model"`
+}
+
+type putProjectObserverRequest struct {
+	SystemContext *string `json:"system_context,omitempty"`
+	Provider      *string `json:"provider,omitempty"`
+	Model         *string `json:"model,omitempty"`
+}
+
+func (s *Server) handleGetProjectObserver(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project id is required")
+		return
+	}
+	svc := service.NewGlobalSettingsService(s.pool, s.clock)
+	sysCtx, err := svc.GetObserverSystemContextForProject(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	provider, err := svc.GetObserverProviderForProject(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	model, err := svc.GetObserverModelForProject(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, projectObserverResponse{
+		SystemContext: sysCtx,
+		Provider:      provider,
+		Model:         model,
+	})
+}
+
+func (s *Server) handlePutProjectObserver(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project id is required")
+		return
+	}
+	var req putProjectObserverRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	svc := service.NewGlobalSettingsService(s.pool, s.clock)
+	if req.SystemContext != nil {
+		if err := svc.SetObserverSystemContextForProject(projectID, *req.SystemContext); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	if req.Provider != nil {
+		if err := svc.SetObserverProviderForProject(projectID, *req.Provider); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	if req.Model != nil {
+		if err := svc.SetObserverModelForProject(projectID, *req.Model); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	sysCtx, err := svc.GetObserverSystemContextForProject(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	provider, err := svc.GetObserverProviderForProject(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	model, err := svc.GetObserverModelForProject(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, projectObserverResponse{
+		SystemContext: sysCtx,
+		Provider:      provider,
+		Model:         model,
+	})
+}
+
 type projectCleanupResponse struct {
 	Enabled        bool `json:"enabled"`
 	RetentionLimit int  `json:"retention_limit"`

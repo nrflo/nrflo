@@ -199,6 +199,9 @@ type WorkflowDefCreateRequest struct {
 	Groups                []string `json:"groups,omitempty"`
 	CloseTicketOnComplete *bool    `json:"close_ticket_on_complete,omitempty"`
 	NextWorkflowOnSuccess string   `json:"next_workflow_on_success,omitempty"`
+	ObserverContext       string   `json:"observer_context,omitempty"`
+	ObserverProvider      *string  `json:"observer_provider,omitempty"`
+	ObserverModel         *string  `json:"observer_model,omitempty"`
 }
 
 // WorkflowDefUpdateRequest is the request for updating a workflow definition
@@ -208,6 +211,9 @@ type WorkflowDefUpdateRequest struct {
 	Groups                *[]string `json:"groups,omitempty"`
 	CloseTicketOnComplete *bool     `json:"close_ticket_on_complete,omitempty"`
 	NextWorkflowOnSuccess *string   `json:"next_workflow_on_success,omitempty"`
+	ObserverContext       *string   `json:"observer_context,omitempty"`
+	ObserverProvider      *string   `json:"observer_provider,omitempty"`
+	ObserverModel         *string   `json:"observer_model,omitempty"`
 }
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow

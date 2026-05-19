@@ -39,6 +39,9 @@ type WorkflowDef struct {
 	NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
 	Phases                []PhaseDef     `json:"-"`
 	LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
+	ObserverContext       string         `json:"-"`
+	ObserverProvider      *string        `json:"-"`
+	ObserverModel         *string        `json:"-"`
 }
 
 // MarshalJSON serializes WorkflowDef with parsed phases
@@ -51,6 +54,9 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
 		Phases                []PhaseDef     `json:"phases"`
 		LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
+		ObserverContext       string         `json:"observer_context,omitempty"`
+		ObserverProvider      *string        `json:"observer_provider,omitempty"`
+		ObserverModel         *string        `json:"observer_model,omitempty"`
 	}
 	phases := wf.Phases
 	if phases == nil {
@@ -72,6 +78,9 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		NextWorkflowOnSuccess: wf.NextWorkflowOnSuccess,
 		Phases:                phases,
 		LayerPolicies:         wf.LayerPolicies,
+		ObserverContext:       wf.ObserverContext,
+		ObserverProvider:      wf.ObserverProvider,
+		ObserverModel:         wf.ObserverModel,
 	})
 }
 
@@ -84,6 +93,9 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 		NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
 		Phases                []PhaseDef     `json:"phases"`
 		LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
+		ObserverContext       string         `json:"observer_context,omitempty"`
+		ObserverProvider      *string        `json:"observer_provider,omitempty"`
+		ObserverModel         *string        `json:"observer_model,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -94,6 +106,9 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	wf.NextWorkflowOnSuccess = raw.NextWorkflowOnSuccess
 	wf.Phases = raw.Phases
 	wf.LayerPolicies = raw.LayerPolicies
+	wf.ObserverContext = raw.ObserverContext
+	wf.ObserverProvider = raw.ObserverProvider
+	wf.ObserverModel = raw.ObserverModel
 	return nil
 }
 

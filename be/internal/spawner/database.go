@@ -52,6 +52,7 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		"session_id":        sessionID,
 		"phase":             phase,
 		"restart_threshold": restartThreshold,
+		"kind":              "workflow_agent",
 	})
 	s.broadcastGlobal()
 }
@@ -85,12 +86,21 @@ func (s *Spawner) registerAgentStopWithReason(projectID, ticketID, workflowName,
 	}
 	sessionRepo.UpdateStatus(sessionID, status)
 
+	kind := "workflow_agent"
+	if row := pool.QueryRow("SELECT kind FROM agent_sessions WHERE id = ?", sessionID); row != nil {
+		var k string
+		if err := row.Scan(&k); err == nil && k != "" {
+			kind = k
+		}
+	}
+
 	s.broadcast(ws.EventAgentCompleted, projectID, ticketID, workflowName, map[string]interface{}{
 		"agent_id":      agentID,
 		"session_id":    sessionID,
 		"result":        result,
 		"result_reason": resultReason,
 		"model_id":      modelID,
+		"kind":          kind,
 	})
 	s.broadcastGlobal()
 }

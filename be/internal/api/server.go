@@ -714,11 +714,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	projectAdmin("PUT /api/v1/projects/{id}/env-vars/{name}", s.handlePutProjectEnvVar)
 	projectAdmin("DELETE /api/v1/projects/{id}/env-vars/{name}", s.handleDeleteProjectEnvVar)
 
-	// Project settings: artifact storage and workflow cleanup
+	// Project settings: artifact storage, workflow cleanup, and observer
 	protected("GET /api/v1/projects/{id}/settings/artifact-storage", s.handleGetProjectArtifactStorage)
 	projectAdmin("PUT /api/v1/projects/{id}/settings/artifact-storage", s.handlePutProjectArtifactStorage)
 	protected("GET /api/v1/projects/{id}/settings/cleanup", s.handleGetProjectCleanup)
 	projectAdmin("PUT /api/v1/projects/{id}/settings/cleanup", s.handlePutProjectCleanup)
+	protected("GET /api/v1/projects/{id}/settings/observer", s.handleGetProjectObserver)
+	projectAdmin("PUT /api/v1/projects/{id}/settings/observer", s.handlePutProjectObserver)
 
 	// Python scripts (project-scoped) — writes are admin-only
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)
@@ -808,6 +810,10 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/agent-session-logs", s.handleListAgentSessionLogs)
 	protected("GET /api/v1/agent-session-logs/live", s.handleListLiveAgentSessions)
 	protected("POST /api/v1/agent-sessions/{id}/kill", s.handleKillAgentSession)
+
+	// Observer sessions
+	protected("POST /api/v1/observers", s.handleLaunchObserver)
+	protected("GET /api/v1/observers", s.handleListObservers)
 
 	// Search
 	protected("GET /api/v1/search", s.handleSearch)

@@ -70,10 +70,18 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		UpdatedAt:             s.clock.Now().UTC(),
 	}
 
+	var observerProvider, observerModel interface{}
+	if req.ObserverProvider != nil {
+		observerProvider = *req.ObserverProvider
+	}
+	if req.ObserverModel != nil {
+		observerModel = *req.ObserverModel
+	}
+
 	_, err := s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, wf.NextWorkflowOnSuccess, now, now)
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, observer_context, observer_provider, observer_model, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, wf.NextWorkflowOnSuccess, req.ObserverContext, observerProvider, observerModel, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "PRIMARY KEY") {
 			return nil, fmt.Errorf("workflow '%s' already exists", req.ID)
@@ -88,11 +96,13 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*WorkflowDef, error) {
 	var description, scopeType, groupsStr, nextWorkflowOnSuccess string
 	var closeTicketOnComplete bool
+	var observerContext string
+	var observerProvider, observerModel sql.NullString
 
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success
+		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, observer_context, observer_provider, observer_model
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &nextWorkflowOnSuccess)
+		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &nextWorkflowOnSuccess, &observerContext, &observerProvider, &observerModel)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -110,6 +120,13 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	wf.ScopeType = scopeType
 	wf.CloseTicketOnComplete = closeTicketOnComplete
 	wf.NextWorkflowOnSuccess = nextWorkflowOnSuccess
+	wf.ObserverContext = observerContext
+	if observerProvider.Valid && observerProvider.String != "" {
+		wf.ObserverProvider = &observerProvider.String
+	}
+	if observerModel.Valid && observerModel.String != "" {
+		wf.ObserverModel = &observerModel.String
+	}
 	var groups []string
 	if groupsStr != "" {
 		json.Unmarshal([]byte(groupsStr), &groups)
@@ -124,7 +141,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success
+		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, observer_context, observer_provider, observer_model
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -136,11 +153,13 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 	type wfMeta struct {
 		id, description, scopeType, groupsStr, nextWorkflowOnSuccess string
 		closeTicketOnComplete                                          bool
+		observerContext                                                string
+		observerProvider, observerModel                               sql.NullString
 	}
 	var metas []wfMeta
 	for rows.Next() {
 		var m wfMeta
-		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.nextWorkflowOnSuccess); err != nil {
+		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.nextWorkflowOnSuccess, &m.observerContext, &m.observerProvider, &m.observerModel); err != nil {
 			return nil, err
 		}
 		if IsReservedWorkflowName(m.id) {
@@ -167,6 +186,13 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		wf.ScopeType = m.scopeType
 		wf.CloseTicketOnComplete = m.closeTicketOnComplete
 		wf.NextWorkflowOnSuccess = m.nextWorkflowOnSuccess
+		wf.ObserverContext = m.observerContext
+		if m.observerProvider.Valid && m.observerProvider.String != "" {
+			wf.ObserverProvider = &m.observerProvider.String
+		}
+		if m.observerModel.Valid && m.observerModel.String != "" {
+			wf.ObserverModel = &m.observerModel.String
+		}
 		var groups []string
 		if m.groupsStr != "" {
 			json.Unmarshal([]byte(m.groupsStr), &groups)
@@ -217,6 +243,18 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 		}
 		updates = append(updates, "next_workflow_on_success = ?")
 		args = append(args, *req.NextWorkflowOnSuccess)
+	}
+	if req.ObserverContext != nil {
+		updates = append(updates, "observer_context = ?")
+		args = append(args, *req.ObserverContext)
+	}
+	if req.ObserverProvider != nil {
+		updates = append(updates, "observer_provider = ?")
+		args = append(args, *req.ObserverProvider)
+	}
+	if req.ObserverModel != nil {
+		updates = append(updates, "observer_model = ?")
+		args = append(args, *req.ObserverModel)
 	}
 
 	if len(updates) == 0 {

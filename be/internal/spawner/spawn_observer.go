@@ -12,6 +12,7 @@ import (
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/service"
+	"be/internal/ws"
 )
 
 // SpawnObserver starts a cli_interactive observer agent for the given session
@@ -165,6 +166,17 @@ func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 		os.Remove(promptFile.Name())
 		return fmt.Errorf("spawn_observer: start backend: %w", err)
 	}
+
+	s.broadcast(ws.EventAgentStarted, req.ProjectID, "", req.WorkflowID, map[string]interface{}{
+		"agent_id":          agentID,
+		"agent_type":        "_observer",
+		"model_id":          modelID,
+		"session_id":        req.SessionID,
+		"phase":             "observer",
+		"restart_threshold": 0,
+		"kind":              "observer",
+	})
+	s.broadcastGlobal()
 
 	proc.trx = logger.NewTrx()
 

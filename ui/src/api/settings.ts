@@ -12,6 +12,16 @@ export interface GlobalSettings {
   observer_model: string
   stall_start_timeout_sec: number | null
   stall_running_timeout_sec: number | null
+  menu_new_ticket: boolean
+  menu_import_spec: boolean
+  menu_git: boolean
+  menu_chain_executions: boolean
+  menu_schedules: boolean
+  menu_workflow_chains: boolean
+  menu_python_scripts: boolean
+  menu_documentation: boolean
+  menu_errors: boolean
+  menu_agent_sessions: boolean
 }
 
 export const settingsKeys = {

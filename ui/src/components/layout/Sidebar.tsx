@@ -27,7 +27,7 @@ import { useStatus } from '@/hooks/useTickets'
 import { useChainList } from '@/hooks/useChains'
 import { useRunningAgents } from '@/hooks/useRunningAgents'
 import { useProjectStore } from '@/stores/projectStore'
-import { useAPIModeEnabled, useExperimentalEnabled, useExperimentalObserverEnabled } from '@/hooks/useGlobalSettings'
+import { useAPIModeEnabled, useExperimentalEnabled, useExperimentalObserverEnabled, useMenuVisibility } from '@/hooks/useGlobalSettings'
 import { useIsAdmin } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
 import { LaunchObserverButton } from '@/components/observer/LaunchObserverButton'
@@ -71,6 +71,7 @@ export function Sidebar() {
   const experimentalEnabled = useExperimentalEnabled()
   const observerEnabled = useExperimentalObserverEnabled()
   const isAdmin = useIsAdmin()
+  const menu = useMenuVisibility()
 
   const { data: runningAgentsData } = useRunningAgents()
   const hasRunningProjectWorkflow = useMemo(
@@ -112,18 +113,22 @@ export function Sidebar() {
           count={status?.counts.total}
           active={location.pathname === '/tickets' && !location.search}
         />
-        <NavItem
-          to="/tickets/new"
-          icon={<Plus className="h-4 w-4" />}
-          label="New Ticket"
-          active={isActive('/tickets/new')}
-        />
-        <NavItem
-          to="/import"
-          icon={<FileInput className="h-4 w-4" />}
-          label="Import Spec"
-          active={isActive('/import')}
-        />
+        {menu.newTicket && (
+          <NavItem
+            to="/tickets/new"
+            icon={<Plus className="h-4 w-4" />}
+            label="New Ticket"
+            active={isActive('/tickets/new')}
+          />
+        )}
+        {menu.importSpec && (
+          <NavItem
+            to="/import"
+            icon={<FileInput className="h-4 w-4" />}
+            label="Import Spec"
+            active={isActive('/import')}
+          />
+        )}
         <NavItem
           to="/project-workflows"
           icon={<FolderGit2 className="h-4 w-4" />}
@@ -131,7 +136,7 @@ export function Sidebar() {
           active={isActive('/project-workflows')}
           indicator={hasRunningProjectWorkflow ? <Spinner size="sm" /> : undefined}
         />
-        {hasDefaultBranch && (
+        {hasDefaultBranch && menu.git && (
           <NavItem
             to="/git-status"
             icon={<GitCommitHorizontal className="h-4 w-4" />}
@@ -139,14 +144,16 @@ export function Sidebar() {
             active={isActive('/git-status')}
           />
         )}
-        <NavItem
-          to="/chains"
-          icon={<Link2 className="h-4 w-4" />}
-          label="Chain Executions"
-          active={isActive('/chains')}
-          indicator={runningChains?.length ? <><span className="text-xs text-muted-foreground">{remainingChainTickets}</span><Spinner size="sm" /></> : undefined}
-        />
-        {isAdmin && (
+        {menu.chainExecutions && (
+          <NavItem
+            to="/chains"
+            icon={<Link2 className="h-4 w-4" />}
+            label="Chain Executions"
+            active={isActive('/chains')}
+            indicator={runningChains?.length ? <><span className="text-xs text-muted-foreground">{remainingChainTickets}</span><Spinner size="sm" /></> : undefined}
+          />
+        )}
+        {isAdmin && menu.schedules && (
           <NavItem
             to="/schedules"
             icon={<CalendarClock className="h-4 w-4" />}
@@ -154,7 +161,7 @@ export function Sidebar() {
             active={isActive('/schedules')}
           />
         )}
-        {experimentalEnabled && (
+        {experimentalEnabled && menu.workflowChains && (
           <NavItem
             to="/workflow-chains"
             icon={<ListOrdered className="h-4 w-4" />}
@@ -162,7 +169,7 @@ export function Sidebar() {
             active={isActive('/workflow-chains')}
           />
         )}
-        {experimentalEnabled && (
+        {experimentalEnabled && menu.pythonScripts && (
           <NavItem
             to="/python-scripts"
             icon={<FileCode className="h-4 w-4" />}
@@ -170,24 +177,30 @@ export function Sidebar() {
             active={isActive('/python-scripts')}
           />
         )}
-        <NavItem
-          to="/documentation"
-          icon={<BookOpen className="h-4 w-4" />}
-          label="Documentation"
-          active={isActive('/documentation')}
-        />
-        <NavItem
-          to="/errors"
-          icon={<AlertTriangle className="h-4 w-4" />}
-          label="Errors"
-          active={isActive('/errors')}
-        />
-        <NavItem
-          to="/logs"
-          icon={<ScrollText className="h-4 w-4" />}
-          label="Agent sessions"
-          active={isActive('/logs')}
-        />
+        {menu.documentation && (
+          <NavItem
+            to="/documentation"
+            icon={<BookOpen className="h-4 w-4" />}
+            label="Documentation"
+            active={isActive('/documentation')}
+          />
+        )}
+        {menu.errors && (
+          <NavItem
+            to="/errors"
+            icon={<AlertTriangle className="h-4 w-4" />}
+            label="Errors"
+            active={isActive('/errors')}
+          />
+        )}
+        {menu.agentSessions && (
+          <NavItem
+            to="/logs"
+            icon={<ScrollText className="h-4 w-4" />}
+            label="Agent sessions"
+            active={isActive('/logs')}
+          />
+        )}
         {isAdmin && (
           <>
             <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">

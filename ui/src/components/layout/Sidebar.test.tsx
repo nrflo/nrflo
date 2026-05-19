@@ -30,10 +30,24 @@ function setProjectWorkflowActive(active: boolean) {
 
 const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)
 const mockUseExperimentalEnabled = vi.fn().mockReturnValue(false)
+// TODO(test-writer): add tests asserting menu visibility gates, e.g. menu.documentation=false hides the Documentation NavItem while other items remain
+const mockUseMenuVisibility = vi.fn().mockReturnValue({
+  newTicket: true,
+  importSpec: true,
+  git: true,
+  chainExecutions: true,
+  schedules: true,
+  workflowChains: true,
+  pythonScripts: true,
+  documentation: true,
+  errors: true,
+  agentSessions: true,
+})
 vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => mockUseAPIModeEnabled(),
   useExperimentalEnabled: () => mockUseExperimentalEnabled(),
   useExperimentalObserverEnabled: () => false,
+  useMenuVisibility: () => mockUseMenuVisibility(),
 }))
 
 const mockUseIsAdmin = vi.fn().mockReturnValue(true)
@@ -81,6 +95,7 @@ describe('Sidebar - Spinner Visibility', () => {
     mockUseIsAdmin.mockReturnValue(true)
     mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
+    mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -437,6 +452,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
     mockUseIsAdmin.mockReturnValue(true)
     mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
+    mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     mockUseChainList.mockReturnValue({ data: [] })
   })
@@ -512,6 +528,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     mockUseIsAdmin.mockReturnValue(true)
     mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
+    mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     setProjectWorkflowActive(false)
   })
@@ -608,6 +625,7 @@ describe('Sidebar - API Mode Gating', () => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
+    mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })
@@ -648,6 +666,7 @@ describe('Sidebar - Experimental Gating', () => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
     mockUseAPIModeEnabled.mockReturnValue(false)
+    mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     setProjectWorkflowActive(false)
     mockUseChainList.mockReturnValue({ data: [] })

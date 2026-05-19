@@ -80,7 +80,7 @@ func callScriptContext(t *testing.T, h *Handler, sessionID string) (Response, ma
 	return resp, result
 }
 
-// TestScriptContext_HappyPath verifies all 12 keys are returned with seeded values.
+// TestScriptContext_HappyPath verifies all 13 keys are returned with seeded values.
 func TestScriptContext_HappyPath(t *testing.T) {
 	env := newHandlerTestEnv(t)
 	env.createTicketAndWorkflow(t, "SC-HP-1")
@@ -97,6 +97,7 @@ func TestScriptContext_HappyPath(t *testing.T) {
 	wfiID := queryWFIID(t, env, "SC-HP-1")
 	setWFIFindings(t, env, wfiID, map[string]interface{}{
 		"user_instructions": "do the thing",
+		"dd_report_id":      "rpt_seed_xyz",
 		"_callback": map[string]interface{}{
 			"instructions": "fix it",
 			"from_agent":   "qa-verifier",
@@ -157,6 +158,22 @@ func TestScriptContext_HappyPath(t *testing.T) {
 	// scope_type key must be present
 	if _, ok := result["scope_type"]; !ok {
 		t.Error("scope_type key must be present in response")
+	}
+
+	// seed_findings must surface user-provided wfi-scope findings and exclude
+	// user_instructions + underscore-prefixed orchestrator-internal keys.
+	sf, ok := result["seed_findings"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("seed_findings is not a map, got %T", result["seed_findings"])
+	}
+	if sf["dd_report_id"] != "rpt_seed_xyz" {
+		t.Errorf("seed_findings[dd_report_id] = %v, want %q", sf["dd_report_id"], "rpt_seed_xyz")
+	}
+	if _, present := sf["user_instructions"]; present {
+		t.Error("seed_findings must not include user_instructions")
+	}
+	if _, present := sf["_callback"]; present {
+		t.Error("seed_findings must not include underscore-prefixed keys")
 	}
 }
 

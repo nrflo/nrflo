@@ -37,7 +37,8 @@ c = nrflo_sdk.client()
 | `c.project_findings` | Same shape as `c.findings` but scoped to project |
 | `c.agent` | `finished()`, `fail(reason="")`, `continue_()`, `callback(level)`, `chain_next_ticket(ticket_id)` |
 | `c.artifacts` | `add(name, content, content_type=None)`, `list()`, `get(name)` |
-| `c.context(refresh=False)` | Cached call to the `script.context` socket method (12-key dict — see [be/internal/socket/CLAUDE.md](../../socket/CLAUDE.md)) |
+| `c.context(refresh=False)` | Cached call to the `script.context` socket method (13-key dict — see [be/internal/socket/CLAUDE.md](../../socket/CLAUDE.md)) |
+| `c.seed_findings()` | Convenience: `c.context()["seed_findings"]` — caller-supplied `RunRequest.SeedFindings` keys (workflow_instance scope, excluding `user_instructions` and underscore-prefixed orchestrator-internal keys) |
 | `c.user_instructions()` | Convenience: `c.context()["user_instructions"]` |
 | `c.callback_info()` | Convenience: `c.context()["callback"]` (or `None`) |
 | `c.previous_data()` | Convenience: `c.context()["previous_data"]` (set on relaunch via `to_resume`) |

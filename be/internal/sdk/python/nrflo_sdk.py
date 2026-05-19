@@ -346,6 +346,11 @@ class Client:
     def previous_data(self) -> str:
         return self.context().get("previous_data", "")
 
+    def seed_findings(self) -> dict:
+        """Workflow_instance-scope findings supplied via RunRequest.SeedFindings."""
+        v = self.context().get("seed_findings") or {}
+        return v if isinstance(v, dict) else {}
+
     def skip(self, tag: str):
         _check(self._conn.send({
             "id": str(uuid.uuid4()), "method": "workflow.skip",

@@ -33,7 +33,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `agent.log` | Insert `agent_messages` row from script agent. Params: `{session_id, type?, message, payload?}` |
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
-| `script.context` | Return 12-key auto-injectable dict for script-mode session. Params: `{session_id}` |
+| `script.context` | Return 13-key auto-injectable dict for script-mode session (incl. `seed_findings`). Params: `{session_id}` |
 | `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |
 | `artifact.list` | List artifacts for the session's workflow instance. Params: `{session_id}` |
 | `artifact.get` | Materialize artifact to stage dir and return abs path. Params: `{session_id, name}` |

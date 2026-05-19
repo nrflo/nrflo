@@ -3,6 +3,7 @@ package socket
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"be/internal/repo"
 )
@@ -74,6 +75,22 @@ func (h *Handler) handleScriptContext(_ context.Context, req Request) Response {
 
 	previousData := rawFindingStr(sessionRaw, "to_resume")
 
+	// seedFindings exposes caller-supplied workflow_instance findings (set via
+	// RunRequest.SeedFindings). Filter out keys surfaced separately
+	// (user_instructions) and nrflo-internal keys (underscore-prefixed,
+	// e.g. _callback, _orchestration).
+	seedFindings := make(map[string]interface{}, len(wfiRaw))
+	for k, v := range wfiRaw {
+		if k == "user_instructions" || strings.HasPrefix(k, "_") {
+			continue
+		}
+		var decoded interface{}
+		if err := json.Unmarshal(v, &decoded); err != nil {
+			decoded = string(v)
+		}
+		seedFindings[k] = decoded
+	}
+
 	ticketID := session.TicketID
 	ticketTitle := ""
 	ticketDescription := ""
@@ -100,5 +117,6 @@ func (h *Handler) handleScriptContext(_ context.Context, req Request) Response {
 		"user_instructions":   userInstructions,
 		"callback":            callbackInfo,
 		"previous_data":       previousData,
+		"seed_findings":       seedFindings,
 	})
 }

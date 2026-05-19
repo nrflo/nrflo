@@ -74,7 +74,7 @@ Exit codes: `0` = all PASS/SKIP, `1` = any FAIL, `2` = fatal interruption.
 ## Adding a new scenario
 
 1. Pick the next free id in `suite.md` (`sNN` for CLI, `PNN` for python). Add a one-line description.
-2. Default home is `engine/`. Create `engine/<id>_<short_name>.py` using `engine/s01_findings_save.py` (CLI) or `python/P01_findings_basic.py` (script) as the template. Do not branch on `ctx.provider` inside the file. Only put a scenario in a per-provider folder when the implementation must diverge per provider — in that case add the file to every applicable provider folder.
+2. Default home is `engine/`. Create `engine/<id>_<short_name>.py` using `engine/s02_agent_fail.py` (CLI) or `python/P01_findings_basic.py` (script) as the template. Do not branch on `ctx.provider` inside the file. Only put a scenario in a per-provider folder when the implementation must diverge per provider — in that case add the file to every applicable provider folder.
 3. Append the module to that folder's `__init__.py::ALL_SCENARIOS`.
 4. `python3 manual_testing/<folder>/test.py --only=<id> --parallel=1` to debug.
 5. Run `python3 manual_testing/run_suite.py` once to regenerate `/capabilities.md`.

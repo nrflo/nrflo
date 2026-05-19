@@ -13,21 +13,14 @@ When you add or remove a scenario, edit this file in the same commit.
 
 | ID  | Description |
 |-----|-------------|
-| s01 | findings.add + agent.finished writes findings JSON to session row |
+| s01 | L0 happy-path mega-scenario: findings.add (own + project + final_result), env var, skip tag, message categories, agent-session-logs endpoint, findings history — all in one 1-agent L0 run |
 | s02 | agent.fail marks session result=fail |
-| s03 | findings project-add writes to project_findings |
-| s04 | spawner records agent stream lines into agent_messages |
 | s05 | CLI reports context % remaining to server |
-| s06 | `nrflo skip <tag>` appends to workflow_instances.skip_tags |
-| s07 | L0 finding readable by L1 via PRIOR_LAYER_FINDINGS |
-| s08 | workflow_final_result finding surfaces in workflow state |
+| s07 | L1 prompt template expansion: both `#{FINDINGS:l0:key}` and `#{PRIOR_LAYER_FINDINGS}` interpolated |
 | s09 | ticket-scoped workflow runs against a ticket_id |
 | s10 | two L0 agents run concurrently, both write findings |
-| s11 | `instructions` from /workflow/run reaches agent |
 | s12 | project_findings persist across workflows in same project |
-| s13 | project env var → `NRFLO_PROJECT_*` in agent process |
 | s14 | pass_policy=all: one failed agent fails the layer |
-| s15 | L1 prompt interpolates `#{PRIOR_LAYER_FINDINGS}` |
 | s16 | stall detection on long-blocked agent |
 | s17 | agent.callback(level=0) re-runs L0 |
 | s18 | failed workflow auto-retry increments retry_count |
@@ -36,7 +29,6 @@ When you add or remove a scenario, edit this file in the same commit.
 | s21 | next_workflow_on_success fires WF_B after WF_A passes |
 | s22 | max_fail_restarts=2 auto-respawns up to limit |
 | s23 | chain with require_ticket_handoff hands ticket to step2 |
-| s24 | GET workflow logs endpoint after completion |
 | s25 | findings carryover across mid-flight kill + callback |
 | s26 | low-context relaunch via provider native resume |
 | s27 | low-context relaunch via agent-saver branch (no native resume) |
@@ -53,7 +45,6 @@ When you add or remove a scenario, edit this file in the same commit.
 | s41 | workflow export/import round-trips into a fresh project and runs |
 | s42 | service token bearer scope: ok on matching project, 403 on mismatch |
 | s43 | artifacts: stage upload + input_artifacts + agent add/list end-to-end |
-| s44 | findings audit history returns insert + update rows for same key |
 | s45 | notification channel kind='script' runs user Python on completion |
 | s46 | observer agents: launch/read/mutate per scope, cross-scope deny, flag-off 404 |
 | s47 | CLI rate-limit detection: stub claude → agent.rate_limited WS + DB cols |
@@ -111,7 +102,7 @@ SKIPs cleanly when no token is reachable.
 
 | Folder      | Members |
 |-------------|---------|
-| `engine/`   | every s-id except s05, s27, s35 (42 scenarios, run under `claude`) |
+| `engine/`   | every s-id except s05, s27, s35 (33 scenarios, run under `claude`; s01 is a merged L0 happy-path covering the small findings/logs/skip/env-var/categories/history surfaces, s07 covers both prompt-template placeholders) |
 | `claude/`   | s05, s35 |
 | `codex/`    | s05, s35 |
 | `gemini/`   | s05, s35 |

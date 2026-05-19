@@ -9,6 +9,9 @@ export interface RunningAgent {
   phase: string
   started_at: string
   elapsed_sec: number
+  waiting_for_rate_limit?: boolean
+  rate_limit_until_ts?: string
+  rate_limit_retry_count?: number
 }
 
 export interface RunningAgentsResponse {

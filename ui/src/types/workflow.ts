@@ -1,6 +1,6 @@
 import type { InputArtifactRef } from '@/types/artifact'
 
-export type PhaseStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'error'
+export type PhaseStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'error' | 'rate_limited'
 export type PhaseResult = 'pass' | 'fail' | 'skipped' | null
 
 export interface PhaseState {
@@ -9,6 +9,8 @@ export interface PhaseState {
   started_at?: string
   ended_at?: string
   error?: string
+  rate_limit_until_ts?: string
+  rate_limit_retry_count?: number
 }
 
 export interface RestartDetail {
@@ -38,6 +40,9 @@ export interface ActiveAgentV4 {
   nudge_count?: number
   tag?: string
   effective_mode?: 'cli_interactive' | 'api' | 'script'
+  waiting_for_rate_limit?: boolean
+  rate_limit_until_ts?: string
+  rate_limit_retry_count?: number
 }
 
 export interface AgentHistoryEntry {

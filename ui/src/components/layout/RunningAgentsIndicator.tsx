@@ -1,8 +1,11 @@
 import { useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
+import { Clock } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { useRunningAgents } from '@/hooks/useRunningAgents'
+import { useTickingClock } from '@/hooks/useElapsedTime'
+import { formatRateLimitCountdown } from '@/lib/rateLimit'
 import { useProjectStore } from '@/stores/projectStore'
 import type { RunningAgent } from '@/types/agents'
 
@@ -41,6 +44,8 @@ export function RunningAgentsIndicator() {
   const navigate = useNavigate()
   const currentProject = useProjectStore((s) => s.currentProject)
   const [visible, setVisible] = useState(false)
+
+  useTickingClock(data?.agents?.some(a => a.waiting_for_rate_limit) ?? false)
   const [coords, setCoords] = useState({ top: 0, left: 0 })
   const triggerRef = useRef<HTMLDivElement>(null)
   const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -134,9 +139,21 @@ export function RunningAgentsIndicator() {
                       └
                     </span>
                     {agent.ticket_id && <>{agent.ticket_id} &middot; </>}{formatAgentLabel(agent)}
-                    <span className="ml-1 text-gray-400 dark:text-gray-500">
-                      ({formatElapsed(agent.elapsed_sec)})
-                    </span>
+                    {agent.waiting_for_rate_limit ? (
+                      <span className="ml-1 text-amber-400 dark:text-amber-500 inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {(() => {
+                          const countdown = agent.rate_limit_until_ts
+                            ? formatRateLimitCountdown(new Date(agent.rate_limit_until_ts), new Date())
+                            : ''
+                          return `waiting · resumes ${countdown || 'soon'}`
+                        })()}
+                      </span>
+                    ) : (
+                      <span className="ml-1 text-gray-400 dark:text-gray-500">
+                        ({formatElapsed(agent.elapsed_sec)})
+                      </span>
+                    )}
                   </Link>
                 ))}
               </div>

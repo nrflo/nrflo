@@ -1,12 +1,17 @@
-import { Loader2, CheckCircle, XCircle, Timer, AlertTriangle, Terminal } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, Timer, AlertTriangle, Terminal, Clock } from 'lucide-react'
 import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold, formatRestartReasons } from '@/lib/utils'
+import { formatRateLimitCountdown } from '@/lib/rateLimit'
+import { useTickingClock } from '@/hooks/useElapsedTime'
 import { Badge } from '@/components/ui/Badge'
 import { Tooltip } from '@/components/ui/Tooltip'
 import type { AgentCardProps } from './types'
 
-function AgentStatusIcon({ result, isInteractive }: { result?: string; isInteractive?: boolean }) {
+function AgentStatusIcon({ result, isInteractive, isRateLimited }: { result?: string; isInteractive?: boolean; isRateLimited?: boolean }) {
   if (isInteractive) {
     return <Terminal className="h-3.5 w-3.5 text-blue-500" />
+  }
+  if (isRateLimited) {
+    return <Clock className="h-3.5 w-3.5 text-amber-500" />
   }
   if (!result) {
     return <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync" />
@@ -22,10 +27,17 @@ function AgentStatusIcon({ result, isInteractive }: { result?: string; isInterac
 
 export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardProps) {
   const isInteractive = session?.status === 'user_interactive'
+  const isRateLimited = !!agent.waiting_for_rate_limit
   const isRunning = !agent.result && !isInteractive
   const elapsedTime = agent.started_at
     ? formatElapsedTime(agent.started_at, agent.ended_at)
     : '0s'
+
+  useTickingClock(isRateLimited)
+
+  const rateLimitCountdown = isRateLimited && agent.rate_limit_until_ts
+    ? formatRateLimitCountdown(new Date(agent.rate_limit_until_ts), new Date())
+    : null
 
   // Extract model name from model_id (e.g., "claude-3-5-sonnet" -> "sonnet")
   const modelName = agent.model_id
@@ -75,7 +87,7 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
 
       {/* Status + Model + Tag */}
       <div className="flex items-center gap-1.5">
-        <AgentStatusIcon result={agent.result} isInteractive={isInteractive} />
+        <AgentStatusIcon result={agent.result} isInteractive={isInteractive} isRateLimited={isRateLimited} />
         <span className="text-xs font-medium">{isInteractive ? 'Interactive' : modelName}</span>
         {agent.tag && (
           <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">
@@ -84,11 +96,17 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
         )}
       </div>
 
-      {/* Elapsed time + context */}
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Timer className="h-3 w-3" />
-        <span>{elapsedTime}</span>
-      </div>
+      {/* Elapsed time or rate-limit countdown */}
+      {isRateLimited ? (
+        <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+          <span>Waiting · retry #{agent.rate_limit_retry_count ?? 0} · resumes {rateLimitCountdown || 'Resuming…'}</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Timer className="h-3 w-3" />
+          <span>{elapsedTime}</span>
+        </div>
+      )}
 
       {/* Context left badge - top right corner */}
       {agent.context_left != null && (

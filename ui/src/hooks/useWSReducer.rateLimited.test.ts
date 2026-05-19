@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
 import { dispatchV2Event, clearSeqs } from './useWSReducer'
 import { agentSessionLogKeys } from './useAgentSessionLogs'
+import { runningAgentsKeys } from './useRunningAgents'
+import { ticketKeys, projectWorkflowKeys } from './useTickets'
 import type { WSEventV2 } from './useWSProtocol'
 import type { LiveAgentSession, LiveAgentSessionsResponse } from '@/types/agentSessionLogs'
 
@@ -155,5 +157,85 @@ describe('useWSReducer — agent.rate_limited handler', () => {
     dispatchV2Event(event, qc)
     const handled = dispatchV2Event(event, qc)
     expect(handled).toBe(false)
+  })
+
+  describe('runningAgents + workflow invalidation', () => {
+    describe('project-scoped (ticket_id="")', () => {
+      it('invalidates runningAgentsKeys.all', () => {
+        const spy = vi.spyOn(qc, 'invalidateQueries')
+        dispatchV2Event(makeEvent(), qc)
+        const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        const runningKey = JSON.stringify(runningAgentsKeys.all)
+        expect(keys.some(k => k === runningKey)).toBe(true)
+      })
+
+      it('invalidates projectWorkflowKeys.workflow("proj1")', () => {
+        const spy = vi.spyOn(qc, 'invalidateQueries')
+        dispatchV2Event(makeEvent(), qc)
+        const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        const workflowKey = JSON.stringify(projectWorkflowKeys.workflow('proj1'))
+        expect(keys.some(k => k === workflowKey)).toBe(true)
+      })
+
+      it('does NOT invalidate ticketKeys.workflow for project-scoped event', () => {
+        const spy = vi.spyOn(qc, 'invalidateQueries')
+        dispatchV2Event(makeEvent(), qc)
+        const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        expect(keys.some(k => k.includes('"detail"') && k.includes('"workflow"'))).toBe(false)
+      })
+    })
+
+    describe('ticket-scoped (ticket_id="tick1")', () => {
+      function makeTicketEvent(seq: number): WSEventV2 {
+        return makeEvent({ sequence: seq, ticket_id: 'tick1' })
+      }
+
+      it('invalidates runningAgentsKeys.all', () => {
+        const spy = vi.spyOn(qc, 'invalidateQueries')
+        dispatchV2Event(makeTicketEvent(10), qc)
+        const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        const runningKey = JSON.stringify(runningAgentsKeys.all)
+        expect(keys.some(k => k === runningKey)).toBe(true)
+      })
+
+      it('invalidates ticketKeys.workflow("tick1")', () => {
+        const spy = vi.spyOn(qc, 'invalidateQueries')
+        dispatchV2Event(makeTicketEvent(11), qc)
+        const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        const workflowKey = JSON.stringify(ticketKeys.workflow('tick1'))
+        expect(keys.some(k => k === workflowKey)).toBe(true)
+      })
+
+      it('invalidates ticketKeys.detail("tick1")', () => {
+        const spy = vi.spyOn(qc, 'invalidateQueries')
+        dispatchV2Event(makeTicketEvent(12), qc)
+        const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        const detailKey = JSON.stringify(ticketKeys.detail('tick1'))
+        expect(keys.some(k => k === detailKey)).toBe(true)
+      })
+
+      it('does NOT invalidate projectWorkflowKeys.workflow for ticket-scoped event', () => {
+        const spy = vi.spyOn(qc, 'invalidateQueries')
+        dispatchV2Event(makeTicketEvent(13), qc)
+        const keys = spy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        expect(keys.some(k => k.includes('"project-workflows"'))).toBe(false)
+      })
+    })
+
+    describe('live-sessions cache patch still fires alongside invalidations', () => {
+      it('still patches live sessions cache AND invalidates runningAgents when cache is warm', () => {
+        const cacheKey = agentSessionLogKeys.live('proj1')
+        qc.setQueryData<LiveAgentSessionsResponse>(cacheKey, { sessions: [makeSession()] })
+        const setSpy = vi.spyOn(qc, 'setQueryData')
+        const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
+
+        dispatchV2Event(makeEvent({ sequence: 20 }), qc)
+
+        expect(setSpy).toHaveBeenCalled()
+        const runningKey = JSON.stringify(runningAgentsKeys.all)
+        const invalidatedKeys = invalidateSpy.mock.calls.map((c: any) => JSON.stringify(c[0]?.queryKey))
+        expect(invalidatedKeys.some(k => k === runningKey)).toBe(true)
+      })
+    })
   })
 })

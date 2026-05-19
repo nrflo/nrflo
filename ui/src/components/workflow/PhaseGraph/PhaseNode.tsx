@@ -1,4 +1,4 @@
-import { Check, Circle, AlertCircle, SkipForward, Loader2 } from 'lucide-react'
+import { Check, Circle, AlertCircle, SkipForward, Loader2, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ResultIcon } from '@/components/ui/ResultIcon'
 import { AgentCard } from './AgentCard'
@@ -12,6 +12,8 @@ function StatusIcon({ status }: { status: PhaseStatus }) {
       return <Check className="h-4 w-4 text-green-500" />
     case 'in_progress':
       return <Loader2 className="h-4 w-4 text-yellow-500 spin-sync" />
+    case 'rate_limited':
+      return <Clock className="h-4 w-4 text-amber-500" />
     case 'error':
       return <AlertCircle className="h-4 w-4 text-red-500" />
     case 'skipped':
@@ -30,6 +32,8 @@ function getNodeStyles(status: PhaseStatus) {
       return cn(base, 'border-green-500 bg-green-50 dark:bg-green-950/30')
     case 'in_progress':
       return cn(base, 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30')
+    case 'rate_limited':
+      return cn(base, 'border-amber-400 bg-amber-50 dark:bg-amber-950/30')
     case 'error':
       return cn(base, 'border-red-500 bg-red-50 dark:bg-red-950/30')
     case 'skipped':
@@ -47,7 +51,7 @@ export function PhaseNode({
   onAgentClick,
 }: PhaseNodeProps) {
   const { name, status, result, isCurrent, activeAgents, historyEntries } = node
-  const hasActiveAgents = activeAgents.length > 0 && status === 'in_progress'
+  const hasActiveAgents = activeAgents.length > 0 && (status === 'in_progress' || status === 'rate_limited')
 
   // Find sessions for agents in this phase
   const getSessionForAgent = (agent: ActiveAgentV4): AgentSession | undefined => {

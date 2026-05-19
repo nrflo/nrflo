@@ -206,7 +206,7 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     }
   },
 
-  'agent.rate_limited': (event, qc) => {
+  'agent.rate_limited': (event, qc, isProjectScope) => {
     const sessionId = event.data?.session_id as string | undefined
     const waitSeconds = event.data?.wait_seconds as number | undefined
     if (!sessionId || waitSeconds === undefined) return
@@ -234,6 +234,9 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     } else {
       qc.invalidateQueries({ queryKey: agentSessionLogKeys.all })
     }
+
+    qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
+    invalidateWorkflow(event, qc, isProjectScope)
   },
 
   'agent.context_saving': (event, qc, isProjectScope) => {

@@ -36,8 +36,10 @@ function makeHistory(phaseName: string, overrides: Partial<AgentHistoryEntry> = 
   }
 }
 
-function getDataRows(): NodeListOf<HTMLTableRowElement> {
-  return document.querySelectorAll('tbody tr')
+function getDataRows(): HTMLTableRowElement[] {
+  return Array.from(document.querySelectorAll<HTMLTableRowElement>('tbody tr')).filter(
+    row => row.getAttribute('aria-hidden') !== 'true'
+  )
 }
 
 describe('current running layer highlight', () => {

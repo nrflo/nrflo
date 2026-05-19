@@ -55,6 +55,8 @@ func (h *Handler) Handle(req Request) Response {
 		return h.handleGlobal(ctx, req, action)
 	case "artifact":
 		return h.handleArtifact(ctx, req, action)
+	case "observer":
+		return h.handleObserver(ctx, req, action)
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", req.Method)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError(req.Method))

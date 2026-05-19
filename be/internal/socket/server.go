@@ -84,6 +84,14 @@ type Server struct {
 	running  bool
 }
 
+// WorkflowOrchestrator enables observer agents to trigger and retry workflows via the socket.
+// Nil-safe; pass nil in tests.
+type WorkflowOrchestrator interface {
+	StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (instanceID string, err error)
+	RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error
+	RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error
+}
+
 // TerminalSignaler dispatches a best-effort kill signal to an active spawner
 // after the socket handler has already written the agent result to the DB.
 // The Handler nil-guards before calling — pass nil in tests.
@@ -269,8 +277,12 @@ type Handler struct {
 	workflowSvc        *service.WorkflowService
 	wfChainRunSvc      *service.WorkflowChainRunService
 	artifactSvc        *service.ArtifactService
+	projectSvc         *service.ProjectService
+	projectEnvVarSvc   *service.ProjectEnvVarService
+	globalSettingsSvc  *service.GlobalSettingsService
 	wsHub              *ws.Hub
-	signaler           TerminalSignaler // optional; nil-safe
+	signaler           TerminalSignaler    // optional; nil-safe
+	workflowRunner     WorkflowOrchestrator // optional; nil-safe
 	pool               *db.Pool
 	clk                clock.Clock
 
@@ -290,11 +302,19 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 		agentSvc:           service.NewAgentService(pool, clk),
 		workflowSvc:        service.NewWorkflowService(pool, clk),
 		wfChainRunSvc:      service.NewWorkflowChainRunService(pool, clk),
+		projectSvc:         service.NewProjectService(pool, clk),
+		projectEnvVarSvc:   service.NewProjectEnvVarService(pool, clk),
+		globalSettingsSvc:  service.NewGlobalSettingsService(pool, clk),
 		wsHub:              hub,
 		signaler:           signaler,
 		pool:               pool,
 		clk:                clk,
 		codexJSONLOffsets:  make(map[string]int64),
 	}
+}
+
+// SetWorkflowRunner wires an optional orchestrator for observer trigger/retry methods.
+func (s *Server) SetWorkflowRunner(r WorkflowOrchestrator) {
+	s.handler.workflowRunner = r
 }
 

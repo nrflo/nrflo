@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { IssueSearchCombo } from './IssueSearchCombo'
 import { searchJiraIssues, type JiraIssueSummary } from '@/api/specImport'
-import { useProjectStore } from '@/stores/projectStore'
 
 // /browse/PROJ-123 inside a Jira URL.
 const BROWSE_KEY_RE = /\/browse\/([A-Z][A-Z0-9_]+-[0-9]+)/
@@ -15,7 +14,6 @@ export function JiraSearchCombo({ value: _value, onChange }: JiraSearchComboProp
   const [notConfigured, setNotConfigured] = useState<
     { missing: string[]; settingsHref: string } | undefined
   >()
-  const currentProject = useProjectStore((s) => s.currentProject)
 
   function handleSelect(issue: JiraIssueSummary) {
     onChange(issue.url ?? issue.key)
@@ -24,7 +22,7 @@ export function JiraSearchCombo({ value: _value, onChange }: JiraSearchComboProp
   function handleNotConfigured(missing: string[]) {
     setNotConfigured({
       missing,
-      settingsHref: `/settings?tab=projects&project=${encodeURIComponent(currentProject ?? '')}#env-vars`,
+      settingsHref: '/project-settings#env-vars',
     })
   }
 

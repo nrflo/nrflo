@@ -1,52 +1,27 @@
-import { Pencil, Trash2, FolderOpen } from 'lucide-react'
+import { Settings, Trash2, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { ProjectForm } from './ProjectForm'
-import type { ProjectFormData } from './projectFormUtils'
 import type { Project } from '@/api/projects'
-import type { ArtifactStorageConfig, CleanupSettings, ObserverSettings } from '@/api/projectSettings'
-
-interface EditMutation {
-  isPending: boolean
-  isError: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  error: any
-  artifactError?: string | null
-  cleanupError?: string | null
-  observerError?: string | null
-}
 
 interface ProjectListItemProps {
   project: Project
-  isEditing: boolean
   isDeleteConfirm: boolean
   currentProject: string
-  formData: ProjectFormData
-  setFormData: (d: ProjectFormData) => void
-  onStartEdit: () => void
-  onCancelEdit: () => void
-  onSaveEdit: (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings; observer?: Partial<ObserverSettings> }) => void
+  onOpenSettings: () => void
   onDeleteConfirm: () => void
   onCancelDeleteConfirm: () => void
   onDelete: () => void
-  editMutation: EditMutation
   isDeletePending: boolean
   projectsCount: number
 }
 
 export function ProjectListItem({
   project,
-  isEditing,
   isDeleteConfirm,
   currentProject,
-  formData,
-  setFormData,
-  onStartEdit,
-  onCancelEdit,
-  onSaveEdit,
+  onOpenSettings,
   onDeleteConfirm,
   onCancelDeleteConfirm,
   onDelete,
-  editMutation,
   isDeletePending,
   projectsCount,
 }: ProjectListItemProps) {
@@ -56,16 +31,7 @@ export function ProjectListItem({
         project.id === currentProject ? 'border-primary bg-primary/5' : ''
       }`}
     >
-      {isEditing ? (
-        <ProjectForm
-          formData={formData}
-          setFormData={setFormData}
-          onCancel={onCancelEdit}
-          onSave={onSaveEdit}
-          mutation={editMutation}
-          disabledId={project.id}
-        />
-      ) : isDeleteConfirm ? (
+      {isDeleteConfirm ? (
         <div className="flex items-center justify-between">
           <div className="text-sm">
             Are you sure you want to delete{' '}
@@ -111,8 +77,8 @@ export function ProjectListItem({
             </div>
           </div>
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={onStartEdit}>
-              <Pencil className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={onOpenSettings} title="Settings">
+              <Settings className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"

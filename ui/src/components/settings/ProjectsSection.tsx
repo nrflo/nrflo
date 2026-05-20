@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -7,43 +8,31 @@ import { useProjectStore } from '@/stores/projectStore'
 import {
   listProjects,
   createProject,
-  updateProject,
   deleteProject,
   type Project,
   type CreateProjectRequest,
-  type UpdateProjectRequest,
 } from '@/api/projects'
 import { ProjectForm } from './ProjectForm'
 import { ProjectListItem } from './ProjectListItem'
 import {
   emptyProjectForm,
-  parseSafetyHookConfig,
   buildSafetyHookJSON,
   type ProjectFormData,
 } from './projectFormUtils'
-import { useSetArtifactStorage, useSetCleanup, useSetObserver } from '@/hooks/useProjectSettings'
-import type { ArtifactStorageConfig, CleanupSettings, ObserverSettings } from '@/api/projectSettings'
 
 const projectKeys = {
   all: ['projects'] as const,
   list: () => [...projectKeys.all, 'list'] as const,
 }
 
-interface ProjectsSectionProps {
-  initialEditProjectId?: string
-}
-
-export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps = {}) {
+export function ProjectsSection() {
   const queryClient = useQueryClient()
   const { currentProject, setCurrentProject, loadProjects } = useProjectStore()
+  const navigate = useNavigate()
 
   const [isCreating, setIsCreating] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<ProjectFormData>(emptyProjectForm)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [artifactError, setArtifactError] = useState<string | null>(null)
-  const [cleanupError, setCleanupError] = useState<string | null>(null)
-  const [observerError, setObserverError] = useState<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: projectKeys.list(),
@@ -62,19 +51,6 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateProjectRequest }) =>
-      updateProject(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.list() })
-      loadProjects()
-    },
-  })
-
-  const setArtifactMutation = useSetArtifactStorage()
-  const setCleanupMutation = useSetCleanup()
-  const setObserverMutation = useSetObserver()
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProject(id),
     onSuccess: (_, deletedId) => {
@@ -92,35 +68,13 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
 
   const handleStartCreate = () => {
     setIsCreating(true)
-    setEditingId(null)
     setFormData(emptyProjectForm)
-  }
-
-  const handleStartEdit = (project: Project) => {
-    setEditingId(project.id)
-    setIsCreating(false)
-    setFormData({
-      id: project.id,
-      name: project.name,
-      root_path: project.root_path || '',
-      default_branch: project.default_branch || '',
-      use_git_worktrees: project.use_git_worktrees || false,
-      push_after_merge: project.push_after_merge || false,
-      ...parseSafetyHookConfig(project.claude_safety_hook),
-    })
   }
 
   const handleCancel = () => {
     setIsCreating(false)
-    setEditingId(null)
     setFormData(emptyProjectForm)
   }
-
-  useEffect(() => {
-    if (!initialEditProjectId || editingId !== null) return
-    const match = projects.find((p) => p.id === initialEditProjectId)
-    if (match) handleStartEdit(match)
-  }, [projects, initialEditProjectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveCreate = () => {
     if (!formData.id.trim()) return
@@ -135,49 +89,9 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
     })
   }
 
-  const handleSaveEdit = async (subforms?: { artifact?: ArtifactStorageConfig; cleanup?: CleanupSettings; observer?: Partial<ObserverSettings> }) => {
-    if (!editingId) return
-    setArtifactError(null)
-    setCleanupError(null)
-    setObserverError(null)
-    const safetyHook = buildSafetyHookJSON(formData)
-
-    const [projectResult, artifactResult, cleanupResult, observerResult] = await Promise.allSettled([
-      updateMutation.mutateAsync({
-        id: editingId,
-        data: {
-          name: formData.name.trim() || undefined,
-          root_path: formData.root_path.trim() || undefined,
-          default_branch: formData.default_branch.trim() || undefined,
-          use_git_worktrees: formData.use_git_worktrees,
-          push_after_merge: formData.push_after_merge,
-          claude_safety_hook: safetyHook,
-        },
-      }),
-      subforms?.artifact
-        ? setArtifactMutation.mutateAsync({ projectId: editingId, cfg: subforms.artifact })
-        : Promise.resolve(null),
-      subforms?.cleanup
-        ? setCleanupMutation.mutateAsync({ projectId: editingId, cfg: subforms.cleanup })
-        : Promise.resolve(null),
-      subforms?.observer
-        ? setObserverMutation.mutateAsync({ projectId: editingId, cfg: subforms.observer })
-        : Promise.resolve(null),
-    ])
-
-    if (artifactResult.status === 'rejected') {
-      setArtifactError((artifactResult.reason as Error).message)
-    }
-    if (cleanupResult.status === 'rejected') {
-      setCleanupError((cleanupResult.reason as Error).message)
-    }
-    if (observerResult.status === 'rejected') {
-      setObserverError((observerResult.reason as Error).message)
-    }
-    if (projectResult.status === 'fulfilled' && artifactResult.status === 'fulfilled' && cleanupResult.status === 'fulfilled' && observerResult.status === 'fulfilled') {
-      setEditingId(null)
-      setFormData(emptyProjectForm)
-    }
+  const handleOpenSettings = (project: Project) => {
+    setCurrentProject(project.id)
+    navigate('/project-settings')
   }
 
   const handleDelete = (id: string) => {
@@ -236,25 +150,12 @@ export function ProjectsSection({ initialEditProjectId }: ProjectsSectionProps =
               <ProjectListItem
                 key={project.id}
                 project={project}
-                isEditing={editingId === project.id}
                 isDeleteConfirm={deleteConfirm === project.id}
                 currentProject={currentProject}
-                formData={formData}
-                setFormData={setFormData}
-                onStartEdit={() => handleStartEdit(project)}
-                onCancelEdit={handleCancel}
-                onSaveEdit={handleSaveEdit}
+                onOpenSettings={() => handleOpenSettings(project)}
                 onDeleteConfirm={() => setDeleteConfirm(project.id)}
                 onCancelDeleteConfirm={() => setDeleteConfirm(null)}
                 onDelete={() => handleDelete(project.id)}
-                editMutation={{
-                  isPending: updateMutation.isPending || setArtifactMutation.isPending || setCleanupMutation.isPending || setObserverMutation.isPending,
-                  isError: updateMutation.isError,
-                  error: updateMutation.error,
-                  artifactError,
-                  cleanupError,
-                  observerError,
-                }}
                 isDeletePending={deleteMutation.isPending}
                 projectsCount={projects.length}
               />

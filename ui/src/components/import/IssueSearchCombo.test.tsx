@@ -119,7 +119,7 @@ describe('IssueSearchCombo', () => {
     renderCombo({
       notConfigured: {
         missing: ['JIRA_BASE_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'],
-        settingsHref: '/settings?tab=projects&project=p#env-vars',
+        settingsHref: '/project-settings#env-vars',
       },
     })
 
@@ -128,6 +128,6 @@ describe('IssueSearchCombo', () => {
     expect(screen.getByText(/JIRA_API_TOKEN/)).toBeInTheDocument()
 
     const link = screen.getByRole('link', { name: /configure in project settings/i })
-    expect(link).toHaveAttribute('href', '/settings?tab=projects&project=p#env-vars')
+    expect(link).toHaveAttribute('href', '/project-settings#env-vars')
   })
 })

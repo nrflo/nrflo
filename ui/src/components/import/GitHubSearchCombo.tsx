@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/Input'
 import { IssueSearchCombo } from './IssueSearchCombo'
 import { searchGitHubIssues, type GitHubIssueSummary } from '@/api/specImport'
-import { useProjectStore } from '@/stores/projectStore'
 
 interface GitHubSearchComboProps {
   url: string
@@ -14,7 +13,6 @@ export function GitHubSearchCombo({ url, onUrlChange }: GitHubSearchComboProps) 
   const [notConfigured, setNotConfigured] = useState<
     { missing: string[]; settingsHref: string } | undefined
   >()
-  const currentProject = useProjectStore((s) => s.currentProject)
 
   function handleSelect(issue: GitHubIssueSummary) {
     onUrlChange(issue.html_url)
@@ -23,7 +21,7 @@ export function GitHubSearchCombo({ url, onUrlChange }: GitHubSearchComboProps) 
   function handleNotConfigured(missing: string[]) {
     setNotConfigured({
       missing,
-      settingsHref: `/settings?tab=projects&project=${encodeURIComponent(currentProject ?? '')}#env-vars`,
+      settingsHref: '/project-settings#env-vars',
     })
   }
 

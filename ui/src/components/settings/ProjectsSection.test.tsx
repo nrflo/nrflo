@@ -4,20 +4,22 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ProjectsSection } from './ProjectsSection'
 import * as projectsApi from '@/api/projects'
-import * as envVarsApi from '@/api/projectEnvVars'
-import * as catalogHook from '@/hooks/useEnvVarCatalog'
-import * as settingsApi from '@/api/projectSettings'
 import { renderWithQuery } from '@/test/utils'
 import type { Project } from '@/api/projects'
 
 vi.mock('@/api/projects')
-vi.mock('@/api/projectEnvVars')
-vi.mock('@/hooks/useEnvVarCatalog')
-vi.mock('@/api/projectSettings')
+
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async () => ({
+  ...(await vi.importActual('react-router-dom')),
+  useNavigate: () => mockNavigate,
+}))
+
+const mockSetCurrentProject = vi.fn()
 vi.mock('@/stores/projectStore', () => ({
   useProjectStore: vi.fn(() => ({
     currentProject: 'aveva',
-    setCurrentProject: vi.fn(),
+    setCurrentProject: mockSetCurrentProject,
     loadProjects: vi.fn(),
   })),
 }))
@@ -40,93 +42,128 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject()] })
-  vi.mocked(envVarsApi.listEnvVars).mockResolvedValue([])
-  vi.mocked(catalogHook.useEnvVarCatalog).mockReturnValue({ data: [], isLoading: false } as any)
-  vi.mocked(settingsApi.getArtifactStorage).mockResolvedValue({ mode: 'internal' })
-  vi.mocked(settingsApi.getCleanup).mockResolvedValue({ enabled: false, retention_limit: 0 })
   Element.prototype.scrollIntoView = vi.fn()
 })
 
-describe('ProjectsSection — unified save flow', () => {
-  beforeEach(() => {
-    vi.mocked(projectsApi.updateProject).mockResolvedValue(makeProject())
-    vi.mocked(settingsApi.setArtifactStorage).mockResolvedValue({ mode: 'internal' })
-    vi.mocked(settingsApi.setCleanup).mockResolvedValue({ enabled: false, retention_limit: 0 })
-  })
-
-  it('Save with unmodified subforms calls only updateProject', async () => {
+describe('ProjectsSection — gear button navigation', () => {
+  it('calls setCurrentProject then navigates to /project-settings when gear button clicked', async () => {
     const user = userEvent.setup()
-    renderWithQuery(
-      <MemoryRouter>
-        <ProjectsSection initialEditProjectId="aveva" />
-      </MemoryRouter>
-    )
-
-    await screen.findByText('Environment Variables')
-    await user.click(screen.getByRole('button', { name: /save/i }))
-
-    await waitFor(() =>
-      expect(screen.queryByText('Environment Variables')).not.toBeInTheDocument()
-    )
-    expect(projectsApi.updateProject).toHaveBeenCalledOnce()
-    expect(settingsApi.setArtifactStorage).not.toHaveBeenCalled()
-    expect(settingsApi.setCleanup).not.toHaveBeenCalled()
-  })
-
-  it('setArtifactStorage rejection shows inline error and keeps form open', async () => {
-    const user = userEvent.setup()
-    vi.mocked(settingsApi.setArtifactStorage).mockRejectedValue(new Error('bucket required'))
-
-    renderWithQuery(
-      <MemoryRouter>
-        <ProjectsSection initialEditProjectId="aveva" />
-      </MemoryRouter>
-    )
-
-    await screen.findByText('Environment Variables')
-
-    await user.click(screen.getByRole('button', { name: /internal/i }))
-    await user.click(screen.getByText('Cloudflare R2'))
-
-    await user.click(screen.getByRole('button', { name: /save/i }))
-
-    await screen.findByText('bucket required')
-    expect(screen.getByText('Environment Variables')).toBeInTheDocument()
-    expect(settingsApi.setArtifactStorage).toHaveBeenCalledOnce()
-  })
-})
-
-describe('ProjectsSection — initialEditProjectId', () => {
-  it('auto-opens ProjectForm for matching project on load', async () => {
-    renderWithQuery(
-      <MemoryRouter>
-        <ProjectsSection initialEditProjectId="aveva" />
-      </MemoryRouter>
-    )
-
-    // ProjectEnvVarsEditor renders "Environment Variables" when edit form opens
-    expect(await screen.findByText('Environment Variables')).toBeInTheDocument()
-  })
-
-  it('does not auto-open edit form when id does not match any project', async () => {
-    renderWithQuery(
-      <MemoryRouter>
-        <ProjectsSection initialEditProjectId="no-such-project" />
-      </MemoryRouter>
-    )
-
-    await screen.findByText('AVEVA Project')
-    expect(screen.queryByText('Environment Variables')).not.toBeInTheDocument()
-  })
-
-  it('renders project list without edit form when initialEditProjectId is absent', async () => {
     renderWithQuery(
       <MemoryRouter>
         <ProjectsSection />
       </MemoryRouter>
     )
-
     await screen.findByText('AVEVA Project')
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(mockSetCurrentProject).toHaveBeenCalledWith('aveva')
+    expect(mockNavigate).toHaveBeenCalledWith('/project-settings')
+  })
+})
+
+describe('ProjectsSection — no env vars editor', () => {
+  it('does not render Environment Variables editor in Projects tab', async () => {
+    const user = userEvent.setup()
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection />
+      </MemoryRouter>
+    )
+    await screen.findByText('AVEVA Project')
+    await user.click(screen.getByRole('button', { name: /new project/i }))
     expect(screen.queryByText('Environment Variables')).not.toBeInTheDocument()
+  })
+})
+
+describe('ProjectsSection — create flow', () => {
+  it('shows create form when New Project is clicked', async () => {
+    const user = userEvent.setup()
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection />
+      </MemoryRouter>
+    )
+    await screen.findByText('AVEVA Project')
+    await user.click(screen.getByRole('button', { name: /new project/i }))
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+  })
+
+  it('calls createProject when form is submitted with an id', async () => {
+    vi.mocked(projectsApi.createProject).mockResolvedValue(
+      makeProject({ id: 'new-proj', name: 'New Project' })
+    )
+    const user = userEvent.setup()
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection />
+      </MemoryRouter>
+    )
+    await screen.findByText('AVEVA Project')
+    await user.click(screen.getByRole('button', { name: /new project/i }))
+    await user.type(screen.getByPlaceholderText('project-id'), 'new-proj')
+    await user.click(screen.getByRole('button', { name: /create/i }))
+    await waitFor(() =>
+      expect(projectsApi.createProject).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'new-proj' })
+      )
+    )
+  })
+})
+
+describe('ProjectsSection — delete flow', () => {
+  beforeEach(() => {
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({
+      projects: [
+        makeProject(),
+        makeProject({ id: 'other', name: 'Other Project' }),
+      ],
+    })
+  })
+
+  it('shows delete confirm when delete button is clicked', async () => {
+    const user = userEvent.setup()
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection />
+      </MemoryRouter>
+    )
+    await screen.findByText('AVEVA Project')
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    expect(screen.getByText(/are you sure/i)).toBeInTheDocument()
+  })
+
+  it('cancels delete confirm', async () => {
+    const user = userEvent.setup()
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection />
+      </MemoryRouter>
+    )
+    await screen.findByText('AVEVA Project')
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() =>
+      expect(screen.queryByText(/are you sure/i)).not.toBeInTheDocument()
+    )
+    expect(screen.getByText('AVEVA Project')).toBeInTheDocument()
+  })
+
+  it('calls deleteProject when delete is confirmed', async () => {
+    vi.mocked(projectsApi.deleteProject).mockResolvedValue({ message: 'deleted' })
+    const user = userEvent.setup()
+    renderWithQuery(
+      <MemoryRouter>
+        <ProjectsSection />
+      </MemoryRouter>
+    )
+    await screen.findByText('AVEVA Project')
+    // open confirm for first project
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await screen.findByText(/are you sure/i)
+    // confirm delete — destructive button is first in DOM order
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    await waitFor(() =>
+      expect(projectsApi.deleteProject).toHaveBeenCalledWith('aveva')
+    )
   })
 })

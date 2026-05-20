@@ -28,7 +28,7 @@ function renderEditor(path: string) {
 
 describe('ProjectEnvVarsEditor deep-link', () => {
   it('wrapper div has id="env-vars"', async () => {
-    renderEditor('/settings?tab=projects&project=proj-1')
+    renderEditor('/project-settings')
     await screen.findByPlaceholderText('VAR_NAME')
     expect(document.getElementById('env-vars')).toBeInTheDocument()
   })
@@ -37,7 +37,7 @@ describe('ProjectEnvVarsEditor deep-link', () => {
     const scrollMock = vi.fn()
     Element.prototype.scrollIntoView = scrollMock
 
-    renderEditor('/settings?tab=projects&project=proj-1#env-vars')
+    renderEditor('/project-settings#env-vars')
     await screen.findByPlaceholderText('VAR_NAME')
 
     expect(scrollMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
@@ -47,7 +47,7 @@ describe('ProjectEnvVarsEditor deep-link', () => {
     const scrollMock = vi.fn()
     Element.prototype.scrollIntoView = scrollMock
 
-    renderEditor('/settings?tab=projects&project=proj-1')
+    renderEditor('/project-settings')
     await screen.findByPlaceholderText('VAR_NAME')
 
     expect(scrollMock).not.toHaveBeenCalled()
@@ -57,7 +57,7 @@ describe('ProjectEnvVarsEditor deep-link', () => {
     const scrollMock = vi.fn()
     Element.prototype.scrollIntoView = scrollMock
 
-    renderEditor('/settings?tab=projects&project=proj-1#other-section')
+    renderEditor('/project-settings#other-section')
     await screen.findByPlaceholderText('VAR_NAME')
 
     expect(scrollMock).not.toHaveBeenCalled()

@@ -74,12 +74,7 @@ function NoProjectsBanner() {
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const projectParam = searchParams.get('project')
-  const activeTab: SettingsTab = isValidTab(tabParam)
-    ? tabParam
-    : projectParam
-      ? 'projects'
-      : 'general'
+  const activeTab: SettingsTab = isValidTab(tabParam) ? tabParam : 'general'
 
   const subParam = searchParams.get('sub')
   const activeAdminSub: AdministrationSubTab =
@@ -178,7 +173,7 @@ export function SettingsPage() {
 
       {activeTab === 'general' && <GlobalSettingsSection />}
       {activeTab === 'menu-panel' && <MenuPanelSection />}
-      {activeTab === 'projects' && <ProjectsSection initialEditProjectId={projectParam ?? undefined} />}
+      {activeTab === 'projects' && <ProjectsSection />}
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'cli-models' && <ProvidersSection activeProvider={activeProvider} />}

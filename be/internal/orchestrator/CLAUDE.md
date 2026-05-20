@@ -129,6 +129,16 @@ See `orchestrator_interactive.go`.
 - Guards: `ctx.Err() != nil`, `finalResult == ""`, or `ChainDepth >= 10` → skip.
 - Spawns detached `o.Start(context.Background(), nextReq)` with `ScopeType="project"`, `Instructions=finalResult`, `ChainDepth+1`.
 
+## Finalize Slots
+
+After a workflow reaches terminal status, `runFinalize` (`finalize.go`) executes the outcome-selected slot in the **project root** (never a worktree) under a fixed 5s timeout. It **never changes workflow status**.
+
+- Slot source: `RunRequest.Finalize{Success,Failure}{Command,ScriptID}` (from `workflow_definitions`). Both empty for the outcome → no-op (no finding, no event).
+- **Command slot**: `sh -c <cmd>` with outcome env (`NRF_WORKFLOW_STATUS`, `NRF_WORKFLOW_RESULT`=`pass`/`fail`, plus `NRF_WORKFLOW_FINAL_RESULT` on success / `NRF_FAILURE_REASON` on failure) on top of `loadProjectEnv`.
+- **Python-script slot**: runs the `python_scripts` row via per-project venv python through a transient `_finalize` `agent_session` (token mint + real `workflow_instance_id`) so `script.context` resolves; reuses the `_notification` transport shape.
+- Persists a `_finalize` finding (`{slot,kind,target,exit_code,status,output_tail,timestamp}`) via `persistFinalizeFinding` (`finalize_persist.go`). On non-`ok` status: `errorSvc.RecordError` + `EventWorkflowFinalizeFailed`; on success: `EventWorkflowFinalizeSucceeded`.
+- Wired into success path (between `markCompleted` and `maybeStartNextOnSuccess`) and the tail of `markFailed` (after writing a `_failure_reason` finding), **skipped** when the failure reason is `reasonCancelled` (user Stop). `forceStopInstance` bypasses `markFailed`, so force-stop never finalizes.
+
 ## Scheduled Task Origin Tracking
 
 `RunRequest.ScheduledTaskID` forwarded through `Init`/`InitProjectWorkflow` → `workflow_instances.scheduled_task_id` (nullable FK to `scheduled_tasks`). Set by `scheduler_dispatch.go`; empty for all other entrypoints.

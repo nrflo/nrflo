@@ -31,6 +31,7 @@ import (
 
 const maxNextWorkflowOnSuccessDepth = 10
 const maxCallbacks = 10 // max cumulative agent spawns via callback plans per workflow run
+const reasonCancelled = "cancelled"
 
 // RunRequest contains parameters for starting an orchestrated workflow run.
 type RunRequest struct {
@@ -1376,7 +1377,7 @@ func (o *Orchestrator) runLoop(
 		}())
 		if !waitForInteractivePreStep(ctx, pre) {
 			logger.Warn(ctx, "interactive pre-step cancelled")
-			o.markFailed(wfiID, req, "cancelled")
+			o.markFailed(wfiID, req, reasonCancelled)
 			return
 		}
 		pre.spawner.Close()
@@ -1442,7 +1443,7 @@ func (o *Orchestrator) runLoop(
 		select {
 		case <-ctx.Done():
 			logger.Warn(ctx, "workflow cancelled", "layer_idx", layerIdx)
-			o.markFailed(wfiID, req, "cancelled")
+			o.markFailed(wfiID, req, reasonCancelled)
 			return
 		default:
 		}
@@ -1492,7 +1493,7 @@ func (o *Orchestrator) runLoop(
 					stepCBErrs = append(stepCBErrs, r.callbackErr)
 				case r.err != nil:
 					if ctx.Err() != nil {
-						o.markFailed(wfiID, req, "cancelled")
+						o.markFailed(wfiID, req, reasonCancelled)
 						return
 					}
 					logger.Error(ctx, "plan step agent failed", "layer", planStep.layer, "agent", r.agent, "err", r.err)
@@ -1596,7 +1597,7 @@ func (o *Orchestrator) runLoop(
 			} else if r.err != nil {
 				if ctx.Err() != nil {
 					logger.Warn(ctx, "cancelled during layer", "layer", lg.layer)
-					o.markFailed(wfiID, req, "cancelled")
+					o.markFailed(wfiID, req, reasonCancelled)
 					return
 				}
 				logger.Error(ctx, "layer agent failed", "layer", lg.layer, "agent", r.agent, "err", r.err)
@@ -1664,6 +1665,7 @@ func (o *Orchestrator) runLoop(
 	}
 
 	finalResult := o.markCompleted(wfiID, req)
+	o.runFinalize(ctx, wfiID, req, outcomeSuccess, finalResult)
 	o.maybeStartNextOnSuccess(ctx, req, finalResult)
 
 	// Endless loop: re-run a fresh instance if enabled and not stopped
@@ -2020,6 +2022,18 @@ func (o *Orchestrator) markFailed(wfiID string, req RunRequest, reason string) {
 			"instance_id": wfiID,
 			"error":       reason,
 		}))
+	}
+
+	// Persist _failure_reason finding for agent visibility.
+	findingRepo := repo.NewFindingRepo(pool, o.clock)
+	if val, err := json.Marshal(map[string]interface{}{"reason": reason}); err == nil {
+		_ = findingRepo.Upsert("workflow_instance", wfiID, "_failure_reason", val,
+			repo.Denorm{WorkflowInstanceID: wfiID},
+			repo.Actor{Source: "orchestrator"})
+	}
+
+	if reason != reasonCancelled {
+		o.runFinalize(context.Background(), wfiID, req, outcomeFailure, reason)
 	}
 }
 

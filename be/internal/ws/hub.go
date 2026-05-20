@@ -70,6 +70,8 @@ const (
 	EventScheduleUpdated             = "schedule.updated"
 	EventWorkflowPushed              = "workflow.pushed"
 	EventWorkflowPushFailed          = "workflow.push_failed"
+	EventWorkflowFinalizeSucceeded   = "workflow.finalize_succeeded"
+	EventWorkflowFinalizeFailed      = "workflow.finalize_failed"
 	EventTestEcho                    = "test.echo"
 	EventNotificationChannelCreated  = "notification_channel.created"
 	EventNotificationChannelUpdated  = "notification_channel.updated"

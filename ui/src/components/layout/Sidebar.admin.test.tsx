@@ -67,6 +67,11 @@ describe('Sidebar - Admin Role', () => {
     expect(screen.getByRole('link', { name: 'Schedules' })).toBeInTheDocument()
   })
 
+  it('shows Project Settings nav item', () => {
+    renderSidebar()
+    expect(screen.getByRole('link', { name: 'Project Settings' })).toBeInTheDocument()
+  })
+
   it('does not show Administration section in sidebar (moved to Settings page)', () => {
     renderSidebar()
     expect(screen.queryByText('Administration')).not.toBeInTheDocument()
@@ -93,6 +98,11 @@ describe('Sidebar - Viewer Role', () => {
   it('hides Schedules nav item', () => {
     renderSidebar()
     expect(screen.queryByRole('link', { name: 'Schedules' })).not.toBeInTheDocument()
+  })
+
+  it('hides Project Settings nav item', () => {
+    renderSidebar()
+    expect(screen.queryByRole('link', { name: 'Project Settings' })).not.toBeInTheDocument()
   })
 
   it('hides Administration section heading', () => {

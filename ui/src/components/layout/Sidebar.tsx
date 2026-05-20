@@ -19,6 +19,7 @@ import {
   ListOrdered,
   FileCode,
   FileInput,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/useTickets'
@@ -197,6 +198,14 @@ export function Sidebar() {
             icon={<ScrollText className="h-4 w-4" />}
             label="Agent sessions"
             active={isActive('/logs')}
+          />
+        )}
+        {isAdmin && (
+          <NavItem
+            to="/project-settings"
+            icon={<SlidersHorizontal className="h-4 w-4" />}
+            label="Project Settings"
+            active={isActive('/project-settings')}
           />
         )}
         {isAdmin && (

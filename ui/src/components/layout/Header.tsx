@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Search, Settings, LayoutDashboard, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, ScrollText, Sun, Moon, Monitor, LogOut } from 'lucide-react'
+import { Search, Settings, SlidersHorizontal, LayoutDashboard, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, ScrollText, Sun, Moon, Monitor, LogOut } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
@@ -92,6 +92,12 @@ export function Header() {
             <span className="hidden md:inline ml-1 text-xs">Sessions</span>
           </Link>
           <InteractiveSessionsTab />
+          {isAdmin && (
+            <Link to="/project-settings" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Project Settings">
+              <SlidersHorizontal className="h-5 w-5" />
+              <span className="hidden md:inline ml-1 text-xs">Project Settings</span>
+            </Link>
+          )}
         </nav>
 
         <div className="flex-1" />

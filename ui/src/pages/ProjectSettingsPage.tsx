@@ -53,7 +53,7 @@ export function ProjectSettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-6 max-w-[84rem] mx-auto">
       <Card>
         <CardHeader>
           <CardTitle>Project Settings</CardTitle>

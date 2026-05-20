@@ -27,6 +27,13 @@ interface EditingWorkflow {
   groups?: string[]
   close_ticket_on_complete?: boolean
   next_workflow_on_success?: string
+  observer_context?: string
+  observer_provider?: string | null
+  observer_model?: string | null
+  finalize_success_command?: string
+  finalize_success_script_id?: string
+  finalize_failure_command?: string
+  finalize_failure_script_id?: string
 }
 
 export function WorkflowsPage() {

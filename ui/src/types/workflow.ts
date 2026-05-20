@@ -97,6 +97,16 @@ export interface CallbackInfo {
 
 export type ScopeType = 'ticket' | 'project'
 
+export interface FinalizeResult {
+  slot: 'success' | 'failure'
+  kind: 'command' | 'script'
+  target: string
+  exit_code: number
+  status: 'ok' | 'failed' | 'timeout'
+  output_tail?: string
+  timestamp?: string
+}
+
 export interface WorkflowState {
   workflow?: string
   instance_id?: string
@@ -110,6 +120,7 @@ export interface WorkflowState {
   total_duration_sec?: number
   total_tokens_used?: number
   workflow_final_result?: string
+  finalize_result?: FinalizeResult
   phases?: Record<string, PhaseState>
   phase_order?: string[]
   phase_layers?: Record<string, number>
@@ -260,6 +271,10 @@ export interface WorkflowDefSummary {
   observer_context?: string
   observer_provider?: string | null
   observer_model?: string | null
+  finalize_success_command?: string
+  finalize_success_script_id?: string
+  finalize_failure_command?: string
+  finalize_failure_script_id?: string
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
 }
@@ -276,6 +291,10 @@ export interface WorkflowDef {
   observer_context?: string
   observer_provider?: string | null
   observer_model?: string | null
+  finalize_success_command?: string
+  finalize_success_script_id?: string
+  finalize_failure_command?: string
+  finalize_failure_script_id?: string
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
   created_at: string
@@ -292,6 +311,10 @@ export interface WorkflowDefCreateRequest {
   observer_context?: string
   observer_provider?: string | null
   observer_model?: string | null
+  finalize_success_command?: string
+  finalize_success_script_id?: string
+  finalize_failure_command?: string
+  finalize_failure_script_id?: string
 }
 
 export interface WorkflowDefUpdateRequest {
@@ -303,6 +326,10 @@ export interface WorkflowDefUpdateRequest {
   observer_context?: string
   observer_provider?: string | null
   observer_model?: string | null
+  finalize_success_command?: string
+  finalize_success_script_id?: string
+  finalize_failure_command?: string
+  finalize_failure_script_id?: string
 }
 
 // Agent definition types (DB-stored)

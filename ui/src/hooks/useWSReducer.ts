@@ -316,6 +316,28 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     }
   },
 
+  'workflow.finalize_succeeded': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+    }
+  },
+
+  'workflow.finalize_failed': (event, qc, isProjectScope) => {
+    if (isProjectScope) {
+      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+    } else {
+      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
+      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
+    }
+  },
+
   'workflow_def.created': (_event, qc) => {
     qc.invalidateQueries({ queryKey: ['workflow-defs'] })
     qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })

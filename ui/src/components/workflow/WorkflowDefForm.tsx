@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Toggle } from '@/components/ui/Toggle'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { FinalizeSection, type FinalizeState } from '@/components/workflow/WorkflowDefForm.finalize-slot'
 import { useProjectStore } from '@/stores/projectStore'
 import { useCLIModels } from '@/hooks/useCLIModels'
 import type { ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
@@ -24,6 +25,10 @@ interface WorkflowDefFormProps {
     observer_context?: string
     observer_provider?: string | null
     observer_model?: string | null
+    finalize_success_command?: string
+    finalize_success_script_id?: string
+    finalize_failure_command?: string
+    finalize_failure_script_id?: string
   }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
@@ -41,6 +46,14 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   const [observerContext, setObserverContext] = useState(initial?.observer_context || '')
   const [observerProvider, setObserverProvider] = useState(initial?.observer_provider || '')
   const [observerModel, setObserverModel] = useState(initial?.observer_model || '')
+  const [finalize, setFinalize] = useState<FinalizeState>({
+    successMode: initial?.finalize_success_command ? 'command' : initial?.finalize_success_script_id ? 'script' : '',
+    successCommand: initial?.finalize_success_command || '',
+    successScriptId: initial?.finalize_success_script_id || '',
+    failureMode: initial?.finalize_failure_command ? 'command' : initial?.finalize_failure_script_id ? 'script' : '',
+    failureCommand: initial?.finalize_failure_command || '',
+    failureScriptId: initial?.finalize_failure_script_id || '',
+  })
 
   const project = useProjectStore((s) => s.currentProject)
   const { data: models = [] } = useCLIModels()
@@ -92,6 +105,10 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       observer_context: observerContext.trim() || undefined,
       observer_provider: observerProvider || null,
       observer_model: observerModel || null,
+      finalize_success_command: finalize.successMode === 'command' ? finalize.successCommand || undefined : undefined,
+      finalize_success_script_id: finalize.successMode === 'script' ? finalize.successScriptId || undefined : undefined,
+      finalize_failure_command: finalize.failureMode === 'command' ? finalize.failureCommand || undefined : undefined,
+      finalize_failure_script_id: finalize.failureMode === 'script' ? finalize.failureScriptId || undefined : undefined,
     }
     if (isCreate) {
       onSubmit({ id: id.trim(), ...shared } as WorkflowDefCreateRequest)
@@ -261,6 +278,9 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
           </div>
         </div>
       </div>
+
+      <FinalizeSection state={finalize} onChange={(patch) => setFinalize((prev) => ({ ...prev, ...patch }))} />
     </form>
   )
 }
+

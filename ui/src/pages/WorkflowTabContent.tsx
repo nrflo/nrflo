@@ -25,6 +25,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import { ConflictResolverBanner } from '@/components/workflow/ConflictResolverBanner'
+import { FinalizeResultPanel } from '@/components/workflow/FinalizeResultPanel'
 import type { WorkflowState, AgentSession, ActiveAgentV4 } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { cn, formatDateTime, formatDurationSec, formatTokenCount } from '@/lib/utils'
@@ -295,6 +296,7 @@ export function WorkflowTabContent({
                 <span className="text-foreground" style={{ whiteSpace: 'pre-wrap' }}>{displayedState.workflow_final_result}</span>
               </div>
             )}
+            <FinalizeResultPanel result={displayedState.finalize_result} />
             <ConflictResolverBanner
               sessions={sessions ?? []}
               agentHistory={agentHistory ?? []}

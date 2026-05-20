@@ -228,4 +228,87 @@ describe('DetailsTabContent', () => {
       expect(link).toBeInTheDocument()
     })
   })
+
+  describe('flex overflow guard classes on dependency rows', () => {
+    const LONG_UNBROKEN = 'X'.repeat(200)
+
+    it('blocker link has min-w-0 for long unbroken title', () => {
+      const ticket: TicketWithDeps = {
+        ...baseTicket,
+        blockers: [
+          {
+            issue_id: 'TICK-100',
+            depends_on_id: 'TICK-50',
+            depends_on_title: LONG_UNBROKEN,
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
+      }
+      const { container } = renderPage(ticket)
+      const link = container.querySelector('a[href="/tickets/TICK-50"]')
+      expect(link).toHaveClass('min-w-0')
+    })
+
+    it('blocker title span has truncate for long unbroken title', () => {
+      const ticket: TicketWithDeps = {
+        ...baseTicket,
+        blockers: [
+          {
+            issue_id: 'TICK-100',
+            depends_on_id: 'TICK-50',
+            depends_on_title: LONG_UNBROKEN,
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
+      }
+      const { container } = renderPage(ticket)
+      const link = container.querySelector('a[href="/tickets/TICK-50"]')
+      const spans = link?.querySelectorAll('span')
+      // spans[0] = id (shrink-0), spans[1] = title (truncate)
+      expect(spans?.[1]).toHaveClass('truncate')
+    })
+
+    it('blocks link has min-w-0 for long unbroken title', () => {
+      const ticket: TicketWithDeps = {
+        ...baseTicket,
+        blocks: [
+          {
+            issue_id: 'TICK-200',
+            depends_on_id: 'TICK-100',
+            issue_title: LONG_UNBROKEN,
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
+      }
+      const { container } = renderPage(ticket)
+      const link = container.querySelector('a[href="/tickets/TICK-200"]')
+      expect(link).toHaveClass('min-w-0')
+    })
+
+    it('blocks title span has truncate for long unbroken title', () => {
+      const ticket: TicketWithDeps = {
+        ...baseTicket,
+        blocks: [
+          {
+            issue_id: 'TICK-200',
+            depends_on_id: 'TICK-100',
+            issue_title: LONG_UNBROKEN,
+            type: 'blocks',
+            created_at: '2026-01-01T00:00:00Z',
+            created_by: 'user',
+          },
+        ],
+      }
+      const { container } = renderPage(ticket)
+      const link = container.querySelector('a[href="/tickets/TICK-200"]')
+      const spans = link?.querySelectorAll('span')
+      expect(spans?.[1]).toHaveClass('truncate')
+    })
+  })
 })

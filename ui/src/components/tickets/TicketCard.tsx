@@ -34,9 +34,9 @@ export function TicketCard({ ticket }: TicketCardProps) {
                   </span>
                 )}
               </div>
-              <h3 className="font-medium text-sm truncate">{ticket.title}</h3>
+              <h3 className="font-medium text-sm truncate break-words">{ticket.title}</h3>
               {ticket.description && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
                   {ticket.description}
                 </p>
               )}

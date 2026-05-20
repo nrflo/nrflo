@@ -140,7 +140,7 @@ export function TicketDetailPage() {
         <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2">
             <IssueTypeIcon type={ticket.issue_type} size="md" />
             <span className="text-sm text-muted-foreground font-mono">
@@ -150,9 +150,9 @@ export function TicketDetailPage() {
               {ticket.status.replace('_', ' ')}
             </Badge>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">{ticket.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight break-words">{ticket.title}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {ticket.status === 'closed' ? (
             <Button
               variant="outline"

@@ -51,20 +51,20 @@ export function HierarchyTabContent({ ticket }: HierarchyTabContentProps) {
           {hasBlockers && (
             <div className="space-y-1">
               {ticket.blockers?.map((dep) => (
-                <div key={dep.depends_on_id} className="flex items-center gap-2">
+                <div key={dep.depends_on_id} className="flex items-center gap-2 min-w-0">
                   <Link
                     to={`/tickets/${encodeURIComponent(dep.depends_on_id)}`}
-                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    className="flex items-center gap-2 min-w-0 text-sm text-primary hover:underline"
                   >
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="font-mono text-xs">{dep.depends_on_id}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    <span className="font-mono text-xs shrink-0">{dep.depends_on_id}</span>
                     {dep.depends_on_title && (
-                      <span>{dep.depends_on_title}</span>
+                      <span className="truncate">{dep.depends_on_title}</span>
                     )}
                   </Link>
                   <button
                     onClick={() => handleRemoveBlocker(dep.depends_on_id)}
-                    className="text-muted-foreground hover:text-destructive"
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
                     title="Remove blocker"
                   >
                     <X className="h-3 w-3" />
@@ -93,12 +93,12 @@ export function HierarchyTabContent({ ticket }: HierarchyTabContentProps) {
                 <Link
                   key={dep.issue_id}
                   to={`/tickets/${encodeURIComponent(dep.issue_id)}`}
-                  className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  className="flex items-center gap-2 min-w-0 text-sm text-primary hover:underline"
                 >
-                  <ExternalLink className="h-3 w-3" />
-                  <span className="font-mono text-xs">{dep.issue_id}</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span className="font-mono text-xs shrink-0">{dep.issue_id}</span>
                   {dep.issue_title && (
-                    <span>{dep.issue_title}</span>
+                    <span className="truncate">{dep.issue_title}</span>
                   )}
                 </Link>
               ))}
@@ -118,12 +118,12 @@ export function HierarchyTabContent({ ticket }: HierarchyTabContentProps) {
               <h4 className="text-sm font-medium mb-2">Parent Epic</h4>
               <Link
                 to={`/tickets/${encodeURIComponent(ticket.parent_ticket_id!)}`}
-                className="flex items-center gap-2 text-sm text-primary hover:underline"
+                className="flex items-center gap-2 min-w-0 text-sm text-primary hover:underline"
               >
-                <Layers className="h-3 w-3" />
-                <span className="font-mono text-xs">{ticket.parent_ticket_id}</span>
+                <Layers className="h-3 w-3 shrink-0" />
+                <span className="font-mono text-xs shrink-0">{ticket.parent_ticket_id}</span>
                 {ticket.parent_ticket?.title && (
-                  <span>{ticket.parent_ticket.title}</span>
+                  <span className="truncate">{ticket.parent_ticket.title}</span>
                 )}
               </Link>
             </div>
@@ -135,21 +135,21 @@ export function HierarchyTabContent({ ticket }: HierarchyTabContentProps) {
                     <div
                       key={sibling.id}
                       className={cn(
-                        'flex items-center gap-2',
+                        'flex items-center gap-2 min-w-0',
                         sibling.id.toLowerCase() === ticket.id.toLowerCase() && 'bg-muted rounded px-2 py-1'
                       )}
                     >
-                      <Badge className={cn(statusColor(sibling.status))}>
+                      <Badge className={cn('shrink-0', statusColor(sibling.status))}>
                         {sibling.status.replace('_', ' ')}
                       </Badge>
                       <Link
                         to={`/tickets/${encodeURIComponent(sibling.id)}`}
-                        className="text-primary hover:underline"
+                        className="shrink-0 text-primary hover:underline"
                       >
                         {sibling.id}
                       </Link>
-                      <span className="text-sm">{sibling.title}</span>
-                      <span className="text-sm text-muted-foreground ml-auto">
+                      <span className="text-sm truncate">{sibling.title}</span>
+                      <span className="text-sm text-muted-foreground ml-auto shrink-0">
                         {priorityLabel(sibling.priority)}
                       </span>
                     </div>
@@ -170,18 +170,18 @@ export function HierarchyTabContent({ ticket }: HierarchyTabContentProps) {
           <CardContent>
             <div className="space-y-2">
               {ticket.children!.map((child) => (
-                <div key={child.id} className="flex items-center gap-2">
-                  <Badge className={cn(statusColor(child.status))}>
+                <div key={child.id} className="flex items-center gap-2 min-w-0">
+                  <Badge className={cn('shrink-0', statusColor(child.status))}>
                     {child.status.replace('_', ' ')}
                   </Badge>
                   <Link
                     to={`/tickets/${encodeURIComponent(child.id)}`}
-                    className="text-primary hover:underline"
+                    className="shrink-0 text-primary hover:underline"
                   >
                     {child.id}
                   </Link>
-                  <span className="text-sm">{child.title}</span>
-                  <span className="text-sm text-muted-foreground ml-auto">
+                  <span className="text-sm truncate">{child.title}</span>
+                  <span className="text-sm text-muted-foreground ml-auto shrink-0">
                     {priorityLabel(child.priority)}
                   </span>
                 </div>

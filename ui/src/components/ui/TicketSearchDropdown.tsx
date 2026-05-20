@@ -92,7 +92,7 @@ export function TicketSearchDropdown({
               key={ticket.id}
               onClick={() => handleSelect(ticket)}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors',
+                'flex items-center gap-2 min-w-0 px-3 py-2 text-sm cursor-pointer transition-colors',
                 'hover:bg-muted'
               )}
             >

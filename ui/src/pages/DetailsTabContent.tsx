@@ -31,11 +31,11 @@ export function DetailsTabContent({ ticket }: DetailsTabContentProps) {
                     <Link
                       key={dep.depends_on_id}
                       to={`/tickets/${encodeURIComponent(dep.depends_on_id)}`}
-                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      className="flex items-center gap-2 min-w-0 text-sm text-primary hover:underline"
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      <span className="font-mono text-xs">{dep.depends_on_id}</span>
-                      {dep.depends_on_title && <span>{dep.depends_on_title}</span>}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                      <span className="font-mono text-xs shrink-0">{dep.depends_on_id}</span>
+                      {dep.depends_on_title && <span className="truncate">{dep.depends_on_title}</span>}
                     </Link>
                   ))}
                 </div>
@@ -49,11 +49,11 @@ export function DetailsTabContent({ ticket }: DetailsTabContentProps) {
                     <Link
                       key={dep.issue_id}
                       to={`/tickets/${encodeURIComponent(dep.issue_id)}`}
-                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      className="flex items-center gap-2 min-w-0 text-sm text-primary hover:underline"
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      <span className="font-mono text-xs">{dep.issue_id}</span>
-                      {dep.issue_title && <span>{dep.issue_title}</span>}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                      <span className="font-mono text-xs shrink-0">{dep.issue_id}</span>
+                      {dep.issue_title && <span className="truncate">{dep.issue_title}</span>}
                     </Link>
                   ))}
                 </div>

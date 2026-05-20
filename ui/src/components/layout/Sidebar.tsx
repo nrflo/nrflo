@@ -14,7 +14,6 @@ import {
   BookOpen,
   AlertTriangle,
   Wrench,
-  KeyRound,
   CalendarClock,
   ScrollText,
   ListOrdered,
@@ -214,12 +213,6 @@ export function Sidebar() {
                   icon={<Wrench className="h-4 w-4" />}
                   label="Tool Definitions"
                   active={isActive('/tool-definitions')}
-                />
-                <NavItem
-                  to="/api-credentials"
-                  icon={<KeyRound className="h-4 w-4" />}
-                  label="API Credentials"
-                  active={isActive('/api-credentials')}
                 />
               </>
             )}

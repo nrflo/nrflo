@@ -112,7 +112,7 @@ export function GlobalSettingsSection() {
               <div>
                 <div className="text-sm font-medium">Enable API mode</div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  When enabled, agents with execution_mode=api can run; toggles visibility of API-mode-only tabs (Tool Definitions, API Credentials, Review, Config Files, Insights)
+                  When enabled, agents with execution_mode=api can run; toggles visibility of API-mode-only tabs (Tool Definitions, Review, Config Files, Insights)
                 </p>
               </div>
               <Toggle

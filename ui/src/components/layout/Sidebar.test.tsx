@@ -631,18 +631,16 @@ describe('Sidebar - API Mode Gating', () => {
     mockUseChainList.mockReturnValue({ data: [] })
   })
 
-  it('hides Tool Definitions and API Credentials when apiModeEnabled=false', () => {
+  it('hides Tool Definitions when apiModeEnabled=false', () => {
     mockUseAPIModeEnabled.mockReturnValue(false)
     renderSidebar()
     expect(screen.queryByText('Tool Definitions')).not.toBeInTheDocument()
-    expect(screen.queryByText('API Credentials')).not.toBeInTheDocument()
   })
 
-  it('shows Tool Definitions and API Credentials when apiModeEnabled=true', () => {
+  it('shows Tool Definitions when apiModeEnabled=true', () => {
     mockUseAPIModeEnabled.mockReturnValue(true)
     renderSidebar()
     expect(screen.getByText('Tool Definitions')).toBeInTheDocument()
-    expect(screen.getByText('API Credentials')).toBeInTheDocument()
   })
 
   it('other nav items always render regardless of apiModeEnabled', () => {

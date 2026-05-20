@@ -24,7 +24,6 @@ import { SchedulesPage } from '@/pages/SchedulesPage'
 import { WorkflowChainsPage } from '@/pages/WorkflowChainsPage'
 import { WorkflowChainEditorPage } from '@/pages/WorkflowChainEditorPage'
 import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
-import { APICredentialsPage } from '@/pages/APICredentialsPage'
 import { PythonScriptsPage } from '@/pages/PythonScriptsPage'
 import { ImportSpecPage } from '@/pages/ImportSpecPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -73,7 +72,6 @@ function AppRoutes() {
               <Route path="logs" element={<LogsPage />} />
               {experimentalEnabled && <Route path="python-scripts" element={<PythonScriptsPage />} />}
               {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
-              {apiModeEnabled && <Route path="api-credentials" element={<APICredentialsPage />} />}
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path="*" element={<div className="p-8 text-center text-muted-foreground">Page not found.</div>} />

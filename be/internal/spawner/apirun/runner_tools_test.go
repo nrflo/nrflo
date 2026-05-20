@@ -95,15 +95,15 @@ func TestRunner_ToolUse_HappyPath(t *testing.T) {
 	if !strings.Contains(string(calls[0]), `"key":"k"`) {
 		t.Errorf("input = %s, want key:k", string(calls[0]))
 	}
-	// expect a tool_result message in sink
+	// expect a tool message in sink with [findings_add] -> format
 	foundResult := false
 	for _, c := range sink.Calls() {
-		if c.category == "tool_result" && strings.Contains(c.content, "findings_add") {
+		if c.category == "tool" && strings.Contains(c.content, "[findings_add]") && strings.Contains(c.content, "→") {
 			foundResult = true
 		}
 	}
 	if !foundResult {
-		t.Errorf("no tool_result message in sink: %+v", sink.Calls())
+		t.Errorf("no tool message in sink: %+v", sink.Calls())
 	}
 }
 
@@ -232,15 +232,15 @@ func TestRunner_ToolUse_UnknownTool_ContinuesAndPasses(t *testing.T) {
 	if proc.FinalStatus() != "PASS" {
 		t.Errorf("FinalStatus = %q, want PASS (unknown tool returns is_error and loop continues)", proc.FinalStatus())
 	}
-	// Sink should record a tool_error message.
+	// Sink should record an error message for the unknown tool.
 	found := false
 	for _, c := range sink.Calls() {
-		if c.category == "tool_error" && strings.Contains(c.content, "unknown tool") {
+		if c.category == "error" && strings.Contains(c.content, "unknown tool") {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("expected tool_error message, got %+v", sink.Calls())
+		t.Errorf("expected error message for unknown tool, got %+v", sink.Calls())
 	}
 }
 
@@ -277,12 +277,12 @@ func TestRunner_ToolUse_HandlerError_NonTerminal(t *testing.T) {
 	}
 	foundErr := false
 	for _, c := range sink.Calls() {
-		if c.category == "tool_result" && strings.Contains(c.content, "[tool_result:error]") {
+		if c.category == "error" && strings.Contains(c.content, "oops: disk full") {
 			foundErr = true
 		}
 	}
 	if !foundErr {
-		t.Errorf("expected [tool_result:error] in sink, got %+v", sink.Calls())
+		t.Errorf("expected error message 'oops: disk full' in sink, got %+v", sink.Calls())
 	}
 }
 

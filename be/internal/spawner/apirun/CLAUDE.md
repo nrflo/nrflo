@@ -2,7 +2,7 @@
 
 > **Note:** Only reachable when the `api_mode_enabled` global setting is `true`. When the setting is off, `prepareSpawn` returns `api_mode_disabled` before constructing a Runner.
 
-In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry), `secret_resolver.go` (secret deref), `sink.go` (event coalescing), `errors.go` (error classification), `provider/` (Anthropic streaming impl + mock), `tools_builtin/` (builtin handlers), `tools_http/` (HTTP tool handler), `tools_python/` (python_scripts kind=tool handler).
+In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry), `secret_resolver.go` (secret deref), `sink.go` (provider events → UI message rows), `errors.go` (error classification), `provider/` (Anthropic streaming impl + mock), `tools_builtin/` (builtin handlers), `tools_http/` (HTTP tool handler), `tools_python/` (python_scripts kind=tool handler).
 
 ## Tool Dispatch Flow
 

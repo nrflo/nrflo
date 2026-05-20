@@ -155,7 +155,7 @@ func TestProcMessageSink_DelegatesToTrackMessage(t *testing.T) {
 	sink := &procMessageSink{s: s, proc: proc}
 
 	sink.TrackMessage("hello", "text")
-	sink.TrackMessage("[tool_use:start] id=t1 name=Bash", "tool_use_start")
+	sink.TrackMessage(`[Bash] {"command":"ls"}`, "tool")
 
 	if len(proc.pendingMessages) != 2 {
 		t.Fatalf("pendingMessages = %d, want 2", len(proc.pendingMessages))
@@ -163,8 +163,8 @@ func TestProcMessageSink_DelegatesToTrackMessage(t *testing.T) {
 	if proc.pendingMessages[0].Content != "hello" || proc.pendingMessages[0].Category != "text" {
 		t.Errorf("pendingMessages[0] = %+v, want {hello, text}", proc.pendingMessages[0])
 	}
-	if proc.pendingMessages[1].Category != "tool_use_start" {
-		t.Errorf("pendingMessages[1].Category = %q, want tool_use_start", proc.pendingMessages[1].Category)
+	if proc.pendingMessages[1].Category != "tool" {
+		t.Errorf("pendingMessages[1].Category = %q, want tool", proc.pendingMessages[1].Category)
 	}
 	if !proc.hasReceivedMessage {
 		t.Errorf("hasReceivedMessage = false, want true (stall detection requires this)")

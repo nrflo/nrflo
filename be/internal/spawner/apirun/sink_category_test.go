@@ -1,0 +1,65 @@
+package apirun
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+// TestToolCategory verifies the local toolCategory mirror of spawner.ToolCategory.
+func TestToolCategory(t *testing.T) {
+	cases := []struct {
+		name    string
+		wantCat string
+	}{
+		{"Task", "subagent"},
+		{"Agent", "subagent"},
+		{"Skill", "skill"},
+		{"Bash", "tool"},
+		{"Grep", "tool"},
+		{"findings_add", "tool"},
+		{"", "tool"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := toolCategory(tc.name)
+			if got != tc.wantCat {
+				t.Errorf("toolCategory(%q) = %q, want %q", tc.name, got, tc.wantCat)
+			}
+		})
+	}
+}
+
+// TestRunnerSink_ToolUseStartStop_SubagentAndSkillCategories verifies that Task
+// and Agent tools produce "subagent" category and Skill produces "skill".
+func TestRunnerSink_ToolUseStartStop_SubagentAndSkillCategories(t *testing.T) {
+	cases := []struct {
+		toolName string
+		wantCat  string
+	}{
+		{"Task", "subagent"},
+		{"Agent", "subagent"},
+		{"Skill", "skill"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.toolName, func(t *testing.T) {
+			sink := &recordingSink{}
+			rs := newRunnerSink(sink)
+			t.Cleanup(rs.close)
+
+			rs.OnToolUseStart("id-1", tc.toolName)
+			rs.OnToolUseStop("id-1", json.RawMessage(`{}`))
+
+			calls := sink.Calls()
+			if len(calls) != 1 {
+				t.Fatalf("Calls = %d, want 1; got %+v", len(calls), calls)
+			}
+			if calls[0].category != tc.wantCat {
+				t.Errorf("category = %q, want %q", calls[0].category, tc.wantCat)
+			}
+			if !strings.Contains(calls[0].content, "["+tc.toolName+"]") {
+				t.Errorf("content = %q, want [%s] prefix", calls[0].content, tc.toolName)
+			}
+		})
+	}
+}

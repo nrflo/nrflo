@@ -4,27 +4,24 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-	"time"
 
 	"be/internal/spawner/apirun/provider"
 )
 
 // TestRunnerSink_TextDeltas_BelowThreshold_FlushOnUsage verifies that small
-// fragmented deltas (each <80 chars, total <80 chars) stay buffered and
-// produce one TrackMessage call when OnUsage flushes.
+// fragmented deltas (well below 4 KB) stay buffered and produce one TrackMessage
+// call when OnUsage flushes.
 func TestRunnerSink_TextDeltas_BelowThreshold_FlushOnUsage(t *testing.T) {
 	sink := &recordingSink{}
 	rs := newRunnerSink(sink)
 	t.Cleanup(rs.close)
 
-	// 5 small fragments, total < 80 chars
 	rs.OnTextDelta("a")
 	rs.OnTextDelta("b")
 	rs.OnTextDelta("c")
 	rs.OnTextDelta("d")
 	rs.OnTextDelta("e")
 
-	// Before flush, sink should not have received any TrackMessage
 	if got := len(sink.Calls()); got != 0 {
 		t.Errorf("Calls before flush = %d, want 0", got)
 	}
@@ -40,51 +37,50 @@ func TestRunnerSink_TextDeltas_BelowThreshold_FlushOnUsage(t *testing.T) {
 	}
 }
 
-// TestRunnerSink_TextDeltas_ThresholdFlush verifies that crossing the 80-char
-// buffer threshold flushes immediately without waiting for OnUsage.
-func TestRunnerSink_TextDeltas_ThresholdFlush(t *testing.T) {
+// TestRunnerSink_TextDeltas_4KBSafetyCapFlushes verifies that crossing the 4 KB
+// buffer cap flushes immediately without waiting for OnUsage.
+func TestRunnerSink_TextDeltas_4KBSafetyCapFlushes(t *testing.T) {
 	sink := &recordingSink{}
 	rs := newRunnerSink(sink)
 	t.Cleanup(rs.close)
 
-	long := strings.Repeat("x", 100) // > 80 chars, single delta crosses threshold
+	long := strings.Repeat("x", 5000) // > 4096
 	rs.OnTextDelta(long)
 
 	calls := sink.Calls()
 	if len(calls) != 1 {
-		t.Fatalf("Calls = %d, want 1 (immediate threshold flush); got %+v", len(calls), calls)
+		t.Fatalf("Calls = %d, want 1 (immediate 4KB safety flush); got %+v", len(calls), calls)
 	}
 	if calls[0].content != long {
-		t.Errorf("call[0].content = %q, want %d-char x string", calls[0].content, len(long))
+		t.Errorf("call[0].content len = %d, want %d", len(calls[0].content), len(long))
 	}
 	if calls[0].category != "text" {
 		t.Errorf("call[0].category = %q, want text", calls[0].category)
 	}
 }
 
-// TestRunnerSink_TextDeltas_FragmentsCrossThreshold verifies that a sequence
-// of small fragments exceeds the 80-char threshold and flushes once.
-func TestRunnerSink_TextDeltas_FragmentsCrossThreshold(t *testing.T) {
+// TestRunnerSink_TextDeltas_FragmentsBelowCap verifies that fragments totalling
+// less than 4 KB are all buffered and flushed in a single call on OnUsage.
+func TestRunnerSink_TextDeltas_FragmentsBelowCap(t *testing.T) {
 	sink := &recordingSink{}
 	rs := newRunnerSink(sink)
 	t.Cleanup(rs.close)
 
-	// 5 fragments of 20 chars each = 100 chars total, threshold (80) crossed
-	// at the 4th fragment.
 	frag := strings.Repeat("y", 20)
 	for i := 0; i < 5; i++ {
 		rs.OnTextDelta(frag)
 	}
 
-	// At least one flush should have occurred. Per spec: 1-2 calls for ~200
-	// chars of streamed text.
-	rs.OnUsage(provider.Usage{}) // ensure trailing buffer is flushed
-
-	calls := sink.Calls()
-	if len(calls) < 1 || len(calls) > 2 {
-		t.Errorf("Calls = %d, want 1 or 2; got %+v", len(calls), calls)
+	if got := len(sink.Calls()); got != 0 {
+		t.Errorf("Calls before OnUsage = %d, want 0 (100 chars is well below 4 KB)", got)
 	}
 
+	rs.OnUsage(provider.Usage{})
+
+	calls := sink.Calls()
+	if len(calls) != 1 {
+		t.Errorf("Calls = %d, want 1; got %+v", len(calls), calls)
+	}
 	combined := ""
 	for _, c := range calls {
 		if c.category != "text" {
@@ -111,10 +107,9 @@ func TestRunnerSink_EmptyDeltaIgnored(t *testing.T) {
 	}
 }
 
-// TestRunnerSink_ToolUseStart_FlushesBufferThenEmits verifies that a pending
-// text buffer is flushed before the tool_use_start message and the message
-// includes id and name.
-func TestRunnerSink_ToolUseStart_FlushesBufferThenEmits(t *testing.T) {
+// TestRunnerSink_ToolUseStart_FlushesBufferOnly verifies that a pending text
+// buffer is flushed before OnToolUseStart, but no tool_use_start row is emitted.
+func TestRunnerSink_ToolUseStart_FlushesBufferOnly(t *testing.T) {
 	sink := &recordingSink{}
 	rs := newRunnerSink(sink)
 	t.Cleanup(rs.close)
@@ -123,49 +118,66 @@ func TestRunnerSink_ToolUseStart_FlushesBufferThenEmits(t *testing.T) {
 	rs.OnToolUseStart("tool-1", "Bash")
 
 	calls := sink.Calls()
-	if len(calls) != 2 {
-		t.Fatalf("Calls = %d, want 2 (text flush + tool_use_start); got %+v", len(calls), calls)
+	if len(calls) != 1 {
+		t.Fatalf("Calls = %d, want 1 (text flush only, no tool_use_start row); got %+v", len(calls), calls)
 	}
 	if calls[0].content != "preamble" || calls[0].category != "text" {
 		t.Errorf("call[0] = {%q, %q}, want {preamble, text}", calls[0].content, calls[0].category)
 	}
-	if calls[1].category != "tool_use_start" {
-		t.Errorf("call[1].category = %q, want tool_use_start", calls[1].category)
+}
+
+// TestRunnerSink_ToolUseStartStop_EmitsSingleRow verifies that a start+stop pair
+// yields exactly one [<name>] <input> row with category tool (no tool_use_start
+// or tool_use_input rows emitted).
+func TestRunnerSink_ToolUseStartStop_EmitsSingleRow(t *testing.T) {
+	sink := &recordingSink{}
+	rs := newRunnerSink(sink)
+	t.Cleanup(rs.close)
+
+	rs.OnToolUseStart("tool-1", "Bash")
+	rs.OnToolUseStop("tool-1", json.RawMessage(`{"command":"ls"}`))
+
+	calls := sink.Calls()
+	if len(calls) != 1 {
+		t.Fatalf("Calls = %d, want 1 ([Bash] input row); got %+v", len(calls), calls)
 	}
-	if !strings.Contains(calls[1].content, "tool-1") {
-		t.Errorf("call[1].content = %q, want it to contain tool-1", calls[1].content)
+	if calls[0].category != "tool" {
+		t.Errorf("call[0].category = %q, want tool", calls[0].category)
 	}
-	if !strings.Contains(calls[1].content, "Bash") {
-		t.Errorf("call[1].content = %q, want it to contain Bash", calls[1].content)
+	if !strings.Contains(calls[0].content, "[Bash]") {
+		t.Errorf("call[0].content = %q, want [Bash] prefix", calls[0].content)
+	}
+	if !strings.Contains(calls[0].content, `"command":"ls"`) {
+		t.Errorf("call[0].content = %q, want JSON input", calls[0].content)
 	}
 }
 
 // TestRunnerSink_ToolUseStop_FlushesBufferThenEmitsInput verifies that
-// OnToolUseStop flushes pending text and emits the tool_use_input message
-// with id + JSON input.
+// OnToolUseStop flushes pending text and emits the [<name>] <input> row.
 func TestRunnerSink_ToolUseStop_FlushesBufferThenEmitsInput(t *testing.T) {
 	sink := &recordingSink{}
 	rs := newRunnerSink(sink)
 	t.Cleanup(rs.close)
 
+	rs.OnToolUseStart("tool-1", "Bash")
 	rs.OnTextDelta("more text")
 	rs.OnToolUseStop("tool-1", json.RawMessage(`{"command":"ls"}`))
 
 	calls := sink.Calls()
 	if len(calls) != 2 {
-		t.Fatalf("Calls = %d, want 2; got %+v", len(calls), calls)
+		t.Fatalf("Calls = %d, want 2 (text flush + tool row); got %+v", len(calls), calls)
 	}
 	if calls[0].content != "more text" || calls[0].category != "text" {
 		t.Errorf("call[0] = {%q, %q}, want {more text, text}", calls[0].content, calls[0].category)
 	}
-	if calls[1].category != "tool_use_input" {
-		t.Errorf("call[1].category = %q, want tool_use_input", calls[1].category)
+	if calls[1].category != "tool" {
+		t.Errorf("call[1].category = %q, want tool", calls[1].category)
 	}
 	if !strings.Contains(calls[1].content, `"command":"ls"`) {
 		t.Errorf("call[1].content = %q, want JSON input", calls[1].content)
 	}
-	if !strings.Contains(calls[1].content, "tool-1") {
-		t.Errorf("call[1].content = %q, want tool-1 id", calls[1].content)
+	if !strings.Contains(calls[1].content, "[Bash]") {
+		t.Errorf("call[1].content = %q, want [Bash] prefix", calls[1].content)
 	}
 }
 
@@ -203,47 +215,43 @@ func TestRunnerSink_OnUsage_FlushesBuffer(t *testing.T) {
 	}
 }
 
-// TestRunnerSink_Close_StopsLateFlush verifies that close() suppresses pending
-// idle-timer flushes so the runner sink is safe to discard after a turn.
-func TestRunnerSink_Close_StopsLateFlush(t *testing.T) {
+// TestRunnerSink_Close_FlushesBuffer verifies that close() flushes any pending
+// text synchronously before marking the sink closed.
+func TestRunnerSink_Close_FlushesBuffer(t *testing.T) {
 	sink := &recordingSink{}
 	rs := newRunnerSink(sink)
 
 	rs.OnTextDelta("pending")
 	rs.close()
 
-	// Wait past the 200ms idle threshold and confirm no late flush.
-	deadline := time.Now().Add(350 * time.Millisecond)
-	for time.Now().Before(deadline) {
-		if len(sink.Calls()) > 0 {
-			t.Fatalf("late flush after close: %+v", sink.Calls())
-		}
-		time.Sleep(10 * time.Millisecond)
+	calls := sink.Calls()
+	if len(calls) != 1 {
+		t.Fatalf("Calls after close = %d, want 1 (sync flush); got %+v", len(calls), calls)
+	}
+	if calls[0].content != "pending" || calls[0].category != "text" {
+		t.Errorf("call[0] = {%q, %q}, want {pending, text}", calls[0].content, calls[0].category)
 	}
 }
 
-// TestRunnerSink_IdleFlush_AfterTimeout verifies that with no further events,
-// the buffered text is flushed by the idle timer (200ms threshold).
-func TestRunnerSink_IdleFlush_AfterTimeout(t *testing.T) {
+// TestRunnerSink_ToolUseStop_UnknownIDFallback verifies that calling
+// OnToolUseStop with an id that was never registered via OnToolUseStart does
+// not panic and produces a reasonable row (the id itself used as the name).
+func TestRunnerSink_ToolUseStop_UnknownIDFallback(t *testing.T) {
 	sink := &recordingSink{}
 	rs := newRunnerSink(sink)
 	t.Cleanup(rs.close)
 
-	rs.OnTextDelta("idle me")
+	rs.OnToolUseStop("orphan-id", json.RawMessage(`{"x":1}`))
 
-	// Poll up to 1s for the idle flush. Threshold is 200ms.
-	deadline := time.Now().Add(1 * time.Second)
-	for time.Now().Before(deadline) {
-		if len(sink.Calls()) > 0 {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 	calls := sink.Calls()
 	if len(calls) != 1 {
-		t.Fatalf("idle flush did not produce 1 call; got %+v", calls)
+		t.Fatalf("Calls = %d, want 1 (fallback row using id as name); got %+v", len(calls), calls)
 	}
-	if calls[0].content != "idle me" || calls[0].category != "text" {
-		t.Errorf("call[0] = {%q, %q}, want {idle me, text}", calls[0].content, calls[0].category)
+	if !strings.Contains(calls[0].content, "orphan-id") {
+		t.Errorf("call[0].content = %q, want it to contain the id as fallback name", calls[0].content)
+	}
+	if calls[0].category != "tool" {
+		t.Errorf("call[0].category = %q, want tool", calls[0].category)
 	}
 }
+

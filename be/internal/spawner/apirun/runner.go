@@ -165,7 +165,7 @@ func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []pr
 		handler, ok := r.cfg.Handlers[block.ToolName]
 		if !ok {
 			msg := fmt.Sprintf("unknown tool: %s", block.ToolName)
-			r.cfg.Sink.TrackMessage(msg, "tool_error")
+			r.cfg.Sink.TrackMessage(msg, "error")
 			results = append(results, provider.ContentBlock{
 				Type:      "tool_result",
 				ToolUseID: block.ToolUseID,
@@ -200,7 +200,11 @@ func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []pr
 			isErr = true
 			media = nil
 		}
-		r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), "tool_result")
+		category := "tool"
+		if isErr {
+			category = "error"
+		}
+		r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), category)
 		results = append(results, provider.ContentBlock{
 			Type:        "tool_result",
 			ToolUseID:   block.ToolUseID,
@@ -213,10 +217,14 @@ func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []pr
 }
 
 func formatToolResult(name, out string, isErr bool) string {
+	const maxOut = 2048
 	if isErr {
-		return fmt.Sprintf("[tool_result:error] name=%s output=%s", name, out)
+		return fmt.Sprintf("%s: %s", name, out)
 	}
-	return fmt.Sprintf("[tool_result] name=%s output=%s", name, out)
+	if len(out) > maxOut {
+		out = out[:maxOut]
+	}
+	return fmt.Sprintf("[%s] → %s", name, out)
 }
 
 // updateContext computes the percentage of context window remaining from the

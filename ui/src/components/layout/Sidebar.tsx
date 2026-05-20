@@ -202,9 +202,6 @@ export function Sidebar() {
         )}
         {isAdmin && (
           <>
-            <div className="mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Configuration
-            </div>
             {observerEnabled && (
               <div className="px-3 py-1">
                 <LaunchObserverButton payload={{ scope: 'global' }} variant="outline" size="sm" />

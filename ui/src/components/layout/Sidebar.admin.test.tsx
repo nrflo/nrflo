@@ -110,9 +110,8 @@ describe('Sidebar - Viewer Role', () => {
     expect(screen.queryByRole('link', { name: 'Audit Log' })).not.toBeInTheDocument()
   })
 
-  it('hides Configuration section and Tool Definitions even with apiModeEnabled=true', () => {
+  it('hides Tool Definitions even with apiModeEnabled=true for non-admins', () => {
     renderSidebar()
-    expect(screen.queryByText('Configuration')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Tool Definitions' })).not.toBeInTheDocument()
   })
 

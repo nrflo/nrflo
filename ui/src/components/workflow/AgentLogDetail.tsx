@@ -12,6 +12,7 @@ import { AllFindingsPanel } from './AllFindingsPanel'
 import { ArtifactsPanel } from './ArtifactsPanel'
 import { AllArtifactsPanel } from './AllArtifactsPanel'
 import { parseToolName, ToolBadge } from './LogMessage'
+import { normalizeApiMessages } from './normalizeApiMessages'
 import { cn } from '@/lib/utils'
 import { useSessionMessages } from '@/hooks/useTickets'
 import { useSessionPrompt } from '@/hooks/useSessionPrompt'
@@ -88,18 +89,20 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
 
   const messages = messagesData?.messages ?? []
 
+  const normalized = useMemo(() => normalizeApiMessages(messages), [messages])
+
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: messages.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0, error: 0, result: 0, validation: 0 }
-    for (const m of messages) {
+    const counts: Record<string, number> = { all: normalized.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0, error: 0, result: 0, validation: 0 }
+    for (const m of normalized) {
       const cat = m.category || 'text'
       counts[cat] = (counts[cat] || 0) + 1
     }
     return counts
-  }, [messages])
+  }, [normalized])
 
   const filteredMessages = useMemo(
-    () => categoryFilter === 'all' ? messages : messages.filter(m => (m.category || 'text') === categoryFilter),
-    [messages, categoryFilter],
+    () => categoryFilter === 'all' ? normalized : normalized.filter(m => (m.category || 'text') === categoryFilter),
+    [normalized, categoryFilter],
   )
 
   return (
@@ -242,19 +245,19 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
               <p className="text-xs">No prompt context available</p>
             </div>
           )
-        ) : messagesLoading && messages.length === 0 ? (
+        ) : messagesLoading && normalized.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
             <p className="text-xs">Loading messages...</p>
           </div>
-        ) : messages.length > 0 ? (
+        ) : normalized.length > 0 ? (
           <div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
               <MessageSquare className="h-3 w-3" />
               <span>
                 {categoryFilter !== 'all'
-                  ? `${filteredMessages.length} of ${messages.length} messages`
-                  : `${messages.length} messages`}
+                  ? `${filteredMessages.length} of ${normalized.length} messages`
+                  : `${normalized.length} messages`}
               </span>
             </div>
             <div className="flex items-center gap-0.5 mb-2 border-b border-border" role="tablist">

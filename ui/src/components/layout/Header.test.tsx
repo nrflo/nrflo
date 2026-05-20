@@ -220,7 +220,6 @@ describe('Header - Git Link', () => {
     renderHeader()
 
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /tickets/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /workflows/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /^git$/i })).toBeInTheDocument()
   })
@@ -243,12 +242,11 @@ describe('Header - Icon-only nav links', () => {
     ]
   })
 
-  it('all 6 nav links render with correct titles, hrefs, and responsive text labels', () => {
+  it('all 5 nav links render with correct titles, hrefs, and responsive text labels', () => {
     renderHeader()
 
     const expectedLinks = [
       { title: 'Dashboard', href: '/', label: 'Dashboard' },
-      { title: 'Tickets', href: '/tickets', label: 'Tickets' },
       { title: 'Workflows', href: '/workflows', label: 'Workflows' },
       { title: 'Git', href: '/git-status', label: 'Git' },
       { title: 'Documentation', href: '/documentation', label: 'Docs' },

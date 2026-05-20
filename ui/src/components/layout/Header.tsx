@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Search, Settings, LayoutDashboard, Ticket, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, ScrollText, Sun, Moon, Monitor, LogOut } from 'lucide-react'
+import { Search, Settings, LayoutDashboard, FolderGit2, GitCommitHorizontal, BookOpen, AlertTriangle, ScrollText, Sun, Moon, Monitor, LogOut } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
@@ -68,10 +68,6 @@ export function Header() {
           <Link to="/" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Dashboard">
             <LayoutDashboard className="h-5 w-5" />
             <span className="hidden md:inline ml-1 text-xs">Dashboard</span>
-          </Link>
-          <Link to="/tickets" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Tickets">
-            <Ticket className="h-5 w-5" />
-            <span className="hidden md:inline ml-1 text-xs">Tickets</span>
           </Link>
           <Link to="/workflows" className="flex items-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Workflows">
             <FolderGit2 className="h-5 w-5" />

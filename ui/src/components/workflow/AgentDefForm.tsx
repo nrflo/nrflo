@@ -40,6 +40,7 @@ export function AgentDefForm({
   const [pythonScriptId, setPythonScriptId] = useState(initial?.python_script_id || '')
   const [tools, setTools] = useState(initial?.tools || '')
   const [apiMaxIterations, setApiMaxIterations] = useState<number | ''>(initial?.api_max_iterations ?? '')
+  const [apiMaxTokens, setApiMaxTokens] = useState<number | ''>(initial?.api_max_tokens ?? '')
   const [validationCommands, setValidationCommands] = useState<string[]>(() => {
     try { return JSON.parse(initial?.validation_commands ?? '[]') } catch { return [] }
   })
@@ -69,8 +70,9 @@ export function AgentDefForm({
     }
 
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
+    const maxTokens = apiMaxTokens !== '' ? apiMaxTokens : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, validation_commands: trimmedCmds }
+    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -153,7 +155,7 @@ export function AgentDefForm({
         </div>
       )}
       {executionMode === 'api' && (
-        <AgentDefAPIModeFields tools={tools} setTools={setTools} apiMaxIterations={apiMaxIterations} setApiMaxIterations={setApiMaxIterations} />
+        <AgentDefAPIModeFields tools={tools} setTools={setTools} apiMaxIterations={apiMaxIterations} setApiMaxIterations={setApiMaxIterations} apiMaxTokens={apiMaxTokens} setApiMaxTokens={setApiMaxTokens} />
       )}
       {executionMode === 'script' && (
         <div>

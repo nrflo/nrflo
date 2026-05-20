@@ -62,11 +62,11 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 
 	_, err := s.pool.Exec(`
 		INSERT INTO system_agent_definitions
-			(id, role, model, timeout, prompt, tools, api_max_iterations,
+			(id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 			 restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
 			 execution_mode, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, role, modelName, timeout, req.Prompt, req.Tools, req.APIMaxIterations,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, role, modelName, timeout, req.Prompt, req.Tools, req.APIMaxIterations, req.APIMaxTokens,
 		req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec,
 		executionMode, now, now,
 	)
@@ -87,6 +87,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		Prompt:                 req.Prompt,
 		Tools:                  req.Tools,
 		APIMaxIterations:       req.APIMaxIterations,
+		APIMaxTokens:           req.APIMaxTokens,
 		RestartThreshold:       req.RestartThreshold,
 		MaxFailRestarts:        req.MaxFailRestarts,
 		StallStartTimeoutSec:   req.StallStartTimeoutSec,
@@ -100,15 +101,15 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 func (s *SystemAgentDefinitionService) Get(id string) (*model.SystemAgentDefinition, error) {
 	def := &model.SystemAgentDefinition{}
 	var createdAt, updatedAt string
-	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations sql.NullInt64
+	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens sql.NullInt64
 
 	err := s.pool.QueryRow(`
-		SELECT id, role, model, timeout, prompt, tools, api_max_iterations,
+		SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
 		       execution_mode, created_at, updated_at
 		FROM system_agent_definitions
 		WHERE LOWER(id) = LOWER(?)`, id).Scan(
-		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations,
+		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
 		&def.ExecutionMode, &createdAt, &updatedAt,
 	)
@@ -121,7 +122,7 @@ func (s *SystemAgentDefinitionService) Get(id string) (*model.SystemAgentDefinit
 
 	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-	scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations)
+	scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens)
 	return def, nil
 }
 
@@ -130,16 +131,16 @@ func (s *SystemAgentDefinitionService) Get(id string) (*model.SystemAgentDefinit
 func (s *SystemAgentDefinitionService) GetForBackend(role, backend string) (*model.SystemAgentDefinition, error) {
 	def := &model.SystemAgentDefinition{}
 	var createdAt, updatedAt string
-	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations sql.NullInt64
+	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens sql.NullInt64
 
 	err := s.pool.QueryRow(`
-		SELECT id, role, model, timeout, prompt, tools, api_max_iterations,
+		SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
 		       execution_mode, created_at, updated_at
 		FROM system_agent_definitions
 		WHERE role = ? AND execution_mode = ?
 		LIMIT 1`, role, backend).Scan(
-		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations,
+		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
 		&def.ExecutionMode, &createdAt, &updatedAt,
 	)
@@ -149,7 +150,7 @@ func (s *SystemAgentDefinitionService) GetForBackend(role, backend string) (*mod
 
 	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-	scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations)
+	scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens)
 	return def, nil
 }
 
@@ -170,7 +171,7 @@ func (s *SystemAgentDefinitionService) ListForAPI(includeAPIMode bool) ([]*model
 }
 
 func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.SystemAgentDefinition, error) {
-	q := `SELECT id, role, model, timeout, prompt, tools, api_max_iterations,
+	q := `SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
 		       execution_mode, created_at, updated_at
 		FROM system_agent_definitions`
@@ -189,10 +190,10 @@ func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.S
 	for rows.Next() {
 		def := &model.SystemAgentDefinition{}
 		var createdAt, updatedAt string
-		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations sql.NullInt64
+		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens sql.NullInt64
 
 		err := rows.Scan(
-			&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations,
+			&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
 			&def.ExecutionMode, &createdAt, &updatedAt,
 		)
@@ -202,7 +203,7 @@ func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.S
 
 		def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 		def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-		scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations)
+		scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens)
 		defs = append(defs, def)
 	}
 
@@ -244,6 +245,10 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 	if req.APIMaxIterations != nil {
 		updates = append(updates, "api_max_iterations = ?")
 		args = append(args, *req.APIMaxIterations)
+	}
+	if req.APIMaxTokens != nil {
+		updates = append(updates, "api_max_tokens = ?")
+		args = append(args, *req.APIMaxTokens)
 	}
 	if req.RestartThreshold != nil {
 		updates = append(updates, "restart_threshold = ?")
@@ -302,7 +307,7 @@ func (s *SystemAgentDefinitionService) Delete(id string) error {
 }
 
 // scanNullableInts populates nullable int pointer fields on the model from sql.NullInt64 scan vars.
-func scanNullableInts(def *model.SystemAgentDefinition, restart, maxFail, stallStart, stallRunning, apiMax sql.NullInt64) {
+func scanNullableInts(def *model.SystemAgentDefinition, restart, maxFail, stallStart, stallRunning, apiMax, apiMaxTokens sql.NullInt64) {
 	if restart.Valid {
 		v := int(restart.Int64)
 		def.RestartThreshold = &v
@@ -322,5 +327,9 @@ func scanNullableInts(def *model.SystemAgentDefinition, restart, maxFail, stallS
 	if apiMax.Valid {
 		v := int(apiMax.Int64)
 		def.APIMaxIterations = &v
+	}
+	if apiMaxTokens.Valid {
+		v := int(apiMaxTokens.Int64)
+		def.APIMaxTokens = &v
 	}
 }

@@ -181,6 +181,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 				ExecutionMode:    sysDef.ExecutionMode,
 				Tools:            sysDef.Tools,
 				APIMaxIterations: sysDef.APIMaxIterations,
+				APIMaxTokens:     sysDef.APIMaxTokens,
 			},
 		},
 		DataPath:           s.config.DataPath,
@@ -217,7 +218,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 			"AGENT_MESSAGES":    formatted,
 			"TARGET_SESSION_ID": proc.sessionID,
 			"WORKFLOW":          req.WorkflowName,
-			"TICKET_ID":        req.TicketID,
+			"TICKET_ID":         req.TicketID,
 		},
 	})
 	sp.Close()

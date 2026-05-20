@@ -322,6 +322,7 @@ export interface AgentDef {
   execution_mode: 'cli_interactive' | 'api' | 'script'
   tools: string
   api_max_iterations?: number
+  api_max_tokens?: number
   python_script_id?: string
   validation_commands?: string
   created_at: string
@@ -341,6 +342,7 @@ export interface AgentDefCreateRequest {
   execution_mode?: 'cli_interactive' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
+  api_max_tokens?: number
   python_script_id?: string
   validation_commands?: string[]
 }
@@ -357,6 +359,7 @@ export interface AgentDefUpdateRequest {
   execution_mode?: 'cli_interactive' | 'api' | 'script'
   tools?: string
   api_max_iterations?: number
+  api_max_tokens?: number
   python_script_id?: string
   validation_commands?: string[]
 }

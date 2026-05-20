@@ -32,9 +32,9 @@ func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIM
 }
 
 // validateScriptMode enforces coupling rules for execution_mode="script":
-// PythonScriptID required, Prompt/Tools/APIMaxIterations must be empty/nil,
-// script must belong to the given project.
-func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScriptID *string, prompt, tools string, apiMaxIterations *int) error {
+// PythonScriptID required, Prompt/Tools/APIMaxIterations/APIMaxTokens must be
+// empty/nil, script must belong to the given project.
+func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScriptID *string, prompt, tools string, apiMaxIterations, apiMaxTokens *int) error {
 	if pythonScriptID == nil {
 		return fmt.Errorf("python_script_id_required")
 	}
@@ -46,6 +46,9 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 	}
 	if apiMaxIterations != nil {
 		return fmt.Errorf("script_mode_no_api_max_iterations")
+	}
+	if apiMaxTokens != nil {
+		return fmt.Errorf("script_mode_no_api_max_tokens")
 	}
 	if s.pythonScriptRepo != nil {
 		script, err := s.pythonScriptRepo.Get(projectID, *pythonScriptID)
@@ -102,7 +105,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 
 	// Script mode: enforce coupling rules.
 	if executionMode == "script" {
-		if err := s.validateScriptMode(projectID, req.PythonScriptID, req.Prompt, req.Tools, req.APIMaxIterations); err != nil {
+		if err := s.validateScriptMode(projectID, req.PythonScriptID, req.Prompt, req.Tools, req.APIMaxIterations, req.APIMaxTokens); err != nil {
 			return nil, err
 		}
 	} else if req.PythonScriptID != nil {
@@ -183,9 +186,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.PythonScriptID, validationCommandsJSON, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -212,6 +215,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		ExecutionMode:          executionMode,
 		Tools:                  req.Tools,
 		APIMaxIterations:       req.APIMaxIterations,
+		APIMaxTokens:           req.APIMaxTokens,
 		PythonScriptID:         req.PythonScriptID,
 		ValidationCommands:     validationCommandsJSON,
 		CreatedAt:              ts,
@@ -223,11 +227,11 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (*model.AgentDefinition, error) {
 	def := &model.AgentDefinition{}
 	var createdAt, updatedAt string
-	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter sql.NullInt64
+	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter, apiMaxTokens sql.NullInt64
 	var pythonScriptID sql.NullString
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -235,7 +239,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		&def.Model, &def.Timeout, &def.Prompt,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 		&def.LowConsumptionModel, &def.Layer,
-		&def.ExecutionMode, &def.Tools, &apiMaxIter, &pythonScriptID,
+		&def.ExecutionMode, &def.Tools, &apiMaxIter, &apiMaxTokens, &pythonScriptID,
 		&def.ValidationCommands,
 		&createdAt, &updatedAt,
 	)
@@ -268,6 +272,10 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		v := int(apiMaxIter.Int64)
 		def.APIMaxIterations = &v
 	}
+	if apiMaxTokens.Valid {
+		v := int(apiMaxTokens.Int64)
+		def.APIMaxTokens = &v
+	}
 	if pythonScriptID.Valid {
 		s := pythonScriptID.String
 		def.PythonScriptID = &s
@@ -278,7 +286,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, python_script_id, validation_commands, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -291,7 +299,7 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 	for rows.Next() {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
-		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter sql.NullInt64
+		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter, apiMaxTokens sql.NullInt64
 		var pythonScriptID sql.NullString
 
 		err := rows.Scan(
@@ -299,7 +307,7 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 			&def.Model, &def.Timeout, &def.Prompt,
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 			&def.LowConsumptionModel, &def.Layer,
-			&def.ExecutionMode, &def.Tools, &apiMaxIter, &pythonScriptID,
+			&def.ExecutionMode, &def.Tools, &apiMaxIter, &apiMaxTokens, &pythonScriptID,
 			&def.ValidationCommands,
 			&createdAt, &updatedAt,
 		)
@@ -328,6 +336,10 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 		if apiMaxIter.Valid {
 			v := int(apiMaxIter.Int64)
 			def.APIMaxIterations = &v
+		}
+		if apiMaxTokens.Valid {
+			v := int(apiMaxTokens.Int64)
+			def.APIMaxTokens = &v
 		}
 		if pythonScriptID.Valid {
 			s := pythonScriptID.String
@@ -448,7 +460,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 			if req.Tools != nil {
 				tools = *req.Tools
 			}
-			if err := s.validateScriptMode(projectID, req.PythonScriptID, prompt, tools, req.APIMaxIterations); err != nil {
+			if err := s.validateScriptMode(projectID, req.PythonScriptID, prompt, tools, req.APIMaxIterations, req.APIMaxTokens); err != nil {
 				return err
 			}
 			// Force model to "script" sentinel.
@@ -486,6 +498,10 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.APIMaxIterations != nil {
 		updates = append(updates, "api_max_iterations = ?")
 		args = append(args, *req.APIMaxIterations)
+	}
+	if req.APIMaxTokens != nil {
+		updates = append(updates, "api_max_tokens = ?")
+		args = append(args, *req.APIMaxTokens)
 	}
 	if req.PythonScriptID != nil {
 		updates = append(updates, "python_script_id = ?")

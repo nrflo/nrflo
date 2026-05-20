@@ -179,6 +179,7 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 				ExecutionMode:          agent.ExecutionMode,
 				Tools:                  agent.Tools,
 				APIMaxIterations:       agent.APIMaxIterations,
+				APIMaxTokens:           agent.APIMaxTokens,
 				PythonScriptID:         scriptID,
 				ValidationCommands:     validationCmds,
 			}); err != nil {

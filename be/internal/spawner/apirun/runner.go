@@ -13,8 +13,9 @@ import (
 // specify api_max_iterations.
 const defaultMaxIterations = 50
 
-// defaultMaxTokens is the per-turn output cap. T4 may make this configurable.
-const defaultMaxTokens = 4096
+// defaultMaxTokens is the per-turn output cap when the spawner doesn't supply
+// one. Per-agent overrides come from agent_definitions.api_max_tokens.
+const defaultMaxTokens = 16384
 
 // Config carries the runner's per-spawn configuration. All fields are
 // populated by the spawner in prepareSpawn.

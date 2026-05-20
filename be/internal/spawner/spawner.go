@@ -53,6 +53,7 @@ type AgentConfig struct {
 	ExecutionMode    string `json:"execution_mode"`
 	Tools            string `json:"tools"`
 	APIMaxIterations *int   `json:"api_max_iterations"`
+	APIMaxTokens     *int   `json:"api_max_tokens"`
 }
 
 // ErrorRecorder records error events. Implemented by service.ErrorService.
@@ -72,7 +73,7 @@ const (
 	defaultNudgeMax                = 5
 
 	defaultAPIMaxIterations = 50
-	defaultAPIMaxTokens     = 4096
+	defaultAPIMaxTokens     = 16384
 	defaultAPISystemPrompt  = "You are an agent in a workflow. Follow the instructions below."
 )
 
@@ -1128,6 +1129,15 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 				maxIter = *agentCfg.APIMaxIterations
 			}
 		}
+
+		maxTokens := defaultAPIMaxTokens
+		if agentDef != nil && agentDef.APIMaxTokens != nil && *agentDef.APIMaxTokens > 0 {
+			maxTokens = *agentDef.APIMaxTokens
+		} else if agentDef == nil {
+			if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.APIMaxTokens != nil && *agentCfg.APIMaxTokens > 0 {
+				maxTokens = *agentCfg.APIMaxTokens
+			}
+		}
 		maxCtx := s.maxContextForModel(modelName)
 		if s.config.Provider != nil {
 			if pmc := s.config.Provider.MaxContext(apiModelID); pmc > 0 {
@@ -1183,7 +1193,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			ArtifactSvc:        s.config.ArtifactSvc,
 		}
 		prep.apiMaxIterations = maxIter
-		prep.apiMaxTokens = defaultAPIMaxTokens
+		prep.apiMaxTokens = maxTokens
 		prep.apiDeadline = proc.startTime.Add(proc.timeout)
 		prep.apiModelID = apiModelID
 		prep.apiMaxContext = maxCtx

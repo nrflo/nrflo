@@ -163,6 +163,30 @@ describe('AgentDefForm — execution mode', () => {
       )
     })
 
+    it('includes api_max_tokens when set', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderForm({ onSubmit })
+
+      await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'api-agent')
+      await user.type(screen.getByLabelText('Prompt Template'), 'prompt')
+
+      await user.click(getExecutionModeButton())
+      await user.click(screen.getByText('API (in-process Anthropic runner)'))
+
+      await user.type(screen.getByPlaceholderText(/findings_add/i), '*')
+      await user.type(screen.getByPlaceholderText('16384'), '32768')
+
+      await user.click(screen.getByRole('button', { name: /create/i }))
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          execution_mode: 'api',
+          api_max_tokens: 32768,
+        })
+      )
+    })
+
     it('api_max_iterations is undefined when not set', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()

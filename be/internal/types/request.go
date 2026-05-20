@@ -36,9 +36,9 @@ type TicketSearchRequest struct {
 
 // ProjectCreateRequest is the request for creating a project
 type ProjectCreateRequest struct {
-	Name            string `json:"name,omitempty"`
-	RootPath        string `json:"root_path,omitempty"`
-	DefaultBranch   string `json:"default_branch,omitempty"`
+	Name          string `json:"name,omitempty"`
+	RootPath      string `json:"root_path,omitempty"`
+	DefaultBranch string `json:"default_branch,omitempty"`
 }
 
 // WorkflowInitRequest is the request for initializing a workflow
@@ -218,32 +218,33 @@ type WorkflowDefUpdateRequest struct {
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow
 type ProjectWorkflowRunRequest struct {
-	Workflow         string            `json:"workflow"`
-	Instructions     string            `json:"instructions,omitempty"`
-	Interactive      bool              `json:"interactive,omitempty"`
-	PlanMode         bool              `json:"plan_mode,omitempty"`
-	EndlessLoop      bool              `json:"endless_loop,omitempty"`
-	ScheduledTaskID  string            `json:"scheduled_task_id,omitempty"`
-	SeedFindings     map[string]string `json:"seed_findings,omitempty"`
-	InputArtifacts   []InputArtifactRef `json:"input_artifacts,omitempty"`
+	Workflow        string             `json:"workflow"`
+	Instructions    string             `json:"instructions,omitempty"`
+	Interactive     bool               `json:"interactive,omitempty"`
+	PlanMode        bool               `json:"plan_mode,omitempty"`
+	EndlessLoop     bool               `json:"endless_loop,omitempty"`
+	ScheduledTaskID string             `json:"scheduled_task_id,omitempty"`
+	SeedFindings    map[string]string  `json:"seed_findings,omitempty"`
+	InputArtifacts  []InputArtifactRef `json:"input_artifacts,omitempty"`
 }
 
 // AgentDefCreateRequest is the request for creating an agent definition
 type AgentDefCreateRequest struct {
-	ID               string `json:"id"`
-	Model            string `json:"model,omitempty"`
-	Timeout          int    `json:"timeout,omitempty"`
-	Prompt           string `json:"prompt"`
-	Layer            int    `json:"layer"`
-	RestartThreshold *int   `json:"restart_threshold,omitempty"`
-	MaxFailRestarts        *int   `json:"max_fail_restarts,omitempty"`
-	StallStartTimeoutSec   *int   `json:"stall_start_timeout_sec,omitempty"`
-	StallRunningTimeoutSec *int   `json:"stall_running_timeout_sec,omitempty"`
-	Tag                    string `json:"tag,omitempty"`
-	LowConsumptionModel    string `json:"low_consumption_model,omitempty"`
+	ID                     string    `json:"id"`
+	Model                  string    `json:"model,omitempty"`
+	Timeout                int       `json:"timeout,omitempty"`
+	Prompt                 string    `json:"prompt"`
+	Layer                  int       `json:"layer"`
+	RestartThreshold       *int      `json:"restart_threshold,omitempty"`
+	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
+	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
+	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
+	Tag                    string    `json:"tag,omitempty"`
+	LowConsumptionModel    string    `json:"low_consumption_model,omitempty"`
 	ExecutionMode          string    `json:"execution_mode,omitempty"`
 	Tools                  string    `json:"tools,omitempty"`
 	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
+	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
 }
@@ -263,6 +264,7 @@ type AgentDefUpdateRequest struct {
 	ExecutionMode          *string   `json:"execution_mode,omitempty"`
 	Tools                  *string   `json:"tools,omitempty"`
 	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
+	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
 }
@@ -277,6 +279,7 @@ type SystemAgentDefCreateRequest struct {
 	Prompt                 string `json:"prompt"`
 	Tools                  string `json:"tools,omitempty"`
 	APIMaxIterations       *int   `json:"api_max_iterations,omitempty"`
+	APIMaxTokens           *int   `json:"api_max_tokens,omitempty"`
 	RestartThreshold       *int   `json:"restart_threshold,omitempty"`
 	MaxFailRestarts        *int   `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int   `json:"stall_start_timeout_sec,omitempty"`
@@ -292,6 +295,7 @@ type SystemAgentDefUpdateRequest struct {
 	Prompt                 *string `json:"prompt,omitempty"`
 	Tools                  *string `json:"tools,omitempty"`
 	APIMaxIterations       *int    `json:"api_max_iterations,omitempty"`
+	APIMaxTokens           *int    `json:"api_max_tokens,omitempty"`
 	RestartThreshold       *int    `json:"restart_threshold,omitempty"`
 	MaxFailRestarts        *int    `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int    `json:"stall_start_timeout_sec,omitempty"`

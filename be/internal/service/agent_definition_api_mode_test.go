@@ -160,3 +160,63 @@ func TestUpdateAgentDef_APIMode_Succeeds(t *testing.T) {
 		t.Errorf("after update ExecutionMode = %q, want %q", def.ExecutionMode, "api")
 	}
 }
+
+// TestAgentDef_APIMaxTokens_RoundTrip verifies api_max_tokens persists through
+// create, Get, List, and Update for an api-mode agent.
+func TestAgentDef_APIMaxTokens_RoundTrip(t *testing.T) {
+	t.Parallel()
+	svc, settingsSvc, wfID := setupAgentDefAPIModeEnv(t)
+	if err := settingsSvc.Set("api_mode_enabled", "true"); err != nil {
+		t.Fatalf("Set api_mode_enabled: %v", err)
+	}
+
+	tokens := 32768
+	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID:            "agent-tokens",
+		Prompt:        "do stuff",
+		ExecutionMode: "api",
+		APIMaxTokens:  &tokens,
+	})
+	if err != nil {
+		t.Fatalf("CreateAgentDef: %v", err)
+	}
+	if def.APIMaxTokens == nil || *def.APIMaxTokens != 32768 {
+		t.Fatalf("Create APIMaxTokens = %v, want 32768", def.APIMaxTokens)
+	}
+
+	got, err := svc.GetAgentDef("proj1", wfID, "agent-tokens")
+	if err != nil {
+		t.Fatalf("GetAgentDef: %v", err)
+	}
+	if got.APIMaxTokens == nil || *got.APIMaxTokens != 32768 {
+		t.Fatalf("Get APIMaxTokens = %v, want 32768", got.APIMaxTokens)
+	}
+
+	list, err := svc.ListAgentDefs("proj1", wfID)
+	if err != nil {
+		t.Fatalf("ListAgentDefs: %v", err)
+	}
+	var found *int
+	for _, d := range list {
+		if d.ID == "agent-tokens" {
+			found = d.APIMaxTokens
+		}
+	}
+	if found == nil || *found != 32768 {
+		t.Fatalf("List APIMaxTokens = %v, want 32768", found)
+	}
+
+	newTokens := 8192
+	if err := svc.UpdateAgentDef("proj1", wfID, "agent-tokens", &types.AgentDefUpdateRequest{
+		APIMaxTokens: &newTokens,
+	}); err != nil {
+		t.Fatalf("UpdateAgentDef: %v", err)
+	}
+	updated, err := svc.GetAgentDef("proj1", wfID, "agent-tokens")
+	if err != nil {
+		t.Fatalf("GetAgentDef after update: %v", err)
+	}
+	if updated.APIMaxTokens == nil || *updated.APIMaxTokens != 8192 {
+		t.Errorf("after update APIMaxTokens = %v, want 8192", updated.APIMaxTokens)
+	}
+}

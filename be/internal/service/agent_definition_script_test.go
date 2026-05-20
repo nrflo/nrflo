@@ -85,6 +85,16 @@ func TestCreateAgentDef_ScriptMode_ValidationErrors(t *testing.T) {
 			},
 			wantErr: "script_mode_no_api_max_iterations",
 		},
+		{
+			name: "api_max_tokens_not_nil",
+			req: types.AgentDefCreateRequest{
+				ID:             "agent-err-5",
+				ExecutionMode:  "script",
+				PythonScriptID: &scriptID,
+				APIMaxTokens:   &apiIter,
+			},
+			wantErr: "script_mode_no_api_max_tokens",
+		},
 	}
 
 	for _, tc := range tests {

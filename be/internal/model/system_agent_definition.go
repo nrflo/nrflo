@@ -12,6 +12,7 @@ type SystemAgentDefinition struct {
 	Prompt                 string    `json:"prompt"`
 	Tools                  string    `json:"tools"`
 	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
+	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	RestartThreshold       *int      `json:"restart_threshold,omitempty"`
 	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`

@@ -7,7 +7,6 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
-	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
@@ -60,9 +59,8 @@ func (a *projectEnvAdapter) Get(_ string, name string) (string, bool, error) {
 // provider.Provider for API-mode agents. Returns nil if no credential is configured —
 // the spawner will fail any api-mode spawn at prepareSpawn time with a clear error.
 func buildAPIProvider(ctx context.Context, pool *db.Pool, projectID string, clk clock.Clock) provider.Provider {
-	credRepo := repo.NewAPICredentialRepo(pool, clk)
 	envRepo := newProjectEnvAdapter(pool, clk, projectID)
-	creds, err := anthropic.ResolveAPIKey(ctx, credRepo, envRepo, projectID)
+	creds, err := anthropic.ResolveAPIKey(ctx, envRepo, projectID)
 	if err != nil {
 		return nil
 	}

@@ -790,13 +790,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	apiModeAdmin("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
 	apiModeAdmin("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
 
-	// API credentials (global; api-mode only) — writes are admin-only
-	apiModeProtected("GET /api/v1/api-credentials", s.handleListAPICredentials)
-	apiModeAdmin("POST /api/v1/api-credentials", s.handleCreateAPICredential)
-	apiModeProtected("GET /api/v1/api-credentials/{id}", s.handleGetAPICredential)
-	apiModeAdmin("PUT /api/v1/api-credentials/{id}", s.handleUpdateAPICredential)
-	apiModeAdmin("DELETE /api/v1/api-credentials/{id}", s.handleDeleteAPICredential)
-
 	// Spec import (project-scoped via X-Project header)
 	protected("POST /api/v1/import/spec", s.handleStartSpecImport)
 	protected("GET /api/v1/import/spec/{instance_id}", s.handleGetSpecImport)

@@ -1318,7 +1318,6 @@ func (o *Orchestrator) runLoop(
 	// prepareSpawn with a clear error (CLI agents are unaffected).
 	apiProvider := buildAPIProvider(ctx, pool, req.ProjectID, o.clock)
 	apiAgentSvc := newAPIAgentSvc(pool, o.clock, o.wsHub)
-	apiCredRepo := repo.NewAPICredentialRepo(pool, o.clock)
 	findingsSvc := service.NewFindingsService(pool, o.clock)
 	projectFindingsSvc := service.NewProjectFindingsService(pool, o.clock)
 	agentSvcReal := service.NewAgentService(pool, o.clock)
@@ -1409,7 +1408,6 @@ func (o *Orchestrator) runLoop(
 		ErrorSvc:                  o.errorSvc,
 		Provider:                  apiProvider,
 		AgentSvc:                  apiAgentSvc,
-		APICredentialRepo:         apiCredRepo,
 		FindingsSvc:               findingsSvc,
 		ProjectFindingsSvc:        projectFindingsSvc,
 		AgentSvcReal:              agentSvcReal,

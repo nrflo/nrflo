@@ -127,8 +127,6 @@ type Config struct {
 	// AgentSvc persists context_left for API-mode agents (mirrors what the
 	// CLI hook does for CLI agents).
 	AgentSvc apirun.AgentSvc
-	// APICredentialRepo resolves provider API keys for API-mode agents.
-	APICredentialRepo anthropic.APICredentialRepo
 	// FindingsSvc, ProjectFindingsSvc, AgentSvcReal, WorkflowSvc are used by
 	// API-mode tool builtins (findings_*, project_findings_*, agent_*,
 	// workflow_skip). They mirror the services the socket handler uses for
@@ -1112,7 +1110,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		if s.config.Pool != nil {
 			envRepo = newSpawnerEnvRepo(s.config.Pool, s.config.Clock, req.ProjectID)
 		}
-		if _, keyErr := anthropic.ResolveAPIKey(context.Background(), s.config.APICredentialRepo, envRepo, req.ProjectID); keyErr != nil {
+		if _, keyErr := anthropic.ResolveAPIKey(context.Background(), envRepo, req.ProjectID); keyErr != nil {
 			return nil, nil, fmt.Errorf("api mode: %w", keyErr)
 		}
 

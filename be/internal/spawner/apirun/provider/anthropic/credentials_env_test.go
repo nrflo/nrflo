@@ -5,8 +5,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
-	"be/internal/model"
 )
 
 func TestDetectAuthMethod(t *testing.T) {
@@ -39,7 +37,7 @@ func TestResolveAPIKey_ProjectEnvOAuthToken(t *testing.T) {
 	envRepo := &fakeEnvRepo{vars: map[string]string{
 		"proj-1|ANTHROPIC_OAUTH_TOKEN": "sk-ant-oat01-mytoken",
 	}}
-	got, err := ResolveAPIKey(context.Background(), nil, envRepo, "proj-1")
+	got, err := ResolveAPIKey(context.Background(), envRepo, "proj-1")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
@@ -60,7 +58,7 @@ func TestResolveAPIKey_ProjectEnvAPIKeyBeatsOAuth(t *testing.T) {
 		"proj-1|ANTHROPIC_API_KEY":     "sk-ant-api03-proj",
 		"proj-1|ANTHROPIC_OAUTH_TOKEN": "sk-ant-oat01-proj",
 	}}
-	got, err := ResolveAPIKey(context.Background(), nil, envRepo, "proj-1")
+	got, err := ResolveAPIKey(context.Background(), envRepo, "proj-1")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
@@ -72,55 +70,13 @@ func TestResolveAPIKey_ProjectEnvAPIKeyBeatsOAuth(t *testing.T) {
 	}
 }
 
-// TestResolveAPIKey_DBRowBeatsProjectEnv verifies that a per-project DB row
-// wins over per-project env vars.
-func TestResolveAPIKey_DBRowBeatsProjectEnv(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
-	t.Setenv("DB_PROJ_KEY", "sk-from-db")
-	repo := &fakeRepo{rows: map[string]*model.APICredential{
-		"anthropic|proj-1": {SecretRef: "env:DB_PROJ_KEY"},
-	}}
-	envRepo := &fakeEnvRepo{vars: map[string]string{
-		"proj-1|ANTHROPIC_API_KEY": "sk-from-env",
-	}}
-	got, err := ResolveAPIKey(context.Background(), repo, envRepo, "proj-1")
-	if err != nil {
-		t.Fatalf("ResolveAPIKey: %v", err)
-	}
-	if got.Value != "sk-from-db" {
-		t.Errorf("Value = %q, want DB row to win over env", got.Value)
-	}
-}
-
-// TestResolveAPIKey_ProjectEnvBeatsGlobalDB verifies that a per-project env var
-// beats a global DB row.
-func TestResolveAPIKey_ProjectEnvBeatsGlobalDB(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
-	t.Setenv("GLOBAL_KEY", "global-db-key")
-	repo := &fakeRepo{rows: map[string]*model.APICredential{
-		"anthropic|": {SecretRef: "env:GLOBAL_KEY"},
-	}}
-	envRepo := &fakeEnvRepo{vars: map[string]string{
-		"proj-1|ANTHROPIC_API_KEY": "sk-from-proj-env",
-	}}
-	got, err := ResolveAPIKey(context.Background(), repo, envRepo, "proj-1")
-	if err != nil {
-		t.Fatalf("ResolveAPIKey: %v", err)
-	}
-	if got.Value != "sk-from-proj-env" {
-		t.Errorf("Value = %q, want per-project env to beat global DB row", got.Value)
-	}
-}
-
 // TestResolveAPIKey_EnvRepoError verifies that an error from ProjectEnvVarRepo
 // is propagated rather than silently skipped.
 func TestResolveAPIKey_EnvRepoError(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
 	envRepo := &fakeEnvRepo{err: errors.New("env lookup failed")}
-	_, err := ResolveAPIKey(context.Background(), nil, envRepo, "proj-1")
+	_, err := ResolveAPIKey(context.Background(), envRepo, "proj-1")
 	if err == nil {
 		t.Fatalf("expected env error to propagate")
 	}
@@ -134,7 +90,7 @@ func TestResolveAPIKey_EnvRepoError(t *testing.T) {
 func TestResolveAPIKey_ServerEnvOAuthToken(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "sk-ant-oat01-server")
-	got, err := ResolveAPIKey(context.Background(), nil, nil, "")
+	got, err := ResolveAPIKey(context.Background(), nil, "")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}
@@ -151,7 +107,7 @@ func TestResolveAPIKey_ServerEnvOAuthToken(t *testing.T) {
 func TestResolveAPIKey_ServerEnvAPIKeyBeatsOAuthToken(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-api03-server")
 	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "sk-ant-oat01-server")
-	got, err := ResolveAPIKey(context.Background(), nil, nil, "")
+	got, err := ResolveAPIKey(context.Background(), nil, "")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
 	}

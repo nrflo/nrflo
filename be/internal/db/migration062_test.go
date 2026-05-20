@@ -189,36 +189,6 @@ func TestMigration062_ToolDefinitionsTable(t *testing.T) {
 	}
 }
 
-// TestMigration062_APICredentialsTable verifies the new api_credentials table.
-func TestMigration062_APICredentialsTable(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("NewPoolPath: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	// global (project_id NULL)
-	if _, err := pool.Exec(`INSERT INTO api_credentials (id, provider, project_id, secret_ref, created_at, updated_at)
-		VALUES ('c1', 'anthropic', NULL, 'env:ANTHROPIC_API_KEY', datetime('now'), datetime('now'))`); err != nil {
-		t.Fatalf("insert global: %v", err)
-	}
-	// per-project
-	if _, err := pool.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'P', datetime('now'), datetime('now'))`); err != nil {
-		t.Fatalf("seed project: %v", err)
-	}
-	if _, err := pool.Exec(`INSERT INTO api_credentials (id, provider, project_id, secret_ref, created_at, updated_at)
-		VALUES ('c2', 'anthropic', 'p1', 'literal:sk-test', datetime('now'), datetime('now'))`); err != nil {
-		t.Fatalf("insert per-project: %v", err)
-	}
-	var n int
-	if err := pool.QueryRow(`SELECT COUNT(*) FROM api_credentials WHERE provider = 'anthropic'`).Scan(&n); err != nil {
-		t.Fatalf("count: %v", err)
-	}
-	if n != 2 {
-		t.Errorf("count = %d, want 2", n)
-	}
-}
-
 // TestMigration062_Indexes verifies the expected indexes were created.
 func TestMigration062_Indexes(t *testing.T) {
 	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
@@ -228,9 +198,8 @@ func TestMigration062_Indexes(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	want := map[string]bool{
-		"idx_api_credentials_provider_project": false,
-		"idx_tool_definitions_project":         false,
-		"idx_tool_definitions_workflow":        false,
+		"idx_tool_definitions_project":  false,
+		"idx_tool_definitions_workflow": false,
 	}
 	rows, err := pool.Query(`SELECT name FROM sqlite_master WHERE type='index'`)
 	if err != nil {

@@ -51,20 +51,6 @@ func TestAPIRoutes_ToolDefinitions_DisabledInCLIMode(t *testing.T) {
 	}
 }
 
-// TestAPIRoutes_APICredentials_DisabledInCLIMode verifies that GET /api/v1/api-credentials
-// returns 400 api_mode_disabled when setting is not enabled.
-func TestAPIRoutes_APICredentials_DisabledInCLIMode(t *testing.T) {
-	mux := newRoutesMux(t, false)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/api-credentials", nil)
-	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("GET /api/v1/api-credentials (api mode off) status = %d, want 400", rr.Code)
-	}
-}
-
 // TestAPIRoutes_ToolDefinitions_EnabledInAPIMode verifies that GET /api/v1/tool-definitions
 // is not blocked by the middleware when api_mode_enabled=true.
 func TestAPIRoutes_ToolDefinitions_EnabledInAPIMode(t *testing.T) {
@@ -76,20 +62,6 @@ func TestAPIRoutes_ToolDefinitions_EnabledInAPIMode(t *testing.T) {
 
 	if rr.Code == http.StatusBadRequest {
 		t.Errorf("GET /api/v1/tool-definitions (api mode on) returned 400; middleware should pass")
-	}
-}
-
-// TestAPIRoutes_APICredentials_EnabledInAPIMode verifies that GET /api/v1/api-credentials
-// is not blocked by the middleware when api_mode_enabled=true.
-func TestAPIRoutes_APICredentials_EnabledInAPIMode(t *testing.T) {
-	mux := newRoutesMux(t, true)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/api-credentials", nil)
-	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, req)
-
-	if rr.Code == http.StatusBadRequest {
-		t.Errorf("GET /api/v1/api-credentials (api mode on) returned 400; middleware should pass")
 	}
 }
 
@@ -106,5 +78,17 @@ func TestAPIRoutes_NonGatedRoute_AlwaysAccessible(t *testing.T) {
 		if rr.Code == http.StatusNotFound {
 			t.Errorf("GET /api/v1/settings (apiMode=%v) returned 404; should always be registered", apiMode)
 		}
+	}
+}
+
+// TestAPIRoutes_APICredentials_RouteGone verifies that GET /api/v1/api-credentials returns
+// 404 — the route was removed when the API Credentials feature was deleted.
+func TestAPIRoutes_APICredentials_RouteGone(t *testing.T) {
+	mux := newRoutesMux(t, true)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/api-credentials", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("GET /api/v1/api-credentials status = %d, want 404", rr.Code)
 	}
 }

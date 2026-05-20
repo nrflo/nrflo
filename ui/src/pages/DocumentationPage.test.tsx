@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DocumentationPage } from './DocumentationPage'
 
@@ -24,15 +25,55 @@ describe('DocumentationPage', () => {
   beforeEach(() => {
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mockRefetch.mockReset()
+    mockUseAgentManual.mockClear()
   })
 
-  function renderPage() {
+  function renderPage(initialUrl = '/docs') {
     return render(
-      <QueryClientProvider client={queryClient}>
-        <DocumentationPage />
-      </QueryClientProvider>
+      <MemoryRouter initialEntries={[initialUrl]}>
+        <QueryClientProvider client={queryClient}>
+          <DocumentationPage />
+        </QueryClientProvider>
+      </MemoryRouter>
     )
   }
+
+  it('renders all four sub-tab buttons and calls useAgentManual with common by default', () => {
+    mockUseAgentManual.mockReturnValue({
+      data: undefined, isLoading: false, error: null, refetch: mockRefetch, isFetching: false,
+    } as ReturnType<typeof useAgentManual>)
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: 'Common' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'CLI' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Python' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'API' })).toBeInTheDocument()
+    expect(mockUseAgentManual).toHaveBeenCalledWith('common')
+  })
+
+  it('switches kind when a sub-tab is clicked', async () => {
+    const user = userEvent.setup()
+    mockUseAgentManual.mockReturnValue({
+      data: undefined, isLoading: false, error: null, refetch: mockRefetch, isFetching: false,
+    } as ReturnType<typeof useAgentManual>)
+
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'CLI' }))
+
+    expect(mockUseAgentManual).toHaveBeenCalledWith('cli')
+  })
+
+  it('falls back to common for invalid ?sub= value', () => {
+    mockUseAgentManual.mockReturnValue({
+      data: undefined, isLoading: false, error: null, refetch: mockRefetch, isFetching: false,
+    } as ReturnType<typeof useAgentManual>)
+
+    renderPage('/docs?sub=bogus')
+
+    expect(mockUseAgentManual).toHaveBeenCalledWith('common')
+  })
 
   it('shows page title always', () => {
     mockUseAgentManual.mockReturnValue({
@@ -72,13 +113,13 @@ describe('DocumentationPage', () => {
   it('shows error message when API call fails', () => {
     mockUseAgentManual.mockReturnValue({
       data: undefined, isLoading: false,
-      error: new Error('agent_manual.md not found'),
+      error: new Error('documentation not found'),
       refetch: mockRefetch, isFetching: false,
     } as ReturnType<typeof useAgentManual>)
 
     renderPage()
 
-    expect(screen.getByText(/Failed to load documentation: agent_manual.md not found/)).toBeInTheDocument()
+    expect(screen.getByText(/Failed to load documentation:/)).toBeInTheDocument()
     expect(screen.queryByTestId('markdown-content')).not.toBeInTheDocument()
   })
 

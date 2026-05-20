@@ -66,7 +66,7 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 | `be/` | Go backend source code (see [be/CLAUDE.md](be/CLAUDE.md)) |
 | `ui/` | React web interface (see [ui/CLAUDE.md](ui/CLAUDE.md)) |
 | `Makefile` | Build, install, test targets (`make help`) |
-| `agent_manual.md` | User-facing agent definition guide (template vars, findings, CLI) |
+| `doc/` | Agent-authoring docs: common/CLI/Python/API, served at /documentation |
 
 ## Architecture Invariants
 
@@ -80,7 +80,7 @@ Rules every change must respect.
 - **WebSocket-only realtime**: the UI never polls; all live updates flow through `/api/v1/ws`.
 - **Agents identify via env**: spawner sets `NRF_SESSION_ID` + `NRF_WORKFLOW_INSTANCE_ID`.
 - **Spawned agents authenticate via per-session bearer token in `NRFLO_AGENT_TOKEN`**: see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
-- **Agent CLI is a small subset** — see [agent_manual.md](agent_manual.md).
+- **Agent CLI is a small subset** — see [doc/cli.md](doc/cli.md).
 - **API mode is a runtime admin toggle** (`api_mode_enabled` global setting); see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Feature Index
@@ -96,7 +96,7 @@ Rules every change must respect.
 - **Automatic merge conflict resolution / push-after-merge** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 
 ### Agents, templates, and configuration
-- **Workflow definitions, agent definitions, system agents** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [agent_manual.md](agent_manual.md)
+- **Workflow definitions, agent definitions, system agents** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [doc/](doc/)
 - **Default templates** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **CLI models registry / supported models** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 

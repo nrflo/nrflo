@@ -8,7 +8,7 @@ before:
     - sh -c "cd ui && npm ci && npm run build"
     - rm -rf be/internal/static/dist
     - cp -r ui/dist be/internal/static/dist
-    - cp agent_manual.md be/internal/static/agent_manual.md
+    - sh -c "mkdir -p be/internal/static/doc && cp doc/*.md be/internal/static/doc/"
 
 builds:
   - id: nrflo

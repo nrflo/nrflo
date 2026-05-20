@@ -191,7 +191,7 @@ NRFLO ships two binaries:
 | `nrflo deps add <ticket> <blocker>` | Add a dependency |
 | `nrflo deps remove <ticket> <blocker>` | Remove a dependency |
 
-See [agent_manual.md](agent_manual.md) for the full agent definition reference.
+See the agent authoring docs under [doc/](doc/) (served at /documentation in the web UI).
 
 ## Workflows
 

@@ -84,7 +84,9 @@ and optional workflow. Auth methods: none, `bearer_env`, `bearer_secret_ref`.
 **Python tools** — `python_scripts` rows with `kind=tool`. Each invocation
 writes the script to a temp file and execs `pythonPath` with JSON input on
 stdin. Input is validated against the script's declared JSON Schema (Draft 2020)
-before execution.
+before execution. Like script agents, a tool's source can be inline `code` or an
+optional absolute `.py` `file_path` (file contents override `code`); set it via
+the file-path picker on the Python Tool form.
 
 ### Tool Name Collision Rules
 

@@ -22,8 +22,15 @@ any task that should not be handed to an LLM.
 ## Authoring
 
 Go to **Python Scripts** (`/python-scripts`) in the web UI. Create a new script
-by giving it a name and pasting your Python code. The **Validate** button
-syntax-checks the code via `python3` without saving.
+by giving it a name and either pasting your Python code or pointing to a file.
+The **Validate** button syntax-checks the code via `python3` without saving.
+
+**Inline code vs. file path.** Each script has a `code` body and an optional
+`file_path`. If `file_path` is set it must be an **absolute path ending in
+`.py`** that exists on the server; its contents are read at spawn time and
+override the inline `code` (the editor then shows the file contents read-only).
+Leave `file_path` empty to use the inline editor. The file is re-read on every
+run, so edits to the source file are picked up automatically.
 
 Minimal script structure:
 
@@ -55,7 +62,8 @@ saved scripts. The `model` field is ignored for script agents.
 
 ## Lifecycle
 
-1. The spawner writes the script to `/tmp/nrflo/scripts/<session-id>.py`
+1. The spawner resolves the source (file at `file_path` if set, else inline
+   `code`) and writes it to `/tmp/nrflo/scripts/<session-id>.py`
 2. Runs `python3 <path>` inside the agent's working directory (git worktree for
    ticket-scope, project root for project-scope)
 3. Stdout lines are captured and shown in the agent message timeline
